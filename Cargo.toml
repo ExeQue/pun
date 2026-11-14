@@ -20,66 +20,67 @@ publish = false
 rust-version = "1.99"
 
 [workspace.dependencies]
-pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
+pun-analyse = { path = "crates/pun-analyse", package = "punphp-analyse" }
+pun-config = { path = "crates/pun-config", package = "punphp-config" }
 pun-fixers = { path = "crates/pun-fixers", package = "punphp-fixers" }
 pun-format = { path = "crates/pun-format", package = "punphp-format" }
-pun-config = { path = "crates/pun-config", package = "punphp-config" }
-pun-workspace = { path = "crates/pun-workspace", package = "punphp-workspace" }
-mago-syntax = "=1.57.0"
-mago-database = "=1.57.0"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
-toml = { version = "0.9", features = ["preserve_order"] }
-clap = { version = "4", features = ["derive"] }
-rayon = "1"
-bitflags = "2"
-anyhow = "1"
-similar = "2"
-pcre2 = "0.2"
-regex = "1"
-regex-automata = "0.4"
-walkdir = "2"
-mago-allocator = "=1.57.0"
-mago-span = "=1.57.0"
-mago-names = "=1.57.0"
-mago-phpdoc-syntax = "=1.57.0"
-mago-reporting = "=1.57.0"
-notify = "8"
+pun-lint = { path = "crates/pun-lint", package = "punphp-lint" }
+pun-packages = { path = "crates/pun-packages", package = "punphp-packages" }
 pun-phpstan = { path = "crates/pun-phpstan", package = "punphp-phpstan" }
-indexmap = "2"
-libc = "0.2"
-mago-codex = "=1.57.0"
-mago-analyzer = "=1.57.0"
-mago-prelude = { version = "=1.57.0", features = ["build"] }
-mago-php-version = "=1.57.0"
-mago-word = "=1.57.0"
-pun-analyse = { path = "crates/pun-analyse", package = "punphp-analyse" }
-# `pun migrate`'s checklist; no editor/password/fuzzy features.
-dialoguer = { version = "0.12", default-features = false }
+pun-problem = { path = "crates/pun-problem", package = "punphp-problem" }
+pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
+pun-workspace = { path = "crates/pun-workspace", package = "punphp-workspace" }
+
 # Env-only: the default `process-tree` feature (sysinfo) adds ~12 ms per start and finds agents up the process tree.
 agent-detector = { version = "=0.2.1", default-features = false }
-pun-problem = { path = "crates/pun-problem", package = "punphp-problem" }
-mago-syntax-core = "=1.57.0"
-pun-lint = { path = "crates/pun-lint", package = "punphp-lint" }
+anyhow = "1"
+bitflags = "2"
+clap = { version = "4", features = ["derive"] }
+# `pun migrate`'s checklist; no editor/password/fuzzy features.
+dialoguer = { version = "0.12", default-features = false }
+flate2 = "1"
 # pun-analyse: the on-demand autoload index
 foldhash = "0.2"
-pcre2-sys = "0.2"
-# pun-cli's global allocator on musl. Without transparent huge pages a resolve peaks at 227 MB rather than 411 MB.
-mimalloc = { version = "0.1", default-features = false, features = ["no_thp"] }
-# pun-cli's `pprof` feature: an in-process sampling profiler.
-pprof = { version = "0.15", default-features = false }
-# `pun analyse --format=gitlab`: PHPStan's sha256 fingerprints.
-sha2 = "0.11"
+indexmap = "2"
+libc = "0.2"
+mago-allocator = "=1.57.0"
+mago-analyzer = "=1.57.0"
+mago-codex = "=1.57.0"
+mago-database = "=1.57.0"
+mago-names = "=1.57.0"
+mago-php-version = "=1.57.0"
+mago-phpdoc-syntax = "=1.57.0"
+mago-prelude = { version = "=1.57.0", features = ["build"] }
+mago-reporting = "=1.57.0"
+mago-span = "=1.57.0"
+mago-syntax = "=1.57.0"
+mago-syntax-core = "=1.57.0"
+mago-word = "=1.57.0"
 # `pun format --format=gitlab`: PHP-CS-Fixer's md5 fingerprints.
 md-5 = "0.11"
-# Local phar:// member stat: archive indexes, gzip containers and PHAR signatures only.
-zip = { version = "9.1.1", default-features = false }
-tar = { version = "0.4.46", default-features = false }
-flate2 = "1"
+# pun-cli's global allocator on musl. Without transparent huge pages a resolve peaks at 227 MB rather than 411 MB.
+mimalloc = { version = "0.1", default-features = false, features = ["no_thp"] }
+notify = "8"
+pcre2 = "0.2"
+pcre2-sys = "0.2"
+# pun-cli's `pprof` feature: an in-process sampling profiler.
+pprof = { version = "0.15", default-features = false }
+rayon = "1"
+regex = "1"
+regex-automata = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 sha1 = "0.11"
+# `pun analyse --format=gitlab`: PHPStan's sha256 fingerprints.
+sha2 = "0.11"
+similar = "2"
+tar = { version = "0.4.46", default-features = false }
+toml = { version = "0.9", features = ["preserve_order"] }
 # `pun install`: Packagist metadata and dist downloads over HTTPS (rustls with the Mozilla roots, gzip).
 ureq = "3.5"
-pun-packages = { path = "crates/pun-packages", package = "punphp-packages" }
+walkdir = "2"
+# Local phar:// member stat: archive indexes, gzip containers and PHAR signatures only.
+zip = { version = "9.1.1", default-features = false }
 
 # The shared lint policy; every crate opts in with `[lints] workspace = true`. Lints that fight the
 # function-by-function upstream ports are allowed; the rest warn, and CI denies warnings.
