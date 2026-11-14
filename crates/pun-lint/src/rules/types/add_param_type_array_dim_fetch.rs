@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -132,12 +134,15 @@ impl Rule for AddParamTypeArrayDimFetch {
     }
 }
 
+static NUMERIC_GROUP: LazyLock<regex::Regex> = LazyLock::new(|| {
+    regex::Regex::new(
+        r"(?:^|[^\\])\((?:\?(?:P?<\w+>|'\w+'))?(?:(?:\\d|\[0-9\])(?:[+*?]|\{\d+(?:,\d*)?\})?)+\)",
+    )
+    .unwrap()
+});
+
 fn numeric_group(pattern: &str) -> bool {
-    static GROUP: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
-        regex::Regex::new(r"(?:^|[^\\])\((?:\?(?:P?<\w+>|'\w+'))?(?:(?:\\d|\[0-9\])(?:[+*?]|\{\d+(?:,\d*)?\})?)+\)")
-            .unwrap()
-    });
-    GROUP.is_match(pattern)
+    NUMERIC_GROUP.is_match(pattern)
 }
 
 fn is_array(facts: &Facts, expr: &Expression<'_>) -> bool {

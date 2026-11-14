@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use pun_phpstan::phpdoc::{self, Node, ShapeKey};
 
 use crate::rules::support::phpdoc_writer::type_node::TypeNode;
@@ -1299,7 +1301,7 @@ fn process_description_as_spaceless(
     }
     let key = slots.find(key, child.id);
     slots.unset(key);
-    let stripped = parser::replace_all(long_annotation(), description, |_| String::new());
+    let stripped = parser::replace_all(&LONG_ANNOTATION, description, |_| String::new());
     let cut = stripped.len().saturating_sub(7);
     *description = String::from_utf8_lossy(&stripped.as_bytes()[..cut]).into_owned();
     let node = slots.child(None, child.tag.clone(), value);
@@ -1308,19 +1310,16 @@ fn process_description_as_spaceless(
     Some(())
 }
 
-fn long_annotation() -> &'static pcre2::bytes::Regex {
-    static RE: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
-    RE.get_or_init(|| {
-        pcre2::bytes::Regex::new(r"@\\(?<class_name>.*?)(?<annotation_content>\(.*?\)|,|\r?\n|$)")
-            .expect("annotation regex")
-    })
-}
+static LONG_ANNOTATION: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"@\\(?<class_name>.*?)(?<annotation_content>\(.*?\)|,|\r?\n|$)")
+        .expect("annotation regex")
+});
+
+static NEW_LINE_ANNOTATION: LazyLock<pcre2::bytes::Regex> =
+    LazyLock::new(|| pcre2::bytes::Regex::new(r"\r?\n@\\").expect("new line annotation regex"));
 
 fn first_text(text: &str) -> String {
-    static RE: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
-    let re = RE
-        .get_or_init(|| pcre2::bytes::Regex::new(r"\r?\n@\\").expect("new line annotation regex"));
-    let end = re
+    let end = NEW_LINE_ANNOTATION
         .find(text.as_bytes())
         .ok()
         .flatten()
@@ -1333,7 +1332,7 @@ fn resolve_fqn_annotations(
     resolve_tag: &dyn Fn(&str) -> String,
 ) -> Option<Vec<(String, Value)>> {
     let mut nodes = Vec::new();
-    for caps in long_annotation().captures_iter(text.as_bytes()).flatten() {
+    for caps in LONG_ANNOTATION.captures_iter(text.as_bytes()).flatten() {
         let group = |name: &str| caps.name(name).map_or("", |m| &text[m.start()..m.end()]);
         let open: Vec<&str> = group("class_name").split('(').collect();
         let content = match open.get(1).map(|o| o.trim_matches(PHP_WS)) {

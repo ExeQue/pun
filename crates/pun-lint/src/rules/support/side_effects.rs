@@ -5,29 +5,31 @@
 //! the project's classes, sees none. `isTestMock` asks whether the receiver's type is a PHPUnit `TestCase`; without
 //! types Pun takes `$this`, `self`, `static` and `parent` in a class whose parent's name ends in `TestCase`.
 
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use mago_syntax::cst::*;
 
 use crate::rules::support::names::{imported_function, resolve_class_name};
 use crate::rules::support::statement_edits::is_plain_assign;
 
-const PURE: &str = include_str!("../../../data/pure-functions.txt");
-const THROWABLES: &str = include_str!("../../../data/throwables.txt");
+static PURE: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    include_str!("../../../data/pure-functions.txt")
+        .lines()
+        .collect()
+});
+static THROWABLES: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    include_str!("../../../data/throwables.txt")
+        .lines()
+        .collect()
+});
 
-pub(crate) fn listed(
-    list: &'static str,
-    cache: &'static OnceLock<Vec<&'static str>>,
-    name: &str,
-) -> bool {
-    let names = cache.get_or_init(|| list.lines().collect());
+pub(crate) fn listed(names: &[&str], name: &str) -> bool {
     names
         .binary_search(&name.to_ascii_lowercase().as_str())
         .is_ok()
 }
 
 pub(crate) fn is_pure_call(ancestors: &[Node<'_, '_>], call: &FunctionCall<'_>) -> bool {
-    static CACHE: OnceLock<Vec<&'static str>> = OnceLock::new();
     let Expression::Identifier(identifier) = call.function else {
         return false;
     };
@@ -39,7 +41,7 @@ pub(crate) fn is_pure_call(ancestors: &[Node<'_, '_>], call: &FunctionCall<'_>) 
             .to_string(),
         Identifier::Qualified(_) => return false,
     };
-    listed(PURE, &CACHE, &name)
+    listed(&PURE, &name)
 }
 
 pub(crate) fn has_side_effect(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
@@ -102,8 +104,7 @@ pub(crate) fn call_has_side_effect(ancestors: &[Node<'_, '_>], expr: &Expression
 }
 
 fn is_throwable(name: &str) -> bool {
-    static CACHE: OnceLock<Vec<&'static str>> = OnceLock::new();
-    listed(THROWABLES, &CACHE, name)
+    listed(&THROWABLES, name)
 }
 
 fn is_test_mock(

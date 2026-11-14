@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use mago_syntax::cst::*;
 
@@ -7,7 +7,11 @@ use crate::rules::support::side_effects::listed;
 use crate::syntax::is_this;
 use crate::syntax::{node_span, unparenthesize};
 
-const BOOL_FUNCTIONS: &str = include_str!("../../../data/bool-functions.txt");
+static BOOL_FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    include_str!("../../../data/bool-functions.txt")
+        .lines()
+        .collect()
+});
 
 pub(crate) fn is_bool(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) {
@@ -52,11 +56,8 @@ fn bool_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
                 | UnaryPrefixOperator::BooleanCast(..)
         ),
         Expression::Construct(Construct::Isset(_) | Construct::Empty(_)) => true,
-        Expression::Call(Call::Function(call)) => {
-            static CACHE: OnceLock<Vec<&'static str>> = OnceLock::new();
-            called_function_name(ancestors, call.function)
-                .is_some_and(|n| listed(BOOL_FUNCTIONS, &CACHE, &n))
-        }
+        Expression::Call(Call::Function(call)) => called_function_name(ancestors, call.function)
+            .is_some_and(|n| listed(&BOOL_FUNCTIONS, &n)),
         Expression::Call(Call::Method(call)) if is_this(call.object) => {
             own_method_returns(ancestors, &call.method, &|h| matches!(h, Hint::Bool(_)))
         }
@@ -184,7 +185,11 @@ pub(crate) fn local_of(
     !other && assigned.get()
 }
 
-const INT_FUNCTIONS: &str = include_str!("../../../data/int-functions.txt");
+static INT_FUNCTIONS: LazyLock<Vec<&str>> = LazyLock::new(|| {
+    include_str!("../../../data/int-functions.txt")
+        .lines()
+        .collect()
+});
 
 pub(crate) fn is_int(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) {
@@ -218,11 +223,8 @@ fn int_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
         {
             true
         }
-        Expression::Call(Call::Function(call)) => {
-            static CACHE: OnceLock<Vec<&'static str>> = OnceLock::new();
-            called_function_name(ancestors, call.function)
-                .is_some_and(|n| listed(INT_FUNCTIONS, &CACHE, &n))
-        }
+        Expression::Call(Call::Function(call)) => called_function_name(ancestors, call.function)
+            .is_some_and(|n| listed(&INT_FUNCTIONS, &n)),
         Expression::Call(Call::Method(call)) if is_this(call.object) => {
             own_method_returns(ancestors, &call.method, &|h| matches!(h, Hint::Integer(_)))
         }

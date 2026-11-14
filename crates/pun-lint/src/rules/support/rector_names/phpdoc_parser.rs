@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 pub(crate) mod t {
     pub(crate) const REFERENCE: u8 = 0;
@@ -100,16 +100,17 @@ pub(crate) struct Tok {
     pub end: usize,
 }
 
+static LEXER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    let alternatives: Vec<String> = PATTERNS.iter().map(|(_, p)| format!("({p})")).collect();
+    pcre2::bytes::RegexBuilder::new()
+        .caseless(true)
+        .dotall(true)
+        .build(&format!(r"\G(?:{})", alternatives.join("|")))
+        .expect("phpdoc lexer regex")
+});
+
 pub(crate) fn tokenize(input: &str) -> Vec<Tok> {
-    static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        let alternatives: Vec<String> = PATTERNS.iter().map(|(_, p)| format!("({p})")).collect();
-        pcre2::bytes::RegexBuilder::new()
-            .caseless(true)
-            .dotall(true)
-            .build(&format!(r"\G(?:{})", alternatives.join("|")))
-            .expect("phpdoc lexer regex")
-    });
+    let re = &*LEXER;
     let mut locations = re.capture_locations();
     let mut tokens = Vec::new();
     let mut offset = 0;
@@ -659,18 +660,17 @@ impl<'a> DocParser<'a> {
     }
 }
 
+static ESCAPES: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\([\\nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})")
+        .expect("escapes")
+});
+
 pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
     let inner = &token[1..token.len() - 1];
     if token.starts_with('\'') {
         return inner.replace("\\\\", "\\").replace("\\'", "'").into_bytes();
     }
-    static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        pcre2::bytes::Regex::new(
-            r"\\([\\nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})",
-        )
-        .expect("escapes")
-    });
+    let re = &*ESCAPES;
     let value = inner.replace("\\\"", "\"").into_bytes();
     let mut out = Vec::new();
     let mut last = 0;
@@ -723,6 +723,29 @@ pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
     out
 }
 
+static UNPRINTABLE: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::RegexBuilder::new()
+        .extended(true)
+        .build(
+            r"(
+              [\x00-\x08\x0E-\x1F]
+            | [\xC0-\xC1]
+            | [\xF5-\xFF]
+            | \xE0(?=[\x80-\x9F])
+            | \xF0(?=[\x80-\x8F])
+            | [\xC2-\xDF](?![\x80-\xBF])
+            | [\xE0-\xEF](?![\x80-\xBF]{2})
+            | [\xF0-\xF4](?![\x80-\xBF]{3})
+            | (?<=[\x00-\x7F\xF5-\xFF])[\x80-\xBF]
+            | (?<![\xC2-\xDF]|[\xE0-\xEF]|[\xE0-\xEF][\x80-\xBF]|[\xF0-\xF4]|[\xF0-\xF4][\x80-\xBF]|[\xF0-\xF4][\x80-\xBF]{2})[\x80-\xBF]
+            | (?<=[\xE0-\xEF])[\x80-\xBF](?![\x80-\xBF])
+            | (?<=[\xF0-\xF4])[\x80-\xBF](?![\x80-\xBF]{2})
+            | (?<=[\xF0-\xF4][\x80-\xBF])[\x80-\xBF](?![\x80-\xBF])
+        )",
+        )
+        .expect("utf-8 regex")
+});
+
 pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
     if written.starts_with('\'') {
         let value = String::from_utf8_lossy(value);
@@ -743,29 +766,7 @@ pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
             _ => escaped.push(b),
         }
     }
-    static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        pcre2::bytes::RegexBuilder::new()
-            .extended(true)
-            .build(
-                r"(
-                  [\x00-\x08\x0E-\x1F]
-                | [\xC0-\xC1]
-                | [\xF5-\xFF]
-                | \xE0(?=[\x80-\x9F])
-                | \xF0(?=[\x80-\x8F])
-                | [\xC2-\xDF](?![\x80-\xBF])
-                | [\xE0-\xEF](?![\x80-\xBF]{2})
-                | [\xF0-\xF4](?![\x80-\xBF]{3})
-                | (?<=[\x00-\x7F\xF5-\xFF])[\x80-\xBF]
-                | (?<![\xC2-\xDF]|[\xE0-\xEF]|[\xE0-\xEF][\x80-\xBF]|[\xF0-\xF4]|[\xF0-\xF4][\x80-\xBF]|[\xF0-\xF4][\x80-\xBF]{2})[\x80-\xBF]
-                | (?<=[\xE0-\xEF])[\x80-\xBF](?![\x80-\xBF])
-                | (?<=[\xF0-\xF4])[\x80-\xBF](?![\x80-\xBF]{2})
-                | (?<=[\xF0-\xF4][\x80-\xBF])[\x80-\xBF](?![\x80-\xBF])
-            )",
-            )
-            .expect("utf-8 regex")
-    });
+    let re = &*UNPRINTABLE;
     let mut out = Vec::new();
     let mut last = 0;
     for m in re.find_iter(&escaped).flatten() {
@@ -777,10 +778,11 @@ pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
     String::from_utf8(out).ok().map(|out| format!("\"{out}\""))
 }
 
+static NEW_LINES: LazyLock<pcre2::bytes::Regex> =
+    LazyLock::new(|| pcre2::bytes::Regex::new(r"(\r\n|\n){2,}").expect("new lines regex"));
+
 fn collapse_newlines(value: &str) -> String {
-    static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re =
-        RE.get_or_init(|| pcre2::bytes::Regex::new(r"(\r\n|\n){2,}").expect("new lines regex"));
+    let re = &*NEW_LINES;
     replace_all(re, value, |caps| caps[caps.len() - 1].to_string())
 }
 
