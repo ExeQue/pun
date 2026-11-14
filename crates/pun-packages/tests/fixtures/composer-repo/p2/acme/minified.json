@@ -1,0 +1,10 @@
+{
+    "minified": "composer/2.0",
+    "packages": {
+        "acme/minified": [
+            {"name": "acme/minified", "version": "3.0.0", "version_normalized": "3.0.0.0", "extra": {"x": 1}, "description": "three", "time": "2022-06-01T10:20:30+02:00"},
+            {"version": "2.1.0", "version_normalized": "2.1.0.0", "extra": "__unset", "time": "2022-05-01T10:20:30Z"},
+            {"version": "2.0.0", "version_normalized": "2.0.0.0", "description": "__unset"}
+        ]
+    }
+}

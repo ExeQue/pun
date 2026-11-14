@@ -391,5 +391,10 @@ mod tests {
             names(&got)
         );
         assert!(detect("/nonexistent/php", None).is_err());
+        // Derived by hand: `false` exits 1 and prints nothing.
+        assert_eq!(
+            detect("false", None).unwrap_err().to_string(),
+            "false failed to report the platform: "
+        );
     }
 }

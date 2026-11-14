@@ -127,9 +127,9 @@ pub fn stability_of(version: &str) -> &'static str {
         return "stable";
     }
     let lower = version.to_ascii_lowercase();
-    let Ok(Some(m)) = STABILITY_SUFFIX.captures(lower.as_bytes()) else {
-        return "stable";
-    };
+    // Every part of the suffix is optional, so it matches every version.
+    let m = (STABILITY_SUFFIX.captures(lower.as_bytes()).ok().flatten())
+        .expect("an empty suffix matches");
     if !group(&m, 3).is_empty() {
         return "dev";
     }

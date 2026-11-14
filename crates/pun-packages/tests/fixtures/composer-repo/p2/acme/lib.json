@@ -1,0 +1,44 @@
+{
+    "packages": {
+        "acme/lib": [
+            {
+                "name": "Acme/Lib",
+                "version": "2.0.0",
+                "version_normalized": "2.0.0.0",
+                "require": {"php": ">=9"},
+                "dist": {"type": "zip", "url": "https://dist.acme.test/lib-2.0.0.zip", "reference": "b2", "shasum": ""}
+            },
+            {
+                "name": "Acme/Lib",
+                "version": "1.5.0",
+                "target-dir": "Acme/Lib",
+                "source": {"type": "git", "url": "https://git.acme.test/lib.git", "reference": "a15", "mirrors": [{"url": "https://mirror.acme.test/%package%.git", "preferred": true}]},
+                "dist": {"type": "zip", "url": "https://dist.acme.test/lib-1.5.0.zip", "reference": "a15", "shasum": "0123abcd", "mirrors": []},
+                "require": {"php": ">=8.1", "acme/util": "^1.0", "Acme/Util": "^1.1", "acme/lib": "*"},
+                "conflict": {"acme/old": "<1.0"},
+                "provide": {"psr/log-implementation": "1.0"},
+                "replace": {"acme/lib-legacy": "self.version"},
+                "suggest": {"ext-intl": "for locales", "acme/extra": "self.version"},
+                "bin": "/bin/lib-tool",
+                "type": "Library",
+                "extra": {"branch-alias": {"dev-main": "1.6.x-dev"}},
+                "autoload": {"psr-4": {"Acme\\Lib\\": "src/"}},
+                "autoload-dev": [],
+                "include-path": ["lib/"],
+                "archive": {"name": "lib", "exclude": ["/tests"]},
+                "scripts": {"post-install-cmd": "Acme\\Lib\\Setup::run", "test": ["phpunit"]},
+                "license": "MIT",
+                "authors": [{"name": "Ada", "email": "ada@acme.test"}],
+                "description": "A library",
+                "homepage": "https://acme.test",
+                "keywords": {"b": "zeta", "a": "10", "c": "9", "d": "alpha"},
+                "support": {"issues": "https://acme.test/issues"},
+                "funding": [{"type": "github", "url": "https://github.com/sponsors/acme"}],
+                "abandoned": "acme/next",
+                "transport-options": {"ssl": {"verify_peer": false}},
+                "time": "1700000000",
+                "notification-url": "https://stats.acme.test/notify"
+            }
+        ]
+    }
+}

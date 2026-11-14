@@ -1,7 +1,8 @@
 //! The versions a project's `config.policy` (and the older `config.audit`) keeps out of an update before the solver
 //! runs, as Composer's pool filters do: versions with a security advisory (on by default), versions on a filter
 //! list such as Packagist's malware list (on by default), abandoned packages (opt-in), and versions published within
-//! a cooldown period (opt-in). Locked packages, the root and the platform are never filtered.
+//! a cooldown period (opt-in). The root and the platform are never filtered; a locked package only for being
+//! abandoned and by the filter lists that block installs.
 
 use super::package::{Origin, Package};
 use crate::constraint::{self, Constraint};
@@ -98,18 +99,29 @@ fn ignore_map(config: Option<&Value>) -> Result<Vec<Ignore>> {
         Some(Value::Object(map)) => {
             for (name, v) in map {
                 match v {
+                    // An empty list decodes to the same empty PHP array as `{}`: one rule for every version.
                     Value::Null | Value::String(_) => rules.push(rule(name, None)?),
+                    Value::Array(list) if list.is_empty() => rules.push(rule(name, None)?),
                     Value::Object(o) => rules.push(rule(name, Some(o))?),
                     Value::Array(list) => {
                         for o in list {
+                            // A list decodes to a PHP array too: a rule without settings.
+                            if o.is_array() {
+                                rules.push(rule(name, None)?);
+                                continue;
+                            }
                             let Value::Object(o) = o else {
-                                bail!("Invalid ignore rule for \"{name}\": expected an object.");
+                                bail!(
+                                    "Invalid ignore rule for \"{name}\": expected an object, got {}.",
+                                    debug_type(o)
+                                );
                             };
                             rules.push(rule(name, Some(o))?);
                         }
                     }
                     _ => bail!(
-                        "Invalid ignore entry at key \"{name}\": value is not a supported shape."
+                        "Invalid ignore entry at key \"{name}\": value of type {} is not a supported shape. Expected null, a reason string, a rule object, or a list of rule objects.",
+                        debug_type(v)
                     ),
                 }
             }
@@ -119,14 +131,32 @@ fn ignore_map(config: Option<&Value>) -> Result<Vec<Ignore>> {
     Ok(rules)
 }
 
-/// `apply` of a legacy `audit.ignore` entry: whether it applies when blocking.
-fn legacy_on_block(v: &Value) -> Result<bool> {
-    match v.get("apply").and_then(Value::as_str) {
-        None => Ok(true),
-        Some("block" | "all") => Ok(true),
-        Some("audit") => Ok(false),
+/// PHP's `get_debug_type` of a decoded JSON value other than `null`, which every caller accepts.
+fn debug_type(v: &Value) -> &'static str {
+    if v.is_boolean() {
+        "bool"
+    } else if v.is_f64() {
+        "float"
+    } else if v.is_number() {
+        "int"
+    } else if v.is_string() {
+        "string"
+    } else {
+        "array"
+    }
+}
+
+/// `apply` of the legacy `audit.ignore` entry `key`: whether it applies when blocking.
+fn legacy_on_block(key: &str, v: &Value) -> Result<bool> {
+    match v.get("apply") {
+        None | Some(Value::Null) => Ok(true),
+        Some(Value::String(s)) if s == "block" || s == "all" => Ok(true),
+        Some(Value::String(s)) if s == "audit" => Ok(false),
         Some(other) => {
-            bail!("Invalid 'apply' value: {other}. Expected 'audit', 'block', or 'all'.")
+            let shown = other.as_str().unwrap_or_else(|| debug_type(other));
+            bail!(
+                "Invalid 'apply' value for '{key}': {shown}. Expected 'audit', 'block', or 'all'."
+            )
         }
     }
 }
@@ -140,7 +170,7 @@ fn legacy_names(config: Option<&Value>) -> Result<Vec<String>> {
         }
         Some(Value::Object(map)) => {
             for (k, v) in map {
-                if legacy_on_block(v)? {
+                if legacy_on_block(k, v)? {
                     out.push(k.clone());
                 }
             }
@@ -221,19 +251,26 @@ fn enabled(v: Option<&Value>) -> Option<&Map<String, Value>> {
     }
 }
 
-fn env_bool(name: &str) -> Option<bool> {
-    let v = std::env::var(name).ok()?;
-    Some(!matches!(
-        v.to_ascii_lowercase().as_str(),
-        "" | "0" | "false" | "no" | "off"
-    ))
+/// The environment `Filters::from_config` reads, by variable name.
+pub type Env<'a> = &'a dyn Fn(&str) -> Option<String>;
+
+/// `Platform::getBoolEnv`: unset or empty is `None`.
+fn env_bool(env: Env, name: &str) -> Result<Option<bool>> {
+    match env(name).as_deref() {
+        None | Some("") => Ok(None),
+        Some("1" | "true" | "on") => Ok(Some(true)),
+        Some("0" | "false" | "off") => Ok(Some(false)),
+        Some(v) => {
+            bail!("Invalid value for {name}: {v}. Expected 0, 1, false, true, off, or on.")
+        }
+    }
 }
 
 impl Filters {
-    /// From the manifest's `config` (`policy` and `audit`) and the `COMPOSER_POLICY*` variables.
-    pub fn from_config(config: Option<&Map<String, Value>>) -> Result<Filters> {
+    /// From the manifest's `config` (`policy` and `audit`) and the `COMPOSER_POLICY*` variables in `env`.
+    pub fn from_config(config: Option<&Map<String, Value>>, env: Env) -> Result<Filters> {
         let get = |k: &str| config.and_then(|c| c.get(k));
-        let policy = match env_bool("COMPOSER_POLICY") {
+        let policy = match env_bool(env, "COMPOSER_POLICY")? {
             Some(false) => return Ok(Filters::default()),
             Some(true) if get("policy") == Some(&Value::Bool(false)) => None,
             _ => match get("policy") {
@@ -265,13 +302,13 @@ impl Filters {
                 .extend(legacy_names(a.get("ignore-id"))?);
             f.ignore_severities = legacy_names(a.get("ignore-severity"))?;
         }
-        if let Some(v) = env_bool("COMPOSER_POLICY_ADVISORIES_BLOCK") {
+        if let Some(v) = env_bool(env, "COMPOSER_POLICY_ADVISORIES_BLOCK")? {
             f.advisories = v;
         }
         if let Some(m) = enabled(policy.get("malware")) {
             f.lists.push(List {
                 name: "malware".into(),
-                block: env_bool("COMPOSER_POLICY_MALWARE_BLOCK")
+                block: env_bool(env, "COMPOSER_POLICY_MALWARE_BLOCK")?
                     .unwrap_or_else(|| m.get("block").and_then(Value::as_bool).unwrap_or(true)),
                 scope: m
                     .get("block-scope")
@@ -335,22 +372,26 @@ impl Filters {
                 .map(|r| r.pattern)
                 .collect();
         }
-        if let Some(v) = env_bool("COMPOSER_POLICY_ABANDONED_BLOCK")
-            .or_else(|| env_bool("COMPOSER_SECURITY_BLOCKING_ABANDONED"))
-        {
+        let abandoned = match env_bool(env, "COMPOSER_POLICY_ABANDONED_BLOCK")? {
+            None => env_bool(env, "COMPOSER_SECURITY_BLOCKING_ABANDONED")?,
+            set => set,
+        };
+        if let Some(v) = abandoned {
             f.abandoned = v;
         }
         let cooldown = policy.get("cooldown");
-        let env_period = std::env::var("COMPOSER_POLICY_COOLDOWN_PERIOD")
-            .ok()
-            .filter(|v| !v.is_empty());
+        let env_period = env("COMPOSER_POLICY_COOLDOWN_PERIOD").filter(|v| !v.is_empty());
         if cooldown != Some(&Value::Bool(false)) || env_period.is_some() {
             let c = cooldown.and_then(Value::as_object);
             let mut period = duration(c.and_then(|c| c.get("period")))?;
             if let Some(p) = &env_period {
-                period = duration(Some(&Value::String(p.clone())))?;
+                period = duration(Some(&Value::String(p.clone()))).map_err(|_| {
+                    anyhow::anyhow!(
+                        "Invalid value for COMPOSER_POLICY_COOLDOWN_PERIOD: {p}. Use formats like '7 days', '24 hours', or an integer number of seconds."
+                    )
+                })?;
             }
-            let block = env_bool("COMPOSER_POLICY_COOLDOWN_BLOCK").unwrap_or_else(|| {
+            let block = env_bool(env, "COMPOSER_POLICY_COOLDOWN_BLOCK")?.unwrap_or_else(|| {
                 c.and_then(|c| c.get("block"))
                     .and_then(Value::as_bool)
                     .unwrap_or(true)
@@ -404,9 +445,10 @@ impl Filters {
             return None;
         }
         let exact = Constraint::exact(&p.version);
-        if self.abandoned
-            && !locked
-            && p.alias_of.is_none()
+        // Composer's SecurityAdvisoryPoolFilter blocks abandoned packages, locked ones and aliases too, and only
+        // while it blocks advisories.
+        if self.advisories
+            && self.abandoned
             && p.abandoned
             && !self
                 .ignore_abandoned
@@ -543,5 +585,297 @@ mod tests {
         assert_eq!(d("0").unwrap(), None);
         assert!(d("1 fortnight").is_err());
         assert!(d("-5").is_err());
+        // Derived by hand: a period that is neither a number nor a string.
+        assert_eq!(
+            duration(Some(&Value::Bool(true))).unwrap_err().to_string(),
+            "Invalid policy.cooldown.period format."
+        );
+        assert_eq!(timestamp("2024x01x01"), None);
+    }
+
+    fn parse(env: &[(&str, &str)], config: Value) -> Result<Filters, String> {
+        let env = |k: &str| {
+            (env.iter())
+                .find(|(n, _)| *n == k)
+                .map(|(_, v)| v.to_string())
+        };
+        Filters::from_config(config.as_object(), &env).map_err(|e| e.to_string())
+    }
+
+    /// The parts of [`Filters`] Composer's `PolicyConfig` has: advisories blocking and the names, ids and CVEs
+    /// ignored when blocking, the same for abandoned, whether malware blocks, the cooldown period that blocks, and
+    /// the custom lists with their block flag and scope.
+    fn summary(f: &Filters) -> Value {
+        let malware = f.lists.iter().find(|l| l.name == "malware");
+        let lists: Vec<Value> = (f.lists.iter())
+            .filter(|l| l.name != "malware")
+            .map(|l| serde_json::json!([l.name, l.block, l.scope]))
+            .collect();
+        serde_json::json!({
+            "advisories": f.advisories,
+            "ignore": f.ignore_advisories,
+            "abandoned": f.abandoned,
+            "ignore-abandoned": f.ignore_abandoned,
+            "malware": malware.is_some_and(|m| m.block),
+            "cooldown": f.cooldown,
+            "lists": lists,
+        })
+    }
+
+    /// Expected values from Composer 2.11.2's `PolicyConfig::fromConfig` on the same config and environment, in
+    /// PHP 8.5; where PHP fails with a type error instead (an ignore list that is a number), Pun's message is its own.
+    #[test]
+    fn reads_policy_as_composer() {
+        use serde_json::json;
+        let base = json!({"advisories": true, "ignore": [], "abandoned": false, "ignore-abandoned": [], "malware": true, "cooldown": null, "lists": []});
+        let with = |changes: Value| {
+            let mut v = base.clone();
+            (v.as_object_mut().unwrap()).extend(changes.as_object().unwrap().clone());
+            v
+        };
+        let off = json!({"advisories": false, "ignore": [], "abandoned": false, "ignore-abandoned": [], "malware": false, "cooldown": null, "lists": []});
+        for (env, config, want) in [
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": ["acme/a", "acme/b"]}}}),
+                with(json!({"ignore": ["acme/a", "acme/b"]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/a": null, "acme/b": "why", "acme/c": [{"constraint": "^1.0"}, {"on-block": false}], "acme/d": {"constraint": "^2"}}}}}),
+                with(json!({"ignore": ["acme/a", "acme/b", "acme/c", "acme/d"]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/e": []}}}}),
+                with(json!({"ignore": ["acme/e"]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": [[1]]}}}}),
+                with(json!({"ignore": ["acme/c"]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"abandoned": false}}),
+                base.clone(),
+            ),
+            (
+                vec![],
+                json!({"audit": {"ignore": {"CVE-1": {"apply": "audit"}, "CVE-2": {"apply": "block"}, "CVE-3": {}, "CVE-4": "reason"}}}),
+                with(json!({"ignore": ["CVE-2", "CVE-3", "CVE-4"]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"cooldown": {"period": 3600}}}),
+                with(json!({"cooldown": 3600})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"cooldown": {"period": "30 seconds"}}}),
+                with(json!({"cooldown": 30})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"cooldown": {"period": "2 minutes"}}}),
+                with(json!({"cooldown": 120})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"cooldown": {"period": "5 hours"}}}),
+                with(json!({"cooldown": 18000})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"custom": 5, "other": true}}),
+                with(json!({"lists": [["other", true, "update"]]})),
+            ),
+            (
+                vec![],
+                json!({"policy": {"abandoned": {"block": true, "ignore": {"acme/a": {"on-block": false}, "acme/b": null}}}}),
+                with(json!({"abandoned": true, "ignore-abandoned": ["acme/b"]})),
+            ),
+            (vec![], json!({"policy": false}), off.clone()),
+            (
+                vec![],
+                json!({"policy": {"malware": false, "cooldown": false}}),
+                with(json!({"malware": false})),
+            ),
+            (vec![("COMPOSER_POLICY", "0")], json!({}), off),
+            (
+                vec![("COMPOSER_POLICY", "1")],
+                json!({"policy": false}),
+                base.clone(),
+            ),
+            (vec![("COMPOSER_POLICY", "")], json!({}), base.clone()),
+            (
+                vec![("COMPOSER_POLICY_ADVISORIES_BLOCK", "off")],
+                json!({}),
+                with(json!({"advisories": false})),
+            ),
+            (
+                vec![("COMPOSER_POLICY_ABANDONED_BLOCK", "on")],
+                json!({}),
+                with(json!({"abandoned": true})),
+            ),
+            (
+                vec![("COMPOSER_SECURITY_BLOCKING_ABANDONED", "1")],
+                json!({}),
+                with(json!({"abandoned": true})),
+            ),
+            (
+                vec![("COMPOSER_POLICY_COOLDOWN_PERIOD", "2 days")],
+                json!({"policy": {"cooldown": false}}),
+                with(json!({"cooldown": 172800})),
+            ),
+            (
+                vec![("COMPOSER_POLICY_COOLDOWN_BLOCK", "false")],
+                json!({"policy": {"cooldown": {"period": 60}}}),
+                base.clone(),
+            ),
+            (
+                vec![("COMPOSER_POLICY_MALWARE_BLOCK", "0")],
+                json!({}),
+                with(json!({"malware": false})),
+            ),
+        ] {
+            assert_eq!(
+                summary(&parse(&env, config.clone()).unwrap()),
+                want,
+                "{env:?} {config}"
+            );
+        }
+        for (env, config, want) in [
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": [5]}}}}),
+                "Invalid ignore rule for \"acme/c\": expected an object, got int.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": 5}}}}),
+                "Invalid ignore entry at key \"acme/c\": value of type int is not a supported shape. Expected null, a reason string, a rule object, or a list of rule objects.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": true}}}}),
+                "Invalid ignore entry at key \"acme/c\": value of type bool is not a supported shape. Expected null, a reason string, a rule object, or a list of rule objects.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": 5}}}),
+                "Invalid ignore list: expected a list or an object.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": ["x"]}}}}),
+                "Invalid ignore rule for \"acme/c\": expected an object, got string.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"advisories": {"ignore": {"acme/c": 1.5}}}}),
+                "Invalid ignore entry at key \"acme/c\": value of type float is not a supported shape. Expected null, a reason string, a rule object, or a list of rule objects.",
+            ),
+            (
+                vec![],
+                json!({"audit": {"ignore": {"CVE-1": {"apply": ["x"]}}}}),
+                "Invalid 'apply' value for 'CVE-1': array. Expected 'audit', 'block', or 'all'.",
+            ),
+            (
+                vec![],
+                json!({"audit": {"ignore": {"CVE-1": {"apply": "never"}}}}),
+                "Invalid 'apply' value for 'CVE-1': never. Expected 'audit', 'block', or 'all'.",
+            ),
+            (
+                vec![],
+                json!({"audit": {"ignore": {"CVE-1": {"apply": 5}}}}),
+                "Invalid 'apply' value for 'CVE-1': int. Expected 'audit', 'block', or 'all'.",
+            ),
+            (
+                vec![],
+                json!({"policy": {"custom": {"block-scope": "sometimes"}}}),
+                "Invalid block-scope for policy list \"custom\": expected one of \"update\", \"install\", \"all\", got \"sometimes\".",
+            ),
+            (
+                vec![("COMPOSER_POLICY", "yes")],
+                json!({}),
+                "Invalid value for COMPOSER_POLICY: yes. Expected 0, 1, false, true, off, or on.",
+            ),
+            (
+                vec![("COMPOSER_POLICY_COOLDOWN_PERIOD", "soon")],
+                json!({}),
+                "Invalid value for COMPOSER_POLICY_COOLDOWN_PERIOD: soon. Use formats like '7 days', '24 hours', or an integer number of seconds.",
+            ),
+        ] {
+            assert_eq!(
+                parse(&env, config.clone()).unwrap_err(),
+                want,
+                "{env:?} {config}"
+            );
+        }
+    }
+
+    fn package(data: Value) -> Package {
+        let mut arena = vec![];
+        let data = data.as_object().unwrap().clone();
+        super::super::package::load(data, Origin::Repository(1), &mut arena).unwrap();
+        arena.pop().unwrap()
+    }
+
+    /// Derived by hand from Composer's pool filters: an ignored abandoned package stays; a list that blocks only
+    /// updates keeps the version the lock already has; a cooldown ignore rule covers only the versions its
+    /// constraint matches.
+    #[test]
+    fn removes_as_composer() {
+        use serde_json::json;
+        // 2026-11-14T00:00:00Z.
+        let now = 1_794_614_400;
+        let removal = |f: &Filters, p: &Package, entries: &[ListEntry], equivalent: bool| {
+            f.removal(p, p, &[], entries, equivalent, false, now)
+        };
+        let f = parse(
+            &[],
+            json!({"policy": {"abandoned": {"block": true, "ignore": ["acme/old"]}}}),
+        )
+        .unwrap();
+        let old = package(json!({"name": "acme/old", "version": "1.0.0", "abandoned": true}));
+        let gone =
+            package(json!({"name": "acme/gone", "version": "1.0.0", "abandoned": "acme/new"}));
+        assert_eq!(removal(&f, &old, &[], false), None);
+        assert_eq!(removal(&f, &gone, &[], false).as_deref(), Some("abandoned"));
+
+        let f = parse(
+            &[],
+            json!({"policy": {"vetted": {"block-scope": "update"}}}),
+        )
+        .unwrap();
+        let entry = ListEntry::parse(
+            "vetted",
+            json!({"package": "acme/old", "constraint": "*"})
+                .as_object()
+                .unwrap(),
+        )
+        .unwrap();
+        let entries = [entry];
+        assert_eq!(removal(&f, &old, &entries, true), None);
+        assert_eq!(
+            removal(&f, &old, &entries, false).as_deref(),
+            Some("on the vetted list")
+        );
+
+        let config = json!({"policy": {"cooldown": {"period": "7 days", "ignore": {"acme/a": {"constraint": "^1.1"}}}}});
+        let f = parse(&[], config).unwrap();
+        let fresh = |name: &str, version: &str| {
+            package(json!({"name": name, "version": version, "time": "2026-11-13 00:00:00"}))
+        };
+        assert_eq!(removal(&f, &fresh("acme/a", "1.1.0"), &[], false), None);
+        assert_eq!(
+            removal(&f, &fresh("acme/a", "2.0.0"), &[], false).as_deref(),
+            Some("cooldown")
+        );
+        assert_eq!(
+            removal(&f, &fresh("acme/b", "1.1.0"), &[], false).as_deref(),
+            Some("cooldown")
+        );
     }
 }

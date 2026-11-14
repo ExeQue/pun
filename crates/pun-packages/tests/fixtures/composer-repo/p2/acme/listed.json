@@ -1,0 +1,14 @@
+{
+    "packages": {
+        "acme/listed": [
+            {"name": "acme/listed", "version": "1.0.1"},
+            {"name": "acme/listed", "version": "1.0.0"}
+        ]
+    },
+    "filter": {
+        "malware": [
+            {"constraint": "1.0.1", "reason": "malware", "source": "acme"},
+            {"package": "acme/other", "reason": "no constraint"}
+        ]
+    }
+}

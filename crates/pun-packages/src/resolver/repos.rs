@@ -142,7 +142,10 @@ pub fn open<'a>(
                 Box::new(ComposerRepository::open(fetcher, url))
             }
             "package" => Box::new(ArrayRepository::from_config(&config)?),
-            "path" => Box::new(ArrayRepository::of(path_packages(root, &config)?)),
+            "path" => {
+                let packages = path_packages(root, &config, root_version_from_env().as_deref())?;
+                Box::new(ArrayRepository::of(packages))
+            }
             "vcs" | "git" | "github" | "gitlab" | "bitbucket" | "git-bitbucket" | "svn"
             | "fossil" | "perforce" | "hg" | "artifact" | "pear" => bail!(
                 "Pun does not read {kind} repositories yet ({}); publish the package to a Composer repository, or use a path repository",
@@ -176,8 +179,13 @@ fn expand_path(path: &str) -> String {
 }
 
 /// The packages a `path` repository offers (`PathRepository::initialize`): each directory its `url` glob matches
-/// that holds a composer.json (or a pun.toml with dependency sections), with a `path` dist.
-pub fn path_packages(root: &Path, config: &Map<String, Value>) -> Result<Vec<Map<String, Value>>> {
+/// that holds a composer.json (or a pun.toml with dependency sections), with a `path` dist. `root_version` is `COMPOSER_ROOT_VERSION` as Composer reads it,
+/// the version of a package without one in the root's own git checkout.
+pub fn path_packages(
+    root: &Path,
+    config: &Map<String, Value>,
+    root_version: Option<&str>,
+) -> Result<Vec<Map<String, Value>>> {
     let Some(url) = config.get("url").and_then(Value::as_str) else {
         bail!("You must specify the `url` configuration for the path repository");
     };
@@ -226,7 +234,7 @@ pub fn path_packages(root: &Path, config: &Map<String, Value>) -> Result<Vec<Map
         let Value::Object(mut package) = serde_json::from_str(&json)
             .with_context(|| format!("{} does not contain valid JSON", file.display()))?
         else {
-            bail!("{} does not hold a JSON object", file.display());
+            bail!("Failed loading the package in {}", file.display());
         };
         package.shift_remove("published-time");
         let mut dist = Map::new();
@@ -258,7 +266,7 @@ pub fn path_packages(root: &Path, config: &Map<String, Value>) -> Result<Vec<Map
             package.insert("version".into(), v);
         }
         if !package.contains_key("version")
-            && let Some(v) = root_version_from_env()
+            && let Some(v) = root_version
             && head(&path).is_some()
             && head(&path) == head(root)
         {
@@ -372,6 +380,8 @@ fn segment_regex(segment: &str) -> String {
         match c {
             '*' => re.push_str("[^/]*"),
             '?' => re.push_str("[^/]"),
+            // An unclosed `[` is itself, as glibc's fnmatch reads it.
+            '[' if !chars.clone().any(|c| c == ']') => re.push_str(r"\["),
             '[' => {
                 re.push('[');
                 if chars.peek() == Some(&'!') {
@@ -478,6 +488,19 @@ mod tests {
             ["l", "g"]
         );
         assert_eq!(urls(&[json!([])]), [PACKAGIST]);
+        assert_eq!(urls(&[json!({})]), [PACKAGIST]);
+        assert_eq!(urls(&[json!({"foo": false})]), [PACKAGIST]);
+        assert_eq!(
+            urls(&[
+                json!([{"type": "path", "url": "g"}]),
+                json!([{"type": "path", "url": "a"}])
+            ]),
+            ["a", "g", PACKAGIST]
+        );
+        for name in ["packagist", "packagist.org"] {
+            let mirror = json!({ name: {"type": "composer", "url": "https://mirror.test"} });
+            assert_eq!(urls(&[mirror]), ["https://mirror.test"]);
+        }
         assert!(configs(&[&json!([{"url": "x"}])]).is_err());
         assert!(configs(&[&json!({"a": "https://x"})]).is_err());
         assert!(configs(&[&json!([1])]).is_err());
@@ -522,7 +545,7 @@ mod tests {
         git(&["commit", "-q", "--allow-empty", "-m", "two"]);
         let commit = head(&x).unwrap();
         let read = |config: Value| -> Vec<Value> {
-            (path_packages(&d, config.as_object().unwrap())
+            (path_packages(&d, config.as_object().unwrap(), None)
                 .unwrap()
                 .iter())
             .map(|p| {
@@ -605,9 +628,151 @@ mod tests {
             json!({"type": "path", "url": "nothing/*"}),
             json!({"type": "path"}),
         ] {
-            assert!(path_packages(&d, bad.as_object().unwrap()).is_err());
+            assert!(path_packages(&d, bad.as_object().unwrap(), None).is_err());
         }
         std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// Expected packages from Composer 2.11.2's `PathRepository` (with a `Loop`, so it guesses feature branches) on
+    /// the same directories, and its messages.
+    #[test]
+    fn reads_path_repository_corners_as_composer() {
+        let d = std::env::temp_dir().join(format!("pun-path-corners-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        for (dir, json) in [
+            ("feat", r#"{"name":"acme/feat"}"#),
+            ("mono", r#"{"name":"acme/mono"}"#),
+            ("mono/pkg", r#"{"name":"acme/pkg"}"#),
+            ("gl/a", r#"{"name":"acme/a"}"#),
+            ("gl/b", r#"{"name":"acme/b"}"#),
+            ("gl/c^", r#"{"name":"acme/c"}"#),
+            ("gl/[", r#"{"name":"acme/br"}"#),
+            ("bad", "{"),
+            ("arr", "[]"),
+        ] {
+            std::fs::create_dir_all(d.join(dir)).unwrap();
+            std::fs::write(d.join(dir).join("composer.json"), format!("{json}\n")).unwrap();
+        }
+        let git = |dir: &str, args: &[&str]| {
+            let out = Command::new("git")
+                .args(["-c", "user.email=a@b", "-c", "user.name=a"])
+                .args(args)
+                .current_dir(d.join(dir))
+                .env_remove("GIT_DIR")
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "git {args:?}");
+        };
+        for dir in ["feat", "mono"] {
+            git(dir, &["init", "-q", "-b", "main"]);
+            git(dir, &["add", "."]);
+            git(dir, &["commit", "-q", "-m", "one"]);
+        }
+        git("feat", &["checkout", "-q", "-b", "feature-z"]);
+        git("feat", &["commit", "-q", "--allow-empty", "-m", "two"]);
+        let commit = head(&d.join("feat")).unwrap();
+        let read = |root: &str, config: Value, version: Option<&str>| {
+            let got = path_packages(&d.join(root), config.as_object().unwrap(), version);
+            got.map(|packages| -> Vec<Value> {
+                (packages.iter())
+                    .map(|p| json!([p["name"], p["version"], p["dist"]["reference"]]))
+                    .collect()
+            })
+            .map_err(|e| format!("{e:#}"))
+        };
+        // A feature branch is offered at its own version and at the version of the branch it forked from.
+        assert_eq!(
+            read("", json!({"url": "feat"}), None).unwrap(),
+            [
+                json!(["acme/feat", "dev-feature-z", commit]),
+                json!(["acme/feat", "dev-main", commit])
+            ]
+        );
+        let custom = json!({"url": "feat", "options": {"reference": "custom"}});
+        assert_eq!(
+            read("", custom, None).unwrap(),
+            [
+                json!(["acme/feat", "dev-feature-z", null]),
+                json!(["acme/feat", "dev-main", null])
+            ]
+        );
+        // COMPOSER_ROOT_VERSION=1.2-dev versions a package in the root's own checkout.
+        assert_eq!(
+            read("mono", json!({"url": "pkg"}), Some("1.2.x-dev")).unwrap(),
+            [json!([
+                "acme/pkg",
+                "1.2.x-dev",
+                "a302f5ef1f2391c2efcea8a7b36168cfff964f61"
+            ])]
+        );
+        let names = |url: &str| -> Vec<Value> {
+            (read("gl", json!({ "url": url }), None).unwrap().iter())
+                .map(|p| p[0].clone())
+                .collect()
+        };
+        assert_eq!(names("["), ["acme/br"]);
+        assert_eq!(names("[ab]"), ["acme/a", "acme/b"]);
+        assert_eq!(names("[c^]^"), ["acme/c"]);
+        for url in ["[z-a]", "missing"] {
+            assert_eq!(
+                read("gl", json!({ "url": url }), None).unwrap_err(),
+                format!("The `url` supplied for the path ({url}) repository does not exist")
+            );
+        }
+        let bad = read("", json!({"url": "bad"}), None).unwrap_err();
+        let file = |dir: &str| d.join(dir).join("composer.json").display().to_string();
+        assert!(
+            bad.starts_with(&format!("{} does not contain valid JSON", file("bad"))),
+            "{bad}"
+        );
+        assert_eq!(
+            read("", json!({"url": "arr"}), None).unwrap_err(),
+            format!("Failed loading the package in {}", file("arr"))
+        );
+        assert_eq!(glob_dirs(&d, "/"), ["/"]);
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    /// The repositories a manifest opens; Pun's own messages for what it does not read, Composer's
+    /// `RepositoryManager` message for an unknown type.
+    #[test]
+    fn opens_repositories() {
+        let fetcher = Fetcher::new(None, crate::fetch::Auth::default(), false);
+        let open = |repositories: Value| {
+            let manifest = json!({ "repositories": repositories });
+            let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+            let opened = open(root, manifest.as_object().unwrap(), None, &fetcher);
+            opened.map(|r| r.len()).map_err(|e| e.to_string())
+        };
+        let repos = json!([
+            {"type": "package", "package": {"name": "a/a", "version": "1.0.0"}},
+            {"type": "path", "url": "tests/fixtures/*"},
+            {"packagist.org": false}
+        ]);
+        assert_eq!(open(repos), Ok(2));
+        for (repo, message) in [
+            (
+                json!({"type": "composer"}),
+                "A repository of type \"composer\" needs a url",
+            ),
+            (
+                json!({"type": "vcs", "url": "https://git.test/a"}),
+                "Pun does not read vcs repositories yet (https://git.test/a); publish the package to a Composer repository, or use a path repository",
+            ),
+            (
+                json!({"type": "artifact"}),
+                "Pun does not read artifact repositories yet (artifact); publish the package to a Composer repository, or use a path repository",
+            ),
+            (
+                json!({"type": "mystery"}),
+                "Repository type is not registered: mystery",
+            ),
+        ] {
+            assert_eq!(
+                open(json!([repo, {"packagist.org": false}])).unwrap_err(),
+                message
+            );
+        }
     }
 
     /// GLOB_BRACE and fnmatch as glibc applies them.

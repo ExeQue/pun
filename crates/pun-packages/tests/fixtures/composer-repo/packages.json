@@ -1,0 +1,7 @@
+{
+    "metadata-url": "/p2/%package%.json",
+    "notify-batch": "/downloads/",
+    "security-advisories": {"metadata": true},
+    "available-packages": ["acme/lib", "acme/util", "acme/minified", "acme/devlib", "acme/insecure", "acme/listed"],
+    "filter": {"metadata": true, "lists": {"malware": {"enabled": true}}}
+}

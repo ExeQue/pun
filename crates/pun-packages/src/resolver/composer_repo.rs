@@ -183,13 +183,14 @@ fn fetch_file(
     };
     match response {
         Fetched::NotModified => {
-            if let Some(path) = &cache {
-                // Touch the copy so a fresh root file is reused for a while.
-                let _ = std::fs::File::options()
+            // Only a cached copy is asked for conditionally. Touch it so a fresh root file is reused for a while.
+            let touch = |path: &PathBuf| {
+                std::fs::File::options()
                     .append(true)
                     .open(path)
-                    .and_then(|f| f.set_modified(SystemTime::now()));
-            }
+                    .and_then(|f| f.set_modified(SystemTime::now()))
+            };
+            let _ = cache.as_ref().map(touch);
             Ok(cached)
         }
         Fetched::NotFound => Ok(None),
@@ -358,14 +359,9 @@ impl Repository for ComposerRepository<'_> {
             let mut take = |version: &Map<String, Value>| -> Result<()> {
                 let normalized = match version.get("version_normalized").and_then(Value::as_str) {
                     Some(v) if v != "9999999-dev" => v.to_string(),
-                    _ => match version
-                        .get("version")
-                        .and_then(Value::as_str)
-                        .map(normalize)
-                    {
-                        Some(Ok(v)) => v,
-                        _ => return Ok(()),
-                    },
+                    _ => normalize(
+                        (version.get("version").and_then(Value::as_str)).unwrap_or_default(),
+                    )?,
                 };
                 if loaded.get(&name).is_some_and(|l| l.contains(&normalized))
                     || !acceptable(constraint, &name, &normalized, version, stabilities)
@@ -491,5 +487,340 @@ mod tests {
         );
         assert_eq!(canonical("https://a.b/c", "//cdn.b/p"), "https://cdn.b/p");
         assert_eq!(canonical(PACKAGIST, "https://x/y"), "https://x/y");
+    }
+
+    const MODIFIED: &str = "Mon, 02 Nov 2026 10:00:00 GMT";
+
+    /// Each request the server saw: its path, `If-Modified-Since` and `Authorization`.
+    type Seen = std::sync::Arc<std::sync::Mutex<Vec<(String, Option<String>, Option<String>)>>>;
+
+    /// An HTTP server on localhost for `tests/fixtures/composer-repo`: each file with a fixed `Last-Modified`, 304
+    /// when the request's `If-Modified-Since` is that date, 404 for a missing file. `extra` adds files by path
+    /// (without `Last-Modified`), `/busy/` answers 503 and `/forbidden/` 403; while `down` is set, every request
+    /// answers 500.
+    fn serve(
+        extra: &'static [(&'static str, &'static str)],
+    ) -> (String, Seen, std::sync::Arc<std::sync::atomic::AtomicBool>) {
+        use std::io::{Read, Write};
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/composer-repo");
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let seen = Seen::default();
+        let down = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (log, off) = (seen.clone(), down.clone());
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let mut head = vec![];
+                let mut byte = [0];
+                while !head.ends_with(b"\r\n\r\n") && stream.read(&mut byte).unwrap() == 1 {
+                    head.push(byte[0]);
+                }
+                let head = String::from_utf8_lossy(&head).into_owned();
+                let path = head.split(' ').nth(1).unwrap_or_default().to_string();
+                let header = |name: &str| {
+                    head.lines().find_map(|l| {
+                        let (k, v) = l.split_once(": ")?;
+                        k.eq_ignore_ascii_case(name).then(|| v.to_string())
+                    })
+                };
+                let since = header("if-modified-since");
+                log.lock()
+                    .unwrap()
+                    .push((path.clone(), since.clone(), header("authorization")));
+                let added = extra.iter().find(|(p, _)| *p == path);
+                let file = (added.map(|(_, body)| body.as_bytes().to_vec()))
+                    .or_else(|| std::fs::read(root.join(path.trim_start_matches('/'))).ok());
+                // The files `extra` adds have no Last-Modified.
+                let modified = if added.is_some() {
+                    String::new()
+                } else {
+                    format!("Last-Modified: {MODIFIED}\r\n")
+                };
+                let status = if off.load(std::sync::atomic::Ordering::Relaxed) {
+                    "500 Internal Server Error"
+                } else if path.starts_with("/busy/") {
+                    "503 Service Unavailable"
+                } else if path.starts_with("/forbidden/") {
+                    "403 Forbidden"
+                } else if file.is_none() {
+                    "404 Not Found"
+                } else if since.as_deref() == Some(MODIFIED) {
+                    "304 Not Modified"
+                } else {
+                    "200 OK"
+                };
+                let body = file.filter(|_| status == "200 OK").unwrap_or_default();
+                let response = [
+                    format!(
+                        "HTTP/1.1 {status}\r\n{modified}Content-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    )
+                    .into_bytes(),
+                    body,
+                ]
+                .concat();
+                stream.write_all(&response).unwrap();
+            }
+        });
+        (base, seen, down)
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("pun-repo-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    /// A project on the repository at `url` requiring `require`, with Packagist off and PHP at 8.5.0.
+    fn manifest(url: &str, require: Value) -> Map<String, Value> {
+        let m = json!({
+            "name": "acme/app",
+            "require": require,
+            "repositories": [{"type": "composer", "url": url}, {"packagist.org": false}],
+            "config": {"secure-http": false, "platform": {"php": "8.5.0"}}
+        });
+        m.as_object().unwrap().clone()
+    }
+
+    /// The composer.lock text an update of `manifest` writes, or the error's chain.
+    fn update(fetcher: &Fetcher, manifest: &Map<String, Value>) -> Result<String, String> {
+        use super::super::{Options, locker, repos, resolve};
+        let options = Options::default();
+        let run = || -> Result<String> {
+            let repositories = repos::open(std::path::Path::new("."), manifest, None, fetcher)?;
+            let php = json!({"name": "php", "version": "8.5.0"});
+            let platform = vec![php.as_object().unwrap().clone()];
+            let resolved = resolve(manifest, platform, repositories, None, &options)?;
+            let resolution = resolved.map_err(|_| anyhow::anyhow!("no solution"))?;
+            Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
+        };
+        run().map_err(|e| format!("{e:#}"))
+    }
+
+    /// The paths and `If-Modified-Since` of the requests since the last call, sorted.
+    fn requests(seen: &Seen) -> Vec<(String, Option<String>)> {
+        let all = std::mem::take(&mut *seen.lock().unwrap());
+        let mut all: Vec<_> = all.into_iter().map(|(p, s, _)| (p, s)).collect();
+        all.sort();
+        all
+    }
+
+    /// The lock Composer 2.11.2 wrote (`composer update --no-install`) for the same manifest on the same repository
+    /// served by `python3 -m http.server`, `BASE` standing for its URL. Composer skips the version with an advisory
+    /// and the one on the malware list, expands the minified file, reads the branch from `~dev`, and adds the
+    /// repository's notification URL.
+    #[test]
+    fn reads_a_composer_repository_as_composer() {
+        let (base, seen, down) = serve(&[]);
+        let dir = scratch("main");
+        let fetcher = Fetcher::new(Some(dir.clone()), crate::fetch::Auth::default(), false);
+        let require = json!({
+            "php": ">=8.1",
+            "acme/lib": "^1.0 || ^2.0",
+            "acme/minified": "^2.0",
+            "acme/devlib": "^1.0@dev",
+            "acme/insecure": "^1.0",
+            "acme/listed": "^1.0"
+        });
+        let manifest = manifest(&base, require);
+        let want = include_str!("../../tests/fixtures/composer-repo.lock").replace("BASE", &base);
+        let without_hash = |t: &str| {
+            t.lines()
+                .filter(|l| !l.contains("\"content-hash\""))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let got = update(&fetcher, &manifest).unwrap();
+        assert_eq!(without_hash(&got), without_hash(&want));
+        let p2 = |name: &str, since: Option<&str>| {
+            (format!("/p2/acme/{name}.json"), since.map(String::from))
+        };
+        let files = [
+            "devlib",
+            "devlib~dev",
+            "insecure",
+            "lib",
+            "listed",
+            "minified",
+            "util",
+        ];
+        let mut first: Vec<_> = files.iter().map(|f| p2(f, None)).collect();
+        first.push(("/packages.json".into(), None));
+        assert_eq!(requests(&seen), first);
+        let cache = dir.join(format!("repo/{}", cache_name(&base)));
+        let cached: Value =
+            serde_json::from_slice(&std::fs::read(cache.join("provider-acme~lib.json")).unwrap())
+                .unwrap();
+        assert_eq!(cached["last-modified"], MODIFIED);
+
+        // Again: packages.json comes from the cache, each package file is asked for only if it changed. A cached copy
+        // that is not JSON counts as none.
+        std::fs::write(cache.join("provider-acme~util.json"), "not json").unwrap();
+        assert_eq!(update(&fetcher, &manifest).unwrap(), got);
+        let again: Vec<_> = (files.iter())
+            .map(|f| p2(f, (!["devlib", "util"].contains(f)).then_some(MODIFIED)))
+            .collect();
+        assert_eq!(requests(&seen), again);
+
+        // A packages.json older than ten minutes is asked for again; unchanged, its copy is touched.
+        let root = cache.join("packages.json");
+        let old = SystemTime::now() - Duration::from_secs(3600);
+        std::fs::File::options()
+            .append(true)
+            .open(&root)
+            .unwrap()
+            .set_modified(old)
+            .unwrap();
+        update(&fetcher, &manifest).unwrap();
+        assert!(requests(&seen).contains(&("/packages.json".into(), Some(MODIFIED.into()))));
+        let touched = std::fs::metadata(&root).unwrap().modified().unwrap();
+        assert!(touched.elapsed().unwrap() < Duration::from_secs(600));
+
+        // A cache that can't be written to is only not written.
+        let lib_only = self::manifest(&base, json!({"acme/lib": "^1.0"}));
+        let readonly = dir.join("readonly");
+        let repo = readonly.join(format!("repo/{}", cache_name(&base)));
+        std::fs::create_dir_all(&repo).unwrap();
+        let mode = |m| std::os::unix::fs::PermissionsExt::from_mode(m);
+        std::fs::set_permissions(&repo, mode(0o555)).unwrap();
+        let unwritable = Fetcher::new(Some(readonly), crate::fetch::Auth::default(), false);
+        let locked = update(&unwritable, &lib_only).unwrap();
+        std::fs::set_permissions(&repo, mode(0o755)).unwrap();
+        assert_eq!(std::fs::read_dir(&repo).unwrap().count(), 0);
+        requests(&seen);
+
+        // While the server fails, cached copies are used; a file with none fails the update.
+        down.store(true, std::sync::atomic::Ordering::Relaxed);
+        assert!(locked.contains("\"name\": \"Acme/Lib\""), "{locked}");
+        assert_eq!(update(&fetcher, &lib_only).unwrap(), locked);
+        assert_eq!(
+            update(&fetcher, &manifest).unwrap_err(),
+            format!(
+                "fetching {base}/p2/acme/devlib.json: HTTP 500 from {base}/p2/acme/devlib.json"
+            )
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Messages derived by hand: Pun's own for what it does not read, Composer's for an invalid version.
+    #[test]
+    fn repository_errors() {
+        const FILES: &[(&str, &str)] = &[
+            ("/v1/packages.json", r#"{"packages": []}"#),
+            ("/list/packages.json", "[]"),
+            ("/text/packages.json", "nope"),
+            (
+                "/bad/packages.json",
+                r#"{"metadata-url": "/bad/%package%.json"}"#,
+            ),
+            ("/bad/acme/text.json", "{"),
+            ("/bad/acme/minified.json", r#"{"minified": 5}"#),
+            (
+                "/bad/acme/empty.json",
+                r#"{"packages": {"acme/other": []}}"#,
+            ),
+            (
+                "/bad/acme/both.json",
+                r#"{"packages": {"acme/both": [{"name": "acme/both", "version": "1.0.0"}]}}"#,
+            ),
+            (
+                "/bad/acme/both~dev.json",
+                r#"{"packages": {"acme/both": [{"name": "acme/both", "version": "dev-main"}]}}"#,
+            ),
+            (
+                "/bad/acme/version.json",
+                r#"{"packages": {"acme/version": [{"name": "acme/version", "version": "not a version"}]}}"#,
+            ),
+            (
+                "/bad/acme/link.json",
+                r#"{"packages": {"acme/link": [{"name": "acme/link", "version": "1.0.0", "require": {"x/y": "nope"}}]}}"#,
+            ),
+        ];
+        let (base, seen, _) = serve(FILES);
+        let dir = scratch("errors");
+        std::fs::write(dir.join("auth.json"), r#"{"bearer": {"127.0.0.1": "t0k"}}"#).unwrap();
+        let fetcher = Fetcher::new(None, crate::fetch::Auth::load(&dir, None, None), false);
+        let fails = |repo: &str, name: &str| {
+            let require = Map::from_iter([(name.to_string(), Value::from("*"))]);
+            let m = manifest(&format!("{base}/{repo}"), Value::Object(require));
+            update(&fetcher, &m).unwrap_err()
+        };
+        assert_eq!(
+            fails("v1", "acme/a"),
+            format!(
+                "{base}/v1 is a Composer repository without a metadata-url (the v1 format), which Pun does not read"
+            )
+        );
+        assert_eq!(
+            fails("none/", "acme/a"),
+            format!("{base}/none has no packages.json")
+        );
+        assert_eq!(
+            fails("list", "acme/a"),
+            format!("{base}/list/packages.json does not hold a JSON object")
+        );
+        assert!(
+            fails("text", "acme/a")
+                .starts_with(&format!("{base}/text/packages.json is not valid JSON: ")),
+        );
+        assert!(
+            fails("bad", "acme/text")
+                .starts_with(&format!("{base}/bad/acme/text.json is not valid JSON: ")),
+        );
+        assert!(fails("bad", "acme/minified").starts_with(&format!(
+            "{base}/bad/acme/minified.json is not valid metadata: "
+        )),);
+        assert_eq!(
+            fails("bad", "acme/version"),
+            "Invalid version string \"not a version\""
+        );
+        assert!(
+            fails("bad", "acme/link").starts_with(&format!(
+                "Could not load packages in {base}/bad from acme/link: Link constraint in acme/link requires > x/y should be a valid version constraint, got \"nope\""
+            )),
+        );
+        assert_eq!(
+            fails("forbidden", "acme/a"),
+            format!(
+                "fetching {base}/forbidden/packages.json: HTTP 403 from {base}/forbidden/packages.json"
+            )
+        );
+        // Each request carries the host's credentials; a busy server is asked three times.
+        let all = std::mem::take(&mut *seen.lock().unwrap());
+        assert!(all.iter().all(|r| r.2.as_deref() == Some("Bearer t0k")));
+        assert_eq!(
+            fails("busy", "acme/a"),
+            format!("fetching {base}/busy/packages.json: HTTP 503 from {base}/busy/packages.json")
+        );
+        assert_eq!(requests(&seen).len(), 3);
+        // A file without the package has no versions of it.
+        assert_eq!(fails("bad", "acme/empty"), "no solution");
+        // A tag and a branch from two files: Composer 2.11.2 locks 1.0.0 for `*@dev` on a `package` repository
+        // holding both.
+        let m = manifest(&format!("{base}/bad"), json!({"acme/both": "*@dev"}));
+        let locked = update(&fetcher, &m).unwrap();
+        assert!(locked.contains("\"version\": \"1.0.0\""), "{locked}");
+        requests(&seen);
+        // Platform requirements alone never read the repository, met or not.
+        let m = manifest(&format!("{base}/none"), json!({"php": ">=8"}));
+        assert!(update(&fetcher, &m).unwrap().contains("\"packages\": [],"));
+        let m = manifest(&format!("{base}/none"), json!({"ext-absent": "*"}));
+        assert_eq!(update(&fetcher, &m).unwrap_err(), "no solution");
+        assert_eq!(requests(&seen), []);
+        // A server that refuses the connection fails after the third try.
+        let closed = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap();
+        let m = manifest(&format!("http://{closed}"), json!({"acme/a": "*"}));
+        let error = update(&fetcher, &m).unwrap_err();
+        assert!(
+            error.starts_with(&format!("fetching http://{closed}/packages.json: ")),
+            "{error}"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

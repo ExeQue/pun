@@ -156,3 +156,138 @@ fn prune_remote_aliases(pool: &Pool, literals: Vec<i32>) -> Vec<i32> {
         literals
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::package::{Origin, alias_package, load};
+    use super::*;
+    use serde_json::json;
+
+    /// Expected ids from Composer 2.11.2's `DefaultPolicy::selectPreferredPackages` on a `Pool` of the same
+    /// packages (ids from 1 in this order), in PHP 8.5, with `COMPOSER_PREFER_DEV_OVER_PRERELEASE` set where
+    /// `dev_over_prerelease` is.
+    #[test]
+    fn selects_as_composer() {
+        let mut arena = vec![];
+        for data in [
+            json!({"name": "a/a", "version": "dev-master"}),
+            json!({"name": "a/a", "version": "1.0.0-alpha1"}),
+            json!({"name": "a/a", "version": "1.0.0-RC1"}),
+            json!({"name": "b/b", "version": "1.0"}),
+            json!({"name": "c/c", "version": "2.0", "replace": {"b/b": "==1.0"}}),
+            json!({"name": "vendor-b/replacer", "version": "1.0", "replace": {"vendor-a/package": "==1.0"}}),
+            json!({"name": "vendor-a/replacer", "version": "1.0", "replace": {"vendor-a/package": "==1.0"}}),
+            json!({"name": "d/d", "version": "dev-main"}),
+        ] {
+            load(
+                data.as_object().unwrap().clone(),
+                Origin::Repository(1),
+                &mut arena,
+            )
+            .unwrap();
+        }
+        let alias = |arena: &mut Vec<Package>, of, version: &str, pretty: &str, root| {
+            alias_package(arena, of, version.into(), pretty.into(), root);
+        };
+        alias(&mut arena, 7, "2.1.9999999.9999999-dev", "2.1.x-dev", false);
+        let feature = json!({"name": "d/d", "version": "dev-feature"});
+        load(
+            feature.as_object().unwrap().clone(),
+            Origin::Repository(1),
+            &mut arena,
+        )
+        .unwrap();
+        alias(&mut arena, 9, "2.1.9999999.9999999-dev", "2.1.x-dev", true);
+        let main = json!({"name": "e/e", "version": "dev-main"});
+        load(
+            main.as_object().unwrap().clone(),
+            Origin::Repository(1),
+            &mut arena,
+        )
+        .unwrap();
+        alias(
+            &mut arena,
+            11,
+            "1.0.9999999.9999999-dev",
+            "1.0.x-dev",
+            false,
+        );
+        for data in [
+            json!({"name": "f/replacer", "version": "1.0", "replace": {"g/pkg": "==1.0"}}),
+            json!({"name": "g/pkg", "version": "1.0"}),
+            json!({"name": "vendor-a/second", "version": "1.0", "replace": {"vendor-a/package": "==1.0"}}),
+            json!({"name": "vendor-c/other", "version": "1.0", "replace": {"vendor-a/package": "==1.0"}}),
+        ] {
+            load(
+                data.as_object().unwrap().clone(),
+                Origin::Repository(1),
+                &mut arena,
+            )
+            .unwrap();
+        }
+        let all = (0..arena.len()).collect();
+        let pool = Pool::new(arena, all, vec![]);
+        for (stable, lowest, dev_over_prerelease, literals, required, want) in [
+            (true, true, true, vec![1, 2], None, vec![1]),
+            (true, true, true, vec![1, 3], None, vec![1]),
+            (true, true, false, vec![2, 1], None, vec![2]),
+            (false, false, false, vec![4, 5], None, vec![4, 5]),
+            (false, false, false, vec![5, 4], None, vec![4, 5]),
+            (
+                false,
+                false,
+                false,
+                vec![6, 7],
+                Some("vendor-a/package"),
+                vec![7, 6],
+            ),
+            (
+                false,
+                false,
+                false,
+                vec![7, 6],
+                Some("vendor-a/package"),
+                vec![7, 6],
+            ),
+            (false, false, false, vec![9, 11], None, vec![11]),
+            (false, false, false, vec![12, 13], None, vec![13]),
+            (false, false, false, vec![14, 15], None, vec![15, 14]),
+            (
+                false,
+                false,
+                false,
+                vec![16, 17],
+                Some("vendor-a/package"),
+                vec![16, 17],
+            ),
+            (
+                false,
+                false,
+                false,
+                vec![7, 16],
+                Some("vendor-a/package"),
+                vec![7, 16],
+            ),
+            (
+                false,
+                false,
+                false,
+                vec![16, 17],
+                Some("nonvendor"),
+                vec![16, 17],
+            ),
+        ] {
+            let policy = Policy {
+                prefer_stable: stable,
+                prefer_lowest: lowest,
+                prefer_dev_over_prerelease: dev_over_prerelease,
+                preferred_versions: None,
+            };
+            assert_eq!(
+                policy.select_preferred(&pool, literals.clone(), required),
+                want,
+                "{literals:?}"
+            );
+        }
+    }
+}

@@ -21,15 +21,9 @@ pub enum Op {
 }
 
 impl Op {
-    fn as_str(self) -> &'static str {
-        match self {
-            Op::Eq => "==",
-            Op::Lt => "<",
-            Op::Le => "<=",
-            Op::Gt => ">",
-            Op::Ge => ">=",
-            Op::Ne => "!=",
-        }
+    /// `<` or `>`, without `=`.
+    fn is_strict(self) -> bool {
+        matches!(self, Op::Lt | Op::Gt)
     }
 
     fn parse(op: &str) -> Op {
@@ -43,13 +37,13 @@ impl Op {
         }
     }
 
-    /// The operator without its `=`: `<=` and `<` are both `<`.
+    /// The operator's direction without its `=`: `<=` and `<` are both `<`. Only `match_specific` asks, after it
+    /// has handled `!=`.
     fn strict(self) -> &'static str {
         match self {
             Op::Lt | Op::Le => "<",
             Op::Gt | Op::Ge => ">",
-            Op::Eq => "",
-            Op::Ne => "!",
+            Op::Eq | Op::Ne => "",
         }
     }
 }
@@ -176,8 +170,8 @@ fn match_specific(op: Op, version: &str, p_op: Op, p_version: &str, branches: bo
         (p_version, version, op)
     };
     if compare_versions(v1, v2, cmp, branches) {
-        return !(p_op.as_str() == p_op.strict()
-            && op.as_str() != op.strict()
+        return !(p_op.is_strict()
+            && !op.is_strict()
             && version_compare(p_version, version, Op::Eq));
     }
     false

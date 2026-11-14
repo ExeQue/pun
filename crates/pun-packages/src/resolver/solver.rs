@@ -73,11 +73,11 @@ impl Rule {
         self.kind == Kind::Generic && self.literals.len() == 1
     }
 
-    /// The name a requirement-like rule is about, which the policy prefers same-vendor packages for.
-    pub fn required_package<'a>(&'a self, pool: &'a Pool) -> Option<&'a str> {
+    /// The name a requirement-like rule is about, which the policy prefers same-vendor packages for. A fixed
+    /// package's rule asserts one literal and offers no choice, so it never asks.
+    pub fn required_package(&self) -> Option<&str> {
         match &self.reason {
             Reason::RootRequire { name, .. } => Some(name),
-            Reason::Fixed(p) => Some(&pool.arena[*p].name),
             Reason::Requires { link, .. } => Some(&link.target),
             _ => None,
         }
@@ -106,12 +106,8 @@ impl RuleSet {
         true
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.rules.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.rules.is_empty()
     }
 
     /// Rule ids by type, in Composer's iteration order: package rules, then request rules, then learned ones.
@@ -263,19 +259,16 @@ impl<'a> Generator<'a> {
     pub fn rules_for(mut self, request: &Request) -> RuleSet {
         let pool = self.pool;
         for &p in &request.fixed {
-            let Some(id) = pool.id(p) else {
-                continue;
-            };
+            // The pool filters never remove the root or the platform.
+            let id = pool.id(p).expect("a fixed package is in the pool");
             self.add_package(id);
             self.rules.add(
                 Rule::new(vec![id], Kind::Generic, Reason::Fixed(p)),
                 Type::Request,
             );
         }
+        // The request leaves out the ignored platform requirements.
         for (name, constraint) in &request.requires {
-            if (self.ignored)(name) {
-                continue;
-            }
             let packages = pool.what_provides(name, Some(constraint));
             if packages.is_empty() {
                 continue;
@@ -364,13 +357,6 @@ impl Decisions {
             .find(|(l, _)| l.abs() == id)
             .map(|(_, r)| *r)
             .expect("a decided literal has a decision")
-    }
-
-    fn reset_to(&mut self, offset: isize) {
-        while self.queue.len() as isize > offset + 1 {
-            let (literal, _) = self.queue.pop().expect("non-empty");
-            self.map[literal.unsigned_abs() as usize] = 0;
-        }
     }
 
     fn revert_last(&mut self) {
@@ -525,7 +511,6 @@ pub struct Solver<'a> {
     rules: RuleSet,
     watches: Watches,
     decisions: Decisions,
-    fixed: HashSet<i32>,
     propagate_index: usize,
     branches: Vec<(Vec<i32>, i32)>,
     pub problems: Vec<Problem>,
@@ -546,7 +531,6 @@ impl<'a> Solver<'a> {
             rules: RuleSet::default(),
             watches: Watches::new(pool.len()),
             decisions: Decisions::new(pool.len()),
-            fixed: HashSet::new(),
             propagate_index: 0,
             branches: vec![],
             problems: vec![],
@@ -555,24 +539,15 @@ impl<'a> Solver<'a> {
         }
     }
 
-    pub fn rule_count(&self) -> usize {
-        self.rules.len()
-    }
-
     /// Solves `request`; `ignored` names the platform requirements to ignore. On failure returns the problems.
     pub fn solve(
         &mut self,
         request: &Request,
         ignored: &dyn Fn(&str) -> bool,
     ) -> Result<Solution, Vec<Problem>> {
-        self.fixed = request
-            .fixed
-            .iter()
-            .filter_map(|&p| self.pool.id(p))
-            .collect();
         self.rules = Generator::new(self.pool, ignored).rules_for(request);
         for (name, constraint) in &request.requires {
-            if !ignored(name) && self.pool.what_provides(name, Some(constraint)).is_empty() {
+            if self.pool.what_provides(name, Some(constraint)).is_empty() {
                 let mut problem = Problem::default();
                 problem.add(Reason::RootRequire {
                     name: name.clone(),
@@ -596,8 +571,10 @@ impl<'a> Solver<'a> {
         Ok(Solution { packages })
     }
 
+    /// `makeAssertionRuleDecisions`. No rule is learned yet, and two assertions on one literal would be one rule, so
+    /// an assertion is either undecided or in conflict. Request rules assert only positive literals and come after
+    /// the rules of the package they install, so what an assertion conflicts with is a package rule.
     fn assertions(&mut self) {
-        let start = self.decisions.queue.len() as isize - 1;
         let mut i = 0;
         while i < self.rules.len() {
             let rule = &self.rules.rules[i];
@@ -611,39 +588,13 @@ impl<'a> Solver<'a> {
                 i += 1;
                 continue;
             }
-            if self.decisions.satisfy(literal) {
-                i += 1;
-                continue;
-            }
-            if rule.ty == Type::Learned {
-                self.rules.rules[i].disabled = true;
-                i += 1;
-                continue;
-            }
             let conflict = self.decisions.rule_of(literal);
             let mut problem = Problem::default();
             problem.add(self.rules.rules[i].reason.clone());
             problem.add(self.rules.rules[conflict].reason.clone());
-            if self.rules.rules[conflict].ty == Type::Package {
-                self.rules.rules[i].disabled = true;
-                self.problems.push(problem);
-                i += 1;
-                continue;
-            }
-            for r in self.rules.of_type(Type::Request) {
-                let assert = &self.rules.rules[r];
-                if assert.disabled
-                    || !assert.is_assertion()
-                    || assert.literals[0].abs() != literal.abs()
-                {
-                    continue;
-                }
-                problem.add(assert.reason.clone());
-                self.rules.rules[r].disabled = true;
-            }
+            self.rules.rules[i].disabled = true;
             self.problems.push(problem);
-            self.decisions.reset_to(start);
-            i = 0;
+            i += 1;
         }
     }
 
@@ -689,14 +640,13 @@ impl<'a> Solver<'a> {
             );
             level = new_level;
             self.revert(level);
-            let literals = new_rule.literals.clone();
-            let id = if self.rules.add(new_rule, Type::Learned) {
-                self.rules.len() - 1
-            } else {
-                (self.rules.rules.iter())
-                    .position(|r| r.kind == Kind::Generic && r.literals == literals)
-                    .expect("the duplicate is in the set")
-            };
+            // Composer skips a learned rule the set already has, but such a rule would have propagated the learned
+            // literal at the level the solver reverted to, before this conflict.
+            assert!(
+                self.rules.add(new_rule, Type::Learned),
+                "a learned rule is new"
+            );
+            let id = self.rules.len() - 1;
             self.learned_why.insert(id, why);
             self.watches.insert(&self.rules, id, Some(&self.decisions));
             self.decisions.decide(learn, level, id);
@@ -705,9 +655,7 @@ impl<'a> Solver<'a> {
     }
 
     fn select_and_install(&mut self, level: i32, queue: Vec<i32>, rule: usize) -> i32 {
-        let required = self.rules.rules[rule]
-            .required_package(self.pool)
-            .map(String::from);
+        let required = self.rules.rules[rule].required_package().map(String::from);
         let mut literals = self
             .policy
             .select_preferred(self.pool, queue, required.as_deref());
@@ -787,14 +735,12 @@ impl<'a> Solver<'a> {
                     for &rl in &self.rules.rules[why].literals {
                         if !seen.contains(&rl.abs()) && self.decisions.satisfy(-rl) {
                             self.learned_pool.last_mut().expect("pushed").push(why);
-                            let l = self.decisions.level(rl);
-                            if l == 1 {
+                            // The rule propagated at the level its installed literal was decided, and only
+                            // literals of this level and of level 1 are walked.
+                            if self.decisions.level(rl) == 1 {
                                 l1num += 1;
-                            } else if l == level {
-                                num += 1;
                             } else {
-                                others.push(rl);
-                                rule_level = rule_level.max(l);
+                                num += 1;
                             }
                             seen.insert(rl.abs());
                             break;
@@ -836,12 +782,10 @@ impl<'a> Solver<'a> {
         problem.add(self.rules.rules[conflict].reason.clone());
         let mut rule_seen = HashSet::new();
         self.unsolvable_rule(&mut problem, conflict, &mut rule_seen);
-        let mut seen: HashSet<i32> = HashSet::new();
-        for &l in &self.rules.rules[conflict].literals {
-            if !self.decisions.satisfy(l) {
-                seen.insert(l.abs());
-            }
-        }
+        // Every literal of the conflict rule is false.
+        let mut seen: HashSet<i32> = (self.rules.rules[conflict].literals.iter())
+            .map(|l| l.abs())
+            .collect();
         for &(literal, why) in self.decisions.queue.iter().rev() {
             if !seen.contains(&literal.abs()) {
                 continue;
@@ -887,15 +831,9 @@ impl<'a> Solver<'a> {
                             queue.push(l);
                         }
                     }
+                    // Composer keeps only the fixed packages of the queue when it has any, but the assertions
+                    // decided every fixed package at level 1, so the queue never has one.
                     if none_satisfied && !queue.is_empty() {
-                        let pruned: Vec<i32> = queue
-                            .iter()
-                            .copied()
-                            .filter(|l| self.fixed.contains(&l.abs()))
-                            .collect();
-                        if !pruned.is_empty() {
-                            queue = pruned;
-                        }
                         let old = level;
                         level = self.select_and_install(level, queue, id);
                         if level == 0 {
@@ -971,9 +909,8 @@ impl<'a> Solver<'a> {
                 self.revert(level);
                 let why = self.decisions.queue.last().expect("decisions remain").1;
                 level = self.set_propagate_learn(level, literal, why);
-                if level == 0 {
-                    return;
-                }
+                // Every rule held before this step, so an alternative can't make the request unsolvable.
+                assert!(level > 0, "a solved request became unsolvable");
                 continue;
             }
             break;

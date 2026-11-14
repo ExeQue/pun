@@ -18,11 +18,8 @@ pub fn lock(resolution: &Resolution, manifest: &Map<String, Value>, options: &Op
         let mut out: Vec<Map<String, Value>> =
             list.iter().map(|&p| dump(&resolution.arena[p])).collect();
         let s = |m: &Map<String, Value>, k: &str| m[k].as_str().unwrap_or_default().to_string();
-        out.sort_by(|a, b| {
-            s(a, "name")
-                .cmp(&s(b, "name"))
-                .then_with(|| s(a, "version").cmp(&s(b, "version")))
-        });
+        // A resolution has one version of each name.
+        out.sort_by_key(|a| s(a, "name"));
         out
     };
     let aliases: Vec<Value> = (resolution.aliases.iter())
@@ -113,13 +110,8 @@ pub fn dump(package: &Package) -> Map<String, Value> {
             "type".into(),
             s.get("type").cloned().unwrap_or_else(|| "".into()),
         );
-        o.insert(
-            "url".into(),
-            s.get("url")
-                .filter(|u| !u.is_null())
-                .cloned()
-                .unwrap_or_else(|| "".into()),
-        );
+        let url = s.get("url").filter(|u| !u.is_null()).cloned();
+        o.insert("url".into(), url.unwrap_or_else(|| "".into()));
         if let Some(r) = s.get("reference").filter(|r| !r.is_null()) {
             o.insert("reference".into(), stringify(r).into());
         }
@@ -326,7 +318,7 @@ fn numeric(s: &str) -> Option<f64> {
 
 /// `(new DateTime($time, UTC))->format(DATE_RFC3339)` for the forms package metadata uses: a Unix timestamp,
 /// `Y-m-d`, and `Y-m-d H:i:s` or `Y-m-d\TH:i:s` with optional fractions and a `Z`, `UTC` or `±hh[:]mm` zone. Other
-/// text is kept as written.
+/// text is dropped, as Composer drops a time `DateTime` can't parse.
 fn rfc3339(v: &Value) -> Option<String> {
     let raw = match v {
         Value::Number(n) => n.to_string(),
@@ -343,9 +335,7 @@ fn rfc3339(v: &Value) -> Option<String> {
         )
         .expect("valid pattern")
     });
-    let Ok(Some(c)) = DATE.captures(raw.as_bytes()) else {
-        return Some(raw);
-    };
+    let c = DATE.captures(raw.as_bytes()).ok()??;
     let g = |i: usize| {
         c.get(i)
             .map(|m| String::from_utf8_lossy(m.as_bytes()).into_owned())
@@ -427,28 +417,15 @@ pub fn update_hash(
     Ok(())
 }
 
-/// `VersionSelector::findRecommendedRequireVersion` for the package `name` resolved to: `^major.minor`
-/// (`^0.minor.patch` below 1.0) with `@stability` for an unstable release, the branch alias's `^x.y@dev` for a
-/// branch, its version as is otherwise, and `*` for an extension that ships with the PHP it resolved against.
+/// `VersionSelector::findRecommendedRequireVersion` for the package `name` resolved to, as `composer require`
+/// asks it after the update (`updateRequirementsAfterResolution`): `^major.minor` (`^0.minor.patch` below 1.0)
+/// with `@stability` for an unstable release, the branch alias's `^x.y@dev` for a branch, its version as is
+/// otherwise. `None` for a name the lock does not hold, such as a platform package, which keeps its `*`.
 pub fn recommended(resolution: &Resolution, name: &str) -> Option<String> {
     let arena = &resolution.arena;
     let package = (resolution.packages.iter().chain(&resolution.packages_dev))
         .map(|&p| &arena[p])
-        .find(|p| p.name.eq_ignore_ascii_case(name))
-        .or_else(|| {
-            (arena.iter()).find(|p| {
-                p.origin == super::package::Origin::Platform && p.name.eq_ignore_ascii_case(name)
-            })
-        })?;
-    if package.name.starts_with("ext-") {
-        let php = arena
-            .iter()
-            .find(|p| p.origin == super::package::Origin::Platform && p.name == "php");
-        let three = |v: &str| v.split('.').take(3).collect::<Vec<_>>().join(".");
-        if php.is_some_and(|php| three(&php.version) == three(&package.version)) {
-            return Some("*".into());
-        }
-    }
+        .find(|p| p.name.eq_ignore_ascii_case(name))?;
     let transform = |version: &str, pretty: &str, stability: &str| -> String {
         let mut parts: Vec<&str> = version.split('.').collect();
         if parts.len() != 4 || !parts[3].starts_with(|c: char| c.is_ascii_digit()) {
@@ -481,4 +458,148 @@ pub fn recommended(resolution: &Resolution, name: &str) -> Option<String> {
         return Some(transform(&extra, &extra, "dev"));
     }
     Some(package.pretty_version.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::package::{Origin, load};
+    use super::super::pool::{ArrayRepository, Repository};
+    use super::*;
+    use serde_json::json;
+
+    fn object(v: Value) -> Map<String, Value> {
+        v.as_object().unwrap().clone()
+    }
+
+    /// Expected lines from Composer 2.11.2 in PHP 8.5: `ArrayLoader::load` (keeping options, as a `package`
+    /// repository does), `ArrayDumper::dump`, then what `Locker::lockPackages` removes and moves.
+    #[test]
+    fn dumps_as_composer() {
+        for (data, want) in [
+            (
+                json!({"name": "acme/empties", "version": "1.0.0", "time": false, "license": [], "authors": {}, "description": "0", "homepage": "", "keywords": "solo", "bin": [], "funding": [], "notification-url": "", "scripts": {"x": null}, "extra": [], "support": {}, "autoload": {}, "php-ext": {"extension-name": "acme"}, "transport-options": {"symlink": false}, "dist": {"type": "zip", "url": "https://d.test/e.zip", "reference": 123}, "source": {"type": "svn", "url": "https://s.test/e", "reference": false, "mirrors": null}, "published-time": 1700000000}),
+                r#"{"name":"acme/empties","version":"1.0.0","source":{"type":"svn","url":"https://s.test/e","reference":""},"dist":{"type":"zip","url":"https://d.test/e.zip","reference":"123"},"type":"library","php-ext":{"extension-name":"acme"},"scripts":{"x":[]},"transport-options":{"symlink":false},"published-time":"2023-11-14T22:13:20+00:00"}"#,
+            ),
+            (
+                json!({"name": "acme/zero", "version": "1.0.0", "time": 0, "dist": {"type": "zip", "url": "https://d.test/z.zip", "reference": true}, "keywords": ["b", "a"], "transport-options": {}, "published-time": "2024-01-02 03:04:05"}),
+                r#"{"name":"acme/zero","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/z.zip","reference":"1"},"type":"library","keywords":["a","b"],"published-time":"2024-01-02T03:04:05+00:00"}"#,
+            ),
+            (
+                json!({"name": "acme/stamp", "version": "1.0.0", "time": 1709210710, "published-time": "", "dist": {"type": "zip", "url": "https://d.test/s.zip"}}),
+                r#"{"name":"acme/stamp","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/s.zip"},"type":"library","time":"2024-02-29T12:45:10+00:00"}"#,
+            ),
+            (
+                json!({"name": "acme/day", "version": "1.0.0", "time": "2023-01-01", "published-time": "2022-06-01T10:20:30.123456-0530"}),
+                r#"{"name":"acme/day","version":"1.0.0","type":"library","time":"2023-01-01T00:00:00+00:00","published-time":"2022-06-01T10:20:30-05:30"}"#,
+            ),
+            (
+                json!({"name": "acme/garbage", "version": "1.0.0", "time": "garbage"}),
+                r#"{"name":"acme/garbage","version":"1.0.0","type":"library"}"#,
+            ),
+            (
+                json!({"name": "acme/flag", "version": "1.0.0", "time": true}),
+                r#"{"name":"acme/flag","version":"1.0.0","type":"library"}"#,
+            ),
+            (
+                json!({"name": "acme/old", "version": "1.0.0", "time": "1969-07-20 20:17:40"}),
+                r#"{"name":"acme/old","version":"1.0.0","type":"library","time":"1969-07-20T20:17:40+00:00"}"#,
+            ),
+        ] {
+            let mut arena = vec![];
+            load(object(data), Origin::Repository(1), &mut arena).unwrap();
+            assert_eq!(serde_json::to_string(&dump(&arena[0])).unwrap(), want);
+        }
+    }
+
+    /// The packages of `acme/app`, the project `composer require` ran in below.
+    fn repository() -> Value {
+        json!([
+            {"name": "acme/stable", "version": "1.2.3"},
+            {"name": "acme/zero", "version": "0.3.4"},
+            {"name": "acme/beta", "version": "2.0.0-beta2"},
+            {"name": "acme/branch", "version": "dev-main", "extra": {"branch-alias": {"dev-main": "1.0.x-dev"}}},
+            {"name": "acme/wide", "version": "dev-next", "extra": {"branch-alias": {"dev-next": "2.x-dev"}}},
+            {"name": "acme/default", "version": "dev-trunk", "default-branch": true},
+            {"name": "acme/plain", "version": "dev-feature"},
+            {"name": "acme/numbered", "version": "1.0.x-dev"},
+            {"name": "acme/date", "version": "2024.01"},
+            {"name": "acme/dated", "version": "2024-01-01"}
+        ])
+    }
+
+    /// Composer 2.11.2's `composer require` of each name without a version, at minimum-stability dev, printed these
+    /// `Using version` lines; for ext-json it printed none and kept `*`.
+    #[test]
+    fn recommends_as_composer_require() {
+        let names = [
+            ("acme/stable", "^1.2"),
+            ("acme/zero", "^0.3.4"),
+            ("acme/beta", "^2.0@beta"),
+            ("Acme/Branch", "^1.0@dev"),
+            ("acme/wide", "^2.0@dev"),
+            ("acme/default", "dev-trunk"),
+            ("acme/plain", "dev-feature"),
+            ("acme/numbered", "1.0.x-dev"),
+            ("acme/date", "^2024.01"),
+            ("acme/dated", "2024-01-01"),
+        ];
+        let mut require: Map<String, Value> = (names.iter())
+            .map(|(n, _)| (n.to_string(), "*".into()))
+            .collect();
+        require.insert("ext-json".into(), "*".into());
+        let manifest = object(json!({"minimum-stability": "dev", "require": require}));
+        let packages = repository().as_array().unwrap().clone();
+        let repo: Box<dyn Repository> = Box::new(ArrayRepository::of(
+            packages.into_iter().map(object).collect(),
+        ));
+        let platform = vec![
+            object(json!({"name": "php", "version": "8.5.12"})),
+            object(json!({"name": "ext-json", "version": "8.5.12"})),
+        ];
+        let options = Options::default();
+        let resolved = super::super::resolve(&manifest, platform, vec![repo], None, &options);
+        let resolution = resolved.unwrap().unwrap_or_else(|_| panic!("no solution"));
+        for (name, want) in names {
+            assert_eq!(
+                recommended(&resolution, name).as_deref(),
+                Some(want),
+                "{name}"
+            );
+        }
+        assert_eq!(recommended(&resolution, "ext-json"), None);
+    }
+
+    /// After Composer 2.11.2's `composer require acme/branch acme/beta acme/dated acme/stable` in a project that
+    /// already required `acme/zero: 0.3.4@dev`, the lock held this content-hash and these stability flags; the
+    /// `acme/beta` flag a lock had before is replaced, as `RequireCommand` sets each flag.
+    #[test]
+    fn updates_the_hash_as_composer_require() {
+        let manifest = object(json!({
+            "name": "acme/app",
+            "minimum-stability": "dev",
+            "require": {"acme/zero": "0.3.4@dev", "acme/branch": "^1.0@dev", "acme/beta": "^2.0@beta", "acme/dated": "2024-01-01", "acme/stable": "^1.2"},
+            "repositories": [{"type": "package", "package": repository()}, {"packagist.org": false}]
+        }));
+        let mut lock = Lock {
+            content_hash: String::new(),
+            settings: object(json!({"stability-flags": {"acme/zero": 20, "acme/beta": 15}})),
+            packages: vec![],
+            packages_dev: vec![],
+        };
+        let picked: Vec<(String, String)> = [
+            ("acme/branch", "^1.0@dev"),
+            ("acme/beta", "^2.0@beta"),
+            ("acme/dated", "2024-01-01"),
+            ("acme/stable", "^1.2"),
+        ]
+        .iter()
+        .map(|(n, c)| (n.to_string(), c.to_string()))
+        .collect();
+        update_hash(&mut lock, &manifest, &picked).unwrap();
+        assert_eq!(lock.content_hash, "2297c4c8b0ed5fa1f5e4f2bb9f6eb06e");
+        assert_eq!(
+            serde_json::to_string(&lock.settings["stability-flags"]).unwrap(),
+            r#"{"acme/beta":10,"acme/branch":20,"acme/zero":20}"#
+        );
+    }
 }

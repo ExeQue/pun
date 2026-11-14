@@ -1,0 +1,2769 @@
+{
+ "cases": [
+  {
+   "name": "alias-priority-conflicting",
+   "root": {
+    "minimum-stability": "dev",
+    "aliases": [
+     {
+      "package": "req/pkg",
+      "version": "dev-feature-foo",
+      "alias": "dev-master"
+     }
+    ]
+   },
+   "request": {
+    "require": {
+     "package/a": "dev-master",
+     "req/pkg": "dev-feature-foo"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "req/pkg",
+      "version": "dev-feature-foo",
+      "source": {
+       "reference": "feat.f",
+       "type": "git",
+       "url": ""
+      }
+     },
+     {
+      "name": "req/pkg",
+      "version": "dev-master",
+      "extra": {
+       "branch-alias": {
+        "dev-master": "1.0.x-dev"
+       }
+      },
+      "source": {
+       "reference": "forked",
+       "type": "git",
+       "url": ""
+      },
+      "default-branch": true
+     },
+     {
+      "name": "req/pkg",
+      "version": "dev-master",
+      "extra": {
+       "branch-alias": {
+        "dev-master": "1.0.x-dev"
+       }
+      },
+      "source": {
+       "reference": "master",
+       "type": "git",
+       "url": ""
+      },
+      "default-branch": true
+     },
+     {
+      "name": "package/a",
+      "version": "dev-master",
+      "require": {
+       "req/pkg": "dev-master"
+      },
+      "default-branch": true
+     }
+    ]
+   ],
+   "expect": [
+    "req/pkg-dev-feature-foo#feat.f",
+    "req/pkg-dev-master#feat.f (alias of dev-feature-foo)",
+    "package/a-dev-master",
+    "package/a-9999999-dev (alias of dev-master)"
+   ]
+  },
+  {
+   "name": "alias-with-reference",
+   "root": {
+    "stability-flags": {
+     "a/aliased": "dev"
+    },
+    "aliases": [
+     {
+      "package": "a/aliased",
+      "version": "dev-master",
+      "alias": "1.0.0"
+     }
+    ],
+    "references": {
+     "a/aliased": "abcd"
+    }
+   },
+   "request": {
+    "require": {
+     "a/aliased": "dev-master",
+     "b/requirer": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "a/aliased",
+      "version": "dev-master",
+      "source": {
+       "reference": "orig",
+       "type": "git",
+       "url": ""
+      },
+      "default-branch": true
+     },
+     {
+      "name": "a/aliased",
+      "version": "1.0"
+     },
+     {
+      "name": "b/requirer",
+      "version": "1.0.0",
+      "require": {
+       "a/aliased": "1.0.0"
+      },
+      "source": {
+       "reference": "1.0.0",
+       "type": "git",
+       "url": ""
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "a/aliased-dev-master#abcd",
+    "a/aliased-1.0.0.0#abcd (alias of dev-master)",
+    "b/requirer-1.0.0.0#1.0.0",
+    "a/aliased-9999999-dev#abcd (alias of dev-master)"
+   ]
+  },
+  {
+   "name": "constraint-expansion-works-with-exact-versions",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.3.4"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep2": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.5"
+     },
+     {
+      "name": "dep/dep2",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/req-1.0.0.0",
+    "dep/dep-2.3.4.0",
+    "dep/dep2-2.3.4.0",
+    "dep/dep-2.3.5.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-locked-replacer",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "*",
+     "replacer/dep": "*"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      },
+      "require": {
+       "replacer/dep": "1.*"
+      }
+     },
+     {
+      "name": "replacer/dep",
+      "version": "1.0.0"
+     }
+    ],
+    "allowList": [
+     "second/pkg",
+     "replacer/dep"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "first/pkg",
+      "version": "1.1.0",
+      "require": {
+       "replaced/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      },
+      "require": {
+       "replacer/dep": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0",
+      "replace": {
+       "replaced/pkg": "2.0.0"
+      },
+      "require": {
+       "replacer/dep": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.2.0",
+      "replace": {
+       "replaced/pkg": "3.0.0"
+      },
+      "require": {
+       "replacer/dep": "1.*"
+      }
+     },
+     {
+      "name": "replacer/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "replacer/dep",
+      "version": "1.0.1"
+     },
+     {
+      "name": "replacer/dep",
+      "version": "2.0.0"
+     }
+    ]
+   ],
+   "expect": [
+    "first/pkg-1.0.0.0 (locked)",
+    "replacer/pkg-1.0.0.0 (locked)",
+    "second/pkg-1.0.0.0",
+    "replacer/dep-1.0.0.0",
+    "replacer/dep-1.0.1.0",
+    "replacer/dep-2.0.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-only-required-provides",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "1.1.0",
+     "provider/pkg": "*"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "^1.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.0.0",
+      "provide": {
+       "provided/pkg": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "first/pkg",
+     "provider/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "*"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.1.0",
+      "require": {
+       "provided/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.0.0",
+      "provide": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "2.0.0",
+      "provide": {
+       "provided/pkg": "2.0.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "third/pkg-1.0.0.0 (locked)",
+    "first/pkg-1.0.0.0",
+    "provider/pkg-1.0.0.0",
+    "provider/pkg-2.0.0.0",
+    "second/pkg-1.1.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-only-required-replaces",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "1.1.0",
+     "replacer/pkg": "*"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "^1.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "first/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "*"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.1.0",
+      "require": {
+       "replaced/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "2.0.0",
+      "replace": {
+       "replaced/pkg": "2.0.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "third/pkg-1.0.0.0 (locked)",
+    "first/pkg-1.0.0.0",
+    "second/pkg-1.1.0.0",
+    "replacer/pkg-1.0.0.0",
+    "replacer/pkg-2.0.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-only-required",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "1.1.0"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "^1.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "fourth/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "fourth/pkg",
+      "version": "1.0.0"
+     }
+    ],
+    "allowList": [
+     "first/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "second/pkg": "*"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "third/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.1.0",
+      "require": {
+       "fourth/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "third/pkg",
+      "version": "1.0.0",
+      "require": {
+       "fourth/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "fourth/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "fourth/pkg",
+      "version": "2.0.0"
+     }
+    ]
+   ],
+   "expect": [
+    "third/pkg-1.0.0.0 (locked)",
+    "first/pkg-1.0.0.0",
+    "second/pkg-1.1.0.0",
+    "fourth/pkg-1.0.0.0",
+    "fourth/pkg-2.0.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-provides",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "*",
+     "provider/pkg": "*"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "< 3.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.0.0",
+      "provide": {
+       "provided/pkg": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "first/pkg",
+     "provider/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "first/pkg",
+      "version": "1.1.0",
+      "require": {
+       "provided/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "provided/pkg": "*"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.0.0",
+      "provide": {
+       "provided/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.1.0",
+      "provide": {
+       "provided/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "provider/pkg",
+      "version": "1.2.0",
+      "provide": {
+       "provided/pkg": "3.0.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "second/pkg-1.0.0.0 (locked)",
+    "first/pkg-1.0.0.0",
+    "first/pkg-1.1.0.0",
+    "provider/pkg-1.0.0.0",
+    "provider/pkg-1.1.0.0",
+    "provider/pkg-1.2.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages-replaces",
+   "root": {},
+   "request": {
+    "require": {
+     "first/pkg": "*",
+     "second/pkg": "*",
+     "replacer/pkg": "*"
+    },
+    "locked": [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "< 3.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "first/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "first/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "first/pkg",
+      "version": "1.1.0",
+      "require": {
+       "replaced/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "second/pkg",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0",
+      "replace": {
+       "replaced/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.2.0",
+      "replace": {
+       "replaced/pkg": "3.0.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "second/pkg-1.0.0.0 (locked)",
+    "first/pkg-1.0.0.0",
+    "first/pkg-1.1.0.0",
+    "replacer/pkg-1.0.0.0",
+    "replacer/pkg-1.1.0.0",
+    "replacer/pkg-1.2.0.0"
+   ]
+  },
+  {
+   "name": "filter-impossible-packages",
+   "root": {},
+   "request": {
+    "require": {
+     "some/pkg": "*",
+     "root/req": "*"
+    },
+    "locked": [
+     {
+      "name": "some/pkg",
+      "version": "1.0.3",
+      "require": {
+       "dep/dep": "*"
+      },
+      "id": 1
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      },
+      "id": 2
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.0.0",
+      "id": 3
+     }
+    ],
+    "allowList": [
+     "some/pkg"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "some/pkg",
+      "version": "1.0.4",
+      "require": {
+       "dep/dep": "*"
+      }
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.0",
+      "provide": {
+       "other/pkg": "*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.1",
+      "provide": {
+       "other/pkg": "*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.2",
+      "provide": {
+       "other/pkg": "*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.0.0"
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    2,
+    "some/pkg-1.0.4.0",
+    "dep/dep-1.0.0.0",
+    "dep/dep-1.0.1.0",
+    "dep/dep-1.0.2.0",
+    "dep/dep-2.0.0.0",
+    "dep/dep-2.0.1.0"
+   ]
+  },
+  {
+   "name": "fixed-packages-do-not-load-from-repos",
+   "root": {},
+   "request": {
+    "require": {
+     "some/pkg": "*",
+     "root/req": "*"
+    }
+   },
+   "fixed": [
+    {
+     "name": "some/pkg",
+     "version": "1.0.3",
+     "id": 1
+    },
+    {
+     "name": "dep/dep",
+     "version": "2.1.5",
+     "id": 2
+    }
+   ],
+   "repos": [
+    [
+     {
+      "name": "some/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "some/pkg",
+      "version": "1.1.0"
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "root/req",
+      "version": "2.0.0",
+      "require": {
+       "dep/dep": "3.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4"
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    1,
+    2,
+    "root/req-1.0.0.0",
+    "root/req-2.0.0.0"
+   ]
+  },
+  {
+   "name": "fixed-packages-replaced-do-not-load-from-repos",
+   "root": {},
+   "request": {
+    "require": {
+     "some/pkg": "*",
+     "root/req": "*"
+    }
+   },
+   "fixed": [
+    {
+     "name": "some/pkg",
+     "version": "1.0.3",
+     "replace": {
+      "dep/dep": "2.1.0"
+     },
+     "id": 1
+    }
+   ],
+   "repos": [
+    [
+     {
+      "name": "some/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "root/req",
+      "version": "2.0.0",
+      "require": {
+       "dep/dep": "3.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4"
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    1,
+    "root/req-1.0.0.0",
+    "root/req-2.0.0.0"
+   ]
+  },
+  {
+   "name": "load-replaced-package-if-replacer-dropped",
+   "root": {},
+   "request": {
+    "require": {
+     "root/dep": "*",
+     "root/no-update": "*"
+    },
+    "locked": [
+     {
+      "name": "root/dep",
+      "version": "1.1.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "root/no-update",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "root/dep"
+    ],
+    "allowTransitiveDepsNoRootRequire": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/dep",
+      "version": "1.2.0",
+      "require": {
+       "replacer/pkg": ">=1.1.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0"
+     },
+     {
+      "name": "replaced/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "root/no-update",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.0.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/no-update-1.0.0.0 (locked)",
+    "root/dep-1.2.0.0",
+    "replaced/pkg-1.0.0.0",
+    "replacer/pkg-1.1.0.0"
+   ]
+  },
+  {
+   "name": "load-replaced-root-package-if-replacer-dropped",
+   "root": {},
+   "request": {
+    "require": {
+     "root/dep": "*",
+     "replaced/pkg": "1.0.0"
+    },
+    "locked": [
+     {
+      "name": "root/dep",
+      "version": "1.1.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0"
+     },
+     {
+      "name": "replaced/pkg",
+      "version": "1.0.0"
+     }
+    ],
+    "allowList": [
+     "root/dep"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/dep",
+      "version": "1.2.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0"
+     },
+     {
+      "name": "replaced/pkg",
+      "version": "1.0.0"
+     }
+    ]
+   ],
+   "expect": [
+    "replaced/pkg-1.0.0.0",
+    "replacer/pkg-1.0.0.0",
+    "replacer/pkg-1.1.0.0",
+    "root/dep-1.2.0.0"
+   ]
+  },
+  {
+   "name": "multi-repo-replace-partial-update-all",
+   "root": {},
+   "request": {
+    "require": {
+     "base/package": "^1.0",
+     "indirect/replacer": "^1.0"
+    },
+    "locked": [
+     {
+      "name": "shared/dep",
+      "version": "1.2.0",
+      "id": 1
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.2.0",
+      "require": {
+       "replacer/package": "^1.2"
+      },
+      "id": 2
+     },
+     {
+      "name": "replacer/package",
+      "version": "1.2.0",
+      "require": {
+       "shared/dep": "^1.1"
+      },
+      "replace": {
+       "base/package": "1.2.0"
+      },
+      "id": 3
+     }
+    ],
+    "allowList": [
+     "indirect/replacer"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "base/package",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep": "^1.2"
+      }
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.2.0"
+     }
+    ],
+    [
+     {
+      "name": "base/package",
+      "version": "1.1.0"
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.3.0"
+     }
+    ],
+    {
+     "canonical": false,
+     "packages": [
+      {
+       "name": "indirect/replacer",
+       "version": "1.2.0",
+       "require": {
+        "replacer/package": "^1.2"
+       }
+      },
+      {
+       "name": "replacer/package",
+       "version": "1.2.0",
+       "require": {
+        "shared/dep": "^1.1"
+       }
+      },
+      {
+       "name": "shared/dep",
+       "version": "1.1.0"
+      }
+     ]
+    },
+    [
+     {
+      "name": "replacer/package",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep": "^1.0"
+      },
+      "replace": {
+       "base/package": "1.0.0"
+      }
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.0.0",
+      "require": {
+       "replacer/package": "^1.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "base/package-1.0.0.0",
+    "indirect/replacer-1.2.0.0",
+    "indirect/replacer-1.0.0.0",
+    "replacer/package-1.2.0.0",
+    "replacer/package-1.0.0.0",
+    "shared/dep-1.0.0.0",
+    "shared/dep-1.2.0.0"
+   ]
+  },
+  {
+   "name": "multi-repo-replace",
+   "root": {},
+   "request": {
+    "require": {
+     "base/package": "^1.0",
+     "indirect/replacer": "^1.0"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "base/package",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep": "^1.2"
+      }
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.2.0"
+     }
+    ],
+    [
+     {
+      "name": "base/package",
+      "version": "1.1.0"
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.3.0"
+     }
+    ],
+    {
+     "canonical": false,
+     "packages": [
+      {
+       "name": "indirect/replacer",
+       "version": "1.2.0",
+       "require": {
+        "replacer/package": "^1.2"
+       }
+      },
+      {
+       "name": "replacer/package",
+       "version": "1.2.0",
+       "require": {
+        "shared/dep": "^1.1"
+       }
+      },
+      {
+       "name": "shared/dep",
+       "version": "1.1.0"
+      }
+     ]
+    },
+    [
+     {
+      "name": "replacer/package",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep": "^1.0"
+      },
+      "replace": {
+       "base/package": "1.2.0"
+      }
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.0.0",
+      "require": {
+       "replacer/package": "^1.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "base/package-1.0.0.0",
+    "indirect/replacer-1.2.0.0",
+    "indirect/replacer-1.0.0.0",
+    "shared/dep-1.2.0.0",
+    "replacer/package-1.2.0.0",
+    "replacer/package-1.0.0.0",
+    "shared/dep-1.0.0.0"
+   ]
+  },
+  {
+   "name": "must-expand-root-reqs",
+   "root": {},
+   "request": {
+    "require": {
+     "some/pkg": "*",
+     "root/req": "*"
+    }
+   },
+   "fixed": [
+    {
+     "name": "some/pkg",
+     "version": "1.0.3",
+     "id": 1
+    },
+    {
+     "name": "dep/dep",
+     "version": "2.1.5",
+     "id": 2
+    }
+   ],
+   "repos": [
+    [
+     {
+      "name": "some/pkg",
+      "version": "1.0.0"
+     },
+     {
+      "name": "some/pkg",
+      "version": "1.1.0"
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "root/req",
+      "version": "2.0.0",
+      "require": {
+       "dep/dep": "3.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4"
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    1,
+    2,
+    "root/req-1.0.0.0",
+    "root/req-2.0.0.0"
+   ]
+  },
+  {
+   "name": "package-versions-are-not-loaded-if-not-required-expansion",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep2": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.5"
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.0"
+     },
+     {
+      "name": "dep/dep",
+      "version": "4.0.0"
+     },
+     {
+      "name": "dep/dep2",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep": "3.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/req-1.0.0.0",
+    "dep/dep-2.3.4.0",
+    "dep/dep-2.3.5.0",
+    "dep/dep2-2.3.4.0",
+    "dep/dep-3.0.0.0"
+   ]
+  },
+  {
+   "name": "package-versions-are-not-loaded-if-not-required-recursive",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep2": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.1"
+     },
+     {
+      "name": "dep/dep2",
+      "version": "2.3.4"
+     },
+     {
+      "name": "dep/dep2",
+      "version": "3.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    "root/req-1.0.0.0",
+    "dep/dep-2.3.4.0",
+    "dep/dep2-2.3.4.0"
+   ]
+  },
+  {
+   "name": "packages-that-do-not-exist",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4",
+      "require": {
+       "dep/dep3": "2.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/req-1.0.0.0",
+    "dep/dep-2.3.4.0"
+   ]
+  },
+  {
+   "name": "partial-update-transitive-deps-no-root-unfix",
+   "root": {},
+   "request": {
+    "require": {
+     "root/update": "*",
+     "root/fix": "*"
+    },
+    "locked": [
+     {
+      "name": "root/update",
+      "version": "1.0.1",
+      "require": {
+       "dep/dep": "1.*",
+       "dep2/dep2": "1.*"
+      },
+      "id": 1
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.2",
+      "require": {
+       "root/fix": "1.*"
+      },
+      "id": 2
+     },
+     {
+      "name": "dep2/dep2",
+      "version": "1.0.2",
+      "require": {
+       "dep/dep": "1.*"
+      },
+      "id": 3
+     },
+     {
+      "name": "root/fix",
+      "version": "1.0.3",
+      "id": 4
+     }
+    ],
+    "allowList": [
+     "root/update"
+    ],
+    "allowTransitiveDepsNoRootRequire": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/update",
+      "version": "1.0.4",
+      "require": {
+       "dep/dep": "1.*",
+       "dep2/dep2": "1.*"
+      }
+     },
+     {
+      "name": "root/update",
+      "version": "1.0.5",
+      "require": {
+       "dep/dep": "2.*",
+       "dep2/dep2": "2.*"
+      }
+     },
+     {
+      "name": "root/fix",
+      "version": "1.0.6"
+     },
+     {
+      "name": "root/fix",
+      "version": "2.0.7"
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.8",
+      "require": {
+       "root/fix": "1.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.0.9",
+      "require": {
+       "root/fix": "2.*"
+      }
+     },
+     {
+      "name": "dep2/dep2",
+      "version": "1.0.8",
+      "require": {
+       "dep/dep": "1.*"
+      }
+     },
+     {
+      "name": "dep2/dep2",
+      "version": "2.0.9",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    4,
+    "root/update-1.0.4.0",
+    "root/update-1.0.5.0",
+    "dep/dep-1.0.8.0",
+    "dep/dep-2.0.9.0",
+    "dep2/dep2-1.0.8.0",
+    "dep2/dep2-2.0.9.0"
+   ]
+  },
+  {
+   "name": "partial-update-transitive-deps-unfix",
+   "root": {},
+   "request": {
+    "require": {
+     "root/update": "*",
+     "root/dep": "1.0.*",
+     "root/dep2": "*"
+    },
+    "locked": [
+     {
+      "name": "root/update",
+      "version": "1.0.1",
+      "require": {
+       "dep/dep": "1.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.2",
+      "require": {
+       "root/dep": "1.*",
+       "root/dep2": "1.*"
+      }
+     },
+     {
+      "name": "root/dep",
+      "version": "1.0.3"
+     },
+     {
+      "name": "root/dep2",
+      "version": "1.0.3"
+     }
+    ],
+    "allowList": [
+     "root/update"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/update",
+      "version": "1.0.4",
+      "require": {
+       "dep/dep": "1.*"
+      }
+     },
+     {
+      "name": "root/update",
+      "version": "1.0.5",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "root/dep",
+      "version": "1.0.6"
+     },
+     {
+      "name": "root/dep",
+      "version": "2.0.7"
+     },
+     {
+      "name": "root/dep2",
+      "version": "1.0.6"
+     },
+     {
+      "name": "root/dep2",
+      "version": "2.0.7"
+     },
+     {
+      "name": "dep/dep",
+      "version": "1.0.8",
+      "require": {
+       "root/dep": "1.*",
+       "root/dep2": "1.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.0.9",
+      "require": {
+       "root/dep": "2.*",
+       "root/dep2": "2.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/update-1.0.4.0",
+    "root/update-1.0.5.0",
+    "dep/dep-1.0.8.0",
+    "dep/dep-2.0.9.0",
+    "root/dep-1.0.6.0",
+    "root/dep2-1.0.6.0",
+    "root/dep2-2.0.7.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixes-path-repo-replacer-with-transitive-deps",
+   "root": {},
+   "request": {
+    "require": {
+     "root/update": "*",
+     "symlinked/transitive3": "*",
+     "symlinked/transitive5": "*",
+     "symlinked/path-pkg-replace": "*"
+    },
+    "locked": [
+     {
+      "name": "root/update",
+      "version": "1.0.1",
+      "require": {
+       "symlinked/path-pkg": ">=1.0.1",
+       "symlinked/replaced-pkg": "*"
+      }
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive3",
+      "version": "1.0.0",
+      "replace": {
+       "symlinked/transitive3-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "symlinked/path-pkg",
+      "version": "1.0.0",
+      "require": {
+       "symlinked/transitive": "1.*",
+       "symlinked/transitive3-replaced": "1.*",
+       "symlinked/transitive5-replaced": "1.*"
+      },
+      "dist": {
+       "type": "path",
+       "url": "./symlinked-path-repo-with-replaced-deps",
+       "reference": "abcd"
+      },
+      "transport-options": {}
+     },
+     {
+      "name": "symlinked/transitive4",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive5",
+      "version": "1.0.0",
+      "replace": {
+       "symlinked/transitive5-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "symlinked/path-pkg-replace",
+      "version": "1.0.0",
+      "require": {
+       "symlinked/transitive3-replaced": "1.*",
+       "symlinked/transitive4": "1.*",
+       "symlinked/transitive5-replaced": "1.*"
+      },
+      "replace": {
+       "symlinked/replaced-pkg": "1.0.0"
+      },
+      "dist": {
+       "type": "path",
+       "url": "./symlinked-path-repo-replacer",
+       "reference": "abcd"
+      },
+      "transport-options": {}
+     }
+    ],
+    "allowList": [
+     "root/update"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    {
+     "type": "path",
+     "url": "./symlinked-path-repo-with-replaced-deps"
+    },
+    {
+     "type": "path",
+     "url": "./symlinked-path-repo-replacer"
+    },
+    [
+     {
+      "name": "root/update",
+      "version": "1.0.4",
+      "require": {
+       "symlinked/path-pkg": ">=1.0.1",
+       "symlinked/replaced-pkg": "*"
+      }
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "2.0.2"
+     },
+     {
+      "name": "symlinked/transitive3",
+      "version": "1.0.0",
+      "replace": {
+       "symlinked/transitive3-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "symlinked/transitive3",
+      "version": "1.0.3",
+      "replace": {
+       "symlinked/transitive3-replaced": "1.0.3"
+      }
+     },
+     {
+      "name": "symlinked/transitive3",
+      "version": "2.0.4",
+      "replace": {
+       "symlinked/transitive3-replaced": "2.0.4"
+      }
+     },
+     {
+      "name": "symlinked/transitive4",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive4",
+      "version": "2.0.2"
+     },
+     {
+      "name": "symlinked/transitive5",
+      "version": "1.0.0",
+      "replace": {
+       "symlinked/transitive5-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "symlinked/transitive5",
+      "version": "1.0.3",
+      "replace": {
+       "symlinked/transitive5-replaced": "1.0.3"
+      }
+     },
+     {
+      "name": "symlinked/transitive5",
+      "version": "2.0.4",
+      "replace": {
+       "symlinked/transitive5-replaced": "2.0.4"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/update-1.0.4.0",
+    "symlinked/path-pkg-2.0.0.0",
+    "symlinked/path-pkg-replace-2.0.0.0",
+    "symlinked/transitive-2.0.2.0",
+    "symlinked/transitive3-1.0.0.0",
+    "symlinked/transitive3-1.0.3.0",
+    "symlinked/transitive3-2.0.4.0",
+    "symlinked/transitive4-2.0.2.0",
+    "symlinked/transitive5-1.0.0.0",
+    "symlinked/transitive5-1.0.3.0",
+    "symlinked/transitive5-2.0.4.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixes-path-repos-always-but-not-their-transitive-deps",
+   "root": {},
+   "request": {
+    "require": {
+     "root/update": "*",
+     "symlinked/path-pkg": "*",
+     "mirrored/path-pkg": "*"
+    },
+    "locked": [
+     {
+      "name": "root/update",
+      "version": "1.0.1",
+      "require": {
+       "symlinked/transitive2": ">=1.0.1",
+       "mirrored/transitive2": ">=1.0.1"
+      }
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "mirrored/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "mirrored/transitive2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/path-pkg",
+      "version": "1.0.0",
+      "require": {
+       "symlinked/transitive": "1.*",
+       "symlinked/transitive2": "1.*"
+      },
+      "dist": {
+       "type": "path",
+       "url": "./symlinked-path-repo",
+       "reference": "abcd"
+      },
+      "transport-options": {}
+     },
+     {
+      "name": "mirrored/path-pkg",
+      "version": "1.0.0",
+      "require": {
+       "mirrored/transitive": "1.*",
+       "mirrored/transitive2": "1.*"
+      },
+      "dist": {
+       "type": "path",
+       "url": "./mirrored-path-repo",
+       "reference": "abcd"
+      },
+      "transport-options": {
+       "symlink": false
+      }
+     }
+    ],
+    "allowList": [
+     "root/update"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    {
+     "type": "path",
+     "url": "./symlinked-path-repo"
+    },
+    {
+     "type": "path",
+     "url": "./mirrored-path-repo",
+     "options": {
+      "symlink": false
+     }
+    },
+    [
+     {
+      "name": "root/update",
+      "version": "1.0.4",
+      "require": {
+       "symlinked/transitive2": ">=1.0.1",
+       "mirrored/transitive2": ">=1.0.1"
+      }
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "1.0.1"
+     },
+     {
+      "name": "symlinked/transitive",
+      "version": "2.0.2"
+     },
+     {
+      "name": "symlinked/transitive2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "symlinked/transitive2",
+      "version": "1.0.3"
+     },
+     {
+      "name": "symlinked/transitive2",
+      "version": "2.0.4"
+     },
+     {
+      "name": "mirrored/transitive",
+      "version": "1.0.0"
+     },
+     {
+      "name": "mirrored/transitive",
+      "version": "1.0.5"
+     },
+     {
+      "name": "mirrored/transitive",
+      "version": "2.0.6"
+     },
+     {
+      "name": "mirrored/transitive2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "mirrored/transitive2",
+      "version": "1.0.7"
+     },
+     {
+      "name": "mirrored/transitive2",
+      "version": "2.0.8"
+     }
+    ]
+   ],
+   "expect": [
+    "symlinked/transitive-1.0.0.0 (locked)",
+    "mirrored/transitive-1.0.0.0 (locked)",
+    "mirrored/path-pkg-1.0.0.0 (locked)",
+    "symlinked/path-pkg-2.0.0.0",
+    "root/update-1.0.4.0",
+    "symlinked/transitive2-1.0.3.0",
+    "symlinked/transitive2-2.0.4.0",
+    "mirrored/transitive2-1.0.0.0",
+    "mirrored/transitive2-1.0.7.0",
+    "mirrored/transitive2-2.0.8.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixing-locked-deps",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req1": "*",
+     "root/req2": "*"
+    },
+    "locked": [
+     {
+      "name": "root/req1",
+      "version": "1.0.0",
+      "require": {
+       "dep/pkg1": "1.*"
+      }
+     },
+     {
+      "name": "root/req2",
+      "version": "1.0.0",
+      "require": {
+       "dep/pkg2": "1.*"
+      }
+     },
+     {
+      "name": "dep/pkg1",
+      "version": "1.0.0",
+      "author": "old"
+     },
+     {
+      "name": "dep/pkg2",
+      "version": "1.0.0"
+     }
+    ],
+    "allowList": [
+     "dep/pkg2"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req1",
+      "version": "1.0.0",
+      "require": {
+       "dep/pkg1": "1.*"
+      }
+     },
+     {
+      "name": "root/req2",
+      "version": "1.0.0",
+      "require": {
+       "dep/pkg2": "1.*"
+      }
+     },
+     {
+      "name": "dep/pkg1",
+      "version": "1.0.0",
+      "author": "new"
+     },
+     {
+      "name": "dep/pkg1",
+      "version": "1.0.1"
+     },
+     {
+      "name": "dep/pkg1",
+      "version": "2.0.0"
+     },
+     {
+      "name": "dep/pkg1",
+      "version": "3.0.0"
+     },
+     {
+      "name": "dep/pkg2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "dep/pkg2",
+      "version": "1.2.0",
+      "require": {
+       "dep/pkg1": "2.*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/req1-1.0.0.0 (locked)",
+    "root/req2-1.0.0.0 (locked)",
+    "dep/pkg2-1.0.0.0",
+    "dep/pkg2-1.2.0.0",
+    "dep/pkg1-1.0.0.0",
+    "dep/pkg1-1.0.1.0",
+    "dep/pkg1-2.0.0.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixing-replacers",
+   "root": {},
+   "request": {
+    "require": {
+     "root/update": "*",
+     "root-required/replacer": "*",
+     "replacer/pkg": "*",
+     "root/noupdate": "*"
+    },
+    "locked": [
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "require": {
+       "root-required/replacer-replaced": "1.*",
+       "transitive/dep-of-replacer": "1.*",
+       "transitive/replacer-replaced": "1.*"
+      },
+      "replace": {
+       "replaced/pkg": "1.0.0"
+      }
+     },
+     {
+      "name": "pkg/with-replaced-deps",
+      "version": "1.0.0",
+      "require": {
+       "transitive/dep": "1.*",
+       "root-required/replacer-replaced": "1.*",
+       "transitive/replacer-replaced": "1.*"
+      }
+     },
+     {
+      "name": "root/update",
+      "version": "1.0.1",
+      "require": {
+       "pkg/with-replaced-deps": ">=1.0.1",
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "root/noupdate",
+      "version": "1.0.1",
+      "require": {
+       "transitive/replacer": "^2"
+      }
+     },
+     {
+      "name": "transitive/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "root-required/replacer",
+      "version": "1.0.0",
+      "replace": {
+       "root-required/replacer-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "transitive/dep-of-replacer",
+      "version": "1.0.0"
+     },
+     {
+      "name": "transitive/replacer",
+      "version": "1.0.0",
+      "replace": {
+       "transitive/replacer-replaced": "1.0.0"
+      }
+     }
+    ],
+    "allowList": [
+     "root/update"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "replacer/pkg",
+      "version": "2.0.0",
+      "require": {
+       "root-required/replacer-replaced": ">=1.0.3",
+       "transitive/dep-of-replacer": "2.*",
+       "transitive/replacer-replaced": "2.*"
+      },
+      "replace": {
+       "replaced/pkg": "2.0.0"
+      }
+     },
+     {
+      "name": "pkg/with-replaced-deps",
+      "version": "2.0.0",
+      "require": {
+       "transitive/dep": "2.*",
+       "root-required/replacer-replaced": "2.*",
+       "transitive/replacer-replaced": ">=1.0.3"
+      }
+     },
+     {
+      "name": "root/update",
+      "version": "1.0.4",
+      "require": {
+       "pkg/with-replaced-deps": ">=1.0.1",
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "root/noupdate",
+      "version": "1.0.1",
+      "require": {
+       "transitive/replacer": "^2"
+      }
+     },
+     {
+      "name": "transitive/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "transitive/dep",
+      "version": "2.0.2"
+     },
+     {
+      "name": "root-required/replacer",
+      "version": "1.0.0",
+      "replace": {
+       "root-required/replacer-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "root-required/replacer",
+      "version": "1.0.3",
+      "replace": {
+       "root-required/replacer-replaced": "1.0.3"
+      }
+     },
+     {
+      "name": "root-required/replacer",
+      "version": "2.0.4",
+      "replace": {
+       "root-required/replacer-replaced": "2.0.4"
+      }
+     },
+     {
+      "name": "transitive/dep-of-replacer",
+      "version": "1.0.0"
+     },
+     {
+      "name": "transitive/dep-of-replacer",
+      "version": "2.0.2"
+     },
+     {
+      "name": "transitive/replacer",
+      "version": "1.0.0",
+      "replace": {
+       "transitive/replacer-replaced": "1.0.0"
+      }
+     },
+     {
+      "name": "transitive/replacer",
+      "version": "1.0.3",
+      "replace": {
+       "transitive/replacer-replaced": "1.0.3"
+      }
+     },
+     {
+      "name": "transitive/replacer",
+      "version": "2.0.4",
+      "replace": {
+       "transitive/replacer-replaced": "2.0.4"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "root/noupdate-1.0.1.0 (locked)",
+    "root/update-1.0.4.0",
+    "replacer/pkg-2.0.0.0",
+    "pkg/with-replaced-deps-2.0.0.0",
+    "transitive/dep-2.0.2.0",
+    "root-required/replacer-1.0.0.0",
+    "root-required/replacer-1.0.3.0",
+    "root-required/replacer-2.0.4.0",
+    "transitive/dep-of-replacer-2.0.2.0",
+    "transitive/replacer-2.0.4.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixing-with-replacers-providers",
+   "root": {},
+   "request": {
+    "require": {
+     "base/package": "^1.0",
+     "base/package2": "^1.0",
+     "indirect/replacer": "^1.0"
+    },
+    "locked": [
+     {
+      "name": "shared/dep",
+      "version": "1.2.0",
+      "id": 1
+     },
+     {
+      "name": "shared/dep2",
+      "version": "1.2.0",
+      "id": 2
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.2.0",
+      "require": {
+       "replacer/package": "^1.2",
+       "provider/package": "^1.2"
+      },
+      "id": 3
+     },
+     {
+      "name": "replacer/package",
+      "version": "1.2.0",
+      "require": {
+       "shared/dep": "^1.1"
+      },
+      "replace": {
+       "base/package": "1.2.0"
+      },
+      "id": 4
+     },
+     {
+      "name": "provider/package",
+      "version": "1.2.0",
+      "require": {
+       "shared/dep2": "^1.1"
+      },
+      "provide": {
+       "base/package2": "1.2.0"
+      },
+      "id": 5
+     }
+    ],
+    "allowList": [
+     "indirect/replacer"
+    ],
+    "allowTransitiveDepsNoRootRequire": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "base/package",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep": "^1.2"
+      }
+     },
+     {
+      "name": "base/package2",
+      "version": "1.0.0",
+      "require": {
+       "shared/dep2": "^1.2"
+      }
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.0.0"
+     },
+     {
+      "name": "shared/dep",
+      "version": "1.2.0"
+     },
+     {
+      "name": "shared/dep2",
+      "version": "1.0.0"
+     },
+     {
+      "name": "shared/dep2",
+      "version": "1.2.0"
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.2.0",
+      "require": {
+       "replacer/package": "^1.2"
+      }
+     },
+     {
+      "name": "indirect/replacer",
+      "version": "1.0.0",
+      "require": {
+       "replacer/package": "^1.0"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    1,
+    4,
+    5,
+    "base/package2-1.0.0.0",
+    "indirect/replacer-1.2.0.0",
+    "indirect/replacer-1.0.0.0",
+    "shared/dep2-1.2.0.0"
+   ]
+  },
+  {
+   "name": "partial-update-unfixing-with-replacers",
+   "root": {},
+   "request": {
+    "require": {
+     "root/req1": "*",
+     "root/req3": "*"
+    },
+    "locked": [
+     {
+      "name": "root/req1",
+      "version": "1.0.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "root/req3",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.*",
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.5"
+     }
+    ],
+    "allowList": [
+     "root/req1"
+    ],
+    "allowTransitiveDeps": true
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "root/req1",
+      "version": "1.0.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "root/req1",
+      "version": "1.1.0",
+      "require": {
+       "replacer/pkg": "1.*"
+      }
+     },
+     {
+      "name": "root/req3",
+      "version": "1.0.0",
+      "require": {
+       "replaced/pkg": "1.*"
+      }
+     },
+     {
+      "name": "root/req3",
+      "version": "1.1.0",
+      "require": {
+       "replaced/pkg": "1.*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.0.0",
+      "replace": {
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "replacer/pkg",
+      "version": "1.1.0",
+      "replace": {
+       "replaced/pkg": "*"
+      }
+     },
+     {
+      "name": "replaced/pkg",
+      "version": "1.2.3"
+     },
+     {
+      "name": "replaced/pkg",
+      "version": "1.2.4"
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.5"
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.6"
+     }
+    ]
+   ],
+   "expect": [
+    "root/req3-1.0.0.0 (locked)",
+    "dep/dep-2.3.5.0 (locked)",
+    "root/req1-1.0.0.0",
+    "root/req1-1.1.0.0",
+    "replacer/pkg-1.0.0.0",
+    "replacer/pkg-1.1.0.0",
+    "replaced/pkg-1.2.3.0",
+    "replaced/pkg-1.2.4.0"
+   ]
+  },
+  {
+   "name": "partial-update",
+   "root": {},
+   "request": {
+    "require": {
+     "some/pkg": "*",
+     "root/req": "*"
+    },
+    "locked": [
+     {
+      "name": "some/pkg",
+      "version": "1.0.3",
+      "replace": {
+       "dep/dep": "2.1.0"
+      },
+      "id": 1
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      },
+      "id": 2
+     }
+    ],
+    "allowList": [
+     "some/pkg"
+    ]
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "some/pkg",
+      "version": "1.0.4"
+     },
+     {
+      "name": "root/req",
+      "version": "1.0.0",
+      "require": {
+       "dep/dep": "2.*"
+      }
+     },
+     {
+      "name": "root/req",
+      "version": "2.0.0",
+      "require": {
+       "dep/dep": "3.*"
+      }
+     },
+     {
+      "name": "dep/dep",
+      "version": "2.3.4"
+     },
+     {
+      "name": "dep/dep",
+      "version": "3.0.1"
+     }
+    ]
+   ],
+   "expect": [
+    2,
+    "some/pkg-1.0.4.0",
+    "dep/dep-2.3.4.0"
+   ]
+  },
+  {
+   "name": "root-requirements-avoid-loading-further-versions",
+   "root": {},
+   "request": {
+    "require": {
+     "foo/bar": "1.0.0",
+     "foo/requirer": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "foo/bar",
+      "version": "1.0.0"
+     },
+     {
+      "name": "foo/bar",
+      "version": "2.0.0"
+     },
+     {
+      "name": "foo/bar",
+      "version": "3.0.0"
+     },
+     {
+      "name": "foo/requirer",
+      "version": "1.0.0",
+      "require": {
+       "foo/bar": "*"
+      }
+     }
+    ]
+   ],
+   "expect": [
+    "foo/bar-1.0.0.0",
+    "foo/requirer-1.0.0.0"
+   ]
+  },
+  {
+   "name": "stability-flags-take-over-minimum-stability-and-filter-packages",
+   "root": {
+    "stability-flags": {
+     "flagged/pkg": "alpha"
+    },
+    "minimum-stability": "RC",
+    "aliases": [
+     {
+      "package": "default/pkg",
+      "version": "1.0.0-RC",
+      "alias": "1.2.0"
+     }
+    ]
+   },
+   "request": {
+    "require": {
+     "flagged/pkg": "*",
+     "default/pkg": "*"
+    }
+   },
+   "fixed": [],
+   "repos": [
+    [
+     {
+      "name": "flagged/pkg",
+      "version": "1.0.0",
+      "id": 1
+     },
+     {
+      "name": "flagged/pkg",
+      "version": "1.0.0-beta",
+      "id": 2
+     },
+     {
+      "name": "flagged/pkg",
+      "version": "1.0.0-dev",
+      "id": 3
+     },
+     {
+      "name": "flagged/pkg",
+      "version": "1.0.0-RC",
+      "id": 4
+     },
+     {
+      "name": "default/pkg",
+      "version": "1.0.0",
+      "id": 5
+     },
+     {
+      "name": "default/pkg",
+      "version": "1.0.0-RC",
+      "id": 6
+     },
+     {
+      "name": "default/pkg",
+      "version": "1.0.0-alpha",
+      "id": 7
+     }
+    ]
+   ],
+   "expect": [
+    1,
+    2,
+    4,
+    5,
+    6,
+    "default/pkg-1.2.0.0 (alias of 6)"
+   ]
+  }
+ ],
+ "files": {
+  "mirrored-path-repo/composer.json": "{\n    \"name\": \"mirrored/path-pkg\",\n    \"version\": \"2.0.0\",\n    \"require\": {\n        \"mirrored/transitive\": \"2.*\",\n        \"mirrored/transitive2\": \"2.*\"\n    }\n}\n",
+  "symlinked-path-repo/composer.json": "{\n    \"name\": \"symlinked/path-pkg\",\n    \"version\": \"2.0.0\",\n    \"require\": {\n        \"symlinked/transitive\": \"2.*\",\n        \"symlinked/transitive2\": \"2.*\"\n    }\n}\n",
+  "symlinked-path-repo-replacer/composer.json": "{\n    \"name\": \"symlinked/path-pkg-replace\",\n    \"version\": \"2.0.0\",\n    \"require\": {\n        \"symlinked/transitive3-replaced\": \">=1.0.3\",\n        \"symlinked/transitive4\": \"2.*\",\n        \"symlinked/transitive5-replaced\": \"2.*\"\n    },\n    \"replace\": {\n        \"symlinked/replaced-pkg\": \"2.0.0\"\n    }\n}\n",
+  "symlinked-path-repo-with-replaced-deps/composer.json": "{\n    \"name\": \"symlinked/path-pkg\",\n    \"version\": \"2.0.0\",\n    \"require\": {\n        \"symlinked/transitive\": \"2.*\",\n        \"symlinked/transitive3-replaced\": \"2.*\",\n        \"symlinked/transitive5-replaced\": \">=1.0.3\"\n    }\n}\n"
+ }
+}

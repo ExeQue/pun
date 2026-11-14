@@ -1,0 +1,11 @@
+{
+    "packages": {
+        "acme/insecure": [
+            {"name": "acme/insecure", "version": "1.1.0"},
+            {"name": "acme/insecure", "version": "1.0.0"}
+        ]
+    },
+    "security-advisories": [
+        {"advisoryId": "PKSA-1", "packageName": "acme/insecure", "affectedVersions": ">=1.1.0,<1.2.0", "title": "Bad", "reportedAt": "2024-01-01 00:00:00", "cve": "CVE-2024-1", "severity": "high", "sources": [{"name": "GitHub", "remoteId": "GHSA-1"}]}
+    ]
+}

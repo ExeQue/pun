@@ -1,0 +1,179 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "df36cf542e2499cddc5429862666fc48",
+    "packages": [
+        {
+            "name": "Acme/Lib",
+            "version": "1.5.0",
+            "target-dir": "Acme/Lib",
+            "source": {
+                "type": "git",
+                "url": "https://git.acme.test/lib.git",
+                "reference": "a15",
+                "mirrors": [
+                    {
+                        "url": "https://mirror.acme.test/%package%.git",
+                        "preferred": true
+                    }
+                ]
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://dist.acme.test/lib-1.5.0.zip",
+                "reference": "a15",
+                "shasum": "0123abcd"
+            },
+            "require": {
+                "acme/util": "^1.1",
+                "php": ">=8.1"
+            },
+            "conflict": {
+                "acme/old": "<1.0"
+            },
+            "provide": {
+                "psr/log-implementation": "1.0"
+            },
+            "replace": {
+                "acme/lib-legacy": "self.version"
+            },
+            "suggest": {
+                "acme/extra": "1.5.0",
+                "ext-intl": "for locales"
+            },
+            "bin": [
+                "bin/lib-tool"
+            ],
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.6.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Acme\\Lib\\": "src/"
+                }
+            },
+            "notification-url": "https://stats.acme.test/notify",
+            "include-path": [
+                "lib/"
+            ],
+            "archive": {
+                "name": "lib",
+                "exclude": [
+                    "/tests"
+                ]
+            },
+            "scripts": {
+                "post-install-cmd": [
+                    "Acme\\Lib\\Setup::run"
+                ],
+                "test": [
+                    "phpunit"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ada",
+                    "email": "ada@acme.test"
+                }
+            ],
+            "description": "A library",
+            "homepage": "https://acme.test",
+            "keywords": [
+                "9",
+                "10",
+                "alpha",
+                "zeta"
+            ],
+            "support": {
+                "issues": "https://acme.test/issues"
+            },
+            "funding": [
+                {
+                    "type": "github",
+                    "url": "https://github.com/sponsors/acme"
+                }
+            ],
+            "abandoned": "acme/next",
+            "time": "2023-11-14T22:13:20+00:00"
+        },
+        {
+            "name": "acme/devlib",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://git.acme.test/devlib.git",
+                "reference": "d1"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.0.x-dev"
+                }
+            },
+            "notification-url": "BASE/downloads/",
+            "time": "2024-03-01T08:00:00+00:00"
+        },
+        {
+            "name": "acme/insecure",
+            "version": "1.0.0",
+            "type": "library",
+            "notification-url": "BASE/downloads/"
+        },
+        {
+            "name": "acme/listed",
+            "version": "1.0.0",
+            "type": "library",
+            "notification-url": "BASE/downloads/"
+        },
+        {
+            "name": "acme/minified",
+            "version": "2.1.0",
+            "type": "library",
+            "notification-url": "BASE/downloads/",
+            "description": "three",
+            "time": "2022-05-01T10:20:30+00:00"
+        },
+        {
+            "name": "acme/util",
+            "version": "1.2.0",
+            "bin": [
+                "bin/a",
+                "bin/b"
+            ],
+            "type": "library",
+            "notification-url": "BASE/downloads/",
+            "license": [
+                "MIT",
+                "Apache-2.0"
+            ],
+            "abandoned": true,
+            "time": "2024-02-29T13:45:10+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {
+        "acme/devlib": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=8.1"
+    },
+    "platform-dev": {},
+    "platform-overrides": {
+        "php": "8.5.0"
+    },
+    "plugin-api-version": "2.11.0"
+}

@@ -53,16 +53,10 @@ pub trait Repository {
     ) -> Result<Found>;
 
     /// The security advisories the repository publishes for these names.
-    fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>> {
-        let _ = names;
-        Ok(vec![])
-    }
+    fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>>;
 
     /// The filter-list entries the repository publishes for these names.
-    fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>> {
-        let _ = names;
-        Ok(vec![])
-    }
+    fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>>;
 }
 
 /// A repository listing its packages: the root package, a `package` repository, a lock. Packages given as JSON are
@@ -85,12 +79,12 @@ impl ArrayRepository {
 
     /// A `package` repository from its config: `package` (one or a list), `security-advisories` and `filter`.
     pub fn from_config(config: &Map<String, Value>) -> Result<ArrayRepository> {
+        // Composer's schema requires `package`, one package or a list of them.
         let pending = match config.get("package") {
-            Some(Value::Array(list)) => {
-                list.iter().filter_map(|p| p.as_object().cloned()).collect()
-            }
             Some(Value::Object(p)) => vec![p.clone()],
-            _ => vec![],
+            other => (other.and_then(Value::as_array).into_iter().flatten())
+                .filter_map(|p| p.as_object().cloned())
+                .collect(),
         };
         let mut repo = ArrayRepository::of(pending);
         for (name, list) in config
@@ -359,12 +353,8 @@ impl Pool {
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.ids.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.ids.is_empty()
     }
 
     /// The package with this id or literal.
@@ -409,10 +399,6 @@ impl Pool {
         (candidate.provides.iter().chain(&candidate.replaces))
             .any(|l| l.target == name && constraint.is_none_or(|c| c.matches(&l.constraint)))
     }
-
-    pub fn is_unacceptable(&self, index: usize) -> bool {
-        self.unacceptable.contains(&index)
-    }
 }
 
 /// `Intervals::isSubsetOf` for the shapes that decide pool loading: equal constraints, anything within `*`, a
@@ -452,15 +438,14 @@ fn simple(c: &Constraint) -> bool {
     }
 }
 
-/// Adds `c` to `existing` as Composer's union of the two would.
+/// Adds `c` to `existing` as Composer's union of the two would. `c` is never already one of `existing`'s
+/// alternatives: it would be a subset then, and nothing is merged.
 fn union(existing: &Constraint, c: Constraint) -> Constraint {
     let mut items = match existing {
         Constraint::Multi(items, false) => items.clone(),
         other => vec![other.clone()],
     };
-    if !items.contains(&c) {
-        items.push(c);
-    }
+    items.push(c);
     Constraint::Multi(items, false)
 }
 
@@ -487,15 +472,6 @@ pub struct PoolBuilder<'a> {
     path_unlocked: HashSet<String>,
     max_extended: HashSet<String>,
     counter: usize,
-}
-
-/// The index in the repository list of a package's repository; the platform and the lock are never loaded from.
-fn repo_index(p: &Package) -> usize {
-    match p.origin {
-        Origin::Root => 0,
-        Origin::Repository(i) => i,
-        Origin::Platform | Origin::Locked => usize::MAX,
-    }
 }
 
 impl<'a> PoolBuilder<'a> {
@@ -630,7 +606,7 @@ impl<'a> PoolBuilder<'a> {
         let (mut kept, mut removed) = (vec![], vec![]);
         for p in packages {
             let package = &arena[p];
-            // A locked package is checked only against the filter lists that block installs.
+            // A locked package is checked only for being abandoned and against the filter lists that block installs.
             let is_locked =
                 request.is_locked(p) || package.alias_of.is_some_and(|of| request.is_locked(of));
             let base = &arena[package.alias_of.unwrap_or(p)];
@@ -818,9 +794,8 @@ impl<'a> PoolBuilder<'a> {
         request: &Request,
         name: &str,
     ) -> Vec<String> {
-        let Some(skipped) = self.skipped.get(name) else {
-            return vec![];
-        };
+        // Called only for a skipped name.
+        let skipped = &self.skipped[name];
         if request.requires.contains_key(name) {
             return skipped.iter().map(|&p| arena[p].name.clone()).collect();
         }
@@ -930,7 +905,12 @@ impl<'a> PoolBuilder<'a> {
     }
 
     fn remove_loaded(&mut self, arena: &[Package], p: usize, index: usize) {
-        let repo = repo_index(&arena[p]);
+        // Only a repository's packages are in `loaded_per_repo`; the root is fixed and never removed, and the
+        // platform and the lock are never loaded from.
+        let repo = match arena[p].origin {
+            Origin::Repository(i) => i,
+            Origin::Root | Origin::Platform | Origin::Locked => usize::MAX,
+        };
         let mut forget = |q: usize| {
             if let Some(versions) = self
                 .loaded_per_repo

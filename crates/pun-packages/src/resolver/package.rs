@@ -91,10 +91,6 @@ impl Package {
         names
     }
 
-    pub fn pretty_string(&self) -> String {
-        format!("{} {}", self.pretty_name, self.pretty_version)
-    }
-
     /// The JSON the package was loaded from.
     pub fn data(&self) -> Map<String, Value> {
         serde_json::from_str(&self.data).expect("the JSON a package was loaded from")
@@ -136,7 +132,7 @@ fn link(name: &str, pretty_version: &str, kind: &str, target: &str, pretty: &str
 fn link_description(kind: &str) -> &str {
     match kind {
         "require" => "requires",
-        "require-dev" => "requires (for development)",
+        "require-dev" => "devRequires",
         "conflict" => "conflicts",
         "provide" => "provides",
         _ => "replaces",
@@ -299,4 +295,107 @@ pub fn alias_package(
     };
     arena.push(alias);
     arena.len() - 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn loaded(data: Value) -> Result<Vec<Package>> {
+        let mut arena = vec![];
+        let ids = load(
+            data.as_object().unwrap().clone(),
+            Origin::Locked,
+            &mut arena,
+        )?;
+        Ok(ids.into_iter().map(|i| arena[i].clone()).collect())
+    }
+
+    fn pretty(links: &[Link]) -> Vec<(&str, &str)> {
+        (links.iter())
+            .map(|l| (l.target.as_str(), l.pretty.as_str()))
+            .collect()
+    }
+
+    /// Composer 2.11.2's `ArrayLoader::load` on the same data, in PHP 8.5: its messages, versions and links.
+    #[test]
+    fn loads_as_composer() {
+        for (data, message) in [
+            (
+                json!({"version": "1.0"}),
+                r#"Unknown package has no name defined ({"version":"1.0"})."#,
+            ),
+            (
+                json!({"name": "acme/a"}),
+                "Package acme/a has no version defined.",
+            ),
+            (
+                json!({"name": "acme/a", "version": "x"}),
+                r#"Failed to normalize version for package "acme/a": Invalid version string "x""#,
+            ),
+        ] {
+            assert_eq!(format!("{:#}", loaded(data).unwrap_err()), message);
+        }
+        for (kind, description) in [
+            ("require", "requires"),
+            ("require-dev", "devRequires"),
+            ("conflict", "conflicts"),
+            ("provide", "provides"),
+            ("replace", "replaces"),
+        ] {
+            let data = json!({"name": "acme/a", "version": "1.0", kind: {"b/b": "nope"}});
+            assert_eq!(
+                loaded(data).unwrap_err().to_string(),
+                format!(
+                    "Link constraint in acme/a {description} > b/b should be a valid version constraint, got \"nope\""
+                )
+            );
+        }
+        let p = &loaded(json!({"name": "acme/a", "version": 1.5})).unwrap()[0];
+        assert_eq!(
+            (p.pretty_version.as_str(), p.version.as_str()),
+            ("1.5", "1.5.0.0")
+        );
+        let data =
+            json!({"name": "acme/a", "version": "dev-master", "version_normalized": "9999999-dev"});
+        assert_eq!(loaded(data).unwrap()[0].version, "dev-master");
+        // A link that is not a string is skipped, and a later one for the same name wins.
+        let data = json!({"name": "acme/a", "version": "1.0", "require": {"b/b": ["x"], "c/c": "^1", "C/C": "^2"}});
+        assert_eq!(pretty(&loaded(data).unwrap()[0].requires), [("c/c", "^2")]);
+    }
+
+    /// Composer 2.11.2's `CompleteAliasPackage` for a branch alias: `self.version` requirements point at the alias,
+    /// a `self.version` replace is added for it.
+    #[test]
+    fn aliases_as_composer() {
+        let data = json!({
+            "name": "acme/a",
+            "version": "dev-main",
+            "extra": {"branch-alias": {"dev-main": "1.0.x-dev"}},
+            "require": {"acme/b": "self.version", "acme/d": "^1.0"},
+            "require-dev": {"acme/e": "self.version"},
+            "replace": {"acme/c": "self.version"}
+        });
+        let packages = loaded(data).unwrap();
+        let alias = &packages[0];
+        assert_eq!(alias.version, "1.0.9999999.9999999-dev");
+        assert_eq!(
+            pretty(&alias.requires),
+            [("acme/b", "1.0.x-dev"), ("acme/d", "^1.0")]
+        );
+        let exact = Constraint::exact("1.0.9999999.9999999-dev");
+        assert_eq!(alias.requires[0].constraint, exact);
+        assert_eq!(pretty(&alias.dev_requires), [("acme/e", "1.0.x-dev")]);
+        assert_eq!(
+            pretty(&alias.replaces),
+            [("acme/c", "self.version"), ("acme/c", "1.0.x-dev")]
+        );
+        assert!(alias.self_version_requires);
+        // The alias comes first and points at the branch, the first package in the arena.
+        assert_eq!(
+            (alias.alias_of, packages[1].version.as_str()),
+            (Some(0), "dev-main")
+        );
+    }
 }
