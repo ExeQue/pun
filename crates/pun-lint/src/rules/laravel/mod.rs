@@ -61,72 +61,8 @@ pub(crate) mod property_attribute;
 mod property_rules;
 mod query_builder;
 
-pub use add_factory_extends_phpdoc::AddFactoryExtendsPhpdoc;
-pub use add_has_factory_trait::AddHasFactoryTrait;
-pub use add_query_closure_type::AddQueryClosureType;
-pub use add_relation_generics::AddRelationGenerics;
-pub use add_relation_query_closure_type::AddRelationQueryClosureType;
-pub use add_tap_closure_type::AddTapClosureType;
-pub use no_app_array_access::NoAppArrayAccess;
-pub use no_collection_aliases::NoCollectionAliases;
-pub use no_controller_middleware::NoControllerMiddleware;
-pub use no_negated_blank_filled::NoNegatedBlankFilled;
-pub use no_negated_contains::NoNegatedContains;
-pub use no_negated_filter::NoNegatedFilter;
-pub use no_negated_when::NoNegatedWhen;
-pub use no_request_all::NoRequestAll;
-pub use no_useless_value_call::NoUselessValueCall;
-pub use no_useless_with_call::NoUselessWithCall;
-pub use prefer_abort_if::PreferAbortIf;
-pub use prefer_anonymous_migration::PreferAnonymousMigration;
-pub use prefer_back_helper::PreferBackHelper;
-pub use prefer_casts_method::PreferCastsMethod;
-pub use prefer_class_container_key::{ContainerService, PreferClassContainerKey};
-pub use prefer_closure_only_bind::PreferClosureOnlyBind;
-pub use prefer_collected_by_attribute::PreferCollectedByAttribute;
-pub use prefer_collection_all::PreferCollectionAll;
-pub use prefer_constructor_injection::{Injection, PreferConstructorInjection};
-pub use prefer_date_facade::PreferDateFacade;
-pub use prefer_default_argument::PreferDefaultArgument;
-pub use prefer_dispatch_helper::PreferDispatchHelper;
-pub use prefer_env_helper::PreferEnvHelper;
-pub use prefer_environment_check::PreferEnvironmentCheck;
-pub use prefer_exception_class_string::PreferExceptionClassString;
-pub use prefer_explicit_json_call::PreferExplicitJsonCall;
-pub use prefer_facade_over_app::PreferFacadeOverApp;
-pub use prefer_latest_oldest::PreferLatestOldest;
-pub use prefer_nullsafe::PreferNullsafe;
-pub use prefer_protected_model_methods::PreferProtectedModelMethods;
-pub use prefer_query_builder_call::PreferQueryBuilderCall;
-pub use prefer_report_if::PreferReportIf;
-pub use prefer_request_facade::PreferRequestFacade;
-pub use prefer_request_server::PreferRequestServer;
-pub use prefer_request_validate::PreferRequestValidate;
-pub use prefer_resolve_helper::PreferResolveHelper;
-pub use prefer_scope_attribute::PreferScopeAttribute;
-pub use prefer_session_facade::PreferSessionFacade;
-pub use prefer_sleep_facade::PreferSleepFacade;
-pub use prefer_status_assertion_method::PreferStatusAssertionMethod;
-pub use prefer_str_starts_with::PreferStrStartsWith;
-pub use prefer_table_attribute::PreferTableAttribute;
-pub use prefer_throw_if::PreferThrowIf;
-pub use prefer_to_route_helper::PreferToRouteHelper;
-pub use prefer_today::PreferToday;
-pub use prefer_travel_to::PreferTravelTo;
-pub use prefer_typed_assert_closure::PreferTypedAssertClosure;
-pub use prefer_validation_rule_array::PreferValidationRuleArray;
-pub use prefer_view_array::PreferViewArray;
-pub use property_rules::{
-    PreferAliasesAttribute, PreferAppendsAttribute, PreferBackoffAttribute,
-    PreferCollectsAttribute, PreferCommandHiddenAttribute, PreferConnectionAttribute,
-    PreferDateFormatAttribute, PreferDelayAttribute, PreferDeleteWhenMissingModelsAttribute,
-    PreferDescriptionAttribute, PreferErrorBagAttribute, PreferFailOnTimeoutAttribute,
-    PreferFillableAttribute, PreferGuardedAttribute, PreferHelpAttribute, PreferHiddenAttribute,
-    PreferJobConnectionAttribute, PreferMaxExceptionsAttribute, PreferPreserveKeysAttribute,
-    PreferQueueAttribute, PreferSignatureAttribute, PreferStopOnFirstFailureAttribute,
-    PreferTimeoutAttribute, PreferTouchesAttribute, PreferTriesAttribute, PreferUniqueForAttribute,
-    PreferVisibleAttribute, PreferWithoutIncrementingAttribute, PreferWithoutTimestampsAttribute,
-};
+pub use prefer_class_container_key::ContainerService;
+pub use prefer_constructor_injection::Injection;
 
 use mago_syntax::cst::{
     Argument, ArgumentList, Assignment, AssignmentOperator, Call, ClassLikeMemberSelector,
@@ -135,96 +71,96 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, Report};
 use names::resolve_class_name;
 
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoNegatedBlankFilled),
-        Box::new(PreferBackHelper),
-        Box::new(PreferToRouteHelper),
-        Box::new(PreferEnvHelper),
-        Box::new(PreferExceptionClassString),
-        Box::new(PreferSleepFacade),
-        Box::new(PreferToday),
-        Box::new(PreferRequestServer),
-        Box::new(PreferStrStartsWith),
-        Box::new(PreferSessionFacade),
-        Box::new(PreferAbortIf),
-        Box::new(PreferReportIf),
-        Box::new(PreferThrowIf),
-        Box::new(PreferResolveHelper),
-        Box::new(PreferFacadeOverApp),
-        Box::new(NoRequestAll),
-        Box::new(PreferCastsMethod),
-        Box::new(PreferAnonymousMigration),
-        Box::new(PreferNullsafe::default()),
-        Box::new(PreferDateFacade),
-        Box::new(PreferRequestFacade),
-        Box::new(PreferDefaultArgument),
-        Box::new(PreferExplicitJsonCall),
-        Box::new(PreferTravelTo),
-        Box::new(PreferAliasesAttribute),
-        Box::new(PreferAppendsAttribute),
-        Box::new(PreferBackoffAttribute),
-        Box::new(PreferCollectedByAttribute),
-        Box::new(PreferCollectsAttribute),
-        Box::new(PreferCommandHiddenAttribute),
-        Box::new(PreferConnectionAttribute),
-        Box::new(PreferDateFormatAttribute),
-        Box::new(PreferDelayAttribute),
-        Box::new(PreferDeleteWhenMissingModelsAttribute),
-        Box::new(PreferDescriptionAttribute),
-        Box::new(PreferErrorBagAttribute),
-        Box::new(PreferFailOnTimeoutAttribute),
-        Box::new(PreferFillableAttribute),
-        Box::new(PreferGuardedAttribute),
-        Box::new(PreferHelpAttribute),
-        Box::new(PreferHiddenAttribute),
-        Box::new(PreferJobConnectionAttribute),
-        Box::new(PreferMaxExceptionsAttribute),
-        Box::new(PreferPreserveKeysAttribute),
-        Box::new(PreferQueueAttribute),
-        Box::new(PreferSignatureAttribute),
-        Box::new(PreferStopOnFirstFailureAttribute),
-        Box::new(PreferTimeoutAttribute),
-        Box::new(PreferTableAttribute),
-        Box::new(PreferTouchesAttribute),
-        Box::new(PreferTriesAttribute),
-        Box::new(PreferUniqueForAttribute),
-        Box::new(PreferVisibleAttribute),
-        Box::new(PreferWithoutIncrementingAttribute),
-        Box::new(PreferWithoutTimestampsAttribute),
-        Box::new(PreferScopeAttribute),
-        Box::new(NoCollectionAliases),
-        Box::new(NoNegatedContains),
-        Box::new(NoNegatedFilter),
-        Box::new(NoNegatedWhen),
-        Box::new(PreferStatusAssertionMethod),
-        Box::new(PreferEnvironmentCheck),
-        Box::new(PreferTypedAssertClosure),
-        Box::new(NoUselessValueCall),
-        Box::new(NoUselessWithCall),
-        Box::new(PreferDispatchHelper),
-        Box::new(PreferValidationRuleArray),
-        Box::new(NoControllerMiddleware),
-        Box::new(PreferViewArray),
-        Box::new(AddQueryClosureType),
-        Box::new(AddRelationQueryClosureType),
-        Box::new(PreferProtectedModelMethods),
-        Box::new(PreferLatestOldest::default()),
-        Box::new(PreferRequestValidate),
-        Box::new(PreferCollectionAll),
-        Box::new(PreferClosureOnlyBind),
-        Box::new(AddHasFactoryTrait::default()),
-        Box::new(PreferQueryBuilderCall::default()),
-        Box::new(PreferClassContainerKey::default()),
-        Box::new(AddFactoryExtendsPhpdoc),
-        Box::new(AddRelationGenerics),
-        Box::new(AddTapClosureType),
-        Box::new(NoAppArrayAccess),
-        Box::new(PreferConstructorInjection::default()),
-    ]
+rules! {
+    pub(super) fn all {
+        no_negated_blank_filled => NoNegatedBlankFilled,
+        prefer_back_helper => PreferBackHelper,
+        prefer_to_route_helper => PreferToRouteHelper,
+        prefer_env_helper => PreferEnvHelper,
+        prefer_exception_class_string => PreferExceptionClassString,
+        prefer_sleep_facade => PreferSleepFacade,
+        prefer_today => PreferToday,
+        prefer_request_server => PreferRequestServer,
+        prefer_str_starts_with => PreferStrStartsWith,
+        prefer_session_facade => PreferSessionFacade,
+        prefer_abort_if => PreferAbortIf,
+        prefer_report_if => PreferReportIf,
+        prefer_throw_if => PreferThrowIf,
+        prefer_resolve_helper => PreferResolveHelper,
+        prefer_facade_over_app => PreferFacadeOverApp,
+        no_request_all => NoRequestAll,
+        prefer_casts_method => PreferCastsMethod,
+        prefer_anonymous_migration => PreferAnonymousMigration,
+        prefer_nullsafe => PreferNullsafe::default(),
+        prefer_date_facade => PreferDateFacade,
+        prefer_request_facade => PreferRequestFacade,
+        prefer_default_argument => PreferDefaultArgument,
+        prefer_explicit_json_call => PreferExplicitJsonCall,
+        prefer_travel_to => PreferTravelTo,
+        property_rules => PreferAliasesAttribute,
+        property_rules => PreferAppendsAttribute,
+        property_rules => PreferBackoffAttribute,
+        prefer_collected_by_attribute => PreferCollectedByAttribute,
+        property_rules => PreferCollectsAttribute,
+        property_rules => PreferCommandHiddenAttribute,
+        property_rules => PreferConnectionAttribute,
+        property_rules => PreferDateFormatAttribute,
+        property_rules => PreferDelayAttribute,
+        property_rules => PreferDeleteWhenMissingModelsAttribute,
+        property_rules => PreferDescriptionAttribute,
+        property_rules => PreferErrorBagAttribute,
+        property_rules => PreferFailOnTimeoutAttribute,
+        property_rules => PreferFillableAttribute,
+        property_rules => PreferGuardedAttribute,
+        property_rules => PreferHelpAttribute,
+        property_rules => PreferHiddenAttribute,
+        property_rules => PreferJobConnectionAttribute,
+        property_rules => PreferMaxExceptionsAttribute,
+        property_rules => PreferPreserveKeysAttribute,
+        property_rules => PreferQueueAttribute,
+        property_rules => PreferSignatureAttribute,
+        property_rules => PreferStopOnFirstFailureAttribute,
+        property_rules => PreferTimeoutAttribute,
+        prefer_table_attribute => PreferTableAttribute,
+        property_rules => PreferTouchesAttribute,
+        property_rules => PreferTriesAttribute,
+        property_rules => PreferUniqueForAttribute,
+        property_rules => PreferVisibleAttribute,
+        property_rules => PreferWithoutIncrementingAttribute,
+        property_rules => PreferWithoutTimestampsAttribute,
+        prefer_scope_attribute => PreferScopeAttribute,
+        no_collection_aliases => NoCollectionAliases,
+        no_negated_contains => NoNegatedContains,
+        no_negated_filter => NoNegatedFilter,
+        no_negated_when => NoNegatedWhen,
+        prefer_status_assertion_method => PreferStatusAssertionMethod,
+        prefer_environment_check => PreferEnvironmentCheck,
+        prefer_typed_assert_closure => PreferTypedAssertClosure,
+        no_useless_value_call => NoUselessValueCall,
+        no_useless_with_call => NoUselessWithCall,
+        prefer_dispatch_helper => PreferDispatchHelper,
+        prefer_validation_rule_array => PreferValidationRuleArray,
+        no_controller_middleware => NoControllerMiddleware,
+        prefer_view_array => PreferViewArray,
+        add_query_closure_type => AddQueryClosureType,
+        add_relation_query_closure_type => AddRelationQueryClosureType,
+        prefer_protected_model_methods => PreferProtectedModelMethods,
+        prefer_latest_oldest => PreferLatestOldest::default(),
+        prefer_request_validate => PreferRequestValidate,
+        prefer_collection_all => PreferCollectionAll,
+        prefer_closure_only_bind => PreferClosureOnlyBind,
+        add_has_factory_trait => AddHasFactoryTrait::default(),
+        prefer_query_builder_call => PreferQueryBuilderCall::default(),
+        prefer_class_container_key => PreferClassContainerKey::default(),
+        add_factory_extends_phpdoc => AddFactoryExtendsPhpdoc,
+        add_relation_generics => AddRelationGenerics,
+        add_tap_closure_type => AddTapClosureType,
+        no_app_array_access => NoAppArrayAccess,
+        prefer_constructor_injection => PreferConstructorInjection::default(),
+    }
 }
 
 pub(crate) fn is_name(name: &[u8], wanted: &str) -> bool {

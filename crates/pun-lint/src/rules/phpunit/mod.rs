@@ -88,91 +88,7 @@ mod require_string_assert_argument;
 
 pub(crate) use crate::rules::support::expressions::text;
 pub(crate) use crate::rules::support::names::resolve_class_name as resolve;
-pub use add_allow_mock_objects_attribute::AddAllowMockObjectsAttribute;
-pub use add_closure_return_type_from_assert::AddClosureReturnTypeFromAssert;
-pub use add_data_provider_allow_mock_objects::AddDataProviderAllowMockObjects;
-pub use add_data_provider_iterator_return_type::AddDataProviderIteratorReturnType;
-pub use add_depended_test_return_type::AddDependedTestReturnType;
-pub use add_instanceof_assert::{AddInstanceofAssert, AddInstanceofAssertForArgument};
-pub use add_mock_intersection_param::AddMockIntersectionParam;
-pub use add_mock_intersection_type::AddMockIntersectionType;
-pub use add_mock_object_type::AddMockObjectType;
-pub use add_param_type_depends::AddParamTypeDepends;
-pub use add_return_type_from_mock_object::AddReturnTypeFromMockObject;
-pub use add_stub_intersection_type::AddStubIntersectionType;
-pub use add_test_void_return::AddTestVoidReturn;
-pub use add_will_return_callback_param_type::AddWillReturnCallbackParamType;
-pub use no_assert_contains_only::NoAssertContainsOnly;
-pub use no_assert_is_type::NoAssertIsType;
-pub use no_assert_same_type_mismatch::NoAssertSameTypeMismatch;
-pub use no_at_matcher::NoAtMatcher;
-pub use no_bare_mock_assign::NoBareMockAssign;
-pub use no_bare_mock_builder::NoBareMockBuilder;
-pub use no_empty_test::NoEmptyTest;
-pub use no_entity_mock::NoEntityMock;
-pub use no_expects_any::NoExpectsAny;
-pub use no_final_constructor_override::NoFinalConstructorOverride;
-pub use no_flipped_assertion::NoFlippedAssertion;
-pub use no_float_delta_parameter::NoFloatDeltaParameter;
-pub use no_mock_intersection_property::NoMockIntersectionProperty;
-pub use no_negated_assertion::NoNegatedAssertion;
-pub use no_setup_override_attribute::NoSetupOverrideAttribute;
-pub use no_stub_with_expectations::NoStubWithExpectations;
-pub use no_test_constructor::NoTestConstructor;
-pub use no_unused_mock::NoUnusedMock;
-pub use no_unused_mock_property::NoUnusedMockProperty;
-pub use no_value_object_mock::NoValueObjectMock;
-pub use prefer_assert::PreferAssert;
-pub use prefer_assert_array_has_key::PreferAssertArrayHasKey;
-pub use prefer_assert_count::PreferAssertCount;
-pub use prefer_assert_instanceof::PreferAssertInstanceof;
-pub use prefer_assert_instanceof_over_empty::PreferAssertInstanceofOverEmpty;
-pub use prefer_assert_instances_of::PreferAssertInstancesOf;
-pub use prefer_assert_null_true_false::PreferAssertNullTrueFalse;
-pub use prefer_assert_string_contains::PreferAssertStringContains;
-pub use prefer_assert_true_false::PreferAssertTrueFalse;
-pub use prefer_attribute_over_annotation::PreferAttributeOverAnnotation;
-pub use prefer_comparison_assertion::PreferComparisonAssertion;
-pub use prefer_covers_attribute::PreferCoversAttribute;
-pub use prefer_create_stub::PreferCreateStub;
-pub use prefer_create_stub_argument::PreferCreateStubArgument;
-pub use prefer_create_stub_expression::PreferCreateStubExpression;
-pub use prefer_create_stub_in_coalesce::PreferCreateStubInCoalesce;
-pub use prefer_data_provider::PreferDataProvider;
-pub use prefer_data_provider_attribute::PreferDataProviderAttribute;
-pub use prefer_depends_attribute::PreferDependsAttribute;
-pub use prefer_inline_create_stub::PreferInlineCreateStub;
-pub use prefer_local_over_setup_property::PreferLocalOverSetupProperty;
-pub use prefer_merged_will_return_callback::PreferMergedWillReturnCallback;
-pub use prefer_mock_intersection_return::PreferMockIntersectionReturn;
-pub use prefer_named_data_provider_keys::PreferNamedDataProviderKeys;
-pub use prefer_narrow_will_return_callback::PreferNarrowWillReturnCallback;
-pub use prefer_narrow_with_consecutive::PreferNarrowWithConsecutive;
-pub use prefer_property_assertions::PreferPropertyAssertions;
-pub use prefer_requires_attribute::PreferRequiresAttribute;
-pub use prefer_same_for_scalars::PreferSameForScalars;
-pub use prefer_simple_callback_assert::PreferSimpleCallbackAssert;
-pub use prefer_simple_mock_expectation::PreferSimpleMockExpectation;
-pub use prefer_simple_with_matcher::PreferSimpleWithMatcher;
-pub use prefer_specific_true_false_assertion::PreferSpecificTrueFalseAssertion;
-pub use prefer_specific_will_method::PreferSpecificWillMethod;
-pub use prefer_standalone_asserts_over_callback::PreferStandaloneAssertsOverCallback;
-pub use prefer_stub_var::PreferStubVar;
-pub use prefer_test_attribute::PreferTestAttribute;
-pub use prefer_test_prefix::PreferTestPrefix;
-pub use prefer_test_with_attribute::PreferTestWithAttribute;
 pub(crate) use prefer_test_with_attribute::print_float;
-pub use prefer_this_call::PreferThisCall;
-pub use prefer_ticket_attribute::PreferTicketAttribute;
-pub use prefer_will_return_callback::PreferWillReturnCallback;
-pub use prefer_with_is_instance_of::PreferWithIsInstanceOf;
-pub use prefer_yield_data_provider::PreferYieldDataProvider;
-pub use require_data_provider_newlines::RequireDataProviderNewlines;
-pub use require_exact_test_argument_type::RequireExactTestArgumentType;
-pub use require_final_test_case::RequireFinalTestCase;
-pub use require_mock_expects::RequireMockExpects;
-pub use require_strict_types_in_tests::RequireStrictTypesInTests;
-pub use require_string_assert_argument::RequireStringAssertArgument;
 
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -182,100 +98,100 @@ use mago_syntax::cst::{
 };
 use pun_problem::{Edit, Span};
 
+use crate::Context;
 use crate::rules::laravel::is_a;
 use crate::rules::types::class_scope;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Rule};
 
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoEmptyTest),
-        Box::new(NoNegatedAssertion),
-        Box::new(PreferAssertNullTrueFalse),
-        Box::new(PreferAssertTrueFalse),
-        Box::new(PreferAssertStringContains),
-        Box::new(NoAssertIsType),
-        Box::new(NoAssertContainsOnly),
-        Box::new(PreferComparisonAssertion),
-        Box::new(PreferAssertInstanceof),
-        Box::new(PreferAssertInstanceofOverEmpty),
-        Box::new(PreferPropertyAssertions),
-        Box::new(AddClosureReturnTypeFromAssert),
-        Box::new(NoFlippedAssertion),
-        Box::new(NoFloatDeltaParameter),
-        Box::new(PreferSpecificTrueFalseAssertion),
-        Box::new(PreferAssertArrayHasKey),
-        Box::new(RequireStringAssertArgument),
-        Box::new(PreferAssertInstancesOf),
-        Box::new(NoAssertSameTypeMismatch),
-        Box::new(PreferSameForScalars),
-        Box::new(PreferAssertCount),
-        Box::new(NoExpectsAny),
-        Box::new(PreferSimpleWithMatcher),
-        Box::new(PreferSpecificWillMethod),
-        Box::new(PreferSimpleMockExpectation),
-        Box::new(PreferNarrowWithConsecutive),
-        Box::new(NoFinalConstructorOverride),
-        Box::new(NoSetupOverrideAttribute),
-        Box::new(RequireStrictTypesInTests),
-        Box::new(PreferThisCall),
-        Box::new(NoUnusedMock),
-        Box::new(NoAtMatcher),
-        Box::new(NoBareMockBuilder),
-        Box::new(PreferCreateStubInCoalesce),
-        Box::new(RequireDataProviderNewlines),
-        Box::new(PreferWithIsInstanceOf),
-        Box::new(PreferSimpleCallbackAssert),
-        Box::new(PreferNarrowWillReturnCallback),
-        Box::new(PreferAssert),
-        Box::new(PreferMergedWillReturnCallback),
-        Box::new(AddDependedTestReturnType),
-        Box::new(NoTestConstructor),
-        Box::new(PreferNamedDataProviderKeys),
-        Box::new(PreferTestPrefix),
-        Box::new(NoValueObjectMock),
-        Box::new(NoBareMockAssign),
-        Box::new(PreferStandaloneAssertsOverCallback),
-        Box::new(PreferTicketAttribute),
-        Box::new(PreferDataProviderAttribute),
-        Box::new(PreferRequiresAttribute),
-        Box::new(PreferDependsAttribute),
-        Box::new(PreferCoversAttribute),
-        Box::new(PreferTestWithAttribute),
-        Box::new(PreferAttributeOverAnnotation::default()),
-        Box::new(PreferDataProvider),
-        Box::new(RequireFinalTestCase),
-        Box::new(AddTestVoidReturn),
-        Box::new(AddDataProviderIteratorReturnType),
-        Box::new(AddReturnTypeFromMockObject),
-        Box::new(PreferCreateStubExpression),
-        Box::new(NoMockIntersectionProperty),
-        Box::new(NoUnusedMockProperty),
-        Box::new(PreferCreateStub),
-        Box::new(RequireMockExpects),
-        Box::new(PreferInlineCreateStub),
-        Box::new(PreferStubVar),
-        Box::new(PreferMockIntersectionReturn),
-        Box::new(AddMockIntersectionType),
-        Box::new(AddStubIntersectionType),
-        Box::new(AddMockObjectType),
-        Box::new(AddMockIntersectionParam),
-        Box::new(AddAllowMockObjectsAttribute),
-        Box::new(AddDataProviderAllowMockObjects),
-        Box::new(AddParamTypeDepends),
-        Box::new(PreferLocalOverSetupProperty),
-        Box::new(RequireExactTestArgumentType),
-        Box::new(PreferTestAttribute),
-        Box::new(NoEntityMock),
-        Box::new(PreferYieldDataProvider),
-        Box::new(NoStubWithExpectations),
-        Box::new(PreferCreateStubArgument),
-        Box::new(AddWillReturnCallbackParamType),
-        Box::new(PreferWillReturnCallback),
-        Box::new(AddInstanceofAssert),
-        Box::new(AddInstanceofAssertForArgument),
-    ]
+rules! {
+    pub(super) fn all {
+        no_empty_test => NoEmptyTest,
+        no_negated_assertion => NoNegatedAssertion,
+        prefer_assert_null_true_false => PreferAssertNullTrueFalse,
+        prefer_assert_true_false => PreferAssertTrueFalse,
+        prefer_assert_string_contains => PreferAssertStringContains,
+        no_assert_is_type => NoAssertIsType,
+        no_assert_contains_only => NoAssertContainsOnly,
+        prefer_comparison_assertion => PreferComparisonAssertion,
+        prefer_assert_instanceof => PreferAssertInstanceof,
+        prefer_assert_instanceof_over_empty => PreferAssertInstanceofOverEmpty,
+        prefer_property_assertions => PreferPropertyAssertions,
+        add_closure_return_type_from_assert => AddClosureReturnTypeFromAssert,
+        no_flipped_assertion => NoFlippedAssertion,
+        no_float_delta_parameter => NoFloatDeltaParameter,
+        prefer_specific_true_false_assertion => PreferSpecificTrueFalseAssertion,
+        prefer_assert_array_has_key => PreferAssertArrayHasKey,
+        require_string_assert_argument => RequireStringAssertArgument,
+        prefer_assert_instances_of => PreferAssertInstancesOf,
+        no_assert_same_type_mismatch => NoAssertSameTypeMismatch,
+        prefer_same_for_scalars => PreferSameForScalars,
+        prefer_assert_count => PreferAssertCount,
+        no_expects_any => NoExpectsAny,
+        prefer_simple_with_matcher => PreferSimpleWithMatcher,
+        prefer_specific_will_method => PreferSpecificWillMethod,
+        prefer_simple_mock_expectation => PreferSimpleMockExpectation,
+        prefer_narrow_with_consecutive => PreferNarrowWithConsecutive,
+        no_final_constructor_override => NoFinalConstructorOverride,
+        no_setup_override_attribute => NoSetupOverrideAttribute,
+        require_strict_types_in_tests => RequireStrictTypesInTests,
+        prefer_this_call => PreferThisCall,
+        no_unused_mock => NoUnusedMock,
+        no_at_matcher => NoAtMatcher,
+        no_bare_mock_builder => NoBareMockBuilder,
+        prefer_create_stub_in_coalesce => PreferCreateStubInCoalesce,
+        require_data_provider_newlines => RequireDataProviderNewlines,
+        prefer_with_is_instance_of => PreferWithIsInstanceOf,
+        prefer_simple_callback_assert => PreferSimpleCallbackAssert,
+        prefer_narrow_will_return_callback => PreferNarrowWillReturnCallback,
+        prefer_assert => PreferAssert,
+        prefer_merged_will_return_callback => PreferMergedWillReturnCallback,
+        add_depended_test_return_type => AddDependedTestReturnType,
+        no_test_constructor => NoTestConstructor,
+        prefer_named_data_provider_keys => PreferNamedDataProviderKeys,
+        prefer_test_prefix => PreferTestPrefix,
+        no_value_object_mock => NoValueObjectMock,
+        no_bare_mock_assign => NoBareMockAssign,
+        prefer_standalone_asserts_over_callback => PreferStandaloneAssertsOverCallback,
+        prefer_ticket_attribute => PreferTicketAttribute,
+        prefer_data_provider_attribute => PreferDataProviderAttribute,
+        prefer_requires_attribute => PreferRequiresAttribute,
+        prefer_depends_attribute => PreferDependsAttribute,
+        prefer_covers_attribute => PreferCoversAttribute,
+        prefer_test_with_attribute => PreferTestWithAttribute,
+        prefer_attribute_over_annotation => PreferAttributeOverAnnotation::default(),
+        prefer_data_provider => PreferDataProvider,
+        require_final_test_case => RequireFinalTestCase,
+        add_test_void_return => AddTestVoidReturn,
+        add_data_provider_iterator_return_type => AddDataProviderIteratorReturnType,
+        add_return_type_from_mock_object => AddReturnTypeFromMockObject,
+        prefer_create_stub_expression => PreferCreateStubExpression,
+        no_mock_intersection_property => NoMockIntersectionProperty,
+        no_unused_mock_property => NoUnusedMockProperty,
+        prefer_create_stub => PreferCreateStub,
+        require_mock_expects => RequireMockExpects,
+        prefer_inline_create_stub => PreferInlineCreateStub,
+        prefer_stub_var => PreferStubVar,
+        prefer_mock_intersection_return => PreferMockIntersectionReturn,
+        add_mock_intersection_type => AddMockIntersectionType,
+        add_stub_intersection_type => AddStubIntersectionType,
+        add_mock_object_type => AddMockObjectType,
+        add_mock_intersection_param => AddMockIntersectionParam,
+        add_allow_mock_objects_attribute => AddAllowMockObjectsAttribute,
+        add_data_provider_allow_mock_objects => AddDataProviderAllowMockObjects,
+        add_param_type_depends => AddParamTypeDepends,
+        prefer_local_over_setup_property => PreferLocalOverSetupProperty,
+        require_exact_test_argument_type => RequireExactTestArgumentType,
+        prefer_test_attribute => PreferTestAttribute,
+        no_entity_mock => NoEntityMock,
+        prefer_yield_data_provider => PreferYieldDataProvider,
+        no_stub_with_expectations => NoStubWithExpectations,
+        prefer_create_stub_argument => PreferCreateStubArgument,
+        add_will_return_callback_param_type => AddWillReturnCallbackParamType,
+        prefer_will_return_callback => PreferWillReturnCallback,
+        add_instanceof_assert => AddInstanceofAssert,
+        add_instanceof_assert => AddInstanceofAssertForArgument,
+    }
 }
 
 pub(crate) const TEST_CASE: &str = "PHPUnit\\Framework\\TestCase";

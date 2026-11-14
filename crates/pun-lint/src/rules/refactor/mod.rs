@@ -12,20 +12,8 @@ mod rename_method;
 mod replace_function;
 mod replace_static_with_method;
 
-pub use add_override_attribute::AddOverrideAttribute;
-pub use prefer_attribute_over_annotation::AnnotationToAttribute;
-pub use remove_function_argument::RemoveFunctionArgument;
-pub use remove_function_call::RemoveFunctionCall;
-pub use rename_cast::RenameCast;
-pub use rename_class::RenameClass;
-pub use rename_class_constant::RenameClassConstant;
-pub use rename_constant::RenameConstant;
-pub use rename_function::RenameFunction;
-pub use rename_method::{MethodRename, RenameMethod};
-pub use replace_function::{
-    ReplaceFunctionWithConstant, ReplaceFunctionWithNew, ReplaceFunctionWithStatic,
-};
-pub use replace_static_with_method::{ReplaceStaticWithMethod, StaticToMethod};
+pub use rename_method::MethodRename;
+pub use replace_static_with_method::StaticToMethod;
 
 use std::sync::LazyLock;
 
@@ -38,29 +26,29 @@ use serde_json::{Map, Value};
 
 use super::types::class_scope;
 use super::types::facts::facts;
+use crate::Context;
 use crate::rules::support::names::{
     imported, imported_member, resolve_class_name, scope_statements,
 };
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Rule};
 
-pub(super) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(AddOverrideAttribute),
-        Box::new(AnnotationToAttribute::default()),
-        Box::new(RemoveFunctionArgument::default()),
-        Box::new(RemoveFunctionCall::default()),
-        Box::new(RenameCast::default()),
-        Box::new(RenameClass::default()),
-        Box::new(RenameClassConstant::default()),
-        Box::new(RenameConstant::default()),
-        Box::new(RenameFunction::default()),
-        Box::new(RenameMethod::default()),
-        Box::new(ReplaceFunctionWithConstant::default()),
-        Box::new(ReplaceFunctionWithNew::default()),
-        Box::new(ReplaceFunctionWithStatic::default()),
-        Box::new(ReplaceStaticWithMethod::default()),
-    ]
+rules! {
+    pub(super) fn all {
+        add_override_attribute => AddOverrideAttribute,
+        prefer_attribute_over_annotation => AnnotationToAttribute::default(),
+        remove_function_argument => RemoveFunctionArgument::default(),
+        remove_function_call => RemoveFunctionCall::default(),
+        rename_cast => RenameCast::default(),
+        rename_class => RenameClass::default(),
+        rename_class_constant => RenameClassConstant::default(),
+        rename_constant => RenameConstant::default(),
+        rename_function => RenameFunction::default(),
+        rename_method => RenameMethod::default(),
+        replace_function => ReplaceFunctionWithConstant::default(),
+        replace_function => ReplaceFunctionWithNew::default(),
+        replace_function => ReplaceFunctionWithStatic::default(),
+        replace_static_with_method => ReplaceStaticWithMethod::default(),
+    }
 }
 
 fn table(options: &Value) -> Result<Option<&Map<String, Value>>, String> {

@@ -57,65 +57,6 @@ mod prefer_to_throw;
 mod prefer_type_matchers;
 mod require_type_matcher_first;
 
-pub use no_before_all_in_describe::NoBeforeAllInDescribe;
-pub use no_expect_exception::NoExpectException;
-pub use no_focused_test::NoFocusedTest;
-pub use no_invalid_repeat::NoInvalidRepeat;
-pub use no_negated_boolean_matcher::NoNegatedBooleanMatcher;
-pub use no_redundant_type_expectation::NoRedundantTypeExpectation;
-pub use no_redundant_uses::NoRedundantUses;
-pub use no_static_test_closure::NoStaticTestClosure;
-pub use prefer_chained_expect::PreferChainedExpect;
-pub use prefer_comparison_matchers::PreferComparisonMatchers;
-pub use prefer_defer::PreferDefer;
-pub use prefer_each_modifier::PreferEachModifier;
-pub use prefer_expect::PreferExpect;
-pub use prefer_extend::PreferExtend;
-pub use prefer_filesystem_matchers::PreferFilesystemMatchers;
-pub use prefer_not_modifier::PreferNotModifier;
-pub use prefer_sequence::PreferSequence;
-pub use prefer_strict_equality_matchers::PreferStrictEqualityMatchers;
-pub use prefer_to_be_alpha::PreferToBeAlpha;
-pub use prefer_to_be_alpha_numeric::PreferToBeAlphaNumeric;
-pub use prefer_to_be_between::PreferToBeBetween;
-pub use prefer_to_be_digits::PreferToBeDigits;
-pub use prefer_to_be_directory::PreferToBeDirectory;
-pub use prefer_to_be_empty::PreferToBeEmpty;
-pub use prefer_to_be_file::PreferToBeFile;
-pub use prefer_to_be_in::PreferToBeIn;
-pub use prefer_to_be_infinite::PreferToBeInfinite;
-pub use prefer_to_be_instance_of::PreferToBeInstanceOf;
-pub use prefer_to_be_json::PreferToBeJson;
-pub use prefer_to_be_list::PreferToBeList;
-pub use prefer_to_be_lowercase::PreferToBeLowercase;
-pub use prefer_to_be_nan::PreferToBeNan;
-pub use prefer_to_be_true_false::PreferToBeTrueFalse;
-pub use prefer_to_be_truthy_falsy::PreferToBeTruthyFalsy;
-pub use prefer_to_be_uppercase::PreferToBeUppercase;
-pub use prefer_to_be_url::PreferToBeUrl;
-pub use prefer_to_be_uuid::PreferToBeUuid;
-pub use prefer_to_contain::PreferToContain;
-pub use prefer_to_contain_equal::PreferToContainEqual;
-pub use prefer_to_contain_only_instances_of::PreferToContainOnlyInstancesOf;
-pub use prefer_to_end_with::PreferToEndWith;
-pub use prefer_to_equal_canonicalizing::PreferToEqualCanonicalizing;
-pub use prefer_to_equal_with_delta::PreferToEqualWithDelta;
-pub use prefer_to_have_count::PreferToHaveCount;
-pub use prefer_to_have_key::PreferToHaveKey;
-pub use prefer_to_have_keys::PreferToHaveKeys;
-pub use prefer_to_have_length::PreferToHaveLength;
-pub use prefer_to_have_method_on_class::PreferToHaveMethodOnClass;
-pub use prefer_to_have_properties::PreferToHaveProperties;
-pub use prefer_to_have_property::PreferToHaveProperty;
-pub use prefer_to_have_same_size::PreferToHaveSameSize;
-pub use prefer_to_match::PreferToMatch;
-pub use prefer_to_match_array::PreferToMatchArray;
-pub use prefer_to_match_object::PreferToMatchObject;
-pub use prefer_to_start_with::PreferToStartWith;
-pub use prefer_to_throw::PreferToThrow;
-pub use prefer_type_matchers::PreferTypeMatchers;
-pub use require_type_matcher_first::RequireTypeMatcherFirst;
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
@@ -132,69 +73,69 @@ use super::types::facts::facts;
 use crate::rules::phpunit::expr_text;
 use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, Report};
 
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoBeforeAllInDescribe),
-        Box::new(NoExpectException),
-        Box::new(NoFocusedTest),
-        Box::new(NoInvalidRepeat),
-        Box::new(NoNegatedBooleanMatcher),
-        Box::new(NoRedundantTypeExpectation),
-        Box::new(NoRedundantUses),
-        Box::new(NoStaticTestClosure),
-        Box::new(PreferComparisonMatchers),
-        Box::new(PreferDefer),
-        Box::new(PreferEachModifier),
-        Box::new(PreferExpect),
-        Box::new(PreferExtend),
-        Box::new(PreferFilesystemMatchers),
-        Box::new(PreferNotModifier),
-        Box::new(PreferSequence),
-        Box::new(PreferStrictEqualityMatchers),
-        Box::new(PreferToBeAlpha),
-        Box::new(PreferToBeAlphaNumeric),
-        Box::new(PreferToBeBetween),
-        Box::new(PreferToBeDigits),
-        Box::new(PreferToBeDirectory),
-        Box::new(PreferToBeEmpty),
-        Box::new(PreferToBeFile),
-        Box::new(PreferToBeIn),
-        Box::new(PreferToBeInfinite),
-        Box::new(PreferToBeInstanceOf),
-        Box::new(PreferToBeJson),
-        Box::new(PreferToBeList),
-        Box::new(PreferToBeLowercase),
-        Box::new(PreferToBeNan),
-        Box::new(PreferToBeTrueFalse),
-        Box::new(PreferToBeTruthyFalsy),
-        Box::new(PreferToBeUppercase),
-        Box::new(PreferToBeUrl),
-        Box::new(PreferToBeUuid),
-        Box::new(PreferToContain),
-        Box::new(PreferToContainEqual),
-        Box::new(PreferToContainOnlyInstancesOf),
-        Box::new(PreferToEndWith),
-        Box::new(PreferToEqualCanonicalizing),
-        Box::new(PreferToEqualWithDelta),
-        Box::new(PreferToHaveCount),
-        Box::new(PreferToHaveKey),
-        Box::new(PreferToHaveKeys),
-        Box::new(PreferToHaveLength),
-        Box::new(PreferToHaveMethodOnClass),
-        Box::new(PreferToHaveProperties),
-        Box::new(PreferToHaveProperty),
-        Box::new(PreferToHaveSameSize),
-        Box::new(PreferToMatch),
-        Box::new(PreferToMatchArray),
-        Box::new(PreferToMatchObject),
-        Box::new(PreferToStartWith),
-        Box::new(PreferToThrow),
-        Box::new(PreferTypeMatchers),
-        Box::new(PreferChainedExpect::default()),
-        Box::new(RequireTypeMatcherFirst),
-    ]
+rules! {
+    pub(super) fn all {
+        no_before_all_in_describe => NoBeforeAllInDescribe,
+        no_expect_exception => NoExpectException,
+        no_focused_test => NoFocusedTest,
+        no_invalid_repeat => NoInvalidRepeat,
+        no_negated_boolean_matcher => NoNegatedBooleanMatcher,
+        no_redundant_type_expectation => NoRedundantTypeExpectation,
+        no_redundant_uses => NoRedundantUses,
+        no_static_test_closure => NoStaticTestClosure,
+        prefer_comparison_matchers => PreferComparisonMatchers,
+        prefer_defer => PreferDefer,
+        prefer_each_modifier => PreferEachModifier,
+        prefer_expect => PreferExpect,
+        prefer_extend => PreferExtend,
+        prefer_filesystem_matchers => PreferFilesystemMatchers,
+        prefer_not_modifier => PreferNotModifier,
+        prefer_sequence => PreferSequence,
+        prefer_strict_equality_matchers => PreferStrictEqualityMatchers,
+        prefer_to_be_alpha => PreferToBeAlpha,
+        prefer_to_be_alpha_numeric => PreferToBeAlphaNumeric,
+        prefer_to_be_between => PreferToBeBetween,
+        prefer_to_be_digits => PreferToBeDigits,
+        prefer_to_be_directory => PreferToBeDirectory,
+        prefer_to_be_empty => PreferToBeEmpty,
+        prefer_to_be_file => PreferToBeFile,
+        prefer_to_be_in => PreferToBeIn,
+        prefer_to_be_infinite => PreferToBeInfinite,
+        prefer_to_be_instance_of => PreferToBeInstanceOf,
+        prefer_to_be_json => PreferToBeJson,
+        prefer_to_be_list => PreferToBeList,
+        prefer_to_be_lowercase => PreferToBeLowercase,
+        prefer_to_be_nan => PreferToBeNan,
+        prefer_to_be_true_false => PreferToBeTrueFalse,
+        prefer_to_be_truthy_falsy => PreferToBeTruthyFalsy,
+        prefer_to_be_uppercase => PreferToBeUppercase,
+        prefer_to_be_url => PreferToBeUrl,
+        prefer_to_be_uuid => PreferToBeUuid,
+        prefer_to_contain => PreferToContain,
+        prefer_to_contain_equal => PreferToContainEqual,
+        prefer_to_contain_only_instances_of => PreferToContainOnlyInstancesOf,
+        prefer_to_end_with => PreferToEndWith,
+        prefer_to_equal_canonicalizing => PreferToEqualCanonicalizing,
+        prefer_to_equal_with_delta => PreferToEqualWithDelta,
+        prefer_to_have_count => PreferToHaveCount,
+        prefer_to_have_key => PreferToHaveKey,
+        prefer_to_have_keys => PreferToHaveKeys,
+        prefer_to_have_length => PreferToHaveLength,
+        prefer_to_have_method_on_class => PreferToHaveMethodOnClass,
+        prefer_to_have_properties => PreferToHaveProperties,
+        prefer_to_have_property => PreferToHaveProperty,
+        prefer_to_have_same_size => PreferToHaveSameSize,
+        prefer_to_match => PreferToMatch,
+        prefer_to_match_array => PreferToMatchArray,
+        prefer_to_match_object => PreferToMatchObject,
+        prefer_to_start_with => PreferToStartWith,
+        prefer_to_throw => PreferToThrow,
+        prefer_type_matchers => PreferTypeMatchers,
+        prefer_chained_expect => PreferChainedExpect::default(),
+        require_type_matcher_first => RequireTypeMatcherFirst,
+    }
 }
 
 pub(crate) fn method_call<'a>(expr: &'a Expression<'a>) -> Option<&'a MethodCall<'a>> {
