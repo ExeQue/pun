@@ -794,6 +794,7 @@ mod tests {
         };
         assert_eq!(expand_path("$PUN_TEST_DIR/a", &env), "/srv/a");
         assert_eq!(expand_path("%PUN_TEST_DIR%/a", &env), "/srv/a");
+        assert_eq!(expand_path("$UNSET/a", &env), "/a");
         assert_eq!(expand_path("~/a", &env), "/home/me/a");
         assert_eq!(expand_path("a/~", &env), "a/~");
     }

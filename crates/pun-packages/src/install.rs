@@ -1,7 +1,7 @@
 use crate::Env;
 use crate::autoload::{self, Apcu, PlatformCheck, Scan};
 use crate::bins;
-use crate::error::{Context, Result, bail};
+use crate::error::{Context, Error, Result, bail};
 use crate::fetch::{Fetcher, link_path, remove, unpack};
 use crate::installed::{Installed, installed_json, installed_php, read_installed, root};
 use crate::lock::{Lock, LockedPackage, content_hash};
@@ -240,7 +240,8 @@ fn download(
     let threads = download_threads(env("COMPOSER_MAX_PARALLEL_HTTP"), cores);
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
-        .build()?;
+        .build()
+        .map_err(Error::msg)?;
     let results: Vec<Result<bool>> = pool.install(|| {
         (todo.par_iter())
             .map(|&i| {

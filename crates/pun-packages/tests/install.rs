@@ -1,3 +1,4 @@
+use pun_packages::autoload::Apcu;
 use pun_packages::fetch::{Auth, Fetcher};
 use pun_packages::install::{Added, Options, Report, Updated, install};
 use pun_packages::lock::Lock;
@@ -185,6 +186,17 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     };
     let report = run(&tmp, &lock, &o);
     same_as_composer(&tmp, "edge-expected");
+    let prefixed = Options {
+        apcu: Apcu::Prefix("mine".into()),
+        ..o.clone()
+    };
+    run(&tmp, &lock, &prefixed);
+    let real = std::fs::read_to_string(tmp.join("vendor/composer/autoload_real.php")).unwrap();
+    assert!(
+        real.contains("        $loader->setApcuPrefix('mine');\n"),
+        "{real}"
+    );
+    run(&tmp, &lock, &o);
     let at = tmp.to_string_lossy();
     let mut warnings: Vec<String> = report
         .warnings

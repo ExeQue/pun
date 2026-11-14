@@ -10,7 +10,6 @@ pub enum Error {
     Pcre(pcre2::Error),
     Http(ureq::Error),
     Zip(zip::result::ZipError),
-    ThreadPool(rayon::ThreadPoolBuildError),
     ParseInt(std::num::ParseIntError),
 }
 
@@ -33,17 +32,16 @@ impl Error {
         }
     }
 
-    fn inner(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    fn head(&self) -> &dyn Display {
         match self {
-            Error::Message(_) | Error::Context { .. } => None,
-            Error::Io(e) => Some(e),
-            Error::Json(e) => Some(e),
-            Error::Toml(e) => Some(e),
-            Error::Pcre(e) => Some(e),
-            Error::Http(e) => Some(e),
-            Error::Zip(e) => Some(e),
-            Error::ThreadPool(e) => Some(e),
-            Error::ParseInt(e) => Some(e),
+            Error::Message(m) | Error::Context { message: m, .. } => m,
+            Error::Io(e) => e,
+            Error::Json(e) => e,
+            Error::Toml(e) => e,
+            Error::Pcre(e) => e,
+            Error::Http(e) => e,
+            Error::Zip(e) => e,
+            Error::ParseInt(e) => e,
         }
     }
 }
@@ -51,11 +49,7 @@ impl Error {
 impl Display for Error {
     /// `{:#}` appends each cause after `: `, as anyhow does.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Error::Message(m) | Error::Context { message: m, .. } = self {
-            f.write_str(m)?;
-        } else if let Some(e) = self.inner() {
-            write!(f, "{e}")?;
-        }
+        write!(f, "{}", self.head())?;
         if f.alternate() {
             let mut cause = std::error::Error::source(self);
             while let Some(e) = cause {
@@ -70,8 +64,15 @@ impl Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
+            Error::Message(_) => None,
             Error::Context { source, .. } => Some(source.as_ref()),
-            e => e.inner().and_then(std::error::Error::source),
+            Error::Io(e) => e.source(),
+            Error::Json(e) => e.source(),
+            Error::Toml(e) => e.source(),
+            Error::Pcre(e) => e.source(),
+            Error::Http(e) => e.source(),
+            Error::Zip(e) => e.source(),
+            Error::ParseInt(e) => e.source(),
         }
     }
 }
@@ -93,7 +94,6 @@ from!(
     Pcre(pcre2::Error),
     Http(ureq::Error),
     Zip(zip::result::ZipError),
-    ThreadPool(rayon::ThreadPoolBuildError),
     ParseInt(std::num::ParseIntError),
 );
 
@@ -131,3 +131,41 @@ macro_rules! bail {
     };
 }
 pub(crate) use bail;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error as _;
+
+    fn same<E: std::error::Error + Into<Error>>(make: impl Fn() -> E) {
+        let (wrapped, plain) = (make().into(), make());
+        assert_eq!(wrapped.to_string(), plain.to_string());
+        assert_eq!(
+            wrapped.source().map(ToString::to_string),
+            plain.source().map(ToString::to_string)
+        );
+    }
+
+    #[test]
+    fn wrapped_errors_print_as_themselves() {
+        same(|| std::io::Error::other("gone"));
+        same(|| serde_json::from_str::<i64>("x").unwrap_err());
+        same(|| toml::from_str::<toml::Table>("=").unwrap_err());
+        same(|| pcre2::bytes::Regex::new("(").unwrap_err());
+        same(|| ureq::Error::Io(std::io::Error::other("refused")));
+        same(|| zip::ZipArchive::new(std::io::Cursor::new(b"")).unwrap_err());
+        same(|| "x".parse::<i64>().unwrap_err());
+    }
+
+    #[test]
+    fn alternate_prints_every_cause_as_anyhow() {
+        let io: std::result::Result<(), _> = Err(std::io::Error::other("gone"));
+        let err = io.context("reading").context("installing").unwrap_err();
+        assert_eq!(err.to_string(), "installing");
+        assert_eq!(format!("{err:#}"), "installing: reading: gone");
+        let foreign = Error::foreign(&err);
+        assert_eq!(format!("{foreign:#}"), "installing: reading: gone");
+        assert!(matches!(foreign, Error::Context { .. }));
+        assert_eq!(format!("{:#}", Error::msg("plain")), "plain");
+    }
+}

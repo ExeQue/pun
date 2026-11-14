@@ -403,6 +403,14 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn ignored_platform_requirements() {
+        let listed = IgnorePlatform::new(vec!["ext-*".into()], false);
+        assert!(listed.ignores("ext-json") && !listed.ignores("php"));
+        assert!(IgnorePlatform::new(vec![], true).ignores("php"));
+        assert!(!IgnorePlatform::default().ignores("php"));
+    }
+
+    #[test]
     fn normalize_matches_composer() {
         for (input, want) in [
             ("1.0.0", "1.0.0.0"),

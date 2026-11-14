@@ -561,14 +561,13 @@ mod tests {
     fn update(fetcher: &Fetcher, manifest: &Map<String, Value>) -> Result<String, String> {
         use super::super::{Options, locker, repos, resolve};
         let options = Options::default();
+        let no_env = |_: &str| None;
         let run = || -> Result<String> {
             let repositories =
-                repos::open(std::path::Path::new("."), manifest, None, fetcher, &|_| {
-                    None
-                })?;
+                repos::open(std::path::Path::new("."), manifest, None, fetcher, &no_env)?;
             let php = json!({"name": "php", "version": "8.5.0"});
             let platform = vec![php.as_object().unwrap().clone()];
-            let resolved = resolve(manifest, platform, repositories, None, &options, &|_| None)?;
+            let resolved = resolve(manifest, platform, repositories, None, &options, &no_env)?;
             let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };
