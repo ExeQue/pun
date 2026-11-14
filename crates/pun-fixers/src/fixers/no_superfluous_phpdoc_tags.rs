@@ -2,16 +2,32 @@ use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::docblock::{Annotation, DocBlock, type_expression::REGEX_TYPES};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
+use pun_tokens::NamespacesAnalyzer;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
 use pun_format::Fixer;
-use pun_tokens::NamespacesAnalyzer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind, Kind::*, Token, Tokens, TokensAnalyzer};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::LazyLock;
+
+static PARAM_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@param(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+(?:\&\h*)?(?:\.{{3}}\h*)?\$\S+)?(?:\s+(?<description>(?!\*+\/)\S+))?}}s"
+    )
+});
+static VAR_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@var(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+\$\S+)?(?:\s+(?<description>(?!\*\/)\S+))?}}s"
+    )
+});
+static RETURN_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@return(?:\h+{REGEX_TYPES})?(?!\S)(?:\s+(?<description>(?!\*\/)\S+))?}}s"
+    )
+});
 
 const SYMBOL_KINDS: &[Kind] = &[T_CLASS, T_INTERFACE, T_ENUM];
 const MODIFIER_KINDS: &[Kind] = &[
@@ -120,7 +136,11 @@ impl Fixer for NoSuperfluousPhpdocTagsFixer {
                 continue;
             }
             if token.is_given_kind(SYMBOL_KINDS) {
-                current_symbol = Some(tokens[tokens.next_meaningful(index)].get_content().to_vec());
+                current_symbol = Some(
+                    tokens[tokens.next_meaningful(index)]
+                        .get_content()
+                        .to_vec(),
+                );
                 let open = tokens
                     .get_next_token_of_kind(index, &["{".into()], true)
                     .unwrap();
@@ -302,7 +322,8 @@ impl NoSuperfluousPhpdocTagsFixer {
                     true,
                 )
                 .unwrap();
-            let type_index = tokens.next_meaningful(before_argument_index);
+            let type_index = tokens
+                .next_meaningful(before_argument_index);
             let mut info = if type_index != index {
                 parse_type_hint(tokens, type_index)
             } else {
@@ -311,7 +332,8 @@ impl NoSuperfluousPhpdocTagsFixer {
             if !info.allows_null {
                 let next_index = tokens.next_meaningful(index);
                 if tokens[next_index].equals("=", true)
-                    && tokens[tokens.next_meaningful(next_index)].equals((T_STRING, "null"), false)
+                    && tokens[tokens.next_meaningful(next_index)]
+                        .equals((T_STRING, "null"), false)
                 {
                     info.allows_null = true;
                 }
@@ -336,27 +358,12 @@ impl NoSuperfluousPhpdocTagsFixer {
         ctx: &Ctx,
     ) -> bool {
         let tag = annotation.get_tag().get_name();
-        static PARAM: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@param(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+(?:\&\h*)?(?:\.{{3}}\h*)?\$\S+)?(?:\s+(?<description>(?!\*+\/)\S+))?}}s"
-            )
-        });
-        static VAR: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@var(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+\$\S+)?(?:\s+(?<description>(?!\*\/)\S+))?}}s"
-            )
-        });
-        static RETURN: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@return(?:\h+{REGEX_TYPES})?(?!\S)(?:\s+(?<description>(?!\*\/)\S+))?}}s"
-            )
-        });
         let regex: &str = if tag == b"param" {
-            &PARAM
+            &PARAM_REGEX
         } else if tag == b"var" {
-            &VAR
+            &VAR_REGEX
         } else {
-            &RETURN
+            &RETURN_REGEX
         };
         let content = annotation.get_content();
         let Some(matches) = Preg::match_groups(regex, &content) else {
@@ -390,9 +397,13 @@ impl NoSuperfluousPhpdocTagsFixer {
 }
 
 fn get_return_type_info(tokens: &Tokens, closing_parenthesis_index: usize) -> TypeInfo {
-    let colon_index = tokens.next_meaningful(closing_parenthesis_index);
+    let colon_index = tokens
+        .next_meaningful(closing_parenthesis_index);
     if tokens[colon_index].is_kind(CT_TYPE_COLON) {
-        parse_type_hint(tokens, tokens.next_meaningful(colon_index))
+        parse_type_hint(
+            tokens,
+            tokens.next_meaningful(colon_index),
+        )
     } else {
         no_type_info()
     }

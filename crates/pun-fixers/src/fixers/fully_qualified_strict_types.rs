@@ -7,11 +7,11 @@ use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use crate::analyzers::import_processor::ImportProcessor;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
+use pun_tokens::NamespacesAnalyzer;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
 use indexmap::IndexMap;
 use pun_format::{Fixer, WhitespacesFixerConfig};
-use pun_tokens::NamespacesAnalyzer;
 use pun_tokens::php_compat::{ltrim_chars, strnatcmp, strtolower, substr_count};
 use pun_tokens::{Kind::*, Token, Tokens};
 use serde_json::Value;
@@ -19,6 +19,16 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::sync::LazyLock;
+
+static DOC_TAG: LazyLock<String> =
+    LazyLock::new(|| format!(r"/([*{{]\h*@)(\S+)(\h+)({REGEX_TYPES})(?!(?!\}})\S)/"));
+static SEE_TAG: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"/([*{{]\h*)@see(\h+)({})(::(?:\$\w+|\w+\(\)))(?!(?!\}})\S)/",
+        regex_class()
+    )
+});
+static CLASS_REGEX: LazyLock<String> = LazyLock::new(|| format!("/^{}$/", regex_class()));
 
 const PHPDOC_TAGS: &[&str] = &[
     "param",
@@ -239,7 +249,11 @@ impl Fixer for FullyQualifiedStrictTypesFixer {
                         _ => namespace.scope_start_index + 1,
                     }
                 };
-                let names = st.symbols_for_import.values().cloned().collect();
+                let names = st
+                    .symbols_for_import
+                    .values()
+                    .cloned()
+                    .collect();
                 ImportProcessor::new(self.whitespaces_config.clone()).insert_imports(
                     tokens,
                     &[(NamespaceUseType::Class, names)],
@@ -425,11 +439,7 @@ impl FullyQualifiedStrictTypesFixer {
         uses: &mut OMap,
         namespace_name: &[u8],
     ) {
-        let mut discovered_symbols = st
-            .discovered_symbols
-            .borrow_mut()
-            .take()
-            .unwrap_or_default();
+        let mut discovered_symbols = st.discovered_symbols.borrow_mut().take().unwrap_or_default();
         if discovered_symbols.is_empty() {
             return;
         }
@@ -440,8 +450,7 @@ impl FullyQualifiedStrictTypesFixer {
                 if !symbol.starts_with(b"\\") {
                     let short_start_name = first_part(ltrim_chars(symbol, b"\\"));
                     let resolved = self.resolve_symbol(st, short_start_name, uses, namespace_name);
-                    discovered_fqcn_by_short_name_lower
-                        .insert(strtolower(short_start_name), resolved);
+                    discovered_fqcn_by_short_name_lower.insert(strtolower(short_start_name), resolved);
                 }
             }
         }
@@ -555,14 +564,6 @@ impl FullyQualifiedStrictTypesFixer {
             return;
         }
         let php_doc_content = tokens[index].get_content().to_vec();
-        static DOC_TAG: LazyLock<String> =
-            LazyLock::new(|| format!(r"/([*{{]\h*@)(\S+)(\h+)({REGEX_TYPES})(?!(?!\}})\S)/"));
-        static SEE_TAG: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"/([*{{]\h*)@see(\h+)({})(::(?:\$\w+|\w+\(\)))(?!(?!\}})\S)/",
-                regex_class()
-            )
-        });
         let mut php_doc_content_new = Preg::replace_callback(
             &*DOC_TAG,
             |m| {
@@ -601,8 +602,7 @@ impl FullyQualifiedStrictTypesFixer {
     }
 
     fn fix_php_doc_type(&self, st: &State, type_: &[u8], uses: &OMap, ns: &[u8]) -> Vec<u8> {
-        static CLASS: LazyLock<String> = LazyLock::new(|| format!("/^{}$/", regex_class()));
-        let regex: &str = &CLASS;
+        let regex: &str = &CLASS_REGEX;
         let type_expression = TypeExpression::new(type_).map_types(&mut |type_| {
             let current_type_value = type_.to_string().to_vec();
             if type_.is_composite_type()

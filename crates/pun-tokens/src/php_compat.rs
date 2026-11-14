@@ -1,4 +1,11 @@
 use std::cmp::Ordering;
+use std::sync::LazyLock;
+
+static ESCAPES: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\([\\nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})")
+        .unwrap()
+});
+static SUPPORTS_R: LazyLock<bool> = LazyLock::new(|| pcre2::bytes::Regex::new("(?r)").is_ok());
 
 pub fn strlen(s: &[u8]) -> usize {
     s.len()
@@ -14,16 +21,9 @@ pub fn unescape_phpdoc_string(quoted: &[u8]) -> Vec<u8> {
         return str_replace(b"\\'", b"'", &str_replace(b"\\\\", b"\\", inner));
     }
     let inner = str_replace(b"\\\"", b"\"", inner);
-    static ESCAPES: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
-    let escapes = ESCAPES.get_or_init(|| {
-        pcre2::bytes::Regex::new(
-            r"\\([\\nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})",
-        )
-        .unwrap()
-    });
     let mut out = Vec::with_capacity(inner.len());
     let mut from = 0;
-    for found in escapes.captures_iter(&inner) {
+    for found in ESCAPES.captures_iter(&inner) {
         let found = found.unwrap();
         let full = found.get(0).unwrap();
         let escape = found.get(1).unwrap().as_bytes();
@@ -416,7 +416,6 @@ pub fn preg_parse(pattern: &[u8]) -> Result<(&[u8], PregModifiers), String> {
             format!("No ending matching delimiter '{end}' found")
         });
     }
-    static SUPPORTS_R: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let mut m = PregModifiers::default();
     for &c in &pattern[p + 1..] {
         match c {
@@ -430,7 +429,7 @@ pub fn preg_parse(pattern: &[u8]) -> Result<(&[u8], PregModifiers), String> {
             b'u' => m.utf = true,
             b'J' => m.dup_names = true,
             b'n' => m.no_auto_capture = true,
-            b'r' if *SUPPORTS_R.get_or_init(|| pcre2::bytes::Regex::new("(?r)").is_ok()) => {
+            b'r' if *SUPPORTS_R => {
                 m.caseless_restrict = true;
             }
             b'S' | b'X' | b' ' | b'\n' | b'\r' => {}

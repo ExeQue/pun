@@ -4,13 +4,12 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
+
+static PHP: LazyLock<Result<PathBuf, String>> = LazyLock::new(find_php);
 
 pub(crate) fn php_path() -> PathBuf {
-    static PHP: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    PHP.get_or_init(find_php)
-        .clone()
-        .unwrap_or_else(|e| panic!("{e}"))
+    PHP.clone().unwrap_or_else(|e| panic!("{e}"))
 }
 
 pub(crate) fn php() -> Command {

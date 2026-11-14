@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
 const WORKER: &str = include_str!("fixers/pint_laravel_blade/worker.cjs");
@@ -76,23 +76,22 @@ pub fn stop() {
     drop(probed_worker().take());
 }
 
+static WRITES: AtomicUsize = AtomicUsize::new(0);
+static RESOURCES: LazyLock<Result<PathBuf, String>> = LazyLock::new(|| {
+    let mut hasher = std::hash::DefaultHasher::new();
+    std::hash::Hash::hash(&(WORKER, PROBE, PRETTIERRC), &mut hasher);
+    let hash = std::hash::Hasher::finish(&hasher);
+    let name = format!("blade-{hash:016x}");
+    let dir = scripts_dir(
+        std::env::var_os("XDG_CACHE_HOME"),
+        std::env::var_os("HOME"),
+        &name,
+    );
+    resources_in(&dir.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+});
+
 fn resources() -> Result<PathBuf> {
-    static RESOURCES: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    RESOURCES
-        .get_or_init(|| {
-            let mut hasher = std::hash::DefaultHasher::new();
-            std::hash::Hash::hash(&(WORKER, PROBE, PRETTIERRC), &mut hasher);
-            let hash = std::hash::Hasher::finish(&hasher);
-            let name = format!("blade-{hash:016x}");
-            let dir = scripts_dir(
-                std::env::var_os("XDG_CACHE_HOME"),
-                std::env::var_os("HOME"),
-                &name,
-            );
-            resources_in(&dir.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
-        })
-        .clone()
-        .map_err(anyhow::Error::msg)
+    RESOURCES.clone().map_err(anyhow::Error::msg)
 }
 
 fn scripts_dir(
@@ -126,7 +125,6 @@ fn resources_in(dir: &Path) -> Result<PathBuf> {
     if !files.iter().all(current) {
         std::fs::create_dir_all(dir)?;
         for (name, body) in files {
-            static WRITES: AtomicUsize = AtomicUsize::new(0);
             let n = WRITES.fetch_add(1, Ordering::Relaxed);
             let tmp = dir.join(format!("{name}.{}-{n}", std::process::id()));
             std::fs::write(&tmp, body)?;
