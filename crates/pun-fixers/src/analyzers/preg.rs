@@ -800,6 +800,8 @@ fn expand_replacement(replacement: &[u8], c: &Captures) -> Vec<u8> {
     out
 }
 
+/// PHP's bare `preg_*` functions as Pint's Blade code calls them. A PCRE failure makes PHP return `false` with
+/// empty matches, which that code reads as no match, so the matching functions return no match on error too.
 pub(crate) struct RawPreg;
 
 impl RawPreg {
