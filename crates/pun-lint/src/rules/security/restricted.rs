@@ -97,7 +97,7 @@ impl Rule for NoRestrictedFunctions {
             });
             return;
         }
-        for (extension, functions) in &EXTENSION_FUNCTIONS {
+        for (extension, functions) in EXTENSION_FUNCTIONS.iter() {
             let Some(entry) = self
                 .extensions
                 .iter()
