@@ -137,9 +137,8 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
     let plan = match plan {
         Ok(plan) if unported.is_empty() => plan,
-        Ok(_) => return Err(unported_error(&a, &cfg, &unported).into()),
-        Err(lint) => {
-            unported.extend(lint);
+        plan => {
+            unported.extend(plan.err().into_iter().flatten());
             return Err(unported_error(&a, &cfg, &unported).into());
         }
     };
