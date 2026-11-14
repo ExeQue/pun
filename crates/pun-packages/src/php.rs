@@ -253,9 +253,21 @@ fn export(out: &mut String, v: &Php, level: usize) {
 pub fn strtr(s: &str, pairs: &[(&str, &str)]) -> String {
     let mut pairs: Vec<&(&str, &str)> = pairs.iter().filter(|p| !p.0.is_empty()).collect();
     pairs.sort_by_key(|p| std::cmp::Reverse(p.0.len()));
+    // A key starts at a character's first byte, which no other byte of the text equals, so the text between two
+    // such bytes is copied as it is.
+    let firsts: Vec<u8> = pairs.iter().map(|p| p.0.as_bytes()[0]).collect();
+    let bytes = s.as_bytes();
     let mut out = String::with_capacity(s.len());
     let mut i = 0;
     'outer: while i < s.len() {
+        let next = (bytes[i..].iter())
+            .position(|b| firsts.contains(b))
+            .map_or(s.len(), |n| i + n);
+        out.push_str(&s[i..next]);
+        i = next;
+        if i == s.len() {
+            break;
+        }
         for (from, to) in &pairs {
             if s[i..].starts_with(from) {
                 out.push_str(to);
@@ -263,7 +275,7 @@ pub fn strtr(s: &str, pairs: &[(&str, &str)]) -> String {
                 continue 'outer;
             }
         }
-        let c = s[i..].chars().next().unwrap();
+        let c = s[i..].chars().next().expect("a character at a first byte");
         out.push(c);
         i += c.len_utf8();
     }

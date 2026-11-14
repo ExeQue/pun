@@ -353,6 +353,15 @@ impl Pool {
         }
     }
 
+    /// The same arena with only `packages` in the pool, renumbered from 1.
+    pub fn with_packages(self, packages: Vec<usize>) -> Pool {
+        let removed = self.removed;
+        Pool {
+            removed,
+            ..Pool::new(self.arena, packages, self.unacceptable)
+        }
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.ids.len()
     }
@@ -471,6 +480,8 @@ pub struct PoolBuilder<'a> {
     skipped: HashMap<String, Vec<usize>>,
     path_unlocked: HashSet<String>,
     max_extended: HashSet<String>,
+    /// The constraints `mark` found already loaded, by name.
+    covered: HashMap<String, HashSet<Constraint>>,
     counter: usize,
 }
 
@@ -499,6 +510,7 @@ impl<'a> PoolBuilder<'a> {
             skipped: HashMap::new(),
             path_unlocked: HashSet::new(),
             max_extended: HashSet::new(),
+            covered: HashMap::new(),
             counter: 0,
         }
     }
@@ -583,14 +595,11 @@ impl<'a> PoolBuilder<'a> {
         request: &Request,
     ) -> Result<(Vec<usize>, Vec<(usize, String)>)> {
         let f = self.filters;
-        let mut names: Vec<String> = vec![];
+        let mut names = indexmap::IndexSet::new();
         for &p in &packages {
-            for n in arena[p].names(false) {
-                if !names.iter().any(|x| x == n) {
-                    names.push(n.to_string());
-                }
-            }
+            names.extend(arena[p].names(false).into_iter().map(String::from));
         }
+        let names: Vec<String> = names.into_iter().collect();
         let (mut advisories, mut entries) = (vec![], vec![]);
         for repo in repositories.iter_mut() {
             if f.wants_advisories() {
@@ -600,9 +609,14 @@ impl<'a> PoolBuilder<'a> {
                 entries.extend(repo.list_entries(&names)?);
             }
         }
-        let locked: HashSet<(String, String)> = (request.lock.iter().flatten())
-            .map(|&p| (arena[p].name.clone(), arena[p].version.clone()))
+        let locked: HashSet<(&str, &str)> = (request.lock.iter().flatten())
+            .map(|&p| (arena[p].name.as_str(), arena[p].version.as_str()))
             .collect();
+        // Each package is checked only against the advisories for its names, in the repositories' order.
+        let mut by_name: HashMap<&str, Vec<usize>> = HashMap::new();
+        for (i, a) in advisories.iter().enumerate() {
+            by_name.entry(&a.package).or_default().push(i);
+        }
         let (mut kept, mut removed) = (vec![], vec![]);
         for p in packages {
             let package = &arena[p];
@@ -610,16 +624,16 @@ impl<'a> PoolBuilder<'a> {
             let is_locked =
                 request.is_locked(p) || package.alias_of.is_some_and(|of| request.is_locked(of));
             let base = &arena[package.alias_of.unwrap_or(p)];
-            let equivalent =
-                is_locked || locked.contains(&(package.name.clone(), package.version.clone()));
+            let equivalent = is_locked || locked.contains(&(&package.name, &package.version));
+            let target = if package.root_alias { base } else { package };
+            let mut relevant: Vec<usize> = (target.names(false).into_iter())
+                .flat_map(|n| by_name.get(n).into_iter().flatten().copied())
+                .collect();
+            relevant.sort_unstable();
+            relevant.dedup();
+            let relevant: Vec<&Advisory> = relevant.iter().map(|&i| &advisories[i]).collect();
             match f.removal(
-                package,
-                base,
-                &advisories,
-                &entries,
-                equivalent,
-                is_locked,
-                self.now,
+                package, base, &relevant, &entries, equivalent, is_locked, self.now,
             ) {
                 Some(why) => removed.push((p, why)),
                 None => kept.push(p),
@@ -629,29 +643,35 @@ impl<'a> PoolBuilder<'a> {
     }
 
     fn mark(&mut self, request: &Request, name: &str, constraint: &Constraint) {
-        if is_platform(name) || self.max_extended.contains(name) {
+        // Most versions of a package require the same constraints, and a requirement that needs nothing loaded
+        // keeps needing nothing until `unlock` forgets the name, so each is checked once.
+        if (self.covered.get(name)).is_some_and(|c| c.contains(constraint)) {
             return;
         }
-        let mut constraint = constraint.clone();
-        if let Some(root) = request.requires.get(name)
-            && !subset(&constraint, root)
-        {
-            constraint = root.clone();
+        let original = constraint;
+        let covered = |builder: &mut Self| {
+            (builder.covered.entry(name.to_string()).or_default()).insert(original.clone());
+        };
+        if is_platform(name) || self.max_extended.contains(name) {
+            return covered(self);
         }
+        let constraint = match request.requires.get(name) {
+            Some(root) if !subset(constraint, root) => root,
+            _ => constraint,
+        };
         let Some(loaded) = self.loaded.get(name) else {
-            if let Some(pending) = self.to_load.get(name) {
-                if subset(&constraint, pending) {
-                    return;
-                }
-                constraint = union(pending, constraint);
-            }
+            let constraint = match self.to_load.get(name) {
+                Some(pending) if subset(constraint, pending) => return covered(self),
+                Some(pending) => union(pending, constraint.clone()),
+                None => constraint.clone(),
+            };
             self.to_load.insert(name.to_string(), constraint);
             return;
         };
-        if subset(&constraint, loaded) {
-            return;
+        if subset(constraint, loaded) {
+            return covered(self);
         }
-        let merged = union(loaded, constraint);
+        let merged = union(loaded, constraint.clone());
         self.to_load.shift_remove(name);
         self.to_load.insert(name.to_string(), merged);
         self.loaded.remove(name);
@@ -859,6 +879,7 @@ impl<'a> PoolBuilder<'a> {
         }
         self.skipped.remove(name);
         self.loaded.remove(name);
+        self.covered.remove(name);
         self.max_extended.remove(name);
         self.path_unlocked.remove(name);
         let locked = request.locked.clone();

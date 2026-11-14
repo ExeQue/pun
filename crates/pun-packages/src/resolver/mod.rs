@@ -5,6 +5,7 @@ pub mod composer_repo;
 pub mod explain;
 pub mod filters;
 pub mod locker;
+pub mod optimizer;
 pub mod package;
 pub mod platform;
 pub mod policy;
@@ -362,9 +363,20 @@ pub fn resolve(
         &filters,
         now,
     );
-    let pool = builder.build(arena, &mut repos, &mut request)?;
-    let mut solver = Solver::new(&pool, &policy);
-    let solution = match solver.solve(&request, &ignored) {
+    let mut pool = builder.build(arena, &mut repos, &mut request)?;
+    let all = pool.ids.clone();
+    let kept = optimizer::optimize(&pool, &request, &policy);
+    let optimized = kept.len() < all.len();
+    if optimized {
+        pool = pool.with_packages(kept);
+    }
+    let mut result = Solver::new(&pool, &policy).solve(&request, &ignored);
+    if result.is_err() && optimized {
+        // Explain a failure from the whole pool, so its messages name every version the pool had.
+        pool = pool.with_packages(all);
+        result = Solver::new(&pool, &policy).solve(&request, &ignored);
+    }
+    let solution = match result {
         Ok(s) => s,
         Err(problems) => {
             return Ok(Err(Failure {

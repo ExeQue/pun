@@ -433,7 +433,7 @@ impl Filters {
         &self,
         p: &Package,
         base: &Package,
-        advisories: &[Advisory],
+        advisories: &[&Advisory],
         entries: &[ListEntry],
         locked_equivalent: bool,
         locked: bool,

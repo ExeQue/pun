@@ -567,3 +567,128 @@ fn pools_as_composer() {
         failures.join("\n")
     );
 }
+
+/// Composer's pool optimizer fixtures (`scripts/export-pooloptimizer-fixtures.py`): the optimizer must keep the
+/// packages Composer's keeps.
+#[test]
+fn optimizes_pools_as_composer() {
+    use pun_packages::resolver::optimizer::optimize;
+    use pun_packages::resolver::policy::Policy;
+    use pun_packages::resolver::pool::Pool;
+
+    let fixtures: Value =
+        serde_json::from_str(include_str!("fixtures/pooloptimizer.json")).expect("valid fixtures");
+    let entry = |arena: &[Package], p: usize| {
+        let package = &arena[p];
+        match package.alias_of {
+            Some(of) => format!(
+                "{}@{} (alias of {})",
+                package.name, package.version, arena[of].version
+            ),
+            None => format!("{}@{}", package.name, package.version),
+        }
+    };
+    let mut failures = vec![];
+    let cases = fixtures["cases"].as_array().unwrap();
+    for case in cases {
+        let request_data = &case["request"];
+        let mut arena: Vec<Package> = vec![];
+        let mut packages = vec![];
+        for data in case["before"].as_array().unwrap() {
+            packages.extend(load(as_map(data), Origin::Repository(1), &mut arena).unwrap());
+        }
+        let mut request = Request::default();
+        for (key, origin) in [("fixed", Origin::Root), ("locked", Origin::Locked)] {
+            for data in request_data
+                .get(key)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let loaded = load(as_map(data), origin, &mut arena).unwrap();
+                match key {
+                    "fixed" => request.fixed.extend(loaded),
+                    _ => request.locked.extend(loaded),
+                }
+            }
+        }
+        for (n, c) in request_data["require"].as_object().unwrap() {
+            let c = pun_packages::constraint::parse(c.as_str().unwrap()).unwrap();
+            request.requires.insert(n.to_ascii_lowercase(), c);
+        }
+        let policy = Policy {
+            prefer_stable: request_data.get("preferStable") == Some(&Value::Bool(true)),
+            prefer_lowest: request_data.get("preferLowest") == Some(&Value::Bool(true)),
+            ..Policy::default()
+        };
+        let pool = Pool::new(arena, packages, vec![]);
+        let kept = optimize(&pool, &request, &policy);
+        let mut got: Vec<String> = kept.iter().map(|&p| entry(&pool.arena, p)).collect();
+        let mut expected = vec![];
+        let mut want: Vec<String> = vec![];
+        for data in case["after"].as_array().unwrap() {
+            for p in load(as_map(data), Origin::Repository(1), &mut expected).unwrap() {
+                want.push(entry(&expected, p));
+            }
+        }
+        got.sort();
+        want.sort();
+        if got != want {
+            let name = case["name"].as_str().unwrap();
+            failures.push(format!("{name}\n  got:  {got:?}\n  want: {want:?}"));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{} of {} pools differ:\n{}",
+        failures.len(),
+        cases.len(),
+        failures.join("\n")
+    );
+}
+
+/// A partial update keeps its locked packages, so the optimizer drops the versions their requirements rule out:
+/// `b/b` is locked and requires `c/c ^2.0`. `d/d` is locked too, but nothing requires it, so its `c/c ^9.0` rules
+/// nothing out. The expected pool is what Composer 2.11.2's `PoolOptimizer` kept with the same packages locked.
+#[test]
+fn optimizer_drops_versions_locked_packages_rule_out() {
+    use pun_packages::resolver::optimizer::optimize;
+    use pun_packages::resolver::policy::Policy;
+    use pun_packages::resolver::pool::Pool;
+
+    let pool: Value = serde_json::json!([
+        {"name": "a/a", "version": "1.0.0", "require": {"b/b": "^1.0", "c/c": "*"}},
+        {"name": "b/b", "version": "1.0.0", "require": {"c/c": "^2.0"}},
+        {"name": "d/d", "version": "1.0.0", "require": {"c/c": "^9.0"}},
+        {"name": "c/c", "version": "1.0.0", "require": {"x/x": "1"}},
+        {"name": "c/c", "version": "1.5.0", "require": {"x/x": "2"}},
+        {"name": "c/c", "version": "2.0.0", "require": {"x/x": "3"}},
+        {"name": "c/c", "version": "2.1.0", "require": {"x/x": "4"}}
+    ]);
+    let mut arena = vec![];
+    let mut packages = vec![];
+    for data in pool.as_array().unwrap() {
+        packages.extend(load(as_map(data), Origin::Repository(1), &mut arena).unwrap());
+    }
+    let mut request = Request {
+        locked: vec![packages[1], packages[2]],
+        ..Request::default()
+    };
+    let constraint = pun_packages::constraint::parse("^1.0").unwrap();
+    request.requires.insert("a/a".into(), constraint);
+    let pool = Pool::new(arena, packages, vec![]);
+    let kept = optimize(&pool, &request, &Policy::default());
+    let kept: Vec<String> = (kept.iter())
+        .map(|&p| format!("{}@{}", pool.arena[p].name, pool.arena[p].version))
+        .collect();
+    assert_eq!(
+        kept,
+        [
+            "a/a@1.0.0.0",
+            "b/b@1.0.0.0",
+            "d/d@1.0.0.0",
+            "c/c@2.0.0.0",
+            "c/c@2.1.0.0"
+        ]
+    );
+}

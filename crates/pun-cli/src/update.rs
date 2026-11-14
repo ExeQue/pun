@@ -150,6 +150,8 @@ pub(crate) fn update_and_install(
         Err(problems) => return Ok(print_problems(&problems)),
     };
     let lock = locker::lock(&resolution, &project.manifest, &options);
+    // The resolve read tens of thousands of versions; free them on another thread while this one installs.
+    std::thread::spawn(move || drop(resolution));
     finish(project, &plan, a, started, lock, None)
 }
 

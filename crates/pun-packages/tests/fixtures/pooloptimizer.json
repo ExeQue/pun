@@ -1,0 +1,602 @@
+{
+ "cases": [
+  {
+   "name": "aliases",
+   "request": {
+    "require": {
+     "package/a": "^1.0",
+     "package/required-aliasof-and-alias": "dev-main-both",
+     "package/required-aliasof": "dev-main-direct",
+     "package/required-alias": "1.*"
+    }
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/required-aliasof-and-alias": "^1.0"
+     }
+    },
+    {
+     "name": "package/required-aliasof-and-alias",
+     "version": "dev-main-both",
+     "extra": {
+      "branch-alias": {
+       "dev-main-both": "1.x-dev"
+      }
+     }
+    },
+    {
+     "name": "package/required-aliasof",
+     "version": "dev-main-direct",
+     "extra": {
+      "branch-alias": {
+       "dev-main-direct": "1.x-dev"
+      }
+     }
+    },
+    {
+     "name": "package/required-alias",
+     "version": "dev-main-alias",
+     "extra": {
+      "branch-alias": {
+       "dev-main-alias": "1.x-dev"
+      }
+     }
+    },
+    {
+     "name": "package/not-referenced",
+     "version": "dev-lonesome-pkg",
+     "extra": {
+      "branch-alias": {
+       "dev-lonesome-pkg": "1.x-dev"
+      }
+     }
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/required-aliasof-and-alias",
+     "version": "dev-main-both",
+     "extra": {
+      "branch-alias": {
+       "dev-main-both": "1.x-dev"
+      }
+     }
+    },
+    {
+     "name": "package/required-aliasof",
+     "version": "dev-main-direct",
+     "extra": {
+      "branch-alias": {
+       "dev-main-direct": "1.x-dev"
+      }
+     }
+    },
+    {
+     "name": "package/required-alias",
+     "version": "dev-main-alias",
+     "extra": {
+      "branch-alias": {
+       "dev-main-alias": "1.x-dev"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "basic-prefer-highest",
+   "request": {
+    "require": {
+     "package/a": "^1.0"
+    }
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": ">=1.0 <1.1 || ^1.2"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1"
+    },
+    {
+     "name": "package/b",
+     "version": "1.2.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1"
+    },
+    {
+     "name": "package/b",
+     "version": "1.2.0"
+    }
+   ]
+  },
+  {
+   "name": "basic-prefer-lowest",
+   "request": {
+    "require": {
+     "package/a": "^1.0"
+    },
+    "preferLowest": true
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1"
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0"
+    }
+   ]
+  },
+  {
+   "name": "complex-prefer-lowest",
+   "request": {
+    "require": {
+     "package/a": "^1.0"
+    },
+    "preferLowest": true
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0 || ^2.2"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1"
+    },
+    {
+     "name": "package/b",
+     "version": "2.2.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/b",
+     "version": "2.2.0"
+    }
+   ]
+  },
+  {
+   "name": "conflict",
+   "request": {
+    "require": {
+     "nesty/nest": "^1.0"
+    }
+   },
+   "before": [
+    {
+     "name": "nesty/nest",
+     "version": "1.0.0",
+     "require": {
+      "conflicter/pkg": "^1.0",
+      "victim/pkg": "^1 <1.2"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.1",
+     "conflict": {
+      "victim/pkg": "1.1.0 || 1.1.1"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.2",
+     "conflict": {
+      "victim/pkg": "1.1.1 || 1.1.2"
+     }
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.2"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.2"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.2.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "nesty/nest",
+     "version": "1.0.0",
+     "require": {
+      "conflicter/pkg": "^1.0",
+      "victim/pkg": "^1 <1.2"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.1",
+     "conflict": {
+      "victim/pkg": "1.1.0 || 1.1.1"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.2",
+     "conflict": {
+      "victim/pkg": "1.1.2"
+     }
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.2"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.2"
+    }
+   ]
+  },
+  {
+   "name": "conflict2",
+   "request": {
+    "require": {
+     "nesty/nest": "^1.0"
+    }
+   },
+   "before": [
+    {
+     "name": "nesty/nest",
+     "version": "1.0.0",
+     "require": {
+      "conflicter/pkg": "^1.0",
+      "victim/pkg": "^1 <1.2"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.1",
+     "conflict": {
+      "victim/pkg": "1.1.0"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.2",
+     "conflict": {
+      "victim/pkg": "1.1.2"
+     }
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.0.2"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.2"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.2.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "nesty/nest",
+     "version": "1.0.0",
+     "require": {
+      "conflicter/pkg": "^1.0",
+      "victim/pkg": "^1 <1.2"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.1",
+     "conflict": {
+      "victim/pkg": "1.1.0 || 1.1.1"
+     }
+    },
+    {
+     "name": "conflicter/pkg",
+     "version": "1.0.2",
+     "conflict": {
+      "victim/pkg": "1.1.2"
+     }
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.0"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.1"
+    },
+    {
+     "name": "victim/pkg",
+     "version": "1.1.2"
+    }
+   ]
+  },
+  {
+   "name": "group-by-required",
+   "request": {
+    "require": {
+     "package/a": "^1.0"
+    }
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0 || ^2.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0",
+     "require": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1",
+     "require": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "2.0.0",
+     "require": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/c",
+     "version": "1.0.0",
+     "require": {
+      "package/d": "^1.0"
+     }
+    },
+    {
+     "name": "package/d",
+     "version": "1.0.0",
+     "require": {
+      "package/b": ">=1.0 <1.1"
+     }
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0 || ^2.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1",
+     "require": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "2.0.0",
+     "require": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/c",
+     "version": "1.0.0",
+     "require": {
+      "package/d": "^1.0"
+     }
+    },
+    {
+     "name": "package/d",
+     "version": "1.0.0",
+     "require": {
+      "package/b": ">=1.0 <1.1"
+     }
+    }
+   ]
+  },
+  {
+   "name": "locked-fixed-untouched",
+   "request": {
+    "require": {},
+    "locked": [
+     {
+      "name": "package/a",
+      "version": "1.0.0"
+     }
+    ],
+    "fixed": [
+     {
+      "name": "package/c",
+      "version": "2.0.0"
+     }
+    ]
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/c",
+     "version": "2.0.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0"
+    },
+    {
+     "name": "package/c",
+     "version": "2.0.0"
+    }
+   ]
+  },
+  {
+   "name": "replaces",
+   "request": {
+    "require": {
+     "package/a": "^1.0"
+    }
+   },
+   "before": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.0",
+     "replace": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1",
+     "replace": {
+      "package/c": "^1.0"
+     }
+    },
+    {
+     "name": "package/c",
+     "version": "1.0.0"
+    }
+   ],
+   "after": [
+    {
+     "name": "package/a",
+     "version": "1.0.0",
+     "require": {
+      "package/b": "^1.0"
+     }
+    },
+    {
+     "name": "package/b",
+     "version": "1.0.1",
+     "replace": {
+      "package/c": "^1.0"
+     }
+    }
+   ]
+  }
+ ]
+}

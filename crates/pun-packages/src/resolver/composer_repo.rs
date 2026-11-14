@@ -9,6 +9,7 @@ use crate::constraint::Constraint;
 use crate::fetch::{Fetched, Fetcher};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
 use anyhow::{Context, Result, bail};
+use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::value::RawValue;
 use serde_json::{Map, Value};
@@ -214,10 +215,11 @@ fn fetch_file(
     }
 }
 
-/// At most this many metadata requests run at once (Composer allows 12).
-const PARALLEL: usize = 16;
+/// At most this many metadata requests run at once (Composer allows 12); each round of a resolve waits for its
+/// slowest request, so more at once shortens every round.
+const PARALLEL: usize = 48;
 
-/// Fetches each (file, url, cache path) on a few worker threads, which also read the cached copies and parse the
+/// Fetches each (file, url, cache path) on worker threads, which also read the cached copies and parse the
 /// results, returning (file, result) in order.
 fn fetch_all(
     fetcher: &Fetcher,
@@ -342,54 +344,66 @@ impl Repository for ComposerRepository<'_> {
         for (file, data) in fetched {
             self.files.insert(file, data?);
         }
+        // Each file decodes and expands on its own thread; the packages join the arena in the files' order.
+        let (url, notify) = (&self.url, &self.notify);
+        let decoded: Vec<Option<Result<(Vec<Package>, Vec<usize>)>>> = (wanted.par_iter())
+            .map(|(file, name, constraint)| {
+                let data = self.files.get(file)?.as_ref()?;
+                let all: Value = serde_json::from_str(data.packages.as_ref()?.get()).ok()?;
+                let Some(Value::Array(versions)) = all.get(name) else {
+                    return None;
+                };
+                let (mut local, mut order) = (vec![], vec![]);
+                let take = |version: &Map<String, Value>| -> Result<()> {
+                    let normalized = match version.get("version_normalized").and_then(Value::as_str)
+                    {
+                        Some(v) if v != "9999999-dev" => v.to_string(),
+                        _ => normalize(
+                            (version.get("version").and_then(Value::as_str)).unwrap_or_default(),
+                        )?,
+                    };
+                    if loaded.get(name).is_some_and(|l| l.contains(&normalized))
+                        || !acceptable(constraint, name, &normalized, version, stabilities)
+                    {
+                        return Ok(());
+                    }
+                    let mut version = version.clone();
+                    // Composer's repository loader keeps no transport options.
+                    version.shift_remove("transport-options");
+                    if let Some(n) = notify {
+                        version
+                            .entry("notification-url")
+                            .or_insert_with(|| n.clone().into());
+                    }
+                    let loaded = load(version, Origin::Repository(index), &mut local)
+                        .with_context(|| format!("Could not load packages in {url} from {file}"))?;
+                    order.extend(loaded);
+                    Ok(())
+                };
+                let expanded = if data.minified.as_deref() == Some("composer/2.0") {
+                    expand(versions, take)
+                } else {
+                    (versions.iter().filter_map(Value::as_object)).try_for_each(take)
+                };
+                Some(expanded.map(|()| (local, order)))
+            })
+            .collect();
         let mut names = vec![];
         let mut packages = vec![];
-        for (file, name, constraint) in wanted {
-            let Some(Some(data)) = self.files.get(&file) else {
+        for ((_, name, _), decoded) in wanted.iter().zip(decoded) {
+            let Some(decoded) = decoded else {
                 continue;
             };
-            let all: Option<Value> =
-                (data.packages.as_ref()).and_then(|p| serde_json::from_str(p.get()).ok());
-            let Some(Value::Array(versions)) = all.as_ref().and_then(|p| p.get(&name)) else {
-                continue;
-            };
-            if !names.contains(&name) {
+            if !names.contains(name) {
                 names.push(name.clone());
             }
-            let mut take = |version: &Map<String, Value>| -> Result<()> {
-                let normalized = match version.get("version_normalized").and_then(Value::as_str) {
-                    Some(v) if v != "9999999-dev" => v.to_string(),
-                    _ => normalize(
-                        (version.get("version").and_then(Value::as_str)).unwrap_or_default(),
-                    )?,
-                };
-                if loaded.get(&name).is_some_and(|l| l.contains(&normalized))
-                    || !acceptable(constraint, &name, &normalized, version, stabilities)
-                {
-                    return Ok(());
-                }
-                let mut version = version.clone();
-                // Composer's repository loader keeps no transport options.
-                version.shift_remove("transport-options");
-                if let Some(n) = &self.notify {
-                    version
-                        .entry("notification-url")
-                        .or_insert_with(|| n.clone().into());
-                }
-                let loaded =
-                    load(version, Origin::Repository(index), arena).with_context(|| {
-                        format!("Could not load packages in {} from {file}", self.url)
-                    })?;
-                packages.extend(loaded);
-                Ok(())
-            };
-            if data.minified.as_deref() == Some("composer/2.0") {
-                expand(versions, take)?;
-            } else {
-                for version in versions.iter().filter_map(Value::as_object) {
-                    take(version)?;
-                }
-            }
+            let (local, order) = decoded?;
+            let offset = arena.len();
+            arena.extend(local.into_iter().map(|mut p| {
+                p.alias_of = p.alias_of.map(|of| of + offset);
+                p
+            }));
+            packages.extend(order.into_iter().map(|p| p + offset));
         }
         Ok(Found { names, packages })
     }

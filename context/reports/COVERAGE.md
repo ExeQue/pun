@@ -13,7 +13,7 @@ sections after it are kept by hand. The gate notes that used to open this file a
 | punphp-format | 1022 | 1022 | 100.00% | ok |
 | punphp-harness | 235 | 235 | 100.00% | ok |
 | punphp-lint | 74043 | 73169 | 98.82% | ok |
-| punphp-packages | 4406 | 4406 | 100.00% | ok |
+| punphp-packages | 10547 | 10547 | 100.00% | ok |
 | punphp-phpstan | 11672 | 11399 | 97.66% | ok |
 | punphp-problem | 105 | 105 | 100.00% | ok |
 | punphp-tokens | 3958 | 3892 | 98.33% | ok |
