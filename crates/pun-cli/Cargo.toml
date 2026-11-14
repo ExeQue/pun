@@ -48,6 +48,10 @@ pcre2.workspace = true
 notify.workspace = true
 dialoguer.workspace = true
 
+# The Linux release binaries link musl, whose allocator makes Pun 5x to 12x slower than glibc's.
+[target.'cfg(target_env = "musl")'.dependencies]
+mimalloc.workspace = true
+
 [features]
 pprof = ["dep:pprof"]
 
