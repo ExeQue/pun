@@ -133,9 +133,10 @@ impl Analyse {
 }
 
 fn absolute(root: &Path, path: &str) -> String {
-    match path.starts_with('*') {
-        true => path.to_string(),
-        false => normalize_path(&root.join(path).to_string_lossy()),
+    if path.starts_with('*') {
+        path.to_string()
+    } else {
+        normalize_path(&root.join(path).to_string_lossy())
     }
 }
 

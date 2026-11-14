@@ -476,9 +476,10 @@ fn composer(root: &Path, dry_run: bool) -> Result<(Option<Composer>, Vec<(&'stat
     if !deps.auth.is_empty() {
         let path = root.join("auth.json");
         let old = std::fs::read(&path).unwrap_or_default();
-        let mut auth: serde_json::Map<String, serde_json::Value> = match old.is_empty() {
-            true => serde_json::Map::new(),
-            false => serde_json::from_slice(&old).context("invalid auth.json")?,
+        let mut auth: serde_json::Map<String, serde_json::Value> = if old.is_empty() {
+            serde_json::Map::new()
+        } else {
+            serde_json::from_slice(&old).context("invalid auth.json")?
         };
         for (kind, hosts) in &deps.auth {
             match (auth.get_mut(kind), hosts) {
@@ -637,9 +638,10 @@ fn rector_lint(
             }
         }
     }
-    let sets = match r.sets.is_empty() {
-        true => "no sets".to_string(),
-        false => format!("sets {}", r.sets.join(", ")),
+    let sets = if r.sets.is_empty() {
+        "no sets".to_string()
+    } else {
+        format!("sets {}", r.sets.join(", "))
     };
     let mut text = format!("[lint] {sets}; {} on, {} off", done.on, done.off);
     if done.waiting > 0 {

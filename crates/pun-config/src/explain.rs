@@ -58,9 +58,12 @@ fn text(id: &str) -> String {
     out += "\n";
     let mut row = |label: &str, value: &str| writeln!(out, "{label:<10}{value}").unwrap();
     row("group", &format!("{group}: {}", group_description(group)));
-    let opt_in = |v: Vec<&str>| match v.is_empty() {
-        true => "none (opt-in by name or group)".to_string(),
-        false => v.join(", "),
+    let opt_in = |v: Vec<&str>| {
+        if v.is_empty() {
+            "none (opt-in by name or group)".to_string()
+        } else {
+            v.join(", ")
+        }
     };
     match command {
         "format" => row("presets", &opt_in(list("presets"))),

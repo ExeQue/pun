@@ -231,11 +231,12 @@ fn parse(
         })?,
         None => composer.php_version().unwrap_or(PhpVersion::FLOOR),
     };
-    let analyse_php_id = match explicit {
-        true => php.to_id(),
-        false => composer
+    let analyse_php_id = if explicit {
+        php.to_id()
+    } else {
+        composer
             .platform_php_id()
-            .unwrap_or(PhpVersion::NEWEST.to_id()),
+            .unwrap_or(PhpVersion::NEWEST.to_id())
     };
     let files = Files::from(files);
     for p in &files.paths {

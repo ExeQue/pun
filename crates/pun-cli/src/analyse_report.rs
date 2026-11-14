@@ -266,9 +266,10 @@ fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> S
         "##teamcity[inspectionType id='phpstan' name='phpstan' category='phpstan' description='phpstan Inspection']\n",
     );
     for f in findings {
-        let message = match f.ignorable() {
-            true => format!("{} (🪪 {})", f.message, f.identifier),
-            false => f.message.clone(),
+        let message = if f.ignorable() {
+            format!("{} (🪪 {})", f.message, f.identifier)
+        } else {
+            f.message.clone()
         };
         let _ = writeln!(
             out,

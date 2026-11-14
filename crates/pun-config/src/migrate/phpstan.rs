@@ -581,11 +581,10 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         let lint = id.starts_with("lint/");
         let turned_on = lint && super::require_lint(parts, id, "\"error\"");
         done.lint += usize::from(turned_on);
-        let why = match lint {
-            true => "a PHPStan check that is this lint rule in Pun, not supported yet",
-            false => {
-                "a PHPStan check that is this format rule in Pun; turn it on in [format.rules]"
-            }
+        let why = if lint {
+            "a PHPStan check that is this lint rule in Pun, not supported yet"
+        } else {
+            "a PHPStan check that is this format rule in Pun; turn it on in [format.rules]"
         };
         done.unsupported
             .extend((!turned_on).then(|| (id.clone(), why.to_string())));

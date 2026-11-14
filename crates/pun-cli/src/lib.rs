@@ -438,13 +438,14 @@ fn show_config(
     let sources: Vec<String> = (cfg.sources.iter())
         .map(|s| s.strip_prefix(&root).unwrap_or(s).display().to_string())
         .collect();
-    let toml = match sources.is_empty() {
-        true => toml::to_string(&v)?,
-        false => format!(
+    let toml = if sources.is_empty() {
+        toml::to_string(&v)?
+    } else {
+        format!(
             "# Resolved from {}.\n\n{}",
             sources.join(", "),
             toml::to_string(&v)?
-        ),
+        )
     };
     if fmt.is_none() && agent::enabled() {
         let detail = [

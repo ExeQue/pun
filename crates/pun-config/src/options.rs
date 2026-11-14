@@ -279,9 +279,10 @@ pub fn natural_language_join<S: AsRef<str>>(names: impl IntoIterator<Item = S>) 
         .map(|n| format!("\"{}\"", n.as_ref()))
         .collect();
     let last = names.pop().expect("Array of names cannot be empty.");
-    match names.is_empty() {
-        true => last,
-        false => format!("{} and {last}", names.join(", ")),
+    if names.is_empty() {
+        last
+    } else {
+        format!("{} and {last}", names.join(", "))
     }
 }
 

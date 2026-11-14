@@ -232,9 +232,10 @@ fn project(
 pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Result<Analysed> {
     let files = pun_workspace::files(cfg, Some(Command::Analyse), paths)?;
     let count = files.len();
-    let configured: Vec<PathBuf> = match paths.is_empty() {
-        false => paths.to_vec(),
-        true => cfg.analyse.paths.iter().map(PathBuf::from).collect(),
+    let configured: Vec<PathBuf> = if paths.is_empty() {
+        cfg.analyse.paths.iter().map(PathBuf::from).collect()
+    } else {
+        paths.to_vec()
     };
     let mut paths: Vec<PathBuf> = (configured.iter())
         .map(|p| PathBuf::from(normalize_path(&cfg.root.join(p).to_string_lossy())))

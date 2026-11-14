@@ -314,9 +314,10 @@ fn annotations(ctx: &Ctx, results: &[FileResult]) -> String {
         let lint: Vec<&str> = (ids.iter().map(String::as_str))
             .filter(|id| !id.starts_with("format/"))
             .collect();
-        let message = match lint.is_empty() {
-            true => "File needs formatting".to_string(),
-            false => format!("{} can fix this file", lint.join(", ")),
+        let message = if lint.is_empty() {
+            "File needs formatting".to_string()
+        } else {
+            format!("{} can fix this file", lint.join(", "))
         };
         github::file(&f.rel, f.line, &ids, &message)
     };

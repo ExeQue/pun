@@ -70,9 +70,10 @@ fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
     let overridden = (cfg.lint.overrides.iter())
         .flat_map(|o| &o.rules)
         .any(|s| s.id == id && !s.options.is_null());
-    let result = match overridden {
-        true => Err("takes options in [lint.rules] only, not in [[lint.overrides]]".to_string()),
-        false => rule.configure(base.map_or(&serde_json::Value::Null, |r| &r.options)),
+    let result = if overridden {
+        Err("takes options in [lint.rules] only, not in [[lint.overrides]]".to_string())
+    } else {
+        rule.configure(base.map_or(&serde_json::Value::Null, |r| &r.options))
     };
     result.map_err(|e| config_error(anyhow::anyhow!("pun.toml: `{id}` {e}")))
 }
@@ -157,9 +158,10 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
         return Err(abort.into());
     }
     let pipelines = Pipelines::new(&cfg, if formats { cfg.rules.clone() } else { vec![] });
-    let base_token = match lints {
-        true => token_rules(&plan.for_file(&root.join("-")), stage.fix(), false),
-        false => vec![],
+    let base_token = if lints {
+        token_rules(&plan.for_file(&root.join("-")), stage.fix(), false)
+    } else {
+        vec![]
     };
     let base = pipelines.get(formats, &base_token)?;
     if a.pun.explain {
@@ -211,25 +213,24 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     let known: HashSet<&PathBuf> = format_set.iter().collect();
     files.extend(lint_set.iter().filter(|f| !known.contains(f)).cloned());
     drop(known);
-    let natives: Vec<Box<dyn pun_lint::Rule>> = match lints {
-        true => {
-            let on = plan.mentioned();
-            let mut natives: Vec<_> = (pun_lint::rules::all().into_iter())
-                .filter(|r| on.contains(r.id()))
-                .collect();
-            for r in &mut natives {
-                configure(&cfg, r.as_mut())?;
-            }
-            if !natives.is_empty() {
-                let project = match (&selected, a.paths.is_empty()) {
-                    (None, true) => lint_set.clone(),
-                    _ => pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?,
-                };
-                project_codebase(&cfg, project);
-            }
-            natives
+    let natives: Vec<Box<dyn pun_lint::Rule>> = if lints {
+        let on = plan.mentioned();
+        let mut natives: Vec<_> = (pun_lint::rules::all().into_iter())
+            .filter(|r| on.contains(r.id()))
+            .collect();
+        for r in &mut natives {
+            configure(&cfg, r.as_mut())?;
         }
-        false => vec![],
+        if !natives.is_empty() {
+            let project = match (&selected, a.paths.is_empty()) {
+                (None, true) => lint_set.clone(),
+                _ => pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?,
+            };
+            project_codebase(&cfg, project);
+        }
+        natives
+    } else {
+        vec![]
     };
     let engines = Engines {
         stage,
@@ -647,8 +648,8 @@ fn process_file(
         let text = std::str::from_utf8(&now).ok().map(str::to_owned);
         if let (Some(linter), Some(text), true) = (&e.linter, text.as_deref(), native_on) {
             let filter = |src: &str, ps: &mut Vec<Problem>| filter_problems(&on, &rel, src, ps);
-            let outcome = match fix {
-                true => linter.fix_with(rel_path, text, filter).map(|f| {
+            let outcome = if fix {
+                linter.fix_with(rel_path, text, filter).map(|f| {
                     for p in &f.applied {
                         let id = static_id(&p.rule);
                         if !applied.contains(&id) {
@@ -657,11 +658,12 @@ fn process_file(
                     }
                     now = f.source.into_bytes();
                     f.remaining
-                }),
-                false => linter.check(rel_path, text).map(|mut ps| {
+                })
+            } else {
+                linter.check(rel_path, text).map(|mut ps| {
                     filter_problems(&on, &rel, text, &mut ps);
                     ps
-                }),
+                })
             };
             match outcome {
                 Ok(ps) => problems = ps,
@@ -764,20 +766,20 @@ fn process_file(
         r.problems = problems;
     }
 
-    let pending = match fix {
-        true => token_rules(&token_on, true, true),
-        false => vec![],
+    let pending = if fix {
+        token_rules(&token_on, true, true)
+    } else {
+        vec![]
     };
-    let left = match pending.is_empty() {
-        true => None,
-        false => {
-            let p = e.pipelines.get(false, &pending)?;
-            isolated(|| run_file(&p, path, &now))
-                .ok()
-                .transpose()?
-                .and_then(Result::ok)
-                .flatten()
-        }
+    let left = if pending.is_empty() {
+        None
+    } else {
+        let p = e.pipelines.get(false, &pending)?;
+        isolated(|| run_file(&p, path, &now))
+            .ok()
+            .transpose()?
+            .and_then(Result::ok)
+            .flatten()
     };
     let remaining = left.map(|(new, fixers)| {
         let mut f = FileResult::new(path.clone(), rel.clone());
