@@ -19,7 +19,7 @@ pub use schema::{
 
 use anyhow::{Context, Result, bail};
 use composer::Composer;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -489,11 +489,10 @@ impl Config {
         let lint: Map<String, Value> = (self.lint.rules.iter())
             .map(|r| (short(&r.id), r.value()))
             .collect();
-        let overrides: Vec<Value> = (self.lint.overrides.iter())
-            .map(|o| {
-                let rules: Map<String, Value> =
-                    o.rules.iter().map(|r| (short(&r.id), r.value())).collect();
-                serde_json::json!({ "files": o.files, "rules": rules })
+        let overrides: Vec<ShownOverride> = (self.lint.overrides.iter())
+            .map(|o| ShownOverride {
+                files: &o.files,
+                rules: o.rules.iter().map(|r| (short(&r.id), r.value())).collect(),
             })
             .collect();
         let analyse: Map<String, Value> = (self.analyse.rules.iter())
@@ -506,34 +505,94 @@ impl Config {
             })
             .collect();
         let a = &self.analyse;
-        let mut analyse = serde_json::json!({
-            "preset": a.preset, "paths": a.paths, "exclude": a.exclude, "switches": a.switches,
-            "ecosystems": a.ecosystems, "rules": analyse,
-        });
-        if let Some(b) = &a.baseline {
-            analyse["baseline"] = b.as_str().into();
-        }
-        if !a.stubs.is_empty() {
-            analyse["stubs"] = serde_json::json!(a.stubs);
-        }
-        if !a.ignore.is_empty() {
-            analyse["ignore"] = serde_json::json!(a.ignore);
-        }
         let f = &self.finder;
-        serde_json::json!({
-            "php": { "version": self.php },
-            "files": self.files,
-            "format": {
-                "preset": self.preset, "exclude": f.exclude, "not-name": f.not_name, "not-path": f.not_path,
-                "rules": format,
+        let shown = Shown {
+            php: ShownPhp { version: &self.php },
+            files: &self.files,
+            format: ShownFormat {
+                preset: &self.preset,
+                exclude: &f.exclude,
+                not_name: &f.not_name,
+                not_path: &f.not_path,
+                rules: format,
             },
-            "lint": {
-                "sets": self.lint.sets, "exclude": self.lint.exclude, "ecosystems": self.lint.ecosystems,
-                "rules": lint, "overrides": overrides,
+            lint: ShownLint {
+                sets: &self.lint.sets,
+                exclude: &self.lint.exclude,
+                ecosystems: &self.lint.ecosystems,
+                rules: lint,
+                overrides,
             },
-            "analyse": analyse,
-        })
+            analyse: ShownAnalyse {
+                preset: &a.preset,
+                paths: &a.paths,
+                exclude: &a.exclude,
+                switches: &a.switches,
+                ecosystems: &a.ecosystems,
+                rules: analyse,
+                baseline: a.baseline.as_deref(),
+                stubs: &a.stubs,
+                ignore: &a.ignore,
+            },
+        };
+        serde_json::to_value(shown).unwrap()
     }
+}
+
+/// `pun config`: the resolved configuration in pun.toml's shape.
+#[derive(Serialize)]
+struct Shown<'a> {
+    php: ShownPhp<'a>,
+    files: &'a Files,
+    format: ShownFormat<'a>,
+    lint: ShownLint<'a>,
+    analyse: ShownAnalyse<'a>,
+}
+
+#[derive(Serialize)]
+struct ShownPhp<'a> {
+    version: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct ShownFormat<'a> {
+    preset: &'a FormatPreset,
+    exclude: &'a [String],
+    not_name: &'a [String],
+    not_path: &'a [String],
+    rules: Map<String, Value>,
+}
+
+#[derive(Serialize)]
+struct ShownLint<'a> {
+    sets: &'a [String],
+    exclude: &'a [String],
+    ecosystems: &'a [Ecosystem],
+    rules: Map<String, Value>,
+    overrides: Vec<ShownOverride<'a>>,
+}
+
+#[derive(Serialize)]
+struct ShownOverride<'a> {
+    files: &'a [String],
+    rules: Map<String, Value>,
+}
+
+#[derive(Serialize)]
+struct ShownAnalyse<'a> {
+    preset: &'a AnalysePreset,
+    paths: &'a [String],
+    exclude: &'a [String],
+    switches: &'a [&'static str],
+    ecosystems: &'a [Ecosystem],
+    rules: Map<String, Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline: Option<&'a str>,
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    stubs: &'a [String],
+    #[serde(skip_serializing_if = "<[_]>::is_empty")]
+    ignore: &'a [Ignore],
 }
 
 #[cfg(test)]

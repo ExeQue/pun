@@ -113,9 +113,7 @@ pub(crate) fn run(a: UpdateArgs) -> Result<Exit> {
     let mut project = project(a.install.working_dir.as_ref(), false)?;
     if let Some(lock) = &project.lock {
         for name in a.packages.iter().filter(|n| !n.contains('*')) {
-            let locked = (lock.all())
-                .filter_map(|p| p.get("name").and_then(Value::as_str))
-                .any(|n| n.eq_ignore_ascii_case(name));
+            let locked = (lock.all()).any(|p| p.pretty_name().eq_ignore_ascii_case(name));
             if !locked {
                 eprintln!(" ! {name} is not in the lock, so there is nothing of it to update");
             }
@@ -315,18 +313,12 @@ fn restore(path: &Path, original: Option<&str>) -> Result<()> {
 
 /// Each package's (lowercase name, version, short reference) in a lock, by name.
 fn versions(lock: &Lock) -> Vec<(String, String, String)> {
-    let s = |v: Option<&Value>| v.and_then(Value::as_str).unwrap_or_default().to_string();
     let mut out: Vec<(String, String, String)> = (lock.all())
         .map(|p| {
-            let dist = s(p.get("dist").and_then(|d| d.get("reference")));
-            let reference = if dist.is_empty() {
-                s(p.get("source").and_then(|d| d.get("reference")))
-            } else {
-                dist
-            };
+            let reference = p.reference().unwrap_or_default();
             (
-                s(p.get("name")).to_ascii_lowercase(),
-                s(p.get("version")),
+                p.name(),
+                p.version().to_string(),
                 reference.chars().take(7).collect(),
             )
         })

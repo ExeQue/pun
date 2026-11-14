@@ -203,16 +203,12 @@ fn needs(lock: &pun_packages::lock::Lock) -> Vec<Need> {
     let mut out = vec![];
     for (packages, criteria) in sections {
         for p in packages {
-            let s = |k: &str| p.get(k).and_then(Value::as_str).unwrap_or_default();
-            let dist = p
-                .get("dist")
-                .and_then(|d| d.get("type"))
-                .and_then(Value::as_str);
-            if dist == Some("path") || s("type") == "metapackage" {
+            let dist = p.dist().and_then(|d| d.get("type")).and_then(Value::as_str);
+            if dist == Some("path") || p.kind() == Some("metapackage") {
                 continue;
             }
             out.push(Need {
-                name: s("name").to_ascii_lowercase(),
+                name: p.name(),
                 version: version_id(p),
                 criteria,
             });
@@ -588,11 +584,8 @@ fn unpack_version(
     let wanted = key(version);
     let locked = (lock.all())
         .find(|p| {
-            p.get("name")
-                .and_then(Value::as_str)
-                .is_some_and(|n| n.eq_ignore_ascii_case(name))
-                && (key(&version_id(p)) == wanted
-                    || key(p.get("version").and_then(Value::as_str).unwrap_or_default()) == wanted)
+            p.pretty_name().eq_ignore_ascii_case(name)
+                && (key(&version_id(p)) == wanted || key(p.version()) == wanted)
         })
         .cloned();
     let package = match locked {

@@ -2,7 +2,6 @@ use crate::Exit;
 use crate::install::{InstallArgs, project};
 use crate::update::{Plan, update_and_install};
 use anyhow::{Context, Result, bail};
-use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -192,14 +191,32 @@ fn list() -> Result<Exit> {
     Ok(Exit::Success)
 }
 
+/// vendor/composer/installed.json, as far as `punx` reads it.
+#[derive(serde::Deserialize)]
+struct Installed {
+    #[serde(default)]
+    packages: Vec<InstalledPackage>,
+}
+
+#[derive(serde::Deserialize)]
+struct InstalledPackage {
+    name: String,
+    version: Option<String>,
+    #[serde(default)]
+    bin: Vec<String>,
+}
+
+impl Installed {
+    fn into_package(self, name: &str) -> Option<InstalledPackage> {
+        self.packages.into_iter().find(|p| p.name == name)
+    }
+}
+
 /// The version of `name` that `dir` has installed.
 fn installed_version(dir: &Path, name: &str) -> Option<String> {
     let text = std::fs::read_to_string(dir.join("vendor/composer/installed.json")).ok()?;
-    let installed: Value = serde_json::from_str(&text).ok()?;
-    let package = (installed.get("packages")?.as_array()?)
-        .iter()
-        .find(|p| p.get("name").and_then(Value::as_str) == Some(name))?;
-    package.get("version")?.as_str().map(str::to_owned)
+    let installed: Installed = serde_json::from_str(&text).ok()?;
+    installed.into_package(name)?.version
 }
 
 /// `punx clean`: removes every install, or those of the packages named. A package named without a constraint
@@ -292,16 +309,10 @@ fn commands(dir: &Path, name: &str) -> Result<Vec<String>> {
     let path = dir.join("vendor/composer/installed.json");
     let text =
         std::fs::read_to_string(&path).with_context(|| format!("can't read {}", path.display()))?;
-    let installed: Value = serde_json::from_str(&text).context("invalid installed.json")?;
-    let package = (installed.get("packages").and_then(Value::as_array))
-        .into_iter()
-        .flatten()
-        .find(|p| p.get("name").and_then(Value::as_str) == Some(name))
+    let installed: Installed = serde_json::from_str(&text).context("invalid installed.json")?;
+    let package = (installed.into_package(name))
         .with_context(|| format!("{name} is not in {}", path.display()))?;
-    Ok((package.get("bin").and_then(Value::as_array))
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
+    Ok((package.bin.iter())
         .filter_map(|b| Path::new(b).file_name())
         .map(|b| b.to_string_lossy().into_owned())
         .collect())
