@@ -1,4 +1,5 @@
 use crate::analyzers::fixer_configuration_resolver::resolve;
+use crate::analyzers::helpers::skip_non_array_elements;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -68,33 +69,6 @@ impl Fixer for WhitespaceAfterCommaInArrayFixer {
         }
         if !tokens_to_insert.is_empty() {
             tokens.insert_slices(tokens_to_insert);
-        }
-    }
-}
-
-fn skip_non_array_elements(mut index: usize, tokens: &Tokens) -> usize {
-    if tokens[index].equals("}", true) {
-        return tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, index);
-    }
-    if tokens[index].equals(")", true) {
-        let start_index = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, index);
-        let start_index = tokens.prev_meaningful(start_index);
-        if !tokens[start_index].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
-            return start_index;
-        }
-    }
-    if tokens[index].equals(",", true) && comma_is_part_of_implements_list(index, tokens) {
-        index -= 1;
-    }
-    index
-}
-
-fn comma_is_part_of_implements_list(mut index: usize, tokens: &Tokens) -> bool {
-    loop {
-        index = tokens.prev_meaningful(index);
-        let current = &tokens[index];
-        if !(current.is_kind(T_STRING) || current.equals(",", true)) {
-            return current.is_kind(T_IMPLEMENTS);
         }
     }
 }

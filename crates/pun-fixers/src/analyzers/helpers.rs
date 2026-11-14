@@ -41,3 +41,30 @@ pub(crate) fn split_list(tokens: &Tokens, open: usize, close: usize) -> Vec<(usi
     }
     items
 }
+
+pub(crate) fn skip_non_array_elements(mut index: usize, tokens: &Tokens) -> usize {
+    if tokens[index].equals("}", true) {
+        return tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, index);
+    }
+    if tokens[index].equals(")", true) {
+        let start_index = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, index);
+        let start_index = tokens.prev_meaningful(start_index);
+        if !tokens[start_index].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
+            return start_index;
+        }
+    }
+    if tokens[index].equals(",", true) && comma_is_part_of_implements_list(index, tokens) {
+        index -= 1;
+    }
+    index
+}
+
+fn comma_is_part_of_implements_list(mut index: usize, tokens: &Tokens) -> bool {
+    loop {
+        index = tokens.prev_meaningful(index);
+        let current = &tokens[index];
+        if !(current.is_kind(T_STRING) || current.equals(",", true)) {
+            return current.is_kind(T_IMPLEMENTS);
+        }
+    }
+}
