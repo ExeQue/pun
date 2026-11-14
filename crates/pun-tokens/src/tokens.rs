@@ -1004,9 +1004,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "no meaningful token before index 1")]
+    #[should_panic(expected = "no meaningful token before index 0")]
     fn prev_meaningful_names_the_index_when_missing() {
-        Tokens::from_code(b"<?php a /* c */ ;").prev_meaningful(1);
+        Tokens::from_code(b"<?php a /* c */ ;").prev_meaningful(0);
     }
 
     #[test]
