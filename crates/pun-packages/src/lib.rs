@@ -4,12 +4,15 @@
 pub mod autoload;
 pub mod bins;
 pub mod classmap;
+pub mod constraint;
 pub mod fetch;
 pub mod install;
 pub mod installed;
 pub mod lock;
+pub mod manifest_edit;
 pub mod paths;
 pub mod php;
 pub mod plugins;
+pub mod resolver;
 pub mod scripts;
 pub mod version;

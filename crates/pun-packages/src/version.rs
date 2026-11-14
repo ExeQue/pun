@@ -1,25 +1,25 @@
 //! Package versions as Composer reads them: the normalized form `installed.json` and `installed.php` store
-//! (`v1.2` → `1.2.0.0`, `5.x-dev` → `5.9999999.9999999.9999999-dev`), branch aliases, PHP's `version_compare`, and the
-//! lowest version a constraint admits, which `platform_check.php` tests the running PHP against.
+//! (`v1.2` → `1.2.0.0`, `5.x-dev` → `5.9999999.9999999.9999999-dev`), branch aliases, stability, and PHP's
+//! `version_compare`.
 
 use anyhow::{Result, bail};
 use pcre2::bytes::{Captures, Regex};
 use std::cmp::Ordering;
 use std::sync::LazyLock;
 
-const MODIFIER: &str =
+pub(crate) const MODIFIER: &str =
     r"[._-]?(?:(stable|beta|b|RC|alpha|a|patch|pl|p)((?:[.-]?\d+)*+)?)?([.-]?dev)?";
 
-fn re(pattern: &str) -> Regex {
+pub(crate) fn re(pattern: &str) -> Regex {
     Regex::new(pattern).expect("valid pattern")
 }
 
-fn group<'a>(c: &'a Captures, i: usize) -> &'a str {
+pub(crate) fn group<'a>(c: &'a Captures, i: usize) -> &'a str {
     c.get(i)
         .map_or("", |m| std::str::from_utf8(m.as_bytes()).unwrap_or(""))
 }
 
-static ALIAS: LazyLock<Regex> = LazyLock::new(|| re(r"^([^,\s]++) ++as ++([^,\s]++)$"));
+pub(crate) static ALIAS: LazyLock<Regex> = LazyLock::new(|| re(r"^([^,\s]++) ++as ++([^,\s]++)$"));
 static FLAG: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)@(?:stable|RC|beta|alpha|dev)$"));
 static META: LazyLock<Regex> = LazyLock::new(|| re(r"^([^,\s+]++)\+[^\s]++$"));
 static CLASSIC: LazyLock<Regex> = LazyLock::new(|| {
@@ -113,6 +113,34 @@ pub fn normalize(version: &str) -> Result<String> {
     bail!("Invalid version string \"{original}\"")
 }
 
+static STABILITY_SUFFIX: LazyLock<Regex> =
+    LazyLock::new(|| re(&format!(r"(?i){MODIFIER}(?:\+.*)?$")));
+
+/// A version's stability (`VersionParser::parseStability`): `dev`, `alpha`, `beta`, `RC` or `stable`.
+pub fn stability_of(version: &str) -> &'static str {
+    let version = version.split_once('#').map_or(version, |(v, _)| v);
+    if version.starts_with("dev-") || version.ends_with("-dev") {
+        return "dev";
+    }
+    // Without a letter there is no modifier; most versions are plain tags.
+    if version.bytes().all(|c| c.is_ascii_digit() || c == b'.') {
+        return "stable";
+    }
+    let lower = version.to_ascii_lowercase();
+    let Ok(Some(m)) = STABILITY_SUFFIX.captures(lower.as_bytes()) else {
+        return "stable";
+    };
+    if !group(&m, 3).is_empty() {
+        return "dev";
+    }
+    match group(&m, 1) {
+        "beta" | "b" => "beta",
+        "alpha" | "a" => "alpha",
+        "rc" => "RC",
+        _ => "stable",
+    }
+}
+
 /// A branch name as a version: a numeric branch (`5.x`, `2.1`) becomes `5.9999999.9999999.9999999-dev`, any other
 /// name `dev-<name>`.
 pub fn normalize_branch(name: &str) -> String {
@@ -132,7 +160,9 @@ pub fn normalize_branch(name: &str) -> String {
 
 /// The alias Composer installs a dev version under, as (normalized, pretty): `extra.branch-alias` for the version
 /// (`dev-main` → `1.x-dev`), else `9999999-dev` for a non-numeric default branch.
-pub fn branch_alias(package: &serde_json::Value) -> Option<(String, String)> {
+pub fn branch_alias(
+    package: &serde_json::Map<String, serde_json::Value>,
+) -> Option<(String, String)> {
     let version = package.get("version")?.as_str()?;
     if !version.starts_with("dev-") && !version.ends_with("-dev") {
         return None;
@@ -141,8 +171,8 @@ pub fn branch_alias(package: &serde_json::Value) -> Option<(String, String)> {
         let c = NUMERIC_ALIAS.captures(b.as_bytes()).ok()??;
         Some(format!("{}.", group(&c, 1)))
     };
-    let aliases = package
-        .pointer("/extra/branch-alias")
+    let aliases = (package.get("extra"))
+        .and_then(|e| e.get("branch-alias"))
         .and_then(|a| a.as_object());
     for (source, target) in aliases.into_iter().flatten() {
         let Some(target) = target.as_str() else {
@@ -228,8 +258,11 @@ pub fn compare(a: &str, b: &str) -> i32 {
             _ => 1,
         };
     }
-    let (a, b) = (canonical(a), canonical(b));
-    let (a, b) = (a.as_bytes(), b.as_bytes());
+    // Canonical forms are at most twice as long; most versions fit on the stack, so comparing allocates nothing.
+    let (mut stack_a, mut stack_b) = ([0u8; 64], [0u8; 64]);
+    let (mut heap_a, mut heap_b) = (vec![], vec![]);
+    let a = canonical(a, &mut stack_a, &mut heap_a);
+    let b = canonical(b, &mut stack_b, &mut heap_b);
     let (mut p1, mut p2) = (0usize, 0usize);
     let (mut n1, mut n2): (Option<usize>, Option<usize>) = (Some(0), Some(0));
     let mut result = 0;
@@ -306,226 +339,49 @@ fn rank(form: &[u8]) -> i32 {
         .map_or(-1, |f| f.1)
 }
 
-/// `php_canonicalize_version`: `-`, `_`, `+` and other punctuation become `.`, and a `.` goes between a digit and a
-/// letter.
-fn canonical(v: &str) -> String {
-    let b = v.as_bytes();
-    let mut out = vec![b[0]];
-    let mut last = b[0];
+/// `php_canonicalize_version`: `-`, `_`, `+` and other punctuation become `.`, a `.` goes between a digit and a
+/// letter, and a trailing `.` goes. A version starting with `#` is left as it is.
+fn canonical<'b>(v: &'b str, stack: &'b mut [u8], heap: &'b mut Vec<u8>) -> &'b [u8] {
+    let v = v.as_bytes();
+    if v[0] == b'#' {
+        return v;
+    }
+    let out: &mut [u8] = if v.len() * 2 <= stack.len() {
+        stack
+    } else {
+        heap.resize(v.len() * 2, 0);
+        heap
+    };
+    out[0] = v[0];
+    let mut len = 1;
+    let mut last = v[0];
     let digit = |c: u8| c.is_ascii_digit() && c != b'.';
     let other = |c: u8| !c.is_ascii_digit() && c != b'.';
-    for &c in &b[1..] {
-        let dot = |out: &mut Vec<u8>| {
-            if out.last() != Some(&b'.') {
-                out.push(b'.');
+    for &c in &v[1..] {
+        let mut dot = |out: &mut [u8]| {
+            if out[len - 1] != b'.' {
+                out[len] = b'.';
+                len += 1;
             }
         };
         if matches!(c, b'-' | b'_' | b'+') {
-            dot(&mut out);
+            dot(out);
         } else if (other(last) && digit(c)) || (digit(last) && other(c)) {
-            dot(&mut out);
-            out.push(c);
+            dot(out);
+            out[len] = c;
+            len += 1;
         } else if !c.is_ascii_alphanumeric() {
-            dot(&mut out);
+            dot(out);
         } else {
-            out.push(c);
+            out[len] = c;
+            len += 1;
         }
         last = c;
     }
-    String::from_utf8_lossy(&out).into_owned()
-}
-
-/// The lowest version a constraint admits: (normalized version, inclusive), as `getLowerBound()` of the parsed
-/// constraint gives it. `0.0.0.0-dev` inclusive is no bound.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Bound {
-    pub version: String,
-    pub inclusive: bool,
-}
-
-impl Bound {
-    pub fn zero() -> Bound {
-        Bound {
-            version: "0.0.0.0-dev".into(),
-            inclusive: true,
-        }
+    if out[len - 1] == b'.' {
+        len -= 1;
     }
-
-    pub fn is_zero(&self) -> bool {
-        *self == Bound::zero()
-    }
-
-    /// `Bound::compareTo($other, '>')`: higher version, or the same version where only `other` includes it.
-    pub fn above(&self, other: &Bound) -> bool {
-        if self == other {
-            return false;
-        }
-        match compare(&self.version, &other.version) {
-            0 => other.inclusive,
-            c => c == 1,
-        }
-    }
-}
-
-static TILDE: LazyLock<Regex> = LazyLock::new(|| re(&format!("(?i)^~>?{}$", version_regex())));
-static CARET: LazyLock<Regex> = LazyLock::new(|| re(&format!("(?i)^\\^{}($)", version_regex())));
-static WILDCARD: LazyLock<Regex> =
-    LazyLock::new(|| re(r"^v?(\d++)(?:\.(\d++))?(?:\.(\d++))?(?:\.[xX*])++$"));
-static HYPHEN: LazyLock<Regex> = LazyLock::new(|| {
-    let v = version_regex();
-    re(&format!("(?i)^(?P<from>{v}) +- +(?P<to>{v})($)"))
-});
-static OPERATOR: LazyLock<Regex> = LazyLock::new(|| re(r"^(<>|!=|>=?|<=?|==?)?\s*(.*)"));
-static STABILITY_FLAG: LazyLock<Regex> =
-    LazyLock::new(|| re(r"(?i)^([^,\s]*?)@(stable|RC|beta|alpha|dev)$"));
-static ANY: LazyLock<Regex> = LazyLock::new(|| re(r"(?i)^(v)?[xX*](\.[xX*])*$"));
-static OR: LazyLock<Regex> = LazyLock::new(|| re(r"\s*\|\|?\s*"));
-static AND: LazyLock<Regex> =
-    LazyLock::new(|| re(r"(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)"));
-static MODIFIER_END: LazyLock<Regex> = LazyLock::new(|| re(&format!("(?i)-{MODIFIER}$")));
-
-fn version_regex() -> String {
-    format!(
-        r"v?(\d++)(?:\.(\d++))?(?:\.(\d++))?(?:\.(\d++))?(?:{MODIFIER}|\.([xX*][.-]?dev))(?:\+[^\s]+)?"
-    )
-}
-
-fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
-    let mut out = vec![];
-    let mut start = 0;
-    for m in re.find_iter(s.as_bytes()).flatten() {
-        out.push(&s[start..m.start()]);
-        start = m.end();
-    }
-    out.push(&s[start..]);
-    out
-}
-
-/// The lower bound of a version constraint (`^8.4`, `>=8.1 <9`, `^7.2 || ^8.0`): of an AND the highest, of an OR the
-/// lowest.
-pub fn lower_bound(constraint: &str) -> Result<Bound> {
-    let mut low: Option<Bound> = None;
-    for alternative in split(&OR, constraint.trim()) {
-        let mut high: Option<Bound> = None;
-        for part in split(&AND, alternative) {
-            let b = atom_bound(part)?;
-            high = Some(match high {
-                Some(h) if !b.above(&h) => h,
-                _ => b,
-            });
-        }
-        let b = high.unwrap_or_else(Bound::zero);
-        low = Some(match low {
-            Some(l) if !l.above(&b) => l,
-            _ => b,
-        });
-    }
-    Ok(low.unwrap_or_else(Bound::zero))
-}
-
-/// The lower bound of one constraint without `,`, ` ` or `|`.
-fn atom_bound(constraint: &str) -> Result<Bound> {
-    let ge = |version: String| Bound {
-        version,
-        inclusive: true,
-    };
-    let mut c = constraint.to_string();
-    if let Some(m) = ALIAS.captures(c.as_bytes())? {
-        c = group(&m, 1).to_string();
-    }
-    let mut flag = String::new();
-    if let Some(m) = STABILITY_FLAG.captures(c.as_bytes())? {
-        flag = if group(&m, 2).eq_ignore_ascii_case("stable") {
-            String::new()
-        } else {
-            group(&m, 2).to_string()
-        };
-        c = match group(&m, 1) {
-            "" => "*".to_string(),
-            v => v.to_string(),
-        };
-    }
-    if let Some(m) = ANY.captures(c.as_bytes())? {
-        let _ = m;
-        return Ok(Bound::zero());
-    }
-    let dev_suffix = |m: &Captures, a: usize, b: usize, d: usize| {
-        if group(m, a).is_empty() && group(m, b).is_empty() && group(m, d).is_empty() {
-            "-dev"
-        } else {
-            ""
-        }
-    };
-    if let Some(m) = TILDE.captures(c.as_bytes())? {
-        if c.starts_with("~>") {
-            bail!(
-                "Could not parse version constraint {c}: Invalid operator \"~>\", you probably meant to use the \"~\" operator"
-            );
-        }
-        return Ok(ge(normalize(&format!(
-            "{}{}",
-            &c[1..],
-            dev_suffix(&m, 5, 7, 8)
-        ))?));
-    }
-    if let Some(m) = CARET.captures(c.as_bytes())? {
-        return Ok(ge(normalize(&format!(
-            "{}{}",
-            &c[1..],
-            dev_suffix(&m, 5, 7, 8)
-        ))?));
-    }
-    if let Some(m) = WILDCARD.captures(c.as_bytes())? {
-        let parts: Vec<&str> = (1..4).map(|i| group(&m, i)).collect();
-        let position = parts
-            .iter()
-            .rposition(|p| !p.is_empty())
-            .map_or(1, |p| p + 1);
-        let low: Vec<&str> = (0..4)
-            .map(|i| if i < position { parts[i] } else { "0" })
-            .collect();
-        return Ok(ge(format!("{}-dev", low.join("."))));
-    }
-    if let Some(m) = HYPHEN.captures(c.as_bytes())? {
-        let from = std::str::from_utf8(m.name("from").unwrap().as_bytes())?;
-        return Ok(ge(format!(
-            "{}{}",
-            normalize(from)?,
-            dev_suffix(&m, 6, 8, 9)
-        )));
-    }
-    let m = OPERATOR
-        .captures(c.as_bytes())?
-        .expect("matches any string");
-    let (op, rest) = (group(&m, 1), group(&m, 2));
-    let mut version = match normalize(rest) {
-        Ok(v) => v,
-        Err(_)
-            if rest.ends_with("-dev")
-                && rest
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || b"-./".contains(&b)) =>
-        {
-            normalize(&format!("dev-{}", &rest[..rest.len() - 4]))?
-        }
-        Err(e) => bail!("Could not parse version constraint {c}: {e}"),
-    };
-    if version.starts_with("dev-") {
-        return Ok(Bound::zero());
-    }
-    if !matches!(op, "==" | "=" | "") && !flag.is_empty() && !version.contains('-') {
-        version = format!("{version}-{flag}");
-    } else if op == ">=" && !MODIFIER_END.is_match(rest.as_bytes())? && !rest.starts_with("dev-") {
-        version.push_str("-dev");
-    }
-    Ok(match op {
-        "" | "=" | "==" | ">=" => ge(version),
-        ">" => Bound {
-            version,
-            inclusive: false,
-        },
-        _ => Bound::zero(),
-    })
+    &out[..len]
 }
 
 /// PHP's `version_compare` as an [`Ordering`].
@@ -590,7 +446,7 @@ mod tests {
     /// Expected values from Composer 2.11.2's `ArrayLoader::getBranchAlias` on the same package arrays.
     #[test]
     fn branch_aliases_match_composer() {
-        let alias = |v: serde_json::Value| branch_alias(&v);
+        let alias = |v: serde_json::Value| branch_alias(v.as_object().expect("an object"));
         let pair = |a: &str, b: &str| Some((a.to_string(), b.to_string()));
         assert_eq!(
             alias(
@@ -646,64 +502,41 @@ mod tests {
             ("", "", 0),
             ("1.0.1", "1.0.rc", 1),
             ("1.0.rc", "1.0.1", -1),
+            ("1.", "1.", 0),
+            ("1.", "1.0", -1),
+            ("e#", "x.y.z", 1),
+            ("#N#", "dev", 1),
+            (
+                "1.2.3.4.5.6.7.8.9.10.11.12.13.14.15.16.17.18.19.20-dev",
+                "1.2.3.4.5.6.7.8.9.10.11.12.13.14.15.16.17.18.19.20",
+                -1,
+            ),
         ] {
             assert_eq!(compare(a, b), want, "{a} {b}");
         }
         assert_eq!(ordering("2", "10"), Ordering::Less);
     }
 
-    /// Expected values from `getLowerBound()` of composer/semver 3.6.0's `parseConstraints`.
+    /// Expected values from composer/semver 3.6.0's `VersionParser::parseStability`.
     #[test]
-    fn lower_bounds_match_composer() {
-        for (c, version, inclusive) in [
-            ("^8.4", "8.4.0.0-dev", true),
-            ("^8.4.1", "8.4.1.0-dev", true),
-            ("~8.1.2", "8.1.2.0-dev", true),
-            (">=8.1", "8.1.0.0-dev", true),
-            (">=8.1-beta1", "8.1.0.0-beta1", true),
-            (">8.1", "8.1.0.0", false),
-            ("8.2.*", "8.2.0.0-dev", true),
-            ("8.2.1", "8.2.1.0", true),
-            ("^7.2 || ^8.0", "7.2.0.0-dev", true),
-            (">=7.4 <9 , >=8.1", "8.1.0.0-dev", true),
-            ("8.1 - 8.3", "8.1.0.0-dev", true),
-            ("^8.1@beta", "8.1.0.0-dev", true),
-            (">8.1@beta", "8.1.0.0-beta", false),
-            ("*", "0.0.0.0-dev", true),
-            ("<9", "0.0.0.0-dev", true),
-            ("dev-main", "0.0.0.0-dev", true),
-            ("5.x-dev", "5.9999999.9999999.9999999-dev", true),
-            ("1.0 as 2.0", "1.0.0.0", true),
-            ("@dev", "0.0.0.0-dev", true),
-            (">=1.0@stable", "1.0.0.0-dev", true),
-            ("~1.2-beta", "1.2.0.0-beta", true),
-            ("^1.2-beta", "1.2.0.0-beta", true),
-            ("1.2 - 1.3-beta", "1.2.0.0-dev", true),
-            (">=feature/x-dev", "0.0.0.0-dev", true),
-            (">=my.feature-dev", "0.0.0.0-dev", true),
+    fn stability_matches_composer() {
+        for (v, want) in [
+            ("1.0.0", "stable"),
+            ("1.0.0.0-beta1", "beta"),
+            ("1.0b2", "beta"),
+            ("1.0.0-alpha", "alpha"),
+            ("1.0a1", "alpha"),
+            ("1.0.0-RC2", "RC"),
+            ("1.0.0-patch1", "stable"),
+            ("1.0.0.0-dev", "dev"),
+            ("dev-main", "dev"),
+            ("1.0.x-dev#abc", "dev"),
+            ("1.0.0dev", "dev"),
+            ("1.0.0-beta1#abc", "beta"),
+            ("foo bar", "stable"),
         ] {
-            assert_eq!(
-                lower_bound(c).unwrap(),
-                Bound {
-                    version: version.into(),
-                    inclusive
-                },
-                "{c}"
-            );
+            assert_eq!(stability_of(v), want, "{v}");
         }
-        assert!(lower_bound("~>1.2").is_err());
-        assert!(lower_bound(">=foo").is_err());
-        assert!(Bound::zero().is_zero());
-        assert!(
-            !lower_bound(">8.1")
-                .unwrap()
-                .above(&lower_bound(">8.1").unwrap())
-        );
-        assert!(
-            lower_bound(">8.1")
-                .unwrap()
-                .above(&lower_bound("8.1").unwrap())
-        );
     }
 
     #[test]

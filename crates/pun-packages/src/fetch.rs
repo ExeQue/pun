@@ -210,6 +210,15 @@ pub fn dist_url(url: &str, reference: Option<&str>) -> String {
     url.to_string()
 }
 
+/// The answer to a conditional metadata request.
+#[derive(Debug)]
+pub enum Fetched {
+    NotModified,
+    NotFound,
+    /// The body and its `Last-Modified`.
+    Body(Vec<u8>, Option<String>),
+}
+
 pub struct Fetcher {
     agent: ureq::Agent,
     cache: Option<PathBuf>,
@@ -299,6 +308,55 @@ impl Fetcher {
             }
         }
         Ok((bytes, false))
+    }
+
+    /// Composer's cache directory, when there is one.
+    pub fn cache_dir(&self) -> Option<&Path> {
+        self.cache.as_deref()
+    }
+
+    /// A conditional GET for repository metadata: `since` is the `Last-Modified` of the cached copy. Retries as
+    /// [`Fetcher::get`] does.
+    pub fn metadata(&self, url: &str, since: Option<&str>) -> Result<Fetched> {
+        let mut attempt = 0;
+        loop {
+            let mut req = self.agent.get(url);
+            if let Some(h) = self.auth.header(url) {
+                req = req.header("Authorization", h);
+            }
+            if let Some(since) = since {
+                req = req.header("If-Modified-Since", since);
+            }
+            let error = match req.call() {
+                Ok(res) if res.status().as_u16() == 304 => return Ok(Fetched::NotModified),
+                Ok(res) if res.status().as_u16() == 404 => return Ok(Fetched::NotFound),
+                Ok(mut res) if res.status().is_success() => {
+                    let modified = (res.headers().get("last-modified"))
+                        .and_then(|v| v.to_str().ok())
+                        .map(String::from);
+                    let mut body = vec![];
+                    res.body_mut()
+                        .with_config()
+                        .limit(256 << 20)
+                        .reader()
+                        .read_to_end(&mut body)?;
+                    return Ok(Fetched::Body(body, modified));
+                }
+                Ok(res) => {
+                    let status = res.status().as_u16();
+                    if !(status == 429 || status >= 500) {
+                        bail!("HTTP {status} from {url}");
+                    }
+                    anyhow::anyhow!("HTTP {status} from {url}")
+                }
+                Err(e) => e.into(),
+            };
+            attempt += 1;
+            if attempt == 3 {
+                return Err(error);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500 << (attempt - 1)));
+        }
     }
 
     /// GET with the host's credentials; a 429, a 5xx or a failed connection is tried again, up to three times.

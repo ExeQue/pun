@@ -1,0 +1,52 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "4660a72af9881dc1e9f04b4153844b6b",
+    "packages": [
+        {
+            "name": "acme/lib",
+            "version": "1.2.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/lib",
+                "reference": "7aeb9537b4372d3b9b5a97c1da216175f3964bf7"
+            },
+            "require": {
+                "ext-json": "*",
+                "php": "^8.2"
+            },
+            "provide": {
+                "psr/log-implementation": "3.0"
+            },
+            "bin": [
+                "bin/lib"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Acme\\Lib\\": "src/"
+                },
+                "files": [
+                    "src/functions.php"
+                ]
+            },
+            "transport-options": {
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=8.4"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.11.0"
+}

@@ -20,8 +20,9 @@ The launch phase has started: cleanup, then the first Composer release. CI stays
   plan/foundations.md §4.
 - **Package manager** (plan/packages.md): `pun install` from pun.lock (or composer.lock), `pun migrate`'s
   composer.json step and `pun self-update` are built. On pinkary `pun install` writes Composer's exact `vendor/` in
-  1.7 s fresh and 0.65 s with nothing to do (Composer: 13.5 s and 6.7 s). Next: the resolver (packages.md step 8),
-  which `pun update`, `pun require` and `punx` need.
+  1.7 s fresh and 0.65 s with nothing to do (Composer: 13.5 s and 6.7 s). The resolver, `pun update`, `pun require`
+  and `pun remove` are built: on pinkary `pun update` writes Composer's exact composer.lock in 6.5 s and 376 MB
+  (Composer: 8.5 s and 165 MB). Next: `punx`, `pun vet`, then workspaces.
 - **Green on main** (54df451, 2026-11-08): every crate's tests, all 174 analyse targets, harness on pinkary 799/799
   identical, `scripts/cli-parity.sh` identical, and `cargo clippy --workspace --all-targets -- -D warnings` clean.
   `cargo fmt --all --check` is clean too (rustfmt.toml, default width).
@@ -500,7 +501,8 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | oracle 2.3.5 follow-up: `scripts/gen-phpstan-parameters.py` on 2.3.5 changes mapping.toml's [phpstan-parameters] (checkMaybeUndefinedVariables becomes `level = true`, phpVersion and the `fixer.*` parameters appear as rule options, more `exceptions.*` and `reportMaybes*` rows): decide which rows Pun takes before regenerating | needs Pushpak |
 | oracle 2.3.5 follow-up: IgnoreErrorsConfigFixer::findEntryLocation() is ported for NEON config files only; an unmatched pathless entry of a `.php` config file (findPhpEntries()) or of pun.toml's `[[analyse.ignore]]` is still a general error | todo |
 | oracle 2.3.5 follow-up: Larastan 3.11–3.14's type extensions (tests/fixtures/larastan-types/gaps.txt, 424 new entries by reason): closure parameters typed `relation-of<TModel, TRelation>`/`builder-of<TModel, TRelation>` once TRelation is inferred, ArrGetDynamicStaticMethodReturnTypeExtension, ModelSerializationDynamicMethodReturnTypeExtension, `#[UseEloquentBuilder]`/`#[CollectedBy]` on traits and parents, config file resolution, the collection key changes, Redis and Auth driver types, and the rest listed there | todo |
-| packages: the resolver (plan/packages.md step 8), then `pun update`, `pun require` and `pun remove` (step 9) | todo |
+| packages: finish steps 8 and 9 (plan/packages.md): `pun update` against `composer update` on every corpus project and 20 recorded partial updates, `vcs` repositories, and the root `filter.summary-url` | todo |
+| packages: resolve memory (376 MB on pinkary against Composer's 165 MB): the pool's links and parsed constraints per version | todo |
 | packages: `punx <package> [args]`, a package runner like bunx and cpx (Pushpak, 2026-11-14): resolves the package's latest stable release, installs it once into Pun's cache with its dependencies, and runs its bin; needs the resolver | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |
 | later: LSP; run, test; native Blade; extension system | after 1.0 |

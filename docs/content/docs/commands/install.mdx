@@ -22,7 +22,7 @@ On pinkary, a Laravel app with 211 packages, a fresh install takes about 1.7 sec
 
 Run [`pun migrate`](/docs/commands/migrate) to move `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`.
 
-`pun install` does not resolve versions. Without a lock it exits 2. To create or change the lock, run `composer update` and then `pun migrate`. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date.
+Without a lock, `pun install` resolves the dependencies to their newest versions, writes the lock, and installs it, as [`pun update`](/docs/commands/update) does. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
 
 ## What an install does
 
@@ -74,4 +74,4 @@ Pun installs from dist archives (`zip` and `tar`) and path repositories. Package
 | Code | When |
 | --- | --- |
 | 0 | Installed |
-| 2 | No lock, a failed download or checksum, a failed script, or another run error |
+| 2 | Requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |

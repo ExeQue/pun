@@ -28,6 +28,7 @@ mod run;
 mod sampler;
 mod self_update;
 mod table;
+mod update;
 mod watch;
 
 use anyhow::Result;
@@ -69,8 +70,16 @@ enum Cmd {
     Analyse(Box<analyse::AnalyseArgs>),
     /// Write pun.toml from pint.json or .php-cs-fixer(.dist).php, rector.php and phpstan.neon, and rewrite `@php-cs-fixer-ignore` comments.
     Migrate(migrate::MigrateArgs),
-    /// Install the locked dependencies (pun.lock, or composer.lock) into vendor/, with Composer's autoloader.
+    /// Install the locked dependencies (pun.lock, or composer.lock) into vendor/, with Composer's autoloader;
+    /// without a lock, resolve one first.
     Install(install::InstallArgs),
+    /// Resolve the dependencies again (all, or the packages named), write the lock and install it.
+    Update(update::UpdateArgs),
+    /// Add packages to require (or require-dev with --dev), then update and install them.
+    Require(update::RequireArgs),
+    /// Remove packages from require or require-dev, then update and install.
+    #[command(visible_alias = "rm")]
+    Remove(update::RemoveArgs),
     /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
     Init(init::InitArgs),
     /// Replace this pun with the latest release (or the one named), verified as the installer verifies it.
@@ -296,6 +305,9 @@ fn run() -> ExitCode {
         Cmd::Migrate(_) => "migrate",
         Cmd::Init(_) => "init",
         Cmd::Install(_) => "install",
+        Cmd::Update(_) => "update",
+        Cmd::Require(_) => "require",
+        Cmd::Remove(_) => "remove",
         Cmd::SelfUpdate(_) => "self-update",
         Cmd::ListFiles(_) => "list-files",
         Cmd::Config { .. } => "config",
@@ -347,6 +359,9 @@ fn run() -> ExitCode {
         Cmd::Migrate(a) => migrate::run(a),
         Cmd::Init(a) => init::run(a),
         Cmd::Install(a) => install::run(a),
+        Cmd::Update(a) => update::run(a),
+        Cmd::Require(a) => update::require(a),
+        Cmd::Remove(a) => update::remove(a),
         Cmd::SelfUpdate(a) => self_update::run(a),
         Cmd::ListFiles(a) => list_files::run(a),
         Cmd::Config {

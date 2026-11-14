@@ -2,7 +2,11 @@
 
 Status: **`pun install` from a lock is built** (2026-11-14): pun.toml's dependency sections and pun.lock (§3), the
 autoload dump, `vendor/bin`, scripts, the pest-plugin port, and `pun migrate`'s composer.json step. On pinkary every
-file in `vendor/` matches Composer 2.11.2's, modes included. No resolver yet (step 8). Decisions with dates: §6.
+file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and `pun update`, `pun require` and
+`pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
+158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
+Composer's exact lock in 6.5 s against Composer's 8.5 s. Left of steps 8 and 9: the other corpus projects, the 20
+recorded partial updates, `vcs` repositories, and the root `filter.summary-url`. Decisions with dates: §6.
 Beyond Composer: §7. Open questions: §8.
 
 ## 1. What it is

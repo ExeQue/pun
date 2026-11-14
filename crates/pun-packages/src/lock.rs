@@ -189,6 +189,61 @@ impl Lock {
         }
     }
 
+    /// composer.lock's text, as Composer's `Locker::setLockData` writes it: the readme, `content-hash`, both package
+    /// lists, then the settings in Composer's order; `stability-flags`, `platform` and `platform-dev` stay objects
+    /// when empty.
+    pub fn to_composer_lock(&self) -> String {
+        const README: [&str; 3] = [
+            "This file locks the dependencies of your project to a known state",
+            "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+            "This file is @generated automatically",
+        ];
+        let mut lock = Map::new();
+        lock.insert(
+            "_readme".into(),
+            README.iter().map(|s| Value::from(*s)).collect(),
+        );
+        lock.insert("content-hash".into(), self.content_hash.clone().into());
+        for (key, list) in [
+            ("packages", &self.packages),
+            ("packages-dev", &self.packages_dev),
+        ] {
+            lock.insert(
+                key.into(),
+                list.iter().cloned().map(Value::Object).collect(),
+            );
+        }
+        let defaults = [
+            ("aliases", Value::Array(vec![])),
+            ("minimum-stability", "stable".into()),
+            ("stability-flags", Value::Object(Map::new())),
+            ("prefer-stable", false.into()),
+            ("prefer-lowest", false.into()),
+            ("platform", Value::Object(Map::new())),
+            ("platform-dev", Value::Object(Map::new())),
+        ];
+        for (key, default) in defaults {
+            lock.insert(
+                key.into(),
+                self.settings.get(key).cloned().unwrap_or(default),
+            );
+        }
+        for key in ["platform-overrides", "plugin-api-version"] {
+            if let Some(v) = self.settings.get(key) {
+                lock.insert(key.into(), v.clone());
+            }
+        }
+        let mut text = crate::php::json_pretty(&Value::Object(lock));
+        for key in ["stability-flags", "platform", "platform-dev"] {
+            text = text.replace(
+                &format!("\n    \"{key}\": [],"),
+                &format!("\n    \"{key}\": {{}},"),
+            );
+        }
+        text.push('\n');
+        text
+    }
+
     /// Every package, the dev ones last.
     pub fn all(&self) -> impl Iterator<Item = &Map<String, Value>> {
         self.packages.iter().chain(&self.packages_dev)

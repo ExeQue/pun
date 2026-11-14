@@ -1,0 +1,35 @@
+---
+title: pun require
+description: Add packages to the manifest, then update and install.
+---
+
+```bash
+pun require laravel/sanctum
+pun require spatie/laravel-data:^4.0
+pun require --dev pestphp/pest
+```
+
+`pun require` adds each package to `[require]` in `pun.toml`, or to `require` in `composer.json` for a project not migrated. Then it updates the named packages and their dependencies and installs the result, as [`pun update`](/docs/commands/update) does.
+
+A package is written as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun picks the newest version that resolves and writes it as `^major.minor`. A package already in the other section moves to the one you named, with a warning.
+
+Pun changes the manifest only after the new requirements resolve. If they don't, the manifest and the lock stay as they were and `pun require` exits 2. If the install after the update fails, Pun puts back both files.
+
+The edit keeps the rest of the file as you wrote it: comments and key order in `pun.toml`, and the indentation in `composer.json`.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| `--dev` | Add the packages to `require-dev` |
+| `--sort-packages` | Keep the section sorted. The `sort-packages` config does this for every edit. |
+| `--no-update` | Edit the manifest without resolving or installing |
+
+`pun require` also takes the resolve options of [`pun update`](/docs/commands/update#options) and every [`pun install`](/docs/commands/install#options) option.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | Added and installed |
+| 2 | The requirements can't be resolved, a repository failed, or the install failed |

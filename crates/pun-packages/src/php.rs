@@ -145,6 +145,44 @@ fn string(out: &mut String, s: &str, escape: bool) {
     out.push('"');
 }
 
+/// `serialize(json_decode($json, true))`: objects and lists both as arrays, a canonical decimal key as an integer.
+pub fn serialize(v: &Value) -> String {
+    let mut out = String::new();
+    serialize_into(&mut out, v);
+    out
+}
+
+fn serialize_into(out: &mut String, v: &Value) {
+    match v {
+        Value::Null => out.push_str("N;"),
+        Value::Bool(b) => write!(out, "b:{};", u8::from(*b)).unwrap(),
+        Value::Number(n) => match n.as_i64() {
+            Some(i) => write!(out, "i:{i};").unwrap(),
+            None => write!(out, "d:{};", float(n.as_f64().unwrap_or_default())).unwrap(),
+        },
+        Value::String(s) => write!(out, "s:{}:\"{s}\";", s.len()).unwrap(),
+        Value::Array(items) => {
+            write!(out, "a:{}:{{", items.len()).unwrap();
+            for (i, item) in items.iter().enumerate() {
+                write!(out, "i:{i};").unwrap();
+                serialize_into(out, item);
+            }
+            out.push('}');
+        }
+        Value::Object(m) => {
+            write!(out, "a:{}:{{", m.len()).unwrap();
+            for (k, item) in m {
+                match Key::of(k) {
+                    Key::Int(i) => write!(out, "i:{i};").unwrap(),
+                    Key::Str(s) => write!(out, "s:{}:\"{s}\";", s.len()).unwrap(),
+                }
+                serialize_into(out, item);
+            }
+            out.push('}');
+        }
+    }
+}
+
 /// A PHP array key or value as `var_export` gives it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Php {
@@ -263,6 +301,19 @@ mod tests {
         // php -r 'echo md5("abc"), sha1("abc");'
         assert_eq!(md5(b"abc"), "900150983cd24fb0d6963f7d28e17f72");
         assert_eq!(sha1(b"abc"), "a9993e364706816aba3e25717850c26c9cd0d89d");
+    }
+
+    /// From PHP 8.5's `serialize(json_decode($s, true))` on the same JSON.
+    #[test]
+    fn serialize_matches_php() {
+        let v: Value = serde_json::from_str(
+            r#"{"symlink":false,"versions":{"a/b":"1.0"},"7":[1,2.5,null,"é"],"07":true}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            serialize(&v),
+            r#"a:4:{s:7:"symlink";b:0;s:8:"versions";a:1:{s:3:"a/b";s:3:"1.0";}i:7;a:4:{i:0;i:1;i:1;d:2.5;i:2;N;i:3;s:2:"é";}s:2:"07";b:1;}"#
+        );
     }
 
     /// From PHP 8.5's `var_export(['v' => ['voku\\' => 5], 0 => 'a\'b'], true)`.

@@ -27,6 +27,8 @@ ureq.workspace = true
 zip = { workspace = true, features = ["deflate-flate2"] }
 tar.workspace = true
 flate2.workspace = true
+indexmap.workspace = true
+serde.workspace = true
 
 [lints]
 workspace = true

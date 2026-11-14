@@ -1,0 +1,54 @@
+---
+title: pun update
+description: Resolve the dependencies again, write the lock, and install it.
+---
+
+```bash
+pun update
+pun update laravel/framework
+pun update 'symfony/*' --with-dependencies
+pun update --dry-run
+```
+
+`pun update` resolves the project's requirements to the newest versions they allow, writes the lock, and installs it into `vendor/` as [`pun install`](/docs/commands/install) does. The lock it writes is the one `composer update` writes for the same requirements and repositories, so Composer and Pun can take turns on one project.
+
+Without package names, every package is resolved again. With names, only those packages may change, and every other package keeps its locked version. A name can be a `vendor/*` pattern.
+
+## Which lock is written
+
+A project with `[require]` in `pun.toml` gets `pun.lock`. A project that still keeps its dependencies in `composer.json` gets `composer.lock`. Run [`pun migrate`](/docs/commands/migrate) to move a project to `pun.toml` and `pun.lock`.
+
+## What gets resolved
+
+Pun reads packages from Packagist and from the `repositories` in the manifest and in Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other repository type stops the update with an error that names it.
+
+The platform comes from the PHP on `PATH`: its version, its extensions, and the libraries they link, as `composer show --platform` lists them. `config.platform` in the manifest overrides it.
+
+`minimum-stability`, `prefer-stable`, stability flags such as `@dev`, inline aliases (`dev-main as 1.0.x-dev`), `replace`, `provide`, and `conflict` work as in Composer.
+
+## When the requirements can't be resolved
+
+Pun prints each problem as a list of the requirements that clash, with the versions each one allows. Nothing is written, `vendor/` is unchanged, and `pun update` exits 2.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| `-w`, `--with-dependencies` | Also update the named packages' dependencies, except those the project requires itself |
+| `-W`, `--with-all-dependencies` | Also update the named packages' dependencies, the project's own requirements included |
+| `-m`, `--minimal-changes` | Keep the locked version of every package not named, where the requirements allow |
+| `--prefer-lowest` | Pick the lowest version each requirement allows, to test the declared minimums |
+| `--prefer-stable` | Prefer stable versions where a stable and an unstable one both satisfy a requirement |
+| `--dry-run` | Print the changes without writing the lock or installing |
+| `--no-install` | Write the lock but leave `vendor/` as it is |
+
+`pun update` also takes every [`pun install`](/docs/commands/install#options) option, such as `--no-dev`, `--no-scripts`, and `--ignore-platform-req`. A platform requirement that `--ignore-platform-req` names is left out of the resolve too.
+
+Pun runs the root package's `pre-update-cmd` and `post-update-cmd` scripts in place of the install ones.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | Resolved and installed, or nothing to change |
+| 2 | The requirements can't be resolved, a repository failed, or the install failed |

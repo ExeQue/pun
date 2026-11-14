@@ -1,0 +1,28 @@
+---
+title: pun remove
+description: Remove packages from the manifest, then update and install.
+---
+
+```bash
+pun remove laravel/sanctum
+pun rm 'spatie/*'
+```
+
+`pun remove` deletes each package from `require` or `require-dev`, whichever holds it. Then it updates the removed packages and their dependencies and installs the result, as [`pun update`](/docs/commands/update) does. Packages that nothing else needs leave the lock and `vendor/`. A name can be a `vendor/*` pattern. `pun rm` is the same command.
+
+Pun changes the manifest only after the new requirements resolve. If the install after the update fails, Pun puts back both the manifest and the lock.
+
+## Options
+
+| Option | Effect |
+| --- | --- |
+| `--no-update` | Edit the manifest without resolving or installing |
+
+`pun remove` also takes the resolve options of [`pun update`](/docs/commands/update#options) and every [`pun install`](/docs/commands/install#options) option. Composer's `--dev` flag is accepted and changes nothing.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | Removed and installed |
+| 2 | The requirements can't be resolved, a repository failed, or the install failed |

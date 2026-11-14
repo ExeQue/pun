@@ -116,36 +116,23 @@ pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
         .unwrap_or("library")
         .to_string();
     let (pretty, normalized, reference) = match (
-        std::env::var("COMPOSER_ROOT_VERSION")
-            .ok()
-            .filter(|v| !v.is_empty()),
+        root_version_from_env(),
         manifest.get("version").and_then(Value::as_str),
     ) {
-        (Some(v), _) => {
-            static DEV: LazyLock<Regex> =
-                LazyLock::new(|| Regex::new(r"(?i)^(\d+(?:\.\d+)*)-dev$").unwrap());
-            let v = match DEV.captures(v.as_bytes()).ok().flatten() {
-                Some(c) => format!("{}.x-dev", String::from_utf8_lossy(&c[1])),
-                None => v,
-            };
-            (v.clone(), normalize(&v).unwrap_or(v), None)
-        }
+        (Some(v), _) => (v.clone(), normalize(&v).unwrap_or(v), None),
         (None, Some(v)) => (
             v.to_string(),
             normalize(v).unwrap_or_else(|_| v.to_string()),
             None,
         ),
         (None, None) => match git_version(manifest, dir) {
-            Some(g) => g,
+            Some(g) => (g.pretty, g.version, g.commit),
             None => ("1.0.0+no-version-set".into(), "1.0.0.0".into(), None),
         },
     };
     let mut json = manifest.clone();
     json.insert("version".into(), Value::String(pretty.clone()));
-    let aliases = branch_alias(&Value::Object(json))
-        .map(|a| a.1)
-        .into_iter()
-        .collect();
+    let aliases = branch_alias(&json).map(|a| a.1).into_iter().collect();
     Root {
         name,
         pretty_version: pretty,
@@ -156,13 +143,32 @@ pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
     }
 }
 
+/// `VersionGuesser::getRootVersionFromEnv`: `COMPOSER_ROOT_VERSION`, with `1.2-dev` read as `1.2.x-dev`.
+pub(crate) fn root_version_from_env() -> Option<String> {
+    static DEV: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?i)^(\d+(?:\.\d+)*)-dev$").unwrap());
+    let v = std::env::var("COMPOSER_ROOT_VERSION")
+        .ok()
+        .filter(|v| !v.is_empty())?;
+    Some(match DEV.captures(v.as_bytes()).ok().flatten() {
+        Some(c) => format!("{}.x-dev", String::from_utf8_lossy(&c[1])),
+        None => v,
+    })
+}
+
+/// A version guessed from git.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct GitVersion {
+    pub pretty: String,
+    pub version: String,
+    pub commit: Option<String>,
+    /// A feature branch's own version (pretty, normalized), when it took another branch's version.
+    pub feature: Option<(String, String)>,
+}
+
 /// `VersionGuesser::guessGitVersion`: the checked-out branch as `dev-<branch>` (a feature branch takes the version
-/// of the nearest non-feature branch), a detached HEAD as `dev-<commit>` or its exact tag; (pretty, normalized,
-/// commit).
-fn git_version(
-    manifest: &Map<String, Value>,
-    dir: &Path,
-) -> Option<(String, String, Option<String>)> {
+/// of the nearest non-feature branch), a detached HEAD as `dev-<commit>` or its exact tag.
+pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<GitVersion> {
     let git = |args: &[&str]| -> Option<String> {
         let out = Command::new("git")
             .args(args)
@@ -211,6 +217,9 @@ fn git_version(
             branches.push(text(&c, 1));
         }
     }
+    let mut feature_version = (feature)
+        .then(|| version.clone().zip(pretty.clone()))
+        .flatten();
     if feature && let Some(v) = version.clone() {
         let aliased = manifest
             .get("extra")
@@ -255,17 +264,33 @@ fn git_version(
         && let Ok(v) = normalize(tag.trim())
     {
         (version, pretty) = (Some(v), Some(tag.trim().to_string()));
+        feature_version = None;
     }
     let version = version?;
-    let mut pretty = pretty.unwrap_or_else(|| version.clone());
+    let pretty = pretty.unwrap_or_else(|| version.clone());
+    let feature = feature_version
+        .filter(|(v, p)| *v != version || *p != pretty)
+        .map(|(v, p)| (x_dev(&v, p), v));
+    // A version means `git branch` listed the checked-out commit (a tag needs one), so the commit is known.
+    Some(GitVersion {
+        pretty: x_dev(&version, pretty),
+        version,
+        commit,
+        feature,
+    })
+}
+
+/// `postprocess`: a normalized `1.9999999.9999999.9999999-dev` reads as `1.x-dev`.
+fn x_dev(version: &str, pretty: String) -> String {
     if version.ends_with("-dev") && version.contains(".9999999") {
-        pretty = crate::version::branch_alias(
-            &serde_json::json!({"version": "dev-x", "extra": {"branch-alias": {"dev-x": version}}}),
+        return crate::version::branch_alias(
+            serde_json::json!({"version": "dev-x", "extra": {"branch-alias": {"dev-x": version}}})
+                .as_object()
+                .expect("an object"),
         )
         .map_or(pretty, |a| a.1);
     }
-    // A version means `git branch` listed the checked-out commit (a tag needs one), so the commit is known.
-    Some((pretty, version, commit))
+    pretty
 }
 
 fn strnatcmp_fold(a: &str, b: &str) -> std::cmp::Ordering {
@@ -401,10 +426,7 @@ pub fn installed_php(
             .and_then(Value::as_str)
             .unwrap_or("library");
         let path = p.path.as_ref().map(|path| shortest(&repo, path, true));
-        let aliases = branch_alias(&Value::Object(p.package.clone()))
-            .map(|a| a.1)
-            .into_iter()
-            .collect();
+        let aliases = branch_alias(&p.package).map(|a| a.1).into_iter().collect();
         add(
             p.name(),
             pretty,
@@ -648,6 +670,11 @@ mod tests {
             Some(guess(&plain)),
             at("dev-main", "dev-main", &three),
             "feature branch"
+        );
+        assert_eq!(
+            git_version(&plain, &d).unwrap().feature,
+            Some(("dev-feature-x".into(), "dev-feature-x".into())),
+            "guessVersion's feature_pretty_version and feature_version"
         );
         git(&["checkout", "-q", "main"]);
         assert_eq!(Some(guess(&plain)), at("dev-main", "dev-main", &two));
