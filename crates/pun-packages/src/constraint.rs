@@ -233,8 +233,8 @@ impl Constraint {
     }
 }
 
-static OR: LazyLock<Regex> = LazyLock::new(|| re(r"\s*\|\|?\s*"));
-static AND: LazyLock<Regex> =
+pub(crate) static OR: LazyLock<Regex> = LazyLock::new(|| re(r"\s*\|\|?\s*"));
+pub(crate) static AND: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)"));
 static STABILITY_FLAG: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)^([^,\s]*?)@(stable|RC|beta|alpha|dev)$"));
@@ -259,7 +259,7 @@ fn version_regex() -> String {
     )
 }
 
-fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
+pub(crate) fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
     let mut out = vec![];
     let mut start = 0;
     for m in re.find_iter(s.as_bytes()).flatten() {

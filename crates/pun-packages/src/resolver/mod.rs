@@ -10,7 +10,8 @@ pub mod pool;
 pub mod repos;
 pub mod solver;
 
-use crate::constraint::{self, Constraint};
+use crate::Env;
+use crate::constraint::{self, AND, Constraint, OR, split};
 use crate::error::{Result, bail};
 use crate::lock::Lock;
 use crate::version::{ALIAS, group, is_platform, normalize, stability_of};
@@ -61,21 +62,6 @@ static FLAGGED: LazyLock<Regex> = LazyLock::new(|| {
 static BARE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[^,\s@]+$").expect("valid pattern"));
 static REFERENCE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[^,\s@]+?#([a-f0-9]+)$").expect("valid pattern"));
-static OR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*\|\|?\s*").expect("valid pattern"));
-static AND: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)").expect("valid pattern")
-});
-
-fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
-    let mut out = vec![];
-    let mut start = 0;
-    for m in re.find_iter(s.as_bytes()).flatten() {
-        out.push(&s[start..m.start()]);
-        start = m.end();
-    }
-    out.push(&s[start..]);
-    out
-}
 
 fn root_aliases(links: &[(String, String)]) -> Result<Vec<Map<String, Value>>> {
     let mut out = vec![];
@@ -181,6 +167,7 @@ pub fn resolve(
     repositories: Vec<Box<dyn Repository + '_>>,
     locked: Option<&Lock>,
     options: &Options,
+    env: Env,
 ) -> Result<std::result::Result<Resolution, Failure>> {
     let mut arena: Vec<Package> = vec![];
     let mut root_data = manifest.clone();
@@ -304,7 +291,7 @@ pub fn resolve(
         prefer_stable: options.prefer_stable
             || manifest.get("prefer-stable") == Some(&Value::Bool(true)),
         prefer_lowest: options.prefer_lowest,
-        prefer_dev_over_prerelease: std::env::var_os("COMPOSER_PREFER_DEV_OVER_PRERELEASE")
+        prefer_dev_over_prerelease: env("COMPOSER_PREFER_DEV_OVER_PRERELEASE")
             .is_some_and(|v| !v.is_empty() && v != "0"),
         preferred_versions: None,
     };
@@ -330,7 +317,7 @@ pub fn resolve(
     repos.extend(repositories);
     let ignored_types = ["php-ext", "php-ext-zend"];
     let config = manifest.get("config").and_then(Value::as_object);
-    let filters = filters::Filters::from_config(config, &|k| std::env::var(k).ok())?;
+    let filters = filters::Filters::from_config(config, env)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs() as i64);
@@ -495,10 +482,19 @@ mod tests {
     use serde_json::json;
 
     fn update(manifest: Value, lock: Option<Value>, options: &Options) -> Result<Value, String> {
+        update_in(manifest, lock, options, &|_| None)
+    }
+
+    fn update_in(
+        manifest: Value,
+        lock: Option<Value>,
+        options: &Options,
+        env: Env,
+    ) -> Result<Value, String> {
         let manifest = manifest.as_object().unwrap().clone();
         let fetcher = Fetcher::new(None, Auth::default(), false);
         let root = std::path::Path::new(".");
-        let repositories = repos::open(root, &manifest, None, &fetcher).unwrap();
+        let repositories = repos::open(root, &manifest, None, &fetcher, env).unwrap();
         let platform = ["php", "ext-json"].map(|n| {
             json!({"name": n, "version": "8.5.12"})
                 .as_object()
@@ -512,6 +508,7 @@ mod tests {
             repositories,
             lock.as_ref(),
             options,
+            env,
         );
         let r = resolved
             .map_err(|e| e.to_string())?
@@ -617,11 +614,9 @@ mod tests {
             ..Options::default()
         };
         for (value, want) in [("1", "dev-master"), ("0", "1.0.0-alpha1")] {
-            // SAFETY: no other test in this binary reads this variable or sets prefer_lowest.
-            unsafe { std::env::set_var("COMPOSER_PREFER_DEV_OVER_PRERELEASE", value) };
-            let got = update(m.clone(), None, &options);
-            // SAFETY: as above.
-            unsafe { std::env::remove_var("COMPOSER_PREFER_DEV_OVER_PRERELEASE") };
+            let env =
+                |k: &str| (k == "COMPOSER_PREFER_DEV_OVER_PRERELEASE").then(|| value.to_string());
+            let got = update_in(m.clone(), None, &options, &env);
             assert_eq!(got.unwrap()[0], json!([["a/a", want]]), "{value}");
         }
     }
@@ -652,9 +647,15 @@ mod tests {
                 "extra": {"branch-alias": {"dev-main": "1.0.x-dev"}}}]))});
         let manifest = m.as_object().unwrap().clone();
         let fetcher = Fetcher::new(None, Auth::default(), false);
-        let repositories =
-            repos::open(std::path::Path::new("."), &manifest, None, &fetcher).unwrap();
-        let failure = (resolve(&manifest, vec![], repositories, None, none).unwrap())
+        let repositories = repos::open(
+            std::path::Path::new("."),
+            &manifest,
+            None,
+            &fetcher,
+            &|_| None,
+        )
+        .unwrap();
+        let failure = (resolve(&manifest, vec![], repositories, None, none, &|_| None).unwrap())
             .err()
             .expect("no solution");
         assert!(failure.pool.iter().all(|&p| failure.arena[p].name != "a/a"));
@@ -684,11 +685,25 @@ mod tests {
         ]))});
         let manifest = m.as_object().unwrap().clone();
         let fetcher = Fetcher::new(None, Auth::default(), false);
-        let repositories =
-            repos::open(std::path::Path::new("."), &manifest, None, &fetcher).unwrap();
-        let r = (resolve(&manifest, vec![], repositories, None, &Options::default()).unwrap())
-            .map_err(|_| "no solution")
-            .unwrap();
+        let repositories = repos::open(
+            std::path::Path::new("."),
+            &manifest,
+            None,
+            &fetcher,
+            &|_| None,
+        )
+        .unwrap();
+        let r = (resolve(
+            &manifest,
+            vec![],
+            repositories,
+            None,
+            &Options::default(),
+            &|_| None,
+        )
+        .unwrap())
+        .map_err(|_| "no solution")
+        .unwrap();
         let got: Vec<Value> = (r.packages.iter())
             .map(|&p| {
                 let d = r.arena[p].data();
@@ -734,7 +749,13 @@ mod tests {
                 json!({"require": {"a/a": "*"}, "repositories": [repo, {"packagist.org": false}]});
             let manifest = m.as_object().unwrap().clone();
             let fetcher = Fetcher::new(None, Auth::default(), false);
-            let got = repos::open(std::path::Path::new("."), &manifest, None, &fetcher);
+            let got = repos::open(
+                std::path::Path::new("."),
+                &manifest,
+                None,
+                &fetcher,
+                &|_| None,
+            );
             assert_eq!(got.err().map(|e| e.to_string()).as_deref(), Some(want));
         }
     }
