@@ -416,6 +416,11 @@ fn levels(m: &clap::ArgMatches) -> Vec<(lint_plan::CliLevel, String)> {
     out.into_iter().map(|(_, l, v)| (l, v)).collect()
 }
 
+/// `PUN_IGNORE_PHP_CONSTRAINT`: the harness runs corpora whose composer.json allows PHP < 8.4.
+fn ignore_php_constraint() -> bool {
+    std::env::var_os("PUN_IGNORE_PHP_CONSTRAINT").is_some()
+}
+
 fn root() -> Result<PathBuf> {
     Ok(std::env::current_dir()?.canonicalize()?)
 }
@@ -431,6 +436,7 @@ fn show_config(
         &Options {
             config,
             preset,
+            ignore_php_constraint: ignore_php_constraint(),
             ..Default::default()
         },
     )?;

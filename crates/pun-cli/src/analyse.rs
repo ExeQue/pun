@@ -373,6 +373,7 @@ pub(crate) fn run(a: AnalyseArgs) -> Result<Exit> {
     let root = root()?;
     let opts = Options {
         config: a.config.clone(),
+        ignore_php_constraint: crate::ignore_php_constraint(),
         ..Default::default()
     };
     let cfg = crate::run::load(&root, &opts)?;

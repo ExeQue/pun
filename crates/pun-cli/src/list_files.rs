@@ -43,6 +43,7 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
         &root,
         &Options {
             config: a.config,
+            ignore_php_constraint: crate::ignore_php_constraint(),
             ..Default::default()
         },
     )?;

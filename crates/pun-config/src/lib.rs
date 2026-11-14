@@ -77,6 +77,8 @@ pub struct Options {
     pub no_config: bool,
     pub preset: Option<String>,
     pub blade: bool,
+    /// Load a project whose composer.json allows PHP < 8.4 (the harness's escape hatch for older corpora).
+    pub ignore_php_constraint: bool,
 }
 
 #[derive(Deserialize, Default)]
@@ -144,7 +146,7 @@ pub fn fixer_of(command: &str, rule: &str) -> Option<&'static str> {
 
 pub fn load(root: &Path, opts: &Options) -> Result<Config> {
     let composer = composer::detect(root)?;
-    check_composer(&composer)?;
+    check_composer(&composer, opts.ignore_php_constraint)?;
     let mut sources = composer.sources.clone();
     let path = root.join(opts.config.as_deref().unwrap_or(Path::new("pun.toml")));
     let text = if opts.no_config || (opts.config.is_none() && !path.exists()) {
@@ -444,14 +446,14 @@ fn resolve_subset(
     Some(rules)
 }
 
-fn check_composer(composer: &Composer) -> Result<()> {
+fn check_composer(composer: &Composer, ignore_php_constraint: bool) -> Result<()> {
     let Some(php) = &composer.php else {
         return Ok(());
     };
     if php
         .lowest
         .is_some_and(|l| l < composer::Version::from((8, 4, 0)))
-        && std::env::var_os("PUN_IGNORE_PHP_CONSTRAINT").is_none()
+        && !ignore_php_constraint
     {
         bail!(
             "{} requires PHP \"{}\", which allows PHP < 8.4. Pun only supports projects on PHP 8.4+; raise the constraint (for example \"^8.4\") or keep using Pint.",

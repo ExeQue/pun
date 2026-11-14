@@ -56,6 +56,7 @@ pub(crate) fn load_config(a: &FormatArgs, root: &Path) -> Result<Config> {
         no_config: a.no_config,
         preset: a.preset.clone(),
         blade: a.blade,
+        ignore_php_constraint: crate::ignore_php_constraint(),
     };
     load(root, &opts)
 }

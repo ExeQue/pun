@@ -587,13 +587,11 @@ laravel = "on"
 fn composer_gate() {
     let d = dir(&[("composer.json", r#"{"require":{"php":"^8.2"}}"#)]);
     assert!(err(&d, preset("laravel")).contains("PHP < 8.4"));
-    // The harness's escape hatch for pre-8.4 corpora. ponytail: process-wide env; no other test reads it.
-    // SAFETY: no other test in this binary reads or writes this variable.
-    unsafe { std::env::set_var("PUN_IGNORE_PHP_CONSTRAINT", "1") };
-    let ok = load(&d, &preset("laravel")).is_ok();
-    // SAFETY: as above.
-    unsafe { std::env::remove_var("PUN_IGNORE_PHP_CONSTRAINT") };
-    assert!(ok);
+    let ignored = Options {
+        ignore_php_constraint: true,
+        ..preset("laravel")
+    };
+    assert!(load(&d, &ignored).is_ok());
     assert!(load(&dir(&[("composer.json", "{}")]), &preset("laravel")).is_ok());
     let d = dir(&[("composer.json", "{")]);
     assert!(err(&d, preset("laravel")).starts_with("invalid "));
