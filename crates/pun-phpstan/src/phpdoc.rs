@@ -5,6 +5,8 @@
 //! Pun's own extension, used by the generated symbol data (scripts/export-phpstan-symbols.php) for types PHPStan's
 //! `toPhpDocNode()` cannot write: a whole type string `*ERROR*` or `*NEVER*` ([`parse`] only).
 
+use std::sync::LazyLock;
+
 use pun_tokens::php_compat::unescape_phpdoc_string as unescape;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -154,18 +156,18 @@ const PATTERNS: &[(Tok, &str)] = &[
     (Tok::Other, r"(?:(?!\*/)[^\s])++"),
 ];
 
+static LEXER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    let alternatives: Vec<String> = PATTERNS.iter().map(|(_, p)| format!("({p})")).collect();
+    pcre2::bytes::RegexBuilder::new()
+        .caseless(true)
+        .dotall(true)
+        .jit_if_available(true)
+        .build(&format!(r"\G(?:{})", alternatives.join("|")))
+        .expect("phpdoc lexer regex")
+});
+
 fn tokenize(input: &[u8]) -> Vec<(Tok, usize, usize, usize)> {
-    use std::sync::OnceLock;
-    static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        let alternatives: Vec<String> = PATTERNS.iter().map(|(_, p)| format!("({p})")).collect();
-        pcre2::bytes::RegexBuilder::new()
-            .caseless(true)
-            .dotall(true)
-            .jit_if_available(true)
-            .build(&format!(r"\G(?:{})", alternatives.join("|")))
-            .expect("phpdoc lexer regex")
-    });
+    let re = &*LEXER;
     let mut tokens = Vec::new();
     let mut offset = 0;
     let mut line = 1;

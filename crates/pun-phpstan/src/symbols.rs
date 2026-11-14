@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -427,13 +427,13 @@ fn load(version: PhpVersion) -> Symbols {
     symbols
 }
 
-static PHP84: OnceLock<Symbols> = OnceLock::new();
-static PHP85: OnceLock<Symbols> = OnceLock::new();
+static PHP84: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::Php84));
+static PHP85: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::Php85));
 
 pub fn symbols(version: PhpVersion) -> &'static Symbols {
     match version {
-        PhpVersion::Php84 => PHP84.get_or_init(|| load(version)),
-        PhpVersion::Php85 => PHP85.get_or_init(|| load(version)),
+        PhpVersion::Php84 => &PHP84,
+        PhpVersion::Php85 => &PHP85,
     }
 }
 
