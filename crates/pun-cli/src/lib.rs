@@ -192,8 +192,8 @@ pub(crate) struct FormatArgs {
     #[arg(long)]
     stdin_filename: Option<PathBuf>,
     /// The number of threads (default: one per core). Read like Pint's intval(), so any value is accepted.
-    #[arg(long)]
-    max_processes: Option<String>,
+    #[arg(long, value_parser = threads)]
+    max_processes: Option<usize>,
     /// Print more detail: every finding under a coding agent, and the error class of a run error.
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
@@ -279,6 +279,12 @@ impl From<Exit> for ExitCode {
     }
 }
 
+/// `--max-processes`, read like Pint's `intval()`: any value is accepted, and one that is not a positive number is 0,
+/// one thread per core.
+pub(crate) fn threads(value: &str) -> Result<usize, std::convert::Infallible> {
+    Ok(usize::try_from(pun_tokens::php_compat::intval(value)).unwrap_or(0))
+}
+
 /// The stack of every thread that parses, lints or analyses: they recurse as deep as the syntax tree, and a long
 /// chain of concatenations or `&&` overflows the 8 MiB of a main thread and Rust's 2 MiB default.
 pub(crate) const STACK: usize = 36 * 1024 * 1024;
@@ -327,28 +333,23 @@ fn run() -> ExitCode {
         annotate: false,
         color: render::ColorChoice::Auto,
     };
-    let (max_processes, failure) = match &mut cmd {
+    let (threads, failure) = match &mut cmd {
         Cmd::Format(a) => {
             a.github_actions = github_actions;
-            (a.max_processes.clone(), a.failure())
+            (a.max_processes, a.failure())
         }
         Cmd::Lint(cmd) | Cmd::Check(cmd) => {
             cmd.args.github_actions = github_actions;
-            (cmd.args.max_processes.clone(), cmd.args.failure())
+            (cmd.args.max_processes, cmd.args.failure())
         }
         Cmd::Analyse(a) => {
             a.github_actions = github_actions;
-            (a.max_processes().map(String::from), a.failure())
+            (a.max_processes(), a.failure())
         }
         _ => (None, other),
     };
-    let threads = max_processes
-        .as_deref()
-        .map(pun_tokens::php_compat::intval)
-        .filter(|&n| n > 0)
-        .map_or(0, |n| n as usize);
     let _ = rayon::ThreadPoolBuilder::new()
-        .num_threads(threads)
+        .num_threads(threads.unwrap_or(0))
         .stack_size(STACK)
         .build_global();
     let result = match cmd {

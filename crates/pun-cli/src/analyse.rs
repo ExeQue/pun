@@ -28,8 +28,8 @@ pub(crate) struct AnalyseArgs {
     #[arg(long, value_name = "FILE", num_args = 0..=1)]
     generate_baseline: Option<Option<PathBuf>>,
     /// The number of threads (default: one per core).
-    #[arg(long)]
-    max_processes: Option<String>,
+    #[arg(long, value_parser = crate::threads)]
+    max_processes: Option<usize>,
     /// Print each finding on one line.
     #[arg(long)]
     concise: bool,
@@ -48,8 +48,8 @@ pub(crate) struct AnalyseArgs {
 }
 
 impl AnalyseArgs {
-    pub(crate) fn max_processes(&self) -> Option<&str> {
-        self.max_processes.as_deref()
+    pub(crate) fn max_processes(&self) -> Option<usize> {
+        self.max_processes
     }
 
     pub(crate) fn failure(&self) -> crate::report::Failure {
