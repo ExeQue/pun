@@ -134,15 +134,7 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     let started = std::time::Instant::now();
     let root = root()?;
     let cfg = load_config(&a, &root)?;
-    let plan = Plan::new(&cfg, &lint.levels).map_err(config_error)?;
-    let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
-    let plan = match plan {
-        Ok(plan) if unported.is_empty() => plan,
-        plan => {
-            unported.extend(plan.err().into_iter().flatten());
-            return Err(unported_error(&a, &cfg, &unported).into());
-        }
-    };
+    let plan = ported_plan(&a, &cfg, &lint)?;
     let lints = stage != Stage::Format;
     let formats = !matches!(stage, Stage::Lint { .. });
     let blade_on = formats
@@ -177,58 +169,14 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     }
 
     let dry_run = a.test || a.bail;
-    let selection = if a.dirty {
-        Some(pun_workspace::GitSelect::Dirty)
-    } else if let Some(b) = &a.diff {
-        Some(pun_workspace::GitSelect::Diff(b.clone()))
-    } else if a.pun.staged {
-        Some(pun_workspace::GitSelect::Staged)
-    } else {
-        a.pun
-            .since
-            .as_ref()
-            .map(|r| pun_workspace::GitSelect::Since(r.clone()))
-    };
-    let selected = match &selection {
-        Some(sel) => Some(pun_workspace::git_paths(&cfg, sel)?),
-        None => None,
-    };
-    let format_set = match (formats, &selected) {
-        (false, _) => vec![],
-        (true, Some(files)) => files.clone(),
-        (true, None) => pun_workspace::discover(&cfg, &a.paths)?,
-    };
-    let lint_set = match (lints, &selected) {
-        (false, _) => vec![],
-        (true, Some(files)) => {
-            let all: HashSet<PathBuf> =
-                pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?
-                    .into_iter()
-                    .collect();
-            files.iter().filter(|f| all.contains(*f)).cloned().collect()
-        }
-        (true, None) => pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &a.paths)?,
-    };
+    let selected = selected_files(&a, &cfg)?;
+    let (format_set, lint_set) = file_sets(&a, &cfg, formats, lints, selected.as_ref())?;
     let mut files = format_set.clone();
     let known: HashSet<&PathBuf> = format_set.iter().collect();
     files.extend(lint_set.iter().filter(|f| !known.contains(f)).cloned());
     drop(known);
-    let natives: Vec<Box<dyn pun_lint::Rule>> = if lints {
-        let on = plan.mentioned();
-        let mut natives: Vec<_> = (pun_lint::rules::all().into_iter())
-            .filter(|r| on.contains(r.id()))
-            .collect();
-        for r in &mut natives {
-            configure(&cfg, r.as_mut())?;
-        }
-        if !natives.is_empty() {
-            let project = match (&selected, a.paths.is_empty()) {
-                (None, true) => lint_set.clone(),
-                _ => pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?,
-            };
-            project_codebase(&cfg, project);
-        }
-        natives
+    let natives = if lints {
+        native_rules(&a, &cfg, &plan, selected.as_ref(), &lint_set)?
     } else {
         vec![]
     };
@@ -262,51 +210,10 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
         r
     };
 
-    let all: Vec<Result<Processed>> = if a.bail {
-        let mut out = Vec::new();
-        for f in &files {
-            let r = process(f, std::fs::read(f));
-            let stop = (r.as_ref()).map_or(true, |r| r.result.status == Status::Fixed);
-            out.push(r);
-            if stop {
-                break;
-            }
-        }
-        out
+    let all = if a.bail {
+        process_until_fixed(&files, process)
     } else {
-        let (mut blade, php): (Vec<_>, Vec<_>) =
-            (files.iter().cloned().enumerate()).partition(|(_, f)| blade_on && is_blade(f));
-        blade.sort_by_cached_key(|(_, f)| {
-            std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len()))
-        });
-        let lanes = (blade.len() / 32)
-            .clamp(1, rayon::current_num_threads())
-            .min(blade.len());
-        let next = std::sync::atomic::AtomicUsize::new(0);
-        let php_paths: Vec<PathBuf> = php.iter().map(|(_, f)| f.clone()).collect();
-        let (mut done, php_done) = std::thread::scope(|s| {
-            let lanes: Vec<_> = (0..lanes)
-                .map(|_| {
-                    s.spawn(|| {
-                        let mut out = vec![];
-                        while let Some((i, f)) =
-                            blade.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-                        {
-                            out.push((*i, process(f, std::fs::read(f))));
-                        }
-                        out
-                    })
-                })
-                .collect();
-            let php_done = read_in_parallel(&php_paths, process);
-            let done: Vec<_> = (lanes.into_iter())
-                .flat_map(|h| h.join().unwrap_or_else(|p| std::panic::resume_unwind(p)))
-                .collect();
-            (done, php_done)
-        });
-        done.extend(php.iter().map(|(i, _)| *i).zip(php_done));
-        done.sort_by_key(|d| d.0);
-        done.into_iter().map(|d| d.1).collect()
+        process_in_parallel(&files, blade_on, process)
     };
     drop(spinner);
     let processed: Vec<Processed> = all.into_iter().collect::<Result<_>>()?;
@@ -353,14 +260,172 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
         a.output_to_file.as_deref(),
         a.output_format.as_deref(),
     )?;
+    let exit = exit(stage, &a, &lint, &ctx, &results);
+    eprint!("{}", base.profile_report());
+    Ok(exit)
+}
+
+/// The lint plan, or the config error that names every format and lint rule Pun hasn't ported.
+fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
+    let plan = Plan::new(cfg, &lint.levels).map_err(config_error)?;
+    let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
+    match plan {
+        Ok(plan) if unported.is_empty() => Ok(plan),
+        plan => {
+            unported.extend(plan.err().into_iter().flatten());
+            Err(unported_error(a, cfg, &unported).into())
+        }
+    }
+}
+
+/// The files `--dirty`, `--diff`, `--staged` or `--since` selects from git, when one of them is given.
+fn selected_files(a: &FormatArgs, cfg: &Config) -> Result<Option<Vec<PathBuf>>> {
+    let selection = if a.dirty {
+        Some(pun_workspace::GitSelect::Dirty)
+    } else if let Some(b) = &a.diff {
+        Some(pun_workspace::GitSelect::Diff(b.clone()))
+    } else if a.pun.staged {
+        Some(pun_workspace::GitSelect::Staged)
+    } else {
+        a.pun
+            .since
+            .as_ref()
+            .map(|r| pun_workspace::GitSelect::Since(r.clone()))
+    };
+    Ok(match &selection {
+        Some(sel) => Some(pun_workspace::git_paths(cfg, sel)?),
+        None => None,
+    })
+}
+
+/// The files to format and the files to lint.
+fn file_sets(
+    a: &FormatArgs,
+    cfg: &Config,
+    formats: bool,
+    lints: bool,
+    selected: Option<&Vec<PathBuf>>,
+) -> Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let format_set = match (formats, selected) {
+        (false, _) => vec![],
+        (true, Some(files)) => files.clone(),
+        (true, None) => pun_workspace::discover(cfg, &a.paths)?,
+    };
+    let lint_set = match (lints, selected) {
+        (false, _) => vec![],
+        (true, Some(files)) => {
+            let all: HashSet<PathBuf> =
+                pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?
+                    .into_iter()
+                    .collect();
+            files.iter().filter(|f| all.contains(*f)).cloned().collect()
+        }
+        (true, None) => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &a.paths)?,
+    };
+    Ok((format_set, lint_set))
+}
+
+/// The configured native lint rules the plan turns on, with the project's codebase scanned for them.
+fn native_rules(
+    a: &FormatArgs,
+    cfg: &Config,
+    plan: &Plan,
+    selected: Option<&Vec<PathBuf>>,
+    lint_set: &[PathBuf],
+) -> Result<Vec<Box<dyn pun_lint::Rule>>> {
+    let on = plan.mentioned();
+    let mut natives: Vec<_> = (pun_lint::rules::all().into_iter())
+        .filter(|r| on.contains(r.id()))
+        .collect();
+    for r in &mut natives {
+        configure(cfg, r.as_mut())?;
+    }
+    if !natives.is_empty() {
+        let project = match (selected, a.paths.is_empty()) {
+            (None, true) => lint_set.to_vec(),
+            _ => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?,
+        };
+        project_codebase(cfg, project);
+    }
+    Ok(natives)
+}
+
+/// `--bail`: the files in order, up to the first that needs fixing or fails.
+fn process_until_fixed(
+    files: &[PathBuf],
+    process: impl Fn(&PathBuf, std::io::Result<Vec<u8>>) -> Result<Processed>,
+) -> Vec<Result<Processed>> {
+    let mut out = Vec::new();
+    for f in files {
+        let r = process(f, std::fs::read(f));
+        let stop = (r.as_ref()).map_or(true, |r| r.result.status == Status::Fixed);
+        out.push(r);
+        if stop {
+            break;
+        }
+    }
+    out
+}
+
+/// Every file, in order: the Blade files, largest first, on lanes of their own (each waits on a Prettier worker),
+/// the PHP files on the thread pool as the readers bring them in.
+fn process_in_parallel(
+    files: &[PathBuf],
+    blade_on: bool,
+    process: impl Fn(&PathBuf, std::io::Result<Vec<u8>>) -> Result<Processed> + Sync,
+) -> Vec<Result<Processed>> {
+    let (mut blade, php): (Vec<_>, Vec<_>) =
+        (files.iter().cloned().enumerate()).partition(|(_, f)| blade_on && is_blade(f));
+    blade.sort_by_cached_key(|(_, f)| {
+        std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len()))
+    });
+    let lanes = (blade.len() / 32)
+        .clamp(1, rayon::current_num_threads())
+        .min(blade.len());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let php_paths: Vec<PathBuf> = php.iter().map(|(_, f)| f.clone()).collect();
+    let (mut done, php_done) = std::thread::scope(|s| {
+        let lanes: Vec<_> = (0..lanes)
+            .map(|_| {
+                s.spawn(|| {
+                    let mut out = vec![];
+                    while let Some((i, f)) =
+                        blade.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                    {
+                        out.push((*i, process(f, std::fs::read(f))));
+                    }
+                    out
+                })
+            })
+            .collect();
+        let php_done = read_in_parallel(&php_paths, &process);
+        let done: Vec<_> = (lanes.into_iter())
+            .flat_map(|h| h.join().unwrap_or_else(|p| std::panic::resume_unwind(p)))
+            .collect();
+        (done, php_done)
+    });
+    done.extend(php.iter().map(|(i, _)| *i).zip(php_done));
+    done.sort_by_key(|d| d.0);
+    done.into_iter().map(|d| d.1).collect()
+}
+
+/// A run error when a file crashed a fixer or a rule, else a failure for what `--test`, `--repair` and the lint
+/// levels count against the run.
+fn exit(
+    stage: Stage,
+    a: &FormatArgs,
+    lint: &LintOpts,
+    ctx: &report::Ctx,
+    results: &[FileResult],
+) -> Exit {
     let crashed = (results.iter()).any(|r| matches!(r.status, Status::Exception | Status::Lint));
     let changed = results.iter().any(|r| r.status == Status::Fixed);
     let failed = match stage {
         Stage::Format => {
-            ((dry_run || a.repair) && changed) || results.iter().any(FileResult::is_error)
+            ((ctx.dry_run || a.repair) && changed) || results.iter().any(FileResult::is_error)
         }
         _ => {
-            let c = report::counts(&ctx, &results);
+            let c = report::counts(ctx, results);
             c.errors > 0
                 || c.need_formatting > 0
                 || (a.repair && changed)
@@ -368,14 +433,13 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
                 || lint.max_warnings.is_some_and(|m| c.warnings > m)
         }
     };
-    eprint!("{}", base.profile_report());
-    Ok(if crashed {
+    if crashed {
         Exit::RunError
     } else if failed {
         Exit::Failure
     } else {
         Exit::Success
-    })
+    }
 }
 
 fn project_codebase(cfg: &Config, files: Vec<PathBuf>) {
