@@ -91,7 +91,7 @@ fn meaningful_sequence(tokens: &Tokens, start: usize, end: usize) -> Vec<Token> 
 fn code(tokens: &[Token]) -> Vec<u8> {
     tokens
         .iter()
-        .flat_map(|t| t.content.iter().copied())
+        .flat_map(|t| t.get_content().iter().copied())
         .collect()
 }
 

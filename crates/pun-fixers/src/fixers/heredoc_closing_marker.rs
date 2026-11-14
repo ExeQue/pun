@@ -123,7 +123,7 @@ impl HeredocClosingMarkerFixer {
         let replacement = [quote, marker, quote].concat();
         (
             Token::new(
-                start.id.unwrap(),
+                start.get_id().unwrap(),
                 Preg::replace(
                     "/<<<\\h*\\K[\"']?[^\\s\"']+[\"']?/",
                     &replacement,
@@ -131,7 +131,7 @@ impl HeredocClosingMarkerFixer {
                 ),
             ),
             Token::new(
-                end.id.unwrap(),
+                end.get_id().unwrap(),
                 Preg::replace("/\\S+/", marker, end.get_content()),
             ),
         )

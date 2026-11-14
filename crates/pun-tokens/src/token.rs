@@ -2,8 +2,8 @@ use crate::kind::Kind::{self, *};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Token {
-    pub id: Option<Kind>,
-    pub content: crate::Content,
+    pub(crate) id: Option<Kind>,
+    pub(crate) content: crate::Content,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

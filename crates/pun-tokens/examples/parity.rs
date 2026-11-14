@@ -118,7 +118,7 @@ fn ours(mode: &str, code: &[u8]) -> (Stream, Duration) {
             (
                 tokens
                     .iter()
-                    .map(|t| (name(t.id), t.content.to_vec(), 0))
+                    .map(|t| (name(t.get_id()), t.get_content().to_vec(), 0))
                     .collect(),
                 d,
             )

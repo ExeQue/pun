@@ -982,10 +982,10 @@ fn rewrite(
     let mut out = Vec::with_capacity(code.len());
     for t in pun_tokens::Tokens::from_code(code).as_slice() {
         if !t.is_comment() {
-            out.extend_from_slice(&t.content);
+            out.extend_from_slice(t.get_content());
             continue;
         }
-        let mut text = t.content.to_vec();
+        let mut text = t.get_content().to_vec();
         let mut done = Vec::with_capacity(text.len());
         let mut last = 0;
         for c in IGNORE.captures_iter(&text).flatten() {

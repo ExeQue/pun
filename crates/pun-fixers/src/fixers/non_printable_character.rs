@@ -123,7 +123,7 @@ impl Fixer for NonPrintableCharacterFixer {
                 }
                 tokens.set(
                     index,
-                    Token::new(token.id.unwrap(), strtr(&content, &escape_sequences)),
+                    Token::new(token.get_id().unwrap(), strtr(&content, &escape_sequences)),
                 );
                 continue;
             }
@@ -141,7 +141,7 @@ impl Fixer for NonPrintableCharacterFixer {
                 {
                     continue;
                 }
-                tokens.set(index, Token::new(token.id.unwrap(), new_content));
+                tokens.set(index, Token::new(token.get_id().unwrap(), new_content));
             }
         }
     }
