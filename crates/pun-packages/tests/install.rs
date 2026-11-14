@@ -45,6 +45,18 @@ fn run(dir: &Path, lock: &Lock, o: &Options) -> Report {
     try_run(dir, lock, o).unwrap()
 }
 
+/// Composer's classmap walks directories in read order, so the ambiguous-class warnings and the alternatives after
+/// the first file come in whatever order the filesystem returns them.
+fn unordered(warning: &str) -> String {
+    let Some((head, rest)) = warning.split_once("\" and ") else {
+        return warning.to_string();
+    };
+    let (others, tail) = rest.split_once(", the first").unwrap();
+    let mut others: Vec<&str> = others.split(", ").collect();
+    others.sort_unstable();
+    format!("{head}\" and {}, the first{tail}", others.join(", "))
+}
+
 fn same_as_composer(dir: &Path, expected: &str) {
     let expected = Path::new(FIXTURES).join(expected);
     let mut files = vec![("autoload.php".to_string(), expected.join("autoload.php"))];
@@ -160,14 +172,13 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     let report = run(&tmp, &lock, &o);
     same_as_composer(&tmp, "edge-expected");
     let at = tmp.to_string_lossy();
-    let warnings: Vec<String> = report
+    let mut warnings: Vec<String> = report
         .warnings
         .iter()
-        .map(|w| w.replace(&*at, "/tmp/edge"))
+        .map(|w| unordered(&w.replace(&*at, "/tmp/edge")))
         .collect();
-    assert_eq!(
-        warnings,
-        [
+    warnings.sort();
+    let mut want = [
             "Skipped installation of bin bin/nofile for package acme/legacy: file not found in package",
             "Skipped installation of bin bin/ for package acme/legacy: found a directory at that path",
             "Skipped installation of bin bin/escape for package acme/legacy: the bin resolves to a path outside of the package directory",
@@ -176,7 +187,9 @@ fn autoloader_and_bin_corner_cases_match_composer() {
             "Ambiguous class resolution, \"Dup\\Thing\" was found 3x: in \"/tmp/edge/classes/Thing.php\" and \"/tmp/edge/dup/Thing.php\", \"/tmp/edge/dup/Thing2.php\", the first will be used.",
             "Ambiguous class resolution, \"Dup\\Pair\" was found in both \"/tmp/edge/classes/Pair.php\" and \"/tmp/edge/dup/Pair.php\", the first will be used.",
         ]
-    );
+        .map(unordered);
+    want.sort();
+    assert_eq!(warnings, want);
 
     let pair = tmp.join("classes/Pair.php");
     std::fs::set_permissions(&pair, std::fs::Permissions::from_mode(0o000)).unwrap();
