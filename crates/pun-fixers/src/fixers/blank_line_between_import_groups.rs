@@ -28,7 +28,7 @@ impl BlankLineBetweenImportGroupsFixer {
         let mut previous_type = None;
         for i in (0..uses_count).rev() {
             let index = uses[i];
-            let start_index = tokens.get_next_meaningful_token(index + 1).unwrap();
+            let start_index = tokens.next_meaningful(index + 1);
             let end_index = tokens
                 .get_next_token_of_kind(start_index, &[";".into(), T_CLOSE_TAG.into()], true)
                 .unwrap();

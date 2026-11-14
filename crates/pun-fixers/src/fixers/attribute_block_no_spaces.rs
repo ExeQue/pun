@@ -29,7 +29,7 @@ impl Fixer for AttributeBlockNoSpacesFixer {
             let attribute_analysis = AttributeAnalyzer::collect_one(tokens, found);
 
             index = attribute_analysis.opening_bracket_index;
-            let next_token_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_token_index = tokens.next_meaningful(index);
             for i in index + 1..next_token_index {
                 if !tokens[i].is_whitespace(None) {
                     to_delete.clear();
@@ -39,7 +39,7 @@ impl Fixer for AttributeBlockNoSpacesFixer {
             }
 
             index = attribute_analysis.closing_bracket_index;
-            let prev_token_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_token_index = tokens.prev_meaningful(index);
             for i in prev_token_index + 1..index {
                 if !tokens[i].is_whitespace(None) {
                     to_delete.clear();

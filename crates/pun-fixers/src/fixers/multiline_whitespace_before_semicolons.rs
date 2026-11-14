@@ -66,7 +66,7 @@ impl MultilineWhitespaceBeforeSemicolonsFixer {
 
     fn find_whitespace_before_first_call(mut index: usize, tokens: &Tokens) -> Option<Vec<u8>> {
         let mut is_multiline_call = false;
-        let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(index);
         while !tokens[prev_index].equals_any(
             &[
                 ";".into(),
@@ -80,13 +80,13 @@ impl MultilineWhitespaceBeforeSemicolonsFixer {
             true,
         ) {
             index = prev_index;
-            prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            prev_index = tokens.prev_meaningful(index);
             if let Some((block_type, false)) = Tokens::detect_block_type(&tokens[index]) {
                 prev_index = tokens.find_block_start(block_type, index);
                 continue;
             }
             if tokens[index].is_object_operator() || tokens[index].is_kind(T_DOUBLE_COLON) {
-                prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+                prev_index = tokens.prev_meaningful(index);
                 is_multiline_call =
                     is_multiline_call || tokens.is_partial_code_multiline(prev_index, index);
             }

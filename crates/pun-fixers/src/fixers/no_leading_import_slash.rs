@@ -24,12 +24,12 @@ impl Fixer for NoLeadingImportSlashFixer {
             .remove(&0)
             .unwrap_or_default();
         for idx in uses_indices {
-            let mut next_token_idx = tokens.get_next_meaningful_token(idx).unwrap();
+            let mut next_token_idx = tokens.next_meaningful(idx);
             let next_token = &tokens[next_token_idx];
             if next_token.is_kind(Kind::T_NS_SEPARATOR) {
                 remove_leading_import_slash(tokens, next_token_idx);
             } else if next_token.is_given_kind(&[Kind::CT_FUNCTION_IMPORT, Kind::CT_CONST_IMPORT]) {
-                next_token_idx = tokens.get_next_meaningful_token(next_token_idx).unwrap();
+                next_token_idx = tokens.next_meaningful(next_token_idx);
                 if tokens[next_token_idx].is_kind(Kind::T_NS_SEPARATOR) {
                     remove_leading_import_slash(tokens, next_token_idx);
                 }

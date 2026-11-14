@@ -65,7 +65,7 @@ impl Fixer for NoTrailingCommaInSinglelineFixer {
             {
                 continue;
             }
-            let mut comma_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let mut comma_index = tokens.prev_meaningful(index);
             if !tokens[comma_index].equals(",", true) {
                 continue;
             }
@@ -79,7 +79,7 @@ impl Fixer for NoTrailingCommaInSinglelineFixer {
             }
             loop {
                 tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
-                comma_index = tokens.get_prev_meaningful_token(comma_index).unwrap();
+                comma_index = tokens.prev_meaningful(comma_index);
                 if !tokens[comma_index].equals(",", true) {
                     break;
                 }
@@ -104,7 +104,7 @@ impl NoTrailingCommaInSinglelineFixer {
         if tokens[open_index].is_kind(CT_GROUP_IMPORT_BRACE_OPEN) {
             return self.has(Element::GroupImport);
         }
-        let before_open = tokens.get_prev_meaningful_token(open_index).unwrap();
+        let before_open = tokens.prev_meaningful(open_index);
         if tokens[before_open].is_kind(T_ARRAY) {
             return self.has(Element::Array);
         }

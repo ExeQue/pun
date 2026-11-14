@@ -27,7 +27,7 @@ impl Fixer for NoUselessNullsafeOperatorFixer {
             if !tokens[i].is_kind(T_NULLSAFE_OBJECT_OPERATOR) {
                 continue;
             }
-            let prev = tokens.get_prev_meaningful_token(i).unwrap();
+            let prev = tokens.prev_meaningful(i);
             index = prev as isize - 1;
             if !tokens[prev].is_kind(T_VARIABLE)
                 || pun_tokens::php_compat::strtolower(tokens[prev].get_content()) != b"$this"

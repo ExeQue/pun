@@ -86,10 +86,9 @@ fn keep_parentheses(
     close_parenthesis_index: usize,
 ) -> bool {
     let mut i = tokens
-        .get_next_meaningful_token(open_parenthesis_index)
-        .unwrap();
+        .next_meaningful(open_parenthesis_index);
     if tokens[i].is_cast() {
-        i = tokens.get_next_meaningful_token(i).unwrap();
+        i = tokens.next_meaningful(i);
     }
     while i < close_parenthesis_index {
         let token = &tokens[i];
@@ -153,20 +152,18 @@ impl Fixer for StringLengthToEmptyFixer {
                 continue;
             }
             let next_index = tokens
-                .get_next_meaningful_token(close_parenthesis_index)
-                .unwrap();
+                .next_meaningful(close_parenthesis_index);
             let mut previous_index = tokens
-                .get_prev_meaningful_token(function_name_index)
-                .unwrap();
+                .prev_meaningful(function_name_index);
             let mut namespace_separator_index = None;
             if tokens[previous_index].is_kind(T_NS_SEPARATOR) {
                 namespace_separator_index = Some(previous_index);
-                previous_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+                previous_index = tokens.prev_meaningful(previous_index);
             }
             let (operator_index, operand_index, replacement);
             if is_operator_of_interest(&tokens[previous_index]) {
                 operator_index = previous_index;
-                operand_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+                operand_index = tokens.prev_meaningful(previous_index);
                 if !is_operand_of_interest(&tokens[operand_index]) {
                     continue;
                 }
@@ -178,13 +175,13 @@ impl Fixer for StringLengthToEmptyFixer {
                 if is_of_higher_precedence(&tokens[next_index]) {
                     continue;
                 }
-                let left = tokens.get_prev_meaningful_token(operand_index).unwrap();
+                let left = tokens.prev_meaningful(operand_index);
                 if is_of_higher_precedence(&tokens[left]) {
                     continue;
                 }
             } else if is_operator_of_interest(&tokens[next_index]) {
                 operator_index = next_index;
-                operand_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                operand_index = tokens.next_meaningful(next_index);
                 if !is_operand_of_interest(&tokens[operand_index]) {
                     continue;
                 }
@@ -194,7 +191,7 @@ impl Fixer for StringLengthToEmptyFixer {
                     continue;
                 };
                 replacement = r;
-                let right = tokens.get_next_meaningful_token(operand_index).unwrap();
+                let right = tokens.next_meaningful(operand_index);
                 if is_of_higher_precedence(&tokens[right]) {
                     continue;
                 }

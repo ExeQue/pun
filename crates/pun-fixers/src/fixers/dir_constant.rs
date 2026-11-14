@@ -31,25 +31,23 @@ impl Fixer for DirConstantFixer {
         {
             curr_index = open_parenthesis;
             let mut file_candidate_right_index =
-                tokens.get_prev_meaningful_token(close_parenthesis).unwrap();
+                tokens.prev_meaningful(close_parenthesis);
             let mut trailing_comma_index = None;
             if tokens[file_candidate_right_index].equals(",", true) {
                 trailing_comma_index = Some(file_candidate_right_index);
                 file_candidate_right_index = tokens
-                    .get_prev_meaningful_token(file_candidate_right_index)
-                    .unwrap();
+                    .prev_meaningful(file_candidate_right_index);
             }
             if !tokens[file_candidate_right_index].is_kind(T_FILE) {
                 continue;
             }
             let file_candidate_left_index =
-                tokens.get_next_meaningful_token(open_parenthesis).unwrap();
+                tokens.next_meaningful(open_parenthesis);
             if !tokens[file_candidate_left_index].is_kind(T_FILE) {
                 continue;
             }
             let namespace_candidate_index = tokens
-                .get_prev_meaningful_token(function_name_index)
-                .unwrap();
+                .prev_meaningful(function_name_index);
             if tokens[namespace_candidate_index].is_kind(T_NS_SEPARATOR) {
                 tokens.remove_trailing_whitespace(namespace_candidate_index, None);
                 tokens.clear_at(namespace_candidate_index);

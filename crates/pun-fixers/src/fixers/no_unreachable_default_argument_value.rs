@@ -39,7 +39,7 @@ fn fix_function_definition(tokens: &mut Tokens, start_index: usize) {
     let arguments = FunctionsAnalyzer::new().get_function_arguments(tokens, start_index);
     for (_, argument_analysis) in arguments.into_iter().rev() {
         let name_index = argument_analysis.name_index.unwrap();
-        let prev_variable_index = tokens.get_prev_meaningful_token(name_index).unwrap();
+        let prev_variable_index = tokens.prev_meaningful(name_index);
         if tokens[prev_variable_index].is_kind(T_ELLIPSIS) {
             continue;
         }
@@ -64,11 +64,11 @@ fn fix_function_definition(tokens: &mut Tokens, start_index: usize) {
 }
 
 fn remove_default_value(tokens: &mut Tokens, start_index: usize, end_index: usize) {
-    let mut i = tokens.get_next_meaningful_token(start_index).unwrap();
+    let mut i = tokens.next_meaningful(start_index);
     while i <= end_index {
         clear_whitespaces_before_index(tokens, i);
         tokens.clear_token_and_merge_surrounding_whitespace(i);
-        i = tokens.get_next_meaningful_token(i).unwrap();
+        i = tokens.next_meaningful(i);
     }
 }
 
@@ -82,7 +82,7 @@ fn get_default_value_end(tokens: &Tokens, mut index: usize) -> usize {
             index = tokens.find_block_end(bt, index);
         }
     }
-    tokens.get_prev_meaningful_token(index).unwrap()
+    tokens.prev_meaningful(index)
 }
 
 fn clear_whitespaces_before_index(tokens: &mut Tokens, index: usize) {

@@ -97,7 +97,7 @@ fn fix_function(
         tokens_to_insert.push(Token::new(T_WHITESPACE, " "));
         tokens_to_insert.extend(param);
     }
-    let before_end_brace_index = tokens.get_prev_meaningful_token(end_brace_index).unwrap();
+    let before_end_brace_index = tokens.prev_meaningful(end_brace_index);
     if tokens[before_end_brace_index].equals(",", true) {
         tokens_to_insert.remove(0);
         tokens_to_insert.push(Token::char(","));

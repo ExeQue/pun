@@ -156,7 +156,7 @@ impl Fixer for PhpUnitNamespacedFixer {
         while let Some(found) = tokens.get_next_token_of_kind(curr_index, &[T_STRING.into()], true)
         {
             curr_index = found;
-            let prev_index = tokens.get_prev_meaningful_token(curr_index).unwrap();
+            let prev_index = tokens.prev_meaningful(curr_index);
             if tokens[prev_index].is_given_kind(&[T_CONST, T_DOUBLE_COLON]) {
                 continue;
             }
@@ -173,11 +173,11 @@ impl Fixer for PhpUnitNamespacedFixer {
                 substitute = vec![substitute.pop().unwrap()];
             }
             tokens.insert_at(curr_index, substitute);
-            let mut prev_index = tokens.get_prev_meaningful_token(curr_index).unwrap();
+            let mut prev_index = tokens.prev_meaningful(curr_index);
             if tokens[prev_index].is_kind(T_USE) {
                 imported_original_classes.insert(original_class);
             } else if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
-                prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+                prev_index = tokens.prev_meaningful(prev_index);
                 if tokens[prev_index].is_kind(T_USE) {
                     imported_original_classes.insert(original_class);
                 }
@@ -208,9 +208,9 @@ impl PhpUnitNamespacedFixer {
 }
 
 fn is_import(tokens: &Tokens, curr_index: usize) -> bool {
-    let mut prev_index = tokens.get_prev_meaningful_token(curr_index).unwrap();
+    let mut prev_index = tokens.prev_meaningful(curr_index);
     if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
-        prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+        prev_index = tokens.prev_meaningful(prev_index);
     }
     tokens[prev_index].is_kind(T_USE)
 }

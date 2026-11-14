@@ -17,11 +17,11 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 fn prev(tokens: &Tokens, index: usize) -> usize {
-    tokens.get_prev_meaningful_token(index).unwrap()
+    tokens.prev_meaningful(index)
 }
 
 fn next(tokens: &Tokens, index: usize) -> usize {
-    tokens.get_next_meaningful_token(index).unwrap()
+    tokens.next_meaningful(index)
 }
 
 impl ReturnAssignmentFixer {

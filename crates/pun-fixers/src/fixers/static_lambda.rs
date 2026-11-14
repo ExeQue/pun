@@ -31,7 +31,7 @@ impl Fixer for StaticLambdaFixer {
             if !tokens[i].is_given_kind(&[T_FUNCTION, T_FN]) || !analyzer.is_lambda(i) {
                 continue;
             }
-            let prev = tokens.get_prev_meaningful_token(i).unwrap();
+            let prev = tokens.prev_meaningful(i);
             if tokens[prev].is_kind(T_STATIC) {
                 continue;
             }
@@ -88,11 +88,11 @@ fn is_direct_subject_of_binding(tokens: &Tokens, lambda_index: usize, lambda_end
     {
         return false;
     }
-    let object_operator_index = tokens.get_next_meaningful_token(after_lambda_index).unwrap();
+    let object_operator_index = tokens.next_meaningful(after_lambda_index);
     if !tokens[object_operator_index].is_object_operator() {
         return false;
     }
-    let method_index = tokens.get_next_meaningful_token(object_operator_index).unwrap();
+    let method_index = tokens.next_meaningful(object_operator_index);
     tokens[method_index].equals_any(&[(T_STRING, "bindTo").into(), (T_STRING, "call").into()], false)
 }
 
@@ -117,7 +117,7 @@ fn has_possible_reference_to_this(tokens: &Tokens, start_index: usize, end_index
             let open_brace_index = tokens
                 .get_next_token_of_kind(i, &["{".into()], true)
                 .unwrap();
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             if i <= open_brace_index && has_possible_reference_to_this(tokens, i, open_brace_index)
             {
                 return true;
@@ -126,7 +126,7 @@ fn has_possible_reference_to_this(tokens: &Tokens, start_index: usize, end_index
             continue;
         }
         if token.equals("$", true) {
-            let next_index = tokens.get_next_meaningful_token(i).unwrap();
+            let next_index = tokens.next_meaningful(i);
             if tokens[next_index].is_kind(T_VARIABLE) {
                 return true;
             }

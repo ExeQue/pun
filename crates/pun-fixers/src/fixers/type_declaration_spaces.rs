@@ -108,7 +108,7 @@ fn ensure_single_space_at_function_argument_typehint(
 fn ensure_single_space_at_property_typehint(tokens: &mut Tokens, mut index: usize) {
     let property_index = index;
     loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
         if tokens[index].is_given_kind(PROPERTY_MODIFIERS) {
             break;
         }
@@ -122,7 +122,7 @@ fn ensure_single_space_at_property_typehint(tokens: &mut Tokens, mut index: usiz
 fn ensure_single_space_at_constant_typehint(tokens: &mut Tokens, index: usize) {
     let const_index = index;
     let equals_index = tokens.get_next_token_of_kind(const_index, &["=".into()], true).unwrap();
-    let name_index = tokens.get_prev_meaningful_token(equals_index).unwrap();
+    let name_index = tokens.prev_meaningful(equals_index);
     let type_end_index = match tokens.get_prev_meaningful_token(name_index) {
         Some(i) if !tokens[i].is_kind(T_CONST) => i,
         _ => return,
@@ -136,7 +136,7 @@ fn collect_type_analysis(
     end_index: usize,
 ) -> Option<TypeAnalysis> {
     let mut ty = Vec::new();
-    let type_start_index = tokens.get_next_meaningful_token(start_index).unwrap();
+    let type_start_index = tokens.next_meaningful(start_index);
     let mut type_end_index = type_start_index;
     for i in type_start_index..end_index {
         if tokens[i].is_whitespace(None) || tokens[i].is_comment() {

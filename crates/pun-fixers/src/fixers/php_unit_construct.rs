@@ -74,7 +74,7 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
     if !FunctionsAnalyzer::new().is_the_same_class_call(tokens, sequence[0]) {
         return None;
     }
-    let first_parameter_index = tokens.get_next_meaningful_token(sequence[1]).unwrap();
+    let first_parameter_index = tokens.next_meaningful(sequence[1]);
     let first_parameter = &tokens[first_parameter_index];
     let replacement = match first_parameter.is_kind(T_STRING) {
         true => match strtolower(first_parameter.get_content()).as_slice() {
@@ -86,8 +86,7 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
         false => return Some(first_parameter_index),
     };
     let comma_index = tokens
-        .get_next_meaningful_token(first_parameter_index)
-        .unwrap();
+        .next_meaningful(first_parameter_index);
     if !tokens[comma_index].equals(",", true) {
         return Some(comma_index);
     }

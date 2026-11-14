@@ -55,8 +55,7 @@ impl Fixer for CombineConsecutiveUnsetsFixer {
                 tokens_add_count += 1;
             }
             let before_brace_end = tokens
-                .get_prev_meaningful_token(previous_unset_brace_end)
-                .unwrap();
+                .prev_meaningful(previous_unset_brace_end);
             if !tokens[before_brace_end].equals(",", true) {
                 tokens.insert_at(previous_unset_brace_end, vec![Token::char(",")]);
                 tokens_add_count += 1;
@@ -78,16 +77,16 @@ impl Fixer for CombineConsecutiveUnsetsFixer {
 }
 
 fn get_previous_unset_call(tokens: &Tokens, index: usize) -> Result<(usize, usize), usize> {
-    let semicolon = tokens.get_prev_meaningful_token(index).unwrap();
+    let semicolon = tokens.prev_meaningful(index);
     if !tokens[semicolon].equals(";", true) {
         return Err(semicolon);
     }
-    let brace_end = tokens.get_prev_meaningful_token(semicolon).unwrap();
+    let brace_end = tokens.prev_meaningful(semicolon);
     if !tokens[brace_end].equals(")", true) {
         return Err(brace_end);
     }
     let brace_start = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, brace_end);
-    let previous_unset = tokens.get_prev_meaningful_token(brace_start).unwrap();
+    let previous_unset = tokens.prev_meaningful(brace_start);
     if !tokens[previous_unset].is_kind(T_UNSET) {
         return Err(previous_unset);
     }

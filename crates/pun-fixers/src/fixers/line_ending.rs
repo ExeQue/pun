@@ -39,7 +39,7 @@ impl Fixer for LineEndingFixer {
                 continue;
             }
             if token.is_kind(T_ENCAPSED_AND_WHITESPACE) {
-                if tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(T_END_HEREDOC) {
+                if tokens[tokens.next_meaningful(index)].is_kind(T_END_HEREDOC) {
                     let t = Token::with_id(token.get_id(), Preg::replace("#\\R#", ending, token.get_content()));
                     tokens.set(index, t);
                 }

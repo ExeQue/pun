@@ -78,7 +78,7 @@ fn need_fixing(tokens: &Tokens, mut index: usize) -> bool {
     }
     let mut content = Vec::new();
     while !tokens[index].equals_any(STATEMENT_END, true) {
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
         content.extend_from_slice(tokens[index].get_content());
     }
     let last_token_content = tokens[index].get_content();
@@ -104,8 +104,7 @@ fn is_strict_or_nullable_return_type_function(tokens: &Tokens, return_index: usi
         }
     };
     let possible_void_index = tokens
-        .get_prev_meaningful_token(opening_curly_brace_index)
-        .unwrap();
+        .prev_meaningful(opening_curly_brace_index);
     let is_strict_return_type = tokens[possible_void_index]
         .is_given_kind(&[T_STRING, CT_ARRAY_TYPEHINT])
         && tokens[possible_void_index].get_content() != b"void";

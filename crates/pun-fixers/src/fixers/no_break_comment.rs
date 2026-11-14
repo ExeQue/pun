@@ -61,7 +61,7 @@ impl Fixer for NoBreakCommentFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in (0..tokens.len()).rev() {
             if tokens[index].is_kind(T_DEFAULT) {
-                if tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(T_DOUBLE_ARROW)
+                if tokens[tokens.next_meaningful(index)].is_kind(T_DOUBLE_ARROW)
                 {
                     continue;
                 }
@@ -115,7 +115,7 @@ impl NoBreakCommentFixer {
                 continue;
             }
             if tokens[i].is_kind(T_THROW) {
-                let previous_index = tokens.get_prev_meaningful_token(i).unwrap();
+                let previous_index = tokens.prev_meaningful(i);
                 if previous_index == case_position
                     || tokens[previous_index].equals_any(
                         &["{".into(), ";".into(), "}".into(), T_OPEN_TAG.into()],
@@ -282,7 +282,7 @@ fn get_structure_end(tokens: &Tokens, mut position: usize) -> usize {
             .unwrap();
         position = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
     } else if initial_token.is_kind(T_CLASS) {
-        let open_parenthesis_position = tokens.get_next_meaningful_token(position).unwrap();
+        let open_parenthesis_position = tokens.next_meaningful(position);
         if tokens[open_parenthesis_position].get_content() == b"(" {
             position =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis_position);
@@ -294,7 +294,7 @@ fn get_structure_end(tokens: &Tokens, mut position: usize) -> usize {
             .get_next_token_of_kind(position, &["{".into()], true)
             .unwrap()
     } else {
-        tokens.get_next_meaningful_token(position).unwrap()
+        tokens.next_meaningful(position)
     };
 
     if tokens[position].get_content() != b"{" {

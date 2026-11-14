@@ -210,7 +210,7 @@ impl OrderedImportsFixer {
             let end_index = tokens
                 .get_next_token_of_kind(start_index, &[";".into(), Kind::T_CLOSE_TAG.into()], true)
                 .unwrap();
-            let previous = tokens.get_prev_meaningful_token(end_index).unwrap();
+            let previous = tokens.prev_meaningful(end_index);
             let group = tokens[previous].is_kind(Kind::CT_GROUP_IMPORT_BRACE_CLOSE);
             let (ty, mut index) = if tokens[start_index].is_kind(Kind::CT_CONST_IMPORT) {
                 (
@@ -393,7 +393,7 @@ impl OrderedImportsFixer {
             .concat();
             let mut n = 3;
             if u.import_type != NamespaceUseType::Class
-                && tokens[tokens.get_prev_meaningful_token(index).unwrap()].equals(",", true)
+                && tokens[tokens.prev_meaningful(index)].equals(",", true)
             {
                 n = 5;
             }
@@ -409,7 +409,7 @@ impl OrderedImportsFixer {
                 .1;
             tokens.override_range(index, end, decl.as_slice().to_vec());
             if u.group {
-                let prev = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev = tokens.prev_meaningful(index);
                 fix_comma_to_use(tokens, prev);
                 let close = tokens
                     .get_next_token_of_kind(
@@ -418,7 +418,7 @@ impl OrderedImportsFixer {
                         true,
                     )
                     .unwrap();
-                let next = tokens.get_next_meaningful_token(close).unwrap();
+                let next = tokens.next_meaningful(close);
                 fix_comma_to_use(tokens, next);
             }
         }

@@ -45,7 +45,7 @@ impl Fixer for SingleClassElementPerStatementFixer {
 fn fix_element(tokens: &mut Tokens, ty: &str, index: usize) {
     let mut repeat_index = index;
     loop {
-        repeat_index = tokens.get_next_meaningful_token(repeat_index).unwrap();
+        repeat_index = tokens.next_meaningful(repeat_index);
         let repeat_token = &tokens[repeat_index];
         if TokensAnalyzer::new(tokens).is_array(repeat_index) {
             if repeat_token.is_kind(T_ARRAY) {
@@ -69,7 +69,7 @@ fn fix_element(tokens: &mut Tokens, ty: &str, index: usize) {
     let start = tokens
         .get_prev_token_of_kind(index, &[";".into(), "{".into(), "}".into()], true)
         .unwrap();
-    let start_index = tokens.get_next_meaningful_token(start).unwrap();
+    let start_index = tokens.next_meaningful(start);
     let end_index = tokens
         .get_next_token_of_kind(index, &[";".into()], true)
         .unwrap();
@@ -126,7 +126,7 @@ fn get_constant_modifiers_sequence(tokens: &Tokens, start_index: usize) -> Vec<T
     let assignment_index = tokens
         .get_next_token_of_kind(start_index, &["=".into()], true)
         .unwrap();
-    let name_index = tokens.get_prev_meaningful_token(assignment_index).unwrap();
+    let name_index = tokens.prev_meaningful(assignment_index);
     (start_index..name_index)
         .filter(|&i| !tokens[i].is_comment())
         .map(|i| tokens[i].clone())

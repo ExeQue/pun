@@ -50,8 +50,7 @@ fn remove_settype_call(
 ) {
     tokens.clear_token_and_merge_surrounding_whitespace(close_parenthesis_index);
     let prev_index = tokens
-        .get_prev_meaningful_token(close_parenthesis_index)
-        .unwrap();
+        .prev_meaningful(close_parenthesis_index);
     if tokens[prev_index].equals(",", true) {
         tokens.clear_token_and_merge_surrounding_whitespace(prev_index);
     }
@@ -87,8 +86,7 @@ impl Fixer for SetTypeToCastFixer {
                 continue;
             }
             let prev = tokens
-                .get_prev_meaningful_token(function_name_index)
-                .unwrap();
+                .prev_meaningful(function_name_index);
             if !tokens[prev].equals_any(
                 &[";".into(), "{".into(), "}".into(), T_OPEN_TAG.into()],
                 true,
@@ -100,15 +98,13 @@ impl Fixer for SetTypeToCastFixer {
                 || tokens[first_argument_start].is_whitespace(None)
             {
                 first_argument_start = tokens
-                    .get_next_meaningful_token(first_argument_start)
-                    .unwrap();
+                    .next_meaningful(first_argument_start);
             }
             if !tokens[first_argument_start].is_kind(T_VARIABLE) {
                 continue;
             }
             let comma_index = tokens
-                .get_next_meaningful_token(first_argument_start)
-                .unwrap();
+                .next_meaningful(first_argument_start);
             if !tokens[comma_index].equals(",", true) {
                 continue;
             }
@@ -117,13 +113,11 @@ impl Fixer for SetTypeToCastFixer {
                 || tokens[second_argument_start].is_whitespace(None)
             {
                 second_argument_start = tokens
-                    .get_next_meaningful_token(second_argument_start)
-                    .unwrap();
+                    .next_meaningful(second_argument_start);
             }
             if !tokens[second_argument_start].is_kind(T_CONSTANT_ENCAPSED_STRING)
                 || tokens
-                    .get_next_meaningful_token(second_argument_start)
-                    .unwrap()
+                    .next_meaningful(second_argument_start)
                     < second_argument_end
             {
                 continue;

@@ -69,7 +69,7 @@ impl Fixer for NoSpacesAfterFunctionNameFixer {
                 Self::fix_function_call(tokens, index);
             } else if tokens[last_token_index].is_kind(T_STRING) {
                 let possible_definition_index =
-                    tokens.get_prev_meaningful_token(last_token_index).unwrap();
+                    tokens.prev_meaningful(last_token_index);
                 if !tokens[possible_definition_index].is_kind(T_FUNCTION) {
                     Self::fix_function_call(tokens, index);
                 }

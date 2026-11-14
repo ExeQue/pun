@@ -50,7 +50,7 @@ impl Fixer for NativeTypeDeclarationCasingFixer {
             {
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if tokens[prev_index].equals("=", true)
                 || tokens[prev_index].is_given_kind(&[
                     T_CASE,
@@ -61,7 +61,7 @@ impl Fixer for NativeTypeDeclarationCasingFixer {
             {
                 continue;
             }
-            let next_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_index = tokens.next_meaningful(index);
             if tokens[next_index].equals("=", true) || tokens[next_index].is_kind(T_NS_SEPARATOR) {
                 continue;
             }

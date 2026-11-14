@@ -114,7 +114,7 @@ impl PhpUnitDataProviderNameFixer {
     }
 
     fn name_for_usage(&self, tokens: &Tokens, index: usize) -> String {
-        let index = tokens.get_next_meaningful_token(index).unwrap();
+        let index = tokens.next_meaningful(index);
         let name = Preg::replace(r"/^test_*/i", "", tokens[index].get_content());
         let mut name = String::from_utf8_lossy(&name).into_owned();
         if self.prefix.is_empty() {

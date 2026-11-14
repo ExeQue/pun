@@ -38,13 +38,12 @@ impl Fixer for CombineNestedDirnameFixer {
                 continue;
             };
             let mut prev = tokens
-                .get_prev_meaningful_token(dirname_info.indices[0])
-                .unwrap();
+                .prev_meaningful(dirname_info.indices[0]);
             if !tokens[prev].equals("(", true) {
                 index -= 1;
                 continue;
             }
-            prev = tokens.get_prev_meaningful_token(prev).unwrap();
+            prev = tokens.prev_meaningful(prev);
             let mut first_argument_end = dirname_info.end;
             let mut dirname_info_array = vec![];
             loop {
@@ -54,13 +53,12 @@ impl Fixer for CombineNestedDirnameFixer {
                 };
                 dirname_info = next;
                 prev = tokens
-                    .get_prev_meaningful_token(dirname_info.indices[0])
-                    .unwrap();
+                    .prev_meaningful(dirname_info.indices[0]);
                 if !tokens[prev].equals("(", true) {
                     dirname_info_array.push(dirname_info);
                     break;
                 }
-                prev = tokens.get_prev_meaningful_token(prev).unwrap();
+                prev = tokens.prev_meaningful(prev);
                 first_argument_end = dirname_info.end;
             }
             if dirname_info_array.len() > 1 {
@@ -83,19 +81,18 @@ fn get_dirname_info(
         return None;
     }
     let mut indices = vec![];
-    let prev = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev = tokens.prev_meaningful(index);
     if tokens[prev].is_kind(T_NS_SEPARATOR) {
         indices.push(prev);
     }
     indices.push(index);
-    let mut next = tokens.get_next_meaningful_token(index).unwrap();
+    let mut next = tokens.next_meaningful(index);
     indices.push(next);
     if let Some(first_argument_end_index) = first_argument_end_index {
         next = tokens
-            .get_next_meaningful_token(first_argument_end_index)
-            .unwrap();
+            .next_meaningful(first_argument_end_index);
     } else {
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
         if tokens[next].equals(")", true) {
             return None;
         }
@@ -103,12 +100,12 @@ fn get_dirname_info(
             if let Some((block_type, _)) = Tokens::detect_block_type(&tokens[next]) {
                 next = tokens.find_block_end(block_type, next);
             }
-            next = tokens.get_next_meaningful_token(next).unwrap();
+            next = tokens.next_meaningful(next);
         }
     }
     indices.push(next);
     if tokens[next].equals(",", true) {
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
         indices.push(next);
     }
     if tokens[next].equals(")", true) {
@@ -124,10 +121,10 @@ fn get_dirname_info(
     }
     let second_argument = next;
     let levels = php_int(tokens[next].get_content());
-    next = tokens.get_next_meaningful_token(next).unwrap();
+    next = tokens.next_meaningful(next);
     if tokens[next].equals(",", true) {
         indices.push(next);
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
     }
     if !tokens[next].equals(")", true) {
         return None;
@@ -165,8 +162,7 @@ fn combine_dirnames(tokens: &mut Tokens, mut dirname_info_array: Vec<DirnameInfo
         tokens.set(second_argument, levels_token);
     } else {
         let prev = tokens
-            .get_prev_meaningful_token(outer_dirname_info.end)
-            .unwrap();
+            .prev_meaningful(outer_dirname_info.end);
         let mut items = vec![];
         if !tokens[prev].equals(",", true) {
             items = vec![Token::char(","), Token::new(T_WHITESPACE, " ")];

@@ -40,7 +40,7 @@ impl Fixer for PreferArraySpread {
             {
                 continue;
             }
-            let open = tokens.get_next_meaningful_token(i).unwrap();
+            let open = tokens.next_meaningful(i);
             let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
             let start = tokens
                 .get_prev_meaningful_token(i)
@@ -82,7 +82,7 @@ impl Fixer for PreferArraySpread {
                     let (s, e) = args[a];
                     if a == last_kept {
                         let open_d = if tokens[s].is_kind(T_ARRAY) {
-                            tokens.get_next_meaningful_token(s).unwrap()
+                            tokens.next_meaningful(s)
                         } else {
                             s
                         };
@@ -129,7 +129,7 @@ fn classify(tokens: &Tokens, s: usize, e: usize) -> Arg {
     let open = if tokens[s].is_kind(CT_ARRAY_BRACKET_OPEN) {
         s
     } else if tokens[s].is_kind(T_ARRAY) {
-        tokens.get_next_meaningful_token(s).unwrap()
+        tokens.next_meaningful(s)
     } else {
         return Arg::Spread;
     };

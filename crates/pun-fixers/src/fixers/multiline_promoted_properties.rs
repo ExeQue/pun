@@ -110,12 +110,12 @@ impl MultilinePromotedPropertiesFixer {
         let indent = WhitespacesAnalyzer::detect_indent(tokens, open);
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();
         tokens.ensure_whitespace_at_index(close - 1, 1, &[line_ending, &indent].concat());
-        let mut index = tokens.get_prev_meaningful_token(close).unwrap();
+        let mut index = tokens.prev_meaningful(close);
         if !tokens[index].equals(",", true) {
             index = close;
         }
         while index > open {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
             if let Some((block_type, false)) = Tokens::detect_block_type(&tokens[index]) {
                 index = tokens.find_block_start(block_type, index);
                 continue;

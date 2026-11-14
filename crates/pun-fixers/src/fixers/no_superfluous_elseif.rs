@@ -35,7 +35,7 @@ impl Fixer for NoSuperfluousElseifFixer {
 fn is_elseif(tokens: &Tokens, index: usize) -> bool {
     tokens[index].is_kind(T_ELSEIF)
         || (tokens[index].is_kind(T_ELSE)
-            && tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(T_IF))
+            && tokens[tokens.next_meaningful(index)].is_kind(T_IF))
 }
 
 fn convert_elseif_to_if(tokens: &mut Tokens, index: usize) {

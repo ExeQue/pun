@@ -192,15 +192,13 @@ impl BinaryOperatorSpacesFixer {
     }
 
     fn is_equal_part_of_declare_statement(tokens: &Tokens, index: usize) -> Option<usize> {
-        let mut prev_meaningful_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_meaningful_index = tokens.prev_meaningful(index);
         if tokens[prev_meaningful_index].is_kind(T_STRING) {
             prev_meaningful_index = tokens
-                .get_prev_meaningful_token(prev_meaningful_index)
-                .unwrap();
+                .prev_meaningful(prev_meaningful_index);
             if tokens[prev_meaningful_index].equals("(", true) {
                 prev_meaningful_index = tokens
-                    .get_prev_meaningful_token(prev_meaningful_index)
-                    .unwrap();
+                    .prev_meaningful(prev_meaningful_index);
                 return tokens[prev_meaningful_index]
                     .is_kind(T_DECLARE)
                     .then_some(prev_meaningful_index);
@@ -301,7 +299,7 @@ impl BinaryOperatorSpacesFixer {
                 continue;
             }
             if tokens[index].is_kind(T_FN) {
-                let from = tokens.get_next_meaningful_token(index).unwrap();
+                let from = tokens.next_meaningful(index);
                 let until =
                     TokensAnalyzer::new(analyzed).get_last_token_index_of_arrow_function(index);
                 Self::inject_alignment_placeholders(
@@ -414,7 +412,7 @@ impl BinaryOperatorSpacesFixer {
             }
             if tokens[index].is_kind(T_FN) {
                 yield_found_since_last_placeholder = false;
-                let from = tokens.get_next_meaningful_token(index).unwrap();
+                let from = tokens.next_meaningful(index);
                 let until =
                     TokensAnalyzer::new(analyzed).get_last_token_index_of_arrow_function(index);
                 Self::inject_array_alignment_placeholders(
@@ -429,7 +427,7 @@ impl BinaryOperatorSpacesFixer {
             }
             if tokens[index].is_kind(T_ARRAY) {
                 yield_found_since_last_placeholder = false;
-                let from = tokens.get_next_meaningful_token(index).unwrap();
+                let from = tokens.next_meaningful(index);
                 let until = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, from);
                 index = until;
                 Self::inject_array_alignment_placeholders(
@@ -497,7 +495,7 @@ impl BinaryOperatorSpacesFixer {
                     }
                     if tokens[i + 1].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
                         let array_start_index = if tokens[i + 1].is_kind(T_ARRAY) {
-                            tokens.get_next_meaningful_token(i + 1).unwrap()
+                            tokens.next_meaningful(i + 1)
                         } else {
                             i + 1
                         };

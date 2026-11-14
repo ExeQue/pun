@@ -57,10 +57,10 @@ impl Fixer for UseDedicatedExpectation {
             let Some(m) = match_expect_matcher(tokens, i) else {
                 continue;
             };
-            let mut fname = tokens.get_next_meaningful_token(m.expect_open).unwrap();
+            let mut fname = tokens.next_meaningful(m.expect_open);
             let fstart = fname;
             if tokens[fname].is_kind(T_NS_SEPARATOR) {
-                fname = tokens.get_next_meaningful_token(fname).unwrap();
+                fname = tokens.next_meaningful(fname);
             }
             if !tokens[fname].is_kind(T_STRING) {
                 continue;
@@ -72,9 +72,9 @@ impl Fixer for UseDedicatedExpectation {
                 continue;
             };
             let fclose = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, fopen);
-            let mut after = tokens.get_next_meaningful_token(fclose).unwrap();
+            let mut after = tokens.next_meaningful(fclose);
             if tokens[after].equals(",", true) {
-                after = tokens.get_next_meaningful_token(after).unwrap();
+                after = tokens.next_meaningful(after);
             }
             if after != m.expect_close || (fstart..=m.close).any(|k| tokens[k].is_comment()) {
                 continue;

@@ -87,7 +87,7 @@ impl AttributeAnalyzer {
             "Given index must point to an attribute."
         );
         loop {
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if !tokens[prev_index].is_kind(CT_ATTRIBUTE_CLOSE) {
                 break;
             }
@@ -97,7 +97,7 @@ impl AttributeAnalyzer {
         let mut opening_index = index;
         loop {
             let element = Self::collect_one(tokens, opening_index);
-            opening_index = tokens.get_next_meaningful_token(element.end_index).unwrap();
+            opening_index = tokens.next_meaningful(element.end_index);
             elements.push(element);
             if !tokens[opening_index].is_kind(T_ATTRIBUTE) {
                 break;
@@ -112,7 +112,7 @@ impl AttributeAnalyzer {
             "Given index must point to an attribute."
         );
         let mut start_index = index;
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(CT_ATTRIBUTE_CLOSE) {
             start_index = tokens.get_next_non_whitespace(prev_index, None).unwrap();
         }
@@ -145,10 +145,8 @@ impl AttributeAnalyzer {
                     true,
                 )
                 .unwrap();
-            let attribute_name = tokens.generate_partial_code(
-                name_start_index,
-                tokens.get_prev_meaningful_token(index).unwrap(),
-            );
+            let attribute_name =
+                tokens.generate_partial_code(name_start_index, tokens.prev_meaningful(index));
             if tokens[index].equals("(", true) {
                 index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index);
                 index = tokens
@@ -162,7 +160,7 @@ impl AttributeAnalyzer {
             });
             let mut next_index = index;
             if next_index < closing_index {
-                next_index = tokens.get_next_meaningful_token(index).unwrap();
+                next_index = tokens.next_meaningful(index);
             }
             if next_index >= closing_index {
                 break;

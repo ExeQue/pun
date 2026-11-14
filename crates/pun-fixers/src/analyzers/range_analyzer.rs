@@ -14,11 +14,11 @@ const ARRAY_CLOSE_TYPES: &[Proto<'static>] =
 fn trim(tokens: &Tokens, range: Range) -> (usize, usize) {
     let (mut start, mut end) = (range.start, range.end);
     if tokens[start].is_given_kind(&[T_WHITESPACE, T_COMMENT, T_DOC_COMMENT]) {
-        start = tokens.get_next_meaningful_token(start).unwrap();
+        start = tokens.next_meaningful(start);
     }
     while tokens[start].equals("(", true) && tokens[end].equals(")", true) {
-        start = tokens.get_next_meaningful_token(start).unwrap();
-        end = tokens.get_prev_meaningful_token(end).unwrap();
+        start = tokens.next_meaningful(start);
+        end = tokens.prev_meaningful(end);
     }
     (start, end)
 }

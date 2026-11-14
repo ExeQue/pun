@@ -39,8 +39,7 @@ impl Fixer for NoUselessSprintfFixer {
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
             let first = tokens
-                .get_next_meaningful_token(open_parenthesis_index)
-                .unwrap();
+                .next_meaningful(open_parenthesis_index);
             if tokens[first].is_kind(T_ELLIPSIS) {
                 continue;
             }
@@ -56,14 +55,13 @@ impl Fixer for NoUselessSprintfFixer {
             }
             tokens.clear_token_and_merge_surrounding_whitespace(close_parenthesis_index);
             let prev = tokens
-                .get_prev_meaningful_token(close_parenthesis_index)
-                .unwrap();
+                .prev_meaningful(close_parenthesis_index);
             if tokens[prev].equals(",", true) {
                 tokens.clear_token_and_merge_surrounding_whitespace(prev);
             }
             tokens.clear_token_and_merge_surrounding_whitespace(open_parenthesis_index);
             tokens.clear_token_and_merge_surrounding_whitespace(index);
-            let prev = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev = tokens.prev_meaningful(index);
             if tokens[prev].is_kind(T_NS_SEPARATOR) {
                 tokens.clear_token_and_merge_surrounding_whitespace(prev);
             }

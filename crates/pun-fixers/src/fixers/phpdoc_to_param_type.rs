@@ -51,7 +51,7 @@ fn find_correct_variable(
 }
 
 fn has_param_type_hint(tokens: &Tokens, index: usize) -> bool {
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     !tokens[prev_index].equals_any(&[Proto::Char(b","), Proto::Char(b"(")], true)
 }
 
@@ -87,7 +87,7 @@ impl Fixer for PhpdocToParamTypeFixer {
             if !tokens[index].is_given_kind(&[T_FUNCTION, T_FN]) {
                 continue;
             }
-            let func_name = tokens.get_next_meaningful_token(index).unwrap();
+            let func_name = tokens.next_meaningful(index);
             if tokens[func_name].equals_any(EXCLUDE_FUNC_NAMES, false) {
                 continue;
             }
@@ -111,7 +111,7 @@ impl Fixer for PhpdocToParamTypeFixer {
                 else {
                     continue;
                 };
-                let by_ref_index = tokens.get_prev_meaningful_token(variable_index).unwrap();
+                let by_ref_index = tokens.prev_meaningful(variable_index);
                 if tokens[by_ref_index].equals(Proto::Char(b"&"), true) {
                     variable_index = by_ref_index;
                 }

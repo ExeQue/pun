@@ -53,7 +53,7 @@ fn fix_loop_braces(tokens: &mut Tokens, index: usize, end_index: usize) {
     {
         return;
     }
-    let semi_colon_index = tokens.get_next_meaningful_token(end_index).unwrap();
+    let semi_colon_index = tokens.next_meaningful(end_index);
     if !tokens[semi_colon_index].equals(";", true) {
         return;
     }
@@ -62,7 +62,7 @@ fn fix_loop_braces(tokens: &mut Tokens, index: usize, end_index: usize) {
 }
 
 fn fix_loop_semicolon(tokens: &mut Tokens, end_index: usize) {
-    let brace_open_index = tokens.get_next_meaningful_token(end_index).unwrap();
+    let brace_open_index = tokens.next_meaningful(end_index);
     if !tokens[brace_open_index].equals("{", true) {
         return;
     }

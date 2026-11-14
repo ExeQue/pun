@@ -104,8 +104,7 @@ fn fix_pow_to_exponentiation(
     tokens.set(comma, Token::new(T_POW, "**"));
     tokens.clear_at(close_parenthesis_index);
     let previous_index = tokens
-        .get_prev_meaningful_token(close_parenthesis_index)
-        .unwrap();
+        .prev_meaningful(close_parenthesis_index);
     if tokens[previous_index].equals(",", true) {
         tokens.clear_at(previous_index);
     }
@@ -120,8 +119,7 @@ fn fix_pow_to_exponentiation(
     tokens.clear_at(open_parenthesis_index);
     tokens.clear_token_and_merge_surrounding_whitespace(function_name_index);
     let prev_meaningful_token_index = tokens
-        .get_prev_meaningful_token(function_name_index)
-        .unwrap();
+        .prev_meaningful(function_name_index);
     if tokens[prev_meaningful_token_index].is_kind(T_NS_SEPARATOR) {
         tokens.clear_at(prev_meaningful_token_index);
     }
@@ -144,14 +142,14 @@ fn is_parenthesis_needed(
             continue;
         }
         if tokens[i].equals("$", true) {
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             if tokens[i].is_kind(CT_DYNAMIC_VAR_BRACE_OPEN) {
                 i = tokens.find_block_end(Tokens::BLOCK_TYPE_DYNAMIC_VAR_BRACE, i) + 1;
                 continue;
             }
         }
         if tokens[i].equals("+", true)
-            && tokens.get_prev_meaningful_token(i).unwrap() < argument_start_index
+            && tokens.prev_meaningful(i) < argument_start_index
         {
             i += 1;
             continue;

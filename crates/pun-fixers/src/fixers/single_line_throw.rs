@@ -46,7 +46,7 @@ impl Fixer for SingleLineThrowFixer {
             if !tokens[index].is_kind(T_THROW) {
                 continue;
             }
-            let mut end_candidate_index = tokens.get_next_meaningful_token(index).unwrap();
+            let mut end_candidate_index = tokens.next_meaningful(index);
             while !tokens[end_candidate_index].equals_any(&END_TOKENS, true) {
                 if let Some((block_type, is_start)) =
                     Tokens::detect_block_type(&tokens[end_candidate_index])
@@ -57,12 +57,10 @@ impl Fixer for SingleLineThrowFixer {
                     end_candidate_index = tokens.find_block_end(block_type, end_candidate_index);
                 }
                 end_candidate_index = tokens
-                    .get_next_meaningful_token(end_candidate_index)
-                    .unwrap();
+                    .next_meaningful(end_candidate_index);
             }
             let end = tokens
-                .get_prev_meaningful_token(end_candidate_index)
-                .unwrap();
+                .prev_meaningful(end_candidate_index);
             trim_new_lines(tokens, index, end);
         }
     }

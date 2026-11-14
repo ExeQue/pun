@@ -79,7 +79,7 @@ impl Fixer for PhpdocAddMissingParamAnnotationFixer {
                 T_PUBLIC,
                 T_STATIC,
             ]) {
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
             }
             if !tokens[index].is_kind(T_FUNCTION) {
                 index += 1;

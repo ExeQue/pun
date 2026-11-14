@@ -37,7 +37,7 @@ fn find_next_untyped_properties_declaration(
     mut index: usize,
 ) -> Vec<(Vec<u8>, usize)> {
     loop {
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
         if !tokens[index].is_given_kind(&[T_PRIVATE, T_PROTECTED, T_PUBLIC, T_STATIC, T_VAR]) {
             break;
         }
@@ -54,7 +54,7 @@ fn find_next_untyped_properties_declaration(
                 None => properties.push((name.to_vec(), index)),
             }
         }
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     properties
 }

@@ -7,7 +7,7 @@ impl ReferenceAnalyzer {
         if !tokens[index].equals("&", true) {
             return false;
         }
-        let mut index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut index = tokens.prev_meaningful(index);
         if tokens[index].equals_any(
             &[
                 Proto::Char(b"="),
@@ -21,7 +21,7 @@ impl ReferenceAnalyzer {
             return true;
         }
         if tokens[index].is_kind(T_STRING) {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
         }
         tokens[index].equals_any(
             &[

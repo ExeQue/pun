@@ -65,8 +65,8 @@ impl FunctionToConstantFixer {
         if !analyzer.is_global_function_call(tokens, index) {
             return None;
         }
-        let brace_open_index = tokens.get_next_meaningful_token(index).unwrap();
-        let brace_close_index = tokens.get_next_meaningful_token(brace_open_index).unwrap();
+        let brace_open_index = tokens.next_meaningful(index);
+        let brace_close_index = tokens.next_meaningful(brace_open_index);
         if !tokens[brace_close_index].equals(")", true) {
             return None;
         }
@@ -85,7 +85,7 @@ impl FunctionToConstantFixer {
         if !analyzer.is_global_function_call(tokens, index) {
             return None;
         }
-        let brace_open_index = tokens.get_next_meaningful_token(index).unwrap();
+        let brace_open_index = tokens.next_meaningful(index);
         let brace_close_index =
             tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, brace_open_index);
         if Some(brace_close_index) == tokens.get_next_meaningful_token(brace_open_index) {
@@ -149,7 +149,7 @@ fn fix_function_call_to_constant(
     if replacements[0].is_kind(T_STATIC)
         || (replacements[0].is_kind(T_STRING) && replacements[0].get_content() == b"self")
     {
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
             tokens.clear_at(prev_index);
         }

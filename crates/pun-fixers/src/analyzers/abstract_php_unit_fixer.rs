@@ -94,7 +94,7 @@ impl PreviousAssertCalls {
             if !lowered.starts_with(b"assert") {
                 continue;
             }
-            let open_brace_index = tokens.get_next_meaningful_token(index).unwrap();
+            let open_brace_index = tokens.next_meaningful(index);
             if !tokens[open_brace_index].equals("(", true) {
                 continue;
             }
@@ -167,7 +167,7 @@ pub(crate) fn create_doc_block(
         b" */",
     ]
     .concat();
-    let index = tokens.get_next_meaningful_token(doc_block_index).unwrap();
+    let index = tokens.next_meaningful(doc_block_index);
     tokens.insert_at(
         index,
         vec![
@@ -237,7 +237,7 @@ fn is_prevented_by_attribute(
         return false;
     }
     loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
         if !tokens[index].is_given_kind(&[T_FINAL, T_READONLY]) {
             break;
         }

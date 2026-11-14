@@ -3,7 +3,7 @@ use pun_tokens::Tokens;
 
 pub(crate) fn find_start(tokens: &Tokens, mut index: usize) -> usize {
     loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
         if let Some((block_type, false)) = Tokens::detect_block_type(&tokens[index]) {
             index = tokens.find_block_start(block_type, index);
         }
@@ -11,7 +11,7 @@ pub(crate) fn find_start(tokens: &Tokens, mut index: usize) -> usize {
             break;
         }
     }
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     let prev_token = &tokens[prev_index];
     if prev_token.equals("$", true) {
         return find_start(tokens, index);
@@ -20,14 +20,14 @@ pub(crate) fn find_start(tokens: &Tokens, mut index: usize) -> usize {
         return find_start(tokens, prev_index);
     }
     if prev_token.is_kind(T_DOUBLE_COLON) {
-        let prev_prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+        let prev_prev_index = tokens.prev_meaningful(prev_index);
         if !tokens[prev_prev_index].is_given_kind(&[T_STATIC, T_STRING]) {
             return find_start(tokens, prev_index);
         }
         index = tokens
             .get_token_not_of_kinds_sibling(prev_index, -1, &[T_NS_SEPARATOR, T_STATIC, T_STRING])
             .unwrap();
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     index
 }

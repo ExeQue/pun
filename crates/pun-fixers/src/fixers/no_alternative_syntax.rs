@@ -42,8 +42,7 @@ impl Fixer for NoAlternativeSyntaxFixer {
 
 fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
     let next_index = tokens
-        .get_next_meaningful_token(structure_token_index)
-        .unwrap();
+        .next_meaningful(structure_token_index);
     tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, next_index)
 }
 
@@ -53,7 +52,7 @@ fn fix_open_close_controls(index: usize, kind: Option<Kind>, tokens: &mut Tokens
             .get_next_token_of_kind(index, &["(".into()], true)
             .unwrap();
         let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
-        let after_parenthesis_index = tokens.get_next_meaningful_token(close_index).unwrap();
+        let after_parenthesis_index = tokens.next_meaningful(close_index);
         if !tokens[after_parenthesis_index].equals(":", true) {
             return;
         }
@@ -81,7 +80,7 @@ fn fix_open_close_controls(index: usize, kind: Option<Kind>, tokens: &mut Tokens
     }) {
         return;
     }
-    let next_token_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_token_index = tokens.next_meaningful(index);
     let next_is_semicolon = tokens[next_token_index].equals(";", true);
     tokens.set(index, Token::char("}"));
     if next_is_semicolon {
@@ -93,7 +92,7 @@ fn fix_else(index: usize, kind: Option<Kind>, tokens: &mut Tokens) {
     if kind != Some(T_ELSE) {
         return;
     }
-    let token_after_else_index = tokens.get_next_meaningful_token(index).unwrap();
+    let token_after_else_index = tokens.next_meaningful(index);
     if !tokens[token_after_else_index].equals(":", true) {
         return;
     }
@@ -111,8 +110,7 @@ fn fix_elseif(index: usize, kind: Option<Kind>, tokens: &mut Tokens) {
     }
     let parenthesis_end_index = find_parenthesis_end(tokens, index);
     let token_after_parenthesis_index = tokens
-        .get_next_meaningful_token(parenthesis_end_index)
-        .unwrap();
+        .next_meaningful(parenthesis_end_index);
     if !tokens[token_after_parenthesis_index].equals(":", true) {
         return;
     }

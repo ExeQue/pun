@@ -47,10 +47,9 @@ impl Fixer for ControlStructureContinuationPositionFixer {
                 if tokens[prev_index].equals("}", true)
                     && (!is_while
                         || tokens[tokens
-                            .get_prev_meaningful_token(
+                            .prev_meaningful(
                                 tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, prev_index),
-                            )
-                            .unwrap()]
+                            )]
                         .is_kind(T_DO))
                 {
                     let ws = if self.next_line {

@@ -39,7 +39,7 @@ impl Fixer for PhpdocReadonlyClassCommentToKeywordFixer {
             for annotation in annotations {
                 annotation.remove();
             }
-            let mut index = tokens.get_next_meaningful_token(current).unwrap();
+            let mut index = tokens.next_meaningful(current);
             let mut add_readonly = true;
             while tokens[index].is_given_kind(&[
                 T_ABSTRACT,
@@ -52,7 +52,7 @@ impl Fixer for PhpdocReadonlyClassCommentToKeywordFixer {
                 if tokens[index].is_kind(T_READONLY) {
                     add_readonly = false;
                 }
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
             }
             if !tokens[index].is_kind(T_CLASS) {
                 continue;

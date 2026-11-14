@@ -24,7 +24,7 @@ impl Fixer for NoClosingTagFixer {
             tokens.clear_at(index - 1);
         }
         tokens.clear_at(index);
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if !tokens[prev_index].equals_any(&[";".into(), "}".into(), T_OPEN_TAG.into()], true) {
             tokens.insert_at(prev_index + 1, vec![Token::char(";")]);
         }

@@ -73,23 +73,23 @@ fn fix_class(tokens: &mut Tokens, class_open_index: usize, class_close_index: us
             index -= 1;
             continue;
         }
-        let mut next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let mut next_index = tokens.next_meaningful(index);
         if tokens[next_index].is_kind(Kind::T_STATIC) {
-            next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+            next_index = tokens.next_meaningful(next_index);
         }
         if !tokens[next_index].is_kind(Kind::T_FUNCTION) {
             index -= 1;
             continue;
         }
-        next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        next_index = tokens.next_meaningful(next_index);
         if MAGIC_METHODS.contains(&&strtolower(tokens[next_index].get_content())[..]) {
             index -= 1;
             continue;
         }
-        let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(Kind::T_STATIC) {
             index = prev_index;
-            prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            prev_index = tokens.prev_meaningful(index);
         }
         if tokens[prev_index].is_given_kind(&[Kind::T_ABSTRACT, Kind::T_FINAL]) {
             index = prev_index - 1;

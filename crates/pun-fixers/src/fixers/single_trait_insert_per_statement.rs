@@ -37,7 +37,7 @@ fn fix_trait_use(tokens: &mut Tokens, use_trait_index: usize, candidates: &[usiz
             Token::new(CT_USE_TRAIT, "use"),
             Token::new(T_WHITESPACE, " "),
         ];
-        let next_import_start_index = tokens.get_next_meaningful_token(comma_index).unwrap();
+        let next_import_start_index = tokens.next_meaningful(comma_index);
         if tokens[next_import_start_index - 1].is_whitespace(None) {
             if Preg::r#match("/\\R/", tokens[next_import_start_index - 1].get_content()) {
                 inserts.insert(0, tokens[use_trait_index - 1].clone());

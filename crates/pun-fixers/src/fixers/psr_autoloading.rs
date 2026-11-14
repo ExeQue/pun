@@ -102,7 +102,7 @@ impl Fixer for PsrAutoloadingFixer {
                 if namespace.is_some() {
                     return;
                 }
-                let start = tokens.get_next_meaningful_token(index).unwrap();
+                let start = tokens.next_meaningful(index);
                 let end = tokens
                     .get_next_token_of_kind(start, &[";".into()], true)
                     .unwrap();
@@ -118,7 +118,7 @@ impl Fixer for PsrAutoloadingFixer {
                 if classy.is_some() {
                     return;
                 }
-                let classy_index = tokens.get_next_meaningful_token(index).unwrap();
+                let classy_index = tokens.next_meaningful(index);
                 classy = Some((tokens[classy_index].get_content().to_vec(), classy_index));
             }
         }

@@ -66,7 +66,7 @@ fn is_over_complete(tokens: &Tokens, index: usize) -> bool {
         }
         return tokens[comma_or_close_brace_index].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE);
     }
-    tokens[tokens.get_prev_meaningful_token(index).unwrap()].equals_any(
+    tokens[tokens.prev_meaningful(index)].equals_any(
         &[
             "{".into(),
             "}".into(),
@@ -86,9 +86,9 @@ fn clear_if_is_over_complete_namespace_block(tokens: &mut Tokens) {
         .get_next_token_of_kind(0, &[T_NAMESPACE.into()], true)
         .unwrap();
     let mut namespace_is_named = false;
-    let mut index = tokens.get_next_meaningful_token(index).unwrap();
+    let mut index = tokens.next_meaningful(index);
     while tokens[index].is_given_kind(&[T_STRING, T_NS_SEPARATOR]) {
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
         namespace_is_named = true;
     }
     if !namespace_is_named {

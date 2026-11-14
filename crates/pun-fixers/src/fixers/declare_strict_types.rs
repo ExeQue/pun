@@ -97,7 +97,7 @@ impl Fixer for DeclareStrictTypesFixer {
 
 fn get_strict_types_declaration(tokens: &Tokens) -> Option<Declaration> {
     for index in tokens.find_given_kind(T_DECLARE, 0, None) {
-        let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
+        let open_parenthesis = tokens.next_meaningful(index);
         let close_parenthesis =
             tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis);
         let Some(seq) = tokens.find_sequence(
@@ -156,9 +156,9 @@ fn remove_strict_types_declaration(tokens: &mut Tokens, declaration: &Declaratio
         return;
     }
 
-    let next_meaningful = tokens.get_next_meaningful_token(sequence_end).unwrap();
+    let next_meaningful = tokens.next_meaningful(sequence_end);
     tokens.clear_token_and_merge_surrounding_whitespace(next_meaningful);
-    let after_comma = tokens.get_next_meaningful_token(next_meaningful).unwrap();
+    let after_comma = tokens.next_meaningful(next_meaningful);
     tokens.remove_leading_whitespace(after_comma, Some(b" \t"));
 }
 
@@ -179,7 +179,7 @@ fn has_other_declare_options(
 }
 
 fn remove_declare_statement(tokens: &mut Tokens, declare_index: usize, close_parenthesis: usize) {
-    let semicolon_index = tokens.get_next_meaningful_token(close_parenthesis).unwrap();
+    let semicolon_index = tokens.next_meaningful(close_parenthesis);
     for index in (declare_index..=semicolon_index).rev() {
         tokens.clear_token_and_merge_surrounding_whitespace(index);
     }

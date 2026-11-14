@@ -38,7 +38,7 @@ pub(crate) fn find(tokens: &Tokens) -> Result<Annotations, FindError> {
             continue;
         }
         if token.is_kind(T_DECLARE) {
-            let next_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_index = tokens.next_meaningful(index);
             index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, next_index) + 1;
             continue;
         }

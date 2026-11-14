@@ -55,8 +55,7 @@ fn fix_class(tokens: &mut Tokens, class_open: usize, class_close: usize) -> bool
             continue;
         }
         let method_name_index = tokens
-            .get_next_meaningful_token(function_keyword_index)
-            .unwrap();
+            .next_meaningful(function_keyword_index);
         fixed_methods.insert(tokens[method_name_index].get_content().to_vec());
         tokens.insert_slices(BTreeMap::from([(
             function_keyword_index,
@@ -83,8 +82,8 @@ fn skip_method(
     method_close: usize,
 ) -> bool {
     let analyzer = TokensAnalyzer::new(tokens);
-    let prev = |i: usize| tokens.get_prev_meaningful_token(i).unwrap();
-    let next = |i: usize| tokens.get_next_meaningful_token(i).unwrap();
+    let prev = |i: usize| tokens.prev_meaningful(i);
+    let next = |i: usize| tokens.next_meaningful(i);
     let method_name_index = next(function_keyword_index);
     let method_name = strtolower(tokens[method_name_index].get_content());
     if MAGIC_METHODS.contains(&&method_name[..]) {
@@ -140,7 +139,7 @@ fn fix_references_in_function(
     let mut index = method_open + 1;
     while index < method_close - 1 {
         if tokens[index].is_kind(T_FUNCTION) {
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             let closure_start = tokens
                 .get_next_token_of_kind(index, &["{".into()], true)
                 .unwrap();
@@ -162,11 +161,10 @@ fn fix_references_in_function(
             index += 1;
             continue;
         }
-        let object_operator_index = tokens.get_next_meaningful_token(index).unwrap();
+        let object_operator_index = tokens.next_meaningful(index);
         let method_name_index = tokens
-            .get_next_meaningful_token(object_operator_index)
-            .unwrap();
-        let arguments_brace_index = tokens.get_next_meaningful_token(method_name_index).unwrap();
+            .next_meaningful(object_operator_index);
+        let arguments_brace_index = tokens.next_meaningful(method_name_index);
         if tokens[object_operator_index].is_kind(T_OBJECT_OPERATOR)
             && tokens[arguments_brace_index].equals("(", true)
             && fixed_methods.contains(tokens[method_name_index].get_content())

@@ -60,7 +60,7 @@ impl Fixer for AttributeEmptyParenthesesFixer {
                         .unwrap();
                 }
                 if !tokens[next_index].is_kind(CT_ATTRIBUTE_CLOSE) {
-                    next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                    next_index = tokens.next_meaningful(next_index);
                 }
                 if tokens[next_index].is_kind(CT_ATTRIBUTE_CLOSE) {
                     break;
@@ -75,7 +75,7 @@ impl AttributeEmptyParenthesesFixer {
         if tokens[index].equals("(", true) {
             return;
         }
-        let at = tokens.get_prev_meaningful_token(index).unwrap() + 1;
+        let at = tokens.prev_meaningful(index) + 1;
         tokens.insert_at(at, vec![Token::char("("), Token::char(")")]);
     }
 
@@ -83,7 +83,7 @@ impl AttributeEmptyParenthesesFixer {
         if !tokens[index].equals("(", true) {
             return;
         }
-        let closing_index = tokens.get_next_meaningful_token(index).unwrap();
+        let closing_index = tokens.next_meaningful(index);
         if !tokens[closing_index].equals(")", true) {
             return;
         }

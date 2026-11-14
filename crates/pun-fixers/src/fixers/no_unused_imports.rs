@@ -88,7 +88,7 @@ fn is_import_used(
                 index += 1;
                 continue;
             }
-            let prev = &tokens[tokens.get_prev_meaningful_token(index).unwrap()];
+            let prev = &tokens[tokens.prev_meaningful(index)];
             if prev.is_kind(Kind::T_NAMESPACE) {
                 index = tokens
                     .get_next_token_of_kind(
@@ -107,7 +107,7 @@ fn is_import_used(
                 continue;
             }
             if prev.is_kind(Kind::T_CONST)
-                && tokens[tokens.get_next_meaningful_token(index).unwrap()].equals("=", true)
+                && tokens[tokens.next_meaningful(index)].equals("=", true)
             {
                 index += 1;
                 continue;
@@ -115,7 +115,7 @@ fn is_import_used(
             if in_attribute {
                 return true;
             }
-            let next_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_index = tokens.next_meaningful(index);
             if GotoLabelAnalyzer.belongs_to_go_to_label(tokens, next_index) {
                 index += 1;
                 continue;
@@ -214,11 +214,9 @@ fn remove_uses_in_same_namespace(
 
 fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnalysis) {
     let before = tokens
-        .get_prev_meaningful_token(u.chunk_start_index.unwrap())
-        .unwrap();
+        .prev_meaningful(u.chunk_start_index.unwrap());
     let after = tokens
-        .get_next_meaningful_token(u.chunk_end_index.unwrap())
-        .unwrap();
+        .next_meaningful(u.chunk_end_index.unwrap());
     let has_before = scan_for_non_empty_tokens_until_new_line_found(tokens, after, -1);
     let has_after = scan_for_non_empty_tokens_until_new_line_found(tokens, after, 1);
     let safe = has_before.1 || has_after.1;
@@ -238,7 +236,7 @@ fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnal
         if tokens[index].get_id().is_none() || !tokens[index].is_whitespace(Some(b" ")) {
             continue;
         }
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         if tokens[next].equals(",", true)
             || tokens[next].equals(";", true)
             || tokens[next].is_kind(Kind::CT_GROUP_IMPORT_BRACE_CLOSE)
@@ -247,7 +245,7 @@ fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnal
         } else {
             tokens.set(index, Token::new(Kind::T_WHITESPACE, b" ".to_vec()));
         }
-        let prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev = tokens.prev_meaningful(index);
         if tokens[prev].is_kind(Kind::CT_GROUP_IMPORT_BRACE_OPEN) {
             tokens.clear_at(index);
         }
@@ -294,12 +292,12 @@ fn remove_import_statement_if_empty(tokens: &mut Tokens, u: &NamespaceUseAnalysi
         true,
     );
     if let Some(e) = ending.filter(|&e| e > u.start_index) {
-        let opening = tokens.get_prev_meaningful_token(e).unwrap();
+        let opening = tokens.prev_meaningful(e);
         if tokens[opening].is_kind(Kind::CT_GROUP_IMPORT_BRACE_OPEN) {
             remove_use_declaration(tokens, u, true);
         }
     }
-    let before_semicolon = tokens.get_prev_meaningful_token(u.end_index).unwrap();
+    let before_semicolon = tokens.prev_meaningful(u.end_index);
     let t = &tokens[before_semicolon];
     if t.is_kind(Kind::T_USE) || t.get_content() == b"function" || t.get_content() == b"const" {
         remove_use_declaration(tokens, u, true);

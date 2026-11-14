@@ -88,7 +88,7 @@ fn fix_classy(tokens: &mut Tokens, index: usize) -> usize {
             continue;
         }
         if tokens[index].is_given_kind(&[Kind::T_NEW, Kind::T_INSTANCEOF]) {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_kind(Kind::T_STATIC) {
                 tokens.set(index, Token::new(Kind::T_STRING, b"self".to_vec()));
             }
@@ -97,7 +97,7 @@ fn fix_classy(tokens: &mut Tokens, index: usize) -> usize {
         if !tokens[index].is_kind(Kind::T_STATIC) {
             continue;
         }
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         if !tokens[next_index].is_kind(Kind::T_DOUBLE_COLON) {
             continue;
         }

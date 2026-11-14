@@ -61,8 +61,7 @@ impl Fixer for FunctionDeclarationFixer {
                 && !tokens.is_partial_code_multiline(index, end_parenthesis_index)
             {
                 let comma_index = tokens
-                    .get_prev_meaningful_token(end_parenthesis_index)
-                    .unwrap();
+                    .prev_meaningful(end_parenthesis_index);
                 if tokens[comma_index].equals(",", true) {
                     tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                 }
@@ -95,8 +94,7 @@ impl Fixer for FunctionDeclarationFixer {
                     && !tokens.is_partial_code_multiline(index, use_end_parenthesis_index)
                 {
                     let comma_index = tokens
-                        .get_prev_meaningful_token(use_end_parenthesis_index)
-                        .unwrap();
+                        .prev_meaningful(use_end_parenthesis_index);
                     if tokens[comma_index].equals(",", true) {
                         tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                     }
@@ -132,7 +130,7 @@ impl Fixer for FunctionDeclarationFixer {
                 tokens.ensure_whitespace_at_index(index + 1, 0, b" ");
             }
             if is_lambda {
-                let prev = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev = tokens.prev_meaningful(index);
                 if tokens[prev].is_kind(T_STATIC) {
                     tokens.ensure_whitespace_at_index(prev + 1, 0, b" ");
                 }

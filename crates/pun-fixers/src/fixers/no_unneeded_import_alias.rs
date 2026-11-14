@@ -23,18 +23,18 @@ impl Fixer for NoUnneededImportAliasFixer {
             if !tokens[index].is_kind(Kind::T_AS) {
                 continue;
             }
-            let alias_index = tokens.get_next_meaningful_token(index).unwrap();
+            let alias_index = tokens.next_meaningful(index);
             if !tokens[alias_index].is_kind(Kind::T_STRING) {
                 continue;
             }
-            let mut import_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let mut import_index = tokens.prev_meaningful(index);
             if !tokens[import_index].is_kind(Kind::T_STRING)
                 || tokens[import_index].get_content() != tokens[alias_index].get_content()
             {
                 continue;
             }
             loop {
-                import_index = tokens.get_prev_meaningful_token(import_index).unwrap();
+                import_index = tokens.prev_meaningful(import_index);
                 let t = &tokens[import_index];
                 if !(t.is_given_kind(&[Kind::T_NS_SEPARATOR, Kind::T_STRING, Kind::T_AS])
                     || t.equals(",", true))
@@ -45,7 +45,7 @@ impl Fixer for NoUnneededImportAliasFixer {
             if tokens[import_index]
                 .is_given_kind(&[Kind::CT_FUNCTION_IMPORT, Kind::CT_CONST_IMPORT])
             {
-                import_index = tokens.get_prev_meaningful_token(import_index).unwrap();
+                import_index = tokens.prev_meaningful(import_index);
             }
             if !tokens[import_index].is_given_kind(&[Kind::T_USE, Kind::CT_GROUP_IMPORT_BRACE_OPEN])
             {

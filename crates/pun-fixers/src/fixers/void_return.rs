@@ -49,7 +49,7 @@ impl Fixer for VoidReturnFixer {
             if !self.fix_lambda && TokensAnalyzer::new(tokens).is_lambda(index) {
                 continue;
             }
-            let function_name = tokens.get_next_meaningful_token(index).unwrap();
+            let function_name = tokens.next_meaningful(index);
             if tokens[function_name].equals_any(
                 &[
                     (T_STRING, "__clone").into(),
@@ -99,7 +99,7 @@ fn has_return_type_hint(tokens: &Tokens, index: usize) -> bool {
     let end_func_index = tokens
         .get_prev_token_of_kind(index, &[")".into()], true)
         .unwrap();
-    let next_index = tokens.get_next_meaningful_token(end_func_index).unwrap();
+    let next_index = tokens.next_meaningful(end_func_index);
     tokens[next_index].is_kind(CT_TYPE_COLON)
 }
 
@@ -120,7 +120,7 @@ fn has_void_return(tokens: &Tokens, start_index: usize, end_index: usize) -> boo
             return false;
         }
         if tokens[i].is_kind(T_RETURN) {
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             if !tokens[i].equals(";", true) {
                 return false;
             }

@@ -45,7 +45,7 @@ impl Fixer for PhpdocVarWithoutNameFixer {
                 continue;
             };
             if tokens[next_index].is_kind(Kind::T_STATIC) {
-                next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                next_index = tokens.next_meaningful(next_index);
             }
             if !tokens[next_index].is_given_kind(PROPERTY_MODIFIER_KINDS) {
                 continue;

@@ -37,8 +37,7 @@ impl ControlStructureBracesFixer {
             return structure_token_index;
         }
         let next_index = tokens
-            .get_next_meaningful_token(structure_token_index)
-            .unwrap();
+            .next_meaningful(structure_token_index);
         if !tokens[next_index].equals("(", true) {
             return structure_token_index;
         }
@@ -47,8 +46,7 @@ impl ControlStructureBracesFixer {
 
     fn find_statement_end(tokens: &Tokens, parenthesis_end_index: usize) -> usize {
         let next_index = tokens
-            .get_next_meaningful_token(parenthesis_end_index)
-            .unwrap();
+            .next_meaningful(parenthesis_end_index);
         let next_token = &tokens[next_index];
         if next_token.equals("{", true) {
             return tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, next_index);
@@ -112,14 +110,13 @@ impl Fixer for ControlStructureBracesFixer {
                 continue;
             }
             if token.is_kind(T_ELSE)
-                && tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(T_IF)
+                && tokens[tokens.next_meaningful(index)].is_kind(T_IF)
             {
                 continue;
             }
             let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
             let next_after_parenthesis_end_index = tokens
-                .get_next_meaningful_token(parenthesis_end_index)
-                .unwrap();
+                .next_meaningful(parenthesis_end_index);
             let token_after_parenthesis = &tokens[next_after_parenthesis_end_index];
             if token_after_parenthesis.equals_any(
                 &[";".into(), "{".into(), ":".into(), T_CLOSE_TAG.into()],
@@ -132,12 +129,10 @@ impl Fixer for ControlStructureBracesFixer {
                 let token_after_parenthesis_block_end = tokens.find_block_end(
                     Tokens::BLOCK_TYPE_PARENTHESIS,
                     tokens
-                        .get_next_meaningful_token(next_after_parenthesis_end_index)
-                        .unwrap(),
+                        .next_meaningful(next_after_parenthesis_end_index),
                 );
                 if tokens[tokens
-                    .get_next_meaningful_token(token_after_parenthesis_block_end)
-                    .unwrap()]
+                    .next_meaningful(token_after_parenthesis_block_end)]
                 .equals(":", true)
                 {
                     let mut end = alternative_syntax_analyzer.find_alternative_syntax_block_end(
@@ -145,7 +140,7 @@ impl Fixer for ControlStructureBracesFixer {
                         next_after_parenthesis_end_index,
                     );
                     let token_after_statement_end_index =
-                        tokens.get_next_meaningful_token(end).unwrap();
+                        tokens.next_meaningful(end);
                     if tokens[token_after_statement_end_index].equals(";", true) {
                         end = token_after_statement_end_index;
                     }

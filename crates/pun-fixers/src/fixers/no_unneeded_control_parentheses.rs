@@ -162,10 +162,10 @@ fn is_noop(t: &Token) -> bool {
 }
 
 fn next(tokens: &Tokens, i: usize) -> usize {
-    tokens.get_next_meaningful_token(i).unwrap()
+    tokens.next_meaningful(i)
 }
 fn prev(tokens: &Tokens, i: usize) -> usize {
-    tokens.get_prev_meaningful_token(i).unwrap()
+    tokens.prev_meaningful(i)
 }
 
 impl Fixer for NoUnneededControlParenthesesFixer {

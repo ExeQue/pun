@@ -122,7 +122,7 @@ impl NativeFunctionInvocationFixer {
             if !functions_analyzer.is_global_function_call(tokens, index) {
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if !self.function_filter(tokens[index].get_content()) || try_to_remove {
                 if self.strict && tokens[prev_index].is_kind(T_NS_SEPARATOR) {
                     tokens.clear_token_and_merge_surrounding_whitespace(prev_index);

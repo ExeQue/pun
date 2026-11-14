@@ -41,7 +41,7 @@ fn has_return_type_hint(tokens: &Tokens, index: usize) -> bool {
     let end_func_index = tokens
         .get_prev_token_of_kind(index, &[Proto::Char(b")")], true)
         .unwrap();
-    let next_index = tokens.get_next_meaningful_token(end_func_index).unwrap();
+    let next_index = tokens.next_meaningful(end_func_index);
     tokens[next_index].is_kind(CT_TYPE_COLON)
 }
 
@@ -77,7 +77,7 @@ impl Fixer for PhpdocToReturnTypeFixer {
             if !tokens[index].is_given_kind(&[T_FUNCTION, T_FN]) {
                 continue;
             }
-            let func_name = tokens.get_next_meaningful_token(index).unwrap();
+            let func_name = tokens.next_meaningful(index);
             if tokens[func_name].equals_any(EXCLUDE_FUNC_NAMES, false) {
                 continue;
             }

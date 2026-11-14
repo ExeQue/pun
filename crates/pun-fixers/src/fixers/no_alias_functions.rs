@@ -89,7 +89,7 @@ impl Fixer for NoAliasFunctionsFixer {
             else {
                 continue;
             };
-            let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
+            let open_parenthesis = tokens.next_meaningful(index);
             if !tokens[open_parenthesis].equals("(", true) {
                 continue;
             }

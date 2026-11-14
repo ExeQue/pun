@@ -87,7 +87,7 @@ impl Fixer for NewWithParenthesesFixer {
                 .get_next_token_of_kind(index, &NEXT_TOKEN_KINDS, true)
                 .unwrap();
             if tokens[next_index].is_kind(T_CLASS) {
-                next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                next_index = tokens.next_meaningful(next_index);
                 ensure(tokens, next_index, self.anonymous_class);
                 continue;
             }
@@ -96,7 +96,7 @@ impl Fixer for NewWithParenthesesFixer {
             {
                 let (block, _) = Tokens::detect_block_type(&tokens[next_index]).unwrap();
                 next_index = tokens.find_block_end(block, next_index);
-                next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                next_index = tokens.next_meaningful(next_index);
             }
             ensure(tokens, next_index, self.named_class);
         }
@@ -106,7 +106,7 @@ impl Fixer for NewWithParenthesesFixer {
 fn ensure(tokens: &mut Tokens, index: usize, parentheses: bool) {
     if parentheses {
         if !tokens[index].equals("(", true) && !tokens[index].is_object_operator() {
-            let at = tokens.get_prev_meaningful_token(index).unwrap() + 1;
+            let at = tokens.prev_meaningful(index) + 1;
             tokens.insert_at(at, vec![Token::char("("), Token::char(")")]);
         }
         return;
@@ -114,11 +114,11 @@ fn ensure(tokens: &mut Tokens, index: usize, parentheses: bool) {
     if !tokens[index].equals("(", true) {
         return;
     }
-    let closing_index = tokens.get_next_meaningful_token(index).unwrap();
+    let closing_index = tokens.next_meaningful(index);
     if !tokens[closing_index].equals(")", true) {
         return;
     }
-    if tokens[tokens.get_next_meaningful_token(closing_index).unwrap()].is_object_operator() {
+    if tokens[tokens.next_meaningful(closing_index)].is_object_operator() {
         return;
     }
     tokens.clear_token_and_merge_surrounding_whitespace(closing_index);

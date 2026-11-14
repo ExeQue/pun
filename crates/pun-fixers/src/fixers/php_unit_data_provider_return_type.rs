@@ -53,8 +53,7 @@ impl Fixer for PhpUnitDataProviderReturnTypeFixer {
                     continue;
                 }
                 let type_start = tokens
-                    .get_next_meaningful_token(r#type.get_start_index() - 1)
-                    .unwrap();
+                    .next_meaningful(r#type.get_start_index() - 1);
                 let type_end = r#type.get_end_index();
                 if tokens.generate_partial_code(type_start, type_end) != r#type.name {
                     continue;

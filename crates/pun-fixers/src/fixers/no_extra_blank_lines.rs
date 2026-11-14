@@ -160,7 +160,7 @@ impl Run<'_> {
     }
 
     fn fix_after_throw_token(&mut self, index: usize) {
-        let prev_index = self.tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = self.tokens.prev_meaningful(index);
         if !self.tokens[prev_index].equals_any(
             &[
                 ";".into(),

@@ -36,13 +36,13 @@ impl FunctionsAnalyzer {
     }
 
     pub(crate) fn is_the_same_class_call(&self, tokens: &Tokens, index: usize) -> bool {
-        let operator_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let operator_index = tokens.prev_meaningful(index);
         if !tokens[operator_index].is_object_operator()
             && !tokens[operator_index].is_kind(T_DOUBLE_COLON)
         {
             return false;
         }
-        let reference_index = tokens.get_prev_meaningful_token(operator_index).unwrap();
+        let reference_index = tokens.prev_meaningful(operator_index);
         if !tokens[reference_index].equals_any(
             &[
                 (T_VARIABLE, "$this").into(),
@@ -105,13 +105,13 @@ impl FunctionsAnalyzer {
                 .unwrap();
             let lambda_use_end =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, lambda_use_start);
-            type_colon_index = tokens.get_next_meaningful_token(lambda_use_end).unwrap();
+            type_colon_index = tokens.next_meaningful(lambda_use_end);
         }
         if !tokens[type_colon_index].is_kind(CT_TYPE_COLON) {
             return None;
         }
         let mut type_ = Vec::new();
-        let type_start_index = tokens.get_next_meaningful_token(type_colon_index).unwrap();
+        let type_start_index = tokens.next_meaningful(type_colon_index);
         let mut type_end_index = type_start_index;
         let function_body_start = tokens
             .get_next_token_of_kind(
@@ -148,19 +148,17 @@ impl FunctionsAnalyzer {
             _ => return false,
         };
         let mut previous_is_namespace_separator = false;
-        let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
             previous_is_namespace_separator = true;
-            prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+            prev_index = tokens.prev_meaningful(prev_index);
         }
         if tokens[prev_index].is_given_kind(POSSIBLE_KINDS) {
             return false;
         }
         if call_only
-            && tokens[tokens
-                .get_next_meaningful_token(open_parenthesis_index)
-                .unwrap()]
-            .is_kind(CT_FIRST_CLASS_CALLABLE)
+            && tokens[tokens.next_meaningful(open_parenthesis_index)]
+                .is_kind(CT_FIRST_CLASS_CALLABLE)
         {
             return false;
         }
@@ -179,9 +177,7 @@ impl FunctionsAnalyzer {
             }
             let close_parenthesis_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis_index);
-            let after = tokens
-                .get_next_meaningful_token(close_parenthesis_index)
-                .unwrap();
+            let after = tokens.next_meaningful(close_parenthesis_index);
             if tokens[after].equals_any(&["{".into(), T_DOUBLE_ARROW.into()], true) {
                 return false;
             }
@@ -262,9 +258,9 @@ impl FunctionsAnalyzer {
                     i += 1;
                     continue;
                 }
-                i = tokens.get_next_meaningful_token(i).unwrap();
+                i = tokens.next_meaningful(i);
                 if tokens[i].is_kind(CT_RETURN_REF) {
-                    i = tokens.get_next_meaningful_token(i).unwrap();
+                    i = tokens.next_meaningful(i);
                 }
                 if !tokens[i].is_kind(T_STRING) {
                     i += 1;

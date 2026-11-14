@@ -63,8 +63,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 impl BracesPositionFixer {
     fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
         let next_index = tokens
-            .get_next_meaningful_token(structure_token_index)
-            .unwrap();
+            .next_meaningful(structure_token_index);
         if !tokens[next_index].equals("(", true) {
             return structure_token_index;
         }
@@ -195,18 +194,16 @@ impl Fixer for BracesPositionFixer {
             } else if is(CONTROL_STRUCTURE_TOKENS) {
                 let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
                 open_brace_index = tokens
-                    .get_next_meaningful_token(parenthesis_end_index)
-                    .unwrap();
+                    .next_meaningful(parenthesis_end_index);
                 if !tokens[open_brace_index].equals("{", true) {
                     continue;
                 }
                 position_option = Brace::ControlStructures;
             } else if kind == Some(T_VARIABLE) {
-                let mut next_meaningful_index = tokens.get_next_meaningful_token(index).unwrap();
+                let mut next_meaningful_index = tokens.next_meaningful(index);
                 if tokens[next_meaningful_index].equals("=", true) {
                     next_meaningful_index = tokens
-                        .get_next_meaningful_token(next_meaningful_index)
-                        .unwrap();
+                        .next_meaningful(next_meaningful_index);
                     if tokens[next_meaningful_index].is_kind(CT_ARRAY_BRACKET_OPEN) {
                         index = tokens.find_block_end(
                             Tokens::BLOCK_TYPE_ARRAY_BRACKET,
@@ -214,8 +211,7 @@ impl Fixer for BracesPositionFixer {
                         );
                     } else if tokens[next_meaningful_index].is_kind(T_ARRAY) {
                         next_meaningful_index = tokens
-                            .get_next_meaningful_token(next_meaningful_index)
-                            .unwrap();
+                            .next_meaningful(next_meaningful_index);
                         if tokens[next_meaningful_index].equals("(", true) {
                             index = tokens.find_block_end(
                                 Tokens::BLOCK_TYPE_PARENTHESIS,
@@ -249,12 +245,11 @@ impl Fixer for BracesPositionFixer {
             } else if kind == Some(T_STRING) {
                 let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
                 open_brace_index = tokens
-                    .get_next_meaningful_token(parenthesis_end_index)
-                    .unwrap();
+                    .next_meaningful(parenthesis_end_index);
                 if !tokens[open_brace_index].equals("{", true) {
                     continue;
                 }
-                let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev_index = tokens.prev_meaningful(index);
                 if !tokens[prev_index].equals_any(
                     &[
                         "}".into(),
@@ -300,7 +295,7 @@ impl Fixer for BracesPositionFixer {
             if add_newlines_inside_braces
                 && !Self::is_followed_by_new_line(tokens, open_brace_index)
                 && !Self::has_comment_on_same_line(tokens, open_brace_index)
-                && !tokens[tokens.get_next_meaningful_token(open_brace_index).unwrap()]
+                && !tokens[tokens.next_meaningful(open_brace_index)]
                     .is_kind(T_CLOSE_TAG)
             {
                 let whitespace =
@@ -316,8 +311,7 @@ impl Fixer for BracesPositionFixer {
                 let mut previous_token_index = open_brace_index;
                 loop {
                     previous_token_index = tokens
-                        .get_prev_meaningful_token(previous_token_index)
-                        .unwrap();
+                        .prev_meaningful(previous_token_index);
                     if !tokens[previous_token_index].is_given_kind(&[
                         CT_TYPE_COLON,
                         CT_NULLABLE_TYPE,
@@ -350,7 +344,7 @@ impl Fixer for BracesPositionFixer {
             let mut move_brace_to_index: Option<usize> = None;
             if whitespace == b" " {
                 let previous_meaningful_index =
-                    tokens.get_prev_meaningful_token(open_brace_index).unwrap();
+                    tokens.prev_meaningful(open_brace_index);
                 let mut index_before_open_brace = open_brace_index - 1;
                 while index_before_open_brace > previous_meaningful_index {
                     if !tokens[index_before_open_brace].is_comment() {
@@ -433,7 +427,7 @@ impl Fixer for BracesPositionFixer {
             }
 
             if !add_newlines_inside_braces
-                || tokens[tokens.get_prev_meaningful_token(close_brace_index).unwrap()]
+                || tokens[tokens.prev_meaningful(close_brace_index)]
                     .is_kind(T_OPEN_TAG)
             {
                 continue;

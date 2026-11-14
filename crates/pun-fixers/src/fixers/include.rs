@@ -43,8 +43,8 @@ fn clear_includies(tokens: &mut Tokens, includies: Vec<Includy>) {
         }
         let braces = includy.braces;
         if let Some((open, close)) = braces {
-            let prev_index = tokens.get_prev_meaningful_token(includy.begin).unwrap();
-            let next_index = tokens.get_next_meaningful_token(close).unwrap();
+            let prev_index = tokens.prev_meaningful(includy.begin);
+            let next_index = tokens.next_meaningful(close);
             if !tokens[next_index].equals_any(&[";".into(), T_CLOSE_TAG.into()], true)
                 && !blocks_analyzer.is_block(tokens, prev_index, next_index)
             {
@@ -81,7 +81,7 @@ fn find_includies(tokens: &Tokens) -> Vec<Includy> {
             let end = tokens
                 .get_next_token_of_kind(index, &[";".into(), T_CLOSE_TAG.into()], true)
                 .unwrap();
-            let brace_open_index = tokens.get_next_meaningful_token(index).unwrap();
+            let brace_open_index = tokens.next_meaningful(index);
             let braces = tokens[brace_open_index].equals("(", true).then(|| {
                 (
                     brace_open_index,

@@ -31,7 +31,7 @@ impl Fixer for NoRedundantNullsafe {
             else {
                 continue;
             };
-            let after = tokens.get_next_meaningful_token(name).unwrap();
+            let after = tokens.next_meaningful(name);
             let Some(start) = chain_start(tokens, i) else {
                 continue;
             };

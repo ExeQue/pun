@@ -14,7 +14,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 
 impl MethodChainingIndentationFixer {
     fn get_expected_indent_at(&self, tokens: &Tokens, index: usize) -> Vec<u8> {
-        let index = tokens.get_prev_meaningful_token(index).unwrap();
+        let index = tokens.prev_meaningful(index);
         let indent = self.whitespaces_config.get_indent().as_bytes();
         let mut i = index as isize;
         while i >= 0 {
@@ -35,7 +35,7 @@ impl MethodChainingIndentationFixer {
     }
 
     fn can_be_moved_to_next_line(index: usize, tokens: &Tokens) -> bool {
-        let prev_meaningful = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_meaningful = tokens.prev_meaningful(index);
         let mut has_comment_before = false;
         let mut i = index - 1;
         while i > prev_meaningful {
@@ -72,13 +72,12 @@ impl MethodChainingIndentationFixer {
     }
 
     fn current_line_requires_extra_indent_level(tokens: &Tokens, start: usize, end: usize) -> bool {
-        let first_meaningful = tokens.get_next_meaningful_token(start).unwrap();
+        let first_meaningful = tokens.next_meaningful(start);
         if tokens[first_meaningful].is_object_operator() {
             let third_meaningful = tokens
-                .get_next_meaningful_token(
+                .next_meaningful(
                     tokens.get_next_meaningful_token(first_meaningful).unwrap(),
-                )
-                .unwrap();
+                );
             return tokens[third_meaningful].equals("(", true)
                 && tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, third_meaningful) > end;
         }

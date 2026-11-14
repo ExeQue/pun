@@ -43,11 +43,11 @@ impl Fixer for UseSimplerExpectation {
             let Some((op, matcher)) = single_comparison(tokens, expect_open, expect_close) else {
                 continue;
             };
-            let lhs_end = tokens.get_prev_meaningful_token(op).unwrap();
-            let rhs_start = tokens.get_next_meaningful_token(op).unwrap();
-            let mut rhs_end = tokens.get_prev_meaningful_token(expect_close).unwrap();
+            let lhs_end = tokens.prev_meaningful(op);
+            let rhs_start = tokens.next_meaningful(op);
+            let mut rhs_end = tokens.prev_meaningful(expect_close);
             if tokens[rhs_end].equals(",", true) {
-                rhs_end = tokens.get_prev_meaningful_token(rhs_end).unwrap();
+                rhs_end = tokens.prev_meaningful(rhs_end);
             }
             let instanceof = tokens[op].is_kind(T_INSTANCEOF);
             if instanceof

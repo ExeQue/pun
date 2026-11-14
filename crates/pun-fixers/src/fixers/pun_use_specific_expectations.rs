@@ -45,9 +45,9 @@ impl Fixer for UseSpecificExpectations {
             else {
                 continue;
             };
-            let mut close = tokens.get_next_meaningful_token(arg).unwrap();
+            let mut close = tokens.next_meaningful(arg);
             if tokens[close].equals(",", true) {
-                close = tokens.get_next_meaningful_token(close).unwrap();
+                close = tokens.next_meaningful(close);
             }
             if !tokens[close].equals(")", true) || (i..close).any(|k| tokens[k].is_comment()) {
                 continue;

@@ -30,7 +30,7 @@ impl Fixer for ModernSerializationMethodsFixer {
             if element.kind != ClassyElementType::Method {
                 continue;
             }
-            let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+            let function_name_index = tokens.next_meaningful(index);
             methods_by_class
                 .entry(element.class_index)
                 .or_default()

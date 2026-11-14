@@ -69,7 +69,7 @@ impl Fixer for MbStrFunctionsFixer {
                 continue;
             };
             if functions_analyzer.is_global_function_call(tokens, index) {
-                let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
+                let open_parenthesis = tokens.next_meaningful(index);
                 let close_parenthesis =
                     tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis);
                 let number_of_arguments =
@@ -80,9 +80,9 @@ impl Fixer for MbStrFunctionsFixer {
                 tokens.set(index, Token::new(T_STRING, alternative_name));
                 continue;
             }
-            let mut function_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let mut function_index = tokens.prev_meaningful(index);
             if tokens[function_index].is_kind(T_NS_SEPARATOR) {
-                function_index = tokens.get_prev_meaningful_token(function_index).unwrap();
+                function_index = tokens.prev_meaningful(function_index);
             }
             if !tokens[function_index].is_kind(CT_FUNCTION_IMPORT) {
                 continue;

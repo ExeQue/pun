@@ -60,7 +60,7 @@ fn find_use_statements_groups(tokens: &Tokens) -> Vec<Vec<(usize, Tokens)>> {
             continue;
         }
         let start_index = tokens
-            .get_next_non_whitespace(tokens.get_prev_meaningful_token(index).unwrap(), None)
+            .get_next_non_whitespace(tokens.prev_meaningful(index), None)
             .unwrap();
         let mut end_index = tokens
             .get_next_token_of_kind(index, &[";".into(), "{".into()], true)

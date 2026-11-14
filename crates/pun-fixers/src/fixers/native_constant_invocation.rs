@@ -64,14 +64,14 @@ impl NativeConstantInvocationFixer {
                 continue;
             }
             let token_content = tokens[i].get_content();
-            let prev_index = tokens.get_prev_meaningful_token(i).unwrap();
+            let prev_index = tokens.prev_meaningful(i);
             if !self.is_constant_to_escape(token_content)
                 && !self.case_insensitive.contains(&strtolower(token_content))
             {
                 if !self.strict || !tokens[prev_index].is_kind(T_NS_SEPARATOR) {
                     continue;
                 }
-                let prev_prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+                let prev_prev_index = tokens.prev_meaningful(prev_index);
                 if tokens[prev_prev_index].is_kind(T_STRING) {
                     continue;
                 }

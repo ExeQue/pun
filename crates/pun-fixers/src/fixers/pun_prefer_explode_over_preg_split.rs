@@ -32,7 +32,7 @@ impl Fixer for PreferExplodeOverPregSplit {
             {
                 continue;
             }
-            let open = tokens.get_next_meaningful_token(i).unwrap();
+            let open = tokens.next_meaningful(i);
             let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
             let args = split_list(tokens, open, close);
             if !(2..=4).contains(&args.len())

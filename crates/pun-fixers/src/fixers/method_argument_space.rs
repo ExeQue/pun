@@ -193,7 +193,7 @@ impl MethodArgumentSpaceFixer {
                 index -= 1;
                 continue;
             }
-            if tokens[tokens.get_next_meaningful_token(index).unwrap()].equals(")", true) {
+            if tokens[tokens.next_meaningful(index)].equals(")", true) {
                 index -= 1;
                 continue;
             }
@@ -226,7 +226,7 @@ impl MethodArgumentSpaceFixer {
         ]
         .concat();
         if tokens[index + 2].is_comment() {
-            let next_meaningful_token_index = tokens.get_next_meaningful_token(index + 2).unwrap();
+            let next_meaningful_token_index = tokens.next_meaningful(index + 2);
             if !is_newline(&tokens[next_meaningful_token_index - 1]) {
                 if tokens[next_meaningful_token_index - 1].is_whitespace(None) {
                     tokens.clear_at(next_meaningful_token_index - 1);
@@ -403,7 +403,7 @@ impl Fixer for MethodArgumentSpaceFixer {
                 continue;
             }
             let meaningful_token_before_parenthesis =
-                &tokens[tokens.get_prev_meaningful_token(index).unwrap()];
+                &tokens[tokens.prev_meaningful(index)];
             if meaningful_token_before_parenthesis.is_keyword()
                 && !meaningful_token_before_parenthesis.is_given_kind(&expected_tokens)
             {

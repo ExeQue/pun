@@ -586,6 +586,22 @@ impl Tokens {
         self.get_meaningful_token_sibling(index, -1)
     }
 
+    #[track_caller]
+    pub fn next_meaningful(&self, index: usize) -> usize {
+        let Some(next) = self.get_next_meaningful_token(index) else {
+            panic!("no meaningful token after index {index}");
+        };
+        next
+    }
+
+    #[track_caller]
+    pub fn prev_meaningful(&self, index: usize) -> usize {
+        let Some(prev) = self.get_prev_meaningful_token(index) else {
+            panic!("no meaningful token before index {index}");
+        };
+        prev
+    }
+
     pub fn find_sequence(
         &self,
         sequence: &[Proto<'_>],
@@ -972,6 +988,25 @@ mod tests {
             t.find_sequence(&[T_STRING.into(), "(".into()], 0, None, |_| true),
             Some(vec![1, 2])
         );
+    }
+
+    #[test]
+    fn meaningful_siblings_skip_whitespace_and_comments() {
+        let t = Tokens::from_code(b"<?php a /* c */ ;");
+        assert_eq!(t.next_meaningful(1), 5);
+        assert_eq!(t.prev_meaningful(5), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "no meaningful token after index 5")]
+    fn next_meaningful_names_the_index_when_missing() {
+        Tokens::from_code(b"<?php a /* c */ ;").next_meaningful(5);
+    }
+
+    #[test]
+    #[should_panic(expected = "no meaningful token before index 1")]
+    fn prev_meaningful_names_the_index_when_missing() {
+        Tokens::from_code(b"<?php a /* c */ ;").prev_meaningful(1);
     }
 
     #[test]

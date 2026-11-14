@@ -64,7 +64,7 @@ impl Fixer for PhpUnitStrictFixer {
                         break;
                     };
                     if FunctionsAnalyzer::new().is_the_same_class_call(tokens, method_index) {
-                        let open = tokens.get_next_meaningful_token(method_index).unwrap();
+                        let open = tokens.next_meaningful(method_index);
                         let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
                         if matches!(
                             ArgumentsAnalyzer.count_arguments(tokens, open, close),

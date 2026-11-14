@@ -121,8 +121,7 @@ impl Run<'_> {
     ) -> usize {
         let following_index = self
             .tokens
-            .get_next_meaningful_token(continue_index)
-            .unwrap();
+            .next_meaningful(continue_index);
         let following = &self.tokens[following_index];
         if is_in_switch && following.equals(";", true) {
             self.replace_continue_with_break_token(continue_index);
@@ -133,8 +132,7 @@ impl Run<'_> {
         }
         let after_index = self
             .tokens
-            .get_next_meaningful_token(following_index)
-            .unwrap();
+            .next_meaningful(following_index);
         if !self.tokens[after_index].equals(";", true) {
             return after_index;
         }

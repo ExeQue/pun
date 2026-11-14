@@ -45,21 +45,20 @@ impl Fixer for OrderedInterfacesFixer {
                 if !tokens[index].is_kind(Kind::T_EXTENDS) {
                     continue;
                 }
-                let name_token_index = tokens.get_prev_meaningful_token(index).unwrap();
+                let name_token_index = tokens.prev_meaningful(index);
                 let interface_token_index =
-                    tokens.get_prev_meaningful_token(name_token_index).unwrap();
+                    tokens.prev_meaningful(name_token_index);
                 if !tokens[interface_token_index].is_kind(Kind::T_INTERFACE) {
                     continue;
                 }
             }
             let implements_start = index + 1;
             let implements_end = tokens
-                .get_prev_meaningful_token(
+                .prev_meaningful(
                     tokens
                         .get_next_token_of_kind(implements_start, &["{".into()], true)
                         .unwrap(),
-                )
-                .unwrap();
+                );
             let interfaces_tokens = get_interfaces(tokens, implements_start, implements_end);
             if interfaces_tokens.len() == 1 {
                 continue;

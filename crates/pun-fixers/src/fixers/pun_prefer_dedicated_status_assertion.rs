@@ -46,9 +46,9 @@ impl Fixer for PreferDedicatedStatusAssertion {
             else {
                 continue;
             };
-            let mut close = tokens.get_next_meaningful_token(num).unwrap();
+            let mut close = tokens.next_meaningful(num);
             if tokens[close].equals(",", true) {
-                close = tokens.get_next_meaningful_token(close).unwrap();
+                close = tokens.next_meaningful(close);
             }
             if !tokens[close].equals(")", true) || (i..close).any(|k| tokens[k].is_comment()) {
                 continue;

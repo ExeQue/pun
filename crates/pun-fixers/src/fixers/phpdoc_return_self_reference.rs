@@ -99,7 +99,7 @@ impl Fixer for PhpdocReturnSelfReferenceFixer {
 impl PhpdocReturnSelfReferenceFixer {
     fn fix_method(&self, tokens: &mut Tokens, mut index: usize) {
         loop {
-            let token_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let token_index = tokens.prev_meaningful(index);
             if !tokens[token_index].is_given_kind(&[
                 T_STATIC,
                 T_FINAL,

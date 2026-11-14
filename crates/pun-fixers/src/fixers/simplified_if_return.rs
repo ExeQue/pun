@@ -47,7 +47,7 @@ impl Fixer for SimplifiedIfReturnFixer {
             if !tokens[if_index].is_given_kind(&[T_IF, T_ELSEIF]) {
                 continue;
             }
-            let prev = tokens.get_prev_meaningful_token(if_index).unwrap();
+            let prev = tokens.prev_meaningful(if_index);
             if tokens[prev].equals(")", true) {
                 continue;
             }
@@ -57,8 +57,7 @@ impl Fixer for SimplifiedIfReturnFixer {
             let end_parenthesis_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, start_parenthesis_index);
             let first_candidate_index = tokens
-                .get_next_meaningful_token(end_parenthesis_index)
-                .unwrap();
+                .next_meaningful(end_parenthesis_index);
             for &(is_negative, sequence) in SEQUENCES {
                 let Some(mut indices_to_clear) =
                     tokens.find_sequence(sequence, first_candidate_index, next_if_index, |_| true)

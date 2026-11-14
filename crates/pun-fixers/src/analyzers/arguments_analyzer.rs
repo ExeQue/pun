@@ -34,7 +34,7 @@ impl ArgumentsAnalyzer {
         close_parenthesis: usize,
     ) -> BTreeMap<usize, usize> {
         let mut arguments = BTreeMap::new();
-        let first_sensible_token = tokens.get_next_meaningful_token(open_parenthesis).unwrap();
+        let first_sensible_token = tokens.next_meaningful(open_parenthesis);
         if tokens[first_sensible_token].equals(")", true) {
             return arguments;
         }

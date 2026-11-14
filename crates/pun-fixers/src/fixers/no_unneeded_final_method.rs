@@ -87,7 +87,7 @@ fn get_methods(tokens: &Tokens) -> Vec<Method> {
         let mut method_is_private = false;
         let mut previous = index;
         loop {
-            previous = tokens.get_prev_meaningful_token(previous).unwrap();
+            previous = tokens.prev_meaningful(previous);
             if tokens[previous].is_kind(T_PRIVATE) {
                 method_is_private = true;
             } else if tokens[previous].is_kind(T_FINAL) {
@@ -113,7 +113,7 @@ fn get_methods(tokens: &Tokens) -> Vec<Method> {
                 .final_
                 .is_some()
         });
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         out.push(Method {
             method_final_index,
             method_is_private,

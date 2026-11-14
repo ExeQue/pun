@@ -194,9 +194,9 @@ impl YodaStyleFixer {
                 Some((block_type, true)) => index = tokens.find_block_end(block_type, index) + 1,
             }
         }
-        let prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev = tokens.prev_meaningful(index);
         if tokens[prev].is_kind(T_CLOSE_TAG) {
-            tokens.get_prev_meaningful_token(prev).unwrap()
+            tokens.prev_meaningful(prev)
         } else {
             prev
         }
@@ -231,7 +231,7 @@ impl YodaStyleFixer {
                 }
             }
         }
-        tokens.get_next_meaningful_token(index as usize).unwrap()
+        tokens.next_meaningful(index as usize)
     }
 
     fn fix_tokens(&self, tokens: &mut Tokens) {
@@ -306,7 +306,7 @@ impl YodaStyleFixer {
         yoda: bool,
     ) -> Option<((usize, usize), (usize, usize))> {
         let right = (
-            tokens.get_next_meaningful_token(index).unwrap(),
+            tokens.next_meaningful(index),
             self.find_comparison_end(tokens, index),
         );
         if !yoda
@@ -318,7 +318,7 @@ impl YodaStyleFixer {
         }
         let left = (
             self.find_comparison_start(tokens, index),
-            tokens.get_prev_meaningful_token(index).unwrap(),
+            tokens.prev_meaningful(index),
         );
         if is_list_statement(tokens, left.0, left.1) || is_list_statement(tokens, right.0, right.1)
         {
@@ -378,10 +378,10 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
         if index == end {
             return current.is_kind(if expect_string { T_STRING } else { T_VARIABLE });
         }
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         let next = &tokens[next_index];
         if current.is_kind(T_STRING) && next.is_kind(T_DOUBLE_COLON) {
-            index = tokens.get_next_meaningful_token(next_index).unwrap();
+            index = tokens.next_meaningful(next_index);
             continue;
         }
         if current.is_kind(T_NS_SEPARATOR) && next.is_kind(T_STRING) {
@@ -393,7 +393,7 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
             continue;
         }
         if current.is_given_kind(&[T_STRING, T_VARIABLE]) && next.is_object_operator() {
-            index = tokens.get_next_meaningful_token(next_index).unwrap();
+            index = tokens.next_meaningful(next_index);
             expect_string = true;
             continue;
         }
@@ -409,11 +409,11 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
             if index == end {
                 return true;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if !tokens[index].equals_any(&INDEX_OPEN, true) && !tokens[index].is_object_operator() {
                 return false;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             expect_string = true;
             continue;
         }
@@ -425,11 +425,11 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
             if index == end {
                 return true;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if !tokens[index].is_object_operator() {
                 return false;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             expect_string = true;
             continue;
         }

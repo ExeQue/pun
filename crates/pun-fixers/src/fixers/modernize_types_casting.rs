@@ -50,7 +50,7 @@ impl Fixer for ModernizeTypesCastingFixer {
                     continue;
                 }
                 let mut param_content_end = close_parenthesis;
-                let comma_candidate = tokens.get_prev_meaningful_token(param_content_end).unwrap();
+                let comma_candidate = tokens.prev_meaningful(param_content_end);
                 if tokens[comma_candidate].equals(",", true) {
                     tokens.remove_trailing_whitespace(comma_candidate, None);
                     tokens.clear_at(comma_candidate);
@@ -61,11 +61,11 @@ impl Fixer for ModernizeTypesCastingFixer {
                     .count();
                 let preserve_parentheses = count_param_tokens > 1;
                 let after_close_parenthesis_token =
-                    &tokens[tokens.get_next_meaningful_token(close_parenthesis).unwrap()];
+                    &tokens[tokens.next_meaningful(close_parenthesis)];
                 let wrap_in_parentheses = after_close_parenthesis_token
                     .equals_any(&["[".into(), "{".into()], true)
                     || after_close_parenthesis_token.is_kind(T_POW);
-                let prev_token_index = tokens.get_prev_meaningful_token(function_name).unwrap();
+                let prev_token_index = tokens.prev_meaningful(function_name);
                 if tokens[prev_token_index].is_kind(T_NS_SEPARATOR) {
                     tokens.remove_trailing_whitespace(prev_token_index, None);
                     tokens.clear_at(prev_token_index);

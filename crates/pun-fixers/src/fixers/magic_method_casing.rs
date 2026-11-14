@@ -105,11 +105,11 @@ impl Fixer for MagicMethodCasingFixer {
 }
 
 fn next_is_open_paren(tokens: &Tokens, index: usize) -> bool {
-    tokens[tokens.get_next_meaningful_token(index).unwrap()].equals("(", true)
+    tokens[tokens.next_meaningful(index)].equals("(", true)
 }
 
 fn is_function_signature(tokens: &Tokens, index: usize) -> bool {
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     if !tokens[prev_index].is_kind(T_FUNCTION) {
         return false;
     }
@@ -117,7 +117,7 @@ fn is_function_signature(tokens: &Tokens, index: usize) -> bool {
 }
 
 fn is_method_call(tokens: &Tokens, index: usize) -> bool {
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     if !tokens[prev_index].is_object_operator() {
         return false;
     }
@@ -125,7 +125,7 @@ fn is_method_call(tokens: &Tokens, index: usize) -> bool {
 }
 
 fn is_static_method_call(tokens: &Tokens, index: usize) -> bool {
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     if !tokens[prev_index].is_kind(T_DOUBLE_COLON) {
         return false;
     }

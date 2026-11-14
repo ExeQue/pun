@@ -36,7 +36,7 @@ impl Fixer for IsNullFixer {
             if !functions_analyzer.is_global_function_call(tokens, is_null_index) {
                 continue;
             }
-            let next = tokens.get_next_meaningful_token(curr_index).unwrap();
+            let next = tokens.next_meaningful(curr_index);
             if tokens[next].equals(")", true) {
                 continue;
             }
@@ -54,11 +54,11 @@ impl Fixer for IsNullFixer {
                 tokens.clear_token_and_merge_surrounding_whitespace(next);
                 tokens.remove_trailing_whitespace(open, None);
             }
-            let mut prev_token_index = tokens.get_prev_meaningful_token(is_null_index).unwrap();
+            let mut prev_token_index = tokens.prev_meaningful(is_null_index);
             if tokens[prev_token_index].is_kind(T_NS_SEPARATOR) {
                 tokens.remove_trailing_whitespace(prev_token_index, None);
                 tokens.clear_at(prev_token_index);
-                prev_token_index = tokens.get_prev_meaningful_token(prev_token_index).unwrap();
+                prev_token_index = tokens.prev_meaningful(prev_token_index);
             }
             let mut is_inverted_null_check = false;
             if tokens[prev_token_index].equals("!", true) {
@@ -69,9 +69,9 @@ impl Fixer for IsNullFixer {
             let is_containing_dangerous_constructs = (open..=reference_end)
                 .any(|i| [&b"?"[..], b"?:", b"=", b"??"].contains(&tokens[i].get_content()));
             let parent_left_token =
-                &tokens[tokens.get_prev_meaningful_token(is_null_index).unwrap()];
+                &tokens[tokens.prev_meaningful(is_null_index)];
             let parent_right_token =
-                &tokens[tokens.get_next_meaningful_token(reference_end).unwrap()];
+                &tokens[tokens.next_meaningful(reference_end)];
             let parent_operations = &[
                 T_IS_EQUAL,
                 T_IS_NOT_EQUAL,
@@ -81,7 +81,7 @@ impl Fixer for IsNullFixer {
             let wrap_into_parentheses = parent_left_token.is_cast()
                 || parent_left_token.is_given_kind(parent_operations)
                 || parent_right_token.is_given_kind(parent_operations);
-            let prev_index = tokens.get_prev_meaningful_token(reference_end).unwrap();
+            let prev_index = tokens.prev_meaningful(reference_end);
             if tokens[prev_index].equals(",", true) {
                 tokens.clear_token_and_merge_surrounding_whitespace(prev_index);
             }

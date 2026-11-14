@@ -92,9 +92,7 @@ pub(crate) fn get_elements(tokens: &Tokens, start: usize) -> Vec<Element> {
                 let eq = tokens
                     .get_next_token_of_kind(i, &["=".into()], true)
                     .unwrap();
-                e.name = tokens[tokens.get_prev_meaningful_token(eq).unwrap()]
-                    .get_content()
-                    .to_vec();
+                e.name = tokens[tokens.prev_meaningful(eq)].get_content().to_vec();
             } else if [
                 "use_trait",
                 "case",
@@ -105,9 +103,7 @@ pub(crate) fn get_elements(tokens: &Tokens, start: usize) -> Vec<Element> {
             ]
             .contains(&ty)
             {
-                e.name = tokens[tokens.get_next_meaningful_token(i).unwrap()]
-                    .get_content()
-                    .to_vec();
+                e.name = tokens[tokens.next_meaningful(i)].get_content().to_vec();
             }
             e.end = find_element_end(tokens, i);
             break;
@@ -131,7 +127,7 @@ fn detect_element_type(tokens: &Tokens, index: usize) -> (&'static str, Option<V
     if token.is_kind(Kind::T_VARIABLE) {
         return ("property", None);
     }
-    let name = &tokens[tokens.get_next_meaningful_token(index).unwrap()];
+    let name = &tokens[tokens.next_meaningful(index)];
     if name.equals((Kind::T_STRING, "__construct"), false) {
         return ("construct", None);
     }

@@ -43,28 +43,28 @@ impl Fixer for UseArrowFunctionsFixer {
 }
 
 fn fix_lambda(tokens: &mut Tokens, index: usize) {
-    let mut parameters_start = tokens.get_next_meaningful_token(index).unwrap();
+    let mut parameters_start = tokens.next_meaningful(index);
     if tokens[parameters_start].is_kind(CT_RETURN_REF) {
-        parameters_start = tokens.get_next_meaningful_token(parameters_start).unwrap();
+        parameters_start = tokens.next_meaningful(parameters_start);
     }
     let parameters_end = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, parameters_start);
 
-    let mut next = tokens.get_next_meaningful_token(parameters_end).unwrap();
+    let mut next = tokens.next_meaningful(parameters_end);
     let mut use_range = None;
     if tokens[next].is_kind(CT_USE_LAMBDA) {
         let mut use_start = next;
         if tokens[use_start - 1].is_kind(T_WHITESPACE) {
             use_start -= 1;
         }
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
         while !tokens[next].equals(")", true) {
             if tokens[next].equals("&", true) {
                 return;
             }
-            next = tokens.get_next_meaningful_token(next).unwrap();
+            next = tokens.next_meaningful(next);
         }
         use_range = Some((use_start, next));
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
     }
 
     let brace_open = if tokens[next].equals("{", true) {

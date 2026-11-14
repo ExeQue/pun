@@ -91,7 +91,7 @@ fn collect_type_analysis(
     end_index: usize,
 ) -> Option<TypeAnalysis> {
     let mut type_ = Vec::new();
-    let type_start_index = tokens.get_next_meaningful_token(start_index).unwrap();
+    let type_start_index = tokens.next_meaningful(start_index);
     let mut type_end_index = type_start_index;
     for i in type_start_index..end_index {
         if tokens[i].is_whitespace(None) || tokens[i].is_comment() {
@@ -123,7 +123,7 @@ impl NullableTypeDeclarationFixer {
     fn normalize_property_type(&self, tokens: &mut Tokens, mut index: usize) {
         let property_end_index = index;
         loop {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
             if tokens[index].is_given_kind(PROPERTY_MODIFIERS) {
                 break;
             }

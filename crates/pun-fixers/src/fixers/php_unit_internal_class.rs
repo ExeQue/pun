@@ -52,7 +52,7 @@ impl Fixer for PhpUnitInternalClassFixer {
             let class_index = tokens
                 .get_prev_token_of_kind(start_index, &[T_CLASS.into()], true)
                 .unwrap();
-            let prev_index = tokens.get_prev_meaningful_token(class_index).unwrap();
+            let prev_index = tokens.prev_meaningful(class_index);
             if tokens[prev_index].is_kind(T_NEW) {
                 return;
             }

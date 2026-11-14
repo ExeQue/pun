@@ -46,24 +46,24 @@ impl Fixer for IncrementStyleFixer {
             }
             let token = tokens[index].clone();
             if self.pre && TokensAnalyzer::new(tokens).is_unary_successor_operator(index) {
-                let next_token = &tokens[tokens.get_next_meaningful_token(index).unwrap()];
+                let next_token = &tokens[tokens.next_meaningful(index)];
                 if !next_token.equals_any(&STATEMENT_END, true) {
                     continue;
                 }
                 let start_index = find_start(tokens, index);
-                let prev_token = &tokens[tokens.get_prev_meaningful_token(start_index).unwrap()];
+                let prev_token = &tokens[tokens.prev_meaningful(start_index)];
                 if prev_token.equals_any(&STATEMENT_START, true) {
                     tokens.clear_at(index);
                     tokens.insert_at(start_index, vec![token]);
                 }
             } else if !self.pre && TokensAnalyzer::new(tokens).is_unary_predecessor_operator(index)
             {
-                let prev_token = &tokens[tokens.get_prev_meaningful_token(index).unwrap()];
+                let prev_token = &tokens[tokens.prev_meaningful(index)];
                 if !prev_token.equals_any(&STATEMENT_START, true) {
                     continue;
                 }
                 let end_index = find_end(tokens, index);
-                let next_token = &tokens[tokens.get_next_meaningful_token(end_index).unwrap()];
+                let next_token = &tokens[tokens.next_meaningful(end_index)];
                 if next_token.equals_any(&STATEMENT_END, true) {
                     tokens.clear_at(index);
                     let at = tokens.get_next_non_whitespace(end_index, None).unwrap();
@@ -75,7 +75,7 @@ impl Fixer for IncrementStyleFixer {
 }
 
 fn find_end(tokens: &Tokens, mut index: usize) -> usize {
-    let mut next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let mut next_index = tokens.next_meaningful(index);
     let mut next_token = &tokens[next_index];
     while next_token.equals_any(
         &[
@@ -96,7 +96,7 @@ fn find_end(tokens: &Tokens, mut index: usize) -> usize {
             next_index = tokens.find_block_end(block_type, next_index);
         }
         index = next_index;
-        next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        next_index = tokens.next_meaningful(next_index);
         next_token = &tokens[next_index];
     }
     if next_token.is_object_operator() {
@@ -105,7 +105,7 @@ fn find_end(tokens: &Tokens, mut index: usize) -> usize {
     if next_token.is_kind(T_DOUBLE_COLON) {
         return find_end(
             tokens,
-            tokens.get_next_meaningful_token(next_index).unwrap(),
+            tokens.next_meaningful(next_index),
         );
     }
     index

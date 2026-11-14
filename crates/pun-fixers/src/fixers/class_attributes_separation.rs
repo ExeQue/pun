@@ -380,7 +380,7 @@ fn get_last_token_index_of_class_element(
     } else if element_type == ClassyElementType::TraitImport {
         element_end_index = element_index;
         loop {
-            element_end_index = tokens.get_next_meaningful_token(element_end_index).unwrap();
+            element_end_index = tokens.next_meaningful(element_end_index);
             if !(tokens[element_end_index].is_given_kind(&[T_STRING, T_NS_SEPARATOR])
                 || tokens[element_end_index].equals(",", true))
             {

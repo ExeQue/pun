@@ -24,7 +24,7 @@ impl Fixer for SemicolonAfterInstructionFixer {
             if !tokens[index].is_kind(T_CLOSE_TAG) {
                 continue;
             }
-            let prev = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev = tokens.prev_meaningful(index);
             if tokens[prev].equals_any(
                 &[
                     Proto::Char(b";"),

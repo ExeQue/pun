@@ -58,7 +58,7 @@ impl Fixer for PhpdocTagNoNamedArgumentsFixer {
                 index -= 1;
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if tokens[prev_index].is_kind(T_NEW) {
                 index -= 1;
                 continue;
@@ -96,7 +96,7 @@ impl Fixer for PhpdocTagNoNamedArgumentsFixer {
 
 fn is_attribute_class(tokens: &Tokens, mut index: usize) -> bool {
     while tokens[index].is_given_kind(&[T_FINAL, T_READONLY]) {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
     }
     if !tokens[index].is_kind(CT_ATTRIBUTE_CLOSE) {
         return false;
@@ -160,7 +160,7 @@ fn create_doc_block(
         b" */",
     ]
     .concat();
-    let index = tokens.get_next_meaningful_token(doc_block_index).unwrap();
+    let index = tokens.next_meaningful(doc_block_index);
     tokens.insert_at(
         index,
         vec![

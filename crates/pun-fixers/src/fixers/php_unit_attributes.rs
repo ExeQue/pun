@@ -187,7 +187,7 @@ fn should_be_fixed(annotation_name: &[u8], class_scope: bool) -> bool {
 }
 
 fn is_attribute_already_present(tokens: &Tokens, index: usize, tokens_to_insert: &[Token]) -> bool {
-    let attribute_index = tokens.get_next_meaningful_token(index).unwrap();
+    let attribute_index = tokens.next_meaningful(index);
     if !tokens[attribute_index].is_kind(T_ATTRIBUTE) {
         return false;
     }

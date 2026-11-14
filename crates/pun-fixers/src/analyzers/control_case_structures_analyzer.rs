@@ -84,9 +84,9 @@ impl ControlCaseStructuresAnalyzer {
                 };
                 is_type_of_interest = kind == T_SWITCH;
                 if kind == T_SWITCH {
-                    let i = tokens.get_next_meaningful_token(index).unwrap();
+                    let i = tokens.next_meaningful(index);
                     let i = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, i);
-                    frame.open = tokens.get_next_meaningful_token(i).unwrap();
+                    frame.open = tokens.next_meaningful(i);
                     frame.alternative_syntax = tokens[frame.open].equals(":", true);
                 }
                 stack.push(frame);

@@ -67,7 +67,7 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             other.insert(tokens[index].get_content().to_vec());
             index += 1;
         }
@@ -84,7 +84,7 @@ impl GlobalNamespaceImportFixer {
             if !is_constant_invocation(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
@@ -92,8 +92,7 @@ impl GlobalNamespaceImportFixer {
                 continue;
             }
             let prev_index = tokens
-                .get_prev_meaningful_token(ns_separator_index)
-                .unwrap();
+                .prev_meaningful(ns_separator_index);
             if tokens[prev_index].is_given_kind(&[CT_NAMESPACE_OPERATOR, T_STRING]) {
                 continue;
             }
@@ -127,7 +126,7 @@ impl GlobalNamespaceImportFixer {
             if !analyzer.is_global_function_usage(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
@@ -168,7 +167,7 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_kind(T_STRING) {
                 other.insert(strtolower(tokens[index].get_content()));
             }
@@ -188,7 +187,7 @@ impl GlobalNamespaceImportFixer {
             if !analyzer.is_classy_invocation(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
@@ -196,8 +195,7 @@ impl GlobalNamespaceImportFixer {
                 continue;
             }
             if tokens[tokens
-                .get_prev_meaningful_token(ns_separator_index)
-                .unwrap()]
+                .prev_meaningful(ns_separator_index)]
             .is_given_kind(&[CT_NAMESPACE_OPERATOR, T_STRING])
             {
                 continue;
@@ -252,7 +250,7 @@ impl GlobalNamespaceImportFixer {
                 Some(Some(alias)) => tokens.set(index, Token::new(T_STRING, alias.clone())),
                 Some(None) => {}
             }
-            let p = tokens.get_prev_meaningful_token(index).unwrap();
+            let p = tokens.prev_meaningful(index);
             tokens.clear_at(p);
         }
         imports
@@ -278,7 +276,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(token.get_content()) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !is_constant_invocation(tokens, index) {
@@ -309,7 +307,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(&strtolower(token.get_content())) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !analyzer.is_global_function_usage(tokens, index) {
@@ -353,7 +351,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(&strtolower(token.get_content())) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !analyzer.is_classy_invocation(tokens, index) {
@@ -431,9 +429,9 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_kind(CT_RETURN_REF) {
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
             }
             if tokens[index].is_kind(T_STRING) {
                 out.push(tokens[index].get_content().to_vec());

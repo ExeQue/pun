@@ -35,11 +35,10 @@ fn fix_else(tokens: &mut Tokens, index: usize) {
         Some(i) if tokens[i].is_kind(T_IF) => i,
         _ => return,
     };
-    let open = tokens.get_next_meaningful_token(if_token_index).unwrap();
+    let open = tokens.next_meaningful(if_token_index);
     let condition_end_brace_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
     let after_condition_index = tokens
-        .get_next_meaningful_token(condition_end_brace_index)
-        .unwrap();
+        .next_meaningful(condition_end_brace_index);
     if tokens[after_condition_index].equals(":", true) {
         return;
     }

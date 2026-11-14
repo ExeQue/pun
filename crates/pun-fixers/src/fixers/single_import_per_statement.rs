@@ -44,7 +44,7 @@ impl Fixer for SingleImportPerStatementFixer {
             let end_index = tokens
                 .get_next_token_of_kind(index, &[";".into(), T_CLOSE_TAG.into()], true)
                 .unwrap();
-            let group_close = tokens.get_prev_meaningful_token(end_index).unwrap();
+            let group_close = tokens.prev_meaningful(end_index);
             if tokens[group_close].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                 if self.group_to_single_imports {
                     self.fix_group_use(tokens, index, end_index);
@@ -98,7 +98,7 @@ fn get_group_statements(
     while i <= group_close_index {
         let token = &tokens[i];
         if token.equals(",", true)
-            && tokens[tokens.get_next_meaningful_token(i).unwrap()]
+            && tokens[tokens.next_meaningful(i)]
                 .is_kind(CT_GROUP_IMPORT_BRACE_CLOSE)
         {
             i += 1;
@@ -111,7 +111,7 @@ fn get_group_statements(
             continue;
         }
         if token.is_whitespace(None) {
-            let j = tokens.get_next_meaningful_token(i).unwrap();
+            let j = tokens.next_meaningful(i);
             if tokens[j].is_kind(T_AS) {
                 statement.extend_from_slice(b" as ");
                 i += 2;
@@ -163,7 +163,7 @@ impl SingleImportPerStatementFixer {
     }
 
     fn fix_multiple_use(&self, tokens: &mut Tokens, index: usize, end_index: usize) {
-        let next_token_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_token_index = tokens.next_meaningful(index);
         let leading_tokens = if tokens[next_token_index].is_kind(CT_FUNCTION_IMPORT) {
             vec![
                 Token::new(CT_FUNCTION_IMPORT, "function"),
@@ -186,7 +186,7 @@ impl SingleImportPerStatementFixer {
                 continue;
             }
             tokens.set(i, Token::char(";"));
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             tokens.insert_at(i, vec![Token::new(T_USE, "use")]);
             tokens.insert_at(i + 1, vec![Token::new(T_WHITESPACE, " ")]);
             for (offset, leading_token) in leading_tokens.iter().enumerate() {

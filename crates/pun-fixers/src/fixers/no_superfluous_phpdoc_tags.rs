@@ -2,10 +2,10 @@ use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::docblock::{Annotation, DocBlock, type_expression::REGEX_TYPES};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
-use pun_tokens::NamespacesAnalyzer;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
 use pun_format::Fixer;
+use pun_tokens::NamespacesAnalyzer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind, Kind::*, Token, Tokens, TokensAnalyzer};
 use serde_json::Value;
@@ -120,11 +120,7 @@ impl Fixer for NoSuperfluousPhpdocTagsFixer {
                 continue;
             }
             if token.is_given_kind(SYMBOL_KINDS) {
-                current_symbol = Some(
-                    tokens[tokens.get_next_meaningful_token(index).unwrap()]
-                        .get_content()
-                        .to_vec(),
-                );
+                current_symbol = Some(tokens[tokens.next_meaningful(index)].get_content().to_vec());
                 let open = tokens
                     .get_next_token_of_kind(index, &["{".into()], true)
                     .unwrap();
@@ -306,19 +302,16 @@ impl NoSuperfluousPhpdocTagsFixer {
                     true,
                 )
                 .unwrap();
-            let type_index = tokens
-                .get_next_meaningful_token(before_argument_index)
-                .unwrap();
+            let type_index = tokens.next_meaningful(before_argument_index);
             let mut info = if type_index != index {
                 parse_type_hint(tokens, type_index)
             } else {
                 no_type_info()
             };
             if !info.allows_null {
-                let next_index = tokens.get_next_meaningful_token(index).unwrap();
+                let next_index = tokens.next_meaningful(index);
                 if tokens[next_index].equals("=", true)
-                    && tokens[tokens.get_next_meaningful_token(next_index).unwrap()]
-                        .equals((T_STRING, "null"), false)
+                    && tokens[tokens.next_meaningful(next_index)].equals((T_STRING, "null"), false)
                 {
                     info.allows_null = true;
                 }
@@ -397,14 +390,9 @@ impl NoSuperfluousPhpdocTagsFixer {
 }
 
 fn get_return_type_info(tokens: &Tokens, closing_parenthesis_index: usize) -> TypeInfo {
-    let colon_index = tokens
-        .get_next_meaningful_token(closing_parenthesis_index)
-        .unwrap();
+    let colon_index = tokens.next_meaningful(closing_parenthesis_index);
     if tokens[colon_index].is_kind(CT_TYPE_COLON) {
-        parse_type_hint(
-            tokens,
-            tokens.get_next_meaningful_token(colon_index).unwrap(),
-        )
+        parse_type_hint(tokens, tokens.next_meaningful(colon_index))
     } else {
         no_type_info()
     }
@@ -417,19 +405,19 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
         let mut type_ = Vec::new();
         if tokens[index].is_given_kind(&[T_READONLY, T_PRIVATE_SET, T_PROTECTED_SET, T_PUBLIC_SET])
         {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         if tokens[index].is_given_kind(&[
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PUBLIC,
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PROTECTED,
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PRIVATE,
         ]) {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             continue;
         }
         if tokens[index].is_kind(CT_NULLABLE_TYPE) {
             allows_null = true;
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         while tokens[index].is_given_kind(&[
             T_NS_SEPARATOR,
@@ -439,7 +427,7 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
             T_CALLABLE,
         ]) {
             type_.extend_from_slice(tokens[index].get_content());
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         if type_.is_empty() {
             break;
@@ -448,7 +436,7 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
         if !tokens[index].is_given_kind(&[CT_TYPE_ALTERNATION, CT_TYPE_INTERSECTION]) {
             break;
         }
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     TypeInfo { types, allows_null }
 }

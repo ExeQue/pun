@@ -101,7 +101,7 @@ impl PhpUnitExpectationFixer {
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
             let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
-            let comma_index = tokens.get_prev_meaningful_token(close_index).unwrap();
+            let comma_index = tokens.prev_meaningful(close_index);
             if tokens[comma_index].equals(",", true) {
                 tokens.remove_trailing_whitespace(comma_index, None);
                 tokens.clear_at(comma_index);
@@ -124,14 +124,13 @@ impl PhpUnitExpectationFixer {
             let mut is_multiline_whitespace = false;
             for cnt in (1..arguments.len()).rev() {
                 let arg_start = arguments[cnt];
-                let arg_before = tokens.get_prev_meaningful_token(arg_start).unwrap();
+                let arg_before = tokens.prev_meaningful(arg_start);
                 let replacement = arguments_replacements[cnt];
                 if replacement == "expectExceptionMessage" {
                     let param_indicator_index =
-                        tokens.get_next_meaningful_token(arg_before).unwrap();
+                        tokens.next_meaningful(arg_before);
                     let after_param_indicator_index = tokens
-                        .get_next_meaningful_token(param_indicator_index)
-                        .unwrap();
+                        .next_meaningful(param_indicator_index);
                     if tokens[param_indicator_index].equals((T_STRING, "null"), false)
                         && tokens[after_param_indicator_index].equals(")", true)
                     {

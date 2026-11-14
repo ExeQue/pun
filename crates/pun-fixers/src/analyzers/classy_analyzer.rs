@@ -16,7 +16,7 @@ impl ClassyAnalyzer {
         if TypeAnalysis::new(token.get_content(), None, None).is_reserved_type() {
             return false;
         }
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         let next_token = &tokens[next];
         if next_token.is_kind(T_NS_SEPARATOR) {
             return false;
@@ -30,9 +30,9 @@ impl ClassyAnalyzer {
         ]) {
             return true;
         }
-        let mut prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev = tokens.prev_meaningful(index);
         while tokens[prev].is_given_kind(&[CT_NAMESPACE_OPERATOR, T_NS_SEPARATOR, T_STRING]) {
-            prev = tokens.get_prev_meaningful_token(prev).unwrap();
+            prev = tokens.prev_meaningful(prev);
         }
         let prev_token = &tokens[prev];
         if prev_token.is_given_kind(&[
@@ -51,15 +51,14 @@ impl ClassyAnalyzer {
         }
         if next_token.equals(")", true)
             && prev_token.equals("(", true)
-            && tokens[tokens.get_prev_meaningful_token(prev).unwrap()].is_kind(T_CATCH)
+            && tokens[tokens.prev_meaningful(prev)].is_kind(T_CATCH)
         {
             return true;
         }
         if AttributeAnalyzer::is_attribute(tokens, index) {
             return true;
         }
-        if next_token.equals("&", true)
-            && tokens[tokens.get_next_meaningful_token(next).unwrap()].is_kind(T_VARIABLE)
+        if next_token.equals("&", true) && tokens[tokens.next_meaningful(next)].is_kind(T_VARIABLE)
         {
             let check_index = tokens
                 .get_prev_token_of_kind(
@@ -81,7 +80,7 @@ impl ClassyAnalyzer {
             return false;
         }
         loop {
-            prev = tokens.get_prev_meaningful_token(prev).unwrap();
+            prev = tokens.prev_meaningful(prev);
             if !tokens[prev].equals_any(
                 &[
                     ",".into(),

@@ -66,7 +66,7 @@ impl PhpUnitTestAnnotationFixer {
         let mut i = end_index - 1;
         while i > start_index {
             if is_test_method(tokens, i) {
-                let function_name_index = tokens.get_next_meaningful_token(i).unwrap();
+                let function_name_index = tokens.next_meaningful(i);
                 let function_name = tokens[function_name_index].get_content().to_vec();
                 if has_test_prefix(&function_name) && !has_proper_test_annotation(tokens, i) {
                     let new_function_name = remove_test_prefix(&function_name);
@@ -93,7 +93,7 @@ impl PhpUnitTestAnnotationFixer {
                 if tokens[doc_block_index].is_kind(T_DOC_COMMENT) {
                     let lines = self.update_doc_block(tokens, doc_block_index);
                     tokens.set(doc_block_index, Token::new(T_DOC_COMMENT, lines.concat()));
-                    let function_name_index = tokens.get_next_meaningful_token(i).unwrap();
+                    let function_name_index = tokens.next_meaningful(i);
                     let function_name = tokens[function_name_index].get_content().to_vec();
                     if !has_test_prefix(&function_name) {
                         tokens.set(
@@ -217,7 +217,7 @@ fn is_test_method(tokens: &Tokens, index: usize) -> bool {
     if !tokens[index].is_kind(T_FUNCTION) || TokensAnalyzer::new(tokens).is_lambda(index) {
         return false;
     }
-    let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+    let function_name_index = tokens.next_meaningful(index);
     if has_test_prefix(tokens[function_name_index].get_content()) {
         return true;
     }

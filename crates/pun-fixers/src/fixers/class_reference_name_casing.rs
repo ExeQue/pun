@@ -83,17 +83,17 @@ fn get_class_reference(tokens: &Tokens, namespace: &NamespaceAnalysis) -> Vec<us
         if !tokens[index].is_kind(T_STRING) {
             continue;
         }
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         if tokens[next_index].is_kind(T_NS_SEPARATOR) {
             continue;
         }
-        let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(index);
         let is_namespace_separator = tokens[prev_index].is_kind(T_NS_SEPARATOR);
         if !is_namespace_separator && !namespace_is_global {
             continue;
         }
         if is_namespace_separator {
-            prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+            prev_index = tokens.prev_meaningful(prev_index);
             if tokens[prev_index].is_kind(T_STRING) {
                 continue;
             }

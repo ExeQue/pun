@@ -153,8 +153,7 @@ impl PhpUnitDedicateAssertFixer {
     fn fix_assert_true_false(&self, tokens: &mut Tokens, assert_call: &AssertCall) {
         let mut test_default_namespace_token_index = None;
         let mut test_index = tokens
-            .get_next_meaningful_token(assert_call.open_brace_index)
-            .unwrap();
+            .next_meaningful(assert_call.open_brace_index);
         if !tokens[test_index].is_given_kind(&[T_EMPTY, T_STRING]) {
             if fix_assert_true_false_instanceof(tokens, assert_call, test_index) {
                 return;
@@ -163,15 +162,15 @@ impl PhpUnitDedicateAssertFixer {
                 return;
             }
             test_default_namespace_token_index = Some(test_index);
-            test_index = tokens.get_next_meaningful_token(test_index).unwrap();
+            test_index = tokens.next_meaningful(test_index);
         }
-        let test_open_index = tokens.get_next_meaningful_token(test_index).unwrap();
+        let test_open_index = tokens.next_meaningful(test_index);
         if !tokens[test_open_index].equals("(", true) {
             return;
         }
         let test_close_index =
             tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, test_open_index);
-        let assert_call_close_index = tokens.get_next_meaningful_token(test_close_index).unwrap();
+        let assert_call_close_index = tokens.next_meaningful(test_close_index);
         if !tokens[assert_call_close_index].equals_any(&[")".into(), ",".into()], true) {
             return;
         }
@@ -224,7 +223,7 @@ impl PhpUnitDedicateAssertFixer {
         );
         tokens.set(test_open_index, Token::char(b","));
         tokens.clear_token_and_merge_surrounding_whitespace(test_close_index);
-        let comma_index = tokens.get_prev_meaningful_token(test_close_index).unwrap();
+        let comma_index = tokens.prev_meaningful(test_close_index);
         if tokens[comma_index].equals(",", true) {
             tokens.remove_trailing_whitespace(comma_index, None);
             tokens.clear_at(comma_index);
@@ -248,22 +247,22 @@ fn fix_assert_true_false_instanceof(
 ) -> bool {
     let is_positive_assertion = assert_call.lowered_name == b"asserttrue";
     let (variable_index, is_positive_condition) = if tokens[test_index].equals("!", true) {
-        (tokens.get_next_meaningful_token(test_index).unwrap(), false)
+        (tokens.next_meaningful(test_index), false)
     } else {
         (test_index, true)
     };
     if !tokens[variable_index].is_kind(T_VARIABLE) {
         return false;
     }
-    let instance_of_index = tokens.get_next_meaningful_token(variable_index).unwrap();
+    let instance_of_index = tokens.next_meaningful(variable_index);
     if !tokens[instance_of_index].is_kind(T_INSTANCEOF) {
         return false;
     }
-    let mut class_end_index = tokens.get_next_meaningful_token(instance_of_index).unwrap();
+    let mut class_end_index = tokens.next_meaningful(instance_of_index);
     let mut class_part_tokens = Vec::new();
     loop {
         class_part_tokens.push(tokens[class_end_index].clone());
-        class_end_index = tokens.get_next_meaningful_token(class_end_index).unwrap();
+        class_end_index = tokens.next_meaningful(class_end_index);
         if !tokens[class_end_index].is_given_kind(&[T_STRING, T_NS_SEPARATOR, T_VARIABLE]) {
             break;
         }
@@ -301,24 +300,23 @@ fn fix_assert_true_false_instanceof(
 
 fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     let expected_index = tokens
-        .get_next_meaningful_token(assert_call.open_brace_index)
-        .unwrap();
+        .next_meaningful(assert_call.open_brace_index);
     if tokens[expected_index].is_kind(T_VARIABLE) {
-        let next = tokens.get_next_meaningful_token(expected_index).unwrap();
+        let next = tokens.next_meaningful(expected_index);
         if !tokens[next].equals(",", true) {
             return;
         }
     } else if !tokens[expected_index].is_kind(T_LNUMBER) {
         return;
     }
-    let comma_index = tokens.get_next_meaningful_token(expected_index).unwrap();
+    let comma_index = tokens.next_meaningful(expected_index);
     if !tokens[comma_index].equals(",", true) {
         return;
     }
-    let mut count_call_index = tokens.get_next_meaningful_token(comma_index).unwrap();
+    let mut count_call_index = tokens.next_meaningful(comma_index);
     let default_namespace_token_index = if tokens[count_call_index].is_kind(T_NS_SEPARATOR) {
         let index = count_call_index;
-        count_call_index = tokens.get_next_meaningful_token(count_call_index).unwrap();
+        count_call_index = tokens.next_meaningful(count_call_index);
         Some(index)
     } else {
         None
@@ -330,15 +328,14 @@ fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     if lower_content != b"count" && lower_content != b"sizeof" {
         return;
     }
-    let count_call_open_brace_index = tokens.get_next_meaningful_token(count_call_index).unwrap();
+    let count_call_open_brace_index = tokens.next_meaningful(count_call_index);
     if !tokens[count_call_open_brace_index].equals("(", true) {
         return;
     }
     let count_call_close_brace_index =
         tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, count_call_open_brace_index);
     let after = tokens
-        .get_next_meaningful_token(count_call_close_brace_index)
-        .unwrap();
+        .next_meaningful(count_call_close_brace_index);
     if !tokens[after].equals_any(&[")".into(), ",".into()], true) {
         return;
     }
@@ -369,7 +366,7 @@ fn remove_function_call(
         tokens.clear_token_and_merge_surrounding_whitespace(index);
     }
     tokens.clear_token_and_merge_surrounding_whitespace(open_index);
-    let comma_index = tokens.get_prev_meaningful_token(close_index).unwrap();
+    let comma_index = tokens.prev_meaningful(close_index);
     if tokens[comma_index].equals(",", true) {
         tokens.remove_trailing_whitespace(comma_index, None);
         tokens.clear_at(comma_index);

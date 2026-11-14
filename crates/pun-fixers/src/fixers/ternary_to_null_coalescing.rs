@@ -28,7 +28,7 @@ impl Fixer for TernaryToNullCoalescingFixer {
 }
 
 fn fix_isset(tokens: &mut Tokens, index: usize) {
-    let prev_token_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_token_index = tokens.prev_meaningful(index);
     if is_higher_precedence_associativity_operator(&tokens[prev_token_index]) {
         return;
     }
@@ -36,7 +36,7 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
         .get_next_token_of_kind(index, &["(".into()], true)
         .unwrap();
     let end_brace_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, start_brace_index);
-    let ternary_question_mark_index = tokens.get_next_meaningful_token(end_brace_index).unwrap();
+    let ternary_question_mark_index = tokens.next_meaningful(end_brace_index);
     if !tokens[ternary_question_mark_index].equals("?", true) {
         return;
     }
@@ -57,8 +57,7 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
         return;
     }
     let ternary_first_operand_index = tokens
-        .get_next_meaningful_token(ternary_question_mark_index)
-        .unwrap();
+        .next_meaningful(ternary_question_mark_index);
     let mut comments = Vec::new();
     let mut comment_started = false;
     for loop_index in index..ternary_first_operand_index {

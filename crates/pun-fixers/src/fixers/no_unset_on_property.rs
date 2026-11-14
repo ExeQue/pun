@@ -26,8 +26,8 @@ fn get_unsets_info(tokens: &Tokens, index: usize) -> Vec<UnsetInfo> {
     let mut unsets = Vec::new();
     for (start_index, end_index) in ArgumentsAnalyzer.get_arguments(tokens, unset_start, unset_end)
     {
-        let start_index = tokens.get_next_meaningful_token(start_index - 1).unwrap();
-        let end_index = tokens.get_prev_meaningful_token(end_index + 1).unwrap();
+        let start_index = tokens.next_meaningful(start_index - 1);
+        let end_index = tokens.prev_meaningful(end_index + 1);
         unsets.push(UnsetInfo {
             start_index,
             end_index,
@@ -41,11 +41,11 @@ fn get_unsets_info(tokens: &Tokens, index: usize) -> Vec<UnsetInfo> {
 
 fn is_property(tokens: &Tokens, index: usize, end_index: usize) -> bool {
     if tokens[index].is_kind(T_VARIABLE) {
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         if !tokens[next_index].is_kind(T_OBJECT_OPERATOR) {
             return false;
         }
-        let next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        let next_index = tokens.next_meaningful(next_index);
         if tokens
             .get_next_meaningful_token(next_index)
             .is_some_and(|n| n < end_index)
@@ -84,7 +84,7 @@ fn update_tokens(tokens: &mut Tokens, unset_info: &UnsetInfo, is_last_unset: boo
         let brace_index = tokens
             .get_next_token_of_kind(unset_info.end_index, &[")".into()], true)
             .unwrap();
-        let previous_index = tokens.get_prev_meaningful_token(brace_index).unwrap();
+        let previous_index = tokens.prev_meaningful(brace_index);
         if tokens[previous_index].equals(",", true) {
             tokens.clear_token_and_merge_surrounding_whitespace(previous_index);
         }

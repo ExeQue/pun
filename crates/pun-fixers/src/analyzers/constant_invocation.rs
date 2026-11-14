@@ -8,8 +8,8 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
         "No T_STRING at given index {index}, got \"{}\".",
         tokens[index].get_name().unwrap_or_default()
     );
-    let prev = |i: usize| tokens.get_prev_meaningful_token(i).unwrap();
-    let next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let prev = |i: usize| tokens.prev_meaningful(i);
+    let next_index = tokens.next_meaningful(index);
     if tokens[next_index].equals_any(&["(".into(), "{".into()], true)
         || tokens[next_index].is_given_kind(&[
             T_DOUBLE_COLON,
@@ -81,7 +81,7 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
         return false;
     }
     if tokens[next_index].equals("&", true)
-        && tokens[tokens.get_next_meaningful_token(next_index).unwrap()].is_kind(T_VARIABLE)
+        && tokens[tokens.next_meaningful(next_index)].is_kind(T_VARIABLE)
     {
         let check_index = tokens
             .get_prev_token_of_kind(
@@ -126,7 +126,7 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
         }
     }
     if tokens[prev_index].equals("[", true) && tokens[next_index].equals("]", true) {
-        let check_token = &tokens[tokens.get_next_meaningful_token(next_index).unwrap()];
+        let check_token = &tokens[tokens.next_meaningful(next_index)];
         if check_token.equals("\"", true)
             || check_token.is_given_kind(&[
                 T_CURLY_OPEN,

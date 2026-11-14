@@ -45,7 +45,7 @@ impl Fixer for NoPhp4ConstructorFixer {
             let nsp_index =
                 tokens.get_prev_token_of_kind(index, &[(T_NAMESPACE, "namespace").into()], true);
             if let Some(nsp_index) = nsp_index {
-                let mut nsp_index = tokens.get_next_meaningful_token(nsp_index).unwrap();
+                let mut nsp_index = tokens.next_meaningful(nsp_index);
                 if !tokens[nsp_index].equals("{", true) {
                     nsp_index = tokens
                         .get_next_token_of_kind(nsp_index, &[";".into(), "{".into()], true)
@@ -65,7 +65,7 @@ impl Fixer for NoPhp4ConstructorFixer {
                     }
                 }
             }
-            let class_name_index = tokens.get_next_meaningful_token(index).unwrap();
+            let class_name_index = tokens.next_meaningful(index);
             let class_name = tokens[class_name_index].get_content().to_vec();
             let class_start = tokens
                 .get_next_token_of_kind(class_name_index, &["{".into()], true)
@@ -122,7 +122,7 @@ fn fix_constructor(tokens: &mut Tokens, class_name: &[u8], class_start: usize, c
 
 fn fix_parent(tokens: &mut Tokens, class_start: usize, class_end: usize) {
     for index in tokens.find_given_kind(T_EXTENDS, 0, None) {
-        let parent_index = tokens.get_next_meaningful_token(index).unwrap();
+        let parent_index = tokens.next_meaningful(index);
         let parent_class = tokens[parent_index].get_content().to_vec();
         let parent_seq = tokens.find_sequence(
             &[
@@ -266,11 +266,11 @@ fn find_function(
         T_FINAL,
     ];
     let (mut is_abstract, mut is_static) = (false, false);
-    let mut prev_block = tokens.get_prev_meaningful_token(function[0]).unwrap();
+    let mut prev_block = tokens.prev_meaningful(function[0]);
     while tokens[prev_block].is_given_kind(&possible_modifiers) {
         is_abstract |= tokens[prev_block].is_kind(T_ABSTRACT);
         is_static |= tokens[prev_block].is_kind(T_STATIC);
-        prev_block = tokens.get_prev_meaningful_token(prev_block).unwrap();
+        prev_block = tokens.prev_meaningful(prev_block);
     }
     let (body_start, func_end) = if is_abstract {
         (

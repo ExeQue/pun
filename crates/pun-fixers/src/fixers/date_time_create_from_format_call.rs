@@ -38,17 +38,16 @@ impl Fixer for DateTimeCreateFromFormatCallFixer {
                 if !tokens[i].is_kind(T_DOUBLE_COLON) {
                     continue;
                 }
-                let function_name_index = tokens.get_next_meaningful_token(i).unwrap();
+                let function_name_index = tokens.next_meaningful(i);
                 if !tokens[function_name_index].equals((T_STRING, "createFromFormat"), false) {
                     continue;
                 }
                 let next = tokens
-                    .get_next_meaningful_token(function_name_index)
-                    .unwrap();
+                    .next_meaningful(function_name_index);
                 if !tokens[next].equals("(", true) {
                     continue;
                 }
-                let class_name_index = tokens.get_prev_meaningful_token(i).unwrap();
+                let class_name_index = tokens.prev_meaningful(i);
                 if !tokens[class_name_index].equals_any(
                     &[
                         (T_STRING, "DateTime").into(),
@@ -59,11 +58,10 @@ impl Fixer for DateTimeCreateFromFormatCallFixer {
                     continue;
                 }
                 let pre_class_name_index =
-                    tokens.get_prev_meaningful_token(class_name_index).unwrap();
+                    tokens.prev_meaningful(class_name_index);
                 if tokens[pre_class_name_index].is_kind(T_NS_SEPARATOR) {
                     let before = tokens
-                        .get_prev_meaningful_token(pre_class_name_index)
-                        .unwrap();
+                        .prev_meaningful(pre_class_name_index);
                     if tokens[before].is_kind(T_STRING) {
                         continue;
                     }
@@ -121,7 +119,7 @@ fn get_first_argument_token_index(
         return None;
     }
     let (&start, &argument_end_index) = arguments.iter().next().unwrap();
-    let argument_start_index = tokens.get_next_meaningful_token(start - 1).unwrap();
+    let argument_start_index = tokens.next_meaningful(start - 1);
     if argument_start_index != argument_end_index
         && tokens
             .get_next_meaningful_token(argument_start_index)

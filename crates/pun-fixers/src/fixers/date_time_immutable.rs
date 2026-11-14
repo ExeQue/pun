@@ -44,12 +44,12 @@ impl Fixer for DateTimeImmutableFixer {
                 continue;
             }
             if is_in_namespace && token.is_kind(T_USE) {
-                let next_index = tokens.get_next_meaningful_token(index).unwrap();
+                let next_index = tokens.next_meaningful(index);
                 if php_compat::strtolower(tokens[next_index].get_content()) != b"datetime" {
                     index += 1;
                     continue;
                 }
-                let next_next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                let next_next_index = tokens.next_meaningful(next_index);
                 if tokens[next_next_index].equals(";", true) {
                     is_imported = true;
                 }
@@ -60,7 +60,7 @@ impl Fixer for DateTimeImmutableFixer {
                 index += 1;
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if tokens[prev_index].is_kind(T_FUNCTION) {
                 index += 1;
                 continue;
@@ -85,11 +85,11 @@ impl Fixer for DateTimeImmutableFixer {
 }
 
 fn fix_class_usage(tokens: &mut Tokens, index: usize, is_in_namespace: bool, is_imported: bool) {
-    let next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_index = tokens.next_meaningful(index);
     if tokens[next_index].is_kind(T_DOUBLE_COLON) {
-        let next_next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        let next_next_index = tokens.next_meaningful(next_index);
         if tokens[next_next_index].is_kind(T_STRING) {
-            let n3 = tokens.get_next_meaningful_token(next_next_index).unwrap();
+            let n3 = tokens.next_meaningful(next_next_index);
             if !tokens[n3].equals("(", true) {
                 return;
             }
@@ -97,9 +97,9 @@ fn fix_class_usage(tokens: &mut Tokens, index: usize, is_in_namespace: bool, is_
     }
     let mut is_used_alone = false;
     let mut is_used_with_leading_backslash = false;
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
-        let prev_prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+        let prev_prev_index = tokens.prev_meaningful(prev_index);
         if !tokens[prev_prev_index].is_kind(T_STRING) {
             is_used_with_leading_backslash = true;
         }

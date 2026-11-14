@@ -31,7 +31,7 @@ impl Fixer for ExplicitIndirectVariableFixer {
 }
 
 fn fix_variable(tokens: &mut Tokens, index: usize) {
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     let prev_token = &tokens[prev_index];
     if !prev_token.equals("$", true) && !prev_token.is_object_operator() {
         return;

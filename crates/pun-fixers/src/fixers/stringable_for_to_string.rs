@@ -80,7 +80,7 @@ fn does_have_to_string_method(
         if !tokens[index].is_kind(T_FUNCTION) {
             continue;
         }
-        let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+        let function_name_index = tokens.next_meaningful(index);
         if tokens[function_name_index].equals((T_STRING, "__toString"), false) {
             return true;
         }
@@ -120,7 +120,7 @@ fn get_interfaces(
         .unwrap();
     let mut interfaces = Vec::new();
     let mut interface = Vec::new();
-    let mut index = tokens.get_next_meaningful_token(implements_index).unwrap();
+    let mut index = tokens.next_meaningful(implements_index);
     while index < class_open_brace_index {
         if tokens[index].equals(",", true) {
             interfaces.push(strtolower(&interface));
@@ -128,7 +128,7 @@ fn get_interfaces(
         } else {
             interface.extend_from_slice(tokens[index].get_content());
         }
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     if !interface.is_empty() {
         interfaces.push(strtolower(&interface));
@@ -141,7 +141,7 @@ fn add_stringable_interface(tokens: &mut Tokens, class_index: usize) {
         .get_next_token_of_kind(class_index, &["{".into(), T_IMPLEMENTS.into()], true)
         .unwrap();
     if tokens[implements_index].equals("{", true) {
-        let prev_index = tokens.get_prev_meaningful_token(implements_index).unwrap();
+        let prev_index = tokens.prev_meaningful(implements_index);
         tokens.insert_slices(BTreeMap::from([(
             prev_index + 1,
             vec![
@@ -154,7 +154,7 @@ fn add_stringable_interface(tokens: &mut Tokens, class_index: usize) {
         )]));
         return;
     }
-    let after_implements_index = tokens.get_next_meaningful_token(implements_index).unwrap();
+    let after_implements_index = tokens.next_meaningful(implements_index);
     tokens.insert_slices(BTreeMap::from([(
         after_implements_index,
         vec![

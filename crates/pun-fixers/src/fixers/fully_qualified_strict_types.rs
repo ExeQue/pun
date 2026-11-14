@@ -7,11 +7,11 @@ use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use crate::analyzers::import_processor::ImportProcessor;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
-use pun_tokens::NamespacesAnalyzer;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
 use indexmap::IndexMap;
 use pun_format::{Fixer, WhitespacesFixerConfig};
+use pun_tokens::NamespacesAnalyzer;
 use pun_tokens::php_compat::{ltrim_chars, strnatcmp, strtolower, substr_count};
 use pun_tokens::{Kind::*, Token, Tokens};
 use serde_json::Value;
@@ -239,11 +239,7 @@ impl Fixer for FullyQualifiedStrictTypesFixer {
                         _ => namespace.scope_start_index + 1,
                     }
                 };
-                let names = st
-                    .symbols_for_import
-                    .values()
-                    .cloned()
-                    .collect();
+                let names = st.symbols_for_import.values().cloned().collect();
                 ImportProcessor::new(self.whitespaces_config.clone()).insert_imports(
                     tokens,
                     &[(NamespaceUseType::Class, names)],
@@ -429,7 +425,11 @@ impl FullyQualifiedStrictTypesFixer {
         uses: &mut OMap,
         namespace_name: &[u8],
     ) {
-        let mut discovered_symbols = st.discovered_symbols.borrow_mut().take().unwrap_or_default();
+        let mut discovered_symbols = st
+            .discovered_symbols
+            .borrow_mut()
+            .take()
+            .unwrap_or_default();
         if discovered_symbols.is_empty() {
             return;
         }
@@ -440,7 +440,8 @@ impl FullyQualifiedStrictTypesFixer {
                 if !symbol.starts_with(b"\\") {
                     let short_start_name = first_part(ltrim_chars(symbol, b"\\"));
                     let resolved = self.resolve_symbol(st, short_start_name, uses, namespace_name);
-                    discovered_fqcn_by_short_name_lower.insert(strtolower(short_start_name), resolved);
+                    discovered_fqcn_by_short_name_lower
+                        .insert(strtolower(short_start_name), resolved);
                 }
             }
         }
@@ -633,7 +634,7 @@ impl FullyQualifiedStrictTypesFixer {
         ns: &[u8],
     ) {
         let is_extends = tokens[index].is_kind(T_EXTENDS);
-        let mut index = tokens.get_next_meaningful_token(index).unwrap();
+        let mut index = tokens.next_meaningful(index);
         let mut type_start_index = None;
         let mut type_end_index = 0;
         loop {
@@ -661,13 +662,13 @@ impl FullyQualifiedStrictTypesFixer {
                 type_start_index.get_or_insert(index);
                 type_end_index = index;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
     }
 
     fn fix_catch(&self, st: &State, tokens: &mut Tokens, index: usize, uses: &OMap, ns: &[u8]) {
-        let index = tokens.get_next_meaningful_token(index).unwrap();
-        let mut index = tokens.get_next_meaningful_token(index).unwrap();
+        let index = tokens.next_meaningful(index);
+        let mut index = tokens.next_meaningful(index);
         let mut type_start_index = None;
         let mut type_end_index = 0;
         loop {
@@ -692,7 +693,7 @@ impl FullyQualifiedStrictTypesFixer {
                 type_start_index.get_or_insert(index);
                 type_end_index = index;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
     }
 
@@ -701,7 +702,7 @@ impl FullyQualifiedStrictTypesFixer {
         for attribute in &attribute_analysis.attributes {
             let mut index = attribute.start;
             while tokens[index].is_given_kind(&[T_STRING, T_NS_SEPARATOR]) {
-                index = tokens.get_prev_meaningful_token(index).unwrap();
+                index = tokens.prev_meaningful(index);
             }
             self.fix_next_name(st, tokens, index, uses, ns);
         }
@@ -718,7 +719,7 @@ impl FullyQualifiedStrictTypesFixer {
         let mut type_start_index = 0;
         let mut type_end_index = None;
         loop {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
             if tokens[index].is_object_operator() {
                 break;
             }
@@ -745,7 +746,7 @@ impl FullyQualifiedStrictTypesFixer {
         let mut type_start_index = None;
         let mut type_end_index = 0;
         loop {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_given_kind(&[T_STRING, T_NS_SEPARATOR]) {
                 type_start_index.get_or_insert(index);
                 type_end_index = index;
@@ -786,7 +787,7 @@ impl FullyQualifiedStrictTypesFixer {
     ) {
         let mut index = type_.get_start_index();
         if tokens[index].is_kind(CT_NULLABLE_TYPE) {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         let mut end_index = type_.get_end_index();
 
@@ -794,7 +795,7 @@ impl FullyQualifiedStrictTypesFixer {
         let (mut type_start_index, mut type_end_index): (Option<usize>, usize) = (None, 0);
         loop {
             if tokens[index].is_kind(CT_DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_OPEN) {
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
                 type_start_index = None;
                 continue;
             }
@@ -819,7 +820,7 @@ impl FullyQualifiedStrictTypesFixer {
                     }
                     None => {
                         skip_next_yield = false;
-                        index = tokens.get_next_meaningful_token(index).unwrap();
+                        index = tokens.next_meaningful(index);
                         type_start_index = None;
                     }
                 }
@@ -830,7 +831,7 @@ impl FullyQualifiedStrictTypesFixer {
             }
             type_start_index.get_or_insert(index);
             type_end_index = index;
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
     }
 

@@ -46,7 +46,7 @@ impl Fixer for SpacesInsideParenthesesFixer {
                 if !tokens[tokens.get_next_non_whitespace(index, None).unwrap()].is_comment() {
                     remove_space_around_token(tokens, index + 1);
                 }
-                if !tokens[tokens.get_prev_meaningful_token(end_index).unwrap()].equals(",", true) {
+                if !tokens[tokens.prev_meaningful(end_index)].equals(",", true) {
                     remove_space_around_token(tokens, end_index - 1);
                 }
             }
@@ -66,7 +66,7 @@ impl Fixer for SpacesInsideParenthesesFixer {
                     continue;
                 }
 
-                let next_meaningful_token_index = tokens.get_next_meaningful_token(index).unwrap();
+                let next_meaningful_token_index = tokens.next_meaningful(index);
                 if tokens[next_meaningful_token_index].get_content() == b")" {
                     index += 1;
                     continue;

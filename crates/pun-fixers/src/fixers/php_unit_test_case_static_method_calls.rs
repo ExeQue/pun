@@ -491,12 +491,12 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
                 index += 1;
                 continue;
             }
-            let next_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_index = tokens.next_meaningful(index);
             if !tokens[next_index].equals("(", true) {
                 index = next_index + 1;
                 continue;
             }
-            let after = tokens.get_next_meaningful_token(next_index).unwrap();
+            let after = tokens.next_meaningful(next_index);
             if tokens[after].is_kind(CT_FIRST_CLASS_CALLABLE) {
                 index += 1;
                 continue;
@@ -505,8 +505,8 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
             if let Some(&method_call_type) = self.methods.get(&method_name) {
                 call_type = method_call_type;
             }
-            let operator_index = tokens.get_prev_meaningful_token(index).unwrap();
-            let reference_index = tokens.get_prev_meaningful_token(operator_index).unwrap();
+            let operator_index = tokens.prev_meaningful(index);
+            let reference_index = tokens.prev_meaningful(operator_index);
             let (operator, reference) = call_type.conversion();
             if FunctionsAnalyzer::new().is_the_same_class_call(tokens, index)
                 && !tokens[reference_index].equals(&reference, false)

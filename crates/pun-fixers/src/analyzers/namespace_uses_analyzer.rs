@@ -90,7 +90,7 @@ impl NamespaceUsesAnalyzer {
                 let group_end =
                     tokens.find_block_end(Tokens::BLOCK_TYPE_GROUP_IMPORT_BRACE, group_start);
                 while group_index < group_end {
-                    let chunk_start = tokens.get_next_meaningful_token(group_index).unwrap();
+                    let chunk_start = tokens.next_meaningful(group_index);
                     if tokens[chunk_start].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                         break;
                     }
@@ -115,7 +115,7 @@ impl NamespaceUsesAnalyzer {
                 }
                 i = group_index;
             } else if token.equals_any(&[",".into(), ";".into(), T_CLOSE_TAG.into()], true) {
-                let previous_token = tokens.get_prev_meaningful_token(after).unwrap();
+                let previous_token = tokens.prev_meaningful(after);
                 if !tokens[previous_token].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                     imports.push(NamespaceUseAnalysis {
                         type_,
@@ -137,7 +137,7 @@ impl NamespaceUsesAnalyzer {
     }
 
     fn determine_import_type(&self, tokens: &Tokens, start_index: usize) -> NamespaceUseType {
-        let potential_type = &tokens[tokens.get_next_meaningful_token(start_index).unwrap()];
+        let potential_type = &tokens[tokens.next_meaningful(start_index)];
         if potential_type.is_kind(CT_FUNCTION_IMPORT) {
             return NamespaceUseType::Function;
         }

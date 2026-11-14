@@ -108,7 +108,7 @@ impl ClassDefinitionFixer {
         };
         if def.anonymous_class && !self.inline_constructor_arguments {
             while !tokens[end].equals(")", true) && !tokens[end].is_kind(T_CLASS) {
-                let start = tokens.get_prev_meaningful_token(end).unwrap();
+                let start = tokens.prev_meaningful(end);
                 self.make_classy_definition_single_line(tokens, start, end);
                 end = start;
             }
@@ -358,7 +358,7 @@ impl ClassDefinitionFixer {
                     true,
                 )
                 .unwrap();
-            let break_at_index = tokens.get_next_meaningful_token(previous).unwrap();
+            let break_at_index = tokens.next_meaningful(previous);
             self.make_classy_definition_single_line(tokens, break_at_index, i);
             let is_on_own_line = (previous + 1..=break_at_index)
                 .rev()

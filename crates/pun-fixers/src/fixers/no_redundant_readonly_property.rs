@@ -59,7 +59,7 @@ impl Fixer for NoRedundantReadonlyPropertyFixer {
                 continue;
             }
             let mut read_only_index = None;
-            let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let mut prev_index = tokens.prev_meaningful(index);
             while tokens[prev_index].is_given_kind(EXPECTED_KINDS_PROPERTY_KINDS)
                 || tokens[prev_index].equals("&", true)
             {
@@ -67,7 +67,7 @@ impl Fixer for NoRedundantReadonlyPropertyFixer {
                     read_only_index = Some(prev_index);
                     break;
                 }
-                prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+                prev_index = tokens.prev_meaningful(prev_index);
             }
             if let Some(read_only_index) = read_only_index {
                 tokens.remove_trailing_whitespace(read_only_index, None);

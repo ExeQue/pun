@@ -31,7 +31,7 @@ impl ShortOperator for LongToShorthandOperatorFixer {
         let analyzer = TokensAnalyzer::new(tokens);
         let mut index = index;
         loop {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             let other_token = &tokens[index];
             if other_token.equals_any(&[";".into(), T_CLOSE_TAG.into()], true) {
                 return true;

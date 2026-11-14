@@ -410,7 +410,7 @@ fn next_element_accepts_doctrine_annotations(
         return true;
     }
     while tokens[index].is_given_kind(MODIFIER_KINDS) {
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     elements
         .get(&index)

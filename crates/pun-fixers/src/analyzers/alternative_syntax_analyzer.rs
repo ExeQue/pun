@@ -20,7 +20,7 @@ impl AlternativeSyntaxAnalyzer {
         if !tokens[index].equals(":", true) {
             return false;
         }
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(T_ELSE) {
             return true;
         }
@@ -29,9 +29,7 @@ impl AlternativeSyntaxAnalyzer {
         }
         let open_parenthesis_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, prev_index);
-        let before_open_parenthesis_index = tokens
-            .get_prev_meaningful_token(open_parenthesis_index)
-            .unwrap();
+        let before_open_parenthesis_index = tokens.prev_meaningful(open_parenthesis_index);
         tokens[before_open_parenthesis_index].is_given_kind(&[
             T_DECLARE, T_ELSEIF, T_FOR, T_FOREACH, T_IF, T_SWITCH, T_WHILE,
         ])
@@ -71,13 +69,10 @@ impl AlternativeSyntaxAnalyzer {
         if alternative_syntax_block_edges(start_token_kind).is_none() {
             return false;
         }
-        let mut index = tokens.get_next_meaningful_token(index).unwrap();
+        let mut index = tokens.next_meaningful(index);
         if tokens[index].equals("(", true) {
             index = tokens
-                .get_next_meaningful_token(
-                    tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index),
-                )
-                .unwrap();
+                .next_meaningful(tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index));
         }
         tokens[index].equals(":", true)
     }

@@ -22,7 +22,7 @@ impl Fixer for NoNullPropertyInitializationFixer {
             && tokens.is_any_token_kinds_found(&[T_PUBLIC, T_PROTECTED, T_PRIVATE, T_VAR, T_STATIC])
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        let next = |tokens: &Tokens, i: usize| tokens.get_next_meaningful_token(i).unwrap();
+        let next = |tokens: &Tokens, i: usize| tokens.next_meaningful(i);
         let mut in_class: HashMap<usize, i64> = HashMap::new();
         let mut class_level = 0;
         let count = tokens.count();

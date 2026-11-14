@@ -51,7 +51,7 @@ impl Fixer for NoUselessConcatOperatorFixer {
             if !tokens[index].equals(".", true) {
                 continue;
             }
-            let next_meaningful_token_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_meaningful_token_index = tokens.next_meaningful(index);
             if contains_linebreak(tokens, index, next_meaningful_token_index) {
                 continue;
             }
@@ -60,7 +60,7 @@ impl Fixer for NoUselessConcatOperatorFixer {
             else {
                 continue;
             };
-            let prev_meaningful_token_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_meaningful_token_index = tokens.prev_meaningful(index);
             if contains_linebreak(tokens, prev_meaningful_token_index, index) {
                 continue;
             }
@@ -232,7 +232,7 @@ fn merge_constant_escaped_string_var_operands(
         let mut i = operand.start;
         while i <= operand.end {
             operand_content.extend_from_slice(tokens[i].get_content());
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
         }
         new_content.extend_from_slice(inner(&operand_content));
     }

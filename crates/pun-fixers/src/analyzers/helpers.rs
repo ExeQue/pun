@@ -23,7 +23,7 @@ pub(crate) fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 
 pub(crate) fn split_list(tokens: &Tokens, open: usize, close: usize) -> Vec<(usize, usize)> {
     let mut items = vec![];
-    let mut k = tokens.get_next_meaningful_token(open).unwrap();
+    let mut k = tokens.next_meaningful(open);
     while k < close {
         let start = k;
         let mut last = k;
@@ -32,11 +32,11 @@ pub(crate) fn split_list(tokens: &Tokens, open: usize, close: usize) -> Vec<(usi
                 k = tokens.find_block_end(t, k);
             }
             last = k;
-            k = tokens.get_next_meaningful_token(k).unwrap();
+            k = tokens.next_meaningful(k);
         }
         items.push((start, last));
         if k < close {
-            k = tokens.get_next_meaningful_token(k).unwrap();
+            k = tokens.next_meaningful(k);
         }
     }
     items
