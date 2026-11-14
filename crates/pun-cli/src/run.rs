@@ -269,13 +269,15 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
 fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
     let plan = Plan::new(cfg, &lint.levels).map_err(config_error)?;
     let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
-    match plan {
-        Ok(plan) if unported.is_empty() => Ok(plan),
-        plan => {
-            unported.extend(plan.err().into_iter().flatten());
-            Err(unported_error(a, cfg, &unported).into())
-        }
+    if let Err(lint) = &plan {
+        unported.extend_from_slice(lint);
     }
+    if unported.is_empty()
+        && let Ok(plan) = plan
+    {
+        return Ok(plan);
+    }
+    Err(unported_error(a, cfg, &unported).into())
 }
 
 /// The files `--dirty`, `--diff`, `--staged` or `--since` selects from git, when one of them is given.
