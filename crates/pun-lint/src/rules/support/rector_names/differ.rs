@@ -2,8 +2,8 @@ use mago_syntax::token::TokenKind;
 use pun_problem::Span;
 
 use crate::rules::phpunit::annotations::reformatted;
-use crate::rules::phpunit::{Elem, coalesce_replacements, diff};
 use crate::rules::support::conditions::indentation;
+use crate::rules::support::sequence_diff::{Elem, coalesce_replacements, diff};
 use crate::rules::support::statement_edits::tokens;
 
 #[derive(Clone, Debug, PartialEq)]
