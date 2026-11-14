@@ -128,7 +128,7 @@ struct Processed {
     remaining: Option<FileResult>,
 }
 
-pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit> {
+pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit> {
     let started = std::time::Instant::now();
     let root = root()?;
     let cfg = load_config(&a, &root)?;

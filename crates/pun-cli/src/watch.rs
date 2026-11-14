@@ -1,4 +1,4 @@
-use crate::run::{LintOpts, Stage, format, load_config};
+use crate::run::{self, LintOpts, Stage, load_config};
 use crate::{Exit, FormatArgs, root};
 use anyhow::Result;
 use notify::{EventKind, RecursiveMode, Watcher};
@@ -14,7 +14,10 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
     a.pun.watch = false;
     let started_by = parent();
     let root = root()?;
-    report(&a, format(a.clone(), Stage::Format, LintOpts::default()));
+    report(
+        &a,
+        run::stage(a.clone(), Stage::Format, LintOpts::default()),
+    );
     let (tx, rx) = mpsc::channel();
     let mut watcher = notify::recommended_watcher(tx)?;
     watcher.watch(&root, RecursiveMode::Recursive)?;
@@ -77,7 +80,7 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
         }
         report(
             &rerun,
-            format(
+            run::stage(
                 FormatArgs {
                     paths: targets.clone(),
                     ..rerun.clone()

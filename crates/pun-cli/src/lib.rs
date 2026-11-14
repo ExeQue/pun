@@ -35,7 +35,7 @@ mod x;
 use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 use pun_config::Options;
-use run::{LintOpts, Stage, format};
+use run::{LintOpts, Stage};
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -353,9 +353,9 @@ fn run() -> ExitCode {
         .build_global();
     let result = match cmd {
         Cmd::Format(a) if a.pun.watch => watch::run(*a),
-        Cmd::Format(a) => format(*a, Stage::Format, LintOpts::default()),
-        Cmd::Lint(cmd) => stage(*cmd, |fix| Stage::Lint { fix }),
-        Cmd::Check(cmd) => stage(*cmd, |fix| Stage::Check { fix }),
+        Cmd::Format(a) => run::stage(*a, Stage::Format, LintOpts::default()),
+        Cmd::Lint(cmd) => lint_or_check(*cmd, |fix| Stage::Lint { fix }),
+        Cmd::Check(cmd) => lint_or_check(*cmd, |fix| Stage::Check { fix }),
         Cmd::Analyse(a) => analyse::run(*a),
         Cmd::Migrate(a) => migrate::run(a),
         Cmd::Init(a) => init::run(a),
@@ -386,7 +386,7 @@ fn run() -> ExitCode {
 }
 
 /// `pun lint` / `pun check`: a `pun format` run over other rules; without `--fix` nothing is written.
-fn stage(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<Exit> {
+fn lint_or_check(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<Exit> {
     let mut a = cmd.args;
     a.test |= !cmd.fix;
     let lint = LintOpts {
@@ -395,7 +395,7 @@ fn stage(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<Exit> {
         max_warnings: cmd.max_warnings,
         concise: cmd.concise,
     };
-    format(a, stage(cmd.fix), lint)
+    run::stage(a, stage(cmd.fix), lint)
 }
 
 /// `-A`, `-W` and `-D` in the order they were given: later ones win.
