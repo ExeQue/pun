@@ -36,21 +36,15 @@ const COMMENT: &str = r"\#.*+";
 const NEWLINE: &str = r"\n++";
 const WHITESPACE: &str = r"[\t\ ]++";
 
-fn build(pattern: &str, caseless: bool, multi_line: bool, extended: bool, utf: bool) -> Regex {
-    RegexBuilder::new()
-        .caseless(caseless)
-        .multi_line(multi_line)
-        .extended(extended)
-        .utf(utf)
-        .ucp(utf)
-        .build(pattern)
-        .expect("static regex")
-}
-
 static TOKENS: LazyLock<Regex> = LazyLock::new(|| {
-    let p =
-        format!(r"\G(?:({STRING})|({LITERAL})|({CHAR})|({COMMENT})|({NEWLINE})|({WHITESPACE}))");
-    build(&p, true, true, true, false)
+    RegexBuilder::new()
+        .caseless(true)
+        .multi_line(true)
+        .extended(true)
+        .build(&format!(
+            r"\G(?:({STRING})|({LITERAL})|({CHAR})|({COMMENT})|({NEWLINE})|({WHITESPACE}))"
+        ))
+        .unwrap()
 });
 static REQUIRES_DELIMITERS: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new()
@@ -58,8 +52,12 @@ static REQUIRES_DELIMITERS: LazyLock<Regex> = LazyLock::new(|| {
         .build(r"[\x00-\x1F]|^[+-.]?\d|^(true|false|yes|no|on|off|null)$(?!\n)")
         .unwrap()
 });
-static LITERAL_ONLY: LazyLock<Regex> =
-    LazyLock::new(|| build(&format!(r"^{LITERAL}$(?!\n)"), false, false, true, false));
+static LITERAL_ONLY: LazyLock<Regex> = LazyLock::new(|| {
+    RegexBuilder::new()
+        .extended(true)
+        .build(&format!(r"^{LITERAL}$(?!\n)"))
+        .unwrap()
+});
 static DATETIME: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"\G\d\d\d\d-\d\d?-\d\d?(?:(?:[Tt]| ++)\d\d?:\d\d:\d\d(?:\.\d*+)? *+(?:Z|[-+]\d\d?(?::?\d\d)?)?)?$(?!\n)",
