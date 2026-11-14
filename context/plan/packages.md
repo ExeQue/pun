@@ -5,7 +5,7 @@ autoload dump, `vendor/bin`, scripts, the pest-plugin port, and `pun migrate`'s 
 file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and `pun update`, `pun require` and
 `pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
 158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
-Composer's exact lock in 6.5 s against Composer's 8.5 s. Left of steps 8 and 9: the other corpus projects, the 20
+Composer's exact lock in 1.8 s against Composer's 9.4 s (`context/reports/scoreboard.md`). Left of steps 8 and 9: the other corpus projects, the 20
 recorded partial updates, `vcs` repositories, and the root `filter.summary-url`. Decisions with dates: §6.
 Beyond Composer: §7. Open questions: §8.
 
@@ -173,6 +173,11 @@ what CI and most teammates run, and it needs no resolver.
   (Pushpak, 2026-11-14).
 - Port Composer's solver, not PubGrub, so the lock matches Composer's (assistant's call, AGENTS.md "Match the upstream
   tool").
+- The solver runs on the pool Composer's `PoolOptimizer` leaves, without `Intervals::compactConstraint` (a group can
+  only be smaller, so a version or two more stays). When that pool has no solution, the solver runs again on the
+  whole pool, so the problems name every version that was loaded (assistant's call, 2026-11-14).
+- Metadata files are revalidated on every resolve, as Composer does, although Packagist sends `max-age=900`: a
+  release tagged a minute ago must be resolvable (assistant's call, 2026-11-14).
 - Composer plugins must work (Pushpak, 2026-11-13): every allowed plugin runs through the plugin host on Composer's
   own classes; native ports only speed up the common ones.
 - No phast code is copied (Pushpak, 2026-11-13). Pun's code is written from Composer's behaviour and its own design;

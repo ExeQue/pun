@@ -20,9 +20,10 @@ The launch phase has started: cleanup, then the first Composer release. CI stays
   plan/foundations.md §4.
 - **Package manager** (plan/packages.md): `pun install` from pun.lock, `pun migrate`'s composer.json step and
   `pun self-update` are built. Only `pun migrate` reads composer.json and composer.lock. On pinkary `pun install` writes Composer's exact `vendor/` in
-  1.7 s fresh and 0.65 s with nothing to do (Composer: 13.5 s and 6.7 s). The resolver, `pun update`, `pun require`
-  and `pun remove` are built: on pinkary `pun update` writes Composer's exact lock in 6.5 s and 376 MB
-  (Composer: 8.5 s and 165 MB). `pun x` (`punx`) runs a package's command from Pun's cache.
+  1.5 s fresh and 0.7 s with nothing to do (Composer: 11.6 s and 7.3 s). The resolver, `pun update`, `pun require`
+  and `pun remove` are built: on pinkary `pun update --no-install` writes Composer's exact lock in 1.8 s and 227 MB
+  (Composer: 9.4 s and 166 MB); install, require and remove are 6x to 11x faster than Composer's
+  (reports/scoreboard.md, package manager benchmark). `pun x` (`punx`) runs a package's command from Pun's cache.
   `pun vet` checks the lock against audits and exemptions in supply-chain/. Workspaces (`[workspace] members` in the
   root pun.toml, one lock and vendor/, `-p` for require and remove) are built.
 - **Green on main** (54df451, 2026-11-08): every crate's tests, all 174 analyse targets, harness on pinkary 799/799
@@ -480,7 +481,6 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | perf lint 5 follow-up: macOS `open` (10.5 us on one thread, 15 us on three) is an environment floor; com.apple.provenance cannot be removed with `xattr -d`, so whether it causes the cost is still open | todo |
 | perf lint 6 follow-up: ask upstream Mago to make mago-database's `notify` dependency optional (or use the kqueue backend); its FSEvents backend links CoreFoundation and CoreServices, about 1.0 ms and 4.1 MB per process (15% of pinkary's lint time); pun-cli's `--watch` would then need a notify backend that does not link CF, or load it lazily | todo |
 | perf analyse 1 follow-up: scripts/bench.py polls `ps -A` every 20 ms, which slows the measured process (pinkary 0.53-0.86 s in the bench vs 0.48-0.60 s under /usr/bin/time); a waiter thread with wait4's ru_maxrss would be cheaper and exact | todo |
-| perf analyse 2 follow-up: pun-cli: consider mimalloc as the global allocator once `pun analyse` lands; in the analyse example it gave wall -4 to -5% and rss -6% on pinkary and laravel-framework, +7% rss on laravel-pint | todo |
 | perf analyse 2 follow-up: bench.py 3-run analyse medians vary 5-10% between calls; the wait4 ru_maxrss waiter (perf analyse 1 row above) would cut the noise | todo |
 | perf analyse 2 follow-up: Mago's populate (15-20% of analyse wall) and its parser memory are upstream Mago costs; raise them upstream rather than in pun-analyse | todo |
 | perf analyse 3 follow-up: scan PHPStan's API stub (phpstan-api.php, about 60 ms serial on larastan and pest) off the critical path; `rayon::join` beside the scan rounds gave -20% wall but 2 of 14 runs stalled for 600-1000 s, so find the cause (Mago interner or rayon) before retrying | todo |
@@ -504,7 +504,7 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | oracle 2.3.5 follow-up: IgnoreErrorsConfigFixer::findEntryLocation() is ported for NEON config files only; an unmatched pathless entry of a `.php` config file (findPhpEntries()) or of pun.toml's `[[analyse.ignore]]` is still a general error | todo |
 | oracle 2.3.5 follow-up: Larastan 3.11–3.14's type extensions (tests/fixtures/larastan-types/gaps.txt, 424 new entries by reason): closure parameters typed `relation-of<TModel, TRelation>`/`builder-of<TModel, TRelation>` once TRelation is inferred, ArrGetDynamicStaticMethodReturnTypeExtension, ModelSerializationDynamicMethodReturnTypeExtension, `#[UseEloquentBuilder]`/`#[CollectedBy]` on traits and parents, config file resolution, the collection key changes, Redis and Auth driver types, and the rest listed there | todo |
 | packages: finish steps 8 and 9 (plan/packages.md): `pun update` against `composer update` on every corpus project and 20 recorded partial updates, `vcs` repositories, and the root `filter.summary-url` | todo |
-| packages: resolve memory (376 MB on pinkary against Composer's 165 MB): the pool's links and parsed constraints per version | todo |
+| packages: resolve memory (227 MB on pinkary against Composer's 166 MB): the arena keeps all 19,799 versions of the pool after the optimizer leaves the solver 1,789 | todo |
 | packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |

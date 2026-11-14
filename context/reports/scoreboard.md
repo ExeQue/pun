@@ -158,6 +158,51 @@ the templates largest first while rayon formats the PHP files, and the number of
   half the Node workers, half the memory.
 - Harness after the change: pinkary, pinkary-dirty and dev-null 0 differing.
 
+### Release binary allocator (Linux, 2026-11-14)
+
+The Linux release archives are static musl builds, and musl's allocator is slow when many threads allocate at once.
+Every number above came from glibc builds, so they hid it: the v0.1.0 binary users install ran 6x to 10x slower than
+the same code built for glibc. pun-cli now uses mimalloc as the global allocator on musl targets (`no_thp`, which
+halves its peak memory). laravel-framework from `git archive`, 1681 files, the pun.toml v0.1.0's `pun migrate`
+writes; median of 3 `/usr/bin/time` runs (one for v0.1.0's `check`), same orb.
+
+| command | v0.1.0 release (musl) | glibc build | musl + mimalloc |
+|---|---:|---:|---:|
+| `pun format --test` | 10.09 s, 50 MB | | 1.63 s, 89 MB |
+| `pun check --test` | 134.24 s, 450 MB | 10.89 s, 535 MB | 12.84 s, 514 MB |
+
+The same build on Pinkary's packages: `pun update --no-install` 10.0 s with musl's allocator, 2.05 s with glibc's and
+1.8 s with mimalloc.
+
+## Package manager benchmark
+
+Pinkary (214 locked packages), Composer 2.11.2 against the musl + mimalloc profiling build of the commit after
+[`b6f6bbd`](https://github.com/punphp/pun/commit/b6f6bbdbc0dc5f605773b0d3c2f7836c4e4a9a0b), same orb, warm download
+and metadata caches (both tools revalidate every metadata file with Packagist), `--no-scripts
+--ignore-platform-req=ext-imagick`, median of 3 `/usr/bin/time` runs. Every lock is the packages Composer locks.
+
+| command | Composer | Pun | |
+|---|---:|---:|---:|
+| `install`, no vendor/ | 11.63 s, 97 MB | 1.54 s, 172 MB | 7.6x |
+| `install`, nothing to do | 7.33 s, 90 MB | 0.70 s, 115 MB | 10.5x |
+| `update --no-install` | 9.40 s, 166 MB | 1.84 s, 227 MB | 5.1x |
+| `require spatie/laravel-data` | 11.09 s, 183 MB | 1.68 s, 152 MB | 6.6x |
+| `remove laravel/pennant` | 8.52 s, 170 MB | 0.77 s, 123 MB | 11.1x |
+
+What the resolve gained (glibc, 6.6 s and 371 MB before):
+
+- Composer's `PoolOptimizer`, ported: the solver gets 1,789 of the pool's 19,799 versions instead of all of them
+  (Composer keeps 1,779; Pun does not compact constraints first). 6.6 s to 5.6 s and 371 MB to 193 MB.
+- Each round decodes its metadata files in parallel: 5.6 s to 4.1 s.
+- Metadata requests: 48 at once instead of 16, and the agent keeps 64 idle connections instead of ureq's 3 per
+  host, so later rounds skip the TLS handshake (fetching went from 1.6 s to 0.5 s over the 9 rounds). Each host is
+  looked up once per run: musl's resolver lost some of 48 simultaneous DNS queries and retried after seconds, which
+  stalled one run in three by 2 to 30 s.
+- The optimizer keys its groups by the constraints rather than by their text (0.58 s to 0.27 s), the advisory
+  filter looks advisories up by package name (0.33 s to 0.07 s), and the pool builder remembers which requirements
+  are already loaded (`mark` was 0.4 s).
+- After the lock is written, the resolver's arena is freed on another thread while `vendor/` installs.
+
 ## Analyse benchmark
 
 2026-10-17, `BENCH=analyse scripts/bench.py <project>`, one project per call with nothing else running
