@@ -213,7 +213,7 @@ parallel workers included. A ratio is the other tool's number divided by Pun's, 
 - **phpstan-cold**: PHPStan 2.2.7 (the oracle's phar, copied into each scratch copy's `vendor/`) at level 0 with the
   project's own includes (Larastan on Pinkary and laravel-pint) and paths, without its ignoreErrors and baseline,
   `--no-progress`, default parallelism, the result cache deleted before every run.
-- **phpstan-warm**: the same with the result cache warm. A reference row: Pun has no result cache yet.
+- **phpstan-warm**: the same with the result cache warm. A reference row: Pun has no result cache.
 - **pun**: `pun-analyse`'s `examples/analyse` (no `pun analyse` command yet), profiling build, on the same config.
 - **mago**: `mago analyze` 1.57.0 on the same paths, `vendor/` as includes. A speed and memory reference only:
   its rules are not PHPStan's.

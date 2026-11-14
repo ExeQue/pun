@@ -11,7 +11,7 @@ ported fixer reads like the PHP. Indices are `usize`; upstream's `?int` is `Opti
 | Rust | Upstream |
 |---|---|
 | `Kind::T_STRING`, `Kind::CT_ARRAY_BRACKET_OPEN`, `kind.name()` (`"T_STRING"`, `"CT::T_ARRAY_BRACKET_OPEN"`), `Kind::from_name` | `T_*` constants, `CT::T_*`, `Token::getNameForId`. Alias: `Kind::T_PAAMAYIM_NEKUDOTAYIM` |
-| `Token { id: Option<Kind>, content: Vec<u8> }`, `Token::new(kind, content)`, `Token::char("(")` | `new Token([T_X, 'x'])`, `new Token('(')` |
+| `Token { id: Option<Kind>, content: Content }` (`Content`: bytes, up to 22 inline, else boxed), `Token::new(kind, content)`, `Token::char("(")` | `new Token([T_X, 'x'])`, `new Token('(')` |
 | `Proto`: `"(".into()`, `T_STRING.into()`, `(T_STRING, "foo").into()` | token prototypes `'('`, `[T_STRING]`, `[T_STRING, 'foo']` |
 | `token.equals(proto, case_sensitive)`, `equals_any(&[..], cs)`, `equals_token(&Token, cs)` | `equals` / `equalsAny` (incl. the `&` special case) |
 | `is_kind(k)`, `is_given_kind(&[k..])`, `is_array`, `is_comment`, `is_whitespace(Option<&[u8]>)`, `is_cast`, `is_classy`, `is_object_operator`, `is_keyword`, `is_magic_constant`, `is_native_constant`, `get_id`, `get_content`, `get_name` | same |
@@ -34,7 +34,7 @@ upstream's "skip this file" behaviour wrap `from_code` in `catch_unwind`.
 
 ## Representation choices
 
-- **Bytes, not `String`.** Content is `Vec<u8>`: PHP source may be invalid UTF-8 or contain
+- **Bytes, not `String`.** Content is bytes (`Content`, inline up to 22 bytes, else a boxed slice): PHP source may be invalid UTF-8 or contain
   binary after `__halt_compiler`, and PHP's string functions are byte-oriented anyway.
 - **Kinds by name, not number.** `Kind` is a `u16` enum; PHP's token numbers change between
   versions, names don't. `id: None` models upstream's non-array tokens, whose identity is

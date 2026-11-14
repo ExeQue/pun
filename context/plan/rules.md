@@ -5,8 +5,8 @@ their rules overlap a lot. This file says where each rule lives, how overlaps re
 are ignored, and what the mapping data holds. Rule IDs, groups, presets, sets and levels: config.md §4-§5. Decisions:
 ../PLAN.md §2. Formerly context/RULES.md (its full history, including the superseded tier tables, is in git).
 
-The data is [`crates/pun-config/rules/mapping.toml`](../../crates/pun-config/rules/mapping.toml): 1,005 Pun rules and
-2,564 upstream entries, each pointing at a Pun rule or carrying a drop or unsupported reason. It drives `pun migrate`
+The data is [`crates/pun-config/rules/mapping.toml`](../../crates/pun-config/rules/mapping.toml): 1,256 Pun rules and
+3,106 upstream entries, each pointing at a Pun rule or carrying a drop or unsupported reason. It drives `pun migrate`
 (configs, ignore comments), `pun explain <rule>`, and the generated "Coming from Pint / PHPStan / Rector" docs page.
 `scripts/check-rule-mapping.py` checks it (§5).
 
@@ -143,11 +143,11 @@ them (§5).
 | `$x = foo(); // @pun-ignore <id>` | the line it trails |
 | `// @pun-ignore <id>` on its own line | the next line (PHPStan's `@phpstan-ignore` rule) |
 | `// @pun-ignore-next-line <id>` | the next line, explicitly |
-| `// @pun-ignore-file <id>` before the first statement | the whole file. The only form for format rules, which can't be half-applied to a line; keeps `@php-cs-fixer-ignore`'s meaning. **Built today** |
+| `// @pun-ignore-file <id>` before the first statement | the whole file. The only form for format rules, which can't be half-applied to a line; keeps `@php-cs-fixer-ignore`'s meaning |
 | `// @pun-ignore-start <id>` ... `// @pun-ignore-end` | a region |
 
-- One or more IDs, comma-separated; a group is allowed. Whether a short `group/name` is accepted is open
-  (../PLAN.md §4 Q2). A bare `@pun-ignore` with no ID is an error.
+- One or more IDs, comma-separated: a full ID, a rule's `group/name`, or a group (`lint/security` or `security`).
+  A bare `@pun-ignore` with no ID is an error. Every form is built (crates/pun-problem/src/ignore.rs).
 - Free text after ` -- ` is the reason: `// @pun-ignore lint/security/no-eval -- legacy plugin loader`.
 - `/* */` and `/** */` forms work too, so PHPDoc-placed `@phpstan-ignore` ports one to one.
 - Unused ignores are reported by `no-unused-ignore` (safe fix: delete); malformed ones by `invalid-ignore-comment`.
@@ -211,25 +211,25 @@ so every new rule needs a decision.
 | Upstream (version) | Entries | → format | → lint | → analyse | dropped | unsupported |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | PHP-CS-Fixer 3.95.25 | 300 | 167 | 115 | - | 18 (deprecated → successor) | - |
-| Pint's own fixers | 2 | 1 | 1 | - | - | - |
+| Pint's own fixers | 3 | 1 | 1 | - | 1 | - |
 | Pun `Pun/*` (Mago ports) | 17 | - | 17 | - | - | - |
-| Rector core 2.8.4 | 523 | 13 | 266 | - | 2 | 242 |
+| Rector core 2.8.4 | 523 | 15 | 264 | - | 2 | 242 |
 | rector-laravel 2.7.3 | 141 | - | 94 | - | - | 47 |
 | pest-plugin-rector 5.x-dev@8c1b780 | 61 | - | 59 | - | - | 2 |
 | rector-phpunit (bundled) | 116 | - | 81 | - | - | 35 |
 | rector-symfony / doctrine / downgrade-php | 267 | - | - | - | - | 267 |
-| PHPStan-family `Rule` classes | 432 | 2 | 17 | 385 | - | 28 |
-| PHPStan 2.3.1 core identifiers | 632 | 2 | - | 608 | 7 | 15 |
+| PHPStan-family `Rule` classes | 432 | 4 | 31 | 369 | - | 28 |
+| PHPStan 2.3.5 core identifiers | 635 | 5 | 24 | 584 | 7 | 15 |
 | PHPStan level parameters | 18 | - | - | 13 options + 5 switches | - | - |
-| phpstan-strict-rules 2.0.12 identifiers | 44 | 1 | 16 | 27 | - | - |
+| phpstan-strict-rules 2.0.12 identifiers | 44 | 1 | 17 | 26 | - | - |
 | phpstan-deprecation-rules 2.0.5 identifiers | 10 | - | - | 10 | - | - |
-| Larastan 3.10.0 identifiers | 20 | - | - | 20 | - | - |
-| Mago 1.57.0 linter | 190 | 28 | 141 | - | 2 | 19 |
-| Mago 1.57.0 analyzer codes | 329 | - | - | 190 | - | 139 |
-| **Pun rules** | | **168** | **703** | **385** | | |
+| Larastan 3.10.0 identifiers | 20 | - | 4 | 16 | - | - |
+| Mago 1.57.0 linter | 190 | 29 | 140 | - | 2 | 19 |
+| Mago 1.57.0 analyzer codes | 329 | - | 8 | 188 | - | 133 |
+| **Pun rules** | | **168** | **719** | **369** | | |
 
-Ported today: 125 of 168 format rules and 50 of 703 lint rules (`ported = true`). In scope: 493 Rector rules (482 →
-lint, 11 → format) and 397 PHPStan classes (378 → analyse, 17 → lint, 2 → format).
+Ported today: 168 of 168 format rules, 702 of 719 lint rules and 362 of 369 analyse rules (`ported = true`). In
+scope: 513 Rector rules (498 → lint, 15 → format) and 404 PHPStan classes (369 → analyse, 31 → lint, 4 → format).
 
 ## 7. The one-to-one mapping (2026-10-18)
 

@@ -4,8 +4,8 @@ Status: design settled with Pushpak (2026-10-19), see §7. Build progress is in 
 PHP-CS-Fixer, Mago, Larastan, Ruff, oxlint, Biome, ESLint and typescript-eslint (research notes and screenshots are in
 the project files under docs-design/research/).
 
-All pages are generated from [`crates/pun-config/rules/mapping.toml`](../../crates/pun-config/rules/mapping.toml): 1,249 Pun rules (168 format, 703 lint,
-378 analyse; 545 ported today) and 3,047 upstream entries, each pointing at a Pun rule or carrying a drop or
+All pages are generated from [`crates/pun-config/rules/mapping.toml`](../../crates/pun-config/rules/mapping.toml): 1,256 Pun rules (168 format, 719 lint,
+369 analyse; 1,232 ported) and 3,106 upstream entries, each pointing at a Pun rule or carrying a drop or
 unsupported reason. The prose and examples are new fields in mapping.toml too (§7.3).
 
 ## 1. Pages and URLs
@@ -18,12 +18,11 @@ unsupported reason. The prose and examples are new fields in mapping.toml too (�
 | Preset / set page | `/docs/rules/presets/<preset>`, `/docs/rules/sets/<set>` | PHP-CS-Fixer set pages, Rector find-rule by set |
 | Migration mapping | `/docs/migrate/from/<tool>` (pint, php-cs-fixer, rector, phpstan, larastan, mago) | Biome `/linter/javascript/sources` |
 
-`pun explain`'s `docs` row and `Renderer::with_rule_docs` then link to the rule page (closes PLAN.md row "decide the
-rule docs base URL").
+`pun explain`'s `docs` row and the terminal link on each rule ID point to the rule page (§8 step 6).
 
 ## 2. Rules directory (`/docs/rules`)
 
-- Totals on top: "1,249 rules: 168 format, 703 lint, 378 analyse. 792 fixable." (oxlint).
+- Totals on top, for example "1,256 rules: 168 format, 719 lint, 369 analyse." (oxlint).
 - A grid of the groups with count and one-line purpose (Mago), each linking to its group page. Ecosystem groups
   (laravel, pest, phpunit, doctrine) and upgrade groups (php-8.4, laravel-12) in their own rows.
 - One searchable table: `ID | summary | enabled by | fix`. Search matches the Pun ID **and every upstream name**, so
@@ -74,8 +73,8 @@ identifiers (`%s.alwaysFalse`) expanded.
 
 ## 6. Content gaps (what mapping.toml doesn't hold yet)
 
-- Analyse rules have no `summary` (0 of 378). Format and lint have all of theirs.
-- No rule has examples or a "why" paragraph. Sources: format from the upstream fixtures already in
+- 360 of the 369 analyse rules have no `summary`. Format and lint have all of theirs.
+- No rule has examples, and only `format/casts/no-short-bool` has a "why" paragraph. Sources: format from the upstream fixtures already in
   `crates/pun-fixers/tests`, lint from Rector/Mago samples (rewritten in Pun's words), analyse from oracle runs.
 - Options carry types but not per-option prose.
 
@@ -101,6 +100,5 @@ identifiers (`%s.alwaysFalse`) expanded.
 
 The content gaps in §6 remain separate work in PLAN.md §3, not placeholder prose to invent during generation.
 
-Steps 1–5 are local work, not a deployment. Pushes to origin/main failed because this runner has no usable GitHub
-credentials. Preset URLs include the command (`format-laravel`, `analyse-basic`); generated folders use Blume's
+Preset URLs include the command (`format-laravel`, `analyse-basic`); generated folders use Blume's
 collapsible groups so the sidebar does not list every rule at once.

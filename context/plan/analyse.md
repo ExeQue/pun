@@ -22,31 +22,29 @@ file, line and rule; messages may be reworded), so CI can switch.
 
 ## 2. How it works today
 
-- **pun-phpstan** (100% coverage) ports PHPStan's own plumbing: the NEON parser, includes, parameters and schema
-  validation, baseline read and write, `ignoreErrors`, `@phpstan-ignore` comments, PHPStan's type model and its
-  `describe()` (so messages print types the way PHPStan does), and every built-in function and class exported from
-  PHPStan's reflection into `data/symbols.json`.
+- **pun-phpstan** ports PHPStan's own plumbing: the NEON parser, includes, parameters and schema validation,
+  `ignoreErrors`, `@phpstan-ignore` comments, PHPStan's type model and its `describe()` (so messages print types the
+  way PHPStan does), `accepts()`, and every built-in function and class exported from PHPStan's reflection into
+  `data/symbols.json`.
 - **pun-analyse** runs the rules:
   1. It parses with Mago's parser and resolves names.
   2. It collects every symbol of the project and vendor into Mago's codex.
-  3. It checks each file in parallel with ported PHPStan rules.
-  4. It drops what ignores and the baseline cover.
-- **Level 0 is in progress.** It reports 54 PHPStan identifiers so far (undefined functions, classes, methods,
-  properties and constants, `new`, typehints, `use`). It is checked against 142 of PHPStan's own rule test classes,
-  with 37 known differing cases in `tests/fixtures/rules/gaps.txt`. On the corpus, the differences from PHPStan level 0
-  are pinkary 1, larastan 6, pest 5 and laravel-framework 15, and Pun runs 5 to 25 times faster.
-- **Not wired up yet.** There is no `pun analyse` command. The only entry point is
-  `cargo run --example analyse <dir> <phpstan.neon>`, which reads phpstan.neon, used by `scripts/analyse-corpus.py`.
-  The analyse agent stopped at 43d9857, with Larastan facade aliases uncommitted (left to analyse 6). The trait fix
-  was redone in analyse 3a.
-- **No type inference yet.** Level 0 mostly needs symbols, not types. Levels 2 and up need type inference (Mago's
-  analyser, §7): the type of every expression, narrowing after `if`, `instanceof` and `is_*`, and generics from
-  PHPDoc. Mago's analyser is a dependency but isn't used.
+  3. It infers types with Mago's analyser (§7), with Larastan's knowledge as built-in providers and hooks
+     (`src/larastan/`, `src/laravel/`).
+  4. It checks each file in parallel with the ported PHPStan rules, which read Mago's types converted to
+     pun-phpstan's (`rules/types/convert.rs`).
+  5. It drops what ignores and the baseline cover.
+- **`pun analyse`** (crates/pun-cli/src/analyse.rs) reads `[analyse]` from pun.toml, selects rules by preset, prints
+  Pun's output, PHPStan's machine formats and agent output, and writes Pun's baseline (`--generate-baseline`).
+  `pun check` runs it after lint and format.
+- **Rules:** 362 of the 369 analyse rules are ported (PLAN.md §0), across levels 0 to max. Each keeps its known
+  differences from PHPStan in the test gap lists (`tests/fixtures/**/gaps*.txt`, `GAPS` constants). On the corpus at
+  level 0 the differences are pinkary 0, larastan 6, pest 5 and laravel-framework 0 (PLAN.md §3, Track C).
 
 ## 3. The config
 
 The schema is config.md §3 and §5. pun-config reads it into `Config.analyse` (preset, paths, exclude, baseline, the
-type switches and the enabled rules); `pun analyse` doesn't use it yet.
+type switches and the enabled rules), and `pun analyse` runs from it.
 
 ```toml
 [analyse]
@@ -61,29 +59,28 @@ baseline = "pun-baseline.toml"
 
 - **No levels.** `pun migrate` expands a PHPStan level into the exact rules it ran, each with its options. In
   interactive mode it offers the closest preset, with a count of the new problems the preset would report.
-- **Laravel turns on by itself** when composer.lock has laravel/framework.
+- **Laravel turns on by itself** when the lock (pun.lock, or composer.lock before migrate) has laravel/framework.
 - PHPStan's level 7 to 10 behaviour is four switches: `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed`
   (config.md §5). The presets turn them on.
 
 ## 4. Rules: what exists
 
-There are 378 analyse rules in rules/mapping.toml: one per in-scope PHPStan `Rule` class (`[upstream.phpstan-classes]`,
-from crates/pun-config/rules/upstream/phpstan-*.json): 326 from PHPStan core, 27 strict-rules, 7 deprecation-rules and
-18 Larastan. A rule carries every identifier its class emits; each of the 688 identifiers of the family stays in the
+There are 369 analyse rules in rules/mapping.toml: one per in-scope PHPStan `Rule` class (`[upstream.phpstan-classes]`,
+from crates/pun-config/rules/upstream/phpstan-*.json): 321 from PHPStan core, 26 strict-rules, 7 deprecation-rules and
+15 Larastan. A rule carries every identifier its class emits; each of the 688 identifiers of the family stays in the
 mapping as a `variant` pointing at one class's rule, so migrated ignores and baselines keep their narrow scope. Of the
-426 classes, 17 strict-rules and 1 core class are lint or format rules (rules.md O4) and 29 are unsupported (the
+432 classes, 35 are lint or format rules (rules.md O4, and O5 since 2026-11-02) and 28 are unsupported (the
 `phpstanApi.*` checks, playground-only and stub-only classes, one Larastan class that does not exist).
 
 | | Count |
 | --- | ---: |
-| Analyse rules | 378 |
-| By group: types / classes / dead-code / phpdoc / laravel / undefined / functions / operators / attributes / deprecated / other | 119 / 63 / 44 / 32 / 18 / 18 / 15 / 15 / 14 / 10 / 30 |
-| By preset (from the class's PHPStan level): basic / essential / recommended / strict / max | 155 / 104 / 80 / 35 / 4 |
+| Analyse rules | 369 |
+| By group: types / classes / dead-code / phpdoc / undefined / functions / laravel / operators / attributes / deprecated / other | 118 / 63 / 42 / 32 / 18 / 16 / 15 / 15 / 14 / 8 / 28 |
+| By preset (from the class's PHPStan level): basic / essential / recommended / strict / max | 150 / 106 / 75 / 35 / 3 |
 | PHPStan core identifiers by level: 0 / 1 / 2 / 3 / 4 / 5 / 6 / opt-in | 327 / 13 / 137 / 36 / 57 / 8 / 6 / 30 |
-| Running today | 54 PHPStan identifiers (part of level 0) |
+| Ported | 362 |
 
-These groups still follow the old intent-style list. With topic groups (decided), `undefined/method` and
-`types/argument` read naturally. The rename is config.md Build 1.
+The groups are the topic groups (config.md Build 1), so `undefined/method` and `types/argument` read naturally.
 
 ## 5. PHPStan's CLI, flag for flag
 
@@ -91,17 +88,18 @@ These groups still follow the old intent-style list. With topic groups (decided)
 | --- | --- |
 | `phpstan analyse [paths]` | `pun analyse [paths]` |
 | `-c phpstan.neon` | `--config pun.toml`; phpstan.neon is read only by `pun migrate` |
-| `-l 6` | `--preset strict` (no levels) |
+| `-l 6` | `[analyse] preset = "strict"` in pun.toml (no levels) |
 | `--generate-baseline` | `pun analyse --generate-baseline` (writes pun-baseline.toml) |
 | `--error-format=json/table/github/gitlab/checkstyle/junit/raw/teamcity` | `--format`, the same formats |
 | `--memory-limit`, `--xdebug`, `--debug` | not needed |
 | `clear-result-cache` | not needed: Pun has no result cache |
-| `--pro`, `--watch` | `--watch` like `pun format` |
+| `--pro`, `--watch` | no `--watch` on `pun analyse` yet (`pun format --watch` has one) |
 
 ## 6. Build
 
 Done: config, ignores and baselines read and written in PHPStan's format; the built-in symbols; the type model and
-descriptions; 54 level-0 identifiers; parallel scanning. The steps, after config.md Build 1-3:
+descriptions; parallel scanning; steps 0, 1, 2, 8 and 9. Steps 3 to 6 are in progress (362 of 369 rules ported;
+PLAN.md §3 Track C). The steps, after config.md Build 1-3:
 
 0. **Engine spike, alongside PLAN.md Step 1** (Pushpak, 2026-10-17): run mago-analyzer inside pun-analyse on Pinkary
    and compare it with PHPStan, and write one Larastan provider (model attributes from migrations) through Mago's
@@ -172,8 +170,8 @@ inference.
   default. `pun migrate` does not copy phpstan-baseline.neon; it tells the user to generate a new one.
   `ignoreErrors` in phpstan.neon is config, not a baseline, so migrate still converts it to Pun rule IDs.
 - **Kept from pun-phpstan:** the NEON reader, includes and `ignoreErrors` handling (for migrate), and
-  `@phpstan-ignore` comment parsing (migrate rewrites those comments). Its PHPStan type model and `describe()` are no
-  longer needed for messages.
+  `@phpstan-ignore` comment parsing (migrate rewrites those comments). Its PHPStan type model and `describe()` came
+  back for the messages and `accepts()` checks: the rules convert Mago's types into it (`rules/types/convert.rs`).
 - **Risk:** Mago infers differently from PHPStan in edge cases, so some PHPStan errors will be missing or extra. The
   parity test measures this, and each gap gets fixed in a Pun check or a Mago plugin.
 
@@ -181,7 +179,7 @@ inference.
 
 Larastan has two halves, and without the first one every Laravel app drowns in false "undefined method" and
 "undefined property" errors on its models. Pun builds both into the Laravel plugin (§7). It turns on by itself when
-composer.lock has laravel/framework.
+the lock (pun.lock, or composer.lock before migrate) has laravel/framework.
 
 **1. Laravel knowledge: types PHPStan can't see.**
 
@@ -222,7 +220,7 @@ PHPStan's fixtures do for core. The corpus adds pinkary and larastan's own sourc
 
 **What Mago does.** Mago has no runtime extension system either. Its "plugins" are Rust modules compiled into the
 binary (stdlib, PSL, PSR container, flow-php), each turned on by name in its config. Pun follows the same model: support
-for a framework is Pun code inside the binary, turned on from composer.lock. A real extension system (third-party
+for a framework is Pun code inside the binary, turned on from the lock (pun.lock, or composer.lock before migrate). A real extension system (third-party
 plugins) is planned for later, not now (Pushpak).
 
 **In the core for 1.0** (assistant's call within Pushpak's brief: "super Laravel support and Pest support", no

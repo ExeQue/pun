@@ -257,10 +257,6 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/laravel/names.rs:20` a scope without a Program ancestor: every class-name lookup comes from a parsed file's walk, whose first ancestor is Program.
 - `crates/pun-lint/src/rules/laravel/prefer_facade_over_app.rs:29` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
 
-## Not measured
-
-- `crates/pun-cli/src/lint.rs` (`pun lint --mago`) is compiled only with the optional `mago-lint` feature. That feature pulls in about 65k lines of mago-linter, so `scripts/coverage.sh` builds the default features and this file never appears in the LCOV report. It is not counted as an exclusion because no line is skipped; the whole module is absent.
-
 ## Known deviations found while testing
 
 - `--preset=<unknown>`: the pinned Pint phar crashes with "Undefined array key" instead of aborting with "Preset not found.". pun prints the intended message, and the test checks pun's message on its own.
@@ -287,7 +283,7 @@ Removed or rewritten:
     - it asserted "PASS" on a corpus of more than 400 files;
     - it was broken by the blade/node requirement;
     - its expected value was the current output.
-  - `report::tests::summary_matches_pint` deleted: a private-helper test with an expectation captured once. It is superseded by `tests/cli.rs`, which runs real Pint and pun on the same tree for each flag set (formats, `-v`, narrow terminals, `--parallel`, stdin, git selections, errors, read-only / unreadable files) and compares stdout, exit code and resulting files.
+  - `report::tests::summary_matches_pint` deleted: a private-helper test with an expectation captured once. It is superseded by `tests/cli.rs`, which runs real Pint and pun on the same tree for each flag set (formats, `-v`, narrow terminals, stdin, git selections, errors, read-only / unreadable files) and compares stdout, exit code and resulting files.
 - **pun-harness**: no tests before. `tests/harness.rs` runs the binary end to end against real Pint on a throwaway root (`PUN_HARNESS_ROOT`) with hand-derived counts, diffs and scoreboard rows.
 - **Pun/\* fixers**: kept the Mago-derived cases. Test helpers now gate on `is_candidate` like `Pipeline::run`. Added:
   - `tests/pun_rules.rs` (run order at priority 0 and the risky set, both from context/reference/mago-extras.md);
@@ -327,11 +323,3 @@ Unreachable code removed:
   - the empty-array-element arm in `prefer_array_spread` (a compile error);
   - the empty-operand arm in `use_simpler_expectation`;
   - the `while`/`false` tails in `sensitive_parameter` and `prefer_fake_helper`.
-
-## Open gaps (punphp-fixers, owned files)
-
-These were not touched: the files belong to agents 2–4 and are still being ported. The uncovered lines are listed in the generated block above.
-
-- `analyzers/abstract_no_useless_else_fixer.rs:118`: uncommitted work in progress (agent 2).
-- `analyzers/active_preset.rs:8-10`: `set()` is called only by pun-cli. A Pint/laravel_blade case run under a non-laravel preset would cover it (agent 2).
-- `fixers/pint_laravel_blade.rs` and `pint_laravel_blade/{line_formatters,php_block_formatting}.rs`: blade port in progress (agent 2).

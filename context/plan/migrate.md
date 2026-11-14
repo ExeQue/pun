@@ -1,7 +1,9 @@
 # Plan: `pun migrate`
 
-Status: **decided, not built for the new design** (2026-10-17). Decisions from the format, lint, analyse, init and
-command walkthroughs, gathered here. Decisions with dates: ../PLAN.md §2.
+Status: **built** for the new design: Build 1-6 (pint.json, .php-cs-fixer.php, rector.php and phpstan.neon, the
+unsupported items, the output and the closest-preset offer), plus the composer.json step (plan/packages.md). Decided
+2026-10-17; the decisions from the format, lint, analyse, init and command walkthroughs are gathered here. Decisions
+with dates: ../PLAN.md §2.
 
 ## 1. What it is
 

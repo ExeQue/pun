@@ -4,10 +4,10 @@ The one file for where Pun stands: how this folder works, every decision, the bu
 open questions. Rewritten 2026-10-17 after walking through every command with Pushpak; it replaces README.md,
 DECISIONS.md, TASKS.md and REQUESTS.md (their history is in git). Finished work is not listed; `git log` has it.
 
-## 0. Resume here (2026-11-11)
+## 0. Resume here (2026-11-14)
 
 One lead agent works on `main` and spawns subagents for independent slices in worktrees (AGENTS.md "How work runs").
-The launch phase has started: cleanup, then the first Composer release. CI stays disabled on GitHub.
+v0.1.0, the first stable release, is out (2026-11-14). CI runs on GitHub again and is green on main.
 
 - **Counts** (mapping.toml `ported = true`): format 168 of 168, lint 702 of 719, analyse 362 of 369. Pending: lint 17
   (the rules Rector 2.8.4 and rector-laravel 2.7.3 added, §3), analyse 7. Ported rules keep their explicit parity
@@ -19,26 +19,26 @@ The launch phase has started: cleanup, then the first Composer release. CI stays
   archives carry GitHub build attestations (Pushpak, 2026-11-14). No crate, npm package or Homebrew tap is published (`publish = false` in every crate).
   plan/foundations.md §4.
 - **Package manager** (plan/packages.md): `pun install` from pun.lock, `pun migrate`'s composer.json step and
-  `pun self-update` are built. Only `pun migrate` reads composer.json and composer.lock. On pinkary `pun install` writes Composer's exact `vendor/` in
+  `pun self-update` are built. The dependencies live in pun.toml and pun.lock: `pun migrate` copies composer.json's
+  dependencies into pun.toml and composer.lock into pun.lock, and keeps composer.json. The package commands read only
+  pun.toml and pun.lock, with no Composer or composer.lock fallback. On pinkary `pun install` writes Composer's exact `vendor/` in
   1.5 s fresh and 0.7 s with nothing to do (Composer: 11.6 s and 7.3 s). The resolver, `pun update`, `pun require`
   and `pun remove` are built: on pinkary `pun update --no-install` writes Composer's exact lock in 1.8 s and 227 MB
   (Composer: 9.4 s and 166 MB); install, require and remove are 6x to 11x faster than Composer's
   (reports/scoreboard.md, package manager benchmark). `pun x` (`punx`) runs a package's command from Pun's cache.
   `pun vet` checks the lock against audits and exemptions in supply-chain/. Workspaces (`[workspace] members` in the
   root pun.toml, one lock and vendor/, `-p` for require and remove) are built.
-- **Green on main** (54df451, 2026-11-08): every crate's tests, all 174 analyse targets, harness on pinkary 799/799
-  identical, `scripts/cli-parity.sh` identical, and `cargo clippy --workspace --all-targets -- -D warnings` clean.
-  `cargo fmt --all --check` is clean too (rustfmt.toml, default width).
-  Format, lint and analyse output on pinkary and laravel-framework is byte-identical to 4c35f57.
-- **Test time:** `scripts/analyse-tests.sh` takes about 40 minutes on 8 cores (about 10 of them building). `levels`
-  and `rules` run their cases in parallel (390 s and 160 s alone, against 92 and about 30 minutes before), and test
-  builds compile dependencies at `opt-level = 2` with line tables only. One analyse target dir is about 56 GB.
-- **Priorities, in order:** (1) launch: v0.1.0-beta.3 is the last beta; tag v0.1.0, the first stable release (Pushpak,
-  2026-11-14), then submit the repo to Packagist once (§3 Step 5); (2) CI
-  re-enable; (3) finish analyse level 0 and levels 1-10; (4) the 24 new lint rules; (5) `pun check` in one pass;
-  (6) perf rounds with `scripts/bench.py`.
-- **Waiting on Pushpak:** audit 26 (agent-mode `OnceLock`), `style/prefer-class-constant`, CI re-enable, the
-  [phpstan-parameters] rows (§3).
+- **Green on main** (8e11612, 2026-11-14): every CI job passes (rule mapping and generated docs, rustfmt, clippy
+  with `-D warnings`, the workspace tests, the harness on pinkary and laravel-framework, fuzz). CI's test jobs run
+  under cargo-nextest. The nightly Coverage workflow fails: five crates are under 100% (reports/COVERAGE.md).
+- **Test time:** the 175 test files of `punphp-analyse` build as one test binary (`tests/main.rs`), so
+  `cargo test -p punphp-analyse` (or `cargo nextest run -p punphp-analyse`) runs them in parallel; CI runs it in
+  its own `analyse` job. `levels` and `rules` also run their cases in parallel, and test builds compile
+  dependencies at `opt-level = 2` with line tables only.
+- **Priorities, in order:** (1) launch: get v0.1.0 onto Packagist (§3 Step 5); (2) finish analyse level 0 and
+  levels 1-10; (3) the 17 new lint rules; (4) `pun check` in one pass; (5) perf rounds with `scripts/bench.py`.
+- **Waiting on Pushpak:** audit 26 (agent-mode `OnceLock`), `style/prefer-class-constant`, Packagist's GitHub hook,
+  the [phpstan-parameters] rows (§3).
 
 The integration logs that used to fill this section (per-batch gates and their evidence) are in git history before
 this date.
@@ -48,8 +48,8 @@ this date.
 | Path | What it is | Edit when |
 | --- | --- | --- |
 | PLAN.md (this file) | Decisions (§2), build order and status (§3), open questions (§4) | A decision, a step's status or the order changes |
-| [plan/](plan/) | One plan per part, each with Today, the design, a **Build** list with "done when", and Decisions: [commands](plan/commands.md) (who does what, `pun check`), [config](plan/config.md) (pun.toml, names, presets), [rules](plan/rules.md) (placement, overlaps, naming, ignore comments, mapping data), [output](plan/output.md), [format](plan/format.md), [lint](plan/lint.md), [analyse](plan/analyse.md), [migrate](plan/migrate.md), [init](plan/init.md), [docs](plan/docs.md) (rule pages, rules directory, migration mapping), [foundations](plan/foundations.md) (CI, harness, docs, release, later) | We discuss or change that part |
-| [reference/](reference/) | [oracle.md](reference/oracle.md) (pinned upstream tools, exporters), [tokens.md](reference/tokens.md) (pun-tokens API), [mago-extras.md](reference/mago-extras.md) (Mago-derived rules) | The thing it describes changes |
+| [plan/](plan/) | One plan per part, each with Today, the design, a **Build** list with "done when", and Decisions: [commands](plan/commands.md) (who does what, `pun check`), [config](plan/config.md) (pun.toml, names, presets), [rules](plan/rules.md) (placement, overlaps, naming, ignore comments, mapping data), [output](plan/output.md), [format](plan/format.md), [lint](plan/lint.md), [analyse](plan/analyse.md), [migrate](plan/migrate.md), [init](plan/init.md), [docs](plan/docs.md) (rule pages, rules directory, migration mapping), [packages](plan/packages.md) (the package manager), [foundations](plan/foundations.md) (CI, harness, docs, release, later) | We discuss or change that part |
+| [reference/](reference/) | [oracle.md](reference/oracle.md) (pinned upstream tools, exporters), [tokens.md](reference/tokens.md) (pun-tokens API), [mago-extras.md](reference/mago-extras.md) (Mago-derived rules), [analyse-behaviour.md](reference/analyse-behaviour.md) and [lint-behaviour.md](reference/lint-behaviour.md) (implementation notes), the PHPStan identifier lists (`phpstan-*identifiers.txt`) | The thing it describes changes |
 | [reports/](reports/) | [scoreboard.md](reports/scoreboard.md) (parity, fuzz, benchmarks; generated by `pun-harness`), [COVERAGE.md](reports/COVERAGE.md) (generated by `scripts/coverage.sh`) | Regenerated; notes by hand |
 
 Rules of thumb:
@@ -64,7 +64,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 
 ### Product
 
-- **Home and licence:** github.com/punphp/pun, MIT (LICENSE, THIRD_PARTY_NOTICES.md). Not a shipfastlabs project. The
+- **Home and licence:** github.com/punphp/pun, MIT (LICENSE, licenses/THIRD_PARTY_NOTICES.md). Not a shipfastlabs project. The
   repo is public (2026-11-11). The docs site is https://pun.laravel.cloud.
 - **Positioning:** Pun is to PHP what Bun is to JavaScript. Laravel first, PHP 8.4+ projects only.
 - **1.0 ships everything at once.** Apart from the 0.1.0 betas and v0.1.0 (§0), nothing is published or tagged until `pun format`, `pun analyse`, `pun lint` and
@@ -72,7 +72,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **The 1.0 bar:** every lint rule (all 719) native; every PHPStan core rule (327 Rule classes) native; Larastan built in with seven
   improvements (typed config, routes, views, translations, env keys, Inertia pages, fresh model data); deprecation-rules and strict-rules as plain rules. Speed and memory
   come first in every command.
-- **Brand:** "Sticker Pop", the sprinting elephant in sneakers; Fredoka for text, Martian Mono for code (design/).
+- **Brand:** "Sticker Pop", the sprinting elephant in sneakers; Fredoka for text, Martian Mono for code (docs/design/).
 
 ### Commands (plan/commands.md)
 
@@ -100,8 +100,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **`pun config`** prints the resolved config; **`pun explain <rule>`** a rule's docs and upstream names;
   **`pun list-files [--command format|lint|analyse] [-0]`** the files a command checks, like Mago's.
 - **No caches** (Pushpak, 2026-11-05). Every `pun format`, `lint`, `check` and `analyse` run checks every file from
-  scratch; a slow run is fixed by redesigning for speed, not by caching. The result cache is gone; Pint's
-  `--cache-file` and Pun's old `--no-cache` are accepted and ignored.
+  scratch; a slow run is fixed by redesigning for speed, not by caching. The result cache is gone, and so are the
+  flags that did nothing without it (Pint's `--cache-file`, Pun's old `--no-cache`).
 - **No LSP** until after 1.0's commands; `pun lsp`, pun-lsp and PHPantom were removed (in git history).
 
 ### Config and rules (plan/config.md, plan/rules.md)
@@ -128,8 +128,9 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Analyse rules are on or off**; every finding is an error.
 - **No levels anywhere.** Migrate writes the exact rules an old config ran, at `error`, and when interactive offers the
   closest preset with a count of the new problems it would report.
-- **Laravel, Pest and PHPUnit turn on by themselves** from composer.lock, with their version rules; a group can be
-  switched off. `[php] version` comes from composer.json; the config value only overrides it.
+- **Laravel, Pest and PHPUnit turn on by themselves** from pun.lock (composer.lock in a project not migrated yet),
+  with their version rules; a group can be switched off. `[php] version` comes from pun.toml's `[require] php`
+  (composer.json's before migrate); the config value only overrides it.
 - **`[files]`** (paths, exclude) is shared by every command, and each command's `exclude` adds to it (assistant's
   default, Mago's model).
 - **Unsupported items** (an unported rule, a custom fixer class, Rector's Symfony, Doctrine and downgrade sets, a PHPStan
@@ -181,7 +182,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Pun's own human output** for every command, modelled on oxfmt, Biome and Ruff: file lines, problem blocks with code
   by default (`--concise` for one line), one summary line. Pint's human screen is dropped.
 - **`pun check` groups by step** like Vite+'s `vp check`: one status line per step, its problems under it, one summary.
-- **Brand colours** from design/tokens.json at truecolor, 256 and 16 colours; `NO_COLOR`, `--color`, ASCII fallbacks.
+- **Brand colours** from docs/design/tokens.json at truecolor, 256 and 16 colours; `NO_COLOR`, `--color`, ASCII fallbacks.
 - **GitHub annotations** are automatic under `GITHUB_ACTIONS`; `--format=github` forces them. Clean files print nothing
   (`-v` adds a dim line).
 - **Exit codes and machine formats** stay Pint- and PHPStan-compatible. Exit 2 means Pun couldn't run.
@@ -232,10 +233,7 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 
 | Work | Status |
 | --- | --- |
-| output follow-up: add a warning text token to design/tokens.json that reads on a light ground (light terminals fall back to SGR 33) | todo |
-| output follow-up: decide the rule docs base URL so `Renderer::with_rule_docs` (now `#[cfg(test)]`, drop that) links rule IDs, and switch `pun explain`'s docs row from the mapping.toml#L<line> link (`pun_config::MAPPING_URL`) to the rule page | todo |
-| output 5: `pun check` grouped view (deferred, Pushpak 2026-10-18: parity starts without it; when built, add a row to put the analyse step in the view) | deferred |
-| output follow-up: when lint and analyse emit `pun_problem::Problem` values, annotate them through `github::problem` (`::warning` for lint warnings); analyse decides whether to drop `title=` for byte parity with PHPStan's `--error-format=github` | todo |
+| output follow-up: add a warning text token to docs/design/tokens.json that reads on a light ground (light terminals fall back to SGR 33) | todo |
 | output follow-up (decision): under agent mode with `--format=github`, should run errors print `::error ::<message>` instead of the agent line | todo |
 
 **Gate:** every human output sample in the plan files is pinned by a test; machine formats and exit codes still pass
@@ -253,9 +251,8 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | audit 26 (needs Pushpak): the agent `MODE: OnceLock` in pun-cli/src/agent.rs becoming an `OutputMode` passed down from main reaches config's init.rs and migrate.rs and every reporter; the code keeps the once-per-process global (decided before any output, like a logger) unless Pushpak wants the threading. Item 88 (md-5 crate) is done | needs Pushpak |
 | audit 76 follow-up (format): make `Token.id`/`Token.content` private once nothing outside pun-tokens reads them: the lint tracks' new pun-fixers files (non_printable_character, ternary_to_null_coalescing, phpdoc_to_{param,property,return}_type, analyzers/abstract_phpdoc_to_type_declaration_fixer) and pun-cli/src/migrate.rs:716-735 should use `get_content()`/`get_id()` and `Token::new`/`char`/`with_id` | todo |
 | format 7 follow-up: `"header_comment": true` (no `header`) is a pun.toml config error (exit 2) in Pun; Pint configures it and reports `[header_comment] Configuration is required.` as an error on every file | todo |
-| format 7 follow-up: laravel-framework pun-harness format runs exceed one 600-second heavy call; run Pint with --parallel in the harness or split the corpus run | todo |
 | format 7 follow-up: with the symfony preset Pun's Blade path does not apply the symfony PHP rules Pint applies inside Blade directives (yoda_style, not_operator_with_successor_space); blocks a 0-diff symfony-preset pinkary run once phpdoc_to_comment is in lint | todo |
-| init 4: one `pun check`, then offer fix and baseline | blocked (analyse 1-2) |
+| init 4: one `pun check`, then offer fix and baseline (analyse 1-2, which it waited for, has landed) | todo |
 
 **Gate:** the Pinkary CI swap from `vendor/bin/pint` to Pun, and the 8-core benchmark.
 
@@ -269,10 +266,8 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | lint 1-2 follow-up (from perf lint 4): when `pun lint` is wired into pun-cli, read files on a few threads of their own (3 was fastest in the lint spike) and parse on all cores, instead of opening on every core; opens on more than 4 threads contend on macOS | todo |
 | pun-lint: replace `syntax::same_code` with a structural node comparator (Rector's NodeComparator), shared by rules | todo |
 | pun-lint: name resolution for rules that need resolved names (mago-names or analyse's index) | todo |
-| lint: the engine uses `pun_problem::{Problem, apply_fixes}` for diagnostics and the fix loop | todo |
 | lint 3-6 follow-up (platform): a token-path (PHP-CS-Fixer) lint rule reports its file at the first changed line, not one diagnostic per change; split its diff into per-rule hunks so each change is a problem with its own span and `@pun-ignore` line forms work for it (today only `@pun-ignore-file`) | todo |
 | lint 3-6 follow-up (platform): Pint's checkstyle, junit and gitlab reporters list a file's lint and analyse problems by rule ID only (PHP-CS-Fixer's per-file shape); give each problem its line and message there | todo |
-| platform decision (lint 1-2, from config 7): `pun lint`, the lint half of `pun check` and `pun analyse` skip Blade templates and Pint's default directories (bootstrap/cache, build, node_modules, storage) besides their own excludes, as Mago and PHPStan see only PHP sources; `pun lint --mago` is gone (its Laravel rules are native lint rules) | done |
 | pun-analyse: a `run` that takes the analysed files' sources, so `pun check` reads each file once instead of again after format and lint | todo |
 | platform bug (found by salvage-cli): a token lint rule at `warn` (e.g. `style/no-alias-function`) makes `pun lint` agent output say `fail, 1 file with fixes` and the human summary mark the file with ✖, while the exit code is 0 (warnings pass); report such files as warnings (`pass, 1 warning`, `[warn]` on the line) as native warnings are | todo |
 | lint vs Rector follow-up (scripts/lint-vs-rector.py, laravel-framework: 5427 (file, rule) pairs agree, 336 Rector only, 146 Pun only; pinkary: 0 differences): the `types` rules' residuals. Rector only: add-return-type-from-new 67, add-closure-never-return 54, add-array-return-type 41, add-return-type-from-constant 26, add-string-return-type 17, add-arrow-function-return-type 15, add-numeric-return-type 13, add-return-type-from-param 11, add-fluent-return-type 9, 4 each add-string-return-type-from-scalar/add-return-type-from-property/add-bool-return-type. Pun only: add-string-return-type 31, add-return-type-from-cast 26 (e.g. `PhpRedisLock::release()`, which overrides the untyped `RedisLock::release()`: port `ClassMethodReturnTypeOverrideGuard`'s parent and child checks now that the codebase has the project's classes), add-closure-void-return 14, add-closure-return-type 7 | todo |
@@ -282,7 +277,7 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | lint vs Rector follow-up (needs Pushpak): `style/require-statement-padding` reports 60 laravel-framework files Rector leaves: Rector runs every rule in one traversal, so `NewlineAfterStatementRector` never sees the statements `RemoveAlwaysElseRector` moves out of an `else`; Pun's later fix round does and adds the blank line (a second `rector process` would too). Kept: rounds as in Ruff (lint.md); the other option is to stop a rule from reporting on code an earlier round's fix wrote | needs Pushpak |
 | lint vs Rector follow-up: `complexity/prefer-empty-array-identical` misses 34 laravel-framework files where PHPStan knows a written parameter is still an array (`$credentials = array_filter($credentials, ...)`, then `empty($credentials)`): syntax_types.rs `parameter` gives up on any write before the code; take the written value's type from facts.rs instead | todo |
 | lint vs Rector follow-up: one laravel-framework file each, Rector only: php-8.4/prefer-round-mode-enum, php-8.4/prefer-array-any, dead-code/no-useless-ternary, dead-code/no-unused-expression, dead-code/no-unreachable-code, dead-code/no-return-in-constructor, complexity/prefer-min-max, complexity/no-sole-value-sprintf, complexity/no-boolean-literal-compare, classes/no-protected-method-in-final, types/add-numeric-return-type-from-scalar, types/add-never-return-type; Pun only: types/add-function-void-return (`scripts/lint-vs-rector.py laravel-framework` lists the files) | todo |
-| coverage: context/reports/COVERAGE.md has 75 exclusions (about 55 from the pun-lint coverage pass: non-target node guards, no-Program-ancestor and impossible-scope lines); AGENTS.md wants them rare: turn each guard into a `let ... else { unreachable }`-free shape (match on the target node in the rule's visitor, or delete the guard) so the line disappears instead of being excluded | todo |
+| coverage: context/reports/COVERAGE.md has 81 exclusions (59 of them in pun-lint, mostly from its coverage pass: non-target node guards, no-Program-ancestor and impossible-scope lines); AGENTS.md wants them rare: turn each guard into a `let ... else { unreachable }`-free shape (match on the target node in the rule's visitor, or delete the guard) so the line disappears instead of being excluded | todo |
 | lint Laravel attributes batch 8 (needs Pushpak): authorize integration of the independently produced 32-rule mailbox; keep strict upstream parity as the default | needs Pushpak (read-only audit complete; both mailbox digests match; all 154 upstream fixtures and 67 Illuminate stubs are byte-identical, with 23 Oracle and six Pun controls; source changes must replace the tab-indentation and `new static` skips with upstream output; malformed-array parser outcomes need a separate check; batch 8 remains unapplied and excluded from counts) |
 | lint 7 types: `add-return-type-from-ternary`, `add-nullable-return-type`, `add-union-return-type` (src/rules/types, out of `all()`) pass Rector's fixtures but differ on laravel-framework; port Rector's `TypeFactory::uniquateTypes` and PHPStan's arithmetic result types, then add them to `types::all()`; then typed-call, native-call, new-array, private-method-array, try-catch, from-parent, then the param, property and phpdoc rules. Corpus residuals come from Rector's cross-file effects, vendor classes, declared-only `mixed`, docblock shapes and Mago's truthy narrowing | todo |
 | lint 7 next small rules: classes/add-dynamic-properties (property types and docblocks), phpdoc/no-useless-{param,return,var} (TypeComparator), functions/no-extra-arguments and require-strict-in-array (types), arrays/no-implicit-array-creation (needs PHPStan's maybe-defined scope through loops), functions/require-array-filter-callback and the six style/no-dynamic-* strict rules (messages print PHPStan type descriptions), dead-code/no-unused-private-method and no-empty-method (CallCollectionAnalyzer and ArrayCallableMethodMatcher are type-based), laravel/prefer-latest-oldest (QueryBuilderAnalyzer needs Laravel types). Type-led ones (ExplicitReturnNull, SimplifyIfReturnBool, InlineArrayReturnAssign, SimplifyIfNullableReturn, VariableConstFetchToClassConstFetch, ThrowWithPreviousException, SafeDeclareStrictTypes) wait for Build 8 | todo |
@@ -291,7 +286,6 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | lint 7 follow-up (from next small rules): laravel/prefer-casts-method is `fix = "safe"` in mapping.toml but Mago 1.57.0 has no fix (rector-laravel's ModelCastsPropertyToCastsMethodRector is in the unsupported laravel-110 set); decide whether Pun writes the `casts()` method | todo |
 | lint oracle follow-up (Rector 2.8.4 bump): port phpdoc-parser's format-preserving docblock `Printer` and its Doctrine annotation parser (Rector 2.8.4's `PhpDocInfoPrinter` and `NodeDecorator/DoctrineAnnotationDecorator`), then re-derive RenameClassRector/Oracle*, AnnotationToAttributeRector/Oracle and the docblock Pun/ cases from `.oracle/rector-bin` (plan/lint.md) | todo |
 | lint 8: expose expression types, class subtyping and resolved constant values to pun-lint rules (Context has only source/path/php_version); blocks the type-aware rector-laravel ports and the rows above that wait for analyse's index | todo |
-| lint: `PreferNullsafe` (optional/nullsafe, written, withheld): implement `Rule::configure` for its `exclude_methods` option, then add it to `rules::all()` and mapping.toml | done |
 | lint: pun-fixers ports `lint/types/add-void-return-type` (`void_return`) and `lint/types/require-strict-param` (`strict_param`), token fixers like `strict_comparison` | todo |
 | lint: switch crates/pun-cli/tests/cli.rs:635-659 (`no-homoglyph-names`) and tests/migrate.rs:196 (`no_null_property_initialization`, `phpdoc_to_comment`) to an unported rule as the unported example; those rules are ported now | todo |
 | lint 7 follow-up (from coverage): `add-return-type-from-ternary` at PHP 7.1 types `return $x ? get_class($x) : get_class($x);` as `: string`; Rector (ReturnTypeFromStrictTernaryRector alone) leaves it (PHPStan's `get_class()` is `string|false` there). Add the Oracle fixture and match | todo |
@@ -301,7 +295,7 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | lint 7 follow-up (from batch 2): move crates/pun-lint/src/rules/rector_code_quality.rs's shared helpers (precedence table, in_parent, statements_edit, inverse_node/de_morgan, call_to/args/is_constant/equal) into `crate::syntax` for later batches (syntax.rs is owned by lint 1-2) | todo |
 | lint 7 follow-up (from batch 2): `lint/complexity/prefer-null-coalesce`'s mapping summary describes more than ArrayKeyExistsTernaryThenValueToCoalescing (isset ternaries, if/return chains, foreach lookups); check whether more upstream rules belong to it | todo |
 | lint 7 follow-up (from batch 2): on a colon-body `if (...): ... endif;` Rector reprints the `if` with braces when one statement becomes two, Pun keeps the colon syntax | todo |
-| lint 7 follow-up (from lint parity): `pun lint` with every rule on panics (index out of bounds, rector_stmts.rs `with_comments`) in `require_strict_types_in_tests::declare_strict_types` on a file holding only `<?php`; with every lint rule of that time ported (703; 24 newer ones are pending, §0), the `rule not supported by Pun yet` path in pun-cli (lint_plan.rs, run.rs `unported_error`) is unreachable and its CLI tests are removed, so delete that code or keep it behind a test hook | todo |
+| lint 7 follow-up (from lint parity): `pun lint` with every rule on panics (index out of bounds, rector_stmts.rs `with_comments`) in `require_strict_types_in_tests::declare_strict_types` on a file holding only `<?php`; with every lint rule of that time ported (703; the newer ones still pending are counted in §0), the `rule not supported by Pun yet` path in pun-cli (lint_plan.rs, run.rs `unported_error`) is unreachable and its CLI tests are removed, so delete that code or keep it behind a test hook | todo |
 | lint 7 follow-up (from batch 1): port `lint/dead-code/no-empty-loop` (RemoveDeadLoopRector) once analyse gives pun-lint pure-function and Throwable checks (Build 8) | todo |
 | lint 7 follow-up (from batch 1): rewrite an emptied alternative-syntax body with braces in rules/php_parser.rs's shared remove(), so no-empty-block and no-useless-catch match Rector as no-useless-continue does | todo |
 | lint 7 follow-up (from batch 1): merge rules/php_parser.rs and rules/used_variable.rs with batch 2's rules/rector_code_quality.rs helpers when they move into `crate::syntax` | todo |
@@ -319,7 +313,7 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 
 | Work | Status |
 | --- | --- |
-| analyse 3: finish level 0 and the level-2 class rules; the current rule counts are in §0. Not yet: DebugScopeRule, DumpNativeTypeRule and FileAssertRule | todo |
+| analyse 3: finish level 0 and the level-2 class rules; the current rule counts are in §0. Not yet: DebugScopeRule and DumpNativeTypeRule | todo |
 | analyse compound method signatures: retain combined semantic parameter, reference, template and return metadata through the ordinary shared argument checker | doing (queued source-identity bridge matches 129 public declaration/annotation records across 25 configurations, all 132 TemplateMap combinations, 32 private identity records and 128 transformation records; its identity commit covers 1,361/1,361 changed production lines without exclusions and passes 106 PHPStan tests, 447 native units and 146 analyser tests across 28 targets; fresh oracle recaptures preserve every containing Methods/callable family: 571 cases and 2,787 diagnostic records; six stale level gaps are confirmed; the queued singleton callable conversion repair matches all eighty original callable records and twenty mutation controls with 3/3 changed lines covered, while broader conjunction probes remain red; the multiple-array array_map producer remains separate; main integration also needs downstream lint and no-op unset adapters; traversal/export prerequisites pass the complete main gate; staticness is separately verified and queued, while actual body-local purity, compound activation, variance and void authority remain unfinished; no private red ancestry) |
 | analyse native list source kind: retain constant-shape identity separately from generic lists carrying written or asserted offsets | doing (the queued native-kind prerequisite passes seven owning tests, 446 native analyser units, 304 codex units and 61 neighbors; all 100 changed executable production lines are covered privately without exclusions, with seventeen external-function export warnings retained; main integration must adapt the two newer unset_member sites before combined verification; the shared converter remains separate; no kind inferred from equal values, count or call syntax) |
 | analyse open-shape template bound validation: substitute both known entries and the remaining value tail with the matching comparator contract | doing (the isolated definition_type_replacer trial repairs two missing native class-bound checks but adds an incorrect closed-shape rejection; PHPStan gates extra-key comparison on both explicit unsealed carriers; a coherent traversal/comparator correction is in progress; actual invocation inference already traverses prefix and tail and its twelve-record value family is green before and after; shared generic-checking diagnostics remain separately incomplete) |
@@ -375,7 +369,6 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | analyse phpdoc/operators: type-alias rules, phpdoc/invalid, invalid-phpstan-tag, the require-extends/-implements/sealed tag rules, the mixin/method/property tag rules (class, trait, trait-use), invalid-var-tag-type, invalid-param-callable-tag, the (method) assert and conditional-return tag rules, the type-mismatch rules (Incompatible{,Property,PropertyHook,ClassConstant}PhpDocTypeRule) and the 15 strict-rules `operators` (`strictRules.booleansInConditions` / `numericOperandsInArithmeticOperators`) ported, with the global `typeAliases` (phpdoc_tags.rs, require_tags.rs, class_tags.rs, var_tags.rs, callable_tags.rs, assert_tags.rs, conditional_return.rs, phpdoc_types.rs, operators.rs; a class's local type aliases are in its members' NameScope; pun_phpstan::phpdoc is a port of phpdoc-parser 2.3.3 with its exception messages). invalid-var-tag (WrongVariableNameInVarTagRule's variable-name checks, var_names.rs, with a syntactic `hasVariableType()`), GenericCallableRuleHelper (generics.rs `generic_callables`; callable types keep their templates), MethodAssertRule's inherited asserts and GenericObjectTypeCheck's / GenericAncestorsCheck's call-site variance errors (`Type::Projection`; a class's template variance from its `@template-covariant`/`-contravariant` tags) ported. VarianceCheck (`generics.variance`, `function.variance`, `method.variance`: FunctionSignatureVarianceRule, MethodSignatureVarianceRule, PropertyVarianceRule and GenericAncestorsCheck's; variance.rs) ported, with built-in classes' template variance exported into symbols.json (`variances`). Inherited method and property PHPDoc types map the ancestor's templates through the class's `@extends`/`@implements` arguments (or their defaults) (`resolveTemplateTypeInTag()`, declared.rs `ancestor_types()`). FunctionDefinitionCheck's level-2 PHPDoc class checks (`checkThisOnly` off: the classes of `@param`, `@param-out`, `@param-closure-this` and `@return` types and their class-name case, signatures.rs `phpdoc_classes()`; a `@return` type must be followed by whitespace) ported; an anonymous class's methods see the templates of the function or method it is declared in (declared.rs `enclosing_templates()`); the property hooks' PHPDoc classes (ExistingClassesInPropertyHookTypehintsRule: a get hook returns the property's `@var`, a set hook's parameter takes its own `@param` or the `@var`) and ExistingClassesInPropertiesRule's PHPDoc type classes from level 2 (ponytail: a promoted property's type from the constructor's `@param` is not read). `missingType.callable` (`checkMissingCallableSignature`, Project → Checker; MissingTypehintCheck's rules, the class-level `@method`/`@property`/`@mixin` checks and AssertRuleHelper), LocalTypeAliasesCheck's and SetPropertyHookParameterRule's missing-type checks (a trait's PHPDoc in a using class's context resolves the trait's type aliases, `self`/`static` as the class) ported. Left: VarTagTypeRuleHelper (`varTag.nativeType`/`varTag.type`/`phpstanApi.varTagAssumption`: needs native expression types), var-tag-type-mismatch (VarTagChangedExpressionTypeRule) | todo |
 | analyse phpdoc follow-up (pun-phpstan resolve.rs): `value-of`/`key-of` of a template (resolved late) kept as a `value-of`/`key-of` class phpdoc_types.rs skips (`late()`); an OffsetAccessType of a template or an object (ArrayAccess) or with a non-constant offset of a constant array is not resolved (`resolve_late()`), nor checked against the template's bound in resolveOffsetAccessNode(); pure and static callables keep no purity or staticness; a constructor's own `@readonly` tag does not make its promoted properties covariant for PropertyVarianceRule; a call-site variance is not applied to the template's position (`resolveTemplateTypes()`) | todo |
 | analyse phpdoc follow-up (pun-phpstan types.rs): narrow a conditional type's branches by its condition (`getNormalizedIf()`), and take the `@phpstan-template` tags over the `@psalm-template` ones (gaps.txt: IncompatiblePhpDocTypeRuleTest testBug10622/10622B, Methods ReturnTypeRuleTest testBug4605) | todo |
-| analyse phpdoc follow-up: `missingType.callable` of AssertRuleHelper (and MissingTypehintCheck's other callers) needs the `checkMissingCallableSignature` parameter (off by default) read from the config (assert_tags.rs, missing_types.rs) || done |
 | analyse operators follow-up (an-types): Mago's `mixed` is always implicit in convert.rs, so BooleanRuleHelper's explicit-mixed check (`Only booleans are allowed in &&, mixed given`) never reports a `mixed`-typed parameter or call | todo |
 | analyse phpdoc follow-up: phpdoc_tags.rs and var_tags.rs check the doc before every statement, also those PHPStan finds unreachable (an UnreachableStatementNode is virtual); php-parser's `Nop` is read before a block's, class-like's or the file's end only (not a `case` list's or a colon-syntax block's) | todo |
 | analyse phpdoc follow-up: IncompatiblePhpDocTypeRuleTest testBug13652 reports generics.* Pun extras (gaps.txt) | todo |
@@ -402,7 +395,7 @@ Gate passed ea7a84bc2d4c4f4b90ad177d911e6ade3accf253
 | analyse bug: anonymous class names carry the scratch path (`Foo@anonymous/scratch/laravel-framework/src/...`); PHPStan writes `Foo@anonymous/Illuminate/...` (68 missingType differences on laravel-framework) | todo |
 | analyse follow-up: crates/pun-phpstan/data/symbols.json is the Linux export (constants such as MSG_* differ on macOS); the method `doc`/`propertyDocs` data was merged in from a macOS run, so re-run `scripts/export-phpstan-symbols.php` on the Linux server to refresh it and its php85 entries | todo |
 | analyse 4-5: all 369 analyse rules native (one PHPStan Rule class each, rules.md §7) | todo |
-| analyse types2 (levels 2-9 on typed receivers, an-types2): ported FunctionCallParametersCheck's level-5 checks (`argument.type`, `argument.byRef`, `argument.unpackNonIterable`; types/arguments.rs) with selectFromTypes over the variants (params.rs `winning()`), ParameterCastableToString/Implode/Sort, RandomIntParameters, ArrayFilter, ArrayValues (castable.rs), MethodCallCheck/StaticMethodCallCheck on any receiver (`method.nonObject/notFound`, `staticMethod.*`; receivers.rs) and AccessPropertiesCheck and AccessStaticPropertiesCheck on any receiver (`property.*`, `staticProperty.*`, with `@mixin` and `@phpstan-require-extends` members; properties.rs), through findTypeToCheck at each level; CallCallablesRule (`callable.*`, pipes included), CallUserFuncRule, RegularExpressionQuotingRule (`argument.invalidPregQuote`) and FunctionDefinitionCheck's `@param`/`@return` class.notFound (level 2). GenericParametersAcceptorResolver (templates inferred from the arguments, types/templates.rs in pun-phpstan) and selectFromArgs' callback parameters of array_map/array_filter/array_walk/array_find*/implode (selector.rs), and accepts-reason tips on argument.type (types/reasons.rs in pun-phpstan, `Levels::accepts_tip()`), `argument.templateType` (with parameter defaults, unpassed variadics and conditional return types in the inference), curl_setopt()/curl_setopt_array() option types (curl-options.json exported from the oracle), the Closure::bind()/bindTo() `@param-closure-this` override, a bound closure's class scope (bind_scope.rs) and PHPStan's dynamic return types as Mago providers for the rules' inference (return_types.rs: functionMap's `__benevolent<…>` returns such as curl_init(), ClosureBind(To)DynamicReturnTypeExtension). Left (level gaps, "an-types2" block): closure parameters narrowed by the callable they are passed to (needs Mago's analyser to intersect a typed closure parameter with the expected callable's, as MutatingScope::enterAnonymousFunction() does), Mago's constant-array key order, NewIsAlwaysFinal object types (Mago's named objects carry no exactness, and a variable's type loses its `new` origin), `Foo::class` of an unknown class as a class string, DateTimeInstantiationRule (needs PHP's timelib date parser: port or vendor, Pushpak to decide), unresolved `@mixin T`, dynamic member names, asymmetric visibility on writes, and Mago inference differences (no types after an undefined property, list vs array, narrowing) | todo |
+| analyse types2 (levels 2-9 on typed receivers, an-types2): ported FunctionCallParametersCheck's level-5 checks (`argument.type`, `argument.byRef`, `argument.unpackNonIterable`; types/arguments.rs) with selectFromTypes over the variants (params.rs `winning()`), ParameterCastableToString/Implode/Sort, RandomIntParameters, ArrayFilter, ArrayValues (castable.rs), MethodCallCheck/StaticMethodCallCheck on any receiver (`method.nonObject/notFound`, `staticMethod.*`; receivers.rs) and AccessPropertiesCheck and AccessStaticPropertiesCheck on any receiver (`property.*`, `staticProperty.*`, with `@mixin` and `@phpstan-require-extends` members; properties.rs), through findTypeToCheck at each level; CallCallablesRule (`callable.*`, pipes included), CallUserFuncRule, RegularExpressionQuotingRule (`argument.invalidPregQuote`) and FunctionDefinitionCheck's `@param`/`@return` class.notFound (level 2). GenericParametersAcceptorResolver (templates inferred from the arguments, types/templates.rs in pun-phpstan) and selectFromArgs' callback parameters of array_map/array_filter/array_walk/array_find*/implode (selector.rs), and accepts-reason tips on argument.type (types/reasons.rs in pun-phpstan, `Levels::accepts_tip()`), `argument.templateType` (with parameter defaults, unpassed variadics and conditional return types in the inference), curl_setopt()/curl_setopt_array() option types (curl-options.json exported from the oracle), the Closure::bind()/bindTo() `@param-closure-this` override, a bound closure's class scope (bind_scope.rs) and PHPStan's dynamic return types as Mago providers for the rules' inference (return_types.rs: functionMap's `__benevolent<…>` returns such as curl_init(), ClosureBind(To)DynamicReturnTypeExtension). Left (level gaps, "an-types2" block): closure parameters narrowed by the callable they are passed to (needs Mago's analyser to intersect a typed closure parameter with the expected callable's, as MutatingScope::enterAnonymousFunction() does), Mago's constant-array key order, NewIsAlwaysFinal object types (Mago's named objects carry no exactness, and a variable's type loses its `new` origin), `Foo::class` of an unknown class as a class string, unresolved `@mixin T`, dynamic member names, asymmetric visibility on writes, and Mago inference differences (no types after an undefined property, list vs array, narrowing) | todo |
 | analyse (from mapping): re-link `fixed_by` from analyse/types/missing-param-type, missing-property-type and missing-return-type to the split lint type rules where one fits | todo |
 | analyse (from mapping): consider dedicated home rules for identifiers that many classes emit (class.notFound, missingType.iterableValue), so migrated ignores read naturally | todo |
 | analyse (from mapping): revisit the Symfony and phpstanApi exclusions if the scope widens | todo |
@@ -437,16 +430,15 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 
 | Work | Status |
 | --- | --- |
-| release: after the first tag, submit github.com/punphp/pun to Packagist once and turn on its GitHub hook; tags then publish the package | needs Pushpak |
-| release: v0.1.0, the first stable release (v0.1.0-beta.3 is the last beta, released 2026-11-12): push the tag v0.1.0, check that cargo-dist publishes the four attested archives and their .sha256 as a GitHub release marked latest, then `composer require --dev punphp/pun`, `curl -fsSL https://pun.laravel.cloud/install | sh` and `pun --version` on Linux and macOS | needs Pushpak |
-| docs content: 369 analyse rules have no summary; no rule has a why or examples. Add prose and oracle-backed examples in mapping.toml in later batches | todo |
-| release notices: the Zend sorting port requires the acknowledgment in THIRD_PARTY_NOTICES.md and the Zend Engine acknowledgment in advertising materials that mention its features or use (Zend Engine License clauses 5 and 6); verify those materials before publication | todo |
+| release: punphp/pun is on Packagist (submitted 2026-11-11) with the three betas only: v0.1.0 (tagged 2026-11-14) is missing hours after the tag, so the GitHub hook looks off. Turn the hook on (or update the package once) so tags publish | needs Pushpak |
+| release: v0.1.0 is tagged and its GitHub release (marked latest, 2026-11-14) has the four archives and their .sha256. Left: check the archives' attestations, then `composer require --dev punphp/pun` (once Packagist has v0.1.0), `curl -fsSL https://pun.laravel.cloud/install | sh` and `pun --version` on Linux and macOS | needs Pushpak |
+| docs content: 360 of the 369 analyse rules have no summary; only format/casts/no-short-bool has a why, and no rule has examples. Add prose and oracle-backed examples in mapping.toml in later batches | todo |
+| release notices: the Zend sorting port requires the acknowledgment in licenses/THIRD_PARTY_NOTICES.md and the Zend Engine acknowledgment in advertising materials that mention its features or use (Zend Engine License clauses 5 and 6); verify those materials before publication | todo |
 
 ### Foundations, alongside every step (plan/foundations.md)
 
 | Work | Status |
 | --- | --- |
-| CI: get CI on main green, then re-enable it (disabled on GitHub 2026-10-18 by Pushpak: every agent push was billing a run; `gh workflow enable CI`) | todo |
 | tests: crates/pun-phpstan/tests/php.rs `php_helpers` fails on macOS on two error offsets (`/a)/` gives 2, PHP 1; `/(?<1a>x)/` gives 4, PHP 3); the linked pcre2 likely differs from PHP's PCRE2 | todo |
 | pun-harness: the comment in src/main.rs about the starter's `preset = "recommended"` is stale (migrate no longer writes it) | todo |
 | CI: CLI polish item 7 (`script` check in CI, skip message in tests/migrate.rs) | todo (stopped by Pushpak) |
@@ -490,8 +482,6 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | audit item 39 follow-up: docblock Annotation's types_content/types caches are still RefCell clones per read; a OnceCell needs set_types/remove to take &mut self, which DocBlock's OnceCell<Vec<Annotation>> does not allow | todo |
 | audit item 41 follow-up: other patterns built from file content still go through Preg's never-evicting cache (no_unused_imports' comment pattern, method_chaining_indentation); move them to the `_uncached` entry points | todo |
 | coverage: measure punphp (pun-cli) on Linux after audit item 33 (ef7c179); migrate::announce's decline branch is reached only by the Linux-only pty tests | todo |
-| audit-hygiene follow-up (item 66): pun-lint's examples repeat their file walkers; share one helper (left for the lint track) | todo |
-| oracle 2.3.1 follow-up: port PHPStan 2.3's new rules, all unported in mapping.toml: SwitchConditionRule (switch.alwaysFalse/alwaysTrue/duplicateCase), UnusedVariableRule (assign.redundant), UnusedFunctionParametersRule and UnusedMethodParametersRule (bleeding edge, level 4), SortWithoutEffectRule (bleeding edge, level 5), ReturnTypeAfterFinallyRule (return.byRefFinally, level 3), PurePropertyHookRule (level 2) | todo |
 | oracle 2.3.1 follow-up: UnusedClosureUsesRule and UnusedConstructorParametersRule moved to VariableWritesNode dataflow (closure.unusedUseFlow, constructor.unusedParameterFlow: a use or parameter overwritten before any read is unused); Pun keeps the 2.2 name check (levels/gaps.txt) | todo |
 | oracle 2.3.1 follow-up: PHPStan 2.3's scope and impure points: a `for` loop whose body always exits checks its condition once (tests/dead_code.rs GAPS), an expression that can throw an Error (`/`, `%`, sprintf(), strpos(), array_combine()) is no noop, PHPDoc-certain tips, nullsafe short-circuits that terminate; ClassConstantAccessType (`T::CONFIG_*` is deferred, no unresolvable type); the inferred types in return.type messages (levels/gaps.txt) | todo |
 | oracle 2.3.1 follow-up: 2.3's template-type descriptions (CallMethodsRuleTest::testArrayShapeTemplateKey, testGenericsEmptyArray, OverridingMethodRuleTest::testBug9615) | todo |
@@ -515,6 +505,6 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 
 ## 4. Open questions
 
-1. **After 1.0.** Are `pun install`, `pun run` and `pun test` (the archived plan's phases 5-7) part of 1.0 or after it?
+1. **After 1.0.** Are `pun run` and `pun test` (the archived plan's phases 6-7) part of 1.0 or after it? (`pun install`, phase 5, is built: plan/packages.md.)
 2. **`--remove-tools` in migrate.** Should migrate offer to remove Pint, PHPStan and Rector from composer.json? The
    default is no: the future `pun-migrate` agent skill does workflow changes.

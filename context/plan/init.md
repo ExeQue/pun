@@ -1,7 +1,7 @@
 # Plan: `pun init`
 
 Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". Build 1-3 and 5 are built
-(crates/pun-cli/src/init.rs, tests/init.rs); Build 4 waits for analyse 1-2. The journey comes from
+(crates/pun-cli/src/init.rs, tests/init.rs); Build 4 is not built (analyse 1-2, which it waited for, has landed). The journey comes from
 Pushpak (lint.md §8). Decisions with dates: ../PLAN.md §2. Build list: §3.
 
 ## 1. What it is
@@ -36,7 +36,8 @@ $ pun init
   Add `pun check` to CI and your composer scripts.
 ```
 
-1. **Detect** from composer.json and composer.lock: the PHP version, Laravel, Pest, PHPUnit and their versions.
+1. **Detect** from composer.json and composer.lock (pun.toml and pun.lock once they hold the dependencies): the PHP
+   version, Laravel, Pest, PHPUnit and their versions.
 2. **Ask three questions** with the detected defaults: `laravel` style for a Laravel app (otherwise `psr12`),
    dead-code + modernize, and `recommended`.
 3. **Write pun.toml** with only the three choices.

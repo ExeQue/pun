@@ -61,7 +61,7 @@ parsing each file once.
 
 **`pun check` (report only):**
 1. **Find files** from `[files]` plus each command's own `exclude` (config.md §3), and read the versions from
-   composer.json and composer.lock.
+   pun.toml and pun.lock (composer.json and composer.lock in a project not migrated yet).
 2. **Index pass (parallel).** Parse every file once into Mago's syntax tree and collect its classes, functions and
    constants into one project index. Analyse needs this before it can check any file. Not cached: every run parses
    every file.

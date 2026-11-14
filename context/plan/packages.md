@@ -6,14 +6,19 @@ file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and 
 `pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
 158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
 Composer's exact lock in 1.8 s against Composer's 9.4 s (`context/reports/scoreboard.md`). Left of steps 8 and 9: the other corpus projects, the 20
-recorded partial updates, `vcs` repositories, and the root `filter.summary-url`. Decisions with dates: §6.
+recorded partial updates, `vcs` and `artifact` repositories, and the root `filter.summary-url`. Not built from steps 1-7: the
+`.oracle/composer` phar and `scripts/install-parity.sh` (the tests' expectations come from Composer 2.11.2 runs),
+`pun composer` and its commands (`validate`, `dump-autoload`, `run-script`), and the plugin host: `pestphp/pest-plugin`
+is ported, `php-http/discovery` is skipped as inert, and every other allowed plugin is reported and skipped. `pun x`,
+`pun vet` and workspaces are built (§7). Decisions with dates: §6.
 Beyond Composer: §7. Open questions: §8.
 
 ## 1. What it is
 
 Pun installs a project's dependencies the way Composer does, much faster. It reads pun.toml, reads and writes
-pun.lock, and fills `vendor/` with the same files `composer install` writes. `pun migrate` moves a project's
-composer.json and composer.lock into pun.toml and pun.lock once; no other command reads them. The proof is a parity
+pun.lock, and fills `vendor/` with the same files `composer install` writes. `pun migrate` copies a project's
+composer.json and composer.lock into pun.toml and pun.lock once and leaves both in place; no package command reads
+them (§6). The proof is a parity
 harness: on every corpus project, `pun install` and `composer install` give byte-identical `vendor/` trees from the
 same lock, and `pun update` writes the lock `composer update` writes.
 
@@ -25,7 +30,7 @@ The everyday commands are top-level, with Composer's names and flags:
 | `pun update [packages]` | `composer update` | Resolves again, writes pun.lock, installs |
 | `pun require <pkg[:constraint]>` | `composer require` | Adds to pun.toml, then a partial update |
 | `pun remove <pkg>` | `composer remove` | Removes from pun.toml, then a partial update |
-| `pun composer <command>` | `composer <command>` | Every other Composer command: `dump-autoload`, `show`, `outdated`, `why`, `why-not`, `audit`, `validate`, `licenses`, `run-script`, `check-platform-reqs`, `config`, ... |
+| `pun composer <command>` | `composer <command>` | Every other Composer command: `dump-autoload`, `show`, `outdated`, `why`, `why-not`, `audit`, `validate`, `licenses`, `run-script`, `check-platform-reqs`, `config`, ... (not built yet) |
 
 `pun composer install` and `pun install` are the same command. A `pun composer` command Pun has not built yet is a
 run error (exit 2) that names it; Pun does not shell out to the Composer CLI.
@@ -107,18 +112,19 @@ run error (exit 2) that names it; Pun does not shell out to the Composer CLI.
 
 ## 4. Crates
 
-- `pun-semver`: composer/semver (VersionParser, Constraint, MultiConstraint, Comparator, Semver, Intervals), with
-  composer/semver's tests exported to JSON.
-- `pun-composer`: everything without I/O to the network: composer.json and composer.lock models, the lock writer and
-  `content-hash`, Packagist metadata (v2, minified), the solver (Pool to Transaction), the installed repository, the
-  autoload dump, bin proxies, scripts and events, the native plugin ports. Network access goes through a trait,
-  so the solver and installer tests run on recorded metadata.
-- `pun-fetch`: HTTP (HTTP/2, rustls, gzip), Composer's cache directory, auth, dist downloads with checksums, archive
-  extraction (Composer's top-level directory rule), git and VCS host APIs. HTTP is new to Pun: it adds reqwest and an
-  async runtime to the binary, about 3 MB.
-- `pun-composer`'s plugin host: the PHP bootstrap (Pun's own code, run with Composer's phar), the JSON protocol, and
-  the event dispatch on the Rust side.
-- `pun-cli`: the commands and their output.
+Built as one crate, not the three planned (`pun-semver`, `pun-composer`, `pun-fetch`):
+
+- `pun-packages`: composer/semver's version parser and constraints (`version.rs`, `constraint.rs`), the lock
+  (`lock.rs`), the resolver (`resolver/`: Composer repositories and Packagist's v2 metadata, `package` and `path`
+  repositories, PoolBuilder, PoolOptimizer, Solver, DefaultPolicy, the problem reports), downloads through
+  Composer's shared cache and auth over ureq (`fetch.rs`), the installed repository, the autoload dump and class
+  map, bin proxies, scripts and events, the native plugin ports (`plugins.rs`), and the manifest edits of `require`
+  and `remove` (`manifest_edit.rs`). Its resolver and installer tests run on recorded metadata (`tests/fixtures`).
+- `pun-config`: pun.toml's dependency sections (`manifest.rs`), read in composer.json's shape.
+- `pun-cli`: the commands (`install.rs`, `update.rs` with `require` and `remove`, `x.rs`, `vet.rs`, `workspace.rs`,
+  `self_update.rs`) and their output.
+- Not built: the plugin host (the PHP bootstrap on Composer's phar, the JSON protocol and the event dispatch), and
+  `vcs`, `git` and `artifact` repositories.
 
 ## 5. Build
 
@@ -184,7 +190,7 @@ what CI and most teammates run, and it needs no resolver.
   phast is a benchmark and a reference for ideas only. Composer's own files that `vendor/` must contain
   (`ClassLoader.php`, `InstalledVersions.php`) and the phar the host runs keep Composer's MIT notice.
 - `@composer` in a script runs the `composer` on the PATH until `pun composer` has the command (assistant's call,
-  revised 2026-11-14: Pun has only `install` so far).
+  revised 2026-11-14: there is no `pun composer` yet).
 - `pun self-update` replaces a standalone install with the latest release, checked as the installer checks it; a copy
   Composer installed is updated by Composer (Pushpak, 2026-11-14).
 - Composer 2.11.2 is the pinned oracle, and the plugin host runs that same phar; Pun follows Composer's minor releases
@@ -195,14 +201,14 @@ what CI and most teammates run, and it needs no resolver.
 
 ## 7. Beyond Composer: what pnpm and Cargo add
 
-Every feature here keeps the project working under plain Composer: it reads only Composer's files plus keys under
-`extra.pun` (Composer ignores `extra`), and an unused feature changes nothing Pun writes. Each one is built after the
-step it depends on.
+Every feature here keeps `vendor/` what Composer writes, and an unused feature changes nothing Pun writes. The
+`extra.pun` keys below date from before the dependencies moved into pun.toml (§3); workspaces, the one built, use
+pun.toml's own `[workspace]`. Each one is built after the step it depends on.
 
 1. **Workspaces (monorepos), as Cargo and pnpm have them.** Built (2026-11-14) as below, except where noted.
    - The root `pun.toml` opts in with `[workspace] members`, a list of globs (`["packages/*", "apps/*"]`), since the
-     dependencies live in pun.toml (Pushpak, 2026-11-14). Each member is a directory with its own pun.toml or
-     composer.json. Pun adds a `path` repository per glob and requires each member at `*@dev` in memory; nothing is
+     dependencies live in pun.toml (Pushpak, 2026-11-14). Each member is a directory with its own pun.toml; a member
+     whose dependencies are still in composer.json is an error that says to run `pun migrate` there. Pun adds a `path` repository per glob and requires each member at `*@dev` in memory; nothing is
      written to the root manifest. Not built: `pun workspace init`.
    - One pun.lock and one `vendor/` at the root, as Cargo keeps one `Cargo.lock` and one `target/`. Members
      are installed as path packages (symlinked) and every member's `require` joins one resolution, so the whole
@@ -224,13 +230,15 @@ step it depends on.
    `laravel/framework` 13.2.0 installs it without copying. The bytes and modes are Composer's, so install parity
    holds. Where the filesystem cannot clone, files are copied; hardlinks (pnpm's default) are opt-in through
    `extra.pun.link = "hardlink"`, because editing a hardlinked file in `vendor/` edits every project's copy.
-3. **`--locked` and `--offline`, as Cargo has them.** After step 4. `pun install --locked` fails when there is no
-   `composer.lock` or its `content-hash` does not match `composer.json` (Composer only warns). It is the default when
+3. **`--locked` and `--offline`, as Cargo has them.** After step 4, not built. `pun install --locked` fails when
+   there is no `pun.lock` or its `content-hash` does not match pun.toml's dependencies (Composer only warns). It is the default when
    `CI` is set, as pnpm's `--frozen-lockfile` is. `--offline` resolves and installs from the cache only and names the
    first package it cannot find there.
-4. **`pun x`, as `pnpm dlx` and `cargo install` have it.** After step 9. `pun x laravel/installer new app` resolves
-   the package into a cached scratch project and runs its binary without touching the current project.
-   `pun x pkg@1.2` pins a version.
+4. **`pun x`, as `pnpm dlx` and `cargo install` have it.** Built (2026-11-14), also as `punx`.
+   `pun x laravel/installer new app` resolves the package into a cached scratch project (its own pun.toml and
+   pun.lock) and runs its binary without touching the current project. `pun x pkg:^1.2` (or `pkg@1.2`) pins a
+   version, short aliases name common tools (`laravel`, `pint`, `phpstan`, `pest`, ...), and `punx list` and
+   `punx clean [package...]` show and remove the cached installs.
 5. **A minimum release age, as pnpm has it.** After step 8. `extra.pun.minimum-release-age` (minutes) makes the
    resolver ignore versions published more recently, against compromised releases that are pulled within hours.
    Off by default, because with it `pun update` can pick older versions than `composer update`.
@@ -241,7 +249,5 @@ step it depends on.
 
 ## 8. Open questions (needs Pushpak)
 
-1. **Workspace members.** `extra.pun.workspace.members` plus matching `path` repositories (§7.1, closest to how
-   Composer monorepos work today), or only the `path` repositories, with every path package treated as a member?
-2. **Which §7 features land before 1.0.** Proposed: `--locked` and `--offline` with step 4, workspaces right after
-   step 9, and the rest after 1.0.
+1. **Which §7 features land before 1.0.** Proposed: `--locked` and `--offline` with step 4, and the rest after 1.0
+   (workspaces and `pun x` are built).

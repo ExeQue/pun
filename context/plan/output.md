@@ -1,6 +1,7 @@
 # Plan: terminal output for every command
 
-Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". Nothing is built. Pushpak wants one
+Status: **walked through with Pushpak** (2026-10-17); answers in "Decisions". Build 1-6 are built
+(`crates/pun-cli/src/render/`; the grouped `pun check` view landed 2026-11-13, below). Pushpak wants one
 consistent output for format, lint, analyse, check, migrate and init. The approved starting point is format.md §9
 (✔/✖ per file, a summary line with counts and time, colour, rustc-style code frames). This file extends it to every
 command. Decisions with dates: ../PLAN.md §2. Build list: §4.
@@ -72,8 +73,8 @@ hint. They exit 2.
 Exit code 2 means Pun itself couldn't run: a bad config, an unreadable file, or a crash. That is the same for every
 command.
 
-**Not changed:** the machine formats (`--format=json|checkstyle|junit|gitlab|github|sarif`, Pint's and PHPStan's
-shapes), and agent mode (compact `path:line:col rule message` lines, §3).
+**Not changed:** the machine formats (Pint's `--format=json|txt|checkstyle|junit|xml|gitlab|github` for format, lint
+and check, PHPStan's for analyse), and agent mode (compact `path:line:col rule message` lines, §3).
 
 ## 3. Agent mode (unchanged)
 
@@ -98,7 +99,7 @@ names with config.md Build 1.
 
 1. **The renderer** in pun-cli: file lines, problem blocks (rustc-style frames from a span), the summary line, run
    errors with hints, `--concise`. One module that every command calls.
-2. **The look:** brand colours from design/tokens.json at truecolor, 256 and 16 colours, light and dark variants,
+2. **The look:** brand colours from docs/design/tokens.json at truecolor, 256 and 16 colours, light and dark variants,
    `NO_COLOR`, `--color`, ASCII fallbacks, clickable paths and rule links (OSC 8), the spinner after one second.
 3. **`pun format` on it,** and Pint's human screen removed (format.md Build 2).
 4. **GitHub annotations** when `GITHUB_ACTIONS` is set; `--format=github` forces them.
@@ -132,7 +133,7 @@ Answered 2026-10-17 (Pushpak):
 - **Pint's human screen is dropped** once Pun's output lands. Exit codes and machine formats stay Pint- and
   PHPStan-compatible; scripts/cli-parity.sh then covers only those. AGENTS.md ("output, messages and exit codes must
   match upstream") needs updating when this is built.
-- **Pun's brand colours** from design/tokens.json (Sticker Pop) instead of the terminal's standard colours. Pun
+- **Pun's brand colours** from docs/design/tokens.json (Sticker Pop) instead of the terminal's standard colours. Pun
   uses truecolor when `COLORTERM` is `truecolor` or `24bit`, the nearest 256-colour value otherwise, and the standard 16
   colours on basic terminals. It picks the light or dark token variant for readability on the terminal's background
   (dark by default when it can't tell). `NO_COLOR`, piping and `--color` work as in §1.
@@ -162,7 +163,7 @@ silent:
 - **Links (OSC 8):** only on a terminal (or `--color=always`), never under `--color=never`, and only in terminals
   known to support them (iTerm2, WezTerm, VS Code, Ghostty, Hyper, Windows Terminal, Konsole, VTE ≥ 0.50, kitty,
   Alacritty, foot); `FORCE_HYPERLINK` overrides. Paths link to `file://<root>/<path>` (percent-encoded). Rule IDs link
-  to `<docs base><rule ID>` once a docs base is passed in; the site has no rule pages yet, so none is set.
+  to their page, `pun_config::RULE_DOCS_URL` (`https://pun.laravel.cloud/docs/rules/`) plus the ID (2026-11-11).
 - **Spinner:** on stderr, braille frames (`|/-\` in ASCII), `⠋ 120/412 files` every 80 ms after one second; dropping
   it clears the line.
 - **`--color`:** a clap `ValueEnum` on `pun format`, `pun lint` and `pun check` since Build 3 (below).
