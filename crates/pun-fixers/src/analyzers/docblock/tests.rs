@@ -4,11 +4,13 @@
 use super::tag::Tag;
 use super::*;
 use serde_json::Value;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
+
+static DATA: LazyLock<Value> =
+    LazyLock::new(|| serde_json::from_str(include_str!("tests.json")).unwrap());
 
 fn data() -> &'static Value {
-    static D: OnceLock<Value> = OnceLock::new();
-    D.get_or_init(|| serde_json::from_str(include_str!("tests.json")).unwrap())
+    &DATA
 }
 
 fn cases(name: &str) -> Vec<Vec<Value>> {
