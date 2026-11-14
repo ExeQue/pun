@@ -11,7 +11,7 @@ use super::{
     statement_expression, statement_list,
 };
 use crate::syntax::{node_span, same_expression, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct PreferChainedExpect {
@@ -62,7 +62,7 @@ impl Rule for PreferChainedExpect {
         Some(STATEMENT_LISTS)
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         match options {
             serde_json::Value::Null => Ok(()),
             serde_json::Value::Object(map) => {
@@ -74,7 +74,8 @@ impl Rule for PreferChainedExpect {
                         _ => {
                             return Err(format!(
                                 "unknown option `{key}` or a value of the wrong type"
-                            ));
+                            )
+                            .into());
                         }
                     }
                 }

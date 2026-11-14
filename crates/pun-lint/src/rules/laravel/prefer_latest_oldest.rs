@@ -16,7 +16,7 @@ use super::{is_name, member_name};
 use crate::rules::support::values::{Value, value};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct PreferLatestOldest {
     pub allowed_patterns: Vec<String>,
@@ -35,14 +35,14 @@ impl Rule for PreferLatestOldest {
         "lint/laravel/prefer-latest-oldest"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let map = match options {
             serde_json::Value::Null => return Ok(()),
             serde_json::Value::Object(map) => map,
             _ => return Err("options must be a table".into()),
         };
         if let Some(key) = map.keys().find(|k| *k != "allowed-patterns") {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let patterns = match map.get("allowed-patterns") {
             None => Some(Vec::new()),

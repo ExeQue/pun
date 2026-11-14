@@ -26,11 +26,11 @@ use serde_json::{Map, Value};
 
 use super::types::class_scope;
 use super::types::facts::facts;
-use crate::Context;
 use crate::rules::support::names::{
     imported, imported_member, resolve_class_name, scope_statements,
 };
 use crate::syntax::{node_span, unparenthesize};
+use crate::{Context, OptionsError};
 
 rules! {
     pub(super) fn all {
@@ -51,7 +51,7 @@ rules! {
     }
 }
 
-fn table(options: &Value) -> Result<Option<&Map<String, Value>>, String> {
+fn table(options: &Value) -> Result<Option<&Map<String, Value>>, OptionsError> {
     match options {
         Value::Null => Ok(None),
         Value::Object(map) => Ok(Some(map)),
@@ -59,26 +59,24 @@ fn table(options: &Value) -> Result<Option<&Map<String, Value>>, String> {
     }
 }
 
-pub(crate) fn string_map(options: &Value) -> Result<Vec<(String, String)>, String> {
+pub(crate) fn string_map(options: &Value) -> Result<Vec<(String, String)>, OptionsError> {
     let Some(map) = table(options)? else {
         return Ok(Vec::new());
     };
     map.iter()
         .map(|(k, v)| match v.as_str() {
             Some(s) => Ok((k.clone(), s.to_string())),
-            None => Err(format!("`{k}` must be a string")),
+            None => Err(format!("`{k}` must be a string").into()),
         })
         .collect()
 }
 
-pub(crate) fn items(options: &Value) -> Result<Vec<&Value>, String> {
+pub(crate) fn items(options: &Value) -> Result<Vec<&Value>, OptionsError> {
     let Some(map) = table(options)? else {
         return Ok(Vec::new());
     };
     if let Some(key) = map.keys().find(|k| *k != "items") {
-        return Err(format!(
-            "unknown option `{key}`; the list goes under `items`"
-        ));
+        return Err(format!("unknown option `{key}`; the list goes under `items`").into());
     }
     match map.get("items") {
         Some(Value::Array(items)) => Ok(items.iter().collect()),
@@ -90,7 +88,7 @@ pub(crate) fn object<'a>(
     item: &'a Value,
     allowed: &[&str],
     required: &[&str],
-) -> Result<&'a Map<String, Value>, String> {
+) -> Result<&'a Map<String, Value>, OptionsError> {
     let Value::Object(map) = item else {
         return Err("each of `items` must be a table".into());
     };
@@ -98,25 +96,26 @@ pub(crate) fn object<'a>(
         return Err(format!(
             "unknown key `{key}` in `items`; the keys are {}",
             allowed.join(", ")
-        ));
+        )
+        .into());
     }
     if let Some(key) = required.iter().find(|k| !map.contains_key(**k)) {
-        return Err(format!("each of `items` needs `{key}`"));
+        return Err(format!("each of `items` needs `{key}`").into());
     }
     Ok(map)
 }
 
-pub(crate) fn string(map: &Map<String, Value>, key: &str) -> Result<String, String> {
+pub(crate) fn string(map: &Map<String, Value>, key: &str) -> Result<String, OptionsError> {
     map[key]
         .as_str()
         .map(str::to_string)
-        .ok_or_else(|| format!("`{key}` must be a string"))
+        .ok_or_else(|| format!("`{key}` must be a string").into())
 }
 
-pub(crate) fn int(map: &Map<String, Value>, key: &str) -> Result<i64, String> {
+pub(crate) fn int(map: &Map<String, Value>, key: &str) -> Result<i64, OptionsError> {
     map[key]
         .as_i64()
-        .ok_or_else(|| format!("`{key}` must be an integer"))
+        .ok_or_else(|| format!("`{key}` must be an integer").into())
 }
 
 static CLASS: LazyLock<Regex> = LazyLock::new(|| {
@@ -132,26 +131,26 @@ static FUNCTION: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-fn assert_name(name: &str, regex: &Regex, kind: &str) -> Result<(), String> {
+fn assert_name(name: &str, regex: &Regex, kind: &str) -> Result<(), OptionsError> {
     match regex.is_match(name.as_bytes()) {
         true => Ok(()),
-        false => Err(format!("\"{name}\" is not a valid {kind} name")),
+        false => Err(format!("\"{name}\" is not a valid {kind} name").into()),
     }
 }
 
-pub(crate) fn assert_class(name: &str) -> Result<(), String> {
+pub(crate) fn assert_class(name: &str) -> Result<(), OptionsError> {
     assert_name(name, &CLASS, "class")
 }
 
-pub(crate) fn assert_constant(name: &str) -> Result<(), String> {
+pub(crate) fn assert_constant(name: &str) -> Result<(), OptionsError> {
     assert_name(name, &METHOD_OR_CONSTANT, "constant")
 }
 
-pub(crate) fn assert_method(name: &str) -> Result<(), String> {
+pub(crate) fn assert_method(name: &str) -> Result<(), OptionsError> {
     assert_name(name, &METHOD_OR_CONSTANT, "method")
 }
 
-pub(crate) fn assert_function(name: &str) -> Result<(), String> {
+pub(crate) fn assert_function(name: &str) -> Result<(), OptionsError> {
     assert_name(name, &FUNCTION, "function")
 }
 

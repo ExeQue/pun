@@ -10,7 +10,7 @@ use super::object_type::{name_class, object_class, special_class};
 use super::print::kept_arguments;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const MODEL: &str = "Illuminate\\Database\\Eloquent\\Model";
 const BUILDERS: [&str; 2] = [
@@ -28,7 +28,7 @@ impl Rule for PreferQueryBuilderCall {
         "lint/laravel/prefer-query-builder-call"
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         let map = match options {
             Value::Null => return Ok(()),
             Value::Object(map) => map,
@@ -39,7 +39,7 @@ impl Rule for PreferQueryBuilderCall {
             return Err("takes `exclude-methods` or `items`".into());
         };
         if key != "exclude-methods" && key != "items" {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let names = (map[key].as_array()).and_then(|a| {
             a.iter()

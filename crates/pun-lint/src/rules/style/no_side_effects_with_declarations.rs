@@ -5,7 +5,7 @@ use mago_syntax::walker::MutWalker;
 use crate::rules::support::names::function_call_matches;
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoSideEffectsWithDeclarations {
     pub allow_conditional_declarations: bool,
@@ -32,7 +32,7 @@ impl Rule for NoSideEffectsWithDeclarations {
         Some(&[NodeKind::Program])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "allow-conditional-declarations" => {

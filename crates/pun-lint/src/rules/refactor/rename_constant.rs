@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety};
 
 use super::{Kind, assert_constant, is_name, name_of, string_map};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RenameConstant {
@@ -19,7 +19,7 @@ impl Rule for RenameConstant {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let renames = string_map(options)?;
         for (old, new) in &renames {
             assert_constant(old)?;

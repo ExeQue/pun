@@ -8,7 +8,7 @@ use super::{
 use crate::rules::phpunit::maybe_multiline;
 use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 fn printed_args(ctx: &Context<'_>, call: &FunctionCall<'_>) -> String {
     let list = &call.argument_list;
@@ -66,7 +66,7 @@ impl Rule for ReplaceFunctionWithConstant {
         "lint/refactor/replace-function-with-constant"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.replacements = string_map(options)?;
         Ok(())
     }
@@ -110,7 +110,7 @@ impl Rule for ReplaceFunctionWithNew {
         "lint/refactor/replace-function-with-new"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.replacements = string_map(options)?;
         Ok(())
     }
@@ -164,7 +164,7 @@ impl Rule for ReplaceFunctionWithStatic {
         "lint/refactor/replace-function-with-static"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         const KEYS: &[&str] = &["old-func-name", "new-class-name", "new-method-name"];
         let mut replacements = Vec::new();
         for item in items(options)? {

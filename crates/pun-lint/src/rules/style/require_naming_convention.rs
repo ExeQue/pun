@@ -4,7 +4,7 @@ use mago_syntax_core::{part_of_identifier, start_of_identifier};
 
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Clone, Copy)]
 pub struct Kind {
@@ -78,7 +78,7 @@ impl Rule for RequireNamingConvention {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |code, value| {
             let (kind, takes): (&mut Kind, &[&str]) = match code {
                 "class-name" => (&mut self.class, &["psr"]),

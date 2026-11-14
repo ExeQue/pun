@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::annotations::{Annotated, TagValue, map_item, named_tags};
 use super::prefer_test_with_attribute::print_float;
 use super::{class_body, is_in_test_class};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 struct Annotation {
     name: String,
@@ -24,12 +24,12 @@ impl Rule for PreferAttributeOverAnnotation {
         "lint/phpunit/prefer-attribute-over-annotation"
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         let items = match options {
             Value::Null => return Ok(()),
             Value::Object(map) => {
                 if let Some(key) = map.keys().find(|k| *k != "items") {
-                    return Err(format!("unknown option `{key}`"));
+                    return Err(format!("unknown option `{key}`").into());
                 }
                 map.get("items").and_then(Value::as_array)
             }
@@ -63,7 +63,8 @@ impl Rule for PreferAttributeOverAnnotation {
                     _ => {
                         return Err(format!(
                             "unknown option `{key}` or a value of the wrong type in `items`"
-                        ));
+                        )
+                        .into());
                     }
                 }
             }

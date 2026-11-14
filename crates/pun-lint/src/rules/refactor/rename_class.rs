@@ -6,7 +6,7 @@ use crate::rules::support::rector_names::phpdoc_parser::Val;
 use crate::rules::support::rector_names::post::{Carry, Options, Session, doc_type};
 use crate::rules::support::rector_names::resolve::{has_class, resolve_tag};
 use crate::rules::types::facts::facts;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const TYPE_AWARE_ANNOTATIONS: &[&str] = &[
     JMS_TYPE,
@@ -32,7 +32,7 @@ impl Rule for RenameClass {
         true
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         self.renames.clear();
         self.options = Options {
             import_short_classes: true,
@@ -50,7 +50,7 @@ impl Rule for RenameClass {
                 "remove-unused-imports" => &mut self.options.remove_unused_imports,
                 _ => {
                     let Some(new) = value.as_str() else {
-                        return Err(format!("`{key}` must be a string"));
+                        return Err(format!("`{key}` must be a string").into());
                     };
                     self.renames.push((key.clone(), new.to_string()));
                     continue;

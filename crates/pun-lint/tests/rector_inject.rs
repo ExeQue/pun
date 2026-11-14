@@ -104,7 +104,11 @@ fn everywhere(make: impl Fn() -> Box<dyn Rule>, unconfigured: Box<dyn Rule>, cla
 
 fn rejects(mut rule: impl Rule, bad: &[(Value, &str)]) {
     for (options, error) in bad {
-        assert_eq!(rule.configure(options).unwrap_err(), *error, "{options}");
+        assert_eq!(
+            rule.configure(options).unwrap_err().to_string(),
+            *error,
+            "{options}"
+        );
     }
     rule.configure(&Value::Null).unwrap();
 }

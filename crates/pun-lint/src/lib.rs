@@ -77,7 +77,7 @@ pub trait Rule: Send + Sync {
         false
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         match options {
             serde_json::Value::Null => Ok(()),
             _ => Err("takes no options".into()),
@@ -91,6 +91,30 @@ pub trait Rule: Send + Sync {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     );
+}
+
+/// Why a rule rejected the options it was configured with.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OptionsError(String);
+
+impl fmt::Display for OptionsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for OptionsError {}
+
+impl From<String> for OptionsError {
+    fn from(message: String) -> Self {
+        OptionsError(message)
+    }
+}
+
+impl From<&str> for OptionsError {
+    fn from(message: &str) -> Self {
+        OptionsError(message.to_string())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

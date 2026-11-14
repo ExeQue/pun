@@ -4,7 +4,7 @@ use pun_problem::{Edit, Safety, Span};
 use super::{Kind, assert_function, called, int, is_name, items, name_of, object, string};
 use crate::rules::support::rewrites::list_removal;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RemoveFunctionArgument {
@@ -20,7 +20,7 @@ impl Rule for RemoveFunctionArgument {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut removals = Vec::new();
         for item in items(options)? {
             let map = object(

@@ -13,7 +13,7 @@ use crate::rules::support::docblocks::Doc;
 use crate::rules::support::names::{has_attribute, imported};
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct AddPropertyTypeAssigns {
@@ -45,7 +45,7 @@ impl Rule for AddPropertyTypeAssigns {
         Some(&[NodeKind::Class, NodeKind::AnonymousClass])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "inline-public" => self.inline_public = boolean(value)?,

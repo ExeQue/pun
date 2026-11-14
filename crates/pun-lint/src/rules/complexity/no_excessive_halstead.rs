@@ -4,7 +4,7 @@ use mago_syntax::cst::{Node, NodeKind};
 
 use crate::rules::support::options::configure;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoExcessiveHalstead {
     pub volume_threshold: f64,
@@ -37,7 +37,7 @@ impl Rule for NoExcessiveHalstead {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             let value = value.as_f64()?;
             match key {

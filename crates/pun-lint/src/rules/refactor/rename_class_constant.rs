@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety};
 
 use super::{assert_class, assert_constant, is_object_type, items, object, string};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct Rename {
     pub old_class: String,
@@ -26,7 +26,7 @@ impl Rule for RenameClassConstant {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut renames = Vec::new();
         for item in items(options)? {
             let map = object(

@@ -12,7 +12,7 @@ use super::{
 };
 use crate::rules::support::class_members::qualified;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Clone, Debug)]
 pub struct MethodRename {
@@ -234,7 +234,7 @@ impl Rule for RenameMethod {
         true
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         const KEYS: &[&str] = &["class", "old-method", "new-method", "array-key"];
         let mut renames = Vec::new();
         for item in items(options)? {

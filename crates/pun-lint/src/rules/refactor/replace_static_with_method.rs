@@ -6,7 +6,7 @@ use crate::rules::support::class_dependency::{
 };
 use crate::rules::support::names::resolve_class_name;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct StaticToMethod {
     pub static_class: String,
@@ -31,7 +31,7 @@ impl Rule for ReplaceStaticWithMethod {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut out = Vec::new();
         for item in items(options)? {
             let map = object(item, &KEYS, &KEYS)?;

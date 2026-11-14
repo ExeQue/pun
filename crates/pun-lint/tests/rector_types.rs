@@ -429,7 +429,8 @@ fn typed_property_from_assigns() {
 fn typed_property_from_assigns_native_options() {
     let mut rule = AddPropertyTypeAssigns::default();
     assert_eq!(
-        rule.configure(&serde_json::json!({"inline_public": true})),
+        rule.configure(&serde_json::json!({"inline_public": true}))
+            .map_err(|e| e.to_string()),
         Err("unknown option `inline_public` or a value of the wrong type".to_string()),
     );
     assert_eq!(

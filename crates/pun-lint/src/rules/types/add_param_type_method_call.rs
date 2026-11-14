@@ -14,7 +14,7 @@ use super::param::{add_hint, param_declaration_unsorted};
 use crate::rules::support::class_members::{qualified, type_of};
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const MAGIC_METHODS: [&str; 17] = [
     "__construct",
@@ -50,7 +50,7 @@ impl Rule for AddParamTypeMethodCall {
         Some(&[NodeKind::Class])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "treat-classes-as-final" => self.treat_classes_as_final = boolean(value)?,

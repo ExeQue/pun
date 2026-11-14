@@ -4,7 +4,7 @@ use pun_problem::Safety;
 use super::{Kind, called, is_name, items, name_of};
 use crate::rules::support::statement_edits::{enclosing, remove};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RemoveFunctionCall {
@@ -16,7 +16,7 @@ impl Rule for RemoveFunctionCall {
         "lint/refactor/remove-function-call"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.functions = items(options)?
             .into_iter()
             .map(|v| {

@@ -4,7 +4,7 @@ use crate::rules::support::extension_functions::EXTENSION_FUNCTIONS;
 use crate::rules::support::names::{function_call_matches, resolve_class};
 use crate::rules::support::options::configure;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Clone)]
 pub struct Entry {
@@ -61,7 +61,7 @@ impl Rule for NoRestrictedFunctions {
         Some(&[NodeKind::FunctionCall])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "functions" => self.functions = entries(value)?,
@@ -138,7 +138,7 @@ impl Rule for NoRestrictedInstantiation {
         Some(&[NodeKind::Instantiation])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "types" => self.types = entries(value)?,

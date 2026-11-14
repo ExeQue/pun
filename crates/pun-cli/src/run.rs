@@ -72,7 +72,7 @@ fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
         .flat_map(|o| &o.rules)
         .any(|s| s.id == id && !s.options.is_null());
     let result = if overridden {
-        Err("takes options in [lint.rules] only, not in [[lint.overrides]]".to_string())
+        Err("takes options in [lint.rules] only, not in [[lint.overrides]]".into())
     } else {
         rule.configure(base.map_or(&serde_json::Value::Null, |r| &r.options))
     };

@@ -3,7 +3,7 @@ use mago_syntax::walker::Walker;
 
 use crate::rules::support::declarations::class_like_header_span;
 use crate::rules::support::options::configure;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoExcessiveKanDefect {
     pub threshold: f64,
@@ -32,7 +32,7 @@ impl Rule for NoExcessiveKanDefect {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = value.as_f64()?,

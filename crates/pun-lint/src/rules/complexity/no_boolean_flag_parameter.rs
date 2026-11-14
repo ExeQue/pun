@@ -4,7 +4,7 @@ use mago_syntax::walker::MutWalker;
 use crate::rules::support::declarations::function_like_scope;
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoBooleanFlagParameter {
     pub exclude_setters: bool,
@@ -29,7 +29,7 @@ impl Rule for NoBooleanFlagParameter {
         Some(&[NodeKind::FunctionLikeParameter])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "exclude-setters" => self.exclude_setters = boolean(value)?,

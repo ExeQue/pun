@@ -6,7 +6,7 @@ use mago_syntax::walker::MutWalker;
 
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::{node_span, span};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 fn report(at: pun_problem::Span, message: String, help: &str) -> Report {
     Report {
@@ -60,7 +60,7 @@ impl Rule for NoIsset {
         Some(&[NodeKind::IssetConstruct])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "allow-array-checks" => self.allow_array_checks = boolean(value)?,

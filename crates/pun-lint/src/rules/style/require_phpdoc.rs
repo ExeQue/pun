@@ -7,7 +7,7 @@ use regex::bytes::Regex;
 
 use crate::rules::support::options::{boolean, configure};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const KINDS: [(&str, bool); 10] = [
     ("functions", true),
@@ -56,7 +56,7 @@ impl Rule for RequirePhpdoc {
         Some(&[NodeKind::Program])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             if key == "exclusions" {
                 for (kind, patterns) in value.as_object()? {

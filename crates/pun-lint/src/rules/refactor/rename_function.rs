@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety};
 
 use super::{called, fully_qualified, function_name, is_name, string_map};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RenameFunction {
@@ -19,7 +19,7 @@ impl Rule for RenameFunction {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.renames = string_map(options)?;
         Ok(())
     }

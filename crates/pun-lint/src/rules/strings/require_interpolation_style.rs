@@ -4,7 +4,7 @@ use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::options::configure;
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RequireInterpolationStyle {
@@ -20,7 +20,7 @@ impl Rule for RequireInterpolationStyle {
         Some(&[NodeKind::Binary, NodeKind::CompositeString])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match (key, value.as_str()?) {
                 ("style", "interpolation") => self.concatenation = false,

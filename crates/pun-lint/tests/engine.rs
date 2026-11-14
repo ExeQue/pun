@@ -301,7 +301,8 @@ fn a_rule_without_options_rejects_any() {
     let mut rule = ReportOnly;
     assert_eq!(rule.configure(&serde_json::Value::Null), Ok(()));
     assert_eq!(
-        rule.configure(&serde_json::json!({"a": 1})),
+        rule.configure(&serde_json::json!({"a": 1}))
+            .map_err(|e| e.to_string()),
         Err("takes no options".to_string())
     );
 }

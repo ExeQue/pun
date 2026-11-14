@@ -5,7 +5,7 @@ use mago_syntax::walker::Walker;
 use crate::rules::support::declarations::{class_like_header_span, is_method_setter_or_getter};
 use crate::rules::support::options::{configure, uint};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoExcessiveCyclomatic {
     pub threshold: usize,
@@ -38,7 +38,7 @@ impl Rule for NoExcessiveCyclomatic {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u64::MAX)?,

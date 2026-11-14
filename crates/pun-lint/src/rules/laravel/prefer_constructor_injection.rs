@@ -6,7 +6,7 @@ use crate::rules::refactor::{
 use crate::rules::support::class_dependency::{Outcome, call_args, inject, is_first_class};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub enum Injection {
     Argument {
@@ -54,7 +54,7 @@ impl Rule for PreferConstructorInjection {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut out = Vec::new();
         for item in items(options)? {
             let array = item.as_object().is_some_and(|m| {

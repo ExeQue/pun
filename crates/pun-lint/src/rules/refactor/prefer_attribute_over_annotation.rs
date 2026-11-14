@@ -12,7 +12,7 @@ use crate::rules::support::rector_names::view::{FileView, UseView};
 use crate::rules::support::statement_edits::line_indent;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct AnnotationToAttribute {
@@ -27,7 +27,7 @@ impl Rule for AnnotationToAttribute {
         true
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         self.configs.clear();
         for item in items(options)? {
             let map = object(
@@ -40,14 +40,14 @@ impl Rule for AnnotationToAttribute {
                 ],
                 &["tag"],
             )?;
-            let class_name = |key: &str| -> Result<Option<String>, String> {
+            let class_name = |key: &str| -> Result<Option<String>, OptionsError> {
                 match map.get(key) {
                     None | Some(Value::Null) => Ok(None),
                     Some(Value::String(name)) if is_class_name(name) => Ok(Some(name.clone())),
                     Some(Value::String(name)) => {
-                        Err(format!("\"{name}\" is not a valid class name"))
+                        Err(format!("\"{name}\" is not a valid class name").into())
                     }
-                    Some(_) => Err(format!("`{key}` must be a string")),
+                    Some(_) => Err(format!("`{key}` must be a string").into()),
                 }
             };
             let tag = class_name("tag")?.unwrap_or_default();

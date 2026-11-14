@@ -4,7 +4,7 @@ use mago_syntax::cst::{Argument, Expression, Literal, Node, NodeKind};
 use crate::rules::support::names::function_call_matches_any;
 use crate::rules::support::options::{boolean, configure, uint};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct PreferNamedLiteralArgument {
     pub check_first_argument: bool,
@@ -33,7 +33,7 @@ impl Rule for PreferNamedLiteralArgument {
         Some(&[NodeKind::FunctionCall])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "check-first-argument" => self.check_first_argument = boolean(value)?,

@@ -12,7 +12,7 @@ use crate::rules::support::class_members::qualified;
 use crate::rules::support::conditions::indentation;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const TRAIT: &str = "Illuminate\\Database\\Eloquent\\Factories\\HasFactory";
 const USE: &str = "use \\Illuminate\\Database\\Eloquent\\Factories\\HasFactory;";
@@ -37,14 +37,14 @@ impl Rule for AddHasFactoryTrait {
         "lint/laravel/add-has-factory-trait"
     }
 
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         let map = match options {
             Value::Null => return Ok(()),
             Value::Object(map) => map,
             _ => return Err("options must be a table".into()),
         };
         if let Some(key) = map.keys().find(|k| *k != "items") {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let items = (map.get("items").and_then(Value::as_array)).and_then(|a| {
             a.iter()

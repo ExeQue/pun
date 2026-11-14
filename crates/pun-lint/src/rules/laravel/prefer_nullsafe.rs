@@ -6,7 +6,7 @@ use pun_problem::{Edit, Span};
 use super::{is_name, is_written, member_name, replace};
 use crate::rules::support::expressions::{Prec, call_to, is_constant, prec, text};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct PreferNullsafe {
@@ -22,7 +22,7 @@ impl Rule for PreferNullsafe {
         80000
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         match options {
             serde_json::Value::Null => Ok(()),
             serde_json::Value::Object(map) => {
@@ -40,7 +40,8 @@ impl Rule for PreferNullsafe {
                         None => {
                             return Err(format!(
                                 "unknown option `{key}` or a value of the wrong type"
-                            ));
+                            )
+                            .into());
                         }
                     }
                 }

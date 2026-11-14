@@ -2,7 +2,7 @@ use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
 
 use crate::rules::support::declarations::{class_like_header_span, is_method_setter_or_getter};
 use crate::rules::support::options::{boolean, configure, uint};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 fn report(node: Node<'_, '_>, message: String, help: &str) -> Report {
     Report {
@@ -45,7 +45,7 @@ impl Rule for NoExcessiveEnumCases {
         Some(&[NodeKind::Enum])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u16::MAX.into())?,
@@ -109,7 +109,7 @@ impl Rule for NoExcessiveMethods {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u16::MAX.into())?,
@@ -179,7 +179,7 @@ impl Rule for NoExcessiveProperties {
         ])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u16::MAX.into())?,

@@ -5,7 +5,7 @@ use pun_problem::{Edit, Safety};
 use super::{assert_class, int, items, object, string};
 use crate::rules::support::expressions::{operand, text};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const CASTS: &[&str] = &[
     "Array_", "Bool_", "Double", "Int_", "Object_", "String_", "Unset_", "Void_",
@@ -45,7 +45,7 @@ impl Rule for RenameCast {
         "lint/refactor/rename-cast"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         const KEYS: &[&str] = &["from-cast-expr-class", "from-cast-kind", "to-cast-kind"];
         let mut renames = Vec::new();
         for item in items(options)? {
@@ -63,7 +63,8 @@ impl Rule for RenameCast {
             if short == "Double" && !(1..=2).contains(&to) {
                 return Err(format!(
                     "`to-cast-kind` {to} of \"{class}\" prints `(real)`, which PHP 8 removed"
-                ));
+                )
+                .into());
             }
             renames.push((short.to_string(), int(map, "from-cast-kind")?, to));
         }

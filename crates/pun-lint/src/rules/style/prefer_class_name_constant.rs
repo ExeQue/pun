@@ -6,7 +6,7 @@ use pun_problem::{Edit, Fix, Safety};
 use crate::rules::refactor::{is_name, items};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct PreferClassNameConstant {
@@ -89,7 +89,7 @@ impl Rule for PreferClassNameConstant {
         50500
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.skip = items(options)?
             .into_iter()
             .map(|v| {

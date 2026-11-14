@@ -1,15 +1,17 @@
+use crate::OptionsError;
+
 pub(crate) fn configure(
     options: &serde_json::Value,
     mut set: impl FnMut(&str, &serde_json::Value) -> Option<()>,
-) -> Result<(), String> {
+) -> Result<(), OptionsError> {
     match options {
         serde_json::Value::Null => Ok(()),
         serde_json::Value::Object(map) => {
             for (key, value) in map {
                 if set(key, value).is_none() {
-                    return Err(format!(
-                        "unknown option `{key}` or a value of the wrong type"
-                    ));
+                    return Err(
+                        format!("unknown option `{key}` or a value of the wrong type").into(),
+                    );
                 }
             }
             Ok(())

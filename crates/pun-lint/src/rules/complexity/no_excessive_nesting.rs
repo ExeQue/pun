@@ -4,7 +4,7 @@ use mago_syntax::walker::{MutWalker, walk_block_mut};
 
 use crate::rules::support::options::{configure, uint};
 use crate::syntax::span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoExcessiveNesting {
     pub threshold: usize,
@@ -29,7 +29,7 @@ impl Rule for NoExcessiveNesting {
         Some(&[NodeKind::Program])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u64::MAX)?,

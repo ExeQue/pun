@@ -3,7 +3,7 @@ use mago_syntax::cst::{Node, NodeKind};
 use crate::rules::support::declarations::function_like_scope;
 use crate::rules::support::options::{configure, uint};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct NoExcessiveParameters {
     pub threshold: usize,
@@ -28,7 +28,7 @@ impl Rule for NoExcessiveParameters {
         Some(&[NodeKind::FunctionLikeParameterList])
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         configure(options, |key, value| {
             match key {
                 "threshold" => self.threshold = uint(value, u8::MAX.into())?,
