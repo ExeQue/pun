@@ -1,43 +1,36 @@
-//! phpdoc-parser's type nodes as Rector prints them: `(string) $typeNode` with Rector's own node classes
-//! (`SpacingAwareArrayTypeNode`, `BracketsAwareUnionTypeNode`, `BracketsAwareIntersectionTypeNode`), which
-//! `PhpDocNodeMapper` puts in place of phpdoc-parser's when a doc is parsed and the static type mapper creates.
-
 use std::fmt;
 
 use pun_phpstan::phpdoc::{ConstExpr, Node, ShapeKey};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum TypeNode {
-    /// `IdentifierTypeNode`: a name as written (`int`, `\Foo\Bar`, `Bar`).
     Identifier(String),
-    /// `SpacingAwareArrayTypeNode`: `T[]`; `generic_parent` is `ArrayTypeMapper::HAS_GENERIC_TYPE_PARENT`.
     Array {
         inner: Box<TypeNode>,
         generic_parent: bool,
     },
-    /// `GenericTypeNode`: `base<args>`.
-    Generic { base: String, args: Vec<TypeNode> },
-    /// `BracketsAwareUnionTypeNode`, `wrapped` in parentheses.
-    Union { types: Vec<TypeNode>, wrapped: bool },
-    /// `BracketsAwareIntersectionTypeNode`.
+    Generic {
+        base: String,
+        args: Vec<TypeNode>,
+    },
+    Union {
+        types: Vec<TypeNode>,
+        wrapped: bool,
+    },
     Intersection(Vec<TypeNode>),
-    /// `ArrayShapeNode`: `kind{key?: value, ...}`; `unsealed` is the printed `<K, V>` of `...<K, V>`.
     Shape {
         kind: String,
         items: Vec<(Option<String>, bool, TypeNode)>,
         sealed: bool,
         unsealed: String,
     },
-    /// `CallableTypeNode`: `callable<T>(int): string`, its templates and parameters printed.
     Callable {
         ident: String,
         templates: Vec<String>,
         params: Vec<String>,
         ret: Box<TypeNode>,
     },
-    /// `NullableTypeNode`.
     Nullable(Box<TypeNode>),
-    /// Any other node, printed as PHPStan's `toPhpDocNode()` prints it.
     Raw(String),
 }
 
@@ -46,14 +39,10 @@ impl TypeNode {
         TypeNode::Identifier(name.to_string())
     }
 
-    /// The node phpdoc-parser parses from `node`, as Rector's `PhpDocNodeMapper` leaves it. `None` for a node Pun
-    /// does not print as Rector does (a quoted string, an object shape, a conditional, an offset access).
     pub(crate) fn from_parsed(node: &Node) -> Option<TypeNode> {
         from_parsed(node, false, None)
     }
 
-    /// [`Self::from_parsed`] that prints object shapes, conditionals, offset accesses and quoted strings too; `quote`
-    /// gives a string as written.
     pub(crate) fn from_parsed_all(
         node: &Node,
         quote: &dyn Fn(&[u8]) -> Option<String>,
@@ -61,7 +50,6 @@ impl TypeNode {
         from_parsed(node, false, Some(quote))
     }
 
-    /// `SpacingAwareArrayTypeNode::isGenericArrayCandidate()`'s other half: a union or an array.
     fn is_union_or_array(&self) -> bool {
         matches!(self, TypeNode::Union { .. } | TypeNode::Array { .. })
     }
@@ -76,7 +64,6 @@ fn from_parsed(
         Node::Ident(name) => TypeNode::Identifier(name.clone()),
         Node::This => TypeNode::ident("$this"),
         Node::Nullable(inner) => TypeNode::Nullable(Box::new(from_parsed(inner, false, all)?)),
-        // `UnionTypeNodePhpDocNodeVisitor`: a union written in parentheses (inside `[]`, a callable's return) is wrapped
         Node::Union(types) => TypeNode::Union {
             types: types
                 .iter()
@@ -111,7 +98,6 @@ fn from_parsed(
             items: items
                 .iter()
                 .map(|i| {
-                    // (a quoted key is printed in its own quotes, which Pun's node does not keep)
                     let key = match &i.key {
                         None => None,
                         Some(ShapeKey::Int(k) | ShapeKey::Ident(k)) => Some(k.clone()),
@@ -122,7 +108,6 @@ fn from_parsed(
                 })
                 .collect::<Option<_>>()?,
             sealed: *sealed,
-            // `ArrayShapeUnsealedTypeNode`
             unsealed: match unsealed {
                 None => String::new(),
                 Some((None, value)) => format!("<{}>", from_parsed(value, false, all)?),
@@ -135,7 +120,6 @@ fn from_parsed(
                 }
             },
         },
-        // `CallableTypeNode` with its templates (`TemplateTagValueNode`: `T of Bound super Lower = Default`)
         Node::Callable {
             ident,
             templates,
@@ -160,7 +144,6 @@ fn from_parsed(
                     Some(printed)
                 })
                 .collect::<Option<_>>()?,
-            // `CallableTypeParameterNode`
             params: params
                 .iter()
                 .map(|p| {
@@ -178,14 +161,10 @@ fn from_parsed(
                     ))
                 })
                 .collect::<Option<_>>()?,
-            // a union return is written in parentheses
             ret: Box::new(from_parsed(ret, true, all)?),
         },
-        // `ConstTypeNode`: a number or `Class::NAME` (`true`, `false`, `null` and `NAME` are identifiers, and an
-        // array is no type; a string is printed in its own quotes, which Pun's node does not keep)
         Node::Const(ConstExpr::Int(v) | ConstExpr::Float(v)) => TypeNode::Raw(v.clone()),
         Node::Const(ConstExpr::Fetch(class, name)) => TypeNode::Raw(format!("{class}::{name}")),
-        // `ObjectShapeNode`, `ObjectShapeItemNode`
         Node::Const(ConstExpr::Str(v)) if all.is_some() => TypeNode::Raw(all?(v)?),
         Node::ObjectShape(items) if all.is_some() => TypeNode::Raw(format!(
             "object{{{}}}",
@@ -202,7 +181,6 @@ fn from_parsed(
                 .collect::<Option<Vec<_>>>()?
                 .join(", ")
         )),
-        // `ConditionalTypeNode`, `ConditionalTypeForParameterNode`
         Node::Conditional {
             subject,
             target,
@@ -230,7 +208,6 @@ fn from_parsed(
             from_parsed(then, false, all)?,
             from_parsed(otherwise, false, all)?
         )),
-        // `GenericTypeNode::__toString()`'s arguments of a variance: `*` (bivariant), `covariant T`, `contravariant T`
         Node::Star(star) if all.is_some() && star == "*" => TypeNode::ident("*"),
         Node::Projection(covariant, inner) if all.is_some() => TypeNode::Raw(format!(
             "{} {}",
@@ -241,7 +218,6 @@ fn from_parsed(
             },
             from_parsed(inner, false, all)?
         )),
-        // `OffsetAccessTypeNode`: a callable or a nullable base in parentheses (a union is written in them)
         Node::OffsetAccess(base, offset) if all.is_some() => {
             let printed = from_parsed(base, true, all)?;
             TypeNode::Raw(match **base {
@@ -267,7 +243,6 @@ impl fmt::Display for TypeNode {
                 write!(f, "{base}<{}>", join(args, ", "))
             }
             TypeNode::Union { types, wrapped } => {
-                // `array_unique()` of the printed types
                 let mut printed: Vec<String> = Vec::new();
                 for t in types {
                     let s = t.to_string();
@@ -307,8 +282,6 @@ impl fmt::Display for TypeNode {
                 params,
                 ret,
             } => {
-                // phpdoc-parser 2.4's `Printer::printType()` (Rector 2.8.4 prints with it): `ident(params): ret`, the
-                // return type in parentheses when it is a union, an intersection or a callable
                 let wrap = matches!(
                     ret.as_ref(),
                     TypeNode::Union { .. } | TypeNode::Intersection(_) | TypeNode::Callable { .. }
@@ -338,20 +311,17 @@ fn join(types: &[TypeNode], separator: &str) -> String {
         .join(separator)
 }
 
-/// `SpacingAwareArrayTypeNode::__toString()`.
 fn print_array(inner: &TypeNode, generic_parent: bool) -> String {
     let printed = inner.to_string();
     if generic_parent && inner.is_union_or_array() {
         return format!("array<{printed}>");
     }
     match inner {
-        // `printArrayType()`
         TypeNode::Array { .. } => printed
             .split('|')
             .map(|t| format!("{t}[]"))
             .collect::<Vec<_>>()
             .join("|"),
-        // `printUnionType()`
         TypeNode::Union {
             types,
             wrapped: false,
@@ -372,8 +342,6 @@ fn print_array(inner: &TypeNode, generic_parent: bool) -> String {
     }
 }
 
-/// phpdoc-parser's `ArrayTypeNode::__toString()`: `T[]`, an intersection, a callable or a nullable type in
-/// parentheses.
 fn array_of(t: &TypeNode) -> String {
     match t {
         TypeNode::Intersection(_) | TypeNode::Callable { .. } | TypeNode::Nullable(_) => {

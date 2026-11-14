@@ -1,7 +1,3 @@
-//! `lint/pest/no-static-test-closure`, ported from pest-plugin-rector's `RemoveStaticTestClosureRector`: a `static`
-//! closure given to `test()`, `it()`, `describe()`, `beforeEach()` or `afterEach()` loses `static` when it uses
-//! `$this`, which Pest binds to the test case. `beforeAll()` and `afterAll()` run without one and keep theirs.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 

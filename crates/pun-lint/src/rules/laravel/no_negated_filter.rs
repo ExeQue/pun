@@ -1,10 +1,3 @@
-//! `lint/laravel/no-negated-filter`, ported from rector-laravel 2.7.3's `AvoidNegatedCollectionFilterOrRejectRector`
-//! (src/Rector/MethodCall).
-//!
-//! On an `Illuminate\Support\Enumerable`, `filter(fn (...) => !$x)` becomes `reject(fn (...): bool => (bool) $x)`, and
-//! `reject` becomes `filter` the same way. The `!` goes; its operand is cast to `bool` unless its type is a boolean,
-//! and the arrow function's return type becomes `bool`. Only a call with one argument, an arrow function, counts.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{Expression, Node, NodeKind};

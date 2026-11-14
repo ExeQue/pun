@@ -1,6 +1,3 @@
-//! EnumSanityRule and EnumCaseOutsideEnumRule. A case's value is the constant Mago's codex infers for it, with class
-//! constant and `X::Case->value` references followed through the codebase.
-
 use std::collections::HashMap;
 
 use mago_codex::ttype::atomic::TAtomic;
@@ -17,7 +14,6 @@ use pun_phpstan::types::{Level, Type, is_super_type_of};
 
 use super::Checker;
 
-/// PHP's magic methods (php-parser's `ClassMethod::$magicNames`).
 const MAGIC: &[&str] = &[
     "__construct",
     "__destruct",
@@ -38,14 +34,12 @@ const MAGIC: &[&str] = &[
     "__unserialize",
 ];
 
-/// EnumSanityRule.
 pub(super) fn sanity<'arena>(c: &mut Checker<'_, 'arena>, e: &Enum<'arena>) {
     let display = c
         .decls
         .last()
         .and_then(|d| d.display.clone())
         .expect("an enum's Decl");
-    // php-parser lowercases a built-in type's name (`Int` is `int`)
     let scalar = e.backing_type_hint.as_ref().map(|b| {
         let written = c.written(b.hint.span());
         let written = match b.hint {
@@ -116,7 +110,6 @@ pub(super) fn sanity<'arena>(c: &mut Checker<'_, 'arena>, e: &Enum<'arena>) {
             None,
         );
     }
-    // value => case names, in PHP's array key order
     let mut values: Vec<(String, Vec<String>)> = Vec::new();
     let mut at: HashMap<String, usize> = HashMap::new();
     for m in &e.members {
@@ -158,7 +151,6 @@ pub(super) fn sanity<'arena>(c: &mut Checker<'_, 'arena>, e: &Enum<'arena>) {
         } else {
             Type::String
         };
-        // getConstantScalarValues(): the int or string the case has
         let key = match &t {
             Type::ConstInt(i) => Some(i.to_string()),
             Type::ConstString(s) => Some(String::from_utf8_lossy(s).into_owned()),
@@ -198,8 +190,6 @@ pub(super) fn sanity<'arena>(c: &mut Checker<'_, 'arena>, e: &Enum<'arena>) {
     }
 }
 
-/// The constant value of a case of the enum `e`: the codex's, or for `self::X->value` (which the codex leaves
-/// unknown) the value of case X.
 fn case_value(c: &Checker, e: &Enum, enum_name: &str, case: &str, depth: usize) -> Option<Type> {
     (depth < 32).then_some(())?;
     let inferred = c
@@ -217,7 +207,6 @@ fn case_value(c: &Checker, e: &Enum, enum_name: &str, case: &str, depth: usize) 
         _ => None,
     })?;
     let value = super::types::flow::unparen(value);
-    // the codex types a float literal as `float`
     if let Expression::Literal(Literal::Float(f)) = value {
         return Some(Type::ConstFloat(f.value.0));
     }
@@ -234,15 +223,11 @@ fn case_value(c: &Checker, e: &Enum, enum_name: &str, case: &str, depth: usize) 
     None
 }
 
-/// A codex constant's inferred type as PHPStan's constant type (see [`constant()`]).
 pub(super) fn constant_value(c: &Checker, a: &TAtomic) -> Option<Type> {
     constant(c, a, false, 0)
 }
 
-/// A codex constant type as PHPStan's constant type, following references to class constants and, in `value-of`
-/// (the codex's `X::Case->value`, always of one case), to an enum case's value.
 fn constant(c: &Checker, a: &TAtomic, value_of: bool, depth: usize) -> Option<Type> {
-    // a constant defined by itself is another rule's error
     (depth < 32).then_some(())?;
     match a {
         TAtomic::Scalar(TScalar::Integer(TInteger::Literal(i))) => Some(Type::ConstInt(*i)),
@@ -279,7 +264,6 @@ fn constant(c: &Checker, a: &TAtomic, value_of: bool, depth: usize) -> Option<Ty
     }
 }
 
-/// EnumCaseOutsideEnumRule.
 pub(super) fn case_outside<'arena>(c: &mut Checker<'_, 'arena>, case: &EnumCase<'arena>) {
     let in_enum = c.trait_context.is_none()
         && c.decls

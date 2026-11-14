@@ -1,7 +1,3 @@
-//! Getting a package's files into `vendor/<name>`: its dist archive from Composer's download cache (shared with
-//! Composer, so either tool reuses the other's downloads) or the network, checked against the lock's `shasum`, then
-//! unpacked with the archive's single top-level directory dropped. Path dists are symlinked.
-
 use crate::php::sha1;
 use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
@@ -11,15 +7,12 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
-/// Credentials from `auth.json` (the project's, then `COMPOSER_HOME`'s) and `COMPOSER_AUTH`, by host.
 #[derive(Debug, Default, Clone)]
 pub struct Auth {
     headers: Vec<(String, String)>,
 }
 
 impl Auth {
-    /// Reads every source: `env` (`COMPOSER_AUTH`'s value), the project's auth.json, then the one in Composer's home;
-    /// a later one does not override a host an earlier one set.
     pub fn load(project: &Path, home: Option<&Path>, env: Option<String>) -> Auth {
         let mut auth = Auth::default();
         let mut texts: Vec<String> = env.into_iter().collect();
@@ -113,8 +106,6 @@ fn base64(bytes: &[u8]) -> String {
     out
 }
 
-/// Composer's home (where `auth.json` and the global config live) and its download cache, as
-/// `Factory::getHomeDir` and `getCacheDir` find them for this process; `None` without `HOME` or `COMPOSER_HOME`.
 pub fn composer_dirs() -> Option<(PathBuf, PathBuf)> {
     let xdg_env = std::env::vars_os().any(|(k, _)| k.to_string_lossy().starts_with("XDG_"));
     let xdg = Path::new("/etc/xdg").is_dir() || xdg_env;
@@ -122,7 +113,6 @@ pub fn composer_dirs() -> Option<(PathBuf, PathBuf)> {
     dirs_in(&env, xdg, cfg!(target_os = "macos"))
 }
 
-/// [`composer_dirs`] for an environment: `xdg` when the system uses XDG directories, `macos` on macOS.
 fn dirs_in(
     env: &dyn Fn(&str) -> Option<String>,
     xdg: bool,
@@ -166,7 +156,6 @@ fn dirs_in(
     Some((PathBuf::from(home), PathBuf::from(cache)))
 }
 
-/// The dist URL with its reference updated, as Composer requests (and caches) it.
 pub fn dist_url(url: &str, reference: Option<&str>) -> String {
     static RULES: LazyLock<Vec<(Regex, &str)>> = LazyLock::new(|| {
         [
@@ -211,17 +200,13 @@ pub fn dist_url(url: &str, reference: Option<&str>) -> String {
     url.to_string()
 }
 
-/// The answer to a conditional metadata request.
 #[derive(Debug)]
 pub enum Fetched {
     NotModified,
     NotFound,
-    /// The body and its `Last-Modified`.
     Body(Vec<u8>, Option<String>),
 }
 
-/// Looks each host up once per run. Every connection a parallel fetch opens would ask DNS again, and dozens of
-/// lookups at once lose queries that the static Linux binary's resolver (musl's) retries only after seconds.
 #[derive(Debug, Default)]
 struct OnceResolver {
     resolved: std::sync::Mutex<HashMap<String, ureq::unversioned::resolver::ResolvedSocketAddrs>>,
@@ -235,7 +220,6 @@ impl ureq::unversioned::resolver::Resolver for OnceResolver {
         timeout: ureq::unversioned::transport::NextTimeout,
     ) -> Result<ureq::unversioned::resolver::ResolvedSocketAddrs, ureq::Error> {
         let key = format!("{:?}{:?}", uri.scheme(), uri.authority());
-        // Held through the lookup, so the connections opened at once wait for one answer.
         let mut resolved = self.resolved.lock().expect("the resolver's cache");
         if let Some(addrs) = resolved.get(&key) {
             return Ok(addrs.clone());
@@ -255,14 +239,11 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    /// `secure_http` is `config.secure-http` (Composer's default, true): no `http://` URL, and no redirect to one.
     pub fn new(cache: Option<PathBuf>, auth: Auth, secure_http: bool) -> Fetcher {
         let config = ureq::Agent::config_builder()
             .user_agent(format!("pun/{}", env!("CARGO_PKG_VERSION")))
             .https_only(secure_http)
             .http_status_as_error(false)
-            // Keep every connection a parallel fetch opened, so the next round of metadata requests and the
-            // downloads after it skip the TLS handshake (ureq keeps 3 per host by default).
             .max_idle_connections(64)
             .max_idle_connections_per_host(64)
             .build();
@@ -279,8 +260,6 @@ impl Fetcher {
         }
     }
 
-    /// The package's dist archive bytes: from the cache when its sha1 matches `shasum` (or there is none), else
-    /// downloaded, checked, and cached. Returns whether it came from the cache.
     pub fn archive(&self, package: &Map<String, Value>) -> Result<(Vec<u8>, bool)> {
         let name = package["name"]
             .as_str()
@@ -347,13 +326,10 @@ impl Fetcher {
         Ok((bytes, false))
     }
 
-    /// Composer's cache directory, when there is one.
     pub fn cache_dir(&self) -> Option<&Path> {
         self.cache.as_deref()
     }
 
-    /// A conditional GET for repository metadata: `since` is the `Last-Modified` of the cached copy. Retries as
-    /// [`Fetcher::get`] does.
     pub fn metadata(&self, url: &str, since: Option<&str>) -> Result<Fetched> {
         let mut attempt = 0;
         loop {
@@ -396,7 +372,6 @@ impl Fetcher {
         }
     }
 
-    /// GET with the host's credentials; a 429, a 5xx or a failed connection is tried again, up to three times.
     fn get(&self, url: &str) -> Result<Vec<u8>> {
         let mut attempt = 0;
         loop {
@@ -433,8 +408,6 @@ static METADATA: LazyLock<Regex> = LazyLock::new(|| {
         .expect("valid pattern")
 });
 
-/// Unpacks `bytes` (a `zip` or `tar` dist) into `target`, replacing what was there. A single top-level directory
-/// (metadata files beside it aside) is unwrapped.
 pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
     let parent = target.parent().context("target without a parent")?;
     std::fs::create_dir_all(parent)?;
@@ -481,8 +454,6 @@ pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
     result
 }
 
-/// Extracts a zip into `dir`, its entries in parallel (one large package would otherwise take a core for a second).
-/// Entry names that leave `dir` are skipped; symlinks are made last, and only those that point inside `dir`.
 fn unzip(bytes: &[u8], dir: &Path) -> Result<()> {
     use rayon::prelude::*;
     use std::os::unix::fs::PermissionsExt;
@@ -539,7 +510,6 @@ fn unzip(bytes: &[u8], dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// A `path` dist: a symlink to the directory (relative when it can be), as Composer's path repository makes by default.
 pub fn link_path(url: &str, base: &Path, target: &Path) -> Result<()> {
     let source = if Path::new(url).is_absolute() {
         PathBuf::from(url)
@@ -551,14 +521,12 @@ pub fn link_path(url: &str, base: &Path, target: &Path) -> Result<()> {
     remove(target)?;
     std::fs::create_dir_all(target.parent().context("target without a parent")?)?;
     let parent = std::fs::canonicalize(target.parent().unwrap_or(target))?;
-    // Composer's relative link ends in a slash.
     let relative =
         crate::paths::shortest(&parent.to_string_lossy(), &source.to_string_lossy(), true);
     std::os::unix::fs::symlink(format!("{}/", relative.trim_end_matches('/')), target)?;
     Ok(())
 }
 
-/// Removes a directory tree, a file, or a symlink (without following it).
 pub fn remove(path: &Path) -> std::io::Result<()> {
     match std::fs::symlink_metadata(path) {
         Ok(m) if m.is_dir() => std::fs::remove_dir_all(path),
@@ -574,8 +542,6 @@ mod tests {
     use std::io::Write;
     use std::os::unix::fs::PermissionsExt;
 
-    /// Composer 2.11.2's `Factory::getHomeDir` and `getCacheDir` (through reflection) with the same environment
-    /// and directories, on Linux with `/etc/xdg`; the cases without XDG and on macOS follow its code by hand.
     #[test]
     fn composer_dirs_match_composer() {
         let t = scratch("dirs");
@@ -676,7 +642,6 @@ mod tests {
         d
     }
 
-    /// Expected URLs from Composer 2.11.2's `Url::updateDistReference($config, $url, 'abc123')` in PHP 8.5.
     #[test]
     fn dist_urls_match_composer() {
         for (url, want) in [
@@ -721,9 +686,6 @@ mod tests {
         );
     }
 
-    /// An HTTP server on localhost that answers `requests` requests: 200 with `body`, 404 for `/missing` or 503 for
-    /// `/busy`. Returns
-    /// its base URL and the Authorization headers it saw.
     fn serve(
         body: &'static [u8],
         requests: usize,
@@ -786,8 +748,6 @@ mod tests {
         let url = format!("{base}/a.zip");
         let fetcher = Fetcher::new(Some(dir.join("cache")), auth.clone(), false);
 
-        // Downloaded with the project's credentials (base64 of "user:pass"), checked, and cached under Composer's
-        // name for it; the second time it comes from the cache.
         assert_eq!(
             fetcher.archive(&package(&url, &sha1(BODY))).unwrap(),
             (BODY.to_vec(), false)
@@ -802,7 +762,6 @@ mod tests {
             (BODY.to_vec(), true)
         );
 
-        // A cached archive that no longer matches is fetched again; a download that doesn't match is refused.
         let error = format!("{:#}", fetcher.archive(&package(&url, "0000")).unwrap_err());
         assert!(
             error.contains("has sha1")
@@ -817,7 +776,6 @@ mod tests {
         );
         assert!(error.contains("HTTP 404"), "{error}");
 
-        // Without a cache the archive is only downloaded; a busy server is asked three times, a missing one too.
         let (base, seen) = serve(BODY, 6);
         let uncached = Fetcher::new(None, Auth::default(), false);
         let url = format!("{base}/a.zip");
@@ -825,7 +783,6 @@ mod tests {
             uncached.archive(&package(&url, "")).unwrap(),
             (BODY.to_vec(), false)
         );
-        // A cache directory that is read-only, or a file, doesn't fail the download.
         let readonly = dir.join("readonly");
         std::fs::create_dir_all(readonly.join("files/acme/lib")).unwrap();
         let mode = std::os::unix::fs::PermissionsExt::from_mode(0o555);
@@ -862,7 +819,6 @@ mod tests {
             "{error}"
         );
 
-        // Composer's secure-http default refuses plain HTTP before connecting.
         let secure = Fetcher::new(None, auth, true);
         let error = format!("{:#}", secure.archive(&package(&url, "")).unwrap_err());
         assert_eq!(
@@ -890,7 +846,6 @@ mod tests {
         .unwrap();
         let env = r#"{"http-basic": {"basic.test": {"username": "ab", "password": "c"}, "skip.test": "x"}, "github-oauth": {"skip.test": 1}, "gitlab-token": {"skip.test": 1}, "bearer": {"skip.test": 1}}"#;
         let auth = Auth::load(&dir, Some(&home), Some(env.into()));
-        // base64 of "ab:c"; entries of the wrong shape are skipped.
         assert_eq!(auth.header("https://basic.test/x"), Some("Basic YWI6Yw=="));
         assert_eq!(auth.header("https://skip.test/x"), None);
         assert_eq!(
@@ -902,15 +857,12 @@ mod tests {
             Some("token gh")
         );
         assert_eq!(auth.header("https://github.com/a/b"), Some("token gh"));
-        // A GitHub Enterprise host gets its token, and no API host is guessed for it.
         assert_eq!(auth.header("https://github.acme.test/x"), Some("token ghe"));
         assert_eq!(
             auth.header("https://gitlab.com/api/v4/x"),
             Some("Bearer gl")
         );
-        // base64 of "u:t"
         assert_eq!(auth.header("https://git.acme.test/x"), Some("Basic dTp0"));
-        // The project's auth.json wins over COMPOSER_HOME's; a port or user in the URL doesn't hide the host.
         assert_eq!(
             auth.header("https://me@repo.acme.test:8443/p.zip"),
             Some("Bearer br")
@@ -921,8 +873,6 @@ mod tests {
         std::fs::remove_dir_all(&home).unwrap();
     }
 
-    /// A zip as GitHub builds them: one top-level directory, with a macOS metadata directory beside it, an
-    /// executable, a symlink inside the package, and the entries an attacker adds: a `..` path and a symlink out.
     fn zip_archive() -> Vec<u8> {
         use zip::write::SimpleFileOptions;
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
@@ -977,7 +927,6 @@ mod tests {
             "no temporary directory is left"
         );
 
-        // A gzip tar dist; and a dist type with no unpacker.
         let mut tar = tar::Builder::new(flate2::write::GzEncoder::new(
             vec![],
             flate2::Compression::fast(),
@@ -995,7 +944,6 @@ mod tests {
             "hello"
         );
         assert!(!target.join("src").exists());
-        // An entry that can't be written (a file where the archive has a directory) fails the unpack.
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
         let file = zip::write::SimpleFileOptions::default();
         w.start_file("a", file).unwrap();
@@ -1003,7 +951,6 @@ mod tests {
         let clash = w.finish().unwrap().into_inner();
         assert!(unpack("zip", &clash, &dir.join("vendor/acme/clash")).is_err());
 
-        // A plain tar with more than one entry at the top is unpacked as it is.
         let mut tar = tar::Builder::new(vec![]);
         for name in ["README", "LICENSE"] {
             let mut h = tar::Header::new_gnu();
@@ -1019,7 +966,6 @@ mod tests {
             assert_eq!(error, format!("dist type `{kind}` is not supported yet"));
         }
 
-        // A path dist links to the directory, given relative to the project or absolute.
         let package_dir = dir.join("packages/x");
         std::fs::create_dir_all(&package_dir).unwrap();
         let link = dir.join("vendor/acme/x");

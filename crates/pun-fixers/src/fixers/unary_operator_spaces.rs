@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\UnaryOperatorSpacesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -35,7 +34,6 @@ impl Fixer for UnaryOperatorSpacesFixer {
             if self.only_dec_inc && !tokens[index].is_given_kind(&[T_DEC, T_INC]) {
                 continue;
             }
-            // TokensAnalyzer holds no state beyond the collection; rebuilt per query since we mutate.
             if TokensAnalyzer::new(tokens).is_unary_successor_operator(index) {
                 let prev = tokens.get_prev_non_whitespace(index, None).unwrap();
                 if !tokens[prev].is_comment() {

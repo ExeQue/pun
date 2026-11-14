@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\ModernizeStrposFixer` (v3 default: `modernize_stripos` false).
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -19,7 +18,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `REPLACEMENTS`: operator, operand, replacement function, negate.
 const REPLACEMENTS: &[(
     (pun_tokens::Kind, &str),
     (pun_tokens::Kind, &str),
@@ -52,7 +50,6 @@ const REPLACEMENTS: &[(
     ),
 ];
 
-/// `getCompareTokens`' result.
 struct CompareTokens {
     operator_index: usize,
     operand_index: usize,
@@ -100,8 +97,8 @@ impl Fixer for ModernizeStrposFixer {
                 continue;
             }
             let compare_tokens =
-                get_compare_tokens(tokens, index, -1) // look behind
-                    .or_else(|| get_compare_tokens(tokens, close_index, 1)); // look ahead
+                get_compare_tokens(tokens, index, -1)
+                    .or_else(|| get_compare_tokens(tokens, close_index, 1));
             if let Some(compare_tokens) = compare_tokens {
                 let is_case_insensitive = tokens[index].equals((T_STRING, "stripos"), false);
                 fix_call(tokens, index, &compare_tokens, is_case_insensitive);

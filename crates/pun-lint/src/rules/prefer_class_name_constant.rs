@@ -1,15 +1,3 @@
-//! `lint/style/prefer-class-name-constant`, ported from Rector 2.8.4's `StringClassNameToClassConstantRector`
-//! (rules/Php55/Rector/String_).
-//!
-//! A string whose value (without leading `\`) names a known class, interface, trait or enum with a namespace, and
-//! does not start with a lowercase letter, becomes `\Name::class`, the name as the string writes it. php-parser's
-//! `String_` is a quoted string without interpolation or a heredoc or nowdoc with only text. A string passed straight
-//! to a call written `is_a(...)` (Rector compares the call's name as written, case included) is left alone. A class is
-//! known when the codebase (PHP's built-in symbols and the project's) has it, as `ReflectionProvider::hasClass`.
-//!
-//! Options: `items = ["Nette\\*", "Error"]`, the names to leave alone: a pattern with `*` matched as `fnmatch` with
-//! `FNM_NOESCAPE` matches it, any other name without regard to case.
-
 use mago_syntax::cst::{
     CompositeString, Expression, Identifier, Literal, Node, NodeKind, StringPart,
 };
@@ -25,8 +13,6 @@ pub struct PreferClassNameConstant {
     pub skip: Vec<String>,
 }
 
-/// php-parser's value of a heredoc or nowdoc with text only (Mago's literal parts hold it, the closing label's
-/// indentation and the newline before it taken out).
 fn document_value(doc: &mago_syntax::cst::DocumentString<'_>) -> Option<Vec<u8>> {
     let mut value = Vec::new();
     for part in &doc.parts {
@@ -38,7 +24,6 @@ fn document_value(doc: &mago_syntax::cst::DocumentString<'_>) -> Option<Vec<u8>>
     Some(value)
 }
 
-/// `fnmatch($pattern, $name, FNM_NOESCAPE)`: `*` and `?` as wildcards (they cross `\`), `[...]` a class.
 fn fnmatch(pattern: &[u8], name: &[u8]) -> bool {
     match pattern.first() {
         None => name.is_empty(),
@@ -47,7 +32,6 @@ fn fnmatch(pattern: &[u8], name: &[u8]) -> bool {
         Some(b'[') => {
             let negate = matches!(pattern.get(1), Some(b'!' | b'^'));
             let first = 1 + usize::from(negate);
-            // A `]` right after `[` or `[!` is a member of the set; without a closing `]` the `[` is literal.
             let close = (pattern.get(first + 1..))
                 .and_then(|rest| rest.iter().position(|b| *b == b']'))
                 .map(|i| i + first + 1);
@@ -73,7 +57,6 @@ fn fnmatch(pattern: &[u8], name: &[u8]) -> bool {
     }
 }
 
-/// Whether the string at `span` is an argument value of a call written `is_a(...)` (`FROM_FUNC_CALL_NAME`).
 fn is_a_argument(ancestors: &[Node<'_, '_>], span: pun_problem::Span) -> bool {
     let Some(Node::FunctionCall(call)) = ancestors
         .iter()
@@ -102,7 +85,6 @@ impl Rule for PreferClassNameConstant {
         "lint/style/prefer-class-name-constant"
     }
 
-    /// `PhpVersionFeature::CLASSNAME_CONSTANT`.
     fn min_php_version(&self) -> u32 {
         50500
     }
@@ -149,7 +131,6 @@ impl Rule for PreferClassNameConstant {
             .iter()
             .position(|b| *b != b'\\')
             .unwrap_or(value.len());
-        // A name that is not UTF-8 names no class: the codebase's names come from UTF-8 sources.
         let name = String::from_utf8_lossy(&value[start..]);
         if name.is_empty() || !name.contains('\\') || name.as_bytes()[0].is_ascii_lowercase() {
             return;

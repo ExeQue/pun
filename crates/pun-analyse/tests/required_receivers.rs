@@ -1,5 +1,3 @@
-//! Receiver semantics from PHPStan 2.3.1: require-extends is not nominal inheritance.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

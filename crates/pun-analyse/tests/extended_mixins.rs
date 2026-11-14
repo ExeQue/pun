@@ -1,5 +1,3 @@
-//! Full PHPStan 2.3.1 records for extended method identity, not just method-existence checks.
-
 use std::path::{Path, PathBuf};
 
 use pun_analyse::{Project, run};

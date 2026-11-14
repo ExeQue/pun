@@ -1,9 +1,3 @@
-//! `lint/strings/prefer-empty-string-identical`, ported from Rector 2.8.4's `StrlenZeroToIdenticalEmptyStringRector`
-//! (rules/CodeQuality/Rector/Identical).
-//!
-//! `strlen($s) === 0` is `$s === ''`, and `strlen($s) > 0` (or `0 < strlen($s)`) is `$s !== ''`. A value that is not
-//! natively a string is cast with `(string)`; Pun reads "is a string" from the syntax (`no_sole_value_sprintf`).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -53,13 +47,11 @@ impl Rule for PreferEmptyStringIdentical {
         {
             return;
         }
-        // `0 > strlen($s)` and `strlen($s) < 0` never hold.
         match binary.operator {
             BinaryOperator::GreaterThan(_) if !call_on_left => return,
             BinaryOperator::LessThan(_) if call_on_left => return,
             _ => {}
         }
-        // `getArgs()[0]`, named or not; Rector also takes an unpacked one, which changes the meaning.
         let Some(arg) = call.argument_list.arguments.first() else {
             return;
         };

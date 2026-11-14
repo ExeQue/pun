@@ -1,4 +1,3 @@
-//! Physical operands are shared; semantic return resolution remains per callee.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -138,8 +137,6 @@ fn describe(ty: &TUnion) -> String {
     types.join("|")
 }
 
-// Mago stores case-folded declaring-class identities; only template scope names
-// need this display normalization. Literal string values remain case-sensitive.
 fn oracle_type(ty: &str) -> String {
     let mut ty = ty.to_string();
     let mut offset = 0;
@@ -760,8 +757,6 @@ fn signature_worker() -> PluginRegistry {
                     "pack('nnnn', {ANALYZER_PROTOCOL_MAJOR}, {ANALYZER_PROTOCOL_MINOR}, $kind, 0)"
                 ),
             )
-            // Exercise effective signatures for declared targets as well as
-            // otherwise absent magic methods: callable signature | override.
             .replace("pack('NnCN', 1, 0, 1, 2)", "pack('NnCN', 1, 0, 3, 2)");
     let pool = WorkerPool::spawn(
         WorkerCommand::new("php")
@@ -817,8 +812,6 @@ function exercise(ProviderTarget|OtherTarget $target): void {
         let artifacts = outcome.unwrap();
         for (call, expected) in [
             ("$target->provided(++$i)", "73"),
-            // UnionType::getMethod() keeps the members that have the method, and a call no member has a method
-            // for is an ErrorType: `__call()` alone gives PHPStan no method reflection.
             ("$target->magic(++$i)", "73"),
             ("$target->withoutProvider(++$i)", "*ERROR*"),
         ] {
@@ -854,8 +847,6 @@ function exercise(ProviderTarget|OtherTarget $target): void {
                 artifacts.get_expression_type(&span).map(describe),
                 Some((index + 1).to_string())
             );
-            // The worker's zero-parameter signature applies to both provided()
-            // targets and only ProviderTarget::magic(), never either fallback.
             expected_errors.extend(std::iter::repeat_n(start, [2, 1, 0][index]));
         }
         let mut actual_errors: Vec<_> = result
@@ -898,7 +889,6 @@ fn assert_case(
         assert_eq!(plain_result.issues, observed_result.issues);
         assert_eq!(plain.expression_types, observed.expression_types);
         for (start, record) in oracle.as_object().unwrap() {
-            // A write-only assignment target has no physical read in either analyser.
             if (record["expression"] == "$i" || record["expression"] == "$value")
                 && record["type"] == "*ERROR*"
             {

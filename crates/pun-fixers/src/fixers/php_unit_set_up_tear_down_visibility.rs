@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitSetUpTearDownVisibilityFixer`.
 use crate::analyzers::abstract_php_unit_fixer as base;
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;

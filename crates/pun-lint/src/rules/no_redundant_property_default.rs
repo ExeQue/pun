@@ -1,19 +1,3 @@
-//! `lint/dead-code/no-redundant-property-default`, ported from Rector 2.8.4's
-//! `RemoveDefaultValueFromAssignedPropertyRector` (rules/DeadCode/Rector/Property), with `ConstructorAssignDetector`,
-//! `PropertyAssignMatcher` and `PropertyFetchAnalyzer::isFilledViaMethodCallInConstructStmts`.
-//!
-//! A typed, non-static property without hooks, private or of a final class, loses its default value when the
-//! constructor always assigns it: a statement of the constructor's own body assigns it (not through an array key,
-//! and not from its own value), or both branches of an `if`/`else` there do, or a method the constructor calls as a
-//! statement assigns it in its own body. The constructor, or a method it calls directly on `$this`, must not return
-//! early. Methods marked
-//! `@required` or `@inject` (or with Symfony's `#[Required]`, Nette's `#[Inject]`) initialize too, and so do `setUp()`
-//! and `setUpBeforeClass()` of a PHPUnit test case.
-//!
-//! Rector knows a test case and the methods a call reaches by their types. Pun counts a class as a test case when it
-//! extends `PHPUnit\Framework\TestCase` itself. Calls on typed peers and inherited methods use the documented
-//! receiver and its reflected declaration; only a method declared by this class or an ancestor can initialize it.
-
 use mago_syntax::cst::*;
 use pun_phpstan::types::Type;
 use pun_problem::{Edit, Fix, Safety, Span};
@@ -61,7 +45,6 @@ impl Rule for NoRedundantPropertyDefault {
         let Some(constructor) = method(members, b"__construct") else {
             return;
         };
-        // An early return can skip the assignment, so the default value is still needed.
         if has_early_return(members, constructor) {
             return;
         }
@@ -81,7 +64,6 @@ impl Rule for NoRedundantPropertyDefault {
             let ClassLikeMember::Property(Property::Plain(property)) = member else {
                 continue;
             };
-            // Untyped properties are RemoveNullPropertyInitializationRector's.
             if property.hint.is_none()
                 || property
                     .modifiers
@@ -121,9 +103,6 @@ impl Rule for NoRedundantPropertyDefault {
     }
 }
 
-/// `ConstructorAssignDetector::isPropertyAssigned` for the property `name` (without its `$`) of the class or
-/// anonymous class with `members`, `left_brace` and `extends`, which `path` leads to (and ends with): false without a
-/// constructor.
 pub(crate) fn is_assigned_in_constructor<'a>(
     ctx: &Context<'_>,
     members: &'a Sequence<'a, ClassLikeMember<'a>>,
@@ -147,7 +126,6 @@ pub(crate) fn is_assigned_in_constructor<'a>(
     .is_assigned(name)
 }
 
-/// `hasEarlyReturn`: a `return` in the constructor, or in a class method it calls as a statement on `$this`.
 fn has_early_return(members: &Sequence<'_, ClassLikeMember<'_>>, constructor: &Method<'_>) -> bool {
     if has_return(Node::Method(constructor)) {
         return true;
@@ -167,7 +145,6 @@ fn has_early_return(members: &Sequence<'_, ClassLikeMember<'_>>, constructor: &M
     })
 }
 
-/// `hasInstancesOfInFunctionLikeScoped(..., Return_::class)`: a `return` outside nested functions and classes.
 fn has_return(node: Node<'_, '_>) -> bool {
     let mut found = false;
     node.visit_children(|child| {
@@ -188,7 +165,6 @@ fn has_return(node: Node<'_, '_>) -> bool {
     found
 }
 
-/// The statements of a method's body.
 fn first_level<'a>(method: &'a Method<'a>) -> impl Iterator<Item = &'a Statement<'a>> {
     let statements: Vec<&Statement> = match &method.body {
         MethodBody::Concrete(block) => block.statements.iter().collect(),
@@ -197,8 +173,6 @@ fn first_level<'a>(method: &'a Method<'a>) -> impl Iterator<Item = &'a Statement
     statements.into_iter()
 }
 
-/// Calls resolve the declaring class through reflection, while local fetches compare the documented object type's
-/// class name exactly. Neither a dynamic class expression nor a different named class identifies the local class.
 fn local_static_class(class: &Expression<'_>, path: &[Node<'_, '_>], reflected: bool) -> bool {
     let id = match unparenthesize(class) {
         Expression::Self_(_) | Expression::Static(_) => return true,
@@ -230,7 +204,6 @@ fn local_static_class(class: &Expression<'_>, path: &[Node<'_, '_>], reflected: 
     }
 }
 
-/// `$this->name`, `self::$name`, `static::$name` or the enclosing class's named static fetch.
 fn is_fetch(expr: &Expression<'_>, name: &[u8], path: &[Node<'_, '_>], ctx: &Context<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Access(Access::Property(a)) => {
@@ -245,7 +218,6 @@ fn is_fetch(expr: &Expression<'_>, name: &[u8], path: &[Node<'_, '_>], ctx: &Con
     }
 }
 
-/// `isLocalPropertyFetch`: a documented object must name the enclosing class exactly; `ThisType` is local.
 fn local_object(object: &Expression<'_>, path: &[Node<'_, '_>], ctx: &Context<'_>) -> bool {
     let facts = facts(ctx);
     with_classes(facts.documented(), || {
@@ -254,8 +226,6 @@ fn local_object(object: &Expression<'_>, path: &[Node<'_, '_>], ctx: &Context<'_
             Type::This(_) => return true,
             Type::Object(name, _, _) | Type::Static(name, _) => name,
             Type::Template(_) => {
-                // TemplateObjectType and TemplateGenericObjectType extend ObjectType, unlike a template union
-                // or intersection. A template bound can itself be a TemplateObjectType.
                 let mut bound = &ty;
                 while let Type::Template(template) = bound {
                     bound = &template.bound;
@@ -273,7 +243,6 @@ fn local_object(object: &Expression<'_>, path: &[Node<'_, '_>], ctx: &Context<'_
     })
 }
 
-/// `PropertyAssignMatcher::matchPropertyAssignExpr`: an assignment to `$this->name` or `$this->name[...]`.
 fn assigns<'a>(
     expr: &'a Expression<'a>,
     name: &[u8],
@@ -297,17 +266,13 @@ fn assigns<'a>(
 struct Scope<'s, 'p, 'a> {
     ctx: &'s Context<'s>,
     members: &'a Sequence<'a, ClassLikeMember<'a>>,
-    /// A lower bound for the first member's leading comments.
     comments_from: usize,
     path: &'p [Node<'a, 'a>],
     extends: Option<&'a Extends<'a>>,
     constructor: Option<&'a Method<'a>>,
-    /// Whether the class is a PHPUnit test case, when the caller knows; else it extends `PHPUnit\Framework\TestCase`.
     test_case: Option<bool>,
 }
 
-/// `ConstructorAssignDetector::isPropertyAssigned` for the property `name` of `view`;
-/// `test_case` says whether it is a PHPUnit test case.
 pub(crate) fn is_property_assigned(
     ctx: &Context<'_>,
     view: &ClassView<'_, '_>,
@@ -319,7 +284,6 @@ pub(crate) fn is_property_assigned(
         members: view.members,
         comments_from: node_span(&view.node).start,
         path: &view.path,
-        // The caller already resolves test-case ancestry, so the syntactic fallback is unused.
         extends: None,
         constructor: view.method(b"__construct"),
         test_case: Some(test_case),
@@ -327,7 +291,6 @@ pub(crate) fn is_property_assigned(
     scope.is_assigned(name)
 }
 
-/// What a walk of an initializing method found.
 enum Found {
     Continue,
     Stop(bool),
@@ -339,12 +302,9 @@ enum Receiver<'e, 'a> {
 }
 
 impl<'a> Scope<'_, '_, 'a> {
-    /// `ConstructorAssignDetector::isPropertyAssigned`.
     fn is_assigned(&self, name: &[u8]) -> bool {
         let mut assigned = false;
         for method in self.initializers() {
-            // `IS_FIRST_LEVEL_STATEMENT`: the method's own statements, and the expression of each expression
-            // statement.
             let first: Vec<Span> = first_level(method)
                 .map(|s| match s {
                     Statement::Expression(e) => node_span(unparenthesize(e.expression)),
@@ -363,7 +323,6 @@ impl<'a> Scope<'_, '_, 'a> {
         assigned || self.filled_via_method_call(name)
     }
 
-    /// The constructor, `setUp()` and `setUpBeforeClass()` of a test case, and the autowired methods.
     fn initializers(&self) -> Vec<&'a Method<'a>> {
         let mut out: Vec<&'a Method<'a>> = self.constructor.into_iter().collect();
         let test_case = self.test_case.unwrap_or_else(|| {
@@ -389,13 +348,11 @@ impl<'a> Scope<'_, '_, 'a> {
         out
     }
 
-    /// `AutowiredClassMethodOrPropertyAnalyzer::detect`.
     fn autowired(&self, index: usize, m: &Method<'_>) -> bool {
         let from = index
             .checked_sub(1)
             .and_then(|i| self.members.get(i))
             .map_or(self.comments_from, |previous| node_span(previous).end);
-        // From the class's start, the last non-comment token before its first member is its `{`.
         let from = previous_token_end(self.ctx, from, node_span(m).start);
         let doc = doc_comment(self.ctx.source, from, node_span(m).start);
         let tagged = doc.is_some_and(|d| {
@@ -425,9 +382,7 @@ impl<'a> Scope<'_, '_, 'a> {
             )
     }
 
-    /// The traversal of `isPropertyAssigned`, in php-parser's order: `in_loop` inside a loop or `switch` body.
     fn walk(&self, node: Node<'a, 'a>, name: &[u8], first: &[Span], in_loop: bool) -> Found {
-        // A nested if/else does not guarantee the assignment; the outer condition can skip it.
         if let Node::If(r#if) = node
             && first.contains(&node_span(r#if))
             && if_else_assign(r#if, name, self.path, self.ctx)
@@ -437,7 +392,6 @@ impl<'a> Scope<'_, '_, 'a> {
         if let Node::Assignment(a) = node
             && let Some(a) = assigns_node(a, name, self.path, self.ctx)
         {
-            // Is the property's own value merged into the assignment?
             if uses_fetch(self.ctx.source, Node::Expression(a.rhs), a.lhs) {
                 return Found::Stop(false);
             }
@@ -473,8 +427,6 @@ impl<'a> Scope<'_, '_, 'a> {
         found
     }
 
-    /// `isFilledViaMethodCallInConstructStmts`: a constructor statement calling a class method that assigns the
-    /// property in a statement of its own body.
     fn filled_via_method_call(&self, name: &[u8]) -> bool {
         let Some(constructor) = self.constructor else {
             return false;
@@ -508,7 +460,6 @@ impl<'a> Scope<'_, '_, 'a> {
         })
     }
 
-    /// `AstResolver::resolveClassMethodFromCall`, followed by `isPropertyAssignFoundInClassMethod`.
     fn reflected_method_assigns(
         &self,
         receiver: Receiver<'_, '_>,
@@ -639,8 +590,6 @@ fn assigns_node<'a>(
     is_fetch(target, name, path, ctx).then_some(a)
 }
 
-/// `isIfElseAssign`: an `if` with an `else` and no `elseif` whose branches both assign the property in a list of
-/// expression statements only.
 fn if_else_assign(r#if: &If<'_>, name: &[u8], path: &[Node<'_, '_>], ctx: &Context<'_>) -> bool {
     let (stmts, else_stmts): (Vec<&Statement>, Vec<&Statement>) = match &r#if.body {
         IfBody::Statement(body) => {
@@ -678,7 +627,6 @@ fn body_statements<'a>(statement: &'a Statement<'a>) -> Vec<&'a Statement<'a>> {
     }
 }
 
-/// `isAssignedInStmts`.
 fn assigned_in(
     stmts: &[&Statement<'_>],
     name: &[u8],
@@ -700,7 +648,6 @@ fn assigned_in(
     assigned
 }
 
-/// `isPropertyUsedInAssign`: a property fetch in `node` that prints as `target`.
 fn uses_fetch(source: &str, node: Node<'_, '_>, target: &Expression<'_>) -> bool {
     if let Node::PropertyAccess(a) = node
         && matches!(&a.property, ClassLikeMemberSelector::Identifier(_))
@@ -713,7 +660,6 @@ fn uses_fetch(source: &str, node: Node<'_, '_>, target: &Expression<'_>) -> bool
     found
 }
 
-/// `isAssignedViaArrayDimFetch`: an assignment anywhere in the class to `$this->name[...]`, at any depth of keys.
 fn assigned_via_array_key(
     node: Node<'_, '_>,
     name: &[u8],

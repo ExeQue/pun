@@ -1,5 +1,3 @@
-//! CallToMethodStatementWithNoDiscardRule and CallToStaticMethodStatementWithNoDiscardRule (PHP 8.5).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -19,7 +17,6 @@ fn is_void(e: &Expression) -> bool {
     matches!(unparen(e), Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::VoidCast(..)))
 }
 
-/// The discarded expression, whether its result is cast to void, and whether it is a pipe's callable.
 pub(super) fn expression<'e, 'arena>(
     s: &'e ExpressionStatement<'arena>,
 ) -> (&'e Expression<'arena>, bool, bool) {
@@ -32,7 +29,6 @@ pub(super) fn expression<'e, 'arena>(
     }
     let mut piped = false;
     if let Expression::Pipe(p) = e {
-        // PHP's `(void) $value |> f(...)` casts the result of the pipe, not its input.
         void |= is_void(p.input);
         e = unparen(p.callable);
         if let Expression::ArrowFunction(f) = e {
@@ -106,7 +102,6 @@ pub(crate) fn statement(c: &mut Checker, s: &ExpressionStatement) {
         return;
     }
     let Some(target) = target(s) else { return };
-    // RuleLevelHelper::findTypeToCheck checks only `$this` below level 2; a named static receiver bypasses it.
     let named_static = target.is_static
         && matches!(
             unparen(target.receiver),
@@ -159,7 +154,6 @@ pub(crate) fn statement(c: &mut Checker, s: &ExpressionStatement) {
         if methods.is_empty() {
             return;
         }
-        // IntersectionTypeMethodReflection uses any NoDiscard attribute and the widest signature's class.
         let must_use = methods.iter().any(|method| match method {
             members::Method::User { f, .. } => f
                 .attributes

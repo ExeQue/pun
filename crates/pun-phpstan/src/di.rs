@@ -1,7 +1,3 @@
-//! Nette DI's config machinery as PHPStan 2.3.5 uses it: `Nette\Schema\Helpers::merge`, `Nette\DI\Helpers::expand`
-//! / `escape`, `Nette\DI\Config\Loader` (includes) and `PHPStan\DependencyInjection\NeonAdapter::process` (`!`
-//! replacing, statements, relative paths, `(?)` optional excludePaths).
-
 use crate::neon;
 use crate::php::{absolutize_path, normalize_path};
 use crate::value::{Array, Entity, Key, Value};
@@ -12,12 +8,10 @@ fn prevent_key() -> Key {
     Key::Str(PREVENT_MERGING.into())
 }
 
-/// `isset($value['_prevent_merging'])`
 pub(crate) fn has_prevent(a: &Array) -> bool {
     a.get(&prevent_key()).is_some_and(|v| *v != Value::Null)
 }
 
-/// `Nette\Schema\Helpers::merge($value, $base)`: `$value` wins; its list items are appended to `$base`.
 pub(crate) fn merge(value: Value, base: Value) -> Value {
     match (value, base) {
         (Value::Array(v), Value::Array(b)) => Value::Array(merge_arrays(v, b)),
@@ -30,7 +24,6 @@ pub(crate) fn merge(value: Value, base: Value) -> Value {
     }
 }
 
-/// [`merge`] of two arrays.
 pub(crate) fn merge_arrays(mut v: Array, mut b: Array) -> Array {
     if has_prevent(&v) {
         v.remove(&prevent_key());
@@ -49,7 +42,6 @@ pub(crate) fn merge_arrays(mut v: Array, mut b: Array) -> Array {
     b
 }
 
-/// `Nette\DI\Helpers::escape()`.
 pub(crate) fn escape(v: Value) -> Value {
     match v {
         Value::Array(a) => {
@@ -75,7 +67,6 @@ pub(crate) fn escape(v: Value) -> Value {
     }
 }
 
-/// Only `%` doubling: for values PHPStan passes as runtime (dynamic) parameters, which expansion never touches.
 pub(crate) fn escape_percent(v: Value) -> Value {
     match v {
         Value::Array(a) => {
@@ -97,7 +88,6 @@ fn statement(entity: Value, arguments: Array) -> Value {
     }))
 }
 
-/// `Nette\DI\Helpers::expand($var, $params, $recursive)`; `recursive` is `None` for a plain expansion.
 pub(crate) fn expand(
     var: &Value,
     params: &Array,
@@ -109,7 +99,6 @@ pub(crate) fn expand(
             expand(&e.value, params, recursive)?,
             expand_array(&e.attributes, params, recursive)?,
         )),
-        // (Nette expands them again when recursive, which never ends: PHPStan dies, Pun keeps them as they are)
         Value::Str(s) if s == "%parameters%" && !params.contains(&Key::from("parameters")) => {
             Ok(Value::Array(params.clone()))
         }
@@ -118,7 +107,6 @@ pub(crate) fn expand(
     }
 }
 
-/// `preg_split('#%([\w.-]*)%#i', $s, -1, PREG_SPLIT_DELIM_CAPTURE)`
 fn split_placeholders(s: &str) -> Vec<&str> {
     let b = s.as_bytes();
     let mut parts = Vec::new();
@@ -228,7 +216,6 @@ fn expand_parameter(
     Ok(val)
 }
 
-/// [`expand`] of an array (keys are expanded too).
 pub(crate) fn expand_array(
     a: &Array,
     params: &Array,
@@ -245,24 +232,18 @@ pub(crate) fn expand_array(
     Ok(res)
 }
 
-/// PHP `dirname()` for `/`-separated paths.
 pub(crate) fn dirname(path: &str) -> String {
-    // (only ever given absolute file paths: no trailing slash, no bare name)
     let parent = std::path::Path::new(path)
         .parent()
         .map(|p| p.to_string_lossy().into_owned());
     parent.unwrap_or_else(|| "/".into())
 }
 
-/// Source of config files: the filesystem, plus PHPStan's own `conf/` inside the PHAR (embedded in Pun).
 pub trait Files {
     fn read(&self, path: &str) -> Option<Vec<u8>>;
-    /// PHP `is_file()`: true for an unreadable file too, without reading it.
     fn is_file(&self, path: &str) -> bool;
 }
 
-/// `PHPStan\DependencyInjection\NeonAdapter::load()`. `known` holds the parameters known before the container
-/// is compiled (rootDir, currentWorkingDirectory, env; LoaderFactory's), which path entries may use.
 pub fn load_neon(
     files: &dyn Files,
     file: &str,
@@ -293,8 +274,6 @@ fn relative_to(file: &str, path: &str) -> String {
     normalize_path(&absolutize_path(&dir, path))
 }
 
-/// `NeonAdapter::expandKnownParameters()`: replaces each `~%([\w.-]*)%~` with a known string parameter (`env.HOME`
-/// is nested), or None when one is not known.
 fn expand_known(value: &str, known: &Array) -> Option<String> {
     let b = value.as_bytes();
     let mut out = String::new();
@@ -371,9 +350,6 @@ pub(crate) fn process(
                 } else {
                     segment('(', ')')
                 };
-                // (NeonAdapter folds `a()::b()` chains into nested statements; Pun only reads parameters, where any
-                // statement ends resolution (see config.rs), so chains stay as decoded.)
-                // `createOptionalPath()`
                 let optional = match &e.value {
                     Value::Str(s)
                         if EXCLUDE_PATH_KEYS.contains(&key_to_resolve.as_str())
@@ -423,14 +399,12 @@ pub(crate) fn process(
     Ok(res)
 }
 
-/// `Nette\Utils\Validators::assert($value, 'list', $label)` message.
 pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
     if let Value::Array(a) = v
         && a.is_list()
     {
         return Ok(());
     }
-    // (`includes: null` is skipped before)
     let ty = match v {
         Value::Bool(_) => "bool".to_string(),
         Value::Int(_) | Value::Float(_) => format!(
@@ -445,13 +419,11 @@ pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
         Value::Str(s) if s.len() < 40 => format!("string {}", v.var_export()),
         Value::Str(_) => "string".to_string(),
         Value::Array(_) => "array".to_string(),
-        // (the phar's scoped class name)
         _ => "object _PHPStan_95d9e8b05\\Nette\\DI\\Definitions\\Statement".to_string(),
     };
     Err(format!("The {label} expects to be list, {ty} given."))
 }
 
-/// `Loader::expandIncludedFile()` / `ContainerFactory::expandIncludedFile()`: `#([a-z]+:)?[/\\\\]#Ai`.
 pub(crate) fn expand_included_file(included: &str, main: &str) -> String {
     let rest = match included.find(':') {
         Some(i) if i > 0 && included[..i].bytes().all(|c| c.is_ascii_alphabetic()) => {
@@ -466,8 +438,6 @@ pub(crate) fn expand_included_file(included: &str, main: &str) -> String {
     }
 }
 
-/// Reads one config file: `.neon`/`.dist` through PHPStan's NeonAdapter, `.php` through the baseline-shaped PHP
-/// reader (anything else in a `.php` config needs PHP).
 pub(crate) fn load_file(
     files: &dyn Files,
     file: &str,
@@ -492,8 +462,6 @@ pub(crate) fn load_file(
     }
 }
 
-/// `Nette\DI\Config\Loader` with PHPStan's `NeonLoader`: returns every loaded file's data, includes first (the
-/// `$merge = false` form the compiler consumes).
 pub(crate) struct Loader<'a> {
     pub files: &'a dyn Files,
     pub parameters: Array,
@@ -518,12 +486,10 @@ impl<'a> Loader<'a> {
         }
     }
 
-    /// `Loader::load($file, false)`.
     pub(crate) fn load(&mut self, file: &str) -> Result<Vec<Array>, String> {
         self.load_inner(file, false)
     }
 
-    /// `Loader::load($file)` (merged).
     pub(crate) fn load_merged(&mut self, file: &str) -> Result<Array, String> {
         Ok(self.load_inner(file, true)?.pop().unwrap_or_default())
     }

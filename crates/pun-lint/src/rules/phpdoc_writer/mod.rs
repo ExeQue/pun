@@ -1,18 +1,3 @@
-//! Rector's phpdoc writer, shared by the rules that add or change `@param`, `@var` and `@return` tags, ported from
-//! Rector 2.8.4 (src/BetterPhpDocParser, src/PHPStanStaticTypeMapper, src/Comments) on PHPStan 2.3.5:
-//!
-//! - [`DocTarget`]: a node's comments as php-parser assigns them, its [`PhpDocInfo`]
-//!   (`PhpDocInfoFactory::createFromNodeOrEmpty()`), and the edit that writes a changed doc back as php-parser's
-//!   format-preserving printer does (`DocBlockUpdater`, then `pComments()` at the node's indentation).
-//! - [`doc_info`]: `PhpDocInfo` (`getReturnTagValue()`, `getParamTagValueByName()`, `getVarTagValueNode()`, the
-//!   `PhpDocTypeChanger` setters) and `PhpDocInfoPrinter`.
-//! - [`type_mapper`]: `StaticTypeMapper::mapPHPStanTypeToPHPStanPhpDocTypeNode()` (`toPhpDocNode()` and
-//!   `styleTypeNode()`), `TypeNormalizer::generalizeConstantTypes()`, `ConstantArrayTypeGeneralizer` and
-//!   `NodeDocblockTypeDecorator`'s checks.
-//! - [`type_node`]: the type nodes, printed as Rector prints them.
-//! - [`phpstan_type`] and [`expr_type`]: PHPStan's type of an expression (`getType()`, `getNativeType()`) from
-//!   Mago's, and of a doc type ([`DocTarget::doc_type`], `mapPHPStanPhpDocTypeNodeToPHPStanType()`).
-
 pub(crate) mod doc_info;
 pub(crate) mod type_mapper;
 pub(crate) mod type_node;
@@ -52,24 +37,17 @@ use crate::Context;
 use crate::syntax::is_this;
 use crate::syntax::{node_span, unparenthesize};
 
-/// A node that carries a doc comment (a function, method, property or class), as php-parser sees it: where it
-/// starts (its first attribute or modifier) and the comments php-parser gives it.
 pub(crate) struct DocTarget {
-    /// The node's first token.
     pub start: usize,
-    /// The comments between the token before the node and the node.
     pub comments: Vec<Span>,
-    /// Which of them is the doc comment (`getDocComment()`: the last `/**` one).
     pub doc: Option<usize>,
 }
 
 impl DocTarget {
-    /// The comments of the node that starts at `start` in the file `ctx` is about.
     pub(crate) fn of(ctx: &crate::Context<'_>, start: usize) -> DocTarget {
         Self::in_tokens(ctx.source, ctx.tokens(), start)
     }
 
-    /// [`DocTarget::of`] in `source`, whose tokens are `tokens`.
     pub(crate) fn in_tokens(
         source: &str,
         tokens: &[crate::rules::php_parser::Token],
@@ -93,7 +71,6 @@ impl DocTarget {
         }
     }
 
-    /// `PhpDocInfoFactory::createFromNodeOrEmpty()`.
     pub(crate) fn info(&self, source: &str) -> PhpDocInfo {
         match self.doc {
             Some(i) => PhpDocInfo::parse(&source[self.comments[i].start..self.comments[i].end]),
@@ -101,11 +78,6 @@ impl DocTarget {
         }
     }
 
-    /// The edit that gives the node the doc comment `doc` (`Node::setDocComment()`, which replaces the doc comment
-    /// among the node's comments or adds it after them), as php-parser's format-preserving printer writes changed
-    /// comments: `pComments()` (each comment's `getReformattedText()`, its line breaks followed by the node's
-    /// indentation, a tab counting four spaces) from the first comment to the node, then a line break and the
-    /// indentation.
     pub(crate) fn edit(&self, source: &str, doc: &str) -> Edit {
         let nl = format!("\n{}", " ".repeat(indentation(source, self.start)));
         let mut texts: Vec<&str> = self
@@ -128,9 +100,6 @@ impl DocTarget {
         )
     }
 
-    /// `StaticTypeMapper::mapPHPStanPhpDocTypeNodeToPHPStanType()` of a tag's type written at the node
-    /// `ancestors` lead to (`PhpDocTypeMapper`): a union's members each through PHPStan's `TypeNodeResolver` and kept
-    /// as written (`UnionPhpDocTypeMapper`), any other node through the resolver.
     pub(crate) fn doc_type(
         tag: &TypedValue,
         ancestors: &[Node<'_, '_>],
@@ -153,7 +122,6 @@ impl DocTarget {
     }
 }
 
-/// PHPStan's `NameScope` of a place in the file.
 struct NameScope<'a, 'b> {
     ancestors: &'a [Node<'b, 'b>],
     class: Option<&'a str>,
@@ -191,8 +159,6 @@ impl Scope for NameScope<'_, '_> {
     }
 }
 
-/// PHPStan's type of a parsed doc type written at the node `ancestors` lead to (`TypeNodeResolver`): names resolved
-/// through the namespace and `use` imports, `self`, `static` and `$this` the class `class`, which the resolver knows.
 pub(crate) fn doc_type(parsed: &DocNode, ancestors: &[Node<'_, '_>], class: Option<&str>) -> Type {
     let own = class.map(|name| Arc::new(own_class(name)));
     let provider = |name: &str| own.clone().filter(|c| c.name.eq_ignore_ascii_case(name));
@@ -201,7 +167,6 @@ pub(crate) fn doc_type(parsed: &DocNode, ancestors: &[Node<'_, '_>], class: Opti
     })
 }
 
-/// The class being declared, as the resolver sees it: its name and nothing else.
 fn own_class(name: &str) -> Class {
     Class {
         name: name.to_string(),
@@ -223,10 +188,8 @@ fn own_class(name: &str) -> Class {
     }
 }
 
-/// PHPStan's type for Mago's `t`. `None` for a type Pun does not map.
 pub(crate) fn phpstan_type(t: &TUnion) -> Option<Type> {
     let types: Vec<Type> = t.types.iter().map(phpstan_atomic).collect::<Option<_>>()?;
-    // (Mago's unions are never empty)
     Some(match types.len() {
         1 => types.into_iter().next().expect("one type"),
         _ => union(types),
@@ -237,7 +200,6 @@ fn phpstan_atomic(atomic: &TAtomic) -> Option<Type> {
     Some(match atomic {
         TAtomic::Null => Type::Null,
         TAtomic::Never => Type::Never(NeverKind::Implicit),
-        // PHPStan's type of a call to a `void` function
         TAtomic::Void => Type::Null,
         TAtomic::Mixed(_) => Type::Mixed { explicit: false },
         TAtomic::Scalar(TScalar::Bool(b)) => match b.value {
@@ -279,7 +241,6 @@ fn phpstan_atomic(atomic: &TAtomic) -> Option<Type> {
                 }
                 let mut b = ShapeBuilder::new();
                 for (key, (optional, value)) in items.iter() {
-                    // (a constant's key, not yet resolved, is neither)
                     let key = match key.get_integer() {
                         Some(i) => Type::ConstInt(i),
                         None => Type::ConstString(key.get_string()?.to_vec()),
@@ -314,7 +275,6 @@ fn phpstan_atomic(atomic: &TAtomic) -> Option<Type> {
                 }
                 b.get()
             } else {
-                // as Rector runs PHPStan, a list is a plain `array<int<0, max>, T>`
                 Type::array(
                     Type::int_range(Some(0), None),
                     phpstan_type(&l.element_type)?,
@@ -337,7 +297,6 @@ fn phpstan_atomic(atomic: &TAtomic) -> Option<Type> {
         },
         TAtomic::Object(TObject::Any) => Type::ObjectWithoutClass,
         TAtomic::Resource(_) => Type::Resource,
-        // a template type, printed by its name
         TAtomic::GenericParameter(g) if g.intersection_types.is_none() => {
             Type::Template(Box::new(Template {
                 name: g.parameter_name.to_string(),
@@ -355,8 +314,6 @@ fn phpstan_atomic(atomic: &TAtomic) -> Option<Type> {
     })
 }
 
-/// `getType()` of `expr`: an array literal as PHPStan's `ConstantArrayTypeBuilder` builds it (its items in the
-/// order written), a literal or `Name::class` from the syntax, anything else Mago's type with the docblocks read.
 pub(crate) fn expr_type(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -364,7 +321,6 @@ pub(crate) fn expr_type(
 ) -> Option<Type> {
     let expr = unparenthesize(expr);
     match expr {
-        // (Mago's type where a key is no constant)
         Expression::Array(a) => array_type(ctx, ancestors, a.elements.iter())
             .or_else(|| facts(ctx).full_type(node_span(expr)).and_then(phpstan_type)),
         Expression::LegacyArray(a) => array_type(ctx, ancestors, a.elements.iter())
@@ -372,7 +328,6 @@ pub(crate) fn expr_type(
         Expression::Literal(Literal::String(s)) => s.value.map(|v| Type::ConstString(v.to_vec())),
         Expression::Literal(Literal::Integer(i)) => match i.value {
             Some(v) if i64::try_from(v).is_ok() => Some(Type::ConstInt(v as i64)),
-            // past `PHP_INT_MAX` a decimal integer is a float
             _ => String::from_utf8_lossy(i.raw)
                 .replace('_', "")
                 .parse::<f64>()
@@ -394,18 +349,15 @@ pub(crate) fn expr_type(
                 _ => facts(ctx).full_type(node_span(expr)).and_then(phpstan_type),
             }
         }
-        // PHPStan's superglobals are `array<mixed>`
         Expression::ArrayAccess(a) if is_superglobal(a.array) => {
             Some(Type::Mixed { explicit: true })
         }
-        // `union(removeNull($left), $right)` with a `mixed` left is `mixed`
         Expression::Binary(b)
             if b.operator.is_null_coalesce()
                 && expr_type(ctx, ancestors, b.lhs).is_some_and(|t| type_mapper::is_mixed(&t)) =>
         {
             Some(Type::Mixed { explicit: true })
         }
-        // `GetClassDynamicReturnTypeExtension`: the class string of an object's class
         Expression::Call(Call::Function(c))
             if let Expression::Identifier(id) = c.function
                 && String::from_utf8_lossy(id.value())
@@ -420,14 +372,12 @@ pub(crate) fn expr_type(
                 false,
             )))))
         }
-        // a function PHPStan does not know gives an `ErrorType`
         Expression::Call(Call::Function(c))
             if matches!(c.function, Expression::Identifier(_))
                 && callee(&facts(ctx), Target::Function(c.function), ancestors).is_none() =>
         {
             Some(Type::Error)
         }
-        // the class of `new Name()`, known or not
         Expression::Instantiation(i) => {
             let t = facts(ctx).full_type(node_span(expr)).and_then(phpstan_type);
             match i.class {
@@ -455,13 +405,10 @@ pub(crate) fn expr_type(
     }
 }
 
-/// [`phpstan_type`] of a ternary's members in the order [`expression_order`] gives them (Mago's own order is not
-/// PHPStan's).
 fn ordered_type(types: Vec<&TAtomic>) -> Option<Type> {
     phpstan_type(&TUnion::from_vec(types.into_iter().cloned().collect()))
 }
 
-/// Whether `expr` is one of PHP's superglobal variables.
 fn is_superglobal(expr: &Expression<'_>) -> bool {
     matches!(
         expr,
@@ -473,9 +420,6 @@ fn is_superglobal(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// The return type PHPStan gives `$this->method()` of a method of the class declared `array`, `?array` or not at all
-/// with a `@return` tag: the tag's type where it narrows the declared one (`TypehintHelper::decideType()`), Mago's
-/// own order of a union lost otherwise.
 fn this_method_return_type(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -505,7 +449,6 @@ fn this_method_return_type(
         Some(Hint::Nullable(n)) if matches!(n.hint, Hint::Array(_)) => {
             union(vec![array(), Type::Null])
         }
-        // an `iterable` declared one takes the tag's array key and value types
         Some(Hint::Iterable(_)) if let Type::Array(key, item) = doc => {
             return Some(Type::Iterable(key, item));
         }
@@ -518,7 +461,6 @@ fn this_method_return_type(
     })
 }
 
-/// `ConstantArrayTypeBuilder` over an array literal's elements.
 fn array_type<'a>(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -530,7 +472,6 @@ fn array_type<'a>(
             ArrayElement::KeyValue(kv) => {
                 let key = match expr_type(ctx, ancestors, kv.key)? {
                     Type::ConstString(s) => match std::str::from_utf8(&s).map(str::parse::<i64>) {
-                        // a decimal integer string key is an integer key (`toArrayKey()`)
                         Ok(Ok(i)) if i.to_string().as_bytes() == s => Type::ConstInt(i),
                         _ => Type::ConstString(s),
                     },
@@ -540,8 +481,6 @@ fn array_type<'a>(
                 b.set(Some(key), expr_type(ctx, ancestors, kv.value)?, false);
             }
             ArrayElement::Value(v) => b.set(None, expr_type(ctx, ancestors, v.value)?, false),
-            // a constant array unpacked: its integer keys renumbered, its string keys kept
-            // (an empty element is only valid in a destructuring)
             other => {
                 let ArrayElement::Variadic(v) = other else {
                     return None;
@@ -559,19 +498,14 @@ fn array_type<'a>(
     Some(b.get())
 }
 
-/// `$typeNode instanceof IdentifierTypeNode`: a keyword (`int`, `array`, `static`); a class name is PHPStan 2.3's
-/// `FullyQualifiedNameNode` (`\Foo`) and `$this` a `ThisTypeNode`, neither an identifier node.
 fn is_identifier_node(node: &TypeNode) -> bool {
     matches!(node, TypeNode::Identifier(name) if !name.starts_with('\\') && name != "$this")
 }
 
-/// `NodeDocblockTypeDecorator::decorateGenericIterableReturnType()` of a PHPStan type.
 pub(crate) fn decorate_return(info: &mut PhpDocInfo, t: &Type) -> bool {
     decorate_return_node(info, type_mapper::create_type_node(t), t)
 }
 
-/// `decorateGenericIterableReturnType()` of a type node; `t` is its PHPStan type. Not for bare `mixed`, nor for a
-/// node with no value iterable type.
 pub(crate) fn decorate_return_node(info: &mut PhpDocInfo, node: TypeNode, t: &Type) -> bool {
     if type_mapper::is_bare_mixed_type(t) || is_identifier_node(&node) {
         return false;
@@ -580,7 +514,6 @@ pub(crate) fn decorate_return_node(info: &mut PhpDocInfo, node: TypeNode, t: &Ty
     true
 }
 
-/// `decorateGenericIterableVarType()`.
 pub(crate) fn decorate_var(info: &mut PhpDocInfo, t: &Type) -> bool {
     let node = type_mapper::create_type_node(t);
     if type_mapper::is_bare_mixed_type(t) || is_identifier_node(&node) {
@@ -590,7 +523,6 @@ pub(crate) fn decorate_var(info: &mut PhpDocInfo, t: &Type) -> bool {
     true
 }
 
-/// `decorateGenericIterableParamType()` of the parameter `$name`.
 pub(crate) fn decorate_param(
     info: &mut PhpDocInfo,
     t: &Type,
@@ -614,9 +546,6 @@ pub(crate) fn decorate_param(
     true
 }
 
-/// `PhpDocTypeChanger::changeReturnType()` of an `array<K, V>` type over a missing or not useful `@return` tag: `false`
-/// (no change) when the doc has an invalid `@return` (`hasInvalidTag()`). Its other guards never refuse such a change:
-/// the type is not a union (`isLegal()`), and it is not the tag's type (`areTypesEqual()`), which would be useful.
 pub(crate) fn change_return_type(info: &mut PhpDocInfo, t: &Type) -> bool {
     if info.has_invalid_tag("@return") {
         return false;
@@ -625,8 +554,6 @@ pub(crate) fn change_return_type(info: &mut PhpDocInfo, t: &Type) -> bool {
     true
 }
 
-/// `PhpDocTypeChanger::changeParamType()` of an `array<K, V>` type over a parameter without a `@param` tag (see
-/// [`change_return_type`] for its guards).
 pub(crate) fn change_param_type(
     info: &mut PhpDocInfo,
     t: &Type,
@@ -640,7 +567,6 @@ pub(crate) fn change_param_type(
     true
 }
 
-/// `NodeTypeResolver::getNativeType()` of `expr`: a literal from the syntax, anything else Mago's native type.
 pub(crate) fn native_expr_type(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Type> {
     let expr = unparenthesize(expr);
     match expr {

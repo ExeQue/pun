@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\OrderedInterfacesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -75,7 +74,6 @@ impl Fixer for OrderedInterfacesFixer {
                 .enumerate()
                 .map(|(original_index, interface)| {
                     let mut normalized = Vec::new();
-                    // every chunk has a name: an empty one (`implements A, B, {`) is a parse error
                     let start = interface
                         .iter()
                         .position(|t| {

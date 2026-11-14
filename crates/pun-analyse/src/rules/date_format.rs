@@ -1,7 +1,3 @@
-//! PHPStan 2.3.5's DateFormatFunctionReturnTypeExtension (`date_format()`) and DateFormatMethodReturnTypeExtension
-//! (`DateTimeInterface::format()`) as Mago return type providers, over DateFunctionReturnTypeHelper. The helper runs
-//! PHP's `date()` on a format it has no case for, in the default timezone the oracle's PHP runs with (UTC).
-
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
 use mago_analyzer::plugin::provider::function::{FunctionReturnTypeProvider, FunctionTarget};
 use mago_analyzer::plugin::provider::method::{MethodReturnTypeProvider, MethodTarget};
@@ -59,7 +55,6 @@ impl MethodReturnTypeProvider for DateFormat {
         _: &[u8],
         invocation: &InvocationInfo<'_, '_, '_>,
     ) -> Option<TUnion> {
-        // the class the method is called on (Mago names the declaring one, which can be a trait)
         let class = invocation
             .inner()
             .target
@@ -78,7 +73,6 @@ impl MethodReturnTypeProvider for DateFormat {
     }
 }
 
-/// `getConstantStrings()`: every member a known literal string, else none.
 fn constant_strings(t: &TUnion) -> Vec<&[u8]> {
     t.types
         .iter()
@@ -102,7 +96,6 @@ fn non_empty_string() -> TUnion {
     string(TString::non_empty())
 }
 
-/// DateFunctionReturnTypeHelper::getTypeFromFormatType() with `$useMicrosec` (both extensions pass `true`).
 fn type_from_format_type(codebase: &CodebaseMetadata, format: &TUnion) -> TUnion {
     let union =
         |a: &TUnion, b: &TUnion| combine_union_types(a, b, codebase, CombinerOptions::default());
@@ -121,7 +114,6 @@ fn type_from_format_type(codebase: &CodebaseMetadata, format: &TUnion) -> TUnion
     }
 }
 
-/// `buildReturnTypeFromFormat()` with `$useMicrosec`.
 fn from_format(format: &[u8]) -> TUnion {
     let range = |min: u32, max: u32, pad: bool| {
         TUnion::from_vec(
@@ -160,7 +152,6 @@ fn from_format(format: &[u8]) -> TUnion {
                 TStringCasing::Unspecified,
             ));
         }
-        // values which do not depend on the locale (PHPStan 2.3.3)
         b"a" => return strings(&["am", "pm"]),
         b"A" => return strings(&["AM", "PM"]),
         b"S" => return strings(&["st", "nd", "rd", "th"]),
@@ -209,7 +200,6 @@ fn from_format(format: &[u8]) -> TUnion {
     string(TString::truthy())
 }
 
-/// `buildConstantStringsType()`
 fn strings(values: &[&str]) -> TUnion {
     TUnion::from_vec(
         values
@@ -223,14 +213,10 @@ fn strings(values: &[&str]) -> TUnion {
     )
 }
 
-/// PHP 8's `is_numeric()` of a string.
 fn is_numeric(s: &str) -> bool {
     pun_phpstan::value::numeric(s).is_some()
 }
 
-/// PHP's `date($format)` in UTC (ext/date's `date_format()`), of the Unix epoch. The helper only asks whether the
-/// result is numeric or the format itself, and every format character's output has the same shape (digits, a sign,
-/// letters) at any time of years 1000 to 9999, so one fixed timestamp answers as the current time does.
 fn date(format: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
     let mut bytes = format.iter();
@@ -262,7 +248,6 @@ fn date(format: &[u8]) -> Vec<u8> {
             b'p' => b"Z",
             b'c' => b"1970-01-01T00:00:00+00:00",
             b'r' => b"Thu, 01 Jan 1970 00:00:00 +0000",
-            // a backslash copies the next byte, and any other byte is copied as is
             b'\\' => {
                 out.extend(bytes.next());
                 continue;

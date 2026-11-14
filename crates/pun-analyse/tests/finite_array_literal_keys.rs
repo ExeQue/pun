@@ -1,5 +1,3 @@
-//! PHPStan's bounded constant-key builder preserves slots without inventing key correlations.
-
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -28,8 +26,6 @@ use mago_syntax::parser::parse_file;
 use pun_analyse::{Project, run};
 use serde_json::{Value, json};
 
-// Compare the public engine's slot contract, not PHPStan/Mago's different shape
-// display orders. The unmodified oracle descriptions are retained in the capture.
 fn scalars(ty: &TUnion) -> Vec<String> {
     let mut values = BTreeSet::new();
     for atomic in ty.types.iter() {

@@ -1,5 +1,3 @@
-//! The ported rules. Each file is one Pun rule, ported function by function from its upstream source.
-
 mod add_csv_escape_argument;
 mod add_datetime_property_type;
 mod add_safe_strict_types;
@@ -508,7 +506,6 @@ pub use types::*;
 
 use crate::Rule;
 
-/// Every rule, in a fixed order.
 pub fn all() -> Vec<Box<dyn Rule>> {
     let mut rules = laravel::all();
     rules.extend(types::all());
@@ -519,7 +516,6 @@ pub fn all() -> Vec<Box<dyn Rule>> {
     rules
 }
 
-/// The rules outside the group modules.
 fn ungrouped() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(PreferCompoundAssignment),

@@ -1,8 +1,3 @@
-//! `lint/security/no-request-variable`, ported from Mago 1.57.0's linter rule `no-request-variable`
-//! (rule/safety/no_request_variable.rs).
-//!
-//! `$_REQUEST` mixes `$_GET`, `$_POST` and `$_COOKIE`; each use is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

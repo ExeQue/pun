@@ -1,11 +1,3 @@
-//! WrongVariableNameInVarTagRule (level 2): the `@var` tags of a statement's doc comments must name the variables
-//! the statement assigns (or ones that exist), and a function-like's or class-like's doc has no `@var`.
-//! ponytail: `$scope->hasVariableType()` is a syntactic approximation: a variable is defined once anything before
-//! the statement (or anywhere in an enclosing loop) writes it, even on a path that always terminates or after an
-//! `unset()`, and an unknown callee (a method on an object Mago has no type for) takes no argument by reference.
-//! VarTagTypeRuleHelper (`varTag.nativeType`,
-//! `varTag.type`, `phpstanApi.varTagAssumption`) is not ported.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -21,7 +13,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "varTag.variableNotFound",
 ];
 
-/// Scope::SUPERGLOBAL_VARIABLES
 const SUPERGLOBALS: &[&[u8]] = &[
     b"$GLOBALS",
     b"$_SERVER",
@@ -34,13 +25,11 @@ const SUPERGLOBALS: &[&[u8]] = &[
     b"$_ENV",
 ];
 
-/// The variables a function-like's body can have: its parameters and `use`s, and what its body writes where.
 #[derive(Default)]
 pub(super) struct Defined {
     names: Vec<Vec<u8>>,
     writes: Vec<(Vec<u8>, u32)>,
     loops: Vec<(u32, u32)>,
-    /// Where `extract()` is first called (`afterExtractCall()`: any variable can exist after it).
     extract: Option<u32>,
 }
 
@@ -66,7 +55,6 @@ struct Writes<'c, 'a, 'arena> {
 }
 
 impl Writes<'_, '_, '_> {
-    /// A written expression's variables: a variable, the root of an offset write, a destructuring's items.
     fn target(&mut self, e: &Expression, at: u32) {
         match e {
             Expression::Variable(Variable::Direct(v)) => self.d.writes.push((v.name.to_vec(), at)),
@@ -195,7 +183,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Writes<'_, '_, 'arena> {
     }
 }
 
-/// What a function-like's parameters (and `use`s) `names` and its body define (see [`Defined`]).
 #[expect(clippy::unnecessary_box_returns, reason = "callers keep it boxed")]
 pub(super) fn defined<'n>(
     c: &Checker,
@@ -211,12 +198,10 @@ pub(super) fn defined<'n>(
     Box::new(w.d)
 }
 
-/// A parameter list's names.
 pub(super) fn params<'p>(list: &'p FunctionLikeParameterList) -> impl Iterator<Item = &'p [u8]> {
     list.parameters.iter().map(|p| p.variable.name)
 }
 
-/// `!$scope->hasVariableType($name)->no()` before `at`.
 fn has(c: &Checker, name: &str, at: u32) -> bool {
     let name = format!("${name}");
     if SUPERGLOBALS.contains(&name.as_bytes()) {
@@ -240,8 +225,6 @@ fn has(c: &Checker, name: &str, at: u32) -> bool {
     }
 }
 
-/// The `@var` tags of every doc comment before `at` (php-parser's `getComments()`): the named ones in order, and
-/// how many unnamed ones.
 fn tags(c: &Checker, at: Span) -> (Vec<String>, usize) {
     let contents = &c.file.contents;
     let mut docs = Vec::new();
@@ -276,7 +259,6 @@ fn dollars(names: &[String]) -> String {
         .join(", ")
 }
 
-/// The names `getAssignedVariables()` finds in an assignment target.
 fn assigned(e: &Expression, out: &mut Vec<String>) {
     match e {
         Expression::Variable(Variable::Direct(v)) => {
@@ -297,7 +279,6 @@ fn assigned(e: &Expression, out: &mut Vec<String>) {
 
 type Errors = Vec<(&'static str, String)>;
 
-/// processStmt()
 fn other(
     c: &Checker,
     at: u32,
@@ -322,7 +303,6 @@ fn other(
     }
 }
 
-/// processAssign()
 fn assignment(
     c: &Checker,
     at: u32,
@@ -371,7 +351,6 @@ fn assignment(
     }
 }
 
-/// processForeach(), processStatic() and processGlobal(): the tags must name one of `vars`.
 fn listed(
     vars: &[String],
     named: &[String],
@@ -408,7 +387,6 @@ fn direct(e: &Expression) -> Option<String> {
     }
 }
 
-/// A php-parser statement (none of a property, constant, class-like, function or method).
 pub(super) fn statement(c: &mut Checker, s: &Statement) {
     if c.level < 2 {
         return;
@@ -422,7 +400,6 @@ pub(super) fn statement(c: &mut Checker, s: &Statement) {
     match s {
         Statement::Foreach(f) => {
             let mut vars: Vec<String> = direct(f.expression).into_iter().collect();
-            // (a list key is no variable name)
             if let ForeachTarget::KeyValue(kv) = &f.target {
                 vars.extend(direct(kv.key));
             }
@@ -493,7 +470,6 @@ pub(super) fn statement(c: &mut Checker, s: &Statement) {
     }
 }
 
-/// A php-parser statement that is no Mago statement, or a `Nop` (see phpdoc_tags.rs): processStmt().
 pub(super) fn clause(c: &mut Checker, at: Span) {
     if c.level < 2 {
         return;
@@ -506,7 +482,6 @@ pub(super) fn clause(c: &mut Checker, at: Span) {
     }
 }
 
-/// InClassNode, InClassMethodNode and InFunctionNode: a `@var` there has no effect.
 pub(super) fn misplaced(c: &mut Checker, at: Span, description: &str) {
     if c.level < 2 {
         return;

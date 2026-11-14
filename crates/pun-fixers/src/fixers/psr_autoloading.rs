@@ -1,8 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\PsrAutoloadingFixer`.
-//!
-//! `SplFileInfo::getRealPath()` is `std::fs::canonicalize`. Upstream passes its `false` (a file that does not exist)
-//! on to `Preg::match`, which throws under strict types; Pun does not support such a file, as it does not support
-//! `StdinFileInfo`.
 use crate::analyzers::docblock::type_expression::REGEX_IDENTIFIER;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -29,17 +24,14 @@ fn real_path(path: &Path) -> Option<String> {
         .map(|p| p.to_string_lossy().into_owned())
 }
 
-/// PHP `dirname` for an absolute path.
 fn dirname(path: &str) -> &str {
     &path[..path.rfind('/').unwrap().max(1)]
 }
 
-/// PHP `substr($s, $start)` for a non-negative start.
 fn substr_from(s: &str, start: usize) -> &str {
     s.get(start..).unwrap_or("")
 }
 
-/// PHP `substr($s, -$len)`.
 fn substr_tail(s: &str, len: usize) -> &str {
     &s[s.len().saturating_sub(len)..]
 }
@@ -49,7 +41,6 @@ fn basename_php(path: &Path) -> String {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    // `supports` only accepts a `.php` extension, so the suffix is always there.
     name.strip_suffix(".php").unwrap().to_string()
 }
 
@@ -67,20 +58,15 @@ impl Fixer for PsrAutoloadingFixer {
         tokens.is_any_token_kinds_found(&[T_CLASS, T_TRAIT, T_INTERFACE, T_ENUM])
     }
     fn supports(&self, file: &Path) -> bool {
-        // ignore file with extension other than php
         if file.extension().is_none_or(|e| e != "php") {
             return false;
         }
-        // ignore file with name that cannot be a class name
         let name = basename_php(file);
         if !Preg::r#match(format!("/^{REGEX_IDENTIFIER}$/"), name.as_bytes()) {
             return false;
         }
-        // `Tokens::fromCode` throws a ParseError on a reserved word; its token is a keyword or a magic constant either
-        // way, so the raw token answers both checks (Pun's transformers expect code that parses).
         let code = format!("<?php class {name} {{}}");
         let raw = &pun_tokens::lexer::tokenize(code.as_bytes())[3];
-        // An identifier always lexes as a word token, never a single character.
         let token = Token::new(raw.kind.unwrap(), raw.text);
         if token.is_keyword() || token.is_magic_constant() {
             return false;
@@ -88,7 +74,6 @@ impl Fixer for PsrAutoloadingFixer {
         let Some(real) = real_path(file) else {
             return false;
         };
-        // ignore stubs/fixtures, since they typically contain invalid files for various reasons
         !Preg::r#match(r"{[/\\](stub|fixture)s?[/\\]}i", real.as_bytes())
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -176,7 +161,6 @@ impl Fixer for PsrAutoloadingFixer {
     }
 }
 
-/// PHP `trim`'s default characters.
 const TRIM: &[char] = &[' ', '\t', '\n', '\r', '\0', '\x0B'];
 
 impl PsrAutoloadingFixer {

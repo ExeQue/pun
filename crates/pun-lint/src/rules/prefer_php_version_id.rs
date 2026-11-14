@@ -1,11 +1,3 @@
-//! `lint/style/prefer-php-version-id`, ported from Rector 2.8.4's `VersionCompareFuncCallToConstantRector`
-//! (rules/CodingStyle/Rector/FuncCall).
-//!
-//! `version_compare(PHP_VERSION, '8.1', '>=')` becomes `PHP_VERSION_ID >= 80100`: `PHP_VERSION` turns into
-//! `PHP_VERSION_ID`, a version string into its number (`PhpVersionFactory::createIntVersion`), and the operator into
-//! the comparison (`==` into `===`, `!=` into `!==`). The other argument must be `PHP_VERSION` or a string, and the
-//! operator a string `version_compare()` knows.
-
 use mago_syntax::cst::{Argument, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -52,7 +44,6 @@ impl Rule for PreferPhpVersionId {
         let Expression::Literal(Literal::String(op)) = value(args[2]) else {
             return;
         };
-        // OPERATOR_TO_COMPARISON, with the precedence of each comparison.
         let (op, p) = match op.value.unwrap_or_default() {
             b"=" | b"==" | b"eq" => ("===", 80),
             b"!=" | b"<>" | b"ne" => ("!==", 80),
@@ -81,12 +72,10 @@ impl Rule for PreferPhpVersionId {
     }
 }
 
-/// `isPhpVersionConstant`: the constant `PHP_VERSION`, case and all.
 fn is_php_version(expr: &Expression<'_>) -> bool {
     matches!(expr, Expression::ConstantAccess(c) if c.name.value().strip_prefix(b"\\").unwrap_or(c.name.value()) == b"PHP_VERSION")
 }
 
-/// `getNewNodeForArg`: `PHP_VERSION_ID`, or the number of a version string.
 fn operand(expr: &Expression<'_>) -> Option<String> {
     if is_php_version(expr) {
         return Some("PHP_VERSION_ID".to_string());

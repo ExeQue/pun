@@ -1,29 +1,3 @@
-//! `lint/phpunit/prefer-will-return-callback`, ported from rector-phpunit's
-//! `VoidMethodWithCallbackToWillReturnCallbackRector` (rules/CodeQuality/Rector/Class_), with
-//! `SetUpAssignedMockTypesResolver` and `MethodParametersAndReturnTypesResolver::resolveFromReflection`.
-//!
-//! In the methods of a test class, `$mock->method('name')->with($this->callback(function (...) { ... }))` (one `with()`
-//! argument, a closure) becomes `->willReturnCallback(function (...): void { ... })` when the mocked method natively
-//! returns `void` and the closure returns only literals, constants, variables or `throw` (at least one value): each
-//! `return value;` becomes `return;`, a nested `return throw new X;` becomes `throw new X;` (one at the closure's top
-//! level stays, as Rector's traverser drops a replacement there), and a now bare `return;` that ends the closure goes.
-//!
-//! The mocked class comes from the type PHPStan gives the receiver of `method()` (or of the `expects()` before it): an
-//! intersection such as `MockObject&SomeClass`, which PHPStan reduces as `TypeCombinator::intersect()` does (a final
-//! class and `MockObject` make `never`), read from the type Mago gives it. A receiver typed `MockObject` (or `never`)
-//! falls back to the class `setUp()` assigns to a property or variable of its name with `createMock()` or
-//! `getMockBuilder()`.
-//!
-//! Rector reprints the closure where the argument was (php-parser's format-preserving printer): lines move by the
-//! difference between the argument's indent and the closure's, and a closure left without statements is printed anew
-//! around its attributes, parameters and `use` variables as written.
-//!
-//! Pun leaves alone what it does not print as php-parser does
-//! (tests/rector/VoidMethodWithCallbackToWillReturnCallbackRector/Pun): a closure that moves right or across lines
-//! indented with tabs, a value in parentheses that stays (Rector writes `return ();`), a `?>` in the closure, a
-//! comment before the argument, and a closure printed anew whose attributes, parameters or `use` variables span lines
-//! or hold comments, or whose `}` goes at a tab indent.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::TType;
@@ -46,10 +20,8 @@ use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `ClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
-/// The classes after which `TypeWillReturnCallableArrowFunctionRector` and this rule look one call further back.
 const INVOCATION_MOCKERS: [&str; 3] = [
     "PHPUnit\\Framework\\MockObject\\Builder\\InvocationMocker",
     "PHPUnit\\Framework\\MockObject\\InvocationMocker",
@@ -84,7 +56,6 @@ impl Rule for PreferWillReturnCallback {
         let Some(method_call) = mocked_method_call(call) else {
             return;
         };
-        // each test class whose methods hold the call, as Rector visits them: the outermost first
         let classes = test_classes(ctx, ancestors);
         if !classes
             .iter()
@@ -105,17 +76,14 @@ impl Rule for PreferWillReturnCallback {
     }
 }
 
-/// `NodeNameResolver::isName()` for a method selector: an identifier, ASCII case-insensitively.
 pub(super) fn is_named(selector: &ClassLikeMemberSelector<'_>, name: &str) -> bool {
     matches!(selector, ClassLikeMemberSelector::Identifier(id) if id.value.eq_ignore_ascii_case(name.as_bytes()))
 }
 
-/// `matchCallbackClosure()`: the one argument of `with()`, a `->callback()` call whose first argument is a closure.
 fn match_callback_closure<'a>(
     call: &'a MethodCall<'a>,
 ) -> Option<(&'a Argument<'a>, &'a Closure<'a>)> {
     let args = &call.argument_list.arguments;
-    // a 2nd+ ->with() argument matches a further parameter, keep the callback matcher as is
     if args.len() != 1 {
         return None;
     }
@@ -132,7 +100,6 @@ fn match_callback_closure<'a>(
     }
 }
 
-/// The `->method('name')` call `with()` is called on.
 fn mocked_method_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a MethodCall<'a>> {
     match call.object {
         Expression::Call(Call::Method(parent)) if is_named(&parent.method, "method") => {
@@ -142,13 +109,10 @@ fn mocked_method_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a MethodCall<'a>
     }
 }
 
-/// The indices in `ancestors` of the test classes (`Class_` nodes, named or anonymous) whose methods hold the node,
-/// outermost first.
 pub(super) fn test_classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> Vec<usize> {
     (0..ancestors.len())
         .filter(|&at| {
             matches!(ancestors[at], Node::Class(_) | Node::AnonymousClass(_))
-                // in one of its methods (`getMethods()`), not in another class-like of its members
                 && ancestors[at + 1..]
                     .iter()
                     .find(|a| {
@@ -168,7 +132,6 @@ pub(super) fn test_classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> Vec
         .collect()
 }
 
-/// `isMockedVoidMethodCall()` in the class `class` ends in.
 fn is_mocked_void_method_call(
     ctx: &Context<'_>,
     class: &[Node<'_, '_>],
@@ -193,21 +156,14 @@ fn is_mocked_void_method_call(
     }
 }
 
-/// A PHPStan type of a receiver, as far as these rules tell them apart.
 #[derive(Debug, PartialEq)]
 pub(super) enum Caller {
-    /// An `ObjectType` of a class.
     Object(String),
-    /// A `NeverType`.
     Never,
-    /// An `IntersectionType` of these classes.
     Intersection(Vec<String>),
-    /// Any other type.
     Other,
 }
 
-/// The type PHPStan gives `expr`, from the type Mago gives it: Mago keeps an intersection of classes as written, and
-/// PHPStan reduces it as `TypeCombinator::intersect()` does.
 pub(super) fn caller(ctx: &Context<'_>, expr: &Expression<'_>) -> Caller {
     let facts = facts(ctx);
     let types = facts
@@ -223,7 +179,6 @@ pub(super) fn caller(ctx: &Context<'_>, expr: &Expression<'_>) -> Caller {
         let name = match member {
             TAtomic::Object(TObject::Named(named)) if !named.is_this => named.name.to_string(),
             TAtomic::Object(TObject::Enum(e)) => e.name.to_string(),
-            // `object` adds nothing to a class
             TAtomic::Object(TObject::Any) => continue,
             _ => return Caller::Other,
         };
@@ -231,8 +186,6 @@ pub(super) fn caller(ctx: &Context<'_>, expr: &Expression<'_>) -> Caller {
             members.push(name);
         }
     }
-    // `TypeCombinator::intersect()`: a class another member is a subtype of goes, and two members no object can be
-    // both make `never`
     let codebase = &facts.codebase;
     let all = members.clone();
     members.retain(|m| {
@@ -254,8 +207,6 @@ pub(super) fn caller(ctx: &Context<'_>, expr: &Expression<'_>) -> Caller {
     }
 }
 
-/// `ObjectType::isSuperTypeOf()` between two classes of other names: `Some(true)` for yes, `Some(false)` for no,
-/// `None` for maybe (a class it does not know included).
 fn is_super_type_of(codebase: &CodebaseMetadata, this: &str, that: &str) -> Option<bool> {
     let this_class = codebase.get_class_like(this.as_bytes())?;
     let that_class = codebase.get_class_like(that.as_bytes())?;
@@ -279,9 +230,6 @@ fn is_super_type_of(codebase: &CodebaseMetadata, this: &str, that: &str) -> Opti
     Some(false)
 }
 
-/// `SetUpAssignedMockTypesResolver::resolveFromClass()`: the class each property or variable (by name; `None` for a
-/// name that is not a plain one, which PHP keys as `""`) is assigned a `createMock()` or `getMockBuilder()` of at the
-/// top level of `setUp()`. `None` where Rector fails (a class that is not a name).
 pub(super) fn setup_assigned_mock_types(
     ctx: &Context<'_>,
     class: &[Node<'_, '_>],
@@ -323,15 +271,12 @@ pub(super) fn setup_assigned_mock_types(
             Expression::Self_(_) => "self".to_string(),
             Expression::Static(_) => "static".to_string(),
             Expression::Parent(_) => "parent".to_string(),
-            // `getName()` of a variable is its name, which names no class
             Expression::Variable(Variable::Direct(v)) => {
                 String::from_utf8_lossy(&v.name[1..]).into()
             }
-            // `getName()` of a property fetch is the property's name
             Expression::Access(Access::Property(_)) => {
                 String::from_utf8_lossy(&target_name(fetch.class)?).into()
             }
-            // Assert::string() fails
             _ => return None,
         };
         match out.iter_mut().find(|(n, _)| *n == name) {
@@ -342,7 +287,6 @@ pub(super) fn setup_assigned_mock_types(
     Some(out)
 }
 
-/// `getName()` of a variable, or of a property fetch's name: `None` where it is not a plain name.
 fn target_name(expr: &Expression<'_>) -> Option<Vec<u8>> {
     match expr {
         Expression::Variable(Variable::Direct(v)) => Some(v.name[1..].to_vec()),
@@ -354,9 +298,6 @@ fn target_name(expr: &Expression<'_>) -> Option<Vec<u8>> {
     }
 }
 
-/// The classes `resolveFromReflection()` reads the mocked method on, from the receiver of `method_call` (or of the
-/// `expects()` call before it): the members of its intersection type, after `fallbackMockedObjectInSetUp()`. `None`
-/// when the type is no intersection.
 pub(super) fn mocked_classes(
     ctx: &Context<'_>,
     method_call: &MethodCall<'_>,
@@ -378,7 +319,6 @@ pub(super) fn mocked_classes(
             _ => stepped_to_other = true,
         }
     }
-    // fallbackMockedObjectInSetUp
     let falls_back = match &caller_type {
         Caller::Object(class) => class.eq_ignore_ascii_case(MOCK_OBJECT),
         Caller::Never => true,
@@ -407,9 +347,6 @@ pub(super) fn mocked_classes(
     }
 }
 
-/// Whether the mocked method's native return type is `void`, as `resolveFromReflection()` reads it on the first of
-/// `classes` that has the method natively; `None` when none has it, or when those that have it disagree: Rector reads
-/// the first as written, and Mago keeps an intersection's members in an order of its own (Pun/intersection_order).
 fn resolve_return_is_void(ctx: &Context<'_>, classes: &[String], method: &[u8]) -> Option<bool> {
     let facts = facts(ctx);
     let mut found: Option<bool> = None;
@@ -435,19 +372,12 @@ fn resolve_return_is_void(ctx: &Context<'_>, classes: &[String], method: &[u8]) 
     found
 }
 
-/// What becomes of a `return` with a value in the closure.
 enum Change<'a> {
-    /// `return value;` becomes `return;`.
     Bare,
-    /// A nested `return throw ...;` becomes `throw ...;`.
     Throw(&'a mago_syntax::cst::Throw<'a>),
-    /// A `return throw ...;` at the closure's top level stays.
     Keep,
 }
 
-/// The edit that puts the closure, with `removeValueReturns()` done, in place of `with()`'s argument, as php-parser's
-/// format-preserving printer writes it; `None` where the closure stays (`removeValueReturns()` is false) or Pun does
-/// not print it as php-parser does.
 fn print_closure(
     ctx: &crate::Context<'_>,
     call: &MethodCall<'_>,
@@ -457,7 +387,6 @@ fn print_closure(
     let source = ctx.source;
     let span = node_span(closure);
     let body = &closure.body;
-    // nested function-likes have their own return scope, skip to stay safe; returns in other class-likes' methods count
     let mut nested = false;
     let mut returns = Vec::new();
     let mut stack: Vec<Node<'_, '_>> = body.statements.iter().map(Node::Statement).collect();
@@ -483,11 +412,9 @@ fn print_closure(
         let Some(value) = r.value else {
             continue;
         };
-        // "return throw new X" becomes a bare "throw new X" statement
         let change = match unparenthesize(value) {
             Expression::Throw(_) if top_level(r) => Change::Keep,
             Expression::Throw(throw) => Change::Throw(throw),
-            // only strip side-effect-free values
             Expression::Literal(_)
             | Expression::CompositeString(
                 CompositeString::Interpolated(_) | CompositeString::Document(_),
@@ -499,7 +426,6 @@ fn print_closure(
         };
         changes.push((*r, value, change));
     }
-    // nothing to drop, keep the callback matcher as is
     if changes.is_empty() {
         return None;
     }
@@ -513,12 +439,9 @@ fn print_closure(
     }
     let arg_span = node_span(arg);
     let open = call.argument_list.left_parenthesis.end.offset as usize;
-    // a comment before the argument goes with it
     if first_comment(source, open, arg_span.start).is_some() {
         return None;
     }
-    // php-parser moves the closure's lines by the difference between the indents of the argument's line and of the
-    // closure's (counting a tab as 4 columns); Pun follows a move to the left in spaces
     let arg_indent = line_indent(source, arg_span.start);
     let closure_indent = line_indent(source, span.start);
     let cut = if !source[arg_span.start..span.start].contains('\n') {
@@ -531,7 +454,6 @@ fn print_closure(
     } else {
         " ".repeat(closure_indent.len() - arg_indent.len())
     };
-    // the drop of a now-empty trailing "return;"
     let popped = list.last().and_then(|last| match last {
         Statement::Return(r)
             if r.value.is_none()
@@ -544,7 +466,6 @@ fn print_closure(
         _ => None,
     });
     let text = if popped == Some(0) {
-        // no statements left: php-parser prints the closure anew
         if arg_indent.contains('\t') {
             return None;
         }
@@ -568,7 +489,6 @@ fn print_closure(
                     if matches!(value, Expression::Parenthesized(_)) {
                         return None;
                     }
-                    // a `;`: a `?>` in the closure declined it above
                     edits.push(Edit::new(
                         Span::new(
                             r.r#return.span.end.offset as usize,
@@ -589,7 +509,6 @@ fn print_closure(
                 }
             }
         }
-        // the mocked method returns void, so type the callback the same way
         match &closure.return_type_hint {
             Some(hint) => edits.push(Edit::new(node_span(&hint.hint), "void")),
             None => {
@@ -615,9 +534,6 @@ fn print_closure(
     Some(Edit::new(arg_span, text))
 }
 
-/// The closure as php-parser's pretty printer writes it with no statements and a `void` return type, its `}` at the
-/// indent `indent`: its attributes, parameters and `use` variables as written (php-parser prints each original node
-/// as it was); `None` for one written over several lines or with comments, which Pun does not print as it does.
 fn pretty_closure(source: &str, closure: &Closure<'_>, indent: &str) -> Option<String> {
     let as_written = |span: Span| {
         let text = &source[span.start..span.end];
@@ -627,7 +543,6 @@ fn pretty_closure(source: &str, closure: &Closure<'_>, indent: &str) -> Option<S
                 .all(|t| !t.kind.is_comment()))
         .then(|| text.to_string())
     };
-    // a comment between the parameters or the `use` variables goes with the node after it
     let from = closure.function.span.end.offset as usize;
     let to = closure.body.left_brace.start.offset as usize;
     if tokens(source, from, to).iter().any(|t| t.kind.is_comment()) {

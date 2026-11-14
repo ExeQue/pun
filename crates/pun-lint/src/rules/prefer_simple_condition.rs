@@ -1,11 +1,3 @@
-//! `lint/complexity/prefer-simple-condition`, ported from Rector 2.8.4's `SimplifyConditionsRector`
-//! (rules/CodeQuality/Rector/Identical) with `AssignAndBinaryMap::getInversed` and
-//! `BinaryOpManipulator::matchFirstAndSecondConditionNode`.
-//!
-//! `!($a !== 'b')` becomes `$a === 'b'`: a negated comparison of two operands that are no operations themselves
-//! takes the inverse operator. `($a === null) === false` becomes `$a !== null` and `($a === null) === true` becomes
-//! `$a === null`: an identity check of a comparison against `true` or `false`, in either order.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -62,21 +54,16 @@ impl Rule for PreferSimpleCondition {
     }
 }
 
-/// `processBooleanNot`: the operand of `!` must be a binary operation other than `||` whose operands are no binary
-/// operations.
 fn boolean_not(ctx: &Context<'_>, operand: &Expression<'_>) -> Option<(String, Prec)> {
-    // `instanceof`, which is no `BinaryOp` in php-parser, has no inverse operator either.
     let Expression::Binary(b) = unparenthesize(operand) else {
         return None;
     };
-    // shouldSkip
     if matches!(b.operator, BinaryOperator::Or(_)) || is_binary_op(b.lhs) || is_binary_op(b.rhs) {
         return None;
     }
     inversed(ctx, b.lhs, &b.operator, b.rhs)
 }
 
-/// `processIdenticalAndNotIdentical`, for `===` only (the rule's node types are `BooleanNot` and `Identical`).
 fn identical(
     ctx: &Context<'_>,
     span: Span,
@@ -100,9 +87,6 @@ fn identical(
     Some(moved(ctx, span, ancestors, first))
 }
 
-/// `createInversedBooleanOp`: the comparison with the inverse operator, or none for an operator without one. Each
-/// operand is put in parentheses where php-parser's precedence needs them (Rector marks a ternary operand
-/// `WRAPPED_IN_PARENTHESES`, the same).
 fn inversed(
     ctx: &Context<'_>,
     lhs: &Expression<'_>,

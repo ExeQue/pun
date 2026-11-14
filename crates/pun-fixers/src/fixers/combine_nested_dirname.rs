@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\CombineNestedDirnameFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(CombineNestedDirnameFixer)
 }
 
-/// `getDirnameInfo`'s array.
 struct DirnameInfo {
     indices: Vec<usize>,
     second_argument: Option<usize>,
@@ -143,8 +141,6 @@ fn get_dirname_info(
     })
 }
 
-/// `(int) $content` for a `T_LNUMBER`: PHP's string to int cast reads leading decimal digits only (`0x10` is 0,
-/// `1_000` is 1), saturating on overflow.
 fn php_int(content: &[u8]) -> i64 {
     content
         .iter()

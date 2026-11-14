@@ -1,8 +1,3 @@
-//! Rector's `StaticTypeMapper::mapPHPStanTypeToPhpParserNode` for a return type (`TypeKind::RETURN`), on Mago's
-//! types: the declaration Rector writes for a native type, or none when PHP cannot declare it at the target version.
-//! Classes are written fully qualified, a union keeps its order with `null` last, and one type with `null` is
-//! written `?T`.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -13,23 +8,13 @@ use mago_syntax::cst::Expression;
 
 use crate::syntax::unparenthesize;
 
-/// `PhpVersionFeature::OBJECT_TYPE`.
 const OBJECT_TYPE: u32 = 70200;
-/// `PhpVersionFeature::NULLABLE_TYPE`.
 const NULLABLE_TYPE: u32 = 70100;
-/// `PhpVersionFeature::UNION_TYPES` and `STATIC_RETURN_TYPE`.
 const PHP_80: u32 = 80000;
-/// `PhpVersionFeature::NULL_FALSE_TRUE_STANDALONE_TYPE`.
 const NULL_FALSE_TRUE_STANDALONE_TYPE: u32 = 80200;
-/// `PhpVersionFeature::DNF_TYPES`.
 const DNF_TYPES: u32 = 80200;
-/// `PhpVersionFeature::INTERSECTION_TYPES`.
 const INTERSECTION_TYPES: u32 = 80100;
 
-/// The declaration of the union of `types` as a return type at `php_version`. `order` lists types in the order
-/// PHPStan has them (a declared type's own order, which Mago does not keep), as [`order_key`]s; the others follow.
-/// With `keep_constant` (`TypeFactory::createMixedPassedOrUnionTypeAndKeepConstant`), `true` and `false` stay
-/// themselves, written as such where PHP allows (`BooleanTypeMapper`); without, they are `bool`.
 pub(crate) fn return_declaration<'a>(
     types: impl IntoIterator<Item = &'a TAtomic>,
     codebase: &CodebaseMetadata,
@@ -55,7 +40,6 @@ pub(crate) fn return_declaration<'a>(
             names.push(name);
         }
     }
-    // normalizeBooleanType: `true` with `false` is `bool`
     if names.iter().any(|n| n == "true") && names.iter().any(|n| n == "false") {
         let at = names
             .iter()
@@ -84,7 +68,6 @@ pub(crate) fn return_declaration<'a>(
         let key = order_key(n);
         order.iter().position(|o| *o == key).unwrap_or(order.len())
     });
-    // a DNF type (PHP 8.2) wraps each intersection of a union in parentheses
     if (names.len() > 1 || nullable) && names.iter().any(|n| n.contains('&')) {
         if php_version < DNF_TYPES {
             return None;
@@ -120,7 +103,6 @@ pub(crate) fn return_declaration<'a>(
     }
 }
 
-/// The order of the members of a declared type, from its text (`null|int|Foo` gives `int`, `foo`).
 pub(crate) fn text_order(text: &str) -> Vec<String> {
     text.split('|')
         .map(|t| {
@@ -134,7 +116,6 @@ pub(crate) fn text_order(text: &str) -> Vec<String> {
         .collect()
 }
 
-/// A type's name for ordering: its last name segment, in lowercase.
 fn order_key(name: &str) -> String {
     name.trim()
         .rsplit('\\')
@@ -143,7 +124,6 @@ fn order_key(name: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// A class's name as declared, fully qualified.
 fn class(codebase: &CodebaseMetadata, name: &impl AsRef<[u8]>) -> String {
     let name = String::from_utf8_lossy(name.as_ref());
     match codebase.get_class_like(name.as_bytes()) {
@@ -152,7 +132,6 @@ fn class(codebase: &CodebaseMetadata, name: &impl AsRef<[u8]>) -> String {
     }
 }
 
-/// The declaration of one type that is not `null`.
 pub(crate) fn atomic_declaration(
     atomic: &TAtomic,
     codebase: &CodebaseMetadata,
@@ -172,7 +151,6 @@ pub(crate) fn atomic_declaration(
         TAtomic::Callable(_) => "callable".to_string(),
         TAtomic::Object(TObject::Named(named)) => {
             let name = if named.is_this || named.is_static {
-                // Rector's `StaticTypeMapper`: `self` where PHP has no `static` return type.
                 if php_version < PHP_80 {
                     "self"
                 } else {
@@ -190,13 +168,10 @@ pub(crate) fn atomic_declaration(
             match &named.intersection_types {
                 None => name,
                 Some(others) => {
-                    // `NativePhpTypeNodeHelper::intersection()` (PHPStan 2.3): only class names are intersected,
-                    // other members (`callable`, `iterable`, `HasMethodType`) are dropped, a repeat once
                     let mut all = vec![name];
                     for other in others.iter() {
                         let member = match other {
                             TAtomic::Object(TObject::Named(o)) => class(codebase, &o.name),
-                            // a class Mago does not know
                             TAtomic::Reference(TReference::Symbol { name, .. }) => {
                                 class(codebase, name)
                             }
@@ -217,10 +192,6 @@ pub(crate) fn atomic_declaration(
     })
 }
 
-/// PHPStan 2.3.5's `TernaryHandler::resolveType` unions the truthy arm before the falsey arm.
-/// Recover that encounter order before `TypeCombinator::union` groups constant kinds. Keep Mago's
-/// normalized members, not the arms' unmerged types, and leave written receiver types in their own order.
-/// `type_of` retains the caller's native (`getNativeType`) or docblock-aware (`getType`) scope.
 pub(crate) fn expression_order<'a>(
     expr: &Expression<'_>,
     type_of: impl Fn(&Expression<'_>) -> Option<&'a TUnion> + Copy,
@@ -250,9 +221,6 @@ pub(crate) fn expression_order<'a>(
     Some(union_order(types))
 }
 
-/// The members of an expression's type in the order PHPStan's `TypeCombinator::union` leaves them: other types
-/// first in their input order, then integer ranges, arrays, enum cases,
-/// and last the constant values, grouped by kind in the order each kind first appears.
 pub(crate) fn union_order<'a>(types: impl IntoIterator<Item = &'a TAtomic>) -> Vec<&'a TAtomic> {
     let constant_kind = |t: &TAtomic| -> Option<u8> {
         match t {
@@ -291,9 +259,6 @@ pub(crate) fn union_order<'a>(types: impl IntoIterator<Item = &'a TAtomic>) -> V
     ordered
 }
 
-/// `UnionTypeMapper::mapToPhpParserNode` for a return type: each member mapped in order (`null` and `false` allowed),
-/// repeats dropped; one left is that type, `null` with one other is `?T` (PHP 7.1), more are a union (PHP 8.0). A
-/// non-empty array or a list is an intersection in PHPStan, which `IntersectionTypeMapper` does not write.
 pub(crate) fn union_declaration(
     types: &[&TAtomic],
     codebase: &CodebaseMetadata,
@@ -312,8 +277,6 @@ pub(crate) fn union_declaration(
             TAtomic::Void | TAtomic::Mixed(_) | TAtomic::Null => return None,
             _ => atomic_declaration(t, codebase, php_version)?,
         };
-        // (PHPStan 2.3's `StaticType::toNativePhpTypeNode()` writes `static` in a union too)
-        // `IntersectionTypeMapper`: an intersection inside a union needs DNF types
         if name.contains('&') && php_version < DNF_TYPES {
             return None;
         }
@@ -323,7 +286,6 @@ pub(crate) fn union_declaration(
     }
     match names.as_slice() {
         [] => None,
-        // the members wrote the same (`array` for two arrays): `matchPhpParserUnionType` gives that one
         [one] => Some(one.clone()),
         [a, b] if !a.contains('&') && !b.contains('&') && (a == "null" || b == "null") => {
             let other = if a == "null" { b } else { a };
@@ -336,8 +298,6 @@ pub(crate) fn union_declaration(
             if php_version < PHP_80 {
                 return None;
             }
-            // `NativePhpTypeNodeHelper::union()`: PHP rejects redundant members, so `object` takes in the class names
-            // and intersections beside it, and `iterable` an `array`
             let object = many.iter().any(|n| n == "object");
             let iterable = many.iter().any(|n| n == "iterable");
             let mut kept: Vec<&String> = many
@@ -351,7 +311,6 @@ pub(crate) fn union_declaration(
                         && !(iterable && *n == "array")
                 })
                 .collect();
-            // `A|(A&B)` is `A`: an intersection with a part that is a member of its own goes
             let plain: Vec<String> = kept
                 .iter()
                 .filter(|n| !n.contains('&'))
@@ -363,7 +322,6 @@ pub(crate) fn union_declaration(
                         .split('&')
                         .any(|part| plain.contains(&part.to_ascii_lowercase()))
             });
-            // the other members in order, `null` last
             kept.sort_by_key(|n| *n == "null");
             if let [one] = kept.as_slice() {
                 return Some((*one).clone());

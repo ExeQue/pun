@@ -31,12 +31,10 @@ fn preset(p: &str) -> Options {
 #[test]
 fn needs_pun_toml() {
     let d = dir(&[("pint.json", r#"{"preset":"psr12"}"#)]);
-    // The decided text (PLAN.md §2), by hand.
     assert_eq!(
         err(&d, Options::default()),
         "No pun.toml found. Run `pun migrate`, or `pun init` for a new project."
     );
-    // An explicit preset or --no-config runs without one (pint.json is never read).
     assert_eq!(load(&d, &preset("psr12")).unwrap().preset, "psr12");
     let c = load(
         &d,
@@ -47,7 +45,6 @@ fn needs_pun_toml() {
     )
     .unwrap();
     assert_eq!((&*c.preset, c.sources.len()), ("laravel", 0));
-    // --config names the file; a missing one is an error, not "no config".
     let o = Options {
         config: Some("other.toml".into()),
         ..Default::default()
@@ -62,7 +59,6 @@ fn needs_pun_toml() {
     assert_eq!(err(&d, preset("nope")), "Preset not found.");
 }
 
-/// A lint rule as `[lint.rules]` resolves it, for expectations.
 fn lr(id: &str, level: Level, fix: bool, options: Value, fixer: Option<&'static str>) -> LintRule {
     LintRule {
         id: id.into(),
@@ -78,7 +74,6 @@ fn ids(rules: &[LintRule]) -> Vec<&str> {
     rules.iter().map(|r| r.id.as_str()).collect()
 }
 
-/// A Laravel 11 project: composer.lock locks laravel/framework v11.9.2.
 const LARAVEL_LOCK: &str = r#"{"packages":[{"name":"laravel/framework","version":"v11.9.2"}]}"#;
 
 #[test]
@@ -117,13 +112,10 @@ not-path = ["p"]
     ]);
     let c = load(&d, &Options::default()).unwrap();
     let n = names(&c.rules);
-    // `false` drops a preset rule; overrides keep the preset's position.
     assert!(!n.contains(&"array_syntax"));
     let concat = n.iter().position(|n| *n == "concat_space").unwrap();
     assert!(concat < n.iter().position(|n| *n == "Pint/laravel_blade").unwrap());
     assert_eq!(c.rules[concat].options, json!({"spacing": "one"}));
-    // The laravel preset's 4 risky fixers and 11 code-deleting ones are lint rules: off unless [lint] turns them on
-    // (context/plan/commands.md §4).
     for risky in [
         "no_alias_functions",
         "no_unreachable_default_argument_value",
@@ -144,7 +136,6 @@ not-path = ["p"]
         assert!(!n.contains(&risky), "{risky}");
     }
     assert!(c.blade);
-    // By ID; fixers hand-read from [upstream.php-cs-fixer] of rules/mapping.toml.
     use Level::{Error, Warn};
     assert_eq!(
         c.lint.rules,
@@ -207,7 +198,6 @@ not-path = ["p"]
             ),
         ]
     );
-    // [files] is every command's; each command's exclude adds to it.
     assert_eq!(
         c.files,
         Files {
@@ -232,8 +222,6 @@ not-path = ["p"]
     assert_eq!(c.lint.exclude, ["build"]);
     assert_eq!(c.php, "8.5");
     assert_eq!(c.sources, [d.join("composer.json"), d.join("pun.toml")]);
-    // Options take their Pun names and values (rules/mapping.toml [options]) and reach the fixer under
-    // PHP-CS-Fixer's.
     let d = dir(&[(
         "pun.toml",
         "[format]\npreset = \"empty\"\n[format.rules]\n\"imports/ordered\" = { sort = \"alphabetical\", order = [\"class\", \"const\"] }\n",
@@ -252,12 +240,10 @@ not-path = ["p"]
         json!({"sort_algorithm": "alpha", "imports_order": ["class", "const"]})
     );
     assert!(c.blade);
-    // Nothing named, no composer.json: PHP 8.4, no lint rules, no files.
     assert_eq!(c.php, "8.4");
     assert!(c.lint.rules.is_empty() && c.files == Files::default());
 }
 
-/// `[php] version` overrides composer.json's `require.php`, whose lowest version is the default.
 #[test]
 fn php_version() {
     let c = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().php;
@@ -280,8 +266,6 @@ fn php_version() {
     );
 }
 
-/// `pun analyse`'s phpVersion follows PhpVersionFactory::create(): `[php] version`, else `config.platform.php`
-/// (patch kept, clamped to 70100..=80699), else the runtime PHP, not composer.json's lowest `require.php`.
 #[test]
 fn analyse_php_version() {
     let id = |files: &[(&str, &str)]| {
@@ -323,8 +307,6 @@ fn analyse_php_version() {
     );
 }
 
-/// `[lint] sets` turn on every rule tagged with them, at `error`. Rule lists hand-read from [rules.lint] of
-/// rules/mapping.toml.
 #[test]
 fn lint_sets() {
     let lint = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().lint;
@@ -344,8 +326,6 @@ fn lint_sets() {
             ..lr(id, Level::Error, true, Value::Null, fixer)
         })
     );
-    // `types` has 77 ported rules, four of them Laravel's: those need laravel/framework in composer.lock (and the
-    // rules Rector 2.8.4 added to it, not ported yet, are in no set).
     let types = "[lint]\nsets = [\"types\"]\n";
     let l = lint(&[("pun.toml", types)]);
     assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
@@ -357,12 +337,9 @@ fn lint_sets() {
         (77, vec![crate::Ecosystem::Laravel])
     );
     assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
-    // The laravel group switched off.
     let off = format!("{types}[lint.groups]\nlaravel = \"off\"\n");
     let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
-    // `modernize` has 36 rules; an upgrade group's run from its PHP version on: on 8.4, the 6 php-8.5 rules and the
-    // 1 php-8.6 rule are off.
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
     let l = lint(&[("pun.toml", modernize)]);
     assert_eq!(l.rules.len(), 29);
@@ -374,14 +351,11 @@ fn lint_sets() {
     )]);
     assert_eq!(l.rules.len(), 35);
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
-    // Mago marks its fix unsafe (a collection passes the key too), so no set turns it on.
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
-    // Two sets: the union, 5 + 73 (no rule is in both).
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
     assert_eq!(l.rules.len(), 78);
 }
 
-/// A group's level covers every rule of the group, whether a set has it or not; a rule's own line wins.
 #[test]
 fn lint_groups() {
     let lint = |toml: &str| {
@@ -390,7 +364,6 @@ fn lint_groups() {
             .lint
     };
     let level = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).map(|r| r.level);
-    // 91 style rules at warn, the set's two control-flow rules at error.
     let l = lint("[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"warn\"\n");
     assert_eq!(l.rules.len(), 93);
     assert!(
@@ -421,7 +394,6 @@ fn lint_groups() {
         "[lint]\nsets = [\"early-return\"]\n[lint.rules]\n\"control-flow/no-useless-else\" = \"off\"\n",
     );
     assert_eq!(l.rules.len(), 4);
-    // A rule no fixer runs keeps its options as written (they are Pun's own names, not PHP-CS-Fixer's).
     let l =
         lint("[lint.rules]\n\"style/prefer-early-return\" = { level = \"warn\", max-depth = 2 }\n");
     assert_eq!(
@@ -435,14 +407,11 @@ fn lint_groups() {
             named: true,
         }]
     );
-    // A group turns an upgrade on whatever the Laravel version (no composer.lock here).
     let l = lint("[lint.groups]\nlaravel-12 = \"error\"\n");
     assert_eq!(ids(&l.rules), ["lint/laravel-12/prefer-scope-attribute"]);
     assert!(l.rules.iter().all(|r| !r.named && r.level == Level::Error));
 }
 
-/// What a set alone may turn on in an upgrade group: the locked Laravel version gates `laravel-<n>` (no set has such
-/// a rule yet, so this is checked here and not through `load`).
 #[test]
 fn upgrade_gates() {
     let gates = |lock: Option<&str>| {
@@ -464,7 +433,6 @@ fn upgrade_gates() {
     assert!(!check(&l11, "laravel-12"));
     assert!(check(&l11, "laravel") && !check(&l11, "pest") && !check(&l11, "doctrine"));
     assert!(check(&l11, "php-8.4") && !check(&l11, "php-8.5") && check(&l11, "style"));
-    // A branch has no version, so no upgrade group runs from a set; no lock, no Laravel at all.
     let branch = gates(Some(
         r#"{"packages":[{"name":"laravel/framework","version":"dev-main"}]}"#,
     ));
@@ -508,17 +476,13 @@ fn lint_overrides() {
             },
         ]
     );
-    // Overrides change levels per path at run time; they turn nothing on for the whole project.
     assert_eq!(c.lint.rules, [] as [schema::LintRule; 0]);
 }
 
-/// Rule counts counted in [rules.analyse] of rules/mapping.toml: basic 150, essential 106, recommended 75, strict
-/// 35, max 3; 15 of them Laravel's (0, 4, 7, 4, 0).
 #[test]
 fn analyse() {
     let an = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().analyse;
     let has = |a: &Analyse, id: &str| a.rules.iter().any(|r| r.id == id);
-    // No [analyse]: recommended, [files] paths and exclude.
     let a = an(&[(
         "pun.toml",
         "[files]\npaths = [\"app\"]\nexclude = [\"storage\"]\n",
@@ -596,7 +560,6 @@ laravel = "on"
             Some("pun-baseline.toml".into())
         )
     );
-    // basic, plus 2 named, plus the 15 Laravel rules but one, minus undefined/function.
     assert_eq!(a.rules.len(), 150 + 2 + 14 - 1);
     let rule = |id: &str| {
         a.rules
@@ -611,7 +574,6 @@ laravel = "on"
     assert_eq!(rule("analyse/types/missing-return-type"), Some(Value::Null));
     assert_eq!(rule("analyse/undefined/function"), None);
     assert_eq!(rule("analyse/laravel/no-model-make"), None);
-    // laravel/framework locked, the group switched off.
     let a = an(&[
         ("pun.toml", "[analyse.rules]\nlaravel = \"off\"\n"),
         ("composer.lock", LARAVEL_LOCK),
@@ -641,7 +603,6 @@ fn composer_gate() {
 
 #[test]
 fn mapping_lookups() {
-    // Hand-read from rules/mapping.toml.
     assert_eq!(
         rule_of("no_alias_functions"),
         Some("lint/style/no-alias-function")
@@ -660,14 +621,12 @@ fn mapping_lookups() {
     );
     assert_eq!(fixer_of("lint", "imports/ordered"), None);
     assert_eq!(fixer_of("lint", "format/imports/ordered"), None);
-    // The old names are gone.
     assert_eq!(fixer_of("format", "ordered-imports"), None);
     assert_eq!(fixer_of("format", "format.ordered-imports"), None);
 }
 
 #[test]
 fn rule_metadata() {
-    // Hand-read from rules/mapping.toml.
     let m = rule("lint/dead-code/no-self-assignment").unwrap();
     assert_eq!(
         (m.fix.name(), m.summary),
@@ -690,12 +649,10 @@ fn rule_metadata() {
             Some("PHP arrays should be declared using the configured syntax.")
         )
     );
-    // A moved format rule keeps its summary under its lint ID.
     assert_eq!(
         rule("lint/imports/no-unused").unwrap().summary,
         Some("Unused `use` statements must be removed.")
     );
-    // Analyse rules have no fix.
     assert_eq!(rule("analyse/types/argument").unwrap().fix.name(), "none");
     assert_eq!(
         rule("lint/arrays/prefer-array-append").unwrap().fix.name(),
@@ -713,7 +670,6 @@ fn show() {
         "[files]\npaths = [\"app\"]\nexclude = [\"build\"]\n[format]\npreset = \"empty\"\nexclude = [\"gen\"]\n[format.rules]\n\"operators/concat-spacing\" = { spacing = \"one\" }\n\"strings/single-quote\" = true\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n\"style/no-alias-function\" = { level = \"warn\", fix = \"off\", sets = [\"@internal\"] }\n\"types/no-loose-comparison\" = { fix = \"off\" }\n[[lint.overrides]]\nfiles = [\"tests/**\"]\nrules = { \"style/require-final-class\" = \"off\", \"types/no-loose-comparison\" = \"warn\" }\n[analyse]\npreset = \"basic\"\n[analyse.rules]\n\"undefined/method\" = { magic = true }\n",
     )]);
     let v = load(&d, &Options::default()).unwrap().show();
-    // Rules as pun.toml writes them: `<group>/<name>` under their command's table.
     assert_eq!(
         v["lint"],
         json!({
@@ -751,7 +707,6 @@ fn show() {
     );
     assert_eq!(v["analyse"]["rules"]["undefined/function"], "on");
     assert_eq!(v["analyse"]["preset"], "basic");
-    // No baseline, no key (TOML has no null); a baseline is a path.
     assert!(v["analyse"].get("baseline").is_none());
     let d = dir(&[(
         "pun.toml",
@@ -768,8 +723,6 @@ fn show() {
     );
 }
 
-/// `--preset per|symfony` is an error naming the replacement (format 1), with or without a pun.toml; pun.toml's
-/// `[format] preset = "per"` names its own. An unknown preset stays "Preset not found.".
 #[test]
 fn removed_presets() {
     for p in ["per", "symfony"] {
@@ -790,13 +743,11 @@ fn removed_presets() {
         );
     }
     assert_eq!(err(&dir(&[]), preset("nope")), "Preset not found.");
-    // The kept presets still load through --preset.
     for p in crate::FormatPreset::ALL {
         assert_eq!(load(&dir(&[]), &preset(&p)).unwrap().preset, p);
     }
 }
 
-/// The text before the `docs` row, which must be the page of the rule `id` on the docs site.
 fn explained(name: &str, id: &str) -> String {
     let out = explain(name).unwrap();
     let (head, docs) = out.rsplit_once("docs      ").unwrap();
@@ -804,8 +755,6 @@ fn explained(name: &str, id: &str) -> String {
     head.to_string()
 }
 
-/// Expected text by hand from each rule's row in mapping.toml, the rows of `[upstream.*]` that map to it and its
-/// group's line in `[meta.groups]`.
 #[test]
 fn explain_rules() {
     assert_eq!(
@@ -820,7 +769,6 @@ upstream  array_syntax (php-cs-fixer)
           array-style (mago-linter)
 "
     );
-    // Without the command part, the same rule.
     assert_eq!(
         explained("arrays/syntax", "format/arrays/syntax"),
         explained("format/arrays/syntax", "format/arrays/syntax")
@@ -840,7 +788,6 @@ upstream  no_alias_functions (php-cs-fixer)
           no-alias-function (mago-linter)
 "
     );
-    // No summary; the analyse preset; PHPStan's identifier and parameters, Mago's codes.
     assert_eq!(
         explained("analyse/undefined/method", "analyse/undefined/method"),
         "analyse/undefined/method
@@ -857,13 +804,11 @@ upstream  CallMethodsRule (phpstan-classes)
           PossiblyNonExistentMethod (mago-analyzer)
 "
     );
-    // A Mago analyzer code that reports for this rule besides its own (`also`).
     let out = explained("analyse/undefined/trait", "analyse/undefined/trait");
     assert!(
         out.contains("\n          NonExistentClassLike (mago-analyzer, also)\n"),
         "{out}"
     );
-    // Intent, and a Pun-only rule.
     assert_eq!(
         explained(
             "lint/comments/no-unused-ignore",
@@ -879,7 +824,6 @@ fix       safe
 upstream  none (Pun's own rule)
 "
     );
-    // A lint rule's fix, and a rule in no preset.
     let out = explained(
         "analyse/types/missing-return-type",
         "analyse/types/missing-return-type",
@@ -900,7 +844,6 @@ upstream  none (Pun's own rule)
     );
 }
 
-/// An upstream or old name is answered with the Pun ID; names without a rule are errors that say why.
 #[test]
 fn explain_names() {
     let ok = |n: &str| explain(n).unwrap();
@@ -911,7 +854,6 @@ fn explain_names() {
             ok("analyse/undefined/method")
         )
     );
-    // The old `format.` / `lint.` names, through pun.toml's loose match.
     assert!(ok("lint.no-alias-functions").starts_with(
         "`lint.no-alias-functions` is `lint/style/no-alias-function` in Pun.\n\nlint/style/no-alias-function\n"
     ));
@@ -934,9 +876,6 @@ fn explain_names() {
     );
 }
 
-/// `[files] paths` is what `--fix` rewrites: a relative, absolute or symlinked path that leaves the project is
-/// refused, while a path inside it and one that does not exist yet (the finder's error) load. A baseline to
-/// create outside the project is refused too.
 #[test]
 fn files_paths_stay_in_the_project() {
     let d = dir(&[]);
@@ -958,7 +897,6 @@ fn files_paths_stay_in_the_project() {
             format!("{at}: [files] paths: \"{path}\" is outside the project")
         );
     }
-    // `--generate-baseline` writes the baseline, so a file to create outside the project is refused as well.
     std::fs::write(
         root.join("pun.toml"),
         "[analyse]\nbaseline = \"../outside/b.toml\"\n",
@@ -977,7 +915,6 @@ fn files_paths_stay_in_the_project() {
     assert_eq!(c.files.paths, ["app", "later"]);
 }
 
-/// Every error names what to write instead.
 #[test]
 fn pun_toml_errors() {
     let d = dir(&[]);
@@ -986,7 +923,6 @@ fn pun_toml_errors() {
         let p = d.join("pun.toml").display().to_string();
         err(&d, Options::default()).replace(&p, "pun.toml")
     };
-    // Removed keys and values.
     for (toml, msg) in [
         (
             "preset = \"recommended\"\n",
@@ -1048,7 +984,6 @@ fn pun_toml_errors() {
             "[analyse.rules]\n\"undefined/method\" = \"warn\"\n",
             "[analyse.rules] `undefined/method` = \"warn\": analyse rules are \"on\" or \"off\" (or a table of options); there are no levels",
         ),
-        // Bad values.
         (
             "[format]\npreset = \"pint\"\n",
             "[format] preset = \"pint\": expected `laravel`, `psr12` or `empty`",
@@ -1117,7 +1052,6 @@ fn pun_toml_errors() {
             "[[analyse.ignore]]\nrule = \"nope\"\n",
             "`nope` is not an analyse rule",
         ),
-        // PHPStan's ignoreErrors schema: message and rawMessage exclude each other, and an entry names something.
         (
             "[[analyse.ignore]]\nmessage = \"#^A#\"\nraw-message = \"A\"\n",
             "[[analyse.ignore]] #1: message and raw-message: give one",
@@ -1126,7 +1060,6 @@ fn pun_toml_errors() {
             "[[analyse.ignore]]\nidentifier = \"x.y\"\n\n[[analyse.ignore]]\npaths = [\"app\"]\n",
             "[[analyse.ignore]] #2: name a rule, an identifier or a message",
         ),
-        // `ordered` is imports/ordered, attributes/ordered and types/ordered: not guessed.
         (
             "[format.rules]\nordered = true\n",
             "`ordered` is not a format rule",
@@ -1135,18 +1068,13 @@ fn pun_toml_errors() {
         let got = e(toml);
         assert_eq!(got, format!("pun.toml: {msg}"), "{toml}");
     }
-    // serde's own errors for unknown keys.
     assert!(e("[format]\nexlude = [\"typo\"]\n").contains("unknown field `exlude`"));
     assert!(e("[lint]\nset = []\n").contains("unknown field `set`"));
     assert!(e("[[lint.overrides]]\nrules = {}\n").contains("missing field `files`"));
-    // No aliases: an old Pun name, an upstream name or a rule of the other command names the ID to use
-    // (IDs hand-read from rules/mapping.toml).
     for (table, name, id) in [
-        // Old format names and the kebab-cased fixer, under either table.
         ("format", "format.array-syntax", "format/arrays/syntax"),
         ("format", "array-syntax", "format/arrays/syntax"),
         ("lint", "laravel-blade", "format/laravel/blade"),
-        // The 40 code-deleting fixers are lint rules now (context/plan/commands.md §4).
         ("format", "no-unused-imports", "lint/imports/no-unused"),
         ("format", "imports/no-unused", "lint/imports/no-unused"),
         (
@@ -1154,7 +1082,6 @@ fn pun_toml_errors() {
             "self-static-accessor",
             "lint/classes/prefer-self-in-final",
         ),
-        // Old lint and analyse names, and the auto-derived ones before the naming pass.
         (
             "lint",
             "lint.no-alias-function",
@@ -1178,7 +1105,6 @@ fn pun_toml_errors() {
             "analyse/undefined/method",
         ),
         ("analyse", "undefined-method", "analyse/undefined/method"),
-        // Upstream names: PHP-CS-Fixer, Pint, Rector, PHPStan.
         ("format", "array_syntax", "format/arrays/syntax"),
         ("format", "Pint/laravel_blade", "format/laravel/blade"),
         (
@@ -1188,7 +1114,6 @@ fn pun_toml_errors() {
         ),
         ("lint", "method.notFound", "analyse/undefined/method"),
         ("analyse", "method.notFound", "analyse/undefined/method"),
-        // A rule of the other command, full or short.
         ("lint", "imports/ordered", "format/imports/ordered"),
         (
             "format",
@@ -1201,15 +1126,12 @@ fn pun_toml_errors() {
         let got = e(&format!("[{table}.rules]\n\"{name}\" = {value}\n"));
         assert_eq!(got, format!("pun.toml: `{name}` is `{id}` in pun.toml"));
     }
-    // The same names inside an override.
     assert_eq!(
         e("[[lint.overrides]]\nfiles = [\"tests/**\"]\nrules = { final_class = \"off\" }\n"),
         "pun.toml: `final_class` is `lint/style/require-final-class` in pun.toml"
     );
 }
 
-/// Rule sets resolve like PHP-CS-Fixer's RuleSet (tests/rule_sets.json: `(new RuleSet($rules))->getRules()` of the
-/// pinned version): same rules, options and order. The first case is Pint's psr12 preset.
 #[test]
 fn rule_sets_like_php_cs_fixer() {
     let cases: Vec<Value> = serde_json::from_str(include_str!("../tests/rule_sets.json")).unwrap();
@@ -1231,7 +1153,6 @@ fn rule_sets_like_php_cs_fixer() {
             })
             .collect()
     };
-    // `pun format` runs psr12 without its 2 code-deleting rules, which are lint rules (context/plan/commands.md §4).
     let psr12 = load(&dir(&[]), &preset("psr12")).unwrap();
     let mut want = expected(&cases[0]);
     want.retain(|(r, _)| r != "ordered_class_elements" && r != "no_unused_imports");
@@ -1240,8 +1161,6 @@ fn rule_sets_like_php_cs_fixer() {
         let rules = case["rules"].as_object().unwrap().clone();
         assert_eq!(resolved(rule_set(rules).unwrap()), expected(case));
     }
-    // The @auto sets read the project's composer.json, so Pun has no definition: they stay as one rule, reported as
-    // not ported.
     let rules = json!({"@auto": true}).as_object().unwrap().clone();
     assert_eq!(
         resolved(rule_set(rules).unwrap()),
@@ -1267,8 +1186,6 @@ mod migrate {
         .unwrap()
     }
 
-    /// Hand-derived from Pint's laravel preset (presets/laravel.json, in its order) and the mapping: its 4 risky
-    /// fixers and 11 code-deleting ones are lint rules (context/plan/commands.md §4).
     #[test]
     fn writes_a_delta_and_moves_risky_rules_to_lint() {
         let m = pint(
@@ -1308,15 +1225,12 @@ not-path = ["y"]
 "style/require-final-class" = "error"
 "#
         );
-        // Re-running gives the same file; laravel's single_quote already is `true`, so it isn't written.
         assert_eq!(
             pint(r#"{"rules":{"single_quote":true}}"#).toml,
             pint("{}").toml
         );
     }
 
-    /// The migrated pun.toml runs exactly what Pint ran: `pun format`'s rules plus the applied lint rules equal
-    /// PHP-CS-Fixer's resolved rule list (checked against its fixture in `rule_sets_like_php_cs_fixer`).
     #[test]
     fn round_trips() {
         for (preset, json) in [
@@ -1355,7 +1269,6 @@ not-path = ["y"]
             got.sort_by(|a, b| a.0.cmp(&b.0));
             want.sort_by(|a, b| a.0.cmp(&b.0));
             assert_eq!(got, want, "{json}");
-            // At `error` with their fix on: `pun check --fix` applies them as Pint did.
             assert!((c.lint.rules.iter()).all(|l| l.fix && l.level == Level::Error && l.named));
         }
     }
@@ -1370,7 +1283,6 @@ not-path = ["y"]
                 .find(|r| r.name == "modifier_keywords")
                 .map(|r| r.options)
         };
-        // Pinkary: laravel's modifier_keywords (method, property) + visibility_required (all elements).
         assert_eq!(
             mk(r#"{"rules":{"visibility_required":true}}"#),
             Some(Value::Null)
@@ -1379,7 +1291,6 @@ not-path = ["y"]
             mk(r#"{"rules":{"visibility_required":{"elements":["const","method"]}}}"#),
             Some(json!({"elements": ["method", "property", "const"]}))
         );
-        // laravel-framework: preset empty, visibility_required alone.
         assert_eq!(
             mk(r#"{"preset":"empty","rules":{"visibility_required":{"elements":["method"]}}}"#),
             Some(json!({"elements": ["method"]}))
@@ -1413,7 +1324,6 @@ not-path = ["y"]
                 "no_whitespace_before_comma_in_array: an option is null, which TOML can't hold",
             ]
         );
-        // A lint rule's options go through PHP-CS-Fixer's checks too: `include` takes no null.
         let e = from_pint(
             &dir(&[(
                 "pint.json",
@@ -1429,15 +1339,12 @@ not-path = ["y"]
             e.to_string(),
             "[final_internal_class] Invalid configuration: The option \"include\" with value null is expected to be of type \"string[]\", but is of type \"null\"."
         );
-        // The rest still migrates.
         assert_eq!(
             m.toml,
             "[format]\npreset = \"empty\"\n\n[format.rules]\n\"comments/header\" = { header = \"h\" }\n"
         );
     }
 
-    /// pun.toml has no per or symfony preset: their sets expand (sets.json, PHP-CS-Fixer's definitions) and every rule
-    /// is written over `empty`. Hand-derived from @PER-CS3x0 and @PSR12 in sets.json, with per's no_unused_imports.
     #[test]
     fn expands_per_and_symfony() {
         let m = pint(r#"{"preset":"per"}"#);
@@ -1445,7 +1352,6 @@ not-path = ["y"]
         let c = from_toml(&dir(&[]), &m.toml).unwrap();
         assert_eq!(c.preset, "empty");
         let rules = names(&c.rules);
-        // From @PER-CS3x0 itself, from @PER-CS2x0 under it, and from @PSR12 under that.
         for r in [
             "types_spaces",
             "attribute_block_no_spaces",
@@ -1455,7 +1361,6 @@ not-path = ["y"]
             assert!(rules.contains(&r), "{r}");
         }
         let lint: Vec<_> = c.lint.rules.iter().map(|l| l.fixer.unwrap()).collect();
-        // @PSR12's ordered_class_elements and per's no_unused_imports delete code, so they are lint rules.
         assert_eq!(lint, ["ordered_class_elements", "no_unused_imports"]);
         let m = pint(r#"{"preset":"symfony","rules":{"no_empty_comment":false}}"#);
         let c = from_toml(&dir(&[]), &m.toml).unwrap();
@@ -1465,8 +1370,6 @@ not-path = ["y"]
         );
     }
 
-    /// A rule Pun has no fixer for is named and skipped; one the preset brings is switched off, so pun.toml runs.
-    /// Hand-derived from the laravel preset: single_quote (format) and final_class (lint, pint.json's) left out.
     #[test]
     fn skips_rules_pun_cant_run() {
         let runs = |n: &str| n != "single_quote" && n != "final_class";
@@ -1515,7 +1418,6 @@ not-path = ["y"]
         assert_eq!(fixers, ["ordered_class_elements", "strict_param"]);
     }
 
-    /// Messages are Pint's (ConfigurationJsonRepository, RuleSet; real Pint 1.29.3 on the same pint.json).
     #[test]
     fn pint_errors() {
         let e = |files: &[(&str, &str)]| {
@@ -1528,7 +1430,6 @@ not-path = ["y"]
             e(&[("pint.json", r#"{"preset":"nope"}"#)]),
             "Preset not found."
         );
-        // A top-level JSON list is an empty config (laravel preset), not invalid JSON; no file is too.
         assert_eq!(pint("[1]").toml, pint("{}").toml);
         assert_eq!(
             from_pint(&dir(&[]).join("pint.json"), Some("psr12"), &|_| true)
@@ -1544,7 +1445,6 @@ not-path = ["y"]
             "Pint configuration cannot extend from more than 1 file."
         );
         assert!(e(&[("pint.json", "1")]).ends_with("pint.json] is not valid JSON."));
-        // An unreadable pint.json names the file (a directory, which root can't read either).
         let d = dir(&[]);
         std::fs::create_dir(d.join("pint.json")).unwrap();
         let err = from_pint(&d.join("pint.json"), None, &|_| true)
@@ -1590,7 +1490,6 @@ not-path = ["y"]
         );
     }
 
-    /// `extend` merges like array_replace_recursive: lists by index, so `["x"]` over `["a","b"]` is `["x","b"]`.
     #[test]
     fn extend() {
         let d = dir(&[
@@ -1615,7 +1514,6 @@ mod options;
 mod phpstan;
 mod rector;
 
-/// PHP-CS-Fixer's `UtilsTest::provideNaturalLanguageJoinCases` (default wrapper): one name is not joined.
 #[test]
 fn natural_language_join_matches_upstream() {
     use crate::options::natural_language_join;
@@ -1627,7 +1525,6 @@ fn natural_language_join_matches_upstream() {
     );
 }
 
-/// The target version as `PHP_VERSION_ID` (PHP's own numbering: 8.5.0 is 80500), shown as `[php] version` writes it.
 #[test]
 fn php_version_id() {
     let d = dir(&[("pun.toml", "[php]\nversion = \"8.5\"\n")]);
@@ -1636,7 +1533,6 @@ fn php_version_id() {
     assert_eq!(c.show()["php"]["version"], "8.5");
     assert_eq!(crate::PhpVersion::FLOOR.to_id(), 80400);
     assert!("8".parse::<crate::PhpVersion>().is_err());
-    // Serialized as `[php] version` writes it, not as a table.
     assert_eq!(
         serde_json::to_value(crate::PhpVersion { major: 8, minor: 5 }).unwrap(),
         "8.5"
@@ -1644,10 +1540,6 @@ fn php_version_id() {
     assert_eq!(crate::FormatPreset::Psr12.to_string(), "psr12");
 }
 
-/// `[analyse]` as PHPStan parameters. Levels and gates are rules/mapping.toml's `[upstream.phpstan-classes]` rows
-/// (ConstantRule is level 1; AssignToByRefExprFromForeachRule, level 1, runs with bleedingEdge's
-/// `assignToByRefForeachExpr`); `additional-constructors` is `additionalConstructors` (`[phpstan-parameters]`).
-/// Paths are absolute as PHPStan's NeonAdapter makes a config's paths, `*` patterns excepted.
 #[test]
 fn analyse_parameters() {
     use pun_phpstan::Value as V;
@@ -1678,13 +1570,11 @@ fn analyse_parameters() {
     );
     assert_eq!(get("additionalConstructors"), Some(list(&["A::init"])));
     assert_eq!(get("checkDynamicProperties"), Some(V::Bool(true)));
-    // FetchingDeprecatedConstRule is phpstan-deprecation-rules'
     assert_eq!(get("deprecationRulesInstalled"), Some(V::Bool(true)));
     let toggles = get("featureToggles").unwrap();
     let toggle = |k: &str| toggles.as_array().unwrap().get_str(k).cloned();
     assert_eq!(toggle("assignToByRefForeachExpr"), Some(V::Bool(true)));
     assert_eq!(toggle("unusedLabel"), Some(V::Bool(false)));
-    // Larastan's switches only with Larastan.
     assert_eq!(get("noModelMake"), None);
     fn show(v: &V) -> String {
         match v {
@@ -1712,7 +1602,6 @@ fn analyse_parameters() {
         ]
     );
 
-    // The type switches stand for levels 8 and 10; level 2 turns checkClassCaseSensitivity on.
     let level = |preset: &str| {
         let d = dir(&[("pun.toml", &format!("[analyse]\npreset = \"{preset}\"\n"))]);
         load(&d, &Options::default()).unwrap().analyse.level()
@@ -1730,8 +1619,6 @@ fn analyse_parameters() {
     );
 }
 
-/// PHPStan's config.neon disables maybe checks, config.level1.neon enables them, and both variable rules read the
-/// same parameter. A rule's explicit `maybe` overrides either default, even when the other consumer is off.
 #[test]
 fn variable_parameters() {
     use pun_phpstan::Value as V;
@@ -1757,7 +1644,6 @@ fn variable_parameters() {
                 let a = from_toml(&d, &text).unwrap().analyse;
                 assert_eq!(a.level(), level, "{text}");
                 let p = a.parameters(&d);
-                // Pun is a CLI binary: keep Project::new's argv/argc recognition, without running PHP.
                 assert_eq!(
                     p.get_str("cliArgumentsVariablesRegistered"),
                     Some(&V::Bool(true)),
@@ -1773,8 +1659,6 @@ fn variable_parameters() {
     }
 }
 
-/// Larastan 3 requires `illuminate/*` `^11.44.2 || ^12.4.1 || ^13` (its composer.json); with it, its gated rules'
-/// switches are parameters (`noModelMake` marks Larastan's extension.neon as included).
 #[test]
 fn larastan_follows_the_locked_laravel() {
     use crate::composer::Version;

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\SetTypeToCastFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{FunctionReferenceFinder, IS_RISKY};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use pun_format::Fixer;
@@ -13,7 +12,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(SetTypeToCastFixer)
 }
 
-/// `$map`; `'null'` is dealt with separately.
 fn map(type_: &[u8]) -> Option<(Kind, &'static str)> {
     Some(match type_ {
         b"array" => (T_ARRAY_CAST, "(array)"),
@@ -35,7 +33,7 @@ fn find_settype_calls(tokens: &Tokens) -> Vec<(usize, usize, usize)> {
         let Some(candidate) = finder.find("settype", tokens, i, Some(end)) else {
             break;
         };
-        i = candidate.1 + 1; // proceed to openParenthesisIndex
+        i = candidate.1 + 1;
         candidates.push(candidate);
     }
     candidates
@@ -61,7 +59,7 @@ fn remove_settype_call(
     tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
     tokens.clear_token_and_merge_surrounding_whitespace(first_argument_start);
     tokens.clear_token_and_merge_surrounding_whitespace(open_parenthesis_index);
-    tokens.clear_at(function_name_index); // we'll be inserting here so no need to merge the space tokens
+    tokens.clear_at(function_name_index);
     tokens.clear_empty_tokens();
 }
 
@@ -86,7 +84,7 @@ impl Fixer for SetTypeToCastFixer {
                 .into_iter()
                 .collect();
             if arguments.len() != 2 {
-                continue; // function must be overridden or used incorrectly
+                continue;
             }
             let prev = tokens
                 .get_prev_meaningful_token(function_name_index)
@@ -95,9 +93,8 @@ impl Fixer for SetTypeToCastFixer {
                 &[";".into(), "{".into(), "}".into(), T_OPEN_TAG.into()],
                 true,
             ) {
-                continue; // return value of the function is used
+                continue;
             }
-            // --- Test first argument --------------------
             let mut first_argument_start = arguments[0].0;
             if tokens[first_argument_start].is_comment()
                 || tokens[first_argument_start].is_whitespace(None)
@@ -107,15 +104,14 @@ impl Fixer for SetTypeToCastFixer {
                     .unwrap();
             }
             if !tokens[first_argument_start].is_kind(T_VARIABLE) {
-                continue; // settype only works with variables pass by reference, function must be overridden
+                continue;
             }
             let comma_index = tokens
                 .get_next_meaningful_token(first_argument_start)
                 .unwrap();
             if !tokens[comma_index].equals(",", true) {
-                continue; // first argument is complex statement; function must be overridden
+                continue;
             }
-            // --- Test second argument -------------------
             let (mut second_argument_start, second_argument_end) = arguments[1];
             if tokens[second_argument_start].is_comment()
                 || tokens[second_argument_start].is_whitespace(None)
@@ -130,18 +126,16 @@ impl Fixer for SetTypeToCastFixer {
                     .unwrap()
                     < second_argument_end
             {
-                continue; // second argument is of the wrong type or is a (complex) statement of some sort (function is overridden)
+                continue;
             }
-            // --- Test type ------------------------------
             let type_ = strtolower(ltrim_chars(
                 rtrim_chars(tokens[second_argument_start].get_content(), b"\"'"),
                 b"\"'",
             ));
             let cast = map(&type_);
             if type_ != b"null" && cast.is_none() {
-                continue; // we don't know how to map
+                continue;
             }
-            // --- Fixing ---------------------------------
             let argument_token = tokens[first_argument_start].clone();
             remove_settype_call(
                 tokens,

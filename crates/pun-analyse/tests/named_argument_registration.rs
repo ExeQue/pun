@@ -1,6 +1,3 @@
-//! Complete public diagnostics from PHPStan 2.3.1 with independently registered method-rule services.
-//! Reproduce with fixtures/named-producer-gates/capture.php and the pinned PHPStan PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{MethodRules, Project, run};

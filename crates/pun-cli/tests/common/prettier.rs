@@ -1,10 +1,6 @@
-//! Where the Blade tests find prettier: crates/pun-fixers/node_modules of this checkout, or, in a git worktree that
-//! has none, that of the main checkout (the parent of `git rev-parse --git-common-dir`).
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// The canonical node_modules holding prettier, or `None` when neither checkout has one.
 pub(crate) fn node_modules() -> Option<PathBuf> {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let local = crate_dir.join("../pun-fixers/node_modules");

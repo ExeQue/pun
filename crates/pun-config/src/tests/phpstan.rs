@@ -1,6 +1,3 @@
-//! phpstan.neon to `[analyse]`. Levels, packages and identifiers are rules/mapping.toml's `[upstream.phpstan-classes]`
-//! and `[upstream.phpstan]` rows (PHPStan 2.3.1's rule registry); the parameter handling is PHPStan's own
-//! (`NeonAdapter` makes paths absolute, `bleedingEdge.neon` ships in the phar).
 use super::*;
 use crate::migrate::Parts;
 use crate::migrate::phpstan::{Phpstan, compose, from_phpstan};
@@ -17,7 +14,6 @@ fn project(neon: &str, extra: &[(&str, &str)]) -> PathBuf {
     ] {
         std::fs::create_dir_all(d.join(p)).unwrap();
     }
-    // As phpstan/phpstan ships it: the real file is in the phar.
     std::fs::create_dir_all(d.join("vendor/phpstan/phpstan/conf")).unwrap();
     std::fs::write(
         d.join("vendor/phpstan/phpstan/conf/bleedingEdge.neon"),
@@ -79,7 +75,6 @@ parameters:
             identifier: phpstanApi.method
 ";
 
-/// phpstan/extension-installer's GeneratedConfig.php as version 1.4 writes it (trimmed to three packages).
 const GENERATED: &str = "<?php declare(strict_types = 1);
 
 namespace PHPStan\\ExtensionInstaller;
@@ -132,7 +127,6 @@ final class GeneratedConfig
 }
 ";
 
-/// Each part of the config lands where the plan puts it; what Pun can't take is named.
 #[test]
 fn reads_level_paths_ignores_and_includes() {
     let d = project(
@@ -143,7 +137,6 @@ fn reads_level_paths_ignores_and_includes() {
             ("vendor/phpstan/phpstan/conf/extra.neon", ""),
             ("vendor/phpstan/phpstan-mockery/extension.neon", ""),
             ("vendor/phpstan/phpstan-strict-rules/rules.neon", ""),
-            // A package's file included from a subdirectory is the package's.
             (
                 "build/custom.neon",
                 "includes:\n    - ../vendor/foo/bar/rules.neon\nparameters:\n    checkFunctionNameCase: true\n",
@@ -164,7 +157,6 @@ fn reads_level_paths_ignores_and_includes() {
     assert_eq!(p.exclude, ["app/Legacy", "/tmp"]);
     assert_eq!(p.stubs, ["stubs/Foo.stub"]);
     assert_eq!(p.baselines, ["phpstan-baseline.neon"]);
-    // strict-rules through the extension installer; NOT_INSTALLED is not read.
     assert_eq!(
         p.extensions.iter().collect::<Vec<_>>(),
         ["larastan/larastan", "phpstan/phpstan-strict-rules"]
@@ -190,10 +182,6 @@ fn reads_level_paths_ignores_and_includes() {
         why("ignoreErrors whitespace.bom"),
         "`whitespace.bom` is the format rule `format/whitespace/encoding` in Pun; ignore it there"
     );
-    // Against PHPStan's value at level 5 (conf/config.level*.neon, conf/config.neon): checkFunctionNameCase (false)
-    // is an option of the rules that read it, checkUninitializedProperties gates a rule (compose turns it on),
-    // treatPhpDocTypesAsCertain is already true, checkMissingTypehints is level 6's, and only a lint rule reads
-    // universalObjectCratesClasses.
     assert_eq!(
         p.changed,
         [
@@ -229,7 +217,6 @@ fn reads_level_paths_ignores_and_includes() {
         why("ignoreErrors phpstanApi.method"),
         "`phpstanApi.method`: PHPStan extension-API checks; Pun has no PHP extension API"
     );
-    // The baseline's own ignoreErrors are not read.
     assert_eq!(
         p.ignores,
         [
@@ -241,11 +228,6 @@ fn reads_level_paths_ignores_and_includes() {
     );
     let mut parts = Parts::default();
     let done = compose(&d, &mut parts, &p).unwrap();
-    // CallToNonExistentFunctionRule reads checkFunctionNameCase (its constructor's #[AutowiredParameter]),
-    // CallMethodsRule that and checkBenevolentUnionTypes (through RuleLevelHelper), UninitializedPropertyRule
-    // additionalConstructors (through ConstructorsHelper). MethodThrowTypeCovarianceRule reads
-    // exceptions.implicitThrows, but it runs only under exceptions.check.throwTypeCovariance, so that one is applied
-    // nowhere.
     let text = parts.render();
     for line in [
         "\"undefined/function\" = { check-function-name-case = true }",
@@ -268,7 +250,6 @@ fn reads_level_paths_ignores_and_includes() {
         serde_json::json!({"check-function-name-case": true})
     );
     assert!(
-        // PHPStan's checks a lint rule fixes come first, as [lint.rules].
         parts.render().contains(
             "\"dead-code/no-unused-private-method\" = \"error\"\n"
         ) && parts.render().contains(
@@ -279,8 +260,6 @@ fn reads_level_paths_ignores_and_includes() {
     );
 }
 
-/// PHPStan 2.3.1's oracle reports both variable and compact() maybes at level 1 (not 0); explicitly changing
-/// checkMaybeUndefinedVariables reverses that behavior. Migration must keep that option on both consumers.
 #[test]
 fn migrates_maybe_undefined_variables() {
     use pun_phpstan::Value as V;
@@ -338,8 +317,6 @@ fn migrates_maybe_undefined_variables() {
     }
 }
 
-/// Defaults follow PHPStan's level presets. Until Pun has independent product options, changed settings must
-/// be reported as unsupported rather than silently collapsing both argument checks into the argument rule.
 #[test]
 fn argument_settings_preserve_defaults_and_report_unmapped_overrides() {
     use pun_phpstan::Value as V;
@@ -387,7 +364,6 @@ fn argument_settings_preserve_defaults_and_report_unmapped_overrides() {
     }
 }
 
-/// `level: max` is 10; a level PHPStan rejects stops the migration with PHPStan's message.
 #[test]
 fn reads_max_and_rejects_bad_levels() {
     let d = project("parameters:\n    level: max\n", &[]);
@@ -403,8 +379,6 @@ fn reads_max_and_rejects_bad_levels() {
     );
 }
 
-/// The include PHPStan's docs recommend, `phar://phpstan.phar/conf/bleedingEdge.neon`, is PHPStan's bleeding edge, not
-/// a project config: it becomes `bleeding-edge = true`.
 #[test]
 fn takes_phar_bleeding_edge() {
     let d = project(
@@ -416,13 +390,8 @@ fn takes_phar_bleeding_edge() {
     assert!(p.unsupported.is_empty(), "{:?}", p.unsupported);
 }
 
-/// Level 5 is the `recommended` preset: every core rule up to level 5 stays on, deprecation-rules' checks (in
-/// `recommended`) are off without their include, and so is a check a PHPStan parameter keeps off; at level 4 the level-5 checks are off too. strict-rules' checks run
-/// with the include when their parameter is on: an analyse rule outside the preset gets `"on"`, a lint rule Pun hasn't
-/// ported is named. The ignores render as `[[analyse.ignore]]` tables pun.toml accepts.
 #[test]
 fn composes_the_level_extensions_and_parameters() {
-    // PHPStan's resolved parameters at a level, with extensions and strictRules parameters added.
     let at_in =
         |level: u8, ext: &[&str], strict: &[(&str, bool)], files: &[(&str, &str)], format: &str| {
             let d = project(&format!("parameters:\n    level: {level}\n"), files);
@@ -458,12 +427,10 @@ fn composes_the_level_extensions_and_parameters() {
     assert_eq!(done.preset, AnalysePreset::Recommended);
     let off = lines(&parts, "\"off\"");
     assert!(off.contains(&"deprecated/class".to_string()), "{off:?}");
-    // checkUninitializedProperties is false by default (PHPStan's config.neon).
     assert!(
         off.contains(&"classes/uninitialized-property".to_string()),
         "{off:?}"
     );
-    // Bleeding edge only (featureToggles.checkPrintfParameterTypes).
     assert!(
         off.contains(&"types/printf-argument".to_string()),
         "{off:?}"
@@ -479,7 +446,6 @@ fn composes_the_level_extensions_and_parameters() {
         cfg.analyse.ignore[0].rule.as_deref(),
         Some("analyse/undefined/method")
     );
-    // deprecation-rules' class check is off; PHPStan's own `__toString()` deprecation check (level 0) stays.
     let has = |id: &str| cfg.analyse.rules.iter().any(|r| r.id == id);
     assert!(!has("analyse/deprecated/class") && has("analyse/deprecated/to-string"));
 
@@ -500,14 +466,11 @@ fn composes_the_level_extensions_and_parameters() {
         on.contains(&"operators/non-boolean-and-operand".to_string()),
         "{on:?}"
     );
-    // strict-rules' useless-cast check, switched off, turns on no lint rule.
     assert!(!(parts.lint_rules.iter()).any(|(k, _)| k == "dead-code/no-useless-cast"));
     assert!(
         !on.contains(&"control-flow/non-boolean-while".to_string()),
         "needs bleedingEdge too"
     );
-    // `empty()` is the lint rule style/no-empty, and PHPStan's level-0 duplicate-key check the lint rule that removes
-    // the duplicate: both on in [lint.rules].
     assert_eq!(done.lint, 2);
     for rule in ["style/no-empty", "dead-code/no-duplicate-array-key"] {
         assert!(
@@ -516,7 +479,6 @@ fn composes_the_level_extensions_and_parameters() {
                 .contains(&(rule.into(), "\"error\"".into()))
         );
     }
-    // Laravel locked without Larastan: the whole `laravel` group off, no line per Larastan rule.
     let (done, parts, _) = at_in(5, &[], &[], &[("composer.lock", super::LARAVEL_LOCK)], "");
     assert!((parts.analyse_rules.iter()).any(|(k, v)| k == "laravel" && v == "\"off\""));
     assert!(
@@ -527,16 +489,12 @@ fn composes_the_level_extensions_and_parameters() {
     );
     assert_eq!(done.off, lines(&parts, "\"off\"").len());
 
-    // strict-rules' backtick ban is the format rule functions/backtick-to-shell-exec, which an empty format config
-    // doesn't run.
     let backtick = [("disallowedBacktick", true)];
     let format_rule = (
         "format/functions/backtick-to-shell-exec".to_string(),
         "a PHPStan check that is this format rule in Pun; turn it on in [format.rules]".to_string(),
     );
     let (done, ..) = at_in(0, &[strict], &backtick, &[], "preset = \"empty\"\n");
-    // PHPStan's BOM check (level 0) is the format rule whitespace/encoding, and its deprecated-cast check
-    // casts/short-scalar, which the empty config doesn't run either.
     let format = |id: &str| (id.to_string(), format_rule.1.clone());
     assert_eq!(
         done.unsupported,
@@ -548,7 +506,6 @@ fn composes_the_level_extensions_and_parameters() {
     );
 }
 
-/// Values read off rules/mapping.toml by hand: an exact identifier, a `%s` pattern, a Larastan identifier.
 #[test]
 fn identifiers_and_groups() {
     use crate::rule_of_identifier;
@@ -574,8 +531,6 @@ fn identifiers_and_groups() {
     assert!(!crate::groups().iter().any(|g| g == "dead"));
 }
 
-/// Without a level or `customRulesetUsed`, PHPStan stops with "No rules detected" (CommandHelper); the migrated
-/// `[analyse]` turns every analyse group off, so `pun analyse` stops alike. With a level, rules run.
 #[test]
 fn no_level_runs_no_rules() {
     let d = project(

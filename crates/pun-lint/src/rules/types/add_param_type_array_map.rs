@@ -1,14 +1,3 @@
-//! `lint/types/add-param-type-array-map`, ported from Rector 2.8.4's `AddClosureParamTypeForArrayMapRector`
-//! (rules/TypeDeclaration/Rector/FunctionLike): the closure passed first to `array_map()` gets, for each untyped
-//! parameter, the item type of the array passed at its position, when that array is an `ArrayType` (not a constant
-//! array, nor a non-empty one, whose item type Rector's type corrector makes `mixed`).
-//!
-//! `AccessoryNonEmptyArrayTypeCorrector` makes `explode()` of a lowercase or uppercase string `array<mixed, string>`,
-//! except where `str_contains()` (or `str_starts_with()`, `str_ends_with()`) of the haystack proves the delimiter
-//! there, which PHPStan's extension finds by the fully qualified name only. An item type that is a list or a
-//! non-empty array is PHPStan's intersection, which Rector maps to nothing; of `A&B` with `A` a subclass of `B`,
-//! PHPStan keeps `A`.
-
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Argument, Expression, Node, NodeKind};
 use pun_problem::Safety;
@@ -57,7 +46,6 @@ impl Rule for AddParamTypeArrayMap {
         let params: Vec<_> = closure.parameter_list.parameters.iter().collect();
         let mut edits = Vec::new();
         for (position, arg) in args[1..].iter().enumerate() {
-            // spread (...$arrays) cannot be mapped positionally
             if matches!(arg, Argument::Positional(p) if p.ellipsis.is_some()) {
                 return;
             }

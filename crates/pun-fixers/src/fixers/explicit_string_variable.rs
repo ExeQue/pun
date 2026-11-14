@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\ExplicitStringVariableFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::php_compat::strtolower;
@@ -12,7 +11,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(ExplicitStringVariableFixer)
 }
 
-/// One `$variableTokens` entry: the indices of its tokens (first to last, in order).
 struct VariableSet {
     tokens: Vec<usize>,
 }
@@ -22,8 +20,6 @@ impl Fixer for ExplicitStringVariableFixer {
         "explicit_string_variable"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoUselessConcatOperatorFixer.
-        // Must run after BacktickToShellExecFixer.
         6
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -49,7 +45,6 @@ impl Fixer for ExplicitStringVariableFixer {
 
 fn fix_variables(tokens: &mut Tokens, index: usize) {
     let mut distinct_variable_index = index;
-    // krsort($variableTokens): a BTreeMap walked in reverse.
     let mut variable_tokens: BTreeMap<usize, VariableSet> = BTreeMap::new();
     variable_tokens.insert(index, VariableSet { tokens: vec![index] });
     let mut next_index = index + 1;

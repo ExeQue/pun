@@ -1,11 +1,3 @@
-//! `lint/complexity/prefer-named-literal-argument`, ported from Mago 1.57.0's `literal-named-argument`
-//! (mago-linter src/rule/clarity/literal_named_argument.rs). PHP 8.0 and later.
-//!
-//! Reports each literal (string, number, `true`, `false`, `null`) passed positionally to a function, except to the
-//! variadic functions and the ones marked `@no-named-arguments` (mago-linter rule/utils/consts.rs), once a call has
-//! at least `threshold` (default 1) of them. The first argument is skipped unless `check-first-argument`. Mago
-//! reports only; it has no fix.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Argument, Expression, Literal, Node, NodeKind};
 
@@ -111,7 +103,6 @@ impl Rule for PreferNamedLiteralArgument {
     }
 }
 
-/// mago-linter's `VARIADIC_FUNCTIONS`.
 const VARIADIC_FUNCTIONS: [&str; 40] = [
     "setlocale",
     "sprintf",
@@ -155,7 +146,6 @@ const VARIADIC_FUNCTIONS: [&str; 40] = [
     "max",
 ];
 
-/// mago-linter's `NO_NAMED_ARGUMENTS_FUNCTIONS`.
 const NO_NAMED_ARGUMENTS_FUNCTIONS: [&str; 47] = [
     "func_get_args",
     "strlen",

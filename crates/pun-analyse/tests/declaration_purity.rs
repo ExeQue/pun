@@ -1,5 +1,3 @@
-//! Declaration effects and the builtin-parent purity override boundary, not complete Pure*Rule mappings.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 
@@ -15,7 +13,6 @@ fn generic_array_declaration_effects_match_complete_phpstan_records() {
     for (file, levels) in [
         ("arrays", [0, 4, 10].as_slice()),
         ("object-bounds", [0, 4, 10].as_slice()),
-        // Effect eligibility is independent of level 10's strict mixed-offset legality producer.
         ("mixed-bounds", [0, 4].as_slice()),
     ] {
         for &level in levels {
@@ -162,8 +159,6 @@ fn declaration_effects_match_the_oracle_without_claiming_unknown_producers() {
                 .collect::<Vec<_>>()
         };
         let oracle = expected[level.to_string()].as_array().unwrap();
-        // Unsupported oracle positives may become supported as their real producers land. Reject
-        // false positives everywhere, but do not turn those known omissions into permanent negatives.
         for error in actual.iter().filter(|e| e["identifier"] == "void.pure") {
             assert!(oracle.contains(error), "level {level}: unexpected {error}");
         }
@@ -214,8 +209,6 @@ fn constructor_declaration_effects_match_independent_phpstan_records() {
                 "level {level}: unexpected {error}"
             );
         }
-        // Preserve the existing producer's unsupported-call boundary; the complete capture retains
-        // those positives, and the preceding assertion rejects false positives even there.
         let supported_lines = include_str!("fixtures/declaration-purity/constructors.php")
             .lines()
             .position(|line| line.starts_with("// Unsupported argument policies"))

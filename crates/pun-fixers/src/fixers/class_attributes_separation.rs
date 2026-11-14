@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ClassAttributesSeparationFixer`.
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, resolve};
 use crate::analyzers::preg::Preg;
 use anyhow::bail;
@@ -20,7 +19,6 @@ enum Spacing {
 
 #[derive(Default)]
 struct ClassAttributesSeparationFixer {
-    /// `$classElementTypes`: element type => spacing, in configuration order.
     class_element_types: Vec<(ClassyElementType, Spacing)>,
     whitespaces_config: WhitespacesFixerConfig,
 }
@@ -81,7 +79,7 @@ impl Fixer for ClassAttributesSeparationFixer {
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
         let c = resolve(self.name(), options, &["elements"])?;
-        c.check_types("elements", &["string[]"])?; // setAllowedTypes(['array<string, string>'])
+        c.check_types("elements", &["string[]"])?;
         let Some(elements) = c.php_array("elements") else {
             self.class_element_types = DEFAULT_ELEMENTS.to_vec();
             return Ok(());
@@ -118,8 +116,6 @@ impl Fixer for ClassAttributesSeparationFixer {
         tokens.is_any_token_kinds_found(CLASSY_KINDS)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // getElementsByClass is a generator: each class group's start/end/open/close is computed
-        // after the previously yielded groups were fixed.
         let all: Vec<(usize, usize, ClassyElementType)> = TokensAnalyzer::new(tokens)
             .get_classy_elements()
             .into_iter()
@@ -189,7 +185,6 @@ impl ClassAttributesSeparationFixer {
                 self.correct_line_breaks(tokens, non_white_above, element.start, n);
                 return;
             }
-            // more than one line break, always bring it back to 2 line breaks between the element start and what is above it
             if tokens[non_white_above + 1].is_whitespace(None)
                 && substr_count(tokens[non_white_above + 1].get_content(), b"\n") > 1
             {
@@ -202,10 +197,7 @@ impl ClassAttributesSeparationFixer {
                 || (tokens[non_white_above + 1].is_whitespace(None)
                     && substr_count(tokens[non_white_above + 1].get_content(), b"\n") > 0)
             {
-                // 1. The comment is meant for the element (although not a PHPDoc),
-                //    make sure there is one line break between the element and the comment...
                 self.correct_line_breaks(tokens, non_white_above, element.start, 1);
-                //    ... and make sure there is blank line above the comment (with the exception when it is directly after a class opening)
                 let non_white_above =
                     find_comment_block_start(tokens, non_white_above, element_above_end);
                 let non_white_above_comment = tokens
@@ -226,8 +218,6 @@ impl ClassAttributesSeparationFixer {
                     self.correct_line_breaks(tokens, non_white_above_comment, non_white_above, 2);
                 }
             } else {
-                // 2. The comment belongs to the code above the element,
-                //    make sure there is a blank line above the element (i.e. 2 line breaks)
                 self.correct_line_breaks(tokens, non_white_above, element.start, 2);
             }
             return;
@@ -317,7 +307,6 @@ impl ClassAttributesSeparationFixer {
             tokens.set(start_index, Token::new(T_WHITESPACE, content));
             return;
         }
-        // $lineCount = > $reqLineCount : check the one Token case first since this one will be true most of the time
         if numb_of_white_tokens == 1 {
             let (content, _) = Preg::replace_limit(
                 "/\\r\\n|\\n/",
@@ -358,8 +347,6 @@ fn find_comment_block_start(tokens: &Tokens, mut start: usize, element_above_end
     start
 }
 
-/// Upstream's `while ($firstElementAttributeIndex > $classOpen)` always holds: it only moves onto modifiers, which sit
-/// after the class's `{`.
 fn get_first_token_index_of_class_element(tokens: &Tokens, element_index: usize) -> usize {
     let mut first_element_attribute_index = element_index;
     while let Some(non_white_above) = tokens
@@ -419,7 +406,6 @@ fn get_last_token_index_of_class_element(
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PROPERTY_HOOK, element_end_index);
         }
     } else {
-        // 'const', enum-'case', 'promoted_property', or 'method' of an interface
         element_end_index = tokens
             .get_next_token_of_kind(element_index, &[";".into(), "{".into()], true)
             .unwrap();

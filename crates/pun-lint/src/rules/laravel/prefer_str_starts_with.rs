@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-str-starts-with`, ported from rector-laravel 2.7.3's
-//! `SubStrToStartsWithOrEndsWithStaticMethodCallRector` (src/Rector/Expr).
-//!
-//! `substr($a, 0) === $b` becomes `\Illuminate\Support\Str::startsWith($a, $b)`, and `substr($a, -3) == $b` becomes
-//! `\Illuminate\Support\Str::endsWith($a, $b)`. As upstream, a length after a start of `0` is dropped.
-
 use mago_syntax::cst::{
     BinaryOperator, Call, Expression, Literal, Node, NodeKind, UnaryPrefixOperator,
 };
@@ -71,7 +65,6 @@ impl Rule for PreferStrStartsWith {
     }
 }
 
-/// `ValueResolver::getValue` for an integer: a literal, with any number of `-` and `+` signs.
 fn int_value(expr: &Expression<'_>) -> Option<i64> {
     match unparenthesize(expr) {
         Expression::Literal(Literal::Integer(i)) => i.value.and_then(|v| i64::try_from(v).ok()),

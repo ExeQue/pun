@@ -1,7 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\FullyQualifiedStrictTypesFixer`.
-//!
-//! Every `$importKind` upstream passes is `'class'` (uses are collected for class imports only), so the
-//! per-kind dimension of `$uses`, `$discoveredSymbols`, `$symbolsForImport` and the uses caches is dropped.
 use crate::analyzers::analysis::{NamespaceUseType, TypeAnalysis};
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::docblock::{
@@ -51,7 +47,6 @@ fn regex_class() -> String {
     format!(r"(?:\\?+{REGEX_IDENTIFIER}(\\{REGEX_IDENTIFIER})*+)")
 }
 
-/// A PHP array with string keys: insertion-ordered, assigning an existing key keeps its position.
 type OMap = IndexMap<Vec<u8>, Vec<u8>>;
 
 #[derive(Default)]
@@ -62,19 +57,14 @@ struct FullyQualifiedStrictTypesFixer {
     whitespaces_config: WhitespacesFixerConfig,
 }
 
-/// Per-run mutable state (upstream's private properties).
 #[derive(Default)]
 struct State {
-    /// `null` outside the discovery phase.
     discovered_symbols: RefCell<Option<Vec<Vec<u8>>>>,
-    /// short name => FQCN
     symbols_for_import: OMap,
     reserved_identifiers_by_level: BTreeMap<i64, HashSet<Vec<u8>>>,
-    /// `cacheUsesLast` and the maps built from it (upstream rebuilds only when `$uses` differs).
     uses_cache: RefCell<Option<(OMap, std::rc::Rc<UsesCache>)>>,
 }
 
-/// `refreshUsesCache()` output.
 struct UsesCache {
     use_name_by_short_name_lower: HashMap<Vec<u8>, Vec<u8>>,
     use_short_name_by_name: HashMap<Vec<u8>, Vec<u8>>,
@@ -136,7 +126,6 @@ impl Fixer for FullyQualifiedStrictTypesFixer {
 
         let namespace_count = NamespacesAnalyzer.get_declarations(tokens).len();
         for namespace_index in 0..namespace_count {
-            // `$tokens->getNamespaceDeclarations()` is recomputed after every change.
             let namespace = NamespacesAnalyzer
                 .get_declarations(tokens)
                 .swap_remove(namespace_index);
@@ -214,7 +203,6 @@ impl Fixer for FullyQualifiedStrictTypesFixer {
                         .then(|| Preg::match_groups(&regex_comment_attribute, token.get_content()))
                         .flatten()
                     {
-                        // @TODO: drop when PHP 8.0+ is required
                         self.determine_short_type(&st, m.str(1), &uses, &namespace_name);
                     } else if token.is_kind(T_DOC_COMMENT) {
                         for m in Preg::match_all(&regex_reserved, token.get_content()) {
@@ -295,12 +283,10 @@ fn build_uses_cache(uses: &OMap) -> UsesCache {
     c
 }
 
-/// `explode('\\', $s, 2)[0]`
 fn first_part(s: &[u8]) -> &[u8] {
     s.split(|&c| c == b'\\').next().unwrap()
 }
 
-/// `strrpos($s, '\\')`
 fn last_backslash(s: &[u8]) -> Option<usize> {
     s.iter().rposition(|&c| c == b'\\')
 }
@@ -331,7 +317,6 @@ fn namespaced_string_to_tokens(mut input: &[u8]) -> Vec<Token> {
 impl FullyQualifiedStrictTypesFixer {
     fn is_reserved_identifier(&self, st: &State, symbol: &[u8]) -> bool {
         if symbol.contains(&b'\\') {
-            // optimization only
             return false;
         }
         if TypeAnalysis::new(symbol, None, None).is_reserved_type() {
@@ -445,7 +430,6 @@ impl FullyQualifiedStrictTypesFixer {
         namespace_name: &[u8],
     ) {
         let mut discovered_symbols = st.discovered_symbols.borrow_mut().take().unwrap_or_default();
-        // upstream iterates `$this->discoveredSymbols` per kind; no kind = nothing discovered
         if discovered_symbols.is_empty() {
             return;
         }
@@ -496,7 +480,6 @@ impl FullyQualifiedStrictTypesFixer {
                         break;
                     }
                 }
-                // else short name collision - keep unimported
 
                 if symbol.starts_with(b"\\")
                     || namespace_name.is_empty()
@@ -523,15 +506,12 @@ impl FullyQualifiedStrictTypesFixer {
             let shortened = self.shorten_symbol(st, fqcn, &OMap::default(), namespace_name);
             let shortened_name = ltrim_chars(&shortened, b"\\");
             if shortened_name.contains(&b'\\') {
-                // prevent importing non-namespaced names in global namespace
-                // (the shortened name is a suffix of the FQCN, so the FQCN has a backslash too)
                 let short_end_name = fqcn[last_backslash(fqcn).unwrap() + 1..].to_vec();
                 uses.insert(fqcn.clone(), short_end_name.clone());
                 st.symbols_for_import.insert(short_end_name, fqcn.clone());
             }
         }
 
-        // ksort(SORT_NATURAL), stable like PHP's sort
         st.symbols_for_import
             .sort_by(|a, _, b, _| strnatcmp(a, b).cmp(&0));
     }
@@ -639,7 +619,6 @@ impl FullyQualifiedStrictTypesFixer {
                 .iter()
                 .flat_map(|t| t.get_content().iter().copied())
                 .collect();
-            // upstream keeps `$type` when the value is unchanged, but determineShortType returns null then
             TypeExpression::new(&new_type_value)
         });
         type_expression.to_string().to_vec()
@@ -653,7 +632,6 @@ impl FullyQualifiedStrictTypesFixer {
         uses: &OMap,
         ns: &[u8],
     ) {
-        // We handle `extends` and `implements` with similar logic, but we need to exit the loop under different conditions.
         let is_extends = tokens[index].is_kind(T_EXTENDS);
         let mut index = tokens.get_next_meaningful_token(index).unwrap();
         let mut type_start_index = None;
@@ -689,7 +667,7 @@ impl FullyQualifiedStrictTypesFixer {
 
     fn fix_catch(&self, st: &State, tokens: &mut Tokens, index: usize, uses: &OMap, ns: &[u8]) {
         let index = tokens.get_next_meaningful_token(index).unwrap();
-        let mut index = tokens.get_next_meaningful_token(index).unwrap(); // first part of first exception class to be caught
+        let mut index = tokens.get_next_meaningful_token(index).unwrap();
         let mut type_start_index = None;
         let mut type_end_index = 0;
         loop {
@@ -812,7 +790,6 @@ impl FullyQualifiedStrictTypesFixer {
         }
         let mut end_index = type_.get_end_index();
 
-        // inlined `getTypes()` generator; the consumer's work happens at the `yield`
         let mut skip_next_yield = false;
         let (mut type_start_index, mut type_end_index): (Option<usize>, usize) = (None, 0);
         loop {
@@ -836,7 +813,6 @@ impl FullyQualifiedStrictTypesFixer {
                             tokens.override_range(start, type_end_index, new_tokens);
                         }
                         end_index += tokens.count() - orig_count;
-                        // type tokens were possibly updated, restart type match
                         skip_next_yield = true;
                         index = start;
                         type_end_index = start;

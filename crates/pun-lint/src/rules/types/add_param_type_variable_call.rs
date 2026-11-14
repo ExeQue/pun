@@ -1,8 +1,3 @@
-//! `lint/types/add-param-type-variable-call`, ported from Rector 2.8.4's `AddClosureParamTypeFromVariableCallRector`
-//! (rules/TypeDeclaration/Rector/FunctionLike): a closure assigned to a variable (`$print = function ($item) {...}`)
-//! that the same body calls (`$print(new Item())`) gets, for each untyped parameter, the class of the objects every
-//! call passes at its position.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -48,7 +43,6 @@ impl Rule for AddParamTypeVariableCall {
                 Node::Block(&c.body)
             }
         };
-        // collectAssignedClosures: the last closure each variable is assigned, in the order the variables come.
         let mut closures: Vec<(&[u8], &Closure<'_>)> = Vec::new();
         traverse(body, &mut |node| {
             if let Node::Assignment(assign) = node
@@ -98,7 +92,6 @@ impl Rule for AddParamTypeVariableCall {
     }
 }
 
-/// What one position of the calls holds: not yet seen, an object type, or blocked.
 #[derive(Clone)]
 enum Position {
     Unseen,
@@ -106,9 +99,6 @@ enum Position {
     Blocked,
 }
 
-/// collectCallArgumentTypes: for each argument position of the calls `$name(...)` in `body` (not in nested functions
-/// and classes), the object type (`ObjectType`) every call passes there; `None` where a call unpacks, passes another
-/// type, or passes an object of another class.
 fn call_argument_types(facts: &Facts, body: Node<'_, '_>, name: &[u8]) -> Vec<Option<TAtomic>> {
     let mut positions: Vec<Position> = Vec::new();
     traverse(body, &mut |node| {
@@ -148,8 +138,6 @@ fn call_argument_types(facts: &Facts, body: Node<'_, '_>, name: &[u8]) -> Vec<Op
         .collect()
 }
 
-/// `getType($expr) instanceof ObjectType`: one object of a named class or an enum (not `static`, `$this` or an
-/// intersection), with its class name (`getClassName()`).
 fn object_type(facts: &Facts, expr: &Expression<'_>) -> Option<(TAtomic, Vec<u8>)> {
     let t = type_of(facts, expr)?;
     let [atomic] = t.types.as_ref() else {

@@ -1,5 +1,3 @@
-//! Public inference and reachability expectations from PHPStan 2.3.1 (fixtures/array-rand/phpstan.neon).
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,5 +1,3 @@
-//! Omitted unsealed keys must not consume the declaration's value parameter.
-
 use std::{borrow::Cow, path::Path};
 
 use mago_allocator::LocalArena;
@@ -115,8 +113,6 @@ fn native_artifacts_keep_key_domains_values_prefixes_and_nonemptiness() {
             TArray::List(array) => array.known_elements.iter().flat_map(|items| items.iter())
                 .map(|(key, (optional, value))| json!([format!("i:{key}"), optional, describe(value)])).collect(),
         };
-        // Key domains are observable in both carriers; list key bounds are not
-        // substituted for the native API's broader `int` observation.
         let key = array.get_key_type().unwrap();
         let integer = key.types.iter().any(|ty| matches!(ty, TAtomic::Scalar(TScalar::Integer(_) | TScalar::ArrayKey)));
         let string = key.types.iter().any(|ty| matches!(ty, TAtomic::Scalar(TScalar::String(_) | TScalar::ArrayKey)));
@@ -132,8 +128,6 @@ fn native_artifacts_keep_key_domains_values_prefixes_and_nonemptiness() {
     assert_eq!(json!(actual), oracle);
 }
 
-// Complete whole-shape expectations remain in shapes.json. Known-prefix and
-// nonempty reconstruction in the shared converter are separate from value reads.
 #[test]
 fn public_analysis_retains_all_complete_phpstan_value_records() {
     let oracle: Value =

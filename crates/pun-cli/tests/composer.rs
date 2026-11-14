@@ -1,7 +1,3 @@
-//! The Composer package's shim (`composer/bin/pun`) runs the release binary of the workspace version
-//! with the caller's arguments, stdin and exit code. The download itself needs a published release, so the binary is
-//! put where the shim keeps it (next to the shim when Composer's bin dir is unknown) before it runs. Skipped without
-//! `php`.
 mod common;
 
 use common::{PUN, scratch};
@@ -21,7 +17,6 @@ fn shim_runs_the_workspace_version_with_its_arguments() {
     let dir = scratch("composer", "shim");
     let shim = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../composer/bin/pun");
     std::fs::copy(&shim, dir.join("pun")).unwrap();
-    // a shim whose fallback version drifted from the workspace's would download another release instead
     let os = match std::env::consts::OS {
         "macos" => "apple-darwin",
         _ => "unknown-linux-musl",
@@ -52,7 +47,6 @@ fn shim_runs_the_workspace_version_with_its_arguments() {
         assert_eq!(via_shim.stdout, direct.stdout, "stdout of {args:?}");
     }
 
-    // A binary that cannot start (another platform's, or a broken download) is named, not left to a PHP warning.
     std::fs::write(&binary, "not a binary").unwrap();
     let broken = run(Command::new("php").arg(dir.join("pun")).current_dir(&dir));
     assert_eq!(broken.status.code(), Some(2));

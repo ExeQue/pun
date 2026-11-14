@@ -1,8 +1,3 @@
-//! Port of the exact-semantics subset of Mago's `use-specific-expectations` (Pest):
-//! `expect($x)->toBe(true|false|null)` → `->toBeTrue()` / `->toBeFalse()` / `->toBeNull()`.
-//! Opt-in only (`Pun/use_specific_expectations`). Mago's other rewrites change what a test asserts and are
-//! not ported: `toEqual(true)` (loose) → `toBeTrue()` (strict), `toBe([])`/`toBe('')` → `toBeEmpty()` (looser),
-//! and `not->toBeFalse()` → `toBeTrue()` (`expect(1)->not->toBeFalse()` passes, `expect(1)->toBeTrue()` fails).
 use crate::analyzers::pest::chain_root_call;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -79,7 +74,6 @@ impl Fixer for UseSpecificExpectations {
     }
 }
 
-/// Whether the chain ending at `arrow` starts with `expect(<arg>)`.
 fn chain_starts_with_expect(tokens: &Tokens, arrow: usize) -> bool {
     chain_root_call(tokens, arrow).is_some_and(|(name, open, close)| {
         tokens[name].get_content().eq_ignore_ascii_case(b"expect")
@@ -95,7 +89,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // to_be_true_literal, to_be_false_literal, to_be_null_literal, case_insensitive_to_be
         assert_eq!(
             fix("<?php\n\nexpect($value)->toBe(true);\n"),
             "<?php\n\nexpect($value)->toBeTrue();\n"
@@ -112,19 +105,16 @@ mod tests {
             fix("<?php\n\nexpect($value)->TOBE(true);\n"),
             "<?php\n\nexpect($value)->toBeTrue();\n"
         );
-        // to_be_literal_after_and
         assert_eq!(
             fix("<?php\n\nexpect($a)->toBeNull()->and($b)->toBe(true);\n"),
             "<?php\n\nexpect($a)->toBeNull()->and($b)->toBeTrue();\n"
         );
-        // multiple_violations: only the exact-semantics ones are fixed.
         assert_eq!(
             fix(
                 "<?php\n\nexpect($a)->toBe(true);\nexpect($b)->toBe(false);\nexpect($c)->toBe(null);\nexpect($d)->toBe([]);\nexpect($e)->not->toBeFalse();\nexpect($f)->not->toBeTrue();\n"
             ),
             "<?php\n\nexpect($a)->toBeTrue();\nexpect($b)->toBeFalse();\nexpect($c)->toBeNull();\nexpect($d)->toBe([]);\nexpect($e)->not->toBeFalse();\nexpect($f)->not->toBeTrue();\n"
         );
-        // success cases, plus the deliberately unported (semantics-changing) failure cases
         for same in [
             "<?php\n\nexpect($value)->toBeTrue();\nexpect($flag)->toBeFalse();\n",
             "<?php\n\nexpect($value)->toBe(42);\nexpect($text)->toBe('hello');\nexpect($result)->toEqual($expected);\nexpect($array)->toBe([1, 2, 3]);\n",
@@ -150,7 +140,6 @@ mod tests {
             "<?php expect($x)->toBe(true, 'message');",
             "<?php $this->assertThat($x)->toBe(true);",
             "<?php Foo::expect($x)->toBe(true);",
-            // `Foo\expect` is not Pest's `expect` (Mago 1.57.0 leaves it too)
             "<?php Foo\\expect($x)->toBe(true);",
             "<?php expect()->toBe(true);",
             "<?php $x->toBe(true);",

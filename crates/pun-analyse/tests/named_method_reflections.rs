@@ -1,6 +1,3 @@
-//! Complete PHPStan 2.3.5 records for compound method reflections before call-variant selection.
-//! Reproduce with fixtures/named-method-reflections/capture.php and the pinned PHPStan PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Error, Project, run};

@@ -1,15 +1,3 @@
-//! `lint/dead-code/no-useless-override`, ported from Rector 2.8.4's `RemoveParentDelegatingClassMethodRector`
-//! (rules/DeadCode/Rector/Class_).
-//!
-//! A method (not the constructor) whose whole body is `parent::sameName($a, $b)` or `return parent::sameName($a, $b);`
-//! with its own parameters in order goes, when the parent class has a method of that name that is not private, with
-//! the same `static` and `public`, the same native parameter types where the child declares one and the same native
-//! return type where the child declares one. It stays when it is final, abstract, private, returns by reference, has
-//! attributes, a parameter that is variadic, by reference, has a default or attributes, or a doc comment with any
-//! tag (an annotation such as `@Route(...)` counts). A parent Pun does not know keeps it, and so does an anonymous
-//! class, which has no name to reflect.
-//! Union and intersection types count as different (PHPStan prints them in its own order).
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -41,7 +29,6 @@ impl Rule for NoUselessOverride {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // `getName()` of an anonymous class is null.
         if matches!(node, Node::AnonymousClass(_)) {
             return;
         }
@@ -79,7 +66,6 @@ impl Rule for NoUselessOverride {
     }
 }
 
-/// `refactor()` returning `REMOVE_NODE`.
 fn is_removable(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -92,7 +78,6 @@ fn is_removable(
     if name.eq_ignore_ascii_case(b"__construct") {
         return false;
     }
-    // An abstract method has no body.
     let MethodBody::Concrete(body) = &method.body else {
         return false;
     };
@@ -102,11 +87,9 @@ fn is_removable(
     if statement_count(ctx.source, body) != 1 || !method.attribute_lists.is_empty() {
         return false;
     }
-    // `hasRefiningDocblock`: any tag node.
     if member_doc(ctx.source, class, index).is_some_and(|doc| !doc_tags(doc).is_empty()) {
         return false;
     }
-    // `matchParentMethodReflection`.
     let Some(parent) = class.extends.as_deref() else {
         return false;
     };
@@ -124,7 +107,6 @@ fn is_removable(
     if !is_parent_call_delegating_params(method, statement) {
         return false;
     }
-    // `isSignatureMatching`.
     if is_static(method) != meta.is_static || is_public(method) != meta.visibility.is_public() {
         return false;
     }
@@ -152,8 +134,6 @@ fn is_removable(
     parent_type.is_some() && parent_type == hint_text(ctx.source, ancestors, &return_hint.hint)
 }
 
-/// `isParentCallDelegatingParams`: the sole statement is `parent::name(...)` (or `return` of it) passing each
-/// parameter, in order, as a plain variable.
 fn is_parent_call_delegating_params(method: &Method<'_>, statement: &Statement<'_>) -> bool {
     let expr = match statement {
         Statement::Return(r) => r.value,

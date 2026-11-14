@@ -1,11 +1,3 @@
-//! `lint/style/prefer-early-return`, ported from Rector 2.8.4's `ChangeIfElseValueAssignToEarlyReturnRector`
-//! (rules/EarlyReturn/Rector/If_), with `IfManipulator::isIfAndElseWithSameVariableAssignAsLastStmts` and
-//! `StmtsManipulator::getUnwrappedLastStmt`. Mago's `prefer-early-return`, which also maps here, joins it later.
-//!
-//! An `if`/`else` whose branches both end by assigning the same variable, followed by `return` of that variable,
-//! returns in the `if` instead: the `if` returns its value, the `else` goes, its other statements move after the `if`
-//! and the `return` returns the `else`'s value.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -35,7 +27,6 @@ impl Rule for PreferEarlyReturn {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // A cheap look first: an `if` right before a `return`.
         let raw = crate::syntax::statements(node);
         if !raw
             .windows(2)
@@ -74,7 +65,6 @@ impl Rule for PreferEarlyReturn {
     }
 }
 
-/// The assignment `getUnwrappedLastStmt` finds at the end of a list, with the statement that holds it.
 fn last_assign<'a>(list: &List<'a>) -> Option<(&'a Statement<'a>, &'a Assignment<'a>)> {
     let last = list.last()?;
     Some((last, expression(last).and_then(assign)?))
@@ -89,7 +79,6 @@ fn refactor(
 ) -> Option<Vec<Edit>> {
     let source = ctx.source;
     let view = if_view(source, r#if);
-    // isIfAndElseWithSameVariableAssignAsLastStmts.
     let (else_stmts, else_span) = view.else_.as_ref()?;
     if !view.elseifs.is_empty() {
         return None;
@@ -108,12 +97,10 @@ fn refactor(
         &source[s.start..s.end]
     };
     let mut edits = Vec::new();
-    // The `if` returns its value; the statement keeps its comments.
     edits.push(Edit::new(
         node_span(if_last),
         format!("return {};", text(if_assign.rhs)),
     ));
-    // The `else` goes.
     let else_start = match &r#if.body {
         IfBody::Statement(body) => node_span(body.statement).end,
         IfBody::ColonDelimited(_) => {
@@ -121,8 +108,6 @@ fn refactor(
             inner.start + source[inner.start..inner.end].trim_end().len()
         }
     };
-    // The `else`'s other statements go before the list's last statement: right after the `if` when the `return` is
-    // the last statement.
     let moved: String = (0..else_stmts.stmts.len() - 1)
         .map(|i| {
             let span = else_stmts.with_comments(ctx, i);
@@ -133,7 +118,6 @@ fn refactor(
         })
         .collect();
     let last = list.stmts.len() - 1;
-    // Edits of one fix must not touch: text that goes where another edit ends joins that edit.
     let mut after_return = String::new();
     if !view.colon && last == key {
         edits.push(Edit::new(Span::new(else_start, else_span.end), moved));
@@ -146,7 +130,6 @@ fn refactor(
             edits.push(Edit::new(Span::new(at, at), moved));
         }
     }
-    // The `return` returns the `else`'s value, with the comments of the `else`'s last statement instead of its own.
     let return_span = list.with_comments(ctx, key);
     let else_last_span = else_stmts.with_comments(ctx, else_stmts.stmts.len() - 1);
     let comments = &source[else_last_span.start..node_span(else_last).start];

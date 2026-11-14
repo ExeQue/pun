@@ -1,10 +1,3 @@
-//! `lint/classes/prefer-new-self`, ported from Rector 2.8.4's `NewStaticToNewSelfRector`
-//! (rules/CodeQuality/Rector/New_).
-//!
-//! In a `final` class, `new static()` becomes `new self()`: no child class can make `static` mean anything else. Rector
-//! walks the whole class, closures and anonymous classes inside it included. Its `treatClassesAsFinal` feature flag
-//! is off by default and has no Pun setting.
-
 use mago_syntax::cst::{Expression, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 

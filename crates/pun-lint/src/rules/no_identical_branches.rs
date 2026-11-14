@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-identical-branches`, ported from Rector 2.8.4's `SimplifyIfElseWithSameContentRector`
-//! (rules/DeadCode/Rector/If_).
-//!
-//! An `if` with an `else` whose branches all hold the same code (comments included) runs that code whatever the
-//! conditions say; the `if` is replaced by the code, or removed when the branches are empty. The conditions are not
-//! kept, so a condition with side effects goes too.
-
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -41,7 +34,6 @@ impl Rule for NoIdenticalBranches {
         let Some((else_stmts, _)) = &view.else_ else {
             return;
         };
-        // isIfWithConstantReturns: one content for all branches, printed with their comments.
         if !view
             .elseifs
             .iter()
@@ -57,7 +49,6 @@ impl Rule for NoIdenticalBranches {
         } else {
             let indent = line_indent(source, span.start);
             let text = if list.frame == Frame::Bare {
-                // php-parser prints the statements the single statement of a control structure becomes in braces.
                 let inner = format!("{indent}    ");
                 format!(
                     "{{\n{inner}{}\n{indent}}}",

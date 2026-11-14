@@ -1,5 +1,3 @@
-//! Incoming isset scopes must preserve definition certainty before and after loop and array joins.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -91,7 +89,6 @@ fn exported_terminating_isset_edge_makes_the_foreach_value_absent() {
         .filter(|error| error.identifier == "variable.undefined")
         .map(|error| (error.line, error.message))
         .collect();
-    // PHPStan 2.3.1's fresh level-4 oracle, also saved in UnreachableStatementRuleTest::testRule.
     assert_eq!(got, [(74, "Undefined variable: $a".to_string())]);
 }
 
@@ -113,7 +110,6 @@ fn exported_counterfactual_coalesce_rhs_makes_the_value_absent() {
         .filter(|error| error.identifier == "variable.undefined")
         .map(|error| (error.line, error.message))
         .collect();
-    // PHPStan 2.3.1 analyzes the unreachable RHS in the counterfactual !isset scope.
     assert_eq!(got, [(23, "Undefined variable: $value".to_string())]);
 }
 
@@ -217,7 +213,6 @@ fn incoming_isset_certainty_matches_phpstan() {
     }
 }
 
-/// All public records, not an identifier subset: advanced isset must not raise other rules' levels.
 #[test]
 fn independent_advanced_isset_matches_phpstan_through_public_project() {
     use pun_phpstan::{Array, Key, Value as Parameter};
@@ -232,8 +227,6 @@ fn independent_advanced_isset_matches_phpstan_through_public_project() {
         let (level, mode) = case.split_once('-').unwrap();
         let level: u8 = level.parse().unwrap();
         let mut parameters = Array::new();
-        // Cross the default boundary after construction: neither defaults nor explicit switches may freeze
-        // the other level-dependent checks at the original configuration's level.
         parameters.set(
             Key::from("level"),
             Parameter::Int(if level < 4 { 9 } else { 1 }),
@@ -301,8 +294,6 @@ fn independent_advanced_isset_matches_phpstan_through_public_project() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// PHPStan 2.3.1, invocation.neon at each level: basic variables start at 1, advanced fetches at 4.
-/// The upstream trait fixture includes error/no-error disagreement, agreement and class-independent checks.
 #[test]
 fn isset_invocation_contract_matches_phpstan() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");

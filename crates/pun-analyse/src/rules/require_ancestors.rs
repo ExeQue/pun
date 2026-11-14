@@ -1,7 +1,3 @@
-//! RequireExtendsRule and RequireImplementsRule (InClassNode, level 2): an interface's or used trait's
-//! `@phpstan-require-extends` (or `@psalm-`) class the class does not extend, or a used trait's
-//! `@phpstan-require-implements` interface it does not implement.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_span::Span;
@@ -9,14 +5,12 @@ use pun_phpstan::types::{Level, Type};
 
 use super::Checker;
 
-/// Both rules on class-like `k` (a class, an enum or an anonymous class) declared at `at`.
 pub(super) fn check(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     if c.level < 2 {
         return;
     }
     let class = c.display(k);
     let mut errors: Vec<(&str, String)> = Vec::new();
-    // getInterfaces()
     for i in k
         .all_parent_interfaces
         .iter()
@@ -48,7 +42,6 @@ pub(super) fn check(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     }
     for t in &traits {
         for ty in tags(c, t, "require-implements") {
-            // `instanceof ObjectType`, generic or not
             if let Type::Object(name, _, _) = &ty
                 && !k
                     .all_parent_interfaces
@@ -69,8 +62,6 @@ pub(super) fn check(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     }
 }
 
-/// `getRequireExtendsTags()` / `getRequireImplementsTags()`: the `@psalm-` then the `@phpstan-` tags of `k`'s own
-/// PHPDoc whose type parses, resolved in its name scope.
 fn tags(c: &Checker, k: &ClassLikeMetadata, kind: &str) -> Vec<Type> {
     let Some((_, entry)) = c.php_doc(k.span.file_id, k.span.start.offset) else {
         return Vec::new();
@@ -90,7 +81,6 @@ fn tags(c: &Checker, k: &ClassLikeMetadata, kind: &str) -> Vec<Type> {
         .collect()
 }
 
-/// `getObjectClassNames()`.
 fn object_class_names(t: &Type) -> Vec<String> {
     match t {
         Type::Object(name, _, _) => vec![name.clone()],
@@ -99,7 +89,6 @@ fn object_class_names(t: &Type) -> Vec<String> {
     }
 }
 
-/// `ClassReflection::is()`: the class itself or a subclass (parents and interfaces).
 fn is(k: &ClassLikeMetadata, name: &str) -> bool {
     let name = name.as_bytes();
     k.name.as_bytes().eq_ignore_ascii_case(name)
@@ -111,11 +100,9 @@ fn is(k: &ClassLikeMetadata, name: &str) -> bool {
             .any(|p| p.as_bytes().eq_ignore_ascii_case(name))
 }
 
-/// `getTraits(true)`: the traits of the class, of its traits and of its parents, each once.
 fn traits<'a>(c: &Checker<'a, '_>, k: &'a ClassLikeMetadata) -> Vec<&'a ClassLikeMetadata> {
     let mut out: Vec<&ClassLikeMetadata> = Vec::new();
     let mut pending = vec![k];
-    // a circular hierarchy (which PHP refuses) ends: each class-like is pending at most once
     let mut seen = vec![k.name];
     while let Some(k) = pending.pop() {
         let next = k.used_traits.iter().chain(k.direct_parent_class.iter());

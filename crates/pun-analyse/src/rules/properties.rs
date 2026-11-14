@@ -1,6 +1,3 @@
-//! The rules on PHPStan's ClassPropertyNode (one per declared property and per promoted constructor parameter):
-//! PropertiesInInterfaceRule, PropertyInClassRule, ReadOnlyPropertyRule and ReadOnlyByPhpDocPropertyRule.
-
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -9,11 +6,8 @@ use mago_syntax::walker::MutWalker;
 use super::declarations::{READONLY_TAGS, has_tag};
 use super::{Checker, overriding_property};
 
-/// ClassPropertyNode.
 pub(super) struct PropertyNode<'n, 'arena> {
-    /// Where the node is (the property's variable, or the promoted parameter).
     pub at: Span,
-    /// The name with its `$`.
     pub name: &'n [u8],
     pub modifiers: &'n [Modifier<'arena>],
     pub hint: Option<&'n Hint<'arena>>,
@@ -22,7 +16,6 @@ pub(super) struct PropertyNode<'n, 'arena> {
     pub hooks: &'n [PropertyHook<'arena>],
     pub readonly_by_phpdoc: bool,
     pub allowed_private_mutation: bool,
-    /// where a declared property's PHPDoc is read from (`None` for a promoted one)
     pub decl: Option<Span>,
 }
 
@@ -38,7 +31,6 @@ impl PropertyNode<'_, '_> {
         self.modifiers.iter().any(f)
     }
     pub(super) fn is_public(&self) -> bool {
-        // Modifiers::VISIBILITY_MASK: the read visibilities
         self.has(|m| m.is_public()) || !self.has(|m| m.is_read_visibility())
     }
     pub(super) fn is_static(&self) -> bool {
@@ -52,7 +44,6 @@ impl PropertyNode<'_, '_> {
     }
 }
 
-/// The ClassPropertyNodes of a property declaration.
 pub(super) fn property<'arena>(c: &mut Checker<'_, 'arena>, p: &Property<'arena>) {
     let tags = c.tags_before(p);
     let readonly_by_phpdoc = has_tag(&tags, READONLY_TAGS);
@@ -84,8 +75,6 @@ pub(super) fn property<'arena>(c: &mut Checker<'_, 'arena>, p: &Property<'arena>
     }
 }
 
-/// The ClassPropertyNodes of a constructor's promoted parameters. Their default is always null, so whether they are
-/// read-only by PHPDoc never matters.
 pub(super) fn promoted<'arena>(
     c: &mut Checker<'_, 'arena>,
     parameters: &FunctionLikeParameterList<'arena>,
@@ -123,7 +112,6 @@ fn check<'arena>(c: &mut Checker<'_, 'arena>, node: &PropertyNode<'_, 'arena>) {
     readonly(c, node, is_readonly);
     overriding_property::check(c, node, is_readonly);
     super::property_hooks::check(c, node);
-    // isReadOnlyByPhpDoc(): a `@readonly` tag, or the class is immutable (its PHPDoc or a parent's)
     let by_phpdoc = node.readonly_by_phpdoc
         || immutable_doc
         || parent.is_some_and(|p| c.class_immutable(&p, 0));
@@ -144,7 +132,6 @@ fn error(c: &mut Checker, node: &PropertyNode, identifier: &str, message: &str) 
     c.report_non_ignorable(node.at, identifier, message.to_string(), None);
 }
 
-/// PropertiesInInterfaceRule.
 fn in_interface(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     let (identifier, message) = if !c.surely_at_least(80400) {
         (
@@ -197,7 +184,6 @@ fn in_interface(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     error(c, node, identifier, message);
 }
 
-/// PropertyInClassRule.
 fn in_class(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     let class_abstract = c.decls.last().is_some_and(|d| d.is_abstract);
     let abstract_ = node.has(|m| m.is_abstract());
@@ -294,12 +280,10 @@ fn in_class(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     error(c, node, identifier, message);
 }
 
-/// ReadOnlyPropertyRule.
 fn readonly(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     if !is_readonly {
         return;
     }
-    // property.readOnlyNotSupported (before PHP 8.1) never fires: php-parser lexes `readonly` as a keyword from 8.1 on
     if node.hint.is_none() {
         error(
             c,
@@ -326,15 +310,12 @@ fn readonly(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     }
 }
 
-/// BetterReflection's ReflectionProperty::isVirtual(): hooks that never touch `$this->name` (a `set => expr` hook
-/// always does), unless the parent class's property of that name is not virtual.
 pub(super) fn is_virtual(c: &Checker, node: &PropertyNode) -> bool {
     if node.hooks.is_empty() {
         return false;
     }
     let name = &node.name[1..];
     let hook = |n: &[u8]| node.hooks.iter().find(|h| h.name.value == n);
-    // an abstract hook (no body) is virtual
     let virtual_hook = |h: &PropertyHook| match &h.body {
         PropertyHookBody::Concrete(PropertyHookConcreteBody::Expression(e)) => {
             h.name.value != b"set" && !fetches(e.expression, name)
@@ -363,7 +344,6 @@ fn fetches(e: &Expression, name: &[u8]) -> bool {
     f.found
 }
 
-/// Finds `$this->name`.
 struct Fetches<'n> {
     name: &'n [u8],
     found: bool,

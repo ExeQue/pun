@@ -1,11 +1,3 @@
-//! `lint/security/no-debug-calls`, ported from two upstream rules:
-//!
-//! - Mago 1.57.0's linter rule `no-debug-symbols` (rule/security/no_debug_symbols.rs): a call of a debug function
-//!   (`var_dump`, `dd`, `dump`, the Xdebug functions, ...) is reported; `var_export` and `print_r` with a second
-//!   argument return the text and are allowed.
-//! - pest-plugin-rector's `RemoveDebugExpectationsRector`: a `->dump()`, `->dd()` or `->ray()` in a Pest `expect()`
-//!   chain is removed.
-
 use mago_syntax::cst::{Access, Call, ClassLikeMemberSelector, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -16,7 +8,6 @@ use crate::{Context, Report, Rule};
 
 pub struct NoDebugCalls;
 
-/// Mago's `DEBUG_FUNCTIONS` (rule/utils/consts.rs).
 const DEBUG_FUNCTIONS: [&str; 53] = [
     "var_dump",
     "var_export",
@@ -73,7 +64,6 @@ const DEBUG_FUNCTIONS: [&str; 53] = [
     "xdebug_var_dump",
 ];
 
-/// `RemoveDebugExpectationsRector::DEBUG_METHODS`.
 const DEBUG_METHODS: [&[u8]; 3] = [b"dump", b"dd", b"ray"];
 
 impl Rule for NoDebugCalls {
@@ -94,7 +84,6 @@ impl Rule for NoDebugCalls {
     ) {
         match node {
             Node::FunctionCall(call) => {
-                // Allow `var_export` and `print_r` if they have the second argument
                 if function_call_matches_any(ancestors, call, &["var_export", "print_r"]).is_some()
                     && call.argument_list.arguments.len() > 1
                 {
@@ -116,7 +105,6 @@ impl Rule for NoDebugCalls {
                 if !DEBUG_METHODS.contains(&name.value) || !is_expect_chain(call.object) {
                     return;
                 }
-                // The call becomes its object: `expect($a)->dump()->toBe(1)` is `expect($a)->toBe(1)`.
                 let span = node_span(call);
                 let removed = Span::new(node_span(call.object).end, span.end);
                 out.push(Report {
@@ -137,8 +125,6 @@ impl Rule for NoDebugCalls {
     }
 }
 
-/// `AbstractRector::isExpectChain` on the object of a method call: under its method calls and property fetches is a
-/// call of `expect()`.
 fn is_expect_chain<'a>(mut object: &'a Expression<'a>) -> bool {
     loop {
         match unparenthesize(object) {

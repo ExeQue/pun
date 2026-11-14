@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\ControlStructureBracesFixer`.
 use crate::analyzers::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind, Kind::*, Token, Tokens};
@@ -20,7 +19,7 @@ fn control_continuation_tokens(k: Kind) -> &'static [Kind] {
     match k {
         T_IF => &[T_ELSE, T_ELSEIF],
         T_DO => &[T_WHILE],
-        _ => &[T_CATCH, T_FINALLY], // T_TRY
+        _ => &[T_CATCH, T_FINALLY],
     }
 }
 
@@ -28,13 +27,12 @@ fn final_control_continuation_tokens(k: Kind) -> &'static [Kind] {
     match k {
         T_IF => &[T_ELSE],
         T_DO => &[],
-        _ => &[T_FINALLY], // T_TRY
+        _ => &[T_FINALLY],
     }
 }
 
 impl ControlStructureBracesFixer {
     fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
-        // CONDITIONLESS_CONTROL_TOKENS: a parenthesis after one of them opens the body, not a condition.
         if tokens[structure_token_index].is_given_kind(&[T_DO, T_ELSE, T_FINALLY, T_TRY]) {
             return structure_token_index;
         }
@@ -82,7 +80,6 @@ impl ControlStructureBracesFixer {
         loop {
             index += 1;
             let token = &tokens[index];
-            // if there is some block in statement (eg lambda function) we need to skip it
             if token.equals("{", true) {
                 index = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, index);
                 continue;
@@ -102,8 +99,6 @@ impl Fixer for ControlStructureBracesFixer {
         "control_structure_braces"
     }
     fn priority(&self) -> i32 {
-        // Must run before BracesPositionFixer, ControlStructureContinuationPositionFixer, CurlyBracesPositionFixer,
-        // NoMultipleStatementsPerLineFixer.
         1
     }
     fn is_candidate(&self, _tokens: &Tokens) -> bool {

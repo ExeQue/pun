@@ -1,12 +1,3 @@
-//! `lint/laravel/prefer-dispatch-helper`, ported from rector-laravel 2.7.3's `DispatchToHelperFunctionsRector`
-//! (src/Rector/StaticCall).
-//!
-//! `Job::dispatch(...)` and `Job::dispatchSync(...)` on a class that uses `Illuminate\Foundation\Bus\Dispatchable`
-//! become `dispatch(new \Job(...))` and `dispatch_sync(new \Job(...))`; `Event::dispatch(...)` on a class that uses
-//! `Illuminate\Foundation\Events\Dispatchable` becomes `event(new \Event(...))`, and `Event::broadcast(...)`
-//! becomes `broadcast(new \Event(...))`. The class must be one the codebase knows; `self`, `static` and `parent`
-//! become `static`.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Node, NodeKind, StaticMethodCall};
 
 use super::object_type::{name_class, special_class};
@@ -54,11 +45,9 @@ impl Rule for PreferDispatchHelper {
                 name_class(ancestors, id),
                 format!("\\{}", super::names::resolve_class_name(ancestors, id)),
             ),
-            special @ (Expression::Self_(_) | Expression::Static(_) | Expression::Parent(_)) => (
-                special_class(ancestors, special),
-                // Forwarding calls: the trait's `new static()` makes the called class, so `static` it stays.
-                "static".to_string(),
-            ),
+            special @ (Expression::Self_(_) | Expression::Static(_) | Expression::Parent(_)) => {
+                (special_class(ancestors, special), "static".to_string())
+            }
             _ => return,
         };
         let Some(class) = class else { return };

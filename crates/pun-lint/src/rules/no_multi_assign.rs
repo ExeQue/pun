@@ -1,13 +1,3 @@
-//! `lint/style/no-multi-assign`, ported from Rector 2.8.4's `SplitDoubleAssignRector`
-//! (rules/CodingStyle/Rector/Assign).
-//!
-//! `$a = $b = value;` becomes one statement per variable, `$a = value; $b = value;`. A call (or `new`) is not
-//! repeated: the variables after the first take the first variable instead, `$a = f(); $b = $a;`. A chain that writes
-//! an array item stays. Comments before the statement go with the first new one.
-//!
-//! Rector also splits a chain whose inner link is `=&` or a compound assignment, putting that whole link in every new
-//! statement; Pun leaves such a chain alone, since its effect would run once per variable.
-
 use mago_syntax::cst::{Assignment, AssignmentOperator, Expression, Node, NodeKind, Statement};
 use pun_problem::{Fix, Safety};
 
@@ -76,7 +66,6 @@ fn plain<'a>(expr: &'a Expression<'a>) -> Option<&'a Assignment<'a>> {
     }
 }
 
-/// `refactor()`: the new statements for `$a = $b = ... = value;`.
 fn split(ctx: &Context<'_>, stmt: &Statement<'_>) -> Option<Vec<String>> {
     let Statement::Expression(e) = stmt else {
         return None;
@@ -94,7 +83,6 @@ fn split(ctx: &Context<'_>, stmt: &Statement<'_>) -> Option<Vec<String>> {
     }
     let value = unparenthesize(value);
     let mut expr = match value {
-        // php-parser prints a low-precedence `and`, `or`, `xor` on the right of `=` in parentheses.
         Expression::Binary(b) if b.operator.is_low_precedence() => {
             format!("({})", text(ctx, value))
         }
@@ -110,7 +98,6 @@ fn split(ctx: &Context<'_>, stmt: &Statement<'_>) -> Option<Vec<String>> {
             return None;
         }
         lines.push(format!("{} = {expr};", text(ctx, a.lhs)));
-        // Only the call itself is replaced: later variables take the first one.
         if called {
             expr = text(ctx, a.lhs).to_string();
             called = false;

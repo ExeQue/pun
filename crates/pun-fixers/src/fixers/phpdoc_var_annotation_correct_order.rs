@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocVarAnnotationCorrectOrderFixer`.
 use crate::analyzers::helpers::contains;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
@@ -18,9 +17,6 @@ impl Fixer for PhpdocVarAnnotationCorrectOrderFixer {
         "phpdoc_var_annotation_correct_order"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocScalarFixer,
-        // PhpdocToCommentFixer, PhpdocTypesFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

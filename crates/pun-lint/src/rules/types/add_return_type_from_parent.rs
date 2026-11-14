@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-parent`, ported from Rector 2.8.4's
-//! `AddReturnTypeDeclarationBasedOnParentClassMethodRector` (rules/TypeDeclaration/Rector/ClassMethod): a method of a
-//! class without a return type gets the native return type of the method it overrides (found by
-//! `ParentClassMethodTypeOverrideGuard::getParentClassMethod`), or of the first one up the chain that declares one.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -19,7 +14,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromParent;
 
-/// `PhpVersionFeature::MIXED_TYPE`.
 const MIXED_TYPE: u32 = 80000;
 
 impl Rule for AddReturnTypeFromParent {
@@ -51,7 +45,6 @@ impl Rule for AddReturnTypeFromParent {
         else {
             return;
         };
-        // a method of a class (`Class_`, anonymous ones too)
         let Some(class_like @ (Node::Class(_) | Node::AnonymousClass(_))) =
             ancestors.iter().rev().find(|a| {
                 matches!(
@@ -79,7 +72,6 @@ impl Rule for AddReturnTypeFromParent {
         let facts = facts(ctx);
         let class = match class_like {
             Node::AnonymousClass(c) => facts.anonymous_class_name(c.span()),
-            // a named class always has its name
             _ => class_scope(ancestors)
                 .and_then(|s| s.name)
                 .unwrap_or_default(),
@@ -95,8 +87,6 @@ impl Rule for AddReturnTypeFromParent {
     }
 }
 
-/// `getReturnTypeRecursive` and `processClassMethodReturnType`: up the methods each one overrides, the first native
-/// return type other than an implicit `mixed`, as a declaration.
 fn parent_return_type(
     facts: &Facts,
     class: &str,
@@ -105,7 +95,6 @@ fn parent_return_type(
 ) -> Option<String> {
     let codebase = &facts.codebase;
     let mut parent = parent_method(codebase, class, method)?;
-    // a bound for circular parents (Pun/parent_cycle), which Mago keeps
     for _ in 0..64 {
         if parent
             .method_metadata
@@ -115,7 +104,6 @@ fn parent_return_type(
             return None;
         }
         let owner = declaring_class(codebase, class, parent)?;
-        // PHPStan 2.3 reads a built-in method's tentative return type as its native one (`applyTentativeReturnType`)
         if let Some(declared) = parent.return_type_declaration_metadata.as_ref() {
             if declared.type_union.is_mixed() {
                 return (php_version >= MIXED_TYPE).then(|| "mixed".to_string());
@@ -140,7 +128,6 @@ fn parent_return_type(
     None
 }
 
-/// The class that declares `method`, found among `class`'s ancestors.
 fn declaring_class(
     codebase: &CodebaseMetadata,
     class: &str,
@@ -160,8 +147,6 @@ fn declaring_class(
         .map(|c| String::from_utf8_lossy(c.as_bytes()).into_owned())
 }
 
-/// `parent` in a declaration names the parent class of the class that declares it (PHPStan resolves it; Mago keeps
-/// the word).
 fn parent_to_class(codebase: &CodebaseMetadata, t: &TAtomic, owner: &str) -> TAtomic {
     if let TAtomic::Object(TObject::Named(n)) = t
         && n.name.as_bytes().eq_ignore_ascii_case(b"parent")
@@ -174,9 +159,6 @@ fn parent_to_class(codebase: &CodebaseMetadata, t: &TAtomic, owner: &str) -> TAt
     t.clone()
 }
 
-/// `ParentClassMethodTypeOverrideGuard::resolveParentClassMethod` for a method that is not private: the method of
-/// the first parent class that has one (inherited ones too), else of the first interface that has one, else an
-/// abstract method of a used trait. `None` when a parent class is not known.
 fn parent_method<'c>(
     codebase: &'c CodebaseMetadata,
     class: &str,

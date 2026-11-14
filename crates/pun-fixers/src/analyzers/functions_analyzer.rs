@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\FunctionsAnalyzer`.
 use super::analysis::{ArgumentAnalysis, NamespaceUseAnalysis, TypeAnalysis};
 use super::arguments_analyzer::ArgumentsAnalyzer;
 use super::attribute_analyzer::AttributeAnalyzer;
@@ -26,9 +25,6 @@ struct FunctionsAnalysis {
     declarations: Vec<usize>,
 }
 
-/// One instance per token collection, like upstream's per-fixer-run usage. The functions/imports
-/// analysis is cached and rebuilt when the collection is changed (upstream: `isChanged()` or a
-/// different code hash).
 #[derive(Default)]
 pub(crate) struct FunctionsAnalyzer {
     functions_analysis: RefCell<FunctionsAnalysis>,
@@ -39,9 +35,7 @@ impl FunctionsAnalyzer {
         Self::default()
     }
 
-    /// `isTheSameClassCall`: `$this->name(`, `self::name(` or `static::name(`.
     pub(crate) fn is_the_same_class_call(&self, tokens: &Tokens, index: usize) -> bool {
-        // the open tag comes before any name or operator
         let operator_index = tokens.get_prev_meaningful_token(index).unwrap();
         if !tokens[operator_index].is_object_operator()
             && !tokens[operator_index].is_kind(T_DOUBLE_COLON)
@@ -72,7 +66,6 @@ impl FunctionsAnalyzer {
         self.is_global_function_call_or_usage(tokens, index, false)
     }
 
-    /// Argument name => analysis, in argument order (later duplicates overwrite in place).
     pub(crate) fn get_function_arguments(
         &self,
         tokens: &Tokens,
@@ -106,7 +99,6 @@ impl FunctionsAnalyzer {
             .unwrap();
         let arguments_end = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, arguments_start);
         let mut type_colon_index = tokens.get_next_meaningful_token(arguments_end)?;
-        // a closure's `use (...)` comes between its arguments and its return type
         if tokens[type_colon_index].is_kind(CT_USE_LAMBDA) {
             let lambda_use_start = tokens
                 .get_next_token_of_kind(type_colon_index, &["(".into()], true)
@@ -213,9 +205,6 @@ impl FunctionsAnalyzer {
 
         let analysis = self.functions_analysis.borrow();
 
-        // check if the call is to a function declared in the same namespace as the call is done,
-        // if the call is already in the global namespace than declared functions are in the same
-        // global namespace and don't need checking
         if !in_global_namespace {
             for &function_name_index in &analysis.declarations {
                 if function_name_index < scope_start_index || function_name_index > scope_end_index
@@ -239,7 +228,6 @@ impl FunctionsAnalyzer {
             if function_name != php_compat::strtolower(&function_use.short_name) {
                 continue;
             }
-            // global import like `use function \str_repeat;`
             return function_use.short_name
                 == php_compat::ltrim_chars(&function_use.full_name, b"\\");
         }
@@ -262,7 +250,6 @@ impl FunctionsAnalyzer {
                         .get_next_token_of_kind(i, &["(".into(), "{".into()], true)
                         .unwrap();
                     if tokens[i].equals("(", true) {
-                        // anonymous class
                         i = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, i);
                         i = tokens
                             .get_next_token_of_kind(i, &["{".into()], true)

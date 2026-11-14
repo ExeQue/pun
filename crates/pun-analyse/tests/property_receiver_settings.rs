@@ -1,6 +1,3 @@
-//! Complete PHPStan 2.3.1 diagnostics for independently configured property receiver eligibility.
-//! Reproduce with fixtures/property-receiver-settings/capture.php and the pinned PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

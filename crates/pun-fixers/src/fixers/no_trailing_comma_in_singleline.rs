@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\NoTrailingCommaInSinglelineFixer`.
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
@@ -17,7 +16,6 @@ enum Element {
     GroupImport,
 }
 
-/// ELEMENTS' variants, in the same order.
 const CHOICES: &[(&str, Element)] = &[
     ("arguments", Element::Arguments),
     ("array", Element::Array),

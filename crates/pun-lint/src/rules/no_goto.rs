@@ -1,7 +1,3 @@
-//! `lint/complexity/no-goto`, ported from Mago 1.57.0's `no-goto` (mago-linter src/rule/maintainability/no_goto.rs).
-//!
-//! Reports every `goto` (on its keyword) and every label.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind};
 

@@ -1,7 +1,3 @@
-//! CallMethodsRule's MethodCallCheck once `checkThisOnly` is off: a call on any expression, through
-//! RuleLevelHelper's `findTypeToCheck()` (unions from level 7, nullables from level 8, explicit `mixed` from 9).
-//! Calls on `$this` stay with calls.rs.
-
 use std::collections::HashSet;
 
 use mago_codex::ttype::atomic::TAtomic;
@@ -20,8 +16,6 @@ use super::flow::is_this;
 pub(super) const IDENTIFIERS: &[&str] = &["method.nonObject", "staticMethod.nonObject"];
 
 impl<'a> Checker<'a, '_> {
-    /// Restore the literal method accessory Mago does not carry. Called by `phpstan_type()` after conversion;
-    /// the existing branch guards determine where it holds, rather than the debug rule's rendering.
     pub(in super::super) fn refine_method_guards(&self, e: &Expression, ty: Type) -> Type {
         self.refine_method_guards_in(e, ty, &self.types)
     }
@@ -32,8 +26,6 @@ impl<'a> Checker<'a, '_> {
         mut ty: Type,
         types: &std::collections::HashMap<Span, TUnion, impl std::hash::BuildHasher>,
     ) -> Type {
-        // ObjectType keeps require-extends in its method reflection extension, not its nominal ancestors.
-        // Undo Mago's appended requirements before combinators deduplicate them with explicit intersections.
         if let Some(raw) = types
             .get(&e.span())
             .and_then(|raw| without_requirements(self, raw))
@@ -51,17 +43,14 @@ impl<'a> Checker<'a, '_> {
             }
             _ => None,
         });
-        if let Some(original) = &original {
-            // Undo only Mago's method_exists-specific promotions/erasures, not a later instanceof/is_string
-            // refinement. In particular a named subclass must not be widened back to the pre-guard object.
-            if (matches!(ty, Type::ClassString(None)) && original.is_string().yes())
+        if let Some(original) = &original
+            && ((matches!(ty, Type::ClassString(None)) && original.is_string().yes())
                 || matches!(
                     (&ty, original),
                     (Type::ObjectWithoutClass, Type::Mixed { .. })
-                )
-            {
-                ty = original.clone();
-            }
+                ))
+        {
+            ty = original.clone();
         }
         let classes = match &ty {
             Type::ClassString(Some(t)) => t.object_class_names(),
@@ -75,8 +64,6 @@ impl<'a> Checker<'a, '_> {
                 continue;
             };
             if !self.has_method_guard_in(key, types) {
-                // A definitely non-callable array receives only CallableType's object|string element constraint,
-                // not hasMethod(). A final object therefore keeps its missing-method error; an int becomes never.
                 ty = declared::with_classes(self, || {
                     intersect(vec![
                         ty,
@@ -85,7 +72,6 @@ impl<'a> Checker<'a, '_> {
                 });
                 continue;
             }
-            // PHPStan does not narrow @method/mixin-only methods: the guard promises a native method.
             if classes.iter().any(|n| {
                 matches!(self.method_of(n, method.as_bytes()), Ok(Some(_)))
                     && self
@@ -107,19 +93,16 @@ impl<'a> Checker<'a, '_> {
         ty
     }
 
-    /// `Type::canCallMethods()`: ordinary mixed answers yes, checked StrictMixedType answers no.
     pub(super) fn can_call_methods(&self, t: &Type) -> Tri {
         self.capable(t, true)
     }
 
-    /// `Type::canAccessProperties()`.
     pub(super) fn can_access_properties(&self, t: &Type) -> Tri {
         self.capable(t, false)
     }
 
     fn capable(&self, t: &Type, methods: bool) -> Tri {
         t.query_members(&|t| match t {
-            // ObjectType::canCallMethods(): not on a plain `stdClass`
             Type::Object(n, _, _) if methods && n.eq_ignore_ascii_case("stdClass") => Tri::No,
             Type::Object(..)
             | Type::Static(..)
@@ -134,7 +117,6 @@ impl<'a> Checker<'a, '_> {
         })
     }
 
-    /// The class a receiver type names, for its methods.
     fn class_of(t: &Type) -> Option<&str> {
         match t {
             Type::Object(n, _, _) | Type::Static(n, _) | Type::This(n) | Type::EnumCase(n, _) => {
@@ -144,7 +126,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The method of an unparameterized class. Callers with a receiver type must keep its arguments.
     pub(in super::super) fn method_of(
         &self,
         n: &str,
@@ -153,8 +134,6 @@ impl<'a> Checker<'a, '_> {
         self.method_of_type(&Type::Object(n.to_string(), vec![], false), name)
     }
 
-    /// Extended method reflection, retaining the real declaration (including nested mixins and `@method`).
-    /// `Err` means that Pun cannot reflect the method, not that the receiver lacks it.
     pub(in super::super) fn method_of_type(
         &self,
         t: &Type,
@@ -164,7 +143,6 @@ impl<'a> Checker<'a, '_> {
             .map(|m| m.map(|m| m.declaring))
     }
 
-    /// The complete reflection for ordinary argument binding and collection, including compound mixin types.
     pub(in super::super) fn reflected_method(
         &self,
         t: &Type,
@@ -204,10 +182,8 @@ impl<'a> Checker<'a, '_> {
             return Ok(None);
         };
         let Lookup::Found(k) = self.class_like(n) else {
-            // An unknown mixin hasMethod() is no; an unknown receiver still belongs to findTypeToCheck().
             return if active.is_empty() { Err(()) } else { Ok(None) };
         };
-        // Mago's populated interfaces can include ancestors of requirements, which are not native ancestors.
         let nominal = |class: &str| {
             declared::with_classes(self, || {
                 is_super_type_of(
@@ -217,18 +193,12 @@ impl<'a> Checker<'a, '_> {
                 .yes()
             })
         };
-        // (a `@method` tag of a trait another trait uses counts at that trait)
         let native = members::reflected_method(self, k, name);
         if let Some(m) = native.filter(|m| {
             matches!(m, members::Method::User { declaring, .. } if declaring.kind.is_trait())
                 || nominal(&m.declaring_name())
         }) {
             let mut method = method_reflection::Method::leaf(self, t, m);
-            // Keep the declaring class's supplied arguments in semantic parameter types too, not just their
-            // descriptions. Re-reading a User parameter later would otherwise restore its unbound template and
-            // its `static` (bound to an object receiver).
-            // `$this` is the scope's class reflection, whose own templates are TemplateTypeArgumentStrategy
-            // arguments (TemplateTypeHelper::toArgument()): `$this->add($value)` checks `TValue` in place.
             let own;
             let receiver_args = match t {
                 Type::Object(receiver, actual, _) | Type::Static(receiver, actual) => {
@@ -282,8 +252,6 @@ impl<'a> Checker<'a, '_> {
             }
             return Ok(Some(method));
         }
-        // ModelForwardsCallsExtension answers before MixinMethodsClassReflectionExtension (a model's `@mixin
-        // \Eloquent` would forward to `Builder<Model>`)
         if self.larastan.is_some() && super::super::larastan::is_model(self, k) {
             let builder = super::super::larastan::builder_name(self.codebase, k.name.as_bytes());
             let builder = Type::Object(
@@ -295,10 +263,7 @@ impl<'a> Checker<'a, '_> {
                 return Ok(Some(method));
             }
         }
-        // MixinMethodsClassReflectionExtension guards each resolved mixin description and method name while
-        // asking the type for its extended method, not just a native method on a plain ObjectType.
         for mixin in self.method_mixins(k, t) {
-            // MixedType answers with DummyMethodReflection, which has no real declaration to preserve.
             if matches!(mixin.resolve_to_bounds(), Type::Mixed { .. } | Type::Error) {
                 return Err(());
             }
@@ -312,8 +277,6 @@ impl<'a> Checker<'a, '_> {
                 return Ok(Some(method));
             }
         }
-        // RequireExtendsMethodsClassReflectionExtension: own full tag types, then recursively each nominal
-        // interface's requirements (not its unrelated mixins). Keep BetterReflection's interface ordering.
         let mut interfaces = vec![Class::User(k)];
         let mut seen = HashSet::new();
         while let Some(interface) = interfaces.pop() {
@@ -323,20 +286,17 @@ impl<'a> Checker<'a, '_> {
             if !interface.kind.is_interface() || !seen.insert(interface.name) {
                 continue;
             }
-            // This resolver retains supplied generic arguments and psalm-before-phpstan/declaration order.
             for required in super::super::require_tags::tag_types(
                 self,
                 interface,
                 super::super::require_tags::EXTENDS,
             ) {
-                // Like a mixed mixin, a dummy reflection supplies no real declaration or signature.
                 if matches!(
                     required.resolve_to_bounds(),
                     Type::Mixed { .. } | Type::Error
                 ) {
                     return Err(());
                 }
-                // Keep requirement recursion separate from MixinMethods' in-process type descriptions.
                 let key = declared::with_classes(self, || {
                     format!("require-extends {}", required.describe(Level::TypeOnly))
                 });
@@ -357,8 +317,6 @@ impl<'a> Checker<'a, '_> {
         }
         if let Some(larastan) = self.larastan {
             let original = declared::original_name(k);
-            // MacroMethodsClassReflectionExtension: a macro registered on a Macroable class (`Collection::macro()`)
-            // ponytail: a macro's parameters are not reflected
             if !super::super::larastan::is_model(self, k)
                 && !super::super::larastan::is_a(
                     self,
@@ -369,8 +327,6 @@ impl<'a> Checker<'a, '_> {
             {
                 return Err(());
             }
-            // ModelForwardsCallsExtension: the methods of the model's own builder (`Builder<Model>` unless
-            // `newEloquentBuilder()` or `#[UseEloquentBuilder]` names another), the builder's mixin included.
             if super::super::larastan::is_model(self, k) {
                 let builder =
                     super::super::larastan::builder_name(self.codebase, k.name.as_bytes());
@@ -385,7 +341,6 @@ impl<'a> Checker<'a, '_> {
                 Type::Object(_, args, _) | Type::Static(_, args) => args.clone(),
                 _ => Vec::new(),
             };
-            // the receiver's arguments for an ancestor's templates
             let ancestor_args = |ancestor: &str| -> Vec<Type> {
                 if original.eq_ignore_ascii_case(ancestor) {
                     return args.clone();
@@ -396,15 +351,11 @@ impl<'a> Checker<'a, '_> {
                         .unwrap_or_default()
                 })
             };
-            // EloquentBuilderForwardsCallsExtension (BuilderHelper::searchOnEloquentBuilder()): the builder's macros,
-            // the model's scopes, the query builder's native methods and macros, a dynamic where, then the SoftDeletes
-            // methods.
             if super::super::larastan::is_a(
                 self,
                 k.name.as_bytes(),
                 b"illuminate\\database\\eloquent\\builder",
             ) {
-                // ponytail: a macro's, dynamic where's or SoftDeletes method's parameters are not reflected
                 if super::super::larastan::macro_method(self, k, name).is_some() {
                     return Err(());
                 }
@@ -423,7 +374,6 @@ impl<'a> Checker<'a, '_> {
                     );
                 for class in model.object_class_names() {
                     if super::super::larastan::has_scope(self, &class, name) {
-                        // ponytail: a scope's parameters (its first one shifted off) are not reflected
                         return Err(());
                     }
                 }
@@ -440,8 +390,6 @@ impl<'a> Checker<'a, '_> {
                         return Err(());
                     }
                 }
-                // BuilderHelper::dynamicWhere(): `whereFoo`, with `checkModelProperties` each `And`/`Or` segment a
-                // property of the model
                 if let Some(finder) = name.strip_prefix(b"where") {
                     let finder = String::from_utf8_lossy(finder);
                     let segments = super::super::larastan::where_segments(&finder);
@@ -477,8 +425,6 @@ impl<'a> Checker<'a, '_> {
                 }
                 return Ok(None);
             }
-            // ModelFactoryMethodsClassReflectionExtension: `trashed()`, `for*()` and `has*()` of a factory
-            // ponytail: their variants' parameters are not reflected
             if super::super::larastan::is_a(
                 self,
                 k.name.as_bytes(),
@@ -490,14 +436,11 @@ impl<'a> Checker<'a, '_> {
             ) {
                 return Err(());
             }
-            // RedirectResponseMethodsClassReflectionExtension, ViewWithMethodsClassReflectionExtension: `with*`
-            // ponytail: its one mixed parameter is not reflected
             if super::super::larastan::with_method_class(self.codebase, k.name.as_bytes(), name)
                 .is_some()
             {
                 return Err(());
             }
-            // HigherOrderCollectionProxyExtension: `$collection->each->method()` calls the value's method
             if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderCollectionProxy") {
                 let [proxied, value, _] = args.as_slice() else {
                     return Ok(None);
@@ -510,7 +453,6 @@ impl<'a> Checker<'a, '_> {
                 }
                 return self.extended_method(value, name, active);
             }
-            // HigherOrderTapProxyExtension: `tap($object)->method()` is the method of the proxy's object
             if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderTapProxy") {
                 let [target] = args.as_slice() else {
                     return Ok(None);
@@ -520,7 +462,6 @@ impl<'a> Checker<'a, '_> {
                 }
                 return self.extended_method(target, name, active);
             }
-            // RelationForwardsCallsExtension: a relation's `Builder<TRelatedModel>` methods
             if super::super::larastan::is_a(
                 self,
                 k.name.as_bytes(),
@@ -537,7 +478,6 @@ impl<'a> Checker<'a, '_> {
                             false,
                         )
                     });
-                // a related class that is not a model forwards nothing
                 if !related.object_class_names().first().is_some_and(|m| {
                     super::super::larastan::is_a(
                         self,
@@ -547,7 +487,6 @@ impl<'a> Checker<'a, '_> {
                 }) {
                     return Ok(None);
                 }
-                // the related model's own builder (`newEloquentBuilder()`, `#[UseEloquentBuilder]`)
                 let builder = match related.object_class_names().as_slice() {
                     [model] => String::from_utf8_lossy(
                         super::super::larastan::builder_name(self.codebase, model.as_bytes())
@@ -559,7 +498,6 @@ impl<'a> Checker<'a, '_> {
                 let builder = Type::Object(builder, vec![related], false);
                 return self.extended_method(&builder, name, active);
             }
-            // ContractsMethodsExtension: an `Illuminate\Contracts` interface's method is its concrete's
             if k.kind.is_interface()
                 && original.starts_with("Illuminate\\Contracts")
                 && let Some(concrete) = larastan.app.resolve(&original)
@@ -572,9 +510,6 @@ impl<'a> Checker<'a, '_> {
         Ok(None)
     }
 
-    /// ClassReflection::getResolvedMixinTypes(), then traits and the parent in extension order. Read each
-    /// declaration's own tags: Mago's populated mixins have already flattened parents before traits and lost
-    /// the active ancestor template map. Keep property reflection on its existing, separate path.
     pub(in super::super) fn method_mixins(
         &self,
         class: &'a mago_codex::metadata::class_like::ClassLikeMetadata,
@@ -632,7 +567,6 @@ impl<'a> Checker<'a, '_> {
                 });
                 pending.push((parent, args));
             }
-            // getTraits() returns the trait's class reflection, not its @use specialization.
             #[expect(
                 clippy::needless_collect,
                 reason = "the iterator is not double-ended, and `rev()` needs one"
@@ -649,14 +583,12 @@ impl<'a> Checker<'a, '_> {
         out
     }
 
-    /// `Type::hasMethod()`.
     fn has_method(&self, t: &Type, name: &[u8]) -> Tri {
         t.query_members(&|t| match t {
             Type::Accessory(Accessory::HasMethod(_)) => {
                 t.has_method(&String::from_utf8_lossy(name))
             }
             Type::ObjectWithoutClass | Type::Iterable(..) | Type::Callable(_) => Tri::Maybe,
-            // (what Pun does not see is taken as there: the call is not checked further)
             t => {
                 if matches!(self.method_of_type(t, name), Ok(None)) {
                     Tri::No
@@ -667,7 +599,6 @@ impl<'a> Checker<'a, '_> {
         })
     }
 
-    /// How many of the type's classes have method `name`.
     fn classes_with(&self, t: &Type, name: &[u8]) -> usize {
         match t {
             Type::Union(ts) | Type::Benevolent(ts) | Type::Intersection(ts) => {
@@ -678,15 +609,11 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The declaring leaf for consumers that do not yet read compound variants.
     fn get_method(&self, t: &Type, name: &[u8]) -> Option<members::Method<'a>> {
         self.method_of_type(t, name).ok().flatten()
     }
 }
 
-/// Reverse expander::expand_object's complete appended set: one unparameterized member per requirement. If the
-/// inferred structure no longer matches that set, keep it. An explicit `I&Parent` keeps its own Parent even when
-/// its spelling is identical to the appended one. ObjectType::isSuperTypeOf/tryRemove stay nominal.
 fn without_requirements(c: &Checker, ty: &TUnion) -> Option<TUnion> {
     let mut changed: Option<TUnion> = None;
     for (i, atomic) in ty.types.iter().enumerate() {
@@ -746,7 +673,6 @@ fn without_atomic_requirements(c: &Checker, atomic: &TAtomic) -> Option<TAtomic>
     }
 }
 
-/// `$type instanceof StaticType ? $type->getStaticObjectType() : $type`, described.
 fn describe(c: &Checker, t: &Type) -> String {
     let t = match t {
         Type::Static(n, args) => Type::Object(n.clone(), args.clone(), false),
@@ -756,8 +682,6 @@ fn describe(c: &Checker, t: &Type) -> String {
     declared::with_classes(c, || t.describe(Level::TypeOnly))
 }
 
-/// `NonNullabilityHelper::ensureShallowNonNullability()`: a nullsafe receiver without `null`, unless it is only
-/// `null`.
 pub(super) fn non_null(t: Type) -> Type {
     if t.is_null().yes() {
         t
@@ -766,15 +690,12 @@ pub(super) fn non_null(t: Type) -> Type {
     }
 }
 
-/// The receivers whose type the check reads: every method call's and non-nullsafe property fetch's object but
-/// `$this`'s (level 2; a `$this` property fetch stays with property_access.rs).
 pub(super) fn typed(object: &Expression, spans: &mut Vec<Span>) {
     if !is_this(object) {
         spans.push(object.span());
     }
 }
 
-/// MethodCallCheck::check() and the parameters check of `$object->name(...)` (`nullsafe` for `?->`).
 pub(in super::super) fn method_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     span: Span,
@@ -786,7 +707,6 @@ pub(in super::super) fn method_call<'arena>(
     check_method(c, object, selector, Some((span, args)), nullsafe);
 }
 
-/// MethodCallCheck without FunctionCallParametersCheck when the virtual node supplies no arguments.
 pub(in super::super) fn check_method<'arena>(
     c: &mut Checker<'_, 'arena>,
     object: &Expression<'arena>,
@@ -815,8 +735,6 @@ pub(in super::super) fn check_method<'arena>(
     if is_this(object) && !c.this_defined() {
         return;
     }
-    // CallMethodsRule::processNode: every constant string gets its own truthy identical scope.
-    // The producer owns union vetoes and template bounds; never substitute the global receiver or arguments.
     let scopes = c.named_call_scopes.get(&span).cloned().unwrap_or_default();
     for scope in &scopes {
         let at = super::dynamic_names::member(selector).unwrap_or(selector.span());
@@ -855,9 +773,6 @@ fn check_single_method<'arena>(
         None => c.type_of(object),
     }
     .is_some_and(|t| t.has_nullsafe_null());
-    // The direct nullsafe twin keeps a literal-null receiver error. An ordinary chained call instead
-    // checks the short-circuited expression, discarding only null introduced by the earlier operator.
-    // Removing null recombines union members too, so retain the declaring classes' generic variance.
     let ty = declared::with_classes(c, || {
         ty.map(|t| {
             if nullsafe {
@@ -873,8 +788,6 @@ fn check_single_method<'arena>(
         callable_receiver(c, object, name, false)
     } else {
         let mut unknown = Vec::new();
-        // RuleLevelHelper recombines retained alternatives. Keep declared variance available to union(),
-        // or different specializations of the same user class collapse to an arbitrary native leaf.
         let found = declared::with_classes(c, || {
             ty.and_then(|ty| {
                 c.find_in(
@@ -909,8 +822,6 @@ fn check_single_method<'arena>(
         if method_exists {
             return;
         }
-        // the one class named: the first parent class (with the template types its `@extends` tag gives the class's
-        // own) that has the method
         if let [n] = t.object_class_names().as_slice()
             && let Lookup::Found(k) = c.class_like(n)
         {
@@ -967,7 +878,6 @@ fn check_single_method<'arena>(
     };
     let declaring = &method.display;
     let visibility = method.visibility();
-    // ModelForwardsCallsExtension answers a model's `increment()` and `decrement()` with a public method
     let forwarded = c.larastan.is_some()
         && ["increment", "decrement"]
             .iter()
@@ -1000,7 +910,6 @@ fn check_single_method<'arena>(
         }
         return;
     };
-    // A compound reflection's getName() is the requested name, not the selected declaring leaf's spelling.
     if scope.is_some() && !method.compound {
         calls::method_name_case(c, name, &method.declaring, declaring, false);
     }
@@ -1013,7 +922,6 @@ fn check_single_method<'arena>(
             .and_then(|scopes| scopes.iter().find(|scope| !scope.filtered))
             .cloned()
     });
-    // ClosureBindToVarVisitor: `$var->bindTo(...)` on a Closure
     if method.name.eq_ignore_ascii_case("bindTo")
         && !args.arguments.is_empty()
         && let Expression::Variable(Variable::Direct(v)) = object
@@ -1046,7 +954,6 @@ fn check_single_method<'arena>(
     );
 }
 
-/// The class expressions of static calls the check reads (`$x::foo()`; names and keywords are calls.rs's).
 pub(super) fn typed_class(class: &Expression, spans: &mut Vec<Span>) {
     if !matches!(
         class,
@@ -1059,7 +966,6 @@ pub(super) fn typed_class(class: &Expression, spans: &mut Vec<Span>) {
     }
 }
 
-/// StaticMethodCallCheck::check() on a class expression (`$x::foo()`), then the parameters check.
 pub(in super::super) fn static_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &StaticMethodCall<'arena>,
@@ -1067,7 +973,6 @@ pub(in super::super) fn static_call<'arena>(
     check_static(c, call.class, &call.method, Some(call));
 }
 
-/// The expression-class branch shared with StaticMethodCallableRule; names/keywords stay in calls.rs.
 pub(in super::super) fn check_static<'arena>(
     c: &mut Checker<'_, 'arena>,
     class: &Expression<'arena>,
@@ -1115,7 +1020,6 @@ pub(in super::super) fn check_static<'arena>(
         return;
     }
     let described = describe(c, &t);
-    // TypeCombinator::remove($classType, new StringType())
     if let Type::Union(ts) = &t {
         t = pun_phpstan::types::union(
             ts.iter()
@@ -1131,7 +1035,6 @@ pub(in super::super) fn check_static<'arena>(
         return;
     }
     if !c.has_method(&t, name.value).yes() {
-        // The only expression checked below level 2 is `$this` (checkThisOnly). Magic reporting is off at 0.
         if call.is_none()
             && c.level == 0
             && t.object_class_names().iter().any(|n| {
@@ -1146,12 +1049,10 @@ pub(in super::super) fn check_static<'arena>(
         c.report(name, "staticMethod.notFound", message, None);
         return;
     }
-    // (a method only an unresolved `@mixin` has)
     let method = c.get_method(&t, name.value);
     let Some(method) = method else { return };
     let declaring = method.declaring_display(c);
     let declared = method.name();
-    // ModelForwardsCallsExtension's EloquentBuilderMethodReflection is always static
     let forwarded = c.larastan.is_some()
         && t.object_class_names().iter().all(|n| {
             c.class_like(n).found().is_some_and(|k| {
@@ -1234,8 +1135,6 @@ pub(in super::super) fn check_static<'arena>(
     );
 }
 
-/// ModelForwardsCallsExtension: `Model::builderMethod(...)`'s arguments, checked against the builder's static method.
-/// Returns whether the model forwards the method.
 pub(in super::super) fn forwarded_static_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     model: &mago_codex::metadata::class_like::ClassLikeMetadata,
@@ -1256,7 +1155,6 @@ pub(in super::super) fn forwarded_static_call<'arena>(
     let Some(method) = c.reflected_method(&t, name.value).ok().flatten() else {
         return false;
     };
-    // EloquentBuilderMethodReflection's declaring class is the model's builder
     let subject = format!("{}::{}()", describe(c, &t), method.name);
     let first_level = c.is_top_level(call.span());
     let counts = params::count(&call.argument_list);
@@ -1287,7 +1185,6 @@ pub(in super::super) fn forwarded_static_call<'arena>(
     true
 }
 
-/// RuleLevelHelper retains unknown-class errors, and only the null introduced by a nullsafe chain disappears.
 fn callable_receiver(
     c: &mut Checker,
     e: &Expression,

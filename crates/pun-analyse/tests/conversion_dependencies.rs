@@ -1,4 +1,3 @@
-//! Independent full/native values and selected-scope class-constant consumers.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -125,8 +124,6 @@ fn selected_class_constants_match_complete_records() {
     project_records("selected");
 }
 
-// Raw Mago arrays do not store insertion order. Match their key/value trees here;
-// Project's complete isset and argument diagnostics independently check conversion order.
 fn value(ty: &TUnion, codebase: &CodebaseMetadata) -> Value {
     let shape = |mut items: Vec<(Value, Value)>| {
         items.sort_by_cached_key(|(key, _)| key.to_string());

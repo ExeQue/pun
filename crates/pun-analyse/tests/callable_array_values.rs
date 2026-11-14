@@ -1,5 +1,3 @@
-//! New array values must not inherit callable constraints from their inputs.
-
 #[test]
 fn array_map_selected_acceptors_resolve_actual_template_arguments() {
     check_native_array_map("acceptor-values");
@@ -28,8 +26,6 @@ fn check_native_array_map(case: &str) {
     use mago_span::HasSpan;
     use mago_syntax::{cst::*, parser::parse_file, walker::MutWalker};
 
-    // Observe the native public artifact, not the shared converter. Expected
-    // values come from the complete, separately retained PHPStan capture.
     fn describe(ty: &TUnion) -> String {
         if let Some(value) = ty.get_single_literal_int_value() {
             value.to_string()
@@ -275,7 +271,6 @@ function probe(array $numbers, array $open, int $index, callable $callback, mixe
     assert!(!program.has_errors());
     let names = NameResolver::new(&arena).resolve(program);
     let mut codebase = scan_program(&arena, &file, program, &names, PHPVersion::PHP85);
-    // This isolated native API test supplies the builtin declarations instead of loading the prelude.
     codebase
         .function_likes
         .get_mut(&(mago_word::empty_word(), mago_word::word("is_array")))
@@ -299,8 +294,6 @@ function probe(array $numbers, array $open, int $index, callable $callback, mixe
     )
     .analyze_with_artifacts(program, &mut AnalysisResult::new(references))
     .unwrap();
-    // PHPStan retains `array` for missing operands. With a null callback its
-    // extension returns the second operand unchanged, even when it is not an array.
     for call in [r"\array_map()", r"\array_map(null)"] {
         let start = source.find(call).unwrap() as u32;
         assert!(artifacts.expression_types[&(start, start + call.len() as u32)].is_array());

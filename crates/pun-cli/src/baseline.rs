@@ -1,8 +1,3 @@
-//! Pun's analyse baseline (context/plan/analyse.md Build 2): `pun analyse --generate-baseline` writes every error
-//! into pun-baseline.toml, and a run with `[analyse] baseline` drops the errors it lists. The shape is Mago's loose
-//! baseline (mago-reporting's `LooseBaseline`): one entry per file, rule and message, with a count, so errors that
-//! move to other lines stay covered. A PHPStan baseline is never read (`pun migrate` asks for a new one).
-
 use crate::analyse::Finding;
 use crate::render::RunError;
 use crate::report::Abort;
@@ -11,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Where `--generate-baseline` writes without `[analyse] baseline` or a path.
 pub(crate) const DEFAULT: &str = "pun-baseline.toml";
 
 const HEADER: &str = "# Pun's analyse baseline: errors `pun analyse` doesn't report. Regenerate it with\n# `pun analyse --generate-baseline`.\n\n";
@@ -33,16 +27,13 @@ enum Variant {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 struct Issue {
-    /// Relative to the project root, with `/`.
     file: String,
-    /// The Pun rule ID.
     code: String,
     message: String,
     count: u32,
 }
 
 impl Baseline {
-    /// One entry per (file, rule, message), sorted, counting its errors.
     pub(crate) fn of(findings: &[Finding]) -> Baseline {
         let mut counts: BTreeMap<(String, String, String), u32> = BTreeMap::new();
         for f in findings {
@@ -86,8 +77,6 @@ impl Baseline {
         })
     }
 
-    /// Drop the findings the baseline covers, up to each entry's count; the count left over (entries that no
-    /// longer match) comes back.
     pub(crate) fn filter(&self, findings: &mut Vec<Finding>) -> usize {
         let mut left: BTreeMap<(String, String, String), u32> = (self.issues.iter())
             .map(|i| ((i.file.clone(), i.code.clone(), i.message.clone()), i.count))

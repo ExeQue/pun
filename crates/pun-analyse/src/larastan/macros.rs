@@ -1,14 +1,3 @@
-//! The macros MacroMethodsClassReflectionExtension finds in a Macroable class's static `$macros`, read from the
-//! code that registers them instead (Pun never runs PHP): `X::macro('name', $definition)` calls in PHPStan's
-//! `bootstrapFiles`, the files they include, the app's service providers (`app/Providers`), the framework's
-//! FoundationServiceProvider and the packages' discovered providers (`extra.laravel.providers`).
-//!
-//! A macro's return type is what Larastan reflects of its definition: a closure's native return type
-//! (ClosureTypeFactory::fromClosureObject(), mixed without one), a function's (`'trim'`), or a method's
-//! (`'Class::method'`, `[$this, 'method']`, `[X::class, 'method']`, getNativeMethod()).
-//!
-//! ponytail: macros that a provider registered by another provider registers and `mixin()` are not seen.
-
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -29,34 +18,24 @@ const MACROABLE: &[u8] = b"Illuminate\\Support\\Traits\\Macroable";
 const BUILDER: &[u8] = b"Illuminate\\Database\\Eloquent\\Builder";
 const QUERY_BUILDER: &[u8] = b"Illuminate\\Database\\Query\\Builder";
 
-/// The macros' return types, by the lowercase name of the class whose `$macros` holds them, then by name; and the
-/// framework facades' accessors (`getFacadeAccessor()`), by lowercase facade class.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Macros {
     macros: HashMap<String, HashMap<String, Macro>>,
     accessors: HashMap<String, String>,
 }
 
-/// A macro as Larastan reflects it.
 #[derive(Clone, Debug)]
 pub(crate) struct Macro {
     pub(crate) ty: TUnion,
-    /// The declaring class and name of a macro that is no static method: a callable string's `Macro` (on the class
-    /// that holds it) or a non-static native method. A closure's `Macro` is static.
     pub(crate) instance: Option<(String, String)>,
 }
 
-/// A registration's definition, resolved once every file is read.
 enum Definition {
-    /// A closure's native return type.
     Closure(Option<TUnion>),
     Function(String),
-    /// A class and method name.
     Method(String, String),
 }
 
-/// The files of the providers Laravel's package discovery registers (PackageManifest::build()): each installed
-/// package's `extra.laravel.providers`, found through the package's psr-4 directories.
 fn discovered_providers(root: &Path) -> Vec<PathBuf> {
     let composer = root.join("vendor/composer");
     let Some(installed) = std::fs::read(composer.join("installed.json"))
@@ -117,7 +96,6 @@ impl Macros {
         files.extend(crate::php_files(&root.join("app/Providers"), &php));
         let framework = root.join("vendor/laravel/framework/src/Illuminate");
         files.extend(crate::php_files(&framework.join("Support/Facades"), &php));
-        // the framework's own macros (`Request::validate()`)
         files.push(framework.join("Foundation/Providers/FoundationServiceProvider.php"));
         files.extend(discovered_providers(root));
         let mut seen = HashSet::new();
@@ -133,10 +111,8 @@ impl Macros {
             ..Macros::default()
         };
         for (class, name, definition) in read_files.registrations {
-            // `Facade::macro()` forwards to the facade's root
             let Some(home) = home(codebase, &class).or_else(|| {
                 let root = macros.facade_root(app, &class)?;
-                // CacheManager::__call() forwards `macro()` to its default store, a Repository
                 let root = if root.eq_ignore_ascii_case("Illuminate\\Cache\\CacheManager") {
                     "Illuminate\\Cache\\Repository".to_string()
                 } else {
@@ -210,8 +186,6 @@ impl Macros {
                     }
                 }
             };
-            // a later registration replaces an earlier one, as `static::$macros[$name] =` does; Mago asks for a
-            // method by its lowercase name
             macros
                 .macros
                 .entry(home)
@@ -221,9 +195,6 @@ impl Macros {
         macros
     }
 
-    /// The `$macros` homes MacroMethodsClassReflectionExtension::hasMethod() reads for a class, and those the calls
-    /// ModelForwardsCallsExtension, RelationForwardsCallsExtension and EloquentBuilderForwardsCallsExtension forward
-    /// reach.
     pub(crate) fn homes(
         &self,
         codebase: &CodebaseMetadata,
@@ -251,7 +222,6 @@ impl Macros {
             }
         } else if let Some(h) = home(codebase, &name) {
             homes.push(h);
-            // RelationForwardsCallsExtension: a relation's own macros, then its related model's builder's
             if is(BUILDER) || is(RELATION) {
                 homes.extend(home(codebase, &builder));
                 homes.extend(home(codebase, &query_builder));
@@ -280,7 +250,6 @@ impl Macros {
         homes
     }
 
-    /// The macro `name` in the `$macros` of one of `homes` (as [`home`] names them).
     pub(crate) fn get(&self, homes: &[String], name: &str) -> Option<&Macro> {
         let name = name.to_ascii_lowercase();
         homes.iter().find_map(|h| self.macros.get(h)?.get(&name))
@@ -290,8 +259,6 @@ impl Macros {
         self.macros.is_empty()
     }
 
-    /// The class of a facade's root (`getFacadeRoot()`): what the container makes for its accessor, or the class
-    /// the accessor names.
     pub(crate) fn facade_root(&self, app: &App, facade: &str) -> Option<String> {
         let accessor = self
             .accessors
@@ -300,7 +267,6 @@ impl Macros {
     }
 }
 
-/// Whether a class uses Macroable or is an Eloquent or query builder (which declare their own `$macros`).
 fn macroable(codebase: &CodebaseMetadata, class: &[u8]) -> bool {
     codebase.class_uses_trait(class, MACROABLE)
         || [BUILDER, QUERY_BUILDER]
@@ -308,8 +274,6 @@ fn macroable(codebase: &CodebaseMetadata, class: &[u8]) -> bool {
             .any(|b| class.eq_ignore_ascii_case(b) || codebase.is_instance_of(class, b))
 }
 
-/// The lowercase name of the class whose static `$macros` a Macroable class reads: the nearest class of its
-/// ancestry that is macroable while its parent is not. `None` for a class that is not macroable.
 pub(crate) fn home(codebase: &CodebaseMetadata, class: &str) -> Option<String> {
     let mut current = codebase.get_class_like(class.trim_start_matches('\\').as_bytes())?;
     if !macroable(codebase, current.name.as_bytes()) {
@@ -332,17 +296,12 @@ struct Local {
 
 #[derive(Default)]
 struct Reader {
-    /// (class, macro name, definition), in registration order.
     registrations: Vec<(String, String, Definition)>,
-    /// The read files' methods (their native return types, and for an instance method its class and name), by
-    /// lowercase class and method name.
     methods: HashMap<(String, String), Local>,
-    /// The facades' accessors, by lowercase class.
     accessors: HashMap<String, String>,
 }
 
 impl Reader {
-    /// Reads one file; returns the files it includes.
     fn read(&mut self, path: &Path) -> Vec<PathBuf> {
         let Some(file) = read(path, FileType::Host).ok().flatten() else {
             return Vec::new();
@@ -367,7 +326,6 @@ struct Walker<'r, 'n, 'arena> {
     names: &'n ResolvedNames<'arena>,
     dir: PathBuf,
     namespace: String,
-    /// The enclosing class's name.
     class: Option<String>,
     includes: Vec<PathBuf>,
 }
@@ -377,7 +335,6 @@ impl Walker<'_, '_, '_> {
         String::from_utf8_lossy(self.names.get(&id.span())).into_owned()
     }
 
-    /// An included file's path: a string, or `__DIR__` followed by one.
     fn include(&mut self, e: &Expression) {
         let path = match e {
             Expression::Literal(Literal::String(s)) => s
@@ -401,7 +358,6 @@ impl Walker<'_, '_, '_> {
         self.includes.extend(path.filter(|p| p.is_file()));
     }
 
-    /// A class named by an expression: `X::class`, `self::class`, `static::class`, or a string.
     fn class_of(&self, e: &Expression) -> Option<String> {
         match e {
             Expression::Literal(Literal::String(s)) => {
@@ -423,7 +379,6 @@ impl Walker<'_, '_, '_> {
         }
     }
 
-    /// A string definition: its constant value, `X::class . '::method'` included.
     fn string(&self, e: &Expression) -> Option<String> {
         match e {
             Expression::Literal(Literal::String(s)) => {
@@ -459,7 +414,6 @@ impl Walker<'_, '_, '_> {
         }
     }
 
-    /// `[$this, 'method']` or `[X::class, 'method']`.
     fn callable_array(
         &self,
         elements: &TokenSeparatedSequence<ArrayElement>,
@@ -482,8 +436,6 @@ impl Walker<'_, '_, '_> {
         ))
     }
 
-    /// A native type hint's type (TypehintHelper::decideTypeFromReflection()); `None` for `self`, `static` and
-    /// `parent`.
     fn hint(&self, hint: &Hint) -> Option<TUnion> {
         crate::larastan::config::type_from_text(self.hint_text(hint)?.as_bytes())
     }

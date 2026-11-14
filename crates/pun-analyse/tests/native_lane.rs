@@ -1,5 +1,3 @@
-//! The partial native API is exercised through the public Analyzer, never Pun's converter.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -80,7 +78,6 @@ fn analyze(
     (artifacts, found, format!("{:?}", result.issues))
 }
 
-// Unlike analyze(), this path does not install a custom observer that disables convergence.
 fn analyze_with_registry(
     code: &[u8],
     native: bool,
@@ -143,7 +140,6 @@ fn native_id(ty: &TUnion) -> String {
     oracle_mago_id(&ty.get_id().to_string())
 }
 
-// Only adapt the two tools' display syntax, not their inferred types.
 fn oracle_mago_id(phpstan: &str) -> String {
     let phpstan = if phpstan.starts_with('(') && phpstan.ends_with(')') && phpstan.contains('|') {
         &phpstan[1..phpstan.len() - 1]
@@ -406,7 +402,6 @@ fn unsupported_transfers_poison_the_scope_before_children_and_never_recover_by_a
         "$value = $object->property;",
         "$object->method();",
         "Unknown::method();",
-        // Creation now preserves the outer holders, but native callable values remain unsupported.
         "$callback = fn () => $value; $callback;",
         "$callback = function () use ($value) { return $value; }; $callback;",
         "$value = $value << 1;",
@@ -490,8 +485,6 @@ fn unsupported_operator_shapes_invalidate_without_changing_the_full_walk() {
         "$flag and $flag",
         "$flag or $flag",
         "($integer % 2) + 1",
-        // Integer-string casts are covered by decimal_string_producers. These casts still
-        // deliberately exclude union operands, non-finite literals, and non-scalar syntax.
         "(int) $nullable",
         "(float) $nullable",
         "(bool) $nullable",
@@ -660,7 +653,6 @@ fn opaque_hook_replacement_during_an_assignment_checkpoint_restores_both_histori
             if matches!(expr, Expression::Literal(mago_syntax::cst::Literal::Integer(value)) if value.value == Some(777))
             {
                 *context.artifacts_mut() = AnalysisArtifacts::new();
-                // Repeated opaque access must not detach a second time or lose the saved native checkpoints.
                 context.artifacts_mut().expression_types.clear();
             }
             Ok(())
@@ -768,7 +760,6 @@ fn dynamic_full_return_providers_are_called_once_and_do_not_replace_native_decla
     assert_eq!(issues, off_issues);
     assert_eq!(observed.visits, off_observed.visits);
     let value = span(marked_ranges(code, "// native")[0].1);
-    // One straight-line call and two calls in each conditional, on the existing full walk.
     assert_eq!(calls.load(Ordering::SeqCst), 5);
     assert_eq!(off_calls.load(Ordering::SeqCst), 5);
     assert_eq!(
@@ -779,7 +770,6 @@ fn dynamic_full_return_providers_are_called_once_and_do_not_replace_native_decla
             .as_str(),
         Some("string('provider')")
     );
-    // The oracle's documented(): string call in scalars.php also has native string.
     assert_eq!(
         artifacts
             .get_native_expression_type(&value)
@@ -1008,7 +998,6 @@ namespace {
     );
     for (_, range) in marked_ranges(code, "// call") {
         assert_eq!(enabled.call_terminations.get(&range), Some(&false));
-        // PHPStan 2.3.1: named void calls have full null and raw/keep-void void.
         assert_eq!(
             enabled
                 .get_expression_type(&span(range))
@@ -1035,7 +1024,7 @@ namespace {
                 .get_native_expression_type(&span(range))
                 .map(native_id)
                 .as_deref(),
-            None, // Void is outside the current partial native lane; do not fill it from full.
+            None,
         );
     }
     for (_, range) in marked_ranges(code, "// value") {
@@ -1195,7 +1184,6 @@ fn native_call_arguments_returns_and_continuations_match_phpstan() {
                 failures.push(serde_json::json!({"case":case, "expected":expected, "actual":got}));
             }
             assert!(disabled.get_native_expression_type(&span(range)).is_none());
-            // Reference writeback may replace the final artifact, not the completed input observation.
             if let Some(final_type) = enabled.get_native_expression_type(&span(range)) {
                 assert_eq!(Some(native_id(final_type)), got, "{case}: {expected}");
             }

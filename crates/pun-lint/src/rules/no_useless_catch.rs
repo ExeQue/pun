@@ -1,15 +1,3 @@
-//! `lint/dead-code/no-useless-catch`, ported from Rector 2.8.4's `RemoveDeadTryCatchRector`
-//! (rules/DeadCode/Rector/TryCatch).
-//!
-//! When the `finally` block is missing or empty:
-//!
-//! - a `try` with an empty block is removed, with its catches;
-//! - a `try` with one catch whose first statement rethrows the caught variable (`catch (E $e) { throw $e; }`) is
-//!   replaced by the statements of its block.
-//!
-//! "Empty" is php-parser's: no statement, or only comments (one `Nop`). Rector prints a comment that ends the moved
-//! block followed by an empty line, which Pun writes too.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -39,7 +27,6 @@ impl Rule for NoUselessCatch {
     ) {
         let Node::Try(r#try) = node else { return };
         let source = ctx.source;
-        // A cheap look before the file is read into tokens: an empty `try` block, or one catch that throws.
         let rethrows = r#try.catch_clauses.len() == 1
             && r#try.catch_clauses.as_slice()[0]
                 .block
@@ -55,9 +42,7 @@ impl Rule for NoUselessCatch {
             return;
         }
         let tokens = tokens(ctx);
-        // isEmpty: no statement, or one Nop.
         let empty = |b| block_list(tokens, b).stmts.is_empty();
-        // not empty stmts on finally always executed
         if r#try
             .finally_clause
             .as_ref()
@@ -69,7 +54,6 @@ impl Rule for NoUselessCatch {
         let edits = if empty(&r#try.block) {
             remove(source, tokens, &list, &[key])
         } else {
-            // Not empty, so the cheap look found the one catch that throws.
             let catch = &r#try.catch_clauses.as_slice()[0];
             let catch_list = block_list(tokens, &catch.block);
             let Some(Statement::Expression(first)) = catch_list.stmts.first() else {
@@ -88,7 +72,6 @@ impl Rule for NoUselessCatch {
             ) {
                 return;
             }
-            // return $node->stmts: the try's statements take its place.
             let try_list = block_list(tokens, &r#try.block);
             let span = node_span(r#try);
             let indent = line_indent(source, span.start);
@@ -100,7 +83,6 @@ impl Rule for NoUselessCatch {
                 )
             } else {
                 let mut text = moved_text(source, tokens, &try_list, indent);
-                // php-parser prints the Nop of a trailing comment as an empty line.
                 if try_list.nop && key + 1 < list.stmts.len() {
                     text.push('\n');
                 }

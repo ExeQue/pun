@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-duplicate-array-key`, ported from Rector 2.8.4's `RemoveDuplicatedArrayKeyRector`
-//! (rules/DeadCode/Rector/Array_), with `ExprAnalyzer::isDynamicExpr`.
-//!
-//! In an array literal, an item whose key a later item repeats is removed: PHP keeps only the last value. Keys are
-//! compared as printed code (here: the same tokens), and only keys known at compile time count (strings, numbers,
-//! constants, class constants on a written class name, arrays of those) plus plain variables. Calls, property
-//! fetches and `++$i` keys are skipped. A destructuring list (`[$a, $a] = ...`) is php-parser's `List_`, not an
-//! array.
-
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind, TokenSeparatedSequence};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -69,8 +60,6 @@ impl Rule for NoDuplicateArrayKey {
     }
 }
 
-/// `resolveDuplicateKeysArrayItems` and `filterItemsWithSameKey`: the indices of the items whose key a later item
-/// repeats, in order.
 fn duplicated_items(
     source: &str,
     elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>,
@@ -81,7 +70,6 @@ fn duplicated_items(
             continue;
         };
         let key = unparenthesize(item.key);
-        // local variable is mostly fine, other dynamic, just skip
         if !matches!(key, Expression::Variable(_)) && is_dynamic_expr(key) {
             continue;
         }
@@ -99,7 +87,6 @@ fn duplicated_items(
     duplicated
 }
 
-/// Where an item starts with the comments before it, which php-parser keeps with it.
 fn with_comments(source: &str, tokens: &[Token], element: &ArrayElement<'_>) -> usize {
     let start = node_span(element).start;
     let from = previous_token_end(source, tokens, start);
@@ -109,7 +96,6 @@ fn with_comments(source: &str, tokens: &[Token], element: &ArrayElement<'_>) -> 
         .map_or(start, |t| t.start)
 }
 
-/// Whether the array is the target of a destructuring assignment or of a `foreach`, maybe nested in another one.
 fn is_destructuring(node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> bool {
     let span = node_span(&node);
     for ancestor in ancestors.iter().rev() {

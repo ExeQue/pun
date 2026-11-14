@@ -29,7 +29,6 @@ fn json(extra: &str) -> String {
 
 fn cmd(program: &Path, dir: &Path) -> Command {
     let mut c = Command::new(program);
-    // No coding-agent variables: Pint would switch to its agent reporter.
     c.current_dir(dir)
         .env_clear()
         .env("PATH", std::env::var("PATH").unwrap())
@@ -89,7 +88,6 @@ fn listing(root: &Path, files: anyhow::Result<Vec<PathBuf>>) -> Listing {
     Ok((regular, total))
 }
 
-/// What Pun runs for `root`'s pint.json (or `config`): the pun.toml `pun migrate` writes from it.
 fn load(root: &Path, config: Option<&str>) -> Result<pun_config::Config, String> {
     let pint = root.join(config.unwrap_or("pint.json"));
     pun_config::migrate::from_pint(&pint, None, &|_| true)
@@ -103,7 +101,6 @@ fn ours(root: &Path, config: Option<&str>, paths: &[&str]) -> Listing {
     listing(root, discover(&cfg, &paths))
 }
 
-/// Same listing, or (for errors) our message appears in Pint's output.
 fn check(root: &Path, config: Option<&str>, paths: &[&str]) {
     let mut args: Vec<String> = paths.iter().map(ToString::to_string).collect();
     if let Some(c) = config {
@@ -165,12 +162,10 @@ fn finder_matches_pint() {
     if oracle().is_none() {
         return;
     }
-    // Pint's defaults; .gitignore is not honoured; symlinked dirs are not followed, symlinked files count.
     let root = tree(COMMON, &json(""));
     with_links(&root);
     std::fs::write(root.join(".gitignore"), "app/A.php\n").unwrap();
     check(&root, None, &[]);
-    // Explicit arguments: a file bypasses every filter, a dir gets the Pint filters, duplicates collapse.
     check(
         &root,
         None,
@@ -179,7 +174,6 @@ fn finder_matches_pint() {
     check(&root, None, &["nope"]);
     check(&root, None, &["."]);
 
-    // pint.json finder keys: exclude (name / path), notName (glob, brace, regex), notPath (plain, regex).
     let root = tree(
         COMMON,
         &json(
@@ -193,11 +187,9 @@ fn finder_matches_pint() {
         &json(r#","notName":"[ab].php","notPath":"/^SRC/i","exclude":"app""#),
     );
     check(&root, None, &[]);
-    // A PHP regex that ends at its first unescaped delimiter: `/a/b/` has the unknown modifier `b`, which stops Pint.
     let root = tree(COMMON, &json(r#","notPath":["/a/b/"]"#));
     check(&root, None, &[]);
 
-    // Glob features (Symfony Glob::toRegex) and PHP regexes with every delimiter pair and modifier.
     let files = [
         "g/ax.php",
         "g/bx.php",
@@ -227,14 +219,12 @@ fn finder_matches_pint() {
     );
     check(&root, None, &[]);
 
-    // `in`: replaces the cwd default; with path arguments the configured finder is dropped entirely.
     let root = tree(COMMON, &json(r#","in":["src","app"],"exclude":["Deep"]"#));
     check(&root, None, &[]);
     check(&root, None, &["storage"]);
     let root = tree(COMMON, &json(r#","in":["nodir"]"#));
     check(&root, None, &[]);
 
-    // Blade discovery needs the rule (and prettier, which Pint checks for up front).
     let modules = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/pinkary/node_modules");
     if modules.exists() {
         let files: Vec<&str> = COMMON
@@ -253,20 +243,17 @@ fn finder_matches_pint() {
         check(&root, None, &[]);
     }
 
-    // Non-ASCII globs and names (UTF-8 bytes on both sides).
     let root = tree(
         &["app/Café.php", "app/Cafe.php", "app/né/X.php", "app/ü.php"],
         &json(r#","notName":["*é.php","?.php"],"notPath":["né"]"#),
     );
     check(&root, None, &[]);
 
-    // --config=<other file>.
     let root = tree(COMMON, &json(r#","notName":["*.php"]"#));
     std::fs::write(root.join("other.json"), json(r#","exclude":["app"]"#)).unwrap();
     check(&root, Some("other.json"), &[]);
 }
 
-/// `--stdin-filename`: Pint echoes the input unchanged for excluded paths and fixes it otherwise.
 #[test]
 fn stdin_exclusion_matches_pint() {
     if oracle().is_none() {
@@ -369,8 +356,6 @@ fn git(dir: &Path, args: &[&str]) {
     assert!(ok, "git {args:?}");
 }
 
-/// `--dirty` / `--diff`: git's list intersected with the finder. Pint aborts with "No dirty files found." (an empty run
-/// for us) and refuses outside git; `--staged` is Pun's own (git diff --cached).
 #[test]
 fn git_selection_matches_pint() {
     if oracle().is_none() {
@@ -389,13 +374,11 @@ fn git_selection_matches_pint() {
         &json(""),
     );
     let ours = |sel: &GitSelect| listing(&root, git_paths(&load(&root, None).unwrap(), sel));
-    // Not a repository.
     assert!(
         pint(&root, &["--dirty"])
             .unwrap_err()
             .contains("The [--dirty] option is only available when using Git.")
     );
-    // Pint aborts `--dirty` and `--diff` with "only available when using Git"; `--since` does too, naming itself.
     for (sel, flag) in [
         (GitSelect::Dirty, "dirty"),
         (GitSelect::Diff("main".into()), "diff"),
@@ -404,15 +387,12 @@ fn git_selection_matches_pint() {
         let message = format!("The [--{flag}] option is only available when using Git.");
         assert_eq!(ours(&sel).unwrap_err(), message);
     }
-    // `--staged` outside git: nothing staged, an empty run.
     assert_eq!(ours(&GitSelect::Staged).unwrap(), (BTreeSet::new(), 0));
 
     git(&root, &["init", "-q"]);
     git(&root, &["add", "."]);
     git(&root, &["commit", "-qm", "init"]);
-    // Clean tree: Pint aborts "No dirty files found." with exit 0 and no listing.
     assert_eq!(ours(&GitSelect::Dirty).unwrap(), (BTreeSet::new(), 0));
-    // Only an excluded file is dirty: nothing is selected (not a full discovery).
     std::fs::write(root.join("vendor/V.php"), "<?PHP\necho 0;\n").unwrap();
     assert_eq!(ours(&GitSelect::Dirty), pint(&root, &["--dirty"]));
     git(&root, &["checkout", "-q", "vendor/V.php"]);
@@ -436,7 +416,6 @@ fn git_selection_matches_pint() {
         ours(&GitSelect::Diff("main".into())),
         pint(&root, &["--diff=main"])
     );
-    // An unknown branch fails `git diff`: Pint aborts with its box.
     let message = ours(&GitSelect::Diff("nope".into())).unwrap_err();
     assert_eq!(
         message,
@@ -450,7 +429,6 @@ fn git_selection_matches_pint() {
     git(&root, &["add", "app/Clean.php"]);
     let staged = ours(&GitSelect::Staged).unwrap();
     assert_eq!(staged, (["app/Clean.php".to_string()].into(), 1));
-    // --since=main: everything feature changed (the commit, the staged Clean.php) plus untracked; Del.php is gone.
     let since: BTreeSet<String> = [
         "app/Clean.php",
         "app/Mod.php",

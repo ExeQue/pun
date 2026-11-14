@@ -1,5 +1,3 @@
-//! Port of `App\PrettierFormatters\CollapseSingleAttribute`: collapses a tag prettier wrapped solely
-//! because of one attribute.
 #![allow(clippy::needless_range_loop, reason = "ports Pint's index loops over `$lines` as written")]
 use super::php::{ctype_space, join_lines, lines, ltrim, rtrim, trim};
 use crate::analyzers::preg::RawPreg;
@@ -158,7 +156,6 @@ fn wrapped_attribute_end(lines: &[Vec<u8>], line_count: usize, start: usize) -> 
     None
 }
 
-/// `blockShift`: how far left the continuation lines must move to sit at the tag's indentation.
 fn block_shift(lines: &[Vec<u8>], start: usize, end: usize, indent: usize) -> usize {
     let shallowest = lines[start..=end]
         .iter()
@@ -191,7 +188,6 @@ fn extract_hugged_content(
     }
     let closing_tag = [&b"</"[..], tag].concat();
     let closing_full = [&closing_tag[..], b">"].concat();
-    // substr($trimmed, 1, $len): a negative or zero length gives ""
     let body = |len: isize| -> Vec<u8> {
         if len <= 0 {
             Vec::new()
@@ -252,7 +248,6 @@ fn attribute_count(attributes: &[u8]) -> isize {
             continue;
         }
         if depth == 0 {
-            // A bare ">" closes the start tag, so it was never wrapped.
             if c == b'>' {
                 return -1;
             }

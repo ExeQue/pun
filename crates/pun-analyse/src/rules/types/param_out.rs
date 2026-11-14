@@ -1,16 +1,3 @@
-//! What a by-reference parameter is left holding. Level 3's ParameterOutAssignedTypeRule (every write to it) and
-//! ParameterOutExecutionEndTypeRule (every execution end, when it has a `@param-out`) over ParameterOutTypeCheck,
-//! level 4's TooWideFunctionParameterOutTypeRule and TooWideMethodParameterOutTypeRule over
-//! TooWideParameterOutTypeCheck (the merged scope of the execution ends and returns), and level 2's
-//! IncompatibleSelfOutTypeRule.
-//!
-//! The variable's types come from Mago's analyser through [`Observer`]: before and after every statement of a
-//! function-like with a by-reference parameter, and after every write expression there.
-//!
-//! ponytail: `ParameterVariableOriginalValueExpr` (an execution end skipped once every path to it wrote the
-//! parameter) is read from the syntax: a statement list's earlier statements that always write it, and an `if` all of
-//! whose branches do. Destructuring targets are not write sites.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -49,11 +36,8 @@ pub(crate) const IDENTIFIERS: &[&str] = &[
     "selfOut.unresolvableType",
 ];
 
-/// The by-reference parameters' types, by the span of the statement or expression they were read at: (name with
-/// `$`, Mago's type, `None` when undefined).
 pub(in super::super) type Read = Vec<(Vec<u8>, Option<TUnion>)>;
 
-/// What [`Observer`] read.
 #[derive(Default)]
 pub(in super::super) struct Observed {
     pub before: HashMap<Span, Read>,
@@ -61,7 +45,6 @@ pub(in super::super) struct Observed {
     pub expressions: HashMap<Span, Read>,
 }
 
-/// The function-like bodies with by-reference parameters: (body, parameter names with `$`).
 pub(in super::super) fn watched(program: &Program) -> Vec<(Span, Vec<Vec<u8>>)> {
     struct W(Vec<(Span, Vec<Vec<u8>>)>);
     fn names(l: &FunctionLikeParameterList) -> Vec<Vec<u8>> {
@@ -92,7 +75,6 @@ pub(in super::super) fn watched(program: &Program) -> Vec<(Span, Vec<Vec<u8>>)> 
     w.0
 }
 
-/// Reads the watched parameters around the statements and write expressions of their bodies.
 #[derive(Clone)]
 pub(in super::super) struct Observer {
     pub bodies: Arc<Vec<(Span, Vec<Vec<u8>>)>>,
@@ -187,25 +169,20 @@ impl ExpressionHook for Observer {
     }
 }
 
-/// Where a write's new type is read.
 #[derive(Clone)]
 enum At {
     Expression(Span),
     After(Span),
     Before(Span),
-    /// a caught exception's
     Type(Type),
 }
 
-/// A VariableAssignNode of a by-reference parameter: its name with `$`, the variable written (its line is the
-/// error's) and where its type is read.
 struct Site {
     name: Vec<u8>,
     variable: Span,
     at: At,
 }
 
-/// The direct variable an assignment target writes through (`$p`, `$p[..]`, `$p[]`).
 fn root<'a, 'arena>(mut e: &'a Expression<'arena>) -> Option<&'a DirectVariable<'arena>> {
     loop {
         match e {
@@ -218,7 +195,6 @@ fn root<'a, 'arena>(mut e: &'a Expression<'arena>) -> Option<&'a DirectVariable<
     }
 }
 
-/// The write sites in a body, not in its closures, arrow functions or declarations.
 struct Sites<'c, 'a, 'arena> {
     c: &'c Checker<'a, 'arena>,
     names: &'c [Vec<u8>],
@@ -333,18 +309,14 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Sites<'_, '_, 'arena> {
     fn walk_enum(&mut self, _: &'ast Enum<'arena>, (): &mut ()) {}
 }
 
-/// A by-reference parameter as the function reflection gives it.
 struct Param {
     name: String,
-    /// `getType()`
     ty: Type,
-    /// `getOutType()`, resolved
     out: Option<Type>,
     variadic: bool,
 }
 
 impl Param {
-    /// The variable's type on entry (a variadic one packs the arguments).
     fn entry(&self) -> Type {
         if self.variadic {
             Type::array(pun_phpstan::types::mixed(), self.ty.clone())
@@ -354,14 +326,11 @@ impl Param {
     }
 }
 
-/// A function-like with by-reference parameters.
 struct Body<'s, 'arena> {
     block: &'s Block<'arena>,
     span: Span,
-    /// `function foo()` / `method Foo::bar()`, lower-case first
     of: String,
     params: Vec<Param>,
-    /// TooWide*ParameterOutTypeRule checks it
     too_wide: bool,
 }
 
@@ -369,15 +338,12 @@ fn inside(outer: Span, inner: Span) -> bool {
     outer.start.offset <= inner.start.offset && inner.end.offset <= outer.end.offset
 }
 
-/// The statements (not in closures or declarations) and whether the earlier statements of every path to each
-/// always wrote the parameter (`ParameterVariableOriginalValueExpr` gone).
 struct Paths<'s, 'arena> {
     statements: Vec<&'s Statement<'arena>>,
     written_before: HashMap<Span, bool>,
 }
 
 impl<'s, 'arena> Paths<'s, 'arena> {
-    /// The statement lists of a statement and the condition-free part they inherit from it.
     fn children(s: &'s Statement<'arena>) -> Vec<Vec<&'s Statement<'arena>>> {
         match s {
             Statement::Block(b) => vec![list(b.statements.as_slice())],
@@ -431,7 +397,6 @@ impl<'s, 'arena> Paths<'s, 'arena> {
         }
     }
 
-    /// The statement always writes it (`sites` are the writes' variables).
     fn always(s: &'s Statement<'arena>, sites: &[Span]) -> bool {
         let any = |at: Span| sites.iter().any(|w| inside(at, *w));
         match s {
@@ -453,7 +418,6 @@ impl<'s, 'arena> Paths<'s, 'arena> {
                             .iter()
                             .all(|l| l.iter().any(|s| Self::always(s, sites))))
             }
-            // (the catches write it when each catches into it or its body does)
             Statement::Try(t) => {
                 list(t.block.statements.as_slice())
                     .iter()
@@ -489,7 +453,6 @@ impl<'s, 'arena> Paths<'s, 'arena> {
         self.statements.iter().copied().find(|s| s.span() == span)
     }
 
-    /// The innermost statement around `at`.
     fn around(&self, at: Span) -> Option<&'s Statement<'arena>> {
         self.statements
             .iter()
@@ -499,26 +462,19 @@ impl<'s, 'arena> Paths<'s, 'arena> {
     }
 }
 
-/// Where an execution end's scope is read.
 enum EndAt {
     After(Span),
     Before(Span),
     Entry,
 }
 
-/// Which statement tells whether every path to an execution end wrote the parameter.
 #[derive(Clone, Copy)]
 enum Written {
-    /// the statements before it or it always did
     Through(Span),
-    /// the statements before it did
     Before(Span),
     Never,
 }
 
-/// An ExecutionEndNode at `at`: where its scope is read (the end statement's, an empty branch's (its `if`'s before),
-/// a trailing comment's (the statement before it), an empty body's (the function's entry)), and whether it ends with
-/// an expression statement typed explicit `never`.
 fn end_at(c: &Checker, paths: &Paths, body: Span, at: Span) -> Option<(EndAt, Written, bool)> {
     if at == body || !inside(body, at) {
         return Some((EndAt::Entry, Written::Never, false));
@@ -534,7 +490,6 @@ fn end_at(c: &Checker, paths: &Paths, body: Span, at: Span) -> Option<(EndAt, Wr
     if keyword && let Some(i @ Statement::If(_)) = around {
         return Some((EndAt::Before(i.span()), Written::Before(i.span()), false));
     }
-    // a `Nop`: the last statement before it in its list
     let scope = around.map_or(body, HasSpan::span);
     let last = paths
         .statements
@@ -580,7 +535,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// `ParameterOutTypeCheck::check()`: the error of a parameter left holding `ty`.
 fn out_check(
     c: &Checker,
     b: &Body,
@@ -589,7 +543,6 @@ fn out_check(
     out: &Type,
     param_out: bool,
 ) -> Option<(String, &'static str)> {
-    // findTypeToCheck() only decides whether there is a type to check
     c.find_type_to_check_of(Some(ty.clone()), &|t| is_super_type_of(out, t).yes())?;
     let assigned = if p.variadic {
         if !ty.is_array().yes() {
@@ -645,13 +598,11 @@ fn sites(c: &Checker, b: &Body) -> Vec<Site> {
     s.out
 }
 
-/// Both level-3 rules and both level-4 ones on a body.
 fn check(c: &mut Checker, b: Body) {
     let sites = sites(c, &b);
     let found = declared::with_classes(c, || {
         let mut errors: Vec<(Span, String, &'static str, Option<String>)> = Vec::new();
         if c.level >= 3 {
-            // ParameterOutAssignedTypeRule
             for s in &sites {
                 let Some(p) = b.params.iter().find(|p| p.name.as_bytes() == &s.name[1..]) else {
                     continue;
@@ -713,7 +664,6 @@ fn check(c: &mut Checker, b: Body) {
             .map(|e| (e.at, end_at(c, &paths, b.span, e.at)))
             .collect();
         if c.level >= 3 {
-            // ParameterOutExecutionEndTypeRule
             for (at, end) in &ends {
                 let Some((read, w, never)) = end else {
                     continue;
@@ -751,7 +701,6 @@ fn check(c: &mut Checker, b: Body) {
     }
 }
 
-/// Whether every path to an end wrote parameter `p` (`ParameterVariableOriginalValueExpr` is gone).
 fn written(b: &Body, sites: &[Site], w: Written, p: &Param) -> bool {
     let own: Vec<Span> = sites
         .iter()
@@ -767,7 +716,6 @@ fn written(b: &Body, sites: &[Site], w: Written, p: &Param) -> bool {
     }
 }
 
-/// `TooWideParameterOutTypeCheck::check()`.
 fn too_wide(
     c: &Checker,
     b: &Body,
@@ -870,7 +818,6 @@ fn too_wide(
             errors.push((b.span, message, id, tip));
             continue;
         }
-        // createErrors()
         if out.is_boolean().yes() {
             let never = if matches!(narrowed, Type::ConstBool(true)) {
                 "false"
@@ -910,7 +857,6 @@ fn too_wide(
     errors
 }
 
-/// `isConstantScalarValue()->yes()`.
 fn constant_scalar(t: &Type) -> bool {
     match t {
         Type::ConstInt(_)
@@ -923,7 +869,6 @@ fn constant_scalar(t: &Type) -> bool {
     }
 }
 
-/// `TooWideTypeCheck::narrowType()` with `$checkDescendantClass` and `$native` false.
 fn narrow(c: &Checker, declared: &Type, actual: &Type) -> Type {
     if let Type::Union(members) = declared {
         if constant_scalar(declared) && constant_scalar(actual) {
@@ -951,7 +896,6 @@ fn narrow(c: &Checker, declared: &Type, actual: &Type) -> Type {
     )
 }
 
-/// `getOffsetValueType()` of a constant key.
 fn offset_value(t: &Type, key: &Type) -> Type {
     match t {
         Type::ConstArray(a) => a
@@ -964,8 +908,6 @@ fn offset_value(t: &Type, key: &Type) -> Type {
     }
 }
 
-/// `SimultaneousTypeTraverser::map()` with TooWideTypeCheck's callback (`narrow` a declared type by the actual one,
-/// else descend).
 fn traverse(declared: &Type, actual: &Type, narrow: &dyn Fn(&Type, &Type) -> Type) -> Type {
     let narrowed = narrow(declared, actual);
     if narrowed != *declared {
@@ -1136,7 +1078,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     );
 }
 
-/// `UnresolvableTypeHelper::getUnresolvableType() !== null`.
 fn unresolvable(t: &Type) -> bool {
     let mut found = false;
     super::super::type_aliases::each(t, &mut |t| {
@@ -1145,7 +1086,6 @@ fn unresolvable(t: &Type) -> bool {
     found
 }
 
-/// An OffsetAccessType of a constant array resolved to the offset's value (`OffsetAccessType::getResult()`).
 fn offsets_resolved(t: &Type) -> Type {
     match t {
         Type::OffsetAccess(on, offset) => {
@@ -1164,7 +1104,6 @@ fn has_offset_access(t: &Type) -> bool {
     found.get()
 }
 
-/// IncompatibleSelfOutTypeRule.
 pub(in super::super) fn self_out(c: &mut Checker, m: &Method) {
     if c.level < 2 || c.in_trait().is_some() {
         return;
@@ -1180,7 +1119,6 @@ pub(in super::super) fn self_out(c: &mut Checker, m: &Method) {
     let name = method_name(c, m);
     let display = c.display(context);
     let errors = declared::with_classes(c, || {
-        // (an OffsetAccessType stays as written: only isSuperTypeOf() resolves it, and it is resolvable)
         let written = self_out.clone();
         let self_out = late(c, &offsets_resolved(&self_out), Some(context), false);
         let class = Type::Object(c.reflected_name(context.name.as_bytes()), Vec::new(), false);

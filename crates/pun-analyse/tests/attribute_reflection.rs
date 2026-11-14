@@ -1,5 +1,3 @@
-//! Shared reflected constructor/method contracts, captured from PHPStan 2.3.1 rather than Pun.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

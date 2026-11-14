@@ -1,9 +1,3 @@
-//! Branches of FunctionDefinitionCheck and ExistingClassesInPropertiesRule that PHPStan's own rule fixtures miss:
-//! other `phpVersion`s, template bounds and defaults against native types, PHPDoc tag prefixes, `@phpstan-self-out`
-//! names, `parent` without a parent, implicitly nullable and required-after-optional variants, which intersections
-//! are unresolvable, and property hooks. Expected: PHPStan's run on tests/fixtures/signatures for each
-//! phpstan*.neon there, restricted to the identifiers Pun reports.
-
 use std::path::Path;
 
 use pun_analyse::{IDENTIFIERS, analyse};
@@ -57,25 +51,21 @@ fn php_8_5() {
     check("phpstan");
 }
 
-/// Native union types need PHP 8.0; required parameters after optional ones are deprecated from 8.0 on.
 #[test]
 fn php_7_4() {
     check("phpstan-php74");
 }
 
-/// A null default makes a parameter optional only from PHP 8.1 on; intersections are checked from 8.1 on.
 #[test]
 fn php_8_0() {
     check("phpstan-php80");
 }
 
-/// `?int $x = null` is optional from 8.1, `int|null $x = null` from 8.3; arrow functions return `never` from 8.2.
 #[test]
 fn php_8_1() {
     check("phpstan-php81");
 }
 
-/// Implicitly nullable parameters are deprecated from PHP 8.4.
 #[test]
 fn php_8_3() {
     check("phpstan-php83");

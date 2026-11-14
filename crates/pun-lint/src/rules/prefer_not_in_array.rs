@@ -1,11 +1,3 @@
-//! `lint/complexity/prefer-not-in-array`, ported from Rector 2.8.4's `RepeatedAndNotEqualToNotInArrayRector`
-//! (rules/CodeQuality/Rector/BooleanAnd).
-//!
-//! Three negated comparisons or more of the same expression joined by `&&`,
-//! `$a !== 'a' && $a !== 'b' && $a !== 'c'`, become `!in_array($a, ['a', 'b', 'c'], true)`; with `!=` (or a mix of
-//! `!=` and `!==`) the call is not strict. A chain with a value that may have side effects (a call), or one in a
-//! default or class constant value, stays.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -40,7 +32,6 @@ impl Rule for PreferNotInArray {
         }
         let and = |op: &BinaryOperator<'_>| matches!(op, BinaryOperator::And(_));
         let compare = |op: &BinaryOperator<'_>| op.is_negated_equality();
-        // in_array() func call is not allowed in a constant expression
         if is_in_constant_expression(ancestors) {
             return;
         }
@@ -50,12 +41,10 @@ impl Rule for PreferNotInArray {
         if pairs.len() < 3 || !pairs.iter().all(|(_, v)| is_safe_to_evaluate_eagerly(v)) {
             return;
         }
-        // All compared expressions must be equal to the last one.
         let (compared, _) = pairs[pairs.len() - 1];
         if !pairs.iter().all(|(c, _)| equal(ctx, c, compared)) {
             return;
         }
-        // isStrictComparison: `!==` only; a mix with `!=` is not strict (https://3v4l.org/2SoHZ).
         let not_identicals = has_binary(node, &|op| matches!(op, BinaryOperator::NotIdentical(_)));
         let not_equals = has_binary(node, &|op| {
             matches!(

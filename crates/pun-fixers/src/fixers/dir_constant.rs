@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\DirConstantFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{FunctionReferenceFinder, IS_RISKY};
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -76,8 +75,6 @@ impl Fixer for DirConstantFixer {
     }
 }
 
-/// `$tokens[$tokens->getNextNonWhitespace($index)]->isComment()`; past the last token PHP reads index 0 (the open
-/// tag), which is no comment.
 fn next_non_whitespace_is_comment(tokens: &Tokens, index: usize) -> bool {
     tokens
         .get_next_non_whitespace(index, None)

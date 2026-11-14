@@ -1,5 +1,3 @@
-//! MissingReturnRule (`return.missing`, `return.never`) on each function-like body's ExecutionEndNodes.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
@@ -10,14 +8,12 @@ use super::super::missing_types::declaring;
 use super::super::{Checker, declared};
 use super::flow::list;
 
-/// What a function-like declares: its description in messages, its return type and whether it is native.
 struct Declared {
     description: String,
     ret: Type,
     native: bool,
 }
 
-/// A function-like body, its own start (an empty body reports there) and how it is described.
 pub(in super::super) fn function(c: &mut Checker, f: &Function) {
     let name = c.resolved_span(f.name.span());
     let native = f.return_type_hint.is_some();
@@ -34,7 +30,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     let MethodBody::Concrete(b) = &m.body else {
         return;
     };
-    // (a method is walked in its class, a trait's in the using class)
     let Some(context) = c.class_scope() else {
         return;
     };
@@ -60,7 +55,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
 }
 
 pub(in super::super) fn closure(c: &mut Checker, f: &Closure) {
-    // `getAnonymousFunctionReturnType()` is checked only with a native return type
     let Some(hint) = &f.return_type_hint else {
         return;
     };
@@ -76,7 +70,6 @@ pub(in super::super) fn closure(c: &mut Checker, f: &Closure) {
     check(c, &f.body, f.span(), d);
 }
 
-/// The `get` hooks with a statement body of property `name` (with its `$`), returning the property's type.
 pub(in super::super) fn get_hooks(
     c: &mut Checker,
     name: &[u8],
@@ -91,7 +84,6 @@ pub(in super::super) fn get_hooks(
         let PropertyHookBody::Concrete(PropertyHookConcreteBody::Block(b)) = &h.body else {
             continue;
         };
-        // (a property is walked in its class)
         let Some(context) = c.class_scope() else {
             return;
         };
@@ -116,7 +108,6 @@ pub(in super::super) fn get_hooks(
     }
 }
 
-/// A method's name as analysed (a trait method under the alias the class gives it).
 pub(super) fn method_name(c: &Checker, m: &Method) -> String {
     c.renamed
         .as_ref()
@@ -127,10 +118,6 @@ pub(super) fn method_name(c: &Checker, m: &Method) -> String {
         )
 }
 
-/// The return type as the function reflection gives it: `resolveLateResolvableTypes()` (a conditional type is
-/// either branch), class names as declared, templates of an ancestor class (inherited PHPDoc whose generics the
-/// class does not specify) resolved to their bounds, a nested intersection normalized and, for a PHPDoc type, a
-/// `static` changed to the class (`transformStaticType()`, the class itself when final).
 pub(super) fn late(c: &Checker, t: &Type, class: Option<&ClassLikeMetadata>, phpdoc: bool) -> Type {
     let go = |t: &Type| late(c, t, class, phpdoc);
     let own = |scope: &str| {
@@ -142,9 +129,7 @@ pub(super) fn late(c: &Checker, t: &Type, class: Option<&ClassLikeMetadata>, php
         Type::Conditional(cd) => union(vec![go(&cd.then), go(&cd.otherwise)]),
         Type::Template(tt) if !own(&tt.scope) => go(&tt.bound),
         Type::Intersection(ts) => intersect(ts.iter().map(go).collect()),
-        // ponytail: a template's OffsetAccessType is not resolved to its bound's offset type
         Type::OffsetAccess(..) => Type::Error,
-        // a KeyOfType / ValueOfType of a template, resolved now
         Type::Object(name, args, _)
             if (name == "key-of" || name == "value-of") && args.len() == 1 =>
         {
@@ -180,7 +165,6 @@ fn is_mixed(t: &Type) -> bool {
     }
 }
 
-/// `TypeCombinator::containsNull()`.
 fn contains_null(t: &Type) -> bool {
     match t {
         Type::Null => true,
@@ -189,7 +173,6 @@ fn contains_null(t: &Type) -> bool {
     }
 }
 
-/// `getTemplateType(Generator::class, 'TReturn')`, `None` for ErrorType.
 pub(super) fn generator_return(t: &Type) -> Option<Type> {
     match t {
         Type::Object(name, args, _) if name.eq_ignore_ascii_case("Generator") => Some(

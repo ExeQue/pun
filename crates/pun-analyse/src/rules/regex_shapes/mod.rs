@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's regex array shapes: `$matches` of `preg_match()` and `preg_match_all()` typed from a constant
-//! pattern (`PregMatchParameterOutTypeExtension`, `PregMatchTypeSpecifyingExtension`, `RegexArrayShapeMatcher`).
-
 mod groups;
 mod matcher;
 mod parser;
@@ -18,7 +15,6 @@ use pun_phpstan::types::Tri;
 
 use matcher::{FlagsArg, Php};
 
-/// Registers the extensions for the analysed PHP version (`PHP_VERSION_ID`).
 pub(super) fn register(registry: &mut PluginRegistry, php_version: u32) {
     let php = Php {
         unmatched_as_null: php_version >= 70400,
@@ -32,7 +28,6 @@ pub(super) fn register(registry: &mut PluginRegistry, php_version: u32) {
 static META: ProviderMeta =
     ProviderMeta::new("pun::pcre", "PCRE shapes", "PHPStan's regex array shapes");
 
-/// `PregReplaceCallbackClosureTypeExtension`.
 struct PregReplaceCallback(Php);
 
 impl Provider for PregReplaceCallback {
@@ -86,7 +81,6 @@ impl FunctionReturnTypeProvider for PregReplaceCallback {
     }
 }
 
-/// The flags argument's constant integer, if any.
 fn flags_argument(
     context: &ProviderContext<'_, '_, '_>,
     flags: Option<&Expression<'_>>,
@@ -111,7 +105,6 @@ impl Provider for PregMatch {
 const TARGETS: FunctionTarget = FunctionTarget::ExactMultiple(&[b"preg_match", b"preg_match_all"]);
 
 impl PregMatch {
-    /// The call's builtin function, as `preg_match_all` or not.
     fn matches_all(invocation: &InvocationInfo<'_, '_, '_>) -> Option<bool> {
         let metadata = invocation.inner().target.get_function_like_metadata()?;
         metadata.flags.is_built_in().then(|| {
@@ -121,7 +114,6 @@ impl PregMatch {
         })
     }
 
-    /// `RegexArrayShapeMatcher::match(All)Expr()`.
     fn matched(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -148,14 +140,12 @@ impl FunctionReturnTypeProvider for PregMatch {
         None
     }
 
-    /// `PregMatchParameterOutTypeExtension`.
     fn get_parameter_out_type(
         &self,
         context: &ProviderContext<'_, '_, '_>,
         invocation: &InvocationInfo<'_, '_, '_>,
         parameter: &[u8],
     ) -> Option<TUnion> {
-        // the parameter is named different, depending on PHP version.
         matches!(parameter, b"$matches" | b"$subpatterns").then_some(())?;
         invocation.get_argument(2, &[b"matches"])?;
         let matches_all = Self::matches_all(invocation)?;
@@ -175,9 +165,6 @@ impl FunctionReturnTypeProvider for PregMatch {
     }
 }
 
-/// core.stub's conditional `@param-out` of `$matches`, PHPStan's type when the matcher has no shape: each
-/// `TFlags is N` branch, resolved for the flags argument's type (TFlags is inferred from the default value without
-/// one, and is its bound for a type outside it). A maybe takes both sides, as ConditionalType does.
 fn stub_out_type(
     context: &ProviderContext<'_, '_, '_>,
     flags: Option<&Expression<'_>>,
@@ -198,7 +185,6 @@ fn stub_out_type(
                 ],
                 "array<mixed>",
                 1,
-                // `int`
                 &[],
             )
         } else {
@@ -216,11 +202,9 @@ fn stub_out_type(
                 ],
                 "array<array-key, string>",
                 0,
-                // `int-mask<0, 256, 512>`
                 &[0, 256, 512, 768],
             )
         };
-    // TFlags' constant integers, or `None` for any other type
     let values: Option<Vec<i64>> = match flags {
         None => Some(vec![default]),
         Some(flags) => context
@@ -233,15 +217,12 @@ fn stub_out_type(
     let mut resolved = false;
     for (set, ty) in branches {
         match &values {
-            // yes: the if branch alone
             Some(values) if values.iter().all(|v| set.contains(v)) => {
                 types.push(*ty);
                 resolved = true;
                 break;
             }
-            // no: the else branch
             Some(values) if !values.iter().any(|v| set.contains(v)) => {}
-            // maybe: both
             _ => types.push(*ty),
         }
     }
@@ -266,7 +247,6 @@ impl FunctionAssertionProvider for PregMatch {
         TARGETS
     }
 
-    /// `PregMatchTypeSpecifyingExtension` in the truthy and falsey contexts.
     fn get_assertions(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -289,7 +269,6 @@ impl FunctionAssertionProvider for PregMatch {
             if let Some(matched) = self.matched(context, invocation, Tri::Yes) {
                 assertions.add_if_true(mago_word::word("$matches"), is_type(matched));
             }
-            // PHPStan overwrites $matches in the falsey context (`setAlwaysOverwriteTypes()`)
             if let Some(unmatched) = self.matched(context, invocation, Tri::No) {
                 assertions.add_if_false(
                     mago_word::word("$matches"),
@@ -310,7 +289,6 @@ fn is_type(t: TUnion) -> Vec<Assertion> {
     t.types.iter().cloned().map(Assertion::IsType).collect()
 }
 
-/// `isSubExprOfMatchesArg()`.
 fn is_sub_expression_of(subject: &Expression<'_>, matches: Option<&Expression<'_>>) -> bool {
     let mut root = subject;
     while let Expression::ArrayAccess(ArrayAccess { array, .. }) = root {
@@ -325,8 +303,6 @@ fn is_sub_expression_of(subject: &Expression<'_>, matches: Option<&Expression<'_
     }
 }
 
-/// The pattern argument's constant strings (`getPatternType()`): a concatenation through
-/// `RegexExpressionHelper::resolvePatternConcat()`, which reads a `preg_quote()` call as `(?:.*)`.
 fn pattern_strings(
     context: &ProviderContext<'_, '_, '_>,
     pattern: &Expression<'_>,
@@ -350,7 +326,6 @@ fn concat(context: &ProviderContext<'_, '_, '_>, e: &Expression<'_>) -> Vec<Vec<
         Expression::Parenthesized(p) => concat(context, p.expression),
         Expression::Call(Call::Function(f)) if matches!(f.function, Expression::Identifier(id) if id.value().rsplit(|b| *b == b'\\').next().is_some_and(|n| n.eq_ignore_ascii_case(b"preg_quote"))) =>
         {
-            // assume preg_quote() cannot create capturing groups or contain meta characters
             vec![b"(?:.*)".to_vec()]
         }
         Expression::Binary(b) if matches!(b.operator, BinaryOperator::StringConcat(_)) => {
@@ -367,12 +342,10 @@ fn concat(context: &ProviderContext<'_, '_, '_>, e: &Expression<'_>) -> Vec<Vec<
     }
 }
 
-/// `getConstantStrings()` of an expression's type (`toString()` of a constant integer too, inside a concatenation).
 fn constant_strings(context: &ProviderContext<'_, '_, '_>, e: &Expression<'_>) -> Vec<Vec<u8>> {
     if let Expression::Literal(Literal::String(s)) = e {
         return s.value.map(|v| vec![v.to_vec()]).unwrap_or_default();
     }
-    // the analysed argument always has a type
     let types = context.get_expression_type(e).map_or(&[][..], |t| &t.types);
     let strings: Vec<Vec<u8>> = types
         .iter()

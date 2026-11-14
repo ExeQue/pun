@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's RandomizerMethodReturnTypeExtension for `Random\Randomizer::shuffleArray()`: the argument's
-//! `Type::shuffleArray()`, a list of its values that keeps non-emptiness.
-
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
 use mago_analyzer::plugin::provider::method::{MethodReturnTypeProvider, MethodTarget};
 use mago_analyzer::plugin::provider::{Provider, ProviderMeta};
@@ -44,7 +41,6 @@ impl MethodReturnTypeProvider for Randomizer {
         let mut result: Option<TUnion> = None;
         for atomic in array.types.iter() {
             let shuffled = match atomic {
-                // ArrayType: list<value>; NonEmptyArrayType keeps itself; a constant array degrades to its values
                 TAtomic::Array(array) => {
                     let (_, value) = get_array_parameters(array, codebase);
                     if array.is_non_empty() {
@@ -53,9 +49,7 @@ impl MethodReturnTypeProvider for Randomizer {
                         get_list(value)
                     }
                 }
-                // MixedType: list<mixed>
                 TAtomic::Mixed(_) => get_list(get_mixed()),
-                // ErrorType for a member that is no array: leave the declared return type
                 _ => return None,
             };
             result = Some(match result {

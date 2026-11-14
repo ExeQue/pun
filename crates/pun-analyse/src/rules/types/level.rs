@@ -1,6 +1,3 @@
-//! RuleLevelHelper: how strictly a level compares types (`checkNullables`, `checkUnionTypes`,
-//! `checkExplicitMixed`, `checkImplicitMixed`), and `findTypeToCheck()` of an expression.
-
 use mago_syntax::cst::*;
 use pun_phpstan::symbols;
 use pun_phpstan::types::{
@@ -11,7 +8,6 @@ use pun_phpstan::types::{
 use super::super::Checker;
 
 bitflags::bitflags! {
-    /// The level's switches (conf/config.level*.neon).
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Levels: u8 {
         const CHECK_NULLABLES = 1 << 0;
@@ -38,8 +34,6 @@ impl Levels {
         }
     }
 
-    /// `transformAcceptedType()`: without `checkNullables`, `null` is dropped from what is accepted (not from a
-    /// callable's parameters, nor from a benevolent union).
     fn transform_accepted(self, accepting: &Type, accepted: &Type) -> Type {
         fn go(t: &Type, accepting: &Type) -> Type {
             match t {
@@ -54,8 +48,6 @@ impl Levels {
                 _ => t.traverse(&|i| go(i, accepting)),
             }
         }
-        // `traverseWithoutMapping()`: a generic object's argument loses its null only where the accepting type's
-        // does not take one
         fn generic(name: &str, args: &[Type], exact: bool, accepting: &Type) -> Type {
             let contains_null = |t: &Type| {
                 matches!(t, Type::Null) || matches!(t, Type::Union(ts) if ts.contains(&Type::Null))
@@ -91,7 +83,6 @@ impl Levels {
         }
     }
 
-    /// `RuleLevelHelper::accepts()->result`: below level 7 a union is accepted when any member is.
     pub(crate) fn accepts(self, accepting: &Type, accepted: &Type, strict_types: bool) -> bool {
         let accepted = self.transform_accepted(accepting, accepted);
         let accepting = self.strict_mixed().transform(accepting);
@@ -103,8 +94,6 @@ impl Levels {
         }
     }
 
-    /// `RuleLevelHelper::accepts()->reasons` as an error's tip (`acceptsReasonsTip()`: one reason as is, more as a
-    /// bullet list).
     pub(crate) fn accepts_tip(
         self,
         accepting: &Type,
@@ -126,8 +115,6 @@ impl Levels {
     }
 }
 
-/// `FoundTypeResult`: `None` is an ErrorType (nothing to check), then with the unknown classes the type names
-/// (`getUnknownClassErrors()`, for the rules that report them).
 pub(crate) struct Found {
     pub ty: Option<Type>,
     pub unknown: Vec<String>,
@@ -147,7 +134,6 @@ impl Checker<'_, '_> {
         out
     }
 
-    /// RuleLevelHelper::isThis(): php-parser discards parentheses before testing expression eligibility.
     pub(in super::super) fn is_this_expression(e: &Expression) -> bool {
         matches!(super::flow::unparen(e), Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
     }
@@ -156,8 +142,6 @@ impl Checker<'_, '_> {
         !self.on(crate::rules::Switches::CHECK_THIS_ONLY) || Self::is_this_expression(e)
     }
 
-    /// `findTypeToCheck($scope, $var, ...)`: the expression's type as the level checks it, `criteria` saying which
-    /// members of a union are fine without `checkUnionTypes`.
     pub(in super::super) fn find_type_to_check(
         &self,
         e: &Expression,
@@ -173,7 +157,6 @@ impl Checker<'_, '_> {
         Found { ty, unknown }
     }
 
-    /// [`Self::find_type_to_check()`] of an expression whose type is `ty` (`None`: no type known).
     pub(in super::super) fn find_type_to_check_of(
         &self,
         ty: Option<Type>,
@@ -182,8 +165,6 @@ impl Checker<'_, '_> {
         ty.and_then(|t| self.find_in(self.levels(), t, criteria, Some(&mut Vec::new())))
     }
 
-    /// `findTypeToCheckImplementation()`: `None` for an ErrorType. The checked copy is StrictMixedType,
-    /// never a replacement for the expression's stored/inferred type.
     pub(super) fn find_in(
         &self,
         l: Levels,
@@ -194,7 +175,6 @@ impl Checker<'_, '_> {
         if !l.contains(Levels::CHECK_NULLABLES) && !t.is_null().yes() && !criteria(&Type::Null) {
             t = t.remove_null();
         }
-        // ErrorType and SubtractedMixed are MixedType too. A mixed template is always explicitly mixed.
         if let Some(explicit) = t.mixed_explicitness() {
             let strict = l.contains(if explicit {
                 Levels::CHECK_EXPLICIT_MIXED
@@ -207,7 +187,6 @@ impl Checker<'_, '_> {
             return None;
         }
         if let Some(unknown) = top {
-            // (an anonymous class, by its display name, always exists)
             let missing = t
                 .object_class_names()
                 .into_iter()
@@ -216,7 +195,6 @@ impl Checker<'_, '_> {
                     Some(k) => k.kind == mago_codex::symbol::SymbolKind::Trait,
                     None => pun_phpstan::symbols::class(n).is_none(),
                 });
-            // a class class_exists() guards is not reported, but the type is still not checked
             let (guarded, missing): (Vec<String>, Vec<String>) =
                 missing.partition(|n| self.in_class_exists(n));
             unknown.extend(missing);
@@ -230,7 +208,6 @@ impl Checker<'_, '_> {
         {
             return None;
         }
-        // TemplateUnionType/TemplateIntersectionType inherit their bound's compound dispatch.
         let template_compound = match &t {
             Type::Template(tt)
                 if matches!(
@@ -246,12 +223,10 @@ impl Checker<'_, '_> {
             template_compound.as_ref().unwrap_or(&t)
         {
             let t = template_compound.as_ref().unwrap_or(&t);
-            // checkBenevolentUnionTypes is off: a benevolent union is always filtered
             let filter = !l.contains(Levels::CHECK_UNION_TYPES) || matches!(t, Type::Benevolent(_));
             let kept: Vec<Type> = types
                 .iter()
                 .filter(|i| !filter || criteria(i))
-                // Filter the original members first, then retain recursive ErrorTypes during recombination.
                 .map(|i| {
                     self.find_in(l, i.clone(), criteria, None)
                         .unwrap_or(Type::Error)
@@ -273,8 +248,6 @@ impl Checker<'_, '_> {
                 .iter()
                 .any(|t| matches!(t, Type::Template(_)) && t.mixed_explicitness().is_some())
         {
-            // Only direct TemplateMixedType members are converted, even below level 9. Do not descend into
-            // unrelated array/generic arguments, defaults or arbitrary intersection members.
             return Some(intersect(
                 parts
                     .iter()

@@ -1,8 +1,3 @@
-//! Branches of the attribute rules that PHPStan's own rule fixtures miss: `#[Attribute]` flags given by constants and
-//! expressions, `#[NoDiscard]` read from PHPDoc and on the methods PHPStan types void, built-in attribute classes, and
-//! the checks gated on PHP versions below 8.5. Expected: PHPStan's run on tests/fixtures/attributes for each
-//! phpstan*.neon there, restricted to the identifiers Pun reports.
-
 use std::path::Path;
 
 use pun_analyse::{analyse, reports};
@@ -23,7 +18,6 @@ fn check(neon: &str) {
     let expected: Value =
         serde_json::from_slice(&std::fs::read(root.join(format!("expected-{neon}.json"))).unwrap())
             .unwrap();
-    // New oracle exports retain ignorability too; keep the original fixtures' expectations unchanged.
     let ignorability = expected["errors"]
         .as_array()
         .unwrap()
@@ -70,7 +64,6 @@ fn php_8_5() {
     check("phpstan");
 }
 
-/// Attributes on global constants, `#[Override]` on properties and `#[Deprecated]` on traits need PHP 8.5.
 #[test]
 fn php_8_4() {
     check("phpstan-php84");
@@ -81,7 +74,6 @@ fn constructor_contracts_and_attribute_groups() {
     check("phpstan-contracts");
 }
 
-/// Attributes do not produce argument.namedNotSupported even when the configured PHP is older than 8.0.
 #[test]
 fn attribute_named_arguments_are_not_version_gated() {
     check("phpstan-contracts-php74");
@@ -134,7 +126,6 @@ fn global_initializer_dependencies_resolve_before_filtering() {
     );
 }
 
-/// Check the scanner's public metadata too: the rule must not be repairing missing initializer types.
 #[test]
 fn scanner_control_flow_flags_match_the_attribute_oracle() {
     scanner_flags(

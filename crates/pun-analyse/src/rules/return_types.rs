@@ -1,5 +1,3 @@
-//! PHPStan's dynamic return types that Mago's own types lack, as Mago return type providers for the rules' inference.
-
 use std::sync::{Arc, Mutex};
 
 use foldhash::HashSet;
@@ -41,8 +39,6 @@ use mago_syntax::cst::{
 };
 use pun_phpstan::types::Tri;
 
-/// The registry the rules' inference runs with; `contents` is the analysed file's (`bindTo()` finds its receiver in it).
-/// With Larastan, a model forwards the methods it lacks to its builder.
 pub(super) fn registry(
     contents: &[u8],
     names: &mago_names::ResolvedNames<'_>,
@@ -125,10 +121,6 @@ pub(super) fn registry(
     registry
 }
 
-/// PHPStan 2.3.5's MinMaxFunctionReturnTypeExtension for integers, through Mago's providers. Two arguments are the
-/// extension's `$a < $b ? $a : $b` rewrite, whose narrowing of two integers is Mago's bound arithmetic. Three or
-/// more are `processType()`, which only picks a winner among constants; every other call keeps the union of its
-/// arguments that the signature already gives.
 struct MinMax;
 
 impl Provider for MinMax {
@@ -165,10 +157,6 @@ impl FunctionReturnTypeProvider for MinMax {
     }
 }
 
-/// PHPStan 2.3.5's ArrayMapFunctionReturnTypeExtension with one array, through Mago's ArrayMapProvider: a `null`
-/// callback returns the array itself, and a constant array's values are mapped one by one (`mapValueType()`).
-/// Every other call keeps the prelude's generic return, which is the extension's `array<K, V>` with the input's
-/// accessories.
 struct ConstantArrayMap;
 
 impl ConstantArrayMap {
@@ -232,7 +220,6 @@ impl FunctionReturnTypeProvider for ConstantArrayMap {
     }
 }
 
-/// Marks a Mago type as one of PHPStan's `BenevolentUnionType`s (`to_phpstan()` reads both flags together).
 pub(super) fn benevolent(mut t: TUnion) -> TUnion {
     t.set_ignore_nullable_issues(true);
     t.set_ignore_falsable_issues(true);
@@ -245,12 +232,6 @@ pub(super) fn is_benevolent(t: &TUnion) -> bool {
 
 static META: ProviderMeta = ProviderMeta::new("pun", "pun", "PHPStan's dynamic return types");
 
-/// PHPStan 2.3.5's ArrayRandFunctionReturnTypeExtension, RandomIntFunctionReturnTypeExtension,
-/// ArraySliceFunctionReturnTypeExtension, StrlenFunctionReturnTypeExtension, StrRepeatFunctionReturnTypeExtension,
-/// the integer/IP filter extensions
-/// and the array/list sliceArray methods.
-/// Mago 1.57's prelude only has a conditional generic return type: it neither slices shapes nor turns integer-keyed
-/// non-lists back into lists. Keep this in the production registry, so assignments and subsequent calls see it too.
 #[derive(Clone, Default)]
 struct BuiltinFunctions(Arc<Mutex<HashSet<Span>>>);
 
@@ -287,7 +268,6 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
             || invocation.function_name().eq_ignore_ascii_case("sizeof")
         {
             let array = context.get_expression_type(invocation.get_argument(0, &[b"value"])?)?;
-            // CountFunctionReturnTypeExtension delegates normal counts to the value's size.
             let arrays = array
                 .types
                 .iter()
@@ -322,8 +302,6 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
             .function_name()
             .eq_ignore_ascii_case("str_repeat")
         {
-            // Stored callable signatures do not run PHPStan's dynamic extension. Do not retain the
-            // prelude's conditional non-empty refinement on that separate reflection-only path either.
             if !self.0.lock().unwrap().contains(&invocation.span()) {
                 return Some(mago_codex::ttype::get_string());
             }
@@ -377,8 +355,6 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
             .eq_ignore_ascii_case("array_rand")
         {
             let (keys, empty) = Self::iterable_keys(array, context.codebase());
-            // Picking from an empty array throws, but PHPStan deliberately returns int|string, not never.
-            // Fix the actual return type, rather than suppressing the resulting false dead-code diagnostic.
             let keys = if empty {
                 get_int_or_string()
             } else {
@@ -410,11 +386,9 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
             Some(e) => context.get_expression_type(e)?.clone(),
             None => get_false(),
         };
-        // MixedType::sliceArray deliberately does not use ArrayType's zero-length/list shortcuts.
         if array.is_mixed() {
             return Some(get_keyed_array(get_mixed(), get_mixed()));
         }
-        // These may contain arrays, but Mago cannot represent PHPStan's ErrorType alternative here.
         if array.types.iter().any(|a| {
             matches!(
                 a,
@@ -423,13 +397,10 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
         }) {
             return None;
         }
-        // PHPStan first normalizes unions of general arrays (merging their key/value domains). Slicing Mago's
-        // alternatives independently would incorrectly narrow int|string keys to non-negative-int|string.
         let [TAtomic::Array(array)] = array.types.as_ref() else {
             return if array.types.iter().any(|a| matches!(a, TAtomic::Array(_))) {
                 None
             } else {
-                // Pun's PHP floor is 8.4: array functions throw on non-arrays, rather than returning null.
                 Some(get_never())
             };
         };
@@ -438,7 +409,6 @@ impl FunctionReturnTypeProvider for BuiltinFunctions {
         } else if preserve.types.iter().all(|a| match a {
             TAtomic::Scalar(TScalar::Bool(b)) => b.is_false(),
             TAtomic::Mixed(_) | TAtomic::GenericParameter(_) | TAtomic::Reference(_) => false,
-            // PHPStan asks isTrue(), not PHP truthiness: even a literal 1 is definitely not the true type.
             _ => true,
         }) {
             Some(false)
@@ -461,9 +431,6 @@ impl FunctionCallHook for BuiltinFunctions {
         call: &FunctionCall<'_>,
         _: &mut HookContext<'_, '_>,
     ) -> HookResult<ExpressionHookResult> {
-        // FuncCallHandler::resolveReturnType only applies extensions to named functions, literal-string
-        // callees and immediately invoked named first-class functions, not stored callable signatures.
-        // Mago retains the source identifier even on those signatures; record the actual CST boundary.
         let eligible = match super::types::flow::unparen(call.function) {
             Expression::Identifier(_) | Expression::Literal(Literal::String(_)) => true,
             Expression::CompositeString(CompositeString::Document(document)) => document
@@ -483,8 +450,6 @@ impl FunctionCallHook for BuiltinFunctions {
     }
 }
 
-/// FilterInput/FilterVarDynamicReturnTypeExtension and the integer/IP validation branches of
-/// FilterFunctionReturnTypeHelper (PHPStan 2.3.5). Other filters' exact casts/sanitization are not ported here.
 struct FilterFunctions;
 
 impl FilterFunctions {
@@ -504,7 +469,6 @@ impl FilterFunctions {
             .get_expression_type(invocation.get_argument(position, &[b"value", b"var_name"])?)?;
         if input_function {
             let source = context.get_expression_type(invocation.get_argument(0, &[b"type"])?)?;
-            // getInputType rejects only a definitely disjoint integer domain, not a general int.
             if !source.is_int()
                 || ![0, 1, 2, 4, 5].iter().any(|value| {
                     source.types.iter().any(|a| {
@@ -527,15 +491,12 @@ impl FilterFunctions {
             && filter != 275
             && matches!(filter, 258 | 259 | 272..=274 | 276 | 277 | 513..=520 | 523)
         {
-            // Do not pretend the unported exact conversions for the other known filters are implemented.
             return None;
         }
         let flags = match invocation.get_argument(position + 2, &[b"options"]) {
             Some(flags) => context.get_expression_type(flags)?.clone(),
             None => get_literal_int(0),
         };
-        // THROW_ON_FAILURE is PHP-version-dependent (8.5+); ProviderContext does not expose the target
-        // version. Leave this unported boundary unavailable rather than imposing 8.5 semantics on 8.4.
         if Self::has_flag(&flags, 268435456, context.codebase()).yes() {
             return None;
         }
@@ -549,7 +510,6 @@ impl FilterFunctions {
             Tri::No => get_null(),
             Tri::Maybe => Self::union(&get_false(), &get_null(), context.codebase()),
         };
-        // getOffsetValueType on ArrayType(string, mixed): a definitely non-string key cannot exist.
         if Self::query(input, TAtomic::is_any_string).no() {
             return Some(missing);
         }
@@ -566,7 +526,6 @@ impl FilterFunctions {
         combine_union_types(a, b, codebase, CombinerOptions::default())
     }
 
-    /// The query's union arms use extreme identity, not a boolean "any" or "all".
     fn query(input: &TUnion, predicate: fn(&TAtomic) -> bool) -> Tri {
         let mut result = None;
         for atomic in input.types.iter() {
@@ -583,7 +542,6 @@ impl FilterFunctions {
         result.unwrap_or(Tri::Yes)
     }
 
-    /// hasOffsetValueType/getOffsetValueType for the constant option shapes used by the helper.
     fn offset(input: &TUnion, name: &[u8], codebase: &CodebaseMetadata) -> (Tri, TUnion) {
         let mut presence = None;
         let mut value = get_never();
@@ -621,7 +579,6 @@ impl FilterFunctions {
             .all(|a| matches!(a, TAtomic::Array(array) if array.is_sealed()))
     }
 
-    /// getConstantScalarValues is all-or-nothing; finite integer ranges are not enumerated here.
     fn scalar_ints(input: &TUnion) -> Option<Vec<i64>> {
         let mut values = Vec::new();
         for atomic in input.types.iter() {
@@ -629,7 +586,6 @@ impl FilterFunctions {
                 TAtomic::Null => values.push(0),
                 TAtomic::Scalar(TScalar::Integer(int)) => values.push(int.get_literal_value()?),
                 TAtomic::Scalar(TScalar::Float(float)) => {
-                    // PHP's float cast wraps modulo 2^64; Rust's signed cast saturates instead.
                     let value = float.get_literal_value()?;
                     let magnitude = (value.trunc() % 18446744073709551616.0).abs() as u64;
                     values.push(if value.is_sign_negative() {
@@ -645,8 +601,6 @@ impl FilterFunctions {
                     values.push(i64::from(boolean.is_true()));
                 }
                 TAtomic::Scalar(TScalar::String(string)) => {
-                    // Extract PHP's ASCII leading numeric prefix before parsing, preserving large integer
-                    // prefixes exactly. The remaining bytes (including arbitrary binary bytes) are ignored.
                     let regex = pcre2::bytes::Regex::new(r"\A[ \t\n\r\x0b\x0c]*([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)").unwrap();
                     let captures = regex.captures(string.get_known_literal_value()?).unwrap();
                     values.push(captures.map_or(0, |captures| {
@@ -685,7 +639,6 @@ impl FilterFunctions {
         }
     }
 
-    /// Preconditions: isArray()->yes(). TemplateArrayType inherits its bound's iterable domains.
     fn array_parameters(input: &TUnion, codebase: &CodebaseMetadata) -> (TUnion, TUnion) {
         input
             .types
@@ -776,7 +729,6 @@ impl FilterFunctions {
                 codebase,
             );
         }
-        // Validation filters never sanitize strings. IP's non-falsy-string already carries both accessories.
         if (exact.is_none()
             || has_options.maybe()
             || (input != ty && Self::contains(&input, &ty, codebase)))
@@ -836,7 +788,6 @@ impl FilterFunctions {
         if octal.maybe() || hex.maybe() {
             return None;
         }
-        // Port the three preg_match calls, including PHPStan's deliberately narrow 0o octal syntax.
         for (enabled, pattern, radix) in [
             (octal.yes(), r"\A0[oO][0-7]+\z", 8),
             (hex.yes(), r"\A0[xX][0-9A-Fa-f]+\z", 16),
@@ -848,7 +799,7 @@ impl FilterFunctions {
                     .is_match(value)
                     .unwrap()
             {
-                let text = std::str::from_utf8(value).unwrap(); // the patterns accept ASCII only
+                let text = std::str::from_utf8(value).unwrap();
                 let integer = if radix == 10 {
                     Some(text.parse().unwrap_or(if text.starts_with('-') {
                         i64::MIN
@@ -879,7 +830,6 @@ impl FilterFunctions {
                 if let Some(values) = Self::scalar_ints(value).filter(|values| values.len() == 1) {
                     Some(values[0])
                 } else {
-                    // Only IntegerRangeType owns these bounds; a sparse union's extrema are not a range option.
                     value.get_single_int()?;
                     if minimum {
                         value.get_minimum_int_value()
@@ -915,8 +865,6 @@ impl FilterFunctions {
     }
 }
 
-/// PHPStan 2.3.5's StrRepeatFunctionReturnTypeExtension, in its branch order. The size budget is
-/// the sum of every constant input's byte length times one constant multiplier, strictly below 100.
 struct StrRepeat;
 
 impl StrRepeat {
@@ -928,7 +876,6 @@ impl StrRepeat {
             return get_never();
         }
         let strings = Self::strings(input, 0);
-        // TemplateConstantIntegerType inherits ConstantIntegerType; TemplateIntegerType does not.
         let multiplier = count.get_single_literal_int_value().or_else(|| {
             if let [TAtomic::GenericParameter(template)] = count.types.as_ref() {
                 template.constraint.get_single_literal_int_value()
@@ -937,8 +884,6 @@ impl StrRepeat {
             }
         });
         if let (Some(multiplier), Some(strings)) = (multiplier, &strings) {
-            // PHP promotes overflowing integer arithmetic to float. A wider sum gives the same budget
-            // decision without overflow or allocating an oversized repetition (including huge counts).
             let length: u128 = strings
                 .iter()
                 .map(|string| string.as_bytes().len() as u128 * multiplier as u128)
@@ -971,9 +916,6 @@ impl StrRepeat {
             && Self::property(input, 0, |string| string.is_numeric)
             && strings.as_ref().is_none_or(|strings| {
                 strings.iter().all(|string| {
-                    // Upstream uses preg_match('#^[0-9]+$#'), not is_numeric(): signs, whitespace,
-                    // decimal points and exponent markers must not acquire numeric-string. As upstream,
-                    // `$` also permits one final newline; do not silently replace it with `\z`.
                     static DIGITS: std::sync::OnceLock<pcre2::bytes::Regex> =
                         std::sync::OnceLock::new();
                     DIGITS
@@ -997,9 +939,6 @@ impl StrRepeat {
         })))
     }
 
-    /// getConstantStrings is all-or-nothing for ordinary unions. Benevolent unions may omit
-    /// non-string members, but a general string still cancels extraction. A template of a constant
-    /// string template becomes TemplateStringType, whose inherited extraction is empty.
     fn strings(input: &TUnion, depth: usize) -> Option<Vec<mago_word::Word>> {
         let depth = if input.types.len() > 1 { 0 } else { depth };
         let mut values = Vec::new();
@@ -1021,8 +960,6 @@ impl StrRepeat {
         (!values.is_empty()).then_some(values)
     }
 
-    /// Queries inherited by the concrete template parent, with independent guarantees for each
-    /// union member. Unknown class-string values are truthy, but not literal or case-constrained.
     fn property(input: &TUnion, depth: usize, query: fn(&TString) -> bool) -> bool {
         let depth = if input.types.len() > 1 { 0 } else { depth };
         input.types.iter().all(|atomic| match atomic {
@@ -1050,8 +987,6 @@ impl StrRepeat {
     }
 }
 
-/// StrlenFunctionReturnTypeExtension: scalar *values* are cast, not their types' toString() results.
-/// In particular, a negative zero has length two, not the union of both zero signs' lengths.
 struct Strlen;
 
 impl Strlen {
@@ -1062,14 +997,10 @@ impl Strlen {
             let min = lengths[0];
             let max = *lengths.last().unwrap();
             return Some(if min == max {
-                // IntegerRangeType::fromInterval collapses equal bounds. Mago's range helper does not;
-                // retain an actual literal so subsequent calls can extract its scalar value too.
                 get_literal_int(min)
             } else if max - min == lengths.len() as i64 - 1 {
                 get_int_range(Some(min), Some(max))
             } else {
-                // Neither this extension nor getConstantScalarValues has a 128-value budget. Do not use
-                // Mago's default combiner: its unrelated literal threshold would widen a sparse result.
                 TUnion::from_vec(
                     lengths
                         .into_iter()
@@ -1078,16 +1009,10 @@ impl Strlen {
                 )
             });
         }
-        // PHPStan's boolean and definitely-empty-string branches are already resolved by scalar extraction:
-        // BooleanType enumerates true/false (including inside unions), and an empty string is a constant.
-        // The remaining positive branch also covers remove(input, int|float)->isNonEmptyString()->yes().
         Self::positive(input, 0).then(|| get_int_range(Some(1), None))
     }
 
-    /// UnionType::getConstantScalarValues is all-or-nothing, even for benevolent unions. Unlike
-    /// getFiniteTypes, it does not enumerate bounded integer ranges. Keep strings as bytes until counting.
     fn lengths(input: &TUnion, template_depth: usize) -> Option<Vec<i64>> {
-        // TemplateUnionType inherits its concrete members' extraction, not scalar-template widening.
         let depth = if input.types.len() > 1 {
             0
         } else {
@@ -1102,7 +1027,6 @@ impl Strlen {
                 }
                 TAtomic::Scalar(TScalar::Bool(boolean)) => {
                     if depth > 0 || boolean.is_general() {
-                        // TemplateBooleanType inherits BooleanType even when its bound is true or false.
                         lengths.extend([0, 1]);
                         continue;
                     }
@@ -1128,8 +1052,6 @@ impl Strlen {
         Some(lengths)
     }
 
-    /// TemplateTypeFactory's concrete parent owns queries: a template of a template constant string is
-    /// TemplateStringType (not the constant subclass), and a constant-float bound becomes TemplateMixedType.
     fn positive(input: &TUnion, template_depth: usize) -> bool {
         let depth = if input.types.len() > 1 {
             0
@@ -1155,9 +1077,6 @@ impl Strlen {
 }
 
 impl BuiltinFunctions {
-    /// ArrayReplaceFunctionReturnTypeExtension once an argument is not a constant array: the arguments' keys and
-    /// values, with each constant array's known keys, whose values a later general argument may replace.
-    /// ponytail: all-constant and unpacked arguments keep the prelude's generic return type
     fn array_replace(
         context: &ProviderContext<'_, '_, '_>,
         invocation: &InvocationInfo<'_, '_, '_>,
@@ -1208,8 +1127,6 @@ impl BuiltinFunctions {
         Some(TUnion::from_atomic(TAtomic::Array(TArray::Keyed(array))))
     }
 
-    /// getIterableKeyType and isIterableAtLeastOnce()->no(), before the empty-input fallback. An empty arm
-    /// contributes no keys to a union that can be non-empty; applying the fallback per arm would widen it.
     fn iterable_keys(array: &TUnion, codebase: &CodebaseMetadata) -> (TUnion, bool) {
         let mut keys = get_never();
         let mut empty = true;
@@ -1232,7 +1149,6 @@ impl BuiltinFunctions {
                         });
                         (keys, items.is_empty() && !list.non_empty)
                     } else {
-                        // A generic list<never> is maybe empty, not ConstantArrayType's empty array.
                         (get_non_negative_int(), false)
                     }
                 }
@@ -1249,8 +1165,6 @@ impl BuiltinFunctions {
         (keys, empty)
     }
 
-    /// PHPStan checks the count's type, not its truthiness or integer cast. TemplateIntegerType is not an
-    /// IntegerRangeType, even with a range bound; TemplateConstantIntegerType retains its literal instead.
     fn count_in_range(count: &TUnion, min: i64, max: Option<i64>) -> bool {
         count.types.iter().all(|atomic| match atomic {
             TAtomic::Never => true,
@@ -1300,8 +1214,6 @@ impl BuiltinFunctions {
                         .flat_map(|m| m.iter())
                         .map(|(key, value)| (ArrayKey::Integer(*key as i64), value.clone()))
                         .collect(),
-                    // Mago stores keyed shapes in a BTreeMap, losing PHP's insertion order. A singleton is safe;
-                    // larger keyed shapes need ordered inference artifacts, not an invented sorted slice.
                     TArray::Keyed(keyed) => {
                         if keyed.known_items.as_ref().is_some_and(|m| m.len() > 1) {
                             return None;
@@ -1314,7 +1226,6 @@ impl BuiltinFunctions {
                             .collect()
                     }
                 };
-                // Optional slots need ConstantArrayType's optional-key builder; do not silently make them required.
                 if items.iter().any(|(_, (optional, _))| *optional) {
                     return None;
                 }
@@ -1326,7 +1237,6 @@ impl BuiltinFunctions {
                 })));
             }
         }
-        // ArrayType::sliceArray, plus AccessoryArrayListType and NonEmptyArrayType's intersection behavior.
         let (keys, values) = get_array_parameters(array, codebase);
         let from_start = offset.get_single_literal_int_value() == Some(0);
         let non_empty = array.is_non_empty()
@@ -1356,8 +1266,6 @@ impl BuiltinFunctions {
         })))
     }
 
-    /// ConstantArrayType::sliceArray on required, ordered slots. Negative lengths first remove trailing slots,
-    /// then slice the shortened array with the original offset (including PHPStan's negative-offset semantics).
     fn slice_known(
         items: &[(ArrayKey, (bool, TUnion))],
         offset: i64,
@@ -1393,8 +1301,6 @@ impl BuiltinFunctions {
             offset.min(count)
         };
         let end = start.saturating_add(length).min(count);
-        // PHPStan reverses, reindexes, then reverses again for negative offsets. More than one reindexed key
-        // consequently has descending insertion order, which Mago's BTreeMap cannot encode. Defer, do not sort it.
         if offset < 0 && preserve != Some(true) && end - start > 1 {
             return None;
         }
@@ -1417,8 +1323,6 @@ impl BuiltinFunctions {
     }
 }
 
-/// RandomIntFunctionReturnTypeExtension. PHPStan deliberately uses the same bounds and implicit-never
-/// invalid-interval result before and after PHP 8; rand alone swaps reversed bounds.
 struct RandomInt;
 
 impl RandomInt {
@@ -1443,8 +1347,6 @@ impl RandomInt {
         } else {
             (Self::bounds(&min).0, Self::bounds(&max).1)
         };
-        // IntegerRangeType::fromInterval, including equal and machine-limit normalization that Mago's
-        // get_int_range does not perform. Do not turn invalid mt_rand/random_int bounds into a swapped range.
         Some(match (min, max) {
             (Some(min), Some(max)) if min > max => get_never(),
             (Some(min), Some(max)) if min == max => get_literal_int(min),
@@ -1453,8 +1355,6 @@ impl RandomInt {
             _ => get_int_range(min, max),
         })
     }
-    /// createRange iterates a top-level UnionType's members. A TemplateUnionType is such a union, but when
-    /// nested in rand's union with the other bound it is not itself an integer/range endpoint.
     fn bounds(ty: &TUnion) -> (Option<i64>, Option<i64>) {
         let ty = if let [TAtomic::GenericParameter(template)] = ty.types.as_ref()
             && template.constraint.types.len() > 1
@@ -1466,7 +1366,6 @@ impl RandomInt {
         (ty.get_minimum_int_value(), ty.get_maximum_int_value())
     }
 
-    /// PHPStan casts the argument types before extracting bounds, not just literal numeric expressions.
     fn to_integer(ty: &TUnion) -> TUnion {
         TUnion::from_vec(
             ty.types
@@ -1478,11 +1377,8 @@ impl RandomInt {
                             if template.constraint.is_int()
                                 && template.constraint.get_single_literal_int_value().is_none()
                             {
-                                // toInteger keeps TemplateIntegerType itself; createRange recognizes only
-                                // IntegerRangeType/ConstantIntegerType, not the template's narrower bound.
                                 TUnion::from_atomic(atomic.clone())
                             } else if template.constraint.is_bool() {
-                                // TemplateBooleanType inherits BooleanType, including for a literal bound.
                                 get_int_range(Some(0), Some(1))
                             } else {
                                 Self::to_integer(&template.constraint)
@@ -1502,7 +1398,6 @@ impl RandomInt {
                             }),
                         TAtomic::Scalar(TScalar::Float(value)) => {
                             value.get_literal_value().map_or_else(get_int, |value| {
-                                // PHP's float cast truncates and wraps modulo 2^64; Rust's `as i64` saturates instead.
                                 let value = value.trunc() % 18446744073709551616.0;
                                 let value = if value >= 9223372036854775808.0 {
                                     value - 18446744073709551616.0
@@ -1529,8 +1424,6 @@ impl RandomInt {
                                 get_int_range(Some(0), Some(1))
                             }
                         }
-                        // General numeric/string/mixed inputs cast to int. ErrorType from an invalid cast also
-                        // contributes an unbounded endpoint in createRange, rather than a fabricated literal 1.
                         _ => get_int(),
                     };
                     converted.types.into_owned()
@@ -1540,12 +1433,9 @@ impl RandomInt {
     }
 }
 
-/// PHPStan 2.3.5's ParseUrlFunctionDynamicReturnTypeExtension. A URL of constant strings, which upstream runs
-/// `parse_url()` on, keeps the functionMap return.
 struct ParseUrl;
 
 impl ParseUrl {
-    /// `$this->componentTypesPairedStrings` (or `...ForLowercaseString`) as optional keys of one shape.
     fn components_array(lowercase: bool) -> TAtomic {
         let string = Self::string(lowercase);
         let items = [
@@ -1613,7 +1503,6 @@ impl FunctionReturnTypeProvider for ParseUrl {
                 .all(|t| matches!(t, TAtomic::Scalar(TScalar::String(s)) if s.is_lowercase()));
         let component = match invocation.get_argument(1, &[b"component"]) {
             None => -1,
-            // `$componentType->isConstantValue()` and `toInteger()` a ConstantIntegerType
             Some(arg) => {
                 match context
                     .get_expression_type(arg)
@@ -1625,7 +1514,6 @@ impl FunctionReturnTypeProvider for ParseUrl {
                         _ => None,
                     }) {
                     Some(component) => component,
-                    // createAllComponentsReturnType()
                     None => {
                         return Some(TUnion::from_vec(
                             [
@@ -1658,17 +1546,13 @@ impl FunctionReturnTypeProvider for ParseUrl {
                     .chain(get_false().types.iter().cloned())
                     .collect(),
             ),
-            // PHP_URL_PORT
             2 => or_false_or_null(Self::port()),
-            // PHP_URL_SCHEME, PHP_URL_HOST, PHP_URL_USER, PHP_URL_PASS, PHP_URL_PATH, PHP_URL_QUERY, PHP_URL_FRAGMENT
             0 | 1 | 3..=7 => or_false_or_null(Self::string(lowercase)),
             _ => get_false(),
         })
     }
 }
 
-/// PHPStan 2.3.5's GetClassDynamicReturnTypeExtension for an object argument: `toGetClassResultType()`, each object's
-/// class-string, through Mago's GetClassProvider. Inside a trait, `$this`'s is a plain class-string (the stub's).
 struct GetClass;
 
 impl Provider for GetClass {
@@ -1700,7 +1584,6 @@ impl FunctionReturnTypeProvider for GetClass {
         {
             return None;
         }
-        // an object-bounded template's getClassStringType(): `class-string<T>`
         if let [TAtomic::GenericParameter(t)] = argument.types.as_ref()
             && let [bound @ TAtomic::Object(_)] = t.constraint.types.as_ref()
         {
@@ -1722,9 +1605,6 @@ impl FunctionReturnTypeProvider for GetClass {
     }
 }
 
-/// PHPStan 2.3.5's ClassImplementsFunctionReturnTypeExtension over the functions' reflected
-/// `array<string, class-string>|false`: an object has no `false`, an object or class-string with autoloading makes
-/// the union benevolent.
 struct ClassRelations;
 
 impl Provider for ClassRelations {
@@ -1778,7 +1658,6 @@ impl FunctionReturnTypeProvider for ClassRelations {
     }
 }
 
-/// The functions whose functionMap return type is a `__benevolent<…>` union.
 struct Benevolent;
 
 impl Provider for Benevolent {
@@ -1819,10 +1698,6 @@ impl FunctionReturnTypeProvider for Benevolent {
     }
 }
 
-/// ReplaceFunctionsDynamicReturnTypeExtension of a mixed subject: the functionMap return type as a benevolent union
-/// (`str_replace('a', '', $mixed)` is `(array<string>|string)`), and of a subject that is no array but not only
-/// strings (`class-string|false`) its string result. The functions whose return type is not a plain union
-/// (`preg_replace()`'s conditional, `strtr()`'s `string`) keep their stub's type.
 struct ReplaceOfMixed;
 
 impl Provider for ReplaceOfMixed {
@@ -1849,8 +1724,6 @@ impl FunctionReturnTypeProvider for ReplaceOfMixed {
         }?;
         let subject = context.get_expression_type(subject)?;
         if !subject.is_mixed() {
-            // A subject that is no array (`class-string|false`) has only the string result, as the stub gives a
-            // string subject (`TypeCombinator::intersect(new StringType(), $subject)`; `false` adds no array)
             let string = |t: &TAtomic| matches!(t, TAtomic::Scalar(s) if s.is_any_string());
             let no_array = name != "substr_replace"
                 && subject
@@ -1875,7 +1748,6 @@ impl FunctionReturnTypeProvider for ReplaceOfMixed {
     }
 }
 
-/// Closure method return types: `bind()`, `bindTo()`, and `fromCallable()`.
 struct ClosureMethods(Vec<u8>);
 
 impl Provider for ClosureMethods {
@@ -1912,7 +1784,6 @@ impl MethodReturnTypeProvider for ClosureMethods {
             let closure = context.get_expression_type(&self.receiver(invocation)?)?;
             (closure, invocation.get_argument(0, &[b"newThis"]))
         };
-        // Mago expands a closure alias when a variable holding it is read (see `to_phpstan()`)
         let [atom @ TAtomic::Callable(TCallable::Signature(signature))] = closure.types.as_ref()
         else {
             return None;
@@ -1939,8 +1810,6 @@ impl MethodReturnTypeProvider for ClosureMethods {
 }
 
 impl ClosureMethods {
-    /// Mago 1.59.0's ClosureFromCallableProvider (3ea59634580e5986c267d99e7fb3ccbf6ee26587), using 1.57's
-    /// existing callable cast and parameter-dependent signature APIs. Keep the signature, changing only its kind.
     fn from_callable(
         context: &ProviderContext<'_, '_, '_>,
         invocation: &InvocationInfo<'_, '_, '_>,
@@ -1950,7 +1819,6 @@ impl ClosureMethods {
         let codebase = context.codebase();
         let mut closures = Vec::with_capacity(callback_type.types.len());
         for atomic in callback_type.types.as_ref() {
-            // As upstream, one unresolved alternative keeps the declared Closure fallback for the whole call.
             let callable = cast_atomic_to_callable(atomic, codebase, None)?;
             let mut signature = match callable.as_ref() {
                 TCallable::Signature(signature) => signature.clone(),
@@ -1966,7 +1834,6 @@ impl ClosureMethods {
         Some(TUnion::from_vec(closures))
     }
 
-    /// `$closure` of `$closure->bindTo(…)`: from the call's start to the `->` before the method name.
     fn receiver(&self, invocation: &InvocationInfo<'_, '_, '_>) -> Option<Span> {
         let call = invocation.span();
         let arguments = invocation.inner().arguments_source.span();
@@ -1985,7 +1852,6 @@ impl ClosureMethods {
         ))
     }
 
-    /// `ClosureType::isStaticClosure()`: Mago's metadata has no static closures, its source does (`static fn`).
     fn is_static(
         &self,
         codebase: &CodebaseMetadata,

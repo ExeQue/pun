@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\LineEndingFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -28,8 +27,6 @@ impl Fixer for LineEndingFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let ending = self.whitespaces_config.get_line_ending();
-        // `\R` other than "\n" needs one of these bytes (\r, \v, \f, NEL as \x85 or \xC2\x85, U+2028/9 as \xE2..);
-        // without them replacing `\R` by "\n" is the identity.
         let only_lf = |c: &[u8]| {
             ending == "\n"
                 && !c

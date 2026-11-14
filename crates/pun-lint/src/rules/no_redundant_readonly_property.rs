@@ -1,11 +1,3 @@
-//! `lint/classes/no-redundant-readonly-property`, ported from Rector 2.8.4's
-//! `RemoveReadonlyPropertyVisibilityOnReadonlyClassRector` (rules/CodeQuality/Rector/Class_) with
-//! `VisibilityManipulator::removeReadonly`.
-//!
-//! In a `readonly` class every property is readonly, so `readonly` on a property or a promoted constructor parameter
-//! says nothing: it goes. A property or parameter left without a visibility becomes `public`, which it was. php-parser
-//! prints the changed modifiers again in its own order (`pModifiers`), which Pun does too.
-
 use mago_syntax::cst::{
     ClassLikeMember, HookedProperty, Modifier, Node, NodeKind, PlainProperty, Property, Sequence,
 };
@@ -22,7 +14,6 @@ impl Rule for NoRedundantReadonlyProperty {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::READONLY_CLASS
         80200
     }
 
@@ -47,7 +38,6 @@ impl Rule for NoRedundantReadonlyProperty {
         if !has_readonly(modifiers) {
             return;
         }
-        // Class_::getMethod('__construct'): the first method of that name, in any case.
         let constructor = members.iter().find_map(|m| match m {
             ClassLikeMember::Method(m) if m.name.value.eq_ignore_ascii_case(b"__construct") => {
                 Some(m)
@@ -57,7 +47,6 @@ impl Rule for NoRedundantReadonlyProperty {
         if let Some(constructor) = constructor {
             for param in &constructor.parameter_list.parameters {
                 if has_readonly(&param.modifiers) {
-                    // Param::isPromoted() after removing `readonly`: any modifier left, or hooks.
                     let promoted = param.modifiers.len() > 1 || param.hooks.is_some();
                     report(ctx, &param.modifiers, !promoted, out);
                 }
@@ -70,8 +59,6 @@ impl Rule for NoRedundantReadonlyProperty {
             let (Property::Plain(PlainProperty { modifiers, .. })
             | Property::Hooked(HookedProperty { modifiers, .. })) = property;
             if has_readonly(modifiers) {
-                // VisibilityManipulator::publicize: a property without `public`, `protected` or `private` is public
-                // and gets `public` written.
                 let visible = modifiers.iter().any(|m| {
                     matches!(
                         m,
@@ -88,7 +75,6 @@ fn has_readonly(modifiers: &Sequence<'_, Modifier<'_>>) -> bool {
     modifiers.iter().any(|m| matches!(m, Modifier::Readonly(_)))
 }
 
-/// The edit that prints `modifiers` again without `readonly`, with `public` added when `add_public`.
 fn report(
     ctx: &Context<'_>,
     modifiers: &Sequence<'_, Modifier<'_>>,
@@ -117,8 +103,6 @@ fn report(
     });
 }
 
-/// php-parser's `pModifiers` for the flags of `modifiers` without `readonly`: each modifier and a space, in its fixed
-/// order.
 pub(super) fn print_modifiers(modifiers: &Sequence<'_, Modifier<'_>>, add_public: bool) -> String {
     let has = |f: fn(&Modifier<'_>) -> bool| modifiers.iter().any(f);
     let order: [(&str, bool); 9] = [

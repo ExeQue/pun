@@ -1,5 +1,3 @@
-//! Decimal-string producers and the native lane, against PHPStan 2.3.1.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -108,7 +106,6 @@ fn native_integer_strings_do_not_use_phpdoc_refinements_or_change_full_results()
                 Position::new((offset + 4) as u32),
                 Position::new((offset + expression.len()) as u32),
             );
-            // Adapt only each atomic literal's display syntax and PHPStan's union order.
             let mut members: Vec<_> = enabled
                 .get_native_expression_type(&span)
                 .unwrap()
@@ -242,7 +239,6 @@ fn decimal_string_metadata_and_intersections_match_the_public_type_api() {
             "{row}"
         );
     }
-    // Assertion refinement retains the inverse decimal accessory under an independent numeric guarantee.
     assert_eq!(
         description(&strings[2].as_numeric(false)),
         rows[6]["describe"].as_str().unwrap()

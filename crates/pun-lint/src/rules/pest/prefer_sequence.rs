@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-sequence`, ported from pest-plugin-rector's `UseSequenceMatcherRector`: consecutive
-//! `expect($items[0])->toBe('a'); expect($items[1])->toBe('b');` become
-//! `expect($items)->sequence(fn($e) => $e->toBe('a'), fn($e) => $e->toBe('b'));`.
-
 use mago_syntax::cst::{Expression, Literal, MethodCall, Node, NodeKind};
 use pun_problem::{Safety, Span};
 
@@ -85,8 +81,6 @@ impl Rule for PreferSequence {
     }
 }
 
-/// `collectSequenceGroup`: from `start`, the statements `expect($var[0])...`, `expect($var[1])...` and so on, with
-/// the same `$var`; at least two.
 fn sequence_group<'a>(
     ctx: &Context<'_>,
     stmts: &[&'a mago_syntax::cst::Statement<'a>],
@@ -125,8 +119,6 @@ fn sequence_group<'a>(
     Some((base?, chains))
 }
 
-/// The method calls of a chain from the top down, and whether the expression under them is a property fetch (else it
-/// is the `expect()` call, so `rebuildChainOnParam` never refuses a chain here).
 fn bottom<'a>(call: &'a MethodCall<'a>) -> (Vec<&'a MethodCall<'a>>, bool) {
     let mut calls = vec![call];
     let mut current = call.object;
@@ -137,8 +129,6 @@ fn bottom<'a>(call: &'a MethodCall<'a>) -> (Vec<&'a MethodCall<'a>>, bool) {
     (calls, property_fetch(current).is_some())
 }
 
-/// `rebuildChainOnParam` printed: the chain's method calls on `$e`, or on `$e->not` when a property fetch is under
-/// them.
 fn on_param(ctx: &Context<'_>, calls: &[&MethodCall<'_>], property: bool, indent: usize) -> String {
     let mut out = String::from(if property { "$e->not" } else { "$e" });
     for c in calls.iter().rev() {

@@ -1,7 +1,3 @@
-//! `lint/types/add-var-phpdoc-from-constructor-param`, ported from Rector 2.8.4's
-//! `DocblockVarFromParamDocblockInConstructorRector` (rules/TypeDeclarationDocblocks/Rector/Class_): a property
-//! declared `array` that the constructor assigns gets the assigned value's array type as its `@var`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_phpstan::types::Type;
 
@@ -46,11 +42,9 @@ impl Rule for AddVarPhpdocFromConstructorParam {
             }
             let target = DocTarget::of(ctx, property.start);
             let mut info = target.info(ctx.source);
-            // @var tag already given
             if is_useful_array_tag(info.var_tag().map(|t| &t.ty)) {
                 continue;
             }
-            // `ConstructorAssignedTypeResolver::resolve()`: the type of the first `$this->property = ...`
             let assigned: Option<&Expression<'_>> = assignments(Node::Method(constructor))
                 .into_iter()
                 .find(|a| this_property(a.lhs) == Some(property.names[0]))

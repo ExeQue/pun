@@ -1,9 +1,3 @@
-//! `pun x` (and `punx`, the same binary under that name): run a command from a Composer package without adding it
-//! to the project. Each package and constraint installs into a directory of its own in Pun's cache, as a small
-//! project with a pun.toml and a pun.lock, so tools never share dependencies with each other or with the project.
-//! Later runs reuse the install; a run more than a day after the last resolve resolves again, to pick up a new
-//! release, and falls back to the install it has when that fails.
-
 use crate::install::{InstallArgs, project};
 use crate::update::{Plan, update_and_install};
 use anyhow::{Context, Result, bail};
@@ -47,7 +41,6 @@ const FRESH: Duration = Duration::from_hours(24);
 
 pub(crate) fn run(a: XArgs) -> Result<u8> {
     let (spec, rest) = a.args.split_first().expect("clap requires the package");
-    // Neither name can be a package: a package has a slash, and no alias is either.
     match spec.as_str() {
         "list" => return list(),
         "clean" => return clean(rest),
@@ -56,7 +49,6 @@ pub(crate) fn run(a: XArgs) -> Result<u8> {
     let (name, constraint, alias_command) = package(spec)?;
     let dir = tool_dir(&name, &constraint)?;
     std::fs::create_dir_all(&dir).with_context(|| format!("can't create {}", dir.display()))?;
-    // Two runs of one tool at once would install into the same vendor/; the second waits for the first.
     let guard = std::fs::File::create(dir.join(".lock"))
         .with_context(|| format!("can't write in {}", dir.display()))?;
     guard.lock().context("can't lock the tool's directory")?;
@@ -227,12 +219,10 @@ fn clean(specs: &[String]) -> Result<u8> {
         if !wanted.is_empty() && !wanted.iter().any(matches) {
             continue;
         }
-        // Wait for a run that is installing into this directory.
         if let Ok(guard) = std::fs::File::open(dir.join(".lock")) {
             let _ = guard.lock();
         }
         std::fs::remove_dir_all(&dir).with_context(|| format!("can't remove {}", dir.display()))?;
-        // Drop the package's and vendor's directories once they are empty.
         let package_dir = dir.parent();
         let _ = package_dir.map(std::fs::remove_dir);
         let _ = package_dir.and_then(Path::parent).map(std::fs::remove_dir);
@@ -275,7 +265,6 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
         .and_then(|mut p| update_and_install(&mut p, Plan::default(), &args, Instant::now()));
     match result {
         Ok(0) => {
-            // Count the day from this resolve even when it changed nothing.
             let _ = std::fs::File::options()
                 .append(true)
                 .open(&lock)
@@ -287,7 +276,6 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
             Ok(())
         }
         result => {
-            // Nothing was installed, so leave no directory behind.
             let _ = std::fs::remove_dir_all(dir);
             let _ = dir.parent().map(std::fs::remove_dir);
             match result {

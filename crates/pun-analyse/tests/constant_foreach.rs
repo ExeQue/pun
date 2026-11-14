@@ -1,5 +1,3 @@
-//! PHPStan's sequential constant-array foreach scopes through public analysis.
-
 use std::path::Path;
 
 #[test]

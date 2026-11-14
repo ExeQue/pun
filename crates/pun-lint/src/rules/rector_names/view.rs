@@ -1,9 +1,3 @@
-//! php-parser's view of the names in a file, as Rector sees them once PHPStan's parser (php-parser's `NameResolver`,
-//! `replaceNodes` and `preserveOriginalNames` on) and Rector's decorating visitors (`NameNodeVisitor`,
-//! `ClassConstFetchNodeVisitor`, `ContextNodeVisitor`) ran: every `Name` node with what it resolves to and the
-//! attributes Rector reads; the `use` imports of each namespace (`FileNode::getUsesAndGroupUses()`); the class-likes;
-//! and the doc comments with the nodes php-parser gives them to.
-
 use std::collections::HashMap;
 
 use mago_syntax::cst::*;
@@ -12,7 +6,6 @@ use pun_problem::Span;
 use crate::rules::rector_stmts::tokens;
 use crate::syntax::node_span;
 
-/// What a name stands for: php-parser's `Use_::TYPE_*` as the resolver uses it.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Kind {
     Class,
@@ -20,35 +13,22 @@ pub(crate) enum Kind {
     Constant,
 }
 
-/// One `Name` node.
 #[derive(Clone, Debug)]
 pub(crate) struct PhpName {
     pub span: Span,
-    /// The name as written, a leading `\` included (the original name and its token's text).
     pub written: String,
     pub kind: Kind,
-    /// The `FullyQualified` node the resolver put in its place, without the leading `\`; `None` where it stays a
-    /// `Name` (`self`, `parent`, `static`, and an unqualified function or constant name inside a namespace).
     pub resolved: Option<String>,
-    /// `IS_NEW_INSTANCE_NAME`.
     pub new: bool,
-    /// `IS_STATICCALL_CLASS_NAME`.
     pub static_call: bool,
-    /// `IS_CLASS_EXTENDS` (a class's parent, not an interface's).
     pub extends: bool,
-    /// `IS_CLASS_IMPLEMENT`: a class's interfaces, and an enum's (where Rector sets nothing).
     pub implements: bool,
-    /// `CLASS_CONST_FETCH_NAME`: the constant `Name::CONSTANT` fetches.
     pub class_const_fetch: Option<String>,
-    /// The namespace the name is in (`Scope::getNamespace()`).
     pub namespace: Option<String>,
-    /// The class-like the name is in (`Scope::getClassReflection()`), by name; `Some("")` in an anonymous class.
     pub class: Option<String>,
 }
 
 impl PhpName {
-    /// `Name::toString()` of the original name: the written name without its leading `\`, or without the
-    /// `namespace\` of a `Name\Relative` (whose parts leave it out).
     pub(crate) fn original(&self) -> &str {
         let written = self.written.trim_start_matches('\\');
         match written.get(..10) {
@@ -60,22 +40,16 @@ impl PhpName {
     }
 }
 
-/// One item of a `use` statement.
 #[derive(Clone, Debug)]
 pub(crate) struct UseItemView {
-    /// The item's name as written, without a leading `\` (`UseItem::$name`).
     pub name: String,
     pub name_span: Span,
-    /// The alias, when written (`UseItem::$alias`).
     pub alias: Option<String>,
-    /// The item's own type in a mixed group (`use A\{function f, B}`), else the statement's.
     pub kind: Kind,
-    /// The item with its `as` alias, as it is removed from a list.
     pub span: Span,
 }
 
 impl UseItemView {
-    /// `UseItem::getAlias()`: the alias, or the last part of the name.
     pub(crate) fn alias_or_last(&self) -> &str {
         match &self.alias {
             Some(alias) => alias,
@@ -83,25 +57,20 @@ impl UseItemView {
         }
     }
 
-    /// `$useUse->name->getLast()`.
     pub(crate) fn last(&self) -> &str {
         self.name.rsplit('\\').next().unwrap_or_default()
     }
 }
 
-/// A `use` statement: php-parser's `Use_`, or `GroupUse` (`prefix` set).
 #[derive(Clone, Debug)]
 pub(crate) struct UseView {
     pub span: Span,
-    /// The statement's type (`TYPE_UNKNOWN` for a mixed group is `None`).
     pub kind: Option<Kind>,
-    /// A group's prefix, without a leading `\`.
     pub prefix: Option<String>,
     pub items: Vec<UseItemView>,
 }
 
 impl UseView {
-    /// `UseImportsResolver::resolvePrefix()`.
     pub(crate) fn prefix(&self) -> String {
         match &self.prefix {
             Some(prefix) => format!("{prefix}\\"),
@@ -109,125 +78,84 @@ impl UseView {
         }
     }
 
-    /// The fully qualified name of item `i` (`$prefix . $useUse->name`).
     pub(crate) fn full_name(&self, i: usize) -> String {
         format!("{}{}", self.prefix(), self.items[i].name)
     }
 }
 
-/// A namespace statement, or the file itself where it has none: where imports are placed, read and removed.
 #[derive(Clone, Debug)]
 pub(crate) struct Root {
-    /// The namespace's name, `None` for the file and for `namespace { }`.
     pub name: Option<String>,
-    /// Whether this is a `namespace` statement (`Namespace_`), not the file.
     pub is_namespace: bool,
-    /// Its `use` statements, in order (`Use_` and `GroupUse`).
     pub uses: Vec<UseView>,
-    /// Where the namespace's statements start and end (after its `;` or `{`, before its `}` or the next namespace).
     pub inner: Span,
-    /// Its statements as php-parser keeps them (`stmts`).
     pub stmts: Vec<StmtView>,
-    /// The `namespace` statement, `None` for the file.
     pub header: Option<Header>,
 }
 
-/// A `namespace` statement's own parts.
 #[derive(Clone, Debug)]
 pub(crate) struct Header {
-    /// The statement, from `namespace` to its last statement or `}`.
     pub span: Span,
-    /// Where php-parser's printer starts the statement list: after the name (after `namespace` without one).
     pub list_pos: usize,
     pub braced: bool,
 }
 
-/// What a statement of a list is, as far as the name handling tells them apart.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum StmtKind {
-    /// A `use` statement: its index in the root's `uses`.
     Use(usize),
     Declare,
     Namespace,
-    /// The `Nop` php-parser adds for comments after the last statement.
     Nop,
-    /// `InlineHTML`: the text after `?>`.
     Inline,
     Other,
 }
 
-/// A statement of a list.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct StmtView {
     pub span: Span,
-    /// Where its comments start (its start without any).
     pub comment_start: usize,
     pub kind: StmtKind,
 }
 
-/// A class, interface, trait or enum declared in the file.
 #[derive(Clone, Debug)]
 pub(crate) struct ClassLikeView {
-    /// The fully qualified name, without a leading `\`.
     pub name: String,
-    /// The short name as declared.
     pub short: String,
-    /// Whether it is a `class` (`Class_`).
     pub is_class: bool,
-    /// The interfaces of a class, as written (`implements`), each with its span.
     pub implements: Vec<(Span, String)>,
-    /// The span of the `implements` clause's types, from the first to the last.
     pub implements_span: Option<Span>,
-    /// The root it is declared in.
     pub root: usize,
-    /// Where it starts.
     pub start: usize,
 }
 
-/// The node kinds a doc comment is given to (php-parser's `comments` attribute of every node that starts at the token
-/// after the comment), as far as Rector's visitors tell them apart.
 #[derive(Clone, Copy, Default, Debug)]
 pub(crate) struct Owners {
-    /// A `Stmt` (statements and class members).
     pub stmt: bool,
-    /// A `Param`.
     pub param: bool,
-    /// One of the node types `RenameClassRector` reads docs of: `Property`, `FunctionLike`, `Expression`,
-    /// `ClassLike`, `If_`.
     pub renamed: bool,
 }
 
-/// A doc comment (`/** ... */`) and the nodes it belongs to.
 #[derive(Clone, Debug)]
 pub(crate) struct DocView {
     pub span: Span,
     pub owners: Owners,
-    /// Where the node it belongs to starts.
     pub node_start: usize,
-    /// Whether it is the node's last doc comment (`getDocComment()`).
     pub is_last: bool,
-    /// The namespace it is in.
     pub namespace: Option<String>,
-    /// The class-like whose member (or itself) it documents, by name.
     pub class: Option<String>,
 }
 
-/// The names, imports, class-likes and doc comments of a file.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct FileView {
     pub names: Vec<PhpName>,
     pub roots: Vec<Root>,
     pub class_likes: Vec<ClassLikeView>,
     pub docs: Vec<DocView>,
-    /// The number of `namespace` statements.
     pub namespaces: usize,
-    /// Whether the file has inline HTML (`InlineHTML`), outside the `<?php` tag's newline.
     pub inline_html: bool,
 }
 
 impl FileView {
-    /// The root whose imports Rector reads (`FileNode::getUsesAndGroupUses()`): the namespace when the file has exactly
-    /// one, else the file.
     pub(crate) fn uses_root(&self) -> &Root {
         match self.namespaces {
             1 => self.roots.iter().find(|r| r.is_namespace).unwrap(),
@@ -235,12 +163,10 @@ impl FileView {
         }
     }
 
-    /// The root new imports go to (`FileNode::resolvePlacementNamespace()`): the first namespace, else the file.
     pub(crate) fn placement_root(&self) -> usize {
         self.roots.iter().position(|r| r.is_namespace).unwrap_or(0)
     }
 
-    /// Read `program` (of `source`).
     pub(crate) fn of(source: &str, program: &Program<'_>) -> FileView {
         let mut walk = Walk {
             view: FileView::default(),
@@ -281,7 +207,6 @@ impl FileView {
             };
             let inner = view.roots[root].inner;
             let inner = match &namespace.body {
-                // up to the next token: the comments after the last statement belong to the list
                 NamespaceBody::Implicit(_) => Span::new(
                     inner.start,
                     all.iter()
@@ -296,8 +221,6 @@ impl FileView {
     }
 }
 
-/// The alias tables of php-parser's `NameContext`: class aliases lower-cased, function aliases lower-cased, constant
-/// aliases as written.
 #[derive(Default)]
 struct Aliases {
     class: HashMap<String, String>,
@@ -309,15 +232,11 @@ struct Walk {
     view: FileView,
     namespace: Option<String>,
     aliases: Aliases,
-    /// The enclosing class-likes, innermost last (`""` for an anonymous class).
     classes: Vec<String>,
-    /// The doc comments before each token start, with where the token before them ends.
     comments: HashMap<usize, (usize, Vec<Span>)>,
     root: usize,
 }
 
-/// For each token that comments come before, its start: where the token before the comments ends, and the doc
-/// comments among them.
 fn comment_runs(source: &str) -> HashMap<usize, (usize, Vec<Span>)> {
     let mut runs = HashMap::new();
     let mut docs: Vec<Span> = Vec::new();
@@ -355,11 +274,7 @@ fn text(id: &Identifier<'_>) -> String {
 }
 
 impl Walk {
-    /// php-parser's `NameContext::getResolvedName()` (`$type` the kind) of the name written `written`.
     fn resolve(&self, written: &str, kind: Kind) -> Option<String> {
-        // (php-parser does not resolve the special class names: Mago reads `self`, `parent` and `static` as their own
-        // nodes, never as a name)
-        // fully qualified names are already resolved
         if let Some(fq) = written.strip_prefix('\\') {
             return Some(fq.to_string());
         }
@@ -367,14 +282,11 @@ impl Walk {
             Some(ns) => format!("{ns}\\{rest}"),
             None => rest.to_string(),
         };
-        // `namespace\Foo`: relative to the current namespace
         if written.len() > 10 && written[..10].eq_ignore_ascii_case("namespace\\") {
             return Some(concat(&self.namespace, &written[10..]));
         }
-        // Try to resolve aliases
         match written.split_once('\\') {
             Some((first, rest)) => {
-                // resolve aliases for qualified names, always against class alias table
                 if let Some(alias) = self.aliases.class.get(&first.to_ascii_lowercase()) {
                     return Some(format!("{alias}\\{rest}"));
                 }
@@ -389,16 +301,13 @@ impl Walk {
                     return Some(alias.clone());
                 }
                 if kind != Kind::Class {
-                    // outside of a namespace unaliased unqualified is same as fully qualified
                     return match self.namespace {
                         None => Some(written.to_string()),
-                        // Cannot resolve statically
                         Some(_) => None,
                     };
                 }
             }
         }
-        // if no alias exists prepend current namespace
         Some(concat(&self.namespace, written))
     }
 
@@ -421,7 +330,6 @@ impl Walk {
         self.view.names.last_mut().unwrap()
     }
 
-    /// A class name in an expression's place (`new X`, `X::y()`), if the expression is one.
     fn class_expression(&mut self, expr: &Expression<'_>) -> Option<&mut PhpName> {
         match expr {
             Expression::Identifier(id) => Some(self.name(id, Kind::Class)),
@@ -490,7 +398,6 @@ impl Walk {
                     .collect(),
             },
         };
-        // `NameResolver::addAlias()`
         for i in 0..view.items.len() {
             let name = view.full_name(i);
             let item = &view.items[i];
@@ -560,8 +467,6 @@ impl Walk {
         name
     }
 
-    /// The names of an `implements` clause, kept as the class's list when `of_class` (an enum's too are interfaces
-    /// only, which Rector does not check: Pun keeps the code valid).
     fn implements(&mut self, implements: &Implements<'_>, of_class: bool) {
         let mut list = Vec::new();
         for id in &implements.types {
@@ -625,7 +530,6 @@ impl Walk {
             Node::Namespace(namespace) => self.start_namespace(namespace),
             Node::Use(r#use) => {
                 self.uses(r#use);
-                // the imported names are no `Name` nodes Rector reads
                 return;
             }
             Node::Class(class) => {
@@ -693,7 +597,6 @@ impl Walk {
             Node::TraitUseAbsoluteMethodReference(reference) => {
                 self.name(&reference.trait_name, Kind::Class);
             }
-            // (Mago gives the names of a `TraitUseAdaptation`'s precedence, never the precedence node itself)
             Node::TraitUseAdaptation(mago_syntax::cst::TraitUseAdaptation::Precedence(
                 adaptation,
             )) => {
@@ -758,8 +661,6 @@ impl Walk {
     }
 }
 
-/// The statements of a list as php-parser keeps them: without the open and close tags, `;` and the line break Mago
-/// reads as inline HTML after `?>`; with a `Nop` for comments after the last one (up to `inner.end`).
 fn stmt_list<'a, 'b: 'a>(
     source: &str,
     all: &[crate::rules::php_parser::Token],
@@ -782,7 +683,6 @@ fn stmt_list<'a, 'b: 'a>(
             _ => StmtKind::Other,
         };
         let span = node_span(statement);
-        // `InlineHTML` takes no comments (and may come before any open tag)
         let comment_start = match statement {
             Statement::Inline(_) => span.start,
             _ => {
@@ -814,8 +714,6 @@ fn stmt_list<'a, 'b: 'a>(
     list
 }
 
-/// Whether Mago's inline statement is php-parser's `InlineHTML`: not the line break after `?>`, which php-parser's
-/// close tag takes.
 fn is_inline_html(inline: &Inline<'_>) -> bool {
     !(matches!(inline.value, b"\n" | b"\r\n") && inline.span.start.offset > 0)
 }

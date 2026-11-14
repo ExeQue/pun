@@ -1,7 +1,3 @@
-//! `lint/security/no-global`, ported from Mago 1.57.0's linter rule `no-global` (rule/safety/no_global.rs).
-//!
-//! The `global` keyword and the `$GLOBALS` variable bring in global state; each use is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

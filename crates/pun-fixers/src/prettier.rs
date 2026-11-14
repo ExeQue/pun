@@ -1,4 +1,3 @@
-//! Pint's `App\Support\Prettier`: the package probe and Blade formatting share their first Node start.
 use anyhow::{Result, bail};
 use pun_tokens::php_compat::strpos;
 use std::cell::RefCell;
@@ -35,8 +34,6 @@ impl Drop for Worker {
     }
 }
 
-// Only the unclaimed probe worker is shared. The first formatting thread takes ownership, so formatting remains
-// parallel instead of serializing all Blade files behind a process-wide mutex.
 static PROBED_WORKER: Mutex<Option<Worker>> = Mutex::new(None);
 
 fn probed_worker() -> std::sync::MutexGuard<'static, Option<Worker>> {
@@ -49,8 +46,6 @@ thread_local! {
     static WORKER_PROCESS: RefCell<Option<Worker>> = const { RefCell::new(None) };
 }
 
-/// EnsurePrettierIsConfigured's package versions, from a preload in the worker's own Node start. A missing package
-/// is `None`, an unnamed manifest is `Some("")`; failure to start Node or read the probe is outer `None`.
 pub fn probe(packages: &[&str]) -> Option<Vec<Option<String>>> {
     stop();
     probe_with(start(Some(packages)).ok()?, WORKER_IDLE_TIMEOUT)
@@ -77,14 +72,10 @@ fn probe_with(worker: Worker, idle_timeout: Duration) -> Option<Vec<Option<Strin
     probes
 }
 
-/// Stop the probe's worker if no formatting thread claimed it. Safe to call when no probe ran.
 pub fn stop() {
     drop(probed_worker().take());
 }
 
-/// The scripts and config are content-addressed, resolved once per process and written via unique temporary
-/// filenames and rename, so concurrent writers never expose partial files. They live in the user's own cache
-/// directory: a shared temporary directory would let another user of the machine put a script there first.
 fn resources() -> Result<PathBuf> {
     static RESOURCES: OnceLock<Result<PathBuf, String>> = OnceLock::new();
     RESOURCES
@@ -104,8 +95,6 @@ fn resources() -> Result<PathBuf> {
         .map_err(anyhow::Error::msg)
 }
 
-/// Where the scripts go: `pun/<name>` in the user's cache directory, or without one (no `HOME`) a directory in
-/// the temporary directory that this process creates for itself alone.
 fn scripts_dir(
     xdg: Option<OsString>,
     home: Option<OsString>,
@@ -115,12 +104,10 @@ fn scripts_dir(
         return Ok(cache.join("pun").join(name));
     }
     let dir = std::env::temp_dir().join(format!("pun-{name}-{}", std::process::id()));
-    // `create` fails on a directory that is already there, so nobody else's files are ever used.
     std::os::unix::fs::DirBuilderExt::mode(&mut std::fs::DirBuilder::new(), 0o700).create(&dir)?;
     Ok(dir)
 }
 
-/// The XDG cache directory: `$XDG_CACHE_HOME` when it is absolute, else `$HOME/.cache`.
 fn cache_dir(xdg: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
     let absolute = |dir: OsString| Some(PathBuf::from(dir)).filter(|dir| dir.is_absolute());
     xdg.and_then(absolute)
@@ -133,7 +120,6 @@ fn resources_in(dir: &Path) -> Result<PathBuf> {
         ("probe.cjs", PROBE),
         ("worker.cjs", WORKER),
     ];
-    // Compared by content: a file someone edited or left half-written is replaced, never run.
     let current = |(name, body): &(&str, &str)| {
         std::fs::read(dir.join(name)).is_ok_and(|found| found == body.as_bytes())
     };
@@ -151,7 +137,7 @@ fn resources_in(dir: &Path) -> Result<PathBuf> {
 }
 
 fn start(probe: Option<&[&str]>) -> Result<Worker> {
-    let project_root = std::env::current_dir()?; // Project::path() is getcwd()
+    let project_root = std::env::current_dir()?;
     let dir = resources()?;
     let mut node = Command::new(runtime_binary(&project_root));
     if let Some(packages) = probe {
@@ -166,7 +152,6 @@ fn start(probe: Option<&[&str]>) -> Result<Worker> {
     spawn(node)
 }
 
-/// `NodePackageManager::detect($projectRoot)->runtimeBinary()`: Bun for a project with a Bun lock file, else Node.
 fn runtime_binary(project_root: &Path) -> &'static str {
     match project_root.join("bun.lock").exists() || project_root.join("bun.lockb").exists() {
         true => "bun",
@@ -224,7 +209,6 @@ fn spawn(mut command: Command) -> Result<Worker> {
 const START: &[u8] = b"[PINT_PRETTIER_WORKER_START]";
 const END: &[u8] = b"[PINT_PRETTIER_WORKER_END]";
 
-/// Format with the probe's worker or this thread's own worker, starting a fresh one after a worker failure.
 pub fn format(path: &str, content: &[u8]) -> Result<Vec<u8>> {
     WORKER_PROCESS.with(|w| {
         let mut guard = w.borrow_mut();
@@ -239,7 +223,6 @@ pub fn format(path: &str, content: &[u8]) -> Result<Vec<u8>> {
     })
 }
 
-/// One request to the started worker in `guard`; a failure tears it down (the next file starts a fresh one).
 fn format_with(
     guard: &mut Option<Worker>,
     path: &str,
@@ -247,14 +230,12 @@ fn format_with(
     idle_timeout: Duration,
 ) -> Result<Vec<u8>> {
     let worker = guard.as_mut().unwrap();
-    // json_encode(..., JSON_INVALID_UTF8_SUBSTITUTE)
     let request = serde_json::json!({ "path": path, "content": String::from_utf8_lossy(content) });
     let _ = writeln!(worker.stdin, "{request}").and_then(|()| worker.stdin.flush());
 
     let mut formatted: Vec<u8> = Vec::new();
     let failure = loop {
         if strpos(&formatted, END, 0).is_some() {
-            // Str::after(START)->before(END), after checking both markers are present.
             let Some(start) = strpos(&formatted, START, 0) else {
                 bail!("Laravel Pint's Prettier worker did not return a valid response.");
             };
@@ -294,7 +275,6 @@ mod tests {
         spawn(sh).unwrap()
     }
 
-    /// Pint's Prettier::format() failures: silence, exiting, and error output.
     #[test]
     fn worker_failures() {
         for (script, idle, message) in [
@@ -317,7 +297,6 @@ mod tests {
         }
     }
 
-    /// Preserve Str::after(START)->before(END), including a stray earlier end marker.
     #[test]
     fn worker_replies() {
         let mut guard = Some(sh("printf 'x[PINT_PRETTIER_WORKER_END]'; cat >/dev/null"));
@@ -361,7 +340,6 @@ mod tests {
 
     #[test]
     fn resources_are_shared() {
-        // Under the user's cache directory, never the shared temporary one.
         let dir = resources().unwrap();
         let cache = cache_dir(std::env::var_os("XDG_CACHE_HOME"), std::env::var_os("HOME"));
         assert_eq!(dir.parent().unwrap(), cache.unwrap().join("pun"));
@@ -379,7 +357,6 @@ mod tests {
             Some("/home/u/.cache".into())
         );
         assert_eq!(cache_dir(None, None), None);
-        // Without a home: a 0700 directory of this process's own, and never one that already exists.
         let name = format!("test-private-{}", std::process::id());
         let private = scripts_dir(None, None, &name).unwrap();
         assert!(private.starts_with(std::env::temp_dir()));
@@ -402,7 +379,6 @@ mod tests {
         ] {
             assert_eq!(std::fs::read_to_string(dir.join(name)).unwrap(), body);
         }
-        // A script someone else put there is replaced, not run.
         std::fs::write(dir.join("worker.cjs"), "planted").unwrap();
         resources_in(&dir).unwrap();
         assert_eq!(

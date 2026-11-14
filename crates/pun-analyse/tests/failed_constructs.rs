@@ -1,5 +1,3 @@
-//! Failed construct inputs keep their primary diagnostics without a second type error.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run_mago};
@@ -48,8 +46,6 @@ fn failed_construct_reads_preserve_evaluation_and_independent_errors() {
         })
         .map(|error| (error["line"].as_i64().unwrap(), "invalid-argument"))
         .collect();
-    // Preserve Mago's existing exit int|string contract, independently of PHPStan's exit checks.
-    // Null, false, and unconstrained mixed do not satisfy that contract.
     want.extend([
         (35, "null-argument"),
         (40, "false-argument"),

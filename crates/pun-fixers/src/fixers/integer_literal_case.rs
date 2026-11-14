@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Casing\IntegerLiteralCaseFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -26,7 +25,6 @@ impl Fixer for IntegerLiteralCaseFixer {
                 continue;
             }
             let content = tokens[index].get_content();
-            // Preg::replaceCallback('#^0([boxBOX])([0-9a-fA-F_]+)$#', ...); T_LNUMBER never holds a "\n".
             let matches = content.len() > 2
                 && content[0] == b'0'
                 && b"boxBOX".contains(&content[1])

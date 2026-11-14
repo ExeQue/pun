@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitTestCaseStaticMethodCallsFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, resolve};
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -11,7 +10,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// `METHODS`, in upstream's order (the order of the invalid-key message).
 const METHODS: &[&str] = &[
     "anything",
     "arrayHasKey",
@@ -356,7 +354,6 @@ impl CallType {
         }
     }
 
-    /// `$conversionMap[$callType]`.
     fn conversion(self) -> (Token, Token) {
         match self {
             CallType::This => (
@@ -400,9 +397,8 @@ impl Fixer for PhpUnitTestCaseStaticMethodCallsFixer {
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
         let name = self.name();
         let c = resolve(name, options, &["call_type", "methods", "target"])?;
-        // `Future::getV4OrV3(CALL_TYPE_THIS, CALL_TYPE_STATIC)` and `(VERSION_NEWEST, VERSION_10_0)`: v3 defaults.
         let call_type = c.string("call_type", "static", &["this", "self", "static"])?;
-        c.check_types("methods", &["string[]"])?; // setAllowedTypes(['array<string, string>'])
+        c.check_types("methods", &["string[]"])?;
         let mut methods = HashMap::new();
         for (method, value) in c.php_array("methods").unwrap_or_default() {
             let known = matches!(method, PhpKey::Str(m) if METHODS.contains(&m));
@@ -424,7 +420,6 @@ impl Fixer for PhpUnitTestCaseStaticMethodCallsFixer {
             methods.insert(method, value_type);
         }
         let target = c.string("target", "10.0", &["10.0", "11.0", "newest"])?;
-        // `configurePostNormalisation`.
         let mut dynamic_methods: Vec<&str> = Vec::new();
         if target_fulfills(&target, "11.0") {
             dynamic_methods.extend([
@@ -474,7 +469,6 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
     fn apply_php_unit_class_fix(&self, tokens: &mut Tokens, start_index: usize, end_index: usize) {
         let mut index = start_index;
         while index < end_index {
-            // skip anonymous classes
             if tokens[index].is_kind(T_CLASS) {
                 index = find_end_of_next_block(tokens, index) + 1;
                 continue;
@@ -482,12 +476,10 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
             let mut call_type = self.call_type;
             if tokens[index].is_kind(T_FUNCTION) {
                 let analyzer = TokensAnalyzer::new(tokens);
-                // skip lambda
                 if analyzer.is_lambda(index) {
                     index = find_end_of_next_block(tokens, index) + 1;
                     continue;
                 }
-                // do not change `self` to `this` in static methods
                 if call_type == CallType::This && analyzer.get_method_attributes(index).static_ {
                     index = find_end_of_next_block(tokens, index) + 1;
                     continue;
@@ -516,7 +508,6 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
             let operator_index = tokens.get_prev_meaningful_token(index).unwrap();
             let reference_index = tokens.get_prev_meaningful_token(operator_index).unwrap();
             let (operator, reference) = call_type.conversion();
-            // `needsConversion`
             if FunctionsAnalyzer::new().is_the_same_class_call(tokens, index)
                 && !tokens[reference_index].equals(&reference, false)
             {
@@ -528,7 +519,6 @@ impl PhpUnitTestCaseStaticMethodCallsFixer {
     }
 }
 
-/// `findEndOfNextBlock`.
 fn find_end_of_next_block(tokens: &Tokens, index: usize) -> usize {
     let next_index = tokens
         .get_next_token_of_kind(index, &[";".into(), "{".into()], true)

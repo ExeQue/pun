@@ -1,5 +1,3 @@
-//! Real-edge scope joins and foreach projection, against PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -77,8 +75,6 @@ fn plugin_null_context_specifications_match_phpstan() {
 
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/scope-joins");
     let source = std::fs::read_to_string(root.join("null-specifications.php")).unwrap();
-    // Exercise the plugin contract without also receiving the declaration's same assertion.
-    // Spaces preserve the independently captured oracle's expression spans and line numbers.
     let annotation = "/** @phpstan-assert string $value */";
     let code = source.replace(annotation, &" ".repeat(annotation.len()));
     let file = File::new(

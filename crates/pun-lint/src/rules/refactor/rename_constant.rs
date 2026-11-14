@@ -1,10 +1,3 @@
-//! `lint/refactor/rename-constant`, ported from Rector 2.8.4's `RenameConstantRector`
-//! (rules/Renaming/Rector/ConstFetch).
-//!
-//! Options: a map of old constant names to new ones, `{ MYSQL_ASSOC = "MYSQLI_ASSOC" }`; both must be plain constant
-//! names (`RectorAssert::constantName`). A constant fetch whose name, as PHPStan's name resolution leaves it (see
-//! [`super::name_of`]), is an old one compared without case gets the new name as written.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -22,7 +15,6 @@ impl Rule for RenameConstant {
         "lint/refactor/rename-constant"
     }
 
-    /// Rector runs the rule once per file; its fix could match again on what it wrote.
     fn once(&self) -> bool {
         true
     }
@@ -55,7 +47,6 @@ impl Rule for RenameConstant {
         let Some((old, new)) = self.renames.iter().find(|(old, _)| is_name(&resolved, old)) else {
             return;
         };
-        // Renaming a constant to its own name would only change its case, again in every fix round.
         if resolved == *new {
             return;
         }

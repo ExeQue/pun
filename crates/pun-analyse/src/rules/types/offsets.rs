@@ -1,9 +1,3 @@
-//! Level 3's OffsetAccessAssignmentRule, OffsetAccessAssignOpRule (`offsetAssign.dimType`) and
-//! OffsetAccessValueAssignmentRule (`offsetAssign.valueType`): a write to an offset its holder takes no such offset or
-//! value for. The `setOffsetValueType()` they ask is an ErrorType for a string (an offset not an int, a new offset, a
-//! value without a string), an `ArrayAccess` whose `offsetSet()` takes no such offset or value, and the types that are
-//! not offset-accessible.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::symbols;
@@ -18,7 +12,6 @@ use super::properties::with_args;
 
 pub(super) const IDENTIFIERS: &[&str] = &["offsetAssign.dimType", "offsetAssign.valueType"];
 
-/// Mago's `never` argument of a template nothing resolved (`new SplObjectStorage()`) as PHPStan's bound.
 fn bounds(c: &Checker, t: Type) -> Type {
     match t {
         Type::Object(name, args, exact) if args.iter().any(|a| matches!(a, Type::Never(_))) => {
@@ -45,7 +38,6 @@ fn bounds(c: &Checker, t: Type) -> Type {
     }
 }
 
-/// `$a[$k]` or `$a[]`: the holder and the offset.
 fn dim<'e, 'arena>(
     e: &'e Expression<'arena>,
 ) -> Option<(&'e Expression<'arena>, Option<&'e Expression<'arena>>)> {
@@ -56,7 +48,6 @@ fn dim<'e, 'arena>(
     }
 }
 
-/// The types the rules read: each holder and offset of the written chain, the value and the result.
 pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
     let Expression::Assignment(a) = e else { return };
     let mut at = a.lhs;
@@ -70,7 +61,6 @@ pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
     }
 }
 
-/// `ObjectType::isOffsetAccessible()` of a class: an `ArrayAccess`, or one of PHP's classes with offsets.
 fn class_accessible(t: &Type) -> Tri {
     const EXTRA: [&str; 11] = [
         "DOMNamedNodeMap",
@@ -104,7 +94,6 @@ fn class_accessible(t: &Type) -> Tri {
     }
 }
 
-/// `isOffsetAccessible()`.
 pub(in super::super) fn accessible(t: &Type) -> Tri {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => {
@@ -124,7 +113,6 @@ pub(in super::super) fn accessible(t: &Type) -> Tri {
                 a.or(b)
             }
         }),
-        // TemplateMixedType's parent is plain mixed, even when its bound carries exclusions.
         Type::Template(tt) if matches!(&tt.bound, Type::SubtractedMixed { .. }) => Tri::Maybe,
         Type::Template(tt) => accessible(&tt.bound),
         Type::SubtractedMixed { excluded, .. } => {
@@ -160,7 +148,6 @@ pub(in super::super) fn accessible(t: &Type) -> Tri {
     }
 }
 
-/// The offset and value types of the object's `offsetSet()`.
 pub(in super::super) fn offset_set(c: &Checker, t: &Type) -> Option<(Type, Type)> {
     let names = t.object_class_names();
     let name = names.first()?;
@@ -177,8 +164,6 @@ pub(in super::super) fn offset_set(c: &Checker, t: &Type) -> Option<(Type, Type)
     let method = c.codebase.get_method_by_id(&id)?;
     let declaring = c.codebase.get_class_like(id.get_class_name().as_bytes())?;
     let scope = format!("class {}", c.reflected_name(declaring.name.as_bytes()));
-    // a built-in class's parameters and templates as PHPStan's stubs give them (Mago's ArrayAccess takes no null
-    // offset)
     let class = symbols::class(&c.reflected_name(declaring.name.as_bytes()));
     let names: Vec<String> = match class {
         Some(k) => k.templates.iter().map(|t| t.name.clone()).collect(),
@@ -202,7 +187,6 @@ pub(in super::super) fn offset_set(c: &Checker, t: &Type) -> Option<(Type, Type)
                 .map_or_else(mixed, |t| c.to_phpstan(&t.type_union)),
         };
         let same = c.reflected_name(declaring.name.as_bytes()) == c.reflected_name(name.as_bytes());
-        // ponytail: an ancestor's templates are their bounds, not the arguments the holder gives them
         Some(
             if same {
                 with_args(&ty, &scope, &names, args)
@@ -215,7 +199,6 @@ pub(in super::super) fn offset_set(c: &Checker, t: &Type) -> Option<(Type, Type)
     Some((param(0)?, param(1)?))
 }
 
-/// `$t->setOffsetValueType($offset, $value) instanceof ErrorType`.
 fn set_fails(c: &Checker, t: &Type, offset: Option<&Type>, value: &Type) -> bool {
     let string = |offset: Option<&Type>| {
         pun_phpstan::types::cast_is_error(
@@ -228,11 +211,8 @@ fn set_fails(c: &Checker, t: &Type, offset: Option<&Type>, value: &Type) -> bool
     };
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => ts.iter().any(|i| set_fails(c, i, offset, value)),
-        // TypeCombinator::intersect() drops an ErrorType member (a mixed)
         Type::Intersection(ts) => ts.iter().all(|i| set_fails(c, i, offset, value)),
         Type::Template(tt) => set_fails(c, &tt.bound, offset, value),
-        // (the rules set a mixed value or a mixed offset, so neither a constant string's own case nor a list's
-        // non-zero offset, whose array is fine, is an error)
         _ if t.is_string().yes() => string(offset),
         Type::ConstArray(a) => offset.is_none() && a.next_auto_indexes.is_empty(),
         Type::Object(..) | Type::Static(..) | Type::This(_) | Type::EnumCase(..) => {
@@ -252,7 +232,6 @@ fn set_fails(c: &Checker, t: &Type, offset: Option<&Type>, value: &Type) -> bool
     }
 }
 
-/// `$t->hasOffsetValueType($offset)->no()`.
 fn has_no_offset(c: &Checker, t: &Type, offset: &Type) -> bool {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => ts.iter().all(|i| has_no_offset(c, i, offset)),
@@ -271,9 +250,6 @@ fn has_no_offset(c: &Checker, t: &Type, offset: &Type) -> bool {
     }
 }
 
-/// OffsetAccessAssignmentRule (every offset of the written chain, `$a[1][2] = ...`) and OffsetAccessAssignOpRule
-/// (the written offset of `$a[1] .= ...`).
-/// A variable an `isset()` of its offset made an intersection with HasOffsetType, whose writes do not fail.
 fn has_offset(c: &Checker, holder: &Expression) -> bool {
     let Expression::Variable(Variable::Direct(v)) = unparen(holder) else {
         return false;
@@ -349,7 +325,6 @@ pub(in super::super) fn assignment(c: &mut Checker, a: &Assignment) {
             at = holder;
         }
     }
-    // OffsetAccessValueAssignmentRule
     if has_offset(c, holder) {
         return;
     }

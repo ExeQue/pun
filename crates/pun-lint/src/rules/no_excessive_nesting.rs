@@ -1,11 +1,3 @@
-//! `lint/complexity/no-excessive-nesting`, ported from Mago 1.57.0's `excessive-nesting`
-//! (mago-linter src/rule/maintainability/excessive_nesting.rs).
-//!
-//! Counts block nesting from the file root and reports the first block deeper than `threshold` (default 7) on each
-//! path, without looking inside it. With `function-like-threshold` set, each function, method, closure and property
-//! hook body is also counted on its own, from zero for the body's statements, against that threshold: a body is
-//! walked once for each count, as Mago does, so one block can be reported twice.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax::walker::{MutWalker, walk_block_mut};

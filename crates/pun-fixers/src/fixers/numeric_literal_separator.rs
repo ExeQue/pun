@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\NumericLiteralSeparatorFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -57,7 +56,6 @@ impl Fixer for NumericLiteralSeparatorFixer {
     }
 }
 
-/// `str_contains($v, '-') ? 1 : 0`: a negative value needs an offset.
 fn negative_offset(v: &[u8]) -> usize {
     usize::from(v.contains(&b'-'))
 }
@@ -72,7 +70,6 @@ impl NumericLiteralSeparatorFixer {
         if self.override_existing {
             value.retain(|&c| c != b'_');
         } else if value.contains(&b'_') {
-            // Keep already underscored literals untouched.
             return value;
         }
         let lower = strtolower(&value);
@@ -86,7 +83,6 @@ impl NumericLiteralSeparatorFixer {
             return insert_every_right(value, 3, 2);
         }
         if lower.starts_with(b"0") && !lower.contains(&b'.') {
-            // Octal notation prior PHP 8.1 but still valid
             return insert_every_right(value, 3, 1);
         }
 
@@ -119,7 +115,6 @@ impl NumericLiteralSeparatorFixer {
     }
 }
 
-/// `insertEveryRight`: `substr_replace($value, '_', $position, 0)` from the right, every `length` characters.
 fn insert_every_right(mut value: Vec<u8>, length: usize, offset: usize) -> Vec<u8> {
     let mut position = length;
     while (position as isize) < value.len() as isize - offset as isize {
@@ -129,7 +124,6 @@ fn insert_every_right(mut value: Vec<u8>, length: usize, offset: usize) -> Vec<u
     value
 }
 
-/// `insertEveryLeft`: `substr_replace($value, '_', $position, $offset)` from the left, every `length` characters.
 fn insert_every_left(mut value: Vec<u8>, length: usize, offset: usize) -> Vec<u8> {
     let mut position = length;
     while position < value.len() {

@@ -20,7 +20,6 @@ fn php_helpers() {
         }
     };
     for c in f["regex"].as_array().unwrap() {
-        // ponytail (php.rs): the D modifier is not emulated.
         if s(&c["pattern"]).ends_with("/D") {
             continue;
         }
@@ -74,7 +73,6 @@ fn php_helpers() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Literal-array PHP configs (baselines) as `require` returns them; anything beyond literals is refused.
 #[test]
 fn php_config_files() {
     let dir = format!("{}/tests/fixtures/phpfile", env!("CARGO_MANIFEST_DIR"));

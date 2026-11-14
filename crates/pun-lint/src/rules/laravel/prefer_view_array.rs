@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-view-array`, ported from Mago 1.57.0's `prefer-view-array` (mago-linter
-//! src/rule/best_practices/prefer_view_array.rs).
-//!
-//! `view(...)->with(...)` is reported: the data goes in `view()`'s array argument. The object must be the call
-//! itself, not in parentheses, and the function the global `view` as mago-names resolves it. There is no fix.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 
 use super::{is_name, member_name};

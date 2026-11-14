@@ -1,13 +1,3 @@
-//! `lint/phpunit/prefer-inline-create-stub`, ported from rector-phpunit's `InlineStubPropertyToCreateStubMethodCallRector`
-//! (rules/CodeQuality/Rector/Class_), with `StubPropertyResolver`, `PropertyFetchUsageFinder` and
-//! `PropertyFetchFinder::findLocalPropertyFetchesByName`.
-//!
-//! In a test class with a `setUp()` method, a property declared alone with a `Stub` type, that `setUp()` assigns
-//! `createStub(X::class)` to, and that is otherwise only passed as an argument of calls or put in arrays, goes with its
-//! assignments in `setUp()`. In each method, a single fetch of it becomes `$this->createStub(\X::class)`; several
-//! become a variable (`$nameStub`, or `$name` when the name ends in `stub`) assigned that call before the first
-//! statement that uses it.
-
 use mago_syntax::cst::{
     Access, Argument, ArrayElement, Call, ClassLikeMember, ClassLikeMemberSelector, Expression,
     Hint, MethodBody, Node, NodeKind, PartialArgument, Property,
@@ -23,7 +13,6 @@ use crate::rules::rector_stmts::{assign, block_list, expression, first_comment, 
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::STUB`.
 const STUB: &str = "PHPUnit\\Framework\\MockObject\\Stub";
 
 pub struct PreferInlineCreateStub;
@@ -70,7 +59,6 @@ impl Rule for PreferInlineCreateStub {
                 MethodBody::Abstract(_) => None,
             })
             .collect();
-        // resolveFromClassMethod: each property's last createStub() class, in the order of its first
         let mut stubs: Vec<(&[u8], Option<String>)> = Vec::new();
         for statement in lists[set_up].iter().flat_map(|l| l.stmts.iter()) {
             let Some(assign) = expression(statement).and_then(assign) else {
@@ -114,7 +102,6 @@ impl Rule for PreferInlineCreateStub {
             let ClassLikeMember::Property(Property::Plain(property)) = member else {
                 continue;
             };
-            // matchSoleStubPropertyItem
             if property.items.len() != 1
                 || !property
                     .hint
@@ -127,20 +114,16 @@ impl Rule for PreferInlineCreateStub {
             let Some((_, class)) = stubs.iter().find(|(n, _)| *n == name) else {
                 continue;
             };
-            // are there more uses than simple passing to a new instance?
             if local_property_fetches(ctx, &scope, members.iter(), name).saturating_sub(1)
                 != in_call_likes_and_arrays(&method_roots, name)
             {
                 continue;
             }
-            // Rector fails on the file when the class is no string
             let Some(class) = class else {
                 return;
             };
             first.get_or_insert(node_span(member));
-            // 1. remove property
             removed_members[at] = true;
-            // 2. remove property assign in setUp()
             let list = lists[set_up].as_ref().unwrap();
             for (i, statement) in list.stmts.iter().enumerate() {
                 if expression(statement).and_then(assign).is_some_and(|a| {
@@ -149,7 +132,6 @@ impl Rule for PreferInlineCreateStub {
                     removed_stmts[set_up][i] = true;
                 }
             }
-            // 3. replace property fetch calls, with createStub()
             let create_stub = format!("$this->createStub(\\{class}::class)");
             for m in 0..methods.len() {
                 let Some(list) = &lists[m] else {
@@ -166,7 +148,6 @@ impl Rule for PreferInlineCreateStub {
                 if all.is_empty() {
                     continue;
                 }
-                // single use → inline directly
                 let fetches: Vec<Span> = all
                     .iter()
                     .filter(|f| {
@@ -179,7 +160,6 @@ impl Rule for PreferInlineCreateStub {
                     edits.push(Edit::new(fetches[0], create_stub.clone()));
                     continue;
                 }
-                // multiple uses → assign to a local variable above first use and reuse it
                 let variable = if String::from_utf8_lossy(name)
                     .to_lowercase()
                     .ends_with("stub")
@@ -233,8 +213,6 @@ impl Rule for PreferInlineCreateStub {
     }
 }
 
-/// `isObjectType($property->type, new ObjectType(Stub))` for a declared type. Rector matches no intersection type,
-/// with or without `null` (checked against Rector's output).
 fn is_stub(ctx: &Context<'_>, scope: &[Node<'_, '_>], hint: &Hint<'_>) -> bool {
     match hint {
         Hint::Identifier(id) => is_a(ctx, &resolve(scope, id), &[STUB]),
@@ -256,7 +234,6 @@ fn is_stub(ctx: &Context<'_>, scope: &[Node<'_, '_>], hint: &Hint<'_>) -> bool {
     }
 }
 
-/// The name of a `PropertyFetch` (`$any->name`, not `?->`) with an identifier name.
 fn property_fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     match expr {
         Expression::Access(Access::Property(a)) => match &a.property {
@@ -267,8 +244,6 @@ fn property_fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `PropertyFetchUsageFinder::findInCallLikes` and `findInArrays`: the arguments of the calls and `new`s, and the
-/// array items' values, that are a fetch of `name`, outside closures.
 fn in_call_likes_and_arrays(roots: &[Node<'_, '_>], name: &[u8]) -> usize {
     let is_fetch =
         |e: &Expression<'_>| property_fetch_name(e).is_some_and(|p| p.eq_ignore_ascii_case(name));
@@ -320,7 +295,6 @@ fn in_call_likes_and_arrays(roots: &[Node<'_, '_>], name: &[u8]) -> usize {
     count
 }
 
-/// An array item's value.
 fn element_value<'a>(element: &'a ArrayElement<'a>) -> Option<&'a Expression<'a>> {
     match element {
         ArrayElement::KeyValue(kv) => Some(kv.value),
@@ -330,7 +304,6 @@ fn element_value<'a>(element: &'a ArrayElement<'a>) -> Option<&'a Expression<'a>
     }
 }
 
-/// The spans of the fetches of `name` (`$any->name`) under `roots`, closures included.
 fn fetches(roots: &[Node<'_, '_>], name: &[u8]) -> Vec<Span> {
     let mut found = Vec::new();
     let mut stack: Vec<Node<'_, '_>> = roots.iter().rev().copied().collect();
@@ -347,7 +320,6 @@ fn fetches(roots: &[Node<'_, '_>], name: &[u8]) -> Vec<Span> {
     found
 }
 
-/// Whether a variable named `name` is under `node`, closures included.
 fn uses_variable(node: Node<'_, '_>, name: &[u8]) -> bool {
     let mut stack = vec![node];
     while let Some(node) = stack.pop() {

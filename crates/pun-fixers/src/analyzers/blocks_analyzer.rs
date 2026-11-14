@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\BlocksAnalyzer`.
 use pun_tokens::{BlockType, Token, Tokens};
 
 pub(crate) struct BlocksAnalyzer;
@@ -19,7 +18,6 @@ impl BlocksAnalyzer {
         close_index == tokens.find_block_end(block_type, open_index)
     }
 
-    /// First block type (in `getBlockEdgeDefinitions` order) whose start the token equals.
     fn get_block_type(token: &Token) -> Option<BlockType> {
         BlockType::ALL
             .into_iter()

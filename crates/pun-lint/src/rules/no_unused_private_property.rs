@@ -1,19 +1,3 @@
-//! `lint/dead-code/no-unused-private-property`, ported from Rector 2.8.4's `RemoveUnusedPrivatePropertyRector`
-//! (rules/DeadCode/Rector/Property), with `PropertyWriteonlyAnalyzer`, `PropertyFetchFinder` and the
-//! `AssignedToNodeVisitor` marks it reads.
-//!
-//! A private, non-static property declared alone, without attributes or a Doctrine annotation, goes when the class
-//! never reads it: every fetch of it is the target of a plain assignment. The assignments go with it: an assignment
-//! statement is removed (its value too), `return $this->p = value;` returns the value, and an argument
-//! `f($this->p = value)` passes the value. A class that uses a trait, has a `loadMetadata()` method, fetches a
-//! property by a dynamic name or calls `get_object_vars($this)` is skipped.
-//!
-//! Rector reads a fetch as the class's own by its type. Pun reads `$this->p`, `$this?->p`, `self::$p` and the like as
-//! the class's, `$this->q->p` as another object's when `q` is declared with a class type, and any other fetch of that
-//! name (`$other->p`, a fetch in a nested class) as a possible read that keeps the property. Rector also removes a
-//! property whose assignment it cannot remove (`if ($this->p = f())`), leaving an assignment to an undeclared
-//! property; Pun keeps such a property.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -105,7 +89,6 @@ impl Rule for NoUnusedPrivateProperty {
             return;
         }
         let mut edits = remove_members(source, members, left_brace, right_brace, &removed);
-        // The statements to remove, grouped by the list that holds them.
         let mut lists: Vec<(List, Vec<usize>)> = Vec::new();
         for write in writes {
             match write {
@@ -145,7 +128,6 @@ impl Rule for NoUnusedPrivateProperty {
     }
 }
 
-/// `shouldSkipClass`: a `loadMetadata()` method, a trait, a fetch by a dynamic name or `get_object_vars($this)`.
 fn skip_class(node: Node<'_, '_>, members: &Sequence<'_, ClassLikeMember<'_>>) -> bool {
     members.iter().any(|m| match m {
         ClassLikeMember::TraitUse(_) => true,
@@ -154,7 +136,6 @@ fn skip_class(node: Node<'_, '_>, members: &Sequence<'_, ClassLikeMember<'_>>) -
     }) || dynamic(node)
 }
 
-/// `hasClassDynamicPropertyNames`.
 fn dynamic(node: Node<'_, '_>) -> bool {
     let selector_dynamic =
         |s: &ClassLikeMemberSelector<'_>| !matches!(s, ClassLikeMemberSelector::Identifier(_));
@@ -175,8 +156,6 @@ fn dynamic(node: Node<'_, '_>) -> bool {
     found
 }
 
-/// The declared properties with a class type other than the class itself: `$this->q->p` fetches another object's
-/// `p` when `q` is one of them.
 fn typed_properties<'a>(
     members: &'a Sequence<'a, ClassLikeMember<'a>>,
     own: Option<&[u8]>,
@@ -201,7 +180,6 @@ fn typed_properties<'a>(
     out
 }
 
-/// `shouldSkipProperty`'s checks; the property's name (without `$`) when it may go.
 fn removable_property<'a>(
     source: &str,
     path: &[Node<'_, '_>],
@@ -234,8 +212,6 @@ fn removable_property<'a>(
     Some(&item.variable().name[1..])
 }
 
-/// Whether a doc comment has a tag Rector reads as a Doctrine annotation (`DoctrineAnnotationDecorator`): a tag whose
-/// name, resolved through the `use` imports, is a namespaced class, or `@Target`.
 fn has_doctrine_tag(path: &[Node<'_, '_>], doc: &str) -> bool {
     doc.lines().any(|line| {
         let line = line
@@ -257,7 +233,6 @@ fn has_doctrine_tag(path: &[Node<'_, '_>], doc: &str) -> bool {
     })
 }
 
-/// An assignment that goes with the property: a statement of a list, or an assignment whose value stays.
 enum Write<'a> {
     Statement(usize, List<'a>),
     Value(&'a Assignment<'a>),
@@ -272,7 +247,6 @@ struct Fetches<'t, 'a> {
 }
 
 impl<'a> Fetches<'_, 'a> {
-    /// Walks the node `stack` ends with; `nested` inside a nested class.
     fn walk(&mut self, stack: &mut Vec<Node<'a, 'a>>, nested: bool) {
         if self.read {
             return;
@@ -301,7 +275,6 @@ impl<'a> Fetches<'_, 'a> {
                 if nested || !is_this(a.object) {
                     self.read |= !self.other_object(a.object) || nested;
                 } else {
-                    // `$this?->p = ...` is not an assignment target.
                     self.read = true;
                 }
                 return;
@@ -328,7 +301,6 @@ impl<'a> Fetches<'_, 'a> {
         matches!(selector, ClassLikeMemberSelector::Identifier(id) if id.value.eq_ignore_ascii_case(self.name))
     }
 
-    /// Whether the object of a fetch is another class's object: `$this->q` with `q` declared with another class type.
     fn other_object(&self, object: &Expression<'_>) -> bool {
         match unparenthesize(object) {
             Expression::Access(Access::Property(q)) => {
@@ -339,8 +311,6 @@ impl<'a> Fetches<'_, 'a> {
         }
     }
 
-    /// A fetch of the class's property, at the end of `stack`: a read unless it is the target of a plain assignment
-    /// (not part of a chain) that Pun can remove.
     fn local(&mut self, stack: &[Node<'a, 'a>]) {
         match self.write(stack) {
             Some(write) => self.writes.push(write),
@@ -350,7 +320,6 @@ impl<'a> Fetches<'_, 'a> {
 
     fn write(&self, stack: &[Node<'a, 'a>]) -> Option<Write<'a>> {
         let fetch = node_span(stack.last()?);
-        // The nodes above the fetch, without Mago's wrappers.
         let above: Vec<(usize, Node<'a, 'a>)> = stack[..stack.len() - 1]
             .iter()
             .copied()

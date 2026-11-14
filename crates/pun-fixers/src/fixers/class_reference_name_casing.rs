@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Casing\ClassReferenceNameCasingFixer`.
 use pun_tokens::NamespaceAnalysis;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
 use pun_tokens::NamespacesAnalyzer;
@@ -10,8 +9,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::LazyLock;
 
-/// Internal classes of the oracle's PHP (`get_declared_classes()` filtered by `ReflectionClass::isInternal`). Regenerate:
-/// `php -r '$c=[];foreach(get_declared_classes() as $x){if((new ReflectionClass($x))->isInternal())$c[]=$x;} sort($c); echo implode("\n",$c),"\n";'`
 static CLASS_NAMES: LazyLock<HashMap<Vec<u8>, &'static str>> = LazyLock::new(|| {
     include_str!("../analyzers/php_internal_classes.txt")
         .lines()
@@ -22,7 +19,7 @@ static CLASS_NAMES: LazyLock<HashMap<Vec<u8>, &'static str>> = LazyLock::new(|| 
 const NOT_BEFORE_KINDS: [Kind; 13] = [
     CT_USE_TRAIT,
     T_AS,
-    T_CASE, // PHP 8.1 trait enum-case
+    T_CASE,
     T_CLASS,
     T_CONST,
     T_DOUBLE_ARROW,

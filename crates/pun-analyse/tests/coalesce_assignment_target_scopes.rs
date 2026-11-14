@@ -1,5 +1,3 @@
-//! Coalesce's assignment scope applies to target chains, not index or right-hand-side reads.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

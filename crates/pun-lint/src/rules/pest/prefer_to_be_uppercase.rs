@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-be-uppercase`, ported from pest-plugin-rector's `UseToBeUppercaseRector`:
-//! `expect(strtoupper($value) === $value)->toBeTrue()` (either way round) becomes `expect($value)->toBeUppercase()`
-//! when `$value` is known to be a string.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

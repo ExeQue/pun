@@ -1,20 +1,3 @@
-//! `lint/dead-code/no-unused-test-method-param`, ported from Rector 2.8.4's
-//! `RemoveTestsOverriddenPrivateMethodParameterRector` (rules/DeadCode/Rector/ClassMethod), with
-//! `OverriddenParameterResolver` (rules/DeadCode/NodeCollector) and `PrivateMethodParamRemover`
-//! (rules/DeadCode/NodeManipulator).
-//!
-//! In a test class, a parameter of a private method (not the constructor) whose first mention in the body is a plain
-//! assignment to it, `$param = ...;`, as a statement of its own with no other mention of the variable, is never read:
-//! it goes, with its `@param` tag and the matching argument of every call to the method from the class's methods. A
-//! by-reference, variadic or promoted parameter stays, and so does every parameter of a method that uses a variable
-//! variable or calls `compact()`, `extract()`, `func_get_arg()`, `func_get_args()`, `func_num_args()` or
-//! `get_defined_vars()`.
-//!
-//! A caller is a method call or static call whose receiver PHPStan types as the class (`$this`, `self`, `static`,
-//! the class's name, or a value of the class or a subclass). A caller that takes the method as a first-class callable,
-//! unpacks its arguments or passes a named argument for a parameter that stays keeps everything as it is; a
-//! `self::name(...)` or `static::name(...)` callable is no caller (PHPStan 2.3 gives its class name no scope).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
@@ -50,7 +33,6 @@ impl Rule for NoUnusedTestMethodParam {
             return;
         };
         let (members, left_brace) = (class.members, class.left_brace);
-        // a cheap look first: a private method with a parameter
         let candidate = |m: &Method<'_>| {
             is_private(m)
                 && !m.name.value.eq_ignore_ascii_case(b"__construct")
@@ -85,8 +67,6 @@ impl Rule for NoUnusedTestMethodParam {
             let mut edits = callers.clone();
             edits.extend(remove_params(ctx, method, from, &removed));
             let mut edits = merge(edits);
-            // a caller inside the method, which is printed anew without its parameters: the callers' arguments go
-            // first, and the parameters in the next fix round, where no caller passes them
             if edits.windows(2).any(|w| w[0].span.end > w[1].span.start) {
                 edits = merge(callers);
             }
@@ -103,7 +83,6 @@ impl Rule for NoUnusedTestMethodParam {
     }
 }
 
-/// `OverriddenParameterResolver::resolve`, as a flag for each parameter.
 fn overridden_parameters(method: &Method<'_>) -> Vec<bool> {
     let params: Vec<&FunctionLikeParameter<'_>> = method.parameter_list.parameters.iter().collect();
     let none = vec![false; params.len()];
@@ -128,8 +107,6 @@ fn overridden_parameters(method: &Method<'_>) -> Vec<bool> {
         .collect()
 }
 
-/// `isOverriddenBeforeFirstUse`: the first statement that mentions the variable mentions it once, as the variable a
-/// plain assignment statement writes.
 fn is_overridden_before_first_use(stmts: &[&Statement<'_>], name: &[u8]) -> bool {
     for stmt in stmts {
         let found = variables_named(Node::Statement(stmt), name);
@@ -155,8 +132,6 @@ fn is_overridden_before_first_use(stmts: &[&Statement<'_>], name: &[u8]) -> bool
     false
 }
 
-/// The spans of php-parser's `Variable` nodes named `name` (with its `$`) in `node`: not a property's name in a
-/// declaration nor in a static property fetch, which php-parser keeps as identifiers.
 fn variables_named(node: Node<'_, '_>, name: &[u8]) -> Vec<Span> {
     let mut out = Vec::new();
     walk(node, &mut |n, path| {
@@ -180,7 +155,6 @@ fn variables_named(node: Node<'_, '_>, name: &[u8]) -> Vec<Span> {
     out
 }
 
-/// `hasIndirectVariableUsage`: a variable variable, or a call of a function that reads variables by name.
 fn has_indirect_variable_usage(node: Node<'_, '_>) -> bool {
     const NAMES: [&[u8]; 6] = [
         b"compact",
@@ -213,13 +187,11 @@ fn has_indirect_variable_usage(node: Node<'_, '_>) -> bool {
     found
 }
 
-/// A caller of the method: a call with its arguments, or a first-class callable.
 enum Caller<'a> {
     Call(&'a ArgumentList<'a>),
     Callable,
 }
 
-/// `removeCallerArgs`: the edits removing the callers' arguments, or `None` when a caller keeps everything.
 fn caller_edits(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -241,8 +213,6 @@ fn caller_edits(
                     (c.class, &c.method, Caller::Call(&c.argument_list), true)
                 }
                 Node::MethodPartialApplication(c) => (c.object, &c.method, Caller::Callable, false),
-                // PHPStan 2.3 gives the `self`/`static` of `self::name(...)` no scope (only the virtual
-                // `StaticMethodCallableNode` gets one), so `isObjectType()` fails and Rector finds no caller there.
                 Node::StaticMethodPartialApplication(c)
                     if matches!(c.class, Expression::Self_(_) | Expression::Static(_)) =>
                 {
@@ -292,8 +262,6 @@ fn caller_edits(
     Some(edits)
 }
 
-/// `isObjectType($receiver, new ObjectType($className))`: the receiver is the class, or a value of the class or a
-/// subclass.
 fn is_class(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -317,8 +285,6 @@ fn is_class(
     is_of_class(facts, receiver, name)
 }
 
-/// Whether PHPStan's type of `expr` is an object of the class `name` or a subclass, every part of it but `null` and
-/// `false` (`isMatchingUnionType`).
 fn is_of_class(facts: &Facts, expr: &Expression<'_>, name: &[u8]) -> bool {
     let Some(t) = type_of(facts, expr) else {
         return false;

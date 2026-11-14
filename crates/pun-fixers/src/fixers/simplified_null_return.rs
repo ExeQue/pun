@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ReturnNotation\SimplifiedNullReturnFixer`.
 use pun_format::Fixer;
 use pun_tokens::php_compat::{ltrim_chars, rtrim_chars, strtolower};
 use pun_tokens::{Kind::*, Proto, Tokens};

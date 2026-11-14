@@ -1,8 +1,3 @@
-//! Port of `PhpCsFixer\DocBlock`: DocBlock, Line, Annotation, Tag, TagComparator, ShortDescription, TypeExpression.
-//!
-//! Upstream shares `Line` objects between a DocBlock and the annotations/tags built from it, so editing an
-//! annotation edits the docblock; here lines are `Rc<RefCell<Line>>` for the same aliasing.
-
 mod annotation;
 mod line;
 #[macro_use]
@@ -168,7 +163,6 @@ impl DocBlock {
     }
 }
 
-/// `getSingleLineDocBlockEntry`: the line without `*/`, the opening `/**` or a leading `*`, trimmed.
 fn single_line_doc_block_entry(line: &[u8]) -> Vec<u8> {
     let line = str_replace(b"*/", b"", line);
     let line = trim(&line);
@@ -178,8 +172,6 @@ fn single_line_doc_block_entry(line: &[u8]) -> Vec<u8> {
     trim(line).to_vec()
 }
 
-/// `preg_split('/([^\n\r]+\R*)/', ..., NO_EMPTY | DELIM_CAPTURE)` for ASCII content not starting with CR/LF:
-/// each piece is a run without CR/LF (VT and FF included) plus the run of CR, LF, VT and FF after it.
 fn split_lines_ascii(content: &[u8]) -> Option<Vec<Vec<u8>>> {
     if !content.is_ascii() || matches!(content.first(), Some(b'\n' | b'\r')) {
         return None;

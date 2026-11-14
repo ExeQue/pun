@@ -88,7 +88,6 @@ fn run(linter: &Linter, dir: &str) {
             "{name}: format(lint --fix)"
         );
         if input != expected {
-            // The rule did the work, not the formatter.
             assert_ne!(
                 format(&pipeline, &input),
                 format(&pipeline, &expected),
@@ -103,7 +102,6 @@ fn run(linter: &Linter, dir: &str) {
 
 #[test]
 fn combined_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &Linter::new(vec![Box::new(PreferCompoundAssignment)], 80400),
         "CombinedAssignRector/Fixture",
@@ -112,18 +110,15 @@ fn combined_assign() {
 
 #[test]
 fn and_assigns_to_separate_lines() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoAndAssignment)], 80400);
     run(&linter, "AndAssignsToSeparateLinesRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "AndAssignsToSeparateLinesRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "AndAssignsToSeparateLinesRector/Pun");
 }
 
 #[test]
 fn array_key_exists_ternary_then_value_to_coalescing() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferNullCoalesce)], 80400);
     run(
         &linter,
@@ -138,29 +133,24 @@ fn array_key_exists_ternary_then_value_to_coalescing() {
 
 #[test]
 fn change_array_push_to_array_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferArrayAppend)], 80400);
     run(&linter, "ChangeArrayPushToArrayAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ChangeArrayPushToArrayAssignRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "ChangeArrayPushToArrayAssignRector/Pun");
 }
 
 #[test]
 fn negated_ands_to_positive_ors() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoNegatedAnd)], 80400);
     run(&linter, "NegatedAndsToPositiveOrsRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "NegatedAndsToPositiveOrsRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "NegatedAndsToPositiveOrsRector/Pun");
 }
 
 #[test]
 fn new_array_item_concat_assign_to_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoConcatAssignNewItem)], 80400);
     run(&linter, "NewArrayItemConcatAssignToAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -169,7 +159,6 @@ fn new_array_item_concat_assign_to_assign() {
 
 #[test]
 fn replace_constant_boolean_not() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoNegatedBooleanLiteral)], 80400);
     run(&linter, "ReplaceConstantBooleanNotRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -178,18 +167,15 @@ fn replace_constant_boolean_not() {
 
 #[test]
 fn simplify_de_morgan_binary() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoNegatedGroup)], 80400);
     run(&linter, "SimplifyDeMorganBinaryRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyDeMorganBinaryRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "SimplifyDeMorganBinaryRector/Pun");
 }
 
 #[test]
 fn simplify_empty_array_check() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferEmptyArrayCompare)], 80400);
     run(&linter, "SimplifyEmptyArrayCheckRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -198,7 +184,6 @@ fn simplify_empty_array_check() {
 
 #[test]
 fn simplify_func_get_args_count() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferFuncNumArgs)], 80400);
     run(&linter, "SimplifyFuncGetArgsCountRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -207,18 +192,15 @@ fn simplify_func_get_args_count() {
 
 #[test]
 fn simplify_in_array_values() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoUselessArrayValues)], 80400);
     run(&linter, "SimplifyInArrayValuesRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyInArrayValuesRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "SimplifyInArrayValuesRector/Pun");
 }
 
 #[test]
 fn simplify_tautology_ternary() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoTautologyTernary)], 80400);
     run(&linter, "SimplifyTautologyTernaryRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -227,29 +209,24 @@ fn simplify_tautology_ternary() {
 
 #[test]
 fn single_in_array_to_compare() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoSingleItemInArray)], 80400);
     run(&linter, "SingleInArrayToCompareRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SingleInArrayToCompareRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "SingleInArrayToCompareRector/Pun");
 }
 
 #[test]
 fn unwrap_sprintf_one_argument() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoSingleArgumentSprintf)], 80400);
     run(&linter, "UnwrapSprintfOneArgumentRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "UnwrapSprintfOneArgumentRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "UnwrapSprintfOneArgumentRector/Pun");
 }
 
 #[test]
 fn every_rule_id_is_a_lint_rule_of_the_mapping() {
-    // crates/pun-config/rules/mapping.toml lists every lint rule as `"<group>/<name>" = { ... }` under [rules.lint].
     let mapping = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../pun-config/rules/mapping.toml"),
     )
@@ -262,9 +239,6 @@ fn every_rule_id_is_a_lint_rule_of_the_mapping() {
     }
 }
 
-/// Like `run`, but for the fixtures named in `whitespace_only`, where Rector's printer writes different blanks than
-/// Pun's text edits (each entry says why): there the raw output must equal the expected one once whitespace is
-/// ignored, and format must make them equal.
 fn run_with_whitespace_exceptions(linter: &Linter, dir: &str, whitespace_only: &[&str]) {
     let pipeline = laravel();
     let squeeze = |s: &str| s.split_whitespace().collect::<String>();
@@ -352,7 +326,6 @@ fn remove_duplicated_array_key() {
 
 #[test]
 fn remove_final_from_const() {
-    // config/configured_rule.php: phpVersion(PhpVersionFeature::FINAL_CLASS_CONSTANTS).
     run(
         &only(rules::NoRedundantFinalConst, 80100),
         "RemoveFinalFromConstRector/Fixture",
@@ -369,7 +342,6 @@ fn remove_null_property_initialization() {
 
 #[test]
 fn remove_null_property_initialization_skips_typed_properties() {
-    // config/typed_properties.php: phpVersion(PhpVersionFeature::TYPED_PROPERTIES).
     run(
         &only(rules::NoNullPropertyInit, 70400),
         "RemoveNullPropertyInitializationRector/FixtureTypedProperties",
@@ -378,8 +350,6 @@ fn remove_null_property_initialization_skips_typed_properties() {
 
 #[test]
 fn remove_unused_closure_variable_use() {
-    // The laravel preset's `lambda_not_used_import` makes the same change, so `run`'s check that format alone does
-    // not is left out.
     run_with_whitespace_exceptions(
         &only(rules::NoUnusedClosureVariable, 80400),
         "RemoveUnusedClosureVariableUseRector/Fixture",
@@ -405,18 +375,15 @@ fn remove_useless_return_expr_in_construct() {
 
 #[test]
 fn remove_unreachable_statement() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoUnreachableCode)], 80400);
     run(&linter, "RemoveUnreachableStatementRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveUnreachableStatementRector/Oracle");
-    // Where Rector reprints the whole file; the expected code is derived by hand.
     run(&linter, "RemoveUnreachableStatementRector/Pun");
 }
 
 #[test]
 fn simplify_mirror_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoMirrorAssignment)], 80400);
     run(&linter, "SimplifyMirrorAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -425,7 +392,6 @@ fn simplify_mirror_assign() {
 
 #[test]
 fn remove_useless_assign_from_property_promotion() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoRedundantPromotedAssign)], 80400);
     run(
         &linter,
@@ -440,7 +406,6 @@ fn remove_useless_assign_from_property_promotion() {
 
 #[test]
 fn remove_duplicated_case_in_switch() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoDuplicateCaseBody)], 80400);
     run(&linter, "RemoveDuplicatedCaseInSwitchRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -449,7 +414,6 @@ fn remove_duplicated_case_in_switch() {
 
 #[test]
 fn simplify_if_else_with_same_content() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoIdenticalBranches)], 80400);
     run(&linter, "SimplifyIfElseWithSameContentRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone). Rector reprints a
@@ -459,17 +423,13 @@ fn simplify_if_else_with_same_content() {
 
 #[test]
 fn remove_always_else() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoElseAfterReturn)], 80400);
     run(&linter, "RemoveAlwaysElseRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveAlwaysElseRector/Oracle");
-    // Rector reprints a colon `if` or a single-statement body its own way, so only the formatted code is compared.
     run_formatted(&linter, "RemoveAlwaysElseRector/OracleFormat");
 }
 
-/// [`run`] for cases where Rector reprints more than Pun changes (a colon `if` with braces, the parent of a
-/// single-statement body): only `format(lint --fix) == format(expected)` holds, the bytes before format differ.
 fn run_formatted(linter: &Linter, dir: &str) {
     let pipeline = laravel();
     for (path, input, expected) in fixtures(dir) {
@@ -486,7 +446,6 @@ fn run_formatted(linter: &Linter, dir: &str) {
 
 #[test]
 fn change_if_else_value_assign_to_early_return() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferEarlyReturn)], 80400);
     run(
         &linter,
@@ -498,7 +457,6 @@ fn change_if_else_value_assign_to_early_return() {
 
 #[test]
 fn prepared_value_to_early_return() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferEarlyReturnOverPreparedValue)], 80400);
     run(&linter, "PreparedValueToEarlyReturnRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -507,7 +465,6 @@ fn prepared_value_to_early_return() {
 
 #[test]
 fn repeated_or_equal_to_in_array() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferInArray)], 80400);
     run(&linter, "RepeatedOrEqualToInArrayRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -516,7 +473,6 @@ fn repeated_or_equal_to_in_array() {
 
 #[test]
 fn repeated_and_not_equal_to_not_in_array() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferNotInArray)], 80400);
     run(&linter, "RepeatedAndNotEqualToNotInArrayRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -537,7 +493,6 @@ fn simplify_conditions() {
     run(&linter, "SimplifyConditionsRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyConditionsRector/Oracle");
-    // Where Rector cannot run, stops with an error or escapes bytes; the expected code is derived by hand.
     run(&linter, "SimplifyConditionsRector/Pun");
 }
 
@@ -555,7 +510,6 @@ fn ternary_condition_variable_assignment() {
     run(&linter, "TernaryConditionVariableAssignmentRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "TernaryConditionVariableAssignmentRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "TernaryConditionVariableAssignmentRector/Pun");
 }
 
@@ -565,7 +519,6 @@ fn singular_switch_to_if() {
     run(&linter, "SingularSwitchToIfRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SingularSwitchToIfRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "SingularSwitchToIfRector/Pun");
 }
 
@@ -579,8 +532,6 @@ fn ternary_implode_to_implode() {
 
 #[test]
 fn new_static_to_new_self() {
-    // The laravel preset's `self_static_accessor` makes the same change, so `run`'s check that format alone does not
-    // is left out.
     let linter = only(rules::PreferNewSelf, 80400);
     run_with_whitespace_exceptions(&linter, "NewStaticToNewSelfRector/Fixture", &[]);
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -593,7 +544,6 @@ fn array_merge_of_non_arrays_to_simple_array() {
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Oracle");
-    // Where Rector cannot run, stops with an error or escapes bytes; the expected code is derived by hand.
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Pun");
 }
 
@@ -617,25 +567,20 @@ fn absolutize_require_and_include_path() {
     run(&linter, "AbsolutizeRequireAndIncludePathRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "AbsolutizeRequireAndIncludePathRector/Oracle");
-    // Where Rector cannot run, stops with an error or escapes bytes; the expected code is derived by hand.
     run(&linter, "AbsolutizeRequireAndIncludePathRector/Pun");
 }
 
 #[test]
 fn flip_negated_ternary_instanceof() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoNegatedInstanceofTernary)], 80400);
     run(&linter, "FlipNegatedTernaryInstanceofRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "FlipNegatedTernaryInstanceofRector/Oracle");
-    // Where Rector leaves a nested ternary or a low-precedence operator bare in the else branch; the expected code
-    // is derived by hand.
     run(&linter, "FlipNegatedTernaryInstanceofRector/Pun");
 }
 
 #[test]
 fn dirname_dir_concat_string_to_direct_string_path() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoDirnameDirConcat)], 80400);
     run(
         &linter,
@@ -650,31 +595,24 @@ fn dirname_dir_concat_string_to_direct_string_path() {
 
 #[test]
 fn array_explicit_bool_compare() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferExplicitArrayComparison)], 80400);
     run(&linter, "ArrayExplicitBoolCompareRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ArrayExplicitBoolCompareRector/Oracle");
-    // In a branch no array reaches, PHPStan's type is `never` and Rector leaves the condition; Pun still sees the
-    // array and compares it, which means the same. The expected code is derived by hand.
     run(&linter, "ArrayExplicitBoolCompareRector/Pun");
 }
 
 #[test]
 fn inline_if_to_explicit_if() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(PreferIfStatement)], 80400);
     run(&linter, "InlineIfToExplicitIfRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "InlineIfToExplicitIfRector/Oracle");
-    // Where Pun differs: a comment Rector would drop and a closing tag it would swallow keep the statement as it
-    // is, and a tab-indented statement keeps its tab. The expected code is derived by hand.
     run(&linter, "InlineIfToExplicitIfRector/Pun");
 }
 
 #[test]
 fn remove_overridden_assign_before_if_else() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoOverriddenAssignBeforeIf)], 80400);
     run(&linter, "RemoveOverriddenAssignBeforeIfElseRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
@@ -683,7 +621,6 @@ fn remove_overridden_assign_before_if_else() {
 
 #[test]
 fn remove_redundant_type_check() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoRedundantTypeCheck)], 80400);
     run(&linter, "RemoveRedundantTypeCheckRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).

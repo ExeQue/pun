@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocAlignFixer`.
 use crate::analyzers::docblock::{DocBlock, type_expression::REGEX_TYPES};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -164,7 +163,6 @@ impl Fixer for PhpdocAlignFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in 0..tokens.count() {
-            // Only a line with `@` can start an aligned group; without one the docblock is left as is.
             if !tokens[index].is_kind(Kind::T_DOC_COMMENT) || !tokens[index].get_content().contains(&b'@')
             {
                 continue;
@@ -402,8 +400,6 @@ impl PhpdocAlignFixer {
 
 #[cfg(test)]
 mod tests {
-    /// Non-UTF-8 hint (JSON cases can't hold it): PHP's mb_strlen counts "F\u{e9}\xff" as 3 characters, not 4 bytes.
-    /// Expected bytes are PHP-CS-Fixer's output for this input.
     #[test]
     fn invalid_utf8_width() {
         let input =

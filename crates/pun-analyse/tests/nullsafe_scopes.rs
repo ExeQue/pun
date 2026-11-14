@@ -1,5 +1,3 @@
-//! Complete PHPStan 2.3.1 public diagnostics, independent of observation transport.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

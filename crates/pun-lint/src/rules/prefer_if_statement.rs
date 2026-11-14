@@ -1,13 +1,3 @@
-//! `lint/complexity/prefer-if-statement`, ported from Rector 2.8.4's `InlineIfToExplicitIfRector`
-//! (rules/CodeQuality/Rector/Expression).
-//!
-//! `is_null($id) && $id = 5;` becomes `if (is_null($id)) { $id = 5; }`, and `is_null($id) || $id = 5;` becomes
-//! `if (!is_null($id)) { $id = 5; }`. Only a statement that is one `&&` or `||` whose left side is certainly a `bool`
-//! changes. `defined('X') || define('X', 1);` stays, and so does a chain of calls of one method of `$this`.
-//!
-//! Rector drops a comment between the operands; Pun leaves a statement with such a comment alone, and one that ends
-//! in `?>` instead of `;`.
-
 use mago_syntax::cst::{
     BinaryOperator, Call, ClassLikeMemberSelector, Expression, ExpressionStatement, Node, NodeKind,
 };
@@ -73,8 +63,6 @@ fn check(
     if !is_bool(ancestors, left) {
         return;
     }
-    // The code outside the two operands: parentheses, the operator and the `;`. A comment there has no place in
-    // the `if`.
     let (span, l, r) = (node_span(s), node_span(left), node_span(right));
     let source = ctx.source;
     let outside = [
@@ -103,7 +91,6 @@ fn check(
     ));
 }
 
-/// `isSameLocalMethodCallChain`: every operand of the `&&` and `||` tree calls the same method of `$this`.
 fn is_same_local_method_call_chain(expr: &Expression<'_>) -> bool {
     let mut leaves = Vec::new();
     collect_operands(expr, &mut leaves);

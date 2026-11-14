@@ -1,15 +1,3 @@
-//! `lint/laravel/no-app-array-access`, ported from rector-laravel 2.7.3's `CallOnAppArrayAccessToStandaloneAssignRector`
-//! (src/Rector/Assign).
-//!
-//! `$x = $app['validator']->method(...);`, where `$app` is an `Illuminate\Contracts\Foundation\Application` and the
-//! key's value (`ValueResolver::getValue`) is `validator`, gets the service in a typed variable first:
-//! `/** @var \Illuminate\Validation\Factory $validationFactory */ $validationFactory = $app['validator'];`, and the call
-//! goes on `$validationFactory`. Only an expression statement that is a plain assignment of a method call counts.
-//!
-//! php-parser prints the new statements (a `Nop`, then the assignment with its doc) right after the token before the
-//! statement, each on a new line at the statement's indentation; what stood between that token and the statement
-//! (its comments, or the rest of a line) follows them.
-
 use mago_syntax::cst::{AssignmentOperator, Expression, ExpressionStatement, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 

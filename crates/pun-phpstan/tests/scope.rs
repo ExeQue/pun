@@ -15,7 +15,6 @@ use pun_phpstan::resolve::{
 use pun_phpstan::symbols::{self, Class, Template};
 use pun_phpstan::types::{Level, Type, ancestor_args, decide_type, is_super_type_of};
 
-/// `new NameScope('PunProbe', [], $class)`
 struct InClass<'a>(&'a str);
 
 impl Scope for InClass<'_> {
@@ -33,7 +32,6 @@ impl Scope for InClass<'_> {
     }
 }
 
-/// `new NameScope('PunProbe', [])`: no class, so the trait's defaults answer `class()` and `parent()`.
 struct InNamespace;
 
 impl Scope for InNamespace {
@@ -71,7 +69,6 @@ fn template(name: &str) -> Template {
     }
 }
 
-/// tests/fixtures/scope-classes.php as PHPStan's reflection sees it.
 fn class(name: &str) -> Option<Arc<Class>> {
     let class =
         |name: &str, ancestors: &[&str], templates, constants: &[(&str, &str)], generics| Class {
@@ -119,7 +116,6 @@ fn class(name: &str) -> Option<Arc<Class>> {
                 ],
             )]),
         ))),
-        // `extends Coll` without `@extends`: no arguments named for it
         "PunProbe\\Plain" => Some(Arc::new(class(
             name,
             &["PunProbe\\Coll"],
@@ -179,8 +175,6 @@ fn class(name: &str) -> Option<Arc<Class>> {
     }
 }
 
-/// `new NameScope('PunProbe', [], 'PunProbe\Child', null, $templates)` with the probe templates `T`, `U` of
-/// `int|string` and `V` of `Countable` of `function probe()`.
 struct WithTemplates;
 
 impl Scope for WithTemplates {
@@ -207,8 +201,6 @@ impl Scope for WithTemplates {
     }
 }
 
-/// `new NameScope('PunProbe', [], null, null, $late)`: templates `E` of `BackedEnum`, `F` of `PunProbe\Backed` and `G`
-/// of `array<int, string>` of `function probe()`.
 struct Late;
 
 impl Scope for Late {
@@ -244,7 +236,6 @@ fn project_scope() {
             let ty = match row[0].as_str() {
                 Some("templates") => resolve_in(&node, &WithTemplates),
                 Some("resolved") => resolve_late(&resolve_in(&node, &InNamespace)),
-                // `LateResolvableType::resolve()`
                 Some("late") => match resolve_in(&node, &Late) {
                     Type::Object(name, args, _) => key_or_value_of(&args[0], name == "value-of"),
                     t => t,
@@ -266,7 +257,6 @@ fn decide_types() {
     let f = fixture("type-decide.json");
     let mut failures = Vec::new();
     for row in f.as_array().unwrap() {
-        // no native type: an implicit mixed
         let native = row[0].as_str();
         let phpdoc = row[1].as_str();
         let want = row[2].as_str().unwrap();
@@ -297,7 +287,6 @@ fn project_super_types() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// `TypeCombinator::addNull()` and `removeNull()`.
 #[test]
 fn add_and_remove_null() {
     let f = fixture("type-null.json");
@@ -316,7 +305,6 @@ fn add_and_remove_null() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// `getIterableKeyType()`, `getIterableValueType()` and `getAncestorWithClassName('PunProbe\Coll')`.
 #[test]
 fn project_iterables_and_ancestors() {
     let f = fixture("type-project.json");
@@ -326,7 +314,6 @@ fn project_iterables_and_ancestors() {
             let input = row[0].as_str().unwrap();
             let ty = resolve_in(&phpdoc::parse(input).unwrap(), &InNamespace);
             let ancestor = match &ty {
-                // a class is its own ancestor
                 Type::Object(name, _, _) if name == "PunProbe\\Coll" => {
                     Some(ty.describe(Level::Precise))
                 }
@@ -356,10 +343,8 @@ fn project_iterables_and_ancestors() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// `TypeTraverser::map()` with a callback that turns `int` into `string`.
 #[test]
 fn traverse() {
-    // `instanceof IntegerType`: ranges and constants too
     fn map(t: &Type) -> Type {
         if matches!(t, Type::Int | Type::IntRange(..) | Type::ConstInt(_)) {
             Type::String
@@ -382,21 +367,15 @@ fn traverse() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// phpdoc-parser reads a tag value's type and stops before the rest (`@param array<int, string> $x text`: the
-/// type is the first 18 bytes); a tag value has no `*NEVER*`, which is Pun's own syntax.
 #[test]
 fn tag_value_prefix() {
     let value = "array<int, string> $x text";
     let (node, offset) = phpdoc::parse_prefix(value).unwrap();
     assert_eq!(node, phpdoc::parse("array<int, string>").unwrap());
-    // the rest starts after the type (the offset may include the whitespace after it)
     assert_eq!(value[offset..].trim_start(), "$x text");
     assert!(phpdoc::parse_prefix("*NEVER* $x").is_err());
 }
 
-/// `parseGenericTypeArgument()` accepts a call-site variance keyword before an argument.
-/// `tryResolvePseudoTypeClassType()`: `use Foo as integer;` makes `integer` that class; in a namespace a keyword
-/// that names no class of it stays the keyword.
 #[test]
 fn pseudo_type_keywords_imported_or_namespaced() {
     struct Imported;
@@ -435,8 +414,6 @@ fn object_class_names() {
             let ty = resolve_in(&phpdoc::parse(input).unwrap(), &InNamespace);
             assert_eq!(ty.object_class_names(), want, "{input}");
         }
-        // Fresh PHPStan 2.3.1 queries on the public template and compound constructors. Keep their raw
-        // composition: TypeCombinator can otherwise erase the unnamed object before the query runs.
         let f = fixture("type-object-class-names-compounds.json");
         for row in f.as_array().unwrap() {
             let types: Vec<_> = row["types"]
@@ -478,7 +455,6 @@ fn object_class_names() {
     });
 }
 
-/// ConstExprNodeResolver on a `@method` parameter's default value.
 #[test]
 fn constant_expressions() {
     let f = fixture("type-const-expr.json");
@@ -505,7 +481,6 @@ fn constant_expressions() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The `typeAliases` parameter's global type aliases.
 #[test]
 fn global_type_aliases() {
     let f = fixture("type-global-aliases.json");
@@ -526,7 +501,6 @@ fn global_type_aliases() {
     assert!(!has_global_alias("PunAlias"));
 }
 
-/// `ConstantStringType::isCallable()` of a project function's name: `ReflectionProvider::hasFunction()` answers it.
 #[test]
 fn project_function_names_are_callable() {
     let callable = |s: &str| Type::ConstString(s.as_bytes().to_vec()).is_callable();

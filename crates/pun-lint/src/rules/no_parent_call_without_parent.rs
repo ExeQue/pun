@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-parent-call-without-parent`, ported from Rector 2.8.4's `RemoveParentCallWithoutParentRector`
-//! (rules/DeadCode/Rector/StaticCall) and `ClassMethodManipulator::hasParentMethodOrInterfaceMethod`.
-//!
-//! In a named class's method, a statement `parent::name(...);` goes, and `$x = parent::name(...);` assigns `null`,
-//! when the class extends nothing, or no class it extends has the method (or `__call`) and no interface it
-//! implements declares it. A class whose parents Pun cannot follow to the top (one it does not know, such as one
-//! from vendor/) is left alone, as Rector leaves a class whose parent or a further ancestor does not load. Pun's
-//! codebase has no doc comments, so a parent's `@method` (without a `__call` to back it) does not keep a call.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -43,7 +34,6 @@ impl Rule for NoParentCallWithoutParent {
             .as_ref()
             .and_then(|e| e.types.first())
             .map(|id| resolve_class_name(ancestors, id));
-        // `shouldSkipClass` and `hasUnresolvableAncestor`: every class above is known.
         let mut next = parent.clone();
         while let Some(name) = next {
             let Some(known) = codebase.get_class_like(name.as_bytes()) else {

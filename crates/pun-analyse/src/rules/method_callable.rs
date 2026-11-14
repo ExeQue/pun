@@ -1,5 +1,3 @@
-//! MethodCallableRule and StaticMethodCallableRule: member checks, never argument checks.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -12,8 +10,6 @@ fn is_this(e: &Expression) -> bool {
     matches!(unparen(e), Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
 }
 
-/// IsCallableFunctionTypeSpecifyingExtension delegates a literal `[receiver, 'method']` to method_exists.
-/// Keep the existing scope's boolean/branch handling instead of special-casing callable diagnostics.
 pub(super) fn literal_guard(
     e: &Expression,
     resolve: &dyn Fn(&Identifier) -> String,
@@ -36,8 +32,6 @@ pub(super) fn literal_guard(
 }
 
 impl Checker<'_, '_> {
-    /// The original receiver, and whether the condition promises the method. For `is_callable`, PHPStan only
-    /// delegates to method_exists when the original constant array is not definitely non-callable.
     pub(super) fn method_guard_source_in(
         &self,
         key: &str,
@@ -84,7 +78,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// Request the same receiver types as ordinary calls; checkThisOnly still applies below level 2.
 pub(super) fn typed_expressions(program: &Program, level: u8) -> Vec<Span> {
     struct Wanted(u8, Vec<Span>);
     impl Wanted {

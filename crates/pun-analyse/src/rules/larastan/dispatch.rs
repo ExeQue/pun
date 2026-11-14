@@ -1,7 +1,3 @@
-//! CheckDispatchArgumentTypesCompatibleWithClassConstructorRule, registered twice: for jobs (the Bus `Dispatchable`
-//! trait) and for events (the Events `Dispatchable` trait). `Job::dispatch(...)` passes its arguments to the
-//! constructor; at level 0 FunctionCallParametersCheck counts them.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_span::HasSpan;
@@ -9,10 +5,8 @@ use mago_syntax::cst::*;
 
 use super::super::{Checker, members, params};
 
-/// One registration: the trait, the methods it dispatches with, and the kind in the messages.
 type Dispatchable = (&'static [u8], &'static [&'static [u8]], &'static str);
 
-/// The two registrations.
 const DISPATCHABLES: &[Dispatchable] = &[
     (
         b"Illuminate\\Foundation\\Bus\\Dispatchable",
@@ -33,7 +27,6 @@ const DISPATCHABLES: &[Dispatchable] = &[
     ),
 ];
 
-/// `dispatchIf()` and `dispatchUnless()`, whose first argument is the condition.
 pub(super) fn conditional(method: &[u8]) -> bool {
     method == b"dispatchIf" || method == b"dispatchUnless"
 }
@@ -42,8 +35,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &StaticMethodCall
     let ClassLikeMemberSelector::Identifier(method) = &call.method else {
         return;
     };
-    // `$scope->resolveName($node->class)`
-    // (an unknown class stops PHPStan: `getClass()` throws)
     let class = match call.class {
         Expression::Identifier(id) => Some(c.names.get(&id.span()).to_vec()),
         Expression::Self_(_) | Expression::Static(_) => {
@@ -95,7 +86,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &StaticMethodCall
             if !boolean {
                 continue;
             }
-            // the condition is no constructor argument
             match first {
                 Argument::Named(_) => {
                     counts.named = args[1..].iter().any(|a| matches!(a, Argument::Named(_)));

@@ -1,13 +1,3 @@
-//! `lint/complexity/prefer-absolute-include`, ported from Rector 2.8.4's `AbsolutizeRequireAndIncludePathRector`
-//! (rules/CodeQuality/Rector/Include_).
-//!
-//! `require 'autoload.php'` becomes `require __DIR__ . '/autoload.php'`, and `require './a.php'` becomes
-//! `require __DIR__ . '/a.php'`: a relative path resolves against the include path and the working directory, an
-//! absolute one does not. Paths that are absolute already, `phar://` paths and paths with `config/` stay. A path that
-//! starts a concatenation (`'path/' . $name`) gets `__DIR__` too, with only the `phar://` check.
-//!
-//! The changed string prints again in its own quotes, escaped as php-parser escapes it.
-
 use mago_syntax::cst::{
     BinaryOperator, Construct, Expression, IncludeConstruct, IncludeOnceConstruct, Literal,
     LiteralString, LiteralStringKind, Node, NodeKind, RequireConstruct, RequireOnceConstruct,
@@ -75,7 +65,6 @@ impl Rule for PreferAbsoluteInclude {
     }
 }
 
-/// A php-parser `String_` written in quotes, and its value.
 fn string_of<'a>(expr: &'a Expression<'a>) -> Option<(&'a LiteralString<'a>, &'a [u8])> {
     match unparenthesize(expr) {
         Expression::Literal(Literal::String(s)) => Some((s, s.value?)),
@@ -83,9 +72,7 @@ fn string_of<'a>(expr: &'a Expression<'a>) -> Option<(&'a LiteralString<'a>, &'a
     }
 }
 
-/// `refactor()` for a whole string path: the new value, or none for a path that stays.
 fn absolutized(value: &[u8]) -> Option<Vec<u8>> {
-    // isRefactorableStringPath, then "skip phar"
     if value.starts_with(b"phar://") {
         return None;
     }
@@ -95,7 +82,6 @@ fn absolutized(value: &[u8]) -> Option<Vec<u8>> {
     if value.windows(7).any(|w| w == b"config/") {
         return None;
     }
-    // WINDOWS_DRIVE_REGEX `#^[a-zA-z]\:[\/\\\]#`: `A-z` spans the six characters between `Z` and `a` too.
     if let [drive, b':', b'/' | b'\\', ..] = value
         && (b'A'..=b'z').contains(drive)
     {
@@ -108,7 +94,6 @@ fn absolutized(value: &[u8]) -> Option<Vec<u8>> {
     Some(prefix_with_dir_constant(value))
 }
 
-/// `prefixWithDirConstant`'s change to the string: a leading `./` becomes `/`, and a missing leading `/` is added.
 fn prefix_with_dir_constant(mut value: Vec<u8>) -> Vec<u8> {
     if value.starts_with(b"./") {
         value.remove(0);
@@ -119,13 +104,10 @@ fn prefix_with_dir_constant(mut value: Vec<u8>) -> Vec<u8> {
     value
 }
 
-/// php-parser's `pScalar_String` for a string of `kind` with `value`: `pSingleQuotedString` or `escapeString` in
-/// double quotes. A value that is not UTF-8 is left alone (php-parser escapes its bytes one by one).
 pub(crate) fn print_string(kind: LiteralStringKind, value: &[u8]) -> Option<String> {
     let value = std::str::from_utf8(value).ok()?;
     let mut out = String::with_capacity(value.len() + 2);
     if kind == LiteralStringKind::SingleQuoted {
-        // `'`, a `\` before `'`, `\` or the end, and a `\` after a `\` get a `\` before them.
         let bytes = value.as_bytes();
         out.push('\'');
         for (i, c) in value.char_indices() {

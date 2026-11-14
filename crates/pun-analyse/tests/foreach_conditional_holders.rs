@@ -1,4 +1,3 @@
-//! ForeachHandler's constant-entry conditional holders through both public analyzers.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -86,7 +85,6 @@ fn generic_union_overwrites_and_references_match_complete_diagnostics() {
     diagnostics("calls");
 }
 
-// These probes are scalar string unions; adapt display syntax only, retaining every alternative.
 fn scalar_id(description: &str) -> String {
     let mut types: Vec<_> = description
         .split('|')
@@ -151,8 +149,6 @@ fn constant_entry_observations_are_independent_of_native_tracking() {
             if actual.as_deref() != Some(wanted.as_str()) {
                 failures.push(serde_json::json!({"native": native, "observation": observation, "actual": actual}));
             }
-            // The partial native API deliberately invalidates loop state before entering foreach.
-            // Turning it on must neither fabricate native answers nor change ordinary holder inference.
             assert!(
                 artifacts.get_native_expression_type(&span).is_none(),
                 "{observation}"

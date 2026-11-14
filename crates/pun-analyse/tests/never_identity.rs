@@ -1,5 +1,3 @@
-//! Bottom identity is independent of call evaluation. Expectations come from PHPStan 2.3.1.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -523,8 +521,6 @@ fn exit_throw_producers_and_forwarded_returns_keep_their_actual_never_kind() {
             let span = expression.span();
             let source = include_bytes!("fixtures/never-identity/producers.php");
             let text = &source[span.start.offset as usize..span.end.offset as usize];
-            // Match the oracle's dynamic extension, not the production exit/throw
-            // producers. The declarations stay mixed and intrinsically continuing.
             let value = match text {
                 b"implicitBottom()" => Some(get_never()),
                 b"acceptingBottom()" => Some(get_explicit_never()),

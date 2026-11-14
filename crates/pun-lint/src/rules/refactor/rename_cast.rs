@@ -1,14 +1,3 @@
-//! `lint/refactor/rename-cast`, ported from Rector 2.8.4's `RenameCastRector` (rules/Renaming/Rector/Cast).
-//!
-//! Options: `items = [{ from-cast-expr-class = "PhpParser\\Node\\Expr\\Cast\\Double", from-cast-kind = 3,
-//! to-cast-kind = 2 }]` (`RenameCast`, with php-parser's `KIND_*` numbers). A cast of that class whose `kind` (what
-//! php-parser's parser reads from the written cast) is the old one is printed anew with the new kind: php-parser's
-//! printer writes `(double)`, `(float)` or `(real)` by kind for a `Double`, and always `(int)`, `(bool)` and
-//! `(string)` for the other three. A `Double` to any kind but 1 or 2 is refused: php-parser would print `(real)`, which
-//! PHP 8 removed. The cast is printed anew (`pPrefixOp`): its operand keeps its own text, without the
-//! parentheses and comments around it, in new parentheses only where precedence needs them. The casts without a
-//! `kind` (`Array_`, `Object_`, `Unset_`, `Void_`) never match.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Safety};
@@ -18,20 +7,15 @@ use crate::rules::rector_code_quality::{operand, text};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// php-parser's cast classes, by the `Cast` subclass name `RenameCast` takes.
 const CASTS: &[&str] = &[
     "Array_", "Bool_", "Double", "Int_", "Object_", "String_", "Unset_", "Void_",
 ];
 
 #[derive(Default)]
 pub struct RenameCast {
-    /// (cast class short name, from kind, to kind)
     pub renames: Vec<(String, i64, i64)>,
 }
 
-/// The php-parser class and `kind` of a Mago cast operator, `None` for a cast without a `kind` (`(array)`,
-/// `(object)`, `(void)`) and any other prefix operator. `(real)` and `(unset)` are parse errors since PHP 8, so no file
-/// with one lints.
 fn class_and_kind(op: &UnaryPrefixOperator<'_>) -> Option<(&'static str, i64)> {
     Some(match op {
         UnaryPrefixOperator::BoolCast(..) => ("Bool_", 1),
@@ -46,7 +30,6 @@ fn class_and_kind(op: &UnaryPrefixOperator<'_>) -> Option<(&'static str, i64)> {
     })
 }
 
-/// The cast as php-parser's printer writes it (a `Double` of kind 3 is refused by `configure`).
 fn printed(class: &str, kind: i64) -> &'static str {
     match class {
         "Double" if kind == 1 => "(double)",
@@ -77,7 +60,6 @@ impl Rule for RenameCast {
                     format!("\"{class}\" is not a subclass of \"PhpParser\\Node\\Expr\\Cast\"")
                 })?;
             let to = int(map, "to-cast-kind")?;
-            // php-parser prints a `Double` of any other kind as `(real)`, which PHP 8 no longer parses.
             if short == "Double" && !(1..=2).contains(&to) {
                 return Err(format!(
                     "`to-cast-kind` {to} of \"{class}\" prints `(real)`, which PHP 8 removed"
@@ -114,10 +96,7 @@ impl Rule for RenameCast {
             return;
         };
         let new = printed(class, *to);
-        // `pPrefixOp`: the operand at the cast's precedence (10).
         let code = format!("{new} {}", operand(ctx, cast.operand, 10, None));
-        // A rename to the same cast (`Int_` from one kind to the other prints `(int)` either way) would only respace
-        // it, and again in every fix round.
         if code == text(ctx, cast) {
             return;
         }

@@ -1,10 +1,3 @@
-//! The app's views and translations as UnusedViewsRule and NoMissingTranslationsRule read them: ViewFileHelper,
-//! the view finder (`view()->exists()`, `getFinder()->find()`), UsedViewInAnotherViewCollector,
-//! UsedTranslationViewCollector and the translation files.
-//!
-//! Larastan asks the booted app for the view finder's paths and hints; Pun takes `resources/views` (the
-//! `view.paths` default), so paths and namespaces packages register at boot are not seen.
-
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -17,7 +10,6 @@ use pun_tokens::php_compat::preg_compile;
 
 use crate::codebase::read;
 
-/// Files below `dir` whose name matches `/\.blade\.php$/i` (or any file, for `None`), sorted.
 fn files(dir: &Path, blade: bool) -> Vec<PathBuf> {
     let mut found = Vec::new();
     let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
@@ -26,7 +18,6 @@ fn files(dir: &Path, blade: bool) -> Vec<PathBuf> {
         .flatten()
         .map(|e| e.path())
         .collect();
-    // ponytail: sorted, where PHP's directory iterators follow readdir order
     entries.sort();
     for p in entries {
         if p.is_dir() {
@@ -42,7 +33,6 @@ fn files(dir: &Path, blade: bool) -> Vec<PathBuf> {
     found
 }
 
-/// The view finder: its paths and `exists()` / `find()` for a name without a namespace.
 pub(crate) struct Finder {
     pub(crate) paths: Vec<PathBuf>,
 }
@@ -54,8 +44,6 @@ impl Finder {
         }
     }
 
-    /// `FileViewFinder::find()` of a name without a namespace (the names of [`view_names`]): the first path holding
-    /// the name with one of the factory's extensions.
     pub(crate) fn find(&self, name: &str) -> Option<PathBuf> {
         let file = name.trim().replace('.', "/");
         self.paths.iter().find_map(|path| {
@@ -66,13 +54,11 @@ impl Finder {
         })
     }
 
-    /// `getRootViewFilePaths()`: the blade files below the finder's paths.
     pub(crate) fn root_view_files(&self) -> Vec<PathBuf> {
         self.paths.iter().flat_map(|p| files(p, true)).collect()
     }
 }
 
-/// `ViewFileHelper::getAllViewNames()` over `directories`, without vendor and error views.
 pub(crate) fn view_names(directories: &[PathBuf]) -> Vec<String> {
     let mut names = Vec::new();
     for dir in directories {
@@ -82,7 +68,6 @@ pub(crate) fn view_names(directories: &[PathBuf]) -> Vec<String> {
             if path.contains("views/vendor") || path.contains("views/errors") {
                 continue;
             }
-            // explode($directory, $path)[1]
             let rest = path.split(&prefix).nth(1).unwrap_or_default();
             names.push(rest.replace('/', ".").replace(".blade.php", ""));
         }
@@ -90,7 +75,6 @@ pub(crate) fn view_names(directories: &[PathBuf]) -> Vec<String> {
     names
 }
 
-/// The `InlineHTML` statements of a file parsed as PHP (none when it does not parse), with their first lines.
 fn inline_html(path: &Path) -> Vec<(String, u32)> {
     let mut found = Vec::new();
     if let Some(file) = read(path, FileType::Host).ok().flatten() {
@@ -108,7 +92,6 @@ fn inline_html(path: &Path) -> Vec<(String, u32)> {
     found
 }
 
-/// UsedViewInAnotherViewCollector: the views `@extends` and `@include*` name in the views below `directories`.
 pub(crate) fn views_used_in_views(directories: &[PathBuf]) -> Vec<String> {
     static VIEW: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re = VIEW.get_or_init(|| {
@@ -130,7 +113,6 @@ pub(crate) fn views_used_in_views(directories: &[PathBuf]) -> Vec<String> {
     used
 }
 
-/// UsedTranslationViewCollector: each view file's translation keys and lines.
 pub(crate) fn translations_in_views(finder: &Finder) -> Vec<(PathBuf, Vec<(String, u32)>)> {
     static TRANSLATION: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re = TRANSLATION.get_or_init(|| {
@@ -175,7 +157,6 @@ pub(crate) fn translations_in_views(finder: &Finder) -> Vec<(PathBuf, Vec<(Strin
         .collect()
 }
 
-/// `unescapeMatch()`.
 fn unescape(double: bool, s: &str) -> String {
     if double {
         stripcslashes(&s.replace("\\'", "\\\\'"))
@@ -184,7 +165,6 @@ fn unescape(double: bool, s: &str) -> String {
     }
 }
 
-/// PHP's `stripcslashes()`.
 fn stripcslashes(s: &str) -> String {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
@@ -218,7 +198,6 @@ fn stripcslashes(s: &str) -> String {
                 out.push(value as u8);
                 i += digits - 1;
             }
-            // \n \t \r \a \v \b \f, else the character itself
             c => out.push(
                 b"ntravbf"
                     .iter()
@@ -230,7 +209,6 @@ fn stripcslashes(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// NoMissingTranslationsRule's available translations: each PHP file's root and keys, each JSON file's keys.
 pub(crate) fn available_translations(directories: &[PathBuf]) -> Vec<String> {
     let mut available = Vec::new();
     for dir in directories.iter().filter(|d| d.is_dir()) {
@@ -246,7 +224,6 @@ pub(crate) fn available_translations(directories: &[PathBuf]) -> Vec<String> {
                         .iter()
                         .map(|p| p.to_string_lossy().into_owned())
                         .collect();
-                    // without the locale and the file name
                     let prefix = if parts.len() > 2 {
                         parts[1..parts.len() - 1].join("/")
                     } else {
@@ -275,7 +252,6 @@ pub(crate) fn available_translations(directories: &[PathBuf]) -> Vec<String> {
     available
 }
 
-/// `keys()` of the array a PHP translation file returns (`getRequire()`), read from its `return` literal.
 fn php_keys(path: &Path, root: &str, out: &mut Vec<String>) {
     if let Some(file) = read(path, FileType::Host).ok().flatten() {
         let arena = LocalArena::new();

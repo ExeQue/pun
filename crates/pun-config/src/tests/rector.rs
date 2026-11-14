@@ -1,5 +1,3 @@
-//! rector.php to `[lint]`. The Rector classes and their Pun rules, sets and reasons are rules/mapping.toml's
-//! `[upstream.rector]` rows; the expected sets come from Rector's set file names (config/set/*.php).
 use super::*;
 use crate::migrate::{Configured, Parts, Rector, RectorConfig, compose, from_rector};
 use std::collections::{BTreeMap, BTreeSet};
@@ -16,8 +14,6 @@ fn strings(v: &[&str]) -> Vec<String> {
     v.iter().map(std::string::ToString::to_string).collect()
 }
 
-/// Prepared sets map one to one (Pest's coding-style set is not Rector's), PHP sets are `modernize`; skips split into
-/// rules off everywhere, rules off for some paths and excluded paths; what Pun has no rule for is named.
 #[test]
 fn reads_sets_rules_and_skips() {
     let root = dir(&[]);
@@ -98,7 +94,6 @@ fn reads_sets_rules_and_skips() {
     );
     assert_eq!(r.exclude, ["legacy", "*/Fixtures/*"]);
     assert_eq!(r.paths, ["app", "tests"]);
-    // The project itself, and a path outside it.
     let whole = RectorConfig {
         paths: vec![root.display().to_string(), "/elsewhere/src/".into()],
         ..RectorConfig::default()
@@ -115,7 +110,6 @@ fn carries_rule_configurations() {
     let root = dir(&[]);
     let printed = json!({"Rector\\Renaming\\Rector\\FuncCall\\RenameFunctionRector": {"configuration": {"split": "explode", "join": "implode"}, "constants": []}, "Rector\\Removing\\Rector\\FuncCall\\RemoveFuncCallArgRector": {"configuration": [{"@props": {"function": "ldap_first_attribute", "argumentPosition": 2}}], "constants": []}, "RectorLaravel\\Rector\\PropertyFetch\\OptionalToNullsafeOperatorRector": {"configuration": {"exclude_methods": ["present"]}, "constants": ["exclude_methods"]}, "Rector\\Renaming\\Rector\\ConstFetch\\RenameConstantRector": {"configuration": {"OLD": "NEW"}, "constants": []}});
     let mut configured: BTreeMap<String, Configured> = serde_json::from_value(printed).unwrap();
-    // By hand: an unset value-object property is left out; a null, a closure and a `level` key can't be carried.
     let by_hand = [
         (
             "Rector\\Renaming\\Rector\\Cast\\RenameCastRector",
@@ -126,7 +120,6 @@ fn carries_rule_configurations() {
             json!({"Old": null}),
         ),
         (
-            // core's class is deprecated in 2.8.4; rector-laravel's copy is the one the rule maps to
             "RectorLaravel\\Rector\\FuncCall\\FuncCallToStaticCallRector",
             json!([{"@unsupported": "Closure"}]),
         ),
@@ -197,8 +190,6 @@ fn carries_rule_configurations() {
         ]
     );
 
-    // Composed: a ported rule gets its options on its line, even when a set already turns it on.
-    // lint/complexity/no-and-assignment is ported and in code-quality (mapping.toml); its options are made up.
     let rector = Rector {
         sets: vec!["code-quality"],
         want: vec![
@@ -233,7 +224,6 @@ fn carries_rule_configurations() {
         text.contains("\n\"complexity/no-and-assignment\" = { items = 1 }\n"),
         "{text}"
     );
-    // lint/refactor/rename-function is ported, so it gets its line with the options.
     assert!(rule_meta_ported("lint/refactor/rename-function"));
     assert!(
         text.contains(
@@ -251,8 +241,6 @@ fn carries_rule_configurations() {
     assert_eq!(rule.unwrap().options, json!({"items": 1}));
 }
 
-/// The composed pun.toml runs exactly what Rector ran: each wanted rule Pun can run is on (from the set or its own
-/// line), the set's other rules are off, and the per-path skip is an override.
 #[test]
 fn composes_the_difference_with_the_sets() {
     let root = dir(&[]);
@@ -268,12 +256,10 @@ fn composes_the_difference_with_the_sets() {
                 id("lint/complexity/no-compact"),
                 id("CompactToVariablesRector"),
             ),
-            // A code-quality rule (ported), outside the dead-code set: its own line.
             (
                 id("lint/complexity/no-and-assignment"),
                 id("AndAssignsToSeparateLinesRector"),
             ),
-            // Already on through the format config's line: no second line.
             (
                 id("lint/imports/no-unused"),
                 id("RemoveUnusedImportsRector"),
@@ -312,7 +298,6 @@ fn composes_the_difference_with_the_sets() {
     let cfg = from_toml(&root, &text).unwrap();
     let on: BTreeSet<&str> = cfg.lint.rules.iter().map(|r| r.id.as_str()).collect();
     let ported = |id: &str| rule_meta_ported(id);
-    // dead-code's rules other than the wanted one are off; compact runs through its own line when ported.
     let mut expect: BTreeSet<&str> = [
         "lint/dead-code/no-unused-foreach-key",
         "lint/imports/no-unused",
@@ -337,8 +322,6 @@ fn composes_the_difference_with_the_sets() {
     assert_eq!(done.off, text.matches("= \"off\"\n").count());
     assert!(done.off > 0);
 
-    // No prepared set and no skip: no empty `sets` or `exclude` line. A Rector rule that is a format rule in Pun
-    // writes nothing: the laravel preset runs standardize-not-equals (presets/laravel.json), an empty one is named.
     let not_equal = Rector {
         want: vec![(
             id("format/operators/standardize-not-equals"),
@@ -373,7 +356,6 @@ fn composes_the_difference_with_the_sets() {
     }
 }
 
-/// mapping.toml's `ported` flag of a rule.
 fn rule_meta_ported(id: &str) -> bool {
     (rules().iter().find(|(r, _)| r == id))
         .and_then(|(_, e)| e.get("ported"))

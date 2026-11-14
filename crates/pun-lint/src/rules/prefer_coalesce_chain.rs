@@ -1,16 +1,3 @@
-//! `lint/complexity/prefer-coalesce-chain`, ported from Rector 2.8.4's
-//! `ConsecutiveNullCompareReturnsToNullCoalesceQueueRector` (rules/CodeQuality/Rector/If_), with
-//! `IfManipulator::matchIfNotNullReturnValue`.
-//!
-//! Two or more `if ($x !== null) { return $x; }` statements of a list, followed only by `return null;`, by
-//! `return <expr>;` or by `throw`, become one `return $a ?? $b ?? <expr>;` (a `throw` as a throw expression). Any
-//! other statement after the first such `if` keeps the list as it is. Before PHP 8.0, which has no throw expression,
-//! a `throw` keeps it too.
-//!
-//! Rector prints a kept operand as it was written, without the parentheses `??` may need around it (`$c ?: $d`
-//! becomes `... ?? $c ?: $d`, which PHP reads differently); Pun adds them. Rector also matches an `if` with an
-//! `else`, which then goes; Pun does not match such an `if`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -55,7 +42,6 @@ impl Rule for PreferCoalesceChain {
             }
             matched.push((key, compared));
         }
-        // At least two coalescing nodes are needed.
         if matched.len() < 2 || list.nop {
             return;
         }
@@ -66,7 +52,6 @@ impl Rule for PreferCoalesceChain {
                 continue;
             }
             match *stmt {
-                // A throw expression needs PHP 8.0.
                 Statement::Expression(e)
                     if matches!(unparenthesize(e.expression), Expression::Throw(_))
                         && ctx.php_version >= 80000 =>
@@ -83,7 +68,6 @@ impl Rule for PreferCoalesceChain {
                 _ => return,
             }
         }
-        // createCoalesceReturn: `(a ?? b) ?? c`, each operand in parentheses where `??` needs them.
         let coalesce = Prec::Infix(140, 140, 141);
         let mut code = format!(
             "{} ?? {}",
@@ -113,8 +97,6 @@ impl Rule for PreferCoalesceChain {
     }
 }
 
-/// `IfManipulator::matchIfNotNullReturnValue`: `if ($x !== null) { return $x; }` (or `null !== $x`), without
-/// `elseif` and `else`; the compared expression.
 fn not_null_return<'a>(ctx: &Context<'_>, r#if: &'a If<'a>) -> Option<&'a Expression<'a>> {
     let view = if_view(ctx.source, r#if);
     if view.else_.is_some() || !view.elseifs.is_empty() || view.stmts.len() != 1 {

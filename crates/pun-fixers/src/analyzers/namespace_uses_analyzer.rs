@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\NamespaceUsesAnalyzer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use pun_tokens::Kind::*;
 use pun_tokens::NamespaceAnalysis;
@@ -92,7 +91,6 @@ impl NamespaceUsesAnalyzer {
                     tokens.find_block_end(Tokens::BLOCK_TYPE_GROUP_IMPORT_BRACE, group_start);
                 while group_index < group_end {
                     let chunk_start = tokens.get_next_meaningful_token(group_index).unwrap();
-                    // Finish parsing on trailing comma (no more chunks there)
                     if tokens[chunk_start].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                         break;
                     }
@@ -152,7 +150,6 @@ impl NamespaceUsesAnalyzer {
     fn get_nearest_qualified_name(&self, tokens: &Tokens, index: usize) -> QualifiedName {
         let (mut full_name, mut short_name) = (Vec::new(), Vec::new());
         let mut aliased = false;
-        // Upstream breaks out of the loop on these; testing them first is equivalent (none is a T_STRING/`\`/`as`).
         let ends: [Proto; 5] = [
             ",".into(),
             ";".into(),

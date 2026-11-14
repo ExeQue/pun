@@ -1,10 +1,3 @@
-//! `lint/refactor/no-negated-condition`, ported from Mago 1.57.0's `no-negated-ternary`
-//! (mago-linter src/rule/clarity/no_negated_ternary.rs).
-//!
-//! Reports a ternary (`a ? b : c`, not `a ?: c`) whose condition is negated: `!$a`, or a `!==`, `!=` or `<>`
-//! comparison. Mago only reports; Pun's unsafe fix does what Mago's help says, removing the `!` (or turning the
-//! operator into `===` / `==`) and swapping the two branches.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{
     Binary, BinaryOperator, Conditional, Expression, Node, NodeKind, UnaryPrefix,
@@ -43,7 +36,6 @@ impl Rule for NoNegatedCondition {
         };
         let (reported, help, condition_edit) = match condition {
             Expression::UnaryPrefix(UnaryPrefix { operator, operand }) if operator.is_not() => {
-                // A bare `!$a = …` operand cannot reach here: the assignment takes the whole ternary as its value.
                 let text =
                     ctx.source[span(operand.span()).start..span(operand.span()).end].to_string();
                 (
@@ -74,7 +66,6 @@ impl Rule for NoNegatedCondition {
             _ => return,
         };
         let text = |s: Span| ctx.source[s.start..s.end].to_string();
-        // The `then` branch moves to the `else` place, where an operator weaker than `?:` needs parentheses.
         let then_text = if needs_parentheses_as_else(then) {
             format!("({})", text(span(then.span())))
         } else {
@@ -97,8 +88,6 @@ impl Rule for NoNegatedCondition {
     }
 }
 
-/// Whether `expr`, written bare after the `:` of a ternary, would not parse as that whole operand: an assignment, a
-/// ternary, `yield` or a low-precedence `and` / `or` / `xor`.
 fn needs_parentheses_as_else(expr: &Expression<'_>) -> bool {
     match expr {
         Expression::Assignment(_) | Expression::Conditional(_) | Expression::Yield(_) => true,

@@ -1,8 +1,3 @@
-//! `lint/style/no-dynamic-name`, ported from Mago 1.57.0's linter rule `no-variable-variable`
-//! (rule/clarity/no_variable_variable.rs).
-//!
-//! A variable variable (`$$name`) is reported; `${expr}` is not (Mago looks at nested variables only).
-
 use mago_syntax::cst::{Node, NodeKind, Variable};
 
 use crate::syntax::node_span;

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\ArraySyntaxFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -12,7 +11,6 @@ struct ArraySyntaxFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `configure` sets both fields.
     crate::configured(ArraySyntaxFixer {
         short: false,
         candidate_token_kind: T_ARRAY,

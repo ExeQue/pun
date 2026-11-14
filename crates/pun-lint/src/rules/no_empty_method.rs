@@ -1,15 +1,3 @@
-//! `lint/dead-code/no-empty-method`, ported from Rector 2.8.4's `RemoveEmptyClassMethodRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `IsClassMethodUsedAnalyzer`, `ClassMethodManipulator` and
-//! `ControllerClassMethodManipulator` in `class_method.rs`.
-//!
-//! A method of a class (or anonymous class) with an empty body goes, unless it is abstract, a `final` method of a
-//! class that is not final, a public or protected method that is not magic in a class that is not final, called in
-//! the class or one of its traits, a named constructor, the constructor of an anonymous class that extends another,
-//! required by a parent or an interface, a constructor with promoted parameters, `@deprecated`, a controller's or
-//! presenter's annotated action, a private or protected `__clone`, `__invoke`, the documented constructor of an
-//! attribute class, or (Pun's own skip) a method that carries an attribute. A comment alone in the body counts as a statement (php-parser's `Nop`). Rector's
-//! `treatClassesAsFinal` feature flag is off by default and has no Pun setting.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -65,12 +53,9 @@ impl Rule for NoEmptyMethod {
                 if is_final(method) && !class.is_final {
                     continue;
                 }
-                // Not Rector's: an attribute (Livewire's `#[On]`, a route, a test hook) makes a framework call the
-                // method, so it is not dead.
                 if !method.attribute_lists.is_empty() {
                     continue;
                 }
-                // `shouldSkipNonFinalNonPrivateClassMethod`.
                 if !class.is_final && !is_magic(method.name.value) && !is_private(method) {
                     continue;
                 }
@@ -84,8 +69,6 @@ impl Rule for NoEmptyMethod {
                 return;
             }
             let edits = if removed.iter().all(|r| *r) && class.is_anonymous {
-                // php-parser prints an anonymous class whose body it empties anew: `{` on a line of its own at the indent
-                // of the line the class starts on.
                 let open = class.left_brace.start.offset as usize;
                 let from = ctx.source[..open].trim_end().len();
                 let indent = line_indent(ctx.source, node_span(&node).start);
@@ -120,7 +103,6 @@ impl Rule for NoEmptyMethod {
     }
 }
 
-/// `shouldSkipClassMethod`.
 fn should_skip(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -157,7 +139,6 @@ fn should_skip(
     if is(b"__invoke") {
         return true;
     }
-    // `isAttributeMarkerConstructor`.
     let Node::Class(c) = class.node else {
         return false;
     };

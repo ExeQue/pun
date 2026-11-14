@@ -1,8 +1,3 @@
-//! `lint/phpunit/no-final-constructor-override`, ported from rector-phpunit's
-//! `RemoveOverrideFinalConstructTestCaseRector` (rules/PHPUnit120/Rector/Class_).
-//!
-//! PHPUnit 12 made `TestCase::__construct()` final, so the first constructor of a test class is removed.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind};
 use pun_problem::Safety;
 

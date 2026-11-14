@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-bool-ternary`, ported from Rector 2.8.4's `UnnecessaryTernaryExpressionRector`
-//! (rules/CodeQuality/Rector/Ternary).
-//!
-//! `cond ? true : false` is `cond` (or `(bool) cond` when it may not be a `bool`); `cond ? false : true` is its
-//! negation, written as the inverse comparison when `cond` is one. PHPStan's `isBoolean()` is read from the syntax
-//! (`syntax_types::is_bool`).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -84,7 +77,6 @@ impl Rule for NoBoolTernary {
     }
 }
 
-/// The expression itself when it is a `bool`, else `(bool) expr`.
 fn cast(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -97,7 +89,6 @@ fn cast(
     }
 }
 
-/// The expression's text, in parentheses when a prefix operator would bind tighter than it.
 fn wrapped(expr: &Expression<'_>, text: &dyn Fn(&Expression<'_>) -> String) -> String {
     let expr = unparenthesize(expr);
     match expr {

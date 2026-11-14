@@ -1,4 +1,3 @@
-//! CalledMethodProcessor's public marker answers, captured from PHPStan 2.3.1.
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};

@@ -1,6 +1,3 @@
-//! PHPStan's native types as Rector maps them to declarations, read from Mago's types (see [`super::facts`]): the
-//! kind of each atomic type, and the union `ReturnTypeInferer` builds from a body's returns.
-
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -11,7 +8,6 @@ use super::facts::Facts;
 use super::silent_void::{Place, has_silent_void};
 use crate::syntax::node_span;
 
-/// A native type as a declaration knows it.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Kind {
     Int,
@@ -21,7 +17,6 @@ pub(crate) enum Kind {
     Array,
     Null,
     Void,
-    /// An object of a class, by its name as Mago spells it.
     Object {
         name: String,
         is_static: bool,
@@ -29,7 +24,6 @@ pub(crate) enum Kind {
     },
 }
 
-/// The kind of an atomic type, when it is one a declaration can name.
 pub(crate) fn kind(atomic: &TAtomic) -> Option<Kind> {
     Some(match atomic {
         TAtomic::Scalar(s) if s.is_int() => Kind::Int,
@@ -53,9 +47,6 @@ pub(crate) fn kind(atomic: &TAtomic) -> Option<Kind> {
     })
 }
 
-/// `ReturnedNodesReturnTypeInfererTypeInferer::inferFunctionLike` as kinds without repeats: each returned value's
-/// native type, `void` for a bare `return` and for a reachable end. `None` when there are no returns (Rector's mixed)
-/// or a type has no kind.
 pub(crate) fn returned_kinds(
     place: &Place<'_, '_, '_>,
     body: &Block<'_>,
@@ -91,7 +82,6 @@ pub(crate) fn returned_kinds(
     Some(kinds)
 }
 
-/// The native type of an expression, when Mago's analysis reached it.
 pub(crate) fn native_type<'f>(
     facts: &'f Facts,
     expr: &mago_syntax::cst::Expression<'_>,
@@ -101,14 +91,10 @@ pub(crate) fn native_type<'f>(
         .filter(|t| !t.types.is_empty())
 }
 
-/// `TypeFactory::createMixedPassedOrUnionTypeAndKeepConstant`'s members, as keys: a constant (a literal value)
-/// stays apart from its general type unless that type is there too, so `5` and `int` make `int`, `5` and `6` a
-/// union; an integer range is not a constant and stays apart. `None` as for [`returned_kinds`]; `null` is left out.
 pub(crate) fn returned_constants(
     place: &Place<'_, '_, '_>,
     returns: &[&Return<'_>],
 ) -> Option<Vec<String>> {
-    // (key, the general type's key for a constant)
     let mut keys: Vec<(String, Option<&str>)> = Vec::new();
     for value in returns.iter().filter_map(|r| r.value) {
         for atomic in native_type(place.facts, value)?.types.iter() {

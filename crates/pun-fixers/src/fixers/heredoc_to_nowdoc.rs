@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\HeredocToNowdocFixer`.
 use pun_tokens::php_compat::str_replace;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;

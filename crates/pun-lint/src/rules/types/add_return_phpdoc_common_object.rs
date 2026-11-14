@@ -1,8 +1,3 @@
-//! `lint/types/add-return-phpdoc-common-object`, ported from Rector 2.8.4's
-//! `AddReturnDocblockForCommonObjectDenominatorRector` (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a
-//! function or method whose one `return` returns an array of objects gets `@return Parent[]` of the class or the
-//! first parent class or interface they share.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_phpstan::types::{ConstArray, Type, mixed};
 
@@ -37,7 +32,6 @@ impl Rule for AddReturnPhpdocCommonObject {
         let Some(f) = FunctionLike::of(node) else {
             return;
         };
-        // definitely not an array return
         if f.has_non_array_return_type() {
             return;
         }
@@ -63,19 +57,15 @@ impl Rule for AddReturnPhpdocCommonObject {
         };
         let mut referenced = Vec::new();
         for value in &returned.values {
-            // each item must refer some classes, and be an object
             let classes = referenced_classes(value);
             if classes.is_empty() || !is_object(value) {
                 return;
             }
             referenced.extend(classes);
         }
-        // nothing to find here
         if referenced.is_empty() {
             return;
         }
-        // An anonymous class has no name to write. Rector writes its internal `\AnonymousClass<hash>[]`; its name here
-        // holds the class's position, which the new docblock moves, so the fix would never settle.
         if !referenced.iter().all(|c| is_class_name(c)) {
             return;
         }
@@ -109,13 +99,11 @@ impl Rule for AddReturnPhpdocCommonObject {
     }
 }
 
-/// A name PHP source can spell: identifier characters and namespace separators only.
 fn is_class_name(name: &str) -> bool {
     name.bytes()
         .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'\\' || b >= 0x80)
 }
 
-/// `$type->isObject()->yes()`.
 fn is_object(t: &Type) -> bool {
     match t {
         Type::Object(..) | Type::EnumCase(..) | Type::This(_) | Type::ObjectWithoutClass => true,
@@ -124,8 +112,6 @@ fn is_object(t: &Type) -> bool {
     }
 }
 
-/// `array_intersect(...$parentClassesAndInterfaces)[0]`: the first parent class (or, without one, the first
-/// interface) of the first class, when every class has it too.
 fn first_shared_parent(facts: &Facts, classes: &[String]) -> Option<String> {
     let lists: Vec<Vec<String>> = classes
         .iter()
@@ -138,7 +124,6 @@ fn first_shared_parent(facts: &Facts, classes: &[String]) -> Option<String> {
         .then(|| first.clone())
 }
 
-/// `resolveParentClassesAndInterfaces()`: `getParentClassesNames()`, then the names of `getInterfaces()`.
 fn parents_and_interfaces(facts: &Facts, class: &str) -> Vec<String> {
     let codebase = &facts.codebase;
     let mut out = Vec::new();
@@ -166,13 +151,10 @@ fn parents_and_interfaces(facts: &Facts, class: &str) -> Vec<String> {
     out
 }
 
-/// `resolveKeyType()`: of a union of keys, `string` or `int` when they are all one kind (or their union), else
-/// `mixed`.
 fn resolve_key_type(a: &ConstArray) -> Type {
     let Type::Union(keys) = const_array_key_type(a) else {
         return mixed();
     };
-    // (a constant array's keys are integers and strings)
     let types: Vec<Type> = keys
         .iter()
         .map(|key| {

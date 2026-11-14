@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-and-true`, ported from Rector 2.8.4's `RemoveAndTrueRector` (rules/DeadCode/Rector/BooleanAnd)
-//! with `ValueResolver::isTrue` (`ConstFetchAnalyzer`: a constant fetch named `true` in any case).
-//!
-//! `true && $a` and `$a && true` become `$a`; so does `true && true && $a`, where the left side is `&&` of `true`s.
-//! Rector prints the kept side without the parentheses it had; Pun keeps them where the side binds looser than the
-//! place it moves to (lint.md: meaning over bytes).
-
 use mago_syntax::cst::{Binary, BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -35,7 +28,6 @@ impl Rule for NoAndTrue {
         if !matches!(binary.operator, BinaryOperator::And(_)) {
             return;
         }
-        // refactor: the right side when the left is true, else the left side when the right is true.
         let kept = if is_true_or_and_of_trues(binary.lhs) {
             binary.rhs
         } else if is_true_or_and_of_trues(binary.rhs) {
@@ -59,7 +51,6 @@ impl Rule for NoAndTrue {
     }
 }
 
-/// `isTrueOrBooleanAndTrues`.
 fn is_true_or_and_of_trues(expr: &Expression<'_>) -> bool {
     if is_constant(expr, "true") {
         return true;

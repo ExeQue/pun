@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\NoLeadingImportSlashFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind, Tokens, TokensAnalyzer};
 use std::path::Path;
@@ -40,7 +39,5 @@ impl Fixer for NoLeadingImportSlashFixer {
 }
 
 fn remove_leading_import_slash(tokens: &mut Tokens, index: usize) {
-    // Upstream turns a `\` glued to the previous non-whitespace, non-comment token into a space, but PHP 8 lexes
-    // `use\Foo` / `function\foo` as one name, so the separator is always preceded by whitespace or a comment.
     tokens.clear_at(index);
 }

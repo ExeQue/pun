@@ -1,5 +1,3 @@
-//! Named function failures preserve ErrorType without replacing resolved returns or argument writes.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

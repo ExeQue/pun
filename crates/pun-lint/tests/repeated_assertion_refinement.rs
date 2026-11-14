@@ -1,5 +1,3 @@
-//! The live Never-valued sibling of PHPUnit's dead-tail `Pun/never8` consumer.
-
 use std::path::{Path, PathBuf};
 
 use pun_lint::Linter;

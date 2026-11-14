@@ -25,7 +25,6 @@ fn oracle_cases() {
                 .unwrap();
             let config = case.get("config").cloned().unwrap_or(Value::Null);
             if let Some(error) = case.get("error") {
-                // An invalid configuration: configure must fail with the oracle's message.
                 match fixer.configure(&config) {
                     Err(e) if e.to_string() == error.as_str().unwrap() => p += 1,
                     got => {
@@ -48,7 +47,6 @@ fn oracle_cases() {
                     .and_then(Value::as_str)
                     .unwrap_or("test.php"),
             );
-            // doTest's input is null when the code is already fixed.
             let input = (input != expected).then_some(input);
             let (problems, got) = common::do_test(&*fixer, file, expected, input);
             if problems.is_empty() {
@@ -76,7 +74,6 @@ fn oracle_metadata() {
         std::fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/metadata.json")).unwrap();
     let meta: Value = serde_json::from_slice(&raw).unwrap();
     let mut bad = Vec::new();
-    // Pun/* are pun's own fixers: no upstream to compare with.
     for f in pun_fixers::all()
         .into_iter()
         .filter(|f| !f.name().starts_with("Pun/"))

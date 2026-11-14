@@ -30,7 +30,6 @@ fn phpstan() -> Option<PathBuf> {
     p.exists().then(|| p.canonicalize().unwrap())
 }
 
-/// A project PHPStan (level 0, `src`) and Pun (`[analyse] paths`, the basic preset) analyse alike.
 fn sample(name: &str, source: &str) -> PathBuf {
     project(
         "analyse",
@@ -46,7 +45,6 @@ fn sample(name: &str, source: &str) -> PathBuf {
     )
 }
 
-/// (stdout, exit code) of `program args` in `dir`, 80 columns wide, no agent detected.
 fn run(dir: &Path, program: &[&str], args: &[&str]) -> (String, Option<i32>) {
     let out = clean_env(&mut Command::new(program[0]), &["PATH", "HOME"])
         .current_dir(dir)
@@ -80,7 +78,6 @@ fn formats_match_phpstan(name: &str, source: &str) {
         let got = run(&d, &[PUN, "analyse"], &[&format]);
         assert_eq!(got, want, "{name} {f}");
     }
-    // `-v`: raw adds each identifier.
     let want = run(
         &d,
         &[
@@ -116,7 +113,6 @@ fn formats_match_phpstan_non_ignorable() {
     formats_match_phpstan("non-ignorable", NON_IGNORABLE);
 }
 
-/// A trait's errors are reported "in context of class App\Models\C"; the class keeps its backslashes.
 #[test]
 fn formats_match_phpstan_trait_context() {
     formats_match_phpstan(
@@ -125,7 +121,6 @@ fn formats_match_phpstan_trait_context() {
     );
 }
 
-/// An anonymous class's name holds its file relative to the analysed paths' common directory (FuzzyRelativePathHelper).
 #[test]
 fn anonymous_class_names_match_phpstan() {
     let Some(phar) = phpstan() else { return };
@@ -170,8 +165,6 @@ fn anonymous_class_names_match_phpstan() {
     assert_eq!(run(&d, &[PUN, "analyse"], &["--error-format=raw"]), want);
 }
 
-/// NotAnalysedTraitRule reports an unused trait when a configured path is a directory, and skips it when every
-/// analysed path is a file (InceptionResult::isOnlyFiles()).
 #[test]
 fn unused_traits_follow_the_analysed_paths() {
     let Some(phar) = phpstan() else { return };
@@ -285,8 +278,6 @@ fn parser_failures_are_severe_not_configurable_rule_errors() {
     std::fs::remove_dir_all(d).unwrap();
 }
 
-/// The engine translates few syntax errors into PHPParser's wording; the others carry PHP's own message, taken
-/// from `php -l` (8.5): PHPStan reports each of these files as `phpstan.parse` on the same line, and nothing else.
 #[test]
 fn syntax_errors_fail_the_run() {
     let d = sample("syntax-errors", "<?php\n$a = 1\n$b = 2;\n");
@@ -366,7 +357,6 @@ fn non_ignorable_errors_survive_comments_and_baselines() {
         "{baseline}"
     );
     assert!(!baseline.contains("Redefinition"), "{baseline}");
-    // A manually added entry cannot hide a non-ignorable error either.
     baseline.push_str("\n[[issues]]\nfile = 'src/a.php'\ncode = 'analyse/functions/duplicate-parameter'\nmessage = 'Redefinition of parameter $value.'\ncount = 1\n");
     std::fs::write(d.join("pun-baseline.toml"), baseline).unwrap();
     std::fs::write(
@@ -399,12 +389,10 @@ fn baseline_covers_the_errors_it_lists() {
     );
     let baseline = std::fs::read_to_string(d.join("pun-baseline.toml")).unwrap();
     assert!(baseline.contains("variant = \"loose\""), "{baseline}");
-    // A message with a backslash is a TOML literal string.
     assert!(
         baseline.contains("message = 'Call to an undefined method App\\B::nope().'"),
         "{baseline}"
     );
-    // Not configured: the run still reports everything.
     assert_eq!(run(&d, &[PUN, "analyse"], &["--format=raw"]).1, Some(1));
     std::fs::write(
         d.join("pun.toml"),
@@ -415,7 +403,6 @@ fn baseline_covers_the_errors_it_lists() {
         run(&d, &[PUN, "analyse"], &["--format=raw"]),
         (String::new(), Some(0))
     );
-    // An entry that no longer matches is noted; a new error is reported.
     std::fs::write(
         d.join("src/a.php"),
         ERRORS.replace("$this->nope();", "nope2();"),
@@ -430,7 +417,6 @@ fn baseline_covers_the_errors_it_lists() {
         "{out}"
     );
     assert_eq!(code, Some(1));
-    // Every error fixed: all three entries are stale.
     std::fs::write(d.join("src/a.php"), CLEAN).unwrap();
     let (out, _) = run(&d, &[PUN, "analyse"], &["--color=never"]);
     assert!(
@@ -456,7 +442,6 @@ fn ignore_comments_drop_errors() {
         .lines()
         .map(|l| l.rsplit_once("/src/").unwrap().1)
         .collect();
-    // The bare `@pun-ignore` is malformed and covers nothing; raw lists only the analyse errors.
     assert_eq!(
         lines,
         [
@@ -467,7 +452,6 @@ fn ignore_comments_drop_errors() {
     assert_eq!(code, Some(1));
 }
 
-/// (stdout, stderr, exit code) of `pun analyse args` in `dir` with `env` on top of [`run`]'s environment.
 fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)
@@ -482,21 +466,17 @@ fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Opti
     (s(out.stdout), s(out.stderr), out.status.code())
 }
 
-/// One analyse error and a malformed `@pun-ignore` on line 8.
 const MALFORMED: &str = "<?php\n\nnamespace App;\n\nfunction f(): void\n{\n    undefined_fn();\n    new Missing(); // @pun-ignore\n}\n";
 
 #[test]
 fn malformed_ignores_show_in_every_output() {
     let d = sample("malformed", MALFORMED);
-    // Human: the malformed comment is a problem of its own, at the comment (context/plan/output.md §1); no UTF-8
-    // locale here, so ASCII glyphs.
     let (out, _, code) = pun(&d, &["--color=never"], &[]);
     assert!(
         out.contains(" x invalid-ignore-comment  `@pun-ignore` needs one or more rule IDs\n  ,- src/a.php:8:23\n"),
         "{out}"
     );
     assert_eq!(code, Some(1));
-    // GITHUB_ACTIONS: one `::error` workflow command per problem after the human output, at its line and column.
     let (out, _, _) = pun(&d, &["--color=never"], &[("GITHUB_ACTIONS", "true")]);
     let annotations: Vec<&str> = out.lines().filter(|l| l.starts_with("::")).collect();
     assert_eq!(
@@ -507,7 +487,6 @@ fn malformed_ignores_show_in_every_output() {
             "::error file=src/a.php,line=8,col=23,title=invalid-ignore-comment::`@pun-ignore` needs one or more rule IDs",
         ]
     );
-    // -q: nothing printed, the exit code still says there are errors.
     assert_eq!(
         pun(&d, &["-q"], &[]),
         (String::new(), String::new(), Some(1))
@@ -525,7 +504,6 @@ fn generate_baseline_to_a_named_file() {
     assert_eq!(code, Some(0));
     assert!(d.join("b.toml").exists());
     assert!(!d.join("pun-baseline.toml").exists());
-    // -q writes it without a word.
     assert_eq!(
         pun(&d, &["--generate-baseline", "-q"], &[]),
         (String::new(), String::new(), Some(0))
@@ -535,13 +513,11 @@ fn generate_baseline_to_a_named_file() {
 
 #[test]
 fn run_errors_exit_2() {
-    // An invalid pun.toml.
     let d = sample("bad-config", CLEAN);
     std::fs::write(d.join("pun.toml"), "[analyse]\nnope = 1\n").unwrap();
     let (out, err, code) = pun(&d, &[], &[]);
     assert_eq!((out.as_str(), code), ("", Some(2)));
     assert!(err.contains("unknown field `nope`"), "{err}");
-    // A configured baseline that is missing or not TOML, and a baseline path that can't be written.
     let d = sample("bad-baseline", ERRORS);
     std::fs::write(
         d.join("pun.toml"),
@@ -590,7 +566,6 @@ fn run_errors_exit_2() {
             Some(2)
         )
     );
-    // A file that exists but can't be read stops the run, as it stops PHPStan's (CouldNotReadFileException).
     use std::os::unix::fs::PermissionsExt;
     let d = sample("unreadable", CLEAN);
     let file = d.join("src/a.php");
@@ -601,14 +576,10 @@ fn run_errors_exit_2() {
     }
 }
 
-/// `table` and `teamcity` against PHPStan beyond [`formats_match_phpstan`]'s sample: Teamcity's escapes (in a path),
-/// one error, several tables, a 40-column terminal that wraps and cuts a long message, and the fuzzy relative path
-/// of an analysed file path and of paths outside the project.
 #[test]
 fn table_and_teamcity_match_phpstan() {
     let Some(phar) = phpstan() else { return };
     let phar = phar.to_str().unwrap();
-    // Outside the project and outside its top-level directory (the temp dir), so they share no directory.
     let outside = Path::new(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("analyse-outside-{}", std::process::id()));
     std::fs::create_dir_all(&outside).unwrap();
@@ -643,7 +614,6 @@ fn table_and_teamcity_match_phpstan() {
             "",
             &format!("{outside}\", \"src"),
         ),
-        // A path through `..` (PHPStan normalises it) to wide characters (mb_strwidth 2: U+20000, U+30000).
         (
             "parent",
             &[
@@ -696,8 +666,6 @@ fn table_and_teamcity_match_phpstan() {
     }
 }
 
-/// `pun check` reports analyse's findings with the format and lint ones: in files format and lint skip too, a malformed
-/// `@pun-ignore` once (lint and analyse both see it), and the baseline note in human output.
 #[test]
 fn check_reports_analyse_findings() {
     let d = project(
@@ -737,7 +705,6 @@ fn check_reports_analyse_findings() {
         ]
     );
     assert_eq!(code, Some(1));
-    // nope2's entry no longer matches.
     let (out, _) = check(&[]);
     assert!(
         out.contains("! 1 baseline entry no longer matches: run `pun analyse --generate-baseline` to drop it\n"),
@@ -745,10 +712,6 @@ fn check_reports_analyse_findings() {
     );
 }
 
-/// `[[analyse.ignore]]` against PHPStan's `ignoreErrors` in every format: a message pattern that matches, an
-/// identifier with a `count` it misses (`ignore.count` at the first match), a pattern nothing matches in a file
-/// (`ignore.unmatched`, no line, not ignorable) and a raw message with several paths nothing matches (a
-/// not-file-specific error). The baseline leaves out the errors about ignores, as PHPStan's does.
 #[test]
 fn ignores_match_phpstan() {
     let neon = "parameters:\n    level: 0\n    paths:\n        - src\n    ignoreErrors:\n        - message: '#^Function undefined_fn not found\\.$#'\n          path: src/a.php\n        - identifier: method.notFound\n          path: src/a.php\n          count: 2\n        - message: '#^Never$#'\n          path: src/a.php\n        - rawMessage: 'Nope'\n          paths: [src/*, lib/*]\n";
@@ -762,7 +725,6 @@ fn ignores_match_phpstan() {
             ("src/a.php", ERRORS),
         ],
     );
-    // Human, agent and baseline output need no oracle.
     let (out, _, code) = pun(&d, &["--color=never"], &[]);
     assert_eq!(code, Some(1));
     let general = format!(
@@ -793,19 +755,15 @@ fn ignores_match_phpstan() {
             "phpstan.neon",
         ];
         let mut want = run(&d, &phpstan, &[&format, "-v"]);
-        // teamcity names the config file
         want.0 = want.0.replace("file='phpstan.neon'", "file='pun.toml'");
         let got = run(&d, &[PUN, "analyse"], &[&format, "-v"]);
         assert_eq!(got, want, "{f}");
     }
 }
 
-/// No analyse rule on: PHPStan stops with "No rules detected" (no level, CommandHelper); Pun stops the same, with
-/// its run-error exit code.
 #[test]
 fn no_rules_detected() {
     let d = sample("no-rules", ERRORS);
-    // rules/mapping.toml's analyse groups
     let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings types undefined";
     let off: String = groups
         .split(' ')

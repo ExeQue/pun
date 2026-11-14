@@ -1,8 +1,3 @@
-//! ClassNameCheck (ClassCaseSensitivityCheck and ClassForbiddenNameCheck) at every caller Pun has, on names PHPStan's
-//! own rule fixtures miss: `use` aliases, PHPStan's stubbed core attributes, a prefix without a namespace, the
-//! `__callStatic()` drop, and the `checkClassCaseSensitivity` callers with the parameter on. Expected: PHPStan's runs on
-//! tests/fixtures/class_names with phpstan.neon (level 0) and phpstan-level2.neon (level 2).
-
 use std::path::Path;
 
 use pun_analyse::{IDENTIFIERS, Project, analyse, run};
@@ -70,8 +65,6 @@ fn config(neon: &str) -> pun_phpstan::config::Resolved {
     resolve(&options).unwrap_or_else(|e| panic!("{e}"))
 }
 
-/// Level 0: the case checks of FunctionDefinitionCheck, ExistingClassInInstanceOfRule, CaughtExceptionExistenceRule and
-/// ExistingClassesInPropertiesRule are off; the prefix check and the other callers' case checks are on.
 #[test]
 fn level_0() {
     let keep = |i: &str| IDENTIFIERS.contains(&i);
@@ -79,7 +72,6 @@ fn level_0() {
     assert_eq!(got, expected("phpstan", &keep));
 }
 
-/// `checkClassCaseSensitivity` on (level 2) turns those callers' case checks on.
 #[test]
 fn check_class_case_sensitivity() {
     let keep = |i: &str| CLASS_NAME_CHECK.contains(&i);
@@ -91,8 +83,6 @@ fn check_class_case_sensitivity() {
     assert_eq!(got, expected("phpstan-level2", &keep));
 }
 
-/// Captured from PHPStan 2.3.1, restricted to ClassNameCheck identifiers. The same inputs exercise attributes,
-/// instantiation, inheritance, trait use, signatures, instanceof, catches, constants, static calls and callables.
 fn case_options(neon: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/class-case-options");
     let dir = root.to_string_lossy().into_owned();

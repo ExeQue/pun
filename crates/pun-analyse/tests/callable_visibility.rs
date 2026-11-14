@@ -1,5 +1,3 @@
-//! Scope-aware callable results, captured from PHPStan 2.3.1 with the adjacent phpstan.neon.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run, run_mago};
@@ -46,7 +44,6 @@ fn lexical_method_access_and_unknown_callees_preserve_complete_results() {
     want.sort();
     assert_eq!(got, want);
 
-    // Check the producer independently of the PHPStan-style diagnostic consumer.
     let mut got: Vec<_> = run_mago(&project, None)
         .unwrap()
         .dumped

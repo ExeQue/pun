@@ -1,38 +1,3 @@
-//! Constructor injection as Rector 2.8.4 writes it, shared by `lint/refactor/replace-static-with-method`
-//! (`StaticCallToMethodCallRector`) and `lint/laravel/prefer-constructor-injection` (rector-laravel's
-//! `ArgumentFuncCallToMethodCallRector`). Both visit a class (named or anonymous), walk each of its methods in order
-//! ([`inject`]) and ask [`Injector::provide`] (`FuncCallStaticCallToMethodCallAnalyzer::matchTypeProvidingExpr`) for
-//! an expression of the configured class to call the new method on:
-//!
-//! - `TypeProvidingExprFromClassResolver`: the first method, then the first property, whose type is the class (its
-//!   PHPDoc type read, `null` aside), in the order PHPStan's native reflection (BetterReflection) lists them: the
-//!   class's own methods in declaration order, then its parent's, its traits', its interfaces'; the parent's
-//!   non-private properties, then the interfaces', the traits', and the class's own (declared, then promoted), an own
-//!   one taking the place of an inherited one of the same name. In the constructor, else, a new parameter.
-//! - `ClassDependencyManipulator::addConstructorDependency` (with `ClassInsertManipulator`,
-//!   `ClassMethodAssignManipulator`, `PropertyPresenceChecker` and `AutowiredClassMethodOrPropertyAnalyzer`): a
-//!   promoted property (PHP 8.0+, `readonly` from 8.1) added to the class's constructor, to a new one, or to a copy of
-//!   the nearest parent constructor that calls it (`parent::__construct(...)`); below PHP 8.0, a private property
-//!   (typed from 7.4, else with a `@var` tag) and a parameter assigned to it; in a public `@required` / `@inject`
-//!   (Symfony, Nette) method if the class has one. A new member goes before the first method, or after the first run
-//!   of properties.
-//!
-//! The code is printed as php-parser's format-preserving printer writes it: a new member on its own line at the
-//! indentation of the member next to it; a new parameter after the last one (`, ` or, in a list with a line break
-//! between every two parameters, `,` and a line break); a new statement on its own line after the last one; a method
-//! whose body was empty printed anew; the copy of a parent constructor printed anew from its own file (names fully
-//! qualified, literals as php-parser writes them); a rewritten call with its arguments joined by `, `, or one a line
-//! when one of them has comments.
-//!
-//! Pun leaves alone what Rector breaks (each a `Pun/` fixture): a call in a nested class, a static closure or a
-//! function (Rector writes `$this` where it means another object or none); a new constructor parameter used in a
-//! closure that does not capture it; a parameter name the constructor has already, or a dependency the constructor
-//! needs both as a parameter and as a property (Rector declares the parameter twice or reads a property it never
-//! declares); a parent's private method and a static property (not readable through `$this->`); a constructor that
-//! comes from a trait or an interface, or an abstract or variadic parent constructor (Rector calls
-//! `parent::__construct()` where it does not exist, or adds a parameter PHP rejects); an abstract constructor or
-//! `@required` method. A class among its own parents is left alone too, as Rector stops there with an error.
-
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -58,29 +23,22 @@ use super::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report};
 
-/// `PhpVersionFeature::PROPERTY_PROMOTION`, `READONLY_PROPERTY` and `TYPED_PROPERTIES`.
 const PROMOTION: u32 = 80000;
 const READONLY: u32 = 80100;
 const TYPED_PROPERTIES: u32 = 70400;
 
-/// Where a call stands in its method: whether `$this` is there (not in a static closure or a function), and whether
-/// the method's variables are (not in a closure, which captures only what its `use` names).
 #[derive(Clone, Copy)]
 pub(crate) struct Scope {
     pub this: bool,
     pub captured: bool,
-    /// Whether the node is in a class declared inside the method, where Rector's `$this` means the other class.
     pub nested: bool,
 }
 
-/// The arguments of a call written anew: the spans of its arguments, or a first-class callable's `...`.
 pub(crate) struct Args {
     pub items: Vec<Span>,
     pub placeholder: bool,
 }
 
-/// What a rule makes of a node of a method: nothing, the call at `span` written anew as `head` and its arguments,
-/// or no change to the class at all (where Rector stops with an error).
 pub(crate) enum Outcome {
     Keep,
     Rewrite {
@@ -91,7 +49,6 @@ pub(crate) enum Outcome {
     Fail,
 }
 
-/// The arguments of `list` (a call's).
 pub(crate) fn call_args(list: &ArgumentList<'_>) -> Args {
     Args {
         items: list.arguments.iter().map(node_span).collect(),
@@ -99,7 +56,6 @@ pub(crate) fn call_args(list: &ArgumentList<'_>) -> Args {
     }
 }
 
-/// Whether a first-class callable's arguments are `(...)`.
 pub(crate) fn is_first_class(list: &PartialArgumentList<'_>) -> bool {
     matches!(
         list.arguments.iter().collect::<Vec<_>>()[..],
@@ -107,7 +63,6 @@ pub(crate) fn is_first_class(list: &PartialArgumentList<'_>) -> bool {
     )
 }
 
-/// The first-class callable's `(...)`.
 pub(crate) fn placeholder() -> Args {
     Args {
         items: Vec::new(),
@@ -115,8 +70,6 @@ pub(crate) fn placeholder() -> Args {
     }
 }
 
-/// A rule's `refactor()` on the class `node`: each method `visit_method` accepts walked in order (nested classes
-/// left out), `call` asked about each node, and the class's changes reported as one fix.
 pub(crate) fn inject<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -180,7 +133,6 @@ pub(crate) fn inject<'ast, 'arena>(
     });
 }
 
-/// The scope of a node below a method, `path` the nodes from the method down.
 fn scope_of(path: &[Node<'_, '_>]) -> Scope {
     let mut scope = Scope {
         this: true,
@@ -216,8 +168,6 @@ fn is_class_like(node: &Node<'_, '_>) -> bool {
     )
 }
 
-/// Whether the class sits in a method of a class (named or anonymous) that the rule walks, Rector having rewritten
-/// its calls from the outer class already.
 fn in_visited_method(
     ancestors: &[Node<'_, '_>],
     visit_method: &dyn Fn(&Method<'_>) -> bool,
@@ -232,7 +182,6 @@ fn in_visited_method(
     matches!(outer, Some(Node::Class(_) | Node::AnonymousClass(_))) && visit_method(method)
 }
 
-/// The edits of the rewritten calls: each printed with the rewrites inside its arguments, the outermost kept.
 fn rewritten(source: &str, all: &[Token], rewrites: &[(Span, String, Option<Args>)]) -> Vec<Edit> {
     let mut done: Vec<Edit> = Vec::new();
     for (span, head, args) in rewrites.iter().rev() {
@@ -248,7 +197,6 @@ fn rewritten(source: &str, all: &[Token], rewrites: &[(Span, String, Option<Args
     outermost(&done, Span::new(0, source.len()))
 }
 
-/// The edits within `span` that no other edit within it holds.
 fn outermost(edits: &[Edit], span: Span) -> Vec<Edit> {
     let within = |s: Span, outer: Span| outer.start <= s.start && s.end <= outer.end;
     let inside: Vec<&Edit> = edits.iter().filter(|e| within(e.span, span)).collect();
@@ -263,7 +211,6 @@ fn outermost(edits: &[Edit], span: Span) -> Vec<Edit> {
         .collect()
 }
 
-/// The text at `span` with the edits within it applied.
 fn edited(source: &str, span: Span, edits: &[Edit]) -> String {
     let mut inner = outermost(edits, span);
     inner.sort_by_key(|e| e.span.start);
@@ -278,8 +225,6 @@ fn edited(source: &str, span: Span, edits: &[Edit]) -> String {
     out
 }
 
-/// `pMaybeMultiline` over the arguments: joined by `, `, or each on a line of its own after its comments, one level
-/// deeper than `level`, when one of them has comments.
 fn print_args(source: &str, all: &[Token], args: &Args, level: usize, done: &[Edit]) -> String {
     if args.placeholder {
         return "...".to_string();
@@ -314,37 +259,27 @@ fn print_args(source: &str, all: &[Token], args: &Args, level: usize, done: &[Ed
     format!("{}\n{}", lines.join(","), " ".repeat(level))
 }
 
-/// A parameter the injection adds: its name, its code and whether it is a promoted property.
 struct Added {
     name: String,
     text: String,
     promoted: bool,
 }
 
-/// The class's constructor as the injection changes it.
 enum Ctor {
-    /// The class declares one.
     Own,
-    /// None yet.
     Missing,
-    /// A new one, empty.
     Fresh,
-    /// A new one, a copy of the parent's.
     FromParent(Rc<ParentCtor>),
 }
 
-/// The nearest parent constructor (`ClassDependencyManipulator::resolveConstruct` / `hasFinalParentConstructor`).
 #[derive(Clone)]
 enum Nearest {
     None,
     Final,
-    /// One Pun does not follow Rector to.
     Fail,
     Parent(Rc<ParentCtor>),
 }
 
-/// A member of a class as reflection lists it: its name, the class-like that declares it, and whether it came from
-/// the parent.
 #[derive(Clone)]
 struct Member {
     name: String,
@@ -354,8 +289,6 @@ struct Member {
     is_static: bool,
 }
 
-/// The parts of a class-like declaration reflection reads: its parent, interfaces and traits, and its own methods and
-/// properties (declared, then promoted) in order.
 #[derive(Default)]
 struct Shape {
     parent: Option<String>,
@@ -365,14 +298,12 @@ struct Shape {
     properties: Vec<Member>,
 }
 
-/// A property the injection adds: its name and whether it has a `@var` tag instead of a type.
 struct NewProperty {
     name: String,
     class: String,
     doc: bool,
 }
 
-/// `ClassDependencyManipulator` and `TypeProvidingExprFromClassResolver` on one class.
 pub(crate) struct Injector<'c, 'ast, 'arena> {
     ctx: &'c Context<'c>,
     facts: Rc<Facts>,
@@ -390,9 +321,7 @@ pub(crate) struct Injector<'c, 'ast, 'arena> {
     autowire_params: Vec<Added>,
     autowire_stmts: Vec<String>,
     new_properties: Vec<NewProperty>,
-    /// The parameters added to the constructor for calls in it.
     ctor_vars: Vec<String>,
-    /// The properties calls read.
     deps: Vec<String>,
     failed: bool,
 }
@@ -433,20 +362,16 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         injector
     }
 
-    /// `matchTypeProvidingExpr` for the class `class` in `method`: the code of the expression to call on, or `None`
-    /// where the call stays.
     pub(crate) fn provide(
         &mut self,
         method: &Method<'_>,
         class: &str,
         scope: Scope,
     ) -> Option<String> {
-        // Pun: Rector writes `$this` of the outer class in the nested one.
         if scope.nested {
             self.failed = true;
             return None;
         }
-        // A. a method, B. a property
         if let Some(found) = self.method_providing(class) {
             return scope.this.then(|| format!("$this->{found}()"));
         }
@@ -457,7 +382,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             return None;
         }
         let name = fqn_to_variable_name(class);
-        // C. a parameter of the constructor
         if method.name.value.eq_ignore_ascii_case(b"__construct") {
             if !scope.captured {
                 return None;
@@ -491,8 +415,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         Some(format!("$this->{name}"))
     }
 
-    // TypeProvidingExprFromClassResolver
-
     fn method_providing(&mut self, class: &str) -> Option<String> {
         if self.methods.is_none() {
             let methods = methods_of(
@@ -516,7 +438,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             is_matching_type(&t.type_union, class)
                 .then(|| (m.name.clone(), m.from_parent && private))
         })?;
-        // Pun: a parent's private method is not callable here.
         self.failed |= private;
         (!private).then_some(found)
     }
@@ -542,15 +463,11 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
                 .and_then(|meta| meta.type_metadata.as_ref())
                 .is_some_and(|t| is_matching_type(&t.type_union, class))
         })?;
-        // Pun: a static property is not readable through `$this->`.
         self.failed |= found.is_static;
         (!found.is_static).then(|| found.name.clone())
     }
 
-    // ClassDependencyManipulator
-
     fn add_constructor_dependency(&mut self, name: &str, class: &str) {
-        // hasClassPropertyAndDependency
         if let Some(autowired) = self.class_context_property(name) {
             match autowired {
                 Some(true) => return,
@@ -563,7 +480,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             self.add_property_to_class(name, class);
         }
         if let Some(method) = autowire {
-            // Pun: an abstract `@required` method takes no statement.
             if !matches!(method.body, MethodBody::Concrete(_)) {
                 self.failed = true;
                 return;
@@ -586,9 +502,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         self.add_with_custom_assign(name, class);
     }
 
-    /// `PropertyPresenceChecker::getClassContextProperty`: the class's property or promoted constructor parameter
-    /// named `name`, `Some(true)` when it is a property autowiring fills (`detect()`), `Some(false)` for a promoted
-    /// parameter it marks, `None` for any other.
     fn class_context_property(&self, name: &str) -> Option<Option<bool>> {
         for (index, member) in self.class.members.iter().enumerate() {
             let (lists, items): (_, Vec<&PropertyItem<'_>>) = match member {
@@ -626,12 +539,10 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             .then_some(None)
     }
 
-    /// `Class_::getProperty()` of the class as changed.
     fn has_property(&self, name: &str) -> bool {
         self.class.property(name).is_some() || self.new_properties.iter().any(|p| p.name == name)
     }
 
-    /// The names of the parameters of the class's constructor as changed (`isParamInConstructor`).
     fn param_names(&self) -> Vec<String> {
         let mut names: Vec<String> = match &self.ctor {
             Ctor::Own => self
@@ -659,7 +570,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         });
     }
 
-    /// `addPromotedProperty`.
     fn add_promoted_property(&mut self, name: &str, class: &str) {
         let readonly = if self.ctx.php_version >= READONLY {
             "readonly "
@@ -678,22 +588,18 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
                     self.ctor = Ctor::Fresh;
                     self.ctor_params.push(param);
                 }
-                Nearest::Parent(parent) => {
-                    match parent.params.iter().find(|p| p.name == name) {
-                        // A private promoted property of the parent: a new constructor on the class.
-                        Some(p) if p.promoted == Some(true) => {
-                            self.ctor = Ctor::Fresh;
-                            self.ctor_params.push(param);
-                        }
-                        Some(p) if p.promoted.is_some() => {}
-                        // Pun: a parameter the parent does not keep as a property.
-                        Some(_) => self.failed = true,
-                        None => {
-                            self.ctor = Ctor::FromParent(parent);
-                            self.ctor_params.push(param);
-                        }
+                Nearest::Parent(parent) => match parent.params.iter().find(|p| p.name == name) {
+                    Some(p) if p.promoted == Some(true) => {
+                        self.ctor = Ctor::Fresh;
+                        self.ctor_params.push(param);
                     }
-                }
+                    Some(p) if p.promoted.is_some() => {}
+                    Some(_) => self.failed = true,
+                    None => {
+                        self.ctor = Ctor::FromParent(parent);
+                        self.ctor_params.push(param);
+                    }
+                },
             }
             return;
         }
@@ -702,14 +608,12 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             return;
         }
         match self.ctor_param(name) {
-            // Pun: a parameter of that name that is no property.
             Some(false) => self.failed = true,
             Some(true) => {}
             None => self.ctor_params.push(param),
         }
     }
 
-    /// Whether the constructor parameter `name` exists, and then whether it is a promoted property.
     fn ctor_param(&self, name: &str) -> Option<bool> {
         let found = match &self.ctor {
             Ctor::Own => self
@@ -734,7 +638,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         })
     }
 
-    /// Whether the class's own constructor has a body to add to.
     fn ctor_has_body(&self) -> bool {
         !matches!(self.ctor, Ctor::Own)
             || self
@@ -742,7 +645,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
                 .is_some_and(|m| matches!(m.body, MethodBody::Concrete(_)))
     }
 
-    /// `addConstructorDependencyWithCustomAssign` with `$this->name = $name`.
     fn add_with_custom_assign(&mut self, name: &str, class: &str) {
         if let Ctor::Missing = self.ctor {
             match self.nearest().clone() {
@@ -777,7 +679,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         );
     }
 
-    /// The nearest parent constructor, worked out once.
     fn nearest(&mut self) -> &Nearest {
         if self.nearest.is_none() {
             let nearest = if self.own.is_some() {
@@ -790,9 +691,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         self.nearest.as_ref().unwrap()
     }
 
-    // AutowiredClassMethodOrPropertyAnalyzer
-
-    /// `matchAutowiredMethodInClass`: the first public method, not a magic one, that autowiring calls.
     fn autowired_method(&self) -> Option<&'ast Method<'arena>> {
         self.class.members.iter().enumerate().find_map(|(i, m)| {
             let ClassLikeMember::Method(method) = m else {
@@ -807,8 +705,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         })
     }
 
-    /// `detect()` on the member at `index`, whose attributes are `lists`: an `@required` or `@inject` tag in its doc
-    /// comment, or Symfony's `Required` or Nette's `Inject` attribute.
     fn is_autowired_member(&self, index: usize, lists: &Sequence<'_, AttributeList<'_>>) -> bool {
         let member = self.class.members.get(index).unwrap();
         let from = member_from(self.class.members, self.class.left_brace, index);
@@ -833,9 +729,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         ) || has_attribute(self.ancestors, lists, "Nette\\DI\\Attributes\\Inject")
     }
 
-    // Printing
-
-    /// The edits for the members, parameters and statements the injection added.
     fn finish(&self, all: &[Token]) -> Vec<Edit> {
         let source = self.ctx.source;
         let mut edits = Vec::new();
@@ -870,8 +763,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         edits
     }
 
-    /// `addAsFirstMethod` for the new properties, then the new constructor: before the first method, or after the
-    /// first run of properties.
     fn insert_members(&self, all: &[Token], new_ctor: bool) -> Edit {
         let source = self.ctx.source;
         let members: Vec<&ClassLikeMember<'_>> = self.class.members.iter().collect();
@@ -933,7 +824,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         }
     }
 
-    /// The new constructor at the indent `level`, and its comments.
     fn print_new_ctor(&self, level: usize) -> (Option<String>, String) {
         let nl = format!("\n{}", " ".repeat(level));
         let nl4 = format!("\n{}", " ".repeat(level + 4));
@@ -997,8 +887,6 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
     }
 }
 
-/// `ClassMethodAssignManipulator::addParameterAndAssignToMethod`: the parameter and `$this->name = $name;`, unless
-/// the method has the parameter. Pun: one it had before the injection is not the dependency.
 fn add_parameter_and_assign(
     params: &mut Vec<Added>,
     stmts: &mut Vec<String>,
@@ -1022,7 +910,6 @@ fn add_parameter_and_assign(
     stmts.push(format!("$this->{name} = ${name};"));
 }
 
-/// The parameters of `method`: each name and whether it is a promoted property.
 fn params_of(method: &Method<'_>) -> Vec<(String, bool)> {
     (method.parameter_list.parameters.iter())
         .map(|p| {
@@ -1034,7 +921,6 @@ fn params_of(method: &Method<'_>) -> Vec<(String, bool)> {
         .collect()
 }
 
-/// `isMatchingType`: not `mixed`, and without `null` exactly the object type of `class`.
 fn is_matching_type(t: &TUnion, class: &str) -> bool {
     if t.is_mixed() {
         return false;
@@ -1048,7 +934,6 @@ fn is_matching_type(t: &TUnion, class: &str) -> bool {
                 && !n.is_this
                 && n.intersection_types.is_none()
         }
-        // a class the codebase does not know
         [
             TAtomic::Reference(TReference::Symbol {
                 name,
@@ -1061,7 +946,6 @@ fn is_matching_type(t: &TUnion, class: &str) -> bool {
     }
 }
 
-/// The new property, and its doc comment, at the line break `nl`.
 fn print_property(p: &NewProperty, nl: &str) -> (Option<String>, String) {
     if p.doc {
         (
@@ -1073,8 +957,6 @@ fn print_property(p: &NewProperty, nl: &str) -> (Option<String>, String) {
     }
 }
 
-/// The edits for the parameters and statements added to the class's method `method`: after its last parameter and
-/// statement, or the whole method printed anew when its body was empty.
 fn method_edits(
     source: &str,
     all: &[Token],
@@ -1134,7 +1016,6 @@ fn method_edits(
     edits
 }
 
-/// `isMultiline`: two items or more, with a line break before the end of each after the first.
 fn is_multiline(source: &str, items: &[Span]) -> bool {
     items.len() >= 2
         && items
@@ -1142,8 +1023,6 @@ fn is_multiline(source: &str, items: &[Span]) -> bool {
             .all(|w| source[w[0].end..w[1].end].contains('\n'))
 }
 
-/// `pStmt_ClassMethod` for a method whose body was empty: its attributes and modifiers, its parameters (kept as
-/// written) with the new ones, and the new statements.
 fn reprint_method(
     source: &str,
     all: &[Token],
@@ -1224,10 +1103,6 @@ fn reprint_method(
     out
 }
 
-// Reflection order
-
-/// The shape of the class-like `name`: the class being changed from its own syntax, any other from its file (a
-/// built-in one from its metadata, in a fixed order).
 fn shape_of(
     facts: &Facts,
     class: &ClassView<'_, '_>,
@@ -1332,7 +1207,6 @@ fn shape_of(
     shape
 }
 
-/// A class-like's shape from its members.
 fn shape_from(
     members: &Sequence<'_, ClassLikeMember<'_>>,
     parent: Option<String>,
@@ -1401,8 +1275,6 @@ fn position(members: &[Member], name: &str, case_insensitive: bool) -> Option<us
     })
 }
 
-/// BetterReflection's `getMethods()` of `name`: its own methods, then its parent's, its traits' (one replacing an
-/// inherited method of its name), its interfaces'.
 fn methods_of(
     facts: &Facts,
     class: &ClassView<'_, '_>,
@@ -1411,7 +1283,6 @@ fn methods_of(
     name: &str,
     visited: &mut Vec<String>,
 ) -> Option<Vec<Member>> {
-    // a class among its own ancestors: Rector stops with an error
     if visited.iter().any(|v| v.eq_ignore_ascii_case(name)) {
         return None;
     }
@@ -1457,8 +1328,6 @@ fn methods_of(
     Some(out)
 }
 
-/// BetterReflection's `getProperties()` of `name`: its parent's non-private ones, its interfaces', its traits', then
-/// its own, each in the place of an inherited one of its name.
 fn properties_of(
     facts: &Facts,
     class: &ClassView<'_, '_>,
@@ -1467,7 +1336,6 @@ fn properties_of(
     name: &str,
     visited: &mut Vec<String>,
 ) -> Option<Vec<Member>> {
-    // a class among its own ancestors: Rector stops with an error
     if visited.iter().any(|v| v.eq_ignore_ascii_case(name)) {
         return None;
     }
@@ -1508,7 +1376,6 @@ fn properties_of(
     Some(out)
 }
 
-/// `p` in the place of the property of its name in `out`, else after them.
 fn upsert(out: &mut Vec<Member>, p: Member) {
     match position(out, &p.name, false) {
         Some(at) => out[at] = p,
@@ -1516,10 +1383,6 @@ fn upsert(out: &mut Vec<Member>, p: Member) {
     }
 }
 
-// The parent constructor
-
-/// A parent constructor as the injection copies it: its comments (spans in `source`), attribute groups and
-/// modifiers, and its parameters, each printed anew.
 struct ParentCtor {
     source: Arc<str>,
     comments: Vec<Span>,
@@ -1528,8 +1391,6 @@ struct ParentCtor {
     params: Vec<ParentParam>,
 }
 
-/// A parameter of the parent constructor: its name, comments, attribute groups and the rest of its code, and whether
-/// it is a promoted property (`Some(true)` a private one).
 struct ParentParam {
     name: String,
     comments: Vec<Span>,
@@ -1538,7 +1399,6 @@ struct ParentParam {
     promoted: Option<bool>,
 }
 
-/// The nearest constructor among the class's ancestors (the class has none of its own).
 fn nearest_parent(facts: &Facts, name: &str) -> Nearest {
     let codebase = &facts.codebase;
     let found = codebase.get_class_like(name.as_bytes()).and_then(|meta| {
@@ -1553,7 +1413,6 @@ fn nearest_parent(facts: &Facts, name: &str) -> Nearest {
     }) else {
         return Nearest::None;
     };
-    // Pun: a constructor from a trait or an interface has no `parent::__construct()` to call.
     let kind = codebase.get_class_like(id.as_bytes()).map(|c| c.kind);
     if id.eq_ignore_ascii_case(name) || !matches!(kind, Some(SymbolKind::Class)) {
         return Nearest::Fail;
@@ -1562,7 +1421,6 @@ fn nearest_parent(facts: &Facts, name: &str) -> Nearest {
     if meta.is_final {
         return Nearest::Final;
     }
-    // a private one stops the search; a built-in class's has no syntax to copy
     if meta.visibility == Visibility::Private {
         return Nearest::None;
     }
@@ -1578,8 +1436,6 @@ fn nearest_parent(facts: &Facts, name: &str) -> Nearest {
     }
 }
 
-/// The constructor of `source` that holds the offset `at`, as the injection copies it; `None` for a variadic or
-/// hooked parameter.
 fn parent_ctor(source: Arc<str>, at: usize) -> Option<ParentCtor> {
     let arena = mago_allocator::LocalArena::new();
     let file = mago_database::file::File::ephemeral(
@@ -1657,7 +1513,6 @@ fn parent_ctor(source: Arc<str>, at: usize) -> Option<ParentCtor> {
     })
 }
 
-/// `pModifiers` for a promoted parameter's modifiers.
 fn param_modifiers(modifiers: &Sequence<'_, Modifier<'_>>) -> String {
     let has = |f: fn(&Modifier<'_>) -> bool| modifiers.iter().any(f);
     let order: [(&str, bool); 7] = [
@@ -1682,8 +1537,6 @@ fn param_modifiers(modifiers: &Sequence<'_, Modifier<'_>>) -> String {
         .collect()
 }
 
-/// php-parser's pretty printer for the parts of another file's code the injection copies, its names resolved as
-/// `NameResolver` resolves them. A node it does not print anew keeps its source.
 struct Printer<'s, 'n, 'arena> {
     source: &'s str,
     names: &'n ResolvedNames<'arena>,
@@ -1699,14 +1552,12 @@ impl Printer<'_, '_, '_> {
         format!("\\{}", String::from_utf8_lossy(self.names.get(id)))
     }
 
-    /// A type declaration: class names fully qualified, built-in types lowercased.
     fn hint(&self, hint: &Hint<'_>) -> String {
         match hint {
             Hint::Identifier(id) => self.class(id),
             Hint::Nullable(n) => format!("?{}", self.hint(n.hint)),
             Hint::Union(u) => format!("{}|{}", self.hint(u.left), self.hint(u.right)),
             Hint::Intersection(i) => format!("{}&{}", self.hint(i.left), self.hint(i.right)),
-            // an intersection in a union
             Hint::Parenthesized(p) => format!("({})", self.hint(p.hint)),
             Hint::Self_(_) | Hint::Parent(_) => self.text(hint),
             other => self.text(other).to_ascii_lowercase(),
@@ -1745,7 +1596,6 @@ impl Printer<'_, '_, '_> {
         }
     }
 
-    /// A constant expression as php-parser prints it anew.
     fn expr(&self, expr: &Expression<'_>) -> String {
         match expr {
             Expression::Parenthesized(p) => format!("({})", self.expr(p.expression)),
@@ -1799,7 +1649,6 @@ impl Printer<'_, '_, '_> {
         }
     }
 
-    /// A class reference: a name fully qualified, `self` and the like as written.
     fn class_expr(&self, class: &Expression<'_>) -> String {
         match unparenthesize(class) {
             Expression::Identifier(id) => self.class(id),
@@ -1821,8 +1670,6 @@ impl Printer<'_, '_, '_> {
     }
 }
 
-/// `pScalar_Int` of an integer literal written `raw` with the value `value`: in its kind (decimal, `0x` lowercase,
-/// `0` octal, `0b` binary).
 fn print_int(raw: &[u8], value: u64) -> Option<String> {
     let raw = String::from_utf8_lossy(raw).to_ascii_lowercase();
     Some(if raw.starts_with("0x") {

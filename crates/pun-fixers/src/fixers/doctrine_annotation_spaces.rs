@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\DoctrineAnnotation\DoctrineAnnotationSpacesFixer`.
 use crate::analyzers::doctrine_annotation::{self as doctrine, *};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -136,7 +135,6 @@ fn fix_spaces_around_parentheses(tokens: &mut DocTokens) {
 
 fn fix_spaces_around_commas(tokens: &mut DocTokens) {
     let mut in_annotation_until = None;
-    // `foreach` over the live list: a space inserted after a comma is visited too.
     let mut index = 0;
     while index < tokens.len() {
         let current = index;
@@ -165,8 +163,6 @@ fn fix_spaces_around_commas(tokens: &mut DocTokens) {
 impl DoctrineAnnotationSpacesFixer {
     fn fix_around_assignments(&self, tokens: &mut DocTokens) {
         let mut scopes: Vec<u8> = vec![];
-        // `foreach` over the live list: a space inserted before the operator moves it to the next index, so the
-        // operator is visited again.
         let mut index = 0;
         while index < tokens.len() {
             let current = index;

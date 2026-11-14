@@ -1,5 +1,3 @@
-//! The array-origin HasOffsetValue accessory, from actual PHPStan 2.3.1 public type operations.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{
     Accessory, ConstArray, Level, Tri, Type, intersect, is_super_type_of, to_phpdoc,
@@ -12,7 +10,6 @@ fn input(row: &Value) -> Type {
             return Type::array(Type::Int, Type::Error);
         }
         if ty == "array{5?: string}" {
-            // The oracle calls ConstantArrayType directly, not ConstantArrayTypeBuilder.
             return Type::ConstArray(Box::new(ConstArray {
                 keys: vec![Type::ConstInt(5)],
                 values: vec![Type::String],

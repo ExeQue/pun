@@ -1,6 +1,3 @@
-//! Token boundaries follow PHP's INITIAL scanner (token_get_all), not executable-file shebang skipping.
-//! Expected boundaries are derived from the literal prefixes/openers; source-fidelity checks reject masking.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -18,8 +15,6 @@ use pun_lint::{Linter, rules};
 #[test]
 fn shebang_lexer_stops_at_enabled_openers_and_retains_original_bytes_and_spans() {
     use TokenKind::{EchoTag, InlineShebang, InlineText, OpenTag, ShortOpenTag};
-    // PHP token_get_all exposes these inline-prefix/opener boundaries. Mago keeps a genuine LF shebang as
-    // InlineShebang and separates opening-tag whitespace; neither convention may swallow an opening tag.
     for (source, short_tags, prefix, inline, opener, tag) in [
         ("#!php<?php 1;", true, "#!php", InlineText, "<?php", OpenTag),
         (
@@ -249,7 +244,6 @@ fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
         "#!php\n<?php ",
         "#!php\r\n<?php ",
     ] {
-        // The arithmetic rewrite is derived by hand. Only the PHP expression changes, never its inline prefix.
         let source = format!("{prefix}$a = $a + 1;");
         let fixed = linter.fix(Path::new("shebang.php"), &source).unwrap();
         assert_eq!(fixed.source, format!("{prefix}$a += 1;"));
@@ -267,7 +261,6 @@ fn shebang_lint_native_facts_reparse_the_same_class_and_variable_return() {
         "#!php\n<?php ",
         "#!php\r\n<?php ",
     ] {
-        // ReturnTypeFromReturnNewRector's variable-return contract: this variable holds the declared class.
         let source = format!(
             "{prefix}class Restored {{}} function create() {{ $value = new Restored; return $value; }}"
         );

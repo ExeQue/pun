@@ -60,7 +60,6 @@ fn run(linter: &Linter, dir: &str) {
     run_with_sources(linter, dir, &[]);
 }
 
-/// [`run`] with the symbols of tests/rector/`sources`/*.php known, as Rector's tests autoload a fixture's Source/.
 fn run_with_sources(linter: &Linter, dir: &str, sources: &[&str]) {
     let pipeline = laravel();
     let mut extra = Vec::new();
@@ -110,12 +109,10 @@ fn ternary_empty_array_array_dim_fetch_to_coalesce() {
     );
 }
 
-/// Checks the report cases of `rule` in tests/lint7_report/`dir`.
 fn report(rule: impl Rule + 'static, dir: &str) {
     report_as(rule, dir, false);
 }
 
-/// [`report`], with `line:column: message` lines when `column` is set (Mago's `--reporting-format emacs`).
 fn report_as(rule: impl Rule + 'static, dir: &str, column: bool) {
     let linter = only(rule);
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -167,7 +164,6 @@ fn disallowed_loose_comparison() {
 
 #[test]
 fn no_debug_symbols() {
-    // Mago's reports: the calls without a fix.
     report_as(NoDebugCalls, "security/no-debug-calls", true);
 }
 
@@ -200,7 +196,6 @@ fn overwrite_variables_with_foreach() {
     );
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -239,7 +234,6 @@ fn func_get_args_to_variadic_param() {
     let linter = only(PreferVariadicParam);
     run(&linter, "FuncGetArgsToVariadicParamRector/Fixture");
     run(&linter, "FuncGetArgsToVariadicParamRector/Oracle");
-    // `VARIADIC_PARAM`: PHP 5.6.
     let path = Path::new("old.php");
     let code = "<?php function f() { $args = func_get_args(); }\n";
     let old = Linter::new(vec![Box::new(PreferVariadicParam)], 50500);
@@ -268,8 +262,6 @@ fn call_user_func_array_to_variadic() {
 
 #[test]
 fn illegal_constructor_static_call() {
-    // unknown_parents.php.inc: PHPStan scanned a file declaring `Vendor\Base` and `Vendor\Deep extends Base`, which
-    // Pun does not see.
     report(
         NoStaticConstructorCall,
         "classes/no-static-constructor-call",
@@ -316,7 +308,6 @@ fn remove_parent_call_without_parent() {
 
 #[test]
 fn mago_no_request_all() {
-    // Mago 1.57.0 with `integrations = ["laravel"]`, `--reporting-format emacs`.
     report_as(NoRequestAll, "laravel/no-request-all", true);
 }
 
@@ -448,7 +439,6 @@ fn remove_unused_promoted_property() {
 
 #[test]
 fn rules_ignore_nodes_outside_their_targets() {
-    // `targets()` only spares the engine work: called on every node, each rule reports what it reports on its own.
     let cases: Vec<(fn() -> Box<dyn Rule>, &[&str])> = vec![
         (
             || Box::new(NoNegatedComparison),

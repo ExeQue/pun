@@ -1,10 +1,3 @@
-//! `lint/classes/no-protected-property-in-final`, ported from Rector 2.8.4's `PrivatizeFinalClassPropertyRector`
-//! (rules/Privatization/Rector/Property).
-//!
-//! A `protected` property of a `final` class becomes `private`, one declared alone (`protected $a, $b;` stays), and
-//! so does a `protected` property promoted in the constructor. See `lint_b_privatize` for the classes Pun knows enough
-//! about.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
 use pun_problem::{Fix, Safety};
 
@@ -46,7 +39,6 @@ impl Rule for NoProtectedPropertyInFinal {
                 found.push((node_span(property), modifiers));
             }
         }
-        // `Class_::getMethod('__construct')`: the first method of that name, ignoring ASCII case.
         let construct = class.members.iter().find_map(|m| match m {
             ClassLikeMember::Method(m) if m.name.value.eq_ignore_ascii_case(b"__construct") => {
                 Some(m)

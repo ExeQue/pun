@@ -1,10 +1,3 @@
-//! `lint/security/no-insecure-comparison`, ported from Mago 1.57.0's linter rule `no-insecure-comparison`
-//! (rule/security/no_insecure_comparison.rs).
-//!
-//! `==`, `!=`, `===`, `!==` (and `<>`) with a side that looks like sensitive data (a password, token, secret or API
-//! key, by name) is open to timing attacks, unless the other side is a simple literal (an empty string, a number,
-//! `null`, a boolean). The operator is reported.
-
 use mago_span::Span;
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 
@@ -56,7 +49,6 @@ impl Rule for NoInsecureComparison {
     }
 }
 
-/// `get_sensitive_value`: a literal is a value, not a name.
 fn sensitive_value(expr: &Expression<'_>) -> Option<Span> {
     match expr {
         Expression::Parenthesized(p) => sensitive_value(p.expression),

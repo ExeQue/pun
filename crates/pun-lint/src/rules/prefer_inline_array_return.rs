@@ -1,23 +1,3 @@
-//! `lint/complexity/prefer-inline-array-return`, ported from Rector 2.8.4's `InlineArrayReturnAssignRector`
-//! (rules/CodeQuality/Rector/ClassMethod), with `VariableDimFetchAssignResolver`.
-//!
-//! A statement list of three or more statements that only fills an array variable (`$a = [];`, then `$a['k'] = v;`,
-//! `$a[] = v;`, `$a['k']['m'] = v;`) and ends with `return $a;` becomes `return ['k' => v, ...];`. Outside a
-//! function, method or closure, the list must start the array with `= []` (the first such assignment counts). The
-//! variable must not be a parameter, nor a closure's by-reference `use`. A `new` with arguments, a key that is not
-//! known at compile time (`ExprAnalyzer::isDynamicExpr`), or a nested key under a value already set to an array
-//! leaves the list alone.
-//!
-//! The keys are the PHP array keys Rector's `ValueResolver::getValue()` computes: `'1'` is `1`, `1.7` is `1`, `true`
-//! is `1`, `null` is `''`, `C::class` is the class's name, a class constant its value, and `$a[]` takes the number
-//! of statements read before it. Assigning a key again keeps its first place. `NodeFactory::createArray()` writes a
-//! key only where it differs from the item's position, and Rector prints the array on one line with the values'
-//! code, moved to the new indent; every comment of the list goes.
-//!
-//! Where Rector writes a key that means something else than the code (a global constant or a magic constant by its
-//! name, an enum case or an unknown class constant as `'C::NAME'`, a heredoc), and where its run fails (a nested key
-//! under a value that is not an array), Pun leaves the list alone.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
@@ -117,11 +97,9 @@ impl Rule for PreferInlineArrayReturn {
 }
 
 enum FunctionLike {
-    /// The names of the parameters and the by-reference `use` variables (without `$`).
     Parameters(Vec<Vec<u8>>),
 }
 
-/// The function, method or closure whose body the list is.
 fn function_like(ancestors: &[Node<'_, '_>]) -> Option<FunctionLike> {
     let n = ancestors.len();
     if !matches!(ancestors.get(n.checked_sub(1)?), Some(Node::Block(_))) {
@@ -152,7 +130,6 @@ fn function_like(ancestors: &[Node<'_, '_>]) -> Option<FunctionLike> {
     Some(FunctionLike::Parameters(names))
 }
 
-/// An assignment `$name = ...` (not by reference) in an expression statement: its left and right side.
 fn assignment<'a>(
     statement: &'a Statement<'a>,
 ) -> Option<(&'a Expression<'a>, &'a Expression<'a>)> {
@@ -170,7 +147,6 @@ fn assignment<'a>(
     Some((a.lhs, a.rhs))
 }
 
-/// `resolveDefaultEmptyArrayAssign()`: `$name = []` or `$name = array()`.
 fn is_empty_assign(statement: &Statement<'_>, name: &[u8]) -> bool {
     let Some((Expression::Variable(Variable::Direct(v)), rhs)) = assignment(statement) else {
         return false;
@@ -183,7 +159,6 @@ fn is_empty_assign(statement: &Statement<'_>, name: &[u8]) -> bool {
         }
 }
 
-/// `areAssignExclusiveToDimFetchVariable()`.
 fn exclusive(list: &List<'_, '_>, empty_assign: Option<usize>, name: &[u8]) -> bool {
     let last = list.stmts.len() - 1;
     list.stmts[..last].iter().enumerate().all(|(k, s)| {
@@ -216,21 +191,17 @@ fn exclusive(list: &List<'_, '_>, empty_assign: Option<usize>, name: &[u8]) -> b
     })
 }
 
-/// A PHP array key.
 #[derive(Clone, PartialEq)]
 enum Key {
     Int(i64),
     Str(String),
 }
 
-/// A value of the array Rector builds: an expression of the file, or an array of its own.
 enum Value {
     Expr(Span),
     Map(Vec<(Key, Value)>),
 }
 
-/// `VariableDimFetchAssignResolver::resolveFromStmtsAndVariable()`, or `None` where Rector leaves the list alone,
-/// fails, or writes a key that means something else.
 fn resolve(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -269,7 +240,6 @@ fn resolve(
     Some(items)
 }
 
-/// `setNestedKeysExpr()`: `None` where a key path runs through a value that is not an array of Rector's own.
 fn set(items: &mut Vec<(Key, Value)>, keys: &[Key], value: Value) -> Option<()> {
     let (first, rest) = keys.split_first()?;
     let at = match items.iter().position(|(k, _)| k == first) {
@@ -285,12 +255,10 @@ fn set(items: &mut Vec<(Key, Value)>, keys: &[Key], value: Value) -> Option<()> 
     }
     match &mut items[at].1 {
         Value::Map(map) => set(map, rest, value),
-        // an `Array_` throws `NotImplementedYetException`; any other expression fails Rector's run
         Value::Expr(_) => None,
     }
 }
 
-/// `ValueResolver::getValue()` of a key Pun takes, as PHP stores it in an array.
 fn key_value(facts: &Facts, ancestors: &[Node<'_, '_>], index: &Expression<'_>) -> Option<Key> {
     let index = unparenthesize(index);
     match index {
@@ -349,14 +317,12 @@ fn key_value(facts: &Facts, ancestors: &[Node<'_, '_>], index: &Expression<'_>) 
             if constant.value.eq_ignore_ascii_case(b"class") {
                 return Some(Key::Str(class));
             }
-            // the analyser folds a constant made of other constants and operators (`A::B = TOP . 'x'`)
             literal_key(facts, index).or_else(|| class_constant(facts, &class, constant.value))
         }
         _ => None,
     }
 }
 
-/// The key of an expression the analyser types as one literal integer or string.
 fn literal_key(facts: &Facts, expr: &Expression<'_>) -> Option<Key> {
     let t = type_of(facts, expr)?;
     let [atomic] = &t.types[..] else { return None };
@@ -369,8 +335,6 @@ fn literal_key(facts: &Facts, expr: &Expression<'_>) -> Option<Key> {
     }
 }
 
-/// The value of the class constant `class::name`, when it is an integer or a string Mago knows (an enum case is
-/// none).
 fn class_constant(facts: &Facts, class: &str, name: &[u8]) -> Option<Key> {
     let metadata = facts.codebase.get_class_like(class.as_bytes())?;
     if metadata.kind.is_enum() && metadata.enum_cases.keys().any(|c| c.as_bytes() == name) {
@@ -408,7 +372,6 @@ fn class_constant(facts: &Facts, class: &str, name: &[u8]) -> Option<Key> {
     None
 }
 
-/// The class `self` names: the enclosing class, enum, interface or trait.
 fn this_class(ancestors: &[Node<'_, '_>]) -> Option<String> {
     ancestors
         .iter()
@@ -422,7 +385,6 @@ fn this_class(ancestors: &[Node<'_, '_>]) -> Option<String> {
         })
 }
 
-/// PHP's key for a string: a decimal integer without leading zeros or `+` is that integer.
 fn string_key(s: &str) -> Key {
     let digits = s.strip_prefix('-').unwrap_or(s);
     let canonical = !digits.is_empty()
@@ -435,12 +397,10 @@ fn string_key(s: &str) -> Key {
     }
 }
 
-/// PHP's key for a float: truncated, when finite and in range.
 fn float_key(f: f64) -> Option<Key> {
     (f.is_finite() && f.abs() < 9.2e18).then(|| Key::Int(f.trunc() as i64))
 }
 
-/// `NodeFactory::createArray()` printed: `[item, key => item]` on one line.
 fn print(source: &str, tokens: &[Token], level: usize, items: &[(Key, Value)]) -> String {
     let printed: Vec<String> = items
         .iter()
@@ -465,7 +425,6 @@ fn print(source: &str, tokens: &[Token], level: usize, items: &[(Key, Value)]) -
     format!("[{}]", printed.join(", "))
 }
 
-/// php-parser's `pSingleQuotedString()`: `'` and a `\` before `'`, `\` or the end get a `\`.
 fn single_quoted(s: &str) -> String {
     let bytes = s.as_bytes();
     let mut out = String::from("'");

@@ -1,5 +1,3 @@
-//! Public checked-copy controls from pinned PHPStan 2.3.1. No declaration or inference is made strict.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

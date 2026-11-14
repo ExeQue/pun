@@ -1,35 +1,3 @@
-//! `lint/phpunit/prefer-yield-data-provider`, ported from rector-phpunit's `YieldDataProviderRector`
-//! (rules/CodeQuality/Rector/Class_), with `DataProviderClassMethodFinder`, `NodeTransformer::transformArrayToYields`
-//! and Rector's `IsClassMethodUsedAnalyzer`.
-//!
-//! In a test class, each data provider of the class (a method of the class named by the first argument, a string, of
-//! a `#[PHPUnit\Framework\Attributes\DataProvider]` attribute of a method of the class or of its parents up to
-//! `TestCase`, or, on a method without such attributes, by a generic `@dataProvider` tag, `()` trimmed) whose top-level
-//! statements are assignments ending in a `return` of an array literal (or a single `yield from` an array literal),
-//! and that nothing in the class calls, gets `: \Iterator` and yields the array's items instead: the `return` and
-//! `yield from` statements go, and a `yield [key =>] value;` per item comes after the other statements, the first with
-//! the comments of the last removed statement, each with the comments before its item.
-//!
-//! Its first `@return` tag goes when its type is not an array (with the other `@return`, `@phpstan-return` and
-//! `@psalm-return` tags), and becomes `\Iterator<key, value>` when it is one, the key and the value as PHPStan reads
-//! them from the array type and Rector prints them (PHPStan's `toPhpDocNode()`, then `StaticTypeMapper::styleTypeNode()`:
-//! `A[]` for an array of `A` with no key or an `int` key, unions without parentheses), the blanks around the type as
-//! written. Pun follows the types it reads the same way: names,
-//! the keywords PHPStan knows, `array`, `list`, `non-empty-array`, `non-empty-list` and `iterable` with their generic
-//! forms, `class-string<X>`, `T[]`, `?T` and unions of them that PHPStan prints without merging members. It leaves a
-//! provider alone whose `@return` type is any other (a shape, a callable, an integer range, a literal, an
-//! intersection, a union PHPStan merges), whose doc has a `@phpstan-return` or `@psalm-return` tag, a second `@return`,
-//! a template or a type alias, and one indented with a tab, whose indentation php-parser keeps for the new statements
-//! and Pun does not follow. A `@return` value phpdoc-parser cannot read (`array<int>$x`) stays as written; a
-//! description, on the tag's line or below it, stays too. A `@dataProvider` tag of a parent class's method is read
-//! with the `use` imports of the file being changed, as Rector reads it.
-//!
-//! Rector changes every provider of a class in one pass; Pun does too, and in later fix rounds leaves a class alone
-//! whose span the project's codebase (scanned before the first round) no longer matches.
-//!
-//! An item's value whose operator binds looser than `yield` (`and`, `or`, `xor`) gets parentheses, where Rector
-//! writes `yield $a and $b`, which yields `$a` only.
-
 use std::cmp::Ordering;
 
 use mago_syntax::cst::{
@@ -81,9 +49,6 @@ impl Rule for PreferYieldDataProvider {
         }
         let facts = facts(ctx);
         let class = class_info(node, ancestors, &facts).unwrap();
-        // Rector changes every provider of a class in one pass. In a later fix round the project's codebase still
-        // has the class as it was before (Mago's analyser then skips its moved methods), so the class is left as the
-        // first round left it.
         if !class.is_anonymous
             && facts
                 .codebase
@@ -103,11 +68,9 @@ impl Rule for PreferYieldDataProvider {
                 _ => None,
             })
             .collect();
-        // `DataProviderClassMethodFinder::find`
         let Some(mut names) = provider_names(ctx, ctx, &scope, &scope, &methods) else {
             return;
         };
-        // the parents up to `TestCase`, each with a source (as the test class extends it, each is a user class)
         let parents = class_parents(ctx, &class.name);
         for (metadata, source) in parents
             .iter()
@@ -167,8 +130,6 @@ impl Rule for PreferYieldDataProvider {
     }
 }
 
-/// `resolverDataProviderClassMethodNames` over `methods`, declared in `file` at `scope`; a doc's tags are read as at
-/// `tag_scope`. `None` where Pun does not read a doc as phpdoc-parser does.
 fn provider_names(
     ctx: &Context<'_>,
     file: &Context<'_>,
@@ -182,7 +143,6 @@ fn provider_names(
         for list in &method.attribute_lists {
             for attribute in &list.attributes {
                 if resolve(scope, &attribute.name).eq_ignore_ascii_case(DATA_PROVIDER) {
-                    // `$attribute->args[0]->value`, `null` (with a warning) without arguments
                     let argument = attribute
                         .argument_list
                         .as_ref()
@@ -213,10 +173,6 @@ fn provider_names(
     Some(names)
 }
 
-/// The provider names of the class declared at `start` in `source` (a parent class's file, read again as Rector's
-/// `AstResolver` does). Its attributes' names resolve in that file; its doc tags in its namespace with the `use`
-/// imports of the file being changed, whose ancestors are `current` (`ClassAnnotationMatcher` reads those from
-/// `UseImportsResolver`, which knows the current file only).
 fn parent_provider_names(
     ctx: &Context<'_>,
     current: &[Node<'_, '_>],
@@ -265,7 +221,6 @@ fn parent_provider_names(
     names
 }
 
-/// `collectReturnArrayNodesFromClassMethod`.
 fn returned_array<'a>(list: &List<'a>) -> Option<ArrayParts<'a>> {
     let mut yielded_from = None;
     for statement in &list.stmts {
@@ -285,20 +240,17 @@ fn returned_array<'a>(list: &List<'a>) -> Option<ArrayParts<'a>> {
             _ => return None,
         }
     }
-    // php-parser's `Nop` for comments after the last statement is neither
     if list.nop {
         return None;
     }
     yielded_from
 }
 
-/// An array literal's opening token and its elements.
 type ArrayParts<'a> = (
     mago_span::Span,
     &'a TokenSeparatedSequence<'a, ArrayElement<'a>>,
 );
 
-/// The parts of `expr` when it is an array literal.
 fn array_parts<'a>(expr: &'a Expression<'a>) -> Option<ArrayParts<'a>> {
     match unparenthesize(expr) {
         Expression::Array(a) => Some((a.left_bracket, &a.elements)),
@@ -307,8 +259,6 @@ fn array_parts<'a>(expr: &'a Expression<'a>) -> Option<ArrayParts<'a>> {
     }
 }
 
-/// Whether a top-level statement (a `return` or an expression, as [`returned_array`] found them) is a `return` or a
-/// `yield from`, which the transform removes.
 fn is_removed(statement: &Statement<'_>) -> bool {
     matches!(statement, Statement::Return(_))
         || matches!(
@@ -318,7 +268,6 @@ fn is_removed(statement: &Statement<'_>) -> bool {
         )
 }
 
-/// `transformArrayToYieldsOnMethodNode`: the edits for one provider; `None` where Pun leaves it alone.
 fn transform(
     ctx: &Context<'_>,
     tokens: &[Token],
@@ -330,7 +279,6 @@ fn transform(
 ) -> Option<Vec<Edit>> {
     let source = ctx.source;
     let mut edits = Vec::new();
-    // the doc comment's `@return` tag
     let node = Node::Method(method);
     let annotated = Annotated::of(ctx, node, scope).unwrap();
     if let Some(doc) = annotated.doc.as_ref()
@@ -338,7 +286,6 @@ fn transform(
     {
         edits.extend(annotated.edits(source, Some(&new_doc), &[])?);
     }
-    // the return type
     edits.push(match &method.return_type_hint {
         Some(hint) => Edit::new(node_span(&hint.hint), "\\Iterator"),
         None => {
@@ -346,7 +293,6 @@ fn transform(
             Edit::new(Span::new(at, at), ": \\Iterator")
         }
     });
-    // the statements
     let removed: Vec<bool> = list.stmts.iter().map(|s| is_removed(s)).collect();
     let first_at = list
         .stmts
@@ -360,7 +306,6 @@ fn transform(
     }
     let nl = format!("\n{indent}");
     let level = indentation(source, first_at) as isize;
-    // the comments of the last removed statement
     let last_removed = removed.iter().rposition(|r| *r).unwrap();
     let removed_comments = comments_between(
         tokens,
@@ -449,7 +394,6 @@ fn transform(
     Some(edits)
 }
 
-/// The doc comment after `removeReturnTag`: `Some(None)` when it stays, `None` where Pun leaves the provider alone.
 fn new_doc(
     scope: &[Node<'_, '_>],
     class: &ClassInfo<'_, '_>,
@@ -467,7 +411,6 @@ fn new_doc(
         {
             return None;
         }
-        // a tag's child runs on to the next tag, its description's lines and blank lines included
         if name == "@return" {
             returns.push(i);
         }
@@ -478,7 +421,6 @@ fn new_doc(
     let text = doc.text(index).trim_end();
     let after = &text["@return".len()..];
     let value = after.trim_start_matches([' ', '\t']);
-    // the blanks around the type stay as written
     let before = &after[..after.len() - value.len()];
     let reader = Reader {
         scope,
@@ -486,10 +428,8 @@ fn new_doc(
         at: doc.span.start,
     };
     let (ty, rest) = parse_type(value)?;
-    // a description, which may start on or go on over the next lines, as written
     let description = rest.trim_start_matches([' ', '\t']);
     if !rest.is_empty() && !rest.starts_with([' ', '\t', '\r', '\n']) {
-        // phpdoc-parser's `InvalidTagValueNode`: no `@return` value to change
         return Some(None);
     }
     let mut removed = vec![false; doc.len()];
@@ -499,8 +439,6 @@ fn new_doc(
             Some(Some(doc.print(&removed)))
         }
         Top::Change(key, value) => {
-            // the tag with its new type, the blanks and the description as written; a description on the next line
-            // follows the type directly
             let blank = if description.starts_with(['\r', '\n']) {
                 ""
             } else {
@@ -519,20 +457,16 @@ fn new_doc(
     }
 }
 
-/// A phpdoc type as far as Pun reads it.
 #[derive(Debug)]
 enum Syn<'s> {
     Name(&'s str),
     Generic(&'s str, Vec<Syn<'s>>),
-    /// `T[]`
     List(Box<Syn<'s>>),
     Union(Vec<Syn<'s>>),
 }
 
-/// The type at the start of `s` and what follows it; `None` for a type Pun does not read.
 fn parse_type(s: &str) -> Option<(Syn<'_>, &str)> {
     let (ty, rest) = parse_atom(s)?;
-    // a union at the top needs no spaces around `|`
     if !rest.starts_with('|') {
         if rest.trim_start_matches([' ', '\t']).starts_with(['|', '&']) {
             return None;
@@ -552,7 +486,6 @@ fn parse_type(s: &str) -> Option<(Syn<'_>, &str)> {
     Some((Syn::Union(members), rest))
 }
 
-/// A type inside `<...>` or `(...)`, with blanks around its parts.
 fn parse_inner(s: &str) -> Option<(Syn<'_>, &str)> {
     let s = s.trim_start_matches([' ', '\t']);
     let (ty, rest) = parse_atom(s)?;
@@ -635,21 +568,17 @@ fn parse_atom(s: &str) -> Option<(Syn<'_>, &str)> {
     if rest.starts_with(['[', '<', '(', '{', ':', '.']) {
         return None;
     }
-    // `array <int>`: phpdoc-parser reads the generic over the blank
     if !matches!(ty, Syn::Generic(..)) && rest.trim_start_matches([' ', '\t']).starts_with('<') {
         return None;
     }
     Some((ty, rest))
 }
 
-/// What happens to a `@return` tag.
 enum Top {
     Remove,
-    /// `\Iterator<key, value>`
     Change(String, String),
 }
 
-/// A union member as PHPStan orders it.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Rank {
     Other,
@@ -657,7 +586,6 @@ enum Rank {
     Null,
 }
 
-/// What a union member is, for the unions Pun prints.
 #[derive(PartialEq, Clone, Copy)]
 enum Member {
     Null,
@@ -666,13 +594,10 @@ enum Member {
     Scalar,
     Class,
     Array,
-    /// a keyword type that only joins `null`
     Alone,
-    /// a type PHPStan merges with any other in a union
     Solo,
 }
 
-/// The PHPStan keywords Pun does not read (`TypeNodeResolver::resolveIdentifierTypeNode`).
 const UNREAD_KEYWORDS: &[&str] = &[
     "__stringandstringable",
     "__stringnotstringable",
@@ -717,16 +642,13 @@ const UNREAD_KEYWORDS: &[&str] = &[
     "value-of",
 ];
 
-/// How a `@return` type reads in the class it is in.
 struct Reader<'r, 'ast, 'arena> {
     scope: &'r [Node<'ast, 'arena>],
     class: &'r ClassInfo<'ast, 'arena>,
-    /// The doc comment's start, for the imports before it.
     at: usize,
 }
 
 impl Reader<'_, '_, '_> {
-    /// The `@return` type: removed when it is not an array, changed when it is one.
     fn top(&self, ty: &Syn<'_>) -> Option<Top> {
         let array = |key: &str, value: String| Some(Top::Change(key.to_string(), value));
         match ty {
@@ -757,7 +679,6 @@ impl Reader<'_, '_, '_> {
         }
     }
 
-    /// Whether a type that is no array form is one Pun knows is not an array: a name or a generic object.
     fn is_other(&self, ty: &Syn<'_>) -> bool {
         match ty {
             Syn::Generic(name, _) => {
@@ -772,7 +693,6 @@ impl Reader<'_, '_, '_> {
         }
     }
 
-    /// An array's or an iterable's key written as `int`, `string` or `int|string`, as Rector prints it.
     fn key(&self, ty: &Syn<'_>) -> Option<String> {
         match ty {
             Syn::Name(n) => match n.to_ascii_lowercase().as_str() {
@@ -785,7 +705,6 @@ impl Reader<'_, '_, '_> {
         }
     }
 
-    /// The key of a nested array: `None` for `array-key`, which PHPStan's benevolent `int|string` leaves unprinted.
     fn nested_key(&self, ty: &Syn<'_>) -> Option<Option<String>> {
         if let Syn::Name(n) = ty
             && n.eq_ignore_ascii_case("array-key")
@@ -795,7 +714,6 @@ impl Reader<'_, '_, '_> {
         self.key(ty).map(Some)
     }
 
-    /// A type inside the `\Iterator<...>`, printed.
     fn value(&self, ty: &Syn<'_>) -> Option<Printed> {
         let one = |text: String, member: Member| Some(Printed::new(text, member, Shape::Other));
         let generic =
@@ -900,9 +818,6 @@ impl Reader<'_, '_, '_> {
         }
     }
 
-    /// A union as `UnionType::toPhpDocNode()` prints it: its members in `UnionTypeHelper::sortTypes()`'s order, then
-    /// `StaticTypeMapper::styleTypeNode()`'s, which merges the members of a styled array of a union (`A[]|B[]`) in
-    /// and drops repeats.
     fn union(&self, members: &[Syn<'_>]) -> Option<Printed> {
         let mut printed: Vec<Printed> = Vec::new();
         for member in members {
@@ -949,7 +864,6 @@ impl Reader<'_, '_, '_> {
     }
 }
 
-/// A union PHPStan merges with any other type in a union (`array-key`, `scalar`), of the keywords `names`.
 fn keywords(names: &[&str]) -> Printed {
     let members = names
         .iter()
@@ -958,8 +872,6 @@ fn keywords(names: &[&str]) -> Printed {
     Printed::union(members, Member::Solo)
 }
 
-/// `styleTypeNode()` of PHPStan's `array<value>` (`key` `None`) or `array<key, value>`: `value[]`, or `A[]|B[]` for a
-/// union of values, when `isArrayOfItemsOnly()` holds; the generic as it is otherwise.
 fn style_array(key: Option<&str>, value: Printed) -> Printed {
     let generic = match key {
         Some(key) => format!("array<{key}, {}>", value.text),
@@ -969,8 +881,6 @@ fn style_array(key: Option<&str>, value: Printed) -> Printed {
         Shape::Union(members) => members.iter().collect(),
         _ => vec![&value],
     };
-    // "array<int, A>" can be printed as "A[]", unless that loses the int key of nested arrays, or turns
-    // "array<A<X>|A<Y>>" into "A<X>[]|A<Y>[]"
     let items_only = key.is_none_or(|k| k == "int")
         && items.iter().all(|item| {
             !(item.shape == Shape::Generic && items.len() > 1)
@@ -989,7 +899,6 @@ fn style_array(key: Option<&str>, value: Printed) -> Printed {
     }
 }
 
-/// Whether a type is one of PHPStan's array types.
 fn is_array_form(ty: &Syn<'_>) -> bool {
     match ty {
         Syn::Name(n) | Syn::Generic(n, _) => matches!(
@@ -1001,7 +910,6 @@ fn is_array_form(ty: &Syn<'_>) -> bool {
     }
 }
 
-/// The key of a `@return` array type as PHPStan's `getIterableKeyType()` gives it and Rector prints it.
 fn top_key(ty: &Syn<'_>) -> Option<String> {
     let name = |t: &Syn<'_>| match t {
         Syn::Name(n) => Some(n.to_ascii_lowercase()),
@@ -1028,24 +936,18 @@ fn top_key(ty: &Syn<'_>) -> Option<String> {
     }
 }
 
-/// A printed type and what it is in a union.
 struct Printed {
     text: String,
     member: Member,
-    /// `describe(VerbosityLevel::typeOnly())`, which `UnionTypeHelper::sortTypes()` compares.
     sort: String,
     shape: Shape,
 }
 
-/// The phpdoc-parser node a printed type is, for `styleTypeNode()`.
 #[derive(PartialEq)]
 enum Shape {
     Other,
-    /// `GenericTypeNode`
     Generic,
-    /// `ArrayTypeNode`, `T[]`
     ArrayOf,
-    /// `UnionTypeNode`
     Union(Vec<Printed>),
 }
 
@@ -1056,7 +958,6 @@ impl PartialEq for Printed {
 }
 
 impl Printed {
-    /// The sort key is the text without a leading `\` and the generic part (`list<int>` sorts as `list`).
     fn new(text: String, member: Member, shape: Shape) -> Self {
         let sort = text.trim_start_matches('\\');
         let sort = sort[..sort.find('<').unwrap_or(sort.len())].to_string();
@@ -1087,7 +988,6 @@ impl Printed {
         self
     }
 
-    /// A union's members, or the type itself.
     fn into_members(self) -> Vec<Printed> {
         match self.shape {
             Shape::Union(members) => members,
@@ -1096,7 +996,6 @@ impl Printed {
     }
 }
 
-/// `UnionTypeHelper::compareStrings`: `strcasecmp`, then the bytes.
 fn compare_strings(a: &str, b: &str) -> Ordering {
     a.to_ascii_lowercase()
         .cmp(&b.to_ascii_lowercase())

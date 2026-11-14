@@ -1,10 +1,3 @@
-//! Larastan's ConfigParser: the app's config files, and whether a config key's value is an array
-//! (`getTypes()` read through `isArray()`, which is all ConfigCollectionRule asks of the types).
-//!
-//! Larastan types a value with `$scope->getType()` of its expression in the config file; Pun reads the expression
-//! instead: literals, strings, casts, `X::class`, `env()` (Larastan's stub returns `bool|string|TDefault`), and a
-//! function's declared return type. Anything else may be an array.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -39,31 +32,23 @@ use pun_phpstan::types::{LateArrayShape, Type, mixed};
 
 use crate::codebase::read;
 
-/// `isArray()` of a type, as far as Pun can tell.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum IsArray {
     No,
     Maybe,
 }
 
-/// A config file's first `return`.
 #[derive(Clone, Debug)]
 enum Returned {
-    /// Its `@return` PHPDoc type, and as a Mago type when Pun resolves it.
     Doc(Node, Option<TUnion>),
-    /// Its items, and the literal's type when Pun infers it.
     Array(Vec<Item>, Option<TUnion>),
-    /// Not an array literal: no type.
     Other,
 }
 
-/// An array literal's item: its key (`None` when it is no scalar, which stops the lookup; `Some(None)` for a scalar
-/// without a value, which is skipped) and value.
 #[derive(Clone, Debug)]
 struct Item {
     key: Option<Option<String>>,
     value: Value,
-    /// The value's type (`$scope->getType()`), `None` when Pun does not infer it.
     ty: Option<TUnion>,
 }
 
@@ -73,18 +58,13 @@ enum Value {
     Other(IsArray),
 }
 
-/// The config files Larastan reads: those below the configured directories, else below `config_path()`.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Configs {
-    /// Each file and its first `return` (`None`: a parse error or no `return`), by path.
     files: BTreeMap<PathBuf, Option<Returned>>,
-    /// ConfigParser::parsedConfigs: the first resolved type, by complete config key, not caller.
     parsed: Arc<Mutex<BTreeMap<String, IsArray>>>,
 }
 
 impl Configs {
-    /// `generalize_env`: `generalizeEnvReturnType`, which types an `env()` call with a default as its generalized
-    /// default.
     pub(crate) fn load(
         directories: &[String],
         root: &Path,
@@ -103,7 +83,6 @@ impl Configs {
             codebase,
             generalize_env,
         };
-        // ponytail: sorted, where PHP's RecursiveDirectoryIterator follows readdir order
         Configs {
             files: paths
                 .into_iter()
@@ -116,7 +95,6 @@ impl Configs {
         }
     }
 
-    /// The first `return` of the config file a key names.
     fn file(&self, key: &str) -> Option<&Returned> {
         let suffix = format!("{}.php", key.split('.').next().unwrap_or_default());
         self.files
@@ -125,8 +103,6 @@ impl Configs {
             .find_map(|(_, r)| r.as_ref())
     }
 
-    /// `ConfigParser::getTypes()` for the keys: `None` when a key's file is missing (no types at all), else the
-    /// keys' types (a key whose value is not found has none).
     pub(crate) fn types(&self, keys: &[String], scope: &dyn Scope) -> Option<Vec<IsArray>> {
         let mut types = Vec::new();
         let mut parsed = self.parsed.lock().unwrap();
@@ -156,8 +132,6 @@ impl Configs {
         Some(types)
     }
 
-    /// `ConfigParser::getTypes()` as Mago types: `Some(None)` when a type is one Pun does not infer, `None` when a
-    /// key's file is missing (no types at all).
     pub(crate) fn value_types(&self, keys: &[String]) -> Option<Option<Vec<TUnion>>> {
         let mut types = Vec::new();
         for key in keys {
@@ -191,7 +165,6 @@ impl Configs {
     }
 }
 
-/// `getOffsetValueType()` of a PHPDoc config type, for an array shape that has the key.
 fn offset(ty: &TUnion, part: &str) -> Option<TUnion> {
     let key = match pun_phpstan::value::numeric(part) {
         Some(_) => ArrayKey::Integer(pun_tokens::php_compat::intval(part)),
@@ -217,7 +190,6 @@ fn offset(ty: &TUnion, part: &str) -> Option<TUnion> {
     }
 }
 
-/// The item at `parts`, as getTypes() walks the items (a part not found keeps the item found so far).
 fn lookup<'i>(items: &'i [Item], parts: &[&str]) -> Option<&'i Item> {
     let mut items = items;
     let mut found = None;
@@ -237,7 +209,6 @@ fn lookup<'i>(items: &'i [Item], parts: &[&str]) -> Option<&'i Item> {
     found
 }
 
-/// ConfigParser::getTypes(): resolve in the caller's scope, then read each offset of the return type.
 fn doc_type(node: &Node, parts: &[&str], scope: &dyn Scope) -> IsArray {
     let mut ty = doc_shape(node, scope);
     for part in parts {
@@ -255,8 +226,6 @@ fn doc_type(node: &Node, parts: &[&str], scope: &dyn Scope) -> IsArray {
     }
 }
 
-/// TypeNodeResolver::resolveArrayShapeNode(): LateArrayShape owns implicit indices, optional/duplicate
-/// slots and invalid-key ErrorTypes. Constants and all other type syntax use the shared scoped resolver.
 fn doc_shape(node: &Node, scope: &dyn Scope) -> Type {
     let Node::ArrayShape {
         kind,
@@ -303,14 +272,12 @@ fn doc_shape(node: &Node, scope: &dyn Scope) -> Type {
     .create()
 }
 
-/// What the config files are read with.
 struct Reader<'c> {
     codebase: &'c CodebaseMetadata,
     generalize_env: bool,
 }
 
 impl Reader<'_> {
-    /// ConfigParser::parseConfigFile() and what getTypes() reads of it.
     fn returned(&self, path: &Path) -> Option<Returned> {
         let file = read(path, FileType::Host).ok()??;
         let arena = LocalArena::new();
@@ -368,7 +335,6 @@ impl Reader<'_> {
                         Expression::Literal(Literal::Float(f)) => {
                             Some(Some(pun_phpstan::types::float_to_string(*f.value)))
                         }
-                        // a scalar without `value` (magic constants, interpolated strings)
                         Expression::MagicConstant(_) | Expression::CompositeString(_) => Some(None),
                         _ => None,
                     },
@@ -397,8 +363,6 @@ impl Reader<'_> {
         }
     }
 
-    /// `$scope->getType()` of a config value, for literals, `X::class`, array literals of them, `env()` (Larastan's
-    /// stub returns `bool|string|TDefault`; generalized, the default's type) and a function's declared return type.
     fn type_of(&self, e: &Expression, names: &ResolvedNames) -> Option<TUnion> {
         Some(match e {
             Expression::Parenthesized(p) => return self.type_of(p.expression, names),
@@ -480,8 +444,6 @@ impl Reader<'_> {
         })
     }
 
-    /// The type of an array literal (InitializerExprTypeResolver::getArrayType()): a list when its keys are
-    /// `0..n`, else a shape; `None` with an unpacked item or a key Pun does not type.
     fn array_type(
         &self,
         elements: &TokenSeparatedSequence<ArrayElement>,
@@ -498,7 +460,6 @@ impl Reader<'_> {
                         }
                         Expression::Literal(Literal::String(s)) => {
                             let value = s.value?;
-                            // a decimal integer string is an int key
                             match std::str::from_utf8(value)
                                 .ok()
                                 .and_then(|v| v.parse::<i64>().ok())
@@ -547,7 +508,6 @@ impl Reader<'_> {
     }
 }
 
-/// `generalize(lessSpecific())` of a scalar default: its general scalar type; `None` for other types.
 fn generalize(t: &TUnion) -> Option<TUnion> {
     let types: Option<Vec<TAtomic>> = t
         .types
@@ -566,8 +526,6 @@ fn generalize(t: &TUnion) -> Option<TUnion> {
     Some(TUnion::from_vec(types))
 }
 
-/// A PHPDoc or native type as a Mago type, resolved without a scope (names fully qualified): `None` when it does not
-/// resolve or names a template, alias or class constant.
 pub(crate) fn type_from_text(ty: &[u8]) -> Option<TUnion> {
     let arena = LocalArena::new();
     let content = arena.alloc_slice_copy(ty);
@@ -602,7 +560,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for FirstReturn<'ast, 'arena> {
     }
 }
 
-/// `$scope->getType($expr)->isArray()` for a config value.
 fn is_array(e: &Expression, names: &ResolvedNames, codebase: &CodebaseMetadata) -> IsArray {
     let no = match e {
         Expression::Literal(_) | Expression::CompositeString(_) => true,
@@ -627,7 +584,6 @@ fn is_array(e: &Expression, names: &ResolvedNames, codebase: &CodebaseMetadata) 
                 let name = names.get(&id.span());
                 let short = name.rsplit(|b| *b == b'\\').next().unwrap_or(name);
                 if short.eq_ignore_ascii_case(b"env") {
-                    // bool|string|TDefault
                     f.argument_list
                         .arguments
                         .get(1)
@@ -647,8 +603,6 @@ fn is_array(e: &Expression, names: &ResolvedNames, codebase: &CodebaseMetadata) 
     if no { IsArray::No } else { IsArray::Maybe }
 }
 
-/// `isArray()` of a Mago type: no when every part is a scalar, null or an object. For a default (`default`),
-/// ConfigHelper calls a callable: a closure's declared return type, or mixed for a `Closure` object.
 pub(crate) fn union_is_array(t: &TUnion, default: bool) -> IsArray {
     let no = !t.types.is_empty()
         && t.types.iter().all(|a| match a {
@@ -664,7 +618,6 @@ pub(crate) fn union_is_array(t: &TUnion, default: bool) -> IsArray {
             TAtomic::Callable(TCallable::Signature(s)) if default => s
                 .get_return_type()
                 .is_some_and(|r| union_is_array(r, false) == IsArray::No),
-            // a `Closure` object; any other callable may be an array
             TAtomic::Callable(TCallable::Signature(s)) => s.is_closure,
             _ => false,
         });

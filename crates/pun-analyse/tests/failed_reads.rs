@@ -1,5 +1,3 @@
-//! Failed offset arms are ErrorType, not null; successful arms and real null values survive.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

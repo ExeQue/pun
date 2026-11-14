@@ -1,6 +1,3 @@
-//! `lint/pest/no-invalid-repeat`, ported from pest-plugin-rector's `FixInvalidRepeatValueRector`: `->repeat(0)` or
-//! `->repeat(-2)` on a Pest test (`it()`, `test()` or `todo()`) becomes `->repeat(1)`.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Safety};
 
@@ -45,7 +42,6 @@ impl Rule for NoInvalidRepeat {
                 if int.value.is_none_or(|v| v >= 1) {
                     return;
                 }
-                // php-parser's `pScalar_Int` writes the new value in the literal's kind.
                 let raw = int.raw.to_ascii_lowercase();
                 let one = if raw.starts_with(b"0x") {
                     "0x1"
@@ -65,7 +61,6 @@ impl Rule for NoInvalidRepeat {
                 else {
                     return;
                 };
-                // A comment before `-` belongs to the argument unless the value is in parentheses.
                 let span = node_span(minus);
                 if (node_span(value).start != span.start && has_comments(ctx, span.start))
                     || has_comments(ctx, node_span(int).start)

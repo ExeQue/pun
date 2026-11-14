@@ -1,11 +1,3 @@
-//! `lint/functions/no-call-user-func-method`, ported from Rector 2.8.4's `CallUserFuncToMethodCallRector`
-//! (rules/CodingStyle/Rector/FuncCall).
-//!
-//! `call_user_func([$object, 'method'], ...$args)` becomes `$object->method(...$args)` when the first item holds an
-//! object of a known class. PHPStan knows that for far more expressions than the syntax does: Pun takes `$this` inside
-//! a non-static method (closures included), and a variable that `known()` ties to a class-typed parameter or to a
-//! `new` expression. A property fetch, which Rector also accepts, stays.
-
 use mago_syntax::cst::{
     ArrayElement, Call, Expression, Hint, Literal, Modifier, Node, NodeKind, Variable,
 };
@@ -42,7 +34,6 @@ impl Rule for NoCallUserFuncMethod {
             return;
         }
         let args: Vec<_> = call.argument_list.arguments.iter().collect();
-        // `getArgs()[0]`, an array of exactly two items.
         let Some(first) = args.first().filter(|a| !unpacked(a)) else {
             return;
         };
@@ -94,7 +85,6 @@ impl Rule for NoCallUserFuncMethod {
     }
 }
 
-/// An `ArrayItem`'s value (its key does not count); `None` for a spread or a skipped slot.
 fn item<'a>(element: &'a ArrayElement<'a>) -> Option<&'a Expression<'a>> {
     match element {
         ArrayElement::Value(e) => Some(e.value),
@@ -103,7 +93,6 @@ fn item<'a>(element: &'a ArrayElement<'a>) -> Option<&'a Expression<'a>> {
     }
 }
 
-/// Whether PHPStan, as far as the syntax shows, types `expr` as an object of a named class.
 fn has_class(ancestors: &[Node<'_, '_>], expr: &Expression<'_>, at: usize) -> bool {
     let Expression::Variable(Variable::Direct(var)) = expr else {
         return false;
@@ -117,8 +106,6 @@ fn has_class(ancestors: &[Node<'_, '_>], expr: &Expression<'_>, at: usize) -> bo
     )
 }
 
-/// Whether `$this` is an object where the call is: inside a method that is not static, through any closures and arrow
-/// functions that are not static.
 fn this_available(ancestors: &[Node<'_, '_>]) -> bool {
     for node in ancestors.iter().rev() {
         match node {

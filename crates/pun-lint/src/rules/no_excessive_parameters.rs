@@ -1,9 +1,3 @@
-//! `lint/complexity/no-excessive-parameters`, ported from Mago 1.57.0's `excessive-parameter-list`
-//! (mago-linter src/rule/maintainability/excessive_parameter_list.rs).
-//!
-//! Reports a parameter list longer than `threshold` (default 5); a constructor's is compared with
-//! `constructor-threshold` when that is set.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::mago_helpers::{configure, function_like_scope, uint};

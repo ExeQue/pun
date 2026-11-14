@@ -1,6 +1,3 @@
-//! FuzzyRelativePathHelper over ParentDirectoryRelativePathHelper, the expected paths printed by PHPStan 2.3.1's
-//! own helpers on the same working directory, analysed paths and files.
-
 use pun_analyse::RelativePath;
 
 #[test]

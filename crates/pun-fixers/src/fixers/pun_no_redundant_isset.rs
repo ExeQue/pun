@@ -1,7 +1,3 @@
-//! Port of Mago's `no-redundant-isset`: `isset($a, $a['b'])` → `isset($a['b'])`. An argument is redundant when
-//! another argument extends its access path (`isset($a['b'])` already implies `isset($a)`), or repeats it.
-//! Opt-in only (`Pun/no_redundant_isset`). Like Mago, only paths of plain variables, `->name` / `?->name`
-//! and literal string or integer `[...]` indexes are compared.
 use crate::analyzers::helpers::split_list;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -71,7 +67,6 @@ impl Fixer for NoRedundantIsset {
     }
 }
 
-/// `$foo->bar['baz']` → `["$foo", "->bar", "['baz']"]`; `None` for anything else (dynamic names or indexes).
 fn access_path(tokens: &Tokens, s: usize, e: usize) -> Option<Vec<Vec<u8>>> {
     if !tokens[s].is_kind(T_VARIABLE) {
         return None;

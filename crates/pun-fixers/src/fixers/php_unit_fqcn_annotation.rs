@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitFqcnAnnotationFixer`.
 use crate::analyzers::abstract_php_unit_fixer as base;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
@@ -17,7 +16,6 @@ impl Fixer for PhpUnitFqcnAnnotationFixer {
         "php_unit_fqcn_annotation"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoUnusedImportsFixer, PhpdocOrderByValueFixer.
         -9
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

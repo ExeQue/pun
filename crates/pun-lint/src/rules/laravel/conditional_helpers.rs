@@ -1,5 +1,3 @@
-//! The matching and safety checks shared by rector-laravel's AbortIf, ReportIf and ThrowIf rectors.
-
 use mago_syntax::cst::{Access, BinaryOperator, Expression, Node, Variable};
 
 use super::{argument_texts, member_name, replace};
@@ -51,7 +49,6 @@ pub(super) fn visit(node: Node<'_, '_>, ctx: &Context<'_>, helper: &str, out: &m
         Expression::UnaryPrefix(u) if u.operator.is_not() => (u.operand, "unless"),
         other => (other, "if"),
     };
-    // An assignment or an `and`/`or` condition becomes an argument, not a top-level expression.
     let mut args_text = vec![operand(ctx, condition, 200, None)];
     args_text.extend(args.into_iter().map(str::to_string));
     let span = node_span(if_);

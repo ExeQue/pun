@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\GlobalNamespaceImportFixer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use crate::analyzers::classy_analyzer::ClassyAnalyzer;
 use crate::analyzers::constant_invocation::is_constant_invocation;
@@ -33,11 +32,9 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(GlobalNamespaceImportFixer::default())
 }
 
-/// `array<string, string|true>`: `None` = `true` (not aliased), `Some(alias)`.
 type Global = BTreeMap<Vec<u8>, Option<Vec<u8>>>;
 type Other = BTreeSet<Vec<u8>>;
 
-/// Ordered `array<string, string>` with PHP assignment semantics (an existing key keeps its position).
 type Imports = IndexMap<Vec<u8>, Vec<u8>>;
 
 fn lower(s: &[u8], case_sensitive: bool) -> Vec<u8> {
@@ -228,14 +225,12 @@ impl GlobalNamespaceImportFixer {
                 tokens.set(*index, Token::new(T_DOC_COMMENT, doc_block.get_content()));
             }
         }
-        // array_merge: a later value replaces an earlier one in its place
         imports.extend(Self::prepare_imports(
             tokens, &indices, &global, &other, false,
         ));
         imports.into_values().collect()
     }
 
-    /// Removes the leading slash at the given indices (when the name is not already used).
     fn prepare_imports(
         tokens: &mut Tokens,
         indices: &[usize],
@@ -398,8 +393,6 @@ impl GlobalNamespaceImportFixer {
         (global, other)
     }
 
-    /// Generator `findFunctionDeclarations`, collecting into `out`. Upstream's inner class loop reuses
-    /// the outer `$index`, so the token right after a class body is skipped.
     fn find_function_declarations(
         tokens: &Tokens,
         start: usize,
@@ -494,8 +487,6 @@ impl Fixer for GlobalNamespaceImportFixer {
         "global_namespace_import"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoUnusedImportsFixer, OrderedImportsFixer, StatementIndentationFixer.
-        // Must run after NativeConstantInvocationFixer, NativeFunctionInvocationFixer, StringableForToStringFixer.
         0
     }
     fn configure(&mut self, options: &Value) -> Result<()> {

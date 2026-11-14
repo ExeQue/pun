@@ -1,8 +1,3 @@
-//! Resolved configuration from pun.toml (context/plan/config.md §3): `[php]`, `[files]`, `[format]` (a Pint preset
-//! plus rules), `[lint]` (sets, groups, rules, overrides) and `[analyse]` (preset, paths, rules), all under Pun rule IDs
-//! (rules/mapping.toml) and gated on composer.json and composer.lock. pint.json and `.php-cs-fixer.php` are only read
-//! by `pun migrate`.
-
 pub mod composer;
 mod constraint;
 mod explain;
@@ -29,8 +24,6 @@ use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
-/// Presets from the pinned Pint (`resources/presets/*.php`), in declaration order. laravel comes from the
-/// harness export (`rules_as_configured`); the others are plain rule maps exported the same way.
 pub const PRESETS: [(&str, &str); 5] = [
     ("laravel", include_str!("../presets/laravel.json")),
     ("per", include_str!("../presets/per.json")),
@@ -44,22 +37,17 @@ pub const PRESETS: [(&str, &str); 5] = [
 /// ported.
 const SETS: &str = include_str!("../presets/sets.json");
 
-/// Upstream rule -> Pun rule mapping (context/plan/rules.md).
 const MAPPING: &str = include_str!("../rules/mapping.toml");
 
-/// What every command prints when the project has no pun.toml.
 pub const NO_CONFIG: &str =
     "No pun.toml found. Run `pun migrate`, or `pun init` for a new project.";
 
-/// One enabled fixer (upstream name). `options` is `Null` when the rule is just `true`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rule {
     pub name: String,
     pub options: Value,
 }
 
-/// `pun format`'s finder options, kept as Pint passes them to Symfony Finder: `in` is `[files] paths`, `exclude`
-/// is `[files] exclude` plus `[format] exclude`.
 #[derive(Debug, Clone, Default)]
 pub struct Finder {
     pub in_dirs: Vec<String>,
@@ -72,28 +60,19 @@ pub struct Finder {
 pub struct Config {
     pub root: PathBuf,
     pub preset: FormatPreset,
-    /// Target PHP version: `[php] version`, else the lowest composer.json admits, else 8.4. [`Config::php_version`]
-    /// is the same as a [`PhpVersion`]; this string goes once pun-cli reads that.
     pub php: String,
-    /// The `phpVersion` `pun analyse` runs with, as PHPStan's PhpVersionFactory picks it: `[php] version` when set, else
-    /// composer.json's `config.platform.php`, else the PHP running PHPStan, which Pun takes as the newest release.
     pub analyse_php_id: u32,
-    /// `pun format`'s fixers: the preset's and `[format.rules]`, minus lint rules. The pipeline sorts by priority.
     pub rules: Vec<Rule>,
     pub finder: Finder,
-    /// `Pint/laravel_blade` is on: `*.blade.php` files are discovered.
     pub blade: bool,
-    /// `[files]`, shared by every command.
     pub files: Files,
     pub lint: Lint,
     pub analyse: Analyse,
-    /// Files that contributed, in load order.
     pub sources: Vec<PathBuf>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct Options {
-    /// `--config`: pun.toml path (relative to root).
     pub config: Option<PathBuf>,
     pub no_config: bool,
     pub preset: Option<String>,
@@ -113,7 +92,6 @@ struct PunToml {
     lint: schema::LintToml,
     #[serde(default)]
     analyse: schema::AnalyseToml,
-    /// The old lint + analyse tier: an error naming its replacements.
     preset: Option<toml::Value>,
 }
 
@@ -127,7 +105,6 @@ struct PunPhp {
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 struct PunFormat {
     preset: Option<String>,
-    /// Moved to `[files] paths`: an error.
     paths: Option<toml::Value>,
     #[serde(default)]
     exclude: Vec<String>,
@@ -139,8 +116,6 @@ struct PunFormat {
     rules: toml::Table,
 }
 
-/// `[upstream.php-cs-fixer]`, `[upstream.pint]` and `[upstream.pun]` of rules/mapping.toml: fixer => entry. Every
-/// `pun format` run needs them, and only them.
 pub fn fixer_entries() -> &'static toml::Table {
     static T: LazyLock<toml::Table> = LazyLock::new(|| {
         let mut out = toml::Table::new();
@@ -152,13 +127,10 @@ pub fn fixer_entries() -> &'static toml::Table {
     &T
 }
 
-/// The Pun rule ID of a fixer (`no_alias_functions` -> `lint/style/no-alias-function`).
 pub fn rule_of(fixer: &str) -> Option<&'static str> {
     fixer_entries().get(fixer)?.get("pun")?.as_str()
 }
 
-/// The fixer behind a Pun rule ID; the `<command>/` part may be left out (`format/imports/ordered` or
-/// `imports/ordered`).
 pub fn fixer_of(command: &str, rule: &str) -> Option<&'static str> {
     let id = match rule.strip_prefix(command).and_then(|r| r.strip_prefix('/')) {
         Some(_) => rule.to_string(),
@@ -175,7 +147,6 @@ pub fn load(root: &Path, opts: &Options) -> Result<Config> {
     check_composer(&composer)?;
     let mut sources = composer.sources.clone();
     let path = root.join(opts.config.as_deref().unwrap_or(Path::new("pun.toml")));
-    // `--no-config` (Pint's flag) is an explicit choice like `--preset`: the built-in preset, no file.
     let text = if opts.no_config || (opts.config.is_none() && !path.exists()) {
         if !opts.no_config && opts.preset.is_none() {
             bail!(NO_CONFIG);
@@ -192,8 +163,6 @@ pub fn load(root: &Path, opts: &Options) -> Result<Config> {
     parse(root, &path, &text, opts, &composer, sources)
 }
 
-/// pun.toml text that isn't written yet (`pun migrate`) as `load` resolves it, without composer.json and
-/// composer.lock.
 pub fn from_toml(root: &Path, text: &str) -> Result<Config> {
     parse(
         root,
@@ -205,8 +174,6 @@ pub fn from_toml(root: &Path, text: &str) -> Result<Config> {
     )
 }
 
-/// Whether a configured path stays in the project once symlinks and `..` resolve. One that doesn't exist yet is
-/// the finder's error to report.
 fn inside(root: &Path, path: &str) -> bool {
     let (Ok(real), Ok(root)) = (root.join(path).canonicalize(), root.canonicalize()) else {
         return true;
@@ -224,9 +191,7 @@ fn parse(
 ) -> Result<Config> {
     let mut table: toml::Table =
         toml::from_str(text).with_context(|| format!("invalid {}", path.display()))?;
-    // The dependency sections are `pun install`'s; they are checked here so every command reports a broken one.
     manifest::parse(path, &table)?;
-    // `[workspace]` is the package manager's too, read where it installs.
     table.retain(|k, _| !manifest::SECTIONS.contains(&k) && k != "workspace");
     let toml: PunToml = table
         .try_into()
@@ -273,8 +238,6 @@ fn parse(
             .unwrap_or(PhpVersion::NEWEST.to_id()),
     };
     let files = Files::from(files);
-    // `--fix` rewrites the files under these, and pun.toml comes with the repository: a pull request must not
-    // be able to aim it at the rest of the machine. Path arguments are the user's own and stay free.
     for p in &files.paths {
         if !inside(root, p) {
             bail!("{at}: [files] paths: \"{p}\" is outside the project");
@@ -283,7 +246,6 @@ fn parse(
     let gates = schema::Gates { php, composer };
     let lint = schema::lint(path, lint, &files, &gates)?;
     let analyse = schema::analyse(path, analyse, &files, &gates)?;
-    // `pun analyse --generate-baseline` writes this file, so one to create is judged by its directory.
     let escapes = |b: &&str| {
         let dir = Path::new(b).parent().unwrap_or(Path::new(""));
         !inside(root, b) || !inside(root, &dir.to_string_lossy())
@@ -305,16 +267,13 @@ fn parse(
     let mut rules = resolve_set(preset_rules(&preset).unwrap())?;
     for (name, v) in f.rules {
         let id = schema::rule_id(path, "format", &name)?;
-        // Every format rule is a PHP-CS-Fixer or Pint fixer (rules/mapping.toml).
         let fixer = fixer_of("format", &id).unwrap();
-        // One message, not a context: `pun format --watch` prints errors without their causes.
         let v = options::to_fixer(&name, &id, v).map_err(|e| anyhow::anyhow!("{at}: {e}"))?;
         rules.insert(fixer.into(), v);
     }
     if opts.blade {
         rules.insert("Pint/laravel_blade".into(), Value::Bool(true));
     }
-    // Risky fixers are lint rules: a preset's run only under `[lint]`.
     rules.retain(|name, _| !rule_of(name).is_some_and(|id| id.starts_with("lint/")));
     let rules = enabled(rules);
     let blade = rules.iter().any(|r| r.name == "Pint/laravel_blade");
@@ -339,10 +298,6 @@ fn parse(
     })
 }
 
-/// The Pun rule ID behind a name from before the `<command>/<group>/<name>` IDs: an upstream rule (`array_syntax`,
-/// `Pint/laravel_blade`, `StrictInArray`, `method.notFound`, Mago's `no-empty`) under any casing or separators (the
-/// earlier auto-derived names were kebab-cased upstream names: `final-class`, `simplify-mirror-assign`), and the old
-/// `format.` / `lint.` / `analyse.` names (`format.array-syntax`, `no-alias-function`, `undefined-method`).
 fn renamed(name: &str) -> Option<&'static str> {
     let bare = ["format.", "lint.", "analyse."]
         .iter()
@@ -358,8 +313,6 @@ fn renamed(name: &str) -> Option<&'static str> {
     if let Some((_, id)) = upstream().iter().find(|(k, _)| norm(k) == key) {
         return Some(id);
     }
-    // The old name is the rule's name, its group and name joined (`undefined-method`), or its name with the group
-    // word in it (`no-redundant-pest-uses` is `pest/no-redundant-uses`).
     let mut hits = rules().iter().map(|(id, _)| id.as_str()).filter(|id| {
         let mut parts = id.splitn(3, '/').skip(1);
         let (group, rule) = (parts.next().unwrap(), parts.next().unwrap());
@@ -374,7 +327,6 @@ fn renamed(name: &str) -> Option<&'static str> {
     hits.next().filter(|_| hits.next().is_none())
 }
 
-/// Every `[upstream.<tool>]` entry that maps to a rule: upstream key => Pun rule ID. Only an error needs it.
 fn upstream() -> &'static Vec<(String, &'static str)> {
     static T: LazyLock<Vec<(String, &'static str)>> = LazyLock::new(|| {
         let mut out = vec![];
@@ -394,16 +346,12 @@ fn upstream() -> &'static Vec<(String, &'static str)> {
     &T
 }
 
-/// A Pun rule's metadata from `[rules.<command>]` of rules/mapping.toml.
 #[derive(Debug)]
 pub struct RuleMeta {
-    /// `safe`, `unsafe`, `mixed` or `none` (analyse rules have no fix).
     pub fix: FixSafety,
     pub summary: Option<&'static str>,
 }
 
-/// Every `[rules.format]`, `[rules.lint]` and `[rules.analyse]` entry by rule ID (`lint/style/no-alias-function`).
-/// Parsed on first use: a plain `pun format` run never needs it.
 fn rules() -> &'static Vec<(String, toml::Value)> {
     static T: LazyLock<Vec<(String, toml::Value)>> = LazyLock::new(|| {
         ["format", "lint", "analyse"]
@@ -417,7 +365,6 @@ fn rules() -> &'static Vec<(String, toml::Value)> {
     &T
 }
 
-/// The metadata of a Pun rule ID (`lint/dead-code/no-self-assignment`).
 pub fn rule(id: &str) -> Option<RuleMeta> {
     let (_, e) = rules().iter().find(|(r, _)| r == id)?;
     let str = |k| e.get(k).and_then(toml::Value::as_str);
@@ -427,7 +374,6 @@ pub fn rule(id: &str) -> Option<RuleMeta> {
     })
 }
 
-/// A preset's `getRules()` (sets unresolved), or `None` for an unknown preset.
 pub fn preset_rules(preset: &str) -> Option<Map<String, Value>> {
     let (_, json) = PRESETS.iter().find(|(n, _)| *n == preset)?;
     let mut rules: Map<String, Value> = serde_json::from_str(json).unwrap();
@@ -437,7 +383,6 @@ pub fn preset_rules(preset: &str) -> Option<Map<String, Value>> {
     Some(rules)
 }
 
-/// `new RuleSet($rules)`: sets resolved, disabled rules dropped, `true` as no options.
 pub fn rule_set(rules: Map<String, Value>) -> Result<Vec<Rule>> {
     Ok(enabled(resolve_set(rules)?))
 }
@@ -457,8 +402,6 @@ fn enabled(rules: Map<String, Value>) -> Vec<Rule> {
         .collect()
 }
 
-/// RuleSet::resolveSet: sets expand in place (array_merge: a rule already present keeps its position, takes the
-/// set's value); a later rule or set overrides an earlier one.
 fn resolve_set(rules: Map<String, Value>) -> Result<Map<String, Value>> {
     let sets: std::collections::BTreeMap<String, Map<String, Value>> =
         serde_json::from_str(SETS).unwrap();
@@ -475,7 +418,6 @@ fn resolve_set(rules: Map<String, Value>) -> Result<Map<String, Value>> {
     Ok(out)
 }
 
-/// RuleSet::resolveSubset: a set's rules with nested sets merged in; `false` disables every rule of the set.
 fn resolve_subset(
     sets: &std::collections::BTreeMap<String, Map<String, Value>>,
     name: &str,
@@ -501,12 +443,10 @@ fn resolve_subset(
     Some(rules)
 }
 
-/// Refuse projects whose `require.php` admits any PHP below 8.4.
 fn check_composer(composer: &Composer) -> Result<()> {
     let Some(php) = &composer.php else {
         return Ok(());
     };
-    // PUN_IGNORE_PHP_CONSTRAINT=1: harness-only escape hatch so pre-8.4 corpora (laravel/framework...) can be diffed.
     if php
         .lowest
         .is_some_and(|l| l < composer::Version::from((8, 4, 0)))
@@ -524,28 +464,21 @@ fn check_composer(composer: &Composer) -> Result<()> {
 }
 
 impl Config {
-    /// The `pun.toml` among [`Config::sources`], if one was read.
     pub fn pun_toml(&self) -> Option<&Path> {
         (self.sources.iter())
             .find(|s| s.extension().is_some_and(|e| e == "toml"))
             .map(PathBuf::as_path)
     }
 
-    /// The target PHP version ([`Config::php`]), always valid.
     pub fn php_version(&self) -> PhpVersion {
         self.php.parse().unwrap()
     }
 
-    /// `pun config`: the resolved pun.toml, in its own sections and keys. Every rule that runs is listed under
-    /// `[<command>.rules]` as pun.toml writes it (`<group>/<name>`; a rule with no Pun ID keeps its upstream name), each
-    /// command's `exclude` includes `[files] exclude`, and `ecosystems` and `switches` show what composer.lock and the
-    /// analyse preset turned on.
     pub fn show(&self) -> Value {
         let short = |id: &str| id.split_once('/').unwrap().1.to_string();
         let format: Map<String, Value> = (self.rules.iter())
             .map(|r| {
                 let full = rule_of(&r.name).unwrap_or(&r.name);
-                // Options came through `to_fixer` or from a preset, so they translate back.
                 let v = options::to_pun(&r.name, full, &r.options).unwrap();
                 (rule_of(&r.name).map_or(r.name.clone(), short), v)
             })
@@ -574,7 +507,6 @@ impl Config {
             "preset": a.preset, "paths": a.paths, "exclude": a.exclude, "switches": a.switches,
             "ecosystems": a.ecosystems, "rules": analyse,
         });
-        // TOML has no null: no baseline is no key.
         if let Some(b) = &a.baseline {
             analyse["baseline"] = b.as_str().into();
         }

@@ -1,8 +1,3 @@
-//! `pun migrate`: finds the Pint, PHP-CS-Fixer, PHPStan, Rector and Mago configs, asks which to migrate (a checklist
-//! on a terminal; `--from`/`--yes`, agent mode or no terminal don't ask), and migrates the chosen ones it can: pint.json or
-//! `.php-cs-fixer(.dist).php` becomes `[format]`, rector.php `[lint]` and phpstan.neon `[analyse]`, and
-//! `@php-cs-fixer-ignore` comments become `@pun-ignore-file` with Pun rule IDs (context/plan/rules.md §4). Mago is
-//! listed and left untouched. With no config at all it writes a starter pun.toml.
 use crate::render::{ColorChoice, Look, Role};
 use crate::{agent, report, root};
 use anyhow::{Context, Result, bail};
@@ -222,7 +217,6 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
         .map(|r| root.join(&r.1));
     let has_format = detected.iter().any(|d| d.0.format());
     if (chosen.is_empty() && !detected.is_empty()) || (format_source.is_none() && has_format) {
-        // Nothing to write: the user left pint.json / .php-cs-fixer.php out.
         let why = if chosen.is_empty() {
             "nothing selected"
         } else {
@@ -278,7 +272,6 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
     };
     let path = root.join("pun.toml");
     let old = std::fs::read_to_string(&path).ok();
-    // A pun.toml migrate wrote before it moved dependencies gets them added.
     if old.as_ref().is_some_and(|o| *o != toml && *o != tooling) && !a.dry_run {
         bail!(
             "pun.toml exists and differs from what migrate writes; move it away first (`pun migrate --dry-run` shows the difference)"
@@ -380,7 +373,6 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
         report.line(
             Mark::Done,
             "ignore comments",
-            // `@pun-ignore-file` from `@php-cs-fixer-ignore`; `@phpstan-ignore` becomes the line form too.
             match phpstan {
                 Some(_) => format!("{arrow} @pun-ignore in {files}"),
                 None => format!("{arrow} @pun-ignore-file in {files}"),
@@ -589,7 +581,6 @@ fn ignore_rewrites(
 ) -> Vec<(PathBuf, Vec<u8>, Vec<u8>)> {
     let mut edits = vec![];
     let mut unknown = vec![];
-    // A broken finder (a missing `in` dir) is `pun format`'s to report, as Pint does.
     let mut files = pun_workspace::discover(cfg, &[]).unwrap_or_default();
     if phpstan {
         let analysed = pun_workspace::files(cfg, Some(pun_workspace::Command::Analyse), &[]);
@@ -598,7 +589,6 @@ fn ignore_rewrites(
         files.dedup();
     }
     for f in files {
-        // Unreadable files are `pun format`'s to report.
         let Ok(code) = std::fs::read(&f) else {
             continue;
         };
@@ -627,7 +617,6 @@ fn rector_lint(
     let done = migrate::compose(root, parts, &r)?;
     let mut skipped = r.unsupported;
     skipped.extend(done.unsupported);
-    // One line per reason that several rules share (a whole upgrade set below Pun's floor), else one per rule.
     let mut reasons: Vec<(&str, usize)> = vec![];
     for (_, why) in &skipped {
         match reasons.iter_mut().find(|(w, _)| *w == why) {
@@ -670,7 +659,6 @@ fn rector_lint(
 fn needs_vendor(root: &Path, config: &Path) -> bool {
     let vendor = format!("File '{}", root.join("vendor").display());
     migrate::phpstan::from_phpstan(root, config).is_err_and(|e| {
-        // An include written `./vendor/...` keeps its `./` in the message.
         let e = e.to_string().replace("/./", "/");
         e.contains(&vendor) && e.ends_with("is missing or is not readable.")
     })
@@ -768,7 +756,6 @@ fn outside(root: &Path, files: &[PathBuf], paths: &[String]) -> Vec<String> {
             continue;
         }
         let parts: Vec<&str> = f.split('/').collect();
-        // The first ancestor that holds no Rector path.
         let a = (1..=parts.len())
             .map(|k| parts[..k].join("/"))
             .find(|a| !paths.iter().any(|p| under(p, a)))
@@ -1057,7 +1044,6 @@ fn rewrite(
 fn phpstan_ignore(list: &str) -> Result<String, String> {
     let mut ids: Vec<&str> = vec![];
     let mut comments = vec![];
-    // Commas inside a comment's parentheses are the comment's.
     let mut rest = list;
     while !rest.is_empty() {
         let end = rest.find([',', '(']).unwrap_or(rest.len());
@@ -1123,12 +1109,9 @@ fn php_cs_fixer_config(root: &Path, config: &Path) -> Result<(Object, Object)> {
 /// the error when `php` is missing.
 fn read_php(root: &Path, config: &Path, script: &str, what: &str) -> Result<Vec<u8>> {
     let out = std::process::Command::new("php")
-        // Startup warnings (a broken php.ini) go to stderr, off the JSON; a fatal error is printed once (no php.ini
-        // log_errors copy) and without PHP 8.5's backtrace.
         .args([
             "-d",
             "display_errors=stderr",
-            // One error message whatever the php.ini: no logged copy, no PHP 8.5 fatal backtrace.
             "-d",
             "log_errors=0",
             "-d",
@@ -1143,7 +1126,6 @@ fn read_php(root: &Path, config: &Path, script: &str, what: &str) -> Result<Vec<
         .output()
         .with_context(|| format!("reading {what} needs `php` on PATH"))?;
     if !out.status.success() {
-        // A caught exception's message is on stdout; a fatal error (uncatchable) only on stderr.
         if out.stdout.is_empty() {
             bail!("{}", String::from_utf8_lossy(&out.stderr).trim());
         }
@@ -1166,12 +1148,10 @@ mod tests {
         let actions = |chosen: &[Source]| -> Vec<Action> {
             plan(&all, chosen).into_iter().map(|r| r.2).collect()
         };
-        // Everything checked: pint.json wins [format], Mago can't be migrated yet.
         assert_eq!(
             actions(&Source::ALL),
             [Migrate, Covered, Migrate, Migrate, Unsupported]
         );
-        // Pint unchecked: PHP-CS-Fixer gives [format].
         assert_eq!(
             actions(&[PhpCsFixer, Mago]),
             [NotSelected, Migrate, NotSelected, NotSelected, Unsupported]

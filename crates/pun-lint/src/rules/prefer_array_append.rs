@@ -1,10 +1,3 @@
-//! `lint/arrays/prefer-array-append`, ported from Rector 2.8.4's `ChangeArrayPushToArrayAssignRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `array_push($items, $a, $b);` as a statement becomes `$items[] = $a;` and `$items[] = $b;`, one statement per
-//! pushed value. The fix is unsafe: `array_push()` on a value that is not an array throws a `TypeError`, where
-//! `$items[] =` turns `null` into an array, and each value is evaluated after the appends before it.
-
 use mago_syntax::cst::{ExpressionStatement, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -46,13 +39,9 @@ fn check(
         return;
     };
     let args = args(call);
-    // hasArraySpread, then the array and at least one value.
     if args.iter().any(|a| a.is_unpacked()) || args.len() < 2 {
         return;
     }
-    // `$items[] = $value` is printed by `pPrefixOp` for `Assign` (precedence 160), which wraps a value that binds
-    // looser (`and`, `xor`, `or`). Rector's value is the original node, which its printer never wraps, so
-    // `array_push($items, $a and $b)` would become `$items[] = $a and $b`; Pun keeps the parentheses.
     let array = text(ctx, args[0].value());
     let parts: Vec<String> = args[1..]
         .iter()

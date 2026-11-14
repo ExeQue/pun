@@ -1,6 +1,3 @@
-//! The `[files]`, `[lint]` and `[analyse]` parts of pun.toml (context/plan/config.md §3 and §5): what pun.toml says,
-//! resolved against rules/mapping.toml and what composer.lock locks into the rules each command runs.
-
 use crate::composer::{Composer, Version};
 use crate::{fixer_of, options, renamed, rules};
 use anyhow::{Result, bail};
@@ -9,7 +6,6 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// The lint sets (`[lint] sets`), Rector's prepared sets.
 pub const LINT_SETS: [&str; 8] = [
     "dead-code",
     "modernize",
@@ -21,8 +17,6 @@ pub const LINT_SETS: [&str; 8] = [
     "coding-style",
 ];
 
-/// The format presets pun.toml and `--preset` take (Pint's `laravel`, `psr12` and `empty`; `per` and `symfony` are
-/// only `pun migrate` input). Reads as its name (`&*preset`, `preset == "laravel"`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormatPreset {
     Laravel,
@@ -41,7 +35,6 @@ impl FormatPreset {
         }
     }
 
-    /// The preset of a name, `None` for any other.
     pub fn parse(s: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|p| p.name() == s)
     }
@@ -73,7 +66,6 @@ impl Serialize for FormatPreset {
     }
 }
 
-/// How safe a rule's fix is (mapping.toml's `fix`): `mixed` has safe and unsafe parts, `none` is report-only.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FixSafety {
     Safe,
@@ -102,7 +94,6 @@ impl FixSafety {
     }
 }
 
-/// The analyse presets, each including the ones before it (their order).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AnalysePreset {
@@ -122,7 +113,6 @@ impl AnalysePreset {
         Self::Max,
     ];
 
-    /// The name pun.toml writes.
     pub fn name(self) -> &'static str {
         match self {
             Self::Basic => "basic",
@@ -137,7 +127,6 @@ impl AnalysePreset {
         Self::ALL.into_iter().find(|p| p.name() == s)
     }
 
-    /// The preset that holds a PHPStan level (0 to 10).
     pub fn of_level(level: usize) -> Self {
         Self::ALL[[0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4][level]]
     }
@@ -149,7 +138,6 @@ impl std::fmt::Display for AnalysePreset {
     }
 }
 
-/// The type switches each analyse preset turns on, cumulative (PHPStan levels 7-10; mapping.toml `preset_switches`).
 const SWITCHES: [(AnalysePreset, &str); 4] = [
     (AnalysePreset::Strict, "union-types"),
     (AnalysePreset::Strict, "nullables"),
@@ -157,7 +145,6 @@ const SWITCHES: [(AnalysePreset, &str); 4] = [
     (AnalysePreset::Max, "implicit-mixed"),
 ];
 
-/// An ecosystem group: its rules run when composer.lock has the package. Nothing detects `doctrine` yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Ecosystem {
@@ -170,7 +157,6 @@ pub enum Ecosystem {
 impl Ecosystem {
     const ALL: [Self; 4] = [Self::Laravel, Self::Pest, Self::Phpunit, Self::Doctrine];
 
-    /// The group name.
     pub fn name(self) -> &'static str {
         match self {
             Self::Laravel => "laravel",
@@ -181,14 +167,12 @@ impl Ecosystem {
     }
 }
 
-/// `[files]`: what every command checks.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Files {
     pub paths: Vec<String>,
     pub exclude: Vec<String>,
 }
 
-/// A lint level. A rule that is `"off"` is not in the resolved list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Level {
@@ -196,35 +180,25 @@ pub enum Level {
     Error,
 }
 
-/// One enabled lint rule.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LintRule {
-    /// `lint/<group>/<name>`.
     pub id: String,
     pub level: Level,
-    /// `false` for `fix = "off"`: the rule only reports.
     pub fix: bool,
-    /// Options from pun.toml (as the PHP-CS-Fixer fixer takes them when one runs the rule), `Null` for none.
     pub options: Value,
-    /// The PHP-CS-Fixer fixer that runs it in the token pass, if any.
     #[serde(skip)]
     pub fixer: Option<&'static str>,
-    /// Named in `[lint.rules]`, not only enabled by a set or a group. A named rule Pun can't run stops the run; a set
-    /// skips such rules.
     #[serde(skip)]
     pub named: bool,
 }
 
 impl LintRule {
-    /// The rule as pun.toml writes it: its level, or a table when it has options or `fix = "off"` (with `level` only
-    /// when it is `warn`, the default being `error`).
     pub fn value(&self) -> Value {
         lint_value(&self.id, Some(self.level), self.fix, &self.options)
     }
 }
 
 impl LintSetting {
-    /// The line as pun.toml writes it, `"off"` included.
     pub fn value(&self) -> Value {
         lint_value(&self.id, self.level, self.fix, &self.options)
     }
@@ -246,7 +220,6 @@ fn lint_value(id: &str, level: Option<Level>, fix: bool, options: &Value) -> Val
     if !fix {
         t.insert("fix".into(), "off".into());
     }
-    // A fixer's options came through `to_fixer`, so they translate back.
     let options = match fixer_of("lint", id) {
         Some(f) if options.is_object() => options::to_pun(f, id, options).unwrap(),
         _ => options.clone(),
@@ -257,7 +230,6 @@ fn lint_value(id: &str, level: Option<Level>, fix: bool, options: &Value) -> Val
     Value::Object(t)
 }
 
-/// A rule's line in `[lint.rules]` or an override: `level` is `None` for `"off"`.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LintSetting {
     pub id: String,
@@ -266,68 +238,45 @@ pub struct LintSetting {
     pub options: Value,
 }
 
-/// One `[[lint.overrides]]`: rule levels for the files its globs match.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Override {
     pub files: Vec<String>,
     pub rules: Vec<LintSetting>,
 }
 
-/// The resolved `[lint]`.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Lint {
     pub sets: Vec<String>,
-    /// `[files] exclude` plus `[lint] exclude`.
     pub exclude: Vec<String>,
-    /// The ecosystems the lint rules run for: detected in composer.lock and not switched off.
     pub ecosystems: Vec<Ecosystem>,
-    /// Every enabled rule, by ID.
     pub rules: Vec<LintRule>,
     pub overrides: Vec<Override>,
 }
 
-/// One enabled analyse rule.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnalyseRule {
-    /// `analyse/<group>/<name>`.
     pub id: String,
-    /// Options from pun.toml, `Null` for none.
     pub options: Value,
 }
 
-/// The resolved `[analyse]`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Analyse {
     pub preset: AnalysePreset,
-    /// `[analyse] paths`, or `[files] paths` when it has none.
     pub paths: Vec<String>,
-    /// `[files] exclude` plus `[analyse] exclude`.
     pub exclude: Vec<String>,
     pub baseline: Option<String>,
-    /// `[analyse] stubs`: PHPStan's `stubFiles`, relative to the project.
     pub stubs: Vec<String>,
-    /// `[[analyse.ignore]]`: PHPStan's `ignoreErrors`, in pun.toml order.
     pub ignore: Vec<Ignore>,
-    /// The type switches the preset turns on.
     pub switches: Vec<&'static str>,
     pub ecosystems: Vec<Ecosystem>,
-    /// Larastan's knowledge and rules: the `laravel` ecosystem is on and composer.lock pins a Laravel that Larastan
-    /// supports.
     pub larastan: bool,
-    /// Every enabled rule, by ID.
     pub rules: Vec<AnalyseRule>,
-    /// `[analyse] bleeding-edge`: PHPStan's bleeding-edge type inference (`bleedingEdge.neon`'s inference toggles).
     pub bleeding_edge: bool,
 }
 
-/// One `[[analyse.ignore]]`: an `ignoreErrors` entry of PHPStan's under a Pun rule. An error is ignored when it
-/// matches every key given: its rule, its PHPStan identifier, its message (`message` a PCRE pattern as in PHPStan,
-/// `raw-message` the exact text) and one of `paths` (fnmatch patterns or paths, relative to the project). `count`
-/// ignores exactly that many and reports the rest, as in PHPStan.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Ignore {
-    /// `analyse/<group>/<name>` once resolved; pun.toml may leave out `analyse/`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rule: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -390,7 +339,6 @@ pub(crate) struct AnalyseToml {
     rules: toml::Table,
     #[serde(default, rename = "bleeding-edge")]
     bleeding_edge: bool,
-    /// PHPStan's `level`: an error naming the preset.
     level: Option<toml::Value>,
 }
 
@@ -403,9 +351,6 @@ impl Files {
     }
 }
 
-/// A PHP version as `major.minor`: `[php] version`, or the lowest composer.json's `require.php` admits. The one
-/// representation of the target PHP version: `to_id()` is PHP's `PHP_VERSION_ID` form that pun-lint and
-/// pun-analyse compare with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PhpVersion {
     pub major: u8,
@@ -413,12 +358,9 @@ pub struct PhpVersion {
 }
 
 impl PhpVersion {
-    /// Pun's floor: the version a project without `[php] version` or `require.php` targets.
     pub const FLOOR: PhpVersion = PhpVersion { major: 8, minor: 4 };
-    /// The newest PHP release: what PHPStan reads as its runtime version when nothing else names one.
     pub const NEWEST: PhpVersion = PhpVersion { major: 8, minor: 5 };
 
-    /// `PHP_VERSION_ID` of the `.0` release: 8.4 is 80400.
     pub fn to_id(self) -> u32 {
         u32::from(self.major) * 10_000 + u32::from(self.minor) * 100
     }
@@ -427,7 +369,6 @@ impl PhpVersion {
 impl std::str::FromStr for PhpVersion {
     type Err = String;
 
-    /// `8.4`: two parts, each a number.
     fn from_str(s: &str) -> Result<Self, String> {
         let bad = || format!("expected a PHP version as major.minor, such as \"8.4\"; got \"{s}\"");
         let (major, minor) = s.split_once('.').ok_or_else(bad)?;
@@ -450,14 +391,12 @@ impl Serialize for PhpVersion {
     }
 }
 
-/// What gates the rules of ecosystem and upgrade groups: the PHP version and the ecosystems that are on.
 pub(crate) struct Gates<'a> {
     pub php: PhpVersion,
     pub composer: &'a Composer,
 }
 
 impl Gates<'_> {
-    /// The locked version of an ecosystem's package composer.lock has, `None` when it has none.
     fn locked(&self, ecosystem: Ecosystem) -> Option<Option<Version>> {
         let l = match ecosystem {
             Ecosystem::Laravel => &self.composer.laravel,
@@ -468,15 +407,12 @@ impl Gates<'_> {
         l.as_ref().map(|l| l.semver)
     }
 
-    /// The ecosystems composer.lock has, minus those `off` switches off (by group name).
     pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<Ecosystem> {
         (Ecosystem::ALL.into_iter())
             .filter(|e| self.locked(*e).is_some() && !off(e.name()))
             .collect()
     }
 
-    /// Whether a rule of `group` runs when only a set or a preset turns it on: an ecosystem group needs its ecosystem
-    /// on, an upgrade group (`php-8.4`, `laravel-11`) needs that PHP version or that locked Laravel version.
     pub(crate) fn allows(&self, group: &str, on: &[Ecosystem]) -> bool {
         if let Some(v) = group.strip_prefix("php-") {
             return v.parse().is_ok_and(|v: PhpVersion| self.php >= v);
@@ -495,13 +431,11 @@ impl Gates<'_> {
     }
 }
 
-/// `8.4` or `13` as `(major, minor)`.
 pub(crate) fn version(v: &str) -> Option<(u64, u64)> {
     let (major, minor) = v.split_once('.').unwrap_or((v, "0"));
     Some((major.parse().ok()?, minor.parse().ok()?))
 }
 
-/// The group list of mapping.toml (`[meta.groups]`), in its order.
 pub fn groups() -> &'static Vec<String> {
     static T: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| {
         (crate::mapping::section(&["meta", "groups"]).table().keys())
@@ -511,19 +445,15 @@ pub fn groups() -> &'static Vec<String> {
     &T
 }
 
-/// The group of a rule ID (`lint/dead-code/x` -> `dead-code`).
 fn group_of(id: &str) -> &str {
     id.split('/').nth(1).unwrap()
 }
 
-/// The full ID of `name` under `[<command>.rules]`: a full ID or `<group>/<name>`. Anything else is an error, naming
-/// the ID to use when the name is an old or upstream one.
 pub(crate) fn rule_id(path: &Path, command: &str, name: &str) -> Result<String> {
     let id = match name.strip_prefix(command).and_then(|r| r.strip_prefix('/')) {
         Some(_) => name.to_string(),
         None => format!("{command}/{name}"),
     };
-    // The token fixers' rules are found without parsing the whole mapping.
     if fixer_of(command, name).is_some() || rules().iter().any(|(r, _)| *r == id) {
         return Ok(id);
     }
@@ -542,7 +472,6 @@ pub(crate) fn rule_id(path: &Path, command: &str, name: &str) -> Result<String> 
     }
 }
 
-/// A level string of `[lint.groups]`, `[lint.rules]` or an override.
 fn level(path: &Path, key: &str, s: &str) -> Result<Option<Level>> {
     Ok(match s {
         "off" => None,
@@ -559,7 +488,6 @@ fn level(path: &Path, key: &str, s: &str) -> Result<Option<Level>> {
     })
 }
 
-/// A lint rule's line: a level, or a table with `level`, `fix = "off"` and the rule's options.
 fn setting(path: &Path, name: &str, v: toml::Value) -> Result<LintSetting> {
     let id = rule_id(path, "lint", name)?;
     let shown = |v: &toml::Value| v.to_string();
@@ -616,7 +544,6 @@ fn setting(path: &Path, name: &str, v: toml::Value) -> Result<LintSetting> {
     let options = if opts.is_empty() {
         Value::Null
     } else if fixer_of("lint", &id).is_some() {
-        // The fixer's options under their Pun names (`[options."lint/..."]` of mapping.toml).
         options::to_fixer(name, &id, toml::Value::Table(opts))
             .map_err(|e| anyhow::anyhow!("{}: {e}", path.display()))?
     } else {
@@ -630,7 +557,6 @@ fn setting(path: &Path, name: &str, v: toml::Value) -> Result<LintSetting> {
     })
 }
 
-/// `[lint]`: sets turn rules on at `error`, a group's level wins over a set's, a rule's own line over its group's.
 pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Result<Lint> {
     for s in &t.sets {
         if !LINT_SETS.contains(&s.as_str()) {
@@ -672,7 +598,6 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
         .collect::<Result<Vec<_>>>()?;
 
     let ecosystems = gates.ecosystems(|e| groups.get(e) == Some(&None));
-    // Sets and groups need every rule's data; a pun.toml with neither only runs what it names.
     let rule = |id: String, level, fix, options, named| LintRule {
         fixer: fixer_of("lint", &id),
         id,
@@ -683,8 +608,6 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
     };
     let mut on: BTreeMap<String, LintRule> = BTreeMap::new();
     if !t.sets.is_empty() || !groups.is_empty() {
-        // a rule without a native port (`ported = false`, one upstream added since the last port) is in no set
-        // or group Pun runs
         let ported =
             |e: &toml::Value| e.get("ported").and_then(toml::Value::as_bool) != Some(false);
         for (id, e) in rules()
@@ -734,8 +657,6 @@ fn list(items: &[&str]) -> String {
     quoted.join(", ")
 }
 
-/// `[analyse]`: a preset turns on its rules and those of the presets below it; a group's or a rule's line turns
-/// them on (`"on"` or a table of options) or off.
 pub(crate) fn analyse(
     path: &Path,
     t: AnalyseToml,

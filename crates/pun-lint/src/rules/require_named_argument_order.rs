@@ -1,10 +1,3 @@
-//! `lint/complexity/require-named-argument-order`, ported from Rector 2.8.4's `SortCallLikeNamedArgsRector`
-//! (rules/CodeQuality/Rector/FuncCall) and its `NamedArgsSorter` (rules/CodeQuality/NodeManipulator).
-//!
-//! The named arguments of a function, method, static method or constructor call move into the order of the
-//! parameters they name; positional arguments stay first, and names the callee does not declare go last. The callee
-//! is looked up in the codebase (the built-in symbols and the project's), as Rector's `ReflectionResolver` does.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -70,7 +63,6 @@ impl Rule for RequireNamedArgumentOrder {
         let Some(spans) = sorted(&args, callee) else {
             return;
         };
-        // php-parser's format-preserving printer moves each argument into the place of another.
         let edits = args
             .iter()
             .zip(spans)
@@ -81,7 +73,6 @@ impl Rule for RequireNamedArgumentOrder {
     }
 }
 
-/// Each argument's span and, for a named one, its name.
 fn arguments<'a>(list: &'a ArgumentList<'a>) -> Vec<(Span, Option<&'a [u8]>)> {
     list.arguments
         .iter()
@@ -92,7 +83,6 @@ fn arguments<'a>(list: &'a ArgumentList<'a>) -> Vec<(Span, Option<&'a [u8]>)> {
         .collect()
 }
 
-/// The report of a rule that sorts named arguments.
 pub(super) fn report(span: Span, edits: Vec<Edit>) -> Report {
     Report {
         span,
@@ -105,8 +95,6 @@ pub(super) fn report(span: Span, edits: Vec<Edit>) -> Report {
     }
 }
 
-/// `NamedArgsSorter::sortArgsToMatchReflectionParameters`: the spans of `args` with the named arguments in the order
-/// of `callee`'s parameters, after the others; `None` when they already are in that order.
 pub(super) fn sorted(
     args: &[(Span, Option<&[u8]>)],
     callee: &FunctionLikeMetadata,
@@ -120,7 +108,6 @@ pub(super) fn sorted(
     };
     let mut named: Vec<&(Span, Option<&[u8]>)> =
         args.iter().filter(|(_, name)| name.is_some()).collect();
-    // `usort` is stable since PHP 8.0.
     named.sort_by_key(|(_, name)| order(name.unwrap()));
     let spans: Vec<Span> = args
         .iter()
@@ -131,7 +118,6 @@ pub(super) fn sorted(
     (spans.iter().zip(args).any(|(new, old)| *new != old.0)).then_some(spans)
 }
 
-/// What a call calls: a function name, a method of an object or a class, or a class's constructor.
 pub(super) enum Target<'a> {
     Function(&'a Expression<'a>),
     Method(&'a Expression<'a>, &'a ClassLikeMemberSelector<'a>),
@@ -139,7 +125,6 @@ pub(super) enum Target<'a> {
     New(&'a Expression<'a>),
 }
 
-/// `ReflectionResolver::resolveFunctionLikeReflectionFromCall`: the function or method `target` calls.
 pub(super) fn callee<'f>(
     facts: &'f Facts,
     target: Target<'_>,
@@ -167,7 +152,6 @@ pub(super) fn callee<'f>(
     codebase.get_declaring_method(class.as_bytes(), method)
 }
 
-/// The class a class reference names: a name, `self`, `static` or `parent`.
 fn class_name(ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Option<String> {
     match class {
         Expression::Identifier(id) => Some(resolve_class_name(ancestors, id)),
@@ -177,8 +161,6 @@ fn class_name(ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Option<Stri
     }
 }
 
-/// `ClassNameFromObjectTypeResolver::resolve` on the type of a method call's object: the one class of an object type
-/// (`null` left out).
 fn object_class(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -199,7 +181,6 @@ fn object_class(
     }
 }
 
-/// The functions a call of `name` may reach, in the order PHP tries them: the namespaced name, then the global one.
 fn function_names(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> Vec<String> {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     if let Some(fq) = written.strip_prefix('\\') {

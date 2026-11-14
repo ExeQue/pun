@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\StandardizeIncrementFixer`.
 use crate::analyzers::abstract_increment_operator_fixer::find_start;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -60,7 +59,6 @@ impl Fixer for StandardizeIncrementFixer {
     }
 }
 
-/// Clear tokens in the given range unless they are comments.
 fn clear_range_leave_comments(tokens: &mut Tokens, index_start: usize, index_end: usize) {
     for i in index_start..=index_end {
         let token = &tokens[i];

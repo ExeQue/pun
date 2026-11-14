@@ -1,6 +1,3 @@
-//! `lint/php-8.4/prefer-array-all`, ported from Rector 2.8.4's `ForeachToArrayAllRector` (rules/Php84/Rector/Foreach_); the shared code and what Pun does
-//! differently are in `lint_b_foreach`.
-
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Fix, Safety};
 
@@ -16,7 +13,6 @@ impl Rule for PreferArrayAll {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::ARRAY_ALL
         80400
     }
 

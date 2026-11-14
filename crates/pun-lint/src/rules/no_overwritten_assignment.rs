@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-overwritten-assignment`, ported from Rector 2.8.4's `RemoveDoubleAssignRector`
-//! (rules/DeadCode/Rector/Assign).
-//!
-//! An assignment the next statement assigns again to the same variable or property goes: `$value = 1; $value = 2;`
-//! is `$value = 2;`. It stays when the next value reads the target, when the first value is a call with side effects
-//! (`array_pop()`), when the target holds such a call, or, in a `try`, when the next value is one.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -47,7 +40,6 @@ impl Rule for NoOverwrittenAssignment {
         };
         let mut scope = ancestors.to_vec();
         scope.push(node);
-        // php-parser's `TryCatch` holds the statements of its `try` block.
         let in_try = matches!(ancestors.last(), Some(Node::Try(t)) if matches!(node, Node::Block(b) if std::ptr::eq(b, &raw const t.block)));
         let side_effect =
             |expr: &Expression<'_>| call_has_side_effect(&scope, unparenthesize(expr));
@@ -62,7 +54,6 @@ impl Rule for NoOverwrittenAssignment {
             if !same_expression(source, next.lhs, first.lhs) {
                 continue;
             }
-            // isSelfReferencing: the next value reads the target.
             if any_node(Node::Expression(next.rhs), &|n| {
                 matches!(n, Node::Expression(_)) && same_node(source, Node::Expression(next.lhs), n)
             }) {

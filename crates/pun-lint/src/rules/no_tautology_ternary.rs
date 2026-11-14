@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-tautology-ternary`, ported from Rector 2.8.4's `SimplifyTautologyTernaryRector`
-//! (rules/CodeQuality/Rector/Ternary) with `BinaryOpManipulator::matchFirstAndSecondConditionNode`.
-//!
-//! `$a !== $b ? $a : $b` is always `$a`, and `$a === $b ? $a : $b` is always `$b`: the ternary compares the two
-//! values it chooses between, in either order.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -38,7 +32,6 @@ impl Rule for NoTautologyTernary {
             BinaryOperator::Identical(_) => false,
             _ => return,
         };
-        // A short ternary (`?:`) has no `if` to compare with.
         let Some(then) = t.then else { return };
         let (l, r, e) = (compare.lhs, compare.rhs, t.r#else);
         let matched =

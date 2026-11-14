@@ -1,9 +1,3 @@
-//! `lint/style/no-nested-ternary`, ported from Mago 1.57.0's linter rule `no-nested-ternary`
-//! (rule/clarity/no_nested_ternary.rs).
-//!
-//! A full ternary (`a ? b : c`) whose condition or branches hold another full ternary, through any parentheses, is
-//! reported on the inner one. Short ternaries (`?:`) are left alone on both sides.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 
 use crate::syntax::node_span;

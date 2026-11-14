@@ -1,15 +1,3 @@
-//! `lint/complexity/prefer-coalesce-over-foreach`, ported from Rector 2.8.4's `SimplifyForeachToCoalescingRector`
-//! (rules/CodeQuality/Rector/Foreach_).
-//!
-//! A `foreach ($array as $key => $value)` over an array whose only statement is `if ($key === $x)` with one
-//! statement, `return $value;` or `$target = $value;`, becomes `return $array[$x] ?? <next return value>;` (taking the
-//! place of the `return` after it, which must follow) or `$target = $array[$x] ?? $target;`. A loop that returns or
-//! assigns something other than its value stops the rule for the whole statement list.
-//!
-//! Rector reads that the loop runs over an array from PHPStan's native type; Pun from the syntax (an array literal, a
-//! property or untouched parameter declared `array`, a local written only with array literals), and skips the rest
-//! (lint.md Build 8).
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -21,7 +9,6 @@ use crate::{Context, Report, Rule};
 
 pub struct PreferCoalesceOverForeach;
 
-/// The statement inside the loop's `if`.
 enum Inner<'a> {
     Return(&'a Expression<'a>),
     Assign(&'a Assignment<'a>),
@@ -64,7 +51,6 @@ impl Rule for PreferCoalesceOverForeach {
             let Some((condition, inner)) = match_inner(ctx, &path, foreach) else {
                 continue;
             };
-            // The other side of `$key === ...`.
             let checked = if equal(ctx, condition.lhs, target.key) {
                 condition.rhs
             } else if equal(ctx, condition.rhs, target.key) {
@@ -123,8 +109,6 @@ impl Rule for PreferCoalesceOverForeach {
     }
 }
 
-/// `matchForeachReturnOrAssign`: one `if ($a === $b)` with one statement and no `else`, over a native array, holding
-/// a `return` or an assignment (not to an array element).
 fn match_inner<'a>(
     ctx: &Context<'_>,
     path: &[Node<'_, '_>],
@@ -134,7 +118,6 @@ fn match_inner<'a>(
     if body.len() != 1 {
         return None;
     }
-    // A comment alone is php-parser's `Nop`, no `if`.
     let Some(Statement::If(r#if)) = body.stmts.first() else {
         return None;
     };

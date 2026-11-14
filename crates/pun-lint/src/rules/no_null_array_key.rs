@@ -1,9 +1,3 @@
-//! `lint/php-8.5/no-null-array-key`, ported from Rector 2.8.4's `ArrayKeyExistsNullToEmptyStringRector`
-//! (rules/Php85/Rector/FuncCall).
-//!
-//! PHP 8.5 deprecates `null` as the key of `array_key_exists()`. A key whose type is `null` (`isNull()->yes()`)
-//! becomes `''`; a key that only may be `null` stays (Rector 2.8.4 dropped the `(string)` cast it wrote for one).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
@@ -27,7 +21,6 @@ impl Rule for NoNullArrayKey {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersion::PHP_85
         80500
     }
 
@@ -50,7 +43,6 @@ impl Rule for NoNullArrayKey {
         if args.len() != 2 {
             return;
         }
-        // `ArgsAnalyzer::resolveArgPosition($args, 'key', 0)`
         let position = (args.iter())
             .position(
                 |a| matches!(a, Argument::Named(n) if n.name.value.eq_ignore_ascii_case(b"key")),
@@ -58,7 +50,6 @@ impl Rule for NoNullArrayKey {
             .unwrap_or(0);
         let key = unparenthesize(value(args[position]));
         let facts = facts(ctx);
-        // PHPStan 2.3: `$v ?? null` of a variable no scope defines is the right side's type
         let typed = match key {
             Expression::Binary(b)
                 if matches!(b.operator, BinaryOperator::NullCoalesce(_))
@@ -68,7 +59,6 @@ impl Rule for NoNullArrayKey {
             }
             _ => key,
         };
-        // PHPStan's type of a property no class declares is an error, never `null`; Mago's is `null`
         if is_undeclared_property(&facts, typed) {
             return;
         }
@@ -92,8 +82,6 @@ impl Rule for NoNullArrayKey {
     }
 }
 
-/// Whether `expr` is a variable named nowhere else in the outermost function, method or file around it: no scope
-/// defines it.
 fn is_undefined(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     let Expression::Variable(Variable::Direct(v)) = expr else {
         return false;
@@ -129,7 +117,6 @@ fn is_undefined(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], expr: &Expression
     count == 1
 }
 
-/// Whether `expr` reads `$object->name` where every class the object may be declares no property `$name`.
 fn is_undeclared_property(facts: &Facts, expr: &Expression<'_>) -> bool {
     let Expression::Access(Access::Property(access)) = expr else {
         return false;

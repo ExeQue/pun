@@ -1,11 +1,3 @@
-//! `lint/style/prefer-class-keyword`, ported from Rector 2.8.4's `UseClassKeywordForClassNameResolutionRector`
-//! (rules/CodingStyle/Rector/String_).
-//!
-//! A string that names a known class before `::` (`'App\Models\User::find()'`) is split around each occurrence of
-//! that name, which becomes `\App\Models\User::class`: `\App\Models\User::class . '::find()'`. Only names with a
-//! namespace count; heredoc and nowdoc strings are left alone. A class is known when the codebase (the built-in
-//! symbols and the project's) has it, as PHPStan's `ReflectionProvider::hasClass`.
-
 use mago_syntax::cst::{Literal, LiteralStringKind, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -79,7 +71,6 @@ impl Rule for PreferClassKeyword {
     }
 }
 
-/// The `class_name` group of each match of `#(?<class_name>[\\a-zA-Z0-9_\x80-\xff]*)::#`, in order.
 fn before_double_colon(value: &[u8]) -> Vec<&[u8]> {
     let class_char = |b: u8| b == b'\\' || b == b'_' || b.is_ascii_alphanumeric() || b >= 0x80;
     let mut names = Vec::new();
@@ -99,7 +90,6 @@ fn before_double_colon(value: &[u8]) -> Vec<&[u8]> {
     names
 }
 
-/// `Strings::split($value, '#(name|name...)#')` without the empty pieces: the text between the names and the names.
 fn split<'a>(value: &'a [u8], names: &[&[u8]]) -> Vec<&'a [u8]> {
     let mut parts = Vec::new();
     let (mut from, mut i) = (0, 0);

@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-contain-equal`, ported from pest-plugin-rector's `UseToContainEqualRector`: `expect(in_array($needle, $haystack, false))->toBeTrue()`
-//! becomes `expect($haystack)->toContainEqual($needle)`. The haystack's type must be an array.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

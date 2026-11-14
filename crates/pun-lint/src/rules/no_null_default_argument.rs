@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-null-default-argument` and `lint/dead-code/no-null-default-named-argument`, ported from Rector
-//! 2.8.4's `RemoveNullArgOnNullDefaultParamRector` and `RemoveNullNamedArgOnNullDefaultParamRector`
-//! (rules/DeadCode/Rector/MethodCall) with their `CallLikeParamDefaultResolver` (rules/DeadCode/NodeAnalyzer).
-//!
-//! A `null` argument for a parameter whose default is `null` goes: the trailing positional ones (the first rule, on
-//! calls without named arguments) or the named ones (the second rule). The callee is looked up in the codebase as
-//! `ReflectionResolver` does; a variadic one (also one that reads `func_get_args()`) and `Ds\Map::get()` are left
-//! alone.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_syntax::cst::{Argument, ArgumentList, Node, NodeKind};
@@ -94,7 +85,6 @@ impl Rule for NoNullDefaultNamedArgument {
             return;
         };
         let args = list.arguments.as_slice();
-        // An unpacked argument hides which parameters are bound.
         if args.iter().any(unpacked) || !args.iter().any(|a| matches!(a, Argument::Named(_))) {
             return;
         }
@@ -112,7 +102,6 @@ impl Rule for NoNullDefaultNamedArgument {
                 let Argument::Named(named) = arg else {
                     return false;
                 };
-                // `resolvePositionParameterByName`: the parameter of that exact name.
                 is_constant(named.value, "null")
                     && callee
                         .parameters
@@ -126,7 +115,6 @@ impl Rule for NoNullDefaultNamedArgument {
     }
 }
 
-/// The argument list of a call and what it calls.
 fn call<'a>(node: Node<'a, 'a>) -> Option<(&'a ArgumentList<'a>, Target<'a>)> {
     match node {
         Node::MethodCall(c) => Some((&c.argument_list, Target::Method(c.object, &c.method))),
@@ -137,8 +125,6 @@ fn call<'a>(node: Node<'a, 'a>) -> Option<(&'a ArgumentList<'a>, Target<'a>)> {
     }
 }
 
-/// `resolveNullPositions`: the positions of the parameters whose default is `null`; `None` for `Ds\Map::get()` and
-/// for a variadic callee.
 fn null_positions(
     codebase: &CodebaseMetadata,
     callee: &FunctionLikeMetadata,
@@ -167,8 +153,6 @@ fn null_positions(
     )
 }
 
-/// The report that removes the arguments at `removed` (any order): each run of them goes with the separator before
-/// it, or, for a run at the start, with the text up to the next argument, as php-parser's printer removes them.
 fn report(
     node: Node<'_, '_>,
     list: &ArgumentList<'_>,

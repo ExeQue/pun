@@ -1,6 +1,3 @@
-//! FunctionCallParametersCheck: shared argument ordering, counts, binding and named-argument policy. Type,
-//! reference and @no-named-arguments checks run from level 5, after the level-0 binding checks.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::TType;
@@ -14,35 +11,23 @@ use pun_phpstan::types::{Tri, Type, is_super_type_of};
 use super::Checker;
 use crate::bitset::BitSet;
 
-/// A ParametersAcceptor, as far as counting and naming go.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Acceptor {
-    /// `isOptional()` per parameter.
     pub optional: BitSet,
-    /// `isVariadic()`: a variadic parameter, or a body calling `func_get_args()`.
     pub variadic: bool,
-    /// The return type is `void` (`getKeepVoidType()`).
     pub void: bool,
-    /// Per parameter: the name, the type's description and whether it is variadic.
     pub names: Vec<String>,
     pub types: Vec<String>,
     pub variadics: BitSet,
-    /// A built-in's (no named argument goes to its variadic parameter).
     pub builtin: bool,
-    /// `acceptsNamedArguments()`, retained when acceptors are selected or combined.
     pub accepts_named_arguments: Tri,
-    /// Per parameter: its declared type (see [`ParamType`]) and `passedByReference()`.
     pub param_types: Vec<ParamType>,
     pub by_ref: Vec<ByRef>,
-    /// Whether `getClosureThisType()` is non-null, retained through selection and combination.
     pub closure_this: BitSet,
-    /// A method's reflection context, which `self`/`static` in its parameter types name. A trait method's context
-    /// is the consuming class, not its storage owner.
     pub class: Option<String>,
     pub callee: Option<UserCallee>,
 }
 
-/// A user's storage identity stays separate from the reflected class and method name (trait aliases included).
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct UserCallee {
     pub class: Option<String>,
@@ -50,18 +35,13 @@ pub(super) struct UserCallee {
     pub reflected_name: String,
 }
 
-/// A parameter's type as its reflection declares it, converted when an argument type is checked against it.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum ParamType {
-    /// A built-in's PHPDoc type string and allowed-constant policy (data/symbols.json).
     Builtin(String, Option<ParameterAllowedConstants>),
-    /// A user parameter, typed from its function's reflection (`declared::codex_params()`).
     User,
-    /// A callable type's parameter.
     Typed(pun_phpstan::types::Type),
 }
 
-/// The source reflection's policy, also for a first-class callable whose signature has lost its callee identity.
 pub(super) fn accepts_named(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -77,8 +57,6 @@ pub(super) fn accepts_named(
 }
 
 impl Acceptor {
-    /// Resolve a user reflection's PHPDoc before selection can discard its callee identity. Methods share the
-    /// inheritance and declaring-class contract used by the named-argument collector.
     pub(super) fn accepts_named(&self, c: &Checker) -> Tri {
         let accepts =
             self.user(c)
@@ -100,7 +78,6 @@ impl Acceptor {
         accepts.unwrap_or(self.accepts_named_arguments)
     }
 
-    /// The stored declaration and consuming-class context used by PHPStan's method reflection.
     pub(super) fn user<'c>(
         &self,
         c: &'c Checker,
@@ -128,8 +105,6 @@ impl Acceptor {
         n >= self.min() && (self.variadic || n <= self.optional.len())
     }
 
-    /// A user-defined function-like (Mago's metadata): a parameter is optional when it and every later one has a
-    /// default or is variadic, as `ReflectionParameter::isOptional()` says.
     pub(super) fn of(f: &FunctionLikeMetadata) -> Acceptor {
         let mut optional = BitSet::new(f.parameters.len());
         let mut tail = true;
@@ -150,7 +125,6 @@ impl Acceptor {
                 .iter()
                 .map(|p| String::from_utf8_lossy(&p.name.0.as_bytes()[1..]).into_owned())
                 .collect(),
-            // ponytail: Mago's id of the parameter's type, read as a PHPDoc type, stands in for PHPStan's
             types: f
                 .parameters
                 .iter()
@@ -165,7 +139,6 @@ impl Acceptor {
             builtin: false,
             accepts_named_arguments: Tri::Yes,
             param_types: vec![ParamType::User; f.parameters.len()],
-            // PhpParameterReflection: a by-reference parameter of user code creates a new variable
             by_ref: f
                 .parameters
                 .iter()
@@ -191,7 +164,6 @@ impl Acceptor {
         }
     }
 
-    /// A built-in, as PHPStan reflects it (data/symbols.json).
     pub(super) fn of_builtin(v: &pun_phpstan::symbols::Variant) -> Acceptor {
         Acceptor {
             optional: v.params.iter().map(|p| p.optional).collect(),
@@ -219,8 +191,6 @@ fn describe(ty: &str) -> String {
     pun_phpstan::resolve::resolve_str(ty, None).describe(pun_phpstan::types::Level::TypeOnly)
 }
 
-/// A function-like's variants, and a built-in's variants for calls with named arguments (PHP's parameter names
-/// where PHPStan's stubs use others).
 pub(super) struct Variants {
     pub all: Vec<Acceptor>,
     pub named: Option<Vec<Acceptor>>,
@@ -244,13 +214,10 @@ impl Variants {
     }
 }
 
-/// `ParametersAcceptorSelector::selectFromArgs()`: named variants, arity filtering and type-based winners.
 pub(super) fn select(c: &Checker, variants: Variants, counts: &Counts) -> Acceptor {
     select_in(c, variants, counts, None)
 }
 
-/// ArgumentsHandler's count-stable structural metadata selection. Ordinary arguments consume reference,
-/// name and variadic policy before their values are evaluated, so every written argument contributes mixed.
 pub(super) fn select_metadata(c: &Checker, variants: Variants, counts: &Counts) -> Acceptor {
     let types: Vec<_> = counts
         .args
@@ -266,15 +233,12 @@ pub(super) fn select_metadata(c: &Checker, variants: Variants, counts: &Counts) 
     select_from_types(c, variants, counts, Some(&types))
 }
 
-/// A dynamic method's acceptor is selected using that name's filtered argument types.
 pub(super) fn select_in(
     c: &Checker,
     variants: Variants,
     counts: &Counts,
     scope: Option<&super::infer::NamedCallScope>,
 ) -> Acceptor {
-    // selectFromArgs builds an ordered int|string keyed map, not the checker's bound argument list. All constant
-    // alternatives (including optional keys) contribute, and numeric indexes start at the written argument index.
     let types = (|| {
         let mut types: Vec<(Key, Type)> = Vec::new();
         for (i, arg) in counts.args.iter().enumerate() {
@@ -360,13 +324,11 @@ fn select_from_types(
         return variants.into_iter().next().expect("one");
     }
     let n = counts.positional + counts.names;
-    // selectFromTypes bypasses count filtering for every unpack, including literal constant arrays.
     let unpack = counts.args.iter().any(|arg| arg.unpack.is_some());
     let acceptable: Vec<&Acceptor> = variants.iter().filter(|v| unpack || v.accepts(n)).collect();
     match acceptable.as_slice() {
         [] => combine(&variants.iter().collect::<Vec<_>>()),
         [one] => (*one).clone(),
-        // Missing selected operands remain unknown; never recover them from the global map.
         [first, ..] => match types.map(|types| winning(c, &acceptable, types, unpack)) {
             Some(w) if w.is_empty() => combine(&acceptable),
             Some(w) => combine(&w),
@@ -375,8 +337,6 @@ fn select_from_types(
     }
 }
 
-/// `selectFromTypes()`'s winning acceptors: those whose parameters are supertypes of the arguments' types with the
-/// highest certainty. An unpack repeats the last inserted type when a parameter has no positional key.
 fn winning<'v>(
     c: &Checker,
     acceptable: &[&'v Acceptor],
@@ -394,8 +354,6 @@ fn winning<'v>(
                     .find(|(key, _)| *key == Key::Int(i as i64))
                     .or_else(|| if unpack { types.last() } else { None });
                 let Some((_, ty)) = entry else { break };
-                // GenericParametersAcceptorResolver resolves a template from the argument, an uninferred one to its
-                // bound (bug 7048); other late types are taken as yes
                 let resolved = super::types::declared_type(c, a, i).map(|p| {
                     super::declared::with_classes(c, || {
                         let templates = std::cell::RefCell::new(Vec::new());
@@ -439,7 +397,6 @@ fn winning<'v>(
         .collect()
 }
 
-/// `combineAcceptors()`.
 pub(super) fn combine(variants: &[&Acceptor]) -> Acceptor {
     let min = variants.iter().map(|v| v.min()).min().unwrap_or(0);
     let mut combined = Acceptor {
@@ -472,7 +429,6 @@ pub(super) fn combine(variants: &[&Acceptor]) -> Acceptor {
                 combined.closure_this.push(v.closure_this.get(i));
                 continue;
             }
-            // ponytail: the union of the types prints both when they differ, without TypeCombinator's normalization
             if combined.names[i] != v.names[i] {
                 combined.names[i] = format!("{}|{}", combined.names[i], v.names[i]);
             }
@@ -493,10 +449,8 @@ pub(super) fn combine(variants: &[&Acceptor]) -> Acceptor {
                 (ParamType::Builtin(a, _), _) => ParamType::Builtin(a.clone(), None),
                 (a, _) => a.clone(),
             };
-            // A combined parameter keeps a binding only if both parameters have one (the types are unioned).
             let bound = combined.closure_this.get(i) && v.closure_this.get(i);
             combined.closure_this.set(i, bound);
-            // `PassedByReference::combine()`: the stronger
             let rank = |b: ByRef| {
                 [ByRef::No, ByRef::ReadsArgument, ByRef::CreatesNewVariable]
                     .iter()
@@ -507,8 +461,6 @@ pub(super) fn combine(variants: &[&Acceptor]) -> Acceptor {
             let variadic = combined.variadics.get(i) || v.variadics.get(i);
             combined.variadics.set(i, variadic);
             if variadic {
-                // the variadic parameter swallows every parameter behind it
-                // ponytail: upstream also merges their types into its type; a variadic parameter is never missing
                 combined.names.truncate(i + 1);
                 combined.types.truncate(i + 1);
                 combined.variadics.truncate(i + 1);
@@ -523,8 +475,6 @@ pub(super) fn combine(variants: &[&Acceptor]) -> Acceptor {
     combined
 }
 
-/// `CallToFunctionParametersRule::getVariantForArgumentsCount()`: when no variant accepts the argument count but
-/// their combination does, the count is checked against the variant closest to it.
 pub(super) fn closest_variant(
     variants: &[Acceptor],
     counts: &Counts,
@@ -558,40 +508,26 @@ pub(super) fn closest_variant(
     closest.map(|(v, _)| v.clone())
 }
 
-/// One argument as written.
 #[derive(Clone, Debug)]
 pub(super) struct Arg {
     pub name: Option<String>,
-    /// `...$value`: what unpacking it gives.
     pub unpack: Option<Unpacked>,
     pub span: Span,
-    /// The value expression, and what passing it by reference takes.
     pub value: Span,
     pub kind: ArgKind,
-    /// RuleLevelHelper::isThis() before argument normalization loses the expression.
     pub is_this: bool,
-    /// A constant array unpacked: its elements' value expressions.
     pub elements: Vec<Span>,
 }
 
-/// What an argument expression is, as the by-reference check reads it.
 #[derive(Clone, Debug)]
 pub(super) enum ArgKind {
-    /// A variable, an offset or a property fetch.
     Writable,
-    /// Holds a nullsafe fetch or call.
     Nullsafe,
-    /// A call to a function named by this identifier (its by-reference return counts).
     Function(Span),
-    /// A method call: the object, and the method's name (`None`: a dynamic name).
     MethodCall(Span, Option<Vec<u8>>),
-    /// A static call on a named class, `self` or `static` (the class's identifier span; `None` for the keywords).
     StaticCall(Option<Span>, Option<Vec<u8>>),
-    /// Another static call (ponytail: taken to return by reference).
     OtherCall,
-    /// A constant fetch, or a disjunction whose every leaf is a constant fetch.
     Constants(Vec<ConstantFetch>),
-    /// A syntactically static anonymous function or arrow, not a variable containing one.
     StaticClosure,
     Other,
 }
@@ -609,7 +545,6 @@ pub(super) enum ConstantFetch {
     },
 }
 
-/// `resolveConstantReflections()`'s syntax contract, before resolving the leaves in the call's scope.
 fn constant_fetches(e: &Expression) -> Option<Vec<ConstantFetch>> {
     match e {
         Expression::Parenthesized(p) => constant_fetches(p.expression),
@@ -685,17 +620,12 @@ fn kind(e: &Expression) -> ArgKind {
     }
 }
 
-/// How an argument list counts.
 #[derive(Clone, Debug, Default)]
 pub(super) struct Counts {
     pub positional: usize,
-    /// How many named arguments.
     pub names: usize,
-    /// Has named arguments (or unpacks an array with string keys).
     pub named: bool,
-    /// Unpacks an array that is not a constant one.
     pub unpack: bool,
-    /// Has any argument.
     pub any: bool,
     pub args: Vec<Arg>,
 }
@@ -714,14 +644,12 @@ pub(super) fn count(args: &ArgumentList) -> Counts {
     counts
 }
 
-/// [`count()`] of an anonymous class's constructor arguments or an attribute's.
 pub(super) fn count_partial(args: &PartialArgumentList) -> Counts {
     let mut counts = Counts {
         any: !args.arguments.is_empty(),
         ..Counts::default()
     };
     for arg in &args.arguments {
-        // placeholders (`?`) are no PHP 8.5 syntax here, so php-parser rejects them
         if let PartialArgument::Positional(p) = arg {
             counts.positional(p);
         } else if let PartialArgument::Named(n) = arg {
@@ -744,7 +672,6 @@ impl Counts {
         self.push_positional(p.value, p.ellipsis.is_some(), p.span());
     }
 
-    /// Some of a call's arguments (`call_user_func()`'s after the callback).
     pub(super) fn of<'x, 'arena: 'x>(
         args: impl IntoIterator<Item = &'x Argument<'arena>>,
     ) -> Counts {
@@ -759,7 +686,6 @@ impl Counts {
         counts
     }
 
-    /// One positional argument (a pipe's input).
     pub(super) fn of_value(value: &Expression) -> Counts {
         let mut counts = Counts {
             any: true,
@@ -769,8 +695,6 @@ impl Counts {
         counts
     }
 
-    /// `call_user_func_array()`'s constant array as arguments (`reorderCallUserFuncArrayArguments()`): a string key
-    /// names one; `None` for a dynamic or empty key.
     pub(super) fn of_array(elements: &[&ArrayElement]) -> Option<Counts> {
         let mut counts = Counts::default();
         for e in elements {
@@ -788,14 +712,12 @@ impl Counts {
                         && let Some(key) = s.value.filter(|k| !k.is_empty()) =>
                 {
                     let key = String::from_utf8_lossy(key).into_owned();
-                    // an integer-like string key is an integer one (`key([$k => null])`)
                     if key.parse::<i64>().is_ok_and(|i| i.to_string() == key) {
                         counts.push_positional(kv.value, false, e.span());
                     } else {
                         counts.push_named(key, kv.value, e.span());
                     }
                 }
-                // a dynamic or empty key, or a missing element
                 _ => return None,
             }
         }
@@ -847,7 +769,6 @@ impl Counts {
     }
 }
 
-/// A constant array element's value expression (only values and key-values make one).
 pub(super) fn element(e: &ArrayElement) -> Span {
     match e {
         ArrayElement::KeyValue(kv) => kv.value.span(),
@@ -855,12 +776,9 @@ pub(super) fn element(e: &ArrayElement) -> Span {
     }
 }
 
-/// What unpacking an expression gives.
 #[derive(Clone, Debug)]
 pub(super) enum Unpacked {
-    /// A constant array: each element's string key (a named argument) or none.
     Keys(Vec<Option<String>>),
-    /// Not a constant array.
     Unknown,
 }
 
@@ -887,8 +805,6 @@ fn unpacked(e: &Expression) -> Unpacked {
     Unpacked::Keys(keys)
 }
 
-/// `getConstantArrays()` for unpacking: every union alternative must be constant. Keep the shortest
-/// alternative's positions, common names and the last alternative's optionality, as the upstream loop does.
 fn unpacked_types(ty: &Type) -> Option<Vec<(Option<String>, Type)>> {
     fn arrays(ty: &Type) -> Option<Vec<&pun_phpstan::types::ConstArray>> {
         match ty {
@@ -936,31 +852,24 @@ fn unpacked_types(ty: &Type) -> Option<Vec<(Option<String>, Type)>> {
     )
 }
 
-/// The calls FunctionCallParametersCheck checks.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum CallKind {
     Function,
-    /// CallUserFuncRule uses function identifiers, but passes `isBuiltin: false` for the forwarded call.
     CallUserFunc,
     Method,
     StaticMethod,
     New,
     Attribute,
-    /// CallCallablesRule's `$callable()`.
     Callable,
 }
 
-/// The messages of one call kind: `subject` is e.g. `Function foo`, `Method Foo::bar()`, `Class Foo constructor`.
 pub(super) struct Call<'s> {
     pub kind: CallKind,
     pub subject: &'s str,
-    /// The operand-position scope's logical call, separate from the selector used for diagnostics.
     pub scope: Option<Span>,
-    /// `Result of function foo (void) is used.`; `None` for `new`.
     pub void_message: Option<String>,
 }
 
-/// `counts` is [`count()`] of the call's arguments.
 pub(super) fn check(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -977,7 +886,6 @@ pub(super) fn check(
     check_in(c, acceptor, counts, at, call, first_level, scope.as_ref());
 }
 
-/// FunctionCallParametersCheck in one owned operand scope; absent selected operands stay absent.
 pub(super) fn check_in(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -990,9 +898,6 @@ pub(super) fn check_in(
     check_bound_in(c, acceptor, counts, at, call, first_level, scope, true);
 }
 
-/// The structural binding boundary for reflections whose semantic signature is not yet representable. Counts,
-/// ordering, unknown/missing/duplicate names and method-level named policy use the ordinary shared consumer.
-/// Do not run type/reference/template or return checks against an arbitrary combined User parameter.
 pub(super) fn check_bound_in(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -1003,7 +908,6 @@ pub(super) fn check_bound_in(
     scope: Option<&super::infer::NamedCallScope>,
     semantic: bool,
 ) {
-    // the arguments after unpacking constant arrays
     let unpacked: Vec<_> = counts
         .args
         .iter()
@@ -1022,7 +926,6 @@ pub(super) fn check_bound_in(
         .iter()
         .map(|ty| ty.as_ref().and_then(unpacked_types))
         .collect();
-    // the fix of every `named argument $x` error of the call
     let positional_fix = !acceptor.accepts_named_arguments.yes()
         && counts.args.iter().any(|a| a.name.is_some())
         && positional_arguments_fix(c, acceptor, &counts.args, call.kind);
@@ -1035,7 +938,6 @@ pub(super) fn check_bound_in(
                 "Named argument cannot be followed by an unpacked (...) argument.".to_string();
             c.report_non_ignorable(arg.span, "argument.unpackAfterNamed", message, None);
         }
-        // PHP 8.1 allows a named argument after an unpacked one
         if has_unpacked && arg.unpack.is_none() && (arg.name.is_none() || !c.surely_at_least(80100))
         {
             let message = "Unpacked argument (...) cannot be followed by a non-unpacked argument."
@@ -1071,7 +973,6 @@ pub(super) fn check_bound_in(
                         ty: Some(ty.clone()),
                         ..entry(name.as_deref(), false, arg.value)
                     }));
-                    // An open shape expands no concrete positions, but a required key still guarantees an unpack.
                     if arguments.is_empty()
                         && unpacked
                             .as_ref()
@@ -1099,7 +1000,6 @@ pub(super) fn check_bound_in(
         } else {
             counts.positional
         };
-        // checkExtraArguments is on from level 1
         if invoked < min || (c.level >= 1 && max.is_some_and(|m| invoked > m)) {
             let s = if invoked == 1 { "" } else { "s" };
             let subject = call.subject;
@@ -1124,8 +1024,6 @@ pub(super) fn check_bound_in(
             .scope
             .and_then(|span| c.keep_void_type_at(span))
             .map_or(acceptor.void, |ty| {
-                // NullsafeMethodCallHandler checks the ensured plain twin, before adding short-circuit null.
-                // The provenance flag excludes null declared by any actual target.
                 ty.is_void()
                     || call.kind == CallKind::Method
                         && ty.has_nullsafe_null()
@@ -1164,9 +1062,6 @@ pub(super) fn check_bound_in(
     }
 }
 
-/// The per-bound-argument `@no-named-arguments` check. Like upstream, it runs only after processArguments and
-/// only when argument type/reference checking is enabled, immediately before that argument's type checks.
-/// `positional_fix`: the call's named arguments can be made positional ([`positional_arguments_fix()`]).
 pub(super) fn check_named(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -1187,8 +1082,6 @@ pub(super) fn check_named(
         };
         let key = ty.map_or(Tri::Maybe, |t| {
             let key = t.iterable_key_type();
-            // This is a certainty query, not lenient argument acceptance. BenevolentUnionType inherits
-            // UnionType::isString(), so an int|string array key is still only possibly a string.
             match key {
                 Type::Benevolent(parts) => Type::Union(parts).is_string(),
                 key => key.is_string(),
@@ -1221,10 +1114,6 @@ pub(super) fn check_named(
     }
 }
 
-/// FunctionCallParametersCheck::createPositionalArgumentsFix() is not false: no argument is unpacked, each named
-/// one names a different non-variadic parameter, and each skipped parameter before the last one passed is optional,
-/// not by reference, with a default createDefaultValueExpr() can write. A call made from an attribute is not in
-/// the file.
 fn positional_arguments_fix(
     c: &Checker,
     acceptor: &Acceptor,
@@ -1245,11 +1134,9 @@ fn positional_arguments_fix(
             last = last.max(i);
             continue;
         };
-        // `$parameterPositions[$name]`: the last parameter of the name
         let Some(position) = acceptor.names.iter().rposition(|n| n == name) else {
             return false;
         };
-        // a named argument that is collected by the variadic parameter keeps its string key
         if acceptor.variadics.get(position) || positions.insert(position, i).is_some() {
             return false;
         }
@@ -1260,12 +1147,10 @@ fn positional_arguments_fix(
         if !acceptor.optional.get(p) || acceptor.by_ref.get(p) != Some(&ByRef::No) {
             return false;
         }
-        // ponytail: a built-in's default (data/symbols.json's type string) is not read; such a call is not fixable
         let Some(default) = user.and_then(|(f, _)| f.parameters.get(p)?.default_type.as_ref())
         else {
             return false;
         };
-        // createDefaultValueExpr()
         let ty = c.to_phpstan(&default.type_union);
         (ty.is_constant_array().yes() && ty.is_iterable_at_least_once().no())
             || matches!(
@@ -1279,7 +1164,6 @@ fn positional_arguments_fix(
     })
 }
 
-/// The declared parameter types with a policy, for the built-in fallback check on other parameters.
 pub(super) fn allowed_constants_type(c: &Checker, acceptor: &Acceptor) -> Option<Type> {
     let types: Vec<_> = acceptor
         .param_types
@@ -1294,7 +1178,6 @@ pub(super) fn allowed_constants_type(c: &Checker, acceptor: &Acceptor) -> Option
     (!types.is_empty()).then(|| pun_phpstan::types::union(types))
 }
 
-/// FunctionCallParametersCheck's PHP 8+ constant checks, after this argument's ordinary type check.
 pub(super) fn check_constants(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -1365,7 +1248,6 @@ pub(super) fn check_constants(
             .zip(parameter_type)
             .is_some_and(|(a, p)| super::declared::with_classes(c, || is_super_type_of(a, p).yes()))
     {
-        // only a constant another parameter of the function takes is reported here
         let policies: Vec<_> = acceptor
             .param_types
             .iter()
@@ -1383,7 +1265,6 @@ pub(super) fn check_constants(
     }
 }
 
-/// Resolve syntax, not inferred numeric values. A single unresolved leaf cancels the whole disjunction.
 fn resolve_constant(c: &Checker, fetch: &ConstantFetch) -> Option<ConstantReflection> {
     match fetch {
         ConstantFetch::Global { name, unqualified } => {
@@ -1401,18 +1282,16 @@ fn resolve_constant(c: &Checker, fetch: &ConstantFetch) -> Option<ConstantReflec
                     .codebase
                     .get_constant(name.as_bytes())
                     .filter(|k| !k.flags.is_built_in())
-                {
-                    // As in ReflectionProvider, a define() inside a class-like is not a global declaration.
-                    if !c.codebase.class_likes.values().any(|o| {
+                    && !c.codebase.class_likes.values().any(|o| {
                         o.span.file_id == k.span.file_id
                             && o.span.start.offset <= k.span.start.offset
                             && k.span.end.offset <= o.span.end.offset
-                    }) {
-                        return Some(ConstantReflection {
-                            name,
-                            builtin: false,
-                        });
-                    }
+                    })
+                {
+                    return Some(ConstantReflection {
+                        name,
+                        builtin: false,
+                    });
                 }
                 if c.builtins.constants.contains_key(&name) {
                     return Some(ConstantReflection {
@@ -1472,21 +1351,14 @@ fn resolve_constant(c: &Checker, fetch: &ConstantFetch) -> Option<ConstantReflec
     }
 }
 
-/// One argument after unpacking constant arrays.
 pub(super) struct Entry<'a> {
     pub name: Option<&'a str>,
-    /// Unpacks a non-constant array.
     pub unpack: bool,
-    /// The argument (its line).
     pub span: Span,
-    /// The expression whose type is passed: the argument's value, or an unpacked constant array's element.
     pub value: Span,
-    /// An inferred constant array's element type (there is no separate expression for it).
     pub ty: Option<Type>,
-    /// A constant dynamic method's selected scope, never recovered from the global type map.
     pub scope: Option<&'a super::infer::NamedCallScope>,
     pub kind: &'a ArgKind,
-    /// Only used for an unexpanded unpack, whose expression is still the original argument value.
     pub is_this: bool,
 }
 
@@ -1503,7 +1375,6 @@ impl Entry<'_> {
     }
 }
 
-/// `processArguments()`: each argument's parameter, by position or by name (`None`: no parameter is checked).
 fn process_arguments(
     c: &mut Checker,
     acceptor: &Acceptor,
@@ -1513,7 +1384,6 @@ fn process_arguments(
     call: &Call,
 ) -> Vec<Option<usize>> {
     let mut parameters = vec![None; arguments.len()];
-    // `in call to function foo`, `... to method Foo::bar()`, `... to Foo constructor`
     let callee = match call.kind {
         CallKind::New => call.subject.trim_start_matches("Class "),
         CallKind::Attribute => call.subject.trim_start_matches("Attribute class "),
@@ -1532,7 +1402,6 @@ fn process_arguments(
         let (name, unpack, span) = (&e.name, &e.unpack, &e.span);
         let parameter = match name {
             None if i < count => i,
-            // func_get_args()
             None if !acceptor.variadic || count == 0 || !acceptor.variadics.get(count - 1) => break,
             None => count - 1,
             Some(name) => {
@@ -1574,7 +1443,6 @@ fn process_arguments(
         unused.retain(|p| *p != parameter);
     }
     if has_named {
-        // (keyed by name: callable(int, int)'s unnamed parameters are one)
         let mut seen = std::collections::HashSet::new();
         for p in unused
             .into_iter()

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitTestClassRequiresCoversFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{
     apply_fix, ensure_is_doc_block_with_annotation, is_candidate,
 };
@@ -43,7 +42,6 @@ impl Fixer for PhpUnitTestClassRequiresCoversFixer {
             if analyzer.is_anonymous_class(class_index) {
                 return;
             }
-            // don't add `@covers` annotation for abstract base classes
             if analyzer
                 .get_classy_modifiers(class_index)
                 .abstract_

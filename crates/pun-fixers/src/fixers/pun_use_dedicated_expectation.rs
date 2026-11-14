@@ -1,11 +1,3 @@
-//! Port of Mago's `use-dedicated-expectation` (Pest): `expect(is_array($x))->toBeTrue()` → `expect($x)->toBeArray()`,
-//! `expect(str_starts_with($s, 'a'))->toBeTrue()` → `expect($s)->toStartWith('a')`.
-//! Opt-in only (`Pun/use_dedicated_expectation`). Risky: `toStartWith`/`toEndWith`/`toBeFile`/`toBeDirectory`
-//! also require a string and `toHaveProperty` an object, where the PHP functions coerce or accept class names.
-//! Not ported (the matcher means something else): `is_file` → `toBeFile` (that is `file_exists`, true for
-//! directories), `is_readable`/`is_writable` → `toBeReadable`/`toBeWritable` (no such Pest matchers),
-//! `ctype_alpha`/`ctype_alnum` (Pest casts to string first: `ctype_alpha(65)` is true, `toBeAlpha()` of 65 is not),
-//! `is_resource` (PHPUnit also accepts closed resources), and `in_array`/`array_key_exists` (Mago has no fix either).
 use crate::analyzers::helpers::split_list;
 use crate::analyzers::pest::match_expect_matcher;
 use pun_format::Fixer;
@@ -65,7 +57,6 @@ impl Fixer for UseDedicatedExpectation {
             let Some(m) = match_expect_matcher(tokens, i) else {
                 continue;
             };
-            // The expect argument must be exactly one global call `f(...)`.
             let mut fname = tokens.get_next_meaningful_token(m.expect_open).unwrap();
             let fstart = fname;
             if tokens[fname].is_kind(T_NS_SEPARATOR) {
@@ -125,7 +116,7 @@ impl Fixer for UseDedicatedExpectation {
                         T_NS_SEPARATOR,
                     ])
                 {
-                    continue; // `property_exists(Foo::class, ...)`: toHaveProperty() needs an object
+                    continue;
                 }
                 let mut out: Vec<Token> =
                     (args[0].0..=args[0].1).map(|k| tokens[k].clone()).collect();
@@ -144,7 +135,6 @@ impl Fixer for UseDedicatedExpectation {
     }
 }
 
-/// (first, last) meaningful token of each argument; `None` for spread or named arguments.
 fn plain_arguments(tokens: &Tokens, open: usize, close: usize) -> Option<Vec<(usize, usize)>> {
     let args = split_list(tokens, open, close);
     (!args
@@ -212,14 +202,12 @@ mod tests {
                 format!("<?php\n\n{to}\n")
             );
         }
-        // multiple_violations: in_array and is_file are reported by Mago but have no exact matcher.
         assert_eq!(
             fix(
                 "<?php\n\nexpect(is_array($a))->toBeTrue();\nexpect(is_string($b))->toBeTrue();\nexpect(str_starts_with($c, 'x'))->toBeTrue();\nexpect(in_array($d, $arr))->toBeTrue();\nexpect(is_file($e))->toBeTrue();\n"
             ),
             "<?php\n\nexpect($a)->toBeArray();\nexpect($b)->toBeString();\nexpect($c)->toStartWith('x');\nexpect(in_array($d, $arr))->toBeTrue();\nexpect(is_file($e))->toBeTrue();\n"
         );
-        // dedicated_matchers, non_matching_function_calls, and the unported Mago fixes
         for same in [
             "<?php\n\nexpect($value)->toBeArray();\nexpect($string)->toStartWith('prefix');\nexpect($obj)->toHaveProperty('name');\n",
             "<?php\n\nexpect(strlen($s) > 0)->toBeTrue();\nexpect(custom_check($x))->toBeTrue();\nexpect(count($array) > 0)->toBeTrue();\n",

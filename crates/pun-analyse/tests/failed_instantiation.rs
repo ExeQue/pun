@@ -1,6 +1,3 @@
-//! Failed instantiations retain values independently of legality diagnostics.
-//! Frozen independently by PHPStan 2.3.1; capture.php is the reproducible oracle.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -85,8 +82,6 @@ fn check_diagnostics(files: &[&str], expected: Value) {
             })
             .collect();
         actual.sort_by_key(Value::to_string);
-        // Keep the complete oracle capture, including NonexistentOffsetInArrayDimFetchRule,
-        // whose mapping is not ported. Compare every registered diagnostic, without hiding extras.
         let registered: Vec<_> = expected["errors"][level.to_string()]
             .as_array()
             .unwrap()
@@ -301,7 +296,6 @@ fn describe(ty: &TUnion) -> Value {
     })
 }
 
-// Compare values and shape entries, not Mago's presentation order. Sentinel identity is checked separately.
 fn canonical(mut description: Value) -> Value {
     fn ordered(ty: &Type) -> Type {
         let mut ty = ty.traverse(&ordered);

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\BinaryOperatorSpacesFixer`.
 use pun_tokens::php_compat::{str_replace, strpos};
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, resolve};
 use crate::analyzers::preg::Preg;
@@ -25,7 +24,6 @@ const ALIGN_SINGLE_SPACE_BY_SCOPE: &str = "align_single_space_by_scope";
 const ALIGN_SINGLE_SPACE_MINIMAL: &str = "align_single_space_minimal";
 const ALIGN_SINGLE_SPACE_MINIMAL_BY_SCOPE: &str = "align_single_space_minimal_by_scope";
 
-/// Placeholder used as anchor for right alignment (`"\x2 ALIGNABLE%d \x3"`).
 fn align_placeholder(level: usize) -> Vec<u8> {
     format!("\x02 ALIGNABLE{level} \x03").into_bytes()
 }
@@ -49,11 +47,7 @@ const ALLOWED_VALUES: &[&str] = &[
 ];
 
 struct BinaryOperatorSpacesFixer {
-    /// Resolved `operator => strategy`, in PHP array order.
     operators: Vec<(Vec<u8>, &'static str)>,
-    /// `$this->alignOperatorTokens`: never reset between files upstream (instance state).
-    // ponytail: shared across files like upstream's instance property; Pint's parallel workers make
-    // the cross-file effect order-dependent there too.
     align_operator_tokens: Mutex<Vec<(Vec<u8>, &'static str)>>,
 }
 
@@ -64,7 +58,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `gettype($value).'#'.$value` for a decoded JSON value other than null, as the "operators" validator prints it.
 fn typed_value(v: &Value) -> String {
     match v {
         Value::String(s) => format!("string#{s}"),
@@ -82,15 +75,11 @@ fn strategy(s: &str) -> &'static str {
     ALLOWED_VALUES.iter().copied().find(|v| *v == s).unwrap()
 }
 
-/// Per-`fix` state (`deepestLevel`, `currentLevel`).
 struct Levels {
     deepest_level: Cell<usize>,
     current_level: Cell<usize>,
 }
 
-/// The spaces `fix` adds around operators, by the index they go before. The loop walks backwards and looks only
-/// at an operator's own neighbours, so it never reads a place where a space is still to come, and one
-/// `insert_slices` at the end gives what an insert per operator would, without rebuilding the list each time.
 type Spaces = std::collections::BTreeMap<usize, Vec<Token>>;
 
 fn is_binary(tokens: &Tokens, index: usize) -> bool {
@@ -202,7 +191,6 @@ impl BinaryOperatorSpacesFixer {
         }
     }
 
-    /// Index of T_DECLARE where the `=` belongs to.
     fn is_equal_part_of_declare_statement(tokens: &Tokens, index: usize) -> Option<usize> {
         let mut prev_meaningful_index = tokens.get_prev_meaningful_token(index).unwrap();
         if tokens[prev_meaningful_index].is_kind(T_STRING) {
@@ -213,7 +201,6 @@ impl BinaryOperatorSpacesFixer {
                 prev_meaningful_index = tokens
                     .get_prev_meaningful_token(prev_meaningful_index)
                     .unwrap();
-                // `( T_STRING =` only parses as `declare(...)`
                 return tokens[prev_meaningful_index]
                     .is_kind(T_DECLARE)
                     .then_some(prev_meaningful_index);
@@ -230,7 +217,6 @@ impl BinaryOperatorSpacesFixer {
         };
         for (token_content, align_strategy) in to_align {
             let align_strategy = *align_strategy;
-            // Work on a clone, then override the original collection with the fixed code.
             let mut tokens_clone = tokens.clone();
             let count = tokens.count();
             if token_content == b"=>" {
@@ -251,7 +237,6 @@ impl BinaryOperatorSpacesFixer {
                     token_content,
                 );
             }
-            // for all tokens that should be aligned but do not have anything to align with, fix spacing if needed
             if [
                 ALIGN_SINGLE_SPACE,
                 ALIGN_SINGLE_SPACE_MINIMAL,
@@ -264,14 +249,12 @@ impl BinaryOperatorSpacesFixer {
                 while index > 0 {
                     let i = index as usize;
                     let hit = if token_content == b"=>" {
-                        // always binary operator, never part of declare statement
                         tokens[i].is_kind(T_DOUBLE_ARROW)
                     } else if token_content == b"=" {
                         tokens[i].get_content() == b"="
                             && Self::is_equal_part_of_declare_statement(tokens, i).is_none()
                             && is_binary(tokens, i)
                     } else {
-                        // never part of declare statement
                         strtolower(tokens[i].get_content()) == *token_content
                             && is_binary(tokens, i)
                     };
@@ -286,7 +269,6 @@ impl BinaryOperatorSpacesFixer {
         }
     }
 
-    /// `analyzed` is the collection the upstream TokensAnalyzer wraps (the original, not the clone).
     fn inject_alignment_placeholders_default(
         levels: &Levels,
         analyzed: &Tokens,
@@ -298,12 +280,10 @@ impl BinaryOperatorSpacesFixer {
         let mut new_line_found_since_last_placeholder = true;
         let mut index = start_at;
         while index < end_at {
-            // `tokens[index]` is upstream's `$token` below: nothing edits it before the checks.
             let content = tokens[index].get_content();
             if content.contains(&b'\n') {
                 new_line_found_since_last_placeholder = true;
             }
-            // `token_content` is lowercase, so this is `strtolower($content) === $tokenContent`.
             if content.eq_ignore_ascii_case(token_content)
                 && is_binary(analyzed, index)
                 && (content != b"="
@@ -339,14 +319,10 @@ impl BinaryOperatorSpacesFixer {
                 index = tokens
                     .get_next_token_of_kind(index, &["{".into(), ";".into(), "(".into()], true)
                     .unwrap();
-                // We don't align `=` on multi-line definition of function parameters with default values
                 if tokens[index].equals("(", true) {
                     index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index) + 1;
                     continue;
                 }
-                // (upstream's `;` arm is dead: `::class` is CT_CLASS_CONSTANT, and T_FUNCTION / T_CLASS always
-                // reach `(` or `{` before any `;`)
-                // `index` is now the `{`, so the checks below look at it, like upstream's `$token = $tokens[$index]`
             }
             if tokens[index].equals("{", true) {
                 let until = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, index);
@@ -403,7 +379,6 @@ impl BinaryOperatorSpacesFixer {
         until: usize,
         token_content: &[u8],
     ) {
-        // Only inject placeholders for multi-line code
         if tokens.is_partial_code_multiline(from, until) {
             levels.deepest_level.set(levels.deepest_level.get() + 1);
             let current_level = levels.current_level.get();
@@ -431,7 +406,6 @@ impl BinaryOperatorSpacesFixer {
         let mut yield_found_since_last_placeholder = false;
         let mut index = start_at;
         while index < end_at {
-            // `tokens[index]` is upstream's `$token`: nothing edits it before the checks.
             if tokens[index].get_content().contains(&b'\n') {
                 new_line_found_since_last_placeholder = true;
             }
@@ -454,7 +428,6 @@ impl BinaryOperatorSpacesFixer {
                 continue;
             }
             if tokens[index].is_kind(T_ARRAY) {
-                // don't use "$tokens->isArray()" here, short arrays are handled in the next case
                 yield_found_since_last_placeholder = false;
                 let from = tokens.get_next_meaningful_token(index).unwrap();
                 let until = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, from);
@@ -484,8 +457,6 @@ impl BinaryOperatorSpacesFixer {
                 index += 1;
                 continue;
             }
-            // no need to analyse for `isBinaryOperator` (always true), nor if part of declare statement (not valid PHP)
-            // there is also no need to analyse the second arrow of a line
             if tokens[index].is_kind(T_DOUBLE_ARROW) && new_line_found_since_last_placeholder {
                 if yield_found_since_last_placeholder {
                     levels.deepest_level.set(levels.deepest_level.get() + 1);
@@ -576,7 +547,6 @@ impl BinaryOperatorSpacesFixer {
         from: usize,
         until: usize,
     ) {
-        // Only inject placeholders for multi-line arrays
         if tokens.is_partial_code_multiline(from, until) {
             levels.deepest_level.set(levels.deepest_level.get() + 1);
             let current_level = levels.current_level.get();
@@ -587,7 +557,6 @@ impl BinaryOperatorSpacesFixer {
     }
 
     fn fix_white_space_before_operator(tokens: &mut Tokens, index: usize, align_strategy: &str) {
-        // fix white space after operator is not needed as BinaryOperatorSpacesFixer took care of this (if strategy is _not_ ALIGN)
         if !tokens[index - 1].is_whitespace(None) {
             tokens.insert_at(index, vec![Token::new(T_WHITESPACE, " ")]);
             return;
@@ -604,7 +573,6 @@ impl BinaryOperatorSpacesFixer {
         }
     }
 
-    /// Look for group of placeholders and provide vertical alignment.
     fn replace_placeholders(levels: &Levels, tokens: &Tokens, align_strategy: &str) -> Vec<u8> {
         let mut tmp_code = tokens.generate_code();
         for j in 0..=levels.deepest_level.get() {
@@ -648,7 +616,6 @@ impl BinaryOperatorSpacesFixer {
                             || align_strategy == ALIGN_SINGLE_SPACE_MINIMAL_BY_SCOPE)
                             && !Preg::r#match("/^\\h+$/", &before)
                         {
-                            // if indent; do not move, leave to other fixer
                             before = [rtrim(&before), b" "].concat();
                         }
                         lines[index] = [&before[..], &lines[index][current_position..]].concat();
@@ -676,9 +643,6 @@ impl Fixer for BinaryOperatorSpacesFixer {
         "binary_operator_spaces"
     }
     fn priority(&self) -> i32 {
-        // Must run after ArrayIndentationFixer, ArraySyntaxFixer, AssignNullCoalescingToCoalesceEqualFixer, ListSyntaxFixer,
-        // LongToShorthandOperatorFixer, ModernizeStrposFixer, NoMultilineWhitespaceAroundDoubleArrowFixer, NoUnsetCastFixer,
-        // PowToExponentiationFixer, StandardizeNotEqualsFixer, StrictComparisonFixer.
         -32
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -689,7 +653,6 @@ impl Fixer for BinaryOperatorSpacesFixer {
             Some(Value::String(s)) if ALLOWED_VALUES.contains(&s.as_str()) => Some(strategy(s)),
             Some(v) => return Err(r.invalid_or_null("default", v, ALLOWED_VALUES)),
         };
-        // `array<string, ?string>`, which the resolver checks as `array`.
         r.check_types("operators", &["array"])?;
         let mut configured: Vec<(String, Option<&'static str>)> = Vec::new();
         for (operator, value) in r.php_array("operators").unwrap_or_default() {
@@ -717,7 +680,6 @@ impl Fixer for BinaryOperatorSpacesFixer {
                 ),
             }
         }
-        // resolveOperatorsFromConfig
         let mut operators: Vec<(Vec<u8>, &'static str)> = Vec::new();
         if let Some(d) = default {
             operators = SUPPORTED_OPERATORS
@@ -743,7 +705,6 @@ impl Fixer for BinaryOperatorSpacesFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let mut spaces = Spaces::new();
-        // last and first tokens cannot be an operator
         let mut index = tokens.count() as isize - 2;
         while index > 0 {
             let i = index as usize;
@@ -754,12 +715,11 @@ impl Fixer for BinaryOperatorSpacesFixer {
             if tokens[i].get_content() == b"=" {
                 match Self::is_equal_part_of_declare_statement(tokens, i) {
                     None => self.fix_white_space_around_operator(tokens, i, &mut spaces),
-                    Some(d) => index = d as isize, // skip `declare(foo ==bar)`, see `declare_equal_normalize`
+                    Some(d) => index = d as isize,
                 }
             } else {
                 self.fix_white_space_around_operator(tokens, i, &mut spaces);
             }
-            // previous of binary operator is now never an operator / previous of declare statement cannot be an operator
             index -= 2;
         }
         tokens.insert_slices(spaces);
@@ -775,7 +735,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    // Accept/reject and messages from the real fixer's configure() (PHP-CS-Fixer 3.95).
     #[test]
     fn configure_validation() {
         assert_eq!(

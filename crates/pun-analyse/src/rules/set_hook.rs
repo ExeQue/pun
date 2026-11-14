@@ -1,7 +1,3 @@
-//! SetPropertyHookParameterRule (InPropertyHookNode of a `set` hook with a parameter list; without one the parameter
-//! takes the property's type). checkPhpDocMethodSignatures (propertySetHook.parameterType and the missing-typehint
-//! checks) is off below level 3.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -9,7 +5,6 @@ use pun_phpstan::types::{Level, NeverKind, Type, decide_type, is_super_type_of, 
 
 use super::{Checker, declared, missing_types, signatures};
 
-/// The hooks `list` of property `name` (with its `$`) declared with the native type `hint`.
 pub(super) fn hooks<'arena>(
     c: &mut Checker<'_, 'arena>,
     name: &[u8],
@@ -35,7 +30,6 @@ pub(super) fn hooks<'arena>(
     }
 }
 
-/// The propertySetHook.nativeParameterType message of a set hook's `parameter`, if any.
 fn native_error(
     c: &Checker,
     k: &ClassLikeMetadata,
@@ -54,7 +48,6 @@ fn native_error(
             "Parameter ${parameter_name} of set hook does not have a native type but the property {class}::${property} does."
         ),
         (Some(theirs), Some(ours)) => {
-            // an intersection TypeCombinator::intersect() turns into an implicit never
             let resolve = |c: &Checker, hint: &Hint| {
                 if signatures::unresolvable(c, hint) {
                     Type::Never(NeverKind::Implicit)
@@ -76,8 +69,6 @@ fn native_error(
     })
 }
 
-/// The rule's `checkMissingTypehints` checks (level 6) of the set hook parameter's type, unless its native type is
-/// the property's readable type. The parameter of a hook without a parameter list is the property's.
 pub(super) fn missing_types<'arena>(
     c: &mut Checker<'_, 'arena>,
     name: &[u8],
@@ -112,7 +103,6 @@ pub(super) fn missing_types<'arena>(
             if native == readable {
                 return Vec::new();
             }
-            // the hook's own `@param`, else the property's `@var`
             let own = c
                 .doc_before(c.file.id, hook.span().start.offset)
                 .and_then(|(_, entry)| {

@@ -1,14 +1,8 @@
-//! pun.toml's dependency sections: the project's package metadata, requirements, autoload rules, scripts and
-//! repositories, everything composer.json holds (context/plan/packages.md §3). Each composer.json key has a section of
-//! the same name, except the root package's own fields, which share `[package]`. `pun install` reads them through
-//! [`Manifest::json`], in composer.json's shape, so the installer works in Composer's terms.
-
 use crate::toml_text;
 use anyhow::{Context, Result, bail};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 
-/// The sections that hold the dependencies, in the order `pun migrate` writes them.
 pub const SECTIONS: [&str; 15] = [
     "package",
     "require",
@@ -27,7 +21,6 @@ pub const SECTIONS: [&str; 15] = [
     "extra",
 ];
 
-/// The composer.json keys under `[package]`: the root package's own fields and its stability settings.
 pub const PACKAGE_KEYS: [&str; 22] = [
     "name",
     "description",
@@ -53,7 +46,6 @@ pub const PACKAGE_KEYS: [&str; 22] = [
     "php-ext",
 ];
 
-/// The sections whose entries are package names with version constraints (`suggest`'s are descriptions).
 const LINKS: [&str; 6] = [
     "require",
     "require-dev",
@@ -63,16 +55,13 @@ const LINKS: [&str; 6] = [
     "suggest",
 ];
 
-/// The dependency sections of one pun.toml.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Manifest {
     pub path: PathBuf,
-    /// What composer.json would hold: `[package]`'s keys at the top, then each other section under its name.
     pub json: Map<String, Value>,
 }
 
 impl Manifest {
-    /// `require` (or `require-dev`) as (package, constraint), in pun.toml's order.
     pub fn links(&self, section: &str) -> impl Iterator<Item = (&str, &str)> {
         (self
             .json
@@ -84,7 +73,6 @@ impl Manifest {
     }
 }
 
-/// The dependency sections of `root/pun.toml`; `None` when there is no pun.toml or it has none.
 pub fn read(root: &Path) -> Result<Option<Manifest>> {
     let path = root.join("pun.toml");
     let text = match std::fs::read_to_string(&path) {
@@ -96,8 +84,6 @@ pub fn read(root: &Path) -> Result<Option<Manifest>> {
     parse(&path, &table)
 }
 
-/// The dependency sections of a parsed pun.toml at `path`, checked: link sections map names to strings, the others
-/// are tables (`[[repositories]]` a list of them), and `[package]` holds only [`PACKAGE_KEYS`].
 pub fn parse(path: &Path, table: &toml::Table) -> Result<Option<Manifest>> {
     if !SECTIONS.iter().any(|s| table.contains_key(*s)) {
         return Ok(None);

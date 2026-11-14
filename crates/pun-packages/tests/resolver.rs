@@ -72,8 +72,6 @@ fn resolves_as_composer() {
         .map(as_map)
         .collect();
     let mut failures = vec![];
-    // Composer's SolverTest cases, other solver paths, and random graphs that reach the solver's learning and
-    // backtracking, as composer.json files with what Composer 2.11.2's `composer update --no-install` locked.
     let extra: Value = serde_json::from_str(EXTRA_UPDATES).expect("valid cases");
     let cases: Vec<&Value> = (fixtures["cases"].as_array().unwrap().iter())
         .chain(extra.as_array().unwrap())
@@ -129,7 +127,6 @@ fn resolves_as_composer() {
         if got != want {
             failures.push(format!("{name}\n  got:  {got}\n  want: {want}"));
         } else if let (Some(text), Some(Value::String(written))) = (text, expect.get("text")) {
-            // The content-hash covers the composer.json the export wrote, with Packagist turned off.
             let hash = |t: &str| {
                 t.lines()
                     .filter(|l| !l.contains("\"content-hash\""))
@@ -152,15 +149,12 @@ fn resolves_as_composer() {
     );
 }
 
-/// One pool entry as Composer's `PoolBuilderTest::getPackageResultSet` writes it: the fixture's `id` for a package
-/// that has one, else `name-version`, `#reference`, ` (locked)` and ` (alias of ...)`.
 fn pool_entry(arena: &[Package], ids: &HashMap<usize, String>, p: usize) -> String {
     let package = &arena[p];
     if let Some(id) = ids.get(&p).filter(|_| package.alias_of.is_none()) {
         return id.clone();
     }
     let mut out = format!("{}-{}", package.name, package.version);
-    // An alias's source is the aliased package's, as `AliasPackage` delegates it.
     let data = arena[package.alias_of.unwrap_or(p)].data();
     if let Some(r) = (data.get("source").and_then(|s| s.get("reference")))
         .and_then(Value::as_str)
@@ -436,7 +430,6 @@ fn pools_as_composer() {
         std::fs::write(file, text.as_str().unwrap()).unwrap();
     }
     let mut failures = vec![];
-    // Cases Composer's fixtures lack, with the pool Composer 2.11.2's PoolBuilder built for each.
     let extra: Value = serde_json::from_str(EXTRA_POOLS).expect("valid cases");
     let cases: Vec<&Value> = (fixtures["cases"].as_array().unwrap().iter())
         .chain(extra.as_array().unwrap())
@@ -455,7 +448,6 @@ fn pools_as_composer() {
             }
             loaded
         };
-        // The root's repository comes first in Pun's list; these fixtures have none.
         let mut repos: Vec<Box<dyn Repository>> = vec![Box::new(ArrayRepository::default())];
         for (i, repo) in case["repos"].as_array().unwrap().iter().enumerate() {
             let index = i + 1;
@@ -647,9 +639,6 @@ fn optimizes_pools_as_composer() {
     );
 }
 
-/// A partial update keeps its locked packages, so the optimizer drops the versions their requirements rule out:
-/// `b/b` is locked and requires `c/c ^2.0`. `d/d` is locked too, but nothing requires it, so its `c/c ^9.0` rules
-/// nothing out. The expected pool is what Composer 2.11.2's `PoolOptimizer` kept with the same packages locked.
 #[test]
 fn optimizer_drops_versions_locked_packages_rule_out() {
     use pun_packages::resolver::optimizer::optimize;

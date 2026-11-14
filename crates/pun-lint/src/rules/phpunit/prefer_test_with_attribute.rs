@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-test-with-attribute`, ported from rector-phpunit's `TestWithAnnotationToAttributeRector`
-//! (rules/AnnotationsToAttributes/Rector/ClassMethod).
-//!
-//! A test method's generic `@testWith` (then `@testwith`) tags become one
-//! `#[\PHPUnit\Framework\Attributes\TestWith(...)]` group per line of JSON, after its attributes, when that attribute
-//! class exists. Rector runs it only for PHPUnit 10 and later; Pun leaves that to the rule's group. A line that is
-//! not JSON makes Rector fail on the whole file; Pun leaves such a method alone.
-
 use mago_syntax::cst::{Method, Node, NodeKind};
 use pun_problem::Safety;
 use pun_tokens::php_compat::sprintf_g;
@@ -47,7 +39,6 @@ impl Rule for PreferTestWithAttribute {
             return;
         }
         if is_test_class_method(ctx, ancestors, method, doc) != Some(true)
-            // make sure the attribute class exists
             || facts(ctx)
                 .codebase
                 .get_class_like(TEST_WITH_ATTRIBUTE.as_bytes())
@@ -65,10 +56,8 @@ impl Rule for PreferTestWithAttribute {
         let mut groups = Vec::new();
         for (i, value) in upper.into_iter().chain(lower) {
             let TagValue::Generic(value) = value else {
-                // not supported yet
                 continue;
             };
-            // test from doc blocks
             removed[i] = true;
             for item in php_trim(&value).split('\n') {
                 let Some(argument) = decode(php_trim(item)) else {
@@ -93,8 +82,6 @@ impl Rule for PreferTestWithAttribute {
     }
 }
 
-/// `TestsNodeAnalyzer::isTestClassMethod()`: public, and named `test…`, or with a `#[Test]` attribute or a `@test`
-/// tag; `None` for a doc Pun does not read.
 fn is_test_class_method(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -116,13 +103,10 @@ fn is_test_class_method(
     Some(!named_tags(ctx, ancestors, doc, "test")?.is_empty())
 }
 
-/// PHP's `trim()`.
 pub(super) fn php_trim(s: &str) -> &str {
     s.trim_matches([' ', '\t', '\n', '\r', '\0', '\x0B'])
 }
 
-/// `Json::decode($json, forceArrays: true)` mapped by `AnnotationToAttributeMapper` and printed by php-parser;
-/// `None` where it throws, or for an integer past 64 bits (`JSON_BIGINT_AS_STRING`), which Pun does not follow.
 fn decode(json: &str) -> Option<String> {
     let mut digits = 0;
     for c in json.bytes() {
@@ -135,8 +119,6 @@ fn decode(json: &str) -> Option<String> {
     print_value(&value)
 }
 
-/// A decoded JSON value as an attribute argument: arrays through `ArrayAnnotationToAttributeMapper` (an integer key
-/// is left out), strings through [`map_item`], the rest through `BuilderHelpers::normalizeValue()`.
 fn print_value(value: &Value) -> Option<String> {
     Some(match value {
         Value::Null => "null".to_string(),
@@ -146,7 +128,6 @@ fn print_value(value: &Value) -> Option<String> {
             None => print_float(n.as_f64()?),
         },
         Value::String(s) => {
-            // `DocTagNodeState::REMOVE_ARRAY`, which the mapper drops
             if s == "__remove_array__" {
                 return None;
             }
@@ -160,7 +141,6 @@ fn print_value(value: &Value) -> Option<String> {
             let mut items = Vec::new();
             for (key, value) in map {
                 let value = print_value(value)?;
-                // json_decode() makes a decimal integer key an int
                 let int_key = key == "0"
                     || (key
                         .trim_start_matches('-')
@@ -180,8 +160,6 @@ fn print_value(value: &Value) -> Option<String> {
     })
 }
 
-/// php-parser's `pScalar_Float`: `%.16G`, or `%.17G` when that does not read back as the same float, with `.0` after a
-/// whole number.
 pub(crate) fn print_float(value: f64) -> String {
     let mut printed = sprintf_g(value, 16);
     if printed.parse::<f64>().ok() != Some(value) {

@@ -1,16 +1,9 @@
-//! `pun explain <rule>`: a rule's summary, group, sets, fix safety, upstream names and docs link, all from
-//! rules/mapping.toml (context/plan/config.md Build 8).
-
 use crate::{mapping, renamed, rules};
 use anyhow::{Result, bail};
 use std::fmt::Write;
 
-/// The docs site's rule pages: a rule's page is this followed by its ID.
 pub const RULE_DOCS_URL: &str = "https://pun.laravel.cloud/docs/rules/";
 
-/// The text `pun explain <name>` prints. `name` is a rule ID, a rule ID without its command (`arrays/syntax`), an
-/// upstream name (`no_alias_functions`, `method.notFound`) or a Pun name from before the rule IDs; anything but the
-/// ID starts with a line naming the ID.
 pub fn explain(name: &str) -> Result<String> {
     let exact = rules()
         .iter()
@@ -18,8 +11,6 @@ pub fn explain(name: &str) -> Result<String> {
     if let Some((id, _)) = exact {
         return Ok(text(id));
     }
-    // An upstream key as written (every entry has `pun`, `drop` or `unsupported`), then the loose match pun.toml's
-    // errors use for other spellings and the old Pun names.
     let id = match entries().into_iter().find(|(_, k, _)| k == name) {
         Some((tool, _, e)) => {
             let str = |k| e.get(k).and_then(toml::Value::as_str).map(str::to_string);
@@ -40,7 +31,6 @@ pub fn explain(name: &str) -> Result<String> {
     }
 }
 
-/// Every `[upstream.<tool>]` entry, in file order: (tool, upstream key, entry).
 fn entries() -> Vec<(String, String, toml::Value)> {
     let mut out = vec![];
     for (tool, s) in mapping::under("upstream") {
@@ -51,7 +41,6 @@ fn entries() -> Vec<(String, String, toml::Value)> {
     out
 }
 
-/// The explanation of a rule ID that exists.
 fn text(id: &str) -> String {
     let (_, e) = rules().iter().find(|(r, _)| r == id).unwrap();
     let str = |k| e.get(k).and_then(toml::Value::as_str);
@@ -86,8 +75,6 @@ fn text(id: &str) -> String {
     if !fixed_by.is_empty() {
         row("fixed by", &fixed_by.join(", "));
     }
-    // The upstream rows that map here (every `merged` source has one), then the Mago analyzer codes that also report
-    // for it (`also`).
     let names: Vec<(String, String)> = (entries().into_iter())
         .filter(|(_, _, e)| e.get("pun").and_then(toml::Value::as_str) == Some(id))
         .map(|(tool, k, _)| (tool, k))
@@ -113,7 +100,6 @@ fn text(id: &str) -> String {
     out
 }
 
-/// A group's one-line description from `[meta.groups]`.
 fn group_description(group: &str) -> String {
     let groups = mapping::section(&["meta", "groups"]).table();
     groups[group].as_str().unwrap().to_string()

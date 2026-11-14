@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-always-false-condition`, ported from Rector 2.8.4's `ReduceAlwaysFalseIfOrRector`
-//! (rules/DeadCode/Rector/If_), with `SafeLeftTypeBooleanAndOrAnalyzer` (rules/DeadCode/NodeAnalyzer).
-//!
-//! An `if (a || b)` whose left side PHPStan types as `false` keeps only `b` as its condition. The left side must hold
-//! no variable that `isNonTypedFromParam` doubts, no property or array item, and (outside a trait) no call whose
-//! native type is `mixed`; in a trait it must not be an `instanceof`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Access, BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
@@ -62,7 +55,6 @@ impl Rule for NoAlwaysFalseCondition {
     }
 }
 
-/// `SafeLeftTypeBooleanAndOrAnalyzer::isSafe` on the left side `left`.
 pub(crate) fn is_safe(facts: &Facts, ancestors: &[Node<'_, '_>], left: &Expression<'_>) -> bool {
     let found = |test: &dyn Fn(&Expression<'_>) -> bool| {
         any_node(
@@ -85,7 +77,6 @@ pub(crate) fn is_safe(facts: &Facts, ancestors: &[Node<'_, '_>], left: &Expressi
     if ancestors.iter().any(|a| matches!(a, Node::Trait(_))) {
         return !matches!(left, Expression::Binary(b) if matches!(b.operator, BinaryOperator::Instanceof(_)));
     }
-    // a call PHPStan types as `mixed` natively (taken as implicit, as in `class_method`)
     !found(&|e| {
         matches!(e, Expression::Call(_) | Expression::Instantiation(_))
             && facts

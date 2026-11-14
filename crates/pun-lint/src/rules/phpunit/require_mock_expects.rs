@@ -1,10 +1,3 @@
-//! `lint/phpunit/require-mock-expects`, ported from rector-phpunit's `DecorateWillReturnMapWithExpectsMockRector`
-//! (rules/CodeQuality/Rector/Expression).
-//!
-//! In a test method other than `setUp()` (`TestsNodeAnalyzer::isTestClassMethod()`), each expression statement, however
-//! deep, that is a `->willReturnMap([...])` call chain on a `MockObject` without `expects()` at its start gets
-//! `->expects($this->atLeast(N))` there, N the number of the array's items.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::union::TUnion;
@@ -39,11 +32,9 @@ impl Rule for RequireMockExpects {
         out: &mut Vec<Report>,
     ) {
         let Node::Method(method) = node else { return };
-        // allowed as can be flexible
         if method.name.value.eq_ignore_ascii_case(b"setUp") {
             return;
         }
-        // only decorate inside test methods, skip helpers and other non-test methods
         let is_test = is_public(method)
             && (method.name.value.starts_with(b"test")
                 || has_attribute(
@@ -77,7 +68,6 @@ impl Rule for RequireMockExpects {
     }
 }
 
-/// `refactorExpression`: the edit that puts `->expects($this->atLeast(N))` after the receiver of the chain.
 fn refactor_expression(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Edit> {
     let Expression::Call(Call::Method(call)) = expr else {
         return None;
@@ -90,7 +80,6 @@ fn refactor_expression(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Edit>
     while let Expression::Call(Call::Method(inner)) = topmost.object {
         topmost = inner;
     }
-    // already covered
     if AnyCall::of(Node::MethodCall(topmost)).is_some_and(|c| c.is_name(&["expects"])) {
         return None;
     }
@@ -102,7 +91,6 @@ fn refactor_expression(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Edit>
     {
         return None;
     }
-    // count values in will map arg
     let arg = method_call.args().into_iter().next()?;
     let Expression::Array(Array { elements, .. }) = unparenthesize(arg.value()) else {
         return None;
@@ -114,8 +102,6 @@ fn refactor_expression(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Edit>
     ))
 }
 
-/// `isObjectType($expr, new ObjectType(MockObject))` on a type that is no single object: without `null` and `false`,
-/// every type is a `MockObject`.
 fn is_mock_object_type(codebase: &mago_codex::metadata::CodebaseMetadata, t: &TUnion) -> bool {
     let mut kept = t.types.iter().filter(|a| match a {
         TAtomic::Null => false,

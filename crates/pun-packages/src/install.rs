@@ -1,7 +1,3 @@
-//! `pun install`: makes `vendor/` match pun.lock. Packages already installed at the locked reference are kept, the
-//! rest are fetched in parallel, packages no longer locked are removed, and then `vendor/composer` (installed.json,
-//! installed.php, the autoloader), `vendor/bin` and the supported plugins' files are written as Composer writes them.
-
 use crate::autoload::{self, PlatformCheck};
 use crate::bins;
 use crate::fetch::{Fetcher, link_path, remove, unpack};
@@ -19,34 +15,23 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Default)]
 pub struct Options {
-    /// Leave out `packages-dev` (`--no-dev`).
     pub no_dev: bool,
-    /// `-o`; also on with `config.optimize-autoloader`.
     pub optimize: bool,
-    /// `-a`; also on with `config.classmap-authoritative`.
     pub authoritative: bool,
-    /// `--apcu-autoloader`; also on with `config.apcu-autoloader`.
     pub apcu: bool,
-    /// `--apcu-autoloader-prefix`, which turns APCu on; Composer takes the prefix from no config key.
     pub apcu_prefix: Option<String>,
     pub no_autoloader: bool,
     pub no_plugins: bool,
-    /// `--ignore-platform-req` values; with `ignore_all_platform` they are all ignored.
     pub ignore_platform: Vec<String>,
     pub ignore_all_platform: bool,
 }
 
-/// What changed, for the report.
 #[derive(Debug, Default)]
 pub struct Report {
-    /// (name, version) newly installed.
     pub installed: Vec<(String, String)>,
-    /// (name, old version, new version).
     pub updated: Vec<(String, String, String)>,
     pub removed: Vec<String>,
-    /// Packages already at the locked reference.
     pub kept: usize,
-    /// Archives taken from the cache rather than downloaded.
     pub cached: usize,
     pub classes: usize,
     pub stale_lock: bool,
@@ -63,7 +48,6 @@ fn config_bool(config: &Map<String, Value>, key: &str) -> bool {
     config.get(key) == Some(&Value::Bool(true))
 }
 
-/// A config path with `{$vendor-dir}` expanded, made absolute under `base`.
 fn config_path(base: &str, value: &str, vendor: &str) -> String {
     let value = value.replace("{$vendor-dir}", vendor);
     normalize(&if value.starts_with('/') {
@@ -73,7 +57,6 @@ fn config_path(base: &str, value: &str, vendor: &str) -> String {
     })
 }
 
-/// The vendor and bin directories, absolute: `config.vendor-dir` and `config.bin-dir` under `base` (canonical).
 pub fn dirs(base: &str, manifest: &Map<String, Value>) -> (String, String) {
     let config = manifest.get("config").and_then(Value::as_object);
     let get = |k: &str| config.and_then(|c| config_str(c, k));
@@ -82,7 +65,6 @@ pub fn dirs(base: &str, manifest: &Map<String, Value>) -> (String, String) {
     (vendor, bin_dir)
 }
 
-/// The installed reference and version recorded for each package in `installed.json`.
 fn previous(vendor: &Path) -> Result<HashMap<String, Map<String, Value>>> {
     Ok((read_installed(vendor)?.into_iter())
         .filter_map(|p| Some((p.get("name")?.as_str()?.to_ascii_lowercase(), p)))
@@ -111,8 +93,6 @@ fn reference(p: &Map<String, Value>) -> Option<String> {
     }
 }
 
-/// Installs `lock` into `base` (the project directory), for the manifest `manifest` (composer.json's shape).
-/// `events` runs the root's scripts for `pre-autoload-dump` and `post-autoload-dump`.
 pub fn install(
     base: &Path,
     manifest: &Map<String, Value>,
@@ -169,7 +149,6 @@ pub fn install(
         }
     }
 
-    // Decide what to fetch; remove what is no longer locked.
     let vendor_path = Path::new(&vendor);
     let before = previous(vendor_path)?;
     let mut todo: Vec<usize> = vec![];
@@ -225,9 +204,6 @@ pub fn install(
         }
     }
 
-    // Fetch and unpack. Downloads mostly wait on the network, so they get 48 threads (Composer's
-    // `COMPOSER_MAX_PARALLEL_HTTP` sets another number), never fewer than the cores; each archive's entries are
-    // unpacked in parallel on the same pool.
     let cores = std::thread::available_parallelism().map_or(8, usize::from);
     let threads = download_threads(std::env::var("COMPOSER_MAX_PARALLEL_HTTP").ok(), cores);
     let pool = rayon::ThreadPoolBuilder::new()
@@ -256,7 +232,6 @@ pub fn install(
         bail!("{}", errors.join("\n"));
     }
 
-    // vendor/composer: what is installed.
     let repo = format!("{vendor}/composer");
     std::fs::create_dir_all(&repo)?;
     let dev_mode = !o.no_dev;
@@ -274,7 +249,6 @@ pub fn install(
         include_bytes!("../assets/InstalledVersions.php"),
     )?;
 
-    // vendor/bin, in Composer's install order: a name already taken is skipped.
     let mut claimed: HashSet<String> = HashSet::new();
     for i in install_order(&packages) {
         let p = &packages[i];
@@ -302,7 +276,6 @@ pub fn install(
         }
     }
 
-    // The autoloader.
     packages.sort_by_key(Installed::name);
     if !o.no_autoloader {
         let check = match config.get("platform-check") {
@@ -363,14 +336,11 @@ pub fn install(
     Ok(report)
 }
 
-/// Download threads: `COMPOSER_MAX_PARALLEL_HTTP` when it is a positive number, else 48, and never fewer than
-/// `cores`.
 fn download_threads(env: Option<String>, cores: usize) -> usize {
     let http = env.and_then(|v| v.parse::<usize>().ok()).filter(|n| *n > 0);
     http.unwrap_or(48).max(cores)
 }
 
-/// The names a package answers to: its own, and what it provides and replaces (`getNames`).
 fn names(p: &Installed) -> Vec<String> {
     let mut out = vec![p.name()];
     for kind in ["provide", "replace"] {
@@ -389,8 +359,6 @@ fn link_targets(p: &Installed, kind: &str) -> Vec<String> {
     .collect()
 }
 
-/// The order Composer's `Transaction::calculateOperations` installs `packages` in: depth first from the packages no
-/// other one requires, taken in name order, each after what it requires; then `movePluginsToFront`.
 fn install_order(packages: &[Installed]) -> Vec<usize> {
     let mut by_name: Vec<usize> = (0..packages.len()).collect();
     by_name.sort_by_key(|&i| std::cmp::Reverse(packages[i].name()));
@@ -428,8 +396,6 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
             stack.extend(required(i));
         }
     }
-    // Download-modifying plugins, then the other plugins, each with what they require, go first; a plugin that
-    // requires no package goes before the plugins that do.
     let (mut front, mut rest): ([Vec<usize>; 4], Vec<usize>) = (Default::default(), vec![]);
     let mut wanted: [Vec<String>; 2] = Default::default();
     for &i in order.iter().rev() {
@@ -461,7 +427,6 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
     front.into_iter().flatten().chain(rest).collect()
 }
 
-/// Puts one package's files at `target`; returns whether its archive came from the cache.
 fn place(
     fetcher: &Fetcher,
     package: &Map<String, Value>,
@@ -507,11 +472,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Composer 2.11.2's order for the same packages (`composer install --dry-run` on a project of path packages):
-    /// the download-modifying plugin first, then the plugin and installer with what they require, then the rest
-    /// depth first, `virtual/thing` reaching e/prov through its `provide`, and the n/cyc ↔ o/cyc cycle entered at
-    /// o/cyc, the one that sorts last.
-    /// The reference that tells whether an installed package is current: the dist's, else the source's.
     #[test]
     fn references() {
         let r = |v: Value| reference(v.as_object().unwrap());

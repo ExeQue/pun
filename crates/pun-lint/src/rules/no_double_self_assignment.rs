@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-double-self-assignment`, ported from Rector 2.8.4's `RemoveDoubleSelfAssignRector`
-//! (rules/DeadCode/Rector/Assign).
-//!
-//! `$a = $a = f();` becomes `$a = f();`: an `=` whose value is another `=` to the same variable. Both sides must be
-//! variables (`$a`, `$$a`, `${...}`), compared as code without whitespace and comments (`NodeComparator`).
-
 use mago_syntax::cst::{AssignmentOperator, Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -37,7 +31,6 @@ impl Rule for NoDoubleSelfAssignment {
         let Expression::Assignment(inner) = unparenthesize(set.rhs) else {
             return;
         };
-        // `$a = &$b` is php-parser's AssignRef, not an Assign.
         let by_reference = matches!(
             inner.rhs,
             Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Reference(_))

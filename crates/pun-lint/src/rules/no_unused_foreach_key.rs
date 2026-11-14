@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-unused-foreach-key`, ported from Rector 2.8.4's `RemoveUnusedForeachKeyRector`
-//! (rules/DeadCode/Rector/Foreach_), with `ExprUsedInNodeAnalyzer` and `StmtsManipulator::isVariableUsedInNextStmt`.
-//!
-//! `foreach ($items as $key => $value)` becomes `foreach ($items as $value)` when neither the loop body nor the
-//! statements after the loop use `$key`. A `@var` tag for `$key` in the loop's doc comment goes too, and the doc
-//! comment with it when nothing else is left in it.
-
 use mago_syntax::cst::{Expression, ForeachBody, ForeachTarget, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -38,7 +31,6 @@ impl Rule for NoUnusedForeachKey {
         let Expression::Variable(key) = unparenthesize(target.key) else {
             return;
         };
-        // getName: a variable variable has no name.
         let name: &[u8] = match key {
             mago_syntax::cst::Variable::Direct(v) => &v.name[1..],
             _ => b"",
@@ -83,12 +75,6 @@ impl Rule for NoUnusedForeachKey {
     }
 }
 
-/// The edit that removes the `@var ... $name` tags from the doc comment of the statement at `start` (the last doc
-/// comment before it, as php-parser's `getDocComment`), or the whole doc comment when nothing else is in it.
-///
-/// Rector's doc printer, as its output shows: a tag takes the lines after it up to the next tag (phpdoc-parser reads
-/// them as its description), and goes from the end of the line before it (or from `/**` on the first line) to the
-/// end of its last text; the empty lines between it and a next tag stay (Rector 2.8.4's format-preserving printer).
 fn var_tag_edit(source: &str, tokens: &[Token], start: usize, name: &[u8]) -> Option<Edit> {
     let from = previous_token_end(source, tokens, start);
     let doc = tokens.iter().rfind(|t| {
@@ -97,7 +83,6 @@ fn var_tag_edit(source: &str, tokens: &[Token], start: usize, name: &[u8]) -> Op
             && t.kind == mago_syntax::token::TokenKind::DocBlockComment
     })?;
     let text = &source[doc.start..doc.end];
-    // Each line: its start, its end before the newline, and its text without `/**`, `*`, `*/` and blanks.
     let mut lines = Vec::new();
     let mut offset = doc.start;
     for line in text.split_inclusive('\n') {
@@ -148,7 +133,6 @@ fn var_tag_edit(source: &str, tokens: &[Token], start: usize, name: &[u8]) -> Op
         return None;
     }
     if !kept {
-        // The doc comment goes with the blanks after it, up to the statement.
         return Some(Edit::new(Span::new(doc.start, start), ""));
     }
     let mut rest = String::new();
@@ -161,7 +145,6 @@ fn var_tag_edit(source: &str, tokens: &[Token], start: usize, name: &[u8]) -> Op
     Some(Edit::new(Span::new(doc.start, doc.end), rest))
 }
 
-/// Whether a doc comment line is `@var <type> $name` (or `@var $name <type>`) for this variable.
 fn is_var_tag_for(content: &str, name: &[u8]) -> bool {
     let Some(rest) = content.strip_prefix("@var") else {
         return false;

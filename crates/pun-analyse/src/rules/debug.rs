@@ -1,6 +1,3 @@
-//! PHPStan's DumpTypeRule and DumpPhpDocTypeRule: the same inferred type, with precise or PHPDoc serialization.
-//! FileAssertRule: `assertType()` and its siblings, which hold or are reported.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_names::ResolvedNames;
 use mago_span::{HasSpan, Span};
@@ -37,7 +34,6 @@ enum Assert {
     VariableCertainty,
 }
 
-/// FileAssertRule::processNode()'s function: one of PHPStan's testing functions, called with two arguments.
 fn assertion<'arena>(
     names: &ResolvedNames<'arena>,
     codebase: &CodebaseMetadata,
@@ -58,8 +54,6 @@ fn assertion<'arena>(
     }
 }
 
-/// A call of `PHPStan\Testing\assertVariableCertainty()`, by its resolved name: its scope is observed before the
-/// arguments, as compact()'s is.
 pub(super) fn is_variable_certainty(call: &FunctionCall, names: &ResolvedNames) -> bool {
     let Expression::Identifier(id) = call.function else {
         return false;
@@ -69,8 +63,6 @@ pub(super) fn is_variable_certainty(call: &FunctionCall, names: &ResolvedNames) 
         .eq_ignore_ascii_case(b"PHPStan\\Testing\\assertVariableCertainty")
 }
 
-/// Every syntactic argument, including named and unpacked arguments, uses the shared per-file inference run, and so
-/// do an asserted offset's array and dimension.
 pub(super) fn typed_expressions<'arena>(
     names: &ResolvedNames<'arena>,
     codebase: &CodebaseMetadata,
@@ -133,7 +125,6 @@ pub(super) fn function_call<'arena>(c: &mut Checker<'_, 'arena>, call: &Function
     }
 }
 
-/// FileAssertRule::processAssert*(): an assertion that does not hold, or whose expectation is not a literal.
 fn file_assert<'arena>(c: &mut Checker<'_, 'arena>, call: &FunctionCall<'arena>, assert: Assert) {
     let args = &call.argument_list.arguments;
     let (expected, value) = (args[0].value(), args[1].value());
@@ -229,7 +220,6 @@ fn unknown(c: &mut Checker, call: &FunctionCall, message: String) {
     c.report_non_ignorable(call, "phpstan.unknownExpectation", message, None);
 }
 
-/// FileAssertRule::processAssertVariableCertainty(): `Ok(None)` when it holds or Pun has no observation.
 fn variable_certainty<'arena>(
     c: &Checker<'_, 'arena>,
     call: &FunctionCall<'arena>,
@@ -237,7 +227,6 @@ fn variable_certainty<'arena>(
     variable: &Expression<'arena>,
 ) -> Result<Option<(&'static str, String)>, &'static str> {
     let Expression::Call(Call::StaticMethod(certainty)) = certainty else {
-        // sic: PHPStan does not fill in the function name
         return Err("First argument of %s() must be TrinaryLogic call");
     };
     let Expression::Identifier(class) = certainty.class else {
@@ -249,7 +238,6 @@ fn variable_certainty<'arena>(
     let ClassLikeMemberSelector::Identifier(method) = &certainty.method else {
         return Err("Invalid TrinaryLogic call.");
     };
-    // any other method is not a TrinaryLogic factory: PHPStan's own call fails
     let expected = match method.value.to_ascii_lowercase().as_slice() {
         b"createyes" => Tri::Yes,
         b"createmaybe" => Tri::Maybe,

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\SingleLineThrowFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -11,13 +10,11 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(SingleLineThrowFixer)
 }
 
-/// REMOVE_WHITESPACE_AFTER_TOKENS + REMOVE_WHITESPACE_AROUND_TOKENS.
 const PREVIOUS_TOKENS_TO_CLEAR: [Proto<'static>; 3] = [
     Proto::Char(b"["),
     Proto::Char(b"("),
     Proto::Kind(T_DOUBLE_COLON),
 ];
-/// REMOVE_WHITESPACE_AROUND_TOKENS + REMOVE_WHITESPACE_BEFORE_TOKENS.
 const NEXT_TOKENS_TO_CLEAR: [Proto<'static>; 6] = [
     Proto::Char(b"("),
     Proto::Kind(T_DOUBLE_COLON),

@@ -1,19 +1,3 @@
-//! `lint/operators/prefer-boolean-and-or`, ported from Rector 2.8.4's `LogicalToBooleanRector`
-//! (rules/CodeQuality/Rector/LogicalAnd).
-//!
-//! `and` and `or` become `&&` and `||`, in the whole chain of `and`/`or` operations the outermost one heads. The new
-//! operators bind tighter than assignments, so an assignment operand gets parentheses (`$f = false or true` becomes
-//! `($f = false) || true`). Rector reprints the chain the way php-parser's pretty printer does: every binary operation
-//! in it on one line, an assignment, a compound assignment, a ternary, `print` or `yield` operand of `&&`/`||` in
-//! parentheses where precedence needs them, the other operands as they were written but without their parentheses
-//! and comments. Pun writes the same.
-//!
-//! Rector skips the chain when its left operand is an assignment whose native type is not a boolean (`$file =
-//! fopen(...) or die()`). Pun reads that type from the syntax alone: the assigned value is `true`, `false`, a
-//! comparison, a `!`, a boolean operation, `isset()`, `empty()` or a `(bool)` cast. Any other value (a call, a
-//! variable) is skipped, also where PHPStan would know it is a boolean; that waits for analyse's types (lint.md
-//! Build 8).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -57,14 +41,12 @@ impl Rule for PreferBooleanAndOr {
     }
 }
 
-/// php-parser's `MAX_PRECEDENCE`.
 const MAX: i32 = 1000;
 
 fn is_logical(op: &BinaryOperator<'_>) -> bool {
     matches!(op, BinaryOperator::LowAnd(_) | BinaryOperator::LowOr(_))
 }
 
-/// `refactor()`'s check: a left operand that is an assignment must have a boolean native type.
 fn refactors(b: &Binary<'_>) -> bool {
     match unparenthesize(b.lhs) {
         Expression::Assignment(a) if is_plain_assign(a) => native_bool(a.rhs),
@@ -72,8 +54,6 @@ fn refactors(b: &Binary<'_>) -> bool {
     }
 }
 
-/// Whether an `and`/`or` above `b`, through `and`/`or` operands only, is refactored: `refactorLogicalToBoolean` then
-/// turns `b` with it (Rector visits the outer node first), and `b` is not refactored again.
 fn in_refactored_chain(b: &Binary<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     let mut child = node_span(b);
     for ancestor in ancestors.iter().rev() {
@@ -96,7 +76,6 @@ fn in_refactored_chain(b: &Binary<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     false
 }
 
-/// Whether PHPStan's native type of `expr` is a boolean, decided from the syntax alone.
 fn native_bool(expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         e if is_constant(e, "true") || is_constant(e, "false") => true,
@@ -129,7 +108,6 @@ fn native_bool(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// php-parser's text of a binary operator it prints anew; `and`/`or` are printed as `&&`/`||`.
 fn operator(op: &BinaryOperator<'_>) -> &'static str {
     match op {
         BinaryOperator::Addition(_) => "+",
@@ -161,7 +139,6 @@ fn operator(op: &BinaryOperator<'_>) -> &'static str {
     }
 }
 
-/// The `precedenceMap` entry of a binary operator as it is printed (`and`/`or` as `&&`/`||`).
 fn limits(op: &BinaryOperator<'_>) -> (i32, i32, i32) {
     match op {
         BinaryOperator::LowAnd(_) => (120, 121, 120),
@@ -180,7 +157,6 @@ fn is_boolean(op: &BinaryOperator<'_>) -> bool {
     )
 }
 
-/// The text of an assignment operator.
 fn assignment_operator(a: &Assignment<'_>) -> &'static str {
     match a.operator {
         AssignmentOperator::Assign(_) if is_plain_assign(a) => "=",
@@ -206,8 +182,6 @@ struct Printer<'c, 's> {
 }
 
 impl Printer<'_, '_> {
-    /// `pInfixOp` for a binary operation printed anew: the new `&&`/`||`, and every binary operation under one
-    /// (`BetterStandardPrinter::wrapBinaryOpWithBrackets` drops their original formatting).
     fn infix(&self, b: &Binary<'_>, precedence: i32, lhs_precedence: i32) -> String {
         let (op, l, r) = limits(&b.operator);
         let (open, close, lhs_precedence) = if op >= precedence {
@@ -224,10 +198,6 @@ impl Printer<'_, '_> {
         )
     }
 
-    /// An operand of a binary operation printed anew (`p($node, $precedence, $lhsPrecedence)`). Binary operations
-    /// and assignments are printed anew too (`reprintNestedAssign`); under `&&`/`||`, so are ternaries, `print` and
-    /// `yield` (`reprintLowerPrecedenceOperand`). Anything else keeps its code, without its parentheses unless its new
-    /// place needs them.
     fn operand(
         &self,
         expr: &Expression<'_>,
@@ -247,7 +217,6 @@ impl Printer<'_, '_> {
             Expression::Yield(Yield::From(y)) if boolean => {
                 self.prefix("yield from ", 170, y.iterator, lhs_precedence)
             }
-            // `yield <value>` gets `WRAPPED_IN_PARENTHESES`.
             Expression::Yield(
                 y @ (Yield::Value(YieldValue { value: Some(_), .. }) | Yield::Pair(_)),
             ) if boolean => {
@@ -257,13 +226,10 @@ impl Printer<'_, '_> {
         }
     }
 
-    /// A node php-parser prints with its original formatting. A prefix operator whose operand is an assignment
-    /// Rector reprints (`!$y = 42`, `(int) $t = 42`) gets parentheses around it through `FIXUP_PREC_UNARY`.
     fn kept(&self, expr: &Expression<'_>, precedence: i32, lhs_precedence: i32) -> String {
         if let Some(code) = self.unary_assignment(expr) {
             return code;
         }
-        // php-parser adds no parentheses here; Pun keeps those that the meaning needs.
         wrap(
             text(self.ctx, expr),
             prec(expr),
@@ -272,7 +238,6 @@ impl Printer<'_, '_> {
         )
     }
 
-    /// `!`, `~`, `-`, `+`, `@` or a cast over (such operators over) an assignment, the assignment in parentheses.
     fn unary_assignment(&self, expr: &Expression<'_>) -> Option<String> {
         let Expression::UnaryPrefix(u) = expr else {
             return None;
@@ -294,7 +259,6 @@ impl Printer<'_, '_> {
         Some(format!("{before}{inner}"))
     }
 
-    /// `pAssignOp`, through `pPrefixOp`: in parentheses at or above the left limit, its operands as written.
     fn assignment(&self, a: &Assignment<'_>, lhs_precedence: i32) -> String {
         let rhs = match a.rhs {
             Expression::UnaryPrefix(u) if u.operator.is_reference() => u.operand,
@@ -313,8 +277,6 @@ impl Printer<'_, '_> {
         }
     }
 
-    /// `pExpr_Ternary`, through `pInfixOp`; its operands keep their code. Only an operand of `&&`/`||` gets here, which
-    /// binds tighter than `?:`, so it is in parentheses.
     fn ternary(&self, c: &Conditional<'_>) -> String {
         let condition = kept_operand(self.ctx, c.condition, 150, Some(150));
         let otherwise = kept_operand(self.ctx, c.r#else, 150, None);
@@ -328,7 +290,6 @@ impl Printer<'_, '_> {
         format!("({code})")
     }
 
-    /// `pPrefixOp`: in parentheses at or above the left limit.
     fn prefix(
         &self,
         op: &str,

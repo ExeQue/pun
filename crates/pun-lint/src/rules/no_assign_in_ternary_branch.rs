@@ -1,10 +1,3 @@
-//! `lint/style/no-assign-in-ternary-branch`, ported from Rector 2.8.4's `TernaryConditionVariableAssignmentRector`
-//! (rules/CodingStyle/Rector/Ternary).
-//!
-//! `$value ? $a = 1 : $a = 0;` becomes `$a = $value ? 1 : 0;`: when both branches of a ternary assign to the same
-//! variable, the ternary chooses the value and is assigned once. A ternary that is itself assigned
-//! (`$x = $value ? $a = 1 : $a = 0`) stays.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -42,7 +35,6 @@ impl Rule for NoAssignInTernaryBranch {
         if !is_assign(then) || !is_assign(t.r#else) {
             return;
         }
-        // Two variables with the same written name; `$$a` names no variable (php-parser compares two name nodes).
         let (
             Expression::Variable(Variable::Direct(if_var)),
             Expression::Variable(Variable::Direct(else_var)),
@@ -57,7 +49,6 @@ impl Rule for NoAssignInTernaryBranch {
             return;
         }
         let span = node_span(t);
-        // AttributeKey::IS_ASSIGNED_TO: the ternary is the value of a plain assignment.
         if let Some(Node::Assignment(parent)) = ancestors
             .iter()
             .rev()
@@ -67,7 +58,6 @@ impl Rule for NoAssignInTernaryBranch {
         {
             return;
         }
-        // The ternary prints again (pExpr_Ternary): the condition as the left operand, the new values as they were.
         let code = format!(
             "{} = {} ? {} : {}",
             super::rector_code_quality::text(ctx, if_var),

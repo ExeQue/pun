@@ -1,9 +1,3 @@
-//! `lint/control-flow/no-unsafe-finally`, ported from Mago 1.57.0's `no-unsafe-finally`
-//! (mago-linter src/rule/safety/no_unsafe_finally.rs).
-//!
-//! Reports a `return`, `throw`, `continue` or `break` in a `finally` block, which overrides the control flow of the
-//! `try` and `catch` blocks.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind};
 use mago_syntax::utils::control_flow::find_control_flows_in_block;

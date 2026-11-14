@@ -1,4 +1,3 @@
-//! Rector 2.8.4, PHP 8.4: moved closures and anonymous-class late-static constants.
 use pun_lint::rules::facts::{project_codebase, set_project_codebase};
 use pun_lint::rules::{
     AddArrowFunctionReturn, AddReturnTypeFromConstant, AddStringReturn, NoElseAfterReturn,
@@ -29,8 +28,6 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
         expected
     );
 
-    // Identical file bytes under a different project must not reuse the preceding
-    // project's facts. The expected declarations follow the external PHP signatures.
     let caller = "<?php $f = fn () => external();";
     for declaration in ["int", "string", "int"] {
         let library =
@@ -56,8 +53,6 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
         "removing the project must also remove its external declaration"
     );
 
-    // Reuse Rector's late-static constant oracle without changing its expectations.
-    // Rector 2.8.4 also produces these bytes with the native string-return rule.
     let oracle = include_str!(
         "rector/ReturnTypeFromStrictConstantReturnRector/Oracle/late_static_constants.php.inc"
     );

@@ -1,5 +1,3 @@
-//! Fixer pipeline (PHP-CS-Fixer's Runner::fixFile, single pass, priority order) and the lint.
-
 use anyhow::{Result, bail};
 use pun_config::Rule;
 use serde_json::Value;
@@ -14,20 +12,16 @@ mod fixer_annotation;
 mod php_grammar;
 mod php_parser;
 
-/// A PHP-CS-Fixer fixer (`FixerInterface` + `ConfigurableFixerInterface`).
 pub trait Fixer: Send + Sync {
-    /// PHP-CS-Fixer rule name, e.g. `no_unused_imports` or `Pint/laravel_blade`.
     fn name(&self) -> &'static str;
     fn priority(&self) -> i32;
     fn is_risky(&self) -> bool {
         false
     }
-    /// Cheap token-kind check, run before `fix`.
     fn is_candidate(&self, tokens: &Tokens) -> bool;
     fn supports(&self, _file: &Path) -> bool {
         true
     }
-    /// Called once with the rule's options; `Null` means the rule was enabled with `true` (defaults).
     fn configure(&mut self, options: &Value) -> Result<()> {
         if options.is_null() {
             Ok(())
@@ -36,20 +30,15 @@ pub trait Fixer: Send + Sync {
         }
     }
     fn fix(&self, file: &Path, tokens: &mut Tokens);
-    /// `AbstractFixer::fix`: `fix` only for non-empty tokens of a supported file that are a candidate (Pint/laravel_blade
-    /// can empty the list).
     fn apply(&self, file: &Path, tokens: &mut Tokens) {
         if tokens.count() > 0 && self.supports(file) && self.is_candidate(tokens) {
             self.fix(file, tokens);
         }
     }
-    /// `WhitespacesAwareFixerInterface::setWhitespacesConfig`; only whitespace-aware fixers store it.
     fn set_whitespaces_config(&mut self, _config: &WhitespacesFixerConfig) {}
-    /// The run's preset (Pint's `ConfigurationJsonRepository::preset()`); only `Pint/laravel_blade` reads it.
     fn set_preset(&mut self, _preset: &str) {}
 }
 
-/// `PhpCsFixer\WhitespacesFixerConfig` (Pint never overrides the defaults: four spaces, "\n").
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WhitespacesFixerConfig {
     indent: String,
@@ -88,7 +77,6 @@ impl WhitespacesFixerConfig {
     }
 }
 
-/// Fixers PHP-CS-Fixer 3.95 marks deprecated (DeprecatedFixerInterface) and their successors. Pun does not port them.
 pub(crate) const DEPRECATED: &[(&str, &[&str])] = &[
     (
         "braces",
@@ -152,7 +140,6 @@ pub(crate) const DEPRECATED: &[(&str, &[&str])] = &[
     ("visibility_required", &["modifier_keywords"]),
 ];
 
-/// AbstractProxyFixer: the successor's behaviour and priority under the deprecated name (which affects sort order).
 struct Proxy {
     name: &'static str,
     inner: Box<dyn Fixer>,
@@ -165,8 +152,6 @@ impl Fixer for Proxy {
     fn priority(&self) -> i32 {
         self.inner.priority()
     }
-    // is_risky / configure / set_whitespaces_config are never called on the proxy: the inner fixer is configured
-    // before wrapping, and modifier_keywords is not risky (the trait default). It ignores set_preset too.
     fn is_candidate(&self, tokens: &Tokens) -> bool {
         self.inner.is_candidate(tokens)
     }
@@ -178,9 +163,6 @@ impl Fixer for Proxy {
     }
 }
 
-/// Pint's FixerFactory override: fixers that inject, remove or rewrite import statements would corrupt the raw
-/// `<?php` chunks of a Blade template, so they skip `*.blade.php` files (`App\Fixers\LaravelBlade\SkipBladeFilesFixer`
-/// and, for no_unused_imports, `App\Fixers\LaravelBlade\NoUnusedImportsFixer`).
 const BLADE_UNSAFE: &[&str] = &[
     "declare_strict_types",
     "fully_qualified_strict_types",
@@ -188,7 +170,6 @@ const BLADE_UNSAFE: &[&str] = &[
     "no_unused_imports",
 ];
 
-/// `SkipBladeFilesFixer`: the inner fixer, except that it does not support Blade templates.
 struct SkipBladeFiles(Box<dyn Fixer>);
 
 impl Fixer for SkipBladeFiles {
@@ -205,7 +186,6 @@ impl Fixer for SkipBladeFiles {
         self.0.is_candidate(tokens)
     }
     fn supports(&self, file: &Path) -> bool {
-        // `! str_ends_with($file->getFilename(), '.blade.php')`
         !file
             .file_name()
             .is_some_and(|n| n.as_encoded_bytes().ends_with(b".blade.php"))
@@ -216,14 +196,10 @@ impl Fixer for SkipBladeFiles {
     }
 }
 
-/// Enabled fixers, sorted exactly like `Utils::sortFixers` (priority desc, then name via strcmp).
 pub struct Pipeline {
     fixers: Vec<Box<dyn Fixer>>,
-    /// Enabled rules with no native implementation, in config order.
     pub not_ported: Vec<String>,
-    /// Per-stage wall time and call count, only when profiling (`PUN_PROFILE=1` in the CLI).
     profile: Option<Mutex<BTreeMap<&'static str, (Duration, u64)>>>,
-    /// `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS`, read once by the CLI: skip `check_annotations`' name check.
     ignore_mismatched_rules: bool,
 }
 
@@ -234,14 +210,9 @@ pub struct Fixed {
 }
 
 impl Pipeline {
-    /// `factory` returns a fresh set of every native fixer (pun_fixers::all); rules not in it are reported as not ported.
-    /// Deprecated PHP-CS-Fixer rules are refused (see DEPRECATED), except `visibility_required`, which Pint users still
-    /// enable and which upstream runs as a plain proxy of `modifier_keywords`.
     pub fn new(rules: &[Rule], factory: &dyn Fn() -> Vec<Box<dyn Fixer>>) -> Result<Self> {
         let mut fixers: Vec<Box<dyn Fixer>> = Vec::new();
         let mut not_ported = Vec::new();
-        // One set of fixers, each taken by the rule that enables it; a second rule for the same fixer
-        // (visibility_required next to modifier_keywords) gets a fresh set.
         let mut pool = factory();
         for rule in rules {
             let mut target = rule.name.as_str();
@@ -269,7 +240,6 @@ impl Pipeline {
             };
             match found {
                 Some(mut f) => {
-                    // FixerFactory::setWhitespacesConfig on every WhitespacesAwareFixerInterface; Pint keeps the defaults.
                     f.set_whitespaces_config(&WhitespacesFixerConfig::default());
                     f.configure(&rule.options)?;
                     if target != rule.name {
@@ -299,24 +269,20 @@ impl Pipeline {
         })
     }
 
-    /// Hands every fixer the run's preset (`Fixer::set_preset`).
     pub fn set_preset(&mut self, preset: &str) {
         for f in &mut self.fixers {
             f.set_preset(preset);
         }
     }
 
-    /// See `ignore_mismatched_rules`; the CLI passes `filter_var_bool` of the environment variable.
     pub fn ignore_mismatched_rules(&mut self, ignore: bool) {
         self.ignore_mismatched_rules = ignore;
     }
 
-    /// Turn on per-stage timing (lint, tokenize, each fixer, generate); see `profile_report`.
     pub fn enable_profile(&mut self) {
         self.profile = Some(Mutex::default());
     }
 
-    /// One line per stage, slowest first: `seconds  calls  stage`. Empty when profiling is off.
     pub fn profile_report(&self) -> String {
         let Some(p) = &self.profile else {
             return String::new();
@@ -344,11 +310,9 @@ impl Pipeline {
         self.fixers.iter().map(std::convert::AsRef::as_ref)
     }
 
-    /// Runner::fixFile: lint, run each fixer once, return `None` when the code did not change.
     pub fn run(&self, file: &Path, code: &[u8]) -> Result<Option<Fixed>, LintError> {
         self.timed("(lint)", || lint(code))?;
         let mut tokens = self.timed("(tokenize)", || Tokens::from_code(code));
-        // `check_annotations` reports a bad annotation; here it only selects the rules to skip.
         let ignored = has_annotation(code)
             .then(|| fixer_annotation::find(&tokens).map(|a| fixer_annotation::skipped(&a)));
         let ignored = ignored.and_then(Result::ok).unwrap_or_default();
@@ -381,8 +345,6 @@ impl Pipeline {
 }
 
 impl Pipeline {
-    /// Runner::fixFile's run-level checks of `// @php-cs-fixer-ignore` annotations (FixerAnnotationAnalyzer and
-    /// validateRulesNamesForExceptions): `Err` aborts the whole run, like the RuntimeException upstream.
     pub fn check_annotations(&self, file: &Path, code: &[u8]) -> Result<()> {
         if !has_annotation(code) {
             return Ok(());
@@ -430,15 +392,10 @@ impl Pipeline {
     }
 }
 
-/// Why [`Pipeline::check_annotations`] aborts a run, as the exception Runner::fixFile throws. Callers branch on the
-/// variant (pun-cli renders Pint's box from it), never on the text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AnnotationError {
-    /// validateRulesNamesForExceptions: annotations naming rules the run doesn't enable (the whole message).
     NotEnabled(String),
-    /// FixerAnnotationAnalyzer's exception (`message`), which Runner::fixFile wraps with the file's `path`.
     Analysing { path: String, message: String },
-    /// The PHP warning FixerAnnotationAnalyzer hits on an annotation without a space after its name.
     UndefinedArrayKey,
 }
 
@@ -456,24 +413,18 @@ impl std::fmt::Display for AnnotationError {
 
 impl std::error::Error for AnnotationError {}
 
-/// Cheap guard: FixerAnnotationAnalyzer can only find something when the marker is in the file.
 fn has_annotation(code: &[u8]) -> bool {
     code.windows(13)
         .any(|w| w == b"php-cs-fixer-" || w == b"pun-ignore-fi")
 }
 
-/// A syntax error (PHP-CS-Fixer `LintingException`). `after_fix` = the fixers produced invalid code.
 #[derive(Debug, Clone)]
 pub struct LintError {
-    /// Bytes, as PHP's message carries the source's bytes (an unexpected token cut at byte 30, Latin-1 text).
     pub message: Vec<u8>,
-    /// The line PHP names in the message.
     pub line: u32,
     pub after_fix: bool,
 }
 
-/// `token_get_all($code, TOKEN_PARSE)` as PHP-CS-Fixer's TokenizerLinter runs it (PHP's own grammar and scanner
-/// errors, see php_parser.rs); the message is TokenizerLintingResult's.
 pub fn lint(code: &[u8]) -> Result<(), LintError> {
     php_parser::parse(code).map_err(|e| LintError {
         message: [
@@ -496,7 +447,6 @@ mod tests {
     use super::*;
     use pun_tokens::{Kind, Token};
 
-    /// Test fixer: `edit` runs on every candidate; `file` names it doesn't support.
     struct F {
         name: &'static str,
         priority: i32,
@@ -538,7 +488,6 @@ mod tests {
             ws: None,
         })
     }
-    /// A fixer relying on the trait defaults (no options, not risky, supports everything, ignores whitespace config).
     struct Plain;
     impl Fixer for Plain {
         fn name(&self) -> &'static str {
@@ -552,7 +501,6 @@ mod tests {
         }
         fn fix(&self, _: &Path, _: &mut Tokens) {}
     }
-    /// Writes the preset it was given over the first name, to show what `Pipeline::set_preset` handed it.
     struct ShowPreset(String);
     impl Fixer for ShowPreset {
         fn name(&self) -> &'static str {
@@ -627,8 +575,6 @@ mod tests {
         ]
     }
 
-    /// Pint's FixerFactory: the import-rewriting fixers skip `*.blade.php` files (SkipBladeFilesFixer); they still run
-    /// on PHP files, keep their own `supports` and priority, and other fixers still run on Blade files.
     #[test]
     fn import_fixers_skip_blade_files() {
         let all = || {
@@ -650,13 +596,11 @@ mod tests {
         };
         assert_eq!(run("dir/v.blade.php").unwrap(), b"<?php FOO; BAR;");
         assert_eq!(run("dir/v.php").unwrap(), b"<?php FOO;BAR;");
-        // The wrapped fixer's own `supports` still applies (neither test fixer supports skip.php).
         assert!(run("dir/skip.php").is_none());
     }
 
     #[test]
     fn sorts_like_php_cs_fixer() {
-        // Utils::sortFixers: priority desc, then name (strcmp); unknown rules are reported, not fatal.
         let p = Pipeline::new(
             &[
                 rule("upper"),
@@ -703,7 +647,6 @@ mod tests {
             &factory,
         )
         .unwrap();
-        // Each changed fixer is recorded once, in run order; empty tokens are cleared between fixers.
         let fixed = p
             .run(Path::new("a.php"), b"<?php foo (bar);\nbaz();\n")
             .unwrap()
@@ -713,7 +656,6 @@ mod tests {
             "<?php FOO(BAR);\nBAZ();\n"
         );
         assert_eq!(fixed.applied, ["round_trip", "drop_space", "upper"]);
-        // Changed-but-identical code and code with no candidate tokens report no change.
         let only_round_trip = Pipeline::new(&[rule("round_trip")], &factory).unwrap();
         assert!(
             only_round_trip
@@ -733,15 +675,12 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        // Syntax errors: in the input (TYPE_INVALID) vs produced by the fixers (TYPE_LINT).
         let e = p
             .run(Path::new("a.php"), b"<?php\nfunction (\n")
             .unwrap_err();
-        // Expected messages: token_get_all($code, TOKEN_PARSE) on PHP 8.5, worded by TokenizerLintingResult.
         assert!(!e.after_fix);
         assert_eq!(e.message, b"Parse error: Unclosed '(' on line 2 on line 3.");
         let only_drop = Pipeline::new(&[rule("drop_space")], &factory).unwrap();
-        // drop_space turns the input into `<?php\nfunctiona() {}`.
         let e = only_drop
             .run(Path::new("a.php"), b"<?php\nfunction a() {}")
             .unwrap_err();
@@ -759,8 +698,6 @@ mod tests {
         p.enable_profile();
         p.run(Path::new("a.php"), b"<?php foo (bar);").unwrap();
         p.run(Path::new("b.php"), b"<?php $a;").unwrap();
-        // Two files linted and tokenized; each fixer applied to both, but only the first had T_STRING and was changed
-        // by both, so two clear_empty_tokens, one generate and one lint of the result.
         let calls: BTreeMap<String, u64> = p
             .profile_report()
             .lines()
@@ -790,8 +727,6 @@ mod tests {
         use fixer_annotation::{FindError, find};
         let found = |code: &[u8]| find(&Tokens::from_code(code));
         let strs = |v: &[&str]| v.iter().map(|s| s.as_bytes().to_vec()).collect::<Vec<_>>();
-        // Expected values: FixerAnnotationAnalyzer::find on the same code (PHP-CS-Fixer 3.95.17). Leading comments
-        // (past declare and `;`) and trailing ones (before `?>`) count, values sorted per annotation.
         let a = found(b"<?php\ndeclare(strict_types=1);\n/* @php-cs-fixer-ignore b,a */\n; // @php-cs-fixer-foo x\nfoo();\n// @php-cs-fixer-ignore c\n/**\n * @php-cs-fixer-ignore d,@Set\n */\n?>\n").unwrap();
         assert_eq!(
             a,
@@ -803,7 +738,6 @@ mod tests {
                 (b"php-cs-fixer-foo".to_vec(), strs(&["x"]))
             ]
         );
-        // `/u` when the comments are UTF-8 (\w is Unicode), plain bytes otherwise (\w is ASCII); not-leading comments don't count.
         assert_eq!(
             fixer_annotation::ignored(
                 &found("<?php\n// @php-cs-fixer-ignore ét\n$a;\n".as_bytes()).unwrap()
@@ -835,9 +769,6 @@ mod tests {
             dup("\"a\"")
         );
 
-        // Pun's `@pun-ignore-file` (context/plan/rules.md §4): full rule IDs or `group/name` of a format or lint rule,
-        // mapped to their fixers via rules/mapping.toml; an unknown or old ID skips nothing. Exactly one space after the
-        // name, like upstream's split.
         let a = found(b"<?php\n// @pun-ignore-file format/strings/single-quote,style/no-alias-function,nope,format.single-quote\n// @php-cs-fixer-ignore x\n").unwrap();
         assert_eq!(
             fixer_annotation::skipped(&a),
@@ -848,7 +779,6 @@ mod tests {
             vec![]
         );
 
-        // Runner::fixFile skips the annotated rules; the others still run.
         let p =
             Pipeline::new(&[rule("upper"), rule("drop_space"), rule("gone")], &factory).unwrap();
         let code = b"<?php\n// @php-cs-fixer-ignore upper,gone\nfoo ();\n";
@@ -856,11 +786,9 @@ mod tests {
             p.run(Path::new("a.php"), code).unwrap().unwrap().code,
             b"<?php\n// @php-cs-fixer-ignore upper,gone\nfoo();\n"
         );
-        // Rules named must be enabled (ported or not); messages and order as Pint prints them.
         p.check_annotations(Path::new("a.php"), code).unwrap();
         p.check_annotations(Path::new("a.php"), b"<?php foo();")
             .unwrap();
-        // Only `@php-cs-fixer-ignore` names must be enabled rules.
         p.check_annotations(Path::new("a.php"), b"<?php\n// @pun-ignore-file nope\n")
             .unwrap();
         let err = |code: &[u8]| {
@@ -883,7 +811,6 @@ mod tests {
             err(b"<?php\n// @php-cs-fixer-ignore\tx\n"),
             "Undefined array key 1"
         );
-        // The same errors by kind, for pun-cli's box: the analyser's own message apart from Runner's wrapper.
         let kind = |code: &[u8]| {
             (p.check_annotations(Path::new("/p/b.php"), code)
                 .unwrap_err())
@@ -907,7 +834,6 @@ mod tests {
             kind(b"<?php\n// @php-cs-fixer-ignore nope\n"),
             AnnotationError::NotEnabled(_)
         ));
-        // PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS turns the name check off, not the analysis.
         let mut q = Pipeline::new(&[rule("upper")], &factory).unwrap();
         q.ignore_mismatched_rules(true);
         q.check_annotations(Path::new("a.php"), b"<?php\n// @php-cs-fixer-ignore nope\n")
@@ -922,7 +848,6 @@ mod tests {
 
     #[test]
     fn whitespaces_config() {
-        // Messages from PhpCsFixer\WhitespacesFixerConfig.
         assert_eq!(
             WhitespacesFixerConfig::new("   ", "\n")
                 .unwrap_err()
@@ -969,8 +894,6 @@ mod tests {
                 .to_string()
                 .ends_with("Remove it; it has no replacement.")
         );
-        // visibility_required runs a second modifier_keywords instance under its own name, sorted after the preset one,
-        // and behaves exactly like it (AbstractProxyFixer).
         let p = Pipeline::new(&[rule("visibility_required")], &all).unwrap();
         assert_eq!(
             p.fixers()

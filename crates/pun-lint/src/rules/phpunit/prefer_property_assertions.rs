@@ -1,13 +1,3 @@
-//! `lint/phpunit/prefer-property-assertions`, ported from rector-phpunit's `AssertArrayCastedObjectToAssertSameRector`
-//! (rules/CodeQuality/Rector/Expression).
-//!
-//! In a test class, `$this->assertSame(['name' => 'John', 'surname' => 'Doe'], (array) $object);` on an object of one
-//! class becomes one `$this->assertSame('John', $object->name);` per item. Rector drops a message argument, and so
-//! does Pun.
-//!
-//! Rector reads the expected values with `ValueResolver::getValue()`; Pun reads an array of string keys (not number
-//! strings, not repeated) whose values are `null`, booleans, integers or strings, and leaves any other array alone.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
@@ -70,7 +60,6 @@ impl Rule for PreferPropertyAssertions {
         if !matches!(cast.operator, UnaryPrefixOperator::ArrayCast(..)) {
             return;
         }
-        // an `ObjectType`
         let Some(items) = items(array) else {
             return;
         };
@@ -107,8 +96,6 @@ impl Rule for PreferPropertyAssertions {
                 ),
             )
         } else if index > 0 && lines.len() > 1 && list.stmts.len() > index {
-            // php-parser's differ sees one removal and several additions: the removed statement goes with the
-            // whitespace before it
             let from = list.before(ctx, index);
             Edit::new(
                 Span::new(from, span.end),
@@ -126,20 +113,17 @@ impl Rule for PreferPropertyAssertions {
     }
 }
 
-/// A PHP array key.
 #[derive(Clone, PartialEq)]
 enum Key {
     Int(i64),
     Str(String),
 }
 
-/// A value of `ValueResolver::getValue()`, by the order PHP keeps its array items in.
 enum Val {
     Scalar(Value),
     Array(Vec<(Key, Val)>),
 }
 
-/// The property name and the printed expected value of each item.
 fn items<'a>(array: &'a Array<'a>) -> Option<Vec<(String, String)>> {
     let items = evaluate_array(array)?;
     let mut out = Vec::new();
@@ -160,7 +144,6 @@ fn items<'a>(array: &'a Array<'a>) -> Option<Vec<(String, String)>> {
     (!out.is_empty()).then_some(out)
 }
 
-/// `ConstExprEvaluator::evaluateDirectly()` on literals and arrays of them.
 fn evaluate(expr: &Expression<'_>) -> Option<Val> {
     let Expression::Array(array) = unparenthesize(expr) else {
         return match value(expr)? {
@@ -201,7 +184,6 @@ fn evaluate_array<'a>(array: &'a Array<'a>) -> Option<Vec<(Key, Val)>> {
     Some(items)
 }
 
-/// `BuilderHelpers::normalizeValue()` printed by php-parser's pretty printer.
 fn print(v: &Val) -> Option<String> {
     Some(match v {
         Val::Scalar(Value::Null) => "null".to_string(),
@@ -241,7 +223,6 @@ fn print(v: &Val) -> Option<String> {
     })
 }
 
-/// Whether `->name` can follow the expression as written.
 fn is_dereferenceable(expr: &Expression<'_>) -> bool {
     matches!(
         expr,

@@ -1,19 +1,3 @@
-//! `lint/dead-code/no-redundant-foreach-guard`, ported from Rector 2.8.4's
-//! `RemoveUnusedNonEmptyArrayBeforeForeachRector` (rules/DeadCode/Rector/If_), with
-//! `UselessIfCondBeforeForeachDetector` and `CountManipulator`.
-//!
-//! A `foreach` over an empty array does nothing, so a check that the array is not empty around it is dead: an `if`
-//! without `elseif` or `else` that holds only a `foreach` over `$items` makes way for the `foreach` when its condition
-//! is `$items` (or a property fetch) whose native type is an array, `$items !== []` (or `!=`, either side),
-//! `!empty($items)` with `$items` an array, `count($items) > 0` (`>= 1`, `0 <`, `1 <=`) with `$items` natively an
-//! array, or `$items && count($items) > 0`. The `foreach`'s comments follow the `if`'s. A variable must be natively an
-//! array and no superglobal, and an array item one whose key the native type of the array has.
-//!
-//! In a statement list other than an `if`'s own, an `if (empty($items)) { }` or `if (empty($items)) { return; }` right
-//! before a `foreach` over `$items` that ends the list goes, when `$items` is natively an array.
-//!
-//! php-parser's printer decides the bytes: see [`super::stmt_splice`].
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -38,7 +22,6 @@ use crate::{Context, Report, Rule};
 
 pub struct NoRedundantForeachGuard;
 
-/// `Scope::SUPERGLOBAL_VARIABLES`.
 const SUPERGLOBALS: &[&[u8]] = &[
     b"$GLOBALS",
     b"$_SERVER",
@@ -109,8 +92,6 @@ impl Rule for NoRedundantForeachGuard {
     }
 }
 
-/// Whether the statement list `ancestors` ends with (its holder) is an `if`'s own body, which Rector's
-/// `refactorStmtsAware` does not see (an `If_` goes to `refactorIf`).
 fn in_if_body(ancestors: &[Node<'_, '_>]) -> bool {
     ancestors
         .iter()
@@ -119,8 +100,6 @@ fn in_if_body(ancestors: &[Node<'_, '_>]) -> bool {
         .is_some_and(|a| matches!(a, Node::IfStatementBody(_) | Node::IfColonDelimitedBody(_)))
 }
 
-/// `refactorIf`: the `if` `chain` ends with replaced by its `foreach`, with the `if`'s comments before the
-/// `foreach`'s.
 fn guard(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) -> Option<Change> {
     let Node::Statement(Statement::If(r#if)) = chain[chain.len() - 1] else {
         return None;
@@ -156,7 +135,6 @@ fn guard(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) 
     }]))
 }
 
-/// `isUselessBeforeForeachCheck` on the condition and the `foreach`'s expression.
 fn is_useless(
     source: &str,
     facts: &Facts,
@@ -166,7 +144,6 @@ fn is_useless(
 ) -> bool {
     let items = unparenthesize(items);
     let cond = unparenthesize(cond);
-    // the `if`'s scope: the types of the same expression where the condition reads it, before it narrows
     let at_if = first_equal(source, cond, items).unwrap_or(items);
     if should_skip_items(source, facts, preceding, at_if) {
         return false;
@@ -195,7 +172,6 @@ fn is_useless(
                 || (is_empty_array(b.rhs) && same_expression(source, items, b.lhs))
         }
         Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Not(_)) => {
-            // isMatchingNotEmpty: `!empty($items)`, the type (docblocks read) an array
             let Expression::Construct(Construct::Empty(empty)) = unparenthesize(u.operand) else {
                 return false;
             };
@@ -206,7 +182,6 @@ fn is_useless(
     }
 }
 
-/// The first expression in `cond` (in php-parser's order) that is the same code as `items`.
 fn first_equal<'a>(
     source: &str,
     cond: &'a Expression<'a>,
@@ -229,8 +204,6 @@ fn first_equal<'a>(
     found
 }
 
-/// `shouldSkipForeachExpr`: an array item whose key the native type of the array may lack, a superglobal, or a
-/// variable that is not natively an array.
 fn should_skip_items(
     source: &str,
     facts: &Facts,
@@ -251,9 +224,6 @@ fn should_skip_items(
     }
 }
 
-/// PHPStan's native scope remembers the key an assignment writes into a value of no native type but a documented
-/// array type (`mixed` with `hasOffsetValue()`), which Mago's does not: an earlier statement of the list assigns
-/// `$array[$key]` for the same array and key.
 fn assigned_offset(
     source: &str,
     facts: &Facts,
@@ -278,8 +248,6 @@ fn assigned_offset(
     })
 }
 
-/// `hasOffsetValueType($dimType)->yes()` on the native types: the array is one shape whose key `index` is known and
-/// not optional, the key's type a constant.
 fn has_offset(facts: &Facts, array: &Expression<'_>, index: &Expression<'_>) -> bool {
     let Some(key) = native(facts, index).and_then(constant_key) else {
         return false;
@@ -306,7 +274,6 @@ fn has_offset(facts: &Facts, array: &Expression<'_>, index: &Expression<'_>) -> 
     }
 }
 
-/// The array key a constant type stands for.
 fn constant_key(t: &TUnion) -> Option<ArrayKey> {
     match t.types.as_ref() {
         [TAtomic::Scalar(TScalar::Integer(i))] => i.get_literal_value().map(ArrayKey::Integer),
@@ -318,8 +285,6 @@ fn constant_key(t: &TUnion) -> Option<ArrayKey> {
     }
 }
 
-/// `isCounterHigherThanOne`: `count($items) > 0`, `count($items) >= 1`, `0 < count($items)` or `1 <= count($items)`,
-/// with `$items` natively an array.
 fn is_counter_higher_than_one(
     source: &str,
     facts: &Facts,
@@ -349,8 +314,6 @@ fn is_counter_higher_than_one(
         && native(facts, items).is_some_and(|t| is_array(t) || t.is_never())
 }
 
-/// `isMatchingEmptyAndForeachedExpr` with `$items` natively an array: `if (empty($items))` with no statement or a
-/// bare `return;`.
 fn is_empty_guard(
     source: &str,
     tokens: &[Token],
@@ -380,7 +343,6 @@ fn native<'f>(facts: &'f Facts, expr: &Expression<'_>) -> Option<&'f TUnion> {
     facts.native_type(node_span(unparenthesize(expr)))
 }
 
-/// `isArray()->yes()`.
 fn is_array(t: &TUnion) -> bool {
     !t.types.is_empty() && t.types.iter().all(|a| matches!(a, TAtomic::Array(_)))
 }

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\NoUnneededImportAliasFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind, Tokens};
 use std::path::Path;

@@ -1,8 +1,6 @@
-//! Small token helpers shared by several fixers (Pun's own; upstream inlines these).
 use pun_tokens::Kind::{self, *};
 use pun_tokens::Tokens;
 
-/// The compound assignment operators: `??=`, `+=`, `-=`, `*=`, `/=`, `.=`, `%=`, `**=`, `&=`, `|=`, `^=`, `<<=`, `>>=`.
 pub(crate) const COMPOUND_ASSIGNMENTS: &[Kind] = &[
     T_COALESCE_EQUAL,
     T_PLUS_EQUAL,
@@ -19,12 +17,10 @@ pub(crate) const COMPOUND_ASSIGNMENTS: &[Kind] = &[
     T_SR_EQUAL,
 ];
 
-/// `str_contains($haystack, $needle)`.
 pub(crate) fn contains(haystack: &[u8], needle: &[u8]) -> bool {
     pun_tokens::php_compat::strpos(haystack, needle, 0).is_some()
 }
 
-/// (first, last) meaningful token of each comma-separated item between `open` and `close`.
 pub(crate) fn split_list(tokens: &Tokens, open: usize, close: usize) -> Vec<(usize, usize)> {
     let mut items = vec![];
     let mut k = tokens.get_next_meaningful_token(open).unwrap();

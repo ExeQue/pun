@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's try/catch certainty: impossible catches do not add an incoming scope.
-//! Expectations are the standalone oracle's JSON from fixtures/try-certainty/phpstan.neon.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitInternalClassFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{
     apply_fix, ensure_is_doc_block_with_annotation, is_candidate,
 };

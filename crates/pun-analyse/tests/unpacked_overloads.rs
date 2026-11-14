@@ -1,4 +1,3 @@
-//! Complete PHPStan 2.3.1 diagnostics for unpack-aware ParametersAcceptorSelector overloads.
 use std::path::Path;
 
 use pun_analyse::{Project, run};

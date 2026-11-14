@@ -1,8 +1,3 @@
-//! `lint/security/require-preg-quote-delimiter`, ported from Mago 1.57.0's linter rule
-//! `require-preg-quote-delimiter` (rule/security/require_preg_quote_delimiter.rs).
-//!
-//! A `preg_quote()` call with fewer than two arguments does not escape the pattern's delimiter; the call is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::lint_b_names::function_call_matches;

@@ -1,7 +1,3 @@
-//! nette/schema 1.2.5 as PHPStan builds it from `parametersSchema` statements (`ContainerFactory::processSchema`):
-//! `Expect::structure/anyOf/arrayOf/listOf/<type>()` plus `nullable/min/max/pattern/default/...`, then
-//! `Processor::process()` with its exact messages.
-
 use crate::value::{Array, Key, Value};
 use pun_tokens::php_compat::float_to_string;
 
@@ -56,12 +52,10 @@ fn type_schema(ty: &str) -> Schema {
     s
 }
 
-/// A non-string entity (a chain or `null()`) throws ShouldNotHappenException before `Expect::{$entity}()`.
 fn entity_name(v: &Value) -> Result<&str, String> {
     v.as_str().ok_or_else(|| "Internal error.".to_string())
 }
 
-/// `ContainerFactory::processArgument()`.
 fn argument(arg: &Value, required: bool) -> Result<Arg, String> {
     match arg {
         Value::Entity(e) if e.value == Value::str("schema") => {
@@ -111,7 +105,6 @@ impl Arg {
         }
     }
 
-    /// The argument as a PHP value (a nested schema stays an object no value equals: null here).
     fn value(self) -> Value {
         match self {
             Arg::Value(v) => v,
@@ -127,7 +120,6 @@ impl Arg {
     }
 }
 
-/// `ContainerFactory::processSchema()`: `Expect::{first}(...)`, then `->{next}(...)` for each further statement.
 fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, String> {
     let mut schema: Option<Schema> = None;
     for st in statements {
@@ -203,7 +195,6 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
     })
 }
 
-/// PHP's ArgumentCountError (its text names the phar's path).
 const TOO_FEW: &str = "Too few arguments";
 
 fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
@@ -246,7 +237,6 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
                 .next()
                 .is_none_or(|a| a.value() == Value::Bool(true));
         }
-        // Deprecations are warnings (E_USER_DEPRECATED), which PHPStan's Configurator swallows.
         ("deprecated", _) => {}
         (m, kind) => {
             let class = match kind {
@@ -262,7 +252,6 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
     Ok(s)
 }
 
-/// `Expect::structure($parametersSchema)` from the merged `parametersSchema` section.
 pub fn parameters_schema(section: &Array) -> Result<Schema, String> {
     let mut items = Vec::new();
     for (k, v) in section.iter() {
@@ -288,7 +277,6 @@ struct Message {
 }
 
 impl Message {
-    /// `Message::toString()`: `preg_replace_callback('~( ?)%(\w+)%~', ...)`.
     fn render(&self) -> String {
         let t = &self.template;
         let mut out = String::new();
@@ -305,7 +293,6 @@ impl Message {
                 let name = &t[start + 1..start + 1 + n];
                 let val = match name {
                     "label" => (if self.is_key { "key of item" } else { "item" }).to_string(),
-                    // (the path always starts with `parameters`)
                     "path" => format!("'{}'", self.path.join("\u{a0}›\u{a0}")),
                     "value" => format_value(&self.value),
                     n => self
@@ -355,7 +342,6 @@ impl Context {
     }
 }
 
-/// `Nette\Schema\Helpers::formatValue()`.
 pub(crate) fn format_value(v: &Value) -> String {
     match v {
         Value::Entity(_) | Value::OptionalPath(_) | Value::DateTime(_) => {
@@ -368,7 +354,6 @@ pub(crate) fn format_value(v: &Value) -> String {
     }
 }
 
-/// (OptionalPath values are unwrapped before validation.)
 fn object_class(v: &Value) -> &'static str {
     match v {
         Value::DateTime(_) => "DateTimeImmutable",
@@ -376,7 +361,6 @@ fn object_class(v: &Value) -> &'static str {
     }
 }
 
-/// `Nette\Utils\Strings::truncate($s, $maxLen, $append)`.
 pub(crate) fn truncate(s: &str, max: usize, append: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     if chars.len() <= max {
@@ -394,7 +378,6 @@ pub(crate) fn truncate(s: &str, max: usize, append: &str) -> String {
     chars[..max].iter().collect::<String>() + append
 }
 
-/// `Nette\Utils\Validators::is($value, $expected)` for the types schemas use.
 fn is_type(v: &Value, expected: &str) -> bool {
     expected.split('|').any(|item| {
         let item = match item.strip_prefix('?') {
@@ -417,7 +400,6 @@ fn is_type(v: &Value, expected: &str) -> bool {
                 v,
                 Value::Entity(_) | Value::OptionalPath(_) | Value::DateTime(_)
             ),
-            // ponytail: `instanceof` of the exact class only (no parents/interfaces).
             class => {
                 matches!(
                     v,
@@ -687,8 +669,6 @@ impl Schema {
         self.default.clone()
     }
 
-    /// `(new Processor)->process($schema, $data)` with the context path PHPStan sets (`['parameters']`); the error
-    /// messages in order, empty when valid.
     pub fn validate(&self, data: &Value, path: &[&str]) -> Vec<String> {
         let mut ctx = Context {
             path: path.iter().map(std::string::ToString::to_string).collect(),
@@ -747,7 +727,6 @@ fn validate_range(v: &Value, range: (Option<f64>, Option<f64>), ctx: &mut Contex
     }
 }
 
-/// PHP `levenshtein($a, $b, $insert, $replace, $delete)`.
 pub(crate) fn levenshtein(a: &str, b: &str, ins: usize, rep: usize, del: usize) -> usize {
     let (a, b) = (a.as_bytes(), b.as_bytes());
     let mut p1: Vec<usize> = (0..=b.len()).map(|i| i * ins).collect();
@@ -765,7 +744,6 @@ pub(crate) fn levenshtein(a: &str, b: &str, ins: usize, rep: usize, del: usize) 
     p1[b.len()]
 }
 
-/// `Nette\Utils\ObjectHelpers::getSuggestion()`.
 pub(crate) fn suggestion(possibilities: &[String], value: &str) -> Option<String> {
     let prefix = |s: &str, with: &str| -> String {
         for p in ["get", "set", "has", "is", "add"] {
@@ -780,7 +758,6 @@ pub(crate) fn suggestion(possibilities: &[String], value: &str) -> Option<String
     let norm = prefix(value, "+");
     let mut best = None;
     let mut min = (value.len() as f64 / 4.0 + 1.0) * 10.0 + 0.1;
-    // (array_unique() and the `$item === $value` skip change nothing here: `value` is never a possibility)
     for item in possibilities {
         let len = levenshtein(item, value, 10, 11, 10);
         let len = if (len as f64) < min {

@@ -1,7 +1,3 @@
-//! `lint/types/add-return-type-from-property`, ported from Rector 2.8.4's `ReturnTypeFromStrictTypedPropertyRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a method whose every `return` returns a property with a declared type
-//! (other than `mixed`) gets the union of the returned values' native types.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_span::HasSpan;
@@ -19,7 +15,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromProperty;
 
-/// `PhpVersionFeature::TYPED_PROPERTIES`.
 const TYPED_PROPERTIES: u32 = 70400;
 
 impl Rule for AddReturnTypeFromProperty {
@@ -51,7 +46,6 @@ impl Rule for AddReturnTypeFromProperty {
         if returns.is_empty() {
             return;
         }
-        // resolveReturnPropertyType
         let mut types: Vec<&TAtomic> = Vec::new();
         let mut order: Vec<String> = Vec::new();
         for r in &returns {
@@ -86,8 +80,6 @@ impl Rule for AddReturnTypeFromProperty {
     }
 }
 
-/// The span of the declared type of the property `$object->name` or `Class::$name`, when it has one other than
-/// `mixed`.
 fn typed_property(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -134,7 +126,6 @@ fn typed_property(
         .map(|t| t.span)
 }
 
-/// The class `$this` and `self` stand for: the enclosing class, by Mago's name for an anonymous one.
 fn this_class(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],

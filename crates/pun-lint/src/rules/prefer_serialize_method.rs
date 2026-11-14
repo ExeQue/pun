@@ -1,14 +1,3 @@
-//! `lint/classes/prefer-serialize-method`, ported from Rector 2.8.4's `SleepToSerializeRector`
-//! (rules/Php85/Rector/Class_).
-//!
-//! PHP 8.5 deprecates `__sleep()`. In a class without `__serialize()`, a `__sleep()` whose every return gives an array
-//! literal (and whose end cannot be reached) becomes `__serialize(): array`, each string item `'name'` turning into
-//! `'name' => $this->name` and the other items going. A `__sleep()` already typed `array` stays.
-//!
-//! Rector's `SilentVoidResolver` also counts a `switch`, a loop and a call to a `never` function as ends of the body;
-//! Pun counts a return, a throw, an exit, and an `if`/`else` or a `try` whose branches all end, and leaves the
-//! method alone in the other cases.
-
 use mago_syntax::cst::{
     ArrayElement, Construct, Expression, Hint, Literal, MethodBody, Node, NodeKind, Statement,
     TokenSeparatedSequence,
@@ -30,7 +19,6 @@ impl Rule for PreferSerializeMethod {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATED_METHOD_SLEEP
         80500
     }
 
@@ -62,7 +50,6 @@ impl Rule for PreferSerializeMethod {
             return;
         };
         let source = ctx.source;
-        // `ReturnAnalyzer::hasOnlyReturnWithExpr()`; `findReturnsScoped()` finds none in a generator.
         let mut values = Vec::new();
         let mut bare = false;
         returns(Node::Block(block), &mut |r| match r.value {
@@ -105,9 +92,6 @@ impl Rule for PreferSerializeMethod {
     }
 }
 
-/// The edits that turn an array's string items into `'name' => $this->name` and drop its other items, none when it
-/// has no string item. `None` (no fix at all) for a string Pun does not print as Rector does: one that is no
-/// property name.
 fn items(
     source: &str,
     elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>,
@@ -123,8 +107,6 @@ fn items(
         let name = match value {
             Some(Expression::Literal(Literal::String(s))) => {
                 let name = std::str::from_utf8(s.value?).ok()?;
-                // Rector prints any name after `$this->`; `'a-b'` would read as a subtraction and `'it\'s'` would
-                // not parse, so Pun leaves those methods alone.
                 if !is_identifier(name) {
                     return None;
                 }
@@ -149,7 +131,6 @@ fn items(
     Some(merge(edits))
 }
 
-/// `SilentVoidResolver::hasStmtsAlwaysReturnOrExit()`, for the statements Pun follows.
 fn always_ends(source: &str, list: &List<'_>) -> bool {
     list.stmts.iter().any(|statement| match statement {
         Statement::Return(r) => r.value.is_some(),
@@ -180,7 +161,6 @@ fn always_ends(source: &str, list: &List<'_>) -> bool {
     })
 }
 
-/// A name `$this->name` can take: a letter, `_` or a byte from 0x80, then those and digits.
 pub(super) fn is_identifier(name: &str) -> bool {
     let mut bytes = name.bytes();
     bytes
@@ -189,7 +169,6 @@ pub(super) fn is_identifier(name: &str) -> bool {
         && bytes.all(|b| b == b'_' || b.is_ascii_alphanumeric() || b >= 0x80)
 }
 
-/// Whether a `yield` comes under `node`, outside nested classes, functions and closures.
 fn has_yield(node: Node<'_, '_>) -> bool {
     let mut found = false;
     node.visit_children(|child| match child {

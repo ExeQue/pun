@@ -1,5 +1,3 @@
-//! Class instantiation and class-name checks.
-
 use mago_allocator::LocalArena;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -13,7 +11,6 @@ use super::class_names::{self, Pair};
 use super::reflection::Lookup;
 use super::{Checker, DISCOVERING_SYMBOLS_TIP, declared, infer, members, params};
 
-/// NewStaticRule, then InstantiationRule (level 0: no argument types).
 pub(super) fn instantiation<'arena>(c: &mut Checker<'_, 'arena>, new: &Instantiation<'arena>) {
     if matches!(new.class, Expression::Static(_)) {
         new_static(c, new);
@@ -34,7 +31,6 @@ pub(super) fn instantiation<'arena>(c: &mut Checker<'_, 'arena>, new: &Instantia
             );
         }
         expr => {
-            // php-parser drops the parentheses of `new ($expr)`
             let expr = super::types::flow::unparen(expr);
             if c.toggled
                 .on
@@ -51,8 +47,6 @@ pub(super) fn instantiation<'arena>(c: &mut Checker<'_, 'arena>, new: &Instantia
     }
 }
 
-/// `checkClassNameExprType()` (`featureToggles.newOnNonObject`): `new $expr` whose type is not `string|object`.
-/// Whether it reported, which ends the rule for this node.
 fn non_object(c: &mut Checker, new: &Instantiation, expr: &Expression) -> bool {
     let accepted = Type::Union(vec![Type::String, Type::ObjectWithoutClass]);
     let accepts = |t: &Type| pun_phpstan::types::is_super_type_of(&accepted, t).yes();
@@ -74,14 +68,10 @@ fn non_object(c: &mut Checker, new: &Instantiation, expr: &Expression) -> bool {
     true
 }
 
-/// `getClassNames()` for `new $expr`: the class-strings' concrete classes, else the constant strings (as names)
-/// and the object types' classes (not as names).
 fn class_names(c: &Checker, expr: &Expression) -> Vec<(String, bool)> {
     let Some(mut ty) = c.phpstan_type(expr) else {
         return Vec::new();
     };
-    // Mago erases unknown objects to mixed/never. Restore only this expression's own source edge, and only
-    // an object naming an unknown class; a concrete inferred narrowing must never regain a broader declaration.
     if matches!(ty, Type::Mixed { .. } | Type::Never(_))
         && let Some(source) = object_source(c, expr.span())
         && names(&source, false)
@@ -91,13 +81,14 @@ fn class_names(c: &Checker, expr: &Expression) -> Vec<(String, bool)> {
         ty = source;
     }
     if let Some(object) = class_string_object(c, &ty)
-        // UnionType::getObjectClassReflections(): no reflections if any alternative cannot be reflected.
-        && let Some(classes) = names(&object, false).iter().map(|n| class_like(c, n).found()).collect::<Option<Vec<_>>>()
+        && let Some(classes) = names(&object, false)
+            .iter()
+            .map(|n| class_like(c, n).found())
+            .collect::<Option<Vec<_>>>()
     {
         let concretes: Vec<(String, bool)> = classes
             .into_iter()
             .filter(|k| !k.flags.is_abstract() && !k.kind.is_interface())
-            // Mago's anonymous reflection key, just as getName() supplies PHPStan's internal key.
             .map(|k| (k.original_name.to_string(), true))
             .collect();
         if !concretes.is_empty() {
@@ -111,8 +102,6 @@ fn class_names(c: &Checker, expr: &Expression) -> Vec<(String, bool)> {
         .collect()
 }
 
-/// `getConstantStrings()` or `getObjectClassNames()`: unions require names in every alternative, intersections
-/// collect their members, and a template delegates to its bound. In particular `Object|'Name'` has neither.
 fn names(ty: &Type, strings: bool) -> Vec<String> {
     match ty {
         Type::ConstString(s) if strings => vec![String::from_utf8_lossy(s).into_owned()],
@@ -137,7 +126,6 @@ fn names(ty: &Type, strings: bool) -> Vec<String> {
     }
 }
 
-/// `isClassString()->yes()` followed by `getClassStringObjectType()`, including templates and compound bounds.
 fn class_string_object(c: &Checker, ty: &Type) -> Option<Type> {
     match ty {
         Type::ClassString(object) => Some(
@@ -153,8 +141,6 @@ fn class_string_object(c: &Checker, ty: &Type) -> Option<Type> {
                 false,
             ))
         }
-        // TemplateTypeFactory has no TemplateGenericClassStringType: a direct class-string bound falls back
-        // to TemplateMixedType. Its union/intersection and ordinary string template subclasses retain bounds.
         Type::Template(t) if !matches!(t.bound, Type::ClassString(_)) => {
             class_string_object(c, &t.bound)
         }
@@ -176,7 +162,6 @@ fn class_string_object(c: &Checker, ty: &Type) -> Option<Type> {
     }
 }
 
-/// Converted anonymous objects use getDisplayName(); reflection still needs Mago's internal declaration key.
 fn class_like<'a>(c: &Checker<'a, '_>, name: &str) -> Lookup<'a> {
     if name.starts_with("class@anonymous/") {
         return c
@@ -189,12 +174,9 @@ fn class_like<'a>(c: &Checker<'a, '_>, name: &str) -> Lookup<'a> {
     c.class_like(name)
 }
 
-/// The bounded erased-object fallback: existing provenance already forgets writes, reference escapes and joins.
 fn object_source(c: &Checker, at: Span) -> Option<Type> {
     match c.origins.get(&at)? {
         infer::Origin::Copy(from) => object_source(c, *from).or_else(|| {
-            // A copied `new Unknown` has no declaration edge. Its own AST and inferred never establish the
-            // name; reuse conversion's existing unknown-instantiation contract, not a textual name guess.
             if !c.types.get(from)?.is_never() {
                 return None;
             }
@@ -224,7 +206,6 @@ fn object_source(c: &Checker, at: Span) -> Option<Type> {
     }
 }
 
-/// `checkClassName()` for a class given by name, `pair` the name and the node `new` names it with.
 fn named<'arena>(
     c: &mut Checker<'_, 'arena>,
     new: &Instantiation<'arena>,
@@ -306,7 +287,6 @@ fn named<'arena>(
     );
 }
 
-/// InstantiationRule on `new class(...) { ... }`: the class is the anonymous class itself.
 pub(super) fn anonymous(c: &mut Checker, a: &AnonymousClass, name: &str) {
     if let Some(class) = c.codebase.get_class_like(name.as_bytes()) {
         let args = a.argument_list.as_ref().map(params::count_partial);
@@ -314,7 +294,6 @@ pub(super) fn anonymous(c: &mut Checker, a: &AnonymousClass, name: &str) {
     }
 }
 
-/// `checkClassName()` on a found class, `args` the [`params::count()`] of the arguments.
 fn check_class(
     c: &mut Checker,
     new: Span,
@@ -396,8 +375,6 @@ fn check_class(
     );
 }
 
-/// `getConstructor()` of a class without templates of its own resolves the declaring ancestor's class templates with
-/// the arguments the class gives it (`@extends`, bug 14138).
 fn in_class_context(c: &Checker, acceptor: &mut params::Acceptor, class: &ClassLikeMetadata) {
     let Some(declaring) = acceptor
         .class
@@ -434,9 +411,6 @@ fn in_class_context(c: &Checker, acceptor: &mut params::Acceptor, class: &ClassL
     }
 }
 
-/// The constructor checks NewStaticRule and InstantiationRule share: `@phpstan-consistent-constructor` on the
-/// class or a parent, or a constructor that is final, abstract or declared by an interface (or overrides an
-/// abstract or interface one).
 fn consistent_constructor(c: &Checker, class: &ClassLikeMetadata) -> bool {
     let consistent = std::iter::once(&class.name)
         .chain(class.all_parent_classes.iter())
@@ -451,7 +425,6 @@ fn consistent_constructor(c: &Checker, class: &ClassLikeMetadata) -> bool {
     if constructor.is_final() || constructor.is_abstract() {
         return true;
     }
-    // the prototype: an abstract or interface constructor it overrides
     class
         .all_parent_interfaces
         .iter()
@@ -465,7 +438,6 @@ fn has_constructor(c: &Checker, class: &ClassLikeMetadata) -> bool {
     members::method(c, class, b"__construct").is_some()
 }
 
-/// NewStaticRule.
 fn new_static(c: &mut Checker, new: &Instantiation) {
     let Some(class) = c.class_scope() else {
         return;
@@ -473,7 +445,6 @@ fn new_static(c: &mut Checker, new: &Instantiation) {
     if class.flags.is_final() || consistent_constructor(c, class) {
         return;
     }
-    // in a trait (PHP 8.0+ has abstract trait methods) that declares an abstract constructor
     if has_constructor(c, class)
         && c.php_version >= 80000
         && let Some(t) = c.in_trait()

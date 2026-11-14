@@ -1,16 +1,3 @@
-//! `lint/complexity/prefer-in-array-over-foreach`, ported from Rector 2.8.4's `ForeachToInArrayRector`
-//! (rules/CodeQuality/Rector/Foreach_).
-//!
-//! A `foreach` over an array whose only statement is `if ($item === <expr>) { return true; }` (or `==`, or
-//! `false`), followed by `return false;` (the other boolean), becomes `return in_array(<expr>, $array, true);` (no
-//! `true` for `==`, a `!` for a `false` found). The compared expression must not use the loop variable. In each
-//! statement list Rector looks at the first `foreach` followed by a `return`, and stops there if it does not fit.
-//!
-//! Rector reads that the `foreach` runs over an array from PHPStan's native type; Pun from the syntax (an array
-//! literal, a property or untouched parameter declared `array`, a local written only with array literals), and
-//! skips the rest (lint.md Build 8). Rector also ignores an `else` or `elseif` of the `if`, which then goes; Pun
-//! leaves such a loop alone.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -71,7 +58,6 @@ impl Rule for PreferInArrayOverForeach {
     }
 }
 
-/// `refactor()`'s checks for a `foreach` and the `return` after it; the new `return` statement when they pass.
 fn refactor(
     ctx: &Context<'_>,
     path: &[Node<'_, '_>],
@@ -79,7 +65,6 @@ fn refactor(
     r#return: &Return<'_>,
 ) -> Option<String> {
     let source = ctx.source;
-    // shouldSkipForeach
     let ForeachTarget::Value(target) = &foreach.target else {
         return None;
     };
@@ -87,7 +72,6 @@ fn refactor(
     if body.len() != 1 || !native_array(foreach.expression, path) {
         return None;
     }
-    // A comment alone is php-parser's `Nop`, no `if`.
     let Some(Statement::If(r#if)) = body.stmts.first() else {
         return None;
     };
@@ -95,7 +79,6 @@ fn refactor(
     if view.else_.is_some() || !view.elseifs.is_empty() {
         return None;
     }
-    // shouldSkipIf
     let Expression::Binary(condition) = unparenthesize(r#if.condition) else {
         return None;
     };
@@ -104,7 +87,6 @@ fn refactor(
         BinaryOperator::Equal(_) => false,
         _ => return None,
     };
-    // matchNodes: one side is the loop variable, the other the compared expression.
     let value = node_span(unparenthesize(target.value));
     let is_value = |e: &Expression<'_>| {
         matches!(unparenthesize(e), Expression::Variable(_))
@@ -120,7 +102,6 @@ fn refactor(
     if has_equal_variable(source, Node::Expression(compared), value) {
         return None;
     }
-    // isIfBodyABoolReturnNode
     let Statement::Return(Return {
         value: Some(found), ..
     }) = view.stmts.stmts.first()?
@@ -138,7 +119,6 @@ fn refactor(
     };
     let found = bool_of(found)?;
     let otherwise = bool_of(r#return.value?)?;
-    // Cannot be "return true;" + "return true;".
     if found == otherwise {
         return None;
     }

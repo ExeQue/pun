@@ -1,12 +1,3 @@
-//! `lint/phpunit/prefer-merged-will-return-callback`, ported from rector-phpunit's
-//! `MergeWithCallableAndWillReturnRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `->with($this->callback(function (...) { ...; return true; }))->willReturn($value)` becomes
-//! `->willReturnCallback(function (...) use (...) { ...; return $value; })`: the closure's last `return true;` returns
-//! the value, the variables the value uses that the closure lacks are added to its `use`, and its return type is the
-//! value's type as Rector declares it (`mapPHPStanTypeToPhpParserNode` of the scope's type, `true` and `false` kept).
-//! Arguments of `with()` after the callback go.
-
 use mago_syntax::cst::{Argument, Call, Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::{Edit, Safety, Span};
 
@@ -86,7 +77,6 @@ impl Rule for PreferMergedWillReturnCallback {
         let declared = return_declaration(types, &facts.codebase, ctx.php_version, &[], true);
 
         let mut edits = vec![Edit::new(node_span(old_value), expr_text(ctx, returned))];
-        // `resolveExternalUses`
         let params: Vec<&[u8]> = closure
             .parameter_list
             .parameters
@@ -174,7 +164,6 @@ impl Rule for PreferMergedWillReturnCallback {
     }
 }
 
-/// `source[span]` with `edits` (inside it, not overlapping) applied.
 fn applied(source: &str, span: Span, mut edits: Vec<Edit>) -> String {
     edits.sort_by_key(|e| (e.span.start, e.span.end));
     let mut out = String::new();

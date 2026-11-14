@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoUnneededBracesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -31,7 +30,6 @@ impl Fixer for NoUnneededBracesFixer {
         Ok(())
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // findBraceOpen: a generator over a decreasing index; clearing keeps indices stable
         let mut i = tokens.count();
         while i > 1 {
             i -= 1;
@@ -82,7 +80,7 @@ fn is_over_complete(tokens: &Tokens, index: usize) -> bool {
 
 fn clear_if_is_over_complete_namespace_block(tokens: &mut Tokens) {
     if tokens.count_token_kind(T_NAMESPACE) != 1 {
-        return; // fast check, we never fix if multiple namespaces are defined
+        return;
     }
     let index = tokens
         .get_next_token_of_kind(0, &[T_NAMESPACE.into()], true)
@@ -97,7 +95,7 @@ fn clear_if_is_over_complete_namespace_block(tokens: &mut Tokens) {
         return;
     }
     if !tokens[index].equals("{", true) {
-        return; // `;`
+        return;
     }
     let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, index);
     if let Some(after_close_index) = tokens.get_next_meaningful_token(close_index)

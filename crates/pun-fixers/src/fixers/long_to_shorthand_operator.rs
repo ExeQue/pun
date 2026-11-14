@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\LongToShorthandOperatorFixer`.
 use crate::analyzers::abstract_short_operator_fixer::{ShortOperator, apply_fix};
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(LongToShorthandOperatorFixer)
 }
 
-/// `OPERATORS`: operator => shorthand token.
 const OPERATORS: &[(&str, Kind, &str)] = &[
     ("+", T_PLUS_EQUAL, "+="),
     ("-", T_MINUS_EQUAL, "-="),
@@ -33,13 +31,11 @@ impl ShortOperator for LongToShorthandOperatorFixer {
         let analyzer = TokensAnalyzer::new(tokens);
         let mut index = index;
         loop {
-            // A statement always ends in `;` or `?>`; upstream's `$tokens[null]` throws otherwise.
             index = tokens.get_next_meaningful_token(index).unwrap();
             let other_token = &tokens[index];
             if other_token.equals_any(&[";".into(), T_CLOSE_TAG.into()], true) {
                 return true;
             }
-            // fast precedence check
             if other_token.equals("?", true) || other_token.is_kind(T_INSTANCEOF) {
                 return false;
             }
@@ -50,7 +46,6 @@ impl ShortOperator for LongToShorthandOperatorFixer {
                 index = tokens.find_block_end(block_type, index);
                 continue;
             }
-            // precedence check
             if analyzer.is_binary_operator(index) {
                 return false;
             }

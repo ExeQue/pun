@@ -1,6 +1,3 @@
-//! The edits `pun require` and `pun remove` make to a project's requirements: one entry of `require` or
-//! `require-dev` set or removed in pun.toml's text, with every other line and comment kept as it is.
-
 use crate::version::is_platform;
 use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
@@ -9,8 +6,6 @@ use pun_tokens::php_compat::strnatcmp;
 use std::cmp::Ordering;
 use std::sync::LazyLock;
 
-/// Composer's `sort-packages` order: `php`, `hhvm`, extensions, libraries, other platform packages, then the rest,
-/// each group compared naturally.
 pub fn sort_cmp(a: &str, b: &str) -> Ordering {
     let prefix = |name: &str| -> String {
         if !is_platform(name) {
@@ -26,7 +21,6 @@ pub fn sort_cmp(a: &str, b: &str) -> Ordering {
     strnatcmp(prefix(a).as_bytes(), prefix(b).as_bytes()).cmp(&0)
 }
 
-/// The line range of `[section]`'s entries in `lines`: from its header to the next header.
 fn find_section(lines: &[String], section: &str) -> Option<(usize, usize)> {
     let header = format!("[{section}]");
     let start = lines.iter().position(|l| {
@@ -39,7 +33,6 @@ fn find_section(lines: &[String], section: &str) -> Option<(usize, usize)> {
     Some((start, end))
 }
 
-/// The lines of a section that hold one `key = value` each, with their key.
 fn keys_in(lines: &[String], start: usize, end: usize) -> Vec<(usize, String)> {
     (start + 1..end)
         .filter_map(|i| {
@@ -49,7 +42,6 @@ fn keys_in(lines: &[String], start: usize, end: usize) -> Vec<(usize, String)> {
         .collect()
 }
 
-/// That the edited pun.toml reads back with `name` in `section` at `expect`, or gone when `expect` is `None`.
 fn check(text: &str, section: &str, name: &str, expect: Option<&str>) -> Result<()> {
     let table: toml::Table =
         toml::from_str(text).context("the edited pun.toml is not valid TOML")?;
@@ -73,8 +65,6 @@ fn check(text: &str, section: &str, name: &str, expect: Option<&str>) -> Result<
     Ok(())
 }
 
-/// pun.toml's text with `name` set to `constraint` in `[section]`: in place when it is there, else after the
-/// section's last entry (at its sorted place with `sort`), in a new section at the end when there is none.
 pub fn toml_set(
     text: &str,
     section: &str,
@@ -121,8 +111,6 @@ pub fn toml_set(
     Ok(out)
 }
 
-/// pun.toml's text without `name` in `[section]`. A section left with no entries goes too, unless it holds a
-/// comment of its own (a comment after a blank line belongs to what follows).
 pub fn toml_remove(text: &str, section: &str, name: &str) -> Result<String> {
     let mut lines: Vec<String> = text.split_inclusive('\n').map(String::from).collect();
     if let Some((start, end)) = find_section(&lines, section) {
@@ -153,8 +141,6 @@ pub fn toml_remove(text: &str, section: &str, name: &str) -> Result<String> {
     Ok(out)
 }
 
-/// `VersionParser::parseNameVersionPairs`: `name:version`, `name=version` and `name version` in one argument, or a
-/// name and the version as the next argument (one that is not a package name, a pattern or a platform package).
 pub fn name_version_pairs(args: &[String]) -> Vec<(String, Option<String>)> {
     static SEPARATOR: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^([^=: ]+)[=: ](.*)$").expect("valid pattern"));
@@ -197,7 +183,6 @@ pub fn name_version_pairs(args: &[String]) -> Vec<(String, Option<String>)> {
 mod tests {
     use super::*;
 
-    /// The order Composer 2.11.2's `JsonManipulator::sortPackages` gives the same names.
     #[test]
     fn sorts_as_composer() {
         let mut names = vec![
@@ -228,7 +213,6 @@ mod tests {
         );
     }
 
-    /// Composer 2.11.2's `parseNameVersionPairs` on the same arguments.
     #[test]
     fn pairs_names_and_versions_as_composer() {
         let args: Vec<String> = [
@@ -319,7 +303,6 @@ mod tests {
             toml_remove(own, "require", "a/b").unwrap(),
             "[require]\n# pinned for the 8.4 runtime\n"
         );
-        // An inline table can't be edited line by line.
         let inline = "require = { php = \"^8.4\" }\n";
         assert!(toml_set(inline, "require", "a/b", "1.0", false).is_err());
         assert!(toml_remove(inline, "require", "php").is_err());

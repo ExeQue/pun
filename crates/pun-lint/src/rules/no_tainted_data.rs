@@ -1,9 +1,3 @@
-//! `lint/security/no-tainted-data`, ported from Mago 1.57.0's linter rule `tainted-data-to-sink`
-//! (rule/security/tainted_data_to_sink.rs), with its default sinks: `echo`, `print` and `printf`.
-//!
-//! A value that comes straight from a request superglobal (`is_user_input`) given to `echo`, `print` or `printf` is
-//! reported on the value.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 
 use super::lint_b_names::function_call_matches;

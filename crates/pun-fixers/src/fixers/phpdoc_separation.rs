@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocSeparationFixer`.
 use crate::analyzers::docblock::{Annotation, DocBlock};
 use pun_tokens::php_compat::str_replace;
 use crate::analyzers::fixer_configuration_resolver::{php_array, resolve};

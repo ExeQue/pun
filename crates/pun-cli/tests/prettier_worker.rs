@@ -1,4 +1,3 @@
-//! Real Node/Prettier process lifetime through the CLI, in addition to the oracle output tests.
 mod common;
 
 use std::io::{Read, Write};
@@ -115,8 +114,6 @@ fn blade_probe_is_reused_for_stdin_and_files() {
     };
     let Some(dir) = project("reuse") else { return };
     let input = b"<div>\n<p>x</p></div>\n";
-    // Pint's stdin uses a temporary .php path even with --stdin-filename; use its real Blade file path as the
-    // formatting oracle for Pun's existing named-Blade stdin support.
     std::fs::write(dir.join("a.blade.php"), input).unwrap();
     let mut pint = Command::new("php");
     common::clean_env(&mut pint, &["HOME", "PATH"]);
@@ -146,7 +143,6 @@ fn blade_probe_is_reused_for_stdin_and_files() {
         1,
         "probe and format must share one real Node process"
     );
-    // A normal file goes through Rayon rather than the main thread that ran the probe.
     std::fs::remove_file(dir.join("node-pids")).unwrap();
     std::fs::write(dir.join("a.blade.php"), input).unwrap();
     let got = start(&dir, &["--max-processes=2", "--format=json", "a.blade.php"]).finish(b"");
@@ -180,7 +176,6 @@ fn failed_node_preload_aborts_and_reaps_the_probe() {
         let input = b"<div>\n<p>x</p></div>\n";
         std::fs::write(dir.join("a.blade.php"), input).unwrap();
         let out = start(&dir, &[]).finish(b"");
-        // A failed Node start is a run error, not a missing-package diagnosis or a silently skipped Blade file.
         assert_eq!(out.status.code(), Some(2));
         let message = format!(
             "{}{}",

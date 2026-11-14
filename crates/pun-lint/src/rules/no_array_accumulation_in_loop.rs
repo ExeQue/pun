@@ -1,10 +1,3 @@
-//! `lint/style/no-array-accumulation-in-loop`, ported from Mago 1.57.0's linter rule `no-array-accumulation-in-loop`
-//! (rule/best_practices/no_array_accumulation_in_loop.rs).
-//!
-//! In the body of a loop (not in a nested loop, function, closure, arrow function or method), an assignment whose
-//! right side is a call to `array_merge`/`array_merge_recursive` or `array_unique`/`array_values`, or an array with
-//! a spread element, copies the whole array on every pass. The call (or, for a spread, the assignment) is reported.
-
 use mago_syntax::cst::{
     ArrowFunction, Assignment, Call, Closure, DoWhile, Expression, For, ForBody, Foreach,
     ForeachBody, Function, Method, Node, NodeKind, Statement, While, WhileBody,

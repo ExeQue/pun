@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocOrderByValueFixer`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -28,7 +27,6 @@ const ALLOWED_VALUES: &[&str] = &[
 ];
 
 struct PhpdocOrderByValueFixer {
-    /// `annotation => strtolower(annotation)`, in configured order (later duplicates collapse onto the first).
     annotations: Vec<(String, String)>,
 }
 
@@ -38,7 +36,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// The option's normalizer: `$normalized[$annotation] = strtolower($annotation)`.
 fn normalize(value: &[String]) -> Vec<(String, String)> {
     let mut normalized: Vec<(String, String)> = vec![];
     for annotation in value {
@@ -54,9 +51,6 @@ impl Fixer for PhpdocOrderByValueFixer {
         "phpdoc_order_by_value"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpUnitFqcnAnnotationFixer,
-        // PhpdocIndentFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
         -10
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
@@ -110,7 +104,6 @@ fn fix_annotation(tokens: &mut Tokens, index: usize, r#type: &str, type_lower_ca
             )
         };
 
-    // `$annotationMap[$comparableContent] = $rawContent`: a repeated key keeps its first place and its last value.
     let mut annotation_map: Vec<(Vec<u8>, Vec<u8>)> = vec![];
     for annotation in &annotations {
         let raw_content = annotation.get_content();
@@ -128,7 +121,6 @@ fn fix_annotation(tokens: &mut Tokens, index: usize, r#type: &str, type_lower_ca
         }
     }
 
-    // ksort(SORT_STRING) on unique keys.
     let mut ordered_annotation_map = annotation_map.clone();
     ordered_annotation_map.sort_by(|a, b| a.0.cmp(&b.0));
     if ordered_annotation_map == annotation_map {
@@ -141,7 +133,6 @@ fn fix_annotation(tokens: &mut Tokens, index: usize, r#type: &str, type_lower_ca
         .map(|l| l.borrow().get_content().to_vec())
         .collect();
     for annotation in annotations.iter().rev() {
-        // array_pop() of an emptied map is null, which array_splice() inserts as nothing.
         let replacement: Vec<Vec<u8>> = ordered_annotation_map
             .pop()
             .map(|(_, raw)| raw)

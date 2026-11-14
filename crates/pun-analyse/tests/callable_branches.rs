@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 captures made before the correction: callable constraints belong to values.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

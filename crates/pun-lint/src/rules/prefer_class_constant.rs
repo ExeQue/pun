@@ -1,13 +1,3 @@
-//! `lint/style/prefer-class-constant`, ported from PHP-CS-Fixer's `ClassKeywordFixer`
-//! (`PhpCsFixer\Fixer\LanguageConstruct`, class_keyword).
-//!
-//! A quoted string (not interpolated, not a heredoc) that is the name of a class, interface, trait or enum, spelt as
-//! declared and with or without a leading `\`, becomes `\Name::class`.
-//!
-//! The fixer asks PHP's autoloader whether the class exists. Pun asks its codebase: PHP's own classes and the
-//! project's, the same source `prefer-class-keyword` reads. Classes only Pint's own process would know (its vendor
-//! directory) are therefore not known to Pun. The Zend Server classes of Mago's prelude (`java`, ...) are left out.
-
 use mago_syntax::cst::{Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -15,7 +5,6 @@ use super::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// Classes of the Zend Server extension stubs in Mago's prelude (`zend.php`); PHP itself does not declare them.
 const ZEND_SERVER: [&str; 4] = ["ZendAPI_Queue", "ZendAPI_Job", "java", "JavaException"];
 
 pub struct PreferClassConstant;
@@ -41,7 +30,6 @@ impl Rule for PreferClassConstant {
         };
         let span = node_span(string);
         let raw = &ctx.source[span.start..span.end];
-        // `substr($content, 1, -1)`, `ltrim($name, '\\')`, `str_replace('\\\\', '\\', $name)`
         let Some(inner) = raw.get(1..raw.len().saturating_sub(1)) else {
             return;
         };
@@ -49,7 +37,6 @@ impl Rule for PreferClassConstant {
         if name.is_empty() {
             return;
         }
-        // `$rc->getName() === $name`: the class is spelt as declared
         let declared = facts(ctx)
             .codebase
             .get_class_like(name.as_bytes())

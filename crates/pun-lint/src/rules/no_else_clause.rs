@@ -1,8 +1,3 @@
-//! `lint/complexity/no-else-clause`, ported from Mago 1.57.0's `no-else-clause`
-//! (mago-linter src/rule/maintainability/no_else_clause.rs).
-//!
-//! Reports each `elseif` and the `else` of an `if`, in either syntax.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{IfBody, Node, NodeKind};
 

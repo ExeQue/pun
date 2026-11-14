@@ -11,8 +11,6 @@ use pcre2::bytes::Regex;
 use pun_problem::{Level, LineIndex, Problem};
 use std::sync::LazyLock;
 
-/// GithubErrorFormatter::formatMessage: newlines encoded, and each `@mention` put in backticks so GitHub doesn't
-/// notify anyone. `%` and `\r` are encoded first (escapeData), so GitHub decodes the message back to what it was.
 pub(crate) fn escape_data(message: &str) -> String {
     let message = message
         .replace('%', "%25")
@@ -21,7 +19,6 @@ pub(crate) fn escape_data(message: &str) -> String {
     mentions(&message)
 }
 
-/// Each `@mention` in backticks, as formatMessage's preg_replace does (every non-overlapping match, left to right).
 pub(crate) fn mentions(message: &str) -> String {
     static MENTION: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(^|\s)@([a-zA-Z0-9_\-]+)(\s|$)").expect("regex"));
@@ -43,7 +40,6 @@ pub(crate) fn mentions(message: &str) -> String {
     String::from_utf8(out).expect("utf-8 in, utf-8 out")
 }
 
-/// A property value (`file=`, `title=`): escapeProperty's `%`, `\r`, `\n`, `:` and `,`.
 pub(crate) fn escape_property(value: &str) -> String {
     value
         .replace('%', "%25")
@@ -53,7 +49,6 @@ pub(crate) fn escape_property(value: &str) -> String {
         .replace(',', "%2C")
 }
 
-/// One annotation for a place in a file: `col` 0 when there is none, as PHPStan writes it.
 fn annotation(
     level: Level,
     path: &str,
@@ -74,7 +69,6 @@ fn annotation(
     )
 }
 
-/// A problem (lint, analyse, a syntax error) at its span's start.
 pub(crate) fn problem(p: &Problem, index: &LineIndex) -> String {
     let at = index.line_col(p.span.start);
     annotation(
@@ -87,24 +81,18 @@ pub(crate) fn problem(p: &Problem, index: &LineIndex) -> String {
     )
 }
 
-/// A whole file (it needs formatting, or rules can fix it): an error at `line`, titled with the rule IDs.
 pub(crate) fn file(path: &str, line: usize, rules: &[String], message: &str) -> String {
     annotation(Level::Error, path, line, 0, &rules.join(", "), message)
 }
 
-/// A run error, which has no file: `::error ::<message>`.
 pub(crate) fn run_error(message: &str) -> String {
     format!("::error ::{}\n", escape_data(message))
 }
 
-/// The first line `new` changes in `old` (1-based): GitlabReporter::getLines' `begin`, the first `+`/`-` line of the
-/// diff's first chunk. sebastian/diff drops the common prefix before diffing, so that is the line holding the first
-/// byte the two differ in. Lines end at `\r\n`, `\r` or `\n`, as its `\R` split does.
 pub(crate) fn first_changed_line(old: &[u8], new: &[u8]) -> usize {
     let same = old.iter().zip(new).take_while(|(a, b)| a == b).count();
     let mut line = 1;
     for (i, &b) in old[..same].iter().enumerate() {
-        // A `\r` ends a line unless a `\n` follows it.
         if b == b'\n' || (b == b'\r' && old.get(i + 1) != Some(&b'\n')) {
             line += 1;
         }
@@ -117,8 +105,6 @@ mod tests {
     use super::*;
     use pun_problem::Span;
 
-    /// Hand-derived from GithubErrorFormatter::formatMessage plus escapeData: `%` first (so `%0A` in the text stays
-    /// literal), newlines encoded, mentions at a word start or after whitespace back-ticked, a mid-word `@` kept.
     #[test]
     fn escapes_like_github() {
         assert_eq!(
@@ -166,16 +152,13 @@ mod tests {
         );
     }
 
-    /// Lines of the first changed byte, counted by hand.
     #[test]
     fn first_changed_lines() {
         assert_eq!(first_changed_line(b"<?php\n$a;\n", b"<?php\n$b;\n"), 2);
         assert_eq!(first_changed_line(b"a\r\nb\r\nc", b"a\r\nb\r\nd"), 3);
         assert_eq!(first_changed_line(b"a\rb\rc", b"a\rb\rd"), 3);
-        // An inserted line after line 1 begins at line 2; a missing final newline is the last line.
         assert_eq!(first_changed_line(b"a\nb\n", b"a\n\nb\n"), 2);
         assert_eq!(first_changed_line(b"a\nb", b"a\nb\n"), 2);
-        // A change right after a `\r` that a `\n` follows in `old` only.
         assert_eq!(first_changed_line(b"a\r\nb", b"a\rb"), 1);
     }
 }

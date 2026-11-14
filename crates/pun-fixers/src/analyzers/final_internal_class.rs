@@ -1,5 +1,3 @@
-//! The core of `PhpCsFixer\Fixer\ClassNotation\FinalInternalClassFixer`, shared by the `final_internal_class`
-//! fixer and `final_class` (upstream's proxy to it), so each fixer builds on its own under `PUN_FIXERS_ONLY`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -24,7 +22,6 @@ const DEFAULT_EXCLUDE: &[&str] = &[
 const CLASS_CANDIDATE_ACCEPT_TYPES: &[Kind] =
     &[CT_ATTRIBUTE_CLOSE, T_DOC_COMMENT, T_COMMENT, T_READONLY];
 
-/// A normalized annotation list: lowercased keys (leading `@` dropped) in PHP array insertion order.
 type Keys = Vec<Vec<u8>>;
 
 #[derive(Default)]
@@ -83,7 +80,6 @@ impl FinalInternalClassFixer {
         self.consider_absent_docblock_as_internal_class =
             c.bool("consider_absent_docblock_as_internal_class", false)?;
         self.check_attributes = true;
-        // assertConfigHasNoConflicts
         for (new, old, new_key, old_key, defaults) in [
             (
                 &mut include,
@@ -110,7 +106,7 @@ impl FinalInternalClassFixer {
             }
             if old_config_is_set {
                 *new = old;
-                self.check_attributes = false; // run in old mode
+                self.check_attributes = false;
             }
         }
         let dup: Vec<String> = include
@@ -150,7 +146,7 @@ impl FinalInternalClassFixer {
         }
         let modifiers = tokens_analyzer.get_classy_modifiers(index);
         if modifiers.final_.is_some() || modifiers.abstract_.is_some() {
-            return false; // ignore class; it is abstract or already final
+            return false;
         }
         let mut decisions: Vec<Option<bool>> = Vec::new();
         let mut current_index = Some(index);

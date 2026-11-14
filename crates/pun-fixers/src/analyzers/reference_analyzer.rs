@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\ReferenceAnalyzer`. Its only caller (operator_linebreak) passes
-//! `'&'` tokens, so upstream's leading `CT::T_RETURN_REF` check is left out.
 use pun_tokens::{Kind::*, Proto, Tokens};
 
 pub(crate) struct ReferenceAnalyzer;

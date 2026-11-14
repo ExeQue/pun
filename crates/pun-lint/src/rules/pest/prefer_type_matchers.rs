@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-type-matchers`, ported from pest-plugin-rector's `UseTypeMatchersRector`:
-//! `expect(is_array($x))->toBeTrue()` becomes `expect($x)->toBeArray()`, and the same for the other `is_*()` functions
-//! of `TYPE_FUNCTION_TO_MATCHER`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 
@@ -60,7 +56,6 @@ impl Rule for PreferTypeMatchers {
     }
 }
 
-/// `TYPE_FUNCTION_TO_MATCHER`.
 const TYPE_FUNCTION_TO_MATCHER: [(&str, &str); 14] = [
     ("is_array", "toBeArray"),
     ("is_string", "toBeString"),

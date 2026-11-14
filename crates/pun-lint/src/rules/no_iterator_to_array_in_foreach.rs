@@ -1,8 +1,3 @@
-//! `lint/complexity/no-iterator-to-array-in-foreach`, ported from Mago 1.57.0's `no-iterator-to-array-in-foreach`
-//! (mago-linter src/rule/redundancy/no_iterator_to_array_in_foreach.rs).
-//!
-//! Reports `foreach (iterator_to_array($it) as ...)`: `foreach` iterates any `Traversable` directly.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 

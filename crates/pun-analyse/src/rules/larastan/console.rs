@@ -1,6 +1,3 @@
-//! UndefinedArgumentOrOptionRule: `$this->argument('x')` and `$this->option('x')` in a command, against the
-//! definitions of the registered commands that are that class or extend it ([`crate::larastan::console`]).
-
 use std::sync::Arc;
 
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
@@ -29,7 +26,6 @@ use crate::larastan::console::{Command, InputArgument, InputOption, Key, Value};
 
 const COMMAND: &[u8] = b"illuminate\\console\\command";
 
-/// The calls the rule reads: `->argument()` or `->option()` with one argument.
 pub(super) fn input_call<'a, 'arena>(
     call: &'a MethodCall<'arena>,
 ) -> Option<(&'a [u8], &'a Expression<'arena>)> {
@@ -96,9 +92,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'aren
     }
 }
 
-/// The ConsoleCommand extensions (ArgumentDynamicReturnTypeExtension, OptionDynamicReturnTypeExtension,
-/// HasArgumentDynamicReturnTypeExtension, HasOptionDynamicReturnTypeExtension) with ConsoleApplicationHelper's types,
-/// for a command's `argument()`, `arguments()`, `option()`, `options()`, `hasArgument()` and `hasOption()`.
 pub(crate) struct Types(pub(crate) Arc<Vec<Command>>);
 
 static META: ProviderMeta = ProviderMeta::new(
@@ -145,7 +138,6 @@ impl MethodReturnTypeProvider for Types {
         if !is_command(receiver) {
             return None;
         }
-        // ConsoleApplicationResolver::findCommands() of the scope's class
         let scope = context.current_class_name()?;
         if !is_command(scope.as_bytes()) {
             return None;
@@ -226,7 +218,6 @@ impl MethodReturnTypeProvider for Types {
     }
 }
 
-/// `TypeCombinator::union()`.
 fn union(codebase: &CodebaseMetadata, types: Vec<TUnion>) -> TUnion {
     let mut types = types.into_iter();
     let first = types.next().unwrap_or_else(get_never);
@@ -235,7 +226,6 @@ fn union(codebase: &CodebaseMetadata, types: Vec<TUnion>) -> TUnion {
     })
 }
 
-/// ConsoleApplicationHelper::getArguments() or getOptions(): each command's own definition as an array shape.
 fn shapes(codebase: &CodebaseMetadata, commands: &[&Command], options: bool) -> Option<TUnion> {
     let shapes: Vec<TUnion> = commands
         .iter()
@@ -274,12 +264,10 @@ fn shapes(codebase: &CodebaseMetadata, commands: &[&Command], options: bool) -> 
     (!shapes.is_empty()).then(|| union(codebase, shapes))
 }
 
-/// `array<int, $value>`.
 fn int_array(value: TUnion) -> TUnion {
     get_keyed_array(get_int(), value)
 }
 
-/// ConsoleApplicationHelper::getArgumentType().
 fn argument_type(codebase: &CodebaseMetadata, a: &InputArgument) -> TUnion {
     let Some(mode) = a.mode else {
         return get_mixed();
@@ -298,7 +286,6 @@ fn argument_type(codebase: &CodebaseMetadata, a: &InputArgument) -> TUnion {
     }
 }
 
-/// ConsoleApplicationHelper::getOptionType().
 fn option_type(codebase: &CodebaseMetadata, o: &InputOption) -> TUnion {
     let Some(mode) = o.mode else {
         return get_mixed();
@@ -322,7 +309,6 @@ fn option_type(codebase: &CodebaseMetadata, o: &InputOption) -> TUnion {
     union(codebase, vec![t, value_type(&o.default)])
 }
 
-/// `$scope->getTypeFromValue()`.
 fn value_type(v: &Value) -> TUnion {
     match v {
         Value::Null => get_null(),

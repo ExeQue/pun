@@ -1,9 +1,3 @@
-//! `lint/style/no-redundant-final-const`, ported from Rector 2.8.4's `RemoveFinalFromConstRector`
-//! (rules/CodingStyle/Rector/ClassConst), with `VisibilityManipulator::removeFinal`.
-//!
-//! In a `final class`, `final public const X` says nothing more than `public const X`: no child class can override
-//! the constant. Rector removes the modifier; Pun deletes the `final` keyword and the blanks after it.
-
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -17,7 +11,6 @@ impl Rule for NoRedundantFinalConst {
         "lint/style/no-redundant-final-const"
     }
 
-    /// PhpVersionFeature::FINAL_CLASS_CONSTANTS.
     fn min_php_version(&self) -> u32 {
         80100
     }

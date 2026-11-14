@@ -1,13 +1,3 @@
-//! `lint/phpunit/prefer-this-call`, ported from rector-phpunit's `PreferPHPUnitThisCallRector`
-//! (rules/CodeQuality/Rector/Class_) and `AssertMethodAnalyzer::detectTestCaseCall`.
-//!
-//! In a test class, `self::assert*()` and `static::assert*()` (and the matcher, mock and exception methods of
-//! `NonAssertNonStaticMethods`) become `$this->...()` when the class's method of that name is declared by
-//! `PHPUnit\Framework\TestCase` or `PHPUnit\Framework\Assert`. Static methods, static closures and static arrow
-//! functions are skipped with what they hold. php-parser prints the new call: the arguments joined with `, ` (a line
-//! each when one has comments). Rector's oracle matches `self` and `static` as written in lower case only, and leaves
-//! anonymous classes alone.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -19,7 +9,6 @@ use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// rector-phpunit's `NonAssertNonStaticMethods::ALL`.
 pub(super) const NON_ASSERT: &[&str] = &[
     "createMock",
     "atLeast",
@@ -60,7 +49,6 @@ impl Rule for PreferThisCall {
             return;
         }
         let facts = facts(ctx);
-        // `isObjectType(self, TestCase)`, and the class's reflection
         let Some(metadata) = class_scope(&scope)
             .and_then(|s| s.name)
             .filter(|class| is_a(ctx, class, &[TEST_CASE]))

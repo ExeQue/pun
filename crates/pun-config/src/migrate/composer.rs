@@ -1,14 +1,8 @@
-//! `pun migrate`, dependency part: composer.json becomes pun.toml's dependency sections ([`crate::manifest`]).
-//! Constraints, autoload rules, scripts and `extra` are copied as they are. Credentials in `config` (`http-basic`,
-//! `github-oauth` and the rest) do not belong in a committed file: they move to the project's `auth.json`, which
-//! Composer reads too. A key composer.json's schema doesn't have, and a `null` (TOML has none), is named and skipped.
-
 use crate::manifest::{PACKAGE_KEYS, SECTIONS};
 use crate::toml_text;
 use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
-/// `config` keys that hold credentials: Composer's auth.json keys.
 pub const CREDENTIALS: [&str; 8] = [
     "http-basic",
     "bearer",
@@ -22,18 +16,13 @@ pub const CREDENTIALS: [&str; 8] = [
 
 #[derive(Debug)]
 pub struct Dependencies {
-    /// The sections, as pun.toml text.
     pub toml: String,
-    /// The credentials taken out of `config`, as auth.json's top level; empty when there were none.
     pub auth: Map<String, Value>,
-    /// What isn't carried over: (composer.json key, why).
     pub skipped: Vec<(String, String)>,
-    /// The entries of `require` and `require-dev`.
     pub require: usize,
     pub require_dev: usize,
 }
 
-/// composer.json's text as pun.toml's dependency sections.
 pub fn from_composer_json(text: &str) -> Result<Dependencies> {
     let mut json: Value = serde_json::from_str(text)
         .map_err(|e| anyhow::anyhow!("composer.json is not valid JSON: {e}"))?;
@@ -68,7 +57,6 @@ pub fn from_composer_json(text: &str) -> Result<Dependencies> {
         } else if let Some(name) = SECTIONS.iter().find(|s| **s == k && **s != "package") {
             sections.push((name, v));
         } else if k != "$schema" {
-            // `$schema` only points an editor at composer.json's JSON schema, so it is dropped unreported.
             skipped.push((k, "not a composer.json key".to_string()));
         }
     }
@@ -95,7 +83,6 @@ pub fn from_composer_json(text: &str) -> Result<Dependencies> {
                     toml_text::section(&mut toml, name, m, true);
                 }
             }
-            // An empty `[]` (PHP's empty array) is an empty section.
             Value::Array(items) if items.is_empty() => {}
             _ => skipped.push((name.to_string(), "must be an object".to_string())),
         }
@@ -109,8 +96,6 @@ pub fn from_composer_json(text: &str) -> Result<Dependencies> {
     })
 }
 
-/// `repositories` as a list. Composer also takes an object keyed by labels; the labels mean nothing except a
-/// `false` entry, which disables that repository (`"packagist.org": false`) and stays as `{ label = false }`.
 fn repository_list(repos: &Value) -> Value {
     match repos {
         Value::Object(m) => Value::Array(
@@ -132,7 +117,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Laravel's skeleton composer.json (laravel/laravel 13.x), hand-converted.
     const LARAVEL: &str = r#"{
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
@@ -243,7 +227,6 @@ laravel = { dont-discover = [] }
         );
         assert!(d.skipped.is_empty(), "{:?}", d.skipped);
         assert_eq!((d.require, d.require_dev), (3, 2));
-        // pun.toml's sections read back as the composer.json they came from, without what was skipped or moved.
         let table: toml::Table = toml::from_str(&d.toml).unwrap();
         let m = crate::manifest::parse(std::path::Path::new("pun.toml"), &table)
             .unwrap()
@@ -280,7 +263,6 @@ laravel = { dont-discover = [] }
                 ("extra".to_string(), "must be an object".to_string()),
             ]
         );
-        // A list of repositories stays a list.
         let d = from_composer_json(r#"{"repositories": [{"type": "vcs", "url": "u"}]}"#).unwrap();
         assert_eq!(d.toml, "[[repositories]]\ntype = \"vcs\"\nurl = \"u\"\n");
         assert!(from_composer_json("[]").is_err());

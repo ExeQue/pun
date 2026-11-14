@@ -1,6 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\GeneralPhpdocAnnotationRemoveFixer`, the proxy target of
-//! phpdoc_no_access / phpdoc_no_package (AbstractProxyFixer with a single proxied fixer). Both configure it with
-//! `case_sensitive => true` and a non-empty `annotations`, and only run it on candidates, so only that path is ported.
 use crate::analyzers::docblock::DocBlock;
 use pun_tokens::{Kind, Token, Tokens};
 

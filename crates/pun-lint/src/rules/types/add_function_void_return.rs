@@ -1,8 +1,3 @@
-//! `lint/types/add-function-void-return`, ported from Rector 2.8.4's `AddFunctionVoidReturnTypeWhereNoReturnRector`
-//! (rules/TypeDeclaration/Rector/Function_).
-//!
-//! A function without a return type that returns no value and does not yield gets `: void`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{VOID_TYPE, add_return_type, has_exclusive_void};

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\FopenFlagOrderFixer`.
 use crate::analyzers::abstract_fopen_flag_fixer::{
     self as base, flag_index, is_valid_mode_string, split_literal,
 };
@@ -21,7 +20,7 @@ fn fix_fopen_flag_token(tokens: &mut Tokens, start: usize, end: usize) {
     let content = tokens[index].get_content();
     let (bin_prefix, quote, mode) = split_literal(content);
     if mode.len() < 2 {
-        return; // nothing to sort
+        return;
     }
     if !is_valid_mode_string(mode) {
         return;
@@ -45,9 +44,7 @@ fn fix_fopen_flag_token(tokens: &mut Tokens, start: usize, end: usize) {
     }
 }
 
-/// `sortFlags`' comparator: `b` last, `t` before it, the rest by byte order.
 fn sort_flags(flag1: &[u8], flag2: &[u8]) -> Ordering {
-    // A valid mode holds each flag once, so two flags are never equal (upstream's `0` branch).
     for last in [b"b", b"t"] {
         if flag1 == last {
             return Ordering::Greater;

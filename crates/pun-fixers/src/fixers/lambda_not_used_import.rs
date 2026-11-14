@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\LambdaNotUsedImportFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -8,10 +7,8 @@ use indexmap::IndexMap;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Insertion-ordered `array<string, int>`.
 type Imports = IndexMap<Vec<u8>, usize>;
 
-/// `unset($imports[$key])`, true when it was set.
 fn unset(imports: &mut Imports, key: &[u8]) -> bool {
     imports.shift_remove(key).is_some()
 }
@@ -209,7 +206,6 @@ fn filter_arguments(tokens: &Tokens, arguments: &BTreeMap<usize, usize>) -> Impo
         if content == b"$this" || a.is_super_global(argument) {
             continue;
         }
-        // PHP array assignment keeps the first key's position
         imports.insert(content.to_vec(), argument);
     }
     imports

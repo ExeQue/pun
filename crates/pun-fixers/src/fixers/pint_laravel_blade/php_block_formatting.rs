@@ -1,5 +1,3 @@
-//! Port of `App\PrettierFormatters\PhpBlockFormatting` (runs Pint over the PHP in @php blocks, <?php
-//! islands, directive arguments, echoes and bound component attributes) and `App\Support\PhpFragmentFormatter`.
 use super::php::{contains, ltrim_chars, rtrim, strpos, strrpos, trim, trim_chars};
 use crate::analyzers::preg::RawPreg;
 use pun_format::Pipeline;
@@ -9,7 +7,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
-/// `PhpFragmentFormatter::DENYLIST` / `FRAGMENT_DENYLIST`.
 const DENYLIST: &[&str] = &["no_closing_tag", "no_unused_imports", "Pint/laravel_blade"];
 const FRAGMENT_DENYLIST: &[&str] = &[
     "fully_qualified_strict_types",
@@ -17,12 +14,9 @@ const FRAGMENT_DENYLIST: &[&str] = &[
     "declare_strict_types",
 ];
 
-/// The preset pipelines, built once per process for each (preset, fragment) pair and shared by every Blade file.
 type Pipelines = Mutex<HashMap<(String, bool), &'static Option<Pipeline>>>;
 static PIPELINES: LazyLock<Pipelines> = LazyLock::new(Pipelines::default);
 
-/// `PhpFragmentFormatter`: the active preset's fixers (never the project's own overrides, like Pint's
-/// sequential runner), memoized per fragment/file key.
 pub(super) struct PhpFragmentFormatter {
     preset: String,
     fragment: OnceCell<&'static Option<Pipeline>>,
@@ -38,9 +32,7 @@ impl PhpFragmentFormatter {
         }
     }
 
-    /// Format a PHP document that already opens with "<?php".
     pub(super) fn format(&self, code: &[u8], fragment: bool) -> Vec<u8> {
-        // Tokens::fromCode (TOKEN_PARSE) throws a CompileError on invalid code: leave it as-is.
         if pun_format::lint(code).is_err() {
             return code.to_vec();
         }
@@ -74,10 +66,8 @@ fn pipeline(preset: &str, fragment: bool) -> Option<Pipeline> {
     } else {
         DENYLIST.to_vec()
     };
-    // Pint unsets the denylist before `new RuleSet()`, so a denied rule a set enables still runs.
     let mut rules = pun_config::preset_rules(preset).unwrap_or_default();
     rules.retain(|name, _| !deny.contains(&name.as_str()));
-    // A preset's sets are always booleans.
     let rules = pun_config::rule_set(rules).unwrap();
     Pipeline::new(&rules, &|| {
         crate::all()
@@ -141,7 +131,7 @@ impl PhpBlockFormatting {
         edits.extend(more);
         let more = self.attribute_edits(content, &edits, &verbatim);
         edits.extend(more);
-        edits.sort_by_key(|e| e.0); // usort is stable in PHP 8
+        edits.sort_by_key(|e| e.0);
 
         let mut result = Vec::with_capacity(content.len());
         let mut cursor = 0;
@@ -240,7 +230,6 @@ impl PhpBlockFormatting {
             if !contains(region, b"\n") || within(start, &spans) {
                 continue;
             }
-            // "@{{ ... }}" is an escaped literal echo emitted verbatim, not PHP.
             if start > 0 && content[start - 1] == b'@' {
                 continue;
             }
@@ -258,15 +247,12 @@ impl PhpBlockFormatting {
         if trim(expr).is_empty() {
             return None;
         }
-        // De-indent to column zero so Pint's output stays idempotent across runs.
         let core = deindent(trim_chars(expr, b"\r\n"));
         let formatted = strip_php_wrapper(
             &self
                 .formatter
                 .format(&[b"<?php\n", &core[..], b";\n"].concat(), true),
         );
-        // Pint's `(string) preg_replace(..)` turns a failure into `""`. This pattern does no backtracking, so it cannot
-        // reach a PCRE limit; a panic would fail only this file, like a failed masker regex.
         let formatted = RawPreg::replace("/;$/", "", &formatted).expect("`/;$/` does not backtrack");
         if trim(&formatted).is_empty() {
             return None;
@@ -294,7 +280,6 @@ impl PhpBlockFormatting {
         ) {
             let name = m.str(1);
             let start = m.start();
-            // "::attr" is an escaped literal attribute, not a bound expression.
             if name.starts_with(b"::") || !within(start, &tags) || within(start, &skip) {
                 continue;
             }
@@ -370,7 +355,6 @@ impl PhpBlockFormatting {
     }
 }
 
-/// `reindentArg`: indent every continuation line; a blank one only when it is the last (the directive's ")").
 fn reindent_arg(inner: &[u8], indent: &[u8]) -> Vec<u8> {
     let lines: Vec<&[u8]> = inner.split(|&b| b == b'\n').collect();
     let last = lines.len() - 1;
@@ -388,7 +372,6 @@ fn reindent_arg(inner: &[u8], indent: &[u8]) -> Vec<u8> {
     lines.join(&b'\n')
 }
 
-/// `unindentArg`: strip the indentation an earlier run added to the continuation lines of an argument.
 fn unindent_arg(inner: &[u8], indent: &[u8]) -> Vec<u8> {
     if indent.is_empty() {
         return inner.to_vec();
@@ -404,8 +387,6 @@ fn unindent_arg(inner: &[u8], indent: &[u8]) -> Vec<u8> {
     lines.join(&b'\n')
 }
 
-/// `stripHostTrailingComma`: drop the trailing comma "trailing_comma_in_multiline" gave the synthetic call host,
-/// unless the argument arrived with it.
 fn strip_host_trailing_comma(formatted: Vec<u8>, host: &[u8]) -> Vec<u8> {
     let Some(mut tokens) = host_tokens(&formatted) else {
         return formatted;
@@ -420,14 +401,12 @@ fn strip_host_trailing_comma(formatted: Vec<u8>, host: &[u8]) -> Vec<u8> {
     strip_php_wrapper(&tokens.generate_code())
 }
 
-/// `hostTokens`: `Tokens::fromCode("<?php\n".$host)`, or None on a CompileError/ParseError.
 fn host_tokens(host: &[u8]) -> Option<Tokens> {
     let code = [b"<?php\n", host].concat();
     pun_format::lint(&code).ok()?;
     Some(Tokens::from_code(&code))
 }
 
-/// `hostTrailingComma`: the comma before the host's closing ")" and ";", walking back over comments.
 fn host_trailing_comma(tokens: &Tokens) -> Option<usize> {
     let semicolon = tokens.get_prev_meaningful_token(tokens.count())?;
     let close = tokens.get_prev_meaningful_token(semicolon)?;
@@ -542,7 +521,6 @@ fn indent_at(content: &[u8], offset: usize) -> Option<&[u8]> {
 }
 
 fn strip_php_wrapper(formatted: &[u8]) -> Vec<u8> {
-    // Like `/;$/` in format_echo: one anchored attempt, whose `\s*` backtracks at most once per character.
     let stripped = RawPreg::replace("/^<\\?php\\s*\\n/", "", formatted)
         .expect("the anchored pattern backtracks linearly");
     rtrim(&stripped).to_vec()

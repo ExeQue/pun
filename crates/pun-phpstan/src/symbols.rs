@@ -37,7 +37,6 @@ pub struct Param {
     pub allowed_constants: Option<ParameterAllowedConstants>,
 }
 
-/// PHPStan's `ParameterAllowedConstants`. Equality includes the order of names and exclusive groups.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct ParameterAllowedConstants {
     pub bitmask: bool,
@@ -46,7 +45,6 @@ pub struct ParameterAllowedConstants {
     pub exclusive_groups: Vec<Vec<String>>,
 }
 
-/// A syntactically referenced constant, with its reflection's identity and built-in status.
 pub struct ConstantReflection {
     pub name: String,
     pub builtin: bool,
@@ -59,14 +57,12 @@ pub struct AllowedConstantsResult<'a> {
 }
 
 impl AllowedConstantsResult<'_> {
-    /// `ParameterAllowedConstantsCheckResult::isOk()`
     pub fn is_ok(&self) -> bool {
         self.disallowed.is_empty() && self.violated_groups.is_empty() && !self.bitmask_not_allowed
     }
 }
 
 impl ParameterAllowedConstants {
-    /// `ParameterAllowedConstants::check()`: user aliases are deliberately not compared by value.
     pub fn check<'a>(&self, constants: &'a [ConstantReflection]) -> AllowedConstantsResult<'a> {
         let names: Vec<_> = constants
             .iter()
@@ -102,7 +98,6 @@ impl ParameterAllowedConstants {
 pub struct Variant {
     pub params: Vec<Param>,
     pub ret: String,
-    /// ExtendedParametersAcceptor's independent return channels and template maps.
     pub signature: Option<Signature>,
 }
 
@@ -118,18 +113,14 @@ pub struct Signature {
 #[derive(Debug, PartialEq)]
 pub struct Function {
     pub name: String,
-    /// `hasSideEffects()`: `Yes`, `No` or `Maybe`
     pub side_effects: String,
     pub deprecated: bool,
     pub variants: Vec<Variant>,
-    /// `getNamedArgumentsVariants()`, when it differs from the positional ones
     pub named: Option<Vec<Variant>>,
     pub is_static: bool,
-    /// A method's resolved PHPDoc (`getResolvedPhpDoc()`), which an overriding user method inherits.
     pub doc: Option<MethodDoc>,
 }
 
-/// The `@param` types (by parameter position) and `@return` type of a built-in method's PHPDoc.
 #[derive(Debug, PartialEq, Default)]
 pub struct MethodDoc {
     pub params: HashMap<usize, String>,
@@ -141,7 +132,6 @@ pub struct Template {
     pub name: String,
     pub bound: String,
     pub default: Option<String>,
-    /// `TemplateTypeVariance::describe()`
     pub variance: &'static str,
 }
 
@@ -151,25 +141,17 @@ pub struct Class {
     pub ancestors: Vec<String>,
     pub templates: Vec<Template>,
     pub cases: Vec<String>,
-    /// a backed enum's case values (case name, type string)
     pub case_values: Vec<(String, String)>,
     pub is_interface: bool,
     pub is_trait: bool,
     pub is_enum: bool,
-    /// `isFinalByKeyword()`
     pub is_final: bool,
-    /// public instance properties, declared or inherited
     pub properties: Vec<String>,
-    /// `ClassReflection::allowsDynamicProperties()`: a missing property of a final class is maybe, not no
     pub allows_dynamic_properties: bool,
     pub constants: Vec<(String, String)>,
-    /// by lowercase name
     pub methods: HashMap<String, Function>,
-    /// a `Traversable`'s iterable key and value types, over its own templates
     pub iterable: Option<(String, String)>,
-    /// generic ancestors' type arguments over the class's own templates
     pub generics: HashMap<String, Vec<String>>,
-    /// the `@var` type of each declared, non-private property with one
     pub property_docs: HashMap<String, String>,
 }
 
@@ -179,7 +161,6 @@ pub struct Symbols {
     pub constants: HashMap<String, String>,
 }
 
-/// A JSON object read in order; PHP writes an empty map as `[]`.
 struct Entries<T>(Vec<(String, T)>);
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Entries<T> {
@@ -198,7 +179,6 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Entries<T> {
                 Ok(Entries(out))
             }
             fn visit_seq<A: SeqAccess<'de>>(self, mut s: A) -> Result<Entries<T>, A::Error> {
-                // as `Value::as_object()` read it: a list is no map
                 while s.next_element::<IgnoredAny>()?.is_some() {}
                 Ok(Entries(Vec::new()))
             }
@@ -268,7 +248,6 @@ struct RawClass {
     name: String,
     ancestors: Vec<String>,
     templates: Entries<(String, Option<String>)>,
-    /// the non-invariant templates' variance
     variances: Option<Entries<String>>,
     cases: Vec<String>,
     interface: bool,
@@ -283,7 +262,6 @@ struct RawClass {
     property_docs: Option<Entries<String>>,
 }
 
-/// `null`: gone in 8.5.
 #[derive(Deserialize)]
 struct RawPhp85 {
     functions: Entries<Option<RawFunction>>,
@@ -360,7 +338,6 @@ fn read_class(v: RawClass) -> Class {
             .0
             .into_iter()
             .map(|(name, (bound, default))| Template {
-                // (a template is declared invariant, covariant or contravariant)
                 variance: variances.iter().find(|(n, _)| *n == name).map_or(
                     "invariant",
                     |(_, v)| {
@@ -389,7 +366,6 @@ fn read_class(v: RawClass) -> Class {
             .methods
             .0
             .into_iter()
-            // the exporter's php-parser prefixes a reserved word (`Generator::throw()`)
             .map(|(k, m)| {
                 let mut f = read_function(m);
                 const PREFIX: &str = "ps_unreserve_prefix_";
@@ -460,15 +436,12 @@ pub fn symbols(version: PhpVersion) -> &'static Symbols {
     }
 }
 
-/// A built-in class by any-case name (a leading `\` is ignored). Class facts the type system needs (canonical
-/// name, ancestors) do not differ between 8.4 and 8.5.
 pub fn class(name: &str) -> Option<&'static Class> {
     symbols(PhpVersion::Php84)
         .classes
         .get(&name.trim_start_matches('\\').to_ascii_lowercase())
 }
 
-/// A class [`lookup()`] found: a built-in one, or one the [`with_classes()`] provider gave.
 #[derive(Clone)]
 pub enum ClassRef {
     Builtin(&'static Class),
@@ -491,8 +464,6 @@ thread_local! {
     static PROVIDER: Cell<Option<*const Provider>> = const { Cell::new(None) };
 }
 
-/// Runs `f` with `provider` answering [`lookup()`] for the classes PHP does not define (the analysed project's and
-/// its dependencies'), as PHPStan's ReflectionProvider knows them, on this thread.
 pub fn with_classes<R>(provider: &dyn Fn(&str) -> Option<Arc<Class>>, f: impl FnOnce() -> R) -> R {
     struct Restore(Option<*const Provider>);
     impl Drop for Restore {
@@ -512,7 +483,6 @@ pub fn with_classes<R>(provider: &dyn Fn(&str) -> Option<Arc<Class>>, f: impl Fn
     f()
 }
 
-/// `ReflectionProvider::getClass()`: a built-in class, else one of the [`with_classes()`] provider.
 pub fn lookup(name: &str) -> Option<ClassRef> {
     if let Some(c) = class(name) {
         return Some(ClassRef::Builtin(c));
@@ -529,7 +499,6 @@ thread_local! {
     static FUNCTIONS: Cell<Option<*const FunctionProvider>> = const { Cell::new(None) };
 }
 
-/// Runs `f` with `provider` answering [`has_function()`] for the functions PHP does not define, on this thread.
 pub fn with_functions<R>(provider: &dyn Fn(&str) -> bool, f: impl FnOnce() -> R) -> R {
     struct Restore(Option<*const FunctionProvider>);
     impl Drop for Restore {
@@ -548,7 +517,6 @@ pub fn with_functions<R>(provider: &dyn Fn(&str) -> bool, f: impl FnOnce() -> R)
     f()
 }
 
-/// `ReflectionProvider::hasFunction()`: a built-in function, else one the [`with_functions()`] provider knows.
 pub fn has_function(name: &str) -> bool {
     if function(name).is_some() {
         return true;

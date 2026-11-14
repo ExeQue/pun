@@ -1,13 +1,9 @@
-//! Mago 1.57.0's linter helpers for sensitive names (rule/utils/security.rs), shared by lint-b's ports of
-//! `no-insecure-comparison`, `no-literal-password` and `no-tainted-data`.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::{
     Access, Call, ClassLikeConstantSelector, ClassLikeMemberSelector, Expression, Literal,
     LiteralString, MatchArm, Variable,
 };
 
-/// `get_password`: the span of the part of `expr` whose name looks like a password, token, secret or API key.
 pub(super) fn get_password(expr: &Expression<'_>) -> Option<Span> {
     match expr {
         Expression::Parenthesized(p) => get_password(p.expression),
@@ -46,13 +42,10 @@ fn get_password_from_variable(variable: &Variable<'_>) -> Option<Span> {
     }
 }
 
-/// `is_password_literal`: the literal's text between its quotes is a sensitive name.
 pub(super) fn is_password_literal(literal: &LiteralString<'_>) -> bool {
     is_password(&literal.raw[1..literal.raw.len() - 1])
 }
 
-/// `is_password`: a name ending (ignoring ASCII case, after a `$`, `get` and `_`) in `password`, `token`, `secret`,
-/// `apikey` or `api_key`; a name starting with `--` is not one.
 pub(super) fn is_password(mut name: &[u8]) -> bool {
     if name.starts_with(b"--") {
         return false;
@@ -69,9 +62,6 @@ pub(super) fn is_password(mut name: &[u8]) -> bool {
         .any(|s| lower.ends_with(s))
 }
 
-/// `is_user_input`: the value comes straight from a request superglobal (`$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`,
-/// `$_FILES`, `$_SERVER`, `$_SESSION`), through parentheses, an assignment, a ternary, an array access, a `match` arm,
-/// a concatenation or `??`.
 pub(super) fn is_user_input(expression: &Expression<'_>) -> bool {
     match expression {
         Expression::Parenthesized(p) => is_user_input(p.expression),

@@ -1,13 +1,3 @@
-//! `lint/classes/prefer-self-over-static`, ported from Rector 2.8.4's `ConvertStaticToSelfRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! `static::` becomes `self::` where late static binding cannot pick another member: in a `final` class for a static
-//! method, a static property or a constant; elsewhere for a member that is `private` or `final`.
-//!
-//! Rector reads the member from PHPStan's reflection, inherited members included. The syntax knows the members the
-//! class declares itself, so Pun leaves a `static::` alone when the member is not one of them. Rector also walks
-//! nested anonymous classes against the outer class; there `static` is the anonymous class, so Pun stops at them.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -60,15 +50,12 @@ impl Rule for PreferSelfOverStatic {
     }
 }
 
-/// A `static::` access: the member's kind and name.
 enum Access<'a> {
     Property(&'a [u8]),
     Method(&'a [u8]),
     Constant(&'a [u8]),
 }
 
-/// Every `static::method()`, `static::$property` and `static::CONSTANT` under `node`, outside nested classes, with the
-/// span of its `static`.
 fn accesses<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     f: &mut impl FnMut((pun_problem::Span, Access<'ast>)),
@@ -101,7 +88,6 @@ fn accesses<'ast, 'arena>(
     node.visit_children(|child| accesses(child, f));
 }
 
-/// `shouldSkip()` inverted: the span of `static` when it can become `self`.
 fn convertible(
     class: &Class<'_>,
     is_final: bool,
@@ -134,7 +120,6 @@ fn convertible(
             _ => None,
         })?;
     let has = |pick: fn(&Modifier<'_>) -> bool| modifiers.iter().any(pick);
-    // A constant is static; a method or property must be.
     if !matches!(access, Access::Constant(_)) && !has(|m| matches!(m, Modifier::Static(_))) {
         return None;
     }

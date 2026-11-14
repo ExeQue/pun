@@ -1,9 +1,3 @@
-//! The look (output.md Build 2): which colours, glyphs and links a terminal gets.
-//!
-//! Colours are Pun's brand tokens from docs/design/tokens.json: 24-bit when `COLORTERM` is `truecolor` or `24bit`, the
-//! nearest xterm 256-colour value when `TERM` names a 256-colour terminal, and the standard 16 colours otherwise. The
-//! light or dark token variant follows the terminal's background (`COLORFGBG`), dark when it can't tell.
-
 use std::io::IsTerminal;
 use std::sync::LazyLock;
 
@@ -263,7 +257,8 @@ type Rgb = (u8, u8, u8);
 /// docs/design/tokens.json's colour tokens: (name, light, dark).
 static TOKENS: LazyLock<Vec<(String, Rgb, Rgb)>> = LazyLock::new(|| {
     let doc: serde_json::Value =
-        serde_json::from_str(include_str!("../../../../docs/design/tokens.json")).expect("tokens.json");
+        serde_json::from_str(include_str!("../../../../docs/design/tokens.json"))
+            .expect("tokens.json");
     let hex = |v: &serde_json::Value| {
         let s = v.as_str().expect("a colour");
         let n = u32::from_str_radix(&s[1..], 16).expect("#RRGGBB");

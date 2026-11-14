@@ -1,13 +1,3 @@
-//! `lint/phpunit/prefer-create-stub`, ported from rector-phpunit's `PropertyCreateMockToCreateStubRector`
-//! (rules/PHPUnit120/Rector/Class_), with `MockObjectPropertyDetector::collectFromClassMethod` and
-//! `MockObjectExprDetector::isPropertyUsedForMocking`.
-//!
-//! In a test class that is not abstract, whose short name neither ends in `TestCase` nor starts with `Abstract`, and
-//! that has a `setUp()` method, a property `setUp()` assigns `createMock()` to becomes a stub when no method call in
-//! the class (closures included) is made on a fetch of it: the call becomes `createStub()`, and the property's type
-//! `\PHPUnit\Framework\MockObject\Stub`, or, in an intersection, that type in place of `MockObject`. Rector runs it
-//! only for PHPUnit 11 and later; Pun leaves that to the rule's group.
-
 use mago_syntax::cst::{
     Call, ClassLikeMember, Expression, Hint, MethodBody, Modifier, Node, NodeKind, Property,
 };
@@ -20,9 +10,7 @@ use crate::rules::types::compare::mapper::flatten;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
-/// `PHPUnitClassName::STUB`, as php-parser prints a new `FullyQualified`.
 const STUB: &str = "\\PHPUnit\\Framework\\MockObject\\Stub";
 
 pub struct PreferCreateStub;
@@ -46,12 +34,10 @@ impl Rule for PreferCreateStub {
         let (members, _, _) = class_body(node).unwrap();
         let mut scope = ancestors.to_vec();
         scope.push(node);
-        // shouldSkipClass
         if !is_in_test_class(ctx, &scope, None) {
             return;
         }
         if let Node::Class(class) = node {
-            // skip abstract/base test classes, as property can be mocked in child classes
             if class
                 .modifiers
                 .iter()
@@ -64,7 +50,6 @@ impl Rule for PreferCreateStub {
                 return;
             }
         }
-        // the setup class method must be here, so we have a place where the createMock() is used
         let Some(set_up) = members.iter().find_map(|m| match m {
             ClassLikeMember::Method(m) if m.name.value.eq_ignore_ascii_case(b"setUp") => Some(m),
             _ => None,
@@ -74,7 +59,6 @@ impl Rule for PreferCreateStub {
         let MethodBody::Concrete(body) = &set_up.body else {
             return;
         };
-        // collectFromClassMethod: the last createMock() assigned to each property, in the order of the first
         let mut calls: Vec<(&[u8], AnyCall<'_>)> = Vec::new();
         for statement in block_list(ctx.source, body).stmts {
             let Some(assign) = expression(statement).and_then(assign) else {
@@ -99,7 +83,6 @@ impl Rule for PreferCreateStub {
         let mut edits: Vec<Edit> = Vec::new();
         let mut first = None;
         for (name, call) in calls {
-            // isPropertyUsedForMocking: the property must exist, with no method call on a fetch of it
             let Some(property) = members.iter().find_map(|m| match m {
                 ClassLikeMember::Property(p) if declares(p, name) => Some(p),
                 _ => None,
@@ -142,7 +125,6 @@ impl Rule for PreferCreateStub {
                     ));
                 }
             }
-            // a property statement of two items gets its type once
             if edits[..at].contains(&edits[edits.len() - 1]) && edits.len() > at {
                 edits.pop();
             }
@@ -159,7 +141,6 @@ impl Rule for PreferCreateStub {
     }
 }
 
-/// php-parser's `Class_::getProperty()`: a property statement declares `name` (any of its items).
 fn declares(property: &Property<'_>, name: &[u8]) -> bool {
     match property {
         Property::Plain(p) => p.items.iter().any(|i| i.variable().name[1..] == *name),
@@ -167,7 +148,6 @@ fn declares(property: &Property<'_>, name: &[u8]) -> bool {
     }
 }
 
-/// Whether a method call anywhere in the class's methods is made on a property fetch (`$any->name`) of `name`.
 fn is_called_on(class: Node<'_, '_>, name: &[u8]) -> bool {
     let (members, _, _) = class_body(class).unwrap();
     let mut stack: Vec<Node<'_, '_>> = members

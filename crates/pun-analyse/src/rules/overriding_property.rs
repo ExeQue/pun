@@ -1,8 +1,3 @@
-//! OverridingPropertyRule (ClassPropertyNode): the property's prototype is the parent's non-private native property,
-//! else the first interface's. User classes come from Mago's codex, built-in ones from PHPStan's reflection
-//! (data/native-methods.json). checkPhpDocMethodSignatures (property.phpDocType) and
-//! checkMissingOverridePropertyAttribute are off below level 3.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::property::PropertyMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -16,9 +11,7 @@ use super::declared;
 use super::overriding::{ANCESTRY, Class};
 use super::properties::{PropertyNode, is_virtual};
 
-/// The prototype as PhpPropertyReflection gives it.
 struct Prototype {
-    /// `getDeclaringClass()->getDisplayName()`
     class: String,
     is_public: bool,
     is_private: bool,
@@ -28,25 +21,21 @@ struct Prototype {
     final_by_keyword: bool,
     is_final: bool,
     is_virtual: bool,
-    /// `hasHook('get')`, `hasHook('set')`
     hooks: (bool, bool),
     readable: bool,
     writable: bool,
     native: Option<Type>,
 }
 
-/// `isReadable()` / `isWritable()` of a native property: a virtual one needs the hook.
 fn accessible(is_static: bool, is_virtual: bool, hook: bool) -> bool {
     is_static || !is_virtual || hook
 }
 
-/// A property's own native modifier, or a class's readonly modifier (not PHPDoc, comments or attributes).
 pub(super) fn declaration_readonly(c: &Checker, at: Span) -> bool {
     c.file_facts(at.file_id)
         .is_some_and(|facts| facts.declarations.readonly.contains(&at.start.offset))
 }
 
-/// Nominal interface parents in declaration order (codex's populated interface sets are unordered).
 pub(super) fn declaration_interfaces<'a>(
     c: &Checker<'a, '_>,
     k: &ClassLikeMetadata,
@@ -71,7 +60,6 @@ pub(super) fn declaration_interfaces<'a>(
 }
 
 impl<'a> Checker<'a, '_> {
-    /// The span of property `p`'s declaration (from its attributes or modifiers), and of its name.
     pub(super) fn declaration(&self, p: &PropertyMetadata) -> Option<(Span, Span)> {
         let name = p.name_span?;
         if let Some(span) = p.span {
@@ -88,8 +76,6 @@ impl<'a> Checker<'a, '_> {
         ))
     }
 
-    /// The declared property `name` (with its `$`) of user class `class` (its own, a trait's or an ancestor's): the
-    /// class PHP reports declaring it, the class-like whose code declares it, and the property.
     pub(super) fn declared_property(
         &self,
         class: &'a ClassLikeMetadata,
@@ -113,7 +99,6 @@ impl<'a> Checker<'a, '_> {
         Some((declaring, origin, property))
     }
 
-    /// BetterReflection's `getHooks()` of the property `name` declared in `class`: its own, else its parent class's.
     pub(super) fn property_hooks(
         &self,
         class: &ClassLikeMetadata,
@@ -146,8 +131,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The native property `name` (with its `$`) of `class` as PhpClassReflectionExtension finds it (a parent's
-    /// private one excluded): the class declaring it and `isReadable()`.
     pub(super) fn native_readable(
         &self,
         class: &'a ClassLikeMetadata,
@@ -165,7 +148,6 @@ impl<'a> Checker<'a, '_> {
         ))
     }
 
-    /// BetterReflection's `isVirtual()`: virtual hooks, and a virtual parent property if there is one.
     pub(super) fn property_virtual(
         &self,
         class: &ClassLikeMetadata,
@@ -191,7 +173,6 @@ impl<'a> Checker<'a, '_> {
                     .is_none_or(|(d, _, p)| self.property_virtual_at(d, p, name, depth + 1)))
     }
 
-    /// `getNativeProperty($name)` of `class` as class `k` reaches it.
     fn native_property(
         &self,
         class: Class<'a>,
@@ -217,7 +198,6 @@ impl<'a> Checker<'a, '_> {
                         native: p.native.clone(),
                     });
                 }
-                // a built-in class's parent is built in
                 b = self
                     .natives
                     .classes
@@ -271,7 +251,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// OverridingPropertyRule::findPrototype().
     fn property_prototype(&self, k: &'a ClassLikeMetadata, name: &str) -> Option<Prototype> {
         if let Some(parent) = self.parent_class(Class::User(k))
             && let Some(p) = self.native_property(parent, name, k)
@@ -285,15 +264,12 @@ impl<'a> Checker<'a, '_> {
     }
 }
 
-/// The hooks a declared property has itself.
 pub(super) fn hook_names(p: &PropertyMetadata) -> (bool, bool) {
     let has = |h: &[u8]| p.hooks.contains_key(&mago_word::word(h));
     (has(b"get"), has(b"set"))
 }
 
-/// OverridingPropertyRule on a ClassPropertyNode, `is_readonly` being its `isReadOnly()`.
 pub(super) fn check(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
-    // a trait's property is walked only in a using class's context, where the scope is that class
     let k = c
         .class_scope()
         .expect("a property is walked inside its class");
@@ -305,7 +281,6 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
         } else {
             c.report_non_ignorable(node.at, identifier, message, None);
         }
-        // its fix removes the #[\Override] attribute
         if identifier == "property.override" {
             c.fixable_since(count);
         }
@@ -460,7 +435,6 @@ fn errors<'a>(
             ),
             false,
         )),
-        // Type::equals(): the same type, however its union is ordered
         (Some(theirs), Some(ours))
             if !(is_super_type_of(theirs, &ours).yes() && is_super_type_of(&ours, theirs).yes()) =>
         {

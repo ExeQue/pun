@@ -1,16 +1,9 @@
-//! The versions a project's `config.policy` (and the older `config.audit`) keeps out of an update before the solver
-//! runs, as Composer's pool filters do: versions with a security advisory (on by default), versions on a filter
-//! list such as Packagist's malware list (on by default), abandoned packages (opt-in), and versions published within
-//! a cooldown period (opt-in). The root and the platform are never filtered; a locked package only for being
-//! abandoned and by the filter lists that block installs.
-
 use super::package::{Origin, Package};
 use crate::constraint::{self, Constraint};
 use crate::version::name_matches;
 use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
-/// A security advisory a repository publishes.
 #[derive(Debug, Clone)]
 pub struct Advisory {
     pub package: String,
@@ -22,7 +15,6 @@ pub struct Advisory {
 }
 
 impl Advisory {
-    /// One entry of a repository's `security-advisories` (full or partial).
     pub fn parse(package: &str, data: &Map<String, Value>) -> Result<Advisory> {
         let s = |k: &str| data.get(k).and_then(Value::as_str).map(String::from);
         let affected = s("affectedVersions").unwrap_or_default();
@@ -43,7 +35,6 @@ impl Advisory {
     }
 }
 
-/// An entry of a filter list (`filter` in a repository): versions of a package a list names.
 #[derive(Debug, Clone)]
 pub struct ListEntry {
     pub list: String,
@@ -64,7 +55,6 @@ impl ListEntry {
     }
 }
 
-/// An ignore rule: a package name pattern and the versions it covers.
 #[derive(Debug, Clone)]
 struct Ignore {
     pattern: String,
@@ -72,7 +62,6 @@ struct Ignore {
     on_block: bool,
 }
 
-/// Rules of the form `name`, `name: reason`, `name: {constraint, on-block}` or a list of those.
 fn ignore_map(config: Option<&Value>) -> Result<Vec<Ignore>> {
     let mut rules = vec![];
     let rule = |name: &str, v: Option<&Map<String, Value>>| -> Result<Ignore> {
@@ -99,13 +88,11 @@ fn ignore_map(config: Option<&Value>) -> Result<Vec<Ignore>> {
         Some(Value::Object(map)) => {
             for (name, v) in map {
                 match v {
-                    // An empty list decodes to the same empty PHP array as `{}`: one rule for every version.
                     Value::Null | Value::String(_) => rules.push(rule(name, None)?),
                     Value::Array(list) if list.is_empty() => rules.push(rule(name, None)?),
                     Value::Object(o) => rules.push(rule(name, Some(o))?),
                     Value::Array(list) => {
                         for o in list {
-                            // A list decodes to a PHP array too: a rule without settings.
                             if o.is_array() {
                                 rules.push(rule(name, None)?);
                                 continue;
@@ -131,7 +118,6 @@ fn ignore_map(config: Option<&Value>) -> Result<Vec<Ignore>> {
     Ok(rules)
 }
 
-/// PHP's `get_debug_type` of a decoded JSON value other than `null`, which every caller accepts.
 fn debug_type(v: &Value) -> &'static str {
     if v.is_boolean() {
         "bool"
@@ -146,7 +132,6 @@ fn debug_type(v: &Value) -> &'static str {
     }
 }
 
-/// `apply` of the legacy `audit.ignore` entry `key`: whether it applies when blocking.
 fn legacy_on_block(key: &str, v: &Value) -> Result<bool> {
     match v.get("apply") {
         None | Some(Value::Null) => Ok(true),
@@ -161,7 +146,6 @@ fn legacy_on_block(key: &str, v: &Value) -> Result<bool> {
     }
 }
 
-/// Names (`config.audit.ignore` style): a list of names, or a map from name to a reason or `{apply, reason}`.
 fn legacy_names(config: Option<&Value>) -> Result<Vec<String>> {
     let mut out = vec![];
     match config {
@@ -184,28 +168,23 @@ fn legacy_names(config: Option<&Value>) -> Result<Vec<String>> {
 struct List {
     name: String,
     block: bool,
-    /// `all`, `update` or `install`.
     scope: String,
     ignore: Vec<Ignore>,
     ignore_source: Vec<String>,
 }
 
-/// The parts of `config.policy` that remove versions before solving.
 #[derive(Debug, Clone, Default)]
 pub struct Filters {
     advisories: bool,
-    /// Advisory ids, CVEs, remote ids and package names to ignore.
     ignore_advisories: Vec<String>,
     ignore_severities: Vec<String>,
     lists: Vec<List>,
     abandoned: bool,
     ignore_abandoned: Vec<String>,
-    /// Seconds.
     cooldown: Option<i64>,
     ignore_cooldown: Vec<Ignore>,
 }
 
-/// `policy.cooldown.period`: seconds, or `7 days`, `24 hours`, `1 week`.
 fn duration(v: Option<&Value>) -> Result<Option<i64>> {
     let text = match v {
         None | Some(Value::Null) => return Ok(None),
@@ -242,7 +221,6 @@ fn duration(v: Option<&Value>) -> Result<Option<i64>> {
 
 static EMPTY: std::sync::LazyLock<Map<String, Value>> = std::sync::LazyLock::new(Map::new);
 
-/// A policy section's settings: `false` turns it off, anything but an object means the defaults.
 fn enabled(v: Option<&Value>) -> Option<&Map<String, Value>> {
     match v {
         Some(Value::Bool(false)) => None,
@@ -251,10 +229,8 @@ fn enabled(v: Option<&Value>) -> Option<&Map<String, Value>> {
     }
 }
 
-/// The environment `Filters::from_config` reads, by variable name.
 pub type Env<'a> = &'a dyn Fn(&str) -> Option<String>;
 
-/// `Platform::getBoolEnv`: unset or empty is `None`.
 fn env_bool(env: Env, name: &str) -> Result<Option<bool>> {
     match env(name).as_deref() {
         None | Some("") => Ok(None),
@@ -267,7 +243,6 @@ fn env_bool(env: Env, name: &str) -> Result<Option<bool>> {
 }
 
 impl Filters {
-    /// From the manifest's `config` (`policy` and `audit`) and the `COMPOSER_POLICY*` variables in `env`.
     pub fn from_config(config: Option<&Map<String, Value>>, env: Env) -> Result<Filters> {
         let get = |k: &str| config.and_then(|c| c.get(k));
         let policy = match env_bool(env, "COMPOSER_POLICY")? {
@@ -402,12 +377,10 @@ impl Filters {
         Ok(f)
     }
 
-    /// Whether any filter needs the repositories' advisories.
     pub fn wants_advisories(&self) -> bool {
         self.advisories
     }
 
-    /// Whether any filter list blocks in an update.
     pub fn wants_lists(&self) -> bool {
         self.lists.iter().any(|l| l.block && l.scope != "install")
     }
@@ -423,8 +396,6 @@ impl Filters {
             || a.remote_ids.iter().any(|r| hit(r))
     }
 
-    /// Why a package is kept out of the pool, or `None` to keep it. `locked_equivalent` is a version the lock
-    /// already has, which only install-scope lists block; a `locked` package is checked against the lists only.
     #[expect(
         clippy::too_many_arguments,
         reason = "the package and everything it is checked against"
@@ -445,8 +416,6 @@ impl Filters {
             return None;
         }
         let exact = Constraint::exact(&p.version);
-        // Composer's SecurityAdvisoryPoolFilter blocks abandoned packages, locked ones and aliases too, and only
-        // while it blocks advisories.
         if self.advisories
             && self.abandoned
             && p.abandoned
@@ -523,7 +492,6 @@ impl Filters {
     }
 }
 
-/// Seconds since the epoch of `2024-01-31T12:00:00+02:00`, `2024-01-31 12:00:00` (UTC) or `2024-01-31`.
 pub fn timestamp(s: &str) -> Option<i64> {
     let s = s.trim();
     let num = |a: usize, b: usize| s.get(a..b)?.parse::<i64>().ok();
@@ -560,7 +528,6 @@ pub fn timestamp(s: &str) -> Option<i64> {
 mod tests {
     use super::*;
 
-    /// Expected values from PHP 8.5's `(new DateTime($s))->getTimestamp()` with the UTC timezone.
     #[test]
     fn timestamps_match_php() {
         for (s, want) in [
@@ -585,7 +552,6 @@ mod tests {
         assert_eq!(d("0").unwrap(), None);
         assert!(d("1 fortnight").is_err());
         assert!(d("-5").is_err());
-        // Derived by hand: a period that is neither a number nor a string.
         assert_eq!(
             duration(Some(&Value::Bool(true))).unwrap_err().to_string(),
             "Invalid policy.cooldown.period format."
@@ -602,9 +568,6 @@ mod tests {
         Filters::from_config(config.as_object(), &env).map_err(|e| e.to_string())
     }
 
-    /// The parts of [`Filters`] Composer's `PolicyConfig` has: advisories blocking and the names, ids and CVEs
-    /// ignored when blocking, the same for abandoned, whether malware blocks, the cooldown period that blocks, and
-    /// the custom lists with their block flag and scope.
     fn summary(f: &Filters) -> Value {
         let malware = f.lists.iter().find(|l| l.name == "malware");
         let lists: Vec<Value> = (f.lists.iter())
@@ -622,8 +585,6 @@ mod tests {
         })
     }
 
-    /// Expected values from Composer 2.11.2's `PolicyConfig::fromConfig` on the same config and environment, in
-    /// PHP 8.5; where PHP fails with a type error instead (an ignore list that is a number), Pun's message is its own.
     #[test]
     fn reads_policy_as_composer() {
         use serde_json::json;
@@ -822,13 +783,9 @@ mod tests {
         arena.pop().unwrap()
     }
 
-    /// Derived by hand from Composer's pool filters: an ignored abandoned package stays; a list that blocks only
-    /// updates keeps the version the lock already has; a cooldown ignore rule covers only the versions its
-    /// constraint matches.
     #[test]
     fn removes_as_composer() {
         use serde_json::json;
-        // 2026-11-14T00:00:00Z.
         let now = 1_794_614_400;
         let removal = |f: &Filters, p: &Package, entries: &[ListEntry], equivalent: bool| {
             f.removal(p, p, &[], entries, equivalent, false, now)

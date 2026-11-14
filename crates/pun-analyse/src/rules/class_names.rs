@@ -1,6 +1,3 @@
-//! ClassNameCheck, the check every rule that reads a written class name runs: ClassCaseSensitivityCheck
-//! (`<kind>.nameCase`) and ClassForbiddenNameCheck (`class.prefixed`).
-
 use std::collections::HashMap;
 
 use mago_span::Span;
@@ -11,16 +8,13 @@ use mago_codex::metadata::class_like::ClassLikeMetadata;
 use super::Checker;
 use super::reflection::{Known, known};
 
-/// ClassNameNodePair: a class name as the rule reads it, and the node whose line its errors take.
 pub(super) struct Pair {
     name: String,
     at: Span,
-    /// The node is the name as written (a php-parser `Name`, which UseAliasVisitor marks), not e.g. the parameter.
     written: bool,
 }
 
 impl Pair {
-    /// A pair whose node is the written name at `at`.
     pub(super) fn name(name: String, at: Span) -> Pair {
         Pair {
             name,
@@ -29,7 +23,6 @@ impl Pair {
         }
     }
 
-    /// A pair whose node is another node (an attribute, a parameter, a property).
     pub(super) fn node(name: String, at: Span) -> Pair {
         Pair {
             name,
@@ -39,7 +32,6 @@ impl Pair {
     }
 }
 
-/// UseAliasVisitor: the explicit `use X as Alias;` aliases of the current namespace, keyed by lowercase alias.
 #[derive(Default)]
 pub(super) struct State {
     explicit_aliases: HashMap<String, String>,
@@ -50,7 +42,6 @@ pub(super) fn enter_namespace(c: &mut Checker) {
 }
 
 pub(super) fn use_statement(c: &mut Checker, u: &Use) {
-    // `use function` and `use const` aliases are not class names
     let items: Vec<&UseItem> = match &u.items {
         UseItems::Sequence(s) => s.items.iter().collect(),
         UseItems::MixedList(l) => l
@@ -69,9 +60,6 @@ pub(super) fn use_statement(c: &mut Checker, u: &Use) {
     }
 }
 
-/// ClassNameCheck::checkClassNames(). `case` is its `$checkClassCaseSensitivity`: `true` for the rules that call it
-/// with the default, [`Checker::case_sensitivity`] for the ones passing the `checkClassCaseSensitivity` parameter.
-/// With a `location`, each found class also goes through the RestrictedClassNameUsageExtension services.
 pub(super) fn check(c: &mut Checker, pairs: &[Pair], case: bool) {
     check_at(c, pairs, None, case);
 }
@@ -94,15 +82,12 @@ pub(super) fn check_at(c: &mut Checker, pairs: &[Pair], location: Option<&Locati
     }
 }
 
-/// A class member a location names, for the extensions: whether it or its declaring class is `@internal`, and
-/// whether it or its declaring class is deprecated.
 pub(super) struct Member {
     pub name: String,
     pub internal: bool,
     pub deprecated: bool,
 }
 
-/// ClassNameUsageLocation: where a class name is used, with what its messages need.
 pub(super) enum Location {
     TraitUse {
         class: Option<String>,
@@ -111,7 +96,6 @@ pub(super) enum Location {
     Attribute,
     Catch,
     ClassConstantAccess(Option<Member>),
-    /// `Class X`, `Anonymous class`, `Interface X` or `Enum X` (the messages' subject), and the class's name.
     Extends {
         subject: String,
         class: Option<String>,
@@ -124,7 +108,6 @@ pub(super) enum Location {
     PropertyType {
         property: String,
     },
-    /// The parameter's name (without `$`) and the function-like.
     ParameterType {
         parameter: String,
         function: Function,
@@ -134,19 +117,13 @@ pub(super) enum Location {
     StaticMethodCall(Option<Member>),
 }
 
-/// The function-like of a parameter or return type.
 pub(super) enum Function {
     Anonymous,
-    /// The method's name, and its class's name unless it is an anonymous class.
-    Method {
-        name: String,
-        class: Option<String>,
-    },
+    Method { name: String, class: Option<String> },
     Named(String),
 }
 
 impl Location {
-    /// `createMessage()`.
     fn message(&self, part: &str) -> String {
         match self {
             Location::TraitUse { class: Some(class) } => {
@@ -220,7 +197,6 @@ impl Location {
         }
     }
 
-    /// `createIdentifier()`.
     fn identifier(&self, second: &str) -> String {
         let ucfirst = || format!("{}{}", second[..1].to_ascii_uppercase(), &second[1..]);
         let second = match self {
@@ -231,7 +207,6 @@ impl Location {
         format!("{}.{second}", self.value())
     }
 
-    /// The location's value (the identifier's first part).
     fn value(&self) -> &'static str {
         match self {
             Location::TraitUse { .. } => "traitUse",
@@ -251,7 +226,6 @@ impl Location {
         }
     }
 
-    /// `getCurrentClassName()`.
     fn current_class(&self) -> Option<&str> {
         match self {
             Location::TraitUse { class }
@@ -266,7 +240,6 @@ impl Location {
         }
     }
 
-    /// The member a static call, static property access or class constant access names.
     fn member(&self) -> Option<&Member> {
         match self {
             Location::StaticPropertyAccess(m)
@@ -277,8 +250,6 @@ impl Location {
     }
 }
 
-/// RestrictedInternalClassNameUsageExtension and phpstan-deprecation-rules' RestrictedDeprecatedClassNameUsageExtension
-/// on class-like `k` used at `location`.
 pub(super) fn restricted(
     c: &Checker,
     k: &ClassLikeMetadata,
@@ -342,8 +313,6 @@ pub(super) fn restricted(
     out
 }
 
-/// The core classes PHPStan reflects from its own stubs (stubs/runtime/Attribute84.php) rather than as built-ins, so
-/// their case is checked like a user class's.
 const STUBBED: [&str; 4] = [
     "allowdynamicproperties",
     "attribute",
@@ -351,11 +320,8 @@ const STUBBED: [&str; 4] = [
     "sensitiveparameter",
 ];
 
-/// ClassCaseSensitivityCheck::checkClassNames().
 fn case_sensitivity(c: &mut Checker, pairs: &[Pair]) {
     for pair in pairs {
-        // getClassNameAsWritten()/getNameAsWritten(): only a one-part, unqualified Name whose own resolved value
-        // equals the pair's class name uses its original spelling. Other nodes, qualified and relative names stay.
         let name = if c.on(crate::rules::Switches::CHECK_IMPORTED_CLASS_NAME_CASE)
             && pair.written
             && c.names.resolve(&pair.at) == Some(pair.name.as_bytes())
@@ -375,7 +341,6 @@ fn case_sensitivity(c: &mut Checker, pairs: &[Pair]) {
             continue;
         }
         let real = k.display();
-        // a class_alias() of another name, an explicit `use` alias written as declared, or the right case
         if !real.eq_ignore_ascii_case(&name)
             || (pair.written && explicit_alias(c, pair.at))
             || real == name
@@ -392,7 +357,6 @@ fn case_sensitivity(c: &mut Checker, pairs: &[Pair]) {
     }
 }
 
-/// UseAliasVisitor's `isExplicitUseAlias`: the name at `at` is one part written exactly as an explicit alias.
 fn explicit_alias(c: &Checker, at: Span) -> bool {
     let written = c.written(at);
     c.class_names
@@ -401,7 +365,6 @@ fn explicit_alias(c: &Checker, at: Span) -> bool {
         .is_some_and(|alias| *alias == written)
 }
 
-/// ClassForbiddenNameCheck::INTERNAL_CLASS_PREFIXES (no ForbiddenClassNameExtension adds any).
 const INTERNAL_CLASS_PREFIXES: [(&str, &str); 5] = [
     ("PHPStan", "_PHPStan_"),
     ("Rector", "RectorPrefix"),
@@ -410,7 +373,6 @@ const INTERNAL_CLASS_PREFIXES: [(&str, &str); 5] = [
     ("Box", "_HumbugBox"),
 ];
 
-/// ClassForbiddenNameCheck::checkClassNames().
 fn forbidden(c: &mut Checker, pairs: &[Pair]) {
     for pair in pairs {
         let name = pair.name.as_str();
@@ -435,13 +397,10 @@ fn forbidden(c: &mut Checker, pairs: &[Pair]) {
     }
 }
 
-/// FunctionDefinitionCheck::getOriginalClassNamePairsFromTypeNode() for one name: the resolved name's namespace
-/// parts with the parts as written (`Foo\bar` for `bar` imported by `use Foo\Bar;`).
 pub(super) fn original_case(c: &Checker, at: Span) -> String {
     let resolved = c.resolved_span(at);
     let written = c.written(at);
     let written = written.trim_start_matches('\\');
-    // `namespace\Foo`'s original name is `Foo`
     let written = match written.split_once('\\') {
         Some((first, rest)) if first.eq_ignore_ascii_case("namespace") => rest,
         _ => written,

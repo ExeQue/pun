@@ -1,7 +1,3 @@
-//! What lint-b's phpdoc ports share: the doc comment php-parser gives a node, its child nodes as Rector's
-//! `BetterPhpDocParser` reads them, and the doc Rector's `PhpDocInfoPrinter::printFormatPreserving()` prints once some
-//! of them are removed (`PhpDocInfo::removeByType()`, `removeByName()`, a `NODE_REMOVE` traversal).
-
 use mago_syntax::cst::Node;
 use mago_syntax::token::TokenKind;
 use pun_problem::{Edit, Span};
@@ -11,38 +7,26 @@ use super::rector_stmts::{previous_token_end, tokens};
 use crate::Context;
 use crate::syntax::node_span;
 
-/// phpdoc-parser's token types, as far as the printer tells them apart.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Kind {
-    /// `TOKEN_OPEN_PHPDOC`: `/**` and one space after it.
     Open,
-    /// `TOKEN_CLOSE_PHPDOC`: `*/`.
     Close,
-    /// `TOKEN_PHPDOC_EOL`: a line break, the next line's indent, its `*` and one space after it.
     Eol,
-    /// `TOKEN_HORIZONTAL_WS`.
     Ws,
-    /// Any other token; Pun takes a run of other characters as one.
     Other,
-    /// `TOKEN_END`, empty.
     End,
 }
 
-/// A doc comment, its tokens and its child nodes.
 pub(crate) struct Doc<'s> {
     pub span: Span,
     text: &'s str,
     tokens: Vec<(Kind, usize, usize)>,
-    /// Each child's first token and the token after its last (`START_AND_END`).
     children: Vec<(usize, usize)>,
 }
 
 impl<'s> Doc<'s> {
-    /// The doc comment of the node at `start`, whose ancestors are `ancestors`.
     pub(crate) fn of(ctx: &Context<'s>, ancestors: &[Node<'_, '_>], start: usize) -> Option<Self> {
         let source = ctx.source;
-        // The comments come after the last token before the node, which lies inside the nearest ancestor that starts
-        // before it.
         let outer = ancestors
             .iter()
             .rev()
@@ -55,8 +39,6 @@ impl<'s> Doc<'s> {
         )
     }
 
-    /// [`Doc::of`] as php-parser's `getDocComment()` reads it: the last doc comment among the node's comments, which
-    /// other comments may follow.
     pub(crate) fn last_of(
         ctx: &Context<'s>,
         ancestors: &[Node<'_, '_>],
@@ -75,14 +57,12 @@ impl<'s> Doc<'s> {
         Self::at(source, Span::new(doc.start, doc.end))
     }
 
-    /// The doc comment `text` on its own.
     pub(crate) fn parse(text: &'s str) -> Option<Self> {
         Self::at(text, Span::new(0, text.len()))
     }
 
     fn at(source: &'s str, span: Span) -> Option<Self> {
         let text = &source[span.start..span.end];
-        // PHP's lexer makes a doc comment of `/**` and white space only; `/***/` is a plain comment.
         if !text
             .as_bytes()
             .get(3)
@@ -100,12 +80,10 @@ impl<'s> Doc<'s> {
         })
     }
 
-    /// The number of child nodes.
     pub(crate) fn len(&self) -> usize {
         self.children.len()
     }
 
-    /// The words of child `i`, its lines joined: `["@param", "mixed", "$a"]`. A blank line has none.
     pub(crate) fn words(&self, i: usize) -> Vec<&'s str> {
         let (from, to) = self.children[i];
         self.tokens[from..to]
@@ -115,8 +93,6 @@ impl<'s> Doc<'s> {
             .collect()
     }
 
-    /// The edit that removes the children `removed` flags, as Rector prints the doc after; `node_start` is where the
-    /// node the doc belongs to starts. A doc with nothing left goes, with the white space after it.
     pub(crate) fn remove(&self, removed: &[bool], node_start: usize) -> Edit {
         let printed = self.print(removed);
         if printed.is_empty() {
@@ -125,8 +101,6 @@ impl<'s> Doc<'s> {
         Edit::new(self.span, printed)
     }
 
-    /// [`Doc::remove`] for a doc [`Doc::last_of`] read from `source`: a doc with nothing left goes with the white space
-    /// after it, and the comments between it and the node stay.
     pub(crate) fn remove_last(&self, source: &str, removed: &[bool]) -> Edit {
         let after = &source[self.span.end..];
         self.remove(
@@ -135,12 +109,10 @@ impl<'s> Doc<'s> {
         )
     }
 
-    /// The doc comment's text.
     pub(crate) fn text_all(&self) -> &'s str {
         self.text
     }
 
-    /// The text of child `i`, from its first token to its last; `""` for a blank line.
     pub(crate) fn text(&self, i: usize) -> &'s str {
         let (from, to) = self.children[i];
         if from >= to {
@@ -149,21 +121,16 @@ impl<'s> Doc<'s> {
         &self.text[self.tokens[from].1..self.tokens[to - 1].2]
     }
 
-    /// `printFormatPreserving()` with no child changed but the removed ones.
     pub(crate) fn print(&self, removed: &[bool]) -> String {
         self.print_appending(removed, &[])
     }
 
-    /// [`Doc::print`] with the tags `appended` (`@name value`) added after the children (`addPhpDocTagNode()`):
-    /// Rector's `PhpDocInfoPrinter::printFormatPreserving()` over phpdoc-parser's `Printer::printFormatPreserving()`.
     pub(crate) fn print_appending(&self, removed: &[bool], appended: &[&str]) -> String {
         let empty = |i: usize| self.children[i].0 >= self.children[i].1;
         let mut kept: Vec<usize> = (0..self.children.len()).filter(|&i| !removed[i]).collect();
-        // `EmptyPhpDocDetector`: nothing but empty texts left.
         if appended.is_empty() && kept.iter().all(|&i| empty(i)) {
             return String::new();
         }
-        // A tag added to a single-line doc: `printFresh()`, phpdoc-parser's `Printer::print()`.
         if !appended.is_empty() && !self.tokens.iter().any(|t| t.0 == Kind::Eol) {
             let line_start = |s: &str| {
                 let mut out = String::new();
@@ -190,7 +157,6 @@ impl<'s> Doc<'s> {
                 .collect();
             return format!("/**\n *{}\n */", parts.join("\n *"));
         }
-        // `removeTrailingEmptyLines()`: removing the last tag keeps the empty lines above it, so they go too.
         if appended.is_empty()
             && self
                 .children
@@ -207,8 +173,6 @@ impl<'s> Doc<'s> {
             }
             &self.text[self.tokens[from].1..self.tokens[to].1]
         };
-        // `Differ::diffWithReplacements()`: the originals in order, the added tags after them; removed originals
-        // right before as many added tags are replaced by them.
         enum Elem<'a> {
             Keep(usize),
             Remove(usize),
@@ -237,7 +201,6 @@ impl<'s> Doc<'s> {
         } else {
             diff.extend(appended.iter().map(|a| Elem::Add(a)));
         }
-        // `detectLastChildIndent()`, else `isMultiline()`'s indent.
         let insert = (0..self.children.len())
             .rev()
             .find_map(|i| {
@@ -288,7 +251,6 @@ impl<'s> Doc<'s> {
                 }
                 Elem::Remove(i) => {
                     let (start, end) = self.children[i];
-                    // Removing the first child keeps the tokens before it on its line, and drops its line.
                     if position == 0 {
                         let stop = (index..start)
                             .find(|&t| self.tokens[t].0 == Kind::Eol)
@@ -300,7 +262,6 @@ impl<'s> Doc<'s> {
             }
         }
         if !delayed.is_empty() {
-            // `emptyListInsertionMap` has no entry for a doc's children: phpdoc-parser prints the doc anew.
             let parts: Vec<String> = delayed.iter().map(|a| format!(" {a}")).collect();
             return format!("/**\n *{}\n */", parts.join("\n *"));
         }
@@ -309,7 +270,6 @@ impl<'s> Doc<'s> {
     }
 }
 
-/// phpdoc-parser's `Lexer` over a doc comment.
 fn lex(text: &str) -> Vec<(Kind, usize, usize)> {
     let bytes = text.as_bytes();
     let mut tokens = Vec::new();
@@ -354,10 +314,6 @@ fn lex(text: &str) -> Vec<(Kind, usize, usize)> {
     tokens
 }
 
-/// phpdoc-parser's `PhpDocParser::parse()` children, each as its `START_INDEX` and one past its `END_INDEX` (an empty
-/// text ends before it starts). A text, or a tag's description, runs over line breaks to the text of the next lines,
-/// and stops before a line that starts with a tag or ends the doc; the empty lines it would end on are each an empty
-/// text of their own.
 fn children(text: &str, tokens: &[(Kind, usize, usize)]) -> Vec<(usize, usize)> {
     let is_tag = |i: usize| {
         let t = tokens[i];
@@ -370,14 +326,12 @@ fn children(text: &str, tokens: &[(Kind, usize, usize)]) -> Vec<(usize, usize)> 
         }
     };
     let ends = |i: usize| matches!(tokens[i].0, Kind::Close | Kind::End);
-    // `TokenIterator::next()` skips horizontal white space.
     let skip = |mut i: usize| {
         while tokens[i].0 == Kind::Ws && i + 1 < tokens.len() {
             i += 1;
         }
         i
     };
-    // `endIndexOfLastRelevantToken()`, plus one.
     let end_of = |current: usize| {
         let mut end = current - 1;
         while tokens[end].0 == Kind::Ws && end > 0 {
@@ -395,7 +349,6 @@ fn children(text: &str, tokens: &[(Kind, usize, usize)]) -> Vec<(usize, usize)> 
     }
     loop {
         let start = pos;
-        // `parseText()`, which a tag's description also is.
         let mut savepoint: Option<usize> = None;
         loop {
             let skipped = pos > 0 && tokens[pos - 1].0 == Kind::Ws;

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\NoPhp4ConstructorFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
 use pun_tokens::token::OBJECT_OPERATOR_KINDS;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(NoPhp4ConstructorFixer)
 }
 
-/// `findFunction`'s array.
 struct Function {
     name_index: usize,
     start_index: usize,
@@ -82,10 +80,10 @@ impl Fixer for NoPhp4ConstructorFixer {
 
 fn fix_constructor(tokens: &mut Tokens, class_name: &[u8], class_start: usize, class_end: usize) {
     let Some(php4) = find_function(tokens, class_name, class_start, class_end) else {
-        return; // no PHP4-constructor!
+        return;
     };
     if php4.is_abstract || php4.is_static {
-        return; // PHP4 constructor can't be abstract or static
+        return;
     }
     let body4 = php4.body_index.unwrap();
     let Some(php5) = find_function(tokens, b"__construct", class_start, class_end) else {
@@ -191,7 +189,6 @@ fn fix_infinite_recursion(tokens: &mut Tokens, start: usize, end: usize) {
     }
 }
 
-/// An owned sequence element: a char, or a kind with content.
 enum Item {
     Char(&'static str),
     Kind(Kind),
@@ -208,8 +205,6 @@ fn protos(seq: &[Item]) -> Vec<Proto<'_>> {
         .collect()
 }
 
-/// The sequences of a method body that only calls `$this->method(...)` with the parameters in order; the method
-/// name compares case-insensitively.
 fn get_wrapper_method_sequence(
     tokens: &Tokens,
     method: &[u8],

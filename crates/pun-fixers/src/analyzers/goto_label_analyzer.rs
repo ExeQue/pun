@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\GotoLabelAnalyzer`.
 use pun_tokens::{Kind::*, Tokens};
 
 pub(crate) struct GotoLabelAnalyzer;

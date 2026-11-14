@@ -1,6 +1,3 @@
-//! `lint/pest/no-focused-test`, ported from pest-plugin-rector's `RemoveOnlyRector`: `->only()` on a Pest test
-//! (`test()`, `it()`, `describe()`, `todo()` or a hook) is removed, so the whole suite runs.
-
 use mago_syntax::cst::{MethodCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -48,7 +45,6 @@ impl Rule for NoFocusedTest {
     }
 }
 
-/// `PEST_TEST_FUNCTIONS`.
 const PEST_TEST_FUNCTIONS: [&str; 8] = [
     "test",
     "it",
@@ -60,7 +56,6 @@ const PEST_TEST_FUNCTIONS: [&str; 8] = [
     "afterAll",
 ];
 
-/// `isPestTestChain`: the chain's root is a call of one of `PEST_TEST_FUNCTIONS`.
 fn is_pest_test_chain(call: &MethodCall<'_>) -> bool {
     root_func_call(call).is_some_and(|f| PEST_TEST_FUNCTIONS.iter().any(|name| named(f, name)))
 }

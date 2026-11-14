@@ -1,19 +1,3 @@
-//! `lint/complexity/no-constant-condition`, ported from Rector 2.8.4's `RemoveDeadIfBlockRector`
-//! (rules/DeadCode/Rector/If_), with `ConditionInverter` and `SideEffectNodeDetector`.
-//!
-//! Branches of an `if` that do nothing go: an `else` with no statement, and each `elseif` with no statement whose
-//! condition has no side effect. When the `if` body itself has no statement, no comment before the `if` and a
-//! condition without side effects, the `if` merges into what is left: the first `elseif` becomes
-//! `if (!<condition> && <elseif condition>)` (unless an `else` follows), an `else` becomes `if (!<condition>)`, and
-//! with neither the statement goes.
-//!
-//! php-parser's printer decides the bytes. A removed `else` takes the whitespace and comments before it, a removed
-//! `elseif` the text from the end of the branch before it (the first one: up to the next kept branch). An `if` whose
-//! `elseif`s all go, and the `if` a merge builds, are printed anew: the body in braces a statement a line, the kept
-//! branches as written. Rector prints the kept branches of an alternative-syntax `if` (`elseif ...:`, `else:`) after a
-//! braced body, which does not parse; Pun prints them in braces too (lint.md: where Rector writes broken code, Pun
-//! writes the valid fix).
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -62,18 +46,14 @@ impl Rule for NoConstantCondition {
         let (list, index) = enclosing(source, s, ancestors);
         let span = node_span(s);
         let indent = line_indent(source, span.start);
-        // `$node->getComments() !== []`: comments before the `if`, which php-parser keeps with it
         let commented = list.with_comments(ctx, index).start != span.start;
         let dead =
             view.stmts.is_empty() && !commented && !has_side_effect(ancestors, view.condition);
-        // A trailing else would run when the negated if condition is true, which the original empty if body never
-        // did, so an `if` with a kept `elseif` and an `else` keeps its condition
         let edits = if !dead || (!kept.is_empty() && else_.is_some()) {
             if !empty_else && !elseifs_changed {
                 return;
             }
             if elseifs_changed && kept.is_empty() {
-                // an emptied `elseifs` list: php-parser prints the `if` anew
                 let condition = &source[range(unparenthesize(view.condition))];
                 let mut text = format!("if ({condition}) {}", braced(ctx, &view.stmts, indent));
                 if let Some((else_list, else_span)) = else_ {
@@ -127,8 +107,6 @@ fn range(expr: &Expression<'_>) -> std::ops::Range<usize> {
     span.start..span.end
 }
 
-/// An operand on the right of a new `&&`: in parentheses where php-parser's printer puts them, around an operator
-/// that binds as loosely as `&&` or looser. An assignment stays bare, as php-parser prints it there.
 fn and_operand(source: &str, expr: &Expression<'_>) -> String {
     let inner = unparenthesize(expr);
     let text = &source[range(inner)];
@@ -139,7 +117,6 @@ fn and_operand(source: &str, expr: &Expression<'_>) -> String {
     }
 }
 
-/// A kept `elseif` after a body printed anew: as written, or in braces when the `if` uses the alternative syntax.
 fn elseif_text(ctx: &crate::Context<'_>, view: &IfView<'_>, i: usize, indent: &str) -> String {
     let source = ctx.source;
     let (condition, list, span) = &view.elseifs[i];
@@ -150,7 +127,6 @@ fn elseif_text(ctx: &crate::Context<'_>, view: &IfView<'_>, i: usize, indent: &s
     source[span.start..span.end].to_string()
 }
 
-/// [`elseif_text`] for the `else`.
 fn else_text(
     ctx: &crate::Context<'_>,
     view: &IfView<'_>,
@@ -165,8 +141,6 @@ fn else_text(
     source[span.start..span.end].to_string()
 }
 
-/// php-parser's format-preserving removal of the `elseif`s not in `kept` (at least one is) and, with `empty_else`, of
-/// the `else`. A branch's comments are part of it.
 fn kept_edits(
     ctx: &crate::Context<'_>,
     from: usize,

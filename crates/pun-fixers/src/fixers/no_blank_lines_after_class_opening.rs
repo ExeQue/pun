@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\NoBlankLinesAfterClassOpeningFixer`.
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::substr_count, token::CLASSY_KINDS};
 use std::path::Path;
@@ -16,7 +15,6 @@ impl NoBlankLinesAfterClassOpeningFixer {
     fn fix_whitespace(&self, tokens: &mut Tokens, index: usize) {
         let content = tokens[index].get_content();
         if substr_count(content, b"\n") > 1 {
-            // the final bit of the whitespace must be the next statement's indentation
             let last = content.iter().rposition(|&b| b == b'\n').unwrap();
             let new = [
                 self.whitespaces_config.get_line_ending().as_bytes(),
@@ -33,7 +31,6 @@ impl Fixer for NoBlankLinesAfterClassOpeningFixer {
         "no_blank_lines_after_class_opening"
     }
     fn priority(&self) -> i32 {
-        // Must run after OrderedClassElementsFixer, PhpUnitDataProviderMethodOrderFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

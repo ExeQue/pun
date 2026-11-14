@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\OrderedClassElementsFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::ordered_class_elements::{Element, PHPUNIT, get_elements, sort_tokens};
 use anyhow::Result;
@@ -158,7 +157,6 @@ impl Fixer for OrderedClassElementsFixer {
         self.sort_alpha = r.string("sort_algorithm", "none", &["none", "alpha"])? == "alpha";
         self.case_sensitive = r.bool("case_sensitive", false)?;
 
-        // upstream's array with nullable values (its order doesn't matter: only lookups follow)
         let mut pos: HashMap<String, Option<i64>> = HashMap::new();
         let isset = |pos: &HashMap<String, Option<i64>>, k: &str| pos.get(k).copied().flatten();
         for (i, t) in order.iter().enumerate() {
@@ -258,8 +256,6 @@ impl OrderedClassElementsFixer {
         *self
             .type_position
             .get(&ty)
-            // A modifier mix PHP's compiler rejects (`public static readonly`): upstream's assert fails and the file
-            // errors with its message.
             .unwrap_or_else(|| panic!("assert(isset($this->typePosition[$type]))"))
     }
 
@@ -277,7 +273,6 @@ impl OrderedClassElementsFixer {
 
 #[cfg(test)]
 mod tests {
-    // Pint 1.29.3 on a property PHP's compiler rejects (`public static readonly`): the file errors with this message.
     #[test]
     #[should_panic(expected = "assert(isset($this->typePosition[$type]))")]
     fn rejected_modifier_mix_errors_like_upstream() {

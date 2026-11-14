@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\SelfStaticAccessorFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind, Proto, Token, Tokens, TokensAnalyzer};
 use std::path::Path;

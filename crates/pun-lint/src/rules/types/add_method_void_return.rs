@@ -1,10 +1,3 @@
-//! `lint/types/add-method-void-return`, ported from Rector 2.8.4's `AddVoidReturnTypeWhereNoReturnRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod).
-//!
-//! A method without a return type that returns no value and does not yield gets `: void`, unless a child class may
-//! return something (an empty or throw-only method of a class that is not final, a protected method of one), or a
-//! parent declares the method's return type (`ClassMethodReturnVendorLockResolver`).
-
 use mago_syntax::cst::{MethodBody, Modifier, Node, NodeKind};
 
 use super::facts::facts;
@@ -40,14 +33,12 @@ impl Rule for AddMethodVoidReturn {
         let Node::Method(method) = node else {
             return;
         };
-        // abstract and interface methods have no body
         let (None, MethodBody::Concrete(body)) = (&method.return_type_hint, &method.body) else {
             return;
         };
         let Some(scope) = class_scope(ancestors) else {
             return;
         };
-        // shouldSkipClassMethod
         let count = statement_count(ctx.source, body);
         if !scope.is_final {
             let only_throw = count == 1 && body.statements.first().is_some_and(is_throw_statement);
@@ -66,7 +57,6 @@ impl Rule for AddMethodVoidReturn {
         if scope.is_interface || !has_exclusive_void(body) {
             return;
         }
-        // ClassMethodReturnVendorLockResolver::isVendorLocked
         let name = method.name.value.to_ascii_lowercase();
         if name != b"__invoke" && MAGIC.iter().any(|m| m.as_bytes() == name) {
             return;

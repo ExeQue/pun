@@ -1,9 +1,3 @@
-//! `pun install` on a project whose two dependencies come from a path repository, against what Composer 2.11.2 wrote
-//! for it: `composer update --no-scripts` in a copy of `fixtures/project` gave its composer.lock and every file in
-//! `fixtures/project-expected` (vendor/autoload.php, vendor/composer/*, vendor/bin/*). `fixtures/edge` and
-//! `edge-expected` are the same for the autoloader's and bin installer's corner cases, from
-//! `composer update --no-scripts --ignore-platform-req=php --ignore-platform-req=ext-sodium-x`.
-
 use pun_packages::fetch::{Auth, Fetcher};
 use pun_packages::install::{Options, Report, install};
 use pun_packages::lock::Lock;
@@ -51,7 +45,6 @@ fn run(dir: &Path, lock: &Lock, o: &Options) -> Report {
     try_run(dir, lock, o).unwrap()
 }
 
-/// Every file in `fixtures/<expected>` matches the one pun wrote under `dir/vendor`, and nothing else is in `vendor/bin`.
 fn same_as_composer(dir: &Path, expected: &str) {
     let expected = Path::new(FIXTURES).join(expected);
     let mut files = vec![("autoload.php".to_string(), expected.join("autoload.php"))];
@@ -64,7 +57,6 @@ fn same_as_composer(dir: &Path, expected: &str) {
             ));
         }
     }
-    // Without --apcu-autoloader-prefix each dump picks a random one: 20 hex digits.
     let apcu = |text: String| {
         let Some(at) = text.find("setApcuPrefix('") else {
             return text;
@@ -128,11 +120,9 @@ fn install_matches_composer() {
         );
     }
 
-    // Again: nothing to fetch.
     let again = run(&tmp, &lock, &Options::default());
     assert_eq!((again.kept, again.installed.len()), (2, 0));
 
-    // Without dev packages, acme/tools and its bin go; the path package it linked to stays.
     let no_dev = run(
         &tmp,
         &lock,
@@ -169,7 +159,6 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     };
     let report = run(&tmp, &lock, &o);
     same_as_composer(&tmp, "edge-expected");
-    // Composer's warnings, in its order; its paths are /tmp/edge.
     let at = tmp.to_string_lossy();
     let warnings: Vec<String> = report
         .warnings
@@ -189,7 +178,6 @@ fn autoloader_and_bin_corner_cases_match_composer() {
         ]
     );
 
-    // Composer stops at a file it can't read and at a classmap path that isn't there (`composer dump-autoload`).
     let pair = tmp.join("classes/Pair.php");
     std::fs::set_permissions(&pair, std::fs::Permissions::from_mode(0o000)).unwrap();
     let error = try_run(&tmp, &lock, &o).unwrap_err().to_string();
@@ -227,7 +215,6 @@ fn lock_changes_plugins_and_failures() {
     run(&tmp, &lock, &Options::default());
     let package = |v: Value| v.as_object().unwrap().clone();
 
-    // A new version of a locked package is an update; a metapackage installs no files.
     let mut changed = lock.clone();
     changed.packages[0]["version"] = "1.2.1".into();
     changed.packages.push(package(
@@ -241,7 +228,6 @@ fn lock_changes_plugins_and_failures() {
     assert_eq!(report.installed, [("acme/meta".into(), "1.0.0".into())]);
     assert!(!tmp.join("vendor/acme/meta").exists());
 
-    // A zip dist comes from the cache when its checksum matches (Composer's cache layout: the URL's sha1).
     let zip = {
         use std::io::Write;
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
@@ -267,7 +253,6 @@ fn lock_changes_plugins_and_failures() {
     assert_eq!(report.cached, 1);
     assert!(tmp.join("vendor/acme/zipped/src/Z.php").exists());
 
-    // Every package that can't be placed is reported, in lock order.
     let mut failing = lock.clone();
     failing.packages.push(package(serde_json::json!({"name": "acme/zip", "version": "1.0.0", "dist": {"type": "zip", "url": "http://example.com/zip.zip"}})));
     failing.packages.push(package(serde_json::json!({"name": "acme/src", "version": "1.0.0", "source": {"type": "git", "url": "https://example.com/src.git", "reference": "abc"}})));
@@ -287,8 +272,6 @@ fn lock_changes_plugins_and_failures() {
         "pun.lock has a package named `acme/not valid`, which is not a valid package name"
     );
 
-    // PSR violations are reported only outside vendor/, and an absolute `files` path stays absolute (Composer's
-    // `composer install` on the same changes).
     std::fs::write(
         tmp.join("packages/tools/lib/Acme/Tools/Bad.php"),
         "<?php class Nope {}\n",
@@ -320,8 +303,6 @@ fn lock_changes_plugins_and_failures() {
     std::fs::remove_file(tmp.join("packages/tools/lib/Acme/Tools/Bad.php")).unwrap();
     std::fs::remove_file(tmp.join("src/Wrong.php")).unwrap();
 
-    // With `php` ignored nothing is left to check, so there is no platform_check.php (Composer's
-    // `--ignore-platform-req=php` on the same project).
     let ignore_php = Options {
         ignore_platform: vec!["php".into()],
         ..Options::default()
@@ -334,7 +315,6 @@ fn lock_changes_plugins_and_failures() {
             .contains("platform_check")
     );
 
-    // A removed package whose installed.json path leaves vendor/ is dropped from the list but its files stay.
     let installed = tmp.join("vendor/composer/installed.json");
     let mut json: Value =
         serde_json::from_str(&std::fs::read_to_string(&installed).unwrap()).unwrap();
@@ -344,7 +324,6 @@ fn lock_changes_plugins_and_failures() {
     assert_eq!(report.removed, ["evil/escape"]);
     assert!(tmp.join("packages/lib/composer.json").exists());
 
-    // Without `files` autoloads there is no autoload_files.php; `--no-autoloader` leaves the autoloader alone.
     let mut no_files = lock.clone();
     no_files.packages.clear();
     run(&tmp, &no_files, &Options::default());
@@ -361,8 +340,6 @@ fn lock_changes_plugins_and_failures() {
     run(&tmp, &lock, &no_autoloader);
     assert!(!tmp.join("vendor/composer/autoload_files.php").exists());
 
-    // `platform-check: false` drops platform_check.php; allowed plugins run when ported and are reported when not;
-    // without `optimize-autoloader` only the classmap directories are scanned.
     let mut manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
     manifest["config"]["platform-check"] = false.into();

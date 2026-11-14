@@ -1,9 +1,3 @@
-//! `lint/style/no-variable-variable`, ported from phpstan-strict-rules 2.0.12's `VariableVariablesRule` (identifier
-//! `variable.dynamicName`). A variable whose name is not a plain name, `$$name` or `${expr}`, is reported.
-//!
-//! In a string, `"${name}"` and `"${name[1]}"` name a plain variable (php-parser's `Variable` with a string name);
-//! Mago keeps them as `${...}` around a bare identifier, which is not reported.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
 
 use crate::syntax::node_span;

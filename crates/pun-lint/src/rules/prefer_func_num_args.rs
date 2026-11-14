@@ -1,8 +1,3 @@
-//! `lint/complexity/prefer-func-num-args`, ported from Rector 2.8.4's `SimplifyFuncGetArgsCountRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `count(func_get_args())` becomes `func_num_args()`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -32,7 +27,6 @@ impl Rule for PreferFuncNumArgs {
         if !named(c, "count") {
             return;
         }
-        // `$node->getArgs()[0]` on a `count()` without arguments is null, which is no `FuncCall`.
         let Some(first) = args(c).first().map(|a| a.value()) else {
             return;
         };

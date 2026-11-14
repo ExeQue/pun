@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-sleep-facade`, ported from rector-laravel 2.7.3's `SleepFuncToSleepStaticCallRector`
-//! (src/Rector/FuncCall).
-//!
-//! A `sleep(...)` or `usleep(...)` statement becomes `\Illuminate\Support\Sleep::sleep(...)` or `::usleep(...)`. A call
-//! whose result is used is left alone.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 
 use super::{argument_texts, call, replace};

@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-redundant-default-argument`, ported from Rector 2.8.4's
-//! `RemoveArgumentFromDefaultParentCallRector` (rules/DeadCode/Rector/ClassMethod).
-//!
-//! In a class that extends another, a statement `parent::name(...)` of a public or protected method's body loses its
-//! trailing arguments that equal the default of their parameter, taken from the first ancestor with the method
-//! (interfaces, then traits, then parent classes, as `getAncestors()` orders them). Only literal values count (a
-//! scalar, a constant, a class constant, or an array of those); a named argument keeps them all. Pun reads a default
-//! that is a scalar, `null` or `[]`, and an argument that is a scalar, a constant or `[]`; any other pair stops there.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -141,9 +132,6 @@ impl Rule for NoRedundantDefaultArgument {
     }
 }
 
-/// `ExprAnalyzer::isDynamicExpr`: anything but a scalar that is not an interpolated string, a constant, a class
-/// constant of a named class (not `static::`), or an array of those with literal keys; a leading `+` or `-` is looked
-/// through.
 fn is_dynamic_expr(expr: &Expression<'_>) -> bool {
     let mut expr = unparenthesize(expr);
     if let Expression::UnaryPrefix(u) = expr

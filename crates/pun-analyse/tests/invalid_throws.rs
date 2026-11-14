@@ -1,5 +1,3 @@
-//! InvalidThrowsPhpDocValueRule, pinned PHPStan 2.3.1. Expectations are generated from phpstan.neon, not Pun.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

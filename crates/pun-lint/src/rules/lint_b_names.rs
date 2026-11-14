@@ -1,15 +1,8 @@
-//! Name resolution for lint-b's ports of Mago rules, standing in for Mago's `ResolvedNames` (mago-names 1.57.0)
-//! and its linter's `function_call_matches_any` (rule/utils/call.rs) until pun-lint has a name resolver of its own.
-//!
-//! A name is resolved against the namespace that holds it and the `use` imports of that namespace that come before
-//! it, as mago-names does while it walks the file.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{
     Expression, FunctionCall, Identifier, NamespaceBody, Node, Statement, UseItem, UseItems,
 };
 
-/// What `use` brings in: a class-like name, a function or a constant.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Kind {
     Class,
@@ -17,10 +10,8 @@ enum Kind {
     Const,
 }
 
-/// The namespace of the node whose ancestors are given (empty outside one), and the imports before `offset`.
 struct Scope {
     namespace: Vec<u8>,
-    /// (kind, the name it is known by, the fully qualified name without a leading `\`).
     imports: Vec<(Kind, Vec<u8>, Vec<u8>)>,
 }
 
@@ -105,7 +96,6 @@ fn scope(ancestors: &[Node<'_, '_>], offset: u32) -> Scope {
 }
 
 impl Scope {
-    /// The fully qualified name an alias stands for: the last `use` of that alias wins, ignoring ASCII case.
     fn import(&self, kind: Kind, name: &[u8]) -> Option<&[u8]> {
         self.imports
             .iter()
@@ -114,9 +104,6 @@ impl Scope {
             .map(|(_, _, fqn)| fqn.as_slice())
     }
 
-    /// mago-names' `NamespaceScope::resolve`: the resolved name, and whether an explicit rule (a leading `\`,
-    /// `namespace\` or an import) resolved it rather than the namespace prefix. (Its rule for `clone`, `exit` and
-    /// `die` as functions never applies here: Mago parses those as constructs, not function calls.)
     fn resolve(&self, kind: Kind, name: &[u8]) -> (Vec<u8>, bool) {
         if let Some(fqn) = name.strip_prefix(b"\\") {
             return (fqn.to_vec(), true);
@@ -151,17 +138,12 @@ impl Scope {
     }
 }
 
-/// The fully qualified class-like name `identifier` stands for, without a leading `\` (mago-names' resolution of
-/// a class-like name).
 pub(super) fn resolve_class(ancestors: &[Node<'_, '_>], identifier: &Identifier<'_>) -> Vec<u8> {
     scope(ancestors, identifier.span().start.offset)
         .resolve(Kind::Class, identifier.value())
         .0
 }
 
-/// `function_call_matches_any`: the first of `names` (compared ignoring ASCII case) that the called function may
-/// be. A name resolved by an explicit rule is compared by its resolved name; any other by itself as written (PHP's
-/// global fallback) and, inside a namespace, by its namespaced name.
 pub(super) fn function_call_matches_any<'n>(
     ancestors: &[Node<'_, '_>],
     call: &FunctionCall<'_>,
@@ -184,8 +166,6 @@ pub(super) fn function_call_matches_any<'n>(
     find(identifier.value()).or_else(|| find(&resolved))
 }
 
-/// mago-names' `is_imported` for a function name (`constant` false) or a constant name (`constant` true): an
-/// explicit rule (a leading `\`, `namespace\` or a `use function` / `use const` import) resolved it.
 pub(super) fn is_imported(
     ancestors: &[Node<'_, '_>],
     identifier: &Identifier<'_>,
@@ -201,7 +181,6 @@ pub(super) fn is_imported(
         .1
 }
 
-/// `function_call_matches` for one name.
 pub(super) fn function_call_matches(
     ancestors: &[Node<'_, '_>],
     call: &FunctionCall<'_>,
@@ -210,15 +189,10 @@ pub(super) fn function_call_matches(
     function_call_matches_any(ancestors, call, &[name]).is_some()
 }
 
-/// The fully qualified class-like name (without a leading `\`) of `name` written at `offset` (a docblock type), with
-/// the ancestors of the node there.
 pub(super) fn resolve_class_at(ancestors: &[Node<'_, '_>], offset: u32, name: &[u8]) -> Vec<u8> {
     scope(ancestors, offset).resolve(Kind::Class, name).0
 }
 
-/// The function name `identifier` stands for (without a leading `\`), and whether an explicit rule resolved it (a
-/// leading `\`, `namespace\` or a `use function` import); otherwise the name is the namespaced one, which PHP falls
-/// back from to the global function.
 pub(super) fn resolve_function(
     ancestors: &[Node<'_, '_>],
     identifier: &Identifier<'_>,

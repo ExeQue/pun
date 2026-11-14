@@ -1,9 +1,3 @@
-//! `lint/complexity/no-excessive-kan-defect`, ported from Mago 1.57.0's `kan-defect`
-//! (mago-linter src/rule/maintainability/kan_defect.rs).
-//!
-//! phpmetrics' Kan defect score, `0.15 + 0.23 * loops + 0.22 * (switch + match) + 0.07 * if`, of each class-like,
-//! function and closure (nested code included); reported on the header when above `threshold` (default 1.6).
-
 use mago_syntax::cst::*;
 use mago_syntax::walker::Walker;
 
@@ -104,7 +98,6 @@ impl Rule for NoExcessiveKanDefect {
     }
 }
 
-/// (switch and match, loops other than `for`, if).
 struct Collector;
 
 impl<'ast, 'arena> Walker<'ast, 'arena, (usize, usize, usize)> for Collector {

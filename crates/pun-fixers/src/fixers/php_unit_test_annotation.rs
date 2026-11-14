@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitTestAnnotationFixer`. Doc block lines are kept as their contents.
 use crate::analyzers::abstract_php_unit_fixer::{
     apply_fix, create_doc_block, get_doc_block_index, is_candidate,
 };
@@ -63,7 +62,6 @@ impl PhpUnitTestAnnotationFixer {
         self.whitespaces_config.get_line_ending().as_bytes()
     }
 
-    /// `applyTestAnnotation`. Upstream does not move `i` past the tokens a new doc block inserts.
     fn apply_test_annotation(&self, tokens: &mut Tokens, start_index: usize, end_index: usize) {
         let mut i = end_index - 1;
         while i > start_index {
@@ -80,7 +78,6 @@ impl PhpUnitTestAnnotationFixer {
                     let lines = self.add_test_annotation(lines, tokens, doc_block_index);
                     tokens.set(doc_block_index, Token::new(T_DOC_COMMENT, lines.concat()));
                 } else {
-                    // Create a new docblock if it didn't have one before;
                     create_doc_block(tokens, doc_block_index, "test", self.line_end());
                 }
             }
@@ -88,7 +85,6 @@ impl PhpUnitTestAnnotationFixer {
         }
     }
 
-    /// `applyTestPrefix`.
     fn apply_test_prefix(&self, tokens: &mut Tokens, start_index: usize, end_index: usize) {
         let mut i = end_index - 1;
         while i > start_index {
@@ -111,7 +107,6 @@ impl PhpUnitTestAnnotationFixer {
         }
     }
 
-    /// `updateDocBlock`.
     fn update_doc_block(&self, tokens: &Tokens, doc_block_index: usize) -> Vec<Vec<u8>> {
         let doc = DocBlock::new(tokens[doc_block_index].get_content());
         let lines = doc
@@ -122,7 +117,6 @@ impl PhpUnitTestAnnotationFixer {
         self.update_lines(lines, tokens, doc_block_index)
     }
 
-    /// `updateLines`.
     fn update_lines(
         &self,
         mut lines: Vec<Vec<u8>>,
@@ -133,7 +127,6 @@ impl PhpUnitTestAnnotationFixer {
         let doc = DocBlock::new(tokens[doc_block_index].get_content());
         for i in 0..lines.len() {
             let mut line = lines[i].clone();
-            // If we need to add test annotation and it is a single line comment we need to deal with that separately
             if needs_annotation
                 && contains(&line, b"/**")
                 && contains(&line, b"*/")
@@ -147,11 +140,9 @@ impl PhpUnitTestAnnotationFixer {
                 && !contains(&line, b"@testWith")
                 && !contains(&line, b"@testdox")
             {
-                // We remove @test from the doc block
                 line = str_replace(b" @test", b"", &line);
                 lines[i].clone_from(&line);
             }
-            // ignore the line if it isn't @depends
             if !contains(&line, b"@depends") {
                 continue;
             }
@@ -160,7 +151,6 @@ impl PhpUnitTestAnnotationFixer {
         lines
     }
 
-    /// `splitUpDocBlock`.
     fn split_up_doc_block(
         &self,
         lines: &[Vec<u8>],
@@ -180,7 +170,6 @@ impl PhpUnitTestAnnotationFixer {
         ]
     }
 
-    /// `updateDependsAnnotation`, with `removeTestPrefixFromDependsAnnotation` and `addTestPrefixToDependsAnnotation`.
     fn update_depends_annotation(&self, line: &[u8]) -> Vec<u8> {
         let depends_index = find_where_depends_function_name_starts(line);
         let (head, depends_function_name) = line.split_at(depends_index.min(line.len()));
@@ -198,7 +187,6 @@ impl PhpUnitTestAnnotationFixer {
         [head, &depends_function_name].concat()
     }
 
-    /// `addTestAnnotation`.
     fn add_test_annotation(
         &self,
         mut lines: Vec<Vec<u8>>,
@@ -225,19 +213,15 @@ impl PhpUnitTestAnnotationFixer {
     }
 }
 
-/// `isTestMethod`, with `isMethod`.
 fn is_test_method(tokens: &Tokens, index: usize) -> bool {
-    // Check if we are dealing with a (non-abstract, non-lambda) function
     if !tokens[index].is_kind(T_FUNCTION) || TokensAnalyzer::new(tokens).is_lambda(index) {
         return false;
     }
-    // if the function name starts with test it is a test
     let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
     if has_test_prefix(tokens[function_name_index].get_content()) {
         return true;
     }
     let doc_block_index = get_doc_block_index(tokens, index);
-    // If the function doesn't have test in its name, and no doc block, it is not a test
     tokens[doc_block_index].is_kind(T_DOC_COMMENT)
         && contains(tokens[doc_block_index].get_content(), b"@test")
 }
@@ -246,13 +230,11 @@ fn has_test_prefix(function_name: &[u8]) -> bool {
     function_name.starts_with(b"test")
 }
 
-/// `hasProperTestAnnotation`.
 fn has_proper_test_annotation(tokens: &Tokens, index: usize) -> bool {
     let doc_block_index = get_doc_block_index(tokens, index);
     Preg::r#match(r"/\*\s+@test\b/", tokens[doc_block_index].get_content())
 }
 
-/// `removeTestPrefix`.
 fn remove_test_prefix(function_name: &[u8]) -> Vec<u8> {
     let mut remainder = Preg::replace(r"/^test(?=[A-Z_])_?/", "", function_name);
     if remainder.is_empty() {
@@ -262,7 +244,6 @@ fn remove_test_prefix(function_name: &[u8]) -> Vec<u8> {
     remainder
 }
 
-/// `addTestPrefix`.
 fn add_test_prefix(function_name: &[u8]) -> Vec<u8> {
     let mut name = function_name.to_vec();
     if let Some(first) = name.first_mut() {
@@ -271,7 +252,6 @@ fn add_test_prefix(function_name: &[u8]) -> Vec<u8> {
     [b"test".as_slice(), &name].concat()
 }
 
-/// `getSingleLineDocBlockEntry`. Out-of-range offsets read as PHP's `null`.
 fn get_single_line_doc_block_entry(lines: &[Vec<u8>]) -> Vec<u8> {
     let line = str_replace(b"*/", b"", &lines[0]);
     let line = trim(&line);
@@ -289,7 +269,6 @@ fn get_single_line_doc_block_entry(lines: &[Vec<u8>]) -> Vec<u8> {
     line[i as usize..].to_vec()
 }
 
-/// `findWhereDependsFunctionNameStarts`.
 fn find_where_depends_function_name_starts(line: &[u8]) -> usize {
     let mut index = stripos(line, b"@depends", 0).unwrap_or(0) + 8;
     while line.get(index) == Some(&b' ') {
@@ -298,7 +277,6 @@ fn find_where_depends_function_name_starts(line: &[u8]) -> usize {
     index
 }
 
-/// `doesDocBlockContainTest`.
 fn does_doc_block_contain_test(doc: &DocBlock) -> bool {
     !doc.get_annotations_of_type(&["test"]).is_empty()
 }

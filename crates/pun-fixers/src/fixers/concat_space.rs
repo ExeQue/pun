@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\ConcatSpaceFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -69,7 +68,6 @@ impl Fixer for ConcatSpaceFixer {
         "concat_space"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoUnneededControlParenthesesFixer, SingleLineThrowFixer.
         0
     }
     fn configure(&mut self, options: &Value) -> Result<()> {

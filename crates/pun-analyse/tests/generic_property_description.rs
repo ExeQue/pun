@@ -1,5 +1,3 @@
-//! Reflected declaring-class arguments, with complete independent PHPStan 2.3.1 records.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

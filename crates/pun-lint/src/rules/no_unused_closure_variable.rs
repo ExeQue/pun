@@ -1,10 +1,3 @@
-//! `lint/functions/no-unused-closure-variable`, ported from Rector 2.8.4's `RemoveUnusedClosureVariableUseRector`
-//! (rules/DeadCode/Rector/Closure), with `ExprUsedInNodeAnalyzer`.
-//!
-//! A variable in a closure's `use (...)` that the closure's body never uses is removed, and the `use` clause with
-//! it when none is left. A variable variable, an `include` or a `compact()` naming it counts as a use. Rector prints
-//! a closure that lost its whole `use` clause again, its body a statement per line, and Pun writes the body so.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -52,8 +45,6 @@ impl Rule for NoUnusedClosureVariable {
         }
         let spans: Vec<Span> = variables.iter().map(node_span).collect();
         let edits = if unused.iter().all(|&u| u) {
-            // Without its `use` clause the closure is a new node to php-parser's printer, which prints its body a
-            // statement per line.
             let tokens = tokens(ctx);
             let indent = line_indent(ctx.source, node_span(closure).start);
             let body = block_list(tokens, &closure.body);

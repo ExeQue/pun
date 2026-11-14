@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-unused-public-method-param`, ported from Rector 2.8.4's `RemoveUnusedPublicMethodParameterRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `ClassMethodParamRemover` and `ComplexNodeRemover::
-//! processRemoveParamWithKeys`.
-//!
-//! In a final class that extends and implements nothing, a public method's unused parameters go when they are the
-//! last ones (a used parameter after an unused one keeps them all), with their `@param` tags. Callers are left
-//! alone: PHP ignores the extra arguments. Constructors and other magic methods are skipped, and so is `__invoke` of
-//! a Symfony `#[AsMessageHandler]`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -34,7 +25,6 @@ impl Rule for NoUnusedPublicMethodParam {
         out: &mut Vec<Report>,
     ) {
         let Node::Class(class) = node else { return };
-        // It may have a child, or override a parent method whose signature it must follow.
         if !class
             .modifiers
             .iter()
@@ -54,7 +44,6 @@ impl Rule for NoUnusedPublicMethodParam {
             let params: Vec<&FunctionLikeParameter> =
                 method.parameter_list.parameters.iter().collect();
             let removed: Vec<bool> = params.iter().map(|p| !param_used(method, p)).collect();
-            // processRemoveParamWithKeys: only when no kept parameter follows an unused one.
             let Some(first) = removed.iter().position(|r| *r) else {
                 continue;
             };
@@ -75,7 +64,6 @@ impl Rule for NoUnusedPublicMethodParam {
     }
 }
 
-/// `shouldSkipClassMethod`.
 fn skip(ancestors: &[Node<'_, '_>], class: &Class<'_>, method: &Method<'_>) -> bool {
     let public = !method
         .modifiers

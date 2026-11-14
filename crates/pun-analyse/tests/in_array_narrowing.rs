@@ -1,5 +1,3 @@
-//! ImpossibleCheckTypeHelper's remaining in_array narrowing, captured from PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

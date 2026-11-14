@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\NoRedundantReadonlyPropertyFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
 use pun_tokens::Tokens;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(NoRedundantReadonlyPropertyFixer)
 }
 
-/// `EXPECTED_KINDS_PROPERTY_KINDS`: `EXPECTED_KINDS_GENERIC` followed by `PROPERTY_TYPE_DECLARATION_KINDS`.
 const EXPECTED_KINDS_PROPERTY_KINDS: &[Kind] = &[
     T_ABSTRACT,
     T_FINAL,
@@ -45,7 +43,6 @@ impl Fixer for NoRedundantReadonlyPropertyFixer {
         3
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
-        // `\PHP_VERSION_ID >= 8_02_00`: always true on the PHP 8.5 oracle.
         tokens.is_any_token_kinds_found(&[T_CLASS])
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {

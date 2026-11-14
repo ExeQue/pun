@@ -1,6 +1,3 @@
-//! Types read from the syntax, where Rector asks PHPStan: Pun's stand-in until analyse's index can answer
-//! (lint.md Build 8). Each answer is "yes" only when the syntax alone proves it.
-
 use crate::syntax::is_this;
 use std::sync::OnceLock;
 
@@ -13,9 +10,6 @@ use crate::syntax::{node_span, unparenthesize};
 
 const BOOL_FUNCTIONS: &str = include_str!("../../data/bool-functions.txt");
 
-/// Whether `expr` is a `bool` (PHPStan's `isBoolean()->yes()`): `true`, `false`, a comparison, a logical operator,
-/// `!`, `(bool)`, `isset`, `empty`, `instanceof`, a call of a built-in function that returns `bool`, or a `bool`
-/// parameter of the enclosing function that it never assigns.
 pub(crate) fn is_bool(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) {
         return match parameter_hint(ancestors, v.name) {
@@ -26,7 +20,6 @@ pub(crate) fn is_bool(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool
     bool_value(ancestors, expr)
 }
 
-/// [`is_bool`] without following variables.
 fn bool_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Literal(Literal::True(_) | Literal::False(_)) => true,
@@ -48,7 +41,6 @@ fn bool_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
                 | BinaryOperator::LowOr(_)
                 | BinaryOperator::LowXor(_)
         ),
-        // `@expr` has the type of `expr`.
         Expression::UnaryPrefix(u)
             if matches!(u.operator, UnaryPrefixOperator::ErrorControl(_)) =>
         {
@@ -78,8 +70,6 @@ fn bool_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     }
 }
 
-/// The declared type of the parameter `name` of the enclosing function, when nothing writes it before the code (so
-/// the variable keeps its native type, as in PHPStan's scope there).
 pub(crate) fn parameter_hint<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
     name: &[u8],
@@ -91,9 +81,6 @@ pub(crate) fn parameter_hint<'ast, 'arena>(
     param.hint.as_ref()
 }
 
-/// The parameter `name` of the function around the code, when nothing writes it before the code: no
-/// write starts before the end of the code's parent, and when the code is in a loop, no write anywhere in the
-/// function (the loop can carry a later write back). By reference too: PHPStan types it as declared.
 fn parameter<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
     name: &[u8],
@@ -129,7 +116,6 @@ fn parameter<'ast, 'arena>(
     Some(param)
 }
 
-/// Whether the enclosing class declares the method `selector` names with a return type that `check` accepts.
 fn own_method_returns(
     ancestors: &[Node<'_, '_>],
     selector: &ClassLikeMemberSelector<'_>,
@@ -158,8 +144,6 @@ fn own_method_returns(
     })
 }
 
-/// Whether `name` is a local variable of the enclosing function (not a parameter or a `use`d variable) that is
-/// written only by plain assignments, at least one, each of a value `check` accepts.
 pub(crate) fn local_of(
     ancestors: &[Node<'_, '_>],
     name: &[u8],
@@ -203,8 +187,6 @@ pub(crate) fn local_of(
 
 const INT_FUNCTIONS: &str = include_str!("../../data/int-functions.txt");
 
-/// Whether `expr` is an `int`: an integer literal (or its negation), a call of a built-in function that returns an
-/// `int`, an own method declared `: int`, an `int` parameter never written, or a local only assigned one of those.
 pub(crate) fn is_int(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) {
         return match parameter_hint(ancestors, v.name) {
@@ -254,12 +236,8 @@ fn int_value(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     }
 }
 
-/// Whether a variable that sets an element of a property may be an untyped parameter (`isNonTypedFromParam`),
-/// given the method it is in.
 pub(crate) type NonTyped<'f> = &'f dyn Fn(&Expression<'_>, Option<&Method<'_>>) -> bool;
 
-/// Whether `expr` is a property of the enclosing class (`$this->p`, `self::$p`, `static::$p`) declared `array`, or
-/// untyped and only ever assigned arrays (`non_typed` judges the variables that set its elements).
 pub(crate) fn is_array_property(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -296,7 +274,6 @@ fn own_property_is_array(ancestors: &[Node<'_, '_>], name: &[u8], non_typed: Non
             };
             match &p.hint {
                 Some(hint) => matches!(hint, Hint::Array(_)),
-                // Untyped: `AllAssignNodePropertyTypeInferer` reads the default and every assignment in the class.
                 None => {
                     matches!(item, PropertyItem::Concrete(c)
                             if matches!(unparenthesize(c.value), Expression::Array(_) | Expression::LegacyArray(_)))
@@ -316,16 +293,10 @@ fn own_property_is_array(ancestors: &[Node<'_, '_>], name: &[u8], non_typed: Non
     })
 }
 
-/// `AssignToPropertyTypeInferer` on an untyped property: every plain assignment of `$this->name` (or `self::$name`,
-/// `static::$name`) in the class sets an array literal, an assignment of one of its elements (`$this->name[] = $v`)
-/// never takes a variable that may be an untyped parameter, and the class writes no dynamic property
-/// (`$this->$x = ...`).
 fn only_array_assigned(class: Node<'_, '_>, name: &[u8], non_typed: NonTyped<'_>) -> bool {
     !breaks_array(class, None, name, non_typed)
 }
 
-/// Whether `node` holds a write of the property that [`only_array_assigned`] refuses; `method` is the method around
-/// it.
 fn breaks_array<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     method: Option<&'ast Method<'arena>>,
@@ -350,7 +321,6 @@ fn breaks_array<'ast, 'arena>(
     found
 }
 
-/// [`breaks_array`] for one assignment.
 fn breaks_with(
     a: &Assignment<'_>,
     method: Option<&Method<'_>>,
@@ -386,7 +356,6 @@ fn breaks_with(
         return named && !element;
     }
     if element {
-        // `isNonTypedFromParam` on the value of an element.
         match unparenthesize(a.rhs) {
             Expression::Variable(Variable::Direct(_)) => non_typed(a.rhs, method),
             Expression::Variable(_) => true,
@@ -400,8 +369,6 @@ fn breaks_with(
     }
 }
 
-/// Whether a write of `name` in the function `body` starts before `until`: an assignment, a reference to it, or a
-/// binding in a `foreach`, `global`, `static` or `list()`.
 fn written(body: Node<'_, '_>, name: &[u8], until: usize) -> bool {
     super::side_effect::any_node(body, &|n| {
         node_span(&n).start < until

@@ -1,12 +1,7 @@
-//! The `--format` reporters, byte for byte: PHP-CS-Fixer's json, txt, checkstyle, junit, xml and gitlab
-//! (src/Console/Report/FixReport: DOMDocument::saveXML with formatOutput, json_encode defaults, md5 fingerprints)
-//! and Pint's agent.
-
 use crate::console::escape;
 use std::fmt::Write as _;
 use std::sync::LazyLock;
 
-/// One changed file as the reporters see it: `diff` is empty unless `-v` (Pint uses a NullDiffer otherwise).
 pub(crate) struct Change<'a> {
     pub(crate) file: &'a str,
     pub(crate) fixers: &'a [&'a str],
@@ -76,7 +71,6 @@ pub(crate) fn txt(
     o
 }
 
-/// Pint's AgentReporter; `errors` are (path, message).
 pub(crate) fn agent(changes: &[Change], errors: &[(&str, &str)], dry_run: bool) -> String {
     let result = if !errors.is_empty() {
         "fail"
@@ -101,7 +95,6 @@ pub(crate) fn agent(changes: &[Change], errors: &[(&str, &str)], dry_run: bool) 
     php_json(&v)
 }
 
-/// DiffConsoleFormatter with TextReporter's begin/end template; lines split on PCRE's `\R`.
 fn console_diff(diff: &str, decorated: bool) -> String {
     let mut lines = vec![];
     let mut rest = diff;
@@ -140,7 +133,6 @@ fn console_diff(diff: &str, decorated: bool) -> String {
     )
 }
 
-/// json_encode() defaults: escape `/` and non-ASCII (as UTF-16 `\uXXXX`).
 pub(crate) fn php_json(v: &serde_json::Value) -> String {
     let s = serde_json::to_string(v).expect("json");
     let mut o = String::with_capacity(s.len());
@@ -159,7 +151,6 @@ pub(crate) fn php_json(v: &serde_json::Value) -> String {
     o
 }
 
-/// A libxml element: attributes, then either child elements or one CDATA section.
 struct El {
     name: &'static str,
     attrs: Vec<(&'static str, String)>,
@@ -261,7 +252,6 @@ pub(crate) fn junit(changes: &[Change], verbose: bool, decorated: bool) -> Strin
     } else {
         let mut assertions = 0;
         for c in changes {
-            // `str_replace('.', '_DOT_', preg_replace('@\.<extension>$@', '', $file))`
             let base = c.file.rsplit('/').next().unwrap_or_default();
             let ext = base.rfind('.').map_or("", |i| &base[i + 1..]);
             let name = c
@@ -377,8 +367,6 @@ pub(crate) fn gitlab(changes: &[Change], decorated: bool) -> String {
     if decorated { escape(&json) } else { json }
 }
 
-/// GitlabReporter::getLines via sebastian/diff's Parser: first chunk of the first file diff; `begin` is its first
-/// changed line, `end` is where the chunk (context included) ends.
 fn gitlab_lines(diff: &str) -> (usize, usize) {
     let lines: Vec<&str> = diff
         .split("\r\n")
@@ -395,7 +383,6 @@ fn gitlab_lines(diff: &str) -> (usize, usize) {
     }) else {
         return (0, 0);
     };
-    // `@@ -start[,range] +…`
     let from = lines[h][4..].split(' ').next().unwrap_or_default();
     let (start, range) = from.split_once(',').unwrap_or((from, "1"));
     let (start, range): (usize, usize) = (start.parse().unwrap_or(0), range.parse().unwrap_or(1));
@@ -406,7 +393,6 @@ fn gitlab_lines(diff: &str) -> (usize, usize) {
     (start + first, start + range)
 }
 
-/// PHP's md5(), hex.
 fn md5(input: &[u8]) -> String {
     use md5::Digest;
     md5::Md5::digest(input)
@@ -421,7 +407,6 @@ mod tests {
 
     #[test]
     fn md5_like_php() {
-        // php -r 'echo md5(""), md5("a.phparray_syntax"), md5(str_repeat("x", 64)), md5(str_repeat("é", 40));'
         assert_eq!(md5(b""), "d41d8cd98f00b204e9800998ecf8427e");
         assert_eq!(
             md5(b"a.phparray_syntax"),

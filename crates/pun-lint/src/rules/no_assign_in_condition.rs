@@ -1,9 +1,3 @@
-//! `lint/control-flow/no-assign-in-condition`, ported from Mago 1.57.0's `no-assign-in-condition`
-//! (mago-linter src/rule/correctness/no_assign_in_condition.rs), with its default `ignore-while-statements = false`.
-//!
-//! Reports an assignment that is the whole condition (inside any parentheses) of an `if`, `elseif`, `while` or
-//! `do ... while`.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Expression, Node, NodeKind};
 

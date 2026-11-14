@@ -1,18 +1,3 @@
-//! `lint/complexity/prefer-property-exists`, ported from Rector 2.8.4's `IssetOnPropertyObjectToPropertyExistsRector`
-//! (rules/CodeQuality/Rector/Isset_).
-//!
-//! Each property fetch in an `isset()` (or a `!isset()`) whose object is of exactly one class becomes a null check:
-//! `$o->p !== null` (`=== null` under the `!`) when the class has the instance property, else
-//! `property_exists($o, 'p') && $o->p !== null` (`!property_exists($o, 'p') || $o->p === null`). A PHP class always
-//! takes the `property_exists()` form. The new checks join with `&&`, also under the `!`, and the other values of the
-//! `isset()` go, as in Rector. Skipped: `stdClass`, a class with `__isset()`, a dynamic name, an object that is an
-//! array offset, and a native property with a type that has no `null`, or with one and no `null` default. "Has the
-//! instance property" is PHPStan's `hasInstanceProperty()` as Rector's run answers it: a declared, non-static property
-//! the class sees (no private one of a parent, no `@property` tag, no mixin, no `__get()`); an enum has `name`, and
-//! `value` when it is backed. Rector's run gives `$this` no type in a trait's methods or in a static closure.
-//!
-//! php-parser's printer puts the new code in parentheses where its place needs them.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, Construct, Expression, Node, NodeKind, UnaryPrefixOperator,
@@ -52,7 +37,6 @@ impl Rule for PreferPropertyExists {
                 }
             }
             Node::IssetConstruct(isset) => {
-                // the `!` above it takes it whole
                 let above = ancestors.iter().rev().find(|a| {
                     !matches!(
                         a,
@@ -102,7 +86,6 @@ impl Rule for PreferPropertyExists {
     }
 }
 
-/// The new check for one value of the `isset()`, with its precedence.
 fn check(
     ctx: &Context<'_>,
     facts: &Facts,
@@ -128,8 +111,6 @@ fn check(
         let names = type_of(facts, fetch.object)
             .map(object_class_names)
             .unwrap_or_default();
-        // PHPStan's union keeps no class that another of its classes already covers (`Child|ParentClass` is
-        // `ParentClass`)
         names
             .iter()
             .filter(|n| {
@@ -147,7 +128,6 @@ fn check(
         return None;
     }
     let metadata = facts.codebase.get_class_like(class.as_bytes())?;
-    // XML elements resolve properties from the XML document itself
     if class.eq_ignore_ascii_case("SimpleXMLElement")
         || facts
             .codebase
@@ -195,8 +175,6 @@ fn check(
     )
 }
 
-/// `shouldSkipForPropertyTypeDeclaration`: a native property (an enum has none for PHPStan's reflection here) with
-/// a type other than `mixed` that has no `null`, or has one without a `null` default.
 fn skips_for_native_type(facts: &Facts, class: &str, property: &str, enum_: bool) -> bool {
     if enum_ {
         return false;
@@ -224,9 +202,6 @@ fn skips_for_native_type(facts: &Facts, class: &str, property: &str, enum_: bool
             .is_some_and(|d| d.type_union.is_null()))
 }
 
-/// The class `$this` stands for (Mago's facts leave `$this` untyped): the enclosing class or enum, by Mago's name for
-/// an anonymous class. None inside a trait, an interface, or a static closure or arrow function, where Rector's run
-/// gives `$this` no type.
 fn this_class(facts: &Facts, ancestors: &[Node<'_, '_>]) -> Option<String> {
     for (i, a) in ancestors.iter().enumerate().rev() {
         match a {

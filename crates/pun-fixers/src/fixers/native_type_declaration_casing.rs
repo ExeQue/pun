@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Casing\NativeTypeDeclarationCasingFixer` (PHP 8.5 type list).
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::token::CLASSY_KINDS;
@@ -40,15 +39,12 @@ impl Fixer for NativeTypeDeclarationCasingFixer {
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
         let classy_found = tokens.is_any_token_kinds_found(CLASSY_KINDS);
-        // Upstream also accepts `T_CONST && classy`, which the T_STRING check already covers: a class constant's name
-        // is a T_STRING.
         tokens.is_any_token_kinds_found(&[T_FUNCTION, T_FN])
             || (classy_found && tokens.is_token_kind_found(T_STRING))
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in 0..tokens.len() {
             let content = tokens[index].get_content();
-            // Already lowercase (the usual case) is skipped first; the lowercase copy is made only for the rewrite.
             if !content.iter().any(u8::is_ascii_uppercase)
                 || !TYPES.iter().any(|t| t.eq_ignore_ascii_case(content))
             {
@@ -78,7 +74,6 @@ impl Fixer for NativeTypeDeclarationCasingFixer {
             {
                 continue;
             }
-            // Every native type keyword is a T_STRING/T_ARRAY/T_CALLABLE/T_STATIC token, never a bare char.
             tokens.set(
                 index,
                 Token::new(

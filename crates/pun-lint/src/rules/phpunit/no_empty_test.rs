@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-empty-test`, ported from rector-phpunit's `RemoveEmptyTestMethodRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! A method of a test class whose name starts with `test` and whose body holds no statement (php-parser keeps a
-//! comment in the body as a `Nop` statement) is removed.
-
 use mago_syntax::cst::{ClassLikeMember, MethodBody, Node, NodeKind};
 use pun_problem::Safety;
 

@@ -1,11 +1,3 @@
-//! `lint/functions/require-strict-function-call`, ported from phpstan-strict-rules 2.0.12's `StrictFunctionCallsRule`
-//! (identifier `function.strict`).
-//!
-//! `in_array()` and `array_search()` need their third argument, `base64_decode()` its second and `array_keys()`, when
-//! it has a second, its third, set to `true`. Named arguments count at their parameter's place (an unknown name leaves
-//! the call alone, as `ArgumentsNormalizer` gives up on it), a skipped optional parameter counts as set. Pun reads
-//! the argument's native type, so a value only a doc comment types `true` is reported where PHPStan is content.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{Argument, Expression, Node, NodeKind};
@@ -15,7 +7,6 @@ use super::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// The functions, their parameters, and the parameter that must be `true`.
 const FUNCTIONS: [(&str, &[&str], usize); 4] = [
     ("in_array", &["needle", "haystack", "strict"], 2),
     ("array_search", &["needle", "haystack", "strict"], 2),
@@ -49,7 +40,6 @@ impl Rule for RequireStrictFunctionCall {
             return;
         };
         let (_, params, position) = FUNCTIONS.iter().find(|(n, _, _)| *n == name).unwrap();
-        // `ArgumentsNormalizer::reorderFuncArguments`: each argument at its parameter's place.
         let mut slots: Vec<(usize, &Expression<'_>)> = Vec::new();
         for (index, argument) in call.argument_list.arguments.iter().enumerate() {
             let slot = match argument {
@@ -84,7 +74,6 @@ impl Rule for RequireStrictFunctionCall {
     }
 }
 
-/// Whether `true` is a supertype of the value's native type.
 fn is_true(ctx: &Context<'_>, value: &Expression<'_>) -> bool {
     facts(ctx).native_type(node_span(value)).is_some_and(|t| {
         t.types

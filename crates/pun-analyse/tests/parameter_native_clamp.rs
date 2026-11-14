@@ -1,5 +1,3 @@
-//! Parameter entry selects PHPDoc refinements within the independent native declaration.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -268,7 +266,6 @@ fn parameter_callable_and_template_entry_channels_remain_distinct() {
                 json!({"name": template.parameter_name.to_string(), "bound": template.constraint.get_id().to_string()})
             }
             TAtomic::Callable(TCallable::Signature(signature)) => {
-                // Dynamic callable invocation still invalidates native state before its callee.
                 assert_eq!(got.1, None);
                 json!({"parameters": signature.get_parameters().iter().map(|parameter| parameter.get_type_signature().unwrap().get_id().to_string()).collect::<Vec<_>>(),
                     "return": signature.return_type.as_ref().unwrap().get_id().to_string()})

@@ -1,5 +1,3 @@
-//! SortWithoutEffectRule (level 5, `featureToggles.sortWithoutEffect`): a sort call that cannot change its array.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Level, Type};
@@ -7,7 +5,6 @@ use pun_phpstan::types::{Level, Type};
 use super::super::{Checker, declared};
 use super::noop::{self, function_of};
 
-/// Sort functions that keep the original keys: they cannot change an array with at most one element.
 const KEY_PRESERVING: &[&str] = &[
     "arsort",
     "asort",
@@ -19,7 +16,6 @@ const KEY_PRESERVING: &[&str] = &[
     "uksort",
 ];
 
-/// Sort functions that reindex the array: a no-op on lists only.
 const REINDEXING: &[&str] = &["rsort", "shuffle", "sort", "usort"];
 
 const TIP: &str = "Because the type is coming from a PHPDoc, you can turn off this check by setting treatPhpDocTypesAsCertain: false in your %configurationFile%.";
@@ -36,7 +32,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     if !key_preserving && !REINDEXING.contains(&name.as_str()) {
         return;
     }
-    // ArgumentsNormalizer::reorderFuncArguments(): `$array` and `$flags` by position or by name
     let argument = |position: usize, parameter: &str| {
         let arguments = &call.argument_list.arguments;
         arguments
@@ -58,7 +53,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     let Some(t) = c.phpstan_type(array) else {
         return;
     };
-    // hasFlagsKeepingListOrder(): SORT_REGULAR (the default) or SORT_NUMERIC
     let keys_sorted = name == "ksort"
         && argument(1, "flags").is_none_or(|flags| match c.phpstan_type(flags) {
             Some(Type::ConstInt(0 | 1)) => true,
@@ -86,7 +80,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     c.report(call.span(), &format!("sortArray.{reason}"), message, tip);
 }
 
-/// findNoEffectReason().
 fn reason(t: &Type, key_preserving: bool, keys_sorted: bool) -> Option<&'static str> {
     if !t.is_array().yes() {
         return None;
@@ -104,7 +97,6 @@ fn reason(t: &Type, key_preserving: bool, keys_sorted: bool) -> Option<&'static 
     at_most_one(t).then_some("noop")
 }
 
-/// `int<0, 1>` is a supertype of the array's size.
 fn at_most_one(t: &Type) -> bool {
     match t {
         Type::Union(ts) => ts.iter().all(at_most_one),
@@ -113,9 +105,6 @@ fn at_most_one(t: &Type) -> bool {
     }
 }
 
-/// The argument's native type: a parameter's declared type, a local variable's type, or unknown.
-// ponytail: a parameter is its native declaration even after the body assigns it, and a property or offset has no
-// native type known (its PHPDoc type always gets the tip)
 pub(crate) fn native(c: &Checker, e: &Expression) -> Option<Type> {
     let Expression::Variable(Variable::Direct(v)) = e else {
         return None;

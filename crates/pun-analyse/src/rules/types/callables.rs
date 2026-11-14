@@ -1,6 +1,3 @@
-//! CallCallablesRule (level 2): calling an expression (`$f()`) checks it is callable and its arguments against the
-//! callable's parameters; CallUserFuncRule (level 5): `call_user_func()` and `call_user_func_array()` check theirs.
-
 use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::ttype::atomic::{TAtomic, callable::TCallable};
 use mago_codex::ttype::union::TUnion;
@@ -19,22 +16,17 @@ pub(crate) const IDENTIFIERS: &[&str] = &[
     "callable.void",
 ];
 
-/// The callee expression of a call by expression.
 pub(super) fn typed(call: &FunctionCall, spans: &mut Vec<Span>) {
     if !matches!(call.function, Expression::Identifier(_)) {
         spans.push(call.function.span());
     }
 }
 
-/// A pipe's callable and input.
 pub(super) fn typed_pipe(p: &Pipe, spans: &mut Vec<Span>) {
     spans.extend([p.callable.span(), p.input.span()]);
 }
 
-/// A callable's acceptor, retaining each signature's parameter names even in a callable union.
 fn of_signature(c: &Checker, s: &Signature, source: Span) -> Acceptor {
-    // The PHPStan type model describes callable types without ExtendedParameterReflection's binding policy.
-    // Retain it from the original signature, combining identical callable types with the same AND as PHPStan.
     let by_ref = || {
         s.params
             .iter()
@@ -83,8 +75,6 @@ fn of_signature(c: &Checker, s: &Signature, source: Span) -> Acceptor {
                     .map(|f| (f, c.codebase.get_class_like(class.as_bytes()))),
                 _ => None,
             };
-            // A builtin first-class callable retains its ExtendedParameterReflection's three-state reference policy.
-            // Signature's boolean alone cannot distinguish array_pop's ReadsArgument from sscanf's output variables.
             let references = source
                 .filter(|(f, class)| class.is_none() && f.flags.is_built_in())
                 .and_then(|(f, _)| {
@@ -120,8 +110,6 @@ fn of_signature(c: &Checker, s: &Signature, source: Span) -> Acceptor {
                     .map(|p| p.get_closure_this_type().is_some())
                     .collect(),
             };
-            // Preserve late generic PHPDoc operations erased by Mago's callable expansion. Already instantiated class
-            // templates must keep the inferred callable type, not be replaced by their original declaration.
             let mut types = source
                 .map_or_else(
                     || vec![None; s.params.len()],
@@ -167,19 +155,14 @@ fn of_signature(c: &Checker, s: &Signature, source: Span) -> Acceptor {
                         *t = None;
                     }
                 }
-                // PassedByReference::combine(): CreatesNewVariable > ReadsArgument > No.
                 for (a, b) in references.iter_mut().zip(other_references) {
                     if b == ByRef::CreatesNewVariable || *a == ByRef::No {
                         *a = b;
                     }
                 }
-                // Identical closure signatures combine their reflections with OR; distinct callable alternatives are ANDed
-                // by check() before selecting a signature.
                 (a, types, named.or(other_named), references)
             },
         );
-    // A PHPDoc callable type's templates other than its own are the enclosing function's, which its body sees with
-    // TemplateTypeArgumentStrategy (MutatingScope's TemplateTypeHelper::toArgument() of the parameter types)
     let sourced = c
         .types
         .get(&source)
@@ -243,7 +226,6 @@ fn of_signature(c: &Checker, s: &Signature, source: Span) -> Acceptor {
     }
 }
 
-/// `TrivialParametersAcceptor` (also used for inaccessible methods): no parameters, variadic.
 fn inaccessible() -> Acceptor {
     Acceptor {
         optional: Default::default(),
@@ -262,8 +244,6 @@ fn inaccessible() -> Acceptor {
     }
 }
 
-/// The acceptors of `getCallableParametersAcceptors()`; `None` when Pun does not know them. `inaccessible` gets
-/// the private or protected method a callable names out of its scope.
 pub(in super::super) fn acceptors(
     c: &Checker,
     t: &Type,
@@ -335,10 +315,8 @@ pub(in super::super) fn acceptors(
     }
 }
 
-/// PipeOperatorRule (level 0): only the first parameter of each callable acceptor matters.
 pub(in super::super) fn pipe_by_ref(c: &mut Checker, p: &Pipe) {
     let right = unparen(p.callable);
-    // RuleLevelHelper's checkThisOnly is enabled at levels 0 and 1.
     if c.level < 2
         && !matches!(right, Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
     {
@@ -359,7 +337,6 @@ pub(in super::super) fn pipe_by_ref(c: &mut Checker, p: &Pipe) {
         return;
     };
     for acceptor in all {
-        // Only the first parameter receives the piped value.
         if let Some((by_ref, name)) = acceptor.by_ref.iter().zip(&acceptor.names).next()
             && *by_ref != pun_phpstan::symbols::ByRef::No
         {
@@ -374,7 +351,6 @@ pub(in super::super) fn pipe_by_ref(c: &mut Checker, p: &Pipe) {
     }
 }
 
-/// CallCallablesRule on `$callable(...)`.
 pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     if !matches!(call.function, Expression::Identifier(_)) {
         invoke(
@@ -386,7 +362,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// `$input |> $callable`: PHPStan analyses it as `$callable($input)` (`f(...)` callables are calls.rs's).
 pub(in super::super) fn pipe(c: &mut Checker, p: &Pipe) {
     if !matches!(p.callable, Expression::PartialApplication(_)) {
         invoke(c, p.callable, &params::Counts::of_value(p.input), p.span());
@@ -454,7 +429,6 @@ fn invoke(c: &mut Checker, callee: &Expression, counts: &params::Counts, at: Spa
     );
 }
 
-/// FunctionCallParametersCheck with the callable's description.
 fn check(
     c: &mut Checker,
     all: Vec<Acceptor>,
@@ -464,8 +438,6 @@ fn check(
     kind: params::CallKind,
     first_level: bool,
 ) {
-    // CallCallablesRule / ArgumentsNormalizer combine the whole callable type's contract with AND, before
-    // signature selection (whose combineAcceptors uses OR).
     let accepts_named = all.iter().fold(pun_phpstan::types::Tri::Yes, |accepts, a| {
         accepts.and(a.accepts_named(c))
     });
@@ -481,7 +453,6 @@ fn check(
     params::check(c, &acceptor, counts, at, call, first_level);
 }
 
-/// CallUserFuncRule on `call_user_func()` and `call_user_func_array()`.
 pub(in super::super) fn call_user_func(c: &mut Checker, call: &FunctionCall) {
     let Expression::Identifier(id) = call.function else {
         return;
@@ -504,7 +475,6 @@ pub(in super::super) fn call_user_func(c: &mut Checker, call: &FunctionCall) {
         return;
     }
     let args: Vec<&Argument> = call.argument_list.arguments.iter().collect();
-    // the callback: the first positional argument or the one named `callback`
     let Some(callback) = args.iter().enumerate().position(|(i, a)| match a {
         Argument::Named(n) => n.name.value == b"callback",
         Argument::Positional(_) => i == 0,
@@ -519,7 +489,6 @@ pub(in super::super) fn call_user_func(c: &mut Checker, call: &FunctionCall) {
     let counts = if function == "call_user_func" {
         params::Counts::of(rest)
     } else {
-        // the arguments array: the second positional argument or the one named `args`
         let Some(array) = args.iter().enumerate().find_map(|(i, a)| match a {
             Argument::Positional(p) if i == 1 && p.ellipsis.is_none() => Some(p.value),
             Argument::Named(n) if n.name.value == b"args" => Some(n.value),

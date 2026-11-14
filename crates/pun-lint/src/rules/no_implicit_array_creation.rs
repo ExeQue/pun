@@ -1,10 +1,3 @@
-//! `lint/arrays/no-implicit-array-creation`, ported from phpstan-strict-rules'
-//! `DisallowedImplicitArrayCreationRule` (identifier `variable.implicitArray`).
-//!
-//! `$a[] = 1;` or `$a['k']['j'] = 1;` where `$a` is not defined, or not defined on every path, creates an array
-//! implicitly. The state of the variable is Mago's, read before the assignment as `Scope::hasVariableType()`.
-//! The rule has no fix.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Span;
 

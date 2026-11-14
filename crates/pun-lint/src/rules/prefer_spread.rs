@@ -1,13 +1,3 @@
-//! `lint/style/prefer-spread`, ported from Rector 2.8.4's `CallUserFuncArrayToVariadicRector`
-//! (rules/CodingStyle/Rector/FuncCall) and `ArrayCallableToMethodCallFactory` (src/NodeFactory).
-//!
-//! `call_user_func_array('name', $args)` becomes `name(...$args)`, `call_user_func_array([$object, 'method'], $args)`
-//! `$object->method(...$args)` when `$object` (a variable or a property fetch) is of one class, and
-//! `call_user_func_array($object->method(...), $args)` `$object->method(...$args)`. Arguments past the second go.
-//! Pun reads the class from the native type; a `$this->name` of a private property without a type or doc comment
-//! has the type of the value the constructor last assigns it among its own statements, as Rector's PHPStan runs with
-//! `inferPrivatePropertyTypeFromConstructor` (which reads the scope at the constructor's end).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
@@ -26,7 +16,6 @@ impl Rule for PreferSpread {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::ARRAY_SPREAD
         70400
     }
 
@@ -95,8 +84,6 @@ impl Rule for PreferSpread {
     }
 }
 
-/// `ArrayCallableToMethodCallFactory::create`: the first of exactly two items, a variable or property fetch whose
-/// type names exactly one class.
 fn method_call_object<'a>(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -112,14 +99,12 @@ fn method_call_object<'a>(
     ) {
         return None;
     }
-    // `ClassNameFromObjectTypeResolver::resolve`: `getObjectClassNames()` has one name.
     let typed = constructor_assigned(ancestors, object).unwrap_or(object);
     let facts = facts(ctx);
     let ty = facts.native_type(node_span(typed))?;
     matches!(ty.types.as_ref(), [TAtomic::Object(TObject::Named(_))]).then_some(object)
 }
 
-/// An array item's value, without the `&` of a by-reference item (php-parser's `byRef`).
 fn element_value<'a>(element: &ArrayElement<'a>) -> Option<&'a Expression<'a>> {
     let (_, value) = super::php_parser::array_item(element)?;
     Some(match value {
@@ -128,9 +113,6 @@ fn element_value<'a>(element: &ArrayElement<'a>) -> Option<&'a Expression<'a>> {
     })
 }
 
-/// The value `__construct` last assigns to `$this->name` among its own statements, when `object` is `$this->name` of a
-/// private property of the enclosing class declared without a type or doc comment.
-// ponytail: top-level constructor statements only, PHPStan merges the constructor's branches too.
 fn constructor_assigned<'a>(
     ancestors: &[Node<'a, 'a>],
     object: &Expression<'_>,

@@ -1,5 +1,3 @@
-//! Native nullsafe reads are source-owned, passive observations of the selected walk.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -95,7 +93,6 @@ fn analyze(
     (artifacts, events, format!("{:?}", result.issues))
 }
 
-// Display adaptation only: Mago prints constant integers as int(0).
 fn normalize(value: &str) -> String {
     let mut parts: Vec<_> = value
         .split('|')
@@ -182,7 +179,6 @@ fn native_nullsafe_preserves_incoming_receivers_and_selected_results_without_rep
             .filter(|record| record["file"] == name)
             .collect();
         let count = if name == "consumer.php" {
-            // Four captured receivers, four property values, two isset and two ?? results.
             12
         } else {
             source

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\CombineConsecutiveUnsetsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -62,7 +61,6 @@ impl Fixer for CombineConsecutiveUnsetsFixer {
                 tokens.insert_at(previous_unset_brace_end, vec![Token::char(",")]);
                 tokens_add_count += 1;
             } else if tokens[before_brace_end + 1].is_whitespace(None) {
-                // keeping trailing comma from previous `unset`, but tokens moved: clean up two whitespace tokens in a row
                 tokens.clear_token_and_merge_surrounding_whitespace(before_brace_end + 1);
             }
 
@@ -74,14 +72,12 @@ impl Fixer for CombineConsecutiveUnsetsFixer {
             {
                 tokens.clear_token_and_merge_surrounding_whitespace(semicolon);
             }
-            index = previous_unset as isize; // upstream sets `$previousUnset + 1`, then the loop decrements
+            index = previous_unset as isize;
         }
     }
 }
 
-/// `getPreviousUnsetCall`: `Ok((unset, brace end))`, or `Err(index)` to continue the scan from.
 fn get_previous_unset_call(tokens: &Tokens, index: usize) -> Result<(usize, usize), usize> {
-    // upstream's `null === getPrevMeaningfulToken` exits are unreachable: the open tag (or inline HTML) comes first
     let semicolon = tokens.get_prev_meaningful_token(index).unwrap();
     if !tokens[semicolon].equals(";", true) {
         return Err(semicolon);
@@ -98,8 +94,6 @@ fn get_previous_unset_call(tokens: &Tokens, index: usize) -> Result<(usize, usiz
     Ok((previous_unset, brace_end))
 }
 
-/// `moveTokens`. Upstream merges a moved whitespace into a whitespace at `$to + 1`, but that slot always holds the
-/// previous call's `)` (each insert lands just before it), so every token is cloned in.
 fn move_tokens(tokens: &mut Tokens, start: usize, mut end: usize, mut to: usize) -> usize {
     let mut added = 0;
     let mut i = start + 1;

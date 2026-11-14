@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\ReturnToYieldFromFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::php_compat::strtolower;
@@ -32,7 +31,6 @@ impl Fixer for ReturnToYieldFromFixer {
 }
 
 fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
-    // A `return` is always followed by an expression or `;`.
     let array_start_index = tokens.get_next_meaningful_token(return_index).unwrap();
     if !tokens[array_start_index].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
         return false;

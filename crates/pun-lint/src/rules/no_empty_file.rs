@@ -1,9 +1,3 @@
-//! `lint/complexity/no-empty-file`, ported from Mago 1.57.0's `no-redundant-file`
-//! (mago-linter src/rule/redundancy/no_redundant_file.rs).
-//!
-//! Reports a file with no statement that does anything: only tags, whitespace, `use`, `declare` without a body that
-//! does something, and expression statements made of literals, variables and magic constants.
-
 use mago_syntax::cst::{ArrayElement, DeclareBody, Expression, Node, NodeKind, Statement};
 
 use crate::syntax::node_span;

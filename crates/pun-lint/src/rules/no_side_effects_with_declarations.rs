@@ -1,13 +1,3 @@
-//! `lint/style/no-side-effects-with-declarations`, ported from Mago 1.57.0's `no-side-effects-with-declarations`
-//! (mago-linter src/rule/best_practices/no_side_effects_with_declarations.rs).
-//!
-//! Reports a file that both declares symbols (classes, interfaces, traits, enums, functions, constants) and has
-//! side-effects, once, on the first side-effect. Every statement outside symbol bodies, closures, arrow functions and
-//! anonymous classes counts, nested ones included (the body of an `if` or a loop): tags, `use`, `declare`,
-//! `namespace`, blocks and `;` are neutral. Options, as in Mago: `allow-conditional-declarations` (default true) makes
-//! an `if` itself neutral (its body still counts), `allow-class-alias` and `allow-class-exists` (default true) make
-//! a `class_alias()` or `class_exists()` call statement neutral.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -84,7 +74,6 @@ impl Rule for NoSideEffectsWithDeclarations {
     }
 }
 
-/// `StatementCollector`. `scope` is the program and the namespace being walked: the ancestors name resolution needs.
 struct Collector<'r, 'ast, 'arena> {
     rule: &'r NoSideEffectsWithDeclarations,
     scope: Vec<Node<'ast, 'arena>>,

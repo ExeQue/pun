@@ -1,13 +1,6 @@
-//! Mago 1.57.0's variable-usage walker (mago-linter src/rule/utils/variable_usage.rs) as its `UsageCollector`
-//! sees it, for the rules ported from Mago's `no-unused-global` and `no-unused-static`: every direct variable a
-//! function body names, apart from `global` and `static` declarations, the bodies of nested functions, classes and
-//! closures (whose `use` list does count), and the parameters of nested arrow functions. `compact('name')` names
-//! `$name`; a variable variable or an `extract()` call makes the result unknown.
-
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 
-/// The direct variable names a body references, or `None` when it can't be known.
 pub(crate) fn used_names<'arena>(
     body: &Block<'arena>,
     interest: &[&'arena [u8]],
@@ -22,7 +15,6 @@ pub(crate) fn used_names<'arena>(
     (!walker.bailed).then_some(walker.referenced)
 }
 
-/// The parts of a function, method or closure Mago's `function_like_parts` returns: its body, if it has one.
 pub(crate) fn function_like_body<'ast, 'arena>(
     node: Node<'ast, 'arena>,
 ) -> Option<&'ast Block<'arena>> {
@@ -37,7 +29,6 @@ pub(crate) fn function_like_body<'ast, 'arena>(
     }
 }
 
-/// Mago's `is_silenced_name`: `$_` and names that start with `$_`.
 pub(crate) fn is_silenced_name(name: &[u8]) -> bool {
     name.strip_prefix(b"$").unwrap_or(name).starts_with(b"_")
 }
@@ -157,8 +148,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Usage<'arena> {
     fn walk_enum(&mut self, _: &'ast Enum<'arena>, (): &mut ()) {}
 }
 
-/// The `global` or `static` declarations of a body, outside nested functions and classes: each declared name with its
-/// span.
 pub(crate) fn declarations<'arena>(
     body: &Block<'arena>,
     statics: bool,

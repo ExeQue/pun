@@ -1,6 +1,3 @@
-//! OctaneCompatibilityRule: `singleton()` and `bind()` on the application with a closure that captures the
-//! container (`$this->app`, or `new X($app)`, `new X($app['request'])`, `new X($app['config'])`).
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -13,7 +10,6 @@ const APPLICATION: &[u8] = b"illuminate\\contracts\\foundation\\application";
 
 const TIP: &str = "See: https://laravel.com/docs/octane#dependency-injection-and-octane";
 
-/// `->singleton()` or `->bind()` with a closure as its second argument.
 pub(super) fn is_binding(call: &MethodCall) -> bool {
     binding_closure(call).is_some()
 }
@@ -54,7 +50,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'aren
             }
             finder.0
         }
-        // using `$app` with `bind` is fine
         Some(_) if matches!(&call.method, ClassLikeMemberSelector::Identifier(m) if m.value == b"bind") =>
         {
             return;
@@ -80,7 +75,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'aren
     }
 }
 
-/// `$this->app`.
 struct ThisApp(Vec<mago_span::Span>);
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ThisApp {
@@ -93,7 +87,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ThisApp {
     }
 }
 
-/// `new X($container)`, `new X($container['request'])`, `new X($container['config'])`.
 struct ContainerPassed<'arena> {
     container: &'arena [u8],
     found: Vec<mago_span::Span>,

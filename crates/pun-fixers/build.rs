@@ -1,5 +1,3 @@
-// Registers every src/fixers/<name>.rs. Each file exposes `pub fn fixer() -> Box<dyn pun_format::Fixer>`.
-// PUN_FIXERS_ONLY=a,b compiles only those fixers, so one agent's half-done file can't break another's build.
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -25,7 +23,6 @@ fn main() {
     let mut out = String::new();
     let dir = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("src/fixers");
     for n in &names {
-        // `{:?}` writes a Rust string literal, so a checkout path holding `"` or `\` still compiles.
         let path = dir.join(format!("{n}.rs")).display().to_string();
         out += &format!("#[path = {path:?}] mod {n};\n");
     }

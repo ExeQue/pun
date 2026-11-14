@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\FunctionDeclarationFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -39,7 +38,6 @@ impl Fixer for FunctionDeclarationFixer {
         )?;
         self.closure_function_spacing_none =
             c.string("closure_function_spacing", "one", SUPPORTED_SPACINGS)? == "none";
-        // Future::getV4OrV3('none', 'one'): v3 default.
         self.closure_fn_spacing_none =
             c.string("closure_fn_spacing", "one", SUPPORTED_SPACINGS)? == "none";
         self.trailing_comma_single_line = c.bool("trailing_comma_single_line", false)?;
@@ -54,8 +52,6 @@ impl Fixer for FunctionDeclarationFixer {
                 continue;
             }
             let token = tokens[index].clone();
-            // Upstream also stops at `;`/`?>` and skips; in valid code a T_FUNCTION/T_FN always reaches its `(` first
-            // (`use function` is CT_FUNCTION_IMPORT).
             let start_parenthesis_index = tokens
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
@@ -89,7 +85,6 @@ impl Fixer for FunctionDeclarationFixer {
                 .get_next_non_whitespace(end_parenthesis_index, None)
                 .unwrap();
             if tokens[after_parenthesis_index].is_kind(CT_USE_LAMBDA) {
-                // fix whitespace after CT:T_USE_LAMBDA (we might add a token, so do this before determining start and end parenthesis)
                 tokens.ensure_whitespace_at_index(after_parenthesis_index + 1, 0, b" ");
                 let use_start_parenthesis_index = tokens
                     .get_next_token_of_kind(after_parenthesis_index, &["(".into()], true)

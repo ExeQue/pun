@@ -1,10 +1,3 @@
-//! `lint/php-8.5/prefer-array-first-last`, ported from Rector 2.8.4's `ArrayFirstLastRector`
-//! (rules/Php85/Rector/ArrayDimFetch).
-//!
-//! `$a[array_key_first($a)]` becomes `array_first($a)` (and `_last` likewise); `array_values($a)[0]` becomes
-//! `array_first($a)` and `array_values($a)[count($a) - 1]` becomes `array_last($a)`. A fetch that is written to
-//! (assigned, compound-assigned or unset) stays.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -21,7 +14,6 @@ impl Rule for PreferArrayFirstLast {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::ARRAY_FIRST_LAST
         80500
     }
 
@@ -44,7 +36,6 @@ impl Rule for PreferArrayFirstLast {
         };
         let index = unparenthesize(fetch.index);
         let new = if let Expression::Call(mago_syntax::cst::Call::Function(dim)) = index {
-            // refactorArrayKeyPattern
             let function = if named(dim, "array_key_first") {
                 "array_first"
             } else if named(dim, "array_key_last") {
@@ -58,7 +49,6 @@ impl Rule for PreferArrayFirstLast {
             }
             format!("{function}({})", text(fetch.array))
         } else {
-            // refactorArrayValuesPattern
             let Some(values) = call_to(fetch.array, "array_values") else {
                 return;
             };
@@ -103,7 +93,6 @@ impl Rule for PreferArrayFirstLast {
     }
 }
 
-/// `shouldSkip`: the fetch is (inside) the target of an assignment, a compound assignment or `unset()`.
 fn written(span: pun_problem::Span, ancestors: &[Node<'_, '_>]) -> bool {
     ancestors.iter().any(|a| match a {
         Node::Assignment(assignment) => {

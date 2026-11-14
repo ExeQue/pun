@@ -1,13 +1,3 @@
-//! `lint/style/require-phpdoc`, ported from Mago 1.57.0's `missing-docs` (mago-linter src/rule/clarity/missing_docs.rs).
-//!
-//! Reports a declaration with no docblock right before it (only whitespace and other comments between): top-level
-//! and namespaced functions, classes, interfaces, traits, enums, constants and `static` variables, and the
-//! constants, enum cases, methods and properties of a top-level class-like. Each kind has a boolean option, as in
-//! Mago: `functions`, `enum-cases`, `constants`, `statics`, `methods` and `properties` default to true, `classes`,
-//! `interfaces`, `traits` and `enums` to false. `exclusions` holds a list of regular expressions per kind (Rust's
-//! `regex`, as Mago; an invalid one is ignored, as Mago does): a declaration is skipped when every name it declares
-//! matches one of them.
-
 use mago_span::HasSpan;
 use mago_syntax::comments::docblock::get_docblock_before_position;
 use mago_syntax::cst::{
@@ -19,7 +9,6 @@ use super::mago_helpers::{boolean, configure};
 use crate::syntax::span;
 use crate::{Context, Report, Rule};
 
-/// The kinds, in Mago's order: (option name, checked by default).
 const KINDS: [(&str, bool); 10] = [
     ("functions", true),
     ("classes", false),
@@ -45,9 +34,7 @@ const METHODS: usize = 8;
 const PROPERTIES: usize = 9;
 
 pub struct RequirePhpdoc {
-    /// Whether each kind of [`KINDS`] is checked.
     pub checked: [bool; 10],
-    /// The exclusion patterns of each kind.
     pub exclusions: [Vec<Regex>; 10],
 }
 
@@ -194,7 +181,6 @@ impl RequirePhpdoc {
         }
     }
 
-    /// `check_docs`, for a kind that is checked.
     fn check(
         &self,
         program: &Program<'_>,

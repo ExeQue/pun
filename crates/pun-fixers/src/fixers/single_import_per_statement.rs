@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\SingleImportPerStatementFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use anyhow::Result;

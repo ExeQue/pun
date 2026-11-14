@@ -1,5 +1,3 @@
-//! Prepared reads survive applyWrite without replaying expressions or semantic hooks.
-
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
@@ -29,12 +27,7 @@ const ORIGINAL: &[u8] =
     include_bytes!("fixtures/rules/data/Arrays/data/offset-access-assignop-nullsafe.php");
 const EXPECTED: &str = include_str!("fixtures/compound-assignment-reads/expected.json");
 
-/// (level, file, line, identifier) records whose message differs for a reason outside these reads.
-const GAPS: &[(i64, &str, i64, &str)] = &[
-    // `$c ? [$v] : []`: PHPStan's TypeCombinator keeps `array{}|array{int}`, Mago's combiner joins the two constant
-    // arrays into `array{0?: int}`, so offsetAccess.notFound describes the holder differently
-    (9, "inputs.php", 118, "offsetAccess.notFound"),
-];
+const GAPS: &[(i64, &str, i64, &str)] = &[(9, "inputs.php", 118, "offsetAccess.notFound")];
 
 fn gap(level: i64, record: &Value) -> bool {
     GAPS.iter().any(|(l, file, line, id)| {
@@ -86,7 +79,6 @@ fn compound_read_diagnostics_match_phpstan_for_implemented_rules() {
                 .into_iter()
                 .filter(|record| !gap(level, record))
                 .collect();
-        // Keep the complete capture. As in levels.rs, compare every record for an implemented rule.
         let want: Vec<_> = expected["diagnostics"][&level.to_string()]
             .as_array()
             .unwrap()
@@ -324,8 +316,6 @@ fn completed_target_reads_match_the_real_phpstan_prepare_target_handoff() {
                         read[0] == record[0] && read[1] == record[1] && read[2] == record[2]
                     })
                     .unwrap();
-                // Only ??= has a supported native prepare-target transfer. Other
-                // compound operators keep their explicit unavailability boundary.
                 let native_want = if native && native_record[4].as_bool().unwrap() {
                     native_record[3].clone()
                 } else {

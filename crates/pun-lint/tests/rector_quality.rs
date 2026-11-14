@@ -193,7 +193,6 @@ fn fix_class_case_sensitivity_var_docblock() {
     );
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -244,7 +243,6 @@ fn typed_property_from_strict_constructor_on_every_node() {
 
 #[test]
 fn rules_ignore_nodes_outside_their_targets() {
-    // `targets()` only spares the engine work: called on every node, each rule reports what it reports on its own.
     let cases: Vec<(fn() -> Box<dyn Rule>, &str)> = vec![
         (|| Box::new(NoConstantCondition), "RemoveDeadIfBlockRector"),
         (

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitMockFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;

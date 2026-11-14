@@ -30,8 +30,6 @@ fn lint_matches_token_get_all() {
     );
 }
 
-/// The unexpected token's text keeps the source's bytes: `%.*s` cuts `é` after its first byte, and Latin-1 stays
-/// Latin-1. Expected: `token_get_all($code, TOKEN_PARSE)` on PHP 8.5, worded by TokenizerLintingResult.
 #[test]
 fn lint_keeps_the_source_bytes() {
     for (code, want) in [

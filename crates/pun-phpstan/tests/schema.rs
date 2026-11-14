@@ -34,7 +34,6 @@ fn container_factory_validate_parameters() {
             Err(e) => json!({ "exception": e }),
         };
         let want = match case.get("exception").and_then(|e| e.as_str()) {
-            // PHP's own TypeError/ArgumentCountError (with the phar's path in it): only "fails" is comparable.
             Some(e) if e.contains(" called in ") || e.contains(" passed in ") => {
                 if got.get("exception").is_some() {
                     continue;

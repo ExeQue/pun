@@ -1,9 +1,3 @@
-//! `lint/complexity/require-attribute-argument-order`, ported from Rector 2.8.4's `SortAttributeNamedArgsRector`
-//! (rules/CodeQuality/Rector/Attribute).
-//!
-//! The named arguments of an attribute move into the order of its class constructor's parameters, as
-//! `require-named-argument-order` does for calls.
-
 use mago_syntax::cst::{Node, NodeKind, PartialArgument};
 use pun_problem::{Edit, Span};
 
@@ -59,7 +53,6 @@ impl Rule for RequireAttributeArgumentOrder {
         let Some(spans) = sorted(&args, constructor) else {
             return;
         };
-        // php-parser prints an attribute's changed arguments again, on one line.
         let code: Vec<&str> = spans.iter().map(|s| &ctx.source[s.start..s.end]).collect();
         let inner = Span::new(
             list.left_parenthesis.end.offset as usize,

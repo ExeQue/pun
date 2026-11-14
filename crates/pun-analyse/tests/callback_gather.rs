@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 oracle output, through the public analyser (not a private inference helper).
-
 use std::path::Path;
 
 use pun_analyse::{Project, run, run_mago};
@@ -27,7 +25,6 @@ fn check(file: &str) {
             )
         })
         .collect();
-    // Compare every diagnostic, independent of the entry point's historical sorting policy.
     got.sort_by(|a, b| (a.0, &a.2, &a.1).cmp(&(b.0, &b.2, &b.1)));
     want.sort_by(|a, b| (a.0, &a.2, &a.1).cmp(&(b.0, &b.2, &b.1)));
     assert_ne!(
@@ -98,12 +95,9 @@ fn upstream_raw_inference_is_array_key_to_mixed_before_conversion() {
         .join("tests/fixtures/rules/data/Functions/data/bug-10612.php");
     let inferred = run_mago(&Project::new(vec![path], Vec::new()), None).unwrap();
     let outer = inferred.dumped.iter().find(|e| e.line == 39).unwrap();
-    // PHPStan's array<mixed> is array-key -> mixed. Mago's TKeyedArray::get_id()
-    // writes both domains, with a comma and space; this is not a Pun-rendered snapshot.
     assert_eq!(outer.type_id, "array<array-key, mixed>");
 }
 
-/// A one-shot plugin error in the speculative walk must propagate, not publish partial artifacts.
 #[test]
 fn speculative_errors_propagate_and_expression_observers_run_once() {
     use std::borrow::Cow;

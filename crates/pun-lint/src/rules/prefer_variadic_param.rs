@@ -1,10 +1,3 @@
-//! `lint/style/prefer-variadic-param`, ported from Rector 2.8.4's `FuncGetArgsToVariadicParamRector`
-//! (rules/CodingStyle/Rector/ClassMethod).
-//!
-//! In a function, method or closure without parameters, a statement `$args = func_get_args();` among its own
-//! statements goes, and the function takes `...$args` instead. Assigned to something else (`$this->args =
-//! func_get_args();`), the call becomes `$args`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -21,7 +14,6 @@ impl Rule for PreferVariadicParam {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::VARIADIC_PARAM
         50600
     }
 
@@ -49,15 +41,12 @@ impl Rule for PreferVariadicParam {
             };
             let (name, mut edits) = match assign.lhs {
                 Expression::Variable(Variable::Direct(v)) => (v.name, remove(ctx, &list, &[index])),
-                // php-parser's `${'args'}`: Rector 2.8.4 fails on its null name.
                 Expression::Variable(_) => return,
                 _ => (
                     &b"$args"[..],
                     vec![Edit::new(node_span(assign.rhs), "$args")],
                 ),
             };
-            // Rector removes the statement before `applyVariadicParams` gives up on an inner function or closure
-            // assigning the same variable, and that one's own change prints the removal.
             if !has_function_or_closure_inside(body, name) {
                 let at = params.right_parenthesis.start.offset as usize;
                 edits.push(Edit::new(
@@ -79,7 +68,6 @@ impl Rule for PreferVariadicParam {
     }
 }
 
-/// The parameters and the body of a function, a method with a body, or a closure.
 fn parts<'a>(node: Node<'a, 'a>) -> Option<(&'a FunctionLikeParameterList<'a>, &'a Block<'a>)> {
     match node {
         Node::Function(f) => Some((&f.parameter_list, &f.body)),
@@ -92,7 +80,6 @@ fn parts<'a>(node: Node<'a, 'a>) -> Option<(&'a FunctionLikeParameterList<'a>, &
     }
 }
 
-/// The assignment of `func_get_args()` an expression statement makes (`... = func_get_args();`).
 fn assign_of<'a>(statement: &'a Statement<'a>) -> Option<&'a Assignment<'a>> {
     let Statement::Expression(e) = statement else {
         return None;
@@ -108,8 +95,6 @@ fn assign_of<'a>(statement: &'a Statement<'a>) -> Option<&'a Assignment<'a>> {
     }
 }
 
-/// `matchFuncGetArgsVariableAssign`: the first `... = func_get_args();` statement in `body`, outside the functions
-/// and classes declared in it.
 fn func_get_args_assign<'a>(body: &'a Block<'a>) -> Option<&'a Assignment<'a>> {
     fn find<'a>(node: Node<'a, 'a>, found: &mut Option<&'a Assignment<'a>>) {
         match node {
@@ -135,8 +120,6 @@ fn func_get_args_assign<'a>(body: &'a Block<'a>) -> Option<&'a Assignment<'a>> {
     found
 }
 
-/// `hasFunctionOrClosureInside`: a function or closure without parameters inside `body` that assigns
-/// `func_get_args()` to the same variable `name`.
 fn has_function_or_closure_inside(body: &Block<'_>, name: &[u8]) -> bool {
     super::side_effect::any_node(Node::Block(body), &|n| {
         let Some((params, inner)) = (match n {

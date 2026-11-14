@@ -1,5 +1,3 @@
-//! Complete offset-unset effects after the shared producer has updated the selected value.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 

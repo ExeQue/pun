@@ -1,19 +1,3 @@
-//! `lint/types/add-property-type-setter-getter`, ported from Rector 2.8.4's `PropertyTypeFromStrictSetterGetterRector`
-//! (rules/TypeDeclaration/Rector/Class_) with `GetterTypeDeclarationPropertyTypeInferer`,
-//! `SetterTypeDeclarationPropertyTypeInferer` and `ClassMethodAndPropertyAnalyzer`: an untyped private property gets
-//! the type its getter declares and its setter takes.
-//!
-//! The getter is the first method whose only statement returns a property fetch of that name and that declares a
-//! return type other than `mixed`; the setter is the first whose only statement assigns `$this->name`, and its first
-//! parameter's declared type counts unless it is `mixed` (without one there is no setter type). Either one being
-//! `array` leaves the property alone (Rector leaves it to the doc types). Equal types give that type; others give
-//! their union, setter's first. A property the constructor assigns to `$this->name` anywhere, one a used trait declares
-//! or writes, one whose declared type is `null`, `callable` or a missing class, and one whose default is not of the
-//! type (a numeric or string default of the same scalar kind is) are left alone.
-//!
-//! A nullable type gets `= null` when it has no default. A `null` default goes, or becomes `''` for `string`; a `float`
-//! or `int` without a default gets `0.0` or `0`.
-
 use mago_syntax::cst::{
     Access, ClassLikeMember, ClassLikeMemberSelector, Expression, Hint, Method, MethodBody, Node,
     NodeKind, Statement, Variable,
@@ -108,7 +92,6 @@ impl Rule for AddPropertyTypeSetterGetter {
     }
 }
 
-/// `isAssignedInConstructor`: an assignment to `$this->name` anywhere in the constructor.
 fn constructor_assigns(constructor: &Method<'_>, name: &[u8]) -> bool {
     fn walk(node: Node<'_, '_>, name: &[u8]) -> bool {
         if let Node::Assignment(a) = node
@@ -125,14 +108,12 @@ fn constructor_assigns(constructor: &Method<'_>, name: &[u8]) -> bool {
     walk(Node::Method(constructor), name)
 }
 
-/// `$this->name`.
 fn is_this_fetch(expr: &Expression<'_>, name: &[u8]) -> bool {
     matches!(unparenthesize(expr), Expression::Access(Access::Property(p))
         if matches!(unparenthesize(p.object), Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
             && matches!(&p.property, ClassLikeMemberSelector::Identifier(id) if id.value == name))
 }
 
-/// The method's statements, when it has a body.
 fn statements<'a>(method: &'a Method<'a>) -> Vec<&'a Statement<'a>> {
     match &method.body {
         MethodBody::Concrete(block) => block.statements.iter().collect(),
@@ -140,7 +121,6 @@ fn statements<'a>(method: &'a Method<'a>) -> Vec<&'a Statement<'a>> {
     }
 }
 
-/// `matchGetterSetterIdenticalType`.
 fn getter_setter_type(
     view: &ClassView<'_, '_>,
     methods: &[&Method<'_>],
@@ -156,8 +136,6 @@ fn getter_setter_type(
     Some(Ty::Union(members))
 }
 
-/// A declared type as `StaticTypeMapper::mapPhpParserNodePHPStanType` reads it: `None` for `mixed`, `array` as
-/// `mixed` ("let PhpDoc solve that later").
 fn declared(view: &ClassView<'_, '_>, hint: &Hint<'_>) -> Option<Ty> {
     match hint_ty(hint, &view.path, view) {
         Ty::Mixed => None,
@@ -166,7 +144,6 @@ fn declared(view: &ClassView<'_, '_>, hint: &Hint<'_>) -> Option<Ty> {
     }
 }
 
-/// `GetterTypeDeclarationPropertyTypeInferer::inferProperty`.
 fn getter_type(view: &ClassView<'_, '_>, methods: &[&Method<'_>], name: &[u8]) -> Option<Ty> {
     for method in methods {
         let [Statement::Return(r)] = statements(method)[..] else {
@@ -189,7 +166,6 @@ fn getter_type(view: &ClassView<'_, '_>, methods: &[&Method<'_>], name: &[u8]) -
     None
 }
 
-/// `SetterTypeDeclarationPropertyTypeInferer::inferProperty`.
 fn setter_type(view: &ClassView<'_, '_>, methods: &[&Method<'_>], name: &[u8]) -> Option<Ty> {
     for method in methods {
         let [Statement::Expression(e)] = statements(method)[..] else {
@@ -216,7 +192,6 @@ fn setter_type(view: &ClassView<'_, '_>, methods: &[&Method<'_>], name: &[u8]) -
     None
 }
 
-/// `isDefaultExprTypeCompatible` for a property with a default of type `default`.
 fn default_compatible(default: &Ty, t: &Ty) -> bool {
     matches!(
         (default, t),
@@ -224,7 +199,6 @@ fn default_compatible(default: &Ty, t: &Ty) -> bool {
     ) || default == t
 }
 
-/// `decorateDefaultExpr`.
 fn default_edit(
     prop: &Prop<'_, '_>,
     t: &Ty,

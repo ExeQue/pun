@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ProtectedToPrivateFixer`.
 use pun_format::Fixer;
 use pun_tokens::tokens_analyzer::ClassyElementType as T;
 use pun_tokens::{Kind, Token, Tokens, TokensAnalyzer};

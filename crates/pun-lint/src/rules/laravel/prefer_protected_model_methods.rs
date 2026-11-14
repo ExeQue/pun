@@ -1,12 +1,3 @@
-//! `lint/laravel/prefer-protected-model-methods`, ported from rector-laravel 2.7.3's
-//! `MakeModelAttributesAndScopesProtectedRector` (src/Rector/ClassMethod), with `ScopeAnalyzer::isScopeMethod`
-//! (src/NodeAnalyzer/ScopeAnalyzer.php).
-//!
-//! A public, non-static method of an Eloquent model (or of a trait) becomes `protected` when it is an attribute
-//! accessor (`get…Attribute`, `set…Attribute`, or one that returns `Illuminate\Database\Eloquent\Casts\Attribute`) or
-//! a scope (`scope…` whose first parameter is untyped or an Eloquent builder, or one with the `#[Scope]` attribute).
-//! A method the parent class has as a public method (its own, an `@method`, or one of a `@mixin`) stays.
-
 use mago_syntax::cst::{Method, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -78,7 +69,6 @@ impl Rule for PreferProtectedModelMethods {
     }
 }
 
-/// `isAttributeMethod`: a name matching `/^[gs]et.+Attribute$/`, or a return type that is the `Attribute` cast.
 fn is_attribute_method(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], method: &Method<'_>) -> bool {
     let name = method.name.value;
     if name.len() > b"getAttribute".len()
@@ -97,8 +87,6 @@ fn is_attribute_method(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], method: &M
     })
 }
 
-/// `ScopeAnalyzer::isScopeMethod`: a name matching `/^scope[A-Z].+$/` whose first parameter is untyped or an Eloquent
-/// builder, or the `#[Scope]` attribute.
 fn is_scope_method(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], method: &Method<'_>) -> bool {
     let name = method.name.value;
     let named = name.len() > b"scopeA".len()
@@ -117,9 +105,6 @@ fn is_scope_method(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], method: &Metho
         )
 }
 
-/// `$parentClass->hasMethod($name) && $parentClass->getMethod($name)->isPublic()`, docblocks read: the class has the
-/// method (its own, inherited or an `@method` one) and it is public, or else every class of one of its `@mixin` types (inherited ones
-/// too) has it public, as PHPStan's `MixinMethodsClassReflectionExtension` finds it.
 fn has_public_method(ctx: &Context<'_>, class: &str, name: &[u8], seen: &mut Vec<String>) -> bool {
     let facts = facts(ctx);
     let codebase = facts.documented();
@@ -147,9 +132,6 @@ fn has_public_method(ctx: &Context<'_>, class: &str, name: &[u8], seen: &mut Vec
     })
 }
 
-/// `VisibilityManipulator::makeProtected()` as php-parser prints a changed `flags`: the modifiers again in its order
-/// (`pModifiers`), with `protected` for the old visibility, in place of the old ones and the blanks after them, or
-/// before `function` when there were none.
 fn make_protected(source: &str, method: &Method<'_>) -> Edit {
     let has = |f: fn(&Modifier<'_>) -> bool| method.modifiers.iter().any(f);
     let text = [

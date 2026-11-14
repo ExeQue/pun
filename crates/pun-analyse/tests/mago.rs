@@ -1,10 +1,3 @@
-//! The maintained engine retains Mago 1.57.0's primary issues and PHPStan's failed-read cascade policy.
-//! expected.json is Mago's `mago analyze issues.php --reporting-format json` (primary span, 1-based).
-//! expected-phpstan.json is PHPStan 2.3.1's messages from `analyse --debug --no-progress --error-format=json
-//! --level=9 issues.php`: the undefined echo input has no secondary echo.nonString error.
-//! debug-panic.php, analysed first, was written to make Mago's analyser panic in a debug build (the run skips such a
-//! file and goes on); it no longer panics and is kept as a regression input.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run_mago};
@@ -35,8 +28,6 @@ fn issues_match_upstream_oracles() {
         .as_array()
         .unwrap()
         .iter()
-        // Preserve the original Mago capture. Only its failed-read echo cascade differs intentionally;
-        // the independent PHPStan capture retains the primary error and rejects a second type error.
         .filter(|e| {
             e["code"] != "mixed-argument"
                 || !phpstan

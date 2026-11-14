@@ -1,18 +1,3 @@
-//! Small style report rules, ported from Mago 1.57.0's linter (mago-linter src/rule/):
-//!
-//! - `lint/style/no-inline-html` (`no-inline`, best_practices/no_inline.rs): text outside the PHP tags.
-//! - `lint/style/no-isset` (`no-isset`, clarity/no_isset.rs): every `isset()`; with `allow-array-checks` (default
-//!   false), not one whose arguments are all array accesses.
-//! - `lint/style/no-multiple-classes-per-file` (`single-class-per-file`, best_practices/single_class_per_file.rs):
-//!   every named class, interface, trait or enum after the first in the file (anywhere, a repeated name counted
-//!   once), reported on its name.
-//! - `lint/style/prefer-while-loop` (`prefer-while-loop`, best_practices/prefer_while_loop.rs): a `for` without
-//!   initializations and increments.
-//! - `lint/style/require-namespace` (`require-namespace`, best_practices/require_namespace.rs): the first class-like,
-//!   function or constant declared at the top of a file that has no namespace.
-//! - `lint/style/require-sorted-integer-keys` (`sorted-integer-keys`, best_practices/sorted_integer_keys.rs): an
-//!   array of two or more items, each with a literal integer key, whose keys are not ascending.
-
 use std::collections::HashSet;
 
 use mago_span::HasSpan;
@@ -288,7 +273,6 @@ impl Rule for RequireSortedIntegerKeys {
             };
             let key = match kv.key {
                 Expression::Literal(Literal::Integer(i)) => i.value,
-                // Mago orders lexer integer values, even when PHP lowers the token to a float.
                 Expression::Literal(Literal::Float(f))
                     if matches!(f.raw, [b'0', b'x' | b'X' | b'b' | b'B' | b'o' | b'O', ..])
                         || f.raw.iter().all(|b| b.is_ascii_digit() || *b == b'_') =>

@@ -1,5 +1,3 @@
-//! Public calls and declaration controls, captured from the unmodified PHPStan 2.3.1 phar.
-
 use pun_analyse::{Project, run};
 use serde_json::Value;
 use std::path::Path;

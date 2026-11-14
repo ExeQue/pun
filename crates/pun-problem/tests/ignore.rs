@@ -1,9 +1,6 @@
-//! `@pun-ignore` comments (context/plan/rules.md §4). Expected values are derived by hand from the table there.
-
 use pun_problem::ignore::{Ignores, covers};
 use pun_problem::{Level, LineIndex, Problem, Span, apply_fixes};
 
-/// A problem of `rule` at the first byte of 1-based `line`.
 fn at(source: &str, rule: &str, line: usize) -> Problem {
     let start = LineIndex::new(source).line_range(line).unwrap().start;
     Problem {
@@ -17,7 +14,6 @@ fn at(source: &str, rule: &str, line: usize) -> Problem {
     }
 }
 
-/// The lines of the problems `source`'s directives leave, out of one problem of `rule` per line.
 fn kept(source: &str, rule: &str) -> Vec<usize> {
     let index = LineIndex::new(source);
     let mut problems: Vec<Problem> = (1..=index.line_count())
@@ -51,7 +47,6 @@ fn ids_cover_the_rule_its_short_form_and_its_group() {
     ] {
         assert!(!covers(id, rule), "{id}");
     }
-    // A rule ID without a group (`syntax-error`) only matches itself.
     assert!(!covers("x", "syntax-error"));
     assert!(covers("syntax-error", "syntax-error"));
 }
@@ -60,9 +55,7 @@ fn ids_cover_the_rule_its_short_form_and_its_group() {
 fn a_trailing_comment_covers_its_own_line() {
     let s = "<?php\n$a = eval($b); // @pun-ignore lint/security/no-eval\n$c = 1;\n";
     assert_eq!(kept(s, "lint/security/no-eval"), [1, 3, 4]);
-    // Another rule on that line stays.
     assert_eq!(kept(s, "lint/style/x"), [1, 2, 3, 4]);
-    // A comment without the marker covers nothing, even in a file that has one.
     let s = "<?php\n// a note\n$a = eval($b); // @pun-ignore lint/security/no-eval\n";
     assert_eq!(kept(s, "lint/security/no-eval"), [1, 2, 4]);
 }
@@ -72,7 +65,6 @@ fn a_comment_alone_on_its_line_covers_the_next() {
     let s =
         "<?php\n    // @pun-ignore security/no-eval -- legacy loader\n$a = eval($b);\n$c = 1;\n";
     assert_eq!(kept(s, "lint/security/no-eval"), [1, 2, 4, 5]);
-    // `#`, `/* */` and a PHPDoc over several lines: the line after the comment's last line.
     let s = "<?php\n# @pun-ignore security\n$a;\n/**\n * @pun-ignore lint/security/no-eval\n */\n$b;\n/* @pun-ignore-next-line security/no-eval */ $c;\n$d;\n";
     assert_eq!(kept(s, "lint/security/no-eval"), [1, 2, 4, 5, 6, 8, 10]);
 }
@@ -83,7 +75,6 @@ fn next_line_file_and_regions() {
     assert_eq!(kept(s, "lint/x/y"), [1, 2, 4, 5]);
     let s = "<?php\n$a;\n// @pun-ignore-file lint/x\n$b;\n";
     assert_eq!(kept(s, "lint/x/y"), [] as [usize; 0]);
-    // From the start comment's line to the end comment's line; an unclosed region runs to the end.
     let s = "<?php\n// @pun-ignore-start x/y\n$a;\n$b;\n// @pun-ignore-end\n$c;\n// @pun-ignore-start x\n$d;\n";
     assert_eq!(kept(s, "lint/x/y"), [1, 6]);
 }
@@ -97,7 +88,6 @@ fn several_ids_and_their_use() {
     ignores.retain(&mut problems, &index);
     assert_eq!(problems.len(), 1);
     assert_eq!(problems[0].rule, "lint/x/four");
-    // `lint/x/three` didn't run: not judged.
     let unused = ignores.unused(s, |id| id != "lint/x/three");
     assert_eq!(unused.len(), 1);
     assert_eq!(unused[0].id, "lint/x/one");
@@ -107,7 +97,6 @@ fn several_ids_and_their_use() {
         fixed,
         "<?php\n$a; // @pun-ignore lint/x/two,lint/x/three -- why\n"
     );
-    // The last ID takes the comma before it.
     let unused = ignores.unused(s, |id| id == "lint/x/three");
     let fixed = apply_fixes(s, &[&unused[0].fix]).source;
     assert_eq!(
@@ -122,7 +111,6 @@ fn an_unused_comment_goes_with_its_line_or_its_spaces() {
     let ignores = Ignores::parse(s);
     let unused = ignores.unused(s, |_| true);
     assert_eq!(unused.len(), 3);
-    // One comment's IDs share the deletion: applying all of them applies it once.
     let fixes: Vec<_> = unused.iter().map(|u| &u.fix).collect();
     let round = apply_fixes(s, &fixes);
     assert_eq!(round.source, "<?php\n$a;\n$b;\n");
@@ -144,14 +132,11 @@ fn malformed_and_lookalike_directives() {
             ("@pun-ignore", "`@pun-ignore` needs one or more rule IDs"),
         ]
     );
-    // `@pun-ignored`, a stray end and a string are not directives.
     assert!(!ignores.is_empty());
     assert_eq!(kept(s, "lint/x/y").len(), LineIndex::new(s).line_count());
     assert!(Ignores::parse("<?php\n$a;\n").is_empty());
 }
 
-/// Only a `-file` directive covers a whole-file rule, and using it keeps it from being reported unused; a line
-/// directive for the same rule does not cover it.
 #[test]
 fn file_directives_cover_whole_file_rules() {
     let source = "<?php\n// @pun-ignore-file lint/style\n$a = 1; // @pun-ignore lint/arrays/x\n";

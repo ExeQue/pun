@@ -1,12 +1,3 @@
-//! What Rector 2.8.4's property type rules share (rules/TypeDeclaration/Rector/Property and Class_): PHPStan's types as
-//! these rules combine them (`TypeFactory`, `TypeCombinator::union`, `TypeHasher`, `TypeComparator`), read from Mago's
-//! (see [`super::facts`]); `StaticTypeMapper` for a property (`TypeKind::PROPERTY`); `PropertyTypeChangeGuard` and
-//! `PropertyTypeOverrideGuard`; `AssignToPropertyTypeInferer`; and the `@var` edits (`PhpDocTypeChanger::changeVarType`,
-//! `VarTagRemover::removeVarTagIfUseless`).
-//!
-//! The union rules are a local port of `TypeFactory::createMixedPassedOrUnionType` and `uniquateTypes`, as far as
-//! these rules need them. pun-ty-return ports the same for the return rules; the two merge once both land.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
@@ -33,56 +24,37 @@ use crate::rules::phpunit::phpdoc_type::{TagType, TypedTag, typed_tag, with_tag_
 use crate::rules::types::compare::mapper::flatten;
 use crate::syntax::{node_span, unparenthesize};
 
-/// `PhpVersionFeature::NULLABLE_TYPE`.
 const NULLABLE_TYPE: u32 = 70100;
-/// `PhpVersionFeature::OBJECT_TYPE`.
 const OBJECT_TYPE: u32 = 70200;
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
-/// `PhpVersionFeature::INTERSECTION_TYPES`.
 const INTERSECTION_TYPES: u32 = 80100;
-/// `PhpVersionFeature::NULL_FALSE_TRUE_STANDALONE_TYPE` and `DNF_TYPES`.
 const PHP_82: u32 = 80200;
-/// `PhpVersionFeature::TYPED_PROPERTIES`.
 pub(crate) const TYPED_PROPERTIES: u32 = 70400;
 
-/// A PHPStan type, as far as the property rules tell types apart.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Ty {
     Mixed,
     Null,
-    /// `bool`, or the constant `true` or `false`.
     Bool(Option<bool>),
     Int(Scalar<i64>),
     Float(Scalar<String>),
     Str(Scalar<Vec<u8>>),
-    /// A `class-string`.
     ClassString,
-    /// `array<key, value>`.
     Array(Box<Ty>, Box<Ty>),
-    /// An array whose items are known (`ConstantArrayType`): each key and value.
     ConstArray(Vec<(Ty, Ty)>),
-    /// An object of a class or enum, by its name as Mago spells it.
     Object(String),
-    /// `static` or `$this` in a class.
     Static(String),
-    /// `parent` in a declaration (`ParentStaticType`).
     Parent(String),
-    /// `object`, or an object of an anonymous class.
     ObjectAny,
-    /// `new class extends A implements B {}` as `getNativeType` reads it (`ObjectWithoutClassTypeWithParentTypes`): the
-    /// classes and interfaces it names, in order.
     AnonymousWithParents(Vec<String>),
     Closure,
     Callable,
     Iterable,
     Intersection(Vec<String>),
     Union(Vec<Ty>),
-    /// Anything else, by Mago's id.
     Other(String),
 }
 
-/// A scalar type: general, one constant value, or a refinement (`int<0, max>`, `non-empty-string`).
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Scalar<T> {
     General,
@@ -91,7 +63,6 @@ pub(crate) enum Scalar<T> {
 }
 
 impl Ty {
-    /// The members of a union, or the type alone.
     pub(crate) fn members(&self) -> Vec<&Ty> {
         match self {
             Ty::Union(types) => types.iter().collect(),
@@ -99,7 +70,6 @@ impl Ty {
         }
     }
 
-    /// Whether this is a `UnionType`.
     pub(crate) fn is_union(&self) -> bool {
         matches!(self, Ty::Union(_))
     }
@@ -110,7 +80,6 @@ impl Ty {
             .all(|t| matches!(t, Ty::Array(..) | Ty::ConstArray(_)))
     }
 
-    /// Whether the type is a constant value (`isConstantValue()`).
     fn is_constant(&self) -> bool {
         matches!(
             self,
@@ -123,7 +92,6 @@ impl Ty {
         )
     }
 
-    /// `removeValueFromConstantType`.
     fn without_value(&self) -> Ty {
         match self {
             Ty::Int(Scalar::Literal(_)) => Ty::Int(Scalar::General),
@@ -134,7 +102,6 @@ impl Ty {
         }
     }
 
-    /// `describe(VerbosityLevel::precise())`, as far as two types it tells apart differ.
     fn describe(&self) -> String {
         match self {
             Ty::Mixed => "mixed".into(),
@@ -172,7 +139,6 @@ impl Ty {
         }
     }
 
-    /// `TypeHasher::createTypeHash`.
     fn hash(&self) -> String {
         match self {
             Ty::Mixed => "mixed".into(),
@@ -195,7 +161,6 @@ impl Ty {
     }
 }
 
-/// PHPStan's type from Mago's.
 pub(crate) fn ty(t: &TUnion) -> Ty {
     let mut members: Vec<Ty> = Vec::new();
     for atomic in t.types.iter() {
@@ -204,7 +169,6 @@ pub(crate) fn ty(t: &TUnion) -> Ty {
             members.push(member);
         }
     }
-    // `true` and `false` are `bool`
     if members.contains(&Ty::Bool(Some(true))) && members.contains(&Ty::Bool(Some(false))) {
         let at = members
             .iter()
@@ -317,8 +281,6 @@ fn atomic_ty(atomic: &TAtomic) -> Ty {
     }
 }
 
-/// The union of `types` as `TypeCombinator::union` leaves it, as far as these rules tell: repeats dropped, a constant
-/// dropped when its general type is there, `true` with `false` made `bool`, `mixed` absorbing the rest.
 pub(crate) fn union(types: Vec<Ty>) -> Ty {
     let mut flat: Vec<Ty> = Vec::new();
     for t in types {
@@ -351,7 +313,6 @@ pub(crate) fn union(types: Vec<Ty>) -> Ty {
     }
 }
 
-/// `TypeFactory::createMixedPassedOrUnionType`.
 pub(crate) fn mixed_passed_or_union(types: Vec<Ty>, keep_constant: bool) -> Ty {
     let mut unwrapped = Vec::new();
     for t in &types {
@@ -371,7 +332,6 @@ pub(crate) fn mixed_passed_or_union(types: Vec<Ty>, keep_constant: bool) -> Ty {
     }
 }
 
-/// `unwrapConstantArrayTypes`: one `array<key, value>` per item of the flattened key and value types.
 fn unwrap_const_array(items: &[(Ty, Ty)]) -> Vec<Ty> {
     let mut keys: Vec<Ty> = Vec::new();
     let mut values: Vec<Ty> = Vec::new();
@@ -406,19 +366,16 @@ fn unwrap_const_array(items: &[(Ty, Ty)]) -> Vec<Ty> {
         .collect()
 }
 
-/// `TypeFactory::uniquateTypes`.
 fn uniquate(types: Vec<Ty>, keep_constant: bool) -> Vec<Ty> {
     let (mut has_true, mut has_false) = (false, false);
     let mut unique: Vec<(String, Ty)> = Vec::new();
     let mut constant_hashes: Vec<(String, String)> = Vec::new();
     let total = types.len();
     for t in types {
-        // normalizeObjectType
         let t = match t {
             Ty::AnonymousWithParents(parents) if total > 1 => Ty::Object(parents[0].clone()),
             other => other,
         };
-        // normalizeBooleanType
         if t == Ty::Bool(Some(true)) {
             has_true = true;
         }
@@ -452,8 +409,6 @@ fn uniquate(types: Vec<Ty>, keep_constant: bool) -> Vec<Ty> {
     unique.into_iter().map(|(_, t)| t).collect()
 }
 
-/// `TypeComparator::areTypesEqual`, as far as these rules need it: the same hash, or both all strings, all integers,
-/// all floats or all booleans of the same kind.
 pub(crate) fn are_equal(a: &Ty, b: &Ty) -> bool {
     if a.hash() == b.hash() {
         return true;
@@ -470,8 +425,6 @@ pub(crate) fn are_equal(a: &Ty, b: &Ty) -> bool {
         || (all(a, boolean) && all(b, boolean))
 }
 
-/// The type of the declaration Rector writes for `t` (`mapPhpParserNodePHPStanType` of it): constants as their general
-/// type, arrays as `array`.
 pub(crate) fn declared_ty(t: &Ty) -> Ty {
     let one = |m: &Ty| match m {
         Ty::Array(..) | Ty::ConstArray(_) => Ty::Array(Box::new(Ty::Mixed), Box::new(Ty::Mixed)),
@@ -487,8 +440,6 @@ pub(crate) fn declared_ty(t: &Ty) -> Ty {
     }
 }
 
-/// The type of a type declaration as written (`StaticTypeMapper::mapPhpParserNodePHPStanType`): names resolved, a
-/// union or `?T` kept in the written order (`TypeFactory` with constants kept).
 pub(crate) fn hint_ty(
     hint: &Hint<'_>,
     ancestors: &[Node<'_, '_>],
@@ -562,7 +513,6 @@ fn intersection_members<'a>(hint: &'a Hint<'a>, out: &mut Vec<&'a Hint<'a>>) {
     }
 }
 
-/// A class's name as declared, fully qualified.
 fn class_text(codebase: &CodebaseMetadata, name: &str) -> String {
     match codebase.get_class_like(name.as_bytes()) {
         Some(class) => format!("\\{}", class.original_name),
@@ -570,8 +520,6 @@ fn class_text(codebase: &CodebaseMetadata, name: &str) -> String {
     }
 }
 
-/// `StaticTypeMapper::mapPHPStanTypeToPhpParserNode($type, TypeKind::PROPERTY)`: the declaration Rector writes for a
-/// property of type `t` at `php_version`, or `None` where it writes none.
 pub(crate) fn property_declaration(
     t: &Ty,
     codebase: &CodebaseMetadata,
@@ -586,7 +534,6 @@ pub(crate) fn property_declaration(
     }
 }
 
-/// One member of a union, mapped with `TypeKind::UNION`, or a type that maps the same with any kind.
 fn member_declaration(t: &Ty, codebase: &CodebaseMetadata, php_version: u32) -> Option<String> {
     Some(match t {
         Ty::Int(_) => "int".into(),
@@ -597,7 +544,6 @@ fn member_declaration(t: &Ty, codebase: &CodebaseMetadata, php_version: u32) -> 
         Ty::Closure => "\\Closure".into(),
         Ty::Static(_) => "self".into(),
         Ty::Parent(_) => "parent".into(),
-        // ObjectWithoutClassTypeMapper
         Ty::AnonymousWithParents(parents) if parents.len() == 1 => {
             class_text(codebase, &parents[0])
         }
@@ -614,7 +560,6 @@ fn member_declaration(t: &Ty, codebase: &CodebaseMetadata, php_version: u32) -> 
     })
 }
 
-/// `UnionTypeMapper::mapToPhpParserNode` for a property.
 fn union_declaration(
     types: &[Ty],
     codebase: &CodebaseMetadata,
@@ -624,9 +569,7 @@ fn union_declaration(
     for t in types {
         let name = match t {
             Ty::Null if php_version >= NULLABLE_TYPE => "null".into(),
-            // Rector 2.8.4's policy: `true` and `false` are too narrow for a property, so they widen to `bool`
             Ty::Bool(_) => "bool".into(),
-            // `PropertyAnalyzer::isForbiddenType`
             Ty::Callable => return None,
             other => member_declaration(other, codebase, php_version)?,
         };
@@ -648,11 +591,8 @@ fn union_declaration(
             if php_version < UNION_TYPES {
                 return None;
             }
-            // `NativePhpTypeNodeHelper::union()` (PHPStan 2.3, Rector 2.8.4): the other members in order, `null` last
             let mut many = many.to_vec();
             many.sort_by_key(|n| n == "null");
-            // `NativePhpTypeNodeHelper::union()`: PHP rejects redundant members, so `object` takes in the class names
-            // and intersections beside it, and `iterable` an `array`
             let object = many.iter().any(|n| n == "object");
             let iterable = many.iter().any(|n| n == "iterable");
             many.retain(|n| {
@@ -662,7 +602,6 @@ fn union_declaration(
                         || n.contains('&')))
                     && !(iterable && n == "array")
             });
-            // `A|(A&B)` is `A`: an intersection with a part that is a member of its own goes
             let plain: Vec<String> = many
                 .iter()
                 .filter(|n| !n.contains('&'))
@@ -703,13 +642,10 @@ fn union_declaration(
     }
 }
 
-/// The class a property rule looks at: a class or an anonymous class (php-parser's `Class_`).
 pub(crate) struct ClassView<'ast, 'arena> {
     pub node: Node<'ast, 'arena>,
     pub members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
-    /// The class's ancestors and the class itself.
     pub path: Vec<Node<'ast, 'arena>>,
-    /// The name the codebase knows the class by.
     pub name: String,
     pub parent: Option<String>,
 }
@@ -759,7 +695,6 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
         })
     }
 
-    /// `Class_::getMethod()`: the method of that name, case-insensitively.
     pub(crate) fn method(&self, name: &[u8]) -> Option<&'ast Method<'arena>> {
         self.members.iter().find_map(|m| match m {
             ClassLikeMember::Method(method) if method.name.value.eq_ignore_ascii_case(name) => {
@@ -769,12 +704,10 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
         })
     }
 
-    /// The class's untyped plain properties with one item (the others no rule types).
     pub(crate) fn properties(&self) -> Vec<Prop<'ast, 'arena>> {
         self.plain_properties().map(|(_, prop)| prop).collect()
     }
 
-    /// The same selection as [`Self::properties`], retaining the plain declaration for its attributes.
     pub(crate) fn plain_properties(
         &self,
     ) -> impl Iterator<Item = (&'ast PlainProperty<'arena>, Prop<'ast, 'arena>)> {
@@ -803,14 +736,12 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
     }
 }
 
-/// An untyped property, and its item when it has exactly one.
 pub(crate) struct Prop<'ast, 'arena> {
     pub property: &'ast Property<'arena>,
     pub item: Option<&'ast PropertyItem<'arena>>,
 }
 
 impl<'ast, 'arena> Prop<'ast, 'arena> {
-    /// The property's name, without `$`.
     pub(crate) fn name(&self) -> &'arena [u8] {
         let item = self.item.expect("a single item");
         &item.variable().name[1..]
@@ -847,10 +778,6 @@ impl<'ast, 'arena> Prop<'ast, 'arena> {
     }
 }
 
-/// `PropertyTypeChangeGuard::isLegal` (with `MakePropertyTypedGuard`'s check that the property is untyped): one item,
-/// no trait the class uses declares or writes the property, and the property's own type is not forbidden. Its
-/// callers select private properties before asking with `inline_public = false`; the protected-property fallback
-/// of the upstream shared guard is therefore never needed by these rules.
 pub(crate) fn is_legal(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -869,8 +796,6 @@ pub(crate) fn is_legal(
     inline_public || prop.is_private()
 }
 
-/// `PropertyTypeOverrideGuard::isLegal`'s parent check: the nearest parent class that has the property decides; it
-/// must declare a type there.
 pub(crate) fn parent_allows(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> bool {
     for parent in parent_classes(facts, view) {
         if let Some(p) = facts
@@ -887,7 +812,6 @@ fn dollar(name: &[u8]) -> Vec<u8> {
     [b"$".as_slice(), name].concat()
 }
 
-/// The parent classes, nearest first.
 fn parent_classes(facts: &Facts, view: &ClassView<'_, '_>) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut next = view.parent.clone();
@@ -905,10 +829,6 @@ fn parent_classes(facts: &Facts, view: &ClassView<'_, '_>) -> Vec<String> {
     out
 }
 
-/// `PropertyTypeChangeGuard::isSafeProtectedProperty`, which `PropertyTypeOverrideGuard` asks for a protected property
-/// (it passes `inline_public` false for one): a child class may redeclare it untyped, so only a final class's protected
-/// property passes, and `ParentPropertyLookupGuard` must allow it: no trait the class uses reads it, it is no reserved
-/// Symfony command property, and no parent class (all of them known) declares it or reads it in a method.
 pub(crate) fn is_safe_protected_property(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -957,7 +877,6 @@ pub(crate) fn is_safe_protected_property(
         return false;
     }
     let parents = parent_classes(facts, view);
-    // parent class not autoloaded
     if parents
         .iter()
         .any(|p| facts.codebase.get_class_like(p.as_bytes()).is_none())
@@ -973,7 +892,6 @@ pub(crate) fn is_safe_protected_property(
     })
 }
 
-/// `PropertyManipulator::hasTraitWithSamePropertyOrWritten`: a trait the class uses has the property, or writes it.
 fn has_trait_with_same_property_or_written(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1016,15 +934,10 @@ fn has_trait_with_same_property_or_written(
     })
 }
 
-/// `PropertyFetchAnalyzer::containsWrittenPropertyFetchName` on a trait's source text: a `$this->name`, `self::$name`
-/// or `static::$name` that is assigned, assigned by reference, changed by an operator, unset, incremented or
-/// decremented, or under an array offset.
 fn trait_writes(trait_text: &str, name: &[u8]) -> bool {
     fetches(trait_text, name, None, true)
 }
 
-/// A `$this->name`, `self::$name` or `static::$name` (or `class::$name`) in a class-like's source text; with
-/// `written`, only one that is written.
 fn fetches(trait_text: &str, name: &[u8], class: Option<&str>, written_only: bool) -> bool {
     let code = format!("<?php {trait_text}");
     let arena = mago_allocator::LocalArena::new();
@@ -1077,7 +990,6 @@ fn fetches(trait_text: &str, name: &[u8], class: Option<&str>, written_only: boo
     found
 }
 
-/// `$this->name`, `self::$name` or `static::$name`.
 fn is_trait_local_fetch(expr: &Expression<'_>, name: &[u8], class: Option<&str>) -> bool {
     match unparenthesize(expr) {
         Expression::Access(Access::Property(p)) => {
@@ -1094,8 +1006,6 @@ fn is_trait_local_fetch(expr: &Expression<'_>, name: &[u8], class: Option<&str>)
     }
 }
 
-/// The type PHPStan reads for the property, docblock included (`NodeTypeResolver::getType($property)`): the `@var`
-/// type, or `mixed` without one.
 pub(crate) fn doc_type(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> Option<TUnion> {
     let p = facts
         .documented()
@@ -1103,8 +1013,6 @@ pub(crate) fn doc_type(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> 
     Some(p.type_metadata.as_ref()?.type_union.clone())
 }
 
-/// `PropertyAnalyzer::hasForbiddenType`: the property's type is `null`, a class that does not exist
-/// (`NonExistingObjectType`), or `callable` or has a `callable` member.
 fn has_forbidden_type(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> bool {
     let Some(t) = doc_type(facts, view, name) else {
         return false;
@@ -1123,7 +1031,6 @@ fn has_forbidden_type(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> b
     {
         return true;
     }
-    // an unknown class alone (`NonExistingObjectType`), not in an intersection
     if let [TAtomic::Reference(r)] = t.types.as_ref()
         && !matches!(
             r,
@@ -1140,8 +1047,6 @@ fn has_forbidden_type(facts: &Facts, view: &ClassView<'_, '_>, name: &[u8]) -> b
         .any(|a| matches!(a, TAtomic::Callable(c) if !c.is_closure()))
 }
 
-/// `PropertyFetchAnalyzer::isLocalPropertyFetchName`: `$this->name`, `self::$name`, `static::$name` or the class's
-/// own `X::$name`, or a property fetch on an object PHPStan types as the class.
 pub(crate) fn is_local_fetch(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1172,7 +1077,6 @@ pub(crate) fn is_local_fetch(
     }
 }
 
-/// Whether a property fetch's object is the class's own: `$this`, or a value of the class's type.
 fn local_object(facts: &Facts, view: &ClassView<'_, '_>, object: &Expression<'_>) -> bool {
     let object = unparenthesize(object);
     if matches!(object, Expression::Variable(Variable::Direct(v)) if v.name == b"$this") {
@@ -1190,7 +1094,6 @@ fn local_object(facts: &Facts, view: &ClassView<'_, '_>, object: &Expression<'_>
         })
 }
 
-/// Whether `expr` writes a dynamic property of the class (`$this->$name = ...`).
 fn is_dynamic_local_fetch(facts: &Facts, view: &ClassView<'_, '_>, expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Access(Access::Property(p)) => {
@@ -1205,8 +1108,6 @@ fn is_dynamic_local_fetch(facts: &Facts, view: &ClassView<'_, '_>, expr: &Expres
     }
 }
 
-/// `PropertyAssignMatcher::matchPropertyAssignExpr`: the value of a plain assignment to the property, or to an offset
-/// of it.
 pub(crate) fn match_property_assign<'a>(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1227,12 +1128,10 @@ pub(crate) fn match_property_assign<'a>(
     (is_local_fetch(facts, view, var, name) == Some(true)).then_some((a.rhs, true))
 }
 
-/// `$a = &$b`, which php-parser reads as an `AssignRef`.
 pub(crate) fn is_by_ref(a: &Assignment<'_>) -> bool {
     matches!(a.rhs, Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Reference(_)))
 }
 
-/// Every node under the class's members, in source order (`SimpleCallableNodeTraverser` over `$classLike->stmts`).
 pub(crate) fn class_nodes<'ast, 'arena>(view: &ClassView<'ast, 'arena>) -> Vec<Node<'ast, 'arena>> {
     let mut out = Vec::new();
     for member in view.members {
@@ -1247,15 +1146,11 @@ pub(crate) fn class_nodes<'ast, 'arena>(view: &ClassView<'ast, 'arena>) -> Vec<N
     out
 }
 
-/// What [`assigned_type`] found.
 pub(crate) enum Assigned {
-    /// `null`: no type (a dynamic property write, no assignment and no default, or a default the assignments do not
-    /// allow).
     None,
     Type(Ty),
 }
 
-/// `AssignToPropertyTypeInferer::inferPropertyInClassLike`.
 pub(crate) fn assigned_type(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1264,7 +1159,6 @@ pub(crate) fn assigned_type(
 ) -> Assigned {
     let name = prop.name();
     let nodes = class_nodes(view);
-    // hasAssignDynamicPropertyValue
     if nodes.iter().any(|n| matches!(n, Node::Assignment(a) if a.operator.is_assign() && !is_by_ref(a) && is_dynamic_local_fetch(facts, view, a.lhs))) {
         return Assigned::None;
     }
@@ -1286,11 +1180,9 @@ pub(crate) fn assigned_type(
         });
     }
     let has_default = prop.default().is_some();
-    // shouldAddNullType (NullTypeAssignDetector never asks for null)
     if !types.is_empty() && !constructor_assigned && !has_default {
         types.push(Ty::Null);
     }
-    // resolveTypeWithVerifyDefaultValue
     if types.is_empty() {
         return match prop.default() {
             Some(default) => Assigned::Type(full_ty(facts, default)),
@@ -1307,13 +1199,10 @@ pub(crate) fn assigned_type(
     Assigned::Type(inferred)
 }
 
-/// `$value` is the literal `null`.
 pub(crate) fn is_null_literal(expr: &Expression<'_>) -> bool {
     matches!(unparenthesize(expr), Expression::Literal(Literal::Null(_)))
 }
 
-/// `ExprAnalyzer::isNonTypedFromParam`: a variable whose native type PHPStan does not know, or knows less precisely
-/// than its documented type.
 fn is_non_typed_from_param(facts: &Facts, expr: &Expression<'_>) -> bool {
     let Expression::Variable(v) = unparenthesize(expr) else {
         return false;
@@ -1329,7 +1218,6 @@ fn is_non_typed_from_param(facts: &Facts, expr: &Expression<'_>) -> bool {
         return true;
     }
     let full = facts.full_type(span);
-    // a template `of object` is a `TemplateObjectWithoutClassType`, an `ObjectWithoutClassType` too
     let object_without_class = |a: &TAtomic| match a {
         TAtomic::Object(TObject::Any) => true,
         TAtomic::GenericParameter(p) => {
@@ -1347,8 +1235,6 @@ fn is_non_typed_from_param(facts: &Facts, expr: &Expression<'_>) -> bool {
     native_ty.is_union() && full.is_some_and(|f| ty(f).hash() != native_ty.hash())
 }
 
-/// `NodeTypeResolver::getNativeType` of a value the class assigns: [`native_ty`], but a direct `new class` that names
-/// classes or interfaces is [`Ty::AnonymousWithParents`].
 pub(crate) fn assigned_native_ty(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1365,11 +1251,6 @@ pub(crate) fn assigned_native_ty(
         .unwrap_or_else(|| native_ty(facts, expr))
 }
 
-/// PHPStan's `MethodExistsTypeSpecifyingExtension` for a variable `method_exists()` narrowed, which Mago types as a
-/// bare `has-method<...>` (or `has-method<...>|class-string` from mixed) whatever it was before: the declared type
-/// intersected with `class-string|(object&hasMethod)`.
-/// For a parameter of the enclosing method that its body never assigns, no type gives `class-string|object` and
-/// `object` gives `object`; for anything else Pun does not know the type before, and it is `mixed`.
 fn method_exists_narrowed(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -1430,9 +1311,6 @@ fn method_exists_narrowed(
     })
 }
 
-/// PHPStan's `ParseUrlFunctionDynamicReturnTypeExtension` for `parse_url($url, $component)` with a constant
-/// component and a URL that is no constant string, whose members Mago orders otherwise: `string|false|null` for a
-/// part, `int<0, 65535>|false|null` for the port, `false` for any other component.
 fn parse_url_component(facts: &Facts, expr: &Expression<'_>) -> Option<Ty> {
     let Expression::Call(Call::Function(call)) = unparenthesize(expr) else {
         return None;
@@ -1468,9 +1346,7 @@ fn parse_url_component(facts: &Facts, expr: &Expression<'_>) -> Option<Ty> {
         return None;
     };
     let part = match component {
-        // PHP_URL_SCHEME, PHP_URL_HOST, PHP_URL_USER, PHP_URL_PASS, PHP_URL_PATH, PHP_URL_QUERY, PHP_URL_FRAGMENT
         0 | 1 | 3..=7 => Ty::Str(Scalar::General),
-        // PHP_URL_PORT
         2 => Ty::Int(Scalar::Refined),
         -1 => return None,
         _ => return Some(Ty::Bool(Some(false))),
@@ -1478,7 +1354,6 @@ fn parse_url_component(facts: &Facts, expr: &Expression<'_>) -> Option<Ty> {
     Some(Ty::Union(vec![part, Ty::Bool(Some(false)), Ty::Null]))
 }
 
-/// `getNativeType` of an expression; `mixed` where the analyser did not reach it.
 pub(crate) fn native_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
     facts
         .native_type(node_span(unparenthesize(expr)))
@@ -1486,7 +1361,6 @@ pub(crate) fn native_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
         .map_or(Ty::Mixed, ty)
 }
 
-/// `getType` of an expression; `mixed` where the analyser did not reach it.
 pub(crate) fn full_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
     let span = node_span(unparenthesize(expr));
     facts
@@ -1496,7 +1370,6 @@ pub(crate) fn full_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
         .map_or(Ty::Mixed, ty)
 }
 
-/// `$inferred->isSuperTypeOf($default)->no()`: no value of `default` is one of `inferred`.
 fn is_disjoint(inferred: &Ty, default: &Ty) -> bool {
     if matches!(inferred, Ty::Mixed) || matches!(default, Ty::Mixed) {
         return false;
@@ -1507,8 +1380,6 @@ fn is_disjoint(inferred: &Ty, default: &Ty) -> bool {
         .any(|d| inferred.members().iter().any(|i| overlaps(i, d)))
 }
 
-/// Whether some value is of both types. `is_disjoint` has ruled out `mixed`, and the inferred members have already
-/// had their scalar constants generalized by `mixed_passed_or_union(types, false)`.
 fn overlaps(a: &Ty, b: &Ty) -> bool {
     match (a, b) {
         (Ty::Null, Ty::Null) => true,
@@ -1544,7 +1415,6 @@ fn overlaps(a: &Ty, b: &Ty) -> bool {
     }
 }
 
-/// `$default->isSuperTypeOf($type)->yes()`: every value of `t` is one of `default`.
 pub(crate) fn contains_all(default: &Ty, t: &Ty) -> bool {
     t.members()
         .iter()
@@ -1581,8 +1451,6 @@ fn contains(outer: &Ty, inner: &Ty) -> bool {
     }
 }
 
-/// The type of a property's default value as `PropertyTypeDefaultValueAnalyzer` reads it
-/// (`mapPhpParserNodePHPStanType`): a plain string is `string`, any other value its type.
 pub(crate) fn default_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
     match unparenthesize(expr) {
         Expression::Literal(Literal::String(_)) => Ty::Str(Scalar::General),
@@ -1590,7 +1458,6 @@ pub(crate) fn default_ty(facts: &Facts, expr: &Expression<'_>) -> Ty {
     }
 }
 
-/// `PropertyTypeDefaultValueAnalyzer::doesConflictWithDefaultValue`.
 pub(crate) fn conflicts_with_default(default: &Ty, t: &Ty) -> bool {
     if default.is_array() && t.is_array() {
         return false;
@@ -1598,7 +1465,6 @@ pub(crate) fn conflicts_with_default(default: &Ty, t: &Ty) -> bool {
     !contains_all(default, t)
 }
 
-/// The class `Doctrine\Common\Collections\Collection` or one that implements it (`isInstanceOfCollectionType`).
 pub(crate) fn is_doctrine_collection(facts: &Facts, t: &Ty) -> bool {
     const COLLECTION: &str = "Doctrine\\Common\\Collections\\Collection";
     let Ty::Object(name) = t else { return false };
@@ -1616,16 +1482,12 @@ pub(crate) fn is_doctrine_collection(facts: &Facts, t: &Ty) -> bool {
         })
 }
 
-/// The `@var` of a property and what Rector reads of it.
 pub(crate) struct VarTag<'s> {
     pub annotated: Annotated<'s>,
-    /// The `@var` tag; `Err` for one Pun does not read (a generic or shape with a space or `,` inside, a literal),
-    /// which says more than a native type and is kept.
     pub tag: Result<Option<TypedTag<'s>>, ()>,
 }
 
 impl<'s> VarTag<'s> {
-    /// The property's annotation context, even without a doc comment. An unreadable `@var` stays `Err` in `tag`.
     pub(crate) fn of(
         ctx: &crate::Context<'s>,
         property: &Property<'_>,
@@ -1643,7 +1505,6 @@ impl<'s> VarTag<'s> {
         self.annotated.doc.as_ref()
     }
 
-    /// The edits that remove the `@var` tag, as `PhpDocInfo::removeByType()` and the printer leave the doc.
     pub(crate) fn remove(&self, source: &str) -> Option<Vec<Edit>> {
         let doc = self.doc()?;
         let tag = self.tag.as_ref().ok()?.as_ref()?;
@@ -1652,7 +1513,6 @@ impl<'s> VarTag<'s> {
         self.edits(source, &printed)
     }
 
-    /// The edits that give the property the doc `new_doc` (`""` removes it).
     fn edits(&self, source: &str, new_doc: &str) -> Option<Vec<Edit>> {
         (self.annotated.edits(source, Some(new_doc), &[])).or_else(|| {
             self.annotated
@@ -1661,15 +1521,12 @@ impl<'s> VarTag<'s> {
         })
     }
 
-    /// The edits that set the `@var` type to `ty` (`PhpDocTypeChanger::changeVarType`).
     pub(crate) fn set(&self, source: &str, ty: &str) -> Option<Vec<Edit>> {
         let new_doc = with_tag_type(self.doc(), "@var", ty)?;
         self.edits(source, &new_doc)
     }
 }
 
-/// `DeadVarTagValueNodeAnalyzer::isDead` and `PhpDocTypeChanger::isAllowed` as `VarTagRemover::removeVarTagIfUseless`
-/// asks them: whether the `@var` says no more than the native type `native`.
 pub(crate) fn is_var_tag_useless(tag: &TypedTag<'_>, doc: Option<&TUnion>, native: &Ty) -> bool {
     if !tag.description.is_empty() {
         return false;
@@ -1678,8 +1535,6 @@ pub(crate) fn is_var_tag_useless(tag: &TypedTag<'_>, doc: Option<&TUnion>, nativ
         TagType::Name(n) | TagType::Other(n) => vec![n],
         TagType::Union(m) | TagType::Intersection(m) => m.clone(),
     };
-    // `GenericTypeNode`, `T[]`, callable signatures, shapes and `class-string` are kept (`isAllowed`), and a whole
-    // generic type is never dead
     if members.iter().any(|m| {
         m.contains(['<', '[', '{', '('])
             || m.eq_ignore_ascii_case("class-string")
@@ -1690,7 +1545,6 @@ pub(crate) fn is_var_tag_useless(tag: &TypedTag<'_>, doc: Option<&TUnion>, nativ
     let Some(doc) = doc else {
         return false;
     };
-    // TemplateTypeRemovalGuard
     if doc
         .types
         .iter()
@@ -1701,8 +1555,6 @@ pub(crate) fn is_var_tag_useless(tag: &TypedTag<'_>, doc: Option<&TUnion>, nativ
     is_var_tag_useless_as(tag, &ty(doc), native)
 }
 
-/// [`is_var_tag_useless`] for a tag whose doc type is `doc_ty`, once the description, the kept forms and template
-/// types have been ruled out.
 pub(crate) fn is_var_tag_useless_as(tag: &TypedTag<'_>, doc_ty: &Ty, native: &Ty) -> bool {
     let doc_ty = doc_ty.clone();
     if matches!(tag.ty, TagType::Intersection(_)) {
@@ -1732,7 +1584,6 @@ pub(crate) fn is_var_tag_useless_as(tag: &TypedTag<'_>, doc_ty: &Ty, native: &Ty
     }
 }
 
-/// `TypeComparator::arePhpParserAndPhpStanPhpDocTypesEqual`.
 fn php_parser_and_doc_types_equal(native: &Ty, doc: &Ty) -> bool {
     let equal = are_equal(native, doc);
     if !equal && contains_all(native, doc) && !matches!(native, Ty::Mixed) {
@@ -1750,7 +1601,6 @@ fn php_parser_and_doc_types_equal(native: &Ty, doc: &Ty) -> bool {
     !matches!(doc, Ty::Static(_) | Ty::Parent(_))
 }
 
-/// `ScalarTypeComparator::areDifferentScalarTypes`.
 fn are_different_scalars(a: &Ty, b: &Ty) -> bool {
     let scalar = |t: &Ty| {
         t.members().iter().all(|m| {
@@ -1777,12 +1627,9 @@ fn are_different_scalars(a: &Ty, b: &Ty) -> bool {
         && kind(a) != kind(b)
 }
 
-/// `StaticTypeMapper::mapPHPStanTypeToPHPStanPhpDocTypeNode` for the types Pun prints: scalars, `array`, classes,
-/// `object`, `iterable`, and unions of them. `None` for any other.
 pub(crate) fn doc_text(t: &Ty, codebase: &CodebaseMetadata) -> Option<String> {
     Some(match t {
         Ty::Union(types) => {
-            // `UnionType::toPhpDocNode()` prints the members in `UnionTypeHelper::sortTypes()`'s order (Rector 2.8.4)
             let mut types: Vec<&Ty> = types.iter().collect();
             types.sort_by(|a, b| sort_order(a, b));
             let mut parts: Vec<String> = Vec::new();
@@ -1797,10 +1644,7 @@ pub(crate) fn doc_text(t: &Ty, codebase: &CodebaseMetadata) -> Option<String> {
         Ty::Null => "null".into(),
         Ty::Bool(None) => "bool".into(),
         Ty::Bool(Some(b)) => b.to_string(),
-        // IntegerTypeMapper prints `int` even for a constant
         Ty::Int(_) => "int".into(),
-        // ConstantFloatType::toPhpDocNode, `castFloatToString` (precision -1, `.0` added); PHP spells values outside
-        // this range with an exponent, which Pun does not print
         Ty::Float(Scalar::Literal(v)) => {
             let f: f64 = v.parse().ok()?;
             if f != 0.0 && !(1e-4..1e15).contains(&f.abs()) {
@@ -1810,8 +1654,6 @@ pub(crate) fn doc_text(t: &Ty, codebase: &CodebaseMetadata) -> Option<String> {
             if s.contains('.') { s } else { format!("{s}.0") }
         }
         Ty::Float(_) => "float".into(),
-        // ConstantStringType::toPhpDocNode: single-quoted, `'` and `\` escaped; a multi-line value prints as its
-        // generalized accessory types, which Pun does not print
         Ty::Str(Scalar::Literal(v)) => {
             let s = std::str::from_utf8(v).ok().filter(|s| !s.contains('\n'))?;
             format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"))
@@ -1826,9 +1668,6 @@ pub(crate) fn doc_text(t: &Ty, codebase: &CodebaseMetadata) -> Option<String> {
     })
 }
 
-/// `UnionTypeHelper::sortTypes()`'s comparison, for the members `doc_text()` prints: `null` last, constant booleans
-/// before it, constant scalars first (floats by value, strings by value), the rest by their `describe()` name,
-/// case-insensitively. Integers are general here (`IntegerTypeMapper`).
 fn sort_order(a: &Ty, b: &Ty) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     let rank = |t: &Ty| match t {
@@ -1870,12 +1709,10 @@ fn sort_order(a: &Ty, b: &Ty) -> std::cmp::Ordering {
     })
 }
 
-/// The span of a property's variable, where its type goes (`$name`).
 pub(crate) fn variable_span(prop: &Prop<'_, '_>) -> Span {
     node_span(prop.item.expect("a single item").variable())
 }
 
-/// The span from the end of a property's variable to the end of its default value (` = value`).
 pub(crate) fn default_span(prop: &Prop<'_, '_>) -> Option<Span> {
     let default = prop.default()?;
     Some(Span::new(variable_span(prop).end, node_span(default).end))

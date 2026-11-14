@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\BracesPositionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::indentation_trait::get_line_indentation;
 use crate::analyzers::preg::Preg;
@@ -24,7 +23,6 @@ enum Position {
     SameLine,
 }
 
-/// Which `*_opening_brace` option applies to a brace.
 #[derive(Clone, Copy)]
 enum Brace {
     ControlStructures,
@@ -110,8 +108,6 @@ impl Fixer for BracesPositionFixer {
         "braces_position"
     }
     fn priority(&self) -> i32 {
-        // Must run before SingleLineEmptyBodyFixer, StatementIndentationFixer.
-        // Must run after ControlStructureBracesFixer, MultilinePromotedPropertiesFixer, NoMultipleStatementsPerLineFixer.
         -2
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -146,7 +142,6 @@ impl Fixer for BracesPositionFixer {
             r.choice("anonymous_classes_opening_brace", SAME_LINE, POSITIONS)?;
         self.allow_single_line_empty_anonymous_classes =
             r.bool("allow_single_line_empty_anonymous_classes", true)?;
-        // Future::getV4OrV3(false, true)
         self.allow_single_line_anonymous_functions =
             r.bool("allow_single_line_anonymous_functions", true)?;
         Ok(())
@@ -207,7 +202,6 @@ impl Fixer for BracesPositionFixer {
                 }
                 position_option = Brace::ControlStructures;
             } else if kind == Some(T_VARIABLE) {
-                // handle default value - explicitly skip array as default value
                 let mut next_meaningful_index = tokens.get_next_meaningful_token(index).unwrap();
                 if tokens[next_meaningful_index].equals("=", true) {
                     next_meaningful_index = tokens
@@ -281,7 +275,6 @@ impl Fixer for BracesPositionFixer {
             let mut close_brace_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, open_brace_index);
             let mut add_newlines_inside_braces = true;
-            // `$index < null` is always false in PHP
             if allow_single_line
                 || allow_single_line_if_empty
                 || allow_single_line_until.is_some_and(|u| index < u)
@@ -371,7 +364,7 @@ impl Fixer for BracesPositionFixer {
                     } else if index_before_open_brace == previous_meaningful_index {
                         move_brace_to_index = Some(previous_meaningful_index + 1);
                     }
-                    index_before_open_brace -= 1; // >= previous_meaningful_index >= 1: no underflow
+                    index_before_open_brace -= 1;
                 }
             } else if !tokens[open_brace_index - 1].is_whitespace(None)
                 || !Preg::r#match("/\\R/", tokens[open_brace_index - 1].get_content())
@@ -465,7 +458,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    // Both rejected by the real fixer's configure() (undefined option / value not allowed).
     #[test]
     fn configure_rejects_invalid_options() {
         assert!(fixer().configure(&json!({"foo": true})).is_err());

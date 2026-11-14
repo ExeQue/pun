@@ -1,17 +1,3 @@
-//! `lint/refactor/rename-class-constant`, ported from Rector 2.8.4's `RenameClassConstFetchRector`
-//! (rules/Renaming/Rector/ClassConstFetch).
-//!
-//! Options: `items = [{ old-class = "A", old-constant = "OLD", new-constant = "NEW" }]` (`RenameClassConstFetch`), or
-//! with a `new-class` too (`RenameClassAndConstFetch`). A class constant fetch whose constant is the old one (without
-//! case) on a class of the old class's type (`NodeTypeResolver::isObjectType`) gets the new constant name; with a new
-//! class it becomes `\NewClass::NEW`.
-//!
-//! The class's type: a name resolved through the imports and the namespace; `self` and `static` the enclosing class
-//! (an anonymous one has none); `parent` the parent classes, every one of which must be of the type. An expression
-//! (`$object::CONST`) takes its type from Mago's analyser, `null` and `false` left out, each remaining type a named
-//! object of the old class's type. A class is of the type when it is the same name or extends or implements it in the
-//! codebase.
-
 use mago_syntax::cst::{ClassLikeConstantSelector, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -36,7 +22,6 @@ impl Rule for RenameClassConstant {
         "lint/refactor/rename-class-constant"
     }
 
-    /// Rector runs the rule once per file; its fix could match again on what it wrote.
     fn once(&self) -> bool {
         true
     }
@@ -104,7 +89,6 @@ impl Rule for RenameClassConstant {
                 ),
                 None => (node_span(constant), rename.new_constant.clone()),
             };
-            // A rename to what is already written would repeat in every fix round.
             if ctx.source[span.start..span.end] == text {
                 return;
             }

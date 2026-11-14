@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-be-nan`, ported from pest-plugin-rector's `UseToBeNanRector`: `expect(is_nan($value))->toBeTrue()` becomes `expect($value)->toBeNan()`, and `toBeFalse()` or a
-//! `->not` before the matcher becomes `->not->toBeNan()`. The checked value's type must be a float or integer.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

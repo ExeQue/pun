@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-narrow-with-consecutive`, ported from rector-phpunit's `NarrowIdenticalWithConsecutiveRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `withConsecutive([1], [1])` whose arguments are all the same becomes `with([1])`, and likewise
-//! `willReturnOnConsecutiveCalls()` becomes `willReturn()`. Arguments that create objects are left alone.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

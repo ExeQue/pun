@@ -1,11 +1,3 @@
-//! `lint/phpunit/add-mock-intersection-param`, ported from rector-phpunit's
-//! `AddIntersectionParamToMockObjectParamRector` (rules/CodeQuality/Rector/Class_).
-//!
-//! In a test class, a private method's parameter typed `PHPUnit\Framework\MockObject\MockObject` (not variadic) gets
-//! a `@param \X&\PHPUnit\Framework\MockObject\MockObject $name` tag when every `$this->method(...)` call in the
-//! class's methods passes at its position a `createMock(X::class)` call, or a variable assigned one once in the
-//! calling method; not when a `@param` tag names it already.
-
 use mago_syntax::cst::{
     Argument, ClassLikeMember, Expression, Hint, Method, MethodBody, Modifier, Node, NodeKind,
     Variable,
@@ -20,7 +12,6 @@ use super::{AnyCall, class_body, is_in_test_class, resolve};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 pub struct AddMockIntersectionParam;
@@ -54,8 +45,6 @@ impl Rule for AddMockIntersectionParam {
                 _ => None,
             })
             .collect();
-        // collectMockObjectParamClassMethods: only private methods, as those can only be called from the very same
-        // class
         let targets: Vec<&Method<'_>> = methods
             .iter()
             .copied()
@@ -73,7 +62,6 @@ impl Rule for AddMockIntersectionParam {
         if targets.is_empty() {
             return;
         }
-        // resolveMockedClassesFromCallSites: per target and position, what each call passes
         let mut passed: Vec<Vec<Vec<Option<String>>>> =
             targets.iter().map(|_| Vec::new()).collect();
         for method in &methods {
@@ -112,7 +100,6 @@ impl Rule for AddMockIntersectionParam {
                 if !is_bare_mock_object_param(&scope, param) {
                     continue;
                 }
-                // every call site must pass a mock of the very same class
                 let Some(Some(class)) = passed[at]
                     .get(position)
                     .filter(|classes| {
@@ -123,7 +110,6 @@ impl Rule for AddMockIntersectionParam {
                     continue;
                 };
                 let name = String::from_utf8_lossy(param.variable.name);
-                // do not contradict an existing docblock type
                 if let Some(doc) = &annotated.doc {
                     match typed_tag(doc, "@param", Some(&name)) {
                         Ok(None) => {}
@@ -158,7 +144,6 @@ impl Rule for AddMockIntersectionParam {
     }
 }
 
-/// `isBareMockObjectParam()`: not variadic, typed with the name `MockObject`.
 fn is_bare_mock_object_param(
     scope: &[Node<'_, '_>],
     param: &mago_syntax::cst::FunctionLikeParameter<'_>,
@@ -167,8 +152,6 @@ fn is_bare_mock_object_param(
         && matches!(&param.hint, Some(Hint::Identifier(id)) if resolve(scope, id).eq_ignore_ascii_case(MOCK_OBJECT))
 }
 
-/// `resolveMockedClassesByVariableName()`: each variable assigned (outside closures) with the class of its
-/// `createMock()` call; a variable assigned again has none.
 fn mocked_classes_by_variable_name(
     scope: &[Node<'_, '_>],
     roots: &[Node<'_, '_>],
@@ -188,7 +171,6 @@ fn mocked_classes_by_variable_name(
             return;
         };
         let name = v.name[1..].to_vec();
-        // re-assigned variable, the type is not reliable
         if let Some(entry) = variables.iter_mut().find(|(n, _)| *n == name) {
             entry.1 = None;
             return;
@@ -199,13 +181,11 @@ fn mocked_classes_by_variable_name(
     variables
 }
 
-/// `resolveArgMockedClass()`.
 fn arg_mocked_class(
     scope: &[Node<'_, '_>],
     arg: &Argument<'_>,
     variables: &[(Vec<u8>, Option<String>)],
 ) -> Option<String> {
-    // named args make the position unreliable
     let Argument::Positional(arg) = arg else {
         return None;
     };
@@ -224,7 +204,6 @@ fn arg_mocked_class(
     create_mock_class(scope, arg.value)
 }
 
-/// `resolveCreateMockClass()`: the class of a `createMock(X::...)` method or static call.
 fn create_mock_class(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<String> {
     let call = match expr {
         Expression::Call(mago_syntax::cst::Call::Method(c)) => AnyCall::of(Node::MethodCall(c)),

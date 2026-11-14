@@ -1,16 +1,3 @@
-//! php-parser's format-preserving printer on a statement list in which Rector replaced one statement by others
-//! (`refactor()` returning an array of nodes): `pArray` with the `Differ`'s edit script.
-//!
-//! The old statement and the new ones are a run of one removal and several additions, which the `Differ` turns into
-//! a replacement when there is one new statement. A replacement keeps everything before the old statement's comments
-//! and writes the new statement's comments (the old ones go). A removal takes the old statement with its comments;
-//! after a statement it also takes the blanks back to that statement, and the new statements follow it a line each
-//! at its indent; at the start of the list the blanks before the old statement stay, the blanks after it go, and the
-//! new statements are written a line each before the next statement, at its indent. With no next statement, or where
-//! a control structure's single statement without braces becomes several, php-parser gives up on the list and prints
-//! the node holding it anew; [`splice`] gives `None` there. Rector changes every statement of a list in one pass, so
-//! the statements a rule changes next to each other are one run of removals and additions.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Expression, ForeachTarget, Node, Statement};
 use pun_problem::{Edit, Span};
@@ -21,25 +8,19 @@ use super::php_parser::{Frame, List, Token, enclosing, previous_token_end, remov
 use super::rector_conditions::{comments_between, indentation, print_comments, reprint};
 use crate::syntax::node_span;
 
-/// A statement of the new list that is not in the old one.
 pub(crate) struct NewStatement {
-    /// The comments php-parser keeps with it.
     pub comments: Vec<Span>,
     pub code: Code,
 }
 
 #[derive(Clone)]
 pub(crate) enum Code {
-    /// A statement of the file, printed with its code moved to the new indent.
     Moved(Span),
-    /// A statement printed anew, on one line.
     Text(String),
-    /// php-parser's `Nop` for comments after the last statement of a list: only its comments print.
     Nop,
 }
 
 impl NewStatement {
-    /// The statement at `span`, with the comments before it.
     pub(crate) fn moved(source: &str, tokens: &[Token], span: Span) -> Self {
         let before = previous_token_end(source, tokens, span.start);
         NewStatement {
@@ -48,7 +29,6 @@ impl NewStatement {
         }
     }
 
-    /// The statements of `list`, each with its comments, and its `Nop`.
     pub(crate) fn all(source: &str, tokens: &[Token], list: &List<'_, '_>) -> Vec<Self> {
         let mut out: Vec<Self> = list
             .stmts
@@ -68,8 +48,6 @@ impl NewStatement {
         out
     }
 
-    /// The statement as `pStmts` prints it in a list printed anew at the indent `level`: its comments after a line
-    /// break, then (unless it is a `Nop`) its code after another.
     pub(crate) fn print_in_list(
         &self,
         source: &str,
@@ -95,7 +73,6 @@ impl NewStatement {
         out
     }
 
-    /// `p($node)` at the indent `level`, after its comments, lines joined by `nl`.
     fn print(&self, source: &str, tokens: &[Token], level: usize, nl: &str) -> String {
         let mut out = String::new();
         if !self.comments.is_empty() {
@@ -116,7 +93,6 @@ impl NewStatement {
     }
 }
 
-/// Where the statement at `index` of `list` starts with the comments php-parser keeps with it.
 fn comment_start(source: &str, tokens: &[Token], list: &List<'_, '_>, index: usize) -> usize {
     let span = node_span(list.stmts[index]);
     let before = previous_token_end(source, tokens, span.start).max(list.inner.start);
@@ -125,8 +101,6 @@ fn comment_start(source: &str, tokens: &[Token], list: &List<'_, '_>, index: usi
         .map_or(span.start, |c| c.start)
 }
 
-/// The edits that replace the `count` statements of `list` from `index` on (a run of changed statements, each
-/// replaced or removed) by `new`, or `None` where php-parser prints the list's holder anew.
 pub(crate) fn splice(
     source: &str,
     tokens: &[Token],
@@ -142,7 +116,6 @@ pub(crate) fn splice(
         return Some(remove(source, tokens, list, &indices));
     }
     if new.len() == count {
-        // the `Differ` pairs the removals with the additions: each a replacement
         return Some(
             new.iter()
                 .enumerate()
@@ -162,7 +135,6 @@ pub(crate) fn splice(
     }
     let start = comment_start(source, tokens, list, index);
     let (span, text) = if index > 0 {
-        // removed after a kept statement: the new ones follow that statement, at its indent
         let previous = node_span(list.stmts[index - 1]);
         let level = indentation(source, previous.start);
         let nl = format!("\n{}", " ".repeat(level));
@@ -173,7 +145,6 @@ pub(crate) fn splice(
             .collect();
         (Span::new(before, last.end), text)
     } else {
-        // removed from the start: the new ones go before the next statement (or the `Nop`), at its indent
         let next = if index + count < list.stmts.len() {
             comment_start(source, tokens, list, index + count)
         } else if list.nop {
@@ -194,8 +165,6 @@ pub(crate) fn splice(
     Some(vec![strip_nop_blanks(source, span, text, has_nop)])
 }
 
-/// The edit of `text` at `span`, with `BetterStandardPrinter::pArray`'s clean-up: when the new list holds a `Nop`,
-/// lines of only blanks lose their blanks.
 fn strip_nop_blanks(source: &str, span: Span, text: String, has_nop: bool) -> Edit {
     if !has_nop {
         return Edit::new(span, text);
@@ -216,19 +185,12 @@ fn strip_nop_blanks(source: &str, span: Span, text: String, has_nop: bool) -> Ed
     Edit::new(Span::new(line_start, line_end), cleaned.join("\n"))
 }
 
-/// What a rule's `refactor()` does to one statement of a list.
 pub(crate) enum Change {
-    /// Edits inside the statement, which stays in the list.
     Edits(Vec<Edit>),
-    /// `NodeVisitor::REMOVE_NODE`.
     Remove,
-    /// The statement replaced by these.
     Replace(Vec<NewStatement>),
 }
 
-/// The edits for the statement `ancestors` ends with (a `Node::Statement`), given what `change` does to a statement
-/// of its list (called with the chain to it): Rector changes the statements of a list in one pass, so the statement
-/// a run of removed or replaced statements starts with gets the run's edits, and the others none.
 pub(crate) fn run_edits<'ast, 'arena>(
     source: &str,
     tokens: &[Token],
@@ -266,11 +228,6 @@ pub(crate) fn run_edits<'ast, 'arena>(
     }
 }
 
-/// The node whose statement list was the changed statements alone, printed anew with `new` as its statements:
-/// php-parser's `pArray` gives up on a list whose only statement it removes, and the printer falls back to printing
-/// the node holding it (`pStmt_ClassMethod`, `pStmt_Function`, `pExpr_Closure`, `pStmt_Foreach`, `pStmt_While`,
-/// `pStmt_If`, `pStmt_ElseIf`, `pStmt_Else`, `pStmt_Case`). Pun prints those; under any other node it leaves the
-/// code alone. `pStmt_If` keeps the code of its `elseif` and `else` clauses, one space before each.
 fn holder_reprint(
     source: &str,
     tokens: &[Token],
@@ -305,7 +262,6 @@ fn holder_reprint(
             Node::Statement(_) | Node::MethodBody(_) | Node::ForeachBody(_) | Node::WhileBody(_)
         )
     })?;
-    // `head {` and the statements at the indent of the line `start` is on, then `}`
     let braced = |start: usize, end: usize, head: String| {
         let level = indentation(source, start);
         Edit::new(

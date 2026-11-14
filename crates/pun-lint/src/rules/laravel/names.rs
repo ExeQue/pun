@@ -1,15 +1,8 @@
-//! php-parser's `NameResolver` for class names: a name as written, resolved through the `use` imports and the
-//! namespace of the place it is written.
-
 use mago_syntax::cst::{Identifier, Namespace, NamespaceBody, Node, Statement, UseItem, UseItems};
 
 pub(crate) use crate::rules::types::names::resolve_class_name;
 use crate::rules::types::names::scope;
 
-/// PHPStan's `NameScope::resolveStringName` for a class name `written` in a doc comment at the node `ancestors` lead
-/// to, in the name scope Rector makes (`NameScopeFactory`): the namespace, and every import of the file by its alias
-/// in lowercase (the last import of an alias wins). A name whose first part is an alias goes through that import,
-/// else it is in the namespace.
 pub(crate) fn resolve_doc_string_name(ancestors: &[Node<'_, '_>], written: &str) -> String {
     if written.starts_with('\\') {
         return written.trim_start_matches('\\').to_string();
@@ -32,10 +25,6 @@ pub(crate) fn resolve_doc_string_name(ancestors: &[Node<'_, '_>], written: &str)
     }
 }
 
-/// Rector's `ObjectTypeSpecifier::narrowToFullyQualifiedOrAliasedObjectType` for a class name `written` in a doc comment
-/// at the node `ancestors` lead to: the name the type compares by. An alias, then the last part of a `use` without
-/// one, must match exactly; then an unqualified name in the namespace if that is a class, then the name itself if it is
-/// a class (`exists`, `ReflectionProvider::hasClass`), else the name in the namespace.
 pub(crate) fn resolve_doc_class_name(
     ancestors: &[Node<'_, '_>],
     written: &str,
@@ -45,7 +34,6 @@ pub(crate) fn resolve_doc_class_name(
         return fq.to_string();
     }
     let uses = file_uses(ancestors);
-    // `matchAliasedObjectType`
     for (name, alias) in &uses {
         let Some(alias) = alias else { continue };
         if alias == written || name == written {
@@ -58,7 +46,6 @@ pub(crate) fn resolve_doc_class_name(
             return format!("{name}{rest}");
         }
     }
-    // `matchShortenedObjectType`
     for (name, _) in uses.iter().filter(|(_, alias)| alias.is_none()) {
         let last = name.rsplit('\\').next().unwrap_or(name);
         if written == last {
@@ -75,7 +62,6 @@ pub(crate) fn resolve_doc_class_name(
             }
         }
     }
-    // a class in the current namespace wins over a global class with the same short name
     if let Some(ns) = scope(ancestors).0
         && !written.contains('\\')
     {
@@ -100,8 +86,6 @@ pub(crate) fn resolve_doc_class_name(
     }
 }
 
-/// `FileNode::getUsesAndGroupUses()`: the imports (functions' and constants' too) of the file's only namespace, or of
-/// the file outside namespaces, in order: each name with its group's prefix, and its alias.
 fn file_uses(ancestors: &[Node<'_, '_>]) -> Vec<(String, Option<String>)> {
     let text = |id: &Identifier<'_>| {
         String::from_utf8_lossy(id.value())

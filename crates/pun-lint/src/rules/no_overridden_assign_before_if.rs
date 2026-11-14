@@ -1,11 +1,3 @@
-//! `lint/dead-code/no-overridden-assign-before-if`, ported from Rector 2.8.4's
-//! `RemoveOverriddenAssignBeforeIfElseRector` (rules/DeadCode/Rector/If_).
-//!
-//! `$result = [];` right before an `if`/`else` whose two branches both assign `$result` before reading it goes: the
-//! first value is never read. Left alone: an `if` with an `elseif` or without an `else`, a condition that reads the
-//! variable, a first value with a side effect, a variable that is `global`, `static`, a superglobal or taken by
-//! reference, and an `if` with `compact()`, `extract()`, `get_defined_vars()` or a dynamic variable in it.
-
 use mago_syntax::cst::{
     Expression, Identifier, IndirectVariable, Node, NodeKind, Statement, Variable,
 };
@@ -66,11 +58,9 @@ impl Rule for NoOverriddenAssignBeforeIf {
             let Some(name) = overridable_assign_variable_name(&scope, stmt) else {
                 continue;
             };
-            // the initial value is still read when the condition uses it
             if is_variable_used(Node::Expression(view.condition), name) {
                 continue;
             }
-            // compact()/get_defined_vars()/dynamic variables can read the value by name
             if should_skip_if(Node::If(next)) {
                 continue;
             }
@@ -89,14 +79,12 @@ impl Rule for NoOverriddenAssignBeforeIf {
     }
 }
 
-/// `matchOverridableAssignVariableName`; `scope` ends with the node that holds `stmt`.
 fn overridable_assign_variable_name<'a>(
     scope: &[Node<'a, 'a>],
     stmt: &'a Statement<'a>,
 ) -> Option<&'a [u8]> {
     let assign = assign(expression(stmt)?)?;
     let name = variable_name(assign.lhs)?;
-    // removing the assign must not drop a side effect
     if has_side_effect(scope, assign.rhs) {
         return None;
     }
@@ -111,7 +99,6 @@ fn overridable_assign_variable_name<'a>(
     Some(name)
 }
 
-/// `isOverriddenFirstInBranch`: the first statement that touches the variable assigns it without reading it.
 fn is_overridden_first_in_branch(stmts: &List<'_>, name: &[u8]) -> bool {
     let Some(stmt) = stmts
         .stmts
@@ -120,11 +107,9 @@ fn is_overridden_first_in_branch(stmts: &List<'_>, name: &[u8]) -> bool {
     else {
         return false;
     };
-    // first statement touching the variable must fully override it
     let Some(assign) = expression(stmt).and_then(assign) else {
         return false;
     };
-    // e.g. $value = $value + 1 still reads the previous value
     variable_name(assign.lhs) == Some(name) && !is_variable_used(Node::Expression(assign.rhs), name)
 }
 
@@ -133,14 +118,12 @@ fn should_skip_if(r#if: Node<'_, '_>) -> bool {
         Node::FunctionCall(call) => ["compact", "get_defined_vars", "extract"]
             .iter()
             .any(|name| named(call, name)),
-        // dynamic variable access like $$name can read the value by name
         Node::IndirectVariable(v) => interpolated_name(v).is_none(),
         Node::NestedVariable(_) => true,
         _ => false,
     })
 }
 
-/// `isVariableUsedInNode`: a variable named `name` (without the `$`) anywhere in `node`.
 fn is_variable_used(node: Node<'_, '_>, name: &[u8]) -> bool {
     any_variable_node(node, &|n| match n {
         Node::DirectVariable(v) => &v.name[1..] == name,
@@ -149,7 +132,6 @@ fn is_variable_used(node: Node<'_, '_>, name: &[u8]) -> bool {
     })
 }
 
-/// The name in `"${name}"`, which php-parser reads as the variable `$name`; elsewhere `${...}` holds an expression.
 fn interpolated_name<'a>(variable: &IndirectVariable<'a>) -> Option<&'a [u8]> {
     match variable.expression {
         Expression::Identifier(Identifier::Local(id)) => Some(id.value),
@@ -157,8 +139,6 @@ fn interpolated_name<'a>(variable: &IndirectVariable<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// [`any_node`] over php-parser's nodes: the `$name` of `A::$name` and of a property declaration is a name there
-/// (`VarLikeIdentifier`), not a variable.
 fn any_variable_node(node: Node<'_, '_>, f: &dyn Fn(Node<'_, '_>) -> bool) -> bool {
     let mut stack = vec![node];
     while let Some(node) = stack.pop() {

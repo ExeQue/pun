@@ -1,8 +1,3 @@
-//! `lint/phpunit/prefer-simple-with-matcher`, ported from rector-phpunit's `UseSpecificWithMethodRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, each argument `$this->equalTo($a)` of a call named `with()` becomes `$a`.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

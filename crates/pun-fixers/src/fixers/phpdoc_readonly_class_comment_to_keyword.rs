@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\PhpdocReadonlyClassCommentToKeywordFixer`.
 use crate::analyzers::docblock::DocBlock;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -22,11 +21,9 @@ impl Fixer for PhpdocReadonlyClassCommentToKeywordFixer {
         true
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
-        // `\PHP_VERSION_ID >= 8_02_00`: always true on the PHP 8.5 oracle.
         tokens.is_token_kind_found(T_DOC_COMMENT)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // `foreach ($tokens as $index => $token)` walks the collection as it grows.
         let mut main_index = 0;
         while main_index < tokens.count() {
             let current = main_index;

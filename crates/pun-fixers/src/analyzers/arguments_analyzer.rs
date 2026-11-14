@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\ArgumentsAnalyzer`.
 use super::analysis::{ArgumentAnalysis, TypeAnalysis};
 use pun_tokens::{Kind, Kind::*, Tokens};
 use std::collections::BTreeMap;
@@ -28,7 +27,6 @@ impl ArgumentsAnalyzer {
             .len()
     }
 
-    /// start index => end index of each argument.
     pub(crate) fn get_arguments(
         &self,
         tokens: &Tokens,
@@ -51,7 +49,7 @@ impl ArgumentsAnalyzer {
             if token.equals(",", true) {
                 if tokens.get_next_meaningful_token(param_content_index) == Some(close_parenthesis)
                 {
-                    break; // trailing ',' in function call (PHP 7.3)
+                    break;
                 }
                 arguments.insert(arguments_start, param_content_index - 1);
                 arguments_start = param_content_index + 1;

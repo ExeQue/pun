@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitExpectationFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -21,7 +20,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `configurePostNormalisation`.
 fn method_map(target: &str) -> Vec<(&'static str, &'static str)> {
     let mut map = vec![("setExpectedException", "expectExceptionMessage")];
     if target_fulfills(target, "8.4") {
@@ -71,8 +69,6 @@ impl Fixer for PhpUnitExpectationFixer {
 }
 
 impl PhpUnitExpectationFixer {
-    /// `applyPhpUnitClassFixWithObjectOperator`: upstream's loop ends only when no `$this->name` follows, so the end
-    /// of the class does not bound it.
     fn apply_with_object_operator(
         &self,
         tokens: &mut Tokens,
@@ -129,7 +125,6 @@ impl PhpUnitExpectationFixer {
             for cnt in (1..arguments.len()).rev() {
                 let arg_start = arguments[cnt];
                 let arg_before = tokens.get_prev_meaningful_token(arg_start).unwrap();
-                // Upstream throws `Unexpected index %d to find replacement method.` for a fourth argument.
                 let replacement = arguments_replacements[cnt];
                 if replacement == "expectExceptionMessage" {
                     let param_indicator_index =

@@ -1,10 +1,7 @@
-//! `PhpCsFixer\DocBlock\TypeExpression`.
-
 use crate::analyzers::preg::{Captures, Preg};
 use std::cmp::Ordering;
 use std::sync::LazyLock;
 
-/// PHP 8's `$a <=> $b` on two strings: numerically when both are numeric strings, else byte-wise.
 pub(crate) fn php_spaceship(a: &[u8], b: &[u8]) -> Ordering {
     match (numeric_value(a), numeric_value(b)) {
         (Some(x), Some(y)) => x.partial_cmp(&y).unwrap(),
@@ -12,28 +9,23 @@ pub(crate) fn php_spaceship(a: &[u8], b: &[u8]) -> Ordering {
     }
 }
 
-/// The value of a PHP 8 numeric string (leading and trailing whitespace allowed), else None.
 fn numeric_value(s: &[u8]) -> Option<f64> {
     let m = Preg::match_groups(
         r"/^[ \t\n\r\x0b\x0c]*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)[ \t\n\r\x0b\x0c]*$/D",
         s,
     )?;
-    // The pattern only lets through what Rust's float parser reads.
     Some(std::str::from_utf8(m.str(1)).unwrap().parse().unwrap())
 }
 
 pub(crate) const REGEX_IDENTIFIER: &str = __regex_identifier!();
 pub(crate) const REGEX_TYPES: &str = __regex_types!();
 const REGEX_TYPE: &str = __regex_type!();
-/// parse()'s and parseCommaSeparatedInnerTypes()'s patterns, built once (they run for every type in every docblock).
 static PARSE_PATTERN: LazyLock<String> =
     LazyLock::new(|| format!(r"{{\G{REGEX_TYPE}(?<glue_raw>\h*(?<glue>[|&])\h*(?!$)|$)}}"));
 static COMMA_SEPARATED_PATTERN: LazyLock<String> =
     LazyLock::new(|| format!(r"{{\G{REGEX_TYPES}(?:\h*,[\h\v*]*|$)}}"));
-/// parse_prefixed's whole-type check, built once.
 static FULL_TYPES_PATTERN: LazyLock<String> = LazyLock::new(|| format!(r"{{^{REGEX_TYPES}$}}"));
 
-/// One of parse_prefixed's three loops: the `\G` pattern that consumes an item, and its `_`-prefixed capture name.
 struct Prefixed {
     pattern: String,
     capture: String,
@@ -60,7 +52,6 @@ pub(crate) struct ParseError(pub Vec<u8>);
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // `'Unable to parse phpdoc type '.var_export($this->value, true)`
         write!(
             f,
             "Unable to parse phpdoc type {}",
@@ -78,7 +69,6 @@ pub(crate) struct TypeExpression {
 }
 
 impl TypeExpression {
-    /// Panics like upstream throws on an unparsable type; see `try_new`.
     pub(crate) fn new(value: &[u8]) -> Self {
         Self::try_new(value).unwrap_or_else(|e| panic!("{e}"))
     }
@@ -144,7 +134,6 @@ impl TypeExpression {
         callback(t)
     }
 
-    /// `sortTypes`: `Utils::stableSort` of every composite type's members, innermost first.
     pub(crate) fn sort_types(
         &self,
         compare: &dyn Fn(&TypeExpression, &TypeExpression) -> Ordering,
@@ -164,7 +153,6 @@ impl TypeExpression {
         })
     }
 
-    /// `removeDuplicateTypes`: drops every composite member equal to an earlier one once both are sorted.
     pub(crate) fn remove_duplicate_types(&self) -> Self {
         self.map_types(&mut |t| {
             if !t.is_composite_type {
@@ -193,7 +181,7 @@ impl TypeExpression {
             next_glue_raw: Option<Vec<u8>>,
         }
         let pattern: &str = &PARSE_PATTERN;
-        let mut seen_glues: Option<[bool; 2]> = None; // ['|', '&'] in insertion order
+        let mut seen_glues: Option<[bool; 2]> = None;
         let mut inner_values: Vec<InnerValue> = vec![];
         let value = self.value.clone();
         let mut index = 0;
@@ -337,7 +325,6 @@ impl TypeExpression {
         Ok(())
     }
 
-    /// Shared loop of parseCallableTemplateInnerTypes / parseCallableArgumentTypes / parseArrayShapeInnerTypes.
     fn parse_prefixed(
         &mut self,
         start_index: usize,

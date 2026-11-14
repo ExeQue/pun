@@ -1,11 +1,3 @@
-//! `lint/laravel/prefer-typed-assert-closure`, ported from rector-laravel 2.7.3's
-//! `AssertWithClassStringToTypeHintedClosureRector` (src/Rector/StaticCall) and its `FacadeAssertionAnalyzer`.
-//!
-//! `Bus::assertDispatched(Job::class, function ($job) {...})` (the `Illuminate\Support\Facades\Bus` or `Event`
-//! facade) becomes `Bus::assertDispatched(function (\Job $job) {...})`: the class string goes and types the first
-//! parameter of the closure or arrow function. php-parser prints the call anew, its arguments on one line, and moves
-//! the closure's lines to the indentation of the call's line.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Node, NodeKind, StaticMethodCall};
 use pun_problem::{Edit, Safety};
 

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\CastNotation\ModernizeTypesCastingFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{
     FunctionReferenceFinder, IS_RISKY, is_candidate,
 };
@@ -45,7 +44,6 @@ impl Fixer for ModernizeTypesCastingFixer {
                 Some(tokens.count() - 1),
             ) {
                 curr_index = open_parenthesis;
-                // indicator that the function is overridden
                 if arguments_analyzer.count_arguments(tokens, open_parenthesis, close_parenthesis)
                     != 1
                 {
@@ -58,7 +56,6 @@ impl Fixer for ModernizeTypesCastingFixer {
                     tokens.clear_at(comma_candidate);
                     param_content_end = comma_candidate;
                 }
-                // check if something complex passed as an argument and preserve parentheses then
                 let count_param_tokens = (open_parenthesis + 1..param_content_end)
                     .filter(|&i| !tokens[i].is_kind(T_WHITESPACE))
                     .count();
@@ -68,7 +65,6 @@ impl Fixer for ModernizeTypesCastingFixer {
                 let wrap_in_parentheses = after_close_parenthesis_token
                     .equals_any(&["[".into(), "{".into()], true)
                     || after_close_parenthesis_token.is_kind(T_POW);
-                // analyse namespace specification (root one or none) and decide what to do
                 let prev_token_index = tokens.get_prev_meaningful_token(function_name).unwrap();
                 if tokens[prev_token_index].is_kind(T_NS_SEPARATOR) {
                     tokens.remove_trailing_whitespace(prev_token_index, None);
@@ -80,15 +76,12 @@ impl Fixer for ModernizeTypesCastingFixer {
                     replacement_sequence.insert(0, Token::char("("));
                 }
                 if !preserve_parentheses {
-                    // closing parenthesis removed with leading spaces
                     tokens.remove_leading_whitespace(close_parenthesis, None);
                     tokens.clear_at(close_parenthesis);
-                    // opening parenthesis removed with trailing spaces
                     tokens.remove_leading_whitespace(open_parenthesis, None);
                     tokens.remove_trailing_whitespace(open_parenthesis, None);
                     tokens.clear_at(open_parenthesis);
                 } else {
-                    // we'll need to provide a space after a casting operator
                     tokens.remove_trailing_whitespace(function_name, None);
                 }
                 if wrap_in_parentheses {

@@ -1,5 +1,3 @@
-//! Shared FunctionCallParametersCheck constant policies, compared with the PHPStan 2.3.1 phar.
-
 use std::path::Path;
 
 use pun_analyse::{Project, reports, run};
@@ -70,7 +68,6 @@ fn upstream_constant_parameter_fixtures_are_strict_without_gaps() {
             "Methods/CallMethodsRuleTest",
             "Functions/CallUserFuncRuleTest",
         ] {
-            // CallUserFuncRule has only a level-five export.
             if level == 9 && suite == "Functions/CallUserFuncRuleTest" {
                 continue;
             }

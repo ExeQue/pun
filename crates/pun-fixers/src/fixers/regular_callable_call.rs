@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\RegularCallableCallFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -41,7 +40,7 @@ impl Fixer for RegularCallableCallFixer {
                 continue;
             }
             if !functions_analyzer.is_global_function_call(tokens, index) {
-                continue; // redeclare/override
+                continue;
             }
             let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
             let close_parenthesis =
@@ -49,7 +48,7 @@ impl Fixer for RegularCallableCallFixer {
             let arguments =
                 arguments_analyzer.get_arguments(tokens, open_parenthesis, close_parenthesis);
             if arguments.is_empty() {
-                return; // no arguments!
+                return;
             }
             process_call(tokens, index, &arguments);
         }
@@ -64,7 +63,7 @@ fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, u
     if first_arg_token.is_kind(T_CONSTANT_ENCAPSED_STRING) {
         let after_first_arg_index = tokens.get_next_meaningful_token(first_arg_index).unwrap();
         if !tokens[after_first_arg_index].equals_any(&[",".into(), ")".into()], true) {
-            return; // first argument is an expression like `call_user_func("foo"."bar", ...)`, not supported!
+            return;
         }
         let content = first_arg_token.get_content();
         if !is_valid_function_invoke(content) {
@@ -111,7 +110,6 @@ fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, u
             first_arg_end_index,
         );
     } else if first_arg_token.is_kind(T_VARIABLE) {
-        // `reset($arguments)`: the end of the first argument.
         let first_arg_end_index = *arguments.values().next().unwrap();
         for (&argument_start, &argument_end) in arguments {
             if first_arg_end_index == argument_end {

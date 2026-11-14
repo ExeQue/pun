@@ -1,20 +1,7 @@
-//! The report rules of lint-b's groups that come from Mago's linter and from phpstan-strict-rules.
-//!
-//! tests/lint_b_report/<group>/<name>/*.php.inc is an input, `-----`, and what the upstream tool reported for it,
-//! one problem a line. For a Mago rule the inputs are the rule's own test cases and examples (mago-linter 1.57.0,
-//! rule/<category>/<rule>.rs) plus hand-written ones, and the lines are `line:column: message` as
-//! `mago --php-version 8.4 lint --only <code> --reporting-format emacs` prints them. For a PHPStan rule the lines are
-//! `line: message` as PHPStan 2.3.1 with phpstan-strict-rules 2.0.12 (level 0, only that strict rule on) reports
-//! them with `--error-format=json`, filtered to the rule's identifier.
-//!
-//! tests/lint_b_report_fix/<group>/<name>/*.php.inc is an input and, after `-----`, what
-//! `mago --php-version 8.4 lint --only <code> --fix` wrote for it (one case a file).
-
 use std::path::Path;
 
 use pun_lint::{Linter, rules};
 
-/// The rules whose expected lines come from PHPStan, which reports a line and no column.
 const PHPSTAN: &[&str] = &[
     "lint/style/no-empty",
     "lint/style/no-short-ternary",
@@ -103,7 +90,6 @@ fn upstream_cases() {
 
 #[test]
 fn version_gates() {
-    // no-underscore-class needs PHP 8.4 and no-void-reference-return PHP 8.2 (Mago's RuleRequirements::PHPVersion).
     let code = "<?php\nclass _ {}\nfunction &f(): void {}\n";
     let ids = |v| {
         Linter::new(
@@ -125,8 +111,6 @@ fn version_gates() {
 
 #[test]
 fn dynamic_call_on_anonymous_class() {
-    // PHPStan 2.3.1 with phpstan-strict-rules 2.0.12 (noVariableVariables only), run on this code as f.php in its
-    // directory: an anonymous class is `class@anonymous/<path>:<line>`, the path as PHPStan was given it.
     let code = "<?php\n\nfunction f($m) {\n    $x = new class { };\n    $x->$m();\n}\n";
     let found = Linter::new(vec![Box::new(rules::NoDynamicMethodCall)], 80400)
         .check(Path::new("f.php"), code)
@@ -138,7 +122,6 @@ fn dynamic_call_on_anonymous_class() {
     );
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn pun_lint::Rule>);
 
 impl pun_lint::Rule for Everywhere {
@@ -159,7 +142,6 @@ impl pun_lint::Rule for Everywhere {
 
 #[test]
 fn phpstan_rules_ignore_nodes_outside_their_targets() {
-    // `targets()` only spares the engine work: called on every node, each rule reports what it reports on its own.
     let ids = [
         "lint/style/no-dynamic-method-call",
         "lint/style/no-dynamic-method-callable",
@@ -191,7 +173,6 @@ fn phpstan_rules_ignore_nodes_outside_their_targets() {
 
 #[test]
 fn hash_emoji_fix() {
-    // What `mago lint --only no-hash-emoji --fix` wrote for tests/lint_b_report/style/no-hash-emoji/a.php.inc.
     let input = "<?php\n\n#\u{fe0f}\u{20e3} a comment\n# plain\n#\u{fe0f}\u{20e3}[Attr]\nfunction f() {} #\u{fe0f}\u{20e3} trailing\n// #\u{fe0f}\u{20e3} not hash\n";
     let fixed = Linter::new(vec![Box::new(rules::NoHashEmoji)], 80400)
         .fix(Path::new("a.php"), input)

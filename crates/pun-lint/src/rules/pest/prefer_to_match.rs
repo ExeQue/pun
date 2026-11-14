@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-match`, ported from pest-plugin-rector's `UseToMatchRector`: `expect(preg_match('/pattern/',
-//! $value))->toBe(1)` (or `toEqual(1)`) becomes `expect($value)->toMatch('/pattern/')` when `$value` is known to be a string.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::Safety;
 

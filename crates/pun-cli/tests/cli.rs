@@ -28,7 +28,6 @@ fn files() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
-/// Writes `files` into `dir` (after wiping everything but `.git`), plus a symlinked file.
 fn reset(dir: &Path, files: &[(&str, &str)]) {
     for e in std::fs::read_dir(dir).unwrap().flatten() {
         if e.file_name() != ".git" {
@@ -64,7 +63,6 @@ fn run(
     let mut c = Command::new(program);
     common::clean_env(&mut c, &["PATH", "HOME"]);
     c.args(pre).args(args).current_dir(dir);
-    // Pint names its stdin temp file with uniqid(): concurrent runs sharing /tmp can swap inputs.
     let tmp = dir.with_extension("tmp");
     std::fs::create_dir_all(&tmp).unwrap();
     c.env("COLUMNS", "80")
@@ -77,7 +75,6 @@ fn run(
     let mut child = c.spawn().unwrap();
     child.stdin.take().unwrap().write_all(stdin).unwrap();
     let out = child.wait_with_output().unwrap();
-    // pun.toml: what `pun migrate` wrote for Pun's run.
     let files = common::snapshot(dir, |r| r == ".git" || r == "pun.toml");
     (
         Run {
@@ -109,8 +106,6 @@ impl Ctx {
             stdin,
         )
     }
-    /// Runs Pint, resets the tree, runs `pun migrate` and `pun <pre>` (default `format`), compares stdout, exit code
-    /// and files.
     fn same(
         &self,
         dir: &Path,
@@ -122,7 +117,6 @@ impl Ctx {
     ) {
         self.same_as(dir, tree, pre, args, args, env, stdin);
     }
-    /// Like `same`, but Pint gets `pint_args` (for pun-only spellings such as `--check`).
     #[expect(
         clippy::too_many_arguments,
         reason = "`same` plus the arguments Pint gets"
@@ -153,8 +147,6 @@ impl Ctx {
         }
         assert_eq!(got, want, "{pre:?} {args:?} {env:?} (our stderr: {err})");
     }
-    /// Pint aborts with exit 1 and its error box (on stdout) naming `message`; Pun, a run error (output.md §1),
-    /// prints `message` as one line on stderr and exits 2, and the files are the same.
     fn same_error(&self, dir: &Path, tree: &[(&str, &str)], args: &[&str], message: &str) {
         reset(dir, tree);
         let (mut want, werr) = self.pint(dir, args, &[], b"");
@@ -207,10 +199,6 @@ fn matches_pint() {
     ] {
         cx.same(&dir, &tree, &[], args, &[], b"");
     }
-    // A coding agent in the environment switches Pint to its JSON agent reporter; Pun prints its own agent format
-    // there (tests/agent.rs), and that reporter only with --format=agent (above).
-    // `pun check` is `pun format --test` here (no lint rules): same exit code and files as `pint --test`. Its
-    // screen is Pun's own grouped output (output.md), so it only has to name each file Pint flags.
     reset(&dir, &tree);
     let (want, _) = cx.pint(&dir, &["--test"], &[], b"");
     reset(&dir, &tree);
@@ -233,7 +221,6 @@ fn matches_pint() {
         );
         assert!(got.stdout.contains(file), "{}", got.stdout);
     }
-    // `--check` is `--test`.
     cx.same_as(
         &dir,
         &tree,
@@ -244,7 +231,6 @@ fn matches_pint() {
         b"",
     );
 
-    // Stdin: fixed code on stdout, excluded paths and invalid code echoed back.
     for args in [
         &["-"][..],
         &["--stdin-filename=app/x.php", "-"],
@@ -255,7 +241,6 @@ fn matches_pint() {
         cx.same(&dir, &tree, &[], args, &[], b"<?php\n$a = [1];\n");
     }
 
-    // Git selection: outside git (Pint 1.32 aborts), in a clean repo, with changes.
     for flag in ["dirty", "diff=main"] {
         let message = format!(
             "The [--{}] option is only available when using Git.",
@@ -264,7 +249,6 @@ fn matches_pint() {
         cx.same_error(&dir, &tree, &[&format!("--{flag}"), "--test"], &message);
     }
 
-    // Errors: unknown reporter, missing path, missing `in` dir, unreadable / unwritable files.
     cx.same_error(
         &dir,
         &tree,
@@ -282,8 +266,6 @@ fn matches_pint() {
         &[],
         r#"The "nodir" directory does not exist."#,
     );
-    // Unreadable / unwritable files: same box (see output.rs error_boxes_like_pint for the byte-exact cases).
-    // Under an agent Pint drops the progress; Pun prints one error line instead (tests/agent.rs).
     let env: &[(&str, &str)] = &[];
     for (mode, args) in [(0o444, &[][..]), (0o000, &["--test"])] {
         let locked = || {
@@ -298,8 +280,6 @@ fn matches_pint() {
         let (want, _) = cx.pint(&dir, args, env, b"");
         locked();
         let (got, err) = pun_format(&dir, args, env, b"");
-        // Pint prints the progress symbols of the files before the aborting one, then the box (exit 1); Pun its
-        // run error alone, on stderr (exit 2).
         let fix = dir.join("app/Fix.php");
         let message = match mode {
             0o444 => format!(
@@ -357,12 +337,6 @@ fn matches_pint() {
     );
 }
 
-/// Pint/laravel_blade (needs prettier in crates/pun-fixers/node_modules, tests/common/prettier.rs, resolved from the
-/// project dir):
-/// - embedded PHP is formatted with the configured preset's rules: under preset empty `@if(!$a)` keeps `!$a`
-///   (laravel would add a space);
-/// - a whitespace-only Blade file becomes empty and the later fixers are skipped (AbstractFixer::fix's
-///   `0 < $tokens->count()` guard) instead of running on an empty token list.
 #[test]
 fn blade_like_pint() {
     let Some(oracle) = oracle() else { return };
@@ -417,9 +391,6 @@ fn blade_like_pint() {
     }
 }
 
-/// `-v` diffs (here in the txt report, which prints them as Pint does) pair up lines exactly like PHP-CS-Fixer's sebastian/diff (LCS + strict unified builder): reordered
-/// imports (fixtures/dirty_imports.php, from pinkary-dirty: a Myers diff pairs other lines), a missing final newline, mixed line endings (warning line), and
-/// a file big enough for the memory-efficient LCS (> 853 differing lines).
 #[test]
 fn diffs_like_pint() {
     let Some(oracle) = oracle() else { return };
@@ -436,7 +407,6 @@ fn diffs_like_pint() {
             include_str!("fixtures/dirty_imports.php"),
         ),
         ("app/NoEol.php", "<?php\n\n$a = array(1);\n$b = 2;"),
-        // No line break in the old file at all: no "different line endings" warning (detectUnmatchedLineEndings).
         ("app/OneLine.php", "<?php $a = array(1);"),
         ("app/Crlf.php", "<?php\r\n\r\n$a = array(1);\n"),
         ("app/Big.php", &big),
@@ -471,7 +441,6 @@ fn pun_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, 
     )
 }
 
-/// `pun list-files` (context/plan/config.md §7), expected sets derived by hand from the plan's example.
 #[test]
 fn list_files() {
     let dir = scratch("cli", "list");
@@ -518,7 +487,6 @@ fn list_files() {
         ),
         ok("[\"app/A.php\",\"app/B.php\"]\n")
     );
-    // JSON wins over agent mode; agent mode puts a summary line first.
     assert_eq!(
         pun_env(
             &dir,
@@ -527,7 +495,6 @@ fn list_files() {
         ),
         ok("[\"tests/T.php\"]\n")
     );
-    // Under an agent the count is on stderr, so stdout still pipes into `xargs`.
     let (out, summary, code) = pun_env(
         &dir,
         &["list-files", "--command", "analyse"],
@@ -556,16 +523,13 @@ fn list_files() {
             Some(2)
         )
     );
-    // The hidden `pun format --list-files` flag is gone.
     assert_eq!(pun(&dir, &["format", "--list-files"]).2, Some(2));
 }
 
-/// Pun-only flags, hand-derived.
 #[test]
 fn pun_only_behaviour() {
     let dir = scratch("cli", "own");
     reset(&dir, &files());
-    // Every command needs pun.toml; `--preset` or `--no-config` runs without one.
     for cmd in [
         &["format"][..],
         &["lint"],
@@ -589,7 +553,6 @@ fn pun_only_behaviour() {
     let (_, _, code) = pun(&dir, &["format", "--test", "--no-config"]);
     assert_eq!(code, Some(1));
     migrate(&dir);
-    // `pun list-files --command format`: Pint's finder (the symlinked file counts), sorted.
     let (out, _, code) = pun(&dir, &["list-files", "--command", "format"]);
     let listed: Vec<&str> = out.lines().collect();
     assert_eq!(
@@ -626,7 +589,6 @@ fn pun_only_behaviour() {
         );
     }
 
-    // -v alone prints nothing on stderr.
     let (_, err, _) = pun(&dir, &["format", "--test", "-v", "app/Clean.php"]);
     assert_eq!(err, "");
 
@@ -641,8 +603,6 @@ fn pun_only_behaviour() {
         out.ends_with("\napp/Clean.php lint/statements/require-strict-types [fix:unsafe] Force a strict types mode in all files.\n"),
         "{out}"
     );
-    // `--preset per|symfony` was removed (format 1): exit 2 with one line naming `empty`, `[format.rules]` and
-    // `pun migrate`, through every command that takes `--preset`.
     std::fs::remove_file(dir.join("pun.toml")).unwrap();
     for args in [
         &["format", "--test", "--preset=per"][..],
@@ -664,12 +624,10 @@ fn pun_only_behaviour() {
             "{args:?}"
         );
     }
-    // pun.toml's `[format] preset = "symfony"` is the same removed preset: exit 2.
     std::fs::write(dir.join("pun.toml"), "[format]\npreset = \"symfony\"\n").unwrap();
     let (_, err, code) = pun(&dir, &["format", "--test"]);
     assert_eq!(code, Some(2), "{err}");
 
-    // A broken pun.toml is a one-line error.
     std::fs::write(dir.join("pun.toml"), "[format]\nnope = 1\n").unwrap();
     let (out, err, code) = pun(&dir, &["format", "--test", "app/Clean.php"]);
     assert_eq!((out.as_str(), code), ("", Some(2)));
@@ -681,12 +639,10 @@ fn pun_only_behaviour() {
     reset(&dir, &files());
     migrate(&dir);
 
-    // --staged: only files with staged changes (none outside git).
     let (out, _, code) = pun(&dir, &["format", "--staged", "--test", "--format=json"]);
     assert_eq!(code, Some(0));
     assert!(out.contains(r#""files":[]"#), "{out}");
 
-    // config: the resolved config under Pun rule IDs, TOML by default, JSON on request.
     let (out, _, code) = pun(&dir, &["config", "--format=json"]);
     assert_eq!(code, Some(0));
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
@@ -699,8 +655,6 @@ fn pun_only_behaviour() {
     assert_eq!((err.as_str(), code), ("x Preset not found.\n", Some(2)));
 }
 
-/// `pun migrate` reads a .php-cs-fixer.php and its Finder through PHP-CS-Fixer itself: a project fixer class, which
-/// Pun can't run, is named and skipped, then one without custom fixers.
 #[test]
 fn migrates_php_cs_fixer_config() {
     let Some(oracle) = oracle() else { return };
@@ -725,7 +679,6 @@ fn migrates_php_cs_fixer_config() {
         ("vendor/friendsofphp/php-cs-fixer/.keep", String::new()),
     ];
     let tree: Vec<(&str, &str)> = tree.iter().map(|(a, b)| (*a, b.as_str())).collect();
-    // A config PHP-CS-Fixer can't load: its error, nothing written.
     reset(&dir, &tree);
     std::fs::write(
         dir.join(".php-cs-fixer.php"),
@@ -736,7 +689,6 @@ fn migrates_php_cs_fixer_config() {
     assert_eq!(code, Some(2));
     assert!(err.contains("bad config"), "{err}");
     assert!(!dir.join("pun.toml").exists());
-    // Without PHP-CS-Fixer installed the config can't be read.
     reset(&dir, &tree);
     std::fs::remove_dir_all(dir.join("vendor/friendsofphp")).unwrap();
     let (_, err, code) = pun(&dir, &["migrate"]);
@@ -747,7 +699,6 @@ fn migrates_php_cs_fixer_config() {
             Some(2)
         )
     );
-    // The custom fixer is named and skipped; the rest migrates, the Finder's `in` to [files] paths.
     reset(&dir, &tree);
     let skipped = " ! Acme/upper_todo  not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set); skipped\n   Want them? Send a PR to https://github.com/punphp/pun\n ok Wrote pun.toml\n";
     let (out, err, code) = pun(&dir, &["migrate"]);
@@ -763,7 +714,6 @@ fn migrates_php_cs_fixer_config() {
             && toml.contains("\n\"strings/single-quote\" = true\n"),
         "{toml}"
     );
-    // Agent mode: the skipped rule as a finding under one line.
     reset(&dir, &tree);
     let (out, _, code) = pun_env(&dir, &["migrate"], &[("PUN_AGENT", "1")]);
     let (first, rest) = out.split_once('\n').unwrap();
@@ -776,8 +726,6 @@ fn migrates_php_cs_fixer_config() {
         rest,
         ".php-cs-fixer.php migrated\ncomposer.json migrated\n.php-cs-fixer.php unsupported Acme/upper_todo: not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set)\nsend a PR for what is skipped: https://github.com/punphp/pun\n"
     );
-    // A Finder over the project root: no [files] paths; exclude goes to [files] (PHP-CS-Fixer skips the folder for
-    // every fixer, risky ones included) and notName to [format]; depth() and ignoreVCSIgnored() have no key.
     reset(&dir, &tree);
     std::fs::create_dir_all(dir.join("legacy")).unwrap();
     std::fs::write(dir.join("legacy/L.php"), "<?php\n$b = sizeof([]);\n").unwrap();
@@ -796,23 +744,17 @@ fn migrates_php_cs_fixer_config() {
         std::fs::read_to_string(dir.join("pun.toml")).unwrap(),
         "# Written by `pun migrate` from .php-cs-fixer.php.\n[files]\nexclude = [\"legacy\"]\n\n[format]\npreset = \"empty\"\nnot-name = [\"*.inc\"]\n\n[format.rules]\n\"strings/single-quote\" = true\n\n[lint.rules]\n\"style/no-alias-function\" = \"error\"\n\n[require]\nphp = \"^8.4\"\n"
     );
-    // single_quote is format; no_alias_functions (risky) only runs under lint / check.
     pun(&dir, &["format"]);
     let a = || std::fs::read_to_string(dir.join("app/A.php")).unwrap();
     assert_eq!(a(), "<?php\n$a = 'x';\n$b = sizeof([]);\n");
     pun(&dir, &["check", "--fix"]);
     assert_eq!(a(), "<?php\n$a = 'x';\n$b = count([]);\n");
-    // The excluded folder keeps its `sizeof()`, as under PHP-CS-Fixer.
     assert_eq!(
         std::fs::read_to_string(dir.join("legacy/L.php")).unwrap(),
         "<?php\n$b = sizeof([]);\n"
     );
 }
 
-/// `pun config` on a hand-written pun.toml. Expected text derived by hand from config.md §3 and mapping.toml: each
-/// command's exclude adds `[files] exclude`; `tags = "warn"` turns on the one lint rule of `tags`; the analyse groups
-/// switched off are every group with a `basic` rule, so only the rule named after them runs; `concat-spacing` has one
-/// option, so it prints as that option's value (format.md Decisions, "Option names").
 #[test]
 fn config_prints_resolved_schema() {
     let dir = scratch("cli", "config");
@@ -926,7 +868,6 @@ magic = true
         pun(&dir, &["config"]),
         (want.into(), String::new(), Some(0))
     );
-    // Nothing read (a preset, no pun.toml or composer.json): no comment, and PHP 8.4.
     let (out, _, code) = pun(
         &scratch("cli", "config-none"),
         &["config", "--preset=empty"],
@@ -935,8 +876,6 @@ magic = true
     assert_eq!(code, Some(0));
 }
 
-/// `pun explain`: a lint rule by ID, the same rule by its PHP-CS-Fixer name (named first), and a name that is no rule.
-/// Expected text from mapping.toml's `style/no-alias-function` row, its upstream rows and `[meta.groups] style`.
 #[test]
 fn explain_rule() {
     let dir = scratch("cli", "explain");
@@ -967,7 +906,6 @@ docs      https://pun.laravel.cloud/docs/rules/lint/style/no-alias-function
     );
 }
 
-/// Composer's shim runs the binary from a cached `pun-<version>-<target>` file; the usage line still says `pun`.
 #[test]
 fn usage_line_says_pun_under_another_file_name() {
     let dir = std::env::temp_dir().join(format!("pun-usage-name-{}", std::process::id()));

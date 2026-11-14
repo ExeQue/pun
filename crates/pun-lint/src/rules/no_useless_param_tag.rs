@@ -1,12 +1,3 @@
-//! `lint/phpdoc/no-useless-param`, ported from Rector 2.8.4's `RemoveUselessParamTagRector`
-//! (rules/DeadCode/Rector/ClassMethod) with `ParamTagRemover` and `DeadParamTagValueNodeAnalyzer`
-//! (rules/DeadCode/PhpDoc).
-//!
-//! Each `@param` of a function's or method's doc comment goes when its parameter's native type already says what it
-//! says (`TypeComparator::arePhpParserAndPhpStanPhpDocTypesEqual()`). It stays with a description, a generic or other
-//! type the native one cannot say, a template type, `true` or `false` over a native `bool`, or a union with a
-//! `mixed[]` or generic member. Only the tags named exactly `@param` count; a doc comment left empty goes.
-
 use mago_syntax::cst::{
     FunctionLikeParameterList, FunctionLikeReturnTypeHint, Hint, Node, NodeKind,
 };
@@ -57,7 +48,6 @@ impl Rule for NoUselessParamTag {
         let removed: Vec<bool> = with_classes(facts.documented(), || {
             (0..doc.len())
                 .map(|i| {
-                    // handle only basic types, keep phpstan/psalm helper ones
                     tag_name(doc.text(i)) == "@param"
                         && type_tag(&doc, i).is_some_and(|tag| {
                             tag.kind == Kind::Param && is_dead(&tag, params, &scope)
@@ -80,7 +70,6 @@ impl Rule for NoUselessParamTag {
     }
 }
 
-/// The parameters and the return type of a function or method.
 pub(crate) fn function_like<'n, 'arena>(
     node: &Node<'n, 'arena>,
 ) -> Option<(
@@ -94,12 +83,10 @@ pub(crate) fn function_like<'n, 'arena>(
     }
 }
 
-/// Whether a native type is the identifier `bool` (`$node->toString() === 'bool'`; php-parser lowercases built-in types).
 pub(crate) fn is_bool_identifier(hint: &Hint<'_>) -> bool {
     matches!(hint, Hint::Bool(_))
 }
 
-/// `DeadParamTagValueNodeAnalyzer::isDead()`.
 fn is_dead(
     tag: &TypeTag,
     params: &FunctionLikeParameterList<'_>,

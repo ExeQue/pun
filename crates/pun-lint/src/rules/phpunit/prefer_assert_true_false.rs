@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-assert-true-false`, ported from rector-phpunit's `AssertSameTrueFalseToAssertTrueFalseRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! A method call `assertSame(true, $a)` becomes `assertTrue($a)`, and `assertSame(false, $a)` becomes
-//! `assertFalse($a)`. As upstream, `assertNotSame` and the names `assertEqual` and `assertNotEqual` are rewritten
-//! the same way.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

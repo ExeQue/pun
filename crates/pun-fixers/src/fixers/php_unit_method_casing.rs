@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitMethodCasingFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{
     apply_fix, get_doc_block_index, is_candidate, is_test_attribute_present,
 };
@@ -90,7 +89,6 @@ impl PhpUnitMethodCasingFixer {
         let mut parts: Vec<&[u8]> = explode(b"::", function_name);
         let function_name_part = parts.pop().unwrap();
         let new_part = if self.camel_case {
-            // ucwords($s, '_'), str_replace('_', ''), lcfirst
             let mut out = Vec::with_capacity(function_name_part.len());
             let mut upper_next = true;
             for &c in function_name_part {

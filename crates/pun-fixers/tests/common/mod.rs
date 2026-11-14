@@ -1,10 +1,6 @@
-//! Shared by the fixture and oracle-case tests.
 use pun_format::Fixer;
 use std::path::Path;
 
-/// AbstractFixerTestCase::doTest on a configured fixer: `input` (when there is one) must be a candidate, fix to
-/// `expected` and mark the tokens changed; `expected` must stay as it is, unmarked. Returns the failed checks and the
-/// code to show for them (the fixed input, or the changed expected code when there is no input).
 pub(crate) fn do_test(
     fixer: &dyn Fixer,
     file: &Path,
@@ -32,7 +28,6 @@ pub(crate) fn do_test(
         got_text = got;
     }
     let mut tokens = pun_tokens::Tokens::from_code(expected.as_bytes());
-    // AbstractFixer::fix: applyFix only for non-empty, candidate, supported input.
     if supported && tokens.count() > 0 && fixer.is_candidate(&tokens) {
         fixer.fix(file, &mut tokens);
     }

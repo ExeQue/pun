@@ -1,12 +1,3 @@
-//! `lint/laravel/no-useless-with-call`, ported from rector-laravel 2.7.3's `RemoveRedundantWithCallsRector`
-//! (src/Rector/FuncCall).
-//!
-//! `with($x)` becomes `$x`; so does `with($x, $y)` when `$y`'s type cannot be callable (`isCallable()->no()`): an
-//! integer, a float, a boolean, `null`, a string literal that names no function or static method, or an object of a final
-//! class the codebase knows without `__invoke()`. Any other string, an array, an object of another class, `mixed`, a
-//! value of no known type or `never` (Mago's type for `new` of an unknown class) may be callable, and the call stays.
-//! An unpacked first argument (`with(...$list)`) stays too, where Rector writes the array in place of its first item.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
@@ -54,7 +45,6 @@ impl Rule for NoUselessWithCall {
             }
             _ => return,
         };
-        // Rector puts the unpacked array in place of its first item; Pun leaves the c.
         if value.is_unpacked() {
             return;
         }
@@ -67,7 +57,6 @@ impl Rule for NoUselessWithCall {
     }
 }
 
-/// Whether a value of type `t` may be callable.
 fn may_be_callable(facts: &Facts, t: &TUnion) -> bool {
     t.types.iter().any(|a| match a {
         TAtomic::Null | TAtomic::Void => false,
@@ -87,9 +76,6 @@ fn may_be_callable(facts: &Facts, t: &TUnion) -> bool {
     })
 }
 
-/// Whether `ConstantStringType::isCallable()` is not `no`: the string names a function, or is `Class::method` with a
-/// static method of a class the codebase knows, a class it does not know, or a class not declared `final` without the
-/// method.
 fn is_callable_string(facts: &Facts, value: &[u8]) -> bool {
     if facts.codebase.get_function(value).is_some() {
         return true;

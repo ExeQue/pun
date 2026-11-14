@@ -1,34 +1,21 @@
-//! Keyword, cast and context checks that need no types: MagicConstantContextRule, DeclareStrictTypesRule,
-//! GotoUndefinedLabelRule, ConstructorReturnTypeRule, DeprecatedCastRule, UnsetCastRule, VoidCastRule,
-//! BacktickRule, NoncapturingCatchRule, ThrowExpressionRule, InstantiationCallableRule and the PHP version branch of
-//! the first-class callable rules.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 
 use super::Checker;
 
-/// What a scope boundary on [`Checker::frames`] is.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum FrameKind {
-    /// The file's top level.
     Top,
-    /// A class-like body: a fresh scope with no function.
     Class,
-    /// A function, method or property hook (`$scope->getFunction()`).
     Named,
-    /// A closure or arrow function (`$scope->isInAnonymousFunction()`).
     Anonymous,
-    /// A parameter: analysed in the scope around its function-like.
     Param,
 }
 
-/// A scope boundary, with the goto labels and gotos directly in it (GotoLabelVisitor's scope stack).
 pub(super) struct Frame {
     pub kind: FrameKind,
     labels: Vec<(Vec<u8>, Span)>,
     gotos: Vec<(Vec<u8>, Span)>,
-    /// A function-like's variables (WrongVariableNameInVarTagRule's `hasVariableType()`).
     pub defined: Option<Box<super::var_names::Defined>>,
 }
 
@@ -48,7 +35,6 @@ impl Checker<'_, '_> {
         self.frames.push(Frame::new(kind));
     }
 
-    /// Leaves a scope boundary: GotoUndefinedLabelRule reports its gotos to labels it does not hold.
     pub(super) fn pop_frame(&mut self) {
         let frame = self.frames.pop().expect("pushed");
         for (label, at) in &frame.gotos {
@@ -65,7 +51,6 @@ impl Checker<'_, '_> {
                 None,
             );
         }
-        // UnusedLabelRule (level 4, `featureToggles.unusedLabel`)
         if self.on(crate::rules::Switches::UNUSED_LABEL) {
             for (label, at) in &frame.labels {
                 if !frame.gotos.iter().any(|(g, _)| g == label) {
@@ -76,8 +61,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// The innermost function-like a node is analysed in, up to the enclosing class-like: a parameter belongs to the
-    /// scope around its function-like.
     fn function_frames(&self) -> impl Iterator<Item = FrameKind> + '_ {
         let mut skip = 0;
         self.frames
@@ -98,12 +81,10 @@ impl Checker<'_, '_> {
             })
     }
 
-    /// `$scope->getFunction() !== null`.
     pub(super) fn in_named_function(&self) -> bool {
         self.function_frames().any(|k| k == FrameKind::Named)
     }
 
-    /// `$scope->getFunctionName() !== null || $scope->isInAnonymousFunction()`.
     fn in_function_like(&self) -> bool {
         self.function_frames()
             .any(|k| matches!(k, FrameKind::Named | FrameKind::Anonymous))
@@ -120,7 +101,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// MagicConstantContextRule.
 pub(super) fn magic_constant(c: &mut Checker, m: &MagicConstant) {
     let (name, identifier, message) = match m {
         MagicConstant::Class(_) if c.classes.is_empty() => {
@@ -153,7 +133,6 @@ pub(super) fn magic_constant(c: &mut Checker, m: &MagicConstant) {
     );
 }
 
-/// MagicConstantParamDefaultVisitor: a parameter's default that is a magic constant.
 pub(super) fn parameter_default(c: &mut Checker, p: &FunctionLikeParameter) {
     if let Some(d) = &p.default_value
         && let Expression::MagicConstant(m) = d.value
@@ -162,14 +141,11 @@ pub(super) fn parameter_default(c: &mut Checker, p: &FunctionLikeParameter) {
     }
 }
 
-/// DeclarePositionVisitor: whether each `declare` is the file's first statement (a shebang line before it is not a
-/// statement, nor are the tags).
 pub(super) fn statement_position(c: &mut Checker, s: &Statement) {
     match s {
         Statement::OpeningTag(_) | Statement::ClosingTag(_) => {}
         Statement::Inline(i)
             if c.walk.contains(super::Walk::FIRST_STATEMENT) && i.value.starts_with(b"#!") => {}
-        // PHP's `?>` token takes the newline after it, so php-parser has no InlineHTML for it
         Statement::Inline(i)
             if matches!(i.value, b"\n" | b"\r\n")
                 && c.file.contents[..i.span.start.offset as usize].ends_with(b"?>") => {}
@@ -183,7 +159,6 @@ pub(super) fn statement_position(c: &mut Checker, s: &Statement) {
     }
 }
 
-/// DeclareStrictTypesRule.
 pub(super) fn declare(c: &mut Checker, d: &Declare) {
     let Some(item) = d.items.iter().find(|i| i.name.value == b"strict_types") else {
         return;
@@ -209,8 +184,6 @@ pub(super) fn declare(c: &mut Checker, d: &Declare) {
     }
 }
 
-/// ExprPrinter for a declare value: a constant prints by its resolved name (`\true`), anything else as written.
-// assistant's call: php-parser's printer reprints literals in their written form, so the source text stands in for it
 fn print_expr(c: &Checker, e: &Expression) -> String {
     let written = || c.written(e.span());
     match e {
@@ -226,14 +199,12 @@ fn print_expr(c: &Checker, e: &Expression) -> String {
     }
 }
 
-/// ConstructorReturnTypeRule (`InClassMethodNode`).
 pub(super) fn constructor_return_type(c: &mut Checker, m: &Method) {
     let (Some(_), Some(class)) = (&m.return_type_hint, c.class_scope()) else {
         return;
     };
     let mut name = m.name.value.to_ascii_lowercase();
     if c.walk.contains(super::Walk::IN_TARGET) {
-        // processNodesForTraitUse: a method the class aliases is analysed under the alias, remembering its name
         let alias = class
             .trait_alias_map
             .iter()
@@ -256,7 +227,6 @@ pub(super) fn constructor_return_type(c: &mut Checker, m: &Method) {
             }
             name = alias;
         }
-        // (a trait method the class declares itself is not walked: Checker::shadowed())
     }
     if name != b"__construct" {
         return;
@@ -270,7 +240,6 @@ pub(super) fn constructor_return_type(c: &mut Checker, m: &Method) {
     );
 }
 
-/// DeprecatedCastRule, UnsetCastRule and VoidCastRule.
 pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
     let deprecated = match u.operator {
         UnaryPrefixOperator::IntegerCast(..) => Some(("integer", "int")),
@@ -280,7 +249,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
         _ => None,
     };
     if let Some((written, standard)) = deprecated {
-        // PhpVersion::deprecatesNonStandardCasts()
         if c.surely_at_least(80500) {
             c.report(
                 u,
@@ -292,7 +260,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
             );
         }
     } else if matches!(u.operator, UnaryPrefixOperator::UnsetCast(..)) {
-        // PhpVersion::supportsUnsetCast()
         if !c.surely_below(80000) {
             c.report_non_ignorable(
                 u,
@@ -302,7 +269,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
             );
         }
     } else if matches!(u.operator, UnaryPrefixOperator::VoidCast(..)) {
-        // PhpVersion::supportsVoidCast()
         if !c.surely_at_least(80500) {
             c.report_non_ignorable(
                 u,
@@ -311,8 +277,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
                 None,
             );
         }
-        // PHP's grammar has `(void) expr;` as a statement, so `(void) 5 |> f(...);` casts the whole pipe (Mago
-        // parses the cast as the pipe's input)
         let start = u.span().start.offset;
         if !c.top_level.iter().any(|(s, _)| *s == start) {
             c.report_non_ignorable(
@@ -325,9 +289,7 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
     }
 }
 
-/// BacktickRule.
 pub(super) fn backtick(c: &mut Checker, s: &ShellExecuteString) {
-    // PhpVersion::deprecatesBacktickOperator()
     if c.php_version < 80500 {
         return;
     }
@@ -339,11 +301,9 @@ pub(super) fn backtick(c: &mut Checker, s: &ShellExecuteString) {
             .to_string(),
         None,
     );
-    // its fix replaces the backticks with a shell_exec() call
     c.fixable_since(count);
 }
 
-/// NoncapturingCatchRule.
 pub(super) fn noncapturing_catch(c: &mut Checker, clause: &TryCatchClause) {
     if clause.variable.is_some() || c.surely_at_least(80000) {
         return;
@@ -356,16 +316,13 @@ pub(super) fn noncapturing_catch(c: &mut Checker, clause: &TryCatchClause) {
     );
 }
 
-/// StandaloneThrowExprVisitor: a `throw` that is an expression statement.
 pub(super) fn standalone_throw(c: &mut Checker, s: &ExpressionStatement) {
     if let Expression::Throw(t) = super::types::flow::unparen(s.expression) {
         c.standalone_throws.insert(t.span());
     }
 }
 
-/// ThrowExpressionRule.
 pub(super) fn throw_expression(c: &mut Checker, t: &Throw) {
-    // PhpVersion::supportsThrowExpression()
     if c.surely_at_least(80000) || c.standalone_throws.contains(&t.span()) {
         return;
     }
@@ -377,10 +334,7 @@ pub(super) fn throw_expression(c: &mut Checker, t: &Throw) {
     );
 }
 
-/// The PHP version branch of FunctionCallableRule, MethodCallableRule and StaticMethodCallableRule on `f(...)` at
-/// `at`: whether it reported (the rest of the rule is then skipped).
 pub(super) fn first_class_callable(c: &mut Checker, at: Span, args: &PartialArgumentList) -> bool {
-    // PhpVersion::supportsFirstClassCallables(); `x |> f(...)` is the call `f(x)`
     if c.surely_at_least(80100)
         || c.piped.contains(&at)
         || !matches!(
@@ -399,8 +353,6 @@ pub(super) fn first_class_callable(c: &mut Checker, at: Span, args: &PartialArgu
     true
 }
 
-/// InstantiationCallableRule: `new X(...)`, which Mago parses as one unpacked argument that is a parse error. Whether it
-/// reported (NodeScopeResolver then analyses no `new`).
 pub(super) fn instantiation_callable(c: &mut Checker, new: &Instantiation) -> bool {
     let Some(list) = &new.argument_list else {
         return false;

@@ -1,5 +1,3 @@
-//! Coalescing diagnostics use source-input scopes, not synthetic writes or post-assignment artifacts.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

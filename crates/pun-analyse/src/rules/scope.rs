@@ -1,9 +1,3 @@
-//! The part of PHPStan's scope the level-0 rules read: whether `class_exists('X')` / `function_exists('f')` is
-//! known to be true here (`isInClassExists()` / `isInFunctionExists()`). PHPStan gets it from TypeSpecifier
-//! narrowing; this follows the same constructs: `if`/`elseif`/`else` branches and what an always-terminating
-//! branch leaves after the `if`, `&&`/`||`/`!`, `? :`, `match (true)`, variables holding such a check, closures
-//! inheriting their parent's scope, and checks a constructor ends with (remembered in the class's other methods).
-
 use std::collections::{HashMap, HashSet};
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -17,37 +11,22 @@ use super::Checker;
 use super::members::Method;
 use crate::bitset::BitSet;
 
-/// A `*_exists()` call known to be true; names as the string argument has them, without a leading `\`.
 #[derive(Clone, Debug, Eq)]
 pub(super) enum Guard {
     Class(String),
     Function(String),
-    /// `defined('Foo::BAR')`: the class part lowercase, as `foo::BAR`.
     ClassConstant(String),
-    /// `defined('FOO')`: the global constant `FOO` (its fully qualified name).
     Constant(String),
-    /// `method_exists(Foo::class, 'bar')`: receiver key and the method's original spelling.
     Method(String),
-    /// The precondition's source: method_exists's receiver, or is_callable's literal array.
     MethodSource(String, Span),
-    /// A true method_exists call whose selector is not a single written name.
     MethodExists(String),
-    /// `!($this instanceof Foo)`: in a class that is a Foo, the code here is unreachable.
     ThisNotInstanceOf(String),
-    /// `$this instanceof Foo`: `$this` is also a Foo here, with Foo's methods.
     ThisInstanceOf(String),
-    /// `PHP_VERSION_ID` compared with an integer: its range here, bounds inclusive (`None` unbounded).
     PhpVersion(Option<i64>, Option<i64>),
-    /// An expression with a type in the scope (`hasExpressionType()`), by its key (`$this->name`).
     Expr(String),
-    /// A class-constant expression holder. Unlike a readonly property holder, a containing fetch is invalidated
-    /// when an impure call mutates its receiver, even if that receiver occurs below a readonly property.
     ConstantFetch(String),
-    /// A selector's finite string type in a branch, used by conditional expression holders at joins.
     ExprStrings(String, Vec<String>),
-    /// A holder missing on these paths. Selecting a constant name can rule every missing path out.
     ExprWhen(String, Vec<Vec<(String, Vec<String>)>>),
-    /// A remembered true file-existence call, read by RequireFileExistsRule.
     File(super::include_file::FileGuard),
 }
 
@@ -96,13 +75,10 @@ pub(super) fn definite_expression(g: &Guard) -> bool {
     )
 }
 
-/// Remember existence predicates in a boolean variable, not the source expression's type holder. Merely
-/// assigning `$value = $receiver::NAME` does not give the fetch an expression type when `$value` is tested.
 pub(super) fn remembered_guard(g: &Guard) -> bool {
     !expression_guard(g) && !matches!(g, Guard::File(_))
 }
 
-/// Guards from `expr` being true. `var` looks a variable's remembered guards up.
 pub(super) fn truthy(
     expr: &Expression,
     var: &dyn Fn(&[u8]) -> Vec<Guard>,
@@ -117,7 +93,6 @@ pub(super) fn truthy(
     guards
 }
 
-/// `!`, `&&`, `||` and parentheses, whose operands narrow on their own.
 fn compound(expr: &Expression) -> bool {
     match expr {
         Expression::Parenthesized(_) => true,
@@ -235,7 +210,6 @@ fn truthy_of(
     }
 }
 
-/// Guards from `expr` being false.
 pub(super) fn falsy(
     expr: &Expression,
     var: &dyn Fn(&[u8]) -> Vec<Guard>,
@@ -262,11 +236,6 @@ fn contains_call(e: &Expression) -> bool {
     calls.0
 }
 
-/// ExprPrinter identities for the value expressions used as class-constant receivers/selectors. Unlike
-/// inferred types, these identities distinguish two variables holding the same class and a dynamic selector
-/// from its current finite values. Parentheses and imported names do not change the identity.
-/// Calls keep ExprPrinter's selector and argument syntax, not their return types or acceptors. Dynamic
-/// function callees, nullsafe calls, indirect variables and dynamic property selectors remain unavailable.
 fn expression_key(
     e: &Expression,
     resolve: &dyn Fn(&Identifier) -> String,
@@ -280,8 +249,6 @@ fn expression_key(
         Expression::Static(_) => "static".into(),
         Expression::Parent(_) => "parent".into(),
         Expression::Literal(Literal::Integer(i)) => format!("int({})", i.value?),
-        // Escape bytes, not PHP variable spellings inside string literals: invalidating `$receiver` must
-        // not invalidate a call whose argument merely contains the text '$receiver'.
         Expression::Literal(Literal::String(s)) => format!(
             "string({})",
             s.value?
@@ -316,8 +283,6 @@ fn expression_key(
                     (format!("{}->{method}", key(m.object)?), &m.argument_list)
                 }
                 Call::StaticMethod(m) => {
-                    // Standard::pExpr_StaticCall does not use pObjectProperty: literal strings keep their
-                    // braces, but a variable prints without them, even when the source used `::{$method}`.
                     let method = match &m.method {
                         ClassLikeMemberSelector::Identifier(id) => {
                             String::from_utf8_lossy(id.value).into_owned()
@@ -375,8 +340,6 @@ fn expression_key(
     })
 }
 
-/// Printer::pObjectProperty(): only identifier-shaped literal strings become barewords. Neither a variable
-/// nor a class constant with that inferred string value is the same expression as the literal selector.
 fn object_property_key(
     e: &Expression,
     resolve: &dyn Fn(&Identifier) -> String,
@@ -414,8 +377,6 @@ fn constant_key(
     ))
 }
 
-/// TypeSpecifier's subject entries, not every fetch evaluated by the condition. In particular a loose
-/// comparison with a nonzero number does not specify the subject in its unequal branch.
 fn constant_narrowed(
     e: &Expression,
     truthy: bool,
@@ -433,8 +394,6 @@ fn constant_narrowed(
             if b.operator.is_comparison()
                 && !matches!(b.operator, BinaryOperator::Spaceship(_)) =>
         {
-            // Boolean-literal comparisons delegate to truthy/falsy above. Other call-containing comparisons
-            // need the general TypeSpecifier subject/purity engine, not merely a printable expression key.
             if contains_call(e) {
                 return;
             }
@@ -514,8 +473,6 @@ fn falsy_of(
     }
 }
 
-/// What holds when `a` or `b` does: the guards both have, and the hull of their `PHP_VERSION_ID` ranges (exact for
-/// the one question rules ask of it, whether the range lies within or outside `[v, max]`).
 fn both(a: Vec<Guard>, b: Vec<Guard>) -> Vec<Guard> {
     let mut out: Vec<Guard> = a.iter().filter(|g| b.contains(g)).cloned().collect();
     if let (Some((alo, ahi)), Some((blo, bhi))) = (version_range(&a), version_range(&b)) {
@@ -528,7 +485,6 @@ fn both(a: Vec<Guard>, b: Vec<Guard>) -> Vec<Guard> {
     out
 }
 
-/// The intersection of the `PHP_VERSION_ID` ranges among `guards`, `None` when none narrows it.
 pub(super) fn version_range(guards: &[Guard]) -> Option<(Option<i64>, Option<i64>)> {
     guards.iter().fold(None, |acc, g| match g {
         Guard::PhpVersion(lo, hi) => {
@@ -543,7 +499,6 @@ pub(super) fn version_range(guards: &[Guard]) -> Option<(Option<i64>, Option<i64
     })
 }
 
-/// `PHP_VERSION_ID <op> N` (either side) being `holds`: the range it leaves.
 fn php_version(b: &Binary, holds: bool) -> Option<Guard> {
     let int = |e: &Expression| match e {
         Expression::Literal(Literal::Integer(i)) => i.value.and_then(|v| i64::try_from(v).ok()),
@@ -553,7 +508,6 @@ fn php_version(b: &Binary, holds: bool) -> Option<Guard> {
         matches!(e, Expression::ConstantAccess(c)
             if c.name.value().strip_prefix(b"\\").unwrap_or(c.name.value()) == b"PHP_VERSION_ID")
     };
-    // normalised to `PHP_VERSION_ID <op> n`
     let (n, flip) = if is_version(b.lhs) {
         (int(b.rhs)?, false)
     } else if is_version(b.rhs) {
@@ -561,7 +515,6 @@ fn php_version(b: &Binary, holds: bool) -> Option<Guard> {
     } else {
         return None;
     };
-    // (strictly less, or-equal) of `PHP_VERSION_ID` against n
     let (less, equal) = match (b.operator, flip) {
         (BinaryOperator::LessThan(_), false) | (BinaryOperator::GreaterThan(_), true) => {
             (true, false)
@@ -575,7 +528,6 @@ fn php_version(b: &Binary, holds: bool) -> Option<Guard> {
         | (BinaryOperator::LessThanOrEqual(_), true) => (false, true),
         _ => return None,
     };
-    // when false, `<` becomes `>=` and `<=` becomes `>`
     let (less, equal) = if holds {
         (less, equal)
     } else {
@@ -597,13 +549,10 @@ fn bool_literal(e: &Expression) -> Option<bool> {
     }
 }
 
-/// `class_exists('X')` (and interface/trait/enum_exists, which imply it) or `function_exists('f')` with a constant
-/// string (or `X::class`) argument.
 fn exists_call(call: &FunctionCall, resolve: &dyn Fn(&Identifier) -> String) -> Option<Guard> {
     let Expression::Identifier(id) = call.function else {
         return None;
     };
-    // an unqualified call falls back to the global function
     let name = match id {
         Identifier::Local(l) => String::from_utf8_lossy(l.value).into_owned(),
         _ => resolve(id),
@@ -626,7 +575,6 @@ fn exists_call(call: &FunctionCall, resolve: &dyn Fn(&Identifier) -> String) -> 
             Some(Guard::Class(value))
         }
         "function_exists" => Some(Guard::Function(value)),
-        // a `define()` statement defines the constant for the rest of the scope
         "define" => Some(Guard::Constant(value)),
         "defined" => Some(match value.split_once("::") {
             Some((class, constant)) => {
@@ -638,7 +586,6 @@ fn exists_call(call: &FunctionCall, resolve: &dyn Fn(&Identifier) -> String) -> 
     }
 }
 
-/// The bounded receivers shared by literal `method_exists()` guards and their type refinement.
 pub(super) fn method_receiver(
     e: &Expression,
     resolve: &dyn Fn(&Identifier) -> String,
@@ -663,7 +610,6 @@ pub(super) fn method_receiver(
     Some(receiver.trim_start_matches('\\').to_ascii_lowercase())
 }
 
-/// Collect the pre-guard types in the same inference run as the expressions the rules check.
 pub(super) fn typed_method_receivers(program: &Program) -> Vec<Span> {
     struct Wanted(Vec<Span>);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted {
@@ -702,8 +648,6 @@ fn constant_string(e: &Expression, resolve: &dyn Fn(&Identifier) -> String) -> O
     }
 }
 
-/// Whether control never reaches the statement after `s` (PHPStan's always-terminating statements, without
-/// never-returning calls).
 pub(super) fn terminates(s: &Statement) -> bool {
     match s {
         Statement::Return(_) | Statement::Continue(_) | Statement::Break(_) => true,
@@ -719,7 +663,6 @@ pub(super) fn terminates(s: &Statement) -> bool {
 pub(super) fn statements_terminate<'a>(mut s: impl Iterator<Item = &'a Statement<'a>>) -> bool {
     s.any(terminates)
 }
-/// What a function-like body saved of its parent's scope.
 pub(super) struct Saved {
     guards: Vec<Guard>,
     marks: Vec<usize>,
@@ -727,8 +670,6 @@ pub(super) struct Saved {
 }
 
 impl<'arena> Checker<'_, 'arena> {
-    /// `$this` is `never` here: after `if ($this instanceof Foo) { return; }` in a class that is a Foo (a trait is
-    /// never an instanceof's match).
     pub(super) fn this_is_never(&self, class: &ClassLikeMetadata) -> bool {
         self.guards.iter().any(|g| match g {
             Guard::ThisNotInstanceOf(x) => {
@@ -743,7 +684,6 @@ impl<'arena> Checker<'_, 'arena> {
         })
     }
 
-    /// Guards the statements' early exits leave at their end: `if (!cond) { return; }` leaves `cond`.
     pub(super) fn exit_guards<'s>(
         &self,
         statements: impl Iterator<Item = &'s Statement<'arena>>,
@@ -764,7 +704,6 @@ impl<'arena> Checker<'_, 'arena> {
                 && b.else_clause.is_none()
                 && terminates(b.statement)
             {
-                // Receiver identities and file-existence expression types hold in the constructor alone.
                 guards.extend(self.falsy(i.condition).into_iter().filter(|g| {
                     !matches!(
                         g,
@@ -776,7 +715,6 @@ impl<'arena> Checker<'_, 'arena> {
         guards
     }
 
-    /// A `define('NAME', ...)` call's constant.
     pub(super) fn define_guard(&self, call: &FunctionCall<'arena>) -> Option<Guard> {
         let Expression::Identifier(id) = call.function else {
             return None;
@@ -810,8 +748,6 @@ impl<'arena> Checker<'_, 'arena> {
         guards
     }
 
-    /// PHP-Parser leaves an unqualified function's namespace-fallback spelling intact; imported and
-    /// qualified function calls instead print the resolved fully qualified name.
     fn guard_function_name(&self, id: &Identifier) -> String {
         match id {
             Identifier::Local(l) if !self.names.is_imported(&l.span) => {
@@ -821,7 +757,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// `isInClassExists($name)`.
     pub(super) fn in_class_exists(&self, name: &str) -> bool {
         self.in_exists_call > 0
             || self
@@ -829,20 +764,17 @@ impl<'arena> Checker<'_, 'arena> {
                 .contains(&Guard::Class(name.trim_start_matches('\\').to_string()))
     }
 
-    /// `isInFunctionExists($name)`.
     pub(super) fn in_function_exists(&self, name: &str) -> bool {
         self.guards
             .contains(&Guard::Function(name.trim_start_matches('\\').to_string()))
     }
 
-    /// MutatingScope::getNodeKey for the supported assignment expressions. Unknown syntax has no identity.
     pub(super) fn assignment_key(&self, e: &Expression) -> Option<String> {
         expression_key(e, &|id| self.resolved(id), &|id| {
             self.guard_function_name(id)
         })
     }
 
-    /// MethodCallCheck asks about the original selector expression, not each selected constant name.
     pub(super) fn in_dynamic_method_exists(
         &self,
         receiver: &Expression,
@@ -869,7 +801,6 @@ impl<'arena> Checker<'_, 'arena> {
         })
     }
 
-    /// Walks `body` with `extra` guards on top of the current ones.
     pub(super) fn with_guards(&mut self, extra: Vec<Guard>, body: impl FnOnce(&mut Self)) {
         let saved = self.guards.clone();
         let marks = self.marks.clone();
@@ -881,7 +812,6 @@ impl<'arena> Checker<'_, 'arena> {
         self.assign.expressions = assignments;
     }
 
-    /// Removing a holder must also translate the enclosing blocks' guard boundaries.
     fn retain_guards(&mut self, mut keep: impl FnMut(&Guard) -> bool) {
         let mut removed = Vec::new();
         let mut index = 0;
@@ -898,7 +828,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// Braces do not end an expression holder's lifetime. Conditional walks merge their outgoing holders.
     pub(super) fn end_guard_block(&mut self) {
         let mark = self.marks.pop().expect("pushed");
         let outgoing = self.guards.split_off(mark);
@@ -932,8 +861,6 @@ impl<'arena> Checker<'_, 'arena> {
         })
     }
 
-    /// Reflection for the bounded, single named receivers this slice can invalidate without selecting a
-    /// representative from a union. Unresolved/dynamic methods are invalidating, never assumed pure.
     fn guard_method(
         &self,
         on: &Expression,
@@ -971,8 +898,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// PhpMethodReflection::hasSideEffects(): void first, then resolved purity, then a fluent `$this` result.
-    /// A maybe effect is remembered by PHPStan's default rememberPossiblyImpureFunctionValues=true.
     fn invalidating_method(&self, method: &Method) -> bool {
         match method {
             Method::Builtin { f, .. } => f.side_effects == "Yes",
@@ -1004,7 +929,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// Whether `invalidate_constant_fetches` could remove a guard, before paying for method reflection.
     fn has_fetch_guards(&self) -> bool {
         self.guards.iter().any(|g| {
             matches!(
@@ -1077,15 +1001,23 @@ impl<'arena> Checker<'_, 'arena> {
         });
         self.retain_guards(|guard| {
             let key = match guard {
-                Guard::ConstantFetch(key) | Guard::MethodExists(key) | Guard::ExprWhen(key, _) => key,
+                Guard::ConstantFetch(key) | Guard::MethodExists(key) | Guard::ExprWhen(key, _) => {
+                    key
+                }
                 _ => return true,
             };
             !key_contains(key, receiver)
-                && !(receiver == "$this" && ["self::", "static::", "parent::"].iter().any(|n| key_contains(key, n)))
-                // ClassReflection::is() is exact for the current class name, but resolves ancestor names.
-                && !(receiver == "$this" && class.as_ref().is_some_and(|(own, parents)| {
-                    key_contains(key, own) || parents.iter().any(|n| key_contains(&key.to_ascii_lowercase(), n))
-                }))
+                && !(receiver == "$this"
+                    && ["self::", "static::", "parent::"]
+                        .iter()
+                        .any(|n| key_contains(key, n)))
+                && !(receiver == "$this"
+                    && class.as_ref().is_some_and(|(own, parents)| {
+                        key_contains(key, own)
+                            || parents
+                                .iter()
+                                .any(|n| key_contains(&key.to_ascii_lowercase(), n))
+                    }))
         });
     }
 
@@ -1125,9 +1057,7 @@ impl<'arena> Checker<'_, 'arena> {
             .collect()
     }
 
-    /// ScopeOps::mergeWith: an expression holder is definite only if every surviving path has it.
     pub(super) fn join_expression_guards(&mut self, paths: &[Vec<Guard>]) {
-        // MutatingScope::mergeWithVariableState resets currentlyAssignedExpressions, not their intersection.
         if paths.len() > 1 {
             self.assign.expressions.clear();
         }
@@ -1141,8 +1071,6 @@ impl<'arena> Checker<'_, 'arena> {
                 }
             }
         }
-        // ConditionalExpressionHolder: preserve the branch constraints where a holder is absent. A later
-        // filterByTruthyValue($selector === 'NAME') may make that holder definite again.
         for guard in paths.iter().flatten() {
             let key = match guard {
                 Guard::Expr(key) | Guard::MethodExists(key) | Guard::ConstantFetch(key) => key,
@@ -1169,8 +1097,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// MutatingScope::invalidateExpression(): invalidate a holder containing the written receiver/selector,
-    /// not another expression with an equal inferred type. Array writes invalidate the base array as well.
     pub(super) fn invalidate_expression(&mut self, e: &Expression) {
         let e = super::types::flow::unparen(e);
         match e {
@@ -1217,10 +1143,8 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// A function or method body: a fresh scope (the constructor's remembered guards in a method).
     pub(super) fn enter_function(&mut self, mut guards: Vec<Guard>) {
         self.assign.enter_scope();
-        // the narrowed `PHP_VERSION_ID` carries into a function or class declared in the branch
         guards.extend(
             self.guards
                 .iter()
@@ -1234,14 +1158,9 @@ impl<'arena> Checker<'_, 'arena> {
         });
     }
 
-    /// `MutatingScope::getPhpVersion()`: the range a `PHP_VERSION_ID` guard leaves (bounds inclusive), `None` for
-    /// the configured version when none narrows it below ConstantResolver::PHP_MIN_ANALYZABLE_VERSION_ID or bounds it.
     fn php_versions(&self) -> Option<(i64, Option<i64>)> {
         const MIN: i64 = 50207;
         match version_range(&self.guards) {
-            // PHPStan 2.3.2 (#6746): a guard like `PHP_VERSION_ID < 80400` gives only an upper bound; without a configured
-            // version range (Pun has none) the lower bound is the analysed version, or as close to it as the guard
-            // allows
             Some((lo, Some(hi))) if lo.is_none_or(|l| l <= MIN) => {
                 Some((i64::from(self.php_version).min(hi), Some(hi)))
             }
@@ -1252,8 +1171,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// `$scope->getPhpVersion()->...->yes()` for a feature of PHP `version` and later (an empty range is never, which
-    /// every version range contains).
     pub(super) fn surely_at_least(&self, version: i64) -> bool {
         match self.php_versions() {
             Some((lo, hi)) => lo >= version || hi.is_some_and(|h| h < lo),
@@ -1261,7 +1178,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// `$scope->getPhpVersion()->...->yes()` for a feature PHP `version` removed.
     pub(super) fn surely_below(&self, version: i64) -> bool {
         match self.php_versions() {
             Some((lo, hi)) => hi.is_some_and(|h| h < version || h < lo),
@@ -1269,8 +1185,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// `$scope->getPhpVersion()->...()->no()` for a feature of PHP `version` and later: false only when every
-    /// version the narrowed `PHP_VERSION_ID` allows is older.
     pub(super) fn may_be_at_least(&self, version: i64) -> bool {
         match self.php_versions() {
             Some((lo, hi)) => hi.is_none_or(|h| h >= version || h < lo),
@@ -1313,7 +1227,6 @@ impl<'arena> Checker<'_, 'arena> {
 
 fn key_contains(expr: &str, key: &str) -> bool {
     expr.match_indices(key).any(|(start, _)| {
-        // `$receiverLong` and `$this->receiverLong` are not subexpressions of `$receiver`/`$this->receiver`.
         (start == 0
             || expr.as_bytes().get(start - 1).is_some_and(|b| {
                 !b.is_ascii_alphanumeric() && !matches!(*b, b'_' | b'\\') && *b < 0x80

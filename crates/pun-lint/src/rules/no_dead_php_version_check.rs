@@ -1,14 +1,3 @@
-//! `lint/dead-code/no-dead-php-version-check`, ported from Rector 2.8.4's `RemovePhpVersionIdCheckRector`
-//! (rules/DeadCode/Rector/ConstFetch).
-//!
-//! An `if` whose condition compares `PHP_VERSION_ID` with an integer by `<`, `>` or `>=` that the project's minimum
-//! PHP version decides: the `if` goes when its statements never run, and is replaced by them when they always do.
-//! As Rector, `PHP_VERSION_ID > 80000` counts as true from PHP 8.0 on.
-//!
-//! Rector removes the `if` with its `else` and `elseif` branches when the statements never run, which drops the
-//! branch that does; Pun leaves such an `if` alone. Where the statements always run, the other branches are dead
-//! and go, as in Rector.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -68,8 +57,6 @@ impl Rule for NoDeadPhpVersionCheck {
     }
 }
 
-/// `refactor()` with `refactorConstFetch` and its helpers: `Some(true)` when the statements are returned,
-/// `Some(false)` for `REMOVE_NODE`.
 fn decided(cond: &Expression<'_>, version: i64) -> Option<bool> {
     let Expression::Binary(b) = unparenthesize(cond) else {
         return None;
@@ -81,12 +68,10 @@ fn decided(cond: &Expression<'_>, version: i64) -> Option<bool> {
     }
     let value = integer(if on_left { right } else { left })?;
     match (&b.operator, on_left) {
-        // `PHP_VERSION_ID < 80000`, `80000 >= PHP_VERSION_ID`, `80000 > PHP_VERSION_ID`: never from that version on.
         (BinaryOperator::LessThan(_), true)
         | (BinaryOperator::GreaterThanOrEqual(_) | BinaryOperator::GreaterThan(_), false) => {
             (version >= value).then_some(false)
         }
-        // `80000 < PHP_VERSION_ID`, `PHP_VERSION_ID >= 80000`, `PHP_VERSION_ID > 80000`: always.
         (BinaryOperator::LessThan(_), false)
         | (BinaryOperator::GreaterThanOrEqual(_) | BinaryOperator::GreaterThan(_), true) => {
             (version >= value).then_some(true)
@@ -95,7 +80,6 @@ fn decided(cond: &Expression<'_>, version: i64) -> Option<bool> {
     }
 }
 
-/// `$this->isName($constFetch->name, 'PHP_VERSION_ID')`.
 fn is_php_version_id(expr: &Expression<'_>) -> bool {
     let Expression::ConstantAccess(c) = expr else {
         return false;
@@ -106,7 +90,6 @@ fn is_php_version_id(expr: &Expression<'_>) -> bool {
         .eq_ignore_ascii_case(b"PHP_VERSION_ID")
 }
 
-/// php-parser's `Int_` value.
 fn integer(expr: &Expression<'_>) -> Option<i64> {
     match expr {
         Expression::Literal(Literal::Integer(i)) => i64::try_from(i.value?).ok(),

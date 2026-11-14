@@ -1,5 +1,3 @@
-//! PHPStan retains a declared static signature after diagnosing an interface call.
-
 use std::borrow::Cow;
 use std::path::Path;
 

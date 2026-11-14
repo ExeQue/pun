@@ -1,10 +1,3 @@
-//! `lint/complexity/prefer-array-literal`, ported from Rector 2.8.4's `ArrayMergeOfNonArraysToSimpleArrayRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `array_merge([$a], [$b])` becomes `[$a, $b]`: when every argument is an array literal, their items make one
-//! array. Keys and spreads stay; a by-reference item loses its `&`, as in Rector, which makes a new item of the value
-//! and key. Rector prints the new array on one line, the items separated by `, `.
-
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -51,9 +44,7 @@ impl Rule for PreferArrayLiteral {
                         )
                     }
                     ArrayElement::Value(e) => value(ctx, e.value).to_string(),
-                    // An unpacked item is kept as it was.
                     ArrayElement::Variadic(e) => text(ctx, e).to_string(),
-                    // `[, $a]` is a list, never a value: php-parser stops with an error and Rector leaves the file.
                     ArrayElement::Missing(_) => return,
                 });
             }
@@ -74,7 +65,6 @@ impl Rule for PreferArrayLiteral {
     }
 }
 
-/// An item's value as `pArrayItem` prints it in a new item: without parentheses and without `&`.
 fn value<'s>(ctx: &Context<'s>, expr: &Expression<'_>) -> &'s str {
     let expr = unparenthesize(expr);
     match expr {

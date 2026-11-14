@@ -1,6 +1,3 @@
-//! Mago's inferred types of the expressions the rules ask about (`$scope->getType()`), from one analyser run per
-//! file, only over the declarations that hold such an expression.
-
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
@@ -35,8 +32,6 @@ use super::{Checker, assign, dead_code, variables};
 mod origins;
 pub(super) use origins::{Origin, Origins};
 
-/// The expressions whose type a rule reads: the class of `new $expr`, the object or class expression of a call whose
-/// by-reference parameters matter, the expression of an `instanceof` naming a trait.
 struct TypedExpressions<'n, 'arena> {
     spans: Vec<Span>,
     names: &'n ResolvedNames<'arena>,
@@ -47,7 +42,6 @@ struct TypedExpressions<'n, 'arena> {
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> {
     fn walk_in_closure(&mut self, closure: &'ast Closure<'arena>, (): &mut ()) {
-        // The capture rule needs a completed body even when no expression type was requested.
         if self.level >= 1 && closure.use_clause.is_some() {
             self.spans.push(closure.span());
         }
@@ -59,7 +53,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> 
         }
     }
     fn walk_in_function_call(&mut self, call: &'ast FunctionCall<'arena>, (): &mut ()) {
-        // CallToFunctionParametersRule reads resolved keep-void types from level 0.
         self.spans.push(call.span());
         self.spans
             .extend(dead_code::typed_arguments(call, self.names, self.level));
@@ -69,7 +62,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> 
             .extend(dead_code::typed_statement(s, self.level, self.php_version));
     }
     fn walk_in_binary(&mut self, b: &'ast Binary<'arena>, (): &mut ()) {
-        // `$this` is described without its type
         if matches!(b.operator, BinaryOperator::Instanceof(_))
             && !matches!(b.lhs, Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
             && let Expression::Identifier(id) = b.rhs
@@ -94,7 +86,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> 
         }
     }
     fn walk_in_method_call(&mut self, call: &'ast MethodCall<'arena>, (): &mut ()) {
-        // Constant dynamic names can be checked on `$this` or with checkThisOnly disabled below level 2.
         if self.level >= 2 || !matches!(call.method, ClassLikeMemberSelector::Identifier(_)) {
             self.spans.push(call.span());
         }
@@ -124,7 +115,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> 
     }
 }
 
-/// Runs Mago's analyzer over the file when a rule needs an expression's type (most files need none).
 pub(super) fn infer<'arena>(
     arena: &'arena LocalArena,
     file: &File,
@@ -206,7 +196,6 @@ pub(super) fn infer<'arena>(
     )
 }
 
-/// Mago's types of the `wanted` expressions, analysing only the declarations that hold them.
 pub(super) fn analyse<'arena>(
     arena: &'arena LocalArena,
     file: &File,
@@ -258,10 +247,6 @@ pub(super) fn analyse<'arena>(
     )
 }
 
-/// The observation pass of the bleeding-edge `unresolvedTemplateArguments` walk (StatementsHandler's
-/// `processBodyStmtNodesTwoPass()`), over the whole file: the template arguments of the bodies' generic calls, solved
-/// from what the bodies do with the results. Only the return-type providers are registered; the rules' recording
-/// hooks see the second pass alone.
 #[expect(
     clippy::too_many_arguments,
     reason = "the analyser run's inputs, as analyse_observed() takes them"
@@ -351,8 +336,6 @@ fn analyse_observed<'arena>(
             .extend(origins::dependencies(&origins, &call.expressions));
     }
     wanted.extend(origins::dependencies(&origins, &wanted));
-    // Array conversion needs each key/value's actual inferred type, not just the enclosing wanted span.
-    // Retain only literals inside requested expressions; unrelated declarations must stay prunable.
     let mut children = ArrayChildren {
         wanted: &wanted,
         spans: Vec::new(),
@@ -417,16 +400,12 @@ fn analyse_observed<'arena>(
     settings.track_variable_flow = variable_writes.is_some();
     settings.call_scope_observations = calls;
     settings.trait_context_class = trait_class.map(|class| mago_word::word(class.as_bytes()));
-    // Without Larastan's forwarding extensions, a named mixin's method is the mixin type's own
     settings.mixin_receiver_binding = larastan.is_some();
     let retain_methods = !initializations.is_empty();
     settings.property_initialization_observations = initializations
         .iter()
         .map(|(_, request)| *request)
         .collect();
-    // Only the declarations holding a wanted expression: a method's types come from its own body and the codebase,
-    // so the file's other functions and methods would only cost time (most of the rules' time on large classes).
-    // Marker summaries also need real constructor/helper bodies, even without a requested operand in them.
     let program = arena.alloc(Program {
         statements: Prune {
             arena,
@@ -451,7 +430,6 @@ fn analyse_observed<'arena>(
     }
     let analyzer = Analyzer::new(arena, file, names, codebase, &registry, settings);
     let mut result = AnalysisResult::new(SymbolReferences::new());
-    // ponytail: Mago's analyzer trips debug assertions on some code (an empty TUnion::from_vec); no types then
     let analysed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         analyzer.analyze_with_artifacts(program, &mut result)
     }));
@@ -478,7 +456,6 @@ fn analyse_observed<'arena>(
     let mut found =
         std::mem::take(&mut *found.lock().expect("no hook panics while holding the lock"));
     types.extend(found.read);
-    // the hook read each `new` before the call it is sent to resolved its template arguments
     types.extend(artifacts.late_expression_types.clone());
     keep_void_types.extend(found.keep_void_types);
     for (span, ty) in found.native_read {
@@ -504,9 +481,6 @@ fn analyse_observed<'arena>(
         variable_writes.extend(artifacts.variable_writes);
     }
     if let Some(property_initializations) = property_initializations {
-        // Route the real before-position to its rule operand (`??=` does not visit the target).
-        // Missing operands stay absent;
-        // neither types nor lexical writes substitute an incoming scope answer.
         property_initializations.extend(initializations.into_iter().filter_map(
             |(operand, request)| {
                 Some((
@@ -535,7 +509,6 @@ fn analyse_observed<'arena>(
     )
 }
 
-/// The plain assignments whose target is a variable or its offsets (`$a['x'][0] = ...`).
 #[derive(Default)]
 struct Assignments(HashMap<Span, (Span, Vec<u8>)>);
 
@@ -584,12 +557,7 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ArrayChildren<'_> {
     }
 }
 
-/// `$scope->hasVariableType()` of the watched direct variables, and `hasExpressionType()` of the other watched
-/// expressions (by Mago's expression id, their text without whitespace), from Mago's block context where it reads
-/// them. A loop body is analysed more than once: answers that differ are a maybe.
 struct Definedness {
-    /// The values of plain assignments to a variable or a constant-free offset path of one: value span to (target span,
-    /// root variable name).
     assignments: HashMap<Span, (Span, Vec<u8>)>,
     ids: HashMap<Span, Vec<u8>>,
     wanted: HashSet<Span>,
@@ -601,8 +569,6 @@ struct Definedness {
     found: Arc<Mutex<Found>>,
 }
 
-/// What [`Definedness`] found: the certainties, and the watched variables' types where they are read (Mago keeps a
-/// `??=` target's type after the assignment).
 #[derive(Default)]
 struct Found {
     defined: HashMap<Span, Tri>,
@@ -613,16 +579,11 @@ struct Found {
     allowed: HashSet<Span>,
     arrows: HashMap<Span, variables::Certainty>,
     reference_sources: HashMap<Span, variables::ReferenceSource>,
-    /// The `defined` and variable-read spans with a certainty from a possible branch (see [`merge`]).
     possible_defined: HashSet<Span>,
     possible_reads: HashSet<Span>,
-    /// The `read` spans with a type from a possible branch.
     possible_read_types: HashSet<Span>,
 }
 
-/// A loop body is analysed more than once; differing answers are a maybe. An answer from a branch Mago marked impossible
-/// (an `isset()` of a variable absent on the first pass) only counts until a possible branch answers: PHPStan checks the
-/// body once, in the loop's generalized scope.
 fn merge(
     entry: &mut Tri,
     now: Tri,
@@ -689,8 +650,6 @@ impl ExpressionHook for Definedness {
                 .lock()
                 .expect("no hook panics while holding the lock");
             if let Some(roots) = self.unset_roots.get(&span) {
-                // UnsetRule sees one entry scope for all targets. Actual virtual writes
-                // still run sequentially; retain only the roots the rule will read.
                 for (at, name) in roots {
                     let ty = context
                         .get_variable_type(name)
@@ -711,8 +670,6 @@ impl ExpressionHook for Definedness {
                 super::unset::observe(expr, context, &mut found.read);
             }
             match expr {
-                // Isset/empty can inspect a property without analysing its receiver expression. Preserve the
-                // real incoming root read, as for unset, so allowed-undefined accesses still see No vs Maybe.
                 Expression::Construct(Construct::Isset(i)) => {
                     for value in &i.values {
                         super::unset::observe(value, context, &mut found.read);
@@ -822,7 +779,6 @@ impl ExpressionHook for Definedness {
         expr: &Expression<'_>,
         context: &mut HookContext<'_, '_>,
     ) -> HookResult<()> {
-        // AssignHandler::redundant() reads the target in the scope after the assigned value; a loop's last pass wins
         if let Some((target, name)) = self.assignments.get(&expr.span()) {
             let mut found = self
                 .found
@@ -848,18 +804,11 @@ impl ExpressionHook for Definedness {
                 name.assigned(assignment, context);
             }
         }
-        // Compound assignments and output references can later overwrite an input's artifacts.
-        // Keep its completed read; scoped unset and coalesce variables have their own observations.
         if self.wanted.contains(&expr.span())
             && !self.unset_scopes.contains(&expr.span())
             && !(self.ids.contains_key(&expr.span()) && matches!(expr, Expression::Variable(_)))
             && let Some(ty) = context.get_expression_type(expr)
         {
-            // Repeated live loop evaluations contribute alternatives. Keeping only the last
-            // narrowed read can turn a do-while's incoming bool into an always-true condition,
-            // incorrectly hiding the initialized-property check on its normal exit. As in merge(), a
-            // read in a branch Mago marked impossible (an `isset()` of a variable absent on the first
-            // pass) only counts until a possible branch answers.
             let impossible = context.block_context().variable_state.impossible;
             let mut found = self
                 .found
@@ -879,8 +828,6 @@ impl ExpressionHook for Definedness {
                         context.codebase(),
                         Default::default(),
                     );
-                    // the combiner drops the flag: a null every evaluation got from a nullsafe short circuit
-                    // still is one
                     let nullsafe = |t: &TUnion| !t.has_null() || t.has_nullsafe_null();
                     if combined.has_null() && nullsafe(previous.get()) && nullsafe(ty) {
                         combined.set_nullsafe_null(true);
@@ -944,8 +891,6 @@ impl ExpressionHook for Definedness {
     }
 }
 
-/// ArrayHandler processes a reference item's value as a read. Only actual literal evaluation fires
-/// these array hooks; assigning a destructuring target never enters them.
 fn literal_reference_reads(elements: &[ArrayElement<'_>], allowed: &mut HashSet<Span>) {
     for element in elements {
         let value = match element {
@@ -967,7 +912,6 @@ fn observe_variable(v: &Variable<'_>, context: &HookContext<'_, '_>, found: &mut
     match v {
         Variable::Direct(v) => observe_direct(v, context, found),
         Variable::Nested(v) => {
-            // DefinedVariableRule reads the outer target in its incoming scope, before name side effects.
             if !found.allowed.contains(&v.span()) {
                 found.variables.scopes.insert(
                     v.span(),
@@ -996,8 +940,6 @@ fn observe_direct(v: &DirectVariable<'_>, context: &HookContext<'_, '_>, found: 
         }
         return;
     }
-    // Mago places every implicit arrow capture in possibly_in_scope, even one absent in its parent. Read the
-    // parent's real block observation for those names, not a syntactically reconstructed parent scope.
     let certainty = context
         .scope()
         .get_function_like()
@@ -1026,9 +968,6 @@ fn observe_direct(v: &DirectVariable<'_>, context: &HookContext<'_, '_>, found: 
     );
 }
 
-/// A copy of a program's statements without the functions, class-likes and methods that hold none of `wanted`. Every
-/// other statement and member stays, so the kept code's scope is unchanged. Virtual initialization requests also
-/// retain method bodies: constructor/helper summaries need their live scopes, even without requested operands.
 struct Prune<'w, 'arena> {
     arena: &'arena LocalArena,
     wanted: &'w [Span],
@@ -1103,12 +1042,10 @@ impl<'arena> Prune<'_, 'arena> {
 }
 
 impl Checker<'_, '_> {
-    /// `$scope->getType($expr)`, as Mago infers it, for the expressions [`typed_expressions()`] lists.
     pub(super) fn type_of(&self, expr: &Expression) -> Option<&TUnion> {
         self.types.get(&expr.span())
     }
 
-    /// Scope::getKeepVoidType reads the effective value first; only explicit null can hide projected void.
     pub(super) fn keep_void_type_at(&self, span: Span) -> Option<&TUnion> {
         let value = self.types.get(&span)?;
         if value

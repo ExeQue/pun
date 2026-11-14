@@ -1,12 +1,9 @@
-//! `pun vet` on a hand-written lock: a tagged package from `require`, a branch from `require-dev`, and a path
-//! package, which is the project's own and needs no review. Nothing is downloaded.
 mod common;
 
 use common::pty::pun;
 use common::{read, write_files};
 use std::path::Path;
 
-/// pun.lock for the project, with acme/lib at `lib_version`.
 fn lock(lib_version: &str) -> String {
     let composer_lock = format!(
         r#"{{
@@ -36,9 +33,6 @@ fn vet(d: &Path, args: &[&str]) -> (String, String, Option<i32>) {
     pun(d, &all)
 }
 
-/// `init` exempts every package at its locked version and criterion; a new version needs a review of the changes
-/// from the exempted one (`v1.2.0` and `1.2.0` being one version); a full audit replaces an exemption, which
-/// `prune` then removes, while it keeps the exemption a delta audit starts from.
 #[test]
 fn vets_the_lock() {
     let d = common::scratch("vet", "lock");
@@ -112,8 +106,6 @@ fn vets_the_lock() {
         "{config}"
     );
 
-    // An imported audit file, here a path from supply-chain/, vets what it audits; imports.lock keeps the audits of
-    // the locked packages only.
     write_files(
         &d,
         &[(

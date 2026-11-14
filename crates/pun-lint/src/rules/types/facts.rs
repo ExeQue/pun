@@ -1,14 +1,3 @@
-//! What Rector reads from PHPStan, for the rules that need more than the syntax tree: the classes, methods and
-//! functions a name stands for, and the native type of an expression (`NodeTypeResolver::getNativeType`). Pun takes
-//! them from Mago: its codebase (the prelude of built-in symbols with the project's symbols) and its analyser's type of
-//! each expression of the file. Docblocks are blanked out before Mago reads a file, so that both see only native types,
-//! as PHPStan's native reflection and native scope do.
-//!
-//! The project's codebase is set once by the caller with [`set_project_codebase`], or built when a rule first asks for
-//! facts with [`set_project_scan`]; without one, a file is looked at with the prelude and its own symbols (and, in
-//! tests, the sources given to [`with_sources`]). The codebase of a file is kept per thread while rules ask about the
-//! same source (the fix rounds of one file).
-
 use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
 use std::collections::{HashMap, HashSet};
@@ -51,64 +40,44 @@ use rayon::prelude::*;
 
 use crate::Context;
 
-/// Mago's prelude: the built-in classes, functions and constants.
 static PRELUDE: LazyLock<(CodebaseMetadata, SymbolReferences)> = LazyLock::new(|| {
     let prelude = Prelude::build();
     (prelude.metadata, prelude.symbol_references)
 });
 
-/// The analyser's plugins: Mago's defaults, with PHPStan's type of a method call on a union.
 static PLUGINS: LazyLock<PluginRegistry> = LazyLock::new(|| {
     let mut registry = create_registry_with_plugins(&[], false);
     super::union_method::register(&mut registry);
     registry
 });
 
-/// A project's symbols with the prelude's, populated, scanned twice: with the docblocks blanked out, for PHPStan's
-/// native types that Rector's type rules read, and as written, for the types Rector reads of a call of a built-in
-/// function and of class constants.
 pub struct ProjectCodebase {
     native: Arc<CodebaseMetadata>,
     documented: Arc<CodebaseMetadata>,
 }
 
-/// The project's codebase, when the caller has scanned the project.
 static PROJECT: RwLock<Option<Arc<ProjectCodebase>>> = RwLock::new(None);
 
-/// Use `codebase` for every file from now on, or go back to analysing each file on its own with `None`.
 pub fn set_project_codebase(codebase: Option<Arc<ProjectCodebase>>) {
     *PROJECT
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = codebase;
 }
 
-/// A build of the project's codebase that runs when a rule first asks for a file's facts.
 type PendingScan = Box<dyn FnOnce() -> Arc<ProjectCodebase> + Send>;
 
-/// The build [`set_project_scan`] deferred, until a rule asks for facts.
 static PENDING: Mutex<Option<PendingScan>> = Mutex::new(None);
 
-/// Build the project's codebase with `build` when a rule first asks for a file's facts, and use it for every file
-/// from then on, so a run whose rules never read facts never scans the project. The files waiting for it block on a
-/// lock, so `build` must not hand work to the pool those files run on (rayon's global pool: give it a pool of its own
-/// on a thread of its own).
 pub fn set_project_scan(build: impl FnOnce() -> Arc<ProjectCodebase> + Send + 'static) {
     *PENDING
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Box::new(build));
 }
 
-/// The codebase of a project: the prelude with the symbols of `files` (path, code), populated, for
-/// [`set_project_codebase`]. `php_version` is a `PHP_VERSION_ID`.
 pub fn project_codebase(files: &[(String, String)], php_version: u32) -> Arc<ProjectCodebase> {
     project_codebase_autoloaded(files, php_version, &|_| None)
 }
 
-/// [`project_codebase`] with the classes Composer autoloads, as PHPStan's PSR locators find them on demand: each
-/// class a scanned file names that the codebase lacks is looked up with `autoload` (an ASCII-lowercased class name
-/// to its file's path and code), and that file is scanned too. Files whose path has a `/vendor/` directory (Composer's
-/// `files` entries among `files`, and autoloaded classes) count as vendor code for [`is_vendor_file`], and a function
-/// PHP itself declares keeps its own signature there: PHPStan reads a polyfilled function natively.
 pub fn project_codebase_autoloaded(
     files: &[(String, String)],
     php_version: u32,
@@ -124,7 +93,6 @@ pub fn project_codebase_autoloaded(
         true => FileType::Vendored,
         false => FileType::Host,
     };
-    // the prelude is built while the files are scanned
     let ((mut codebase, mut documented), scans) = rayon::join(
         || rayon::join(|| stubbed(true), || stubbed(false)),
         || {
@@ -164,7 +132,6 @@ pub fn project_codebase_autoloaded(
     Arc::new(ProjectCodebase { native, documented })
 }
 
-/// A file's symbols as [`scan_symbols`] finds them: with its docblocks blanked out, and as written.
 struct Scanned {
     id: FileId,
     native: CodebaseMetadata,
@@ -173,8 +140,6 @@ struct Scanned {
 }
 
 impl Scanned {
-    /// One parse serves both scans: the native one reads the docblocks as plain comments, as a parse of the file
-    /// with its docblocks blanked out does.
     fn new(path: &str, code: &str, kind: FileType, version: PHPVersion) -> Self {
         let file = mago_file(path, code, kind);
         let arena = LocalArena::new();
@@ -203,7 +168,6 @@ impl Scanned {
         }
     }
 
-    /// Add the symbols to the two codebases, remember the file, and return the names it resolves.
     fn add(
         self,
         path: &str,
@@ -219,19 +183,12 @@ impl Scanned {
     }
 }
 
-/// The files the autoload walk of [`project_codebase_autoloaded`] is likely to scan, read and scanned in parallel
-/// ahead of it: the walk merges them one at a time in its own order, and reads and scans a file itself when the
-/// guess missed it.
 #[derive(Default)]
 struct Prefetched {
-    /// What `autoload` gave for a class name.
     found: HashMap<Vec<u8>, Option<(String, String)>>,
-    /// The scan of an autoloaded file, by path.
     scans: HashMap<String, Scanned>,
 }
 
-/// What [`prefetch`] knows while it runs: the classes the scanned files declare, the class names and paths it
-/// has looked up, and what it found.
 #[derive(Default)]
 struct Prefetching {
     declared: HashSet<Vec<u8>>,
@@ -241,8 +198,6 @@ struct Prefetching {
 }
 
 impl Prefetching {
-    /// The class names `scans` resolve that neither a file scanned so far (counting `scans`) nor PHP declares and
-    /// that weren't looked up yet.
     fn unknown<'a>(&mut self, scans: impl Iterator<Item = &'a Scanned> + Clone) -> Vec<Vec<u8>> {
         for s in scans.clone() {
             (self.declared).extend(s.native.class_likes.keys().map(|k| k.as_bytes().to_vec()));
@@ -255,8 +210,6 @@ impl Prefetching {
     }
 }
 
-/// [`Prefetched`] for the walk that starts from `scans`: each class a scanned file names that no file scanned so far
-/// declares and PHP doesn't is looked up, and each file found is scanned, as soon as the file naming it is.
 fn prefetch(
     scans: &[Scanned],
     version: PHPVersion,
@@ -285,7 +238,6 @@ fn prefetch(
     .found
 }
 
-/// One class name for [`prefetch`] to look up.
 struct Lookup<'a> {
     name: Vec<u8>,
     state: &'a Mutex<Prefetching>,
@@ -294,7 +246,6 @@ struct Lookup<'a> {
 }
 
 impl<'a> Lookup<'a> {
-    /// Look the name up, scan the file found unless another name found it first, and look up the names it adds.
     fn run(self, scope: &rayon::Scope<'a>) {
         let file = (self.autoload)(&self.name);
         let lock = || {
@@ -324,14 +275,6 @@ impl<'a> Lookup<'a> {
     }
 }
 
-/// `preg_match()` and `preg_match_all()` with the `$flags` and `$matches` of PHPStan's signatures
-/// (data/phpstan-preg-match.stub), whose conditional `@param-out` types `$matches` from the flags; Mago's prelude has
-/// one type for every flag. The rest stays the prelude's. The `native` codebase takes
-/// data/phpstan-preg-match-native.stub instead: PHPStan 2.3's native scope gives a by-reference argument the
-/// parameter's signature-map type where that holds the out type, and `mixed` where it does not (so Rector's
-/// `isNonTypedFromParam` doubts a `$matches` written with `PREG_OFFSET_CAPTURE`). PHPStan's
-/// `PregMatchParameterOutTypeExtension` (an array shape for a pattern it parses) is not ported: the stub's type holds
-/// that shape.
 fn stub_preg_match(codebase: &mut CodebaseMetadata, version: PHPVersion, native: bool) {
     const STUB: &str = include_str!("../../../data/phpstan-preg-match.stub");
     const NATIVE: &str = include_str!("../../../data/phpstan-preg-match-native.stub");
@@ -363,11 +306,8 @@ fn stub_preg_match(codebase: &mut CodebaseMetadata, version: PHPVersion, native:
     }
 }
 
-/// The files [`project_codebase_autoloaded`] read from a `vendor/` directory. A file's id is a hash of its path, so
-/// the set only grows, and codebases built at the same time share it.
 static VENDOR: LazyLock<RwLock<HashSet<FileId>>> = LazyLock::new(Default::default);
 
-/// Whether `file` is vendor code of the project's codebase (Rector: its path contains `/vendor/`).
 pub(crate) fn is_vendor_file(file: FileId) -> bool {
     (VENDOR
         .read()
@@ -375,8 +315,6 @@ pub(crate) fn is_vendor_file(file: FileId) -> bool {
     .contains(&file)
 }
 
-/// The files [`project_codebase_autoloaded`] read from a path with `phpstan.phar` in it, which Rector's
-/// `RemoveExtraParametersRector` takes for PHPStan's own (its built-in stubs).
 static PHPSTAN_PHAR: LazyLock<RwLock<HashSet<FileId>>> = LazyLock::new(Default::default);
 
 fn remember_phar(file: FileId, path: &str) {
@@ -388,7 +326,6 @@ fn remember_phar(file: FileId, path: &str) {
     }
 }
 
-/// Whether `file`'s path has `phpstan.phar` in it.
 pub(crate) fn is_phpstan_phar_file(file: FileId) -> bool {
     (PHPSTAN_PHAR
         .read()
@@ -396,9 +333,6 @@ pub(crate) fn is_phpstan_phar_file(file: FileId) -> bool {
     .contains(&file)
 }
 
-/// The sources of the files the codebases were built from, docblocks kept, by file id, for the rules that read
-/// another file's syntax (Rector's `AstResolver`). A file's id is a hash of its path, so a file read again replaces
-/// its old source.
 static SOURCES_BY_ID: LazyLock<RwLock<HashMap<FileId, Arc<str>>>> = LazyLock::new(Default::default);
 
 fn remember_source(file: FileId, code: &str) {
@@ -409,11 +343,9 @@ fn remember_source(file: FileId, code: &str) {
 }
 
 thread_local! {
-    /// Other files' sources whose symbols a file analysed on its own sees (tests: Rector's fixture `Source/` classes).
     static SOURCES: RefCell<Vec<(String, String)>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Run `f` with the symbols of `sources` (path, code) visible to the files analysed on their own on this thread.
 pub fn with_sources<R>(sources: Vec<(String, String)>, f: impl FnOnce() -> R) -> R {
     SOURCES.with(|s| *s.borrow_mut() = sources);
     let result = f();
@@ -421,38 +353,25 @@ pub fn with_sources<R>(sources: Vec<(String, String)>, f: impl FnOnce() -> R) ->
     result
 }
 
-/// What the analysis of a file gives: Mago's types, the spans of the values PHPStan leaves untyped, and the types
-/// PHPStan gives in place of Mago's.
 struct Analysis {
     artifacts: Option<AnalysisArtifacts>,
     untyped: HashSet<(u32, u32)>,
     declared: HashMap<(u32, u32), TUnion>,
 }
 
-/// The codebase a file's rules look symbols up in.
 pub(crate) struct Facts {
     pub codebase: Arc<CodebaseMetadata>,
-    /// The codebase as written, docblocks read (see [`ProjectCodebase`]).
     documented: Arc<CodebaseMetadata>,
     path: String,
-    /// The file's source with its docblocks blanked out.
     native_source: String,
-    /// The file's source as written.
     source: String,
     version: PHPVersion,
-    /// The analysis, run the first time a rule asks for a type, and the spans of the values inside traits that come
-    /// from a variable.
     artifacts: OnceCell<Analysis>,
-    /// The analysis of the file as written, docblocks read, run the first time a type of it is needed.
     documented_artifacts: OnceCell<Option<AnalysisArtifacts>>,
-    /// Analyse the code Mago finds unreachable too, and the `catch` blocks no throw point reaches: PHPStan types them.
     dead_code: bool,
 }
 
 impl Facts {
-    /// `$scope->hasVariableType()` of the variable at the root of each `$v[...] = ...` / `$v[] = ...` (an `Assign`),
-    /// read before the assignment: the assignment's span, the variable's name, and whether it is maybe (`true`) or
-    /// surely not (`false`) defined. Defined variables are left out.
     pub(crate) fn implicit_array_writes(&self) -> Vec<((u32, u32), String, bool)> {
         let file = mago_file(&self.path, &self.native_source, FileType::Host);
         let arena = LocalArena::new();
@@ -492,8 +411,6 @@ impl Facts {
         out
     }
 
-    /// The native type of the expression at `span`, if the analyser reached it. Inside a trait, PHPStan 2.3.5 (as
-    /// Rector runs it, at the version Pinkary pins) does not know `$this`, so a value that comes from it has no type.
     pub(crate) fn native_type(&self, span: Span) -> Option<&TUnion> {
         let analysis = self.artifacts.get_or_init(|| self.analyse());
         let (start, end) = (span.start as u32, span.end as u32);
@@ -503,15 +420,12 @@ impl Facts {
         if let Some(t) = analysis.declared.get(&(start, end)) {
             return Some(t);
         }
-        // PHPStan's native scope retains a call's void return, unlike its effective full value.
         analysis
             .artifacts
             .as_ref()?
             .get_keep_void_expression_type(&mago_span::Span::dummy(start, end))
     }
 
-    /// Whether PHPStan leaves the value at `span` untyped in its full scope as in its native one: inside a trait, a
-    /// value that comes from `$this`.
     pub(crate) fn is_untyped(&self, span: Span) -> bool {
         let analysis = self.artifacts.get_or_init(|| self.analyse());
         analysis
@@ -519,8 +433,6 @@ impl Facts {
             .contains(&(span.start as u32, span.end as u32))
     }
 
-    /// The declared return type of the built-in function `call` calls (PHP's own signature, not the stub's
-    /// docblock), when it calls one.
     fn builtin_return<'s>(
         &'s self,
         names: &ResolvedNames<'_>,
@@ -533,7 +445,6 @@ impl Facts {
             .map(|t| &t.type_union)
     }
 
-    /// The name of the built-in function `call` calls, when it calls one (PHP falls back to the global function).
     fn builtin_name(&self, names: &ResolvedNames<'_>, call: &FunctionCall<'_>) -> Option<Vec<u8>> {
         let Expression::Identifier(id) = call.function else {
             return None;
@@ -552,10 +463,6 @@ impl Facts {
         Some(name.to_vec())
     }
 
-    /// What arithmetic on `operand` gives in PHPStan's native scope when `operand` calls a built-in function, whose
-    /// declared return type it takes there: `Some(true)` an error, for a type that may be a string, an object or an
-    /// array (which only `+` takes); `Some(false)` `float|int`, for `mixed` or a type that may be a float or an
-    /// integer (`abs()`'s `int|float`); `None` the type Mago gives.
     fn builtin_operand(
         &self,
         names: &ResolvedNames<'_>,
@@ -583,7 +490,6 @@ impl Facts {
         (error || wide).then_some(error)
     }
 
-    /// The text at `span` when it is in this file.
     pub(crate) fn text(&self, span: mago_span::Span) -> Option<&str> {
         let file = mago_file(&self.path, "", FileType::Host);
         (span.file_id == file.id)
@@ -594,13 +500,10 @@ impl Facts {
             .flatten()
     }
 
-    /// The codebase with the docblocks read (PHPStan's reflection with PHPDoc types).
     pub(crate) fn documented(&self) -> &CodebaseMetadata {
         &self.documented
     }
 
-    /// The source of the file `file` of the codebase, docblocks kept, as the codebase read it (its spans point into
-    /// it).
     pub(crate) fn source_of(&self, file: FileId) -> Option<Arc<str>> {
         (SOURCES_BY_ID
             .read()
@@ -609,16 +512,11 @@ impl Facts {
         .cloned()
     }
 
-    /// The name Mago gives the anonymous class at `span` (`{anonymous-class:<path>:<line>:<column>}`).
     pub(crate) fn anonymous_class_name(&self, span: mago_span::Span) -> String {
         let file = mago_file(&self.path, &self.native_source, FileType::Host);
         mago_codex::get_anonymous_class_name(&file, span).to_string()
     }
 
-    /// The type of the expression at `span` with the docblocks read (PHPStan's `getType()`), if the analyser reached
-    /// it. A docblock never widens a native type (`TypehintHelper::decideType`), so where Mago loses the documented
-    /// type to `mixed` (a variable a closure captured by reference, once the closure is called) the native type
-    /// stands.
     pub(crate) fn full_type(&self, span: Span) -> Option<&TUnion> {
         let full = (self.documented_artifacts()?.expression_types)
             .get(&(span.start as u32, span.end as u32))?;
@@ -636,7 +534,6 @@ impl Facts {
             .as_ref()
     }
 
-    /// Mago's analysis of the file as written, docblocks read, in the documented codebase.
     fn analyse_documented(&self) -> Option<AnalysisArtifacts> {
         let file = mago_file(&self.path, &self.source, FileType::Host);
         let arena = LocalArena::new();
@@ -652,7 +549,6 @@ impl Facts {
         .and_then(Result::ok)
     }
 
-    /// Analyse the file. Mago trips debug assertions on some code; an analysis that panics gives no types.
     fn analyse(&self) -> Analysis {
         let file = mago_file(&self.path, &self.native_source, FileType::Host);
         let arena = LocalArena::new();
@@ -660,12 +556,8 @@ impl Facts {
         let mut untyped = HashSet::new();
         let names = NameResolver::new(&arena).resolve(program);
         let mut functions: Vec<(u32, u32)> = Vec::new();
-        // each `$variable = ...;`: the variable, where the assignment ends, and the declared return type of the
-        // built-in function it calls, if it does
         let mut assigned: Vec<(&[u8], u32, Option<&TUnion>)> = Vec::new();
-        // the calls of built-in functions, and the argument of each `get_class()`
         let mut builtin_calls: Vec<(mago_span::Span, Option<mago_span::Span>)> = Vec::new();
-        // arithmetic PHPStan types `float|int` where Mago's type is narrower
         let mut widened: Vec<(u32, u32)> = Vec::new();
 
         any_node(Node::Program(program), &mut |n| match n {
@@ -673,7 +565,6 @@ impl Facts {
                 let span = n.span();
                 functions.push((span.start.offset, span.end.offset));
             }
-            // a compound assignment (`$s .= 'x'`) ends the declared type too
             Node::Assignment(a) => {
                 if let Expression::Variable(Variable::Direct(v)) = a.lhs {
                     let declared = match a.rhs {
@@ -685,8 +576,6 @@ impl Facts {
                     assigned.push((v.name, a.span().end.offset, declared));
                 }
             }
-            // Rector takes a built-in function call's full type only for the call itself (`getNativeType`); inside
-            // arithmetic PHPStan's native scope types it by its declaration (see `builtin_operand`)
             Node::Binary(b) if b.operator.is_arithmetic() => {
                 let plus = matches!(b.operator, BinaryOperator::Addition(_));
                 let operands = [b.lhs, b.rhs].map(|o| self.builtin_operand(&names, o, plus));
@@ -708,7 +597,6 @@ impl Facts {
                 }
             }
             Node::Trait(_) => {
-                // an anonymous class in the trait has its own `$this`, which PHPStan types
                 let mut anonymous = Vec::new();
                 any_node(n, &mut |c| {
                     if let Node::AnonymousClass(c) = c {
@@ -727,7 +615,6 @@ impl Facts {
                         untyped.insert((span.start.offset, span.end.offset));
                     }
                 });
-                // a variable whose latest assignment in the method takes such a value has none either
                 any_node(n, &mut |m| {
                     if let Node::Method(_) = m
                         && own(m.span())
@@ -740,7 +627,6 @@ impl Facts {
                         });
                         let mut writes: Vec<(&[u8], u32, bool)> = Vec::new();
                         for a in assignments {
-                            // the variables written: one, or those a destructuring (`[$a, $b] = ...`) lists
                             let mut targets: Vec<&[u8]> = Vec::new();
                             any_node(Node::Expression(a.lhs), &mut |t| {
                                 if let Node::DirectVariable(v) = t {
@@ -755,8 +641,6 @@ impl Facts {
                             ) {
                                 continue;
                             }
-                            // a value passed on from a variable such a value reached last (`$files = [$files]`) is
-                            // untyped; one a call makes of it (`array_keys($files)`) is not
                             let mut reads_this = false;
                             for v in passed_on(a.rhs) {
                                 let last = (writes.iter())
@@ -804,9 +688,6 @@ impl Facts {
             }
             _ => {}
         });
-        // a variable set from a built-in function has the function's declared return type in PHPStan's native
-        // scope, not the one its stub or an extension refines from the arguments (`str_replace()` gives
-        // `array|string`), until the next assignment
         let mut declared: HashMap<(u32, u32), TUnion> = HashMap::new();
         for span in widened {
             declared.insert(span, get_int_or_float());
@@ -834,9 +715,6 @@ impl Facts {
                 }
             });
         }
-        // `.` on a value whose native type may be an array is an error in PHPStan's native scope: a call of a built-in
-        // function declared to return one (`str_replace()`'s `array|string`), or a variable set from such a call. The
-        // error stays with that concatenation; one around it is a string again.
         any_node(Node::Program(program), &mut |n| {
             let Node::Binary(b) = n else { return };
             if !b.operator.is_concatenation() {
@@ -874,9 +752,6 @@ impl Facts {
         .ok()
         .and_then(Result::ok);
         if let Some(artifacts) = &artifacts {
-            // a member of a class the codebase lacks (vendor/ is not scanned; Rector's PHPStan reads it): Mago types
-            // it from the rest of the object's union (`?Unknown` gives `null`), PHPStan from the class
-            // (unresolved names can remain references or named objects without class metadata).
             let unknown = |t: &TUnion| {
                 t.types.iter().any(|t| match t {
                     TAtomic::Object(TObject::Named(object)) => self
@@ -895,7 +770,6 @@ impl Facts {
                     Node::NullSafeMethodCall(c) => (c.object, c.span()),
                     _ => return,
                 };
-                // Mago types `(new X)` under the span inside the parentheses
                 let o = crate::syntax::unparenthesize(object).span();
                 let Some(t) = (artifacts.expression_types).get(&(o.start.offset, o.end.offset))
                 else {
@@ -905,15 +779,11 @@ impl Facts {
                     untyped.insert((span.start.offset, span.end.offset));
                 }
             });
-            // `getClassConstFetchTypeByReflection`: a constant fetched from `static` or from an object (`$this::A`) is
-            // `mixed` when neither its class nor the constant is final and the constant has no type
             let open = |class: &[u8], constant: &[u8]| {
                 (self.documented.get_class_like(class)).is_some_and(|c| !c.flags.is_final())
                     && (self.documented.get_class_constant(class, constant))
                         .is_some_and(|k| !k.flags.is_final() && k.type_metadata.is_none())
             };
-            // the class-likes `static` can be, by span: the name of each class and interface, `None` for the
-            // anonymous classes (final to PHPStan)
             let mut scopes: Vec<(mago_span::Span, Option<&[u8]>)> = Vec::new();
             any_node(Node::Program(program), &mut |n| match n {
                 Node::Class(c) => scopes.push((c.span(), Some(names.get(&c.name)))),
@@ -959,8 +829,6 @@ impl Facts {
                 }
                 _ => {}
             });
-            // a `(string)` cast is a string, also of an object whose `__toString()` declares no type (PHP declares it
-            // `string`), where Mago takes that method's missing type
             any_node(Node::Program(program), &mut |n| {
                 if let Node::UnaryPrefix(u) = n
                     && matches!(
@@ -978,8 +846,6 @@ impl Facts {
                     }
                 }
             });
-            // arithmetic and bitwise operators on a `mixed` operand, where Mago keeps `mixed` and PHPStan's
-            // `InitializerExprTypeResolver` gives a number type, innermost first
             let mut operations = Vec::new();
             any_node(Node::Program(program), &mut |n| {
                 if let Node::Binary(b) = n
@@ -1013,7 +879,6 @@ impl Facts {
                 }
             }
         }
-        // `getNativeType` takes the full type, docblocks read, of a call of a built-in function
         if let Some(documented) = (!builtin_calls.is_empty())
             .then(|| self.documented_artifacts())
             .flatten()
@@ -1021,7 +886,6 @@ impl Facts {
             let key = |s: mago_span::Span| (s.start.offset, s.end.offset);
             let t = |s: mago_span::Span| documented.expression_types.get(&key(s));
             for (call, argument) in builtin_calls {
-                // `get_class()` of a value PHPStan cannot tell is an object may be `false` (`toGetClassResultType`)
                 if argument.is_some_and(|a| {
                     t(a).is_none_or(|t| t.types.iter().any(|t| matches!(t, TAtomic::Mixed(_))))
                 }) {
@@ -1031,8 +895,6 @@ impl Facts {
                 }
             }
         }
-        // an untyped value (PHPStan's `mixed` or error, where Mago's analysis still had a type) spreads, innermost
-        // first: the parentheses and ternaries around it are untyped too, and arithmetic on it is `float|int`
         if !untyped.is_empty() {
             let mut around = Vec::new();
             any_node(Node::Program(program), &mut |n| match n {
@@ -1056,7 +918,6 @@ impl Facts {
                     continue;
                 }
                 if !parts.iter().any(|p| untyped.contains(&key(p.span()))) {
-                    // `(1 + $mixed)` is the type of what it encloses
                     if let (false, [inner]) = (arithmetic, &parts[..])
                         && let Some(t) = declared.get(&key(inner.span())).cloned()
                     {
@@ -1071,10 +932,6 @@ impl Facts {
                 }
             }
         }
-        // `isset($holder['key'])` specifies the holder `hasOffset('key')` in PHPStan's native scope too when the
-        // holder's full type, docblocks read, is not `mixed` (createIssetTruthyChainTypes() reads the chain's full
-        // types); Mago keeps a native `mixed` holder `mixed`. A later read of the holder that the documented analysis
-        // narrowed to an array with that key is an array.
         let mut holders: Vec<(&[u8], mago_span::Span, Vec<u8>)> = Vec::new();
         any_node(Node::Program(program), &mut |n| {
             let Node::IssetConstruct(isset) = n else {
@@ -1164,9 +1021,6 @@ impl Facts {
                 }
             });
         }
-        // `isset($holder->name)` specifies the holder `object&hasProperty(name)` in PHPStan's scope, the native one
-        // too; Mago keeps a `mixed` holder `mixed`. A read of a native-`mixed` holder where the isset holds (the
-        // statements after `if (! isset(...)) { <exit> }`, or the body of `if (isset(...))`) is an object.
         if let Some(native) = artifacts.as_ref() {
             let regions = isset_property_regions(program);
             if !regions.is_empty() {
@@ -1197,11 +1051,9 @@ impl Facts {
     }
 }
 
-/// What [`mixed_math`] needs of an operand's native type.
 #[derive(Clone, Copy, PartialEq)]
 enum Operand {
     Mixed,
-    /// `int|float`, which only [`mixed_math`] gives (Mago types the operation `mixed`)
     Number,
     Int,
     Float,
@@ -1223,16 +1075,12 @@ fn operand(t: &TUnion) -> Option<Operand> {
     }
 }
 
-/// PHPStan's native type of `left <operator> right` when an operand is `mixed` or a number that only this gave
-/// (`getPlusType`, `getPowType`, `resolveCommonMath` and the bitwise types), each union in the order PHPStan builds
-/// it; `None` otherwise, or when the result is not a plain number type.
 fn mixed_math(operator: &BinaryOperator<'_>, left: Operand, right: Operand) -> Option<TUnion> {
     use Operand::*;
     if ![left, right].iter().any(|o| matches!(o, Mixed | Number)) {
         return None;
     }
     let float = left == Float || right == Float;
-    // in this order, unsorted (`TUnion::from_vec` sorts)
     let union = |types: Vec<TUnion>| {
         TUnion::new(Cow::Owned(
             types
@@ -1260,11 +1108,6 @@ fn mixed_math(operator: &BinaryOperator<'_>, left: Operand, right: Operand) -> O
     })
 }
 
-// Whether PHPStan, inside a trait, leaves the value of `expr` untyped: `$this`, or a property, method call, offset or clone
-// of it; a constant of `self` or `static`.
-
-/// The variables whose value `e` is or holds as it is: `e` itself, an offset of it, the branches of a ternary or `??`,
-/// the values of an array literal, through parentheses.
 fn passed_on<'a>(e: &'a Expression<'a>) -> Vec<&'a mago_syntax::cst::DirectVariable<'a>> {
     match e {
         Expression::Variable(Variable::Direct(v)) => vec![v],
@@ -1304,7 +1147,6 @@ fn from_this(expr: &Expression<'_>) -> bool {
         Expression::Call(Call::NullSafeMethod(c)) => from_this(c.object),
         Expression::ArrayAccess(a) => from_this(a.array),
         Expression::Clone(c) => from_this(c.object),
-        // the constants of `self` and `static`, which are not the trait's
         Expression::Access(Access::ClassConstant(c)) => {
             matches!(c.class, Expression::Self_(_) | Expression::Static(_))
                 && !matches!(&c.constant, ClassLikeConstantSelector::Identifier(id) if id.value.eq_ignore_ascii_case(b"class"))
@@ -1313,9 +1155,7 @@ fn from_this(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// Call `f` on `node` and every node below it.
 fn any_node<'a>(node: Node<'a, 'a>, f: &mut impl FnMut(Node<'a, 'a>)) {
-    // parents first, in source order, on an explicit stack: a recursive walk of a whole file is as deep as its tree
     let (mut stack, mut children) = (vec![node], Vec::new());
     while let Some(node) = stack.pop() {
         f(node);
@@ -1324,8 +1164,6 @@ fn any_node<'a>(node: Node<'a, 'a>, f: &mut impl FnMut(Node<'a, 'a>)) {
     }
 }
 
-/// `code` with the text of each docblock blanked out (`/** ... */` becomes `/*  ...  */` with spaces, lines kept),
-/// so that every offset stays where it was.
 pub(crate) fn without_docblocks(code: &str) -> String {
     let arena = LocalArena::new();
     let file = mago_file("", code, FileType::Host);
@@ -1349,12 +1187,10 @@ pub(crate) fn without_docblocks(code: &str) -> String {
     String::from_utf8(bytes).unwrap_or_else(|_| code.to_string())
 }
 
-/// The facts of the file `ctx` is about, built once per file.
 pub(crate) fn facts(ctx: &Context<'_>) -> Rc<Facts> {
     Rc::clone(ctx.facts.get_or_init(|| build(ctx, false)))
 }
 
-/// [`facts`] whose analysis reaches the code after a `return` and the `catch` blocks no throw point reaches.
 pub(crate) fn facts_with_dead_code(ctx: &Context<'_>) -> Rc<Facts> {
     Rc::clone(ctx.dead_code_facts.get_or_init(|| build(ctx, true)))
 }
@@ -1388,8 +1224,6 @@ fn mago_file(path: &str, code: &str, file_type: FileType) -> File {
     )
 }
 
-/// The symbols of `program`, the parse of `file`. Mago trips debug assertions on some code; a scan that panics has
-/// none.
 fn scan_symbols<'a>(
     arena: &'a LocalArena,
     file: &File,
@@ -1410,9 +1244,6 @@ fn scan_symbols<'a>(
     scanned
 }
 
-// PHPStan's ClassReflection::isFinalByKeyword treats anonymous classes as final, including their
-// late-static constant reads. Keep that reflection contract in native and documented scans,
-// both when building the project and when refreshing the current file.
 fn mark_anonymous_classes_final(scanned: &mut CodebaseMetadata) {
     for class in scanned.class_likes.values_mut() {
         if class.kind.is_class() && class.name_span.is_none() {
@@ -1421,15 +1252,12 @@ fn mark_anonymous_classes_final(scanned: &mut CodebaseMetadata) {
     }
 }
 
-/// Whether `path` has a `vendor/` directory (Rector: its path contains `/vendor/`).
 fn is_vendor_path(path: &str) -> bool {
     path.contains("/vendor/")
 }
 
-/// The paths of the files the codebases were built from, by file id (PHPStan's `ClassReflection::getFileName()`).
 static PATHS: LazyLock<RwLock<HashMap<FileId, Arc<str>>>> = LazyLock::new(Default::default);
 
-/// The path of the file `file` of the codebase.
 pub(crate) fn path_of(file: FileId) -> Option<Arc<str>> {
     (PATHS
         .read()
@@ -1438,7 +1266,6 @@ pub(crate) fn path_of(file: FileId) -> Option<Arc<str>> {
     .cloned()
 }
 
-/// [`remember_source`] for the file `id` at `path`, which counts as vendor code when [`is_vendor_path`] says so.
 fn remember(id: FileId, path: &str, code: &str) {
     remember_source(id, code);
     (PATHS
@@ -1453,8 +1280,6 @@ fn remember(id: FileId, path: &str, code: &str) {
     }
 }
 
-/// A file-sized replacement over shared project declarations, prepared before any analyzer
-/// scope or plugin borrows it. Never retain old anonymous keys, even on a successful lookup.
 fn refresh_closures(
     codebase: &CodebaseMetadata,
     path: &str,
@@ -1465,7 +1290,6 @@ fn refresh_closures(
     let arena = LocalArena::new();
     let program = parse_file(&arena, &file);
     let names = NameResolver::new(&arena).resolve(program);
-    // Keep scan_into's panic boundary without falling back to stale anonymous keys.
     let mut scanned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         scan_program(&arena, &file, program, &names, version)
     }))
@@ -1475,7 +1299,6 @@ fn refresh_closures(
     Arc::new(codebase.with_file_closures(file.id, scanned))
 }
 
-/// The facts of a file: shared project declarations with current anonymous signatures.
 fn scan(ctx: &Context<'_>, project: Option<Arc<ProjectCodebase>>, dead_code: bool) -> Facts {
     let path = ctx.path.to_string_lossy().into_owned();
     let project = project.unwrap_or_else(|| {
@@ -1498,19 +1321,14 @@ fn scan(ctx: &Context<'_>, project: Option<Arc<ProjectCodebase>>, dead_code: boo
     }
 }
 
-/// Whether `class` is one of PHP's own classes (PHPStan: a class reflection without a file name).
 pub(crate) fn is_builtin_class(class: &[u8]) -> bool {
     PRELUDE.0.get_class_like(class).is_some()
 }
 
-/// Whether `function` is one of PHP's own functions (PHPStan: `FunctionReflection::isBuiltin()`).
 pub(crate) fn is_builtin_function(function: &[u8]) -> bool {
     PRELUDE.0.get_function(function).is_some()
 }
 
-/// Where an `isset($variable->property)` holds, for each such variable: the statements of a block after an
-/// `if (! isset(...))` without `else` whose body ends in `return`, `throw`, `continue` or `break`, and the body of an
-/// `if (isset(...))` (the isset maybe one operand of `&&`). A region where the variable is assigned does not count.
 fn isset_property_regions<'a>(program: &'a Program<'a>) -> Vec<(&'a [u8], u32, u32)> {
     use mago_syntax::cst::{Construct, IfBody, Statement};
     fn property_holders<'a>(expr: &'a Expression<'a>, out: &mut Vec<&'a [u8]>) {
@@ -1598,7 +1416,6 @@ fn isset_property_regions<'a>(program: &'a Program<'a>) -> Vec<(&'a [u8], u32, u
         }
         _ => {}
     });
-    // an assignment of the variable inside its region undoes the narrowing
     let mut assigned: Vec<(&[u8], u32)> = Vec::new();
     any_node(Node::Program(program), &mut |n| {
         if let Node::Assignment(a) = n

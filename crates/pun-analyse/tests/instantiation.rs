@@ -1,6 +1,3 @@
-//! InstantiationRule::getClassNames(): PHPStan 2.3.1's dynamic class names, reflection constraints and erased
-//! unknown objects. Expectations are fresh oracle runs, plus the two upstream regressions this fixes.
-
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -60,7 +57,6 @@ fn dynamic_class_reflection() {
     );
 }
 
-/// No gap exemption: both upstream cases must match, including their other rules' existing diagnostics.
 #[test]
 fn unknown_object_operands() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rules");

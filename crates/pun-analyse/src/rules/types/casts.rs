@@ -1,7 +1,3 @@
-//! Level 2's conversions: EchoRule (`echo.nonString`), PrintRule (`print.nonString`),
-//! InvalidPartOfEncapsedStringRule (`encapsedStringPart.nonString`), InvalidCastRule (`cast.*`) and
-//! InvalidUnaryOperationRule (`unaryOp.invalid`): a value PHP cannot convert, by `findTypeToCheck()`.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Cast, Level, StrictMixed, Type, cast_is_error, is_super_type_of};
@@ -27,7 +23,6 @@ pub(super) fn part<'s, 'arena>(p: &'s StringPart<'arena>) -> Option<&'s Expressi
     }
 }
 
-/// `findTypeToCheck()` with the conversion as the union criteria: the type to report, `None` when fine.
 fn invalid(c: &Checker, e: &Expression, cast: Cast) -> Option<Type> {
     let sm = StrictMixed::default();
     declared::with_classes(c, || {
@@ -77,7 +72,6 @@ pub(in super::super) fn interpolated(c: &mut Checker, parts: &[StringPart]) {
     }
     for e in parts.iter().filter_map(part) {
         if let Some(t) = invalid(c, e, Cast::String) {
-            // assistant's call: the part as written stands in for php-parser's printer
             let printed = c.written(e.span());
             let message = format!(
                 "Part {printed} ({}) of encapsed string cannot be cast to string.",
@@ -88,7 +82,6 @@ pub(in super::super) fn interpolated(c: &mut Checker, parts: &[StringPart]) {
     }
 }
 
-/// The conversion a cast or unary operator makes, with its name in messages.
 pub(super) fn operation(op: &UnaryPrefixOperator) -> Option<(Cast, &'static str)> {
     Some(match op {
         UnaryPrefixOperator::IntCast(..) | UnaryPrefixOperator::IntegerCast(..) => {
@@ -126,7 +119,6 @@ pub(in super::super) fn unary(c: &mut Checker, u: &UnaryPrefix) {
         else {
             return false;
         };
-        // BcMathNumber/GmpUnaryOperatorTypeSpecifyingExtension
         let extension =
             |class: &str| is_super_type_of(&Type::Object(class.into(), vec![], false), &t).yes();
         if unary && (extension("GMP") || (cast == Cast::Number && extension("BcMath\\Number"))) {
@@ -134,7 +126,6 @@ pub(in super::super) fn unary(c: &mut Checker, u: &UnaryPrefix) {
         }
         cast_is_error(&t, cast, sm)
     });
-    // (the operand's type is known when it is an error)
     let Some(full) = c.phpstan_type(u.operand).filter(|_| error) else {
         return;
     };

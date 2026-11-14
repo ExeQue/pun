@@ -1,7 +1,3 @@
-//! NotAnalysedTraitRule (level 4) over TraitDeclarationCollector and TraitUseCollector: a trait declared in an
-//! analysed file that no analysed class-like uses, directly or through a used trait. PHPStan skips it when every
-//! analysed path is a file (`isOnlyFilesAnalysis()`).
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -25,7 +21,6 @@ pub(crate) fn unused_traits(
         .filter_map(|p| sources.get(p))
         .map(|f| f.id)
         .collect();
-    // the traits the analysed class-likes use (a used trait is analysed, so its own uses count)
     let mut used: HashSet<Vec<u8>> = HashSet::new();
     let mut pending: Vec<&[u8]> = codebase
         .class_likes
@@ -51,7 +46,6 @@ pub(crate) fn unused_traits(
         .filter_map(|k| {
             let file = sources.values().find(|f| f.id == k.span.file_id)?;
             let name = String::from_utf8_lossy(k.original_name.as_bytes());
-            // the first line of its declaration, attributes included
             let at = k.span;
             let line = i64::from(file.line_number(at.start.offset)) + 1;
             Some(Error {

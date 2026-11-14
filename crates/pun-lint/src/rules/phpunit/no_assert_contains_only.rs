@@ -1,10 +1,3 @@
-//! `lint/phpunit/no-assert-contains-only`, ported from rector-phpunit's `AssertContainsOnlyMethodCallRector`
-//! (rules/PHPUnit110/Rector/CallLike).
-//!
-//! `assertContainsOnly('int', $a)` becomes `assertContainsOnlyInt($a)`, and likewise for each type name, unless the
-//! `$isNativeType` argument may be `false`. Rector runs it only for PHPUnit 11.5 and later; Pun leaves that to the
-//! rule's group.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

@@ -1,5 +1,3 @@
-//! Failed method results and ordinary unknown-class diagnostics, captured from PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse, run_mago};
@@ -68,7 +66,6 @@ fn failed_results_preserve_dynamic_nullable_union_magic_and_never_boundaries() {
     check("boundaries.php");
 }
 
-/// Compare the engine's `never` directly. Pun's separate `*NEVER*` display is not changed by this port.
 #[test]
 fn a_reflected_never_return_is_not_a_failed_lookup() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/failed-methods");

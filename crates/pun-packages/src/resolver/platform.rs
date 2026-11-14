@@ -1,8 +1,3 @@
-//! The platform packages an update resolves against: Composer's own API versions, `php` and its variants, every
-//! loaded extension, and the libraries that PHP reports through constants (`lib-icu`, `lib-openssl`, ...), asked of
-//! the system PHP once, reading each extension's constants and `phpinfo()` block as Composer does; then
-//! `config.platform`'s overrides.
-
 use crate::version::normalize;
 use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
@@ -10,7 +5,6 @@ use serde_json::{Map, Value, json};
 use std::process::Command;
 use std::sync::LazyLock;
 
-/// The Composer this resolver answers for.
 pub const COMPOSER: &str = "2.11.2";
 pub const PLUGIN_API: &str = "2.11.0";
 pub const RUNTIME_API: &str = "2.2.2";
@@ -190,7 +184,6 @@ fn package(name: &str, version: &str) -> Map<String, Value> {
     m
 }
 
-/// The platform `php` reports, as package JSON for the resolver, with `overrides` (`config.platform`) applied.
 pub fn detect(
     php: &str,
     overrides: Option<&Map<String, Value>>,
@@ -210,7 +203,6 @@ pub fn detect(
     from_probe(&probe, overrides)
 }
 
-/// The platform packages for a probe's output.
 pub fn from_probe(
     probe: &Value,
     overrides: Option<&Map<String, Value>>,
@@ -337,7 +329,6 @@ mod tests {
             .collect()
     }
 
-    /// Expected values derived by hand from Composer 2.11.2's `PlatformRepository::initialize` and `addPackage`.
     #[test]
     fn applies_overrides_as_composer() {
         let probe = json!({"php": "8.5.12~ubuntu", "bits64": true, "ipv6": false, "debug": false, "zts": false,
@@ -391,7 +382,6 @@ mod tests {
             names(&got)
         );
         assert!(detect("/nonexistent/php", None).is_err());
-        // Derived by hand: `false` exits 1 and prints nothing.
         assert_eq!(
             detect("false", None).unwrap_err().to_string(),
             "false failed to report the platform: "

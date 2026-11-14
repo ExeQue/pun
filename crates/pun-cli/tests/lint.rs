@@ -1,7 +1,3 @@
-//! `pun lint` and the lint half of `pun check` (context/plan/lint.md): levels, overrides, the command-line levels,
-//! warnings and exit codes, `@pun-ignore` comments, `--fix`. Expected values are derived by hand from each rule's
-//! definition (Mago's `no-eval`/`no-global` report the construct; Rector's `ReplaceConstantBooleanNotRector`
-//! `no-negated-boolean-literal` rewrites `!true` to `false`) and from rules.md §4 for the comments.
 mod common;
 
 use common::{PUN, clean_env, project, read};
@@ -25,7 +21,6 @@ rules = { "security/no-eval" = "off" }
 const A: &str = "<?php\n\nfunction f()\n{\n    global $y;\n    eval('1;');\n}\n\n$a = !true; // @pun-ignore lint/security/no-eval\n";
 const LEGACY: &str = "<?php\n\neval('2;');\n";
 
-/// `pun <args>` in `dir` under agent mode: (the lines after the summary, the summary up to its timing, exit code).
 fn agent(dir: &Path, args: &[&str]) -> (Vec<String>, String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)
@@ -56,7 +51,6 @@ fn sample() -> std::path::PathBuf {
 fn levels_overrides_and_ignores() {
     let d = sample();
     let (lines, summary, code) = agent(&d, &["lint"]);
-    // `src/legacy/b.php`'s eval is off by the override; the ignore comment covers nothing on its line.
     assert_eq!(summary, "pun lint: fail, 3 errors, 1 warning");
     assert_eq!(
         lines,
@@ -73,8 +67,6 @@ fn levels_overrides_and_ignores() {
 #[test]
 fn command_line_levels_apply_in_order() {
     let d = sample();
-    // Everything in `security` off, then `no-global` back on as an error; the negated literal is allowed too. The
-    // ignore comment names `no-eval`, which is off, so it isn't judged unused.
     let (lines, _, code) = agent(
         &d,
         &[
@@ -92,7 +84,6 @@ fn command_line_levels_apply_in_order() {
         ["src/a.php:5:5 lint/security/no-global Unsafe use of `global` keyword.",]
     );
     assert_eq!(code, Some(1));
-    // An unknown name is a run error.
     let (lines, _, code) = agent(&d, &["lint", "-D", "nope/nothing"]);
     assert_eq!(lines, Vec::<String>::new());
     assert_eq!(code, Some(2));
@@ -108,7 +99,6 @@ fn warnings_fail_only_when_asked() {
                 "pun.toml",
                 "[lint.rules]\n\"security/no-global\" = \"warn\"\n",
             ),
-            // Without `comments/no-unused-ignore` on, an ignore that covers nothing is fine.
             (
                 "a.php",
                 "<?php\n\nfunction f()\n{\n    global $y; // @pun-ignore lint/security/no-eval\n}\n",
@@ -137,8 +127,6 @@ fn fix_applies_safe_fixes_and_deletes_unused_ignores() {
     assert_eq!(code, Some(1));
 }
 
-/// One rule's fix can leave work for a rule that ran before it: once the property has its native type, its
-/// `@var string` says nothing more. One `--fix` does both, so a second run has nothing to change.
 #[test]
 fn fix_repeats_until_no_rule_has_work_left() {
     let d = project(
@@ -165,8 +153,6 @@ fn fix_repeats_until_no_rule_has_work_left() {
 
 #[test]
 fn fix_runs_the_format_rules_once_when_no_lint_rule_fires() {
-    // Pint 1.32 with these four rules leaves the indent before `namespace` after one run and removes it only on
-    // a second run. The expectation is Pint's one-run output: an idle lint rule must not repeat the format rules.
     let d = project(
         "lint",
         "fix-format-once",
@@ -241,8 +227,6 @@ fn lint_skips_blade_and_reports_syntax_errors() {
     assert_eq!(code, Some(1));
 }
 
-/// A 20 000-term concatenation nests as deep as its terms in the syntax tree; the parser and the lint walk recurse
-/// that deep, which overflows a 2 MiB worker stack (it aborts the run).
 #[test]
 fn lint_survives_a_deep_expression() {
     let deep = format!("<?php\n\n$a = 1{};\neval('1;');\n", " . 'a'".repeat(20_000));
@@ -253,12 +237,6 @@ fn lint_survives_a_deep_expression() {
     assert_eq!(code, Some(1));
 }
 
-/// The types rules see classes in the project's other files, also when only one file is named: Rector 2.8.4's
-/// StringReturnTypeFromStrictScalarReturnsRector adds `: string` to `Child::prefix()` once it knows `Base` (in another
-/// file) has no `prefix()` to stay compatible with. A class outside the project stays unknown:
-/// AddArrowFunctionReturnTypeRector leaves `fn () => Job::go()->job` alone (Rector run on these files), where Mago
-/// types the access on `?Unknown` as `null`. A class Composer autoloads is found on demand: `Old`'s psr-0 parent in
-/// vendor/ has no `prefix()`, so Rector (with the project's vendor/autoload.php) adds `: string` there too.
 #[test]
 fn types_rules_see_the_project_classes() {
     let d = project(
@@ -312,8 +290,6 @@ fn types_rules_see_the_project_classes() {
             ),
         ],
     );
-    // `composer dump-autoload` of `{"autoload": {"classmap": ["lib/", "vendor/mapped/"]}}`, with symfony/cache's
-    // class named by the byte 0xA9; Rector types both `prefix()` methods
     std::fs::create_dir_all(d.join("vendor/composer")).unwrap();
     std::fs::write(
         d.join("vendor/composer/autoload_classmap.php"),
@@ -344,9 +320,6 @@ fn types_rules_see_the_project_classes() {
     assert_eq!(code, Some(1));
 }
 
-/// Every rule that reads facts sees the project's other files, not only the `types` rules: Rector 2.8.4's
-/// MakeInheritedMethodVisibilitySameAsParentRector (run on these two files) makes `Child::run()` protected like the
-/// `Base::run()` it overrides, from another file.
 #[test]
 fn fact_rules_see_the_project_classes() {
     let child = "<?php\n\nnamespace App;\n\nclass Child extends Base\n{\n    public function run()\n    {\n    }\n}\n";
@@ -375,7 +348,6 @@ fn fact_rules_see_the_project_classes() {
 
 #[test]
 fn native_rule_options_reach_the_rule() {
-    // `no-global` has no options (Mago's rule takes none), so options for it are a config error that names it.
     let d = project(
         "lint",
         "options",
@@ -396,7 +368,6 @@ fn native_rule_options_reach_the_rule() {
             Some(2)
         )
     );
-    // Overrides change levels only: one instance of a rule lints every file.
     std::fs::write(
         d.join("pun.toml"),
         "[format]\npreset = \"empty\"\n[lint.rules]\n\"security/no-global\" = \"error\"\n[[lint.overrides]]\nfiles = [\"a.php\"]\nrules = { \"security/no-global\" = { allow = [\"x\"] } }\n",
@@ -427,7 +398,6 @@ fn overrides_set_levels_and_name_only_ported_rules() {
     let global = "src/a.php:5:5 lint/security/no-global Unsafe use of `global` keyword.";
     let eval = "src/legacy/b.php:3:1 lint/security/no-eval Unsafe use of `eval` construct.";
     let warn = |l: &str| l.replacen(" Unsafe", " [warn] Unsafe", 1);
-    // The override turns the error into a warning for the legacy files.
     assert_eq!(
         agent(&d, &["lint"]),
         (
@@ -436,7 +406,6 @@ fn overrides_set_levels_and_name_only_ported_rules() {
             Some(0)
         )
     );
-    // `-W`/`-D` win over both, with or without the `lint/` prefix.
     assert_eq!(
         agent(
             &d,
@@ -456,7 +425,6 @@ fn overrides_set_levels_and_name_only_ported_rules() {
     );
 }
 
-/// (stdout, exit code) of `pun lint args` in `dir`, outside agent mode, with `env`.
 fn plain(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)
@@ -469,9 +437,6 @@ fn plain(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, Option<i32
     (String::from_utf8(out.stdout).unwrap(), out.status.code())
 }
 
-/// Lint problems in every report: the agent line's fix safety, PHP-CS-Fixer's json (each rule once among the
-/// file's fixers), the github format and the annotations after human output (`::error` workflow commands at the
-/// problem's line and column).
 #[test]
 fn problems_in_every_report() {
     let toml = "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"strings/no-single-argument-sprintf\" = \"error\"\n\"security/no-eval\" = \"error\"\n";
@@ -511,7 +476,6 @@ fn problems_in_every_report() {
         plain(&d, &["--format=github"], &[]),
         (annotations.clone(), Some(1))
     );
-    // Pun's github format also goes to a report file.
     assert_eq!(
         plain(
             &d,
@@ -527,13 +491,9 @@ fn problems_in_every_report() {
     assert_eq!(code, Some(1));
 }
 
-/// A token lint rule (PHP-CS-Fixer's `no_alias_functions`, `style/no-alias-function`) beside native ones: an ignore
-/// naming it is not judged unused (its problems are per file, not per line), the native problems' positions are in
-/// the file on disk (not in the code after the token rule's fix), and at `warn` it fails the run only with `--deny-warnings`.
 #[test]
 fn token_rules_beside_native_ones() {
     let toml = "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"style/no-alias-function\" = \"warn\"\n\"comments/no-unused-ignore\" = \"error\"\n\"security/no-eval\" = \"error\"\n";
-    // The unused-ignore check itself isn't judged either.
     let ignore = "<?php\n$a = 1; // @pun-ignore lint/style/no-alias-function\n$b = 2; // @pun-ignore lint/comments/no-unused-ignore\n";
     let d = project(
         "lint",
@@ -544,7 +504,6 @@ fn token_rules_beside_native_ones() {
         ],
     );
     let alias = "a.php lint/style/no-alias-function [fix:unsafe] Master functions shall be used instead of aliases.";
-    // `$n = sizeof($a); eval` has eval at column 18 on line 4; the fix to `count` would move it to 17.
     let (lines, _, code) = agent(&d, &["lint"]);
     assert_eq!(
         lines,
@@ -559,8 +518,6 @@ fn token_rules_beside_native_ones() {
     assert_eq!(agent(&d, &["lint", "--deny-warnings"]).2, Some(1));
 }
 
-/// `--dirty` picks the git-changed files (untracked ones included), narrowed to what `pun lint` checks: the Blade
-/// template is changed but never linted.
 #[test]
 fn dirty_narrows_to_the_lint_files() {
     let eval = "<?php\n\neval('1;');\n";
@@ -600,8 +557,6 @@ fn dirty_narrows_to_the_lint_files() {
     assert_eq!(code, Some(1));
 }
 
-/// Rector 2.8.4 with PHPStan 2.3.5, all four class-method rules, PHP 8.4. Only Child.php is selected for editing;
-/// the parent and trait in External.php must still protect required and used methods and resolve defaults.
 #[test]
 fn class_method_rules_see_project_declarations() {
     let external = r"<?php

@@ -1,8 +1,3 @@
-//! `lint/laravel/prefer-to-route-helper`, ported from rector-laravel 2.7.3's `RedirectRouteToToRouteHelperRector`
-//! (src/Rector/MethodCall).
-//!
-//! `redirect()->route(...)` and `Redirect::route(...)` (the facade) become `to_route(...)`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::redirect_helper;

@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-data-provider`, ported from rector-phpunit's `TestWithToDataProviderRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! In a test class, a method's generic `@testWith` (then `@testwith`) tags give way to a `@dataProvider
-//! dataProvider<Name>` tag and a public `dataProvider<Name>()` method that returns the JSON rows as an array, added
-//! as the class's first method (after its first run of properties, when that comes first). A line that is not
-//! JSON makes Rector fail on the whole file; Pun leaves such a class alone.
-
 use mago_syntax::cst::{ClassLikeMember, LiteralStringKind, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
@@ -70,8 +62,6 @@ impl Rule for PreferDataProvider {
             let mut single_line = Vec::new();
             let mut multi_line = None;
             for (i, value) in upper.into_iter().chain(lower) {
-                // Rector's change flag outlives the method, so a tag it skips may still get a provider; Pun leaves
-                // such a class alone.
                 let TagValue::Generic(value) = value else {
                     return;
                 };
@@ -86,13 +76,11 @@ impl Rule for PreferDataProvider {
                     multi_line = Some(create_array(&Value::Array(values.clone())));
                 }
                 if let [only] = &values[..] {
-                    // createArrayItem() takes an array only
                     if !matches!(only, Value::Array(_) | Value::Object(_)) {
                         return;
                     }
                     single_line.push(create_array(only));
                 }
-                // cleanup
                 removed[i] = true;
             }
             let name = data_provider_name(&String::from_utf8_lossy(method.name.value));
@@ -112,8 +100,6 @@ impl Rule for PreferDataProvider {
         let Some(span) = span else {
             return;
         };
-        // ClassInsertManipulator::addAsFirstMethod(): right after what comes before the first method, or after the last
-        // of the first run of properties, whichever comes first; each provider before the ones added already.
         let mut at = None;
         for (index, member) in members.iter().enumerate() {
             match member {
@@ -137,7 +123,6 @@ impl Rule for PreferDataProvider {
                 _ => {}
             }
         }
-        // a provider comes from a method
         let (at, indent) = at.unwrap();
         if indent.contains('\t') {
             return;
@@ -161,8 +146,6 @@ impl Rule for PreferDataProvider {
     }
 }
 
-/// `generateDataProviderName()`: `dataProvider` and the method name without its `test` prefix, its first letter
-/// upper-cased.
 fn data_provider_name(method: &str) -> String {
     let name = method.strip_prefix("test").unwrap_or(method);
     let mut chars = name.chars();
@@ -176,8 +159,6 @@ fn data_provider_name(method: &str) -> String {
     }
 }
 
-/// `Json::decode($json, forceArrays: true)`; `None` where it throws, or for an integer past 64 bits
-/// (`JSON_BIGINT_AS_STRING`), which Pun does not follow.
 fn decode(json: &str) -> Option<Value> {
     let mut digits = 0;
     for c in json.bytes() {
@@ -189,8 +170,6 @@ fn decode(json: &str) -> Option<Value> {
     serde_json::from_str(json).ok()
 }
 
-/// `createArrayItem()` for a decoded PHP array (a JSON array or object), printed: a string key as a single-quoted
-/// string, an integer key left out.
 fn create_array(value: &Value) -> String {
     let items: Vec<String> = match value.as_object() {
         Some(map) => map
@@ -200,7 +179,6 @@ fn create_array(value: &Value) -> String {
                 if is_int_key(key) {
                     value
                 } else {
-                    // a JSON key is UTF-8
                     let key =
                         print_string(LiteralStringKind::SingleQuoted, key.as_bytes()).unwrap();
                     format!("{key} => {value}")
@@ -217,7 +195,6 @@ fn create_array(value: &Value) -> String {
     format!("[{}]", items.join(", "))
 }
 
-/// Whether PHP makes the JSON object key `key` an integer key: a decimal integer without leading zeros that fits.
 fn is_int_key(key: &str) -> bool {
     let digits = key.strip_prefix('-').unwrap_or(key);
     let canonical = digits == "0" && key == "0"
@@ -226,8 +203,6 @@ fn is_int_key(key: &str) -> bool {
     canonical && key.parse::<i64>().is_ok()
 }
 
-/// `parseArrayItemValue()`: an array as [`create_array`], anything else as a constant named by its JSON
-/// (`Json::encode()`, with unescaped Unicode and slashes and a kept zero fraction).
 fn parse_array_item_value(value: &Value) -> String {
     match value {
         Value::Array(_) | Value::Object(_) => create_array(value),
@@ -241,7 +216,6 @@ fn parse_array_item_value(value: &Value) -> String {
     }
 }
 
-/// `json_encode()` of a string with `JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES`.
 fn json_string(s: &str) -> String {
     let mut out = String::from('"');
     for c in s.chars() {
@@ -263,10 +237,7 @@ fn json_string(s: &str) -> String {
     out
 }
 
-/// `json_encode()` of a float with `serialize_precision = -1` and `JSON_PRESERVE_ZERO_FRACTION`: the shortest digits
-/// that read back, in exponent form below `1.0e-4` and from `1.0e+17`, a lone digit and a whole number with `.0`.
 fn json_float(value: f64) -> String {
-    // zend_dtoa's mode 0: as few digits as read back, the closest of them (a tie to even)
     let shortest = format!("{value:e}");
     let digits = shortest
         .split('e')

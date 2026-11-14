@@ -1,8 +1,3 @@
-//! `lint/complexity/no-unused-label`, ported from Mago 1.57.0's `no-redundant-label`
-//! (mago-linter src/rule/redundancy/no_redundant_label.rs).
-//!
-//! Reports a `goto` label that no `goto` in the file jumps to.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Goto, Label, Node, NodeKind};
 use mago_syntax::walker::Walker;

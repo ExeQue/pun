@@ -1,9 +1,3 @@
-//! `lint/phpunit/add-test-void-return`, ported from Rector 2.8.4's `AddTestsVoidReturnTypeWhereNoReturnRector`
-//! (rules/TypeDeclaration/Rector/Class_).
-//!
-//! In a test class, a test method (`TestsNodeAnalyzer::isTestClassMethod()`) without a return type that is not
-//! abstract and returns no value and does not yield (`SilentVoidResolver::hasExclusiveVoid()`) gets `: void`.
-
 use mago_syntax::cst::{ClassLikeMember, MethodBody, Node, NodeKind};
 
 use super::annotations::named_tags;
@@ -46,7 +40,6 @@ impl Rule for AddTestVoidReturn {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
-            // has type already; an abstract method has no body
             let (None, MethodBody::Concrete(body)) = (&method.return_type_hint, &method.body)
             else {
                 continue;

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitConstructFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -47,7 +46,6 @@ impl Fixer for PhpUnitConstructFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         apply_fix(tokens, |tokens, start_index, end_index| {
             for assertion_method in &self.assertions {
-                // `fixAssertPositive` or `fixAssertNegative`
                 let map: [&str; 3] =
                     if assertion_method == "assertSame" || assertion_method == "assertEquals" {
                         ["assertFalse", "assertNull", "assertTrue"]
@@ -66,7 +64,6 @@ impl Fixer for PhpUnitConstructFixer {
     }
 }
 
-/// `fixAssert`; `map` holds the replacements for `false`, `null` and `true`.
 fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -> Option<usize> {
     let sequence = tokens.find_sequence(
         &[(T_STRING, method).into(), "(".into()],
@@ -91,7 +88,6 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
     let comma_index = tokens
         .get_next_meaningful_token(first_parameter_index)
         .unwrap();
-    // return if first method argument is an expression, not value
     if !tokens[comma_index].equals(",", true) {
         return Some(comma_index);
     }

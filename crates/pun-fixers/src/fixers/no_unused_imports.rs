@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\NoUnusedImportsFixer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use pun_tokens::NamespaceAnalysis;
 use crate::analyzers::constant_invocation::is_constant_invocation;
@@ -30,8 +29,6 @@ impl Fixer for NoUnusedImportsFixer {
         tokens.is_token_kind_found(Kind::T_USE)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // Upstream returns early when there are none, but a candidate's T_USE is always an import (closure and
-        // trait `use` are retokenized), so there is at least one.
         let use_declarations = NamespaceUsesAnalyzer.get_declarations_from_tokens(tokens, true);
         for namespace in NamespacesAnalyzer.get_declarations(tokens) {
             let current: Vec<&NamespaceUseAnalysis> = use_declarations
@@ -41,8 +38,6 @@ impl Fixer for NoUnusedImportsFixer {
                         && u.end_index <= namespace.scope_end_index
                 })
                 .collect();
-            // `$ignoredIndices` (use statement start => end) as a dense jump table: looked up for every token of
-            // the namespace once per import.
             let mut indices = vec![0usize; tokens.count()];
             for u in &current {
                 indices[u.start_index] = u.end_index + 1;
@@ -267,7 +262,6 @@ fn clean_up_surrounding_new_lines(tokens: &mut Tokens, u: &NamespaceUseAnalysis)
         let content = rtrim_chars(tokens[prev_index].get_content(), b" \t").to_vec();
         tokens.ensure_whitespace_at_index(prev_index, 0, &content);
     }
-    // upstream returns separately for no token after the statement and for only empty ones
     let next = if u.end_index + 1 < tokens.count() {
         tokens.get_non_empty_sibling(u.end_index, 1)
     } else {
@@ -312,7 +306,6 @@ fn remove_import_statement_if_empty(tokens: &mut Tokens, u: &NamespaceUseAnalysi
     }
 }
 
-/// Upstream first returns for non-multi imports; the only caller handles multi-import chunks.
 fn remove_line_if_empty(tokens: &mut Tokens, u: &NamespaceUseAnalysis) {
     let before =
         scan_for_non_empty_tokens_until_new_line_found(tokens, u.chunk_start_index.unwrap(), -1);
@@ -345,8 +338,6 @@ fn scan_for_non_empty_tokens_until_new_line_found(
     (None, has_non_empty)
 }
 
-/// False only when the `/i` comment pattern cannot match: an all-ASCII comment without the name in any ASCII case.
-/// (Non-ASCII text goes to the regex, whose `/iu` folding also matches e.g. the Kelvin sign for `k`.)
 fn may_mention(comment: &[u8], name: &[u8]) -> bool {
     !comment.is_ascii()
         || name.is_empty()

@@ -1,5 +1,3 @@
-//! PHPStan's PrintfParametersRule, PrintfArrayParametersRule and FilterVarRule.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -13,7 +11,6 @@ use mago_syntax::walker::MutWalker;
 
 use super::{Checker, printf_helper};
 
-/// Resolve the actual function before matching: a namespaced `sprintf` may shadow the built-in.
 pub(super) fn function_name<'arena>(
     names: &ResolvedNames<'arena>,
     codebase: &CodebaseMetadata,
@@ -31,7 +28,6 @@ pub(super) fn function_name<'arena>(
     }
 }
 
-/// Only these arguments need Mago's inference, through the existing per-file inference run.
 pub(super) fn typed_expressions<'arena>(
     names: &ResolvedNames<'arena>,
     codebase: &CodebaseMetadata,
@@ -110,9 +106,6 @@ pub(super) fn function_call<'arena>(c: &mut Checker<'_, 'arena>, call: &Function
     }
 }
 
-/// FilterVarRule: flags that hold both FILTER_NULL_ON_FAILURE and FILTER_THROW_ON_FAILURE (PHP 8.5's), in the $options
-/// argument at `position` (FilterFunctionFlagsHelper::getFlagsTypes()); the array variants take a filter specification
-/// per input key, and an integer there is the filter id, without flags.
 fn filter_var(c: &mut Checker, call: &FunctionCall, position: usize, per_key: bool) {
     let Some(options) = super::types::regex::argument(call, position, "options") else {
         return;
@@ -148,7 +141,6 @@ fn filter_var(c: &mut Checker, call: &FunctionCall, position: usize, per_key: bo
         _ => vec![options],
     };
     for flags in flags {
-        // hasFlag(): yes when every constant value has the flag, maybe without constant values
         if let Some(values) = flag_values(c, flags)
             && values
                 .iter()
@@ -165,9 +157,6 @@ fn filter_var(c: &mut Checker, call: &FunctionCall, position: usize, per_key: bo
     }
 }
 
-/// The constant integer values of `getFlagsValue()` of a flags argument: inferred integers,
-/// or an array's `flags` item (0 without one). The codebase supplies missing integer constants before inference,
-/// so bitwise expressions use the inferred result rather than a separate syntax evaluator.
 fn flag_values(c: &Checker, e: &Expression) -> Option<Vec<i64>> {
     let inferred = c.type_of(e).and_then(|t| {
         t.types
@@ -211,7 +200,6 @@ pub(super) fn piped_function<'ast, 'arena>(
     }
 }
 
-/// PipeHandler synthesizes a call with one argument, at the right-hand callable's source location.
 pub(super) fn pipe<'arena>(c: &mut Checker<'_, 'arena>, pipe: &Pipe<'arena>) {
     let Some(id) = piped_function(pipe) else {
         return;
@@ -224,7 +212,6 @@ pub(super) fn pipe<'arena>(c: &mut Checker<'_, 'arena>, pipe: &Pipe<'arena>) {
     }
 }
 
-/// PHPStan's `getConstantStrings()`: general strings and other atomics contribute no constant strings.
 fn strings(ty: &TUnion) -> impl Iterator<Item = &[u8]> {
     ty.types.iter().filter_map(|t| match t {
         TAtomic::Scalar(TScalar::String(s)) => s.get_known_literal_value(),
@@ -280,7 +267,6 @@ fn check_printf(c: &mut Checker, at: impl HasSpan, format: &Expression, name: &s
     }
 }
 
-/// PHPStan's integer range union: disjoint constant sizes stay a union, not their hull.
 fn size_union(mut sizes: Vec<(usize, usize)>) -> Option<(usize, usize)> {
     sizes.sort_unstable();
     let &(minimum, mut maximum) = sizes.first()?;
@@ -293,7 +279,6 @@ fn size_union(mut sizes: Vec<(usize, usize)>) -> Option<(usize, usize)> {
     Some((minimum, maximum))
 }
 
-/// `getConstantArrays()` and `getArraySize()` (unknown arrays cause PrintfArrayParametersRule to skip).
 fn array_size(ty: &TUnion) -> Option<(usize, usize)> {
     let sizes: Vec<_> = ty
         .types

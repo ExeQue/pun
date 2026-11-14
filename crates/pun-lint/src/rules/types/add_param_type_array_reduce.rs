@@ -1,8 +1,3 @@
-//! `lint/types/add-param-type-array-reduce`, ported from Rector 2.8.4's `AddClosureParamTypeForArrayReduceRector`
-//! (rules/TypeDeclaration/Rector/FunctionLike): the closure passed to the native `array_reduce()` gets the array's
-//! item type on its second (value) parameter, and on its first (carry) parameter the closure's return type, united
-//! with the initial value's type when one is passed.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::callable::TCallable;
 use mago_codex::ttype::atomic::object::TObject;
@@ -34,8 +29,6 @@ impl Rule for AddParamTypeArrayReduce {
         "lint/types/add-param-type-array-reduce"
     }
 
-    /// Rector types the closure in one pass: once the value parameter has its type, a second pass would type the carry
-    /// of `$carry + $item` without an initial value (`float|int`), which the first pass leaves alone.
     fn once(&self) -> bool {
         true
     }
@@ -83,15 +76,12 @@ impl Rule for AddParamTypeArrayReduce {
             && returns_carry_math_on_item(closure)
             && let Some(types) = carry.as_mut()
         {
-            // resolveCommonMath(): `TypeCombinator::union($leftNumberType, $rightNumberType)` of `mixed`'s
-            // `int|float` with the item's `int`, where the repeated `int` takes the later place: `float|int`
             types.sort_by_key(|a| !matches!(a, TAtomic::Scalar(TScalar::Float(_))));
         }
         let params: Vec<&FunctionLikeParameter<'_>> =
             closure.parameter_list.parameters.iter().collect();
         let mut edits: Vec<Edit> = Vec::new();
         if let (Some(param), Some(t)) = (params.get(1), value_type) {
-            // PHPStan keeps a docblock union in the order written, where Mago sorts it
             let order = doc_order(ctx, ancestors);
             let position = |a: &TAtomic| {
                 let name = param_declaration_unsorted(
@@ -129,7 +119,6 @@ impl Rule for AddParamTypeArrayReduce {
     }
 }
 
-/// `getType($closure)->getReturnType()`: the return type of the closure's signature.
 fn closure_return<'f>(facts: &'f Facts, closure: &Expression<'_>) -> Option<&'f TUnion> {
     let t = type_of(facts, closure)?;
     t.types.iter().find_map(|a| {
@@ -141,10 +130,6 @@ fn closure_return<'f>(facts: &'f Facts, closure: &Expression<'_>) -> Option<&'f 
     })
 }
 
-/// Whether the closure returns one of its untyped parameters, never reassigned: PHPStan's return type is then `mixed`
-/// (the parameter is `mixed`, and writing an offset keeps it so), where Mago types the parameter from
-/// `array_reduce()`'s template. PHPStan types the value parameter from the array's item type too (`TValue`), so with
-/// `value_known` only the carry counts.
 fn returns_untyped_param(closure: &Closure<'_>, value_known: bool) -> bool {
     let untyped: Vec<&[u8]> = closure
         .parameter_list
@@ -178,10 +163,6 @@ fn returns_untyped_param(closure: &Closure<'_>, value_known: bool) -> bool {
     returned.iter().any(|name| !reassigned.contains(name))
 }
 
-/// Whether the closure returns the sum of two of its untyped parameters (`$carry + $item`). Without an initial value,
-/// PHPStan types the carry from the closure's return with its parameters `mixed`, which `mixed + mixed` makes
-/// `(array|float|int)` (getPlusType()), then types the return again with the carry `array|float|int|null`, and
-/// `array + int` is an error: `mixed` to Rector, which leaves the carry alone.
 fn returns_param_sum(closure: &Closure<'_>) -> bool {
     let untyped: Vec<&[u8]> = closure
         .parameter_list
@@ -210,13 +191,10 @@ fn returns_param_sum(closure: &Closure<'_>) -> bool {
     found
 }
 
-/// Whether the item type is PHPStan's plain `IntegerType`.
 fn is_general_int(t: &TUnion) -> bool {
     matches!(t.types.as_ref(), [TAtomic::Scalar(TScalar::Integer(i))] if i.is_unspecified())
 }
 
-/// Whether the closure returns `$carry - $item` or `$carry * $item` of its untyped parameters: PHPStan's
-/// getMinusType()/getMulType() of the `mixed` carry and the item go through resolveCommonMath().
 fn returns_carry_math_on_item(closure: &Closure<'_>) -> bool {
     let params: Vec<&FunctionLikeParameter<'_>> =
         closure.parameter_list.parameters.iter().collect();
@@ -244,8 +222,6 @@ fn returns_carry_math_on_item(closure: &Closure<'_>) -> bool {
     found
 }
 
-/// `resolveFunctionLikeReflectionFromCall() instanceof NativeFunctionReflection`: `array_reduce` is PHP's own, not a
-/// function of the current namespace that shadows it.
 fn is_native(facts: &Facts, ancestors: &[Node<'_, '_>], function: &Expression<'_>) -> bool {
     if matches!(
         function,
@@ -260,7 +236,6 @@ fn is_native(facts: &Facts, ancestors: &[Node<'_, '_>], function: &Expression<'_
     })
 }
 
-/// `refactorParameter()`: the type for an untyped parameter, unless it is `mixed` or has no declaration.
 fn refactor_parameter(
     facts: &Facts,
     param: &FunctionLikeParameter<'_>,
@@ -274,8 +249,6 @@ fn refactor_parameter(
     Some(add_hint(param, &declaration))
 }
 
-/// `combineTypes([$initial, $returned])`: one type when the two are equal, else the members of both in PHPStan's
-/// `UnionTypeHelper::sortTypes` order; `None` when a union holds an intersection.
 fn combine(initial: &TUnion, returned: &TUnion) -> Option<Vec<TAtomic>> {
     if initial == returned {
         return Some(initial.types.to_vec());
@@ -293,8 +266,6 @@ fn combine(initial: &TUnion, returned: &TUnion) -> Option<Vec<TAtomic>> {
     Some(types)
 }
 
-/// `UnionTypeHelper::sortTypes`: constant scalars other than booleans first (by value), then the rest by name, then
-/// constant booleans, `null` last.
 fn sort_key(a: &TAtomic) -> (u8, i128, String) {
     match a {
         TAtomic::Null => (4, 0, String::new()),

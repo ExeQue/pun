@@ -1,5 +1,3 @@
-//! Complete PHPStan records for converter inputs, through both public Project constructors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

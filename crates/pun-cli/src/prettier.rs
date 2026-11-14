@@ -1,11 +1,6 @@
-//! Pint's EnsurePrettierIsConfigured: the JavaScript runtime and Prettier checks `Pint/laravel_blade` needs before a run.
 use crate::report::Abort;
 use std::path::Path;
 
-/// EnsurePrettierIsConfigured, run before anything else when pint.json sets `"Pint/laravel_blade": true` (or
-/// `--blade`): the JavaScript runtime (Bun for a project with a Bun lock file, else Node) must exist and prettier, prettier-plugin-blade and prettier-plugin-tailwindcss must resolve
-/// from the project at the required versions. Returns the abort (Pint's message and box) when it would abort.
-/// ponytail: Pint offers to install missing packages when interactive; Pun always takes the non-interactive "no".
 pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
     if !enabled {
         return None;
@@ -15,7 +10,6 @@ pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
         ("prettier-plugin-blade", "^3.3.3"),
         ("prettier-plugin-tailwindcss", "^0.8.1"),
     ];
-    // The preload prints the version probe before the same Node process starts loading Prettier.
     let probes = pun_fixers::prettier::probe(&REQUIRED.map(|r| r.0));
     let Some(probes) = probes else {
         let mut abort = Abort::pint(
@@ -115,10 +109,7 @@ pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
     None
 }
 
-/// Composer Semver `^x.y.z` for plain `a.b.c` versions.
-/// ponytail: pre-release/build suffixes are ignored (Composer treats them by stability); real installs are tagged releases.
 fn caret_satisfies(version: &str, base: &str) -> bool {
-    // Three parts each, missing ones 0 (`"1"` is 1.0.0), so the prefix compare below can't run past the end.
     let parse = |s: &str| -> Vec<u64> {
         let mut parts: Vec<u64> = (s.trim_start_matches('v').split(['.', '-', '+']))
             .take(3)
@@ -134,8 +125,6 @@ fn caret_satisfies(version: &str, base: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    /// npm's caret ranges, derived by hand from node-semver's rules: `^0.8.0` is `>=0.8.0 <0.9.0`, `^3.0.0` is
-    /// `>=3.0.0 <4.0.0`; a short version is padded with zeros instead of panicking.
     #[test]
     fn caret_ranges() {
         use super::caret_satisfies as ok;

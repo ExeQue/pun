@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDataProviderMethodOrderFixer`, on `OrderedClassElementsFixer`'s
-//! `getElements` and `sortTokens`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::data_provider_analyzer::get_data_providers;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -85,7 +83,6 @@ impl PhpUnitDataProviderMethodOrderFixer {
     }
 }
 
-/// `moveMethodElement`.
 fn move_method_element(
     mut elements: Vec<Element>,
     keep: &[u8],
@@ -103,8 +100,6 @@ fn move_method_element(
             }
         }
     }
-    // Upstream asserts both were found; with assertions off (a test that is its own provider leaves `$iToMove`
-    // `false`), PHP reads `false` as `0` in arithmetic and keys, and compares it with an integer as booleans.
     let keep_at = i_keep.map_or(0, |k| k as isize);
     if i_to_move.is_some_and(|m| m as isize == keep_at + if after { 1 } else { -1 }) {
         return elements;
@@ -112,26 +107,21 @@ fn move_method_element(
     let element = elements.remove(i_to_move.unwrap_or(0));
     let before = i_keep.is_some_and(|k| i_to_move.map_or(k != 0, |m| m < k));
     let c = keep_at + isize::from(after) - isize::from(before);
-    // `array_slice($elements, 0, $c)` and `array_slice($elements, $c)`: a negative `$c` counts from the end
     let len = elements.len() as isize;
     let at = (if c < 0 { len + c } else { c }).clamp(0, len);
     elements.insert(at as usize, element);
     elements
 }
 
-/// `getDataProvidersWithUsagePairs` and `getOrigUsageDataProviderOrderPairs`: (test name, provider name) pairs in
-/// the order of the tests, then of the usages' offsets.
 fn orig_usage_data_provider_order_pairs(
     tokens: &Tokens,
     start_index: usize,
     end_index: usize,
 ) -> Vec<(Vec<u8>, Vec<u8>)> {
-    // ((test name index, test name, usage offset), provider name)
     let mut pairs: Vec<((usize, Vec<u8>, usize), Vec<u8>)> = Vec::new();
     for provider in get_data_providers(tokens, start_index, end_index) {
         let mut usages: IndexMap<usize, (usize, Vec<u8>, usize)> = IndexMap::new();
         for &(usage, offset) in &provider.usage_indices {
-            // the usage's own method (`function` and its name, as `DataProviderAnalyzer` found it) comes after it
             let found = tokens
                 .find_sequence(
                     &[T_FUNCTION.into(), T_STRING.into()],

@@ -1,10 +1,3 @@
-//! `lint/phpdoc/no-mixed-overruled-by-native`, ported from Rector 2.8.4's `RemoveMixedDocblockOverruledByNativeTypeRector`
-//! (rules/DeadCode/Rector/ClassMethod).
-//!
-//! A `@param mixed $x` without a description, on a parameter with a native type, and a `@return mixed` without one,
-//! on a function or method with a native return type, say less than the code: they go from the doc comment, and the
-//! doc comment with them when nothing else is left.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -30,7 +23,6 @@ impl Rule for NoMixedOverruledByNative {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // A method's and a function's parameter list and return type are their children.
         let mut list = None;
         let mut has_return_type = false;
         node.visit_children(|child| match child {
@@ -43,7 +35,6 @@ impl Rule for NoMixedOverruledByNative {
         let Some(doc) = Doc::of(ctx, ancestors, start) else {
             return;
         };
-        // `resolveDeclaredParamNames()`: the parameters with a native type.
         let typed: Vec<&[u8]> = list
             .parameters
             .iter()
@@ -53,14 +44,12 @@ impl Rule for NoMixedOverruledByNative {
         let tags: Vec<Vec<&str>> = (0..doc.len()).map(|i| doc.words(i)).collect();
         let mut removed = vec![false; tags.len()];
         for (i, words) in tags.iter().enumerate() {
-            // `@param mixed $name`, the name without `&` and `...`, and nothing after it.
             if let ["@param", "mixed", name] = words[..]
                 && let Some(name) = name.trim_start_matches(['&', '.']).strip_prefix('$')
             {
                 removed[i] = typed.contains(&name.as_bytes());
             }
         }
-        // `getReturnTagValue()`: the first `@return` with a type; then `removeByType()` takes every one.
         let returns: Vec<usize> = (0..tags.len())
             .filter(|&i| tags[i].first() == Some(&"@return") && tags[i].len() > 1)
             .collect();

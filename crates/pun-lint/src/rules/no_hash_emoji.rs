@@ -1,8 +1,3 @@
-//! `lint/style/no-hash-emoji`, ported from Mago 1.57.0's linter rule `no-hash-emoji` (rule/clarity/no_hash_emoji.rs).
-//!
-//! A `#` comment that starts with the keycap emoji `#️⃣` (`#`, U+FE0F, U+20E3) instead of a plain `#` is reported, and
-//! the fix replaces the emoji with `#` (which also makes `#️⃣[` the attribute `#[`).
-
 use mago_syntax::cst::{Node, NodeKind, TriviaKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 

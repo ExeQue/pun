@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-yield-data-provider` over a project's codebase, which is scanned once, before the first fix
-//! round: the second round finds the class no longer where the codebase has it and leaves it as the first round left
-//! it. Without that, the stale codebase misses the call to `p11()` in the moved `testUsesP11()` and the second round
-//! changes `p11()` too. The expected code is Rector's (tests/rector/YieldDataProviderRector/Oracle/
-//! used_after_other.php.inc). Its own binary: the project codebase is process-wide, so the tests take turns.
-
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -11,7 +5,6 @@ use pun_lint::Linter;
 use pun_lint::rules::facts::{project_codebase, set_project_codebase};
 use pun_lint::rules::{PreferChainedExpect, PreferToBeTrueFalse, PreferYieldDataProvider};
 
-/// The PHP files under `dir`, recursively: `(path, code)`.
 fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
     for entry in std::fs::read_dir(dir).unwrap() {
         let path: PathBuf = entry.unwrap().path();
@@ -26,7 +19,6 @@ fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
     }
 }
 
-/// The project codebase is process-wide: one test sets it at a time.
 static PROJECT: Mutex<()> = Mutex::new(());
 
 #[test]
@@ -50,7 +42,6 @@ fn a_later_round_leaves_the_changed_class_alone() {
         .unwrap();
     set_project_codebase(None);
     assert_eq!(fixed.source, expected);
-    // the first round changed the class, the second found nothing to change
     assert_eq!(fixed.rounds, 1);
 }
 

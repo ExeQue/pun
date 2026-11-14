@@ -1,6 +1,3 @@
-//! Minimal port of `PhpCsFixer\FixerConfiguration\FixerConfigurationResolver`: option-name
-//! validation plus typed getters with upstream defaults. Allowed values/types are checked by
-//! each fixer's `configure` (it knows the upstream `setAllowedValues`/`setAllowedTypes`).
 use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
@@ -9,14 +6,11 @@ pub(crate) struct Resolved {
     map: Map<String, Value>,
 }
 
-/// The variant paired with `value`, which `string`/`strings` already checked against the names.
 fn variant<T: Copy>(choices: &[(&str, T)], value: &str) -> T {
     choices.iter().find(|&&(name, _)| name == value).unwrap().1
 }
 
-/// `Null` (rule enabled with `true`) means "all defaults". Unknown keys are rejected like upstream.
 pub(crate) fn resolve(fixer: &'static str, options: &Value, defined: &[&str]) -> Result<Resolved> {
-    // RuleSet / FixerFactory::useRuleSet checks, done before configure() upstream.
     let map = match options {
         Value::Null => Map::new(),
         Value::Object(o) if !o.is_empty() => o.clone(),
@@ -57,12 +51,10 @@ pub(crate) fn resolve(fixer: &'static str, options: &Value, defined: &[&str]) ->
     Ok(Resolved { fixer, map })
 }
 
-/// Symfony OptionsResolver's `formatValue`: strings quoted, arrays as `array`.
 fn format_value(v: &Value) -> String {
     match v {
         Value::String(s) => format!("\"{s}\""),
         Value::Array(_) | Value::Object(_) => "array".into(),
-        // json_decode makes a number beyond the int range a float.
         Value::Number(n) if !n.is_i64() => {
             pun_tokens::php_compat::float_to_string(n.as_f64().unwrap())
         }
@@ -70,7 +62,6 @@ fn format_value(v: &Value) -> String {
     }
 }
 
-/// PHP `get_debug_type` of a decoded JSON value.
 fn debug_type(v: &Value) -> &'static str {
     match v {
         Value::Null => "null",
@@ -82,7 +73,6 @@ fn debug_type(v: &Value) -> &'static str {
     }
 }
 
-/// A PHP array key: json_decode turns a canonical decimal-integer string key that fits an int into an int key.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum PhpKey<'a> {
     Int(i64),
@@ -99,7 +89,6 @@ impl std::fmt::Display for PhpKey<'_> {
 }
 
 impl PhpKey<'_> {
-    /// `gettype($key).'#'.$key`, as upstream's option validators print a key.
     pub(crate) fn typed(&self) -> String {
         match self {
             PhpKey::Int(i) => format!("integer#{i}"),
@@ -108,8 +97,6 @@ impl PhpKey<'_> {
     }
 }
 
-/// The entries of a value that is a PHP array (a JSON list keyed 0..n, or an object), in order. Panics on any other
-/// value, so call it on options `check_types` has accepted as arrays.
 pub(crate) fn php_array(v: &Value) -> Vec<(PhpKey<'_>, &Value)> {
     match v {
         Value::Object(o) => o
@@ -141,7 +128,6 @@ impl Resolved {
         )
     }
 
-    /// `setAllowedTypes` failure, e.g. `"bool" or "null"`.
     pub(crate) fn type_error(&self, key: &str, v: &Value, expected: &str) -> anyhow::Error {
         self.error(
             key,
@@ -153,12 +139,10 @@ impl Resolved {
         )
     }
 
-    /// `setAllowedValues` failure: the accepted values are listed unless the check is a closure (`allowed` empty).
     pub(crate) fn invalid(&self, key: &str, v: &Value, allowed: &[&str]) -> anyhow::Error {
         self.invalid_listed(key, v, allowed, false)
     }
 
-    /// `setAllowedValues` failure for a nullable option: the list ends with `null`.
     pub(crate) fn invalid_or_null(&self, key: &str, v: &Value, allowed: &[&str]) -> anyhow::Error {
         self.invalid_listed(key, v, allowed, true)
     }
@@ -178,7 +162,6 @@ impl Resolved {
         )
     }
 
-    /// `php_array` of an option `check_types` accepted as an array; `None` when it is not set.
     pub(crate) fn php_array(&self, key: &str) -> Option<Vec<(PhpKey<'_>, &Value)>> {
         self.map.get(key).map(php_array)
     }
@@ -195,7 +178,6 @@ impl Resolved {
         }
     }
 
-    /// A string restricted to `allowed` (`setAllowedValues`), or any string when `allowed` is empty (`setAllowedTypes(['string'])`).
     pub(crate) fn string(&self, key: &str, default: &str, allowed: &[&str]) -> Result<String> {
         match self.map.get(key) {
             None => Ok(default.to_string()),
@@ -207,8 +189,6 @@ impl Resolved {
         }
     }
 
-    /// `string` for an option whose allowed values stand for enum variants: the variant paired with the value.
-    /// `choices` keeps upstream's order of allowed values, which the error message lists.
     pub(crate) fn choice<T: Copy>(
         &self,
         key: &str,
@@ -220,7 +200,6 @@ impl Resolved {
         Ok(variant(choices, &value))
     }
 
-    /// `strings` restricted to `choices`: the variant of each configured value, in order.
     pub(crate) fn choices<T: Copy>(
         &self,
         key: &str,
@@ -232,7 +211,6 @@ impl Resolved {
         Ok(values.iter().map(|v| variant(choices, v)).collect())
     }
 
-    /// `bool|null` options (e.g. yoda_style's `equal`).
     pub(crate) fn opt_bool(&self, key: &str, default: Option<bool>) -> Result<Option<bool>> {
         match self.map.get(key) {
             None => Ok(default),
@@ -242,7 +220,6 @@ impl Resolved {
         }
     }
 
-    /// A `string[]`, each item in `allowed` (an `AllowedValueSubset`; empty = any). JSON objects count as PHP arrays.
     pub(crate) fn strings(
         &self,
         key: &str,
@@ -271,8 +248,6 @@ impl Resolved {
         Ok(items)
     }
 
-    /// Symfony OptionsResolver's `setAllowedTypes` check (`verifyTypes`) for scalar/array types such as
-    /// `["int", "int[]"]` or `["string[][]"]`; Ok when the option is absent or matches one of `types`.
     pub(crate) fn check_types(&self, key: &str, types: &[&str]) -> Result<()> {
         let Some(v) = self.map.get(key) else {
             return Ok(());

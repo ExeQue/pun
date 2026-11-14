@@ -1,6 +1,3 @@
-//! Helpers the rules of lint 7 batch 5 share: an `if` replaced by the statements of one of its branches, PHP
-//! version values as Rector reads them, and a few class-member lookups.
-
 use mago_syntax::cst::*;
 use pun_problem::Edit;
 use pun_tokens::php_compat::intval;
@@ -16,9 +13,6 @@ use super::rector_stmts::{
 };
 use crate::syntax::{node_span, unparenthesize};
 
-/// The edits for Rector's `refactor()` returning `stmts` in place of the statement `statement` (whose parent
-/// `ancestors` ends with): the statement removed when `stmts` is empty (`NodeVisitor::REMOVE_NODE`), else replaced
-/// by them, moved to its indent.
 pub(crate) fn replace_with<'a>(
     ctx: &crate::Context<'_>,
     statement: &'a Statement<'a>,
@@ -28,7 +22,6 @@ pub(crate) fn replace_with<'a>(
 ) -> Vec<Edit> {
     let source = ctx.source;
     let (list, index) = enclosing(source, statement, ancestors);
-    // Other statements of the list the rule changes in the same pass make php-parser's diff of the list differ.
     let alone = list
         .stmts
         .iter()
@@ -40,8 +33,6 @@ pub(crate) fn replace_with<'a>(
     let span = node_span(list.stmts[index]);
     let indent = line_indent(source, span.start);
     if list.frame == Frame::Bare && stmts.len() > 1 {
-        // php-parser prints the statements the single statement of a control structure becomes in braces, after the
-        // header at the control structure's indent; one statement takes its place.
         let from = source[..span.start].trim_end().len();
         let outer = line_indent(source, from);
         let inner = format!("{outer}    ");
@@ -53,9 +44,6 @@ pub(crate) fn replace_with<'a>(
     }
     let text = inserted_statements(ctx, stmts, indent);
     if alone && stmts.len() > 1 {
-        // php-parser's differ sees one removal and several additions (not a replacement), and pArray drops the
-        // removed statement with its comments and the whitespace on one side: after it when it is first (the
-        // additions wait for the next kept statement), before it otherwise.
         if index > 0 {
             let from = list.before(ctx, index);
             return vec![Edit::new(
@@ -72,8 +60,6 @@ pub(crate) fn replace_with<'a>(
     vec![Edit::new(span, text)]
 }
 
-/// A value `ValueResolver::getValue` reads from the syntax alone: a literal, a negated number, or the name of a
-/// constant other than `true`, `false` and `null`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Value {
     Null,
@@ -116,7 +102,6 @@ pub(crate) fn value(expr: &Expression<'_>) -> Option<Value> {
     })
 }
 
-/// `PhpVersionFactory::createIntVersion`.
 pub(crate) fn int_version(version: &str) -> i64 {
     let version = version.split('-').next().unwrap_or(version);
     let parts: Vec<&str> = version.split('.').collect();
@@ -126,7 +111,6 @@ pub(crate) fn int_version(version: &str) -> i64 {
     intval(version)
 }
 
-/// The first method of a class named `name`, ignoring ASCII case (`Class_::getMethod`).
 pub(crate) fn method<'a>(
     members: &'a Sequence<'a, ClassLikeMember<'a>>,
     name: &[u8],
@@ -137,10 +121,6 @@ pub(crate) fn method<'a>(
     })
 }
 
-/// The edits php-parser's format-preserving printer makes to remove the items `removed` flags from a comma-separated
-/// list whose items span `items` (`pArray`): an item after a kept one goes with the text from the end of the item
-/// before it, the items before the first kept one go with the text up to it. `None` when every item goes: php-parser
-/// then prints the list's parent anew.
 pub(crate) fn list_removal(items: &[Span], removed: &[bool]) -> Option<Vec<Edit>> {
     let first_kept = removed.iter().position(|r| !r)?;
     let mut edits = Vec::new();
@@ -158,7 +138,6 @@ pub(crate) fn list_removal(items: &[Span], removed: &[bool]) -> Option<Vec<Edit>
     Some(merge(edits))
 }
 
-/// `edits`, sorted, with the edits that touch joined into one (a fix's edits must not touch).
 pub(crate) fn merge(mut edits: Vec<Edit>) -> Vec<Edit> {
     edits.sort_by_key(|e| (e.span.start, e.span.end));
     let mut out: Vec<Edit> = Vec::new();
@@ -174,8 +153,6 @@ pub(crate) fn merge(mut edits: Vec<Edit>) -> Vec<Edit> {
     out
 }
 
-/// The doc comment php-parser gives the node at `start`, whose previous token ends at or before `from`: the last
-/// comment before the node, when that comment is a `/** */` one.
 pub(crate) fn doc_comment(source: &str, from: usize, start: usize) -> Option<Span> {
     let last = tokens(source, from, start)
         .into_iter()
@@ -183,8 +160,6 @@ pub(crate) fn doc_comment(source: &str, from: usize, start: usize) -> Option<Spa
     (last.kind == TokenKind::DocBlockComment).then(|| Span::new(last.start, last.end))
 }
 
-/// Where the member at `index` of a class body may have its comments from: the end of the member before it, or the
-/// class's `{`.
 pub(crate) fn member_from(
     members: &Sequence<'_, ClassLikeMember<'_>>,
     left_brace: mago_span::Span,
@@ -196,16 +171,12 @@ pub(crate) fn member_from(
     }
 }
 
-/// The doc comment `doc` without the `@param` tags of the parameters `names` (with their `$`), as Rector's phpdoc
-/// printer removes a tag node (`PhpDocTagRemover`, printed by [`Doc::print`]). `Some("")` when nothing is left, which
-/// Rector prints as no doc comment; `None` when no tag goes.
 pub(crate) fn doc_without_params(doc: &str, names: &[&[u8]]) -> Option<String> {
     doc_without_tags(doc, |tag| {
         param_tag_name(tag).is_some_and(|name| names.contains(&name))
     })
 }
 
-/// [`doc_without_params`] for the tags `remove` picks by their text (from the `@` to the end of their description).
 pub(crate) fn doc_without_tags(doc: &str, remove: impl Fn(&str) -> bool) -> Option<String> {
     let parsed = Doc::parse(doc)?;
     let removed: Vec<bool> = (0..parsed.len())
@@ -220,7 +191,6 @@ pub(crate) fn doc_without_tags(doc: &str, remove: impl Fn(&str) -> bool) -> Opti
     Some(parsed.print(&removed))
 }
 
-/// The parameter a `@param` tag names, with its `$`.
 fn param_tag_name(tag: &str) -> Option<&[u8]> {
     let rest = tag.strip_prefix("@param")?;
     if !rest.starts_with([' ', '\t']) {
@@ -245,7 +215,6 @@ fn param_tag_name(tag: &str) -> Option<&[u8]> {
 
 type IsModifier = fn(&Modifier<'_>) -> bool;
 
-/// php-parser's `pModifiers`: the modifiers in its order, each followed by a space.
 pub(crate) fn modifiers_text(modifiers: &Sequence<'_, Modifier<'_>>) -> String {
     let order: [(IsModifier, &str); 8] = [
         (|m| matches!(m, Modifier::Final(_)), "final "),
@@ -272,8 +241,6 @@ pub(crate) fn modifiers_text(modifiers: &Sequence<'_, Modifier<'_>>) -> String {
         .collect()
 }
 
-/// `pStmt_ClassMethod` for a method whose parameters all go: php-parser prints the method anew (its attributes,
-/// return type and statements keep their code; blank lines between the statements go).
 pub(crate) fn method_without_params(ctx: &crate::Context<'_>, method: &Method<'_>) -> String {
     let source = ctx.source;
     let span = node_span(method);
@@ -308,7 +275,6 @@ pub(crate) fn method_without_params(ctx: &crate::Context<'_>, method: &Method<'_
     out
 }
 
-/// The statements of the namespace that holds the node `ancestors` leads to, or of the file without one.
 pub(crate) fn scope_statements<'a>(
     ancestors: &[Node<'a, 'a>],
 ) -> (Option<String>, Vec<&'a Statement<'a>>) {
@@ -331,8 +297,6 @@ pub(crate) fn scope_statements<'a>(
     }
 }
 
-/// php-parser's `NameResolver` for a class name written at the node `ancestors` leads to: the fully qualified name,
-/// without its leading `\`, through the `use` imports and the namespace.
 pub(crate) fn resolve_class_name(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> String {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     if let Some(fq) = written.strip_prefix('\\') {
@@ -347,8 +311,6 @@ pub(crate) fn resolve_class_name(ancestors: &[Node<'_, '_>], name: &Identifier<'
     }
 }
 
-/// The name `written` (not fully qualified) resolved through a class `use` import of the scope, if one imports its
-/// first part.
 pub(crate) fn imported(ancestors: &[Node<'_, '_>], written: &str) -> Option<String> {
     let (first, rest) = match written.split_once('\\') {
         Some((first, rest)) => (first, Some(rest)),
@@ -390,14 +352,10 @@ pub(crate) fn imported(ancestors: &[Node<'_, '_>], written: &str) -> Option<Stri
     None
 }
 
-/// The function a `use function` import of the scope gives the local name `local` (case-insensitive), without its
-/// leading `\\`.
 pub(crate) fn imported_function(ancestors: &[Node<'_, '_>], local: &[u8]) -> Option<String> {
     imported_member(ancestors, local, true)
 }
 
-/// The function (`function`) or constant a `use function` / `use const` import of the scope gives `local`: function
-/// names compare without case, constant names with it.
 pub(crate) fn imported_member(
     ancestors: &[Node<'_, '_>],
     local: &[u8],
@@ -455,9 +413,6 @@ pub(crate) fn imported_member(
     None
 }
 
-/// A constant name resolved as `mago-names` does: a fully qualified name without its `\\`, an unqualified one through a
-/// `use const` import or else into the namespace, a qualified one through a class `use` import of its first part or
-/// else into the namespace.
 pub(crate) fn resolve_constant_name(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> String {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     if let Some(fq) = written.strip_prefix('\\') {
@@ -476,8 +431,6 @@ pub(crate) fn resolve_constant_name(ancestors: &[Node<'_, '_>], name: &Identifie
     }
 }
 
-/// The name Mago's linter matches a called function by (`function_call_matches`): an unqualified name imported with
-/// `use function` is its import, any other name is as written, without a leading `\\`.
 pub(crate) fn called_function_name(
     ancestors: &[Node<'_, '_>],
     function: &Expression<'_>,
@@ -494,7 +447,6 @@ pub(crate) fn called_function_name(
     Some(written.trim_start_matches('\\').to_string())
 }
 
-/// `PhpAttributeAnalyzer::hasPhpAttribute`: whether one of the attribute lists names the class `name`.
 pub(crate) fn has_attribute(
     ancestors: &[Node<'_, '_>],
     lists: &Sequence<'_, AttributeList<'_>>,
@@ -507,9 +459,6 @@ pub(crate) fn has_attribute(
     })
 }
 
-/// `ParamAnalyzer::isParamUsedInClassMethod`: a promoted parameter, or one whose variable the method's statements
-/// use (outside nested functions and classes, the arguments of a `new class(...)` included), a `compact()` naming it,
-/// or a call to `func_get_arg()`, `func_get_args()`, `func_num_args()` or `get_defined_vars()`.
 pub(crate) fn param_used(method: &Method<'_>, param: &FunctionLikeParameter<'_>) -> bool {
     if !param.modifiers.is_empty() {
         return true;
@@ -563,8 +512,6 @@ fn uses_param(node: Node<'_, '_>, name: &[u8]) -> bool {
     found
 }
 
-/// The edits that remove the parameters `removed` flags from `method`, whose comments may start at `from`, with
-/// their `@param` tags: a list removal, or the method printed anew when every parameter goes.
 pub(crate) fn remove_params(
     ctx: &crate::Context<'_>,
     method: &Method<'_>,
@@ -598,10 +545,6 @@ pub(crate) fn remove_params(
     merge(edits)
 }
 
-/// The edits php-parser's format-preserving printer makes to remove the items `removed` flags from a statement-like
-/// list (statements, class members): `spans` are the items, `froms` the end of the token before each. An item after
-/// a kept one goes with the comments and blanks before it; the items before the first kept one go with the blanks
-/// after them, up to the first kept item's comments. `None` when every item goes.
 pub(crate) fn remove_items(
     source: &str,
     spans: &[Span],
@@ -626,8 +569,6 @@ pub(crate) fn remove_items(
     Some(merge(edits))
 }
 
-/// [`remove_items`] for the statements of a list, with the empty list printed as [`remove`] prints it, and a
-/// trailing `Nop` kept as the last item.
 pub(crate) fn remove_statements(
     ctx: &crate::Context<'_>,
     list: &List<'_>,
@@ -651,8 +592,6 @@ pub(crate) fn remove_statements(
     }
 }
 
-/// [`remove_items`] for the members of a class body between `left_brace` and `right_brace`; an emptied body prints
-/// as `{`, a newline and `}` at the indent of the line of `{`.
 pub(crate) fn remove_members(
     source: &str,
     members: &Sequence<'_, ClassLikeMember<'_>>,
@@ -677,12 +616,6 @@ pub(crate) fn remove_members(
     }
 }
 
-/// The edits for Rector's replacing the statements `start..=end` of `list` by one new statement `code` (at the list's
-/// indent), as php-parser's `pArray` prints that diff: one statement replaced in place keeps the blanks before it
-/// and drops its comments; several go with the blanks and comments before them, and the new statement follows the
-/// kept one before them on a line of its own. With nothing kept the list's block is printed anew. `None` where Pun
-/// does not know php-parser's output (a list without braces left empty, or statements removed from its start ahead of
-/// kept ones).
 pub(crate) fn replace_run(
     ctx: &crate::Context<'_>,
     list: &List<'_>,
@@ -718,7 +651,6 @@ pub(crate) fn replace_run(
     )])
 }
 
-/// The statements of a `foreach`.
 pub(crate) fn foreach_list<'a>(source: &str, foreach: &'a Foreach<'a>) -> Option<List<'a>> {
     match &foreach.body {
         ForeachBody::Statement(statement) => Some(body_list(source, statement)),
@@ -728,10 +660,6 @@ pub(crate) fn foreach_list<'a>(source: &str, foreach: &'a Foreach<'a>) -> Option
     }
 }
 
-/// Whether PHPStan's native type of `expr`, where `ancestors` leads, is an array, decided from the syntax alone: an
-/// array literal; `$this->name` of a property declared `array`; a parameter declared `array` (without a `null`
-/// default) that the function never writes; or a local variable whose every write is an array literal or an
-/// array element.
 pub(crate) fn native_array(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     match unparenthesize(expr) {
         Expression::Array(_) | Expression::LegacyArray(_) => true,
@@ -756,9 +684,11 @@ pub(crate) fn native_array(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) ->
                     matches!(p.hint, Some(Hint::Array(_)))
                         && p.ampersand.is_none()
                         && p.ellipsis.is_none()
-                        // `null` in any case is a literal.
                         && !p.default_value.as_ref().is_some_and(|d| {
-                            matches!(unparenthesize(d.value), Expression::Literal(Literal::Null(_)))
+                            matches!(
+                                unparenthesize(d.value),
+                                Expression::Literal(Literal::Null(_))
+                            )
                         })
                         && writes == Some(0)
                 }
@@ -769,12 +699,10 @@ pub(crate) fn native_array(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) ->
     }
 }
 
-/// Whether the class around `ancestors` declares the property `name` with the type `array`.
 fn array_property(ancestors: &[Node<'_, '_>], name: &[u8]) -> bool {
     let members = ancestors.iter().rev().find_map(|n| match n {
         Node::Class(c) => Some(&c.members),
         Node::AnonymousClass(c) => Some(&c.members),
-        // A trait's methods run without a class in Rector's scope, so PHPStan knows no property type there.
         _ => None,
     });
     let Some(members) = members else { return false };
@@ -794,7 +722,6 @@ fn array_property(ancestors: &[Node<'_, '_>], name: &[u8]) -> bool {
     })
 }
 
-/// The parameters and body of the nearest function-like node around `ancestors`.
 fn function_like<'a>(
     ancestors: &[Node<'a, 'a>],
 ) -> Option<(&'a FunctionLikeParameterList<'a>, Node<'a, 'a>)> {
@@ -806,15 +733,11 @@ fn function_like<'a>(
             },
         ) => Some((&m.parameter_list, Node::Block(b))),
         Node::Function(f) => Some((&f.parameter_list, Node::Block(&f.body))),
-        // An arrow function holds no statement, so no `foreach` asks from inside one.
         Node::Closure(c) => Some((&c.parameter_list, Node::Block(&c.body))),
         _ => None,
     })
 }
 
-/// The number of writes of an array literal to the variable `name` in `node` (outside nested function-likes and
-/// classes), `None` when another write may change its type: any other assignment, a reference to it, a `foreach`,
-/// `list()`, `global` or `static` target, `unset()`, a closure's `use`, or any assignment to a variable variable.
 fn variable_writes(node: Node<'_, '_>, name: &[u8]) -> Option<usize> {
     let is_var = |e: &Expression<'_>| matches!(unparenthesize(e), Expression::Variable(Variable::Direct(v)) if v.name == name);
     let mut count = 0;
@@ -841,7 +764,6 @@ fn variable_writes(node: Node<'_, '_>, name: &[u8]) -> Option<usize> {
                 return None;
             }
         }
-        // PHPStan 2.3's `assignDynamicVariable` widens every defined variable the name may be.
         Node::Assignment(a)
             if matches!(
                 unparenthesize(a.lhs),
@@ -905,7 +827,6 @@ fn variable_writes(node: Node<'_, '_>, name: &[u8]) -> Option<usize> {
     (!failed).then_some(count)
 }
 
-/// Whether `node` holds the variable `name`.
 fn uses_variable(node: Node<'_, '_>, name: &[u8]) -> bool {
     if let Node::DirectVariable(v) = node {
         return v.name == name;
@@ -921,13 +842,11 @@ mod tests {
 
     #[test]
     fn int_version_is_php_version_factory() {
-        // PhpVersionFactory::createIntVersion: major * 10000 + minor * 100, the patch level ignored.
         assert_eq!(int_version("7.2"), 70200);
         assert_eq!(int_version("8.1.12"), 80100);
         assert_eq!(int_version("8.3-dev"), 80300);
         assert_eq!(int_version("80100"), 80100);
         assert_eq!(int_version("x"), 0);
-        // explode('-') keeps " ", and (int) " " is 0.
         assert_eq!(int_version(" -5"), 0);
         assert_eq!(int_version(" 7"), 7);
         assert_eq!(int_version("+7.4"), 70400);

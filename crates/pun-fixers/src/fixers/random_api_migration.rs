@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\RandomApiMigrationFixer` (v3 defaults: `Future::getV4OrV3` outside future mode).
 use crate::analyzers::abstract_function_reference_fixer::{FunctionReferenceFinder, IS_RISKY};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -19,7 +18,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `ARGUMENT_COUNTS`.
 fn argument_counts(function: &str) -> Option<&'static [usize]> {
     Some(match function {
         "mt_getrandmax" | "getrandmax" => &[0],

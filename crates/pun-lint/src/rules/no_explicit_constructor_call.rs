@@ -1,8 +1,3 @@
-//! `lint/classes/no-explicit-constructor-call`, ported from phpstan-strict-rules 2.0.12's
-//! `IllegalConstructorMethodCallRule` (identifier `constructor.call`). `$object->__construct(...)` and
-//! `$object?->__construct(...)` (PHPStan runs its `MethodCall` rules on a nullsafe call too), in any case, are
-//! reported; a first-class callable (`$object->__construct(...)` with `...`) is another node type upstream and is not.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Node, NodeKind};
 
 use crate::syntax::node_span;

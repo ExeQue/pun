@@ -1,12 +1,3 @@
-//! DateTimeInstantiationRule (level 5): `new DateTime()` or `new DateTimeImmutable()` with a constant string whose
-//! parse reports errors. PHPStan runs the constructor and reads `DateTime::getLastErrors()['errors']`; this ports
-//! what that runs, PHP 8.5's `php_date_initialize()` over timelib 2022.17's `timelib_strtotime()` (parse_date.re).
-//!
-//! The re2c scanner is its rules as regular expressions, matched like re2c does: the longest match, the earliest rule
-//! on a tie. The actions keep only the state an error depends on: the have-time/date/zone counters and the relative
-//! offsets whose overflow is an error. Timezone identifiers are the system PHP's (`date_time_zones.txt`,
-//! `DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC)`, matched case-insensitively as its database does).
-
 use std::sync::OnceLock;
 
 use mago_syntax::cst::*;
@@ -51,12 +42,10 @@ pub(super) fn instantiation(c: &mut Checker, new: &Instantiation) {
     }
 }
 
-/// `DateTime::getLastErrors()['errors']` after `new DateTime($time)`: an empty string is "now".
 fn construct(time: &[u8]) -> Vec<&'static str> {
     if time.is_empty() {
         return Vec::new();
     }
-    // php_date.c: zval_from_error_container() keys the errors by position, so a later one replaces an earlier one
     let mut errors: Vec<(usize, &'static str)> = Vec::new();
     for (position, message) in strtotime(time) {
         match errors.iter_mut().find(|(p, _)| *p == position) {
@@ -67,17 +56,13 @@ fn construct(time: &[u8]) -> Vec<&'static str> {
     errors.into_iter().map(|(_, m)| m).collect()
 }
 
-/// C's `isspace()` in the C locale.
 fn is_space(b: u8) -> bool {
     matches!(b, b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
 }
 
-/// re2c's `YYMAXFILL`: the scanner's buffer is the string and this many NUL bytes.
 const YYMAXFILL: usize = 36;
-/// `TIMELIB_MAX_ERRORS`.
 const MAX_ERRORS: usize = 1000;
 
-/// `timelib_strtotime()`'s errors, with their positions.
 fn strtotime(time: &[u8]) -> Vec<(usize, &'static str)> {
     let (mut start, mut end) = (0, time.len() - 1);
     while start <= end && is_space(time[start]) {
@@ -94,7 +79,6 @@ fn strtotime(time: &[u8]) -> Vec<(usize, &'static str)> {
     buffer.resize(len + YYMAXFILL, 0);
     let mut s = Scanner::default();
     let mut cursor = 0;
-    // YYFILL returns EOI once fewer than YYMAXFILL bytes are left at a token's start
     while cursor <= len {
         let (rule, end) = longest(&buffer, cursor);
         s.tok = cursor;
@@ -104,16 +88,13 @@ fn strtotime(time: &[u8]) -> Vec<(usize, &'static str)> {
     s.errors
 }
 
-/// The scanner's state that its errors depend on.
 #[derive(Default)]
 struct Scanner {
-    /// The start of the token being scanned (`s->tok`), where its errors are.
     tok: usize,
     errors: Vec<(usize, &'static str)>,
     have_time: i64,
     have_date: bool,
     have_zone: i64,
-    /// `relative.y`, `m`, `d`, `h`, `i`, `s` and `us`: adding to one beyond 64 bits is an error.
     relative: [i64; 7],
 }
 
@@ -125,7 +106,6 @@ const MINUTE: usize = 4;
 const SECOND: usize = 5;
 const MICROSECOND: usize = 6;
 
-/// A `const char *` into a token: reading at or past its end gives the terminating NUL.
 struct Ptr<'a> {
     s: &'a [u8],
     i: usize,
@@ -141,7 +121,6 @@ impl Ptr<'_> {
     }
 }
 
-/// What `timelib_set_relative()` does with a unit.
 #[derive(Clone, Copy)]
 enum Unit {
     Relative(usize, i64),
@@ -149,7 +128,6 @@ enum Unit {
     Special,
 }
 
-/// `timelib_relunit_lookup`.
 const RELUNITS: &[(&[u8], Unit)] = &[
     (b"ms", Unit::Relative(MICROSECOND, 1000)),
     (b"msec", Unit::Relative(MICROSECOND, 1000)),
@@ -210,7 +188,6 @@ const RELUNITS: &[(&[u8], Unit)] = &[
     (b"weekdays", Unit::Special),
 ];
 
-/// `timelib_reltext_lookup`: a word's amount (0 when it is none of them).
 const RELTEXT: &[(&[u8], i64)] = &[
     (b"first", 1),
     (b"next", 1),
@@ -231,7 +208,6 @@ const RELTEXT: &[(&[u8], i64)] = &[
     (b"this", 0),
 ];
 
-/// The abbreviations of timezonemap.h, with abbr_search()'s "utc" and "gmt".
 const ABBREVIATIONS: &[&str] = &[
     "a", "acdt", "acst", "addt", "adt", "aedt", "aest", "ahdt", "ahst", "akdt", "akst", "amt",
     "apt", "ast", "awdt", "awst", "awt", "b", "bdst", "bdt", "bmt", "bst", "c", "cast", "cat",
@@ -253,7 +229,6 @@ impl Scanner {
         }
     }
 
-    /// `TIMELIB_HAVE_TIME()`: false (and an error) when the time is already set.
     fn have_time(&mut self) -> bool {
         if self.have_time != 0 {
             self.add_error("Double time specification");
@@ -263,7 +238,6 @@ impl Scanner {
         true
     }
 
-    /// `TIMELIB_HAVE_DATE()`.
     fn have_date(&mut self) -> bool {
         if self.have_date {
             self.add_error("Double date specification");
@@ -273,7 +247,6 @@ impl Scanner {
         true
     }
 
-    /// `TIMELIB_HAVE_TZ()`: a second zone is a warning, a third one an error.
     fn have_tz(&mut self) -> bool {
         self.have_zone += 1;
         if self.have_zone > 2 {
@@ -282,7 +255,6 @@ impl Scanner {
         self.have_zone == 1
     }
 
-    /// `timelib_get_signed_nr()`.
     fn get_signed_nr(&mut self, p: &mut Ptr, max_length: usize) -> i64 {
         while !p.c().is_ascii_digit() && p.c() != b'+' && p.c() != b'-' {
             if p.c() == 0 {
@@ -310,7 +282,6 @@ impl Scanner {
             p.i += 1;
             length += 1;
         }
-        // strtoll()'s ERANGE
         match i64::try_from(if negative { -number } else { number }) {
             Ok(n) => n,
             Err(_) => {
@@ -320,7 +291,6 @@ impl Scanner {
         }
     }
 
-    /// `add_with_overflow()`.
     fn add_relative(&mut self, field: usize, amount: i64, multiplier: i64) {
         let (sum, overflow) = self.relative[field].overflowing_add(amount.wrapping_mul(multiplier));
         self.relative[field] = sum;
@@ -329,7 +299,6 @@ impl Scanner {
         }
     }
 
-    /// `timelib_set_relative()`; `keep_time` is `TIMELIB_TIME_PART_KEEP`.
     fn set_relative(&mut self, p: &mut Ptr, amount: i64, keep_time: bool) {
         let begin = p.i;
         while !matches!(
@@ -362,7 +331,6 @@ impl Scanner {
         }
     }
 
-    /// The action of the rule matched on `token`.
     fn action(&mut self, rule: Rule, token: &[u8]) {
         let mut p = Ptr { s: token, i: 0 };
         match rule {
@@ -385,7 +353,6 @@ impl Scanner {
                     let negative = token.get(1) == Some(&b'-');
                     let before = p.i;
                     let us = self.get_signed_nr(&mut p, 6);
-                    // `us * pow(10, 7 - (ptr - ptr_before))`, into an unsigned 64-bit integer
                     let scaled = (us as f64 * 10f64.powi(7 - (p.i - before) as i32)) as i64;
                     self.relative[MICROSECOND] = if negative {
                         scaled.wrapping_neg()
@@ -399,7 +366,6 @@ impl Scanner {
                 eat_spaces(&mut p);
                 self.set_relative(&mut p, amount, false);
             }
-            // the time tokens hold no zone, so their zone parse never runs
             Rule::Time => {
                 self.have_time();
             }
@@ -418,7 +384,6 @@ impl Scanner {
                     self.get_signed_nr(&mut p, if rule == Rule::IsoDateX { 19 } else { 4 });
                 }
             }
-            // a zone in these tokens is an offset, which is always found
             Rule::DateTime => {
                 if self.have_time() {
                     self.have_date();
@@ -494,12 +459,10 @@ impl Scanner {
     }
 }
 
-/// `timelib_parse_zone()`: whether the zone is not found.
 fn zone_not_found(p: &mut Ptr) -> bool {
     while matches!(p.c(), b' ' | b'\t' | b'(') {
         p.i += 1;
     }
-    // timelib_parse_tz_cor() accepts every offset the scanner's tzcorrection matches
     if matches!(p.c(), b'+' | b'-')
         || p.s[p.i..].starts_with(b"GMT") && matches!(p.at(3), b'+' | b'-')
     {
@@ -510,23 +473,19 @@ fn zone_not_found(p: &mut Ptr) -> bool {
         p.i += 1;
     }
     let word = &p.s[begin..p.i];
-    // MAX_ABBR_LEN is glibc's _POSIX_TZNAME_MAX, 6
     let abbreviation = word.len() < 6
         && ABBREVIATIONS
             .iter()
             .any(|a| a.as_bytes().eq_ignore_ascii_case(word));
-    // an abbreviation is found whatever the database has (it is looked up too for "UTC")
     !abbreviation && !is_zone_identifier(word)
 }
 
-/// Whether the timezone database has `name`, compared case-insensitively.
 fn is_zone_identifier(name: &[u8]) -> bool {
     include_str!("date_time_zones.txt")
         .lines()
         .any(|z| z.as_bytes().eq_ignore_ascii_case(name))
 }
 
-/// `timelib_eat_spaces()`: spaces, tabs, NBSPs and NNBSPs.
 fn eat_spaces(p: &mut Ptr) {
     loop {
         match (p.c(), p.at(1), p.at(2)) {
@@ -538,9 +497,7 @@ fn eat_spaces(p: &mut Ptr) {
     }
 }
 
-/// `timelib_get_nr()`.
 fn get_nr(p: &mut Ptr, max_length: usize) -> i64 {
-    // the tokens always hold the digits it looks for
     while p.c() != 0 && !p.c().is_ascii_digit() {
         p.i += 1;
     }
@@ -554,7 +511,6 @@ fn get_nr(p: &mut Ptr, max_length: usize) -> i64 {
     number
 }
 
-/// `timelib_get_frac_nr()`, for where it leaves the pointer.
 fn get_frac_nr(p: &mut Ptr) {
     while p.c() != 0 && !matches!(p.c(), b'.' | b':' | b'0'..=b'9') {
         p.i += 1;
@@ -564,7 +520,6 @@ fn get_frac_nr(p: &mut Ptr) {
     }
 }
 
-/// `timelib_get_month()`, for where it leaves the pointer.
 fn get_month(p: &mut Ptr) {
     while matches!(p.c(), b' ' | b'\t' | b'-' | b'.' | b'/') {
         p.i += 1;
@@ -574,7 +529,6 @@ fn get_month(p: &mut Ptr) {
     }
 }
 
-/// `timelib_get_relative_text()`: the amount of a relative word.
 fn relative_text(p: &mut Ptr) -> i64 {
     while matches!(p.c(), b' ' | b'\t' | b'-' | b'/') {
         p.i += 1;
@@ -590,7 +544,6 @@ fn relative_text(p: &mut Ptr) -> i64 {
         .map_or(0, |(_, amount)| *amount)
 }
 
-/// timelib's dow.c: `timelib_daynr_from_weeknr()`.
 fn daynr_from_weeknr(year: i64, week: i64, day: i64) -> i64 {
     const COMMON: [i64; 13] = [-1, 0, 3, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5];
     const LEAP: [i64; 13] = [-1, 6, 2, 3, 6, 1, 4, 6, 2, 5, 0, 3, 5];
@@ -603,7 +556,6 @@ fn daynr_from_weeknr(year: i64, week: i64, day: i64) -> i64 {
     first + (week - 1) * 7 + day
 }
 
-/// The scanner's rules, in parse_date.re's order (re2c prefers the earliest of the longest matches).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Rule {
     Yesterday,
@@ -616,17 +568,11 @@ enum Rule {
     FirstLastDayOf,
     BackFrontOf,
     WeekdayOf,
-    /// timetiny12 | timeshort12 | timelong12, mssqltime, timetiny24 | timeshort24 | timelong24 | iso8601long and
-    /// iso8601nocolon: they only set the time.
     Time,
     GnuNoColon,
-    /// americanshort | american, iso8601date2, gnudateshorter, gnudateshort, datefull, pointeddate4, pointeddate2,
-    /// datenoday, datenodayrev, datetextual | datenoyear, datenoyearrev, datenocolon, pgydotd, pgtextshort and
-    /// pgtextreverse: they only set the date.
     Date,
     IsoDateSigned,
     IsoDateX,
-    /// xmlrpc | xmlrpcnocolon | soap | wddx | exif, and clf.
     DateTime,
     IsoWeekDay,
     IsoWeek,
@@ -640,12 +586,10 @@ enum Rule {
     DateShortTime12,
     DateShortTime24,
     Relative,
-    /// `[.,]`, space, `"\000"|"\n"`.
     Skip,
     Any,
 }
 
-/// The rules' patterns: parse_date.re's definitions, `'…'` case-insensitive and `"…"` case-sensitive.
 fn rules() -> Vec<(Rule, String)> {
     let i = |words: &str| format!("(?i:{words})");
     let space = r"(?:[ \t]+|(?:\xC2\xA0)+|(?:\xE2\x80\xAF)+)".to_string();
@@ -834,7 +778,6 @@ fn rules() -> Vec<(Rule, String)> {
     ]
 }
 
-/// The rules and their DFA, which reports every pattern that matches (re2c's longest-match semantics).
 fn scanner() -> &'static (Vec<Rule>, dense::DFA<Vec<u32>>) {
     static SCANNER: OnceLock<(Vec<Rule>, dense::DFA<Vec<u32>>)> = OnceLock::new();
     SCANNER.get_or_init(|| {
@@ -855,7 +798,6 @@ fn scanner() -> &'static (Vec<Rule>, dense::DFA<Vec<u32>>) {
     })
 }
 
-/// The rule re2c matches at `at`, and the end of its token: the longest match, the earliest rule among them.
 fn longest(buffer: &[u8], at: usize) -> (Rule, usize) {
     let (kinds, dfa) = scanner();
     let mut state = dfa

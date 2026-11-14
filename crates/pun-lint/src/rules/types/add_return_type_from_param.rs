@@ -1,10 +1,3 @@
-//! `lint/types/add-return-type-from-param`, ported from Rector 2.8.4's `ReturnTypeFromStrictParamRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) and its `AddReturnTypeFromParam`: a function or method whose last
-//! `return` returns a typed parameter that the body never assigns, and whose returns have one native type (`null`
-//! aside), gets that parameter's type, as written, as its return type. Mago does not narrow an `int` by truthiness
-//! as PHPStan does (`int<min, -1>|int<1, max>`), so `if ($b) { return $b; } return $a;` with two `int` parameters
-//! is typed by Pun and left alone by Rector.
-
 use mago_syntax::cst::{
     Expression, FunctionLikeParameterList, Node, NodeKind, Statement, UnaryPrefixOperator, Variable,
 };
@@ -18,7 +11,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromParam;
 
-/// `PhpVersionFeature::NULLABLE_TYPE`.
 const NULLABLE_TYPE: u32 = 70100;
 
 impl Rule for AddReturnTypeFromParam {
@@ -49,7 +41,6 @@ impl Rule for AddReturnTypeFromParam {
         let Some(f) = untyped(node, ancestors, ctx) else {
             return;
         };
-        // shouldSkipNode: the returns' native types, without null, must be one type
         let scope = class_scope(ancestors);
         let facts = facts(ctx);
         let place = Place {
@@ -75,13 +66,10 @@ impl Rule for AddReturnTypeFromParam {
         if is_assigned(f.body, name) {
             return;
         }
-        // the parameter's type node, printed as written
         out.push(add_return_type(f.span, f.at, text(ctx, hint)));
     }
 }
 
-/// `findCurrentScopeReturn`: the variable the last `return` returns, walking the body in order. A `return` of
-/// anything else ends the walk with none, and so does, until a later `return`, a nested function or class.
 fn current_scope_return<'a>(
     statements: impl Iterator<Item = &'a Statement<'a>>,
 ) -> Option<&'a [u8]> {
@@ -122,7 +110,6 @@ fn current_scope_return<'a>(
     found
 }
 
-/// The type of the parameter `$name`, when it has one.
 fn typed_parameter<'a>(
     parameters: &'a FunctionLikeParameterList<'a>,
     name: &[u8],
@@ -134,7 +121,6 @@ fn typed_parameter<'a>(
         .and_then(|p| p.hint.as_ref())
 }
 
-/// `shouldSkipParam`: the body assigns to `$name`, or takes a reference to it (`$x = &$name`).
 fn is_assigned(body: &mago_syntax::cst::Block<'_>, name: &[u8]) -> bool {
     let is_name = |e: &Expression<'_>| matches!(e, Expression::Variable(Variable::Direct(v)) if v.name == name);
     any_scoped(Node::Block(body), &mut |n| match n {

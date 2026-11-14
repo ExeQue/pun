@@ -1,15 +1,3 @@
-//! `lint/style/require-naming-convention`, ported from nine Mago 1.57.0 rules (mago-linter src/rule/consistency/):
-//! `class-name`, `constant-name`, `enum-name`, `function-name`, `interface-name`, `method-name`, `property-name`,
-//! `trait-name` and `variable-name`, with mago-casing 1.57.0's case checks.
-//!
-//! The options are a table per Mago rule code, holding that rule's options and `enabled`, which defaults as in Mago:
-//! the method, property and variable checks are off until enabled. A name is only reported when the suggested name
-//! is a valid identifier. Mago's Drupal integration (which skips `hook_` functions in `*.api.php` files) is not
-//! ported: Pun has no integrations, and Mago leaves it off by default.
-//!
-//! mago-casing's `is_*_case(x)` holds exactly when converting `x` gives `x` back (class case also needs an uppercase
-//! first letter), so each check here is a conversion and a comparison.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax_core::{part_of_identifier, start_of_identifier};
@@ -18,13 +6,10 @@ use super::mago_helpers::{boolean, configure};
 use crate::syntax::span;
 use crate::{Context, Report, Rule};
 
-/// The options of one Mago rule.
 #[derive(Clone, Copy)]
 pub struct Kind {
     pub enabled: bool,
-    /// `psr` of the class, interface and trait rules.
     pub psr: bool,
-    /// `camel` of the function, method, property and variable rules.
     pub camel: bool,
     pub either: bool,
     pub use_snake_case_for_tests: bool,
@@ -95,7 +80,6 @@ impl Rule for RequireNamingConvention {
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
         configure(options, |code, value| {
-            // The options each rule takes besides `enabled`.
             let (kind, takes): (&mut Kind, &[&str]) = match code {
                 "class-name" => (&mut self.class, &["psr"]),
                 "constant-name" => (&mut self.constant, &[]),
@@ -230,7 +214,6 @@ impl Rule for RequireNamingConvention {
 }
 
 impl RequireNamingConvention {
-    /// The interface and trait rules: class case, and with `psr` the kind as a suffix.
     fn check_class_like(
         &self,
         out: &mut Vec<Report>,
@@ -287,11 +270,9 @@ impl RequireNamingConvention {
 }
 
 fn text(bytes: &[u8]) -> &str {
-    // Pun lints `&str` source, and an identifier is a run of whole tokens, so its bytes are UTF-8.
     std::str::from_utf8(bytes).unwrap_or_default()
 }
 
-/// `is_valid_identifier` (mago-linter rule/consistency/mod.rs).
 fn is_valid_identifier(identifier: &str) -> bool {
     let Some((first, rest)) = identifier.as_bytes().split_first() else {
         return false;
@@ -344,7 +325,6 @@ fn check_constant(out: &mut Vec<Report>, identifier: &LocalIdentifier<'_>) {
     }
 }
 
-/// The function, method and property rules: the name checked as written, less a leading `$`.
 fn check_case(
     out: &mut Vec<Report>,
     cfg: Kind,
@@ -364,7 +344,6 @@ fn check_case(
     );
 }
 
-/// `either`, then `camel`, then snake case, on `clean`; the messages name `name`.
 fn check_named_case(
     out: &mut Vec<Report>,
     cfg: Kind,
@@ -431,9 +410,6 @@ fn is_special_variable(name: &[u8]) -> bool {
     )
 }
 
-// mago-casing 1.57.0 (common.rs, camel.rs, class.rs, snake.rs, constant.rs). A separator is any byte that is not
-// an ASCII letter or digit; trailing separators are dropped.
-
 fn trim_right(input: &[u8]) -> &[u8] {
     let end = input
         .iter()
@@ -442,8 +418,6 @@ fn trim_right(input: &[u8]) -> &[u8] {
     &input[..end]
 }
 
-/// `convert_camel_like`, for camel case (`new_word` false) and the camel part of class case (`new_word` true):
-/// no separator, not inverted, digits concatenated.
 fn convert_camel_like(input: &[u8], mut new_word: bool) -> Vec<u8> {
     let mut output = Vec::with_capacity(input.len());
     let mut last_char = b' ';
@@ -468,8 +442,6 @@ fn convert_camel_like(input: &[u8], mut new_word: bool) -> Vec<u8> {
     output
 }
 
-/// `convert_snake_like` with `_`: lower case for snake case, upper case (where a digit also starts a word) for
-/// constant case.
 fn convert_snake_like(input: &[u8], upper: bool) -> Vec<u8> {
     let input = trim_right(input);
     let mut output = Vec::with_capacity(input.len() * 2);
@@ -502,7 +474,6 @@ fn convert_snake_like(input: &[u8], upper: bool) -> Vec<u8> {
     output
 }
 
-/// `class_prefix_len`: a run of uppercase letters and digits, and the lowercase letters and digits after it.
 fn class_prefix_len(input: &[u8]) -> usize {
     let head = input
         .iter()
@@ -535,7 +506,6 @@ fn convert_class_case(input: &[u8]) -> Vec<u8> {
 }
 
 fn string(bytes: Vec<u8>) -> String {
-    // Only ASCII bytes are changed or added, and whole multi-byte characters are dropped, so the bytes stay UTF-8.
     String::from_utf8(bytes).unwrap_or_default()
 }
 

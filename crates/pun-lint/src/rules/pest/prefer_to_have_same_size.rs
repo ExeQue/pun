@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-same-size`, ported from pest-plugin-rector's `UseToHaveSameSizeRector`:
-//! `expect(count($a))->toBe(count($b))` (or `sizeof()`, or `toEqual()`) becomes `expect($a)->toHaveSameSize($b)`, and
-//! `->toHaveCount(count($b))` becomes `->toHaveSameSize($b)`, when the checked value is known to be an array or iterable.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -37,7 +33,6 @@ impl Rule for PreferToHaveSameSize {
         let Some(holder) = subject_holder(call) else {
             return;
         };
-        // `isCountFunction` and `getCountedValue`.
         fn counted<'a>(e: Option<&'a Expression<'a>>) -> Option<Option<&'a Expression<'a>>> {
             e.and_then(func_call)
                 .filter(|f| named(f, "count") || named(f, "sizeof"))

@@ -1,8 +1,3 @@
-//! `lint/types/add-param-phpdoc-from-callable-call`, ported from Rector 2.8.4's
-//! `AddParamArrayDocblockBasedOnCallableNativeFuncCallRector` (rules/TypeDeclaration/Rector/ClassMethod): a parameter
-//! declared `array` that is passed to `array_walk()`, `array_map()`, `usort()` or `array_filter()` with a closure
-//! whose parameter is typed gets `@param Type[]`.
-
 use mago_syntax::cst::{
     Argument, Call, Expression, FunctionLikeParameterList, Hint, Node, NodeKind,
 };
@@ -15,7 +10,6 @@ use crate::rules::phpdoc_writer::{change_param_type, native_expr_type};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// `NativeFuncCallPositions::ARRAY_AND_CALLBACK_POSITIONS`: the function, its array's and its callback's position.
 const POSITIONS: [(&str, usize, usize); 4] = [
     ("array_walk", 0, 1),
     ("array_map", 1, 0),
@@ -52,7 +46,6 @@ impl Rule for AddParamPhpdocFromCallableCall {
         }
         let target = f.target(ctx);
         let mut info = target.info(ctx.source);
-        // `collectVariableNamesWithArrayType()`: the `array` parameters without a `@param` tag
         let names: Vec<String> = f
             .parameters
             .parameters
@@ -96,7 +89,6 @@ impl Rule for AddParamPhpdocFromCallableCall {
             let Some(name) = variable_name(array).filter(|n| names.iter().any(|m| m == n)) else {
                 return;
             };
-            // type changed, eg: by reassign
             if !native_expr_type(ctx, array).is_some_and(|t| t.is_array().yes()) {
                 return;
             }
@@ -148,7 +140,6 @@ impl Rule for AddParamPhpdocFromCallableCall {
     }
 }
 
-/// The type of the first parameter of a callback with one or two typed parameters of the same type.
 fn callback_param_type(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -175,7 +166,6 @@ fn callback_param_type(
     (!is_mixed(&t)).then_some(t)
 }
 
-/// `StaticTypeMapper::mapPhpParserNodePHPStanType()` of a hint.
 fn hint_type(scope: &[Node<'_, '_>], hint: &Hint<'_>) -> Option<Type> {
     Some(match hint {
         Hint::Identifier(id) => Type::Object(resolve_class_name(scope, id), vec![], false),
@@ -184,7 +174,6 @@ fn hint_type(scope: &[Node<'_, '_>], hint: &Hint<'_>) -> Option<Type> {
         Hint::Float(_) => Type::Float,
         Hint::Bool(_) => Type::Bool,
         Hint::Array(_) => Type::array(mixed(), mixed()),
-        // (`void`, `never` and `static` are no parameter types)
         Hint::Mixed(_) | Hint::Void(_) | Hint::Never(_) | Hint::Static(_) => {
             Type::Mixed { explicit: true }
         }
@@ -194,25 +183,20 @@ fn hint_type(scope: &[Node<'_, '_>], hint: &Hint<'_>) -> Option<Type> {
         Hint::Iterable(_) => Type::Iterable(Box::new(mixed()), Box::new(mixed())),
         Hint::Callable(_) => Type::Callable(None),
         Hint::Parenthesized(p) => hint_type(scope, p.hint)?,
-        // `IntersectionTypeNodeMapper`
         Hint::Intersection(i) => {
             Type::Intersection(vec![hint_type(scope, i.left)?, hint_type(scope, i.right)?])
         }
         Hint::Object(_) => Type::ObjectWithoutClass,
         Hint::Nullable(n) => union(vec![hint_type(scope, n.hint)?, Type::Null]),
-        // `UnionTypeNodeMapper`
         Hint::Union(u) => create_mixed_passed_or_union_type(
             &[hint_type(scope, u.left)?, hint_type(scope, u.right)?],
             true,
         ),
-        // `NameNodeMapper`: `self` of a class is a `SelfStaticType`, printed `$this`
         Hint::Self_(_) => Type::This(class_name(scope)?),
-        // `ParentStaticType`, printed `static`
         Hint::Parent(_) => Type::Static(class_name(scope)?, vec![]),
     })
 }
 
-/// `CallLike::getArg($name, $position)`.
 fn get_arg<'a>(
     args: &[&'a Argument<'a>],
     name: &str,
@@ -225,7 +209,6 @@ fn get_arg<'a>(
     })
 }
 
-/// `traverseNodesWithCallable()` that does not go into classes and functions.
 fn visit<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Node<'ast, 'arena>)) {
     node.visit_children(|child| {
         if matches!(

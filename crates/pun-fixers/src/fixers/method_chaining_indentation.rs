@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\MethodChainingIndentationFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, token::OBJECT_OPERATOR_KINDS};
@@ -14,7 +13,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 impl MethodChainingIndentationFixer {
-    /// `index`: index of the first token on the line to indent.
     fn get_expected_indent_at(&self, tokens: &Tokens, index: usize) -> Vec<u8> {
         let index = tokens.get_prev_meaningful_token(index).unwrap();
         let indent = self.whitespaces_config.get_indent().as_bytes();
@@ -36,7 +34,6 @@ impl MethodChainingIndentationFixer {
         indent.to_vec()
     }
 
-    /// `index`: position of the object operator token ("->" or "?->").
     fn can_be_moved_to_next_line(index: usize, tokens: &Tokens) -> bool {
         let prev_meaningful = tokens.get_prev_meaningful_token(index).unwrap();
         let mut has_comment_before = false;
@@ -55,7 +52,6 @@ impl MethodChainingIndentationFixer {
         false
     }
 
-    /// `index`: index of the indentation token.
     fn get_indent_at(tokens: &Tokens, index: usize) -> Option<Vec<u8>> {
         let content = Self::get_indent_content_at(tokens, index);
         Preg::match_groups("/\\R{1}(\\h*)$/", &content).map(|m| m.str(1).to_vec())
@@ -75,7 +71,6 @@ impl MethodChainingIndentationFixer {
         Vec::new()
     }
 
-    /// `start`: index of first meaningful token on previous line; `end`: index of last token on previous line.
     fn current_line_requires_extra_indent_level(tokens: &Tokens, start: usize, end: usize) -> bool {
         let first_meaningful = tokens.get_next_meaningful_token(start).unwrap();
         if tokens[first_meaningful].is_object_operator() {
@@ -97,7 +92,6 @@ impl Fixer for MethodChainingIndentationFixer {
         "method_chaining_indentation"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoSpaceAroundDoubleColonFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

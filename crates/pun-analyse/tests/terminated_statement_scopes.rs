@@ -1,5 +1,3 @@
-//! Reachability belongs to the source walk, independently of UnreachableStatementRule's level.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

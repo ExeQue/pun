@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\OperatorLinebreakFixer`.
 use crate::analyzers::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::goto_label_analyzer::GotoLabelAnalyzer;
@@ -31,7 +30,6 @@ const BOOLEAN_OPERATORS: [Proto<'static>; 5] = [
     Proto::Kind(T_LOGICAL_XOR),
 ];
 
-/// `getNonBooleanOperators()`, with `Token::getObjectOperatorKinds()` at the end.
 const NON_BOOLEAN_OPERATORS: [Proto<'static>; 42] = [
     Proto::Char(b"%"),
     Proto::Char(b"&"),
@@ -135,17 +133,17 @@ impl OperatorLinebreakFixer {
         let index_start = tokens.get_prev_meaningful_token(min).unwrap() + 1;
         let index_end = tokens.get_next_meaningful_token(max).unwrap() - 1;
         if !is_multiline(tokens, index_start, index_end) {
-            return; // operator is not surrounded by multiline whitespaces, do not touch it
+            return;
         }
         if self.beginning {
             if !is_multiline(tokens, max, index_end) {
-                return; // operator already is placed correctly
+                return;
             }
             fix_move_to_the_beginning(tokens, operator_indices);
             return;
         }
         if !is_multiline(tokens, index_start, min) {
-            return; // operator already is placed correctly
+            return;
         }
         fix_move_to_the_end(tokens, operator_indices);
     }

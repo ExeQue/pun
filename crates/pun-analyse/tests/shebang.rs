@@ -1,6 +1,3 @@
-//! Leading inline text must not hide PHP code from parser admission or reflection. Complete expectations come
-//! from PHPStan 2.3.1's public Analyser via fixtures/parser/capture-shebang.php, not its severe-only CLI output.
-
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

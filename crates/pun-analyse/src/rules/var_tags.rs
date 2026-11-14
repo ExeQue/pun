@@ -1,7 +1,3 @@
-//! InvalidPhpDocVarTagTypeRule (level 2): the `@var` tags of the doc comment of each php-parser statement but a
-//! property, constant, class-like, function or method: unresolvable types, unknown classes, traits and generic
-//! types (the `checkMissingVarTagTypehint` part is level 6).
-
 use mago_span::{Position, Span};
 use pun_phpstan::types::{Template, Type};
 
@@ -9,8 +5,6 @@ use super::{Checker, DISCOVERING_SYMBOLS_TIP, FunctionScopeKind, declared, gener
 
 pub(super) const IDENTIFIERS: &[&str] = &["varTag.unresolvableType", "varTag.trait"];
 
-/// The `NameScope` FileTypeMapper resolves a statement's doc in: the class's, with the templates of the function
-/// or method the statement is in.
 pub(super) fn scope(c: &Checker, at: Span) -> super::doc::NameScope {
     let k = c.class_scope();
     let mut scope = declared::scope_at(c, at, k);
@@ -49,13 +43,10 @@ pub(super) fn scope(c: &Checker, at: Span) -> super::doc::NameScope {
     scope
 }
 
-/// The statement at `at`.
 pub(super) fn node(c: &mut Checker, at: Span) {
     check(c, at, at);
 }
 
-/// The statement at `at`, its doc's names those at `names` (a `Nop` after a namespace's last statement is still in
-/// that namespace).
 pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
     if c.level < 2 {
         return;
@@ -77,7 +68,6 @@ pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
     let mut errors: Vec<(Span, &'static str, String, Option<&'static str>)> = Vec::new();
     let mut classes = Vec::new();
     declared::with_classes(c, || {
-        // (an imported type alias asks for the class it comes from)
         let scope = scope(c, names);
         for (name, ty) in entry.doc.var_types(&scope) {
             let what = if name.is_empty() {

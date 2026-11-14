@@ -1,6 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\CommentsAnalyzer` (`isHeaderComment`, `isBeforeStructuralElement`,
-//! `isBeforeReturn`, `getCommentBlockIndices`). Callers only pass comment indices, so upstream's
-//! `InvalidArgumentException` checks are left out.
 use crate::analyzers::helpers::contains;
 use crate::analyzers::preg::Preg;
 use pun_tokens::Kind::{self, *};
@@ -176,8 +173,6 @@ fn get_next_token_index(tokens: &Tokens, start_index: usize) -> Option<usize> {
     }
 }
 
-/// `getCommentBlockIndices`: the comment at `index` and the comments of the same type on the following lines
-/// (no blank line between them). `/* */` comments stand alone.
 pub(crate) fn get_comment_block_indices(tokens: &Tokens, mut index: usize) -> Vec<usize> {
     let comment_type = get_comment_type(tokens[index].get_content());
     let mut indices = vec![index];

@@ -1,5 +1,3 @@
-//! Complete public PHPStan 2.3.1 expectations for ClassReflection::getImmediateInterfaces and
-//! MethodPrototypeFinder, including named-argument producer keys and constructor signature prototypes.
 use std::path::Path;
 
 use pun_analyse::{Project, run};

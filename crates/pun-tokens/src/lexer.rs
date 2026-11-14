@@ -1,12 +1,5 @@
-//! A port of PHP 8.5's `Zend/zend_language_scanner.l` as driven by `token_get_all()`
-//! (ext/tokenizer, no `TOKEN_PARSE`): same states, same longest-match rules, same
-//! `__halt_compiler` handling. `short_open_tag` is assumed off (PHP's php.ini default).
-//! See context/reference/tokens.md for why this is not built on mago-syntax's lexer.
-
 use crate::kind::Kind::{self, *};
 
-/// One element of `token_get_all()`'s result. `kind == None` is PHP's plain-string token
-/// (`';'`, `'('`, `'"'`, also `'b"'` for a binary interpolated string).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RawToken<'a> {
     pub kind: Option<Kind>,
@@ -42,7 +35,6 @@ pub(crate) struct Lexer<'a> {
     pub(crate) state: State,
     stack: Vec<State>,
     pub(crate) labels: Vec<Label>,
-    /// State that produced the last token.
     pub(crate) tok_state: State,
 }
 
@@ -61,11 +53,9 @@ fn is_ws(c: u8) -> bool {
     matches!(c, b' ' | b'\n' | b'\r' | b'\t')
 }
 
-/// Tokenize like `token_get_all($src)`.
 pub fn tokenize(src: &[u8]) -> Vec<RawToken<'_>> {
     let mut lx = Lexer::new(src);
     let mut spans: Vec<(Option<Kind>, usize, usize)> = Vec::with_capacity(src.len() / 4);
-    // Tokens still to read after `__halt_compiler` (PHP's `need_tokens`, -1 there until it is seen).
     let mut need_tokens: Option<u32> = None;
     let mut halted = false;
     while let Some((kind, start, end)) = lx.next() {
@@ -89,8 +79,6 @@ pub fn tokenize(src: &[u8]) -> Vec<RawToken<'_>> {
         }
     }
 
-    // Line of a token = 1 + newlines before it; "\r\n" counts once, lone "\r" counts
-    // (HANDLE_NEWLINES).
     let mut line = 1u32;
     let mut counted = 0usize;
     let mut out: Vec<RawToken> = spans
@@ -110,7 +98,6 @@ pub fn tokenize(src: &[u8]) -> Vec<RawToken<'_>> {
             }
         })
         .collect();
-    // The post-__halt_compiler T_INLINE_HTML reuses the third token's start line.
     if halted {
         let n = out.len();
         out[n - 1].line = out[n - 2].line;
@@ -231,7 +218,6 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn at(&self, i: usize) -> u8 {
-        // Like the scanner's NUL padding past the end.
         *self.src.get(i).unwrap_or(&0)
     }
 
@@ -252,8 +238,6 @@ impl<'a> Lexer<'a> {
     }
 
     fn pop(&mut self) {
-        // yy_pop_state on an empty stack never happens in valid scanner flows except `}`,
-        // which guards it; keep the current state in that case.
         if let Some(s) = self.stack.pop() {
             self.state = s;
         }
@@ -335,7 +319,6 @@ impl<'a> Lexer<'a> {
                 cur = p + 2;
             }
         }
-        // inline_char_handler
         loop {
             match self.src[cur.min(n)..].iter().position(|&c| c == b'<') {
                 Some(off) => cur = cur + off + 1,
@@ -357,12 +340,10 @@ impl<'a> Lexer<'a> {
         (Some(T_INLINE_HTML), cur.min(n))
     }
 
-    /// End positions reachable by `{WHITESPACE_OR_COMMENTS}` from `i` (excluding `i`).
     fn woc_ends(&self, i: usize) -> Vec<usize> {
         let n = self.src.len();
         let mut seen = vec![i];
         let mut out = Vec::new();
-        // `out` as a set: a whitespace run of n bytes has n ends, so `out.contains` made this quadratic.
         let mut found = std::collections::HashSet::new();
         while let Some(q) = seen.pop() {
             let mut next = Vec::new();
@@ -370,7 +351,6 @@ impl<'a> Lexer<'a> {
             if q < n && is_ws(c) {
                 next.push(q + 1);
             } else if c == b'/' && self.at(q + 1) == b'*' {
-                // "/*" ... first "*/", no NUL.
                 let mut k = q + 2;
                 while k + 1 < n
                     && !(self.src[k] == b'*' && self.src[k + 1] == b'/')
@@ -676,7 +656,6 @@ impl<'a> Lexer<'a> {
         self.digits_end(i, |c| c.is_ascii_digit())
     }
 
-    /// `[d]+(_[d]+)*`
     fn digits_end(&self, mut i: usize, d: impl Fn(u8) -> bool) -> Option<usize> {
         if !d(self.at(i)) || i >= self.src.len() {
             return None;
@@ -693,7 +672,6 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Longest of HNUM / BNUM / ONUM starting at `p`, if any: (end, base).
     fn prefixed_number(&self, p: usize) -> Option<(usize, u32)> {
         if self.at(p) != b'0' {
             return None;
@@ -718,7 +696,6 @@ impl<'a> Lexer<'a> {
         {
             best = (e, decimal_kind(&self.src[p..e]));
         }
-        // DNUM: ({LNUM}?"."{LNUM}) | ({LNUM}"."{LNUM}?)
         let dot = lnum.unwrap_or(p);
         let mut dnum = None;
         if self.at(dot) == b'.' && dot < self.src.len() {
@@ -733,7 +710,6 @@ impl<'a> Lexer<'a> {
         {
             best = (e, T_DNUMBER);
         }
-        // EXPONENT_DNUM: ({LNUM}|{DNUM})[eE][+-]?{LNUM}
         for base_end in [lnum, dnum].into_iter().flatten() {
             if self.at(base_end) | 0x20 == b'e' && base_end < self.src.len() {
                 let mut i = base_end + 1;
@@ -823,8 +799,6 @@ impl<'a> Lexer<'a> {
         (None, p + bprefix + 1)
     }
 
-    /// `b?"<<<"{TABS_AND_SPACES}({LABEL}|'{LABEL}'|"{LABEL}"){NEWLINE}`; on match pushes the
-    /// label, switches state and returns the token end.
     fn heredoc_start(&mut self, p: usize, bprefix: usize) -> Option<usize> {
         let n = self.src.len();
         let mut i = p + bprefix + 3;
@@ -888,7 +862,6 @@ impl<'a> Lexer<'a> {
         Some(end)
     }
 
-    /// Rules shared by double quotes, backquotes and heredoc: `${`, `{$`, `$name...`.
     fn interpolation(&mut self, p: usize) -> Option<(Option<Kind>, usize)> {
         match (self.at(p), self.at(p + 1)) {
             (b'$', b'{') => {
@@ -953,8 +926,6 @@ impl<'a> Lexer<'a> {
         (Some(T_ENCAPSED_AND_WHITESPACE), cur)
     }
 
-    /// Body of a heredoc (`interpolate`) or nowdoc. Returns the end and switches to
-    /// ST_END_HEREDOC when the closing label is found.
     fn doc_body(&mut self, p: usize, interpolate: bool) -> (Option<Kind>, usize) {
         let n = self.src.len();
         let (ls, le) = {
@@ -1083,7 +1054,6 @@ fn strip(digits: &[u8]) -> Vec<u8> {
     digits.iter().copied().filter(|&c| c != b'_').collect()
 }
 
-/// T_LNUMBER unless the value overflows a 64-bit zend_long (then T_DNUMBER).
 fn decimal_kind(text: &[u8]) -> Kind {
     let mut d = strip(text);
     let octal = d[0] == b'0';

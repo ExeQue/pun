@@ -1,7 +1,3 @@
-//! `lint/pest/no-before-all-in-describe`, ported from pest-plugin-rector's `ConvertBeforeAllInDescribeRector`: in a
-//! `describe()` callback (and the callbacks of the `describe()` calls in it), `beforeAll()` becomes `beforeEach()` and
-//! `afterAll()` becomes `afterEach()`, as Pest does not run the `*All` hooks there.
-
 use mago_syntax::cst::{Closure, Node, NodeKind, Statement};
 use pun_problem::{Edit, Safety};
 
@@ -50,8 +46,6 @@ impl Rule for NoBeforeAllInDescribe {
     }
 }
 
-/// `HookSemanticAnalyzer::findInvalidDescribeHooks`: each statement of the callback that is a call of `beforeAll()` or
-/// `afterAll()` gets the edit that renames it, and the callbacks of the `describe()` calls are searched too.
 fn invalid_hooks(closure: &Closure<'_>, edits: &mut Vec<Edit>) {
     for statement in &closure.body.statements {
         let Statement::Expression(statement) = statement else {

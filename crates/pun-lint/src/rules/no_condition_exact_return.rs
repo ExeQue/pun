@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-condition-exact-return`, ported from Rector 2.8.4's `RemoveConditionExactReturnRector`
-//! (rules/DeadCode/Rector/Stmt).
-//!
-//! `if ($value === 'x') { return 'x'; } return $value;` returns `$value` either way: the `if` goes and the `return`
-//! takes its place. The compared value must have no side effect. As in Rector, only the `if`'s own statements are
-//! looked at, so an `elseif` or `else` goes with it.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -48,7 +41,6 @@ impl Rule for NoConditionExactReturn {
             let Statement::If(r#if) = stmt else {
                 continue;
             };
-            // matchSoleIfReturn.
             let view = if_view(source, r#if);
             let (1, Some(Statement::Return(sole))) = (view.stmts.len(), view.stmts.stmts.first())
             else {
@@ -81,7 +73,6 @@ impl Rule for NoConditionExactReturn {
             {
                 continue;
             }
-            // The `return` takes the `if`'s place with the comments before it, which php-parser keeps with it.
             let moved = list.with_comments(ctx, key + 1);
             let mut edits = vec![Edit::new(
                 node_span(r#if),

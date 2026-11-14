@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\FinalPublicMethodForAbstractClassFixer`.
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind, Token, Tokens};

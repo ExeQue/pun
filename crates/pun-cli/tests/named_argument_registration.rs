@@ -1,4 +1,3 @@
-//! Canonical rule IDs select constructor and override owners independently despite their shared identifiers.
 mod common;
 
 use common::{PUN, clean_env, project};

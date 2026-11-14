@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\CombineConsecutiveIssetsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Proto, Token, Tokens};
@@ -70,7 +69,6 @@ impl Fixer for CombineConsecutiveIssetsFixer {
                     index = next_meaningful_index;
                     break;
                 }
-                // clone what we want to move, not the '(' and ')' of the 'isset' statement we're merging
                 let mut clones = vec![Token::char(","), Token::new(T_WHITESPACE, " ")];
                 clones.extend(
                     next_isset_info[1..next_isset_info.len() - 1]
@@ -98,7 +96,6 @@ impl Fixer for CombineConsecutiveIssetsFixer {
     }
 }
 
-/// Indices of the meaningful tokens of `isset(...)`, from its '(' to its ')'.
 fn get_isset_info(tokens: &Tokens, index: usize) -> Vec<usize> {
     let open_index = tokens.get_next_meaningful_token(index).unwrap();
     let mut brace_open_count = 1;

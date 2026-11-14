@@ -1,5 +1,3 @@
-//! MethodCallableRule and StaticMethodCallableRule diagnostics from PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -59,8 +57,6 @@ fn method_callable_members_match_phpstan() {
     }
 }
 
-/// PHPStan 2.3.1 crashes on PHP 8.5 bound arguments. Its virtual callable nodes are emitted only for a single
-/// ellipsis; pipe callables are rewritten to ordinary calls instead (NodeScopeResolver::processExprNode()).
 #[test]
 fn partial_applications_and_pipes_do_not_enter_member_callable_rules() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/method-callable");

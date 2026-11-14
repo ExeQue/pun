@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\NoTrailingWhitespaceFixer`.
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, Preg};
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::rtrim_chars};
@@ -57,7 +56,6 @@ impl Fixer for NoTrailingWhitespaceFixer {
                     .collect();
             let lines_size = lines.len();
 
-            // fix only multiline whitespaces or singleline whitespaces at the end of file: may_change() lets no other through
             debug_assert!(lines_size > 1 || index + 1 >= tokens.count());
             if !tokens[index - 1].is_kind(T_OPEN_TAG)
                 || !Preg::r#match("/(.*)\\R$/", tokens[index - 1].get_content())
@@ -83,8 +81,6 @@ impl Fixer for NoTrailingWhitespaceFixer {
     }
 }
 
-/// Whether trimming can change a whitespace token (only " \t\n\r\0\x0B" in it): a space or tab right before a line
-/// break, or at the very end of the file (where an empty token takes the full path too). `\0` is never trimmed.
 fn may_change(c: &[u8], last: bool) -> bool {
     let h = |b: &u8| matches!(b, b' ' | b'\t');
     (last && (c.is_empty() || c.last().is_some_and(h)))

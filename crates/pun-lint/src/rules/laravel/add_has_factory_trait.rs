@@ -1,15 +1,3 @@
-//! `lint/laravel/add-has-factory-trait`, ported from rector-laravel 2.7.3's `AddHasFactoryToModelsRector`
-//! (src/Rector/Class_).
-//!
-//! A class (named or anonymous) that is an Eloquent model gets `use \Illuminate\Database\Eloquent\Factories\HasFactory;`
-//! as its first statement, unless it, a trait it uses or a parent already uses the trait. With `items` (Rector's
-//! configuration, a list of class names), only those classes change: a name matches ignoring ASCII case, written
-//! without a leading `\`; an anonymous class has no name. Rector fails on a name with `*`; Pun rejects it.
-//!
-//! php-parser prints the new statement before the class's first statement (or comment), followed by a new line at
-//! that line's indentation. A class without statements is printed anew (`pStmt_Class`): each attribute group on its
-//! own line, the modifiers in php-parser's order, the names as written, `{` on the next line.
-
 use mago_syntax::cst::{
     AttributeList, ClassLikeMember, Extends, Implements, Modifier, Node, NodeKind, Sequence,
 };
@@ -34,11 +22,9 @@ pub struct AddHasFactoryTrait {
     pub items: Vec<String>,
 }
 
-/// The parts of a class `pStmt_Class` and `pExpr_New` print.
 struct Parts<'a> {
     attributes: &'a Sequence<'a, AttributeList<'a>>,
     modifiers: &'a Sequence<'a, Modifier<'a>>,
-    /// What follows `class`: ` Name`, or an anonymous class's arguments.
     named: String,
     extends: Option<&'a Extends<'a>>,
     implements: Option<&'a Implements<'a>>,
@@ -51,7 +37,6 @@ impl Rule for AddHasFactoryTrait {
         "lint/laravel/add-has-factory-trait"
     }
 
-    /// `configure`: `items`, the class names to change (Rector's configuration list).
     fn configure(&mut self, options: &Value) -> Result<(), String> {
         let map = match options {
             Value::Null => return Ok(()),
@@ -128,7 +113,6 @@ impl Rule for AddHasFactoryTrait {
         {
             return;
         }
-        // The project's codebase is the files as they were; the class's own `use` is read from the syntax too.
         let own = members.iter().any(|m| match m {
             ClassLikeMember::TraitUse(u) => (u.trait_names.iter())
                 .any(|t| resolve_class_name(ancestors, t).eq_ignore_ascii_case(TRAIT)),
@@ -163,7 +147,6 @@ impl Rule for AddHasFactoryTrait {
     }
 }
 
-/// The class printed anew with the trait as its only statement.
 fn header(ctx: &Context<'_>, node: Node<'_, '_>, parts: &Parts<'_>, start: usize) -> String {
     let source = ctx.source;
     let text = |s: Span| &source[s.start..s.end];

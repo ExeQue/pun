@@ -1,17 +1,3 @@
-//! `lint/laravel/prefer-constructor-injection`, ported from rector-laravel 2.7.3's
-//! `ArgumentFuncCallToMethodCallRector` (src/Rector/FuncCall): `items = [{ function = "view", class =
-//! "Illuminate\Contracts\View\Factory", method-if-args = "make", method-if-no-args = "..." }, { function = "config",
-//! class = "Illuminate\Contracts\Config\Repository", array-method = "set", non-array-method = "get" }]` (rector-laravel's
-//! `ArgumentFuncCallToMethodCall` and `ArrayFuncCallToMethodCall`, told apart by their keys).
-//!
-//! In each method of a class that is neither static nor abstract, a call of a configured function (by name, without
-//! case, the first matching item taken) is replaced by what the shared injection
-//! ([`crate::rules::class_dependency`]) gives, or a call on it, the call left alone where it gives nothing:
-//! without arguments the bare expression, or `method-if-no-args()` on it; with arguments `method-if-args(...)`, or for
-//! an array item `array-method(...)` when the first argument's native type is an array, else `non-array-method(...)`.
-//! Where Rector stops with an error the class is left alone: a call with arguments and no `method-if-args`, and a
-//! first-class callable (`view(...)`).
-
 use mago_syntax::cst::{Expression, Method, MethodBody, Modifier, Node, NodeKind};
 
 use crate::rules::class_dependency::{Outcome, call_args, inject, is_first_class};
@@ -22,7 +8,6 @@ use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// One `ArgumentFuncCallToMethodCall` or `ArrayFuncCallToMethodCall`.
 pub enum Injection {
     Argument {
         function: String,
@@ -145,7 +130,6 @@ impl Rule for PreferConstructorInjection {
                 let Some(item) = self.items.iter().find(|i| is_name(&name, i.function())) else {
                     return Outcome::Keep;
                 };
-                // Rector stops with an error on a first-class callable.
                 let Some(list) = list else {
                     return Outcome::Fail;
                 };
@@ -178,7 +162,6 @@ impl Rule for PreferConstructorInjection {
                         },
                         Some(_),
                     ) => rewrite(format!("{receiver}->{m}"), Some(call_args(list))),
-                    // `ShouldNotHappenException`
                     (Injection::Argument { .. }, Some(_)) => Outcome::Fail,
                     (
                         Injection::Array {
@@ -201,7 +184,6 @@ impl Rule for PreferConstructorInjection {
     }
 }
 
-/// The methods the rule walks: neither static nor abstract.
 fn visited(method: &Method<'_>) -> bool {
     !method
         .modifiers
@@ -210,7 +192,6 @@ fn visited(method: &Method<'_>) -> bool {
         && matches!(method.body, MethodBody::Concrete(_))
 }
 
-/// `ArrayTypeAnalyzer::isArrayType`: the native type of `expr` is an array.
 fn is_array(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     use mago_codex::ttype::atomic::TAtomic;
     facts(ctx)

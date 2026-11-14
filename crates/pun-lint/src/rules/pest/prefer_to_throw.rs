@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-throw`, ported from pest-plugin-rector's `UseToThrowRector`: in a test's closure, a
-//! `try { action(); } catch (E $e) { expect($e->getMessage())->toBe('m'); }` becomes
-//! `expect(fn() => action())->toThrow(E::class, 'm');`.
-
 use mago_syntax::cst::{
     ArrayElement, Assignment, AssignmentOperator, Block, Expression, ForeachTarget, Hint, Node,
     NodeKind, Statement, Try, UnaryPrefixOperator, Variable,
@@ -28,7 +24,6 @@ const TEST_FUNCTIONS: [&[u8]; 7] = [
     b"afterAll",
 ];
 
-/// `Scope::SUPERGLOBAL_VARIABLES`: no closure can `use` them.
 const SUPERGLOBALS: [&[u8]; 9] = [
     b"$GLOBALS",
     b"$_SERVER",
@@ -83,8 +78,6 @@ impl Rule for PreferToThrow {
     }
 }
 
-/// `transformTestClosure`'s traversal: every `try` outside nested closures, converted where it can be; a converted
-/// one is not entered.
 fn find_try(ctx: &Context<'_>, node: Node<'_, '_>, edits: &mut Vec<Edit>) {
     match node {
         Node::Closure(_) => return,
@@ -101,7 +94,6 @@ fn find_try(ctx: &Context<'_>, node: Node<'_, '_>, edits: &mut Vec<Edit>) {
     }
 }
 
-/// `convertTryCatch`, and the statement that replaces the `try` (its comments go).
 fn convert(ctx: &Context<'_>, t: &Try<'_>) -> Option<Edit> {
     let ([catch], None) = (t.catch_clauses.as_slice(), &t.finally_clause) else {
         return None;
@@ -151,7 +143,6 @@ fn convert(ctx: &Context<'_>, t: &Try<'_>) -> Option<Edit> {
     ))
 }
 
-/// `extractMessageAssertion`: the value in a catch body that is only `expect($e->getMessage())->toBe(value);`.
 fn message_assertion<'a>(
     ctx: &Context<'_>,
     block: &'a Block<'a>,
@@ -179,9 +170,6 @@ fn message_assertion<'a>(
     (Some(object.name) == var).then(|| argument.value())
 }
 
-/// `AnonymousFunctionFactory::createUseVariablesFromParams` with no parameters: the variables of `stmts` in order,
-/// but `$this`, superglobals and those assigned (by `=`, a destructuring, a `foreach` or as a parameter) before or
-/// where they first show up.
 fn use_variables(stmts: &[&Statement<'_>]) -> Vec<String> {
     let mut assigned_spans = Vec::new();
     let mut variables = Vec::new();
@@ -210,7 +198,6 @@ fn use_variables(stmts: &[&Statement<'_>]) -> Vec<String> {
         .collect()
 }
 
-/// The direct variables under `node` in php-parser's order, and the spans of those Rector marks as assigned.
 fn collect<'a>(
     node: Node<'_, 'a>,
     assigned: &mut Vec<Span>,

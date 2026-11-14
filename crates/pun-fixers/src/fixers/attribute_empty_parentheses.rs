@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\AttributeNotation\AttributeEmptyParenthesesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -50,7 +49,6 @@ impl Fixer for AttributeEmptyParenthesesFixer {
                 next_index = tokens
                     .get_next_token_of_kind(next_index, &stops, true)
                     .unwrap();
-                // Find closing parentheses, we need to do this in case there's a comma inside the parentheses
                 if tokens[next_index].equals("(", true) {
                     next_index = tokens.find_block_end(BlockType::Parenthesis, next_index);
                     next_index = tokens
@@ -61,7 +59,6 @@ impl Fixer for AttributeEmptyParenthesesFixer {
                         )
                         .unwrap();
                 }
-                // In case there's a comma right before T_ATTRIBUTE_CLOSE
                 if !tokens[next_index].is_kind(CT_ATTRIBUTE_CLOSE) {
                     next_index = tokens.get_next_meaningful_token(next_index).unwrap();
                 }
@@ -87,7 +84,6 @@ impl AttributeEmptyParenthesesFixer {
             return;
         }
         let closing_index = tokens.get_next_meaningful_token(index).unwrap();
-        // attribute has arguments - parentheses can not be removed
         if !tokens[closing_index].equals(")", true) {
             return;
         }

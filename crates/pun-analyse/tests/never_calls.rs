@@ -1,5 +1,3 @@
-//! PHPStan distinguishes a never-valued expression from evaluation that cannot continue.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

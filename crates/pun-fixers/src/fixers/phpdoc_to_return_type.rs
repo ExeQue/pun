@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\PhpdocToReturnTypeFixer`.
 use crate::analyzers::abstract_phpdoc_to_type_declaration_fixer::{
     Common, Options, create_type_declaration_tokens, doc_comment, find_function_doc_comment,
     get_types_to_exclude, is_valid_syntax, tokens_from_raw_type,
@@ -31,7 +30,6 @@ fn is_skipped_type(type_: &[u8]) -> bool {
     matches!(type_, b"resource" | b"null")
 }
 
-/// `TYPE_CHECK_TEMPLATE`.
 fn type_check_code(type_: &[u8]) -> String {
     format!(
         "<?php function f(): {} {{}}",
@@ -39,7 +37,6 @@ fn type_check_code(type_: &[u8]) -> String {
     )
 }
 
-/// `hasReturnTypeHint`: `index` is the end of the function definition line, at `{`, `;` or `=>`.
 fn has_return_type_hint(tokens: &Tokens, index: usize) -> bool {
     let end_func_index = tokens
         .get_prev_token_of_kind(index, &[Proto::Char(b")")], true)

@@ -1,19 +1,3 @@
-//! `lint/complexity/require-consistent-return`, ported from Rector 2.8.4's `ExplicitReturnNullRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! A function or method (not a constructor) without a return type whose returns PHPStan infers as a union with `void`
-//! (`ReturnTypeInferer`: a value's native type, `void` for a bare `return` or a reachable end) says `null` out loud:
-//! each bare `return` becomes `return null`, and where the end of the body can be reached (a call PHPStan types
-//! `never`, docblocks read, ends it) a `return null;` follows the last statement. A `@return` union with `void` then
-//! has `null` there. Nothing changes with a `goto`, a `yield`, or a returned value whose native type is `mixed`.
-//!
-//! Rector prints the `@return` type anew (`PhpDocTypeChanger`): keywords in lower case, `boolean` as `bool`,
-//! `true|false` as `bool` (none of them beside a `bool`), a repeat once, a class as its fully qualified name without
-//! the leading `\` (an imported or partly qualified name as written, `self` as the class-like with it), the members
-//! in `UnionTypeHelper::sortTypes()`'s order, and no blanks around a `|`. Only the first `@return` tag counts. Pun
-//! leaves a function alone whose `@return` union with `void` holds another kind of type (generics, shapes, `static`,
-//! `parent`), which Rector's type mapper rewrites.
-
 use mago_syntax::cst::{Block, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -65,7 +49,6 @@ impl Rule for RequireConsistentReturn {
             return;
         }
         let facts = facts(ctx);
-        // every returned value of a known native type other than `mixed`, which a union with it would be
         if !returns.iter().filter_map(|r| r.value).all(|v| {
             facts
                 .native_type(node_span(v))
@@ -97,7 +80,6 @@ impl Rule for RequireConsistentReturn {
             let tokens = tokens(ctx);
             let list = block_list(tokens, body);
             let last = node_span(*list.stmts.last().expect("a body that returns"));
-            // after the comments php-parser keeps in a `Nop` at the end, at their indent
             let (end, from) = match comments_between(tokens, last.end, list.inner.end).last() {
                 Some(c) if list.nop => (c.end, c.start),
                 _ => (last.end, last.start),
@@ -129,8 +111,6 @@ impl Rule for RequireConsistentReturn {
     }
 }
 
-/// `transformDocUnionVoidToUnionNull`: the edit of the `@return` type, `Some(None)` when it stays, `None` when Pun
-/// cannot print it as Rector does.
 fn doc_edit(
     ctx: &crate::Context<'_>,
     node: Node<'_, '_>,
@@ -151,12 +131,10 @@ fn doc_edit(
         })
         .map(|(i, _)| i + 7)
         .collect();
-    // `getReturnType()` reads the first tag
     let Some(&at) = tags.first() else {
         return Some(None);
     };
     let start = at + text[at..].len() - text[at..].trim_start_matches([' ', '\t']).len();
-    // a type ends at a blank outside brackets (`array<int, string>` is one)
     let word_end = |from: usize| {
         let mut depth = 0i32;
         let rest = &text[from..];
@@ -172,7 +150,6 @@ fn doc_edit(
             })
             .map_or(rest.len(), |(i, _)| i)
     };
-    // a union may have blanks around its `|` (`int | void`)
     let mut end = word_end(start);
     while let Some(next) = text[end..]
         .trim_start_matches([' ', '\t'])
@@ -199,9 +176,7 @@ fn doc_edit(
             "integer" | "int" => "int".to_string(),
             "double" | "float" => "float".to_string(),
             "string" | "true" | "false" | "array" => lower,
-            // a union with `mixed` is `mixed`, no union
             "mixed" => return Some(None),
-            // the class-like around (an anonymous class's name is Rector's own hash); outside one the tag stays
             "self" => {
                 let class = ancestors.iter().enumerate().rev().find_map(|(i, a)| {
                     let name = match a {
@@ -213,7 +188,6 @@ fn doc_edit(
                     };
                     Some(Some(qualified(&ancestors[..i], name)))
                 });
-                // PHPStan's `ObjectType`, a `FullyQualifiedNameNode`
                 match class {
                     Some(class) => format!("\\{}", class?),
                     None => return Some(None),
@@ -235,7 +209,6 @@ fn doc_edit(
         };
         printed.push(name);
     }
-    // `true|false` is `bool`
     if let (Some(t), Some(f)) = (
         printed.iter().position(|p| p == "true"),
         printed.iter().position(|p| p == "false"),
@@ -253,8 +226,6 @@ fn doc_edit(
             unique.push(p);
         }
     }
-    // `UnionType::toPhpDocNode()` prints the members in `UnionTypeHelper::sortTypes()`'s order: `null` last, `true`
-    // and `false` before it, the rest by their name (`describe()`, a class without the leading `\`), case-insensitively
     let key = |p: &String| -> (u8, String, String) {
         let rank = match p.as_str() {
             "null" => 2,
@@ -292,7 +263,6 @@ fn is_class_name(member: &str) -> bool {
         })
 }
 
-/// A phpdoc keyword Rector maps to a type of its own.
 fn is_keyword(lower: &str) -> bool {
     matches!(
         lower,

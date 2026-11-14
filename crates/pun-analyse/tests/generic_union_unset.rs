@@ -1,5 +1,3 @@
-//! Complete PHPStan records for generic-union unset values, not declaration-effect substitutes.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 

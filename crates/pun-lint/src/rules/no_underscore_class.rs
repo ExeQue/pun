@@ -1,8 +1,3 @@
-//! `lint/classes/no-underscore-class`, ported from Mago 1.57.0's linter rule `no-underscore-class`
-//! (rule/deprecation/no_underscore_class.rs).
-//!
-//! From PHP 8.4 a class, interface, trait or enum named `_` is deprecated; its name is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

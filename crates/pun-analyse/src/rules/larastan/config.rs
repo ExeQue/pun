@@ -1,6 +1,3 @@
-//! ConfigCollectionRule: `Config::collection('key')` where the config value is no array
-//! ([`crate::larastan::config`]), and the config extensions' return types ([`Types`]).
-
 use std::sync::Arc;
 
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
@@ -21,7 +18,6 @@ use crate::larastan::config::{Configs, IsArray, union_is_array};
 
 const CONFIG: &[u8] = b"Illuminate\\Support\\Facades\\Config";
 
-/// The arguments the rule reads the types of, for a `Config::collection()` call.
 pub(super) fn collection<'a, 'arena>(
     names: &mago_names::ResolvedNames<'arena>,
     call: &'a StaticMethodCall<'arena>,
@@ -46,7 +42,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &StaticMethodCall
     let Some(args @ [first, ..]) = collection(c.names, call) else {
         return;
     };
-    // getConstantStrings(): every part of the type is a constant string
     let keys: Vec<String> = c.type_of(first.value()).map_or_else(Vec::new, |t| {
         t.types
             .iter()
@@ -57,7 +52,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &StaticMethodCall
             .collect::<Option<Vec<_>>>()
             .unwrap_or_default()
     });
-    // `$returnTypes + $configTypes`: the default's type takes the first key
     let class = c.class_scope();
     let mut scope = declared::scope_at(c, call.span(), class);
     let function = c.functions.last().and_then(|function| match function.kind {
@@ -101,7 +95,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &StaticMethodCall
     );
 }
 
-/// The spans [`check`] reads the types of.
 pub(super) fn typed(
     names: &mago_names::ResolvedNames,
     call: &StaticMethodCall,
@@ -117,10 +110,6 @@ static META: ProviderMeta = ProviderMeta::new(
     "Larastan's config extensions",
 );
 
-/// ConfigFunctionDynamicFunctionReturnTypeExtension (`config()`), ConfigRepositoryDynamicMethodReturnTypeExtension
-/// (`get()` and `collection()` of `Illuminate\Config\Repository`) and
-/// ConfigFacadeCollectionDynamicStaticMethodReturnTypeExtension (`Config::collection()`), all through
-/// ConfigHelper::getReturnTypes(); registered with `checkConfigTypes`.
 pub(crate) struct Types(pub(crate) Arc<Configs>);
 
 impl Provider for Types {
@@ -130,8 +119,6 @@ impl Provider for Types {
 }
 
 impl Types {
-    /// ConfigHelper::getReturnTypes(): the default's type (its callables called, generalized) in place of the first
-    /// key's; `None` when Pun does not infer a type.
     fn return_types(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -162,7 +149,6 @@ impl Types {
         Some(types)
     }
 
-    /// `get()`: the union, `None` without types.
     fn get(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -172,7 +158,6 @@ impl Types {
         (!types.is_empty()).then(|| helpers::union(context.codebase(), types))
     }
 
-    /// `collection()`: a Collection of the union's keys and values when it is an array, else an ErrorType.
     fn collection(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -185,7 +170,6 @@ impl Types {
             .types
             .iter()
             .map(|a| match a {
-                // a sealed list's keys are its indices (Mago adds `int<0, max>` once it has values)
                 TAtomic::Array(TArray::List(list)) if list.element_type.is_never() => {
                     let known = list.known_elements.as_deref()?;
                     Some((

@@ -1,4 +1,3 @@
-//! Public dispatch boundaries, with complete independent PHPStan 2.3.1 diagnostic records.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,

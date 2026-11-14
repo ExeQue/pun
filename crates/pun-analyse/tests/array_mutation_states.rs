@@ -1,5 +1,3 @@
-//! Array mutation state is checked against PHPStan 2.3.1, through the public analyser.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

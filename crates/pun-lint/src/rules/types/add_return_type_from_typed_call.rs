@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-typed-call`, ported from Rector 2.8.4's `ReturnTypeFromStrictTypedCallRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod, with `ReturnStrictTypeAnalyzer` and `TypeNodeUnwrapper`): a function or
-//! method whose returns are calls with a declared return type (at least one), class constants or literals gets
-//! their declared types: the one type, or, from PHP 8.0, their union.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -25,7 +20,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromTypedCall;
 
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
 
 impl Rule for AddReturnTypeFromTypedCall {
@@ -59,7 +53,6 @@ impl Rule for AddReturnTypeFromTypedCall {
             scope: scope.as_ref(),
         };
         let returns = returns_scoped(f.body);
-        // isUnionPossibleReturnsVoid
         if let Created::Union(types) = infer_returns(&place, f.body, &returns)
             && types.iter().any(|t| matches!(t, TAtomic::Void))
         {
@@ -69,7 +62,6 @@ impl Rule for AddReturnTypeFromTypedCall {
             return;
         }
         let current = scope.as_ref().and_then(|s| s.name.clone());
-        // collectStrictReturnTypes
         let mut nodes: Vec<String> = Vec::new();
         let mut has_call = false;
         for value in returns.iter().filter_map(|r| r.value) {
@@ -107,7 +99,6 @@ impl Rule for AddReturnTypeFromTypedCall {
                         ctx.php_version,
                     )
                 }
-                // `Scope::getType`: PHPStan types a constant by its value where its docblock does not fit
                 Expression::Access(Access::ClassConstant(_)) => facts
                     .native_type(node_span(value))
                     .filter(|t| !t.is_mixed())
@@ -138,7 +129,6 @@ impl Rule for AddReturnTypeFromTypedCall {
             [one] => one.clone(),
             _ if ctx.php_version < UNION_TYPES => return,
             many => {
-                // unwrapNullableUnionTypes: `?T` is `T|null`, unions and intersections are their members
                 let mut members: Vec<String> = Vec::new();
                 for node in many {
                     let parts: Vec<String> = match node.strip_prefix('?') {
@@ -154,7 +144,6 @@ impl Rule for AddReturnTypeFromTypedCall {
                         }
                     }
                 }
-                // the union must map back to a declaration
                 let class = members
                     .iter()
                     .any(|m| m.starts_with('\\') || m == "self" || m == "static");
@@ -172,9 +161,6 @@ impl Rule for AddReturnTypeFromTypedCall {
     }
 }
 
-/// `resolveMethodCallReturnNode`: the declaration of the return type of what `target` calls: PHP's own functions
-/// and methods by their signature, others by their native return type (`mixed` only when declared); `static` of
-/// another class is that class.
 fn call_return(
     facts: &Facts,
     call: pun_problem::Span,
@@ -185,9 +171,6 @@ fn call_return(
 ) -> Option<String> {
     let called = callee(facts, target, ancestors)?;
     let (declared, order) = if called.flags.is_built_in() {
-        // `getReturnType()` of the variant `ParametersAcceptorSelector` picks for the arguments: PHPStan's signature
-        // of the function; where it depends on the arguments (a conditional type), Mago's type of the call stands
-        // in for it, in the signature's order
         let signature = match &called.method_metadata {
             Some(_) => None,
             None => pun_phpstan::symbols::function(&called.name.to_string())
@@ -239,7 +222,6 @@ fn call_return(
     declaration(facts, &normalized, &order, php_version)
 }
 
-/// `StaticTypeMapper::mapPHPStanTypeToPhpParserNode` for a return type.
 fn declaration(facts: &Facts, t: &[TAtomic], order: &[String], php_version: u32) -> Option<String> {
     if t.is_empty()
         || t.iter().any(|a| {
@@ -254,10 +236,6 @@ fn declaration(facts: &Facts, t: &[TAtomic], order: &[String], php_version: u32)
     return_declaration(union_order(t), &facts.codebase, php_version, order, true)
 }
 
-/// The members of a conditional PHPStan type string (`($num is float ? float : int<0, max>)`) in the order they
-/// first appear, as the keys [`return_declaration`] orders by: what a declaration writes for each, its last name
-/// segment in lowercase. Generic arguments and shapes are skipped. (The one such signature with integer literals,
-/// `db2_autocommit()`, is not in Mago's prelude.)
 fn signature_order(ret: &str) -> Vec<String> {
     let mut flat = String::new();
     let mut depth = 0usize;
@@ -291,8 +269,6 @@ fn signature_order(ret: &str) -> Vec<String> {
     order
 }
 
-/// The members of a PHPStan type string without conditional types (`array|string`, `non-empty-string|false`,
-/// `list<string>`), as Mago's types; `None` for one a declaration has no word for.
 fn signature_types(codebase: &CodebaseMetadata, ret: &str) -> Option<Vec<TAtomic>> {
     let mut ret = ret.trim();
     if let Some(inner) = ret
@@ -336,7 +312,6 @@ fn signature_types(codebase: &CodebaseMetadata, ret: &str) -> Option<Vec<TAtomic
             "bool" => TAtomic::Scalar(TScalar::bool()),
             "float" => TAtomic::Scalar(TScalar::float()),
             "object" => TAtomic::Object(TObject::Any),
-            // a list or a non-empty array is an intersection in PHPStan, which a return declaration does not write
             "list" | "non-empty-array" | "non-empty-list" => return None,
             "array" => TAtomic::Array(TArray::Keyed(TKeyedArray::new_with_parameters(
                 std::sync::Arc::new(mago_codex::ttype::get_arraykey()),
@@ -357,7 +332,6 @@ fn signature_types(codebase: &CodebaseMetadata, ret: &str) -> Option<Vec<TAtomic
     Some(types)
 }
 
-/// The key [`signature_order`] gives the declaration of `t`.
 fn atomic_key(t: &TAtomic) -> &'static str {
     match t {
         TAtomic::Scalar(TScalar::Integer(_)) => "int",
@@ -367,7 +341,6 @@ fn atomic_key(t: &TAtomic) -> &'static str {
         TAtomic::Scalar(TScalar::Bool(_)) => "bool",
         TAtomic::Array(_) => "array",
         TAtomic::Null => "null",
-        // a string: no conditional signature returns another kind with a declaration
         _ => "string",
     }
 }

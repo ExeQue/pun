@@ -1,5 +1,3 @@
-//! Finally inputs are actual branch ends, throw points, and abrupt-exit scopes.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 

@@ -1,20 +1,3 @@
-//! `lint/complexity/no-redundant-nullable-check`, ported from Rector 2.8.4's `SimplifyIfNullableReturnRector`
-//! (rules/CodeQuality/Rector/If_) with `VarTagRemover::removeVarPhpTagValueNodeIfNotComment()`.
-//!
-//! ```php
-//! $value = $this->get();
-//! if (! $value instanceof SomeClass) {
-//!     return null;
-//! }
-//!
-//! return $value;
-//! ```
-//!
-//! becomes `return $this->get();` when the assigned value's type is `SomeClass|null`: the check returns what the value
-//! is anyway. The positive form (`if ($value instanceof SomeClass) { return $value; } return null;`) goes the same
-//! way. The three statements make way for the `return`, which keeps the assignment's comments; its `@var` goes
-//! unless it has a description, says what the native type cannot, or narrows the type.
-
 use mago_syntax::cst::{
     BinaryOperator, Expression, Node, NodeKind, Statement, UnaryPrefixOperator,
 };
@@ -67,7 +50,6 @@ impl Rule for NoRedundantNullableCheck {
         let Some(Statement::If(r#if)) = key.checked_sub(1).map(|k| list.stmts[k]) else {
             return;
         };
-        // `shouldSkip()`: an `if` with one `return` and nothing else, on `instanceof` or its negation
         let parts = if_parts(tokens, r#if);
         if parts.has_else || parts.has_elseifs || parts.stmts.len() != 1 {
             return;
@@ -94,7 +76,6 @@ impl Rule for NoRedundantNullableCheck {
         let is_null = |e: Option<&Expression<'_>>| e.is_some_and(|e| is_constant(e, "null"));
         let is_variable =
             |e: Option<&Expression<'_>>| e.is_some_and(|e| same_expression(source, variable, e));
-        // `isIfStmtReturnIncorrect()`, `isNextReturnIncorrect()`
         let (if_returns, next_returns) = (return_if.value, stmt.value);
         if negated && !(is_null(if_returns) && is_variable(next_returns)) {
             return;
@@ -112,13 +93,10 @@ impl Rule for NoRedundantNullableCheck {
         if !assign.operator.is_assign() || !same_expression(source, assign.lhs, variable) {
             return;
         }
-        // `AssignVariableTypeResolver::resolve()`: the assigned value's type, when it is a union
         let facts = facts(ctx);
         let Type::Union(types) = expr_type(&facts, &chain, assign.rhs, false) else {
             return;
         };
-        // `processSimplifyNullableReturn()`: `ClassName|null`, the class the `instanceof` names. PHPStan's union puts
-        // the object before `null` whatever order the source wrote, so either order here is that one.
         let class_name = resolve_class_name(&chain, class);
         let [first, second] = types.as_slice() else {
             return;
@@ -133,10 +111,8 @@ impl Rule for NoRedundantNullableCheck {
         }
         let assign_start = node_span(list.stmts[key - 2]).start;
         let end = node_span(stmt).end;
-        // php-parser's expression leaves out the parentheses around it
         let rhs = node_span(unparenthesize(assign.rhs));
         let code = format!("return {};", &source[rhs.start..rhs.end]);
-        // the assignment's `@var`, unless it is a comment worth keeping
         let doc = Doc::last_of(ctx, &chain[..n], assign_start);
         let scope = TypeScope::new(&chain, facts.documented());
         let removal = doc.as_ref().and_then(|doc| {

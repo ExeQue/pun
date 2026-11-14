@@ -1,16 +1,9 @@
-//! The two pieces of Symfony's console style that PHPStan's `table` error format prints, undecorated: PHPStan's
-//! `ErrorsConsoleStyle::table` (a two-column `symfony-style-guide` table whose second column wraps at the terminal
-//! width) and `SymfonyStyle::block` (`[OK] No errors`, `[ERROR] Found N errors`).
-
-/// Symfony's SymfonyStyle::MAX_LINE_LENGTH.
 const MAX_LINE_LENGTH: usize = 120;
 
 pub(crate) struct Style {
-    /// The terminal width (Symfony's Terminal::getWidth()).
     width: usize,
 }
 
-/// mb_strwidth: 2 for East Asian wide and fullwidth characters (and the emoji PHPStan prints), 1 otherwise.
 pub(crate) fn width(text: &str) -> usize {
     text.chars().map(char_width).sum()
 }
@@ -37,7 +30,6 @@ fn char_width(c: char) -> usize {
     if wide { 2 } else { 1 }
 }
 
-/// PHP's wordwrap($text, $width, "\n", true) on characters, one line at a time.
 fn wrap(line: &str, max: usize) -> Vec<String> {
     if max == 0 || width(line) <= max {
         return vec![line.to_string()];
@@ -57,7 +49,6 @@ fn wrap(line: &str, max: usize) -> Vec<String> {
         if !current.is_empty() {
             out.push(std::mem::take(&mut current));
         }
-        // A word longer than the line is cut.
         let mut piece = String::new();
         for c in word.chars() {
             if width(&piece) + char_width(c) > max {
@@ -71,7 +62,6 @@ fn wrap(line: &str, max: usize) -> Vec<String> {
     out
 }
 
-/// `text` padded with spaces to `columns` display columns.
 fn pad(text: &str, columns: usize) -> String {
     format!("{text}{}", " ".repeat(columns.saturating_sub(width(text))))
 }
@@ -81,9 +71,6 @@ impl Style {
         Style { width }
     }
 
-    /// ErrorsConsoleStyle::table, undecorated: the header row, a separator, the rows (a cell's lines on lines of
-    /// their own), a newline after the bottom border. The second column wraps at the terminal width less the first
-    /// column and five spaces of padding.
     pub(crate) fn table(&self, header: [&str; 2], rows: &[[String; 2]]) -> String {
         let terminal = self.width.saturating_sub(2);
         let first = rows
@@ -97,7 +84,6 @@ impl Style {
                 .map(|(i, line)| [if i == 0 { a } else { "" }.to_string(), line])
                 .collect()
         };
-        // The header wraps like a row.
         let mut lines = wrapped(header[0], header[1]);
         let separator = lines.len();
         for [a, b] in rows {
@@ -128,10 +114,6 @@ impl Style {
         out
     }
 
-    /// SymfonyStyle::block with a type and padding, undecorated, after `tables` tables: autoPrependBlock's blank
-    /// lines (two less the newlines among the last two characters SymfonyStyle buffered, and the tables bypass that
-    /// buffer, so it holds only the newline after each table), ` [TYPE] message` padded to the line length, then a
-    /// blank line. SymfonyStyle's line length is the terminal width, at most 120.
     pub(crate) fn block(&self, kind: &str, message: &str, tables: usize) -> String {
         let line = format!(" [{kind}] {message}");
         let before = if tables >= 2 { "" } else { "\n" };

@@ -1,13 +1,3 @@
-//! `lint/tags/no-invalid-open-tag`, ported from Mago 1.57.0's `invalid-open-tag`
-//! (mago-linter src/rule/correctness/invalid_open_tag.rs).
-//!
-//! Inline HTML that starts (after whitespace) with a misspelled `<?php` (`<php?`, `<ph?p`, `<p?hp`, `<ph?`, `<p?`,
-//! in any case) is reported, and the fix writes `<?php` in its place.
-//!
-//! Where whitespace comes before the tag, Mago 1.57.0 reports a span that ends at the tag's length counted from the
-//! inline text's start (`Span::subspan` takes an end, not a length) and its fix then fails as a Mago bug; Pun reports
-//! and replaces the tag itself (tests/mago/tags-no-invalid-open-tag/Pun).
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};

@@ -1,23 +1,3 @@
-//! `lint/refactor/rename-method`, ported from Rector 2.8.4's `RenameMethodRector` (rules/Renaming/Rector/MethodCall).
-//!
-//! Each rename names a class, an old method and a new one; the first rename that matches decides.
-//!
-//! - A call `$x->old()`, `$x?->old()` or `X::old()` (the name written as an identifier, without regard to case) on
-//!   the class (`isObjectType` of the object or the class part, or an enum case of the class) gets the new name, unless
-//!   the object's one class is another class than the rename's, which the codebase knows, and has both methods. With
-//!   an `array-key`, the call is then read at that key (`$x->new()['key']`).
-//! - In a class, an interface or a trait, a method named old gets the new name when the class is the rename's class,
-//!   extends or implements it, or uses it as a trait (its own or a parent's), and has no method of the new name; an
-//!   interface whose rename class has a parent or interface with the old method keeps it. A trait is matched as a
-//!   class is (PHPStan's scope gives a trait declaration its reflection). An enum's methods are not renamed.
-//!
-//! A class's methods are the codebase's (its own, its parents', its traits' and its interfaces'); Pun's codebase has
-//! no doc comments, so an `@method` tag is not a method.
-//!
-//! Options: `items = [{ class = "Nette\\Utils\\Html", old-method = "add", new-method = "addHtml" }]`, the
-//! `MethodCallRename` value objects as `pun migrate` writes them, with `array-key` (a string or an integer) for a
-//! `MethodCallRenameWithArrayKey`.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
@@ -34,7 +14,6 @@ use super::{
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// One `MethodCallRename` (`array_key` set for a `MethodCallRenameWithArrayKey`).
 #[derive(Clone, Debug)]
 pub struct MethodRename {
     pub class: String,
@@ -48,15 +27,12 @@ pub struct RenameMethod {
     pub renames: Vec<MethodRename>,
 }
 
-/// Whether the codebase's class `class` has a method `name` (`ClassReflection::hasMethod` for native methods; the
-/// codebase lists the methods a class gets from its interfaces among its own).
 fn has_method(class: &ClassLikeMetadata, name: &str) -> bool {
     (class.declaring_method_ids.keys())
         .chain(class.appearing_method_ids.keys())
         .any(|m| m.as_bytes().eq_ignore_ascii_case(name.as_bytes()))
 }
 
-/// `isEnumTypeMatch`: `$call->var` is a case (a class constant fetch on a class name) of an enum named `class`.
 fn is_enum_case_of(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -127,9 +103,6 @@ impl RenameMethod {
         }
     }
 
-    /// `shouldSkipClassMethod`: the class that declares the old method on the receiver's one class
-    /// (`resolveClassReflectionSourceObject`: the receiver's class itself for a private method; a trait's method is
-    /// the using class's) is another known class than the rename's, and has the new method too.
     fn skips_call(
         &self,
         ctx: &Context<'_>,
@@ -158,14 +131,12 @@ impl RenameMethod {
                 .get_class_like(declaring.as_bytes())
                 .unwrap_or(class),
         };
-        // The rename's class is known: the receiver matched it (`is_class`).
         codebase
             .get_class_like(rename.class.as_bytes())
             .is_some_and(|target| source.original_name != target.original_name)
             && has_method(source, &rename.new)
     }
 
-    /// A class, an interface or a trait: its name, members and kind.
     fn visit_class_like(
         &self,
         (name, members, kind): (
@@ -198,13 +169,11 @@ impl RenameMethod {
                     return false;
                 }
                 let Some(own) = own else { return false };
-                // `isMethodStaticCallOrClassMethodObjectType` on the scope's class.
                 let of_type = is_class(ctx, &own.original_name.to_string(), &rename.class)
                     || uses_trait(ctx, own, &rename.class);
                 if !of_type {
                     return false;
                 }
-                // `shouldKeepForParentInterface`.
                 if kind == SymbolKind::Interface
                     && codebase
                         .get_class_like(rename.class.as_bytes())
@@ -236,7 +205,6 @@ impl RenameMethod {
     }
 }
 
-/// `ClassReflection::hasTraitUse`: the traits the class and its parent classes use themselves.
 fn uses_trait(ctx: &Context<'_>, class: &ClassLikeMetadata, r#trait: &str) -> bool {
     let codebase = &facts(ctx).codebase;
     let direct = |c: &ClassLikeMetadata| {
@@ -250,7 +218,6 @@ fn uses_trait(ctx: &Context<'_>, class: &ClassLikeMetadata, r#trait: &str) -> bo
             .any(direct)
 }
 
-/// `BuilderHelpers::normalizeValue` printed: a string in single quotes, an integer as it is.
 fn key_text(key: &Value) -> String {
     match key {
         Value::String(s) => format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'")),
@@ -263,7 +230,6 @@ impl Rule for RenameMethod {
         "lint/refactor/rename-method"
     }
 
-    /// Rector runs the rule once per file; a method its fix renamed changes which calls match.
     fn once(&self) -> bool {
         true
     }

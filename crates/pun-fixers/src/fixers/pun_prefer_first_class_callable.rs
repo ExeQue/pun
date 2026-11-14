@@ -1,15 +1,3 @@
-//! Port of Mago's `prefer-first-class-callable` (default settings, so methods only):
-//! `fn ($x) => $this->format($x)` → `$this->format(...)`, `function ($x) { return Str::upper($x); }` → `Str::upper(...)`.
-//! Opt-in only (in no lint set). Risky (Mago marks the fix unsafe too): the callable now
-//! receives every argument its caller passes, e.g. Laravel collections pass the key as a second argument,
-//! which reaches an optional second parameter of the method. Deviations from Mago, which change behaviour:
-//! - closures/arrow functions with a return type, by-reference return, by-reference or defaulted parameters,
-//!   or parameter attributes are skipped (the coercion/defaults would be lost);
-//! - a variadic parameter must be forwarded as `...$args` (Mago also accepts `fn (...$a) => f($a)`);
-//! - a closure calling a method on a variable it doesn't `use` by value is skipped (the closure would fail,
-//!   the first-class callable would not).
-//! - a call whose receiver is one of the parameters (`fn ($x) => $x->equals($x)`) is skipped (the
-//!   first-class callable would read an outer `$x`).
 use crate::analyzers::helpers::split_list;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -104,7 +92,6 @@ fn fix_one(tokens: &mut Tokens, kw: usize) -> Option<()> {
             .then(|| tokens.get_next_meaningful_token(c))??;
     }
     let call_start = c;
-    // `$var->method(` or `Name::method(` / `static::method(`
     let callee = if tokens[c].is_kind(T_VARIABLE) {
         let arrow = tokens
             .get_next_meaningful_token(c)
@@ -216,7 +203,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // simple_method_call, simple_static_method_call, closure_method_call_with_non_callee_reference_capture
         assert_eq!(
             fix("<?php\n\nrun(fn($x) => $this->method($x));\n"),
             "<?php\n\nrun($this->method(...));\n"
@@ -239,7 +225,6 @@ mod tests {
             "<?php\n\nfunction getSomeClass() { return new SomeClass(); }\nrun(function($x) { return getSomeClass()->method($x); });\n",
             "<?php\n\n$callable = \"strlen\";\nrun(function($x) use (&$callable) { return $callable($x); });\n",
             "<?php\n\n$obj = new SomeClass();\nrun(function($x) use (&$obj) { return $obj->method($x); });\n",
-            // check_functions is off by default
             "<?php\n\nrun(fn($x) => strlen($x));\n",
             "<?php\n\n$unused = null;\nrun(function($x) use (&$unused) { return strlen($x); });\n",
             "<?php\n\narray_map(static fn(array $nums): int => Calculator::sum(...$nums), $groups);\n",
@@ -285,7 +270,6 @@ mod tests {
             "<?php $f = fn ($x) => (new Foo)->m($x);",
             "<?php $f = fn ($x) => $this->m(f($x));",
             "<?php $f = function ($x) { return $this->m($x) + 1; };",
-            // the receiver is a parameter: `$x->equals(...)` would read an undefined outer `$x`
             "<?php $f = fn ($x) => $x->equals($x);",
             "<?php $f = fn ($a, $b) => $b->cmp($a, $b);",
         ] {

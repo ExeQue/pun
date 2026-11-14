@@ -1,8 +1,3 @@
-//! `lint/phpunit/prefer-assert-null-true-false`, ported from rector-phpunit's `AssertSameBoolNullToSpecificMethodRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertSame(null, $a)` becomes `assertNull($a)`, and likewise for `true` and `false` and for `assertNotSame`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

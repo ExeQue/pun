@@ -1,13 +1,3 @@
-//! `lint/phpdoc/no-useless-var`, ported from Rector 2.8.4's `RemoveUselessVarTagRector`
-//! (rules/DeadCode/Rector/Property) with `VarTagRemover::removeVarTagIfUseless()` and
-//! `DeadVarTagValueNodeAnalyzer` (rules/DeadCode/PhpDoc).
-//!
-//! The first `@var` of a property's, a class constant's or an expression statement's doc comment goes when the native
-//! type already says it: the property's or constant's declared type, or, for `$x = expr;`, the native type of `expr`
-//! when the tag says exactly that. It stays with a description, a generic or other type the native one cannot say
-//! (`PhpDocTypeChanger::isAllowed()`), or a template type. The removal takes every `@var` (and `@phan-var`) of the
-//! same variable along, not the `@phpstan-` and `@psalm-` ones; a doc comment left empty goes.
-
 use mago_syntax::cst::{ClassLikeMember, Expression, Hint, Node, NodeKind, Statement};
 use pun_problem::{Fix, Safety};
 
@@ -78,18 +68,13 @@ impl Rule for NoUselessVarTag {
     }
 }
 
-/// What the tag is compared with: a declared type (`Property::$type`, `ClassConst::$type`), the assigned value of an
-/// expression statement, or nothing to compare with.
 pub(crate) enum Target<'n, 'arena> {
     Hint(Option<&'n Hint<'arena>>),
     Expr(&'n Expression<'arena>),
-    /// A declared type the rule is about to write, already mapped (`mapPhpParserNodePHPStanType`).
     Mapped(RType),
     Other,
 }
 
-/// The span of an expression, for the facts' types.
-/// `DeadVarTagValueNodeAnalyzer::isDead()`.
 pub(crate) fn is_dead(
     tag: &TypeTag,
     target: &Target<'_, '_>,
@@ -99,10 +84,8 @@ pub(crate) fn is_dead(
     if matches!(target, Target::Hint(None)) || tag.has_description {
         return false;
     }
-    // allow Identifier, ComplexType, and Name on Property and ClassConst
     let property_type = match target {
         Target::Hint(Some(hint)) => scope.map_hint(hint),
-        // `ExprNodeMapper`: the scope's type of the expression
         Target::Expr(e) => RType::T(expr_type(facts, scope.ancestors(), e, false)),
         Target::Mapped(t) => t.clone(),
         Target::Hint(None) | Target::Other => return false,
@@ -110,7 +93,6 @@ pub(crate) fn is_dead(
     if matches!(tag.ty, pun_phpstan::phpdoc::Node::Generic { .. }) {
         return false;
     }
-    // is strict type superior to doc type? keep strict type only
     let doc_type = scope.map_doc(&tag.ty);
     if let Target::Expr(e) = target {
         let native = RType::T(expr_type(facts, scope.ancestors(), e, true));
@@ -128,7 +110,6 @@ pub(crate) fn is_dead(
         if equals(&doc_type, &property_type) {
             return true;
         }
-        // more specific type is already in the property
         return is_super(&doc_type, &property_type).yes();
     }
     if are_native_and_doc_types_equal(&property_type, &doc_type, scope.class_info()) {
@@ -137,20 +118,15 @@ pub(crate) fn is_dead(
     doc_type.is_union() && are_types_equal(&remove_null(&doc_type), &property_type)
 }
 
-/// `VarTagRemover::removeVarPhpTagValueNodeIfNotComment()`: the children of `doc` (the doc comment of a node at
-/// `ancestors`) to remove so that its `@var` goes, given the type `t` the node has; `None` when it stays (a
-/// description, a type the native one cannot say, or a narrower type than `t`).
 pub(crate) fn var_removal_if_not_comment(
     doc: &Doc<'_>,
     t: &RType,
     scope: &TypeScope<'_, '_, '_, '_>,
 ) -> Option<Vec<bool>> {
     let (_, tag) = first_named(doc, "@var")?;
-    // has description? keep it; keep string[] etc.
     if tag.has_description || is_allowed(&tag.ty) {
         return None;
     }
-    // keep subtypes like positive-int
     let var_type = scope.map_doc(&tag.ty);
     if !are_types_equal(t, &var_type) && super::types::compare::is_subtype(&var_type, t) {
         return None;

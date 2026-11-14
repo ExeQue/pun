@@ -1,9 +1,3 @@
-//! `lint/complexity/no-duplicate-match-arm`, ported from Mago 1.57.0's `no-duplicate-match-arm`
-//! (mago-linter src/rule/redundancy/no_duplicate_match_arm.rs).
-//!
-//! Reports a `match` arm whose result is a constant value an earlier arm already returns, so the two arms could be
-//! one.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{MatchArm, Node, NodeKind};
 

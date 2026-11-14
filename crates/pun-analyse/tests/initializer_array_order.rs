@@ -1,5 +1,3 @@
-//! Canonical initializer values retain each source alternative's array order (PHPStan 2.3.1).
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

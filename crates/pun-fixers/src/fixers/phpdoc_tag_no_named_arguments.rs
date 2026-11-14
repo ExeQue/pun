@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocTagNoNamedArgumentsFixer`, with the parts of `DocBlockAnnotationTrait` it
-//! uses (`ensureIsDocBlockWithAnnotation` without preventing attributes).
 use crate::analyzers::abstract_php_unit_fixer::get_doc_block_index;
 use crate::analyzers::analysis::NamespaceUseType;
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
@@ -120,7 +118,6 @@ fn is_attribute_class(tokens: &Tokens, mut index: usize) -> bool {
     false
 }
 
-/// `DocBlockAnnotationTrait::ensureIsDocBlockWithAnnotation` (no preventing attributes).
 fn ensure_is_doc_block_with_annotation(
     tokens: &mut Tokens,
     index: usize,
@@ -194,7 +191,6 @@ fn update_doc_block_if_needed(
             return;
         }
     }
-    // makeDocBlockMultiLineIfNeeded
     if doc.get_lines().len() == 1 && doc.get_annotations_of_type(&[annotation]).is_empty() {
         let next = tokens
             .get_next_non_whitespace(doc_block_index, None)
@@ -202,7 +198,6 @@ fn update_doc_block_if_needed(
         let indent = WhitespacesAnalyzer::detect_indent(tokens, next);
         doc.make_multi_line(&indent, line_end);
     }
-    // addAnnotation
     let original_indent = WhitespacesAnalyzer::detect_indent(tokens, doc_block_index);
     let mut lines: Vec<Vec<u8>> = doc
         .get_lines()

@@ -1,5 +1,3 @@
-//! Global initializer values must reach normal inference, not only duplicate-key recovery.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\TernaryOperatorSpacesFixer`.
 use crate::analyzers::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use crate::analyzers::goto_label_analyzer::GotoLabelAnalyzer;
 use crate::analyzers::switch_analyzer::SwitchAnalyzer;
@@ -48,7 +47,6 @@ impl Fixer for TernaryOperatorSpacesFixer {
                 let next_non_whitespace_index =
                     tokens.get_next_non_whitespace(index, None).unwrap();
                 if tokens[next_non_whitespace_index].equals(":", true) {
-                    // for `$a ?: $b` remove spaces between `?` and `:`
                     tokens.ensure_whitespace_at_index(index + 1, 0, b"");
                 } else {
                     ensure_whitespace_existence(tokens, index + 1, true);
@@ -56,7 +54,6 @@ impl Fixer for TernaryOperatorSpacesFixer {
                 ensure_whitespace_existence(tokens, index - 1, false);
                 continue;
             }
-            // only `:` is left
             ensure_whitespace_existence(tokens, index + 1, true);
             let prev = tokens.get_prev_non_whitespace(index, None).unwrap();
             if !tokens[prev].equals("?", true) {

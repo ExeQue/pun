@@ -1,12 +1,3 @@
-//! LocalTypeAliasesRule (InClassNode), LocalTypeTraitAliasesRule (a trait's declaration) and
-//! LocalTypeTraitUseAliasesRule (InTraitNode): LocalTypeAliasesCheck on the `@phpstan-type` and
-//! `@phpstan-import-type` tags of a class-like's PHPDoc. Also the type alias reflection the check reads:
-//! `ClassReflection::getTypeAliases()` and UsefulTypeAliasResolver's local aliases, whose circular definitions PHPStan
-//! detects by exceptions (emulated here by [`Resolver::throwing`]).
-//!
-//! ponytail: global type aliases (the `typeAliases` parameter) are not read, and of GenericObjectTypeCheck and
-//! ClassNameCheck only `generics.notGeneric` and unknown classes are reported.
-
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -24,31 +15,26 @@ use super::declared::{class_scope, original_name, with_classes};
 use super::doc::NameScope;
 use super::{Checker, DISCOVERING_SYMBOLS_TIP, missing_types};
 
-/// A `@phpstan-type` tag: the alias and its type (`None`: an InvalidTypeNode, which resolves to `mixed`).
 #[derive(Clone)]
 struct AliasTag {
     name: String,
     node: Option<Node>,
 }
 
-/// A `@phpstan-import-type` tag: the imported alias, the class it comes from (resolved) and its new name.
 struct ImportTag {
     alias: String,
     from: String,
     imported_as: Option<String>,
 }
 
-/// The type alias tags of a PHPDoc and the name scope they resolve in.
 struct AliasDoc {
     aliases: Vec<AliasTag>,
     imports: Vec<ImportTag>,
     scope: NameScope,
-    /// `getClassNameForTypeAlias()`
     alias_class: String,
 }
 
 impl AliasDoc {
-    /// FileTypeMapper's `getTypeAliasesMap()`: the names the PHPDoc defines or imports.
     fn names(&self) -> HashSet<String> {
         self.imports
             .iter()
@@ -58,7 +44,6 @@ impl AliasDoc {
     }
 }
 
-/// phpdoc-parser's `TOKEN_IDENTIFIER` at the start of `s`.
 fn identifier(bytes: &[u8]) -> Option<&[u8]> {
     let mut i = 0;
     loop {
@@ -82,7 +67,6 @@ fn identifier(bytes: &[u8]) -> Option<&[u8]> {
     (i > 0).then(|| &bytes[..i])
 }
 
-/// `parseTypeAliasTagValue()`: `Name Type` or `Name = Type`.
 fn alias_value(value: &[u8]) -> Option<AliasTag> {
     let name = identifier(value)?;
     let rest = value[name.len()..].trim_ascii_start();
@@ -97,13 +81,11 @@ fn alias_value(value: &[u8]) -> Option<AliasTag> {
     })
 }
 
-/// `parseTypeAliasImportTagValue()`: `Alias from Class` or `Alias from Class as Name`.
 fn import_value(value: &[u8], scope: &NameScope) -> Option<ImportTag> {
     let alias = identifier(value)?;
     let rest = value[alias.len()..].trim_ascii_start();
     let rest = rest.strip_prefix(b"from")?;
     if identifier(rest).is_some() {
-        // `fromX`: no `from` token
         return None;
     }
     let rest = rest.trim_ascii_start();
@@ -121,7 +103,6 @@ fn import_value(value: &[u8], scope: &NameScope) -> Option<ImportTag> {
     })
 }
 
-/// A PHP array keyed by name: a later entry replaces an earlier one in its place.
 fn upsert<T>(list: &mut Vec<T>, key: impl Fn(&T) -> &str, item: T) {
     match list.iter().position(|e| key(e) == key(&item)) {
         Some(i) => list[i] = item,
@@ -129,9 +110,6 @@ fn upsert<T>(list: &mut Vec<T>, key: impl Fn(&T) -> &str, item: T) {
     }
 }
 
-/// The type alias tags of class-like `k`'s PHPDoc (`resolveTypeAliasTags()` and `resolveTypeAliasImportTags()`), in
-/// `scope`.
-/// The tags [`alias_doc()`] reads.
 const ALIAS_TAGS: [&str; 5] = [
     "@phan-type",
     "@psalm-type",
@@ -171,30 +149,22 @@ fn alias_doc(c: &Checker, k: &ClassLikeMetadata, scope: NameScope) -> Option<Ali
     })
 }
 
-/// A type alias of a class (`TypeAlias`): its tag and the PHPDoc it is in, or `TypeAlias::invalid()`.
 #[derive(Clone)]
 enum Alias {
     Defined { doc: Rc<AliasDoc>, tag: AliasTag },
     Invalid,
 }
 
-/// `CircularTypeAliasDefinitionException`.
 struct Circular;
 
-/// The type alias reflection of one check.
 struct Resolver<'c, 'a, 'arena> {
     c: &'c Checker<'a, 'arena>,
     docs: RefCell<HashMap<String, Option<Rc<AliasDoc>>>>,
-    /// `ClassReflection::$typeAliases`
     aliases: RefCell<HashMap<String, Vec<(String, Alias)>>>,
-    /// `ClassReflection::$resolvingTypeAliasImports`
     resolving_imports: RefCell<HashSet<String>>,
-    /// `$resolvedLocalTypeAliases`, with whether the type is a CircularTypeAliasErrorType's
     resolved: RefCell<HashMap<String, (Type, bool)>>,
     in_process: RefCell<HashSet<String>>,
-    /// A CircularTypeAliasDefinitionException is unwinding to the nearest alias resolution.
     throwing: Cell<bool>,
-    /// A CircularTypeAliasErrorType was produced since the last [`Resolver::take_circular()`].
     circular: Cell<bool>,
 }
 
@@ -212,7 +182,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
         }
     }
 
-    /// The PHPDoc of class `name` (its own context).
     fn doc(&self, name: &str) -> Option<Rc<AliasDoc>> {
         let key = name.to_ascii_lowercase();
         if let Some(found) = self.docs.borrow().get(&key) {
@@ -232,7 +201,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
         symbols::lookup(name).is_some()
     }
 
-    /// `ClassReflection::getTypeAliases()` (which throws only while it resolves imports).
     fn type_aliases(&self, class: &str) -> Vec<(String, Alias)> {
         self.aliases_of(class).unwrap_or_default()
     }
@@ -254,7 +222,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
                 (t.name.clone(), alias)
             })
             .collect();
-        // prevent circular imports
         if self.resolving_imports.borrow().contains(&key) {
             if locals.is_empty() {
                 return Err(Circular);
@@ -291,7 +258,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
         Ok(merged)
     }
 
-    /// `TypeAlias::resolve()`, an exception caught as a CircularTypeAliasErrorType.
     fn resolve_alias(&self, alias: &Alias) -> Result<Type, Circular> {
         let Alias::Defined { doc, tag } = alias else {
             self.circular.set(true);
@@ -307,7 +273,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
         Ok(ty)
     }
 
-    /// `resolveLocalTypeAlias()`; `None` for no such alias.
     fn local(&self, name: &str, class: &str, names: &HashSet<String>) -> Option<Type> {
         if self.throwing.get() {
             return Some(Type::Error);
@@ -327,7 +292,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
             .into_iter()
             .find(|(n, _)| n == name)?;
         if !self.in_process.borrow_mut().insert(key.clone()) {
-            // resolve circular reference as ErrorType to make it easier to detect
             self.throwing.set(true);
             return Some(Type::Error);
         }
@@ -359,7 +323,6 @@ impl<'c, 'a, 'arena> Resolver<'c, 'a, 'arena> {
     }
 }
 
-/// Runs `f` with the NameScopes of class-likes' PHPDocs without their aliases (the rules checking the aliases).
 fn without_aliases<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
     let previous = c.resolving_aliases.swap(true, Relaxed);
     let out = f();
@@ -367,9 +330,6 @@ fn without_aliases<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
     out
 }
 
-/// The type aliases class-like `k` defines or imports, resolved (FileTypeMapper's `typeAliasesMap` of its members'
-/// PHPDocs): the NameScope of a member's PHPDoc tries them just before the templates.
-/// A trait's (`k`) in the context of `using`, the class using it.
 pub(super) fn class_aliases(
     c: &Checker,
     k: &ClassLikeMetadata,
@@ -378,7 +338,6 @@ pub(super) fn class_aliases(
     if c.resolving_aliases.swap(true, Relaxed) {
         return Vec::new();
     }
-    // (a PHPDoc without alias tags defines and imports none, so its scope need not be built)
     let tagged = c
         .doc_before(k.span.file_id, k.span.start.offset)
         .is_some_and(|(_, entry)| {
@@ -410,12 +369,10 @@ pub(super) fn class_aliases(
     aliases
 }
 
-/// The NameScope a PHPDoc's types resolve in, with its type aliases.
 struct AliasScope<'r, 'c, 'a, 'arena> {
     resolver: &'r Resolver<'c, 'a, 'arena>,
     doc: &'r AliasDoc,
     names: HashSet<String>,
-    /// `bypassTypeAliases()`
     bypass: bool,
 }
 
@@ -432,7 +389,6 @@ impl Scope for AliasScope<'_, '_, '_, '_> {
     fn constant_names(&self, name: &str) -> Vec<String> {
         self.doc.scope.constant_names(name)
     }
-    /// TypeNodeResolver tries the type aliases (`TypeAliasResolver::resolveTypeAlias()`) just before the templates.
     fn template(&self, name: &str) -> Option<Type> {
         let alias = (!self.bypass)
             .then(|| {
@@ -444,7 +400,6 @@ impl Scope for AliasScope<'_, '_, '_, '_> {
     }
 }
 
-/// `$classReflection->...` "a class" / "an interface" / "a trait" / "an enum".
 fn described(class: &symbols::Class) -> &'static str {
     if class.is_interface {
         "an interface"
@@ -457,7 +412,6 @@ fn described(class: &symbols::Class) -> &'static str {
     }
 }
 
-/// Every type in `ty`, outer first (TypeTraverser's order).
 pub(super) fn each(ty: &Type, f: &mut dyn FnMut(&Type)) {
     f(ty);
     let f = RefCell::new(f);
@@ -467,7 +421,6 @@ pub(super) fn each(ty: &Type, f: &mut dyn FnMut(&Type)) {
     });
 }
 
-/// `getReferencedClasses()`.
 fn referenced_classes(ty: &Type) -> Vec<String> {
     let mut out = Vec::new();
     each(ty, &mut |t| match t {
@@ -484,10 +437,8 @@ fn referenced_classes(ty: &Type) -> Vec<String> {
     out
 }
 
-/// One error: identifier, message, tip.
 type Found = (&'static str, String, Option<&'static str>);
 
-/// `checkInTraitDefinitionContext()` of class-like `k` (display name `display`).
 fn definition_context(r: &Resolver, k: &ClassLikeMetadata, display: &str, out: &mut Vec<Found>) {
     let Some(doc) = r.doc(&original_name(k)) else {
         return;
@@ -606,7 +557,6 @@ fn definition_context(r: &Resolver, k: &ClassLikeMetadata, display: &str, out: &
     }
 }
 
-/// `$typeAliasTag->getTypeAlias()->resolve()`: the type and whether it holds a CircularTypeAliasErrorType.
 fn fresh(r: &Resolver, doc: &AliasDoc, tag: &AliasTag) -> (Type, bool) {
     r.take_circular();
     let Some(node) = &tag.node else {
@@ -617,7 +567,6 @@ fn fresh(r: &Resolver, doc: &AliasDoc, tag: &AliasTag) -> (Type, bool) {
     (ty, circular)
 }
 
-/// `isAliasNameValid()`.
 fn valid_name(r: &Resolver, doc: &AliasDoc, name: &str) -> bool {
     let ty = resolve_in(&Node::Ident(name.to_string()), &r.scope(doc, true));
     let object = matches!(
@@ -631,7 +580,6 @@ fn valid_name(r: &Resolver, doc: &AliasDoc, name: &str) -> bool {
     (object && name != "self" && name != "parent") || matches!(ty, Type::Template(_))
 }
 
-/// `hasErrorType()`.
 fn error_type(ty: &Type, circular: bool, name: &str) -> Option<Found> {
     let mut error = false;
     each(ty, &mut |t| error |= matches!(t, Type::Error));
@@ -653,7 +601,6 @@ fn error_type(ty: &Type, circular: bool, name: &str) -> Option<Found> {
     })
 }
 
-/// `checkInTraitUseContext()` of the aliases in `doc`.
 fn use_context(r: &Resolver, doc: &AliasDoc, out: &mut Vec<Found>) {
     for tag in &doc.aliases {
         let name = &tag.name;
@@ -687,7 +634,6 @@ fn use_context(r: &Resolver, doc: &AliasDoc, out: &mut Vec<Found>) {
                 None,
             ));
         }
-        // GenericObjectTypeCheck: a generic type of a class without templates
         let mut generics = Vec::new();
         each(&ty, &mut |t| {
             if let Type::Object(class, args, _) = t
@@ -723,13 +669,11 @@ fn report(c: &mut Checker, at: Span, found: Vec<Found>) {
     }
 }
 
-/// LocalTypeAliasesRule on a class, interface or enum declaration.
 pub(super) fn class_like(c: &mut Checker, at: Span) {
     let mut found = Vec::new();
     without_aliases(c, || {
         with_classes(c, || {
             let r = Resolver::new(c);
-            // (the walk entered the class)
             let k = c.class_scope().expect("a class scope");
             let display = original_name(k);
             definition_context(&r, k, &display, &mut found);
@@ -741,7 +685,6 @@ pub(super) fn class_like(c: &mut Checker, at: Span) {
     report(c, at, found);
 }
 
-/// LocalTypeTraitAliasesRule on a trait declaration (outside a class's context).
 pub(super) fn trait_definition(c: &mut Checker, at: Span, name: &str) {
     let mut found = Vec::new();
     without_aliases(c, || {
@@ -755,7 +698,6 @@ pub(super) fn trait_definition(c: &mut Checker, at: Span, name: &str) {
     report(c, at, found);
 }
 
-/// The alias PHPDoc of trait `k` in the context of `using` (which `self`, `static` and `parent` mean).
 fn in_context(c: &Checker, k: &ClassLikeMetadata, using: &ClassLikeMetadata) -> Option<AliasDoc> {
     let mut scope = class_scope(c, k.span, k);
     scope.class = Some(original_name(using));
@@ -766,8 +708,6 @@ fn in_context(c: &Checker, k: &ClassLikeMetadata, using: &ClassLikeMetadata) -> 
     alias_doc(c, k, scope)
 }
 
-/// LocalTypeTraitUseAliasesRule on trait `name` in the context of `class`, the class using it (which `self` and
-/// `static` mean).
 pub(super) fn trait_use(c: &mut Checker, at: Span, name: &str, class: &str) {
     let using = c.codebase.get_class_like(class.as_bytes());
     let mut found = Vec::new();
@@ -775,7 +715,6 @@ pub(super) fn trait_use(c: &mut Checker, at: Span, name: &str, class: &str) {
         with_classes(c, || {
             let r = Resolver::new(c);
             let k = c.codebase.get_class_like(name.as_bytes());
-            // (the walked class using the trait is in the codebase)
             let doc = k.zip(using).and_then(|(k, u)| in_context(c, k, u));
             if let Some(doc) = doc.map(Rc::new) {
                 r.docs

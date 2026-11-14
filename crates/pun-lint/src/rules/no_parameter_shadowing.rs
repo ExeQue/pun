@@ -1,10 +1,3 @@
-//! `lint/style/no-parameter-shadowing`, ported from Mago 1.57.0's linter rule `no-parameter-shadowing`
-//! (rule/best_practices/no_parameter_shadowing.rs).
-//!
-//! A parameter of a function, concrete method or closure that its body reuses as a `foreach` key or value, a `catch`
-//! variable, a `global` or a `static` variable is reported once, on the parameter. Nested functions, closures, arrow
-//! functions, methods and property hooks have their own parameters and are not looked into.
-
 use std::collections::HashMap;
 
 use mago_span::Span;
@@ -75,7 +68,6 @@ impl Rule for NoParameterShadowing {
 
 struct ShadowCollector<'rule, 'arena> {
     params: &'rule HashMap<&'arena [u8], Span>,
-    /// The shadowed parameters, each once.
     shadows: Vec<&'arena [u8]>,
 }
 

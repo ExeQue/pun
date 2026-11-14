@@ -1,19 +1,3 @@
-//! Small report rules on calls and names, ported from Mago 1.57.0's linter (mago-linter src/rule/):
-//!
-//! - `lint/functions/require-assert-description` (`assert-description`, correctness/assert_description.rs): an
-//!   `assert()` call without a second argument.
-//! - `lint/style/no-ini-set` (`no-ini-set`, best_practices/no_ini_set.rs): a call to `ini_set` or `ini_alter`.
-//! - `lint/style/no-sprintf-concat` (`no-sprintf-concat`, best_practices/no_sprintf_concat.rs): a `.` with a
-//!   `sprintf()` call on either side, reported on the operator.
-//! - `lint/style/no-ambiguous-function` (`ambiguous-function-call`, consistency/ambiguous_function_call.rs): an
-//!   unqualified, unimported function call inside a named namespace, except to the names PHP never namespaces.
-//! - `lint/style/no-ambiguous-constant` (`ambiguous-constant-access`, consistency/ambiguous_constant_access.rs): the
-//!   same for a constant, except `true`, `false`, `null`, `STDIN`, `STDOUT` and `STDERR`.
-//! - `lint/style/prefer-create-from-timestamp` (`prefer-datetimeimmutable-create-from-timestamp`,
-//!   best_practices/prefer_timestamp_factory.rs; PHP 8.4 and later): `new DateTimeImmutable('@' . $x)`.
-//!
-//! A function name matches as Mago's `function_call_matches` does (lint_b_names.rs).
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Argument, BinaryOperator, Call, Expression, Literal, Node, NodeKind};
 

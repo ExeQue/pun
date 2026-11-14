@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\AttributeNotation\AttributeBlockNoSpacesFixer`.
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;

@@ -1,17 +1,3 @@
-//! The configurable bans of Mago 1.57.0's linter (mago-linter src/rule/security/):
-//!
-//! - `lint/security/no-restricted-functions` (`disallowed-functions`, disallowed_functions.rs): a call to one of the
-//!   `functions`, or to a function of one of the `extensions` (the extension names compared ignoring case, each
-//!   extension's functions as Mago lists them, mago_extension_functions.rs). The first listed function that matches
-//!   wins; otherwise the first function of the first listed extension in Mago's order.
-//! - `lint/security/no-restricted-instantiation` (`disallowed-type-instantiation`,
-//!   disallowed_type_instantiation.rs): `new` of one of the `types`, compared with the resolved class name ignoring
-//!   case.
-//!
-//! Each entry is a name, or a table with `name`, an optional `help` that replaces the report's help and an optional
-//! `level`. Pun takes a rule's level from pun.toml, so an entry's `level` is checked (Mago's level names) and then
-//! not used. Both rules do nothing until configured.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 
 use super::lint_b_names::{function_call_matches, resolve_class};
@@ -20,15 +6,12 @@ use super::mago_helpers::configure;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// A `DisallowedEntry`: the name and the custom help.
 #[derive(Clone)]
 pub struct Entry {
     pub name: String,
     pub help: Option<String>,
 }
 
-/// The entries of a list option, Mago's untagged `DisallowedEntry`: keys other than `name`, `help` and `level` are
-/// ignored, as serde does.
 fn entries(value: &serde_json::Value) -> Option<Vec<Entry>> {
     value
         .as_array()?

@@ -1,7 +1,3 @@
-//! Checks that read the syntax alone: ContinueBreakInLoopRule, ThisInGlobalStatementRule,
-//! ThisInStaticStatementRule, ReturnNullsafeByRefRule, ArrowFunctionReturnNullsafeByRefRule, InvalidTypesInUnionRule
-//! and UsedNamesRule.
-
 use std::collections::HashMap;
 
 use mago_span::HasSpan;
@@ -10,31 +6,24 @@ use mago_syntax::cst::*;
 use super::Checker;
 use super::assign::contains_nullsafe;
 
-/// A statement ParentStmtTypesVisitor records that ContinueBreakInLoopRule reads.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Parent {
-    /// `for`, `foreach`, `do`, `while` or `switch`.
     Loop,
     Closure,
 }
 
-/// What these checks remember during a walk.
 #[derive(Default)]
 pub(super) struct State {
-    /// The loops and closures around a node, innermost last.
     pub parents: Vec<Parent>,
-    /// Per function-like with return statements, innermost last: it returns by reference.
     pub by_ref: crate::bitset::BitSet,
 }
 
-/// ContinueBreakInLoopRule.
 pub(super) fn continue_break(
     c: &mut Checker,
     at: impl HasSpan,
     level: Option<&Expression>,
     keyword: &str,
 ) {
-    // php-parser makes an integer too large for PHP a float, which counts as 1
     let mut value: i128 = match level {
         Some(Expression::Literal(Literal::Integer(i))) => i
             .value
@@ -63,7 +52,6 @@ pub(super) fn continue_break(
     }
 }
 
-/// ThisInGlobalStatementRule.
 pub(super) fn global(c: &mut Checker, g: &Global) {
     for v in &g.variables {
         if matches!(v, Variable::Direct(d) if d.name == b"$this") {
@@ -77,7 +65,6 @@ pub(super) fn global(c: &mut Checker, g: &Global) {
     }
 }
 
-/// ThisInStaticStatementRule.
 pub(super) fn r#static(c: &mut Checker, s: &Static) {
     for item in &s.items {
         if item.variable().name == b"$this" {
@@ -91,7 +78,6 @@ pub(super) fn r#static(c: &mut Checker, s: &Static) {
     }
 }
 
-/// ReturnNullsafeByRefRule, for each return statement of the function-like it is in.
 pub(super) fn r#return(c: &mut Checker, r: &Return) {
     if c.syntax.by_ref.last() != Some(true) {
         return;
@@ -106,7 +92,6 @@ pub(super) fn r#return(c: &mut Checker, r: &Return) {
     }
 }
 
-/// ArrowFunctionReturnNullsafeByRefRule.
 pub(super) fn arrow_function(c: &mut Checker, f: &ArrowFunction) {
     if f.ampersand.is_some() && contains_nullsafe(f.expression) {
         c.report_non_ignorable(
@@ -118,7 +103,6 @@ pub(super) fn arrow_function(c: &mut Checker, f: &ArrowFunction) {
     }
 }
 
-/// InvalidTypesInUnionRule on a `Node\FunctionLike`: its parameters' and return type's native types.
 pub(super) fn function_like_types(
     c: &mut Checker,
     params: Option<&FunctionLikeParameterList>,
@@ -134,7 +118,6 @@ pub(super) fn function_like_types(
     }
 }
 
-/// InvalidTypesInUnionRule's processComplexType(), also for a ClassPropertyNode's native type.
 pub(super) fn complex_type(c: &mut Checker, hint: &Hint) {
     match hint {
         Hint::Union(_) => {
@@ -165,7 +148,6 @@ pub(super) fn complex_type(c: &mut Checker, hint: &Hint) {
     }
 }
 
-/// `UnionType::$types`: Mago nests a union by pairs.
 fn union_members<'h, 'arena>(hint: &'h Hint<'arena>, out: &mut Vec<&'h Hint<'arena>>) {
     match hint {
         Hint::Union(u) => {
@@ -176,7 +158,6 @@ fn union_members<'h, 'arena>(hint: &'h Hint<'arena>, out: &mut Vec<&'h Hint<'are
     }
 }
 
-/// `ONLY_STANDALONE_TYPES` written as an Identifier (not a fully qualified name; php-parser lowercases it).
 fn standalone<'arena>(hint: &Hint<'arena>) -> Option<&'arena [u8]> {
     match hint {
         Hint::Mixed(l) | Hint::Never(l) | Hint::Void(l) => Some(l.value),
@@ -184,8 +165,6 @@ fn standalone<'arena>(hint: &Hint<'arena>) -> Option<&'arena [u8]> {
     }
 }
 
-/// UsedNamesRule: the file's top-level `use` and class-like statements, and those directly in its namespaces. Each
-/// namespace declaration starts a new import scope, even for a namespace declared earlier in the file.
 pub(super) fn used_names(c: &mut Checker, program: &Program) {
     let mut declared: HashMap<String, Vec<String>> = HashMap::new();
     let mut file_scope = Vec::new();
@@ -206,7 +185,6 @@ pub(super) fn used_names(c: &mut Checker, program: &Program) {
     }
 }
 
-/// findErrorsForNode().
 fn names_of(
     c: &mut Checker,
     s: &Statement,
@@ -258,10 +236,8 @@ fn names_of(
     names.push(lower);
 }
 
-/// findErrorsInUses().
 fn uses(c: &mut Checker, prefix: &str, items: &[&UseItem], scope: &mut Vec<String>) {
     for item in items {
-        // php-parser drops a use name's leading `\`
         let name = c.written(item.name.span());
         let name = name.trim_start_matches('\\');
         let alias = match &item.alias {

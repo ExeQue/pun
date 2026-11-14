@@ -1,15 +1,3 @@
-//! Three Mago 1.57.0 rules that count a class-like's members (mago-linter src/rule/maintainability/):
-//!
-//! - `lint/complexity/no-excessive-enum-cases` (`too-many-enum-cases`): an enum with more than `threshold`
-//!   (default 20) cases.
-//! - `lint/complexity/no-excessive-methods` (`too-many-methods`): a class-like with more than `threshold` (default
-//!   10) methods, not counting plain setters and getters unless `count-setters-and-getters`, and counting each
-//!   property hook when `count-hooks`.
-//! - `lint/complexity/no-excessive-properties` (`too-many-properties`): a class, trait, interface or anonymous class
-//!   with more than `threshold` (default 10) properties, each item of a plain property declaration counted.
-//!
-//! Each reports on the class-like's header (keyword and name).
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
 
 use super::mago_helpers::{
@@ -158,7 +146,6 @@ impl Rule for NoExcessiveMethods {
                 _ => {}
             }
         }
-        // Mago compares `count as u16`, which wraps above 65535 methods; no class gets near that.
         if count > self.threshold {
             out.push(report(
                 node,

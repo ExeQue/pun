@@ -1,25 +1,6 @@
-//! `pun check`'s grouped view (output.md Build 5, matched to the brand mockup): one status line per step, a coloured
-//! pill for the step, its problems under it as two lines each (`path:line:col  rule`, then the message, dim), and one
-//! bold summary line.
-//!
-//! ```text
-//! ✔  format   All files formatted
-//! ✖   lint    1 error in 1 file · 1 fixable
-//!    app/Http/Controllers/PostController.php:24:9  lint/laravel/no-request-all
-//!    Pass only validated input, not $request->all().
-//!
-//! ✖ analyse   1 error in 1 file
-//!    app/Models/Post.php:18:16  analyse/undefined/method
-//!    Call to an undefined method App\Models\Post::publsh().
-//!
-//! ✖ 2 errors · 1 fixable (run pun check --fix)
-//! ```
-
 use super::{Renderer, Role, Step, Summary, plural};
 use std::path::PathBuf;
 
-/// One problem under a step: where (`path`, then `:line:col` or `:line` when known), its rules, its message (if
-/// any), and anything printed under it as is (`-v`'s diff).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct CheckItem {
     pub(crate) path: PathBuf,
@@ -29,7 +10,6 @@ pub(crate) struct CheckItem {
     pub(crate) below: String,
 }
 
-/// One step: its errors, warnings and fixable problems, the files they are in, and what to say when it is clean.
 #[derive(Clone, Debug)]
 pub(crate) struct StepLine<'a> {
     pub(crate) step: Step,
@@ -37,15 +17,12 @@ pub(crate) struct StepLine<'a> {
     pub(crate) warnings: usize,
     pub(crate) fixable: usize,
     pub(crate) files: usize,
-    /// The status text that replaces the counts (`All files formatted`, `3 files need formatting`).
     pub(crate) text: Option<String>,
-    /// The status is a failure even without errors (files need formatting).
     pub(crate) failed: bool,
     pub(crate) items: &'a [CheckItem],
 }
 
 impl Renderer {
-    /// A step's status line and, under it, its problems; a step with problems ends with a blank line.
     pub(crate) fn check_step(&self, s: &StepLine) -> String {
         let (glyph, role) = if s.errors > 0 || s.failed {
             (self.look.glyph("✖", "x"), Role::Error)
@@ -90,7 +67,6 @@ impl Renderer {
         out
     }
 
-    /// `   path:line:col  rule`, then `   message` dim; one line under `--concise`.
     fn check_item(&self, item: &CheckItem) -> String {
         let location = format!("{}{}", item.path.display(), item.at);
         let location = self.path_link(&item.path, &location);
@@ -110,8 +86,6 @@ impl Renderer {
         out
     }
 
-    /// The last line: the glyph, then the non-zero counts in bold yellow (`2 errors · 1 fixable (run pun check
-    /// --fix)`), or `No problems`.
     pub(crate) fn check_summary(&self, s: &Summary) -> String {
         let mut parts = vec![];
         if s.errors > 0 {

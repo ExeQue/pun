@@ -36,7 +36,6 @@ fn items(a: &Array) -> Vec<J> {
         .collect()
 }
 
-/// Inverse of `tagged` (for encoder inputs).
 pub(crate) fn untagged(j: &J) -> Value {
     match j {
         J::Null => Value::Null,
@@ -108,7 +107,6 @@ pub(crate) fn dumped(v: &Value) -> J {
     }
 }
 
-/// Replace path prefixes with the exporter's placeholders.
 pub(crate) fn placeholders(j: J, map: &[(&str, &str)]) -> J {
     match j {
         J::String(mut s) => {

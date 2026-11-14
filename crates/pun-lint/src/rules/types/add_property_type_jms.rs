@@ -1,22 +1,3 @@
-//! `lint/types/add-property-type-jms-scalar` and `lint/types/add-property-type-jms-object`, ported from Rector 2.8.4's
-//! `ScalarTypedPropertyFromJMSSerializerAttributeTypeRector` and `ObjectTypedPropertyFromJMSSerializerAttributeTypeRector`
-//! (rules/TypeDeclaration/Rector/Class_) with `JMSTypeAnalyzer`, `JMSTypePropertyTypeFactory` and
-//! `ScalarStringToTypeMapper`: an untyped property without a default whose `#[JMS\Serializer\Annotation\Type(...)]`
-//! attribute names a type gets that type, nullable, and a `null` default.
-//!
-//! The attribute's first argument is read as a string (a string literal or `X::class`); `DateTime<...>` reads as
-//! `DateTime`. The scalar rule maps the names `ScalarStringToTypeMapper` knows to the declaration Rector writes for a
-//! property (`string` for every string type, `int` for the integer ranges, `bool` for `true` and `false`, `float`,
-//! `array`, `iterable`, `object`); `float` with a `@var string` (or `string` with a `@var float`) gives the doc's type
-//! and drops the `@var`. The object rule takes any other name without a `<` as a class name, when the class exists.
-//! A name written with a leading `\` Rector prints as `\\Foo`, which does not parse; Pun leaves that property.
-//! Properties that also have a Doctrine to-one or to-many attribute, and those `PropertyTypeChangeGuard` refuses, are
-//! left alone.
-//!
-//! Rector crashes on `lowercase-string` and `uppercase-string` (no type mapper for their accessory types) and then
-//! leaves the whole file; Pun leaves the class. Other constant expressions Rector's `ValueResolver` evaluates are not
-//! read.
-
 use mago_syntax::cst::{
     Access, Attribute, ClassLikeConstantSelector, Expression, Literal, Node, NodeKind,
     PartialArgument, Property,
@@ -30,11 +11,8 @@ use crate::rules::rector_batch5::{has_attribute, resolve_class_name};
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::ATTRIBUTES`.
 const ATTRIBUTES: u32 = 80000;
-/// `ClassName::JMS_TYPE`.
 const JMS_TYPE: &str = "JMS\\Serializer\\Annotation\\Type";
-/// `CollectionMapping::TO_MANY_CLASSES` and `TO_ONE_CLASSES`.
 const COLLECTION_MAPPING: [&str; 8] = [
     "Doctrine\\ORM\\Mapping\\OneToMany",
     "Doctrine\\ORM\\Mapping\\ManyToMany",
@@ -117,7 +95,6 @@ fn visit<'ast, 'arena>(
     };
     let mut edits: Vec<Edit> = Vec::new();
     for prop in &view.properties() {
-        // shouldSkipProperty
         if prop.default().is_some()
             || !has_jms_type(prop, &view.path)
             || !is_legal(&facts, &view, prop, true)
@@ -141,7 +118,6 @@ fn visit<'ast, 'arena>(
                     },
                     _ => None,
                 };
-                // createScalarTypeNode: a `@var` of the other type wins, and goes
                 let swapped = match (lowered.as_str(), doc.as_deref()) {
                     ("float", Some("string" | "class-string")) => Some("string"),
                     ("string", Some("float" | "double" | "real")) => Some("float"),
@@ -165,7 +141,6 @@ fn visit<'ast, 'arena>(
                 if value.contains('<') || scalar_name(&lowered) {
                     continue;
                 }
-                // Rector prints a written leading `\` after its own, `\\Foo`, which does not parse; Pun leaves it
                 if value.starts_with('\\')
                     || facts.codebase.get_class_like(value.as_bytes()).is_none()
                 {
@@ -199,7 +174,6 @@ fn attribute_lists<'a>(
     }
 }
 
-/// `JMSTypeAnalyzer::hasPropertyJMSTypeAttribute`: the `Type` attribute, and no Doctrine to-one or to-many one.
 fn has_jms_type(prop: &Prop<'_, '_>, path: &[Node<'_, '_>]) -> bool {
     let lists = attribute_lists(prop);
     has_attribute(path, lists, JMS_TYPE)
@@ -208,7 +182,6 @@ fn has_jms_type(prop: &Prop<'_, '_>, path: &[Node<'_, '_>]) -> bool {
             .any(|c| has_attribute(path, lists, c))
 }
 
-/// `JMSTypeAnalyzer::resolveTypeAttributeValue`: the `Type` attribute's first argument as a string.
 fn type_value(prop: &Prop<'_, '_>, path: &[Node<'_, '_>]) -> Option<String> {
     let attribute: &Attribute<'_> = attribute_lists(prop)
         .iter()
@@ -231,7 +204,6 @@ fn type_value(prop: &Prop<'_, '_>, path: &[Node<'_, '_>]) -> Option<String> {
         },
         _ => return None,
     };
-    // `#DateTime\<(.*?)\>#`, a special case for DateTime
     if let Some(at) = value.find("DateTime<")
         && value[at..].contains('>')
     {
@@ -240,8 +212,6 @@ fn type_value(prop: &Prop<'_, '_>, path: &[Node<'_, '_>]) -> Option<String> {
     Some(value)
 }
 
-/// Whether `ScalarStringToTypeMapper::mapScalarStringToType` maps the lowercased name to a type other than an implicit
-/// `mixed`.
 fn scalar_name(lowered: &str) -> bool {
     scalar_declaration(lowered).is_some()
         || matches!(
@@ -261,8 +231,6 @@ fn scalar_name(lowered: &str) -> bool {
         )
 }
 
-/// The declaration Rector writes for a property of the type `ScalarStringToTypeMapper` maps the lowercased name to,
-/// when it is one name (`Identifier`); `mixed` is skipped.
 fn scalar_declaration(lowered: &str) -> Option<&'static str> {
     Some(match lowered {
         "string"
@@ -282,7 +250,6 @@ fn scalar_declaration(lowered: &str) -> Option<&'static str> {
         "int" | "integer" | "positive-int" | "negative-int" | "non-negative-int"
         | "non-positive-int" => "int",
         "bool" | "boolean" | "true" | "false" => "bool",
-        // `list` is `array&list`, an intersection PHPStan 2.3's `NativePhpTypeNodeHelper::intersection()` writes as `array`
         "array" | "non-empty-array" | "list" => "array",
         "iterable" => "iterable",
         "object" => "object",

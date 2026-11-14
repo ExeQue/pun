@@ -1,8 +1,3 @@
-//! MethodCallWithPossiblyRenamedNamedArgumentRule. The collectors are emitted by
-//! FunctionCallParametersCheck and MethodParameterComparisonHelper, not the placeholder Collector classes.
-//! Records travel with the existing per-file results; only analysed files (including walked trait contexts)
-//! contribute. The join precedes local ignores: a collected call is not itself an error.
-
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -25,14 +20,11 @@ pub(super) fn rename(class: &str, method: &str, subtype: &str, old: &str, new: &
     format!("{ENTRY}rename\u{1f}{class}\u{1f}{method}\u{1f}{subtype}\u{1f}{old}\u{1f}{new}")
 }
 
-/// PhpMethodReflection::acceptsNamedArguments(): the declaring class's own tag and the merged method PHPDoc.
 pub(super) fn accepts(c: &Checker, class: &ClassLikeMetadata, f: &FunctionLikeMetadata) -> bool {
     !super::declarations::has_tag(&c.class_tags(class), &["@no-named-arguments"])
         && method_doc(c, class, f, &mut HashSet::new()).unwrap_or(true)
 }
 
-/// PhpDocInheritanceResolver: the first parent method with PHPDoc (parent, interface, abstract trait), merged
-/// with the method's own PHPDoc. A parent's class-level tag is not part of the method PHPDoc.
 fn method_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -78,15 +70,12 @@ fn method_doc(
     own
 }
 
-/// The part of a ConstantArrayType that FunctionCallParametersCheck reads when binding names.
 struct ArrayArguments {
     keys: Vec<Type>,
     optional: Vec<usize>,
     unsealed: bool,
 }
 
-/// Type::getConstantArrays(): a union contributes only when every alternative is a constant array.
-/// TemplateConstantArrayType copies the bound's keys and optionality, but its constructor omits unsealed extras.
 fn arrays(ty: &Type) -> Vec<ArrayArguments> {
     match ty {
         Type::ConstArray(a) => vec![ArrayArguments {
@@ -107,7 +96,6 @@ fn arrays(ty: &Type) -> Vec<ArrayArguments> {
         }
         Type::Intersection(_) if ty.is_callable().yes() && ty.is_array().yes() => {
             vec![ArrayArguments {
-                // IntersectionType::getConstantArrays builds the two required positional offsets of a callable array.
                 keys: vec![Type::ConstInt(0), Type::ConstInt(1)],
                 optional: Vec::new(),
                 unsealed: false,
@@ -125,8 +113,6 @@ fn arrays(ty: &Type) -> Vec<ArrayArguments> {
     }
 }
 
-/// FunctionCallParametersCheck's unpack expansion: the shortest alternative, common string keys, and optional
-/// positional keys omitted. Named optional keys still emit. Every expanded argument uses the unpack's line.
 fn unpacked_names(ty: &Type, first: bool) -> Option<Vec<Option<String>>> {
     let arrays = arrays(ty);
     let max = arrays
@@ -155,7 +141,6 @@ fn unpacked_names(ty: &Type, first: bool) -> Option<Vec<Option<String>>> {
     Some(names)
 }
 
-/// Named collectors and constant dynamic method checks share owned operand-position scopes.
 pub(super) fn requests(program: &Program) -> Vec<CallScopeRequest> {
     let mut calls = Requests(Vec::new());
     calls.walk_program(program, &mut ());
@@ -207,7 +192,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Expressions {
     }
 }
 
-/// CallMethodsRule's instance calls only. Static calls, constructors and first-class callables do not emit.
 pub(super) fn call(
     c: &mut Checker,
     span: Span,
@@ -215,7 +199,6 @@ pub(super) fn call(
     args: &ArgumentList,
     nullsafe: bool,
 ) {
-    // FunctionCallParametersCheck returns before emitting only when both independent argument checks are off.
     if (!c.on(crate::rules::Switches::CHECK_ARGUMENT_TYPES)
         && !c.on(crate::rules::Switches::CHECK_ARGUMENTS_PASSED_BY_REFERENCE))
         || !c.checks_expression(object)
@@ -226,7 +209,6 @@ pub(super) fn call(
     let object = object.unparenthesized();
     let mut records = Vec::new();
     for scope in c.named_call_scopes.get(&span).into_iter().flatten() {
-        // Missing observations are not mixed: later names cannot bind against an unknown unpack width.
         if counts
             .args
             .iter()
@@ -239,10 +221,8 @@ pub(super) fn call(
             .types
             .get(&object.span())
             .is_some_and(|t| t.has_nullsafe_null());
-        // Both null removal and RuleLevelHelper recombine alternatives using declared generic variance.
         let ty = declared::with_classes(c, || {
             let ty = c.phpstan_type_in(object, &scope.types).map(|t| {
-                // An earlier nullsafe operator does not erase null returned by the method itself.
                 if nullsafe || (short_circuit && super::assign::contains_nullsafe(object)) {
                     t.remove_null()
                 } else {
@@ -263,8 +243,6 @@ pub(super) fn call(
             continue;
         }
         let acceptor = m.select(c, &counts, Some(scope));
-        // processArguments(): names bind the actual parameter (including a user variadic's unknown names).
-        // Positional arguments beyond the signature stop processing, even if a named argument follows.
         let mut position = 0;
         let mut stopped = false;
         for (arg, written) in counts.args.iter().zip(args.arguments.iter()) {
@@ -317,8 +295,6 @@ pub(super) fn call(
     }
 }
 
-/// Collector payloads must bypass LocalIgnoresProcessor; declarations are not diagnostics and a call might never
-/// join. Ordinary errors and their unmatched-ignore diagnostics retain the existing per-file processing.
 pub(super) fn deferred_local_ignores(
     file: &str,
     errors: Vec<Error>,
@@ -333,7 +309,6 @@ pub(super) fn deferred_local_ignores(
     (kept, ignored)
 }
 
-/// CollectedDataNode's file-keyed iteration is lexical, independent of the project's path ordering or Rayon.
 pub(crate) fn resolve(
     errors: Vec<Error>,
     sources: &crate::codebase::Sources,
@@ -343,7 +318,6 @@ pub(crate) fn resolve(
     let (mut records, mut errors): (Vec<_>, Vec<_>) = errors
         .into_iter()
         .partition(|e| e.message.starts_with(ENTRY));
-    // An unregistered CollectedDataNode rule never joins or consumes provisional unmatched ignores.
     if !enabled {
         return errors;
     }
@@ -387,8 +361,6 @@ pub(crate) fn resolve(
             ignores_without_comments(&file, &mut lines, &mut unmatched);
         }
         let (kept, ignored) = local_ignores(&file, joined, &mut lines, &mut unmatched);
-        // The file driver could not know these errors would join. Consume its provisional unmatched entries,
-        // once per identifier occurrence (or once for an ignore-all), only when a real joined error was ignored.
         for ignored in ignored {
             let all = original
                 .get(&ignored.line.unwrap())

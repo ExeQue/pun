@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-equal-with-delta`, ported from pest-plugin-rector's `UseToEqualWithDeltaRector`:
-//! `expect(abs($a - $b) < $delta)->toBeTrue()` (or `<=`) becomes `expect($a)->toEqualWithDelta($b, $delta)`. The new
-//! call is made on the chain's `expect()`, so what came between is dropped.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 

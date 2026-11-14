@@ -1,9 +1,3 @@
-//! `lint/complexity/no-single-item-in-array`, ported from Rector 2.8.4's `SingleInArrayToCompareRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `in_array($value, ['one'])` becomes `$value == 'one'`, or `$value === 'one'` when the call passes a third
-//! argument (whatever its value). Under a `!` the comparison is negated: `$value != 'one'`, `$value !== 'one'`.
-
 use mago_syntax::cst::{ArrayElement, Expression, FunctionCall, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -37,7 +31,6 @@ impl Rule for NoSingleItemInArray {
                 (node_span(not), call, true)
             }
             Node::FunctionCall(call) => {
-                // Rector visits the `!` first and replaces it with the whole comparison.
                 let parent = ancestors.iter().rev().find(|a| {
                     !matches!(
                         a,
@@ -74,8 +67,6 @@ impl Rule for NoSingleItemInArray {
     }
 }
 
-/// resolveArrayItem: the needle and the only item of an `in_array()` whose haystack is an array literal with one
-/// item that is not spread. A key on the item is ignored.
 fn single_item<'a>(call: &'a FunctionCall<'a>) -> Option<(&'a Expression<'a>, &'a Expression<'a>)> {
     let args = args(call);
     let elements = match unparenthesize(args.get(1)?.value()) {

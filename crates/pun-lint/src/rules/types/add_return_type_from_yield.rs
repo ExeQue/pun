@@ -1,9 +1,3 @@
-//! `lint/types/add-return-type-from-yield`, ported from Rector 2.8.4's `AddReturnTypeDeclarationFromYieldsRector`
-//! (rules/TypeDeclaration/Rector/FunctionLike, with `YieldNodeFinder` and `YieldTypeResolver`): a function or method
-//! whose body is only expression statements, at least one of them yielding, returns a `\Generator`. A declared
-//! `Iterator`, `Generator`, `Traversable` or `iterable` stays; another declared type is replaced (a class name by
-//! itself, fully qualified).
-
 use mago_syntax::cst::{
     Block, Expression, FunctionLikeReturnTypeHint, Hint, Method, MethodBody, Node, NodeKind,
     Statement,
@@ -65,7 +59,6 @@ impl Rule for AddReturnTypeFromYield {
                 m.return_type_hint.as_ref(),
                 Some(m),
             ),
-            // an abstract method
             _ => return,
         };
         if !has_only_yielding_expressions(ctx.source, body) {
@@ -102,8 +95,6 @@ impl Rule for AddReturnTypeFromYield {
     }
 }
 
-/// `YieldNodeFinder::find` is not empty: every statement of the body is an expression statement (php-parser's `Nop`
-/// for a trailing comment counts as another statement), and one of them yields outside nested functions and classes.
 fn has_only_yielding_expressions(source: &str, body: &Block<'_>) -> bool {
     if statement_count(source, body) != body.statements.len() {
         return false;

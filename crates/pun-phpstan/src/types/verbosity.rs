@@ -1,6 +1,3 @@
-//! `VerbosityLevel::getRecommendedLevelByType()`: how precisely a message describes an accepting and an accepted type,
-//! so that two different types never describe the same.
-
 use std::cell::Cell;
 
 use super::{Accessory, Level, Type, symbols};
@@ -24,8 +21,6 @@ impl Flags {
         };
         if t.is_callable().yes() {
             self.more.set(true);
-            // ponytail: a ClosureType's isStaticClosure() is maybe here (PHPDoc closures); a closure expression's
-            // known staticness makes it precise
             children();
             return;
         }
@@ -46,7 +41,6 @@ impl Flags {
                 self.more.set(true);
                 self.very.set(true);
             }
-            // Larastan's GenericModelPropertyType and ViewStringType are StringType subclasses, no accessories
             Type::Accessory(Accessory::ModelProperty(_) | Accessory::ViewString) => children(),
             Type::Accessory(_) | Type::IntRange(..) => self.more.set(true),
             _ => children(),
@@ -54,7 +48,6 @@ impl Flags {
     }
 }
 
-/// A generic object of a class with an invariant template.
 fn invariant_template(t: &Type) -> bool {
     let found = Cell::new(false);
     fn go(t: &Type, found: &Cell<bool>) {
@@ -63,7 +56,6 @@ fn invariant_template(t: &Type) -> bool {
         }
         if let Type::Object(class, args, _) | Type::Static(class, args) = t
             && !args.is_empty()
-            // ponytail: the symbols carry no template variance, so every class template counts as invariant
             && symbols::lookup(class).is_some_and(|c| !c.templates.is_empty())
         {
             found.set(true);

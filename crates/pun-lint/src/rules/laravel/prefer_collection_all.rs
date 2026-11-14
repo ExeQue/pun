@@ -1,14 +1,3 @@
-//! `lint/laravel/prefer-collection-all`, ported from rector-laravel 2.7.3's `ConvertEnumerableToArrayToAllRector`
-//! (src/Rector/MethodCall).
-//!
-//! `toArray()` (or `?->toArray()`) on an `Illuminate\Support\Enumerable` becomes `all()` when the collection's values
-//! (its `TValue`, through the class's `@extends` and `@implements`) cannot be `Arrayable`: `toArray()` only differs
-//! from `all()` by turning `Arrayable` values into arrays. Values of a type PHPStan cannot rule out (`mixed`, an
-//! interface, a class that is not final) keep `toArray()`.
-//!
-//! PHPStan narrows a receiver to a method's `@phpstan-this-out` type after the call; Mago does not, so a receiver
-//! that gets such a call anywhere in the function keeps `toArray()` (Pun/skip_this_out: Rector may still change it).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::get_specialized_template_type;
 use mago_codex::ttype::union::TUnion;
@@ -73,8 +62,6 @@ impl Rule for PreferCollectionAll {
     }
 }
 
-/// `TypeCombinator::removeNull($type)->getTemplateType(Enumerable::class, 'TValue')`, docblocks read: the `TValue` of
-/// each object part of the type, together.
 fn value_type(ctx: &Context<'_>, t: &TUnion) -> Option<TUnion> {
     let facts = facts(ctx);
     let codebase = facts.documented();
@@ -96,10 +83,6 @@ fn value_type(ctx: &Context<'_>, t: &TUnion) -> Option<TUnion> {
     Some(TUnion::from_vec(types))
 }
 
-/// Whether the function `object` is in (or the file, outside functions) calls a method with a `this-out` tag (PHPDoc
-/// `@phpstan-this-out`, `@psalm-this-out` or `@this-out`) on the same receiver, written the same way. PHPStan gives
-/// the receiver that tag's type after the call (`Collection::put()` adds the value's type to `TValue`); Mago does not,
-/// so the values `toArray()` sees are not known and it stays.
 fn this_out_called(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], object: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     let text = |e: &Expression<'_>| &ctx.source[node_span(e).start..node_span(e).end];
@@ -131,8 +114,6 @@ fn this_out_called(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], object: &Expre
     false
 }
 
-/// `Some` when the method `method` of `class` has a `this-out` tag in its doc comment: the last doc comment before its
-/// name, with only modifiers and attributes after it.
 fn this_out_tagged(facts: &Facts, class: &[u8], method: &[u8]) -> Option<()> {
     let declared = facts.codebase.get_declaring_method(class, method);
     let name = declared.and_then(|m| m.name_span)?;

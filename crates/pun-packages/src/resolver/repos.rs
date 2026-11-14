@@ -1,8 +1,3 @@
-//! The repositories an update reads, in Composer's order: the manifest's `repositories`, then the global
-//! `config.json`'s, then Packagist unless one of them turns it off (`"packagist.org": false`, or a `composer`
-//! repository on packagist.org that replaces it). `composer`, `package` and `path` repositories are read; the
-//! others (`vcs`, `git`, `artifact`, ...) are an error that names them.
-
 use super::composer_repo::{ComposerRepository, PACKAGIST};
 use super::pool::{ArrayRepository, Repository, filtered};
 use crate::fetch::Fetcher;
@@ -15,8 +10,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::LazyLock;
 
-/// The repository configs `Config::merge` leaves after merging each source onto the default Packagist, the
-/// sources given from the lowest priority (global) to the highest (the manifest).
 pub fn configs(sources: &[&Value]) -> Result<Vec<Map<String, Value>>> {
     let mut repos: Vec<(Key, Value)> = vec![(
         Key::Str("packagist.org".into()),
@@ -120,8 +113,6 @@ fn disable(repos: &mut Vec<(Key, Value)>, name: &str) {
     }
 }
 
-/// The repositories for a project in `root` whose manifest is `manifest`, `global` being the global
-/// `config.json`'s `repositories`.
 pub fn open<'a>(
     root: &Path,
     manifest: &Map<String, Value>,
@@ -158,7 +149,6 @@ pub fn open<'a>(
     Ok(out)
 }
 
-/// `Platform::expandPath`: a leading `~/` is the home directory, a leading `$VAR` or `%VAR%` that variable.
 fn expand_path(path: &str) -> String {
     let env = |k: &str| std::env::var(k).unwrap_or_default();
     if let Some(rest) = path.strip_prefix('~')
@@ -178,9 +168,6 @@ fn expand_path(path: &str) -> String {
     }
 }
 
-/// The packages a `path` repository offers (`PathRepository::initialize`): each directory its `url` glob matches
-/// that holds a composer.json (or a pun.toml with dependency sections), with a `path` dist. `root_version` is `COMPOSER_ROOT_VERSION` as Composer reads it,
-/// the version of a package without one in the root's own git checkout.
 pub fn path_packages(
     root: &Path,
     config: &Map<String, Value>,
@@ -225,7 +212,6 @@ pub fn path_packages(
         let file = path.join("composer.json");
         let json = match std::fs::read_to_string(&file) {
             Ok(json) => json,
-            // A package that keeps its manifest in pun.toml, as a Pun workspace member may.
             Err(_) => {
                 let Some(m) = pun_config::manifest::read(&path)? else {
                     continue;
@@ -301,7 +287,6 @@ pub fn path_packages(
     Ok(out)
 }
 
-/// The commit checked out in `dir`'s repository.
 fn head(dir: &Path) -> Option<String> {
     let out = Command::new("git")
         .args(["rev-parse", "HEAD"])
@@ -314,8 +299,6 @@ fn head(dir: &Path) -> Option<String> {
         .then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-/// `glob($url, GLOB_MARK | GLOB_ONLYDIR | GLOB_BRACE)` relative to `root`, without the trailing slash: the
-/// directories each brace alternative matches, each alternative's sorted by name.
 fn glob_dirs(root: &Path, pattern: &str) -> Vec<String> {
     let mut out = vec![];
     for alternative in braces(pattern) {
@@ -371,7 +354,6 @@ fn glob_dirs(root: &Path, pattern: &str) -> Vec<String> {
     out
 }
 
-/// A glob segment as a regex: `*` and `?` stop at a leading dot, `[...]` is a class (`[!...]` negated).
 fn segment_regex(segment: &str) -> String {
     let mut re = String::from("^");
     if segment.starts_with(['*', '?', '[']) {
@@ -382,7 +364,6 @@ fn segment_regex(segment: &str) -> String {
         match c {
             '*' => re.push_str("[^/]*"),
             '?' => re.push_str("[^/]"),
-            // An unclosed `[` is itself, as glibc's fnmatch reads it.
             '[' if !chars.clone().any(|c| c == ']') => re.push_str(r"\["),
             '[' => {
                 re.push('[');
@@ -413,7 +394,6 @@ fn segment_regex(segment: &str) -> String {
     re
 }
 
-/// GLOB_BRACE: every `{a,b}` alternative, the first group expanded first, nested groups included.
 fn braces(pattern: &str) -> Vec<String> {
     let bytes = pattern.as_bytes();
     let Some(open) = pattern.find('{') else {
@@ -464,7 +444,6 @@ mod tests {
             .collect()
     }
 
-    /// Expected orders from Composer 2.11.2's `Config::merge` on the same sources, global first.
     #[test]
     fn merges_repositories_as_composer() {
         assert_eq!(
@@ -508,8 +487,6 @@ mod tests {
         assert!(configs(&[&json!([1])]).is_err());
     }
 
-    /// Expected packages from Composer 2.11.2's `PathRepository` on the same directories (the git commit is
-    /// whatever `git rev-parse HEAD` says).
     #[test]
     fn reads_path_repositories_as_composer() {
         let d = std::env::temp_dir().join(format!("pun-path-repo-{}", std::process::id()));
@@ -626,7 +603,6 @@ mod tests {
             ])]
         );
         assert!(read(json!({"type": "path", "url": "packages/zz*"})).is_empty());
-        // A Pun workspace member keeps its manifest in pun.toml, which Composer can't read.
         std::fs::create_dir_all(d.join("members/toml")).unwrap();
         std::fs::write(
             d.join("members/toml/pun.toml"),
@@ -652,8 +628,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// Expected packages from Composer 2.11.2's `PathRepository` (with a `Loop`, so it guesses feature branches) on
-    /// the same directories, and its messages.
     #[test]
     fn reads_path_repository_corners_as_composer() {
         let d = std::env::temp_dir().join(format!("pun-path-corners-{}", std::process::id()));
@@ -699,7 +673,6 @@ mod tests {
             })
             .map_err(|e| format!("{e:#}"))
         };
-        // A feature branch is offered at its own version and at the version of the branch it forked from.
         assert_eq!(
             read("", json!({"url": "feat"}), None).unwrap(),
             [
@@ -715,7 +688,6 @@ mod tests {
                 json!(["acme/feat", "dev-main", null])
             ]
         );
-        // COMPOSER_ROOT_VERSION=1.2-dev versions a package in the root's own checkout.
         assert_eq!(
             read("mono", json!({"url": "pkg"}), Some("1.2.x-dev")).unwrap(),
             [json!([
@@ -752,8 +724,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// The repositories a manifest opens; Pun's own messages for what it does not read, Composer's
-    /// `RepositoryManager` message for an unknown type.
     #[test]
     fn opens_repositories() {
         let fetcher = Fetcher::new(None, crate::fetch::Auth::default(), false);
@@ -794,7 +764,6 @@ mod tests {
         }
     }
 
-    /// GLOB_BRACE and fnmatch as glibc applies them.
     #[test]
     fn globs_as_php() {
         assert_eq!(braces("a{b,c{d,e}}f"), ["abf", "acdf", "acef"]);

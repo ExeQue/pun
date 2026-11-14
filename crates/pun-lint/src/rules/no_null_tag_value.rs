@@ -1,11 +1,3 @@
-//! `lint/dead-code/no-null-tag-value`, ported from Rector 2.8.4's `RemoveNullTagValueNodeRector`
-//! (rules/DeadCode/Rector/ClassMethod).
-//!
-//! A doc comment's `@param null $name` (of a parameter the function or method has), `@return null` and `@var null`
-//! (on a property or an expression statement), with no description, go. Every `@param`-like tag (`@phpstan-param`,
-//! ...) of such a parameter goes with it; `@return` and `@var` take their `@phan-` variants along, not the
-//! `@phpstan-` and `@psalm-` ones (`PhpDocInfo::removeByType`). A doc comment left empty goes.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -53,7 +45,6 @@ impl Rule for NoNullTagValue {
             .map(|a| node_span(a).start)
             .find(|start| *start < span.start)
             .unwrap_or(0);
-        // php-parser's `getDocComment`: the last doc comment before the node, comments after it or not.
         let Some(doc) = tokens(
             ctx.source,
             previous_token_end(ctx, from, span.start),
@@ -73,7 +64,6 @@ impl Rule for NoNullTagValue {
         let tags = tags.into_inner();
         let removed = match params {
             Some(params) => {
-                // `getParamTagValueByName`: the first `@param` of each parameter.
                 let names: Vec<&str> = params
                     .parameters
                     .iter()
@@ -85,7 +75,6 @@ impl Rule for NoNullTagValue {
                         first.1.then_some(name)
                     })
                     .collect();
-                // `getReturnTagValue`: the first `@return`.
                 let returns_null = tags
                     .iter()
                     .find_map(|t| value(t, &["@return"]))
@@ -100,7 +89,6 @@ impl Rule for NoNullTagValue {
                 })
             }
             None => {
-                // `getVarTagValueNode`: the first `@var`.
                 let var_null = tags
                     .iter()
                     .find_map(|t| value(t, &["@var"]))
@@ -132,15 +120,12 @@ impl Rule for NoNullTagValue {
     }
 }
 
-/// What follows the tag `tag` names, when it is one of `kinds` and has a value (php-parser's tag value node).
 fn value<'a>(tag: &'a str, kinds: &[&str]) -> Option<&'a str> {
     let (name, rest) = tag.split_once(char::is_whitespace)?;
     let rest = rest.trim();
     (kinds.contains(&name) && !rest.is_empty()).then_some(rest)
 }
 
-/// The parameter a `kind` tag names (without `&` or `...`, with its `$`), and whether its type is `null` without a
-/// description.
 fn param<'a>(tag: &'a str, kind: &str) -> Option<(&'a str, bool)> {
     let rest = value(tag, &[kind])?;
     let (ty, rest) = rest.split_once(char::is_whitespace)?;
@@ -152,7 +137,6 @@ fn param<'a>(tag: &'a str, kind: &str) -> Option<(&'a str, bool)> {
         .then_some((name, ty == "null" && description.trim().is_empty()))
 }
 
-/// A `@var` value without the variable it names.
 fn strip_variable(value: &str) -> &str {
     match value.split_once(char::is_whitespace) {
         Some((ty, rest))
@@ -164,7 +148,6 @@ fn strip_variable(value: &str) -> &str {
     }
 }
 
-/// `isNull`: the type is the identifier `null` and there is no description.
 fn is_null(value: &str) -> bool {
     value == "null"
 }

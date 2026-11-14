@@ -1,23 +1,3 @@
-//! The member rules of phpstan-strict-rules 2.0.12's `VariableVariables` (src/Rules/VariableVariables), one Pun rule
-//! each:
-//!
-//! - `lint/style/no-dynamic-method-call` (`VariableMethodCallRule`, `method.dynamicName`): `$object->$name()`, also
-//!   with `?->` (PHPStan analyses a nullsafe call as the call it stands for).
-//! - `lint/style/no-dynamic-method-callable` (`VariableMethodCallableRule`, `method.dynamicName`): `$object->$name(...)`.
-//! - `lint/style/no-dynamic-property` (`VariablePropertyFetchRule`, `property.dynamicName`): `$object->$name`, also
-//!   with `?->`, unless the name's type is a literal string or the object may be a universal object crate
-//!   (`stdClass`, PHPStan's `universalObjectCratesClasses` default) or a `SimpleXMLElement`.
-//! - `lint/style/no-dynamic-static-call` (`VariableStaticMethodCallRule`, `staticMethod.dynamicName`): `Foo::$name()`.
-//! - `lint/style/no-dynamic-static-callable` (`VariableStaticMethodCallableRule`, `staticMethod.dynamicName`):
-//!   `Foo::$name(...)`.
-//! - `lint/style/no-dynamic-static-property` (`VariableStaticPropertyFetchRule`, `staticProperty.dynamicName`):
-//!   `Foo::$$name`, `Foo::${expr}`.
-//!
-//! A member name is dynamic when it is not an identifier (php-parser's `Identifier`, `VarLikeIdentifier`): a
-//! variable or any `{expr}`, `{'literal'}` included. The message names what the member is accessed on: a class name
-//! as `Scope::resolveName` resolves it (`self`, `static` and `parent` the enclosing class or its parent), else the
-//! type of the expression as `describe(VerbosityLevel::typeOnly())` prints it ([`describe`]), from Mago's analyser.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
@@ -32,11 +12,8 @@ use pun_problem::Span;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// The classes PHPStan lets any property be read on: its `universalObjectCratesClasses` default and the rule's own
-/// `SimpleXMLElement` check.
 const CRATES: &[&str] = &["stdClass", "SimpleXMLElement"];
 
-/// The name of a dynamic member (a variable or an `{expr}`), `None` for an identifier.
 fn dynamic(selector: &ClassLikeMemberSelector<'_>) -> Option<Span> {
     match selector {
         ClassLikeMemberSelector::Variable(v) => Some(node_span(v)),
@@ -45,9 +22,6 @@ fn dynamic(selector: &ClassLikeMemberSelector<'_>) -> Option<Span> {
     }
 }
 
-/// `$scope->getType($expr)->describe(VerbosityLevel::typeOnly())`. A nullsafe access is analysed as the plain access
-/// on its receiver without `null` (`TypeCombinator::removeNull`), so `nullsafe` drops it. `None` where the analyser
-/// did not reach the expression: unreachable code, which PHPStan does not analyse either.
 fn type_of(ctx: &Context<'_>, expr: &Expression<'_>, nullsafe: bool) -> Option<String> {
     let mut t = facts(ctx)
         .full_type(node_span(unparenthesize(expr)))
@@ -56,8 +30,6 @@ fn type_of(ctx: &Context<'_>, expr: &Expression<'_>, nullsafe: bool) -> Option<S
         t.types = t.types.iter().filter(|a| !a.is_null()).cloned().collect();
     }
     let described = describe(&t);
-    // An anonymous class is `class@anonymous/<path>:<line>` in PHPStan; Mago names it
-    // `{anonymous-class:<path>:<line>:<column>}`.
     match described
         .strip_prefix("{anonymous-class:")
         .and_then(|rest| rest.strip_suffix('}'))
@@ -71,8 +43,6 @@ fn type_of(ctx: &Context<'_>, expr: &Expression<'_>, nullsafe: bool) -> Option<S
     }
 }
 
-/// What a static member is accessed on: `Scope::resolveName` for a name, the expression's type otherwise. `None` in
-/// code the analyser did not reach (it typed no member `name`), which PHPStan does not analyse.
 fn class_of(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -84,7 +54,6 @@ fn class_of(
     let written = || ctx.source[node_span(class).start..node_span(class).end].to_string();
     let scope = class_scope(ancestors);
     Some(match class {
-        // Outside a class (or `parent` in one without a parent) the keyword stays as written.
         Expression::Self_(_) | Expression::Static(_) => {
             scope.and_then(|c| c.name).unwrap_or_else(written)
         }
@@ -296,7 +265,6 @@ impl Rule for NoDynamicProperty {
             return;
         };
         let facts = facts(ctx);
-        // `isLiteralString()->yes()`: every member of the name's type is a string from literals.
         let literal = facts.full_type(name).is_some_and(|t| {
             !t.types.is_empty()
                 && t.types.iter().all(

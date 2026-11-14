@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-assert-instanceof`, ported from rector-phpunit's `AssertInstanceOfComparisonRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertTrue($a instanceof Foo)` becomes `assertInstanceOf(\Foo::class, $a)` (`assertFalse` becomes
-//! `assertNotInstanceOf`), and `assertSame('Foo', get_class($a))` becomes `assertInstanceOf('Foo', $a)`.
-
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -94,7 +88,6 @@ impl Rule for PreferAssertInstanceof {
         let class = match unparenthesize(binary.rhs) {
             class @ Expression::Variable(_) => expr_text(ctx, class).to_string(),
             Expression::Identifier(id) => format!("\\{}::class", resolve(ancestors, id)),
-            // `getName()` of any other class expression, or Rector's `ShouldNotHappenException`
             class => match expr_name(class) {
                 Some(name) => format!("\\{}::class", String::from_utf8_lossy(name)),
                 None => return,

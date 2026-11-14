@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-depends-attribute`, ported from rector-phpunit's
-//! `DependsAnnotationWithValueToAttributeRector` (rules/AnnotationsToAttributes/Rector/ClassMethod).
-//!
-//! In a test class, each method's generic `@depends` tags become `#[\PHPUnit\Framework\Attributes\Depends('m')]`
-//! (another method of the class), `DependsOnClass(X::class)`, `DependsUsingDeepClone('m')` (`clone m`) or
-//! `DependsExternal(X::class, 'm')` groups after its attributes, when the `Depends` attribute class exists. A tag that
-//! fits none stays. Rector runs it only for PHPUnit 10 and later; Pun leaves that to the rule's group.
-
 use mago_syntax::cst::{ClassLikeMember, Method, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -101,27 +93,21 @@ impl Rule for PreferDependsAttribute {
     }
 }
 
-/// `resolveAttributeNameAndItemsFromValue()`: the attribute class and its items for a `@depends` value of the
-/// method `current`, whose class has `methods`.
 fn resolve(methods: &[&Method<'_>], current: &str, value: &str) -> Option<(String, Vec<String>)> {
-    // `Class_::getMethod()`: the name without case.
     let has_method = |name: &str| {
         methods
             .iter()
             .any(|m| m.name.value.eq_ignore_ascii_case(name.as_bytes()))
     };
-    // process depends other ClassMethod
     if current != value && has_method(value) {
         return Some((DEPENDS_ATTRIBUTE.to_string(), vec![value.to_string()]));
     }
-    // other: depends other Class_
     if let Some(class) = value.strip_suffix("::class") {
         return Some((
             "PHPUnit\\Framework\\Attributes\\DependsOnClass".to_string(),
             vec![format!("{class}::class")],
         ));
     }
-    // other: depends clone ClassMethod
     if value.starts_with("clone ") {
         let cloned = value.split("clone ").nth(1).unwrap_or_default();
         if current != cloned && has_method(cloned) {
@@ -130,10 +116,8 @@ fn resolve(methods: &[&Method<'_>], current: &str, value: &str) -> Option<(Strin
                 vec![cloned.to_string()],
             ));
         }
-        // deep clone variant is handled separately
         return None;
     }
-    // other: depends external ClassMethod, e.g. "OtherTest::testMethod"
     let (class, method) = value.split_once("::")?;
     if class.is_empty() || method.is_empty() || method == "class" {
         return None;

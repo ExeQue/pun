@@ -24,7 +24,6 @@ use serde_json::Value;
 
 type Found = BTreeSet<(i64, String, String)>;
 
-/// The identifiers of FileAssertRule.
 fn is_assertion(identifier: &str) -> bool {
     matches!(
         identifier,
@@ -54,8 +53,6 @@ fn json_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Pun on one test class's files, with its config at level 8: the errors by file. Files that declare the same name go
-/// to separate runs (in one run, one declaration would be every file's).
 fn analyse(root: &Path, test: &Value) -> BTreeMap<String, Found> {
     let configs = test["configs"].as_array().unwrap();
     assert_eq!(configs.len(), 1, "{}", test["test"]);
@@ -65,16 +62,13 @@ fn analyse(root: &Path, test: &Value) -> BTreeMap<String, Found> {
                 .to_string_lossy()
                 .into_owned(),
         ),
-        // `-l 8`, so the level's parameters resolve too (`checkThisOnly` is off from level 2)
         level: Some("8".to_string()),
         ..Options::for_project(&root.to_string_lossy())
     })
     .unwrap();
     let mut params = config.parameters;
-    // `-l` resolves `level` as a string; Project reads a number
     params.set(Key::from("level"), Parameter::Int(8));
     let mut project = Project::from_config(root, &params);
-    // first fit: each file in the first run that declares none of its names
     let mut runs: Vec<(Vec<PathBuf>, BTreeSet<&str>)> = Vec::new();
     for case in test["cases"].as_array().unwrap() {
         let file = root.join(case["file"].as_str().unwrap());
@@ -117,7 +111,6 @@ fn analyse(root: &Path, test: &Value) -> BTreeMap<String, Found> {
 #[test]
 fn larastan_type_tests() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/larastan-types");
-    // PUN_LARASTAN_TYPES_ROOT: the full Larastan checkout the fixture was cut from, which must give the same result
     let root =
         std::env::var_os("PUN_LARASTAN_TYPES_ROOT").map_or_else(|| dir.join("root"), PathBuf::from);
     let gaps: BTreeSet<String> = std::fs::read_to_string(dir.join("gaps.txt"))
@@ -130,7 +123,6 @@ fn larastan_type_tests() {
     json_files(&dir, &mut tests);
     tests.sort();
     let mut failing = BTreeMap::new();
-    // (matched, total) assertions, Type files' other errors, Integration files
     let mut counts = [(0, 0); 3];
     for path in tests {
         let test: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
@@ -180,7 +172,6 @@ fn larastan_type_tests() {
                     n,
                 );
             }
-            // assertion errors off the gathered lines count with the file's other errors
             let other = |errors: &Found| -> Found {
                 errors
                     .iter()

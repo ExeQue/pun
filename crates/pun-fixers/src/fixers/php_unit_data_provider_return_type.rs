@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDataProviderReturnTypeFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::data_provider_analyzer::get_data_providers;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;

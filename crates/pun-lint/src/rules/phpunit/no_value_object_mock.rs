@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-value-object-mock`, ported from rector-phpunit's `DirectInstanceOverMockArgRector`
-//! (rules/CodeQuality/Rector/CallLike).
-//!
-//! In a `TestCase` class, a `createMock()` call of Symfony's `Request` or `RequestStack` that is an argument of a
-//! method call, a static call or a `new`, or an array item's value, becomes `new \...\Request()`.
-
 use mago_syntax::cst::{
     Argument, ArgumentList, ArrayElement, Call, Expression, Node, NodeKind, PartialArgument,
 };
@@ -64,7 +58,6 @@ impl Rule for NoValueObjectMock {
         if mocks.is_empty() {
             return;
         }
-        // `$scope->getClassReflection()->is(TestCase)`.
         let Some(at) = ancestors.iter().rposition(|a| {
             matches!(
                 a,
@@ -91,7 +84,6 @@ impl Rule for NoValueObjectMock {
     }
 }
 
-/// `matchCreateMockMethodCallArg` and the class its first argument names, when that is `Request` or `RequestStack`.
 fn mocked_class(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

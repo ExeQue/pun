@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDataProviderNameFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::data_provider_analyzer::get_data_providers;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -114,8 +113,6 @@ impl PhpUnitDataProviderNameFixer {
         }
     }
 
-    /// `getDataProviderNameForUsageIndex`, from the `function` token of a method `DataProviderAnalyzer` found: its
-    /// name comes right after it, so upstream's loop (over attributes and other tokens) ends on its first step.
     fn name_for_usage(&self, tokens: &Tokens, index: usize) -> String {
         let index = tokens.get_next_meaningful_token(index).unwrap();
         let name = Preg::replace(r"/^test_*/i", "", tokens[index].get_content());

@@ -1,12 +1,3 @@
-//! `lint/laravel/no-useless-value-call`, ported from rector-laravel 2.7.3's `RemoveRedundantValueCallsRector`
-//! (src/Rector/FuncCall).
-//!
-//! `value($x)` with one argument becomes `$x` when the argument's type cannot be a `Closure`
-//! (`$type->isSuperTypeOf(new ClosureType(...))->no()`): a scalar, an array, `null`, or an object of a class the codebase
-//! knows other than `Closure`. A value of no known type, `mixed`, `object`, a callable or an object of an unknown
-//! class may be one, and stays wrapped; so does `never`, Mago's type for `new` of an unknown class. An unpacked
-//! argument (`value(...$list)`) stays too, where Rector writes the array in place of its first item.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -44,7 +35,6 @@ impl Rule for NoUselessValueCall {
         let [argument] = c.argument_list.arguments.as_slice() else {
             return;
         };
-        // Rector puts the unpacked array in place of its first item; Pun leaves the c.
         if argument.is_unpacked() {
             return;
         }
@@ -65,7 +55,6 @@ impl Rule for NoUselessValueCall {
     }
 }
 
-/// Whether a value of type `t` may be a `Closure`.
 fn may_be_closure(facts: &Facts, t: &TUnion) -> bool {
     t.types.iter().any(|a| atomic_may_be_closure(facts, a))
 }

@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-constant`, ported from Rector 2.8.4's `ReturnTypeFromStrictConstantReturnRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a method whose every `return` returns a constant (`FOO`,
-//! `Class::FOO`, and `true`, `false` and `null`, which PHP-Parser reads as constants) gets the union of their types,
-//! values dropped.
-
 use mago_syntax::cst::{Access, Expression, Literal, Node, NodeKind};
 
 use super::declare::{return_declaration, union_order};
@@ -44,9 +39,7 @@ impl Rule for AddReturnTypeFromConstant {
         if !has_only_return_with_expr(&place, f.body, &returns) {
             return;
         }
-        // matchAlwaysReturnConstFetch
         let mut types = Vec::new();
-        // `has_only_return_with_expr` made sure each return has a value.
         for value in returns.iter().filter_map(|r| r.value) {
             if !matches!(
                 value,
@@ -56,7 +49,6 @@ impl Rule for AddReturnTypeFromConstant {
             ) {
                 return;
             }
-            // Rector's matchAlwaysReturnConstFetch reads getType(), including a constant's @var declaration.
             let Some(t) = facts.full_type(node_span(value)) else {
                 return;
             };

@@ -1,8 +1,3 @@
-//! Mago 1.57.0's constant folding (mago-linter src/rule/utils/const_value.rs), function by function: the value of an
-//! expression made of literals, constants, class constants and operators on them, or `None` when it is not constant.
-//! Mago resolves constant and class names with `mago-names`; here [`resolve_class_name`] and
-//! [`resolve_constant_name`] do that from the file's `use` imports and namespace.
-
 use std::cmp::Ordering;
 
 use mago_syntax::cst::{
@@ -24,7 +19,6 @@ pub(crate) enum ConstantValue {
 }
 
 impl ConstantValue {
-    /// Mago compares values with `OrderedFloat`, where NaN equals NaN.
     pub(crate) fn same(&self, other: &ConstantValue) -> bool {
         match (self, other) {
             (ConstantValue::Float(a), ConstantValue::Float(b)) => {
@@ -296,7 +290,6 @@ fn divide(left: Number, right: Number) -> Option<Number> {
         return None;
     }
     match (left, right) {
-        // `checked_rem` fails only where `checked_div` does (`i64::MIN / -1`).
         (Number::Integer(l), Number::Integer(r)) if l.checked_rem(r) == Some(0) => {
             Some(Number::Integer(l / r))
         }

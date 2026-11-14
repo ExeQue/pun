@@ -1,20 +1,3 @@
-//! What rector-laravel's `*PropertyTo*AttributeRector` rules (src/Rector/Class_) share. rector-laravel has no base
-//! class for them: each `refactor()` is the same steps on its own class, property, attribute and value check. Pun ports
-//! those steps once ([`refactor`]), and each rule is a [`Config`] of them (the [`property_rules!`] list).
-//!
-//! The steps: the class must be `final` (the queue rules) and an object of the rule's class (`isObjectType`, which reads
-//! the class's ancestors through PHPStan's reflection); it must not have the attribute already
-//! (`PhpAttributeAnalyzer::hasPhpAttribute`); `Class_::getProperty()` finds the first property statement with an item
-//! of the name (case-sensitive), whose first item's default is the value; the property must be `protected`
-//! (`isProtected()`) or public (`isPublic()`, no visibility counts); the value must pass the rule's check. Then the
-//! attribute group is appended to the class's attributes and the whole property statement goes, its doc comment and
-//! other items with it.
-//!
-//! Printing follows php-parser's format-preserving printer: the new group goes on its own line after the class's last
-//! attribute list, or before the class at its indentation (inline before `class` for an anonymous class); the value
-//! keeps its source text, moved to the class's indentation (`TokenStream::getTokenCode`). A class body left with no
-//! statement (php-parser keeps a trailing comment as a `Nop`) makes php-parser print the whole class anew.
-
 use crate::rules::rector_code_quality::is_constant;
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Safety, Span};
@@ -32,56 +15,38 @@ pub(crate) const SHOULD_QUEUE: &str = "Illuminate\\Contracts\\Queue\\ShouldQueue
 pub(crate) const JSON_RESOURCE: &str = "Illuminate\\Http\\Resources\\Json\\JsonResource";
 pub(crate) const FORM_REQUEST: &str = "Illuminate\\Foundation\\Http\\FormRequest";
 
-/// Which visibility the property must have.
 #[derive(Clone, Copy)]
 pub(crate) enum Visibility {
-    /// `Property::isProtected()`.
     Protected,
-    /// `Property::isPublic()`: `public`, or no visibility.
     Public,
 }
 
-/// What the rule asks of the property's default.
 #[derive(Clone, Copy)]
 pub(crate) enum Check {
-    /// Any value.
     Any,
-    /// A `String_`.
     String,
-    /// A `ClassConstFetch` or a `String_`.
     ClassConstOrString,
-    /// A non-empty `Array_` whose every item's value is a `String_`.
     StringArray,
-    /// A non-empty `Array_` whose no item's value has a type that is never a string (`isString()->no()`).
     MaybeStringArray,
-    /// A non-empty `Array_` whose every item's value has a string type (`isString()->yes()`).
     TypedStringArray,
-    /// `getType($value)->isInteger()->yes()`.
     Integer,
-    /// `getType($value)->isTrue()->yes()`.
     True,
-    /// `isTrue()->yes()`, or the constant `true`.
     TrueOrConstant,
-    /// The constant `false`.
     FalseConstant,
 }
 
-/// One rule: its ID and message, the class it applies to, the property, and the attribute it writes.
 pub(crate) struct Config {
     pub id: &'static str,
     pub message: &'static str,
     pub class: &'static str,
-    /// The queue rules ask for `$node->isFinal()` first.
     pub final_only: bool,
     pub property: &'static str,
     pub visibility: Visibility,
     pub check: Check,
     pub attribute: &'static str,
-    /// Whether a class with the attribute already is left alone (all but `ConnectionPropertyToConnectionAttributeRector`).
     pub skip_existing: bool,
 }
 
-/// The class-like `node` (a class or an anonymous class) that rector-laravel's rules visit, as a `Class_`.
 pub(crate) struct ClassView<'ast, 'arena> {
     pub node: Node<'ast, 'arena>,
     pub attribute_lists: &'ast Sequence<'arena, AttributeList<'arena>>,
@@ -94,7 +59,6 @@ pub(crate) struct ClassView<'ast, 'arena> {
     pub kind: Kind<'ast, 'arena>,
 }
 
-/// A named class or an anonymous one.
 #[derive(Clone, Copy)]
 pub(crate) enum Kind<'ast, 'arena> {
     Named(&'ast Class<'arena>),
@@ -102,7 +66,6 @@ pub(crate) enum Kind<'ast, 'arena> {
 }
 
 impl<'ast, 'arena> ClassView<'ast, 'arena> {
-    /// The view of a class or an anonymous class; `None` for any other node.
     pub(crate) fn of(node: Node<'ast, 'arena>) -> Option<Self> {
         if let Node::Class(c) = node {
             return Some(ClassView {
@@ -133,14 +96,12 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
         })
     }
 
-    /// `Class_::isFinal()`.
     pub(crate) fn is_final(&self) -> bool {
         self.modifiers
             .iter()
             .any(|m| matches!(m, Modifier::Final(_)))
     }
 
-    /// The name PHPStan's reflection has for the class: its namespaced name, or Mago's name of an anonymous class.
     pub(crate) fn name(&self, ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> String {
         match self.kind {
             Kind::Named(c) => {
@@ -154,8 +115,6 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
         }
     }
 
-    /// `NodeTypeResolver::isObjectType($class, new ObjectType($target))`: the class is `target` or has it among its
-    /// ancestors, and `target` is a class PHPStan's reflection finds (Rector's check fails when it cannot load it).
     pub(crate) fn is_object_type(
         &self,
         ctx: &Context<'_>,
@@ -169,12 +128,10 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
             && super::is_a(ctx, &self.name(ctx, ancestors), &[target])
     }
 
-    /// `PhpAttributeAnalyzer::hasPhpAttribute($class, $attribute)`.
     pub(crate) fn has_attribute(&self, ancestors: &[Node<'_, '_>], attribute: &str) -> bool {
         has_attribute(ancestors, self.attribute_lists, attribute)
     }
 
-    /// `Class_::getProperty($name)`: the first property statement with an item named `name`, and its index.
     pub(crate) fn property(&self, name: &str) -> Option<(usize, PropertyView<'ast, 'arena>)> {
         self.members.iter().enumerate().find_map(|(i, m)| {
             let ClassLikeMember::Property(p) = m else {
@@ -188,7 +145,6 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
         })
     }
 
-    /// `Class_::getMethod($name)`: the first method named `name` (ASCII case-insensitive), and its index.
     pub(crate) fn method(&self, name: &str) -> Option<(usize, &'ast Method<'arena>)> {
         self.members.iter().enumerate().find_map(|(i, m)| match m {
             ClassLikeMember::Method(method)
@@ -201,7 +157,6 @@ impl<'ast, 'arena> ClassView<'ast, 'arena> {
     }
 }
 
-/// A property statement as php-parser's `Property`: its modifiers and items.
 pub(crate) struct PropertyView<'ast, 'arena> {
     pub modifiers: &'ast Sequence<'arena, Modifier<'arena>>,
     pub items: Vec<&'ast PropertyItem<'arena>>,
@@ -227,7 +182,6 @@ impl<'ast, 'arena> PropertyView<'ast, 'arena> {
             .any(|m| matches!(m, Modifier::Protected(_)))
     }
 
-    /// php-parser's `isPublic()`: `public`, or no visibility at all (PHP allows one visibility modifier).
     pub(crate) fn is_public(&self) -> bool {
         !(self.modifiers.iter()).any(|m| matches!(m, Modifier::Protected(_) | Modifier::Private(_)))
     }
@@ -239,7 +193,6 @@ impl<'ast, 'arena> PropertyView<'ast, 'arena> {
         }
     }
 
-    /// `$property->props[0]->default`, without the parentheses php-parser does not keep.
     pub(crate) fn default(&self) -> Option<&'ast Expression<'arena>> {
         match self.items[0] {
             PropertyItem::Concrete(c) => Some(unparenthesize(c.value)),
@@ -248,7 +201,6 @@ impl<'ast, 'arena> PropertyView<'ast, 'arena> {
     }
 }
 
-/// php-parser's `String_`: a quoted string, or a heredoc or nowdoc without interpolation.
 pub(crate) fn is_string_node(expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Literal(Literal::String(_)) => true,
@@ -259,7 +211,6 @@ pub(crate) fn is_string_node(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// The items of an `Array_` (`[...]` or `array(...)`).
 pub(crate) fn array_elements<'ast, 'arena>(
     expr: &'ast Expression<'arena>,
 ) -> Option<&'ast TokenSeparatedSequence<'arena, ArrayElement<'arena>>> {
@@ -270,7 +221,6 @@ pub(crate) fn array_elements<'ast, 'arena>(
     }
 }
 
-/// An item's value (`$item->value`); `None` for a missing item (`$item === null`).
 fn element_value<'ast, 'arena>(
     element: &'ast ArrayElement<'arena>,
 ) -> Option<&'ast Expression<'arena>> {
@@ -282,7 +232,6 @@ fn element_value<'ast, 'arena>(
     }
 }
 
-/// PHPStan's `getType()` of `expr` (docblocks read), as far as Mago's analyser reached it.
 fn type_of<'f>(
     facts: &'f crate::rules::types::facts::Facts,
     expr: &Expression<'_>,
@@ -290,7 +239,6 @@ fn type_of<'f>(
     facts.full_type(node_span(unparenthesize(expr)))
 }
 
-/// `isString()->no()`: every type the value can have is never a string.
 fn never_string(t: &mago_codex::ttype::union::TUnion) -> bool {
     use mago_codex::ttype::atomic::TAtomic;
     use mago_codex::ttype::atomic::scalar::TScalar;
@@ -307,7 +255,6 @@ fn never_string(t: &mago_codex::ttype::union::TUnion) -> bool {
 }
 
 impl Config {
-    /// The value check on the property's default.
     fn passes(&self, ctx: &Context<'_>, value: &Expression<'_>) -> bool {
         let facts = || facts(ctx);
         match self.check {
@@ -351,7 +298,6 @@ impl Config {
         }
     }
 
-    /// Whether the attribute takes the value as its argument (the checks for `true` and `false` write a bare one).
     fn with_argument(&self) -> bool {
         !matches!(
             self.check,
@@ -359,7 +305,6 @@ impl Config {
         )
     }
 
-    /// The rule's `refactor()` on the class `node`.
     pub(crate) fn refactor(
         &self,
         node: Node<'_, '_>,
@@ -401,7 +346,6 @@ impl Config {
     }
 }
 
-/// The report of a rule's change to the class.
 pub(crate) fn report(class: &ClassView<'_, '_>, message: &str, edits: Vec<Edit>) -> Report {
     Report::fixed(
         node_span(&class.node),
@@ -411,8 +355,6 @@ pub(crate) fn report(class: &ClassView<'_, '_>, message: &str, edits: Vec<Edit>)
     )
 }
 
-/// The source of `expr` as php-parser prints a kept node in a new one at the class's indentation: every line after
-/// the first moved by the difference of the two indentations, string contents aside.
 pub(crate) fn moved_value(
     source: &str,
     class: &ClassView<'_, '_>,
@@ -424,15 +366,10 @@ pub(crate) fn moved_value(
     reprint(source, &crate::rules::php_parser::lex(source), span, adjust)
 }
 
-/// Where php-parser's class node starts: its first attribute list or modifier, or `class` (`new` for an anonymous
-/// class).
 fn class_start(class: &ClassView<'_, '_>) -> usize {
     node_span(&class.node).start
 }
 
-/// The edits for adding the attribute groups `groups` to the class, replacing the groups at `replaced` (indices of
-/// its attribute lists) with the first new ones, and removing the members at `removed`. `None` where Pun does not
-/// follow the printer: a tab in the class's indentation.
 pub(crate) fn rewrite(
     source: &str,
     class: &ClassView<'_, '_>,
@@ -458,7 +395,6 @@ pub(crate) fn rewrite(
         .map(|i| member_from(class.members, class.left_brace, i))
         .collect();
     let mut kept_flags = flags;
-    // A comment after the last member is php-parser's `Nop`, a statement that stays.
     let after = spans.last().map_or(open, |s| s.end);
     if let Some(comment) = first_comment(source, after, close) {
         let end = after + source[after..close].trim_end().len();
@@ -467,7 +403,6 @@ pub(crate) fn rewrite(
         kept_flags.push(false);
     }
     let Some(mut edits) = remove_items(source, &spans, &froms, &kept_flags) else {
-        // Nothing left in the body: php-parser prints the class anew.
         return Some(vec![Edit::new(
             Span::new(start, close + 1),
             reprinted(source, class, groups, replaced, &nl),
@@ -491,7 +426,6 @@ pub(crate) fn rewrite(
                 edits.push(Edit::new(Span::new(last.end, last.end), text));
             }
             None => {
-                // Before the modifiers or `class`; an anonymous class's attributes follow `new`.
                 let at = match class.kind {
                     Kind::Anonymous(c) => {
                         let new_end = c.new.span.end.offset as usize;
@@ -508,9 +442,6 @@ pub(crate) fn rewrite(
     Some(edits)
 }
 
-/// The class as php-parser's `pClassCommon` prints it with no statements: its attribute groups (the new ones after
-/// the kept ones, each on a line), its modifiers in php-parser's order, `class`, the name or the anonymous class's
-/// arguments, `extends`, `implements`, and an empty body on lines of their own.
 fn reprinted(
     source: &str,
     class: &ClassView<'_, '_>,
@@ -580,7 +511,6 @@ fn reprinted(
     out
 }
 
-/// Declares the unit struct `$name` as the [`Config`] `$config`, a rule on classes and anonymous classes.
 macro_rules! property_rules {
     ($($name:ident = $config:expr;)*) => {$(
         pub struct $name;

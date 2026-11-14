@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\NoUnreachableDefaultArgumentValueFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -69,7 +68,7 @@ fn remove_default_value(tokens: &mut Tokens, start_index: usize, end_index: usiz
     while i <= end_index {
         clear_whitespaces_before_index(tokens, i);
         tokens.clear_token_and_merge_surrounding_whitespace(i);
-        i = tokens.get_next_meaningful_token(i).unwrap(); // the argument list's `,` or `)` follows
+        i = tokens.get_next_meaningful_token(i).unwrap();
     }
 }
 

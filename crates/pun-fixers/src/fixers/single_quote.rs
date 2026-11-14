@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\SingleQuoteFixer`.
 use pun_tokens::php_compat::str_replace;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -50,11 +49,9 @@ impl Fixer for SingleQuoteFixer {
             }
             if content[0] == b'"'
                 && (self.strings_containing_single_quote_chars || !content.contains(&b'\''))
-                // regex: odd number of backslashes, not followed by double quote or dollar
                 && !Preg::r#match(r#"/(?<!\\)(?:\\{2})*\\(?!["$\\])/"#, content)
             {
                 let inner = &content[1..content.len() - 1];
-                // str_replace(['\"', '\$', '\''], ['"', '$', '\\\''], ...): sequential passes.
                 let inner = str_replace(b"\\\"", b"\"", inner);
                 let inner = str_replace(b"\\$", b"$", &inner);
                 let inner = str_replace(b"'", b"\\'", &inner);

@@ -1,16 +1,3 @@
-//! `lint/phpunit/no-test-constructor`, ported from rector-phpunit's `ConstructClassMethodToSetUpTestCaseRector`
-//! (rules/CodeQuality/Rector/Class_) and `SetUpMethodDecorator`.
-//!
-//! The constructor of a test class named `*Test` or `*TestCase` whose parent is `PHPUnit\Framework\TestCase` and
-//! whose parameters its body does not use (a `__construct()` static call is not looked into) moves to `setUp()`, without
-//! its `parent::__construct(...)` statements: with no `setUp()` it is renamed `setUp`, loses its parameters, becomes
-//! protected and takes the return type `TestCase::setUp()` declares; otherwise it goes and its statements are added to
-//! the end of `setUp()`.
-//!
-//! `SetUpMethodDecorator` does nothing while PHPUnit runs, so rector-phpunit's own fixtures show no return type; Pun
-//! does what Rector does outside its test suite (Oracle/ holds those two fixtures with Rector's real output).
-//! Upstream's FixtureInnerClass/skip_inner_class.php.inc is in Fixture/.
-
 use mago_codex::ttype::TType;
 use mago_syntax::cst::{
     Block, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, MethodBody, Modifier,
@@ -64,7 +51,6 @@ impl Rule for NoTestConstructor {
         }) else {
             return;
         };
-        // `shouldSkip`
         let facts = facts(ctx);
         let parent_is_test_case = class_parents(ctx, &name).first().is_some_and(|p| {
             facts.codebase.get_class_like(p.as_bytes()).is_some() && p == TEST_CASE
@@ -97,7 +83,6 @@ impl Rule for NoTestConstructor {
         let edits = match set_up {
             None => renamed_to_set_up(ctx, constructor, &list, &kept, &removed),
             Some(set_up) => {
-                // Rector gives an abstract `setUp()` a body, which PHP rejects
                 let MethodBody::Concrete(set_up_block) = &set_up.body else {
                     return;
                 };
@@ -119,8 +104,6 @@ impl Rule for NoTestConstructor {
     }
 }
 
-/// Whether the constructor's body uses one of its parameters (a variable of the same name, case-insensitive), outside
-/// static calls named `__construct`.
 fn uses_param(method: &Method<'_>) -> bool {
     let params: Vec<&[u8]> = method
         .parameter_list
@@ -149,7 +132,6 @@ fn uses_param(method: &Method<'_>) -> bool {
     false
 }
 
-/// `isParentCallNamed($stmt->expr, '__construct')` on an expression statement.
 fn is_parent_construct(statement: &Statement<'_>) -> bool {
     let Statement::Expression(e) = statement else {
         return false;
@@ -161,8 +143,6 @@ fn is_parent_construct(statement: &Statement<'_>) -> bool {
         && matches!(&call.method, ClassLikeMemberSelector::Identifier(id) if id.value.eq_ignore_ascii_case(b"__construct"))
 }
 
-/// The return type `SetUpMethodDecorator` gives the new `setUp()`: `Some(None)` when `TestCase::setUp()` declares
-/// none or not a simple name, `None` when the codebase does not have it (the method keeps its own).
 fn set_up_return_type(ctx: &Context<'_>) -> Option<Option<String>> {
     let facts = facts(ctx);
     let method = facts
@@ -179,7 +159,6 @@ fn set_up_return_type(ctx: &Context<'_>) -> Option<Option<String>> {
     )
 }
 
-/// The edits for renaming the constructor `setUp()` without parameters, protected, with `kept` as its statements.
 fn renamed_to_set_up(
     ctx: &Context<'_>,
     method: &Method<'_>,
@@ -252,9 +231,6 @@ fn renamed_to_set_up(
     merge(edits)
 }
 
-/// The edit for adding the statements of `kept` to the end of `set_up`'s body, as php-parser inserts them: on lines
-/// of their own after the last statement, or, in an empty body (`block`), with the method printed anew; `None` with
-/// nothing to add.
 fn appended(
     ctx: &crate::Context<'_>,
     set_up: &Method<'_>,

@@ -10,44 +10,24 @@ use serde_json::Value;
 
 type Key = (String, i64, String, String, Option<String>);
 
-/// PHPStan 2.3 errors Pun does not report yet (case directory, file, line, identifier); one Pun reports fails the
-/// test as extra.
 const GAPS: &[(&str, &str, i64, &str)] = &[
-    // PHPStan 2.3.1's loop scope: `while (true) { ...; $x = 1; if ($x) break; }` never reaches a second iteration, so
-    // $x is undefined at the loop start; Pun merges the end-of-body scope back in
     ("var_names", "vars.php", 84, "varTag.variableNotFound"),
-    // Mago types an int mixed after an invalid `$i += 'x'`, so NullCoalesceRule cannot tell it is not nullable
-    // The conservative declaration-effects producer does not follow labels/goto or general branches.
     ("level4-unused", "src/labels.php", 5, "void.pure"),
-    // `||` conditions and branch joins remain unknown, not proven empty.
     ("strict-operators", "operators.php", 95, "void.pure"),
-    // First-class callable creation has no declaration-effects producer yet.
     ("types", "types.php", 72, "void.pure"),
-    // Foreach scope/effect joins remain unported for declaration purity.
     ("types", "types.php", 281, "void.pure"),
-    // Local class declarations need their own producer, separate from their methods' bodies.
     ("types-level4", "checks.php", 203, "void.pure"),
-    // ConstantResolver::resolveConstantType() types a fetch of a `dynamicConstantNames` constant with its configured
-    // type (`int` here); Pun types the fetch with the defined value 42, which `positive-int` accepts
     (
         "dynamic-constant-values",
         "value-assigned-to-global-constant.php",
         5,
         "constant.value",
     ),
-    // Calling a `callable(A|B, int): B` parameter infers its own A and B again from the arguments, so the result is A
-    // where PHPStan keeps the function's B: the return reads `TReduceInitial`, not `TReduceInitial|TReduceReturnType`
     ("max", "template-self-reference.php", 32, "return.type"),
-    // PHPStan reflects each declaration of a duplicated class name; the codebase keeps one class-like per name, so
-    // the methods of the other declaration have no metadata to check
     ("duplicate-classes", "a.php", 3, "missingType.return"),
 ];
 
-/// Errors Pun reports where PHPStan does not, by an inference difference (case directory, file, line, identifier).
-/// Each must still be reported: one that disappears fails the test as missing.
 const EXTRA: &[(&str, &str, i64, &str)] = &[
-    // PHPStan makes a holder an ErrorType after an invalid offset write (`$a[1] = 2`, `$closed['x'] = 1`, `$i['k'] = 1`);
-    // Mago keeps its type, so NonexistentOffsetInArrayDimFetchRule still checks the later `.=` offsets
     ("types", "offsets.php", 122, "offsetAccess.notFound"),
     (
         "types",
@@ -61,11 +41,7 @@ const EXTRA: &[(&str, &str, i64, &str)] = &[
         125,
         "offsetAccess.nonOffsetAccessible",
     ),
-    // The GAPS entry's message with `TReduceInitial` alone
     ("max", "template-self-reference.php", 32, "return.type"),
-    // PHPStan 2.3.5 reports an unmatched entry in its config file. These two match PHPStan's errors that Pun does not
-    // report: expr.resultUnused on the `$f()` calls (unused-variable.php:278, 509, 543) and booleanOr.leftAlwaysFalse
-    // (unused-variable-usage-flow.php:21)
     ("unused-variable", "phpstan.neon", 10, "ignore.unmatched"),
     ("unused-variable", "phpstan.neon", 20, "ignore.unmatched"),
 ];
@@ -87,7 +63,6 @@ fn check(dir: &Path, neon: &str) -> Result<(), String> {
         })
         .collect();
     got.sort();
-    // An entry in a config file belongs to that config's run only
     let ours = |file: &str| !file.ends_with(".neon") || file == format!("{neon}.neon");
     for (case, file, line, id) in EXTRA
         .iter()
@@ -145,7 +120,6 @@ fn coverage_fixtures() {
         .map(|e| e.path())
         .collect();
     cases.sort();
-    // PUN_COVERAGE_FILTER=types runs only the cases whose directory name contains it
     let filter = std::env::var("PUN_COVERAGE_FILTER").unwrap_or_default();
     cases.retain(|d| d.file_name().unwrap().to_string_lossy().contains(&filter));
     let mut failures = Vec::new();
@@ -168,7 +142,6 @@ fn coverage_fixtures() {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
-/// The original level-0 rule case must match without consulting or changing its gap allowance.
 #[test]
 fn array_shape_template_key_original_rule_fixture() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rules");
@@ -205,8 +178,6 @@ fn array_shape_template_key_original_rule_fixture() {
     assert_eq!(serde_json::json!(actual), case["errors"]);
 }
 
-/// A circular class hierarchy stops PHPStan with "Reflection error: Circular reference to class" (no file errors to
-/// compare); the PHPDoc inheritance walks must still end.
 #[test]
 fn circular_hierarchy_ends() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cycle");
@@ -319,8 +290,6 @@ fn literal_integer_division_overflow_matches_php_and_phpstan() {
                 .unwrap();
             if php["exception"] == "DivisionByZeroError" {
                 assert_eq!(expected, "*ERROR*");
-                // PHPStan's ErrorType is not a scalar expectation. Verify Mago's rejection at
-                // this expression; its existing invalid-operand fallback is outside this patch.
                 assert!(result.issues.iter().any(|issue| {
                     issue.code.as_deref() == Some("invalid-operand")
                         && issue.annotations.iter().any(|annotation| {

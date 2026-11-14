@@ -1,8 +1,3 @@
-//! `lint/pest/prefer-to-be-empty`, ported from pest-plugin-rector's `UseToBeEmptyRector`: `->toHaveCount(0)` becomes
-//! `->toBeEmpty()`, `expect(count($x))->toBe(0)` (or `sizeof()`, or `toEqual()`) becomes `expect($x)->toBeEmpty()`,
-//! and `expect(empty($x))->toBeTrue()`, when `$x` is known not to be an object, becomes `expect($x)->toBeEmpty()` (`toBeFalse()` or a `->not` give
-//! `->not->toBeEmpty()`; the new call is made on the holder, so what came between is dropped).
-
 use mago_syntax::cst::{Construct, Expression, Literal, MethodCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -100,7 +95,6 @@ impl Rule for PreferToBeEmpty {
     }
 }
 
-/// `hasZeroArg`: the call's one argument is the integer `0`.
 fn has_zero_arg(call: &MethodCall<'_>) -> bool {
     matches!(
         call.argument_list.arguments.as_slice(),

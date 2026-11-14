@@ -1,14 +1,3 @@
-//! `lint/dead-code/no-return-in-constructor`, ported from Rector 2.8.4's `RemoveUselessReturnExprInConstructRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `ExprAnalyzer::isDynamicExpr`.
-//!
-//! A constructor's return value goes nowhere. In `__construct`, outside nested functions, closures and classes,
-//! `return <value>;` becomes `return;`, or `<value>; return;` when the value is not known at compile time (a call,
-//! a variable): its side effects stay.
-//!
-//! Rector's `traverseNodesWithCallable` gets the constructor's statements as a copy of the array, so the two
-//! statements it returns for a `return` directly in the constructor's body are lost: there, a value not known at
-//! compile time stays (`return parent::__construct();`), and only a `return` in a nested statement is split.
-
 use mago_syntax::cst::{MethodBody, Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -53,9 +42,6 @@ impl Rule for NoReturnInConstructor {
     }
 }
 
-/// `traverseNodesWithCallable` over the constructor's statements: every `return` with a value, not looking inside
-/// classes, functions and closures.
-/// `top` is set for the statements directly in the constructor's body.
 fn walk(source: &str, node: Node<'_, '_>, parent: Node<'_, '_>, top: bool, out: &mut Vec<Report>) {
     match node {
         Node::Class(_) | Node::AnonymousClass(_) | Node::Function(_) | Node::Closure(_) => return,
@@ -92,12 +78,6 @@ fn walk(source: &str, node: Node<'_, '_>, parent: Node<'_, '_>, top: bool, out: 
     node.visit_children(|child| walk(source, child, node, false, out));
 }
 
-/// The edit that replaces `return <value>;` at `span` with `<value>; return;` (Rector returns the two statements
-/// for the one), as php-parser's format-preserving printer writes them, which its output shows: the comments before
-/// the `return` go. After another statement the two go on lines of their own, at the indent of the `return`'s line;
-/// as the first of more statements they take its place, and the next statement starts a line of its own. As the only
-/// statement (a trailing comment aside) the printer writes the list again, a
-/// statement per line, and as the one statement of a control structure without braces the two get braces.
 fn expanded(source: &str, span: Span, value: &str, parent: Node<'_, '_>) -> Edit {
     let tokens = crate::rules::php_parser::lex(source);
     let list = holder_list(source, &tokens, parent);

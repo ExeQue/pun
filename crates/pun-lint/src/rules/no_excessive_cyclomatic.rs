@@ -1,11 +1,3 @@
-//! `lint/complexity/no-excessive-cyclomatic`, ported from Mago 1.57.0's `cyclomatic-complexity`
-//! (mago-linter src/rule/maintainability/cyclomatic_complexity.rs).
-//!
-//! A class-like's complexity is the sum, over its methods that are not plain setters or getters, of each method's
-//! complexity less one; a function's or closure's counts its body. Every `if`, `elseif`, loop, `catch`, ternary,
-//! `default:` and logical or `??` operator adds one, `<=>` adds two. Options: `threshold` (default 15) and
-//! `method-threshold` (default none), which also checks each method on its own.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use mago_syntax::walker::Walker;
@@ -141,7 +133,6 @@ fn report(message: String, at: pun_problem::Span) -> Report {
     }
 }
 
-/// `get_cyclomatic_complexity_of_method`: none for a setter or getter.
 fn method_complexity(method: &Method<'_>) -> Option<usize> {
     if is_method_setter_or_getter(method) {
         return None;

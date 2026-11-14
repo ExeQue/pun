@@ -1,5 +1,3 @@
-//! Sequential optional-key joins and their tagged and empty-array boundaries.
-
 use std::path::Path;
 use std::time::Instant;
 

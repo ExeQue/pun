@@ -1,10 +1,3 @@
-//! `lint/phpdoc/no-useless-readonly`, ported from Rector 2.8.4's `RemoveUselessReadOnlyTagRector`
-//! (rules/DeadCode/Rector/Property).
-//!
-//! A `@readonly` tag without a description says what the native `readonly` of the class, the property or the promoted
-//! parameter it documents already says: every `@readonly` tag of the doc comment goes, and the doc comment with them
-//! when nothing else is left.
-
 use mago_syntax::cst::{Modifier, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -20,7 +13,6 @@ impl Rule for NoUselessReadonly {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::READONLY_PROPERTY
         80100
     }
 
@@ -39,7 +31,6 @@ impl Rule for NoUselessReadonly {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // The class's or the parameter's own modifiers are its children; a property's sit one node down.
         let mut readonly = false;
         match node {
             Node::Property(property) => {
@@ -56,7 +47,6 @@ impl Rule for NoUselessReadonly {
         let Some(doc) = Doc::of(ctx, ancestors, start) else {
             return;
         };
-        // `getByName('readonly')`: the first `@readonly` tag, which must have no value; `removeByName()` takes all.
         let words: Vec<Vec<&str>> = (0..doc.len()).map(|i| doc.words(i)).collect();
         let removed: Vec<bool> = words
             .iter()

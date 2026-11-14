@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\SwitchCaseSemicolonToColonFixer`.
 use crate::analyzers::control_case_structures_analyzer::ControlCaseStructuresAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};

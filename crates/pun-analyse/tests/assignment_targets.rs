@@ -1,5 +1,3 @@
-//! PHPParser's List_/Array_ roles and byRef ArrayItem values, checked through PHPStan's public Analyser.
-
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -88,8 +86,6 @@ fn destructuring_nullsafe_checks_follow_item_roles_and_precede_other_assignment_
 
 #[test]
 fn destructuring_target_roles_match_phpstan_at_strict_levels() {
-    // Literal-array negative controls initialize their variables to distinguish assignability
-    // from undefined-variable inference, which has a separate owner.
     let inputs: Value =
         serde_json::from_str(include_str!("fixtures/assignment-targets/levels.json")).unwrap();
     let expected: Value =
@@ -105,7 +101,6 @@ fn destructuring_target_roles_match_phpstan_at_strict_levels() {
         let mut project = Project::new(files.clone(), Vec::new());
         project.php_version = 80500;
         project.level = level;
-        // config.level1.neon enables this independently of the rule-registration level.
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level >= 1,

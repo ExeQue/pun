@@ -1,16 +1,7 @@
-//! PHPStan's type representation (the subset built-in signatures use), with `describe()` at each
-//! `VerbosityLevel`, `isSuperTypeOf()` and `TypeCombinator::union()` / `intersect()`.
-//!
-//! Each variant is one of PHPStan 2.3.5's `Type` classes; methods keep upstream's control flow so a PHP and a
-//! Rust function can be read side by side. Class knowledge (canonical names, ancestors) comes from
-//! [`crate::symbols`]: PHPStan's own reflection of built-in classes.
-
 use std::cmp::Ordering;
 
 use crate::symbols;
 
-// PHP descriptions are byte strings. Concatenation must not go through Display or UTF-8
-// substitution: UnionType compares these bytes, including inside shapes and callable nodes.
 macro_rules! description {
     ($($part:expr),+ $(,)?) => {
         [$(AsRef::<[u8]>::as_ref(&$part)),+].concat()
@@ -72,7 +63,6 @@ impl Tri {
             Tri::Maybe => Tri::Maybe,
         }
     }
-    /// `TrinaryLogic::extremeIdentity()`: all equal → that value, else maybe.
     pub fn extreme_identity(results: impl IntoIterator<Item = Tri>) -> Tri {
         let mut it = results.into_iter();
         let first = it.next().unwrap_or(Tri::No);
@@ -82,7 +72,6 @@ impl Tri {
             Tri::Maybe
         }
     }
-    /// `TrinaryLogic::lazyMaxMin()`: any yes → yes, else the minimum.
     pub fn max_min(results: impl IntoIterator<Item = Tri>) -> Tri {
         let mut min = Tri::Yes;
         for r in results {
@@ -127,7 +116,6 @@ impl Level {
 pub enum NeverKind {
     Implicit,
     Explicit,
-    /// `NonAcceptingNeverType` (`never` written in PHPDoc)
     NonAccepting,
 }
 
@@ -139,19 +127,12 @@ pub enum Accessory {
     LiteralString,
     LowercaseString,
     UppercaseString,
-    /// `AccessoryDecimalIntegerStringType`, `inverse` is `non-decimal-int-string`
-    DecimalIntString {
-        inverse: bool,
-    },
+    DecimalIntString { inverse: bool },
     List,
     NonEmptyArray,
-    /// `HasMethodType`: comparison is case-insensitive, description retains the literal spelling.
     HasMethod(String),
-    /// `HasOffsetValueType`: a required literal offset and its independently narrowed value.
     HasOffsetValue(Box<Type>, Box<Type>),
-    /// Larastan's `GenericModelPropertyType` (`model-property<T>` with `checkModelProperties`): a property name of T.
     ModelProperty(Box<Type>),
-    /// Larastan's `ViewStringType` (`view-string`): the name of a view that exists.
     ViewString,
 }
 
@@ -171,13 +152,11 @@ impl PartialEq for Accessory {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstArray {
-    /// `ConstantIntegerType` / `ConstantStringType` keys
     pub keys: Vec<Type>,
     pub values: Vec<Type>,
     pub next_auto_indexes: Vec<i64>,
     pub optional: Vec<usize>,
     pub is_list: Tri,
-    /// `[key, value]` of `...<K, V>`; `None` is a sealed shape outside bleeding edge (`isUnsealed()` maybe).
     pub unsealed: Option<(Type, Type)>,
 }
 
@@ -194,7 +173,6 @@ pub struct Param {
 pub struct Signature {
     pub params: Vec<Param>,
     pub ret: Type,
-    /// a generic callable's own templates (`callable<T>(T): T`)
     pub templates: Vec<Template>,
 }
 
@@ -216,16 +194,13 @@ pub struct Conditional {
 #[derive(Clone, Debug)]
 pub struct Template {
     pub name: String,
-    /// `TemplateTypeScope::describe()`, e.g. `function preg_match()`, `class ArrayIterator`
     pub scope: String,
     pub bound: Type,
     pub default: Option<Type>,
-    /// a class's own template as the argument of its `static` / `$this` type
     pub argument: bool,
 }
 
 impl PartialEq for Template {
-    /// TemplateTypeTrait::equals(): the parameter/argument strategy is not part of a template's identity.
     fn eq(&self, other: &Self) -> bool {
         self.scope == other.scope
             && self.name == other.name
@@ -234,7 +209,6 @@ impl PartialEq for Template {
     }
 }
 
-/// A traversal callback's source decision. Replacing a node may intentionally produce an equal type.
 #[derive(Debug)]
 pub enum Traversal {
     Retain,
@@ -255,18 +229,14 @@ pub enum Type {
     Mixed {
         explicit: bool,
     },
-    /// RuleLevelHelper's checked mixed, never stored as a declaration or inferred scope value.
     StrictMixed,
-    /// MixedType with its excluded value set. Kept separate so existing plain-mixed constructors stay plain.
     SubtractedMixed {
         explicit: bool,
         excluded: Box<Type>,
     },
     Never(NeverKind),
     Error,
-    /// ErrorType/NeverType's explanation, deliberately excluded from type identity.
     Reasoned(Box<Type>, String),
-    /// `LateResolvableArrayShapeType`: shape keys that still contain templates.
     LateArrayShape(Box<LateArrayShape>),
     Void,
     Null,
@@ -278,35 +248,24 @@ pub enum Type {
     Float,
     ConstFloat(f64),
     String,
-    /// PHP's ConstantStringType owns bytes, not a UTF-8 text value.
     ConstString(Vec<u8>),
     ClassString(Option<Box<Type>>),
-    /// `__stringAndStringable` (`StringAlwaysAcceptingObjectWithToStringType`)
     StringAcceptingStringable,
-    /// `__stringNotStringable` (`StringNeverAcceptingObjectWithToStringType`)
     StringNotAcceptingStringable,
     Resource,
     ObjectWithoutClass,
-    /// PHPStan's `NonexistentParentClassType`: an object without a class identity or member capabilities.
-    /// This is not the named `parent` retained by unresolved native type hints.
     NonexistentParent,
-    /// `ObjectType` / `GenericObjectType`: written name, arguments and per-value `asFinal()` override.
-    /// The override affects reflection/containment, not equals() or the printed class name.
     Object(String, Vec<Type>, bool),
-    /// ObjectType's negative constraint, independent of generic/static and positive intersection identity.
     SubtractedObject {
         object: Box<Type>,
         excluded: Box<Type>,
     },
-    /// `StaticType`; with arguments `GenericStaticType` (`static<T>`)
     Static(String, Vec<Type>),
     This(String),
     Array(Box<Type>, Box<Type>),
     ConstArray(Box<ConstArray>),
     Iterable(Box<Type>, Box<Type>),
-    /// `CallableType`; `None` is the common `callable`
     Callable(Option<Box<Signature>>),
-    /// `ClosureType` with a signature (plain `Closure` is an object type)
     Closure(Box<Signature>),
     Union(Vec<Type>),
     Benevolent(Vec<Type>),
@@ -315,19 +274,12 @@ pub enum Type {
     Conditional(Box<Conditional>),
     Template(Box<Template>),
     ObjectShape(Vec<(String, Type, bool)>),
-    /// `EnumCaseObjectType`
     EnumCase(String, String),
-    /// a bivariant `*` generic argument (explicit `mixed`)
     Wildcard,
-    /// a generic argument's call-site variance (`GenericObjectType::getVariances()`): `covariant T` (true) or
-    /// `contravariant T` (false)
     Projection(bool, Box<Type>),
-    /// `OffsetAccessType` (`T['k']`) of a template, resolved late; ponytail: used as an error type (accepting
-    /// anything) until the scope resolves it
     OffsetAccess(Box<Type>, Box<Type>),
 }
 
-/// `TemplateTypeVariance::describe()` of a call-site variance
 pub fn variance_name(covariant: bool) -> &'static str {
     if covariant {
         "covariant"
@@ -340,18 +292,15 @@ pub fn mixed() -> Type {
     Type::Mixed { explicit: false }
 }
 
-/// `(new BenevolentUnionType([int, string]))->toArrayKey()`
 fn array_key() -> Type {
     Type::Benevolent(vec![Type::Int, Type::String])
 }
 
 impl Type {
-    /// `new ArrayType($key, $item)`: a `(int|string)` benevolent key is stored as implicit mixed.
     pub fn array(key: Type, item: Type) -> Type {
         let key = if key.is_benevolent_array_key() {
             mixed()
         } else if matches!(key, Type::StrictMixed) {
-            // ArrayType::__construct(): StrictMixedType keys become the PHP array-key domain.
             Type::Union(vec![Type::String, Type::Int])
         } else {
             key
@@ -370,7 +319,6 @@ impl Type {
         matches!(self, Type::Benevolent(types) if types.len() == 2 && types.contains(&Type::Int) && types.contains(&Type::String))
     }
 
-    /// `IntegerRangeType::fromInterval()`
     pub fn int_range(min: Option<i64>, max: Option<i64>) -> Type {
         match (min, max) {
             (Some(a), Some(b)) if a > b => Type::Never(NeverKind::Implicit),
@@ -382,7 +330,6 @@ impl Type {
         }
     }
 
-    /// An integer type's bounds (`int` is unbounded).
     fn int_bounds(&self) -> Option<(Option<i64>, Option<i64>)> {
         match self {
             Type::Int => Some((None, None)),
@@ -400,7 +347,6 @@ impl Type {
         matches!(self.unreasoned(), Type::Never(_))
     }
 
-    /// `$t instanceof MixedType && $t->describe(precise) === 'mixed' && !$t->isExplicitMixed()`
     fn is_plain_implicit_mixed(&self) -> bool {
         matches!(self, Type::Mixed { explicit: false })
     }
@@ -431,8 +377,6 @@ impl Type {
         self.query_mixed(f, Tri::Maybe)
     }
 
-    /// Member capabilities/existence use unionResults too, but MixedType answers Yes rather than Maybe.
-    /// The visitor supplies reflection-dependent leaf answers; StrictMixedType remains an ordinary No leaf.
     pub fn query_members(&self, f: &dyn Fn(&Type) -> Tri) -> Tri {
         self.query_mixed(f, Tri::Yes)
     }
@@ -453,7 +397,6 @@ impl Type {
                 Tri::max_min(types.iter().map(|t| t.query_mixed(f, mixed)))
             }
             Type::Template(t) => t.bound.query_mixed(f, mixed),
-            // LateResolvableTypeTrait
             Type::Conditional(c) => c.resolve().query_mixed(f, mixed),
             Type::Mixed { .. } | Type::SubtractedMixed { .. } | Type::Error => mixed,
             Type::Never(_) => Tri::No,
@@ -461,7 +404,6 @@ impl Type {
         }
     }
 
-    /// `query()` for the questions a common `CallableType` answers maybe (it may be a string, an array or an object).
     fn query_c(&self, f: &dyn Fn(&Type) -> Tri) -> Tri {
         self.query(&|t| {
             if matches!(t, Type::Callable(_)) {
@@ -472,8 +414,6 @@ impl Type {
         })
     }
 
-    /// MixedType excludes a query only when its subtracted type contains the complete domain.
-    /// `benevolent` selects UnionType::unionResults instead of notBenevolentUnionResults.
     fn query_with_mixed_domain(
         &self,
         query: fn(&Type) -> Tri,
@@ -489,7 +429,6 @@ impl Type {
             Type::Benevolent(types) if benevolent => types.iter().map(query).fold(Tri::No, Tri::or),
             Type::Benevolent(types) => Tri::extreme_identity(types.iter().map(query)),
             Type::Intersection(types) => Tri::max_min(types.iter().map(query)),
-            // TemplateMixedType inherits plain MixedType queries, not the bound's excluded set.
             Type::Template(t) if matches!(&t.bound, Type::SubtractedMixed { .. }) => Tri::Maybe,
             Type::Template(t) => query(&t.bound),
             Type::Conditional(c) => query(&c.resolve()),
@@ -521,13 +460,11 @@ impl Type {
         })
     }
 
-    /// A callable array (`callable&array`): `array{class-string|object, non-falsy-string}`.
     fn is_callable_array(&self) -> bool {
         matches!(self, Type::Intersection(_)) && self.is_callable().yes() && self.is_array().yes()
     }
 
     pub fn is_string(&self) -> Tri {
-        // UnionType::isString uses notBenevolentUnionResults, unlike canAccessConstants/isObject.
         match self {
             Type::Union(ts) | Type::Benevolent(ts) => {
                 return Tri::extreme_identity(ts.iter().map(Type::is_string));
@@ -590,7 +527,6 @@ impl Type {
         })
     }
 
-    /// `isObject()`, not `ObjectWithoutClassType::isSuperTypeOf()`: the latter rejects nonexistent parent.
     pub fn is_object(&self) -> Tri {
         self.query_c_with_mixed_domain(Self::is_object, || Type::ObjectWithoutClass, true, &|t| {
             match t {
@@ -692,7 +628,6 @@ impl Type {
             | Type::ConstFloat(_)
             | Type::ConstString(_)
             | Type::Null => true,
-            // UnionType's query aggregates its members, but it does not implement ConstantScalarType.
             Type::Union(parts) | Type::Benevolent(parts) => {
                 parts.iter().all(Self::is_constant_scalar)
             }
@@ -700,9 +635,6 @@ impl Type {
         }
     }
 
-    /// TemplateTypeFactory's scalar subclasses, for instanceof dispatch only. A direct constant string/int
-    /// bound creates a constant subclass; using that template as another bound creates StringType/IntegerType.
-    /// NullType stays constant through nested bounds, while BooleanType never becomes ConstantBooleanType.
     fn scalar_class_type(&self) -> &Type {
         match self {
             Type::Template(t) => match &t.bound {
@@ -739,11 +671,9 @@ impl Type {
                 }
             }
             Type::ConstArray(a) => a.is_list,
-            // `ArrayType::isList()`: no when no key can be a non-negative int
             Type::Array(key, _) if is_super_type_of(&Type::int_range(Some(0), None), key).no() => {
                 Tri::No
             }
-            // (MaybeArrayTypeTrait)
             Type::Array(..) | Type::Accessory(Accessory::NonEmptyArray) | Type::Iterable(..) => {
                 Tri::Maybe
             }
@@ -777,7 +707,6 @@ impl Type {
         )
     }
 
-    /// `isCloneable()`: an object, `mixed` and `never`; a common callable or iterable maybe.
     pub fn is_cloneable(&self) -> Tri {
         match self {
             Type::Reasoned(t, _) => t.is_cloneable(),
@@ -827,7 +756,6 @@ impl Type {
                     Type::Array(..) | Type::Iterable(..) | Type::Accessory(Accessory::List) => {
                         Tri::Maybe
                     }
-                    // StaticType asks its static object type
                     Type::Object(..)
                     | Type::Static(..)
                     | Type::This(_)
@@ -890,7 +818,6 @@ impl Type {
         })
     }
 
-    /// `isDecimalIntegerString()`
     pub fn is_decimal_int_string(&self) -> Tri {
         self.query(&|t| match t {
             Type::Accessory(Accessory::DecimalIntString { inverse }) => Tri::from(!inverse),
@@ -996,7 +923,6 @@ impl Type {
         )
     }
 
-    /// `Type::hasMethod()`, using the same class metadata as the other shared type queries.
     pub fn has_method(&self, name: &str) -> Tri {
         self.query(&|t| match t {
             Type::Accessory(Accessory::HasMethod(n)) => {
@@ -1023,8 +949,6 @@ impl Type {
         })
     }
 
-    /// MethodExistsTypeSpecifyingExtension's truthy literal-method refinement. Plain strings are unchanged;
-    /// class strings retain their string type, while mixed/object receivers gain only an object accessory.
     pub fn require_method(self, name: &str) -> Type {
         let accessory = Type::Accessory(Accessory::HasMethod(name.to_string()));
         if self.is_string().yes() {
@@ -1043,7 +967,6 @@ impl Type {
         ])
     }
 
-    /// `getObjectClassNames()`
     pub fn object_class_names(&self) -> Vec<String> {
         match self {
             Type::SubtractedObject { object, .. } => object.object_class_names(),
@@ -1052,13 +975,11 @@ impl Type {
             | Type::This(class)
             | Type::EnumCase(class, _) => vec![class.clone()],
             Type::Closure(_) => vec!["Closure".to_string()],
-            // TemplateObjectType and TemplateUnionType inherit their bound's object identities.
             Type::Template(t) => t.bound.object_class_names(),
             Type::Union(types) | Type::Benevolent(types) | Type::Intersection(types) => {
                 let mut names = Vec::new();
                 for t in types {
                     let inner = t.object_class_names();
-                    // BenevolentUnionType's pickFromTypes ignores nonobjects, not unnamed objects.
                     if inner.is_empty()
                         && (matches!(self, Type::Union(_))
                             || matches!(self, Type::Benevolent(_)) && t.is_object().yes())
@@ -1138,8 +1059,6 @@ impl Type {
             Type::Template(t) => t.bound.iterable_value_type(),
             Type::Object(class, args, _) => {
                 let value = iterable_arg(class, args, false);
-                // an Iterator's `current()` and an IteratorAggregate's `getIterator()` resolve a missing argument
-                // to its bound, an explicit `mixed` (`ObjectType::getIterableValueType()`)
                 if value.is_implicit_mixed()
                     && (is_instance_of(class, "Iterator").yes()
                         || is_instance_of(class, "IteratorAggregate").yes())
@@ -1177,8 +1096,6 @@ impl Type {
                 || "mixed".into(),
                 || {
                     let description = excluded.describe_bytes(level);
-                    // SubstractableTypeTrait groups unions and types with their own subtraction, not intersections.
-                    // Template subclasses inherit the union class or delegate getSubtractedType() to their bound.
                     let mut class = excluded.unreasoned();
                     while let Type::Template(t) = class {
                         class = t.bound.unreasoned();
@@ -1233,8 +1150,6 @@ impl Type {
                             Err(_) if String::from_utf8_lossy(s).chars().count() <= 20 => {
                                 export_string(s)
                             }
-                            // Nette's UTF-8 regexp runs only when truncation is necessary. PHPStan
-                            // catches that failure and appends an ellipsis after twenty original bytes.
                             Err(_) => {
                                 export_string(&[&s[..s.len().min(20)], "…".as_bytes()].concat())
                             }
@@ -1293,9 +1208,7 @@ impl Type {
             ),
             Type::EnumCase(class, case) => format!("{class}::{case}").into_bytes(),
             Type::Wildcard => "*".into(),
-            // `TypeProjectionHelper::describe()`
             Type::Projection(c, t) => description!(variance_name(*c), " ", t.describe_bytes(level)),
-            // (`Printer::print($this->toPhpDocNode())`)
             Type::OffsetAccess(..) => to_phpdoc_bytes(self),
             Type::Array(key, item) => {
                 let mixed_key = key.is_plain_implicit_mixed();
@@ -1412,12 +1325,10 @@ impl Type {
         }
     }
 
-    /// A template bound that `TemplateTypeTrait::describe()` leaves out (`MixedType` without subtraction).
     fn is_implicit_or_explicit_plain_mixed(&self) -> bool {
         matches!(self, Type::Mixed { .. })
     }
 
-    /// `generalize(GeneralizePrecision::lessSpecific())`
     pub fn generalize(&self) -> Type {
         match self {
             Type::ConstInt(_) | Type::IntRange(..) => Type::Int,
@@ -1431,12 +1342,10 @@ impl Type {
         }
     }
 
-    /// `traverse()`: the same type with `f` applied to its direct inner types.
     pub fn traverse(&self, f: &dyn Fn(&Type) -> Type) -> Type {
         self.map_children(f)
     }
 
-    /// Traverse direct children without guessing source retention from structural equality.
     pub fn traverse_source(&self, f: &dyn Fn(&Type) -> Traversal) -> Traversal {
         let replaced = std::cell::Cell::new(false);
         let mapped = self.map_children(&|inner| match f(inner) {
@@ -1505,8 +1414,6 @@ impl Type {
             Type::Template(t) => {
                 let mut bound = f(&t.bound);
                 let default = t.default.as_ref().map(f);
-                // TemplateTypeTrait::traverse() rebuilds through TemplateTypeFactory only when changed.
-                // The factory has no StrictMixedType case: that bound falls back to explicit MixedType.
                 if matches!(bound, Type::StrictMixed) && (bound != t.bound || default != t.default)
                 {
                     bound = Type::Mixed { explicit: true };
@@ -1527,7 +1434,6 @@ impl Type {
                 otherwise: f(&c.otherwise),
                 negated: c.negated,
             })),
-            // `ConstantArrayType::traverse()`: the values and the unsealed `...<K, V>`, not the keys
             Type::ConstArray(a) => {
                 let mut a = a.clone();
                 a.values = a.values.iter().map(f).collect();
@@ -1587,9 +1493,7 @@ impl Accessory {
     }
 }
 
-/// `StaticType::getStaticObjectType()`: the class, with its own templates as arguments when it is generic.
 fn static_object(class: &str) -> Type {
-    // a class the lookup does not know (outside `declared::with_classes()`) has no templates to pass on
     let Some(c) = symbols::lookup(class) else {
         return Type::Object(class.to_string(), Vec::new(), false);
     };
@@ -1612,7 +1516,6 @@ fn static_object(class: &str) -> Type {
     Type::Object(c.name.clone(), args, false)
 }
 
-/// `getStaticObjectType()` of a `static` (`GenericStaticType`'s is the class with its arguments).
 fn static_of(class: &str, args: &[Type]) -> Type {
     if args.is_empty() {
         static_object(class)
@@ -1621,8 +1524,6 @@ fn static_of(class: &str, args: &[Type]) -> Type {
     }
 }
 
-/// `getIterableKeyType()` (`key`) or `getIterableValueType()` of a class with these template arguments (an error
-/// for a class that is not `Traversable`).
 fn iterable_arg(class: &str, args: &[Type], key: bool) -> Type {
     let Some(c) = symbols::lookup(class) else {
         return Type::Error;
@@ -1636,8 +1537,6 @@ fn iterable_arg(class: &str, args: &[Type], key: bool) -> Type {
         })
 }
 
-/// `t` with the templates of the class's generic ancestors replaced by the arguments the class gives them: an
-/// inherited `getIterator()` is declared over its own class's templates.
 fn with_ancestor_args(t: &Type, c: &symbols::Class, args: &[Type]) -> Type {
     if let Type::Template(tpl) = t
         && let Some(ancestor) = tpl.scope.strip_prefix("class ")
@@ -1651,8 +1550,6 @@ fn with_ancestor_args(t: &Type, c: &symbols::Class, args: &[Type]) -> Type {
     t.traverse(&|x| with_ancestor_args(x, c, args))
 }
 
-/// The type arguments `c<args>` gives its generic ancestor `ancestor` (`getAncestorWithClassName()`), `None` when
-/// `c` does not name them.
 pub fn ancestor_args(c: &symbols::Class, ancestor: &str, args: &[Type]) -> Option<Vec<Type>> {
     let generic = c.generics.get(ancestor)?;
     Some(
@@ -1663,18 +1560,14 @@ pub fn ancestor_args(c: &symbols::Class, ancestor: &str, args: &[Type]) -> Optio
     )
 }
 
-/// `t` with the class's own templates replaced by its arguments (by their bounds when missing).
 fn with_class_args(t: &Type, c: &symbols::Class, args: &[Type]) -> Type {
     if let Type::Template(tpl) = t
         && tpl.scope == format!("class {}", c.name)
         && let Some(i) = c.templates.iter().position(|x| x.name == tpl.name)
     {
         return match args.get(i) {
-            // the bound (a `mixed` one implicit, as `ObjectType::getIterableKeyType()` resolves it)
             Some(Type::Wildcard) | None if matches!(tpl.bound, Type::Mixed { .. }) => mixed(),
             Some(Type::Wildcard) | None => tpl.bound.clone(),
-            // ponytail: a call-site variance is not applied to the position (`resolveTemplateTypes()`'s
-            // call-site variance map); the argument stands for its template
             Some(Type::Projection(_, arg)) => (**arg).clone(),
             Some(arg) => arg.clone(),
         };
@@ -1682,7 +1575,6 @@ fn with_class_args(t: &Type, c: &symbols::Class, args: &[Type]) -> Type {
     t.traverse(&|x| with_class_args(x, c, args))
 }
 
-/// `ObjectType::isInstanceOf()`
 fn is_instance_of(class: &str, target: &str) -> Tri {
     match symbols::lookup(class) {
         Some(c) if c.name == target || c.ancestors.iter().any(|a| a == target) => Tri::Yes,
@@ -1692,7 +1584,6 @@ fn is_instance_of(class: &str, target: &str) -> Tri {
     }
 }
 
-/// `ConstantStringType::isCallable()`: a function's name, or `Class::method`.
 fn string_is_callable(bytes: &[u8]) -> Tri {
     let s = String::from_utf8_lossy(bytes);
     let s = s.as_ref();
@@ -1705,7 +1596,6 @@ fn string_is_callable(bytes: &[u8]) -> Tri {
     let Some((class, method)) = s.split_once("::") else {
         return Tri::No;
     };
-    // `#^([a-zA-Z_\x7f-\xff\\][a-zA-Z0-9_\x7f-\xff\\]*)::([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\z#`
     let word = |w: &str, backslash: bool| {
         let ok = |ch: char| {
             ch == '_' || !ch.is_ascii() || ch.is_ascii_alphanumeric() || (backslash && ch == '\\')
@@ -1726,7 +1616,6 @@ fn string_is_callable(bytes: &[u8]) -> Tri {
     }
 }
 
-/// `ClassReflection::hasNativeMethod()`: declared or inherited.
 fn has_method(c: &symbols::Class, name: &str) -> bool {
     std::iter::once(c.name.as_str())
         .chain(c.ancestors.iter().map(String::as_str))
@@ -1737,7 +1626,6 @@ fn canonical_class(class: &str) -> String {
     symbols::lookup(class).map_or_else(|| class.to_string(), |c| c.name.clone())
 }
 
-/// `ConstantFloatType::castFloatToString()` (precision -1).
 pub fn float_to_string(f: f64) -> String {
     if f.is_nan() {
         return "NAN".to_string();
@@ -1763,7 +1651,6 @@ pub fn float_to_string(f: f64) -> String {
     s
 }
 
-/// `ConstantStringType::export()`
 fn export_string(value: &[u8]) -> Vec<u8> {
     let double = value.iter().any(|b| *b < 0x20);
     let quote = if double { b'"' } else { b'\'' };
@@ -1788,9 +1675,6 @@ fn export_string(value: &[u8]) -> Vec<u8> {
 }
 
 fn display_bytes(out: &[u8]) -> String {
-    // Only the public presentation boundary needs UTF-8; nested descriptions retain bytes.
-    // json_encode(JSON_INVALID_UTF8_SUBSTITUTE) groups malformed sequences like php_next_utf8_char,
-    // not Rust's UTF-8 decoder: a surrogate or overlong three-byte sequence gets one replacement.
     let mut display = String::new();
     let mut bytes = out;
     while !bytes.is_empty() {
@@ -1823,7 +1707,6 @@ fn display_bytes(out: &[u8]) -> String {
     display
 }
 
-/// `UnionTypeHelper::sortTypes()`
 pub fn sort_types(types: &[Type]) -> Vec<Type> {
     if types.len() > 1024 {
         return types.to_vec();
@@ -1886,7 +1769,6 @@ fn compare_in_union(a: &Type, b: &Type) -> Ordering {
         if cmp != Ordering::Equal {
             return cmp;
         }
-        // an int before the equal float (two equal numbers of one kind are one type)
         return matches!(b_class, Type::ConstInt(_)).cmp(&matches!(a_class, Type::ConstInt(_)));
     }
     match (a_class, b_class) {
@@ -1911,7 +1793,6 @@ fn compare_in_union(a: &Type, b: &Type) -> Ordering {
         );
     }
     if a.is_constant_array().yes() && b.is_constant_array().yes() {
-        // `array{}` first
         let empty = |t: &Type| t.is_iterable_at_least_once().no();
         return empty(b).cmp(&empty(a)).then_with(|| {
             compare_strings(
@@ -1933,8 +1814,6 @@ fn compare_in_union(a: &Type, b: &Type) -> Ordering {
 }
 
 impl Type {
-    /// TypeCombinator's array/iterable instanceof checks include the corresponding Template* subclasses.
-    /// Only dispatch uses this view: supertype reductions must still compare the original template identities.
     fn array_class(&self) -> &Type {
         match self {
             Type::Template(t)
@@ -1968,7 +1847,6 @@ fn describe_union(types: &[Type], level: Level) -> Vec<u8> {
             };
             names.push(if wrap { description!("(", d, ")") } else { d });
         }
-        // UnionType::describe(): number every occurrence of a duplicated precise description.
         if level == Level::Precise {
             let mut counts = std::collections::HashMap::new();
             for name in &names {
@@ -2020,7 +1898,6 @@ fn describe_union(types: &[Type], level: Level) -> Vec<u8> {
     }
 }
 
-/// Larastan's string types are StringType subclasses with their own description.
 fn larastan_string(types: &[Type]) -> Option<&Accessory> {
     types.iter().find_map(|t| match t {
         Type::Accessory(a @ (Accessory::ModelProperty(_) | Accessory::ViewString)) => Some(a),
@@ -2073,8 +1950,6 @@ fn describe_intersection_itself(this: &Type, types: &[Type], level: Level) -> Ve
     let is_list = this.is_list().yes();
     let is_array = this.is_array().yes();
     let is_non_empty_array = this.is_iterable_at_least_once().yes();
-    // IntersectionType::describeItself(): a template array describes itself, so its refinements cannot
-    // disappear into the ordinary array/list prefix that is only emitted for concrete ArrayType members.
     let has_template_array = types
         .iter()
         .any(|t| matches!(t, Type::Template(t) if matches!(t.bound, Type::Array(..))));
@@ -2171,7 +2046,6 @@ fn describe_intersection_itself(this: &Type, types: &[Type], level: Level) -> Ve
             skip_names.push(b"string");
             continue;
         }
-        // Every accessory was handled above (string ones always, array ones as `is_array`).
         base.push((i, t));
     }
     'base: for (i, t) in base {
@@ -2202,7 +2076,6 @@ fn describe_intersection_itself(this: &Type, types: &[Type], level: Level) -> Ve
         .join(b"&".as_slice())
 }
 
-/// `Printer::print()` of `CallableType::toPhpDocNode()` / `ClosureType` with parameter names dropped.
 fn print_callable(ident: &str, sig: &Signature) -> Vec<u8> {
     let params: Vec<_> = sig
         .params
@@ -2239,7 +2112,6 @@ fn print_callable(ident: &str, sig: &Signature) -> Vec<u8> {
     )
 }
 
-/// A callable's `<T of Bound = Default, ...>` (its TemplateTagValueNodes, the bound always printed).
 fn print_templates(sig: &Signature) -> Vec<u8> {
     if sig.templates.is_empty() {
         return Vec::new();
@@ -2247,13 +2119,11 @@ fn print_templates(sig: &Signature) -> Vec<u8> {
     let tags: Vec<_> = sig
         .templates
         .iter()
-        // (a TemplateTagValueNode of the bound only)
         .map(|t| description!(t.name, " of ", to_phpdoc_bytes(&t.bound)))
         .collect();
     description!("<", tags.join(b", ".as_slice()), ">")
 }
 
-/// `Printer::print($type->toPhpDocNode())` up to PHPStan 2.3.3 (what Rector's PHPStan prints): class names as written.
 pub fn to_phpdoc(t: &Type) -> String {
     display_bytes(&to_phpdoc_bytes(t))
 }
@@ -2262,8 +2132,6 @@ thread_local! {
     static NAME_NODES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// `Printer::print($type->toPhpDocNode())` from PHPStan 2.3.4 on: object, generic object, `Closure` and enum case
-/// types are fully qualified name nodes, printed with a leading backslash.
 pub fn to_phpdoc_fully_qualified(t: &Type) -> String {
     NAME_NODES.set(true);
     let printed = display_bytes(&to_phpdoc_bytes(t));
@@ -2271,7 +2139,6 @@ pub fn to_phpdoc_fully_qualified(t: &Type) -> String {
     printed
 }
 
-/// A class name as `toPhpDocNode()` prints it.
 fn phpdoc_class_name(class: &str) -> Vec<u8> {
     if NAME_NODES.get() {
         description!("\\", class)
@@ -2369,7 +2236,6 @@ fn to_phpdoc_bytes(t: &Type) -> Vec<u8> {
             )
         }
         Type::Union(types) | Type::Benevolent(types) => join_phpdoc(&sort_types(types), "|"),
-        // `list<T>`, `non-empty-list<T>`, `non-empty-array<K, T>`
         Type::Intersection(types)
             if let Some(Type::Array(key, item)) =
                 types.iter().find(|t| matches!(t, Type::Array(..))) =>
@@ -2429,7 +2295,6 @@ fn to_phpdoc_bytes(t: &Type) -> Vec<u8> {
         Type::Projection(c, inner) => description!(variance_name(*c), " ", to_phpdoc_bytes(inner)),
         Type::OffsetAccess(t, o) => {
             let on = to_phpdoc_bytes(t);
-            // (Printer's parentheses around a union, intersection or callable)
             let wrap = matches!(
                 **t,
                 Type::Union(_) | Type::Benevolent(_) | Type::Callable(Some(_)) | Type::Closure(_)
@@ -2539,8 +2404,6 @@ impl ConstArray {
         }
     }
 
-    /// The constant-array branch of `TypeCombinator::intersect()` against an `ArrayType`: each key the array may
-    /// have, with its value intersected with the array's item type.
     fn intersect_array(&self, array: &Type) -> Type {
         let (array_key, item) = (array.iterable_key_type(), array.iterable_value_type());
         let mut b = ShapeBuilder::new();
@@ -2554,7 +2417,6 @@ impl ConstArray {
             }
         }
         for (i, (key, value)) in self.keys.iter().zip(&self.values).enumerate() {
-            // `ArrayType::hasOffsetValueType()` of a constant key: no when the key type excludes it, else maybe
             if is_super_type_of(&array_key, key).no() {
                 continue;
             }
@@ -2567,9 +2429,6 @@ impl ConstArray {
         b.get()
     }
 
-    /// `isCallable()`: only a `[class-string|object, method]` shape (its missing slots possibly in the unsealed
-    /// extras) can be; a sealed one answers from the class's methods (`doFindTypeAndMethodNames()`).
-    // ponytail: an unsealed shape answers maybe; `supportsCallableInstanceMethods()` (PHP < 8) is not modelled
     fn is_callable(&self) -> Tri {
         if (self.unsealed.is_none() || !self.is_unsealed().yes())
             && let Some(t) = self.callable_methods()
@@ -2579,8 +2438,6 @@ impl ConstArray {
         self.callable_shape()
     }
 
-    /// The sealed `[class, methods]` shape's certainty; `None` when its class or methods are not constant.
-    /// `[class, 'method']`: the class (and whether it is a class-string) and the constant method names.
     fn callable_parts(&self) -> Option<(&str, bool, Vec<&str>)> {
         if self.keys != [Type::ConstInt(0), Type::ConstInt(1)] {
             return None;
@@ -2609,7 +2466,6 @@ impl ConstArray {
     fn callable_methods(&self) -> Option<Tri> {
         let (class, string, methods) = self.callable_parts()?;
         let class = symbols::lookup(class)?;
-        // ponytail: PHP 8 (`supportsCallableInstanceMethods()` is false): a class-string's instance method is no callable
         let instance = |m: &str| {
             std::iter::once(class.name.as_str())
                 .chain(class.ancestors.iter().map(String::as_str))
@@ -2776,7 +2632,6 @@ impl ConstArray {
                     description!("'", s, "'")
                 }
                 Type::ConstString(s) => s.clone(),
-                // the only other key type, a `ConstantIntegerType`
                 k => to_phpdoc_bytes(k),
             };
             let value = self.values[i].describe_bytes(level);
@@ -2831,7 +2686,6 @@ impl ConstArray {
         )
     }
 
-    /// `ConstantArrayType::toPhpDocNode()`: unlike `describe()`, nested values and quoted keys use PHPDoc syntax.
     fn to_phpdoc(&self) -> Vec<u8> {
         let mut name = if self.should_be_described_as_a_list() {
             "list"
@@ -2908,7 +2762,6 @@ impl ConstArray {
         array
     }
 
-    /// `ConstantArrayType::makeList()`
     fn make_list(&self) -> ConstArray {
         let mut a = self.clone();
         if !a.is_list.no() {
@@ -2917,7 +2770,6 @@ impl ConstArray {
         a
     }
 
-    /// `ConstantArrayType::makeOffsetRequired()` for the first key.
     fn make_first_offset_required(&self) -> ConstArray {
         let mut a = self.clone();
         a.optional.retain(|&i| i != 0);
@@ -2947,7 +2799,6 @@ fn is_valid_identifier(s: &[u8]) -> bool {
     any
 }
 
-/// `ConstantArrayTypeBuilder` (array degradation disabled, as for PHPDoc shapes).
 pub struct ShapeBuilder {
     array: ConstArray,
 }
@@ -2962,7 +2813,6 @@ impl ShapeBuilder {
     pub fn set(&mut self, key: Option<Type>, value: Type, optional: bool) {
         let key = key.as_ref().map(crate::resolve::to_array_key);
         let a = &mut self.array;
-        // a PHPDoc item without a key is never optional (`value?` is not a shape item)
         let Some(key) = key else {
             let max = *a.next_auto_indexes.iter().max().expect("auto index");
             a.keys.push(Type::ConstInt(max));
@@ -3003,7 +2853,6 @@ impl ShapeBuilder {
                 } else {
                     a.is_list = non_list;
                 }
-                // (past PHP_INT_MAX there is no next index)
                 if offset >= max {
                     let next = offset.checked_add(1);
                     if !optional {
@@ -3026,7 +2875,6 @@ impl ShapeBuilder {
 
     pub fn get(self) -> Type {
         let mut array = self.array;
-        // without keys nothing was set: still an empty list
         if array.keys.is_empty() {
             if let Some((key, value)) = array.unsealed.clone()
                 && key != Type::Never(NeverKind::Explicit)
@@ -3050,7 +2898,6 @@ impl Default for ShapeBuilder {
     }
 }
 
-/// `$a->isSuperTypeOf($b)`
 pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
     use Type as T;
     if let T::Reasoned(t, _) = b {
@@ -3077,8 +2924,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 is_super_type_of(&s.resolve(), b).and(Tri::Maybe)
             }
         }
-        // `*` is a bivariant `mixed`
-        // (a call-site variance is a generic argument's only, compared in `valid_variance()`)
         T::Mixed { .. }
         | T::StrictMixed
         | T::Error
@@ -3112,7 +2957,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
         },
         T::Conditional(c) => conditional_super(c, b),
         T::Union(types) | T::Benevolent(types) => {
-            // a TemplateBenevolentUnionType is a UnionType but not a TemplateUnionType
             if matches!(
                 b,
                 T::Union(_) | T::Benevolent(_) | T::Iterable(..) | T::Never(_) | T::IntRange(..)
@@ -3128,7 +2972,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 }
                 result = result.or(r);
             }
-            // a TemplateUnionType or a conditional also answers as a whole
             let whole = matches!(b, T::Conditional(_))
                 || matches!(b, T::Template(tpl) if matches!(tpl.bound, T::Union(_) | T::Benevolent(_)));
             if whole {
@@ -3157,7 +3000,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
             }
             is_super_type_of(&tpl.bound, b).and(Tri::Maybe)
         }
-        // IntegerRangeType is an IntegerType: integer types compare directly, not through CompoundType
         T::Int | T::ConstInt(_) | T::IntRange(..)
             if matches!(b, T::Int | T::ConstInt(_) | T::IntRange(..)) =>
         {
@@ -3211,7 +3053,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
             ))
         }
         T::ConstString(x) => match b {
-            // the class named by the string against the generic type, its uncertainty dropped
             T::ClassString(Some(g)) if matches!(**g, T::Mixed { .. }) => Tri::Maybe,
             T::ClassString(Some(g)) => {
                 let named = T::Object(String::from_utf8_lossy(x).into_owned(), vec![], false);
@@ -3242,7 +3083,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 if matches!(**g, T::Mixed { .. }) {
                     return Tri::Yes;
                 }
-                // a template's bound: not the uncertainty of the template itself
                 let g = match &**g {
                     T::Template(t) => &t.bound,
                     g => g,
@@ -3295,7 +3135,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 let result = is_super_type_of(item, &b.iterable_value_type()).and(
                     is_super_type_of(&a.iterable_key_type(), &b.iterable_key_type()),
                 );
-                // a possibly-empty constant array admits `[]`, a subtype of every array type
                 if result.no()
                     && matches!(b, T::ConstArray(_))
                     && !b.is_iterable_at_least_once().yes()
@@ -3343,10 +3182,7 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
             _ => Tri::No,
         },
         T::ObjectShape(props) => match b {
-            // NonexistentParentClassType is an object but has no instance properties, even optional ones.
             T::NonexistentParent => Tri::from(props.iter().all(|(_, _, optional)| *optional)),
-            // a final class without a required property; ponytail: otherwise maybe, the property types are not
-            // compared
             _ if b.object_class_names().iter().any(|c| {
                 symbols::lookup(c).is_some_and(|c| {
                     c.is_final
@@ -3360,7 +3196,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
                 Tri::No
             }
             T::ObjectWithoutClass => Tri::Maybe,
-            // each property of this shape: the other shape has it (an optional one maybe) with a sub type
             T::ObjectShape(others) => {
                 let mut result = Tri::Yes;
                 for (name, ty, optional) in props {
@@ -3386,7 +3221,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
             T::Object(..) | T::Static(..) | T::This(_) => Tri::Maybe,
             _ => Tri::No,
         },
-        // (b is not compound here)
         T::Iterable(key, value) => b
             .is_iterable()
             .and(is_super_type_of(value, &b.iterable_value_type()))
@@ -3396,8 +3230,6 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
 }
 
 impl Conditional {
-    /// `LateResolvableType::resolve()`: the branch the subject takes, both when it may take either.
-    /// ponytail: the subject inside the branches is not narrowed (`getNormalizedIf()`); add for `(T is int ? T : ...)`.
     pub fn resolve(&self) -> Type {
         let Subject::Type(subject) = &self.subject else {
             return union(vec![self.then.clone(), self.otherwise.clone()]);
@@ -3414,7 +3246,6 @@ impl Conditional {
         }
     }
 
-    /// `isResolvable()`: no templates involved, or the subject's branch is certain (never for a parameter).
     pub fn is_resolvable(&self) -> bool {
         let Subject::Type(subject) = &self.subject else {
             return false;
@@ -3433,7 +3264,6 @@ pub(crate) fn contains_template(t: &Type) -> bool {
     found.get()
 }
 
-/// `ConditionalType::isSuperTypeOf()`: branch by branch against its own kind, else as what it resolves to.
 fn conditional_super(c: &Conditional, b: &Type) -> Tri {
     if let Type::Conditional(other) = b
         && std::mem::discriminant(&c.subject) == std::mem::discriminant(&other.subject)
@@ -3456,9 +3286,6 @@ fn conditional_super(c: &Conditional, b: &Type) -> Tri {
     }
 }
 
-/// `CallableTypeHelper::isParametersAcceptorSuperTypeOf()` over `b`'s variants (a callable without a signature, or a
-/// method Pun knows no signature of, is the trivial `(...): mixed` one); `accept` is `Some(strictTypes)` for
-/// `$treatMixedAsAny` (accepts() compares parameters and return with accepts()).
 fn signature_super(ours: &Signature, b: &Type, accept: Option<bool>) -> Tri {
     let variants = callable_signatures(b);
     variants
@@ -3468,8 +3295,6 @@ fn signature_super(ours: &Signature, b: &Type, accept: Option<bool>) -> Tri {
         .expect("a variant")
 }
 
-/// `ParametersAcceptorSelector::selectFromTypes()` of one variant: infer its templates from the accepting
-/// callable's parameter types before comparing either parameters or return type.
 fn specialize_signature(ours: &Signature, theirs: &Signature) -> Signature {
     let mut map = TemplateMap::default();
     for (i, param) in theirs.params.iter().enumerate() {
@@ -3499,8 +3324,6 @@ fn specialize_signature(ours: &Signature, theirs: &Signature) -> Signature {
     }
 }
 
-/// `getCallableParametersAcceptors()`: a callable without a signature, or a method Pun knows no signature of, is
-/// the trivial `(...): mixed` one.
 fn callable_signatures(b: &Type) -> Vec<Signature> {
     let of = |f: &symbols::Function| -> Vec<Signature> {
         f.variants
@@ -3543,13 +3366,11 @@ fn callable_signatures(b: &Type) -> Vec<Signature> {
         {
             of(f)
         }
-        // `'Class::method'`
         Type::ConstString(name) => std::str::from_utf8(name)
             .ok()
             .and_then(|name| name.split_once("::"))
             .map(|(c, m)| method(c, m))
             .unwrap_or_default(),
-        // `[class, 'method']` (`ConstantArrayType::getCallableParametersAcceptors()`)
         Type::ConstArray(a) => a
             .callable_parts()
             .map(|(class, _, names)| names.into_iter().flat_map(|m| method(class, m)).collect())
@@ -3598,7 +3419,6 @@ fn variant_super(ours: &Signature, theirs: &Signature, accept: Option<bool>) -> 
     result.and(compare(&ours.ret, &theirs.ret, true))
 }
 
-/// `TypeUtils::toBenevolentUnion()`
 pub fn to_benevolent(t: Type) -> Type {
     match t {
         Type::Union(types) => Type::Benevolent(types),
@@ -3630,8 +3450,6 @@ fn accessory_super(acc: &Accessory, b: &Type) -> Tri {
     }
 }
 
-/// HasOffsetValueType's offset/value comparison for the array representations used by inference.
-/// Other offset-accessible kinds retain uncertainty rather than being mistaken for arrays.
 fn offset_value_relation(key: &Type, value: &Type, other: &Type, reverse: bool) -> Tri {
     let (has, item) = match other {
         Type::Accessory(Accessory::HasOffsetValue(k, v)) if k.as_ref() == key => {
@@ -3681,7 +3499,6 @@ fn offset_value_relation(key: &Type, value: &Type, other: &Type, reverse: bool) 
     }
 }
 
-/// `AccessoryDecimalIntegerStringType::isSuperTypeOf()`
 fn decimal_int_super(inverse: bool, b: &Type) -> Tri {
     let decimal = b.is_decimal_int_string();
     b.is_string()
@@ -3719,8 +3536,6 @@ fn object_super(class: &str, args: &[Type], b: &Type, strict: bool, exact: bool)
     let result = match (symbols::lookup(class), symbols::lookup(that)) {
         (Some(this), Some(other)) => {
             if this.name == other.name {
-                // Same written class: an override is only maybe wider than a broad reflection.
-                // Differently written aliases keep ObjectType's separate canonical-name shortcut.
                 if class == that && exact && !this.is_final && !input_exact {
                     Tri::Maybe
                 } else {
@@ -3750,7 +3565,6 @@ fn object_super(class: &str, args: &[Type], b: &Type, strict: bool, exact: bool)
     if args.is_empty() || result.no() {
         return result;
     }
-    // GenericObjectType: `$b` as this class (`getAncestorWithClassName()`), each argument a valid variance
     let Type::Object(b_class, b_args, _) = b else {
         return result;
     };
@@ -3760,14 +3574,10 @@ fn object_super(class: &str, args: &[Type], b: &Type, strict: bool, exact: bool)
     };
     let ancestor: Vec<Type> = if c.name == class {
         if b_args.is_empty() {
-            // a raw reference to the generic class itself
             return result.and(Tri::Maybe);
         }
         b_args.clone()
     } else if c.ancestors.contains(&class) {
-        // ponytail: every built-in class names its generic ancestors' arguments; for user classes add PHPStan's
-        // non-generic ancestor case (the class relation and maybe)
-        // an ancestor named without type arguments: the class relation only
         let Some(generic) = c.generics.get(&class) else {
             return result;
         };
@@ -3799,14 +3609,11 @@ fn object_super(class: &str, args: &[Type], b: &Type, strict: bool, exact: bool)
         .fold(Tri::Yes, Tri::and)
 }
 
-/// `TemplateTypeVariance::isValidVariance()` + `validPosition()`: call-site variance overrides the declaration;
-/// ordinary mixed arguments are gradual only in an accepts context, not a strict generic subtype comparison.
 fn valid_variance(a: &Type, b: &Type, declared: &str, strict: bool) -> Tri {
     match (a, b) {
         (Type::Wildcard, _) => Tri::Yes,
         (_, Type::Wildcard) => Tri::No,
         (Type::Projection(c, a), b) => {
-            // (`b`'s own call-site variance must be in the same direction)
             let b = match b {
                 Type::Projection(d, _) if d != c => return Tri::No,
                 Type::Projection(_, b) => &**b,
@@ -3871,8 +3678,6 @@ fn const_array_super(a: &ConstArray, b: &ConstArray) -> Tri {
     result
 }
 
-/// `$a->isSubTypeOf($b)` for compound `$a`. `$b` is compound only for a union `$b` (and an iterable, never,
-/// range, template or conditional `$a`): other compound pairs are answered by `isSuperTypeOf()` first.
 fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
     use Type as T;
     match a {
@@ -3881,7 +3686,6 @@ fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
             T::StrictMixed | T::Mixed { .. } | T::SubtractedMixed { .. } | T::Error
         ))
         .or(Tri::Maybe),
-        // (against a mixed `$b`, isSuperTypeOf() answers yes first)
         T::Mixed { .. } | T::Error => Tri::Maybe,
         T::SubtractedMixed { excluded, .. } => {
             if is_super_type_of(excluded, b).yes() {
@@ -3898,7 +3702,6 @@ fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
             T::Int | T::ConstInt(_) | T::IntRange(..) | T::Intersection(_) => {
                 is_super_type_of(b, a)
             }
-            // isSubTypeOfUnionWithReason(): a finite range is covered by its constants, else member by member
             T::Union(types) | T::Benevolent(types) => {
                 if let (Some(min), Some(max)) = (min, max) {
                     let covered = types
@@ -3945,7 +3748,6 @@ fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
                     &a.iterable_key_type(),
                 ))
         }
-        // (two callables meet in isSuperTypeOf())
         T::Callable(_) => b.is_callable().and(Tri::Maybe),
         T::Accessory(acc) => {
             let same = matches!(b, T::Accessory(x) if x == acc);
@@ -3996,7 +3798,6 @@ fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
                 }
             }
         }
-        // (a union `$b` reaches here only for a union-bound template, which compares by its bound)
         T::Template(tpl) => match b {
             T::Template(other) => {
                 let r = is_super_type_of(&other.bound, &tpl.bound);
@@ -4016,7 +3817,6 @@ fn is_sub_type_of(a: &Type, b: &Type) -> Tri {
                 is_super_type_of(b, &r)
             }
         }
-        // never, the remaining compound type
         _ => Tri::Yes,
     }
 }
@@ -4053,7 +3853,6 @@ pub fn union(types: Vec<Type>) -> Type {
         return types.pop().expect("one type");
     }
     let mut arrays = Vec::new();
-    // Scalar constants per runtime class, including the distinct TemplateConstant* / TemplateNullType buckets.
     let mut scalars: Vec<(u8, Vec<Type>)> = Vec::new();
     let mut generic = [false; 5];
     let mut ranges = Vec::new();
@@ -4077,8 +3876,6 @@ pub fn union(types: Vec<Type>) -> Type {
             }
             continue;
         }
-        // only a type containing every value of the scalar (not `T of int`, `1&T`) absorbs all the constants of that
-        // scalar (PHPStan 2.3.4)
         if t.is_boolean().yes() {
             generic[0] |= is_super_type_of(&t, &Type::Bool).yes();
         } else if t.is_float().yes() {
@@ -4086,8 +3883,6 @@ pub fn union(types: Vec<Type>) -> Type {
         } else if t.is_integer().yes() && !matches!(t, Type::IntRange(..)) {
             generic[1] |= is_super_type_of(&t, &Type::Int).yes();
         }
-        // (a string that is no class-string, without accessories, is only a `mixed~string` subtraction PHPStan
-        // intersects with a string, which Pun has no type for: generic[3] stays false)
         if let Type::IntRange(..) = t {
             ranges.push(t);
             continue;
@@ -4185,21 +3980,16 @@ fn scalar_class(t: &Type) -> u8 {
         Type::Template(t) if matches!(t.bound, Type::ConstString(_)) => 6,
         Type::Template(_) if matches!(t.scalar_class_type(), Type::Union(_)) => 8,
         Type::Template(_) if matches!(t.scalar_class_type(), Type::Benevolent(_)) => 9,
-        Type::Template(_) => 7, // TemplateNullType, including a nested null-template bound
+        Type::Template(_) => 7,
         _ => 4,
     }
 }
-
-// `TypeUtils::getAccessoryTypes() !== []` of a string type that is not a class string (plain `string` answers
-// maybe to that, so only intersections get here)
 
 enum Merge {
     A(Type),
     B(Type),
 }
 
-/// `TypeCombinator::remove()` of object types (a union removes each member in turn): what a `catch` leaves of a
-/// throw point. A type it cannot subtract stays as it is.
 pub fn remove_object(from: &Type, removed: &Type) -> Type {
     if let Type::Union(parts) = removed {
         return parts
@@ -4213,7 +4003,6 @@ pub fn remove_object(from: &Type, removed: &Type) -> Type {
     }
 }
 
-/// TypeCombinator::remove() and ObjectType::tryRemove() for a named-object exclusion.
 fn remove_object_exclusion(from: &Type, removed: &Type) -> Option<Type> {
     if removed.is_compound() {
         return None;
@@ -4243,7 +4032,6 @@ fn remove_object_exclusion(from: &Type, removed: &Type) -> Option<Type> {
         removed => removed,
     };
     if let Type::Object(removed_class, _, _) = removed_object {
-        // UnionType::EQUAL_UNION_CLASSES, before ObjectType's ordinary subtraction.
         let complement = match (class.as_str(), removed_class.as_str()) {
             ("Throwable", "Exception") => Some("Error"),
             ("Throwable", "Error") => Some("Exception"),
@@ -4268,9 +4056,7 @@ fn remove_object_exclusion(from: &Type, removed: &Type) -> Option<Type> {
     ))
 }
 
-/// TypeCombinator::intersectWithSubtractedType(): restoring part of an excluded object retains its difference.
 fn restore_object_exclusion(positive: &Type, excluded: &Type, other: &Type) -> Option<Type> {
-    // Only a definite containment uses remove(); uncertain subtractable types intersect their exclusions.
     if !is_super_type_of(excluded, other).yes() {
         return None;
     }
@@ -4286,7 +4072,6 @@ fn restore_object_exclusion(positive: &Type, excluded: &Type, other: &Type) -> O
     })
 }
 
-/// TypeCombinator::intersect()'s positive-object pre-check, followed by unionWithSubtractedType().
 fn intersect_object_exclusion(a: &Type, b: &Type) -> Option<Type> {
     let Type::SubtractedObject { object, excluded } = a else {
         return None;
@@ -4303,11 +4088,7 @@ fn intersect_object_exclusion(a: &Type, b: &Type) -> Option<Type> {
     )
 }
 
-/// `TypeCombinator::compareTypesInUnion()`
 fn compare_in_union_merge(a: &Type, b: &Type) -> Option<Merge> {
-    // ConstantStringType/ConstantIntegerType check their nonconstant parent class before CompoundType.
-    // In particular a literal is only maybe wider than a nested TemplateStringType/TemplateIntegerType,
-    // even when that template's bound happens to be the same constant literal.
     let super_type = |a: &Type, b: &Type| {
         if (a.is_constant_scalar() && !matches!(a, Type::Template(_)))
             || matches!(a, Type::IntRange(..))
@@ -4377,7 +4158,6 @@ fn compare_in_union_merge(a: &Type, b: &Type) -> Option<Merge> {
             Box::new(union(vec![(**av).clone(), (**bv).clone()])),
         )));
     }
-    // SubtractableType (object and mixed types) keeps the first of two equivalent types
     let subtractable = |t: &Type| {
         let mut t = t;
         while let Type::Template(template) = t {
@@ -4405,7 +4185,6 @@ fn compare_in_union_merge(a: &Type, b: &Type) -> Option<Merge> {
     if super_type(a, b).yes() {
         return Some(Merge::A(a.clone()));
     }
-    // (a constant string is always `b`: constant scalars merge into the other types one by one)
     if let Type::ConstString(s) = b
         && s.is_empty()
         && matches!(
@@ -4424,7 +4203,6 @@ fn compare_in_union_merge(a: &Type, b: &Type) -> Option<Merge> {
     None
 }
 
-/// `downgradeNonFalsyStringToNonEmpty()`: `'0'|non-falsy-string` is `non-empty-string`.
 fn downgrade_non_falsy(t: &Type) -> Option<Type> {
     let non_falsy = Type::Accessory(Accessory::NonFalsyString);
     let rest = match t {
@@ -4452,7 +4230,6 @@ fn case_accessories(t: &Type) -> Vec<Type> {
     v
 }
 
-/// `IntegerRangeType::tryUnion()`
 fn range_try_union(min: Option<i64>, max: Option<i64>, other: &Type) -> Option<Type> {
     let (omin, omax) = other.int_bounds()?;
     let disjoint = matches!((min, omax), (Some(x), Some(y)) if x > y.saturating_add(1))
@@ -4467,12 +4244,10 @@ fn range_try_union(min: Option<i64>, max: Option<i64>, other: &Type) -> Option<T
 }
 
 impl Type {
-    /// `getArrays()` as (iterable key, item) pairs
     fn general_arrays(&self) -> Vec<(Type, Type)> {
         match self {
             Type::Array(_, item) => vec![(self.iterable_key_type(), (**item).clone())],
             Type::Intersection(types) => types.iter().flat_map(Type::general_arrays).collect(),
-            // TemplateIntersectionType inherits IntersectionType::getArrays().
             Type::Template(t) if matches!(t.bound, Type::Intersection(_)) => {
                 t.bound.general_arrays()
             }
@@ -4481,7 +4256,6 @@ impl Type {
     }
 }
 
-/// `TypeCombinator::processArrayTypes()`
 fn process_arrays(arrays: Vec<Type>) -> Vec<Type> {
     if arrays.is_empty() {
         return vec![];
@@ -4520,7 +4294,6 @@ fn process_arrays(arrays: Vec<Type>) -> Vec<Type> {
             }
         }
     }
-    // (`reduceArrays($arrayTypes, false)` hands a union with a general array back unchanged, never as one array)
     if general {
         return vec![with(Type::array(union(keys), union(values)), &accessories)];
     }
@@ -4541,12 +4314,10 @@ fn process_arrays(arrays: Vec<Type>) -> Vec<Type> {
         .collect()
 }
 
-/// `TypeCombinator::reduceArrays()` for shapes without unsealed extras (PHPDoc shapes outside bleeding edge).
 fn reduce_arrays(arrays: &[Type]) -> Vec<Type> {
     let mut retained = Vec::new();
     let mut to_process: Vec<Option<ConstArray>> = Vec::new();
     let mut empty = None;
-    // (processArrayTypes() calls it with constant arrays only)
     for a in arrays {
         if a.is_iterable_at_least_once().no() {
             empty = Some(a.clone());
@@ -4554,8 +4325,6 @@ fn reduce_arrays(arrays: &[Type]) -> Vec<Type> {
         }
         to_process.extend(a.constant_arrays().into_iter().map(Some));
     }
-    // Plain empty shapes take part in merging. Template/intersection identity must
-    // survive separately, as reduceArrays' $newArrays rather than $arraysToProcess.
     if let Some(empty) = empty {
         match empty {
             Type::ConstArray(c) => to_process.push(Some(*c)),
@@ -4621,8 +4390,6 @@ fn reduce_arrays(arrays: &[Type]) -> Vec<Type> {
             }
         }
     }
-    // ponytail: reduceArrays' second pass and final collapses only apply to shapes with unsealed extras
-    // (bleeding edge) or past ConstantArrayTypeBuilder::ARRAY_COUNT_LIMIT, neither of which signatures reach.
     retained
         .into_iter()
         .chain(
@@ -4635,8 +4402,6 @@ fn reduce_arrays(arrays: &[Type]) -> Vec<Type> {
 }
 
 impl ConstArray {
-    /// `legacyIsKeysSupersetOf()`, called (by `reduce_arrays`) only when every key of `other` is one of ours, so
-    /// its size and missing-key checks are left out.
     fn is_keys_superset_of(&self, other: &ConstArray) -> bool {
         let mut fail_on_different = self.keys.len() != other.keys.len() || self.keys.len() < 2;
         for (j, key) in other.keys.iter().enumerate() {
@@ -4662,7 +4427,6 @@ impl ConstArray {
         required <= 1
     }
 
-    /// `legacyMergeWith()`
     fn merge_with(&self, other: &ConstArray) -> ConstArray {
         let mut merged = self.clone();
         for (i, key) in self.keys.iter().enumerate() {
@@ -4694,7 +4458,6 @@ impl ConstArray {
     }
 }
 
-/// `TypeCombinator::processArrayAccessoryTypes()`
 fn common_array_accessories(arrays: &[Type]) -> Vec<Type> {
     let mut found: Vec<(Type, Vec<usize>)> = Vec::new();
     let mut add = |t: Type, i: usize| match found.iter_mut().find(|(x, _)| *x == t) {
@@ -4706,7 +4469,6 @@ fn common_array_accessories(arrays: &[Type]) -> Vec<Type> {
         None => found.push((t, vec![i])),
     };
     for (i, a) in arrays.iter().enumerate() {
-        // TemplateIntersectionType exposes its bound's immediate getTypes(), not resolved templates.
         let intersection = match a {
             Type::Template(t) => &t.bound,
             _ => a,
@@ -4754,13 +4516,11 @@ pub fn intersect(types: Vec<Type>) -> Type {
     if let Some(never) = types.iter().find(|t| t.is_implicit_never()) {
         return never.clone();
     }
-    // LateResolvableTypeTrait keeps comparisons uncertain until template keys/offsets resolve.
     if types.iter().any(|t| {
         matches!(t, Type::LateArrayShape(_) | Type::OffsetAccess(..)) && contains_template(t)
     }) {
         return Type::Intersection(types);
     }
-    // A & (B | C) → (A & B) | (A & C); with several unions a template union goes first, then a benevolent one
     let members = |t: &Type| -> Option<Vec<Type>> {
         match t {
             Type::Union(inner) | Type::Benevolent(inner) => Some(inner.clone()),
@@ -4831,7 +4591,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
         }
     }
     let mut types = flat;
-    // constant arrays first
     types.sort_by_key(|t| !matches!(t.array_class(), Type::ConstArray(_)));
     let mut i = 0;
     'outer: while i < types.len() {
@@ -4861,8 +4620,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                 types.remove(i);
                 continue 'outer;
             }
-            // the SubtractableType pre-check, `MixedType::isSuperTypeOfMixed()`: an explicit mixed is no wider
-            // than an implicit one (or an error)
             let mixedish = |t: &Type| matches!(t, Type::Mixed { .. } | Type::Error);
             if mixedish(&types[i]) && mixedish(&types[j]) {
                 let explicit = Type::Mixed { explicit: true };
@@ -4898,7 +4655,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                     types.remove(j);
                     continue;
                 }
-                // ConstantArrayType & list / non-empty-array (constant arrays sort first, so the shape is i)
                 if let Type::ConstArray(ca) = types[i].array_class() {
                     let merged = match &types[j] {
                         Type::Accessory(Accessory::List) => Some(ca.make_list()),
@@ -4913,7 +4669,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                     };
                     if let Some(merged) = merged {
                         let bound = Type::ConstArray(Box::new(merged));
-                        // TemplateConstantArrayType::recreate() preserves scope, name, strategy and default.
                         types[i] = match &types[i] {
                             Type::Template(t) => Type::Template(Box::new(Template {
                                 bound,
@@ -4925,9 +4680,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                         continue 'inner;
                     }
                 }
-                // ConstantArrayType & ArrayType: key by key (constant arrays sort first, so the shape is i).
-                // ponytail: two constant arrays meet only through isSuperTypeOf(), not key by key.
-                // As PHPStan's `continue 2`, the merged shape is not compared with the later types again.
                 if let (Type::ConstArray(ca), Type::Array(..)) =
                     (types[i].array_class(), types[j].array_class())
                 {
@@ -4936,7 +4688,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                     i += 1;
                     continue 'outer;
                 }
-                // `getKeyType()`: the raw key of an array, not its iterable key
                 if matches!(
                     types[i].array_class(),
                     Type::Array(..) | Type::Iterable(..) | Type::ConstArray(_)
@@ -4969,7 +4720,6 @@ pub fn intersect(types: Vec<Type>) -> Type {
                         types[i].iterable_key_type(),
                         types[j].iterable_key_type(),
                     ]);
-                    // (never empty: the key types overlap, or the two would not be maybe-related)
                     let item = types[i].iterable_value_type();
                     types[i] = Type::array(key, item);
                     j += 1;
@@ -4998,12 +4748,9 @@ pub fn intersect(types: Vec<Type>) -> Type {
     if types.len() == 1 {
         return types.pop().expect("one type");
     }
-    // ponytail: PHPStan supplies a base type for an intersection of accessories only; nothing in Pun builds one
     Type::Intersection(types)
 }
 
-/// `TemplateTypeFactory::create()`: a template keeps only the bounds it has a template type for (other bounds,
-/// such as `class-string` or a constant float, make it a plain mixed template).
 fn template_bound(bound: Type) -> Type {
     match bound {
         Type::Object(..)
@@ -5030,9 +4777,7 @@ fn template_bound(bound: Type) -> Type {
     }
 }
 
-/// `IterableType::isSuperTypeOfMixed()`
 fn iterable_super_of_mixed(key: &Type, value: &Type, b: &Type) -> Tri {
-    // `isNestedTypeSuperTypeOf()`: an explicit `mixed` is only maybe wider than an implicit one
     let nested = |x: &Type, y: &Type| match (x, y) {
         (Type::Mixed { explicit: true }, Type::Mixed { explicit: false }) => Tri::Maybe,
         (Type::Mixed { .. }, Type::Mixed { .. }) => Tri::Yes,
@@ -5043,10 +4788,8 @@ fn iterable_super_of_mixed(key: &Type, value: &Type, b: &Type) -> Tri {
         .and(nested(key, &b.iterable_key_type()))
 }
 
-/// `IntegerRangeType::tryIntersect()`
 fn range_try_intersect(min: Option<i64>, max: Option<i64>, other: &Type) -> Option<Type> {
     let (omin, omax) = other.int_bounds()?;
-    // the tighter bound of each side; a missing one is unbounded
     let bound = |x: Option<i64>, y: Option<i64>, tighter: fn(i64, i64) -> i64| match (x, y) {
         (Some(x), Some(y)) => Some(tighter(x, y)),
         (x, y) => x.or(y),
@@ -5057,16 +4800,13 @@ fn range_try_intersect(min: Option<i64>, max: Option<i64>, other: &Type) -> Opti
     ))
 }
 
-/// The `Type` queries and `TypeCombinator` helpers that declared types need (TypehintHelper::decideType()).
 impl Type {
-    /// `isNull()`
     pub fn is_null(&self) -> Tri {
         self.query_with_mixed_domain(Self::is_null, || Type::Null, false, &|t| {
             Tri::from(matches!(t, Type::Null))
         })
     }
 
-    /// `isVoid()`
     pub fn is_void(&self) -> Tri {
         if matches!(self, Type::Intersection(_)) {
             return Tri::No;
@@ -5076,7 +4816,6 @@ impl Type {
         })
     }
 
-    /// `$type instanceof MixedType && !$type->isExplicitMixed()`
     pub fn is_implicit_mixed(&self) -> bool {
         matches!(
             self,
@@ -5088,7 +4827,6 @@ impl Type {
         )
     }
 
-    /// `TypeCombinator::addNull()`: unchanged when it may already be null (`never` is not null, so it becomes null)
     pub fn add_null(self) -> Type {
         if self.is_null().no() {
             union(vec![self, Type::Null])
@@ -5097,7 +4835,6 @@ impl Type {
         }
     }
 
-    /// `TypeCombinator::removeNull()`
     pub fn remove_null(self) -> Type {
         match self {
             Type::Null => Type::Never(NeverKind::Implicit),
@@ -5122,7 +4859,6 @@ impl Type {
         }
     }
 
-    /// `TemplateTypeHelper::resolveToBounds()`
     pub fn resolve_to_bounds(&self) -> Type {
         match self {
             Type::Template(t) => t.bound.resolve_to_bounds(),
@@ -5131,7 +4867,6 @@ impl Type {
     }
 }
 
-/// `TypehintHelper::decideType()`: the PHPDoc type where it narrows the native one.
 pub fn decide_type(ty: Type, phpdoc: Option<Type>) -> Type {
     let phpdoc = phpdoc.map(|p| {
         if ty.is_null().no() {
@@ -5166,7 +4901,6 @@ pub fn decide_type(ty: Type, phpdoc: Option<Type>) -> Type {
             doc = Type::Union(
                 members
                     .iter()
-                    // (a member takes its iterable key type, `array-key`, not its key type)
                     .map(|m| match mixed_key_array(m) {
                         Some(Type::Iterable(_, item)) => {
                             Type::Iterable(Box::new(m.iterable_key_type()), item)
@@ -5196,7 +4930,6 @@ pub fn decide_type(ty: Type, phpdoc: Option<Type>) -> Type {
                 union(std::iter::once(result).chain(add).collect())
             }
         }
-        // `TypeCombinator::containsNull()` of a type that is not a union
         Type::Null => result.add_null(),
         _ => result,
     }

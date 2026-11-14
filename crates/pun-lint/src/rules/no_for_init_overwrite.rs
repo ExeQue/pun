@@ -1,14 +1,3 @@
-//! `lint/control-flow/no-for-init-overwrite`, ported from phpstan-strict-rules 2.0.12's
-//! `OverwriteVariablesWithForLoopInitRule` (identifier `for.variableOverwrite`).
-//!
-//! A `for` loop's init assignment (`for ($i = 0; ...)`, or a destructuring one) is reported for each variable the
-//! scope already has for sure (`$scope->hasVariableType()->yes()`). Pun reads that from the syntax, as PHPStan's
-//! `NodeScopeResolver` merges scopes: a variable is defined when a parameter, a `use`d variable, an enclosing
-//! `foreach`, `catch`, condition or `for` init, or a statement before the loop in the same function assigns it on
-//! every path. Loops (their bodies may not run), blocks (`polluteScopeWithBlock` is off) and `unset()` leave it
-//! undefined, as do a by-reference argument and a `try` without `finally` whose `catch` does not assign it, which
-//! PHPStan resolves from function signatures and throw points.
-
 use mago_syntax::cst::*;
 
 use super::side_effect::any_node;
@@ -45,7 +34,6 @@ impl Rule for NoForInitOverwrite {
     }
 }
 
-/// `checkValueVar()`: a variable the scope has, or the items of a `list()` or `[]` destructuring.
 fn check_value_var(
     r#for: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -91,7 +79,6 @@ const SUPERGLOBALS: &[&[u8]] = &[
     b"$_ENV",
 ];
 
-/// `$scope->hasVariableType($name)->yes()` before the `for` loop `node`.
 pub(super) fn defined(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], name: &[u8]) -> bool {
     if SUPERGLOBALS.contains(&name) {
         return true;
@@ -136,7 +123,6 @@ pub(super) fn defined(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], name: &[u8
                     }
             }
             Node::TryCatchClause(c) => c.variable.as_ref().is_some_and(|v| v.name == name),
-            // A list of statements that holds the loop: the statements before it.
             Node::Program(_)
             | Node::Block(_)
             | Node::NamespaceImplicitBody(_)
@@ -157,8 +143,6 @@ pub(super) fn defined(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], name: &[u8
     false
 }
 
-/// Whether the statements of the list `holder` before `start` define `name`, when `child`, the node on the way to the
-/// loop, is one of them.
 fn preceding(holder: Node<'_, '_>, child: Node<'_, '_>, start: usize, name: &[u8]) -> bool {
     if !matches!(child, Node::Statement(_)) {
         return false;
@@ -174,7 +158,6 @@ fn has_parameter(list: &FunctionLikeParameterList<'_>, name: &[u8]) -> bool {
     list.parameters.iter().any(|p| p.variable.name == name)
 }
 
-/// What running code does to the variable: assigns it on every path that goes on, never goes on, or neither.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Flow {
     Defines,
@@ -182,7 +165,6 @@ enum Flow {
     No,
 }
 
-/// Statements run in order: the last `unset()` or assignment wins, and a statement that never goes on ends the list.
 fn list_flow<'a>(stmts: impl Iterator<Item = &'a Statement<'a>>, name: &[u8]) -> Flow {
     let mut state = Flow::No;
     for stmt in stmts {
@@ -198,7 +180,6 @@ fn list_flow<'a>(stmts: impl Iterator<Item = &'a Statement<'a>>, name: &[u8]) ->
     state
 }
 
-/// The scopes of branches merged: defined when every branch that goes on defines it.
 fn merge(flows: impl IntoIterator<Item = Flow>) -> Flow {
     let mut all_exit = true;
     for flow in flows {
@@ -211,7 +192,6 @@ fn merge(flows: impl IntoIterator<Item = Flow>) -> Flow {
     if all_exit { Flow::Exits } else { Flow::Defines }
 }
 
-/// The body of a control structure: a block's statements, or the one statement.
 fn body_flow(stmt: &Statement<'_>, name: &[u8]) -> Flow {
     match stmt {
         Statement::Block(b) => list_flow(b.statements.iter(), name),
@@ -301,7 +281,6 @@ fn stmt_flow(stmt: &Statement<'_>, name: &[u8]) -> Flow {
     }
 }
 
-/// One way through a `switch`: from a case on, falling through the ones after it, to the first `break`.
 fn case_path(cases: &[SwitchCase<'_>], name: &[u8]) -> Flow {
     let mut state = Flow::No;
     for case in cases {
@@ -309,7 +288,6 @@ fn case_path(cases: &[SwitchCase<'_>], name: &[u8]) -> Flow {
             if let Statement::Break(_) = stmt {
                 return state;
             }
-            // A `break` deeper down leaves the switch with whatever the path has assigned so far.
             if any_node(Node::Statement(stmt), &|n| matches!(n, Node::Break(_))) {
                 return Flow::No;
             }
@@ -330,7 +308,6 @@ fn defines_if(yes: bool) -> Flow {
     if yes { Flow::Defines } else { Flow::No }
 }
 
-/// Whether `stmt` holds `unset($name)`.
 fn unsets(stmt: &Statement<'_>, name: &[u8]) -> bool {
     any_node(
         Node::Statement(stmt),
@@ -338,8 +315,6 @@ fn unsets(stmt: &Statement<'_>, name: &[u8]) -> bool {
     )
 }
 
-/// Whether evaluating `expr` assigns `name` on every path: an assignment to it, or one inside an operand that always
-/// runs (not the right side of `&&`, `||`, `??`, `and`, `or`, a ternary's branches, a `match` arm or a closure).
 fn expr_defines(expr: &Expression<'_>, name: &[u8]) -> bool {
     node_defines(Node::Expression(expr), name)
 }
@@ -370,8 +345,6 @@ fn node_defines(node: Node<'_, '_>, name: &[u8]) -> bool {
     }
 }
 
-/// Whether the assignment target `target` writes the variable `name`: the variable, an element of it, or a
-/// destructuring that holds one of those.
 fn assigns(target: &Expression<'_>, name: &[u8]) -> bool {
     match unparenthesize(target) {
         Expression::Variable(Variable::Direct(v)) => v.name == name,

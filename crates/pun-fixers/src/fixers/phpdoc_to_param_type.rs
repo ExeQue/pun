@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\PhpdocToParamTypeFixer`.
 use crate::analyzers::abstract_phpdoc_to_type_declaration_fixer::{
     Common, Options, create_type_declaration_tokens, doc_comment, find_function_doc_comment,
     get_types_to_exclude, is_valid_syntax, tokens_from_raw_type,
@@ -31,7 +30,6 @@ fn is_skipped_type(type_: &[u8]) -> bool {
     matches!(type_, b"resource" | b"static" | b"void")
 }
 
-/// `TYPE_CHECK_TEMPLATE`.
 fn type_check_code(type_: &[u8]) -> String {
     format!(
         "<?php function f({} $x) {{}}",
@@ -39,7 +37,6 @@ fn type_check_code(type_: &[u8]) -> String {
     )
 }
 
-/// `findCorrectVariable`.
 fn find_correct_variable(
     tokens: &Tokens,
     start_index: usize,
@@ -53,7 +50,6 @@ fn find_correct_variable(
     })
 }
 
-/// `hasParamTypeHint`.
 fn has_param_type_hint(tokens: &Tokens, index: usize) -> bool {
     let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
     !tokens[prev_index].equals_any(&[Proto::Char(b","), Proto::Char(b"(")], true)

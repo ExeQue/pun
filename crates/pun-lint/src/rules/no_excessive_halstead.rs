@@ -1,12 +1,3 @@
-//! `lint/complexity/no-excessive-halstead`, ported from Mago 1.57.0's `halstead`
-//! (mago-linter src/rule/maintainability/halstead.rs).
-//!
-//! Computes the Halstead volume, difficulty and effort of each function, method, closure, arrow function and
-//! property hook body, and reports the ones above `volume-threshold` (default 1000), `difficulty-threshold` (12) or
-//! `effort-threshold` (5000). Operators are binary operations, assignments, `if`, `elseif`, `for`, `switch`,
-//! `catch`, `return`, `while`, `do`-`while` and casts, distinct by node kind; operands are variables and string,
-//! integer and float literals, distinct by their text. Nested classes, functions and methods are skipped.
-
 use std::collections::HashSet;
 
 use mago_syntax::cst::{Node, NodeKind};
@@ -108,7 +99,6 @@ struct Counts<'arena> {
     total_operands: usize,
 }
 
-/// `gather_and_compute_halstead`: (volume, difficulty, effort), each rounded to two decimals.
 fn halstead(node: Node<'_, '_>) -> (f64, f64, f64) {
     let mut counts = Counts::default();
     node.visit_children(|child| recurse(child, &mut counts));
@@ -117,7 +107,6 @@ fn halstead(node: Node<'_, '_>) -> (f64, f64, f64) {
     if counts.operands.is_empty() {
         return (0.0, 0.0, 0.0);
     }
-    // n1 + n2 > 0, as there is an operand.
     let volume = (total_n1 + total_n2) * (n1 + n2).log2();
     let difficulty = (n1 / 2.0) * (total_n2 / n2.max(1.0));
     let effort = volume * difficulty;

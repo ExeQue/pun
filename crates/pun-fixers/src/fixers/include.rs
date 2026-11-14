@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\IncludeFixer`.
 use crate::analyzers::blocks_analyzer::BlocksAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -46,7 +45,6 @@ fn clear_includies(tokens: &mut Tokens, includies: Vec<Includy>) {
         if let Some((open, close)) = braces {
             let prev_index = tokens.get_prev_meaningful_token(includy.begin).unwrap();
             let next_index = tokens.get_next_meaningful_token(close).unwrap();
-            // Include is also legal as function parameter or condition statement but requires being wrapped then.
             if !tokens[next_index].equals_any(&[";".into(), T_CLOSE_TAG.into()], true)
                 && !blocks_analyzer.is_block(tokens, prev_index, next_index)
             {
@@ -97,7 +95,6 @@ fn find_includies(tokens: &Tokens) -> Vec<Includy> {
             });
         }
     }
-    // krsort
     includies.sort_by_key(|a| std::cmp::Reverse(a.begin));
     includies
 }

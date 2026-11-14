@@ -1,9 +1,3 @@
-//! `lint/complexity/prefer-empty-array-identical`, ported from Rector 2.8.4's `SimplifyEmptyCheckOnEmptyArrayRector`
-//! (rules/CodeQuality/Rector/Empty_), as it runs on PHPStan 2.3.5.
-//!
-//! `empty($array)` is `$array === []` and `!empty($array)` is `$array !== []` when `$array` is an array: a variable
-//! whose type and native type are arrays, or an own property declared `array` (`syntax_types::is_array_property`).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -40,7 +34,6 @@ impl Rule for PreferEmptyArrayIdentical {
                 (node_span(u), empty, true)
             }
             Node::EmptyConstruct(empty) => {
-                // `!empty(...)` is the `!`'s: Rector refactors the `BooleanNot` first.
                 let outer = ancestors.iter().rposition(|n| {
                     !matches!(
                         n,
@@ -75,8 +68,6 @@ impl Rule for PreferEmptyArrayIdentical {
     }
 }
 
-/// `isAllowedExpr`: the value's type is an array, and it is a variable that `isAllowedVariable` passes or an own
-/// property declared (or only ever assigned) an array.
 fn is_allowed(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], value: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     let span = node_span(value);
@@ -96,8 +87,6 @@ fn is_allowed(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], value: &Expression<
     }
 }
 
-/// `ExprAnalyzer::isNonTypedFromParam`: the variable's native type is `mixed`, may be undefined, is a union other
-/// than its type, or does not cover its type (for an array type, is not an array).
 pub(crate) fn is_non_typed_from_param(facts: &Facts, variable: &Expression<'_>) -> bool {
     let span = node_span(variable);
     let full = facts.full_type(span);
@@ -110,10 +99,6 @@ pub(crate) fn is_non_typed_from_param(facts: &Facts, variable: &Expression<'_>) 
     })
 }
 
-/// The rest of `isNonTypedFromParam`'s union check. A loop around the check that writes the variable merges its
-/// values, which PHPStan keeps as a union of constant arrays (`array{}|array{array{frames: array{mixed}}}`) and
-/// Mago does not carry back to the check. That union differs from the full type when a written value's native
-/// type differs from its full type (the docblocks give it a more precise one).
 fn merged_in_loop(facts: &Facts, ancestors: &[Node<'_, '_>], name: &[u8]) -> bool {
     ancestors
         .iter()
@@ -133,7 +118,6 @@ fn merged_in_loop(facts: &Facts, ancestors: &[Node<'_, '_>], name: &[u8]) -> boo
         })
 }
 
-/// Whether `lhs` writes the variable `name` or an element of it.
 fn root_is(lhs: &Expression<'_>, name: &[u8]) -> bool {
     match unparenthesize(lhs) {
         Expression::Variable(Variable::Direct(v)) => v.name == name,
@@ -143,7 +127,6 @@ fn root_is(lhs: &Expression<'_>, name: &[u8]) -> bool {
     }
 }
 
-/// `ReservedKeywordAnalyzer::isNativeVariable`.
 fn is_superglobal(name: &[u8]) -> bool {
     matches!(
         name,

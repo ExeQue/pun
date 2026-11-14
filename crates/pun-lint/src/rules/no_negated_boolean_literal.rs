@@ -1,8 +1,3 @@
-//! `lint/complexity/no-negated-boolean-literal`, ported from Rector 2.8.4's `ReplaceConstantBooleanNotRector`
-//! (rules/CodeQuality/Rector/BooleanNot).
-//!
-//! `!false` becomes `true` and `!true` becomes `false`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 

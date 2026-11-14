@@ -1,10 +1,3 @@
-//! `lint/complexity/no-sole-value-sprintf`, ported from Rector 2.8.4's `RemoveSoleValueSprintfRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `sprintf('%s', $value)` with a string `$value` is `$value`. Rector asks PHPStan whether the value is a string;
-//! without types Pun takes a string literal, an interpolated string, a concatenation, or a local variable that every
-//! assignment in its function sets to one of those, or a `string` parameter never set to anything else.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -81,8 +74,6 @@ fn is_string_syntax(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// Whether `expr` is a string to the syntax: a string literal, an interpolated string, a concatenation, `X::class`,
-/// or a variable that is a `string` parameter or a local, every write of which in its function is one of those.
 pub(crate) fn is_string(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if is_string_syntax(expr) {
         return true;
@@ -115,7 +106,6 @@ pub(crate) fn is_string(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bo
             matches!(unparenthesize(a.lhs), Expression::Variable(Variable::Direct(l)) if l.name == name)
                 && !(matches!(a.operator, AssignmentOperator::Assign(_)) && is_string_syntax(a.rhs))
         }
-        // `foreach (... as $v)`, `list($v)`, `&$v`, `global $v`, `static $v`: any other way to set it.
         Node::Foreach(_) | Node::Global(_) | Node::Static(_) | Node::List(_) => any_node(
             n,
             &|m| matches!(m, Node::DirectVariable(d) if d.name == name),

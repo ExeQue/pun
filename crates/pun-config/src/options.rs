@@ -1,50 +1,31 @@
-//! Format and lint rule options under their Pun names (context/plan/format.md Decisions, "Option names"): `[options.*]` of
-//! rules/mapping.toml, for every rule a PHP-CS-Fixer fixer runs. pun.toml's `[format.rules]` and `[lint.rules]` values are translated to the options of the PHP-CS-Fixer fixer
-//! behind the rule (`to_fixer`), and a fixer's options back to pun.toml's spelling (`to_pun`) for `pun migrate` and
-//! `pun config`.
-
 use crate::mapping;
 use anyhow::{Result, anyhow, bail};
 use serde_json::{Map, Value};
 use std::sync::LazyLock;
 
-/// The shape of an option's value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Bool,
     Int,
     String,
-    /// One of `values`.
     Enum,
-    /// A list of strings, each one of `values` when it is set.
     List,
-    /// A list of lists of strings.
     ListOfLists,
-    /// A table with string keys (limited to `keys` when set) and string values (limited to `values` when set).
     Map,
-    /// An integer, or a table of integers.
     IntOrMap,
 }
 
-/// One option of a format or lint rule.
 #[derive(Debug)]
 pub struct RuleOption {
-    /// The Pun name (kebab-case), as pun.toml writes it.
     pub name: String,
-    /// The PHP-CS-Fixer option name.
     pub upstream: String,
     pub kind: Kind,
-    /// Pun value => upstream value: the closed list of values, or empty when any string goes.
     pub values: Vec<(String, String)>,
-    /// Pun key => upstream key, for a map with a closed key list.
     pub keys: Vec<(String, String)>,
-    /// The string that stands for upstream's `null`.
     pub null: Option<String>,
-    /// Upstream also takes `null`, written in pun.toml by leaving the option out.
     pub nullable: bool,
 }
 
-/// The `type` of an option in rules/mapping.toml.
 const KINDS: [(&str, Kind); 8] = [
     ("bool", Kind::Bool),
     ("int", Kind::Int),
@@ -56,7 +37,6 @@ const KINDS: [(&str, Kind); 8] = [
     ("int-or-map", Kind::IntOrMap),
 ];
 
-/// Every `[options."<rule ID>"]` table of rules/mapping.toml.
 fn all() -> &'static Vec<(String, Vec<RuleOption>)> {
     static T: LazyLock<Vec<(String, Vec<RuleOption>)>> = LazyLock::new(|| {
         let pairs = |e: &toml::Value, k: &str| -> Vec<(String, String)> {
@@ -94,7 +74,6 @@ fn all() -> &'static Vec<(String, Vec<RuleOption>)> {
     &T
 }
 
-/// The options of a rule (`format/imports/ordered`), in name order; empty when it has none.
 pub fn rule_options(id: &str) -> &'static [RuleOption] {
     all()
         .iter()
@@ -102,8 +81,6 @@ pub fn rule_options(id: &str) -> &'static [RuleOption] {
         .map_or(&[], |(_, o)| o.as_slice())
 }
 
-/// The one option a rule's value can stand for directly (`"arrays/syntax" = "short"`): a rule with a single option
-/// that isn't a bool (`true` would be ambiguous) or a table (a table is the options).
 fn shorthand(opts: &[RuleOption]) -> Option<&RuleOption> {
     match opts {
         [o] if !matches!(o.kind, Kind::Bool | Kind::Map | Kind::IntOrMap) => Some(o),
@@ -125,8 +102,6 @@ fn strings<'a>(values: impl Iterator<Item = &'a String>) -> String {
         .join(", ")
 }
 
-/// A `[format.rules]` value (`true`, `false`, a table of options or the shorthand value) as the fixer takes it:
-/// `true`/`false`, or its options under upstream names and values. `rule` is the key as written, `id` the rule ID.
 pub(crate) fn to_fixer(rule: &str, id: &str, v: toml::Value) -> Result<Value> {
     let opts = rule_options(id);
     let table = match v {
@@ -156,7 +131,6 @@ pub(crate) fn to_fixer(rule: &str, id: &str, v: toml::Value) -> Result<Value> {
     let mut out = Map::new();
     for (k, v) in table {
         let Some(o) = opts.iter().find(|o| o.name == k) else {
-            // An upstream option name, or its kebab-case spelling from before the TOML names.
             let up = opts
                 .iter()
                 .find(|o| o.upstream == k || o.upstream.replace('_', "-") == k);
@@ -176,7 +150,6 @@ pub(crate) fn to_fixer(rule: &str, id: &str, v: toml::Value) -> Result<Value> {
     Ok(Value::Object(out))
 }
 
-/// What an option takes, for an error.
 fn expected(o: &RuleOption) -> String {
     let list = strings(o.values.iter().map(|(p, _)| p));
     let base = match o.kind {
@@ -206,10 +179,8 @@ fn expected(o: &RuleOption) -> String {
     }
 }
 
-/// `v` under the option's upstream spelling, or `None` when the option doesn't take it.
 fn fixer_value(o: &RuleOption, v: toml::Value) -> Option<Value> {
     use toml::Value as T;
-    // A table's `null` is one of its values (binary_operator_spaces' `operators`), never the table.
     if let (T::String(s), Some(n)) = (&v, &o.null)
         && s == n
         && o.kind != Kind::Map
@@ -267,10 +238,6 @@ fn fixer_value(o: &RuleOption, v: toml::Value) -> Option<Value> {
     })
 }
 
-/// A fixer's options (upstream names and values; `Null` for none) as pun.toml writes them for rule `id`: `true` for
-/// none, the bare value for a rule's only option (`shorthand`), else a table under Pun names. An option left at
-/// upstream's `null` with no Pun spelling is left out, which means the same. `Err` names what PHP-CS-Fixer itself
-/// rejects (an option it doesn't define, a value it doesn't accept), in its words.
 pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
     let Value::Object(m) = options else {
         return Ok(Value::Bool(true));
@@ -300,7 +267,6 @@ pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
             out.insert(o.name.clone(), p);
         }
     }
-    // A lint rule's string value is its level, so its options stay a table.
     let short = shorthand(opts).filter(|_| id.starts_with("format/"));
     Ok(match short {
         Some(o) if out.len() == 1 && out.contains_key(&o.name) => out.remove(&o.name).unwrap(),
@@ -308,8 +274,6 @@ pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
     })
 }
 
-/// PHP-CS-Fixer's `Utils::naturalLanguageJoin($names)`: `"a", "b" and "c"`, or `"a"` alone. Like upstream, it
-/// refuses an empty list.
 pub fn natural_language_join<S: AsRef<str>>(names: impl IntoIterator<Item = S>) -> String {
     let mut names: Vec<String> = (names.into_iter())
         .map(|n| format!("\"{}\"", n.as_ref()))
@@ -321,8 +285,6 @@ pub fn natural_language_join<S: AsRef<str>>(names: impl IntoIterator<Item = S>) 
     }
 }
 
-/// ordered_imports' own check of `imports_order`: it names every import type and nothing else. The message for a
-/// list that misses one or names another, else `None`.
 fn sort_types(fixer: &str, option: &str, v: &Value) -> Option<String> {
     const SUPPORTED: [&str; 3] = ["class", "const", "function"];
     let (("ordered_imports", "imports_order"), Value::Array(a)) = ((fixer, option), v) else {
@@ -349,7 +311,6 @@ fn sort_types(fixer: &str, option: &str, v: &Value) -> Option<String> {
     ))
 }
 
-/// The types upstream's option resolver allows for `o`, each one a separate allowed type.
 fn allowed_types(o: &RuleOption) -> &'static [&'static str] {
     match o.kind {
         Kind::Bool => &["bool"],
@@ -357,15 +318,12 @@ fn allowed_types(o: &RuleOption) -> &'static [&'static str] {
         Kind::String => &["string"],
         Kind::ListOfLists => &["string[][]"],
         Kind::IntOrMap => &["int", "int[]"],
-        // `array<string, ?string>` is declared as `array`, `array<string, string>` as `string[]`.
         Kind::Map if o.null.is_some() => &["array"],
         Kind::List | Kind::Map => &["string[]"],
-        // A closed list of values, checked by value alone.
         Kind::Enum => &[],
     }
 }
 
-/// PHP's `get_debug_type` of a JSON value.
 fn debug_type(v: &Value) -> &'static str {
     match v {
         Value::Null => "null",
@@ -377,8 +335,6 @@ fn debug_type(v: &Value) -> &'static str {
     }
 }
 
-/// Symfony OptionsResolver's `verifyTypes` for one type: whether `v` is a `ty`, adding the debug types that fail it
-/// to `invalid` (only the first at the top level, every one inside a list).
 fn verify_type(ty: &str, v: &Value, invalid: &mut Vec<&'static str>, level: usize) -> bool {
     let entries: Vec<&Value> = match v {
         Value::Array(a) => a.iter().collect(),
@@ -401,8 +357,6 @@ fn verify_type(ty: &str, v: &Value, invalid: &mut Vec<&'static str>, level: usiz
     false
 }
 
-/// The option resolver's message for a list or table `v` with an entry of a type `o` doesn't allow, checked before
-/// the values themselves, else `None`.
 fn element_types(o: &RuleOption, v: &Value) -> Option<String> {
     let types = allowed_types(o);
     if !v.is_array() && !v.is_object() || !types.iter().any(|t| t.ends_with("[]")) {
@@ -420,13 +374,10 @@ fn element_types(o: &RuleOption, v: &Value) -> Option<String> {
     ))
 }
 
-/// PHP-CS-Fixer's message for `v`, a value option `o` of `fixer` doesn't take: the option resolver's for a `null`
-/// or a value outside a closed list, the fixer's own where it checks a table's or a list's entries itself.
 fn rejected(fixer: &str, o: &RuleOption, v: &Value) -> String {
     let k = &o.upstream;
     let ups = |l: &[(String, String)]| natural_language_join(l.iter().map(|(_, u)| u));
     let bad = |l: &[(String, String)], s: &str| !l.iter().any(|(_, u)| u == s);
-    // The table entry upstream's check stops at: its key when outside `keys`, else its string value.
     let entry = v.as_object().and_then(|m| {
         m.iter().find_map(|(e, s)| match s.as_str() {
             _ if !o.keys.is_empty() && bad(&o.keys, e) => Some((e.as_str(), None)),
@@ -434,7 +385,6 @@ fn rejected(fixer: &str, o: &RuleOption, v: &Value) -> String {
             _ => None,
         })
     });
-    // The list entry upstream's check stops at: the first string outside `values`.
     let item = (v.as_array().into_iter().flatten())
         .filter_map(Value::as_str)
         .find(|s| bad(&o.values, s));
@@ -449,7 +399,6 @@ fn rejected(fixer: &str, o: &RuleOption, v: &Value) -> String {
             "Unexpected element type, expected any of {}, got \"string#{e}\".",
             ups(&o.keys)
         ),
-        // Upstream prints the spacing where it means the element type.
         ("class_attributes_separation", _, Some((_, Some(s))), _) => format!(
             "Unexpected spacing for element type \"{s}\", expected any of {}, got \"string#{s}\".",
             ups(&o.values)
@@ -491,7 +440,6 @@ fn rejected(fixer: &str, o: &RuleOption, v: &Value) -> String {
     }
 }
 
-/// How PHP-CS-Fixer's errors print a value: strings quoted, arrays as `array`.
 fn php_value(v: &Value) -> String {
     match v {
         Value::Array(_) | Value::Object(_) => "array".into(),
@@ -499,9 +447,6 @@ fn php_value(v: &Value) -> String {
     }
 }
 
-/// An upstream value under Pun's spelling; `Some(Null)` for a `null` written by leaving the option out, `None` for a
-/// value the option doesn't take: outside its closed list, or a `null` it has no use for. Other values pass as they
-/// are: the fixer checks their types.
 fn pun_value(o: &RuleOption, v: &Value) -> Option<Value> {
     let pun = |v: &Value| -> Option<Value> {
         match (v, &o.values[..]) {
@@ -515,7 +460,6 @@ fn pun_value(o: &RuleOption, v: &Value) -> Option<Value> {
         }
     };
     match (o.kind, v) {
-        // PHP's `[]` is also the empty map.
         (Kind::Map | Kind::IntOrMap, Value::Array(a)) if a.is_empty() => {
             Some(Value::Object(Map::new()))
         }

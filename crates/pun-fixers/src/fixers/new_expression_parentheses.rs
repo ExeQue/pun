@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NewExpressionParenthesesFixer`. Pun runs as PHP 8.5, so
-//! `PHP_VERSION_ID >= 8_04_00` holds.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -41,10 +39,8 @@ impl Fixer for NewExpressionParenthesesFixer {
             if !tokens[i].is_kind(T_NEW) {
                 continue;
             }
-            // Upstream returns when `new` ends the file, which PHP's parser rejects before any fixer runs.
             let class_start_index = tokens.get_next_meaningful_token(i).unwrap();
 
-            // anonymous class
             if tokens[class_start_index].is_kind(T_CLASS) {
                 let mut next_index = tokens.get_next_meaningful_token(class_start_index).unwrap();
                 if tokens[next_index].equals("(", true) {
@@ -60,14 +56,11 @@ impl Fixer for NewExpressionParenthesesFixer {
                 continue;
             }
 
-            // named class
             let Some(class_end_index) = find_class_end_index(tokens, class_start_index) else {
                 continue;
             };
             let next_index = tokens.get_next_meaningful_token(class_end_index).unwrap();
             if !tokens[next_index].equals("(", true) {
-                // If arguments' parentheses are absent then either this new expression is not further called
-                // and does not need parentheses, or we cannot omit its parentheses due to the grammar rules.
                 continue;
             }
             let args_end_index = tokens.find_block_end(BlockType::Parenthesis, next_index);
@@ -136,12 +129,10 @@ fn ensure_not_wrapped_in_parentheses(
 }
 
 fn find_class_end_index(tokens: &Tokens, mut index: usize) -> Option<usize> {
-    // (expression) class name
     if tokens[index].equals("(", true) {
         return Some(tokens.find_block_end(BlockType::Parenthesis, index));
     }
 
-    // regular class name or $variable class name
     let next_tokens: [Proto; 10] = [
         T_STRING.into(),
         T_NS_SEPARATOR.into(),

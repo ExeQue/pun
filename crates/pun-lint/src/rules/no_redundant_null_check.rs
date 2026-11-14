@@ -1,19 +1,3 @@
-//! `lint/complexity/no-redundant-null-check`, ported from Rector 2.8.4's `SimplifyIfNotNullReturnRector`
-//! (rules/CodeQuality/Rector/If_) with `IfManipulator::matchIfNotNullReturnValue`.
-//!
-//! ```php
-//! if ($value !== null) {
-//!     return $value;
-//! }
-//!
-//! return null;
-//! ```
-//!
-//! becomes `return $value;`: returning the value when it is not null and null otherwise returns the value. The `if`
-//! (one `return` in it, no `elseif` or `else`) and the `return null;` right after it make way for the inner `return`,
-//! moved to the `if`'s indent with the comments before it. The comments before the `if` and between the two go, as
-//! php-parser's printer drops them with the removed statements.
-
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -70,7 +54,6 @@ impl Rule for NoRedundantNullCheck {
         let if_span = node_span(r#if);
         let level = indentation(source, if_span.start);
         let nl = format!("\n{}", " ".repeat(level));
-        // The inner `return` with the comments php-parser keeps with it, at the `if`'s indent.
         let before_inner = previous_token_end(source, tokens, inner.start);
         let comments = comments_between(tokens, before_inner, inner.start);
         let adjust = level as isize - indentation(source, inner.start) as isize;
@@ -80,21 +63,18 @@ impl Rule for NoRedundantNullCheck {
         }
         let end = node_span(next).end;
         let edit = if index > 0 {
-            // Both statements removed and the inner one inserted after the statement before them.
             let before = previous_token_end(source, tokens, if_span.start).max(list.inner.start);
             Edit::new(Span::new(before, end), format!("{nl}{code}"))
         } else {
-            // Removed from the start of the list, with the comments before the `if`: the inner statement goes before
-            // the next one, which follows on its own line.
             let start = comments_between(tokens, list.inner.start, if_span.start)
                 .first()
                 .map_or(if_span.start, |c| c.start);
-            if list.stmts.len() == 2 && !list.nop {
-                // Nothing left in the list to insert before: php-parser prints the function holding it anew.
-                if let Some(edit) = function_like_reprint(source, tokens, ancestors, inner) {
-                    out.push(report(if_span, edit));
-                    return;
-                }
+            if list.stmts.len() == 2
+                && !list.nop
+                && let Some(edit) = function_like_reprint(source, tokens, ancestors, inner)
+            {
+                out.push(report(if_span, edit));
+                return;
             }
             match list.stmts.get(index + 2) {
                 Some(after) => {
@@ -124,9 +104,6 @@ fn report(span: Span, edit: Edit) -> Report {
     }
 }
 
-/// The function, method or closure whose body is the list, printed as php-parser's `pStmt_ClassMethod`,
-/// `pStmt_Function` and `pExpr_Closure` print it with `inner` (the `return` that stays, with its comments) as its only
-/// statement: see [`reprint_function_like`].
 fn function_like_reprint(
     source: &str,
     tokens: &[Token],
@@ -157,10 +134,6 @@ fn function_like_reprint(
     })
 }
 
-/// The function, method or closure `holder` printed anew, as php-parser's `pStmt_ClassMethod`, `pStmt_Function` and
-/// `pExpr_Closure` print it when its statement list cannot keep its layout: attributes and modifiers in their order,
-/// the parameters on one line (one per line when one of them has comments), and the body at its own indent, with the
-/// statements `body` prints at the level it is given (each after a line break). Anything else gets no new layout.
 pub(crate) fn reprint_function_like(
     source: &str,
     tokens: &[Token],
@@ -237,8 +210,6 @@ pub(crate) fn reprint_function_like(
         code.push_str(if inline { " " } else { &nl });
     }
     code.push_str(&head);
-    // pParams: one line, or one parameter per line when one has comments, without a trailing comma (the printer
-    // targets PHP 7.4).
     let parameters: Vec<(Vec<Span>, Span)> = parameters
         .parameters
         .iter()

@@ -1,8 +1,3 @@
-//! Rector's `PhpAttribute` on a Doctrine annotation or a simple tag: `PhpAttributeGroupFactory` with the
-//! `AnnotationToAttributeMapper` and its mappers, `NamedArgsFactory`, `AnnotationToAttributeIntegerValueCaster`,
-//! `AttributeArrayNameInliner` and `AttributeNameFactory` (`UseAliasNameMatcher`), the Php80 attribute decorators,
-//! `AttributeValueResolver`, and php-parser's printer for the nodes they make.
-
 use crate::rules::phpunit::print_float;
 use mago_syntax::cst::LiteralStringKind;
 use pun_tokens::php_compat::intval;
@@ -11,56 +6,45 @@ use super::doc::{Annotation, is_class_name};
 use super::phpdoc_parser::{ArrayItem, Key, Val, print_string};
 use pun_tokens::Kind;
 
-/// `DocTagNodeState::REMOVE_ARRAY`.
 const REMOVE_ARRAY: &str = "__remove_array__";
 
-/// `SilentKeyMap::CLASS_NAMES_TO_SILENT_KEYS`.
 const SILENT_KEYS: &[(&str, &str)] = &[("Symfony\\Component\\Routing\\Annotation\\Route", "path")];
 
-/// `String_::KIND_SINGLE_QUOTED` or `KIND_DOUBLE_QUOTED`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Quote {
     Single,
     Double,
 }
 
-/// An expression node the mappers make.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Expr {
     Str(String, Quote),
     Int(i64),
     Float(f64),
-    /// `ConstFetch`: `true`, `false` or `null`.
     Const(&'static str),
-    /// `ClassConstFetch`: the class as printed, the constant.
     ClassConst(String, String),
     Array(Vec<Item>),
-    /// `New_` of the class as written.
     New(String, Vec<Arg>),
 }
 
-/// `ArrayItem`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Item {
     pub key: Option<Expr>,
     pub value: Expr,
 }
 
-/// `Arg`, its name for a named argument.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Arg {
     pub name: Option<String>,
     pub value: Expr,
 }
 
-/// An `Attribute` in its own `AttributeGroup`: its name as printed, its arguments.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Attribute {
     pub name: String,
     pub args: Vec<Arg>,
 }
 
-/// One `AnnotationToAttribute` of the configuration.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct AttributeConfig {
     pub tag: String,
@@ -69,14 +53,10 @@ pub(crate) struct AttributeConfig {
     pub use_value_as_attribute_argument: bool,
 }
 
-/// `AnnotationToAttributeMapper::map()` on the values of an annotation (a PHP array of `ArrayItemNode`s);
-/// `nested` is whether nested annotations become `new` (PHP 8.1).
 fn map_array(items: &[ArrayItem], nested: bool) -> Vec<Item> {
-    // `ArrayAnnotationToAttributeMapper`: each `ArrayItemNode` maps to an `ArrayItem`
     items.iter().map(|item| map_item(item, nested)).collect()
 }
 
-/// `ArrayItemNodeAnnotationToAttributeMapper`.
 fn map_item(item: &ArrayItem, nested: bool) -> Item {
     let value = match map_val(&item.value, nested) {
         Some(expr) => expr,
@@ -88,11 +68,9 @@ fn map_item(item: &ArrayItem, nested: bool) -> Item {
         }
     };
     let key = match &item.key {
-        // (a key is never an annotation, which maps to none: the parsers read `@A` before `=` as a string)
         Some(Key::Val(key)) => map_val(key, nested),
         Some(Key::Int(key)) => Some(Expr::Int(*key)),
         None => {
-            // `hasNoParenthesesAnnotation()`: `@Class` without arguments, read again as an annotation
             if let Val::Str(value) = &item.value
                 && value.starts_with('@')
                 && !value.ends_with(')')
@@ -117,29 +95,23 @@ fn map_item(item: &ArrayItem, nested: bool) -> Item {
     Item { key, value }
 }
 
-/// `AnnotationToAttributeMapper::map()` on a value, its mappers in their order; `None` for
-/// `DocTagNodeState::REMOVE_ARRAY`.
 fn map_val(value: &Val, nested: bool) -> Option<Expr> {
     Some(match value {
         Val::List(items) => Expr::Array(map_array(items, nested)),
-        // `ClassConstFetchAnnotationToAttributeMapper`
         Val::Str(value) if value.contains("::") && !value.starts_with('"') => {
             class_const_fetch(value)
         }
-        // `ConstExprNodeAnnotationToAttributeMapper`
         Val::Const(value) => match value.as_str() {
             "true" => Expr::Const("true"),
             "false" => Expr::Const("false"),
             _ => Expr::Int(intval(value)),
         },
-        // `CurlyListNodeAnnotationToAttributeMapper`
         Val::Curly(items) => {
             let mut array = Vec::new();
             let mut position = -1;
             for item in items {
                 let mut mapped = map_item(item, nested);
                 let key = match &item.key {
-                    // (a curly list's keys are values, never `Key::Int`)
                     Some(Key::Val(Val::Str(key))) if is_numeric(key) => intval(key),
                     _ => {
                         array.push(mapped);
@@ -154,7 +126,6 @@ fn map_val(value: &Val, nested: bool) -> Option<Expr> {
             }
             Expr::Array(array)
         }
-        // `DoctrineAnnotationAnnotationToAttributeMapper`
         Val::Annotation(annotation) if nested => {
             let args = match annotation.values.is_empty() {
                 true => Vec::new(),
@@ -166,7 +137,6 @@ fn map_val(value: &Val, nested: bool) -> Option<Expr> {
             )
         }
         Val::Annotation(_) => return None,
-        // `StringAnnotationToAttributeMapper`
         Val::Str(value) => {
             let quote = match value.contains('\'') && !value.contains('\n') {
                 true => Quote::Double,
@@ -177,14 +147,11 @@ fn map_val(value: &Val, nested: bool) -> Option<Expr> {
                 false => Expr::Str(value.clone(), quote),
             }
         }
-        // `StringNodeAnnotationToAttributeMapper`, the kind `StringNode` gives itself
         Val::StringNode(value) => Expr::Str(value.clone(), string_node_quote(value)),
-        // `BuilderHelpers::normalizeValue(null)`
         Val::Null => Expr::Const("null"),
     })
 }
 
-/// The kind `StringNode` gives a value: double-quoted where it has a `'` and no line break.
 fn string_node_quote(value: &str) -> Quote {
     match value.contains('\'') && !value.contains('\n') {
         true => Quote::Double,
@@ -192,7 +159,6 @@ fn string_node_quote(value: &str) -> Quote {
     }
 }
 
-/// `ClassConstFetchAnnotationToAttributeMapper::map()`.
 fn class_const_fetch(value: &str) -> Expr {
     let string = || Expr::Str(value.to_string(), Quote::Single);
     let [class, constant] = value.split("::").collect::<Vec<_>>()[..] else {
@@ -207,7 +173,6 @@ fn class_const_fetch(value: &str) -> Expr {
     Expr::ClassConst(class.to_string(), constant.to_string())
 }
 
-/// `RectorAssert::constantName()`.
 fn is_constant_name(name: &str) -> bool {
     let b = name.as_bytes();
     !b.is_empty()
@@ -216,7 +181,6 @@ fn is_constant_name(name: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || *c == b'_' || *c >= 0x80)
 }
 
-/// `AttributeArrayNameInliner::inlineArrayNode()`: a string key names the argument.
 fn inline_array_node(items: Vec<Item>) -> Vec<Arg> {
     items
         .into_iter()
@@ -230,10 +194,6 @@ fn inline_array_node(items: Vec<Item>) -> Vec<Arg> {
         .collect()
 }
 
-/// `PhpAttributeGroupFactory::create()` (then `AttributeGroupNamedArgumentManipulator::decorate()`) for the
-/// annotation `annotation`; `name` is the attribute's name as `AttributeNameFactory` makes it, `constructor` the
-/// attribute class's constructor parameters (name, whether its type has `int`), `nested` whether nested annotations
-/// become `new`.
 pub(crate) fn create(
     annotation: &Annotation,
     config: &AttributeConfig,
@@ -242,7 +202,6 @@ pub(crate) fn create(
     foldable: Option<&[String]>,
     nested: bool,
 ) -> Attribute {
-    // `getValuesWithSilentKey()`
     let mut values = annotation.values.clone();
     if let Some((_, key)) = SILENT_KEYS
         .iter()
@@ -251,10 +210,8 @@ pub(crate) fn create(
     {
         item.key = Some(Key::Val(Val::Str(key.to_string())));
     }
-    // `createArgsFromItems()`: the items, the class references, then the named arguments (`NamedArgsFactory`)
     let mut items = map_array(&values, nested);
     for item in &mut items {
-        // `mapClassReferences()`
         if let Some(Expr::Str(key, _)) = &item.key
             && config.class_reference_fields.contains(key)
             && let Expr::Str(value, _) = &item.value
@@ -270,7 +227,6 @@ pub(crate) fn create(
         .into_iter()
         .map(|item| {
             let mut value = item.value;
-            // `normalizeStringDoubleQuote()`
             if let Expr::Str(string, quote) = &mut value
                 && string.contains('\'')
                 && !string.contains('\n')
@@ -286,7 +242,6 @@ pub(crate) fn create(
             }
         })
         .collect();
-    // `AnnotationToAttributeIntegerValueCaster::castAttributeTypes()`
     for (parameter, has_int) in constructor {
         for arg in &mut args {
             if let Expr::Array(items) = &mut arg.value
@@ -303,7 +258,6 @@ pub(crate) fn create(
             }
         }
     }
-    // `AttributeArrayNameInliner::inlineArray()`
     for arg in &mut args {
         if config.attribute_class == "OpenApi\\Attributes\\Property"
             && arg.name.as_deref() == Some("example")
@@ -328,8 +282,6 @@ pub(crate) fn create(
     attribute
 }
 
-/// `UnknownNamedArgsToOptionsFolder::fold()`: the named arguments the constructor does not declare go into its
-/// `$options` array (after the items of an explicit `options:` array, which must be an array literal).
 fn fold_unknown_named_args(args: Vec<Arg>, parameters: &[String]) -> Vec<Arg> {
     let mut kept = Vec::new();
     let mut options: Vec<Item> = Vec::new();
@@ -348,7 +300,6 @@ fn fold_unknown_named_args(args: Vec<Arg>, parameters: &[String]) -> Vec<Arg> {
         return args;
     }
     if let Some(explicit) = explicit {
-        // an explicit options: ... of an unexpected shape cannot be merged safely, keep the original arguments
         let Expr::Array(items) = &explicit.value else {
             return args;
         };
@@ -361,16 +312,12 @@ fn fold_unknown_named_args(args: Vec<Arg>, parameters: &[String]) -> Vec<Arg> {
     kept
 }
 
-/// Whether an attribute's argument is the nested annotation that stays (`hasRemoveArrayState()`).
 pub(crate) fn has_remove_array_state(attribute: &Attribute) -> bool {
     attribute.args.iter().any(|arg| {
         matches!(&arg.value, Expr::Array(items) if items.iter().any(|i| matches!(&i.value, Expr::Str(s, _) if s == REMOVE_ARRAY)))
     })
 }
 
-/// Whether Rector prints the attribute as code PHP does not take (Pun only): an argument named by a number
-/// (`"1"="a"` gives `1: 'a'`), a positional argument after a named one (`foo="a", "b"` before another value gives
-/// `foo: 'a', 'b'`) or a nested annotation whose name is no class name (`array(1)` gives `new array(1)`).
 pub(crate) fn is_invalid(attribute: &Attribute) -> bool {
     invalid_args(&attribute.args)
 }
@@ -411,8 +358,6 @@ fn invalid_expr(expr: &Expr) -> bool {
     }
 }
 
-/// The converter attribute decorators: `DoctrineConverterAttributeDecorator` and
-/// `SensioParamConverterAttributeDecorator`.
 fn decorate(attribute_class: &str, attribute: &mut Attribute) {
     match attribute_class {
         "Doctrine\\ORM\\Mapping\\Column" => {
@@ -426,7 +371,6 @@ fn decorate(attribute_class: &str, attribute: &mut Attribute) {
                 arg.value = Expr::Const(if value == "true" { "true" } else { "false" });
             }
         }
-        // make first named arg silent
         "Sensio\\Bundle\\FrameworkExtraBundle\\Configuration\\ParamConverter" => {
             if let Some(arg) = attribute.args.first_mut() {
                 arg.name = None;
@@ -436,8 +380,6 @@ fn decorate(attribute_class: &str, attribute: &mut Attribute) {
     }
 }
 
-/// `PhpAttributeGroupFactory::createFromSimpleTag()`: the attribute class, fully qualified, with the value as its
-/// argument.
 pub(crate) fn from_simple_tag(config: &AttributeConfig, value: Option<&str>) -> Attribute {
     Attribute {
         name: format!("\\{}", config.attribute_class),
@@ -451,8 +393,6 @@ pub(crate) fn from_simple_tag(config: &AttributeConfig, value: Option<&str>) -> 
     }
 }
 
-/// `AttributeValueResolver::resolve()` for a tag whose value is `value` (its `__toString()`) and, for an
-/// annotation, `original` (`getOriginalContent()`): the attribute's value and the doc comment that stays.
 pub(crate) fn resolve_value(value: &str, original: Option<&str>) -> (String, String) {
     let mut value = value.to_string();
     if let Some(original) = original {
@@ -466,7 +406,6 @@ pub(crate) fn resolve_value(value: &str, original: Option<&str>) -> (String, Str
         }
     }
     let mut comment = String::new();
-    // special case for newline
     if value.contains('\n') {
         let mut keep_joining = true;
         let mut joined = String::new();
@@ -496,8 +435,6 @@ pub(crate) fn resolve_value(value: &str, original: Option<&str>) -> (String, Str
     (value, comment)
 }
 
-/// `AnnotationToAttributeRector::resolveTrailingComment()`: the text after the closing parenthesis of the
-/// annotation's content, where it has a letter.
 pub(crate) fn trailing_comment(original: &str) -> Option<String> {
     if !original.starts_with('(') {
         return None;
@@ -509,7 +446,6 @@ pub(crate) fn trailing_comment(original: &str) -> Option<String> {
         match quote {
             Some(q) => {
                 if c == b'\\' {
-                    // skip escaped char
                     i += 1;
                 } else if c == q {
                     quote = None;
@@ -521,7 +457,6 @@ pub(crate) fn trailing_comment(original: &str) -> Option<String> {
                 depth -= 1;
                 if depth == 0 {
                     let comment = original[i + 1..].trim_matches(PHP_WS);
-                    // keep only a real doc comment, not leftover annotation syntax
                     return comment
                         .chars()
                         .any(char::is_alphabetic)
@@ -535,18 +470,13 @@ pub(crate) fn trailing_comment(original: &str) -> Option<String> {
     None
 }
 
-/// PHP's `trim()` characters.
 const PHP_WS: [char; 6] = [' ', '\t', '\n', '\r', '\0', '\x0B'];
 
-/// `AttributeNameFactory::create()`: the attribute's name as printed and, where `UseAliasNameMatcher` matches an
-/// aliased import, the import's index in `uses` and the name it gets. `uses` are the imports `(name, alias)` of
-/// `resolveBareUses()`, as written.
 pub(crate) fn attribute_name(
     config: &AttributeConfig,
     identifier: &str,
     uses: &[(String, Option<String>)],
 ) -> (String, Option<(usize, String)>) {
-    // A. attribute and class name are the same, so we re-use the short form
     if config.attribute_class == config.tag {
         let name = identifier.trim_start_matches('@');
         return match name.strip_prefix('\\') {
@@ -554,7 +484,6 @@ pub(crate) fn attribute_name(
             None => (name.to_string(), None),
         };
     }
-    // B. different name
     let short = identifier.trim_matches('@');
     for (i, (name, alias)) in uses.iter().enumerate() {
         let Some(alias) = alias else {
@@ -569,13 +498,11 @@ pub(crate) fn attribute_name(
         }
         let annotation_parts = fully_qualified.split('\\').count();
         let attribute_parts: Vec<&str> = config.attribute_class.split('\\').collect();
-        // requirement for matching single part rename
         if annotation_parts != attribute_parts.len() {
             continue;
         }
         let import_parts = name.matches('\\').count() + 1;
         let new_import = attribute_parts[..import_parts.min(attribute_parts.len())].join("\\");
-        // `array_slice($attributeParts, -$shortNamePartCount)`, all of them for none
         let short_parts = attribute_parts.len() - import_parts.min(attribute_parts.len());
         let rest = &attribute_parts[attribute_parts.len()
             - if short_parts == 0 {
@@ -588,11 +515,9 @@ pub(crate) fn attribute_name(
             Some((i, new_import)),
         );
     }
-    // 3. the class is not aliased and is completely new... return the FQN version
     (format!("\\{}", config.attribute_class), None)
 }
 
-/// PHP's `ltrim($string, $characters)`, `..` making a range.
 fn ltrim<'a>(string: &'a str, characters: &str) -> &'a str {
     let set = character_mask(characters);
     let at = string
@@ -602,7 +527,6 @@ fn ltrim<'a>(string: &'a str, characters: &str) -> &'a str {
     &string[at..]
 }
 
-/// `php_charmask()`.
 fn character_mask(characters: &str) -> [bool; 256] {
     let mut set = [false; 256];
     let b = characters.as_bytes();
@@ -621,8 +545,6 @@ fn character_mask(characters: &str) -> [bool; 256] {
     set
 }
 
-/// PHP's `is_numeric()` on a string: leading white space, a sign, digits with an optional fraction and exponent,
-/// trailing white space.
 pub(crate) fn is_numeric(value: &str) -> bool {
     let trimmed = value
         .trim_start_matches([' ', '\t', '\n', '\r', '\x0B', '\x0C'])
@@ -647,13 +569,11 @@ pub(crate) fn is_numeric(value: &str) -> bool {
     mantissa_ok && exponent_ok
 }
 
-/// PHP's `(float)` of a numeric string.
 fn php_float(value: &str) -> f64 {
     value.trim().parse().unwrap_or(0.0)
 }
 
 impl std::fmt::Display for Attribute {
-    /// `pAttributeGroup()` of the attribute's group.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "#[{}", self.name)?;
         if !self.args.is_empty() {
@@ -663,7 +583,6 @@ impl std::fmt::Display for Attribute {
     }
 }
 
-/// `pCommaSeparated()` of arguments (`pArg()`).
 fn print_args(args: &[Arg]) -> String {
     args.iter()
         .map(|arg| match &arg.name {
@@ -674,7 +593,6 @@ fn print_args(args: &[Arg]) -> String {
         .join(", ")
 }
 
-/// php-parser's printer (with Rector's short arrays) on `expr`.
 fn print(expr: &Expr) -> String {
     match expr {
         Expr::Str(value, Quote::Single) => crate::rules::prefer_absolute_include::print_string(
@@ -682,7 +600,6 @@ fn print(expr: &Expr) -> String {
             value.as_bytes(),
         )
         .unwrap(),
-        // `escapeString()`, as `ConstExprStringNode` does
         Expr::Str(value, Quote::Double) => {
             print_string(value.as_bytes(), "\"").expect("a Rust string is UTF-8")
         }

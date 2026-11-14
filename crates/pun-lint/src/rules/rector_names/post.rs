@@ -1,11 +1,3 @@
-//! Rector's post rectors over one file (`PostFileProcessor`), after a rule changed names or docs in it:
-//! `ClassRenamingPostRector`, `NameImportingPostRector` (`NameImporter`, `ClassNameImportSkipper` and its voters),
-//! `DocblockNameImportingPostRector` (`NameImportingPhpDocNodeVisitor`), `UseAddingPostRector` (`FileNode::addImports()`)
-//! and `UnusedImportRemovingPostRector`, then the file printed as php-parser's format-preserving printer prints it.
-//!
-//! A rule makes a [`Session`] of the file, changes names ([`Session::rename`]) and docs ([`Session::doc_mut`]) as its
-//! Rector rule changes the nodes, and [`Session::finish`] gives the file as Rector writes it.
-
 use mago_syntax::cst::Program;
 use pun_problem::Span;
 
@@ -17,8 +9,6 @@ use crate::Context;
 use crate::rules::phpdoc_writer::DocTarget;
 use crate::rules::rector_conditions::indentation;
 
-/// The import options of Rector's configuration (`RectorConfig::importNames()`, `importShortClasses()`,
-/// `removeUnusedImports()`).
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Options {
     pub import_names: bool,
@@ -26,59 +16,42 @@ pub(crate) struct Options {
     pub remove_unused_imports: bool,
 }
 
-/// A `Name` node as the rules and post rectors left it.
 #[derive(Clone, Debug)]
 struct NameState {
-    /// A `FullyQualified` node.
     fq: bool,
-    /// What it stands for: a fully qualified node's name, else the name as printed.
     name: String,
-    /// `ORIGINAL_NAME`, `None` for a node a rule made.
     original: Option<String>,
-    /// The text printed, when it changed.
     text: Option<String>,
 }
 
-/// A doc comment of the file.
 struct DocState {
     span: Span,
-    /// Its index among the view's docs, `None` for a doc no node takes (a `Nop`'s).
     view: Option<usize>,
     namespace: Option<String>,
     class: Option<String>,
     doc: Option<Doc>,
-    /// Whether `createFromNode()` of some node reads it (it is the node's last doc comment).
     last: bool,
 }
 
-/// An item of a statement list as the post rectors leave it.
 #[derive(Clone, Debug)]
 enum Item {
-    /// The old statement at this index.
     Old(usize),
-    /// A `use` statement `FileNode::addImports()` made; `comments` the old statement whose comments moved to it.
     New {
         kind: Kind,
         name: String,
         comments: Option<usize>,
     },
-    /// A `Nop`, with the comments of the old statement at this index.
     Nop(Option<usize>),
 }
 
-/// A statement list's state.
 #[derive(Clone)]
 struct ListState {
     items: Vec<Item>,
-    /// Per `use` of the root, per item: whether it is kept.
     kept: Vec<Vec<bool>>,
-    /// Old statements printed anew (`ORIGINAL_NODE` set to null).
     reprinted: Vec<bool>,
-    /// Old statements whose comments moved to a new `use`.
     cleared: Vec<bool>,
 }
 
-/// An object type of the import handling: `FullyQualifiedObjectType` or `AliasedObjectType`.
 #[derive(Clone, Debug)]
 enum ObjType {
     Fq(String),
@@ -86,14 +59,12 @@ enum ObjType {
 }
 
 impl ObjType {
-    /// `equals()` with a `FullyQualifiedObjectType` of `class`.
     fn equals(&self, class: &str) -> bool {
         match self {
             ObjType::Fq(name) | ObjType::Aliased(_, name) => name == class,
         }
     }
 
-    /// `areShortNamesEqual()` with a `FullyQualifiedObjectType` of `class`.
     fn short_names_equal(&self, class: &str) -> bool {
         match self {
             ObjType::Fq(name) => last(name) == last(class),
@@ -102,17 +73,13 @@ impl ObjType {
     }
 }
 
-/// What [`Session::carry`] hands to the next round of a file.
 pub(crate) struct Carry {
     pending: Pending,
     used: (Vec<ObjType>, Vec<String>, Vec<String>),
     short_names: Option<Vec<(String, String)>>,
-    /// The docs as the round left them: the next round runs on the same nodes and their `PhpDocInfo`, never on the
-    /// printed text parsed again.
     docs: Vec<Option<Doc>>,
 }
 
-/// `PendingImports`.
 #[derive(Clone, Default)]
 struct Pending {
     uses: Vec<String>,
@@ -144,19 +111,15 @@ impl Pending {
     }
 }
 
-/// The last part of a name (`FullyQualifiedObjectType::getShortName()`).
 fn last(name: &str) -> &str {
     name.rsplit('\\').next().unwrap_or_default()
 }
 
-/// What a voter sees of the node a name is imported for.
 struct At<'a> {
     namespace: Option<&'a str>,
-    /// For a `FullyQualified` name: whether its original name is one part (`OriginalNameImportSkipVoter`).
     original_unqualified: Option<bool>,
 }
 
-/// The file being changed.
 pub(crate) struct Session<'s> {
     ctx: &'s Context<'s>,
     source: &'s str,
@@ -164,15 +127,11 @@ pub(crate) struct Session<'s> {
     names: Vec<NameState>,
     docs: Vec<DocState>,
     lists: Vec<ListState>,
-    /// `RenamedNameCollector`.
     renamed: Vec<String>,
-    /// The `implements` names a class drops (`array_unique()`).
     implements_removed: Vec<Span>,
     pending: Pending,
-    /// `FileNode`'s `UsedImports`, read when the file was parsed.
     used: (Vec<ObjType>, Vec<String>, Vec<String>),
     short_names: Option<Vec<(String, String)>>,
-    /// Pun does not follow Rector here: the file is left alone.
     unsupported: bool,
 }
 
@@ -227,7 +186,6 @@ impl<'s> Session<'s> {
         session
     }
 
-    /// Every doc comment of the file, read with the imports it was parsed with.
     fn read_docs(&mut self) {
         let uses = self.view.uses_root().uses.clone();
         let tokens = crate::rules::php_parser::tokens(self.ctx);
@@ -248,7 +206,6 @@ impl<'s> Session<'s> {
                     let d = &self.view.docs[i];
                     (d.namespace.clone(), d.class.clone(), d.is_last)
                 }
-                // a `Nop`'s: `getDocComment()` reads its last doc
                 None => (
                     self.namespace_at(span.start),
                     None,
@@ -281,7 +238,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// The namespace the offset `at` is in.
     fn namespace_at(&self, at: usize) -> Option<String> {
         self.view
             .roots
@@ -295,23 +251,18 @@ impl<'s> Session<'s> {
             .and_then(|r| r.name.clone())
     }
 
-    /// The number of `Name` nodes ([`FileView::names`]).
     pub(crate) fn name_count(&self) -> usize {
         self.names.len()
     }
 
-    /// What the name `i` stands for now (`FullyQualified::toString()` of a fully qualified one), `None` for a name
-    /// that is not fully qualified.
     pub(crate) fn fully_qualified(&self, i: usize) -> Option<&str> {
         self.names[i].fq.then_some(self.names[i].name.as_str())
     }
 
-    /// `Name::toString()` of the name `i` now.
     pub(crate) fn name_string(&self, i: usize) -> String {
         self.names[i].name.clone()
     }
 
-    /// `new FullyQualified($new)` in place of the name `i`.
     pub(crate) fn rename(&mut self, i: usize, new: &str) {
         let state = &mut self.names[i];
         state.fq = true;
@@ -320,9 +271,6 @@ impl<'s> Session<'s> {
         state.text = Some(format!("\\{new}"));
     }
 
-    /// What a round of the file leaves for the next (`FileProcessor::processFile()` runs the post rectors again on
-    /// a changed file): the `FileNode`'s `PendingImports` and `UsedImports`, `ShortNameResolver`'s cache by path, and
-    /// the docs.
     pub(crate) fn carry(&self) -> Carry {
         Carry {
             pending: self.pending.clone(),
@@ -332,7 +280,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// Start as the next round after the one that left `carry`.
     pub(crate) fn resume(&mut self, carry: Carry) {
         self.pending = carry.pending;
         self.used = carry.used;
@@ -342,44 +289,36 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// `RenamedNameCollector::add()`.
     pub(crate) fn collect_renamed(&mut self, old: &str) {
         if !self.renamed.iter().any(|r| r == old) {
             self.renamed.push(old.to_string());
         }
     }
 
-    /// Drop an `implements` name of a class (`array_unique()` on `$class->implements`).
     pub(crate) fn remove_implements(&mut self, span: Span) {
         self.implements_removed.push(span);
     }
 
-    /// The doc comments the rules read: their index, the view's doc, and the doc.
     pub(crate) fn doc_indexes(&self) -> Vec<usize> {
         (0..self.docs.len()).collect()
     }
 
-    /// The view's doc of the doc `i` (`None` for one no node takes).
     pub(crate) fn doc_view(&self, i: usize) -> Option<&super::view::DocView> {
         self.docs[i].view.map(|v| &self.view.docs[v])
     }
 
-    /// Whether `createFromNode()` reads the doc `i`.
     pub(crate) fn doc_is_last(&self, i: usize) -> bool {
         self.docs[i].last
     }
 
-    /// The doc `i`, `None` where Pun does not read it as Rector does.
     pub(crate) fn doc(&self, i: usize) -> Option<&Doc> {
         self.docs[i].doc.as_ref()
     }
 
-    /// The doc `i` to change.
     pub(crate) fn doc_mut(&mut self, i: usize) -> Option<&mut Doc> {
         self.docs[i].doc.as_mut()
     }
 
-    /// The scope a doc was read in: its namespace, class, and the file's imports then.
     pub(crate) fn doc_scope(&self, i: usize) -> Scope<'_> {
         Scope {
             namespace: self.docs[i].namespace.as_deref(),
@@ -388,12 +327,10 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// Give up on the file: Pun does not follow Rector here.
     pub(crate) fn unsupported(&mut self) {
         self.unsupported = true;
     }
 
-    /// The root `FileNode::getUsesAndGroupUses()` reads.
     fn uses_root(&self) -> usize {
         match self.view.namespaces {
             1 => self.view.roots.iter().position(|r| r.is_namespace).unwrap(),
@@ -401,7 +338,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// The `use` statements of the root `r` as they stand: old ones with their kept items, then new ones in place.
     fn current_uses(&self, r: usize) -> Vec<UseView> {
         let root = &self.view.roots[r];
         let list = &self.lists[r];
@@ -421,14 +357,12 @@ impl<'s> Session<'s> {
                         uses.push(u);
                     }
                 }
-                // the names are read before `addImports()` makes any new one
                 Item::New { .. } | Item::Nop(_) => {}
             }
         }
         uses
     }
 
-    /// `UsedImportsResolver::resolveForStmts()` of the file as parsed: its first class, then every import.
     fn used_imports(&self) -> (Vec<ObjType>, Vec<String>, Vec<String>) {
         let mut classes = Vec::new();
         if let Some(class) = self.view.class_likes.iter().find(|c| c.is_class) {
@@ -437,7 +371,6 @@ impl<'s> Session<'s> {
         let (mut functions, mut constants) = (Vec::new(), Vec::new());
         for root in &self.view.roots {
             for u in &root.uses {
-                // a group with a type of its own is skipped (`processGroupUse()`)
                 if u.prefix.is_some() && u.kind.is_some() {
                     continue;
                 }
@@ -460,7 +393,6 @@ impl<'s> Session<'s> {
         (classes, functions, constants)
     }
 
-    /// `FileNode::resolveUsedImportTypes()`: the pending imports, then those of the imports root.
     fn used_import_types(&self) -> Vec<ObjType> {
         let mut types: Vec<ObjType> = self.pending.uses.iter().cloned().map(ObjType::Fq).collect();
         for u in self.current_uses(self.uses_root()) {
@@ -475,18 +407,14 @@ impl<'s> Session<'s> {
         types
     }
 
-    /// `FileNode::hasImport()`.
     fn has_import(&self, class: &str) -> bool {
         self.used_import_types().iter().any(|t| t.equals(class))
     }
 
-    /// Run the post rectors and print the file: the new source (the old one where nothing changed), `None` where Pun
-    /// does not follow Rector. `has_renames` is whether `RenamedClassesDataCollector` holds renames.
     pub(crate) fn finish(&mut self, options: Options, has_renames: bool) -> Option<String> {
         if self.unsupported {
             return None;
         }
-        // `AddUseStatementGuard`
         let guard = self.view.namespaces < 2 && !self.view.inline_html;
         if options.import_names && has_renames && guard {
             self.class_renaming();
@@ -505,7 +433,6 @@ impl<'s> Session<'s> {
         self.print()
     }
 
-    /// `ClassRenamingPostRector`: `FileNode::removeImports()` of the renamed classes.
     fn class_renaming(&mut self) {
         let r = self.view.placement_root();
         let root = &self.view.roots[r];
@@ -535,7 +462,6 @@ impl<'s> Session<'s> {
         self.renamed.clear();
     }
 
-    /// `NameImportingPostRector`: every fully qualified name through `NameImporter::importName()`.
     fn import_names(&mut self, options: Options) {
         let uses = self.current_uses(self.uses_root());
         for i in 0..self.names.len() {
@@ -547,19 +473,15 @@ impl<'s> Session<'s> {
             if should_skip_name(&name, kind, &uses) {
                 continue;
             }
-            // `FullyQualifiedNodeMapper`: an aliased name is no `FullyQualifiedObjectType`
             let original = self.names[i].original.clone().unwrap_or_default();
             if !original.is_empty() && original != name && !name.ends_with(&format!("\\{original}"))
             {
                 continue;
             }
-            // `resolveNameInUse()`
             if let Some(alias) = alias_of(&uses, &name) {
                 self.set_text(i, alias);
                 continue;
             }
-            // (its import under another alias: `shouldSkipName()` skipped a name whose short name an import ends with,
-            // unless the import is the name itself, whose alias the line above took)
             let namespace = self.view.names[i].namespace.clone();
             let original_unqualified = self.names[i].original.as_ref().map(|o| !o.contains('\\'));
             let at = At {
@@ -583,7 +505,6 @@ impl<'s> Session<'s> {
                     Kind::Class => self.pending.uses.push(name.clone()),
                 }
             }
-            // the name as written at the node's first token
             let written = &self.view.names[i].written;
             let unchanged =
                 self.names[i].text.is_none() && !written.contains('\\') && *written == short;
@@ -593,7 +514,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// The name `i` becomes the `Name` `text`.
     fn set_text(&mut self, i: usize, text: String) {
         let state = &mut self.names[i];
         state.fq = false;
@@ -602,10 +522,8 @@ impl<'s> Session<'s> {
         state.text = Some(text);
     }
 
-    /// `ClassNameImportSkipper::shouldSkipNameForFullyQualifiedObjectType()`: the voters in their order.
     fn should_skip_class(&mut self, class: &str, at: &At<'_>, options: Options) -> bool {
         let short_lower = last(class).to_ascii_lowercase();
-        // `AliasClassNameImportSkipVoter`
         let long_lower = class.to_ascii_lowercase();
         for aliased in self.aliased_uses() {
             let aliased = aliased.to_ascii_lowercase();
@@ -615,7 +533,6 @@ impl<'s> Session<'s> {
                 return true;
             }
         }
-        // `ClassLikeNameClassNameImportSkipVoter`
         let namespace = at.namespace.unwrap_or_default().to_ascii_lowercase();
         let sub = match class.rfind('\\') {
             Some(p) => class[..p].to_ascii_lowercase(),
@@ -629,9 +546,7 @@ impl<'s> Session<'s> {
                 return true;
             }
         }
-        // `FullyQualifiedNameClassNameImportSkipVoter`
         let fq_short = last(class).to_string();
-        // (no short name starts with `\\`: the voter's `ltrim()` of one never applies)
         for (short, full) in self.short_names().clone() {
             if fq_short != short {
                 continue;
@@ -641,7 +556,6 @@ impl<'s> Session<'s> {
             }
             break;
         }
-        // `UsesClassNameImportSkipVoter`
         for t in self.used_import_types() {
             if !t.equals(class) && t.short_names_equal(class) {
                 return true;
@@ -650,7 +564,6 @@ impl<'s> Session<'s> {
                 break;
             }
         }
-        // `ReservedClassNameImportSkipVoter`
         const RESERVED: &[&str] = &[
             "bool", "false", "float", "int", "null", "parent", "self", "static", "string", "true",
             "void", "never", "iterable", "object", "mixed", "array", "callable",
@@ -658,15 +571,12 @@ impl<'s> Session<'s> {
         if RESERVED.contains(&short_lower.as_str()) {
             return true;
         }
-        // `ShortClassImportSkipVoter`
         if !class.trim_start_matches('\\').contains('\\') && !options.import_short_classes {
             return true;
         }
-        // `OriginalNameImportSkipVoter`
         class.contains('\\') && at.original_unqualified == Some(true)
     }
 
-    /// `AliasUsesResolver::resolveFromNode()`: the classes every aliased class import of the file names.
     fn aliased_uses(&self) -> Vec<String> {
         let mut names = Vec::new();
         for r in 0..self.view.roots.len() {
@@ -691,9 +601,7 @@ impl<'s> Session<'s> {
         names
     }
 
-    /// `ShortNameResolver::resolveShortClassLikeNames()`: the short names of the class-likes of the imports root.
     fn short_class_like_names(&self) -> Vec<String> {
-        // (the voters run on a file with one namespace at most, `AddUseStatementGuard`)
         let root = (self.view.namespaces == 1).then(|| self.uses_root());
         let mut names: Vec<String> = Vec::new();
         for c in &self.view.class_likes {
@@ -704,7 +612,6 @@ impl<'s> Session<'s> {
         names
     }
 
-    /// `ShortNameResolver::resolveFromFile()`, read once per file.
     fn short_names(&mut self) -> &Vec<(String, String)> {
         if self.short_names.is_none() {
             let mut entries: Vec<(usize, String, String)> = Vec::new();
@@ -734,7 +641,6 @@ impl<'s> Session<'s> {
             for (_, k, v) in entries {
                 insert(&mut map, k, v);
             }
-            // the `use` statements still there as parsed, `GroupUse` aside
             let mut stmt_uses = Vec::new();
             for r in 0..self.view.roots.len() {
                 for (k, u) in self.view.roots[r].uses.iter().enumerate() {
@@ -776,10 +682,8 @@ impl<'s> Session<'s> {
         self.short_names.as_ref().unwrap()
     }
 
-    /// `DocblockNameImportingPostRector`: the names of the docs of statements and parameters.
     fn import_doc_names(&mut self, options: Options) {
         for d in 0..self.docs.len() {
-            // a doc no node takes is a `Nop`'s, a statement's
             let owned = self.docs[d]
                 .view
                 .is_none_or(|v| self.view.docs[v].owners.stmt || self.view.docs[v].owners.param);
@@ -802,8 +706,6 @@ impl<'s> Session<'s> {
                     super::doc::Value::Annotation(_)
                 );
                 match (annotation, ident.index) {
-                    // the annotation's own name is read twice: as the tag (`@` and `\` trimmed,
-                    // `enterSpacelessPhpDocTagNode()`) and as its identifier (`processDoctrineAnnotationTagValueNode()`)
                     (true, 0) => {
                         let tag = doc.children[ident.child].tag.clone().unwrap_or_default();
                         if let Some(short) = self.import_doc_name(
@@ -825,8 +727,6 @@ impl<'s> Session<'s> {
                             doc.set_ident(&ident, &short);
                         }
                     }
-                    // a nested annotation's identifier (`processDoctrineAnnotationTagValueNode()`, which reads it
-                    // without a `\`)
                     (true, _) => {
                         if let Some(short) = self.import_doc_name(
                             &ident.name,
@@ -858,7 +758,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// `NameImportingPhpDocNodeVisitor` on the identifier `name`: the short name it becomes, after the import is queued.
     fn import_doc_name(
         &mut self,
         name: &str,
@@ -897,7 +796,6 @@ impl<'s> Session<'s> {
         Some(short)
     }
 
-    /// `NameImportingPhpDocNodeVisitor::shouldImport()`.
     fn should_import(&self, short: &str, name: &str, class: &str) -> bool {
         if short == name {
             return false;
@@ -911,14 +809,12 @@ impl<'s> Session<'s> {
         if !has_class(self.ctx, class) {
             return false;
         }
-        // (`name` has no leading `\\` here)
         match name.find(&format!("\\{short}")) {
             None => !self.has_import(class),
             Some(p) => name[..p].trim_start_matches('\\').split('\\').count() > 1,
         }
     }
 
-    /// `UseAddingPostRector`: `FileNode::addImports()` of the pending imports.
     fn add_uses(&mut self) {
         if self.pending.is_empty() {
             return;
@@ -980,7 +876,6 @@ impl<'s> Session<'s> {
                 });
             }
         }
-        // (`appendUsedImports()`)
         self.used.0.extend(classes.into_iter().map(ObjType::Fq));
         self.used.1.extend(functions);
         self.used.2.extend(constants);
@@ -990,9 +885,7 @@ impl<'s> Session<'s> {
         let root = &self.view.roots[r];
         let list = &mut self.lists[r];
         let is_old = |item: &Item, kind: StmtKind| matches!(item, Item::Old(i) if root.stmts[*i].kind == kind);
-        // (no new import is in the list yet)
         let is_use = |item: &Item| matches!(item, Item::Old(i) if matches!(root.stmts[*i].kind, StmtKind::Use(_)));
-        // a `Use_`, not a `GroupUse`, with comments: they move to the first new import
         let mirror = |list: &mut ListState, new_uses: &mut Vec<Item>, at: usize| {
             if let Some(Item::Old(i)) = list.items.get(at)
                 && let StmtKind::Use(k) = root.stmts[*i].kind
@@ -1032,7 +925,6 @@ impl<'s> Session<'s> {
         list.items.splice(0..0, new_uses);
     }
 
-    /// `UnusedImportRemovingPostRector`: on the file, then on each namespace.
     fn remove_unused_imports(&mut self) {
         let order: Vec<usize> = (0..self.view.roots.len()).collect();
         for r in order {
@@ -1046,12 +938,10 @@ impl<'s> Session<'s> {
             let lower: Vec<String> = names.iter().map(|n| n.to_ascii_lowercase()).collect();
             let mut new_items = Vec::new();
             for (key, item) in list.items.iter().enumerate() {
-                // (a new import is used: it came for a name of the code or of a doc that stays)
                 let Item::Old(i) = item else {
                     new_items.push(item.clone());
                     continue;
                 };
-                // (a `GroupUse` is no `Use_`)
                 let Some(k) = (match root.stmts[*i].kind {
                     StmtKind::Use(k) if root.uses[k].prefix.is_none() => Some(k),
                     _ => None,
@@ -1101,10 +991,8 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// `resolveUsedPhpAndDocNames()` of the root `r`: the names of its code (`use` statements aside) and its docs.
     fn used_names(&mut self, r: usize) -> Vec<String> {
         let root = &self.view.roots[r];
-        // (a namespace's statements include the `Nop` of the comments after its last one)
         let last = root.stmts.last().map_or(0, |s| s.span.end);
         let region = match &root.header {
             Some(h) => Span::new(root.inner.start, h.span.end.max(root.inner.end).max(last)),
@@ -1113,7 +1001,6 @@ impl<'s> Session<'s> {
         let inside = |s: Span| region.start <= s.start && s.end <= region.end;
         let mut names = Vec::new();
         if !root.is_namespace {
-            // the names of the `namespace` statements
             names.extend(self.view.roots.iter().filter_map(|r| r.name.clone()));
         }
         let mut code: Vec<(usize, String)> = Vec::new();
@@ -1127,7 +1014,6 @@ impl<'s> Session<'s> {
                 code.push((n.span.start, name));
             }
         }
-        // a `GroupUse` is no `Use_`: its prefix and its items are names
         for root in &self.view.roots {
             for u in root
                 .uses
@@ -1143,7 +1029,6 @@ impl<'s> Session<'s> {
         code.sort_by_key(|c| c.0);
         names.extend(code.into_iter().map(|c| c.1));
         let uses = self.view.uses_root().uses.clone();
-        // (`findNamesInDocBlocks()` traverses the `Namespace_` itself: the docs before `namespace` count)
         let doc_start = root.header.as_ref().map_or(region.start, |h| {
             self.view.roots[0]
                 .stmts
@@ -1175,8 +1060,6 @@ impl<'s> Session<'s> {
         unique
     }
 
-    /// The file printed: each changed statement list through `pArray()` (or its fallback), the names and docs that
-    /// changed in place.
     fn print(&mut self) -> Option<String> {
         let source = self.source;
         let mut edits: Vec<(Span, String)> = Vec::new();
@@ -1204,8 +1087,6 @@ impl<'s> Session<'s> {
                     .edit(source, &doc.print());
                     edits.push((edit.span, edit.text));
                 }
-                // a `Nop` printed anew: its comments, then the empty statement on the next line (its indentation
-                // stripped, `EXTRA_SPACE_BEFORE_NOP_REGEX`); a later round finds it printed already
                 None if doc.print() != source[d.span.start..d.span.end] => {
                     let end = nop_run(&crate::rules::php_parser::lex(source), d.span.end).1;
                     let text = format!("{}{}\n", doc.print(), &source[d.span.end..end]);
@@ -1214,7 +1095,6 @@ impl<'s> Session<'s> {
                 None => {}
             }
         }
-        // a class's `implements` without the names it dropped
         for class in &self.view.class_likes {
             let spans: Vec<Span> = class.implements.iter().map(|i| i.0).collect();
             let kept: Vec<bool> = spans
@@ -1228,7 +1108,6 @@ impl<'s> Session<'s> {
             let text = render_pieces(source, &pieces, &edits);
             edits.push((Span::new(spans[0].start, end), text));
         }
-        // `use` statements without the items that went
         for r in 0..self.view.roots.len() {
             let root = &self.view.roots[r];
             for item in &self.lists[r].items {
@@ -1244,7 +1123,6 @@ impl<'s> Session<'s> {
                 }
                 let u = &root.uses[k];
                 let spans: Vec<Span> = u.items.iter().map(|i| i.span).collect();
-                // (an item is kept: a `use` without any is gone)
                 let (pieces, end) = differ::removed_items(&spans, kept, u.span.start)?;
                 edits.push((
                     Span::new(u.span.start, end),
@@ -1252,7 +1130,6 @@ impl<'s> Session<'s> {
                 ));
             }
         }
-        // the statement lists
         let mut file_count_changed = false;
         let mut segments: Vec<(Span, String)> = Vec::new();
         let mut fell_back = Vec::new();
@@ -1287,7 +1164,6 @@ impl<'s> Session<'s> {
                 .collect();
             let has_nop = list.items.iter().any(|i| matches!(i, Item::Nop(_)));
             let pos = root.header.as_ref().map_or(0, |h| h.list_pos);
-            // php-parser checks the braces of a single statement's list
             let braces = match &root.header {
                 Some(h) => h.braced,
                 None => false,
@@ -1301,9 +1177,6 @@ impl<'s> Session<'s> {
                     segments.push((Span::new(pos, end), text));
                 }
                 None => {
-                    // a statement that ends with `?>` before others: the printer writes `?>` again after it, so what
-                    // follows becomes inline HTML (the page shows it, or PHP code turns into text); Rector writes that,
-                    // Pun leaves the file alone
                     let stmts = &root.stmts;
                     if stmts[..stmts.len() - 1]
                         .iter()
@@ -1316,7 +1189,6 @@ impl<'s> Session<'s> {
                 }
             }
         }
-        // a braced namespace printed `namespace X;` beside one still braced: Rector writes that mix, which PHP rejects
         let braced = |r: &usize| {
             self.view.roots[*r]
                 .header
@@ -1329,7 +1201,6 @@ impl<'s> Session<'s> {
         {
             return None;
         }
-        // the segments take the place of the edits inside them
         let mut all: Vec<(Span, String)> = segments.clone();
         all.extend(edits.into_iter().filter(|(s, _)| {
             !segments
@@ -1337,14 +1208,12 @@ impl<'s> Session<'s> {
                 .any(|(g, _)| g.start <= s.start && s.end <= g.end)
         }));
         let mut text = render(source, &all, 0, source.len());
-        // `BetterStandardPrinter::printFormatPreserving()`: a new line in case of added statements
         if file_count_changed && !text.ends_with('\n') {
             text.push('\n');
         }
         Some(text)
     }
 
-    /// The old `use` statement `k` of the root `r` with its kept items.
     fn current_uses_of(&self, r: usize, k: usize) -> UseView {
         let mut u = self.view.roots[r].uses[k].clone();
         u.items = u
@@ -1357,12 +1226,10 @@ impl<'s> Session<'s> {
         u
     }
 
-    /// The differ's item for `item` of the root `r`.
     fn new_item(&self, r: usize, item: &Item) -> NewItem {
         let root = &self.view.roots[r];
         let list = &self.lists[r];
         match item {
-            // a `use` printed anew (the only statement that is), or the old statement kept
             Item::Old(i) => {
                 let reprinted = match (list.reprinted[*i], root.stmts[*i].kind) {
                     (true, StmtKind::Use(k)) => Some(k),
@@ -1402,7 +1269,6 @@ impl<'s> Session<'s> {
         }
     }
 
-    /// The comments of the old statement `i` of the root `r`, a changed doc as it is now.
     fn comment_texts(&self, r: usize, i: usize) -> Vec<String> {
         let stmt = &self.view.roots[r].stmts[i];
         let end = match stmt.kind {
@@ -1429,7 +1295,6 @@ impl<'s> Session<'s> {
             .collect()
     }
 
-    /// `canUseSemicolonNamespaces`: no namespace of the file is without a name.
     fn semicolon_namespaces(&self) -> bool {
         !self
             .view
@@ -1438,11 +1303,9 @@ impl<'s> Session<'s> {
             .any(|r| r.is_namespace && r.name.is_none())
     }
 
-    /// `pStmt_Namespace()`, or the file's `"<?php\n" . pStmts()`, where `pArray()` gives up on the list of the root `r`.
     fn fallback(&self, r: usize, edits: &[(Span, String)]) -> (Span, String) {
         let root = &self.view.roots[r];
         let list = &self.lists[r];
-        // `namespace X;` and the statements, or `namespace X {` and the statements indented
         let (mut text, level) = match (&root.name, root.is_namespace) {
             (Some(name), _) if self.semicolon_namespaces() => (format!("namespace {name};\n"), 0),
             (name, true) => (
@@ -1483,8 +1346,6 @@ impl<'s> Session<'s> {
                         (true, StmtKind::Use(k)) => {
                             text.push_str(&print_use(&self.current_uses_of(r, k)));
                         }
-                        // `pStmt_InlineHTML()`: `?>`, the line break the closing tag took (`hasLeadingNewline`, also
-                        // set on HTML that starts the file), the HTML, `<?php `
                         (_, StmtKind::Inline) => {
                             let html = &self.source[span.start..span.end];
                             let rest = html
@@ -1497,7 +1358,6 @@ impl<'s> Session<'s> {
                             };
                             text.push_str(&format!("?>{newline}{value}<?php "));
                         }
-                        // the printer copies the statement, its indentation made the level's
                         _ => {
                             let printed = render(self.source, edits, span.start, span.end);
                             let adjustment =
@@ -1517,8 +1377,6 @@ impl<'s> Session<'s> {
         }
         let span = match &root.header {
             Some(h) if h.braced => h.span,
-            // `Parser::fixupNamespaceAttributes()`: a namespace without braces ends with its last statement, before a
-            // closing tag
             Some(h) => Span::new(
                 h.span.start,
                 root.stmts.last().map_or(root.inner.start, |s| s.span.end),
@@ -1529,8 +1387,6 @@ impl<'s> Session<'s> {
     }
 }
 
-/// The comments that follow the one ending at `end` up to the next code, as one `Nop` holds them: whether none of
-/// them is a doc comment, and where the last of them ends.
 fn nop_run(tokens: &[crate::rules::php_parser::Token], end: usize) -> (bool, usize) {
     let (mut last_doc, mut run_end) = (true, end);
     for t in tokens.iter().filter(|t| t.start >= end) {
@@ -1544,7 +1400,6 @@ fn nop_run(tokens: &[crate::rules::php_parser::Token], end: usize) -> (bool, usi
     (last_doc, run_end)
 }
 
-/// `ClassNameImportSkipper::shouldSkipName()`.
 fn should_skip_name(name: &str, kind: Kind, uses: &[UseView]) -> bool {
     if !name.contains('\\') {
         return kind != Kind::Class;
@@ -1556,14 +1411,12 @@ fn should_skip_name(name: &str, kind: Kind, uses: &[UseView]) -> bool {
             if !item.last().eq_ignore_ascii_case(short) {
                 continue;
             }
-            // (an alias, one part, is never the qualified `name`)
             return format!("{prefix}{}", item.name) != name;
         }
     }
     false
 }
 
-/// `AliasNameResolver::resolveByName()`: the alias of the import of `name`.
 fn alias_of(uses: &[UseView], name: &str) -> Option<String> {
     for u in uses {
         for (i, item) in u.items.iter().enumerate() {
@@ -1577,7 +1430,6 @@ fn alias_of(uses: &[UseView], name: &str) -> Option<String> {
     None
 }
 
-/// `UnusedImportRemovingPostRector::isUseImportUsed()`.
 fn is_import_used(
     item: &UseItemView,
     case_sensitive: bool,
@@ -1592,13 +1444,11 @@ fn is_import_used(
         return true;
     }
     let last_name = last(&compared).to_string();
-    // (an import's name never ends with `\\`: its last part is never empty)
     let prefix = format!("{last_name}\\");
     for name in names {
         if name.starts_with('\\') {
             continue;
         }
-        // `isSubNamespace()`
         if !name.contains('\\') && compared.ends_with(&format!("\\{name}")) {
             return true;
         }
@@ -1623,7 +1473,6 @@ fn is_import_used(
     false
 }
 
-/// A `use` statement `FileNode::createUses()` makes, as a view.
 fn new_use_view(kind: Kind, name: &str) -> UseView {
     UseView {
         span: Span::new(0, 0),
@@ -1639,7 +1488,6 @@ fn new_use_view(kind: Kind, name: &str) -> UseView {
     }
 }
 
-/// `pStmt_Use()`.
 fn print_use(u: &UseView) -> String {
     let kind = match u.kind {
         Some(Kind::Function) => "function ",
@@ -1657,7 +1505,6 @@ fn print_use(u: &UseView) -> String {
     format!("use {kind}{};", items.join(", "))
 }
 
-/// The pieces, the file's bytes with the edits inside them.
 fn render_pieces(source: &str, pieces: &[Piece], edits: &[(Span, String)]) -> String {
     pieces
         .iter()
@@ -1668,8 +1515,6 @@ fn render_pieces(source: &str, pieces: &[Piece], edits: &[(Span, String)]) -> St
         .collect()
 }
 
-/// `source[from..to]` with the edits that lie inside it; of two that overlap, the one that starts first, the longer
-/// at one start (an edit that holds others was rendered with them).
 fn render(source: &str, edits: &[(Span, String)], from: usize, to: usize) -> String {
     let mut inside: Vec<&(Span, String)> = edits
         .iter()
@@ -1690,7 +1535,6 @@ fn render(source: &str, edits: &[(Span, String)], from: usize, to: usize) -> Str
     out
 }
 
-/// The doc identifier's type, for the rules (`IdentifierPhpDocTypeMapper`).
 pub(crate) fn doc_type(ctx: &Context<'_>, scope: Scope<'_>, name: &str) -> DocType {
     resolve::map_identifier(ctx, scope, name)
 }

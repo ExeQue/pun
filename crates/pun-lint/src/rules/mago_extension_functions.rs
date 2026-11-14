@@ -1,6 +1,3 @@
-//! mago-linter 1.57.0's `EXTENSION_FUNCTIONS` (src/rule/utils/consts.rs), copied as is: each PHP extension and its
-//! functions, for `lint/security/no-restricted-functions`'s `extensions` option.
-
 pub(crate) const EXTENSION_FUNCTIONS: [(&str, &[&str]); 49] = [
     (
         "Core",

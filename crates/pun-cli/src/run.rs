@@ -1,9 +1,3 @@
-//! `pun format` / `lint` / `check`: load the config, pick the engines, fix the files, report.
-//!
-//! A file goes through the native lint rules first (`pun_lint` on Mago's tree, with `@pun-ignore` comments and the
-//! per-file levels of crate::lint_plan), then through one token pipeline (the format rules and the lint rules that
-//! are PHP-CS-Fixer fixers, in PHP-CS-Fixer's priority order, as Pint runs them). `pun check` then analyses the
-//! project (crate::analyse) and reports its errors with the rest.
 use crate::lint_plan::{self, CliLevel, Engine, On, Plan};
 use crate::render::{Look, RunError, Spinner};
 use crate::report::{self, Abort, FileResult, Status};
@@ -19,18 +13,11 @@ use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-/// Which rules a run applies. `fix`: `--fix` (every enabled lint rule's fix but those with `fix = "off"`; without
-/// it every enabled lint rule is checked, nothing written).
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stage {
     Format,
-    Lint {
-        fix: bool,
-    },
-    /// Format and lint in one pass over each file, then analyse.
-    Check {
-        fix: bool,
-    },
+    Lint { fix: bool },
+    Check { fix: bool },
 }
 
 impl Stage {
@@ -39,23 +26,18 @@ impl Stage {
     }
 }
 
-/// `pun lint` and `pun check`'s own flags.
 #[derive(Clone, Default)]
 pub(crate) struct LintOpts {
-    /// `-A`, `-W` and `-D`, in the order given.
     pub(crate) levels: Vec<(CliLevel, String)>,
     pub(crate) deny_warnings: bool,
     pub(crate) max_warnings: Option<usize>,
     pub(crate) concise: bool,
 }
 
-/// What a file's token pass returned: the new code and the fixers that changed it, or why it failed.
 type Run = Result<Option<(Vec<u8>, Vec<&'static str>)>, LintError>;
 
-/// One file through the pipeline. The outer error aborts the run (a malformed `@php-cs-fixer-ignore` annotation).
 fn run_file(p: &Pipeline, file: &Path, code: &[u8]) -> Result<Run> {
     let r = p.run(file, code);
-    // Runner::fixFile analyses annotations after linting the input, before any fixer runs.
     if !matches!(
         r,
         Err(LintError {
@@ -78,13 +60,10 @@ pub(crate) fn load_config(a: &FormatArgs, root: &Path) -> Result<Config> {
     load(root, &opts)
 }
 
-/// `pun.toml` (or the given config) under `root`; an error is a config error.
 pub(crate) fn load(root: &Path, opts: &Options) -> Result<Config> {
     pun_config::load(root, opts).map_err(config_error)
 }
 
-/// Hands a native rule its options from `[lint.rules]`. Overrides change levels only, as one instance of the rule
-/// lints every file.
 fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
     let id = rule.id();
     let base = (cfg.lint.rules.iter()).find(|r| r.id == id);
@@ -98,13 +77,10 @@ fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
     result.map_err(|e| config_error(anyhow::anyhow!("pun.toml: `{id}` {e}")))
 }
 
-/// A config error: Pun's own run error, never a Pint box (Pint never reads pun.toml).
 fn config_error(e: anyhow::Error) -> anyhow::Error {
     Abort::plain(format!("{e:#}"), None).into()
 }
 
-/// The token pipelines of a run, one per distinct set of token lint rules (overrides and `@pun-ignore-file` change
-/// the set per file), each with the run's format rules ahead of them when the file is formatted.
 struct Pipelines {
     cfg: Config,
     format: Vec<Rule>,
@@ -120,7 +96,6 @@ impl Pipelines {
         }
     }
 
-    /// The pipeline of the format rules (none when `with_format` is false) and `lint`.
     fn get(&self, with_format: bool, lint: &[Rule]) -> Result<Arc<Pipeline>> {
         let mut key = vec![with_format.to_string()];
         key.extend(lint.iter().map(|r| format!("{}={}", r.name, r.options)));
@@ -138,22 +113,16 @@ impl Pipelines {
     }
 }
 
-/// Everything a run checks a file with.
 struct Engines<'a> {
     stage: Stage,
-    /// Lint and check only.
     plan: Option<Plan>,
-    /// The native rules on for some file, when there are any.
     linter: Option<pun_lint::Linter>,
     pipelines: Pipelines,
-    /// The files lint checks (`[lint] exclude`, no Blade); `None` for `pun format`.
     lint_files: Option<HashSet<PathBuf>>,
-    /// The files `pun check` formats; `None` when every file is formatted (format) or none is (lint).
     format_files: Option<HashSet<PathBuf>>,
     root: &'a Path,
 }
 
-/// A file's run: its result and, under `--fix`, the fixes of the token lint rules it doesn't apply.
 struct Processed {
     result: FileResult,
     remaining: Option<FileResult>,
@@ -163,8 +132,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
     let started = std::time::Instant::now();
     let root = root()?;
     let cfg = load_config(&a, &root)?;
-    // No PHP fallback: a rule Pun can't run, format or named lint rule, stops every command (exit 2, Pun can't
-    // run). A set or a group skips the rules Pun can't run yet.
     let plan = Plan::new(&cfg, &lint.levels).map_err(config_error)?;
     let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
     let plan = match plan {
@@ -177,10 +144,8 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
     };
     let lints = stage != Stage::Format;
     let formats = !matches!(stage, Stage::Lint { .. });
-    // EnsurePrettierIsConfigured: `"Pint/laravel_blade": true` (or --blade) needs Node and prettier in the project.
     let blade_on = formats
         && (cfg.rules.iter()).any(|r| r.name == "Pint/laravel_blade" && r.options.is_null());
-    // Also clean up on discovery/configuration errors and early --bail exits, including repeated watch runs.
     struct StopProbe;
     impl Drop for StopProbe {
         fn drop(&mut self) {
@@ -192,7 +157,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
         return Err(abort.into());
     }
     let pipelines = Pipelines::new(&cfg, if formats { cfg.rules.clone() } else { vec![] });
-    // The pipeline of a file no override matches: `--explain` and stdin.
     let base_token = match lints {
         true => token_rules(&plan.for_file(&root.join("-")), stage.fix(), false),
         false => vec![],
@@ -234,7 +198,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
     };
     let lint_set = match (lints, &selected) {
         (false, _) => vec![],
-        // A git selection, narrowed to the lint file set.
         (true, Some(files)) => {
             let all: HashSet<PathBuf> =
                 pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?
@@ -258,7 +221,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
                 configure(&cfg, r.as_mut())?;
             }
             if !natives.is_empty() {
-                // the lint files are the project's when no path or git selection narrows them
                 let project = match (&selected, a.paths.is_empty()) {
                     (None, true) => lint_set.clone(),
                     _ => pun_workspace::files(&cfg, Some(pun_workspace::Command::Lint), &[])?,
@@ -283,12 +245,10 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
         root: &root,
     };
 
-    // The probe's worker is already loading Prettier. Stop it before the PHP pass if no Blade file is selected.
     if blade_on && !files.iter().any(|f| is_blade(f)) {
         pun_fixers::prettier::stop();
     }
     let look = Look::stdout(a.color());
-    // The progress line, for humans on a terminal (output.md §1); dropped before anything is printed.
     let human = a.format.is_none() && !a.quiet && !crate::agent::enabled();
     let spinner = human
         .then(|| Spinner::stderr(files.len(), &look, std::io::stderr().is_terminal()))
@@ -302,8 +262,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
     };
 
     let all: Vec<Result<Processed>> = if a.bail {
-        // --bail is PHP-CS-Fixer's stop-on-violation: sequential, stop at the first fixable file (lint errors don't
-        // stop it; an aborting file does).
         let mut out = Vec::new();
         for f in &files {
             let r = process(f, std::fs::read(f));
@@ -315,16 +273,11 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
         }
         out
     } else {
-        // main sizes rayon's global pool by `--max-processes`. Blade templates go through Node workers, which are
-        // slow to start and to warm up: a few threads of their own, each with one worker, format the templates,
-        // largest first, beside rayon's pass over the PHP files.
         let (mut blade, php): (Vec<_>, Vec<_>) =
             (files.iter().cloned().enumerate()).partition(|(_, f)| blade_on && is_blade(f));
         blade.sort_by_cached_key(|(_, f)| {
             std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len()))
         });
-        // A Node worker takes about 0.4 s to start and warm up, so it needs some 30 templates to pay for itself:
-        // on Pinkary's 142, four workers beat both two and eight at any thread count.
         let lanes = (blade.len() / 32)
             .clamp(1, rayon::current_num_threads())
             .min(blade.len());
@@ -366,9 +319,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
 
     let mut unmatched_baseline = 0;
     let mut total = files.len();
-    // `pun check` analyses after the files are fixed, so it reads what was written. A git selection that selects
-    // nothing analyses nothing. ponytail: pun-analyse reads each file again; a `run` that takes the sources would
-    // share them (request row in PLAN.md).
     if let Stage::Check { .. } = stage
         && !a.bail
         && selected.as_ref().is_none_or(|s| !s.is_empty())
@@ -402,7 +352,6 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
         a.output_to_file.as_deref(),
         a.output_format.as_deref(),
     )?;
-    // A fixer that threw or produced invalid code is Pun failing, not the file (exit 2).
     let crashed = (results.iter()).any(|r| matches!(r.status, Status::Exception | Status::Lint));
     let changed = results.iter().any(|r| r.status == Status::Fixed);
     let failed = match stage {
@@ -422,20 +371,9 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
     Ok(if crashed { 2 } else { u8::from(failed) })
 }
 
-/// The rules that read facts look classes up in the project's other files, as Rector's PHPStan reflection does: scan
-/// every file `pun lint` would check (not only the ones named on the command line) into the codebase they share, with
-/// the classes they name that Composer autoloads (the generated classmap, then psr-4 and psr-0 from composer.json and
-/// vendor/composer/installed.json as pun-analyse finds them), so a parent class from a package is known as in
-/// Rector's PHPStan.
-/// Composer's `files` entries (vendor/composer/autoload_files.php, the helper functions such as Laravel's `collect()`)
-/// are scanned too, as PHPStan finds them through the runtime autoloader.
-/// `files` are the files `pun lint` would check. The scan waits for the first rule that reads facts
-/// (`facts::set_project_scan`), so rules that read none never scan.
 fn project_codebase(cfg: &Config, files: Vec<PathBuf>) {
     let cfg = cfg.clone();
     pun_lint::rules::facts::set_project_scan(move || {
-        // A rule asks on a worker of rayon's global pool, whose other workers wait for the scan: it runs on a thread
-        // and a pool of its own, sized as the global one.
         let threads = rayon::current_num_threads();
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
@@ -450,12 +388,9 @@ fn project_codebase(cfg: &Config, files: Vec<PathBuf>) {
     });
 }
 
-/// The project's codebase, [`project_codebase`] of `files`.
 fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::ProjectCodebase> {
     use pun_lint::rules::facts;
     use pun_phpstan::{Array, Key, Value};
-    // The rules read PHPStan's built-in signatures right after the scan: they load beside it, on a core the scan's
-    // serial steps leave idle.
     std::thread::spawn(|| pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::Php84));
     let read = || -> Vec<(String, String)> {
         (files.par_iter())
@@ -474,7 +409,6 @@ fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::
         let mut params = Array::new();
         params.set(Key::Str("fileExtensions".into()), Value::Array(extensions));
         let project = pun_analyse::Project::from_config(&cfg.root, &params);
-        // the runtime autoloader Rector loads looks in Composer's generated classmap first
         (project, composer_classmap(&cfg.root))
     };
     let (sources, (project, classmap)) = rayon::join(read, autoloaded);
@@ -484,7 +418,6 @@ fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::
             sources.push((path.to_string_lossy().into_owned(), code));
         }
     }
-    // and `vendor/autoload.php` requires Composer's own ClassLoader, which no autoload map lists
     let class_loader = cfg.root.join("vendor/composer/ClassLoader.php");
     let mut by_class: HashMap<&[u8], &Path> = HashMap::new();
     by_class.insert(b"composer\\autoload\\classloader", &class_loader);
@@ -497,7 +430,6 @@ fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::
     let psr0 = project.autoloaded.iter().any(|a| a.psr0);
     let autoload = |class: &[u8]| {
         let path = by_class.get(class).or_else(|| {
-            // psr-0: `_` in the class's own name is a directory too
             let at = class.iter().rposition(|b| *b == b'\\').map_or(0, |i| i + 1);
             let mut dirs = class.to_vec();
             dirs[at..]
@@ -514,8 +446,6 @@ fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::
     facts::project_codebase_autoloaded(&sources, cfg.php_version().to_id(), &autoload)
 }
 
-/// The classes of `vendor/composer/autoload_classmap.php` (Composer's `classmap` entries, and every class when the
-/// autoloader is optimized), ASCII-lowercased, and their files.
 fn composer_classmap(root: &Path) -> Vec<(Vec<u8>, PathBuf)> {
     (composer_map(root, "autoload_classmap.php").into_iter())
         .map(|(class, path)| {
@@ -525,8 +455,6 @@ fn composer_classmap(root: &Path) -> Vec<(Vec<u8>, PathBuf)> {
         .collect()
 }
 
-/// The files of `vendor/composer/autoload_files.php` that packages declare (Composer's `files` entries), in the order
-/// Composer loads them. The project's own are among the files `pun lint` checks.
 fn composer_files(root: &Path) -> Vec<PathBuf> {
     let vendor = root.join("vendor");
     (composer_map(root, "autoload_files.php").into_iter())
@@ -535,18 +463,13 @@ fn composer_files(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// The `'key' => $vendorDir . '/path',` lines of one of Composer's generated `vendor/composer/<file>` arrays, with
-/// each path under the project or its vendor directory.
 fn composer_map(root: &Path, file: &str) -> Vec<(String, PathBuf)> {
     let vendor = root.join("vendor");
-    // lossy: a class name need not be UTF-8 (symfony/cache names one `\xA9`)
     let code = std::fs::read(vendor.join("composer").join(file)).unwrap_or_default();
     (String::from_utf8_lossy(&code).lines())
         .filter_map(|line| {
-            // `'App\\Model' => $baseDir . '/app/Model.php',`
             let (class, path) = line.trim().strip_prefix('\'')?.split_once("' => $")?;
             let (dir, path) = path.strip_suffix("',")?.split_once(" . '/")?;
-            // the other is `$baseDir`, the project
             let base = if dir == "vendorDir" {
                 vendor.as_path()
             } else {
@@ -557,12 +480,8 @@ fn composer_map(root: &Path, file: &str) -> Vec<(String, PathBuf)> {
         .collect()
 }
 
-/// The threads that read the files (context/plan/lint.md, perf lint 4): opening files on more than about four
-/// threads at once slows each open on macOS, so a few threads read and every core checks what they read.
 const READERS: usize = 3;
 
-/// `process` over every file, its content read by [`READERS`] threads of their own and checked on rayon's pool
-/// (sized by `--max-processes` in main) as it arrives; the results keep the files' order.
 fn read_in_parallel<T: Send>(
     files: &[PathBuf],
     process: impl Fn(&PathBuf, std::io::Result<Vec<u8>>) -> T + Sync,
@@ -574,7 +493,6 @@ fn read_in_parallel<T: Send>(
         for _ in 0..READERS.min(files.len()) {
             let (tx, next) = (tx.clone(), &next);
             s.spawn(move || {
-                // Stops early only when the receiver is gone (the processing panicked).
                 while let Some(path) = files.get(next.fetch_add(1, Ordering::Relaxed))
                     && tx.send((path, std::fs::read(path))).is_ok()
                 {}
@@ -591,8 +509,6 @@ fn read_in_parallel<T: Send>(
     })
 }
 
-/// The token lint rules of `on`, as fixer rules: under `--fix` those whose fix applies (`pending`: those whose fix
-/// doesn't), otherwise all of them.
 fn token_rules(on: &BTreeMap<String, On>, fix: bool, pending: bool) -> Vec<Rule> {
     (on.iter())
         .filter_map(|(id, o)| match lint_plan::engine(id) {
@@ -607,15 +523,10 @@ fn token_rules(on: &BTreeMap<String, On>, fix: bool, pending: bool) -> Vec<Rule>
         .collect()
 }
 
-/// A fixed native problem's rule ID as the `'static` string the reports list fixers by: a native rule, else the
-/// unused-ignore check (a malformed ignore has no fix).
 fn static_id(rule: &str) -> &'static str {
     (lint_plan::native_rules().get(rule).copied()).unwrap_or(lint_plan::UNUSED_IGNORE)
 }
 
-/// One round of the native rules' problems, as the file's levels and comments leave them: rules that are off for
-/// the file dropped, levels set, fixes taken from `fix = "off"` rules, `@pun-ignore` comments applied, and the
-/// engine's own problems (malformed and unused ignore comments) added.
 fn filter_problems(
     on: &BTreeMap<String, On>,
     rel: &str,
@@ -635,7 +546,6 @@ fn filter_problems(
         return;
     }
     ignores.retain(problems, &LineIndex::new(source));
-    // An ID of a token rule, of another command or of a rule that is off can't be judged.
     let runs = |id: &str, native: bool| {
         (on.keys()).any(|r| {
             covers(id, r)
@@ -663,11 +573,8 @@ fn filter_problems(
     problems.sort_by_key(|p| p.span.start);
 }
 
-/// The most rounds of native rules and token pass `--fix` gives one file.
 const FIX_ROUNDS: usize = 10;
 
-/// One file: native lint, the token pass, the pending rules under `--fix`; the result written unless a dry run.
-/// Unreadable and unwritable files abort the whole run, like Pint (FileReader / Runner exceptions).
 fn process_file(
     a: &FormatArgs,
     e: &Engines,
@@ -685,7 +592,6 @@ fn process_file(
         result,
         remaining: None,
     };
-    // Runner FileFilterIterator: symlinks are dropped silently, empty files are "skipped".
     if path.is_symlink() {
         r.status = Status::Link;
         return Ok(done(r));
@@ -704,7 +610,6 @@ fn process_file(
         (true, Some(plan)) => plan.for_file(path),
         _ => BTreeMap::new(),
     };
-    // A token rule changes a whole file, so only `@pun-ignore-file` turns it off.
     let mut file_ignores = match std::str::from_utf8(&code).ok() {
         Some(t) if !on.is_empty() => Ignores::parse(t),
         _ => Ignores::default(),
@@ -718,7 +623,6 @@ fn process_file(
     let unchanged_on_disk = dry_run && !fix;
     let rel_path = Path::new(&rel);
 
-    // 1. The native rules.
     let mut now = code.clone();
     let mut applied: Vec<&'static str> = vec![];
     let mut problems: Vec<Problem> = vec![];
@@ -729,10 +633,6 @@ fn process_file(
         )
     });
     let token = token_rules(&token_on, fix, false);
-    // A lint fix can leave work for a rule that already ran (an emptied docblock, a pair of calls that now
-    // merges), so `--fix` with lint rules repeats both steps until nothing changes: a second run then finds
-    // nothing to fix. The format rules run once, as in Pint, whose own second run can change a file again:
-    // round 2 is the lint rules alone, and only when they change something do the format rules repeat.
     let rounds = if fix && !on.is_empty() { FIX_ROUNDS } else { 1 };
     for round in 1..=rounds {
         let before = (round == 2).then(|| now.clone());
@@ -759,7 +659,6 @@ fn process_file(
             };
             match outcome {
                 Ok(ps) => problems = ps,
-                // The token pass (or PHP's grammar below) reports the syntax error.
                 Err(pun_lint::LintError::Syntax { .. }) => native_syntax_error = true,
                 Err(err) => {
                     r.status = Status::Lint;
@@ -769,7 +668,6 @@ fn process_file(
             }
         }
 
-        // 2. The token pass: the format rules and the token lint rules.
         let token_changed = if format || !token.is_empty() {
             let pipeline = e.pipelines.get(format, &token)?;
             let outcome = match isolated(|| run_file(&pipeline, path, &now)) {
@@ -797,8 +695,6 @@ fn process_file(
                             applied.push(fixer);
                         }
                     }
-                    // The native problems' spans refer to the source before the token pass. A run that only
-                    // reports keeps them: that source is the file on disk.
                     if !unchanged_on_disk
                         && !problems.is_empty()
                         && let (Some(linter), Ok(t)) = (&e.linter, std::str::from_utf8(&new))
@@ -833,7 +729,6 @@ fn process_file(
         .collect();
     r.warned.clone_from(&warned);
 
-    // Reports show diffs only with -v (sebastian/diff's LCS is quadratic, so skip it otherwise).
     let diff = |old: &[u8], new: &[u8]| {
         if a.verbose == 0 {
             return String::new();
@@ -841,7 +736,6 @@ fn process_file(
         report::diff_bytes(
             old,
             new,
-            // Agent mode: paths relative to the project, as everywhere in its output.
             if crate::agent::enabled() {
                 rel_path
             } else {
@@ -864,8 +758,6 @@ fn process_file(
         r.problems = problems;
     }
 
-    // 3. `--fix`: the token lint rules it doesn't apply, run on the result and reported. Their failure (lint
-    // error, panic) is not reported: the file was already fixed and checked.
     let pending = match fix {
         true => token_rules(&token_on, true, true),
         false => vec![],
@@ -896,9 +788,6 @@ fn process_file(
     })
 }
 
-/// Writes a fixed file so that a full disk or a killed run leaves the old file or the new one, never a part: the
-/// bytes go to a hidden file beside it, which then takes its name and mode. The file must be writable, as Pint
-/// requires. A directory that takes no new file gets the plain write Pint does.
 fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let mode = std::fs::OpenOptions::new()
@@ -917,8 +806,6 @@ fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     written.inspect_err(|_| drop(std::fs::remove_file(&tmp)))
 }
 
-/// `pun check`: the analysis's errors as problems of their files (a file only analyse covers gets a result of its
-/// own). A malformed ignore comment lint already reported is not repeated.
 fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analysed, root: &Path) {
     let mut at: HashMap<PathBuf, usize> = (results.iter().enumerate())
         .map(|(i, r)| (r.path.clone(), i))
@@ -939,7 +826,6 @@ fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analys
     for f in &analysed.findings {
         let i = index_of(results, &f.file);
         let r = &mut results[i];
-        // The format pass already reported this file's syntax error.
         if f.rule == "parser-error" && matches!(r.status, Status::Invalid | Status::Lint) {
             continue;
         }
@@ -969,20 +855,16 @@ fn pipeline(cfg: &Config) -> Result<Pipeline> {
         std::env::var("PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS")
             .is_ok_and(|v| pun_tokens::php_compat::filter_var_bool(&v)),
     );
-    // PUN_PROFILE=1: per-stage timings on stderr after the run.
     if std::env::var_os("PUN_PROFILE").is_some() {
         p.enable_profile();
     }
     Ok(p)
 }
 
-/// The rules a run can't apply, under their Pun IDs (upstream names for sets the preset doesn't expand), and where
-/// they come from: pun.toml, or the `--preset` / `--no-config` run's preset.
 fn unported_error(a: &FormatArgs, cfg: &Config, names: &[String]) -> Abort {
     let ids: Vec<String> = (names.iter())
         .map(|n| format!("`{}`", pun_config::rule_of(n).unwrap_or(n)))
         .collect();
-    // Every rule of the laravel, psr12 and empty presets runs natively, so an unported rule comes from pun.toml.
     let file = (cfg.root).join(a.config.as_deref().unwrap_or(Path::new("pun.toml")));
     let rules = if ids.len() == 1 { "rule" } else { "rules" };
     let what = format!("{rules} not supported by Pun yet: {}", ids.join(", "));
@@ -1000,7 +882,6 @@ fn unported_error(a: &FormatArgs, cfg: &Config, names: &[String]) -> Abort {
     Abort::pun(format!("{}: {what}", file.display()), error)
 }
 
-/// `--explain`: the run's fixers in priority order, on stderr.
 fn explain(cfg: &Config, p: &Pipeline) {
     let mut err = std::io::stderr().lock();
     let _ = writeln!(
@@ -1019,7 +900,6 @@ fn is_blade(path: &Path) -> bool {
     path.to_string_lossy().ends_with(".blade.php")
 }
 
-/// DefaultCommand::fixStdinInput: excluded paths echo the input; otherwise print the fixed code.
 fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<u8> {
     let mut code = Vec::new();
     std::io::stdin().read_to_end(&mut code)?;
@@ -1028,7 +908,6 @@ fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<u8> {
         .stdin_filename
         .clone()
         .unwrap_or_else(|| "stdin.php".into());
-    // --test/--bail: the dry run leaves Pint's temp file untouched, so the input comes back as is.
     let fixed = if a.test || a.bail {
         None
     } else {
@@ -1038,8 +917,6 @@ fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<u8> {
     Ok(0)
 }
 
-/// Stdin formatting of `code` as `path`: the fixed code, or `None` when excluded, clean or invalid (Pint
-/// reports syntax errors through its unshown JSON report and echoes the input).
 fn fix_text(
     cfg: &Config,
     engine: &Pipeline,
@@ -1050,7 +927,6 @@ fn fix_text(
     if check_excluded && pun_workspace::is_path_excluded(cfg, path) {
         return Ok(None);
     }
-    // A fixer's exception: Pint reports it in the unshown report too.
     let Ok(run) = isolated(|| run_file(engine, path, code)) else {
         return Ok(None);
     };
@@ -1061,8 +937,6 @@ thread_local! {
     static ISOLATED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// One file's fixing, where a panic (Pun's fixers panic where upstream throws) fails only that file, with the panic
-/// message, like PHP-CS-Fixer's per-file exception errors. Such panics print nothing; others still do.
 fn isolated<T>(f: impl FnOnce() -> T) -> Result<T, String> {
     static HOOK: std::sync::Once = std::sync::Once::new();
     HOOK.call_once(|| {
@@ -1086,7 +960,6 @@ fn isolated<T>(f: impl FnOnce() -> T) -> Result<T, String> {
 
 #[cfg(test)]
 mod tests {
-    /// A panic inside `isolated` is the file's error, with its message.
     #[test]
     fn isolated_panics() {
         assert_eq!(
@@ -1095,8 +968,6 @@ mod tests {
         );
     }
 
-    /// `replace` swaps the file in whole and keeps its mode; a read-only file is refused untouched (Pint's "not
-    /// writable"), and a directory that takes no new file still gets the write.
     #[test]
     fn replace_swaps_the_file_in() {
         use std::os::unix::fs::PermissionsExt;

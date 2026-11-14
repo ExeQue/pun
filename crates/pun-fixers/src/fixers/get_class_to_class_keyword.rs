@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\GetClassToClassKeywordFixer`. Upstream's candidate check also needs
-//! PHP >= 8.0 at run time, which Pun's PHP version always is.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -29,7 +27,6 @@ impl Fixer for GetClassToClassKeywordFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let functions_analyzer = FunctionsAnalyzer::new();
-        // Upstream's `$indicesToClear`, filled from the end: its foreach runs in that order.
         let mut indices_to_clear = vec![];
         'outer: for index in (1..tokens.count()).rev() {
             if !tokens[index].equals((T_STRING, "get_class"), false) {
@@ -42,7 +39,7 @@ impl Fixer for GetClassToClassKeywordFixer {
             let brace_close_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, brace_open_index);
             if Some(brace_close_index) == tokens.get_next_meaningful_token(brace_open_index) {
-                continue; // get_class with no arguments
+                continue;
             }
             let mut meaningful_tokens_count = 0;
             let mut variable_tokens_indices = vec![];
@@ -63,12 +60,12 @@ impl Fixer for GetClassToClassKeywordFixer {
                     continue;
                 }
                 if strtolower(tokens[i].get_content()) == b"$this" {
-                    continue 'outer; // get_class($this)
+                    continue 'outer;
                 }
                 variable_tokens_indices.push(i);
             }
             if meaningful_tokens_count > 1 || variable_tokens_indices.len() != 1 {
-                continue; // argument contains more logic, or more arguments, or no variable argument
+                continue;
             }
             indices_to_clear.push((
                 index,

@@ -1,13 +1,3 @@
-//! `lint/dead-code/no-unused-private-constant`, ported from Rector 2.8.4's `RemoveUnusedPrivateClassConstantRector`
-//! (rules/DeadCode/Rector/ClassConst) and `ClassConstManipulator::hasClassConstFetch` (src/NodeManipulator).
-//!
-//! A private constant declared alone (`private const A = 1;`) in a class, an anonymous class or an enum is removed
-//! when no `self::A`, `static::A`, `ClassName::A` or fetch on an object of the class reads it in the class or, when
-//! the class uses a trait, in the traits of the class, of those traits and of its parents (`getTraits(true)`). A
-//! parent class itself is not read. Pun reads the traits and parents declared in the same file; a class that uses a
-//! trait and has a trait or parent declared elsewhere is skipped, as that trait may read the constant. A class whose
-//! parent's name ends in `Enum` is skipped (`hasParentClassOfEnumSuffix`).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
@@ -69,8 +59,6 @@ impl Rule for NoUnusedPrivateConstant {
         if parent.as_ref().is_some_and(|p| p.ends_with("Enum")) {
             return;
         }
-        // The class, and when it uses a trait, `getTraits(true)`: the traits of the class, of those traits and of
-        // its parents, as far as this file declares them.
         let mut scopes = vec![node];
         if members
             .iter()
@@ -80,7 +68,6 @@ impl Rule for NoUnusedPrivateConstant {
             let mut next = parent;
             while let Some(name) = next.take() {
                 let Some(Node::Class(c)) = declared(ancestors[0], &name) else {
-                    // A parent declared elsewhere may use a trait that reads the constant.
                     return;
                 };
                 next = c
@@ -153,8 +140,6 @@ impl Rule for NoUnusedPrivateConstant {
     }
 }
 
-/// `isNameMatch`: `self::NAME`, `static::NAME` or `Class::NAME` (names compare without case), or any constant of an
-/// expression of the class's type (`$this::NAME`, `$this::{$name}`).
 fn is_name_match(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -175,7 +160,6 @@ fn is_name_match(
         Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => named.unwrap_or(true),
         Expression::Parent(_) => false,
         object => {
-            // `isObjectType($fetch->class, new ObjectType($className))` on the native type of the object.
             let Some(class) = class else { return false };
             let facts = facts(ctx);
             let is_class = facts.native_type(node_span(object)).is_some_and(|t| {
@@ -189,7 +173,6 @@ fn is_name_match(
     }
 }
 
-/// The class or trait the file declares under the fully qualified name `name`.
 fn declared<'ast, 'arena>(program: Node<'ast, 'arena>, name: &str) -> Option<Node<'ast, 'arena>> {
     let mut found = None;
     find(program, &mut Vec::new(), name, &mut found);

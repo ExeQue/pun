@@ -1,5 +1,3 @@
-//! IssetCheck and coalescing use PHPStan's refined string-to-array-key semantics.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -109,8 +107,6 @@ fn coalesce_produces_expression_holders_without_replaying_indexes() {
                 .unwrap()
                 .entry(expression.span())
                 .or_default() += 1;
-            // Prepared targets publish completed reads without running ordinary
-            // after-expression hooks. The synthetic operator consumes that read.
             if let Expression::Binary(binary) = expression {
                 let tail = &self.source[binary.lhs.span().end.offset as usize..];
                 if tail

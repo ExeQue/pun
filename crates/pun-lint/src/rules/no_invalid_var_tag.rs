@@ -1,16 +1,3 @@
-//! `lint/dead-code/no-invalid-var-tag`, ported from Rector 2.8.4's `RemoveNonExistingVarAnnotationRector`
-//! (rules/DeadCode/Rector/Node).
-//!
-//! A `@var` tag on a statement (`foreach`, `static`, `echo`, `return`, an expression, `if`, `while`, `switch`, or the
-//! comments after a list's last statement) names a variable the statement does not hold: it goes, unless a later
-//! statement of the list uses that variable. A `@var` without a name goes too, except on an assignment to a variable,
-//! a `return` of a call, or a `return new C` whose tag is `C<...>`; then every `@var` tag goes. The statement's
-//! comments must be the doc comment alone, the list's holder must have at most one comment, and the next statement
-//! must not be inline HTML. `extract()` with a constant array, and `static`, define their variables for the
-//! statements after them, and a statement whose list later uses one of those is left alone; `extract()` of anything
-//! else ends the walk of the list. Only valid `@var` tags count (`getVarTagValues()`), and the removal leaves
-//! `@phpstan-var` and `@psalm-var` alone.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -91,7 +78,6 @@ impl Rule for NoInvalidVarTag {
                 let (list, index) = enclosing(source, tokens, &chain);
                 (list, At::Statement(index), chain.len() - 2)
             }
-            // php-parser's `Nop` for the comments after a list's last statement
             _ => {
                 if !is_list_holder(node) {
                     return;
@@ -111,7 +97,6 @@ impl Rule for NoInvalidVarTag {
             At::Statement(i) => i,
             At::Nop => list.stmts.len(),
         };
-        // the catches and the finally block come after a `try` block's statements
         let try_ = match at {
             At::Statement(_) => try_of(&chain),
             At::Nop => {
@@ -120,8 +105,6 @@ impl Rule for NoInvalidVarTag {
                 try_of(&chain)
             }
         };
-        // `shouldSkip()`
-        // php-parser's statements after a `Nop` start past the list's end
         let next = (index + 1).min(list.stmts.len());
         if defined
             .iter()
@@ -189,7 +172,6 @@ impl Rule for NoInvalidVarTag {
             if used_in_next(&list, next, try_, name.as_bytes()) {
                 continue;
             }
-            // `removeByType(VarTagValueNode::class, $name)`: the `@var` tags of that variable, or all without one
             for (i, other) in tags.iter().enumerate() {
                 if let Some(other) = other
                     && (name.is_empty() || other.variable.as_deref() == Some(name))
@@ -205,12 +187,10 @@ impl Rule for NoInvalidVarTag {
         let edit = if statement.is_some() && !printed.is_empty() {
             Edit::new(doc.span, printed)
         } else if !printed.is_empty() {
-            // php-parser prints a changed `Nop` as its comments and an empty line
             Edit::new(doc.span, format!("{printed}\n"))
         } else if statement.is_some() {
             doc.remove(&removed, start)
         } else {
-            // a `Nop` without comments prints nothing, and its line loses its blanks
             let line = source[..doc.span.start].rfind('\n').map_or(0, |i| i + 1);
             let from = if source[line..doc.span.start].trim().is_empty() {
                 line
@@ -237,8 +217,6 @@ enum At {
     Nop,
 }
 
-/// A valid `@var` tag: its variable's name without the `$`, whether its type is a pseudo object shape (`object`
-/// with a description `{...}`), and the base name of a generic type.
 struct VarTag {
     variable: Option<String>,
     object_shape: bool,
@@ -282,8 +260,6 @@ fn var_tag(text: &str) -> Option<VarTag> {
     .flatten()
 }
 
-/// Whether `statement` is php-parser's `InlineHTML`: php-parser's `T_CLOSE_TAG` takes the newline after `?>`, which
-/// Mago keeps as inline HTML of its own.
 fn is_inline_html(source: &str, statement: &Statement<'_>) -> bool {
     let Statement::Inline(inline) = statement else {
         return false;
@@ -297,7 +273,6 @@ fn is_inline_html(source: &str, statement: &Statement<'_>) -> bool {
             .is_some_and(str::is_empty)
 }
 
-/// `isAllowedEmptyVariableName()`.
 fn allowed_unnamed(ancestors: &[Node<'_, '_>], statement: &Statement<'_>, tag: &VarTag) -> bool {
     match statement {
         Statement::Return(r) => match r.value.map(unparenthesize) {
@@ -324,10 +299,8 @@ fn allowed_unnamed(ancestors: &[Node<'_, '_>], statement: &Statement<'_>, tag: &
     }
 }
 
-/// `hasVariableName()`: a variable of that name anywhere in the node (`NodeNameResolver::isName`).
 fn has_variable(node: Node<'_, '_>, parent: Option<Node<'_, '_>>, name: &str) -> bool {
     if let Node::DirectVariable(v) = node {
-        // php-parser names a property declaration with an identifier, not a variable
         return !matches!(
             parent,
             Some(Node::PropertyAbstractItem(_) | Node::PropertyConcreteItem(_))
@@ -338,8 +311,6 @@ fn has_variable(node: Node<'_, '_>, parent: Option<Node<'_, '_>>, name: &str) ->
     found
 }
 
-/// The variables `extract()` and `static` define in the statements of `list` before `at` (and `static` at it), or
-/// `None` where the walk ends first: an `extract()` whose array is not constant, or `at` itself an `extract()` call.
 fn defined_before(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -381,14 +352,12 @@ fn defined_before(
     Some(defined)
 }
 
-/// `array_keys(ValueResolver::getValue($expr))` for a value whose type is a constant array, as strings.
 fn constant_array_keys(facts: &Facts, expr: &Expression<'_>) -> Option<Vec<String>> {
     let t = type_of(facts, expr)?;
     let [atomic] = &t.types[..] else { return None };
     constant_array(atomic)
 }
 
-/// `extractConstantArrayTypeValue()`'s keys: every value a constant, a constant array, or an object (whose key goes).
 fn constant_array(atomic: &TAtomic) -> Option<Vec<String>> {
     let items: Vec<(String, &TUnion)> = match atomic {
         TAtomic::Array(TArray::Keyed(k)) if k.parameters.is_none() => k
@@ -435,15 +404,12 @@ fn constant_array(atomic: &TAtomic) -> Option<Vec<String>> {
     Some(keys)
 }
 
-/// The span of the php-parser node whose `stmts` the list holder `ancestors` ends with is (`ClassMethod`, `If_`,
-/// `Else_`, `Case_`, a `{ }` block, ...); `None` for the file.
 fn holder_span(ancestors: &[Node<'_, '_>]) -> Option<pun_problem::Span> {
     let mut i = ancestors.len() - 1;
     loop {
         let node = ancestors[i];
         match node {
             Node::Program(_) => return None,
-            // a `{ }` statement in a list
             Node::Statement(Statement::Block(_)) if i > 0 && is_list_holder(ancestors[i - 1]) => {
                 return Some(node_span(&node));
             }
@@ -473,7 +439,6 @@ fn holder_span(ancestors: &[Node<'_, '_>]) -> Option<pun_problem::Span> {
     }
 }
 
-/// Whether `node` holds a list of statements directly.
 fn is_list_holder(node: Node<'_, '_>) -> bool {
     matches!(
         node,

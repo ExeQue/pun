@@ -1,22 +1,14 @@
-//! sebastian/diff 6.0.2 as PHP-CS-Fixer's UnifiedDiffer drives it: `Differ::diffToArray` (common prefix/suffix
-//! stripped, then the time- or memory-efficient LCS, then a greedy walk) rendered by `StrictUnifiedDiffOutputBuilder`
-//! (3 context lines, hunks split after 6 common lines). Which lines a diff pairs up depends on these exact
-//! algorithms, so a generic differ prints different (equally valid) hunks than Pint.
-
 const OLD: u8 = 0;
 const ADDED: u8 = 1;
 const REMOVED: u8 = 2;
 const DIFF_LINE_END_WARNING: u8 = 3;
 const NO_LINE_END_EOF_WARNING: u8 = 4;
 
-/// `--- {path}\n+++ {path}\n` and the hunks; empty when nothing changed.
 pub(crate) fn unified(old: &[u8], new: &[u8], path: &str) -> Vec<u8> {
     let diff = diff_to_array(split_lines(old), split_lines(new));
     get_diff(&format!("--- {path}\n+++ {path}\n"), diff)
 }
 
-/// `preg_split('/(.*\R)/', $s, -1, DELIM_CAPTURE | NO_EMPTY)`: `.` stops only at `\n`, so a line ends at the next
-/// `\n`; without one, the greedy `.*` backtracks to the last other `\R` byte (`\r`, `\v`, `\f`, `\x85`).
 fn split_lines(mut s: &[u8]) -> Vec<&[u8]> {
     let mut lines = vec![];
     while !s.is_empty() {
@@ -50,7 +42,6 @@ fn diff_to_array<'a>(mut from: Vec<&'a [u8]>, mut to: Vec<&'a [u8]>) -> Vec<(&'a
     let head: Vec<&[u8]> = from.drain(..start).collect();
     to.drain(..start);
 
-    // 144 bytes per matrix item on 64-bit PHP, against a 100 MiB budget.
     let common = if 144 * from.len().min(to.len()).pow(2) > 100 * 1024 * 1024 {
         lcs_memory_efficient(&from, &to)
     } else {
@@ -121,7 +112,6 @@ fn lcs_time_efficient<'a>(from: &[&'a [u8]], to: &[&'a [u8]]) -> Vec<&'a [u8]> {
 }
 
 fn lcs_memory_efficient<'a>(from: &[&'a [u8]], to: &[&'a [u8]]) -> Vec<&'a [u8]> {
-    // Never called with an empty `from`: the first call has min(len)^2 large, the halves of 2+ lines are non-empty.
     if from.len() == 1 {
         return if to.contains(&from[0]) {
             vec![from[0]]
@@ -199,8 +189,6 @@ fn unmatched_line_endings(diff: &[(&[u8], u8)]) -> bool {
     new.iter().any(|b| !old.contains(b)) || old.iter().any(|b| !new.contains(b))
 }
 
-/// Only called for changed files, so `diff` has an added or removed line and the output ends with a line break
-/// (a last line without one gets the "No newline" marker), which getDiff would otherwise append.
 fn get_diff(header: &str, mut diff: Vec<(&[u8], u8)>) -> Vec<u8> {
     let mut out = header.as_bytes().to_vec();
     write_diff_hunks(&mut out, &mut diff);
@@ -209,7 +197,7 @@ fn get_diff(header: &str, mut diff: Vec<(&[u8], u8)>) -> Vec<u8> {
 
 const NO_EOL: &[u8] = b"\n\\ No newline at end of file\n";
 const CONTEXT: usize = 3;
-const CUT_OFF: usize = 6; // max(commonLineThreshold 6, contextLines 3)
+const CUT_OFF: usize = 6;
 
 fn write_diff_hunks(out: &mut Vec<u8>, diff: &mut Vec<(&[u8], u8)>) {
     let upper = diff.len();
@@ -329,7 +317,6 @@ fn write_hunk(
 
 #[cfg(test)]
 mod tests {
-    // Expectations: PhpCsFixer\Differ\UnifiedDiffer::diff (php-cs-fixer v3.95.17) on the same strings.
     #[test]
     fn missing_final_newline_and_cr_lines() {
         let d = |a: &[u8], b: &[u8]| String::from_utf8(super::unified(a, b, "/f.php")).unwrap();

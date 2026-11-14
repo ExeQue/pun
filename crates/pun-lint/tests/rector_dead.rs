@@ -48,8 +48,6 @@ final class FacadeFixRounds
     private function unused(): void {}
 }
 ";
-    // Rector 2.8.4, PHP 8.4: RemoveUnusedPrivateMethodRector alone, then with
-    // HelperFuncCallToFacadeClassRector. Nested helpers force another fix round.
     let expected = "<?php
 
 final class FacadeFixRounds

@@ -1,10 +1,3 @@
-//! Runs PHP-CS-Fixer's own test cases (exported to crates/pun-fixers/tests/fixtures/<name>.json) against each ported fixer.
-//! `PUN_FIXERS_ONLY=name cargo test -p punphp-fixers --test fixtures -- --nocapture`
-//!
-//! Mirrors AbstractFixerTestCase::doTest: a fresh fixer per case, configured from the `configuration` arg
-//! (or a literal `configure([...])` / `$this->testFix($expected, $input, [...])` in the test body), whitespace
-//! config from the `whitespacesConfig` arg or a literal `new WhitespacesFixerConfig(...)` in the body;
-//! input must be a candidate and fix to expected (and mark tokens changed); expected must stay unchanged.
 extern crate punphp_fixers as pun_fixers;
 mod common;
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -18,7 +11,6 @@ fn fresh(name: &str) -> Box<dyn Fixer> {
         .unwrap()
 }
 
-/// Tiny PHP literal parser: strings, ints, bools, null, `[...]` / `array(...)` with optional keys.
 struct Lit<'a>(&'a [u8], usize);
 
 impl Lit<'_> {
@@ -116,13 +108,11 @@ impl Lit<'_> {
     }
 }
 
-/// The first PHP literal argument after `marker` in `body`, e.g. `configure(` -> `['a' => 1]`.
 fn literal_after(body: &str, marker: &str, skip_args: usize) -> Option<Value> {
     let at = body.find(marker)? + marker.len();
     let rest = &body.as_bytes()[at..];
     let mut lit = Lit(rest, 0);
     for _ in 0..skip_args {
-        // skip `$expected, ` style args
         while lit.1 < rest.len() && rest[lit.1] != b',' {
             lit.1 += 1;
         }
@@ -132,7 +122,6 @@ fn literal_after(body: &str, marker: &str, skip_args: usize) -> Option<Value> {
 }
 
 fn whitespaces_from_body(body: &str) -> Option<WhitespacesFixerConfig> {
-    // `setWhitespacesConfig(` may be followed by a line break before `new WhitespacesFixerConfig(`.
     let at = body.find("new WhitespacesFixerConfig(")? + "new WhitespacesFixerConfig(".len();
     let rest = &body.as_bytes()[at..];
     let mut lit = Lit(rest, 0);
@@ -178,7 +167,6 @@ fn upstream_fixtures() {
             if !method.starts_with("testFix") && method != "testWithWhitespacesConfig" {
                 continue;
             }
-            // #[RequiresPhp('< 8.0.0')] etc.: the oracle is PHP 8.5, so such cases never run upstream either.
             if test["requires_php"]
                 .as_str()
                 .is_some_and(|r| r.starts_with('<'))
@@ -195,8 +183,6 @@ fn upstream_fixtures() {
             let arg_index = |n: &[&str]| params.iter().position(|p| n.contains(p));
             for case in test["cases"].as_array().into_iter().flatten() {
                 let args = case["args"].as_array().cloned().unwrap_or_default();
-                // A case that omits a trailing argument gets the parameter's default (NoUselessConcatOperatorFixerTest's
-                // `array $configuration = ['juggle_simple_strings' => true]`).
                 let arg = |n: &[&str]| {
                     arg_index(n)
                         .and_then(|i| {
@@ -208,7 +194,6 @@ fn upstream_fixtures() {
                 };
                 let mut expected = arg(&["expected"]).as_str().unwrap_or("").to_string();
                 let mut input = arg(&["input"]).as_str().map(String::from);
-                // `$expected = str_replace("\n", $whitespacesConfig->getLineEnding(), $expected);` (and the same for input)
                 if let Some(eol) = arg(&["whitespacesConfig"])
                     .get("lineEnding")
                     .and_then(Value::as_str)
@@ -219,16 +204,12 @@ fn upstream_fixtures() {
                     expected = expected.replace('\n', eol);
                     input = input.map(|i| i.replace('\n', eol));
                 }
-                // `str_replace(['    ', "\n"], ["\t", "\r\n"], $expected)` (PhpUnitExpectationFixerTest): array
-                // replacements apply one after the other.
                 if body.contains(r#"str_replace(['    ', "\n"], ["\t", "\r\n"], $expected)"#) {
                     let tabs = |s: &str| s.replace("    ", "\t").replace('\n', "\r\n");
                     expected = tabs(&expected);
                     input = input.map(|i| tabs(&i));
                 }
                 let mut config = arg(&["configuration", "config"]);
-                // `if ([] === $configuration) { doTest($expected, $input); configure([...]); doTest($input, $expected); }`
-                // (EmptyLoopBodyFixerTest): the default first, then the literal configuration the other way round.
                 let mut runs = Vec::new();
                 if is_empty_config(&config)
                     && body.contains("if ([] === $configuration) {")
@@ -261,7 +242,6 @@ fn upstream_fixtures() {
                     };
                     let file = match arg(&["file"]) {
                         Value::Object(o) => PathBuf::from(o["pathname"].as_str().unwrap()),
-                        // `$file ?? new \SplFileInfo(__FILE__)`: the test class's own file.
                         _ if body.contains("new \\SplFileInfo(__FILE__)") => {
                             Path::new(env!("CARGO_MANIFEST_DIR"))
                                 .join("../../.oracle")

@@ -1,12 +1,3 @@
-//! `lint/phpunit/no-stub-with-expectations`, ported from rector-phpunit's `MockObjectArgCreateStubToCreateMockRector`
-//! (rules/PHPUnit110/Rector/ClassMethod).
-//!
-//! In a test class, the last top-level `$x = $any->createStub(...)` of each variable becomes `createMock()` when `$x`
-//! (by name, ASCII case-insensitively) is an argument of a method or static call in the method (not inside a closure
-//! or a nested function) whose parameter at that position, or of that name, is a `MockObject` (its type with the
-//! docblock read, as PHPStan's reflection gives it). The called method is found as `ReflectionResolver` finds it: on
-//! the one class of the receiver's type (`$this` is the class itself), or on each class of a static call's class.
-
 use mago_codex::metadata::parameter::FunctionLikeParameterMetadata;
 use mago_syntax::cst::{
     Argument, Call, ClassLikeMemberSelector, Expression, MethodBody, Node, NodeKind, Variable,
@@ -47,7 +38,6 @@ impl Rule for NoStubWithExpectations {
             return;
         }
         let list = block_list(ctx.source, block);
-        // `collectCreateStubAssigns`: the last `createStub()` call of each variable name
         let mut stubs: Vec<(&[u8], &ClassLikeMemberSelector<'_>)> = Vec::new();
         for statement in &list.stmts {
             let Some(assignment) = expression(statement).and_then(assign) else {
@@ -92,7 +82,6 @@ impl Rule for NoStubWithExpectations {
     }
 }
 
-/// `isPassedAsMockObjectArg`.
 fn is_passed_as_mock_object_arg(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -124,7 +113,6 @@ fn is_passed_as_mock_object_arg(
     found
 }
 
-/// `isMockObjectParam`: the parameter `arg` fills (by its name, or else by `index`) has a `MockObject` type.
 fn is_mock_object_param(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -162,8 +150,6 @@ fn is_mock_object_param(
     metadata.parameters.get(index).is_some_and(mock_object)
 }
 
-/// The classes `ReflectionResolver` looks a call's method up on, in order: the one class of the receiver's type
-/// (`$this` is the class itself), or each class of a static call's class.
 pub(super) fn called_classes(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],

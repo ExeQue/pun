@@ -1,9 +1,3 @@
-//! `lint/complexity/require-is-a-allow-string`, ported from Rector 2.8.4's `IsAWithStringWithThirdArgumentRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `is_a($class, ...)` on a class-name string is always false unless the third argument, `$allow_string`, is `true`.
-//! Rector asks PHPStan whether the first argument is a string; Pun asks the syntax (see `no_sole_value_sprintf`).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 

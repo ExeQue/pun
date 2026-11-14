@@ -1,18 +1,3 @@
-//! `lint/dead-code/no-unused-private-method-param`, ported from Rector 2.8.4's
-//! `RemoveUnusedPrivateMethodParameterRector` (rules/DeadCode/Rector/ClassMethod), with `UnusedParameterResolver`
-//! and `PrivateMethodParamRemover`.
-//!
-//! A private method's unused parameters go, with their `@param` tags and the matching arguments of the calls to it
-//! from the class (`$this->name()`, `self::name()`, `static::name()`). A call that unpacks its arguments, passes a
-//! named argument for a parameter that stays, or takes the method as a first-class callable keeps everything; a
-//! `self::name(...)` or `static::name(...)` callable is no caller (PHPStan 2.3 gives its class name no scope).
-//!
-//! Rector finds the callers by their type. Pun reads it from the syntax: `$this`, `self`, `static` and the class's
-//! own name are the class, `parent` and other class names are not. A call on another receiver (`$other->name()`) or
-//! a string naming the method (a callable) may reach the method too; Rector leaves such calls as they are, and so
-//! does Pun, but only removes parameters after the last kept one then, where the extra arguments PHP ignores do not
-//! shift the others.
-
 use crate::syntax::is_this;
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
@@ -79,7 +64,6 @@ impl Rule for NoUnusedPrivateMethodParam {
             let from = member_from(members, left_brace, index);
             edits.extend(remove_params(ctx, method, from, &removed));
             let edits = merge(edits);
-            // A caller inside the method itself, which is printed anew: leave both.
             if edits.windows(2).any(|w| w[0].span.end > w[1].span.start) {
                 continue;
             }
@@ -98,22 +82,15 @@ impl Rule for NoUnusedPrivateMethodParam {
 
 struct ClassScope<'p, 'a> {
     path: &'p [Node<'a, 'a>],
-    /// The class's fully qualified name; `None` for an anonymous class.
     this: Option<&'p str>,
 }
 
-/// A call or callable that names the method.
 enum Reference<'a> {
-    /// A call on the class, with its arguments.
     Caller(&'a ArgumentList<'a>),
-    /// A first-class callable on the class.
     Callable,
-    /// A call on a receiver of unknown type, with its arguments, or a string naming the method.
     Unknown(Option<&'a ArgumentList<'a>>),
 }
 
-/// `removeCallerArgs`: the edits removing the arguments of the callers, or `None` when a caller keeps the method as
-/// it is.
 fn caller_edits(
     class: &ClassScope<'_, '_>,
     members: &Sequence<'_, ClassLikeMember<'_>>,
@@ -145,7 +122,6 @@ fn caller_edits(
                 if !trailing {
                     return None;
                 }
-                // A named argument for a parameter that goes would be an error there.
                 let named = arguments.iter().flat_map(|a| a.arguments.iter()).any(|a| {
                     matches!(a, Argument::Named(n) if params.iter().zip(removed).any(|(p, r)| *r && p.variable.name[1..] == *n.name.value))
                 });
@@ -171,7 +147,6 @@ fn caller_edits(
                 let items: Vec<Span> = args.iter().map(|a| node_span(*a)).collect();
                 match list_removal(&items, &drop) {
                     Some(list) => edits.extend(list),
-                    // php-parser prints the call anew; its object and name keep their code.
                     None => edits.push(Edit::new(node_span(*arguments), "()".to_string())),
                 }
             }
@@ -180,7 +155,6 @@ fn caller_edits(
     Some(edits)
 }
 
-/// The calls, first-class callables and strings in `node` that may reach the method `name`, outside nested classes.
 fn find_references<'a>(
     class: &ClassScope<'_, '_>,
     node: Node<'a, 'a>,
@@ -191,7 +165,6 @@ fn find_references<'a>(
         ClassLikeMemberSelector::Identifier(id) => Some(id.value.eq_ignore_ascii_case(name)),
         _ => None,
     };
-    // A class-like can't be declared inside a method, so only an anonymous class nests one.
     match node {
         Node::AnonymousClass(c) => {
             if let Some(args) = &c.argument_list {
@@ -221,8 +194,6 @@ fn find_references<'a>(
         }
         Node::StaticMethodPartialApplication(call) if named(&call.method) != Some(false) => {
             match receiver(class, call.class) {
-                // PHPStan 2.3 gives the `self`/`static` of `self::name(...)` no scope (only the virtual
-                // `StaticMethodCallableNode` gets one), so `isObjectType()` fails and Rector finds no caller there.
                 _ if matches!(call.class, Expression::Self_(_) | Expression::Static(_)) => {}
                 Some(false) => {}
                 Some(true) => out.push(Reference::Callable),
@@ -237,7 +208,6 @@ fn find_references<'a>(
     node.visit_children(|child| find_references(class, child, name, out));
 }
 
-/// Whether the class part of a static call is the class (`Some(true)`), another class (`Some(false)`) or unknown.
 fn receiver(class: &ClassScope<'_, '_>, expr: &Expression<'_>) -> Option<bool> {
     match expr {
         Expression::Self_(_) | Expression::Static(_) => Some(true),

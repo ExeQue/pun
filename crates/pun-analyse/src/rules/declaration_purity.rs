@@ -1,9 +1,3 @@
-//! FunctionPurityCheck, for PureFunctionRule, PureMethodRule and PurePropertyHookRule (level 2): a `@phpstan-pure`
-//! declaration's impure points and its by-ref parameters or void return, an `@phpstan-impure` one without side
-//! effects, the `@pure-unless-*` tags, and an unspecified declaration's `void.pure`.
-//! The unspecified `void.pure` branch keeps its conservative producer (declaration_effects); the others use the
-//! impure points of purity_points.
-
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -13,7 +7,6 @@ use super::{
     Checker, assert_tags, declaration_effects as effects, declarations, declared, missing_types,
 };
 
-/// The identifiers FunctionPurityCheck reports (with `void.pure`).
 pub(super) const IDENTIFIERS: &[&str] = &[
     "impure.betweenPhpTags",
     "impure.die",
@@ -76,25 +69,19 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "void.pure",
 ];
 
-/// What FunctionPurityCheck::check() reads off a declaration's reflection.
 struct Declaration<'x> {
     span: Span,
     description: String,
-    /// `Function`, `Method` or `PropertyHook`
     kind: &'static str,
-    /// the parameters: name (without `$`), optional, by reference
     params: Vec<(String, bool, bool)>,
-    /// the `@param` types (without `$`), for the pure-unless-callable parameters
     param_types: Vec<(String, pun_phpstan::types::Type)>,
     pure: Option<bool>,
     unless_callable: Vec<String>,
     unless_passed: Vec<String>,
     void: bool,
-    /// getThrowType() is null or void
     throws_void: bool,
     asserts: bool,
     constructor: bool,
-    /// a method: final (by modifier or PHPDoc), of a final class
     method: Option<bool>,
     raw: &'x [u8],
 }
@@ -112,7 +99,6 @@ fn params(list: Option<&FunctionLikeParameterList>) -> Vec<(String, bool, bool)>
         .collect()
 }
 
-/// `@throws` tags other than `void` (`getThrowType()` not null and not void).
 fn throws_non_void(raw: &[u8]) -> bool {
     let tags = super::doc::tags(raw);
     let kind = if tags.iter().any(|(name, _)| name == "@phpstan-throws") {
@@ -246,7 +232,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
     check(c, &d, points);
 }
 
-/// PurePropertyHookRule: the hooks of a property with a body.
 pub(super) fn hooks(c: &mut Checker, property: &[u8], list: &PropertyHookList) {
     if c.level < 2 || c.trait_context.is_some() {
         return;
@@ -280,7 +265,7 @@ pub(super) fn hooks(c: &mut Checker, property: &[u8], list: &PropertyHookList) {
             ],
         );
         if pure.is_none() && unless_callable.is_empty() && unless_passed.is_empty() {
-            continue; // an unspecified hook is not private: no void.pure
+            continue;
         }
         let set = h.name.value.eq_ignore_ascii_case(b"set");
         let mut hook_params = params(h.parameter_list.as_ref());
@@ -324,7 +309,6 @@ pub(super) fn hooks(c: &mut Checker, property: &[u8], list: &PropertyHookList) {
     }
 }
 
-/// FunctionPurityCheck::check() of a declaration with a purity or a pure-unless tag.
 fn check(c: &mut Checker, d: &Declaration, points: Points) {
     let lower = lcfirst(&d.description);
     for (name, _, _) in &d.params {
@@ -334,7 +318,6 @@ fn check(c: &mut Checker, d: &Declaration, points: Points) {
         let Some((_, ty)) = d.param_types.iter().find(|(n, _)| n == name) else {
             continue;
         };
-        // the acceptors of a pure-callable are all pure
         if matches!(
             ty,
             pun_phpstan::types::Type::Callable(_) | pun_phpstan::types::Type::Closure(_)
@@ -422,7 +405,6 @@ fn check(c: &mut Checker, d: &Declaration, points: Points) {
     }
 }
 
-/// FunctionPurityCheck::reportImpurePoints(), without the invocations of the pure-unless-callable parameters.
 fn report_points(c: &mut Checker, points: &Points, unless_callable: &[String], lower: &str) {
     for p in &points.points {
         if p.invoked
@@ -469,12 +451,10 @@ fn lcfirst(s: &str) -> String {
     }
 }
 
-/// The unspecified-function `void.pure` branch.
 fn void_pure_function(c: &mut Checker, f: &Function, phpdoc: &[pun_phpstan::phpdoc::Tag]) {
     if !assert_tags::parameters(phpdoc).is_empty() {
         return;
     }
-    // PhpDocsResolver also applies the enclosing class's policy to a named function declared in a method.
     if let Some(class) = c.class_scope() {
         let raw = declared::doc_at(c, class.span)
             .map(|(raw, _, _)| raw)
@@ -500,7 +480,6 @@ fn void_pure_function(c: &mut Checker, f: &Function, phpdoc: &[pun_phpstan::phpd
     );
 }
 
-/// The unspecified-method `void.pure` branch (private, not a constructor).
 fn void_pure_method(c: &mut Checker, m: &Method, body: &Block) {
     if !m.modifiers.contains_private() || m.name.value.eq_ignore_ascii_case(b"__construct") {
         return;
@@ -511,7 +490,6 @@ fn void_pure_method(c: &mut Checker, m: &Method, body: &Block) {
     let Some(declaring) = missing_types::declaring(c, m.span()) else {
         return;
     };
-    // Inherited conditional-parameter maps and trait adaptations need complete reflection metadata.
     if declaring.kind == SymbolKind::Trait
         || !context.used_traits.is_empty()
         || context.direct_parent_class.is_some()
@@ -535,7 +513,6 @@ fn void_pure(
     span: Span,
     description: &str,
 ) {
-    // User declarations' `&` parameters use PassedByReference::createCreatesNewVariable(), including variadics.
     if params.parameters.iter().any(|p| p.ampersand.is_some()) {
         return;
     }

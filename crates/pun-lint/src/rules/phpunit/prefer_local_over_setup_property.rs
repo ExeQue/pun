@@ -1,14 +1,3 @@
-//! `lint/phpunit/prefer-local-over-setup-property`, ported from rector-phpunit's
-//! `NarrowUnusedSetUpDefinedPropertyRector` (rules/CodeQuality/Rector/Class_).
-//!
-//! In a test class with a `setUp()` method, a property declared alone, private (or in a final class), not static and
-//! without a default, that no other method fetches as `$this->name`, becomes a local variable of `setUp()`: the
-//! property goes and each `$this->name` in `setUp()` becomes `$name`. Not when a closure in `setUp()` fetches it, or
-//! an arrow function does before an assignment to it has ended, or a used trait declares or fetches it.
-//!
-//! Rector reads the traits from their files; Pun reads the traits of the same file, and keeps every property of a
-//! class that uses a trait from another file (tests/rector/NarrowUnusedSetUpDefinedPropertyRector/Pun).
-
 use crate::syntax::is_this;
 use mago_syntax::cst::{
     Access, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, Modifier, Node, NodeKind,
@@ -76,7 +65,6 @@ impl Rule for PreferLocalOverSetupProperty {
             }
             let item = items[0];
             let name = &item.variable().name[1..];
-            // shouldSkipProperty: possibly used by child, for caching or re-use, or by a trait
             if !is_final && !modifiers.iter().any(|m| matches!(m, Modifier::Private(_))) {
                 continue;
             }
@@ -91,7 +79,6 @@ impl Rule for PreferLocalOverSetupProperty {
             if traits.iter().any(|t| trait_uses(*t, name)) {
                 continue;
             }
-            // isPropertyUsedOutsideSetUpClassMethod
             if methods
                 .iter()
                 .any(|m| !std::ptr::eq(*m, set_up) && !fetches(Node::Method(m), name).is_empty())
@@ -102,7 +89,6 @@ impl Rule for PreferLocalOverSetupProperty {
                 continue;
             }
             removed[at] = true;
-            // change property to variable in setUp() method
             let variable = format!("${}", String::from_utf8_lossy(name));
             for span in fetches(Node::Method(set_up), name) {
                 edits.push(Edit::new(span, variable.clone()));
@@ -121,7 +107,6 @@ impl Rule for PreferLocalOverSetupProperty {
     }
 }
 
-/// The spans of the `$this->name` fetches under `node`, however deep (an inner one is listed too).
 fn fetches(node: Node<'_, '_>, name: &[u8]) -> Vec<pun_problem::Span> {
     let mut found = Vec::new();
     let mut stack = vec![node];
@@ -137,7 +122,6 @@ fn fetches(node: Node<'_, '_>, name: &[u8]) -> Vec<pun_problem::Span> {
     found
 }
 
-/// `isPropertyUsedInUnsafeNestedFunction()`.
 fn is_used_in_unsafe_nested_function(set_up: &Method<'_>, name: &[u8]) -> bool {
     let assigned_ends: Vec<usize> = {
         let mut ends = Vec::new();
@@ -177,8 +161,6 @@ fn is_used_in_unsafe_nested_function(set_up: &Method<'_>, name: &[u8]) -> bool {
     false
 }
 
-/// `PropertyFetchAnalyzer::containsLocalPropertyFetchName()` on a trait: it declares the property, or fetches it on
-/// `$this` (`->`; PHPStan has no type for `$this?->` there) or on `self` or `static` (`::$`).
 fn trait_uses(declared: Node<'_, '_>, name: &[u8]) -> bool {
     let mut stack = vec![declared];
     while let Some(node) = stack.pop() {

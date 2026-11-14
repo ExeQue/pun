@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 receiver-local mutation and independent receiver controls.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,9 +1,3 @@
-//! `lint/types/add-param-type-arrow-dim-fetch`, ported from Rector 2.8.4's `AddArrowFunctionParamArrayWhereDimFetchRector`
-//! (rules/TypeDeclaration/Rector/FuncCall): in a call of `array_walk()`, `array_map()`, `usort()` or
-//! `array_filter()` with two arguments, an untyped parameter of the closure or arrow function that its body reads
-//! with a key (`$item['key']`) gets the `array` type, unless the body checks it with `is_array()` or `instanceof`,
-//! its native type is a string, or the array holds objects.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Argument, BinaryOperator, Expression, Node, NodeKind, Variable};
 use pun_problem::Safety;
@@ -16,7 +10,6 @@ use crate::rules::rector_code_quality::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::SCALAR_TYPES`.
 const SCALAR_TYPES: u32 = 70000;
 
 pub struct AddParamTypeArrowDimFetch;
@@ -60,7 +53,6 @@ impl Rule for AddParamTypeArrowDimFetch {
             _ => return,
         };
         let facts = facts(ctx);
-        // resolveIsArrayVariables, resolveInstanceofVariables and resolveDimFetchVariableNames
         let mut skipped: Vec<Vec<u8>> = Vec::new();
         let mut fetched: Vec<Vec<u8>> = Vec::new();
         let mut look = |n: Node<'_, '_>| {

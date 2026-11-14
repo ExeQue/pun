@@ -1,5 +1,3 @@
-//! Source-owned selection, unpacked name policy and constant identity through public Project execution.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

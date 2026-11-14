@@ -1,5 +1,3 @@
-//! A token's content: its bytes inline when they fit in 22, else on the heap. Same 24 bytes as a `Vec<u8>`, but most
-//! tokens (whitespace, names, operators) need no allocation to build, clone or drop.
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -119,8 +117,6 @@ impl From<String> for Content {
 mod tests {
     use super::*;
 
-    // 22 bytes stay inline, 23 go to the heap; both read back the same bytes, and equality and hashing ignore where
-    // the bytes live (a heap-built short content equals an inline one).
     #[test]
     fn inline_up_to_22_bytes() {
         assert_eq!(std::mem::size_of::<Content>(), 24);

@@ -1,12 +1,3 @@
-//! `lint/complexity/no-phpdoc-class-case-mismatch`, ported from Rector 2.8.4's `FixClassCaseSensitivityVarDocblockRector`
-//! (rules/CodeQuality/Rector/Property).
-//!
-//! A `@var` tag of a property or an expression statement whose type is one class name written in another case than
-//! the class's own (`@var AutomailingService` for `AutoMailingService`) gets the class's case. The name is looked up as
-//! Rector does: a fully qualified one as it is, else through a `use` import without alias whose last part is the
-//! name's first (none in a file of several namespaces), then in the namespace, then in the global one. Only a difference of case changes: the written parts
-//! keep their number and a leading `\`.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Statement};
 use mago_syntax::token::TokenKind;
 use pun_problem::{Edit, Fix, Safety, Span};
@@ -50,7 +41,6 @@ impl Rule for NoPhpdocClassCaseMismatch {
             .map(|a| node_span(a).start)
             .find(|start| *start < span.start)
             .unwrap_or(0);
-        // php-parser's `getDocComment`: the last doc comment before the node
         let Some(doc) = tokens(
             source,
             previous_token_end(ctx, from, span.start),
@@ -68,7 +58,6 @@ impl Rule for NoPhpdocClassCaseMismatch {
         let facts = facts(ctx);
         let mut edits = Vec::new();
         for (at, _) in text.match_indices("@var") {
-            // a tag starts its line (a `@var` further on is description)
             let line = &text[text[..at].rfind('\n').map_or(0, |i| i + 1)..at];
             let rest = &text[at + 4..];
             if !line.trim_start_matches([' ', '\t', '*', '/']).is_empty()
@@ -82,7 +71,6 @@ impl Rule for NoPhpdocClassCaseMismatch {
                 .find(|c: char| c.is_whitespace() || c == '*')
                 .unwrap_or(rest.len());
             let written = &rest[..end];
-            // an `IdentifierTypeNode` only: a name and nothing else
             if !is_name(written)
                 || rest[end..].starts_with(|c: char| !c.is_whitespace() && c != '*')
             {
@@ -108,7 +96,6 @@ impl Rule for NoPhpdocClassCaseMismatch {
     }
 }
 
-/// `correctClassNameCasing`: the name in the class's case, when only the case differs.
 fn corrected(facts: &Facts, ancestors: &[Node<'_, '_>], written: &str) -> Option<String> {
     let existing = existing_class_name(facts, ancestors, written)?;
     let real = facts
@@ -134,7 +121,6 @@ fn corrected(facts: &Facts, ancestors: &[Node<'_, '_>], written: &str) -> Option
     (corrected != written).then_some(corrected)
 }
 
-/// `resolveExistingClassName`.
 fn existing_class_name(facts: &Facts, ancestors: &[Node<'_, '_>], written: &str) -> Option<String> {
     let has = |name: &str| facts.codebase.get_class_like(name.as_bytes()).is_some();
     let bare = written.trim_start_matches('\\');
@@ -143,8 +129,6 @@ fn existing_class_name(facts: &Facts, ancestors: &[Node<'_, '_>], written: &str)
     }
     let parts: Vec<&str> = bare.split('\\').collect();
     let (namespace, mut imports) = class_imports(ancestors);
-    // `FileNode::getUsesAndGroupUses()`: the file's own statements unless it has exactly one namespace, so a file of
-    // several namespaces has no imports for this lookup
     if let Some(Node::Program(p)) = ancestors.first()
         && (p.statements.iter())
             .filter(|s| matches!(s, Statement::Namespace(_)))

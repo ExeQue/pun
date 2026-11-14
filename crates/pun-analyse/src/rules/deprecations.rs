@@ -1,9 +1,3 @@
-//! phpstan-deprecation-rules (rules.neon, on when the config sets `deprecationRulesInstalled`): the
-//! RestrictedDeprecated*UsageExtension classes the restricted-usage rules run, DeprecatedScopeHelper with
-//! DefaultDeprecatedScopeResolver, FetchingDeprecatedConstRule and CallWithDeprecatedIniOptionRule (bleedingEdge).
-//! A symbol is deprecated by its `@deprecated` tag (methods, properties and class constants inherit it through
-//! PhpDocInheritanceResolver); built-in functions and methods by PHPStan's reflection, without a description.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -15,17 +9,13 @@ use mago_word::word;
 use super::Checker;
 use super::members::Method;
 
-/// A `@deprecated` tag: `Some(description)` (phpdoc-parser's DeprecatedTagValueNode, `None` when empty).
 pub(super) type Deprecation = Option<String>;
 
-/// What a PHPDoc says: `None` without one (`getResolvedPhpDoc()` is null), else its `@deprecated` and whether it has
-/// `@not-deprecated`.
 struct Resolved {
     deprecated: Option<Deprecation>,
     not_deprecated: bool,
 }
 
-/// The lines of a PHPDoc's body, after the leading `*` and the one space after it.
 fn lines(doc: &[u8]) -> Vec<String> {
     let body = doc.strip_prefix(b"/**").unwrap_or(doc);
     let body = body.strip_suffix(b"*/").unwrap_or(body);
@@ -53,7 +43,6 @@ fn tag_name(line: &str) -> Option<&str> {
     Some(&rest[..len])
 }
 
-/// PhpDocNodeResolver::resolveDeprecatedTag() and resolveIsNotDeprecated() of a PHPDoc.
 fn resolve(doc: &[u8]) -> Resolved {
     let lines = lines(doc);
     let not_deprecated = lines.iter().any(|l| tag_name(l) == Some("not-deprecated"));
@@ -77,13 +66,11 @@ fn resolve(doc: &[u8]) -> Resolved {
 }
 
 impl Checker<'_, '_> {
-    /// The PHPDoc right before `span` in its file.
     fn doc_of(&self, span: Span) -> Option<Resolved> {
         self.php_doc_comment(span.file_id, span.start.offset)
             .map(resolve)
     }
 
-    /// The PHPDoc of the constant declared at `span` (an item of a `const` statement, or a `define()` call).
     fn constant_doc(&self, span: Span) -> Option<Resolved> {
         let starts = &self.file_facts(span.file_id)?.declarations.starts;
         let start = starts
@@ -93,12 +80,10 @@ impl Checker<'_, '_> {
         self.php_doc_comment(span.file_id, start).map(resolve)
     }
 
-    /// `ClassReflection::isDeprecated()` and `getDeprecatedDescription()` (the class's own PHPDoc).
     pub(super) fn class_deprecation(&self, k: &ClassLikeMetadata) -> Option<Deprecation> {
         self.doc_of(k.span)?.deprecated
     }
 
-    /// A method's merged `@deprecated` (PhpDocInheritanceResolver::resolvePhpDocForMethod()).
     pub(super) fn method_deprecation(&self, m: &Method) -> Option<Deprecation> {
         match m {
             Method::User { declaring, f, .. } => self.resolved_method(declaring, f, 0)?.deprecated,
@@ -122,7 +107,6 @@ impl Checker<'_, '_> {
         }
         let name = f.original_name.as_bytes();
         let get = |n: &mago_word::Word| self.codebase.get_class_like(n.as_bytes());
-        // an ancestor's method: a user one's merged PHPDoc, a built-in's deprecation
         let inherited = |m: Method| match m {
             Method::User { declaring, f, .. } => self.resolved_method(declaring, f, depth + 1),
             Method::Builtin { f, .. } => Some(Resolved {
@@ -163,7 +147,6 @@ impl Checker<'_, '_> {
         merge(own, parent.or_else(interfaces).or_else(traits))
     }
 
-    /// A property's merged `@deprecated` (resolvePhpDocForProperty()): `declaring` declares it.
     pub(super) fn property_deprecation(
         &self,
         declaring: &ClassLikeMetadata,
@@ -202,7 +185,6 @@ impl Checker<'_, '_> {
         merge(own, inherited)
     }
 
-    /// A class constant's merged `@deprecated` (resolveConstantPhpDocFromParentClass()).
     pub(super) fn constant_deprecation(
         &self,
         declaring: &ClassLikeMetadata,
@@ -246,12 +228,10 @@ impl Checker<'_, '_> {
         merge(own, inherited)
     }
 
-    /// `FunctionReflection::isDeprecated()` of a user function (its own PHPDoc).
     pub(super) fn function_deprecation(&self, f: &FunctionLikeMetadata) -> Option<Deprecation> {
         self.doc_of(f.span)?.deprecated
     }
 
-    /// DeprecatedScopeHelper::isScopeDeprecated() with DefaultDeprecatedScopeResolver.
     pub(super) fn scope_deprecated(&self) -> bool {
         self.class_scope()
             .is_some_and(|k| self.class_deprecation(k).is_some())
@@ -262,7 +242,6 @@ impl Checker<'_, '_> {
             || self.functions.last().is_some_and(|f| f.deprecated)
     }
 
-    /// Whether the function or method being entered is deprecated (`getFunction()->isDeprecated()`).
     pub(super) fn entered_deprecated(&self, name: &str, method: bool, span: Span) -> bool {
         if !self.on(crate::rules::Switches::DEPRECATIONS) {
             return false;
@@ -276,7 +255,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// ResolvedPhpDocBlock::merge()'s mergeDeprecatedTags(): `own`, else `parent`'s.
 fn merge(own: Option<Resolved>, parent: Option<Resolved>) -> Option<Resolved> {
     let Some(parent) = parent else {
         return own;
@@ -295,7 +273,6 @@ fn merge(own: Option<Resolved>, parent: Option<Resolved>) -> Option<Resolved> {
     })
 }
 
-/// `getClassTypeDescription()`.
 pub(super) fn type_description(k: &ClassLikeMetadata) -> &'static str {
     match k.kind {
         SymbolKind::Interface => "Interface",
@@ -316,7 +293,6 @@ fn with(message: String, description: &Deprecation) -> String {
     }
 }
 
-/// RestrictedDeprecatedFunctionUsageExtension.
 pub(super) fn function(
     c: &Checker,
     name: &str,
@@ -335,7 +311,6 @@ pub(super) fn function(
     ))
 }
 
-/// RestrictedDeprecatedMethodUsageExtension, `declaring` standing in for the method's declaring class when given.
 pub(super) fn method(
     c: &Checker,
     m: &Method,
@@ -396,8 +371,6 @@ fn builtin_description(b: &pun_phpstan::symbols::Class) -> &'static str {
     .unwrap_or("Class")
 }
 
-/// RestrictedDeprecatedPropertyUsageExtension: property `$name` that `declaring` declares (`owner` standing in for
-/// it when given).
 pub(super) fn property(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -433,7 +406,6 @@ pub(super) fn property(
     Some((with(message, &d), format!("{kind}.deprecated")))
 }
 
-/// RestrictedDeprecatedClassConstantUsageExtension: constant `constant` that `declaring` declares.
 pub(super) fn class_constant(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -464,9 +436,6 @@ pub(super) fn class_constant(
     Some((with(message, &d), "classConstant.deprecated".to_string()))
 }
 
-/// The global constants PHPStan's stubs deprecate: name, the PHP version from which, and the message
-/// (`getDeprecatedDescription() ?? 'Use of constant %s is deprecated.'`, through sprintf). From the oracle's run of
-/// FetchingDeprecatedConstRule on every built-in constant at each `phpVersion`.
 const BUILTIN_CONSTANTS: &[(&str, u32, Option<&str>)] = &[
     ("CURLOPT_BINARYTRANSFER", 0, None),
     (
@@ -514,13 +483,10 @@ const BUILTIN_CONSTANTS: &[(&str, u32, Option<&str>)] = &[
     ("DATE_RFC7231", 80500, None),
 ];
 
-/// FetchingDeprecatedConstRule.
 pub(super) fn constant_fetch(c: &mut Checker, at: Span, id: &Identifier) {
     if !c.on(crate::rules::Switches::DEPRECATIONS) || c.scope_deprecated() {
         return;
     }
-    // ponytail: a branch that a `PHP_VERSION_ID` guard rules out for the configured version is dead to PHPStan (not
-    // analysed); only this rule skips it
     let version = i64::from(c.php_version);
     if super::scope::version_range(&c.guards)
         .is_some_and(|(lo, hi)| lo.is_some_and(|l| version < l) || hi.is_some_and(|h| version > h))
@@ -539,7 +505,6 @@ pub(super) fn constant_fetch(c: &mut Checker, at: Span, id: &Identifier) {
     }
     .filter(|(k, _)| k.flags.is_user_defined());
     let message = if let Some((k, name)) = user {
-        // a `const` statement's PHPDoc (a define()d constant has none)
         let statement = c
             .file_facts(k.span.file_id)
             .is_some_and(|facts| facts.declarations.starts.contains_key(&k.span.start.offset));
@@ -549,7 +514,6 @@ pub(super) fn constant_fetch(c: &mut Checker, at: Span, id: &Identifier) {
         let Some(Some(d)) = c.constant_doc(k.span).map(|r| r.deprecated) else {
             return;
         };
-        // ponytail: the name as the fetch resolves it, where PHPStan prints the declared one (they differ in case only)
         let name = String::from_utf8_lossy(name).into_owned();
         php_sprintf(
             d.as_deref().unwrap_or("Use of constant %s is deprecated."),
@@ -569,12 +533,10 @@ pub(super) fn constant_fetch(c: &mut Checker, at: Span, id: &Identifier) {
     c.report(at, "constant.deprecated", message, None);
 }
 
-/// `sprintf($format, $name)` for a format with at most one `%s`.
 fn php_sprintf(format: &str, name: &str) -> String {
     format.replacen("%s", name, 1).replace("%%", "%")
 }
 
-/// CallWithDeprecatedIniOptionRule's DEPRECATED_OPTIONS.
 const DEPRECATED_OPTIONS: &[(&str, u32)] = &[
     ("mbstring.http_input", 0),
     ("mbstring.http_output", 0),
@@ -598,8 +560,6 @@ const DEPRECATED_OPTIONS: &[(&str, u32)] = &[
     ("session.sid_bits_per_character", 80400),
 ];
 
-/// CallWithDeprecatedIniOptionRule (registered with bleedingEdge): an ini function called with a deprecated option
-/// given as a string literal.
 pub(super) fn ini_option(c: &mut Checker, call: &FunctionCall) {
     if !c.on(crate::rules::Switches::DEPRECATIONS)
         || !c.on(crate::rules::Switches::BLEEDING_EDGE)
@@ -625,7 +585,6 @@ pub(super) fn ini_option(c: &mut Checker, call: &FunctionCall) {
     let Some(first) = call.argument_list.arguments.first() else {
         return;
     };
-    // ponytail: a literal string only, where PHPStan takes any constant string type of the argument
     let Expression::Literal(Literal::String(LiteralString {
         value: Some(value), ..
     })) = first.value()

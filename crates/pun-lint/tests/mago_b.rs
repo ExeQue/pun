@@ -1,11 +1,3 @@
-//! Mago's own examples and test snippets for the rules of the second Mago batch, ported from Mago 1.57.0's linter
-//! (copied from mago-linter's rule files into tests/mago/<group>-<name>/Mago), and Pun's own inputs (Own/). Each
-//! `<case>.expect` is what Mago 1.57.0 (`mago --php-version 8.4 lint --only <code> --reporting-format json`)
-//! reported for the input: one line per issue, `start end message` of its primary annotation, sorted by start. A
-//! `<case>.json` holds the rule's options, as both Mago's `[linter.rules]` and pun.toml take them; a
-//! `<case>.filename` the name Mago saw the file under. Pun/ holds cases where Pun knowingly differs from Mago, with
-//! the expectation derived by hand (each rule's module docs say why).
-
 use std::path::{Path, PathBuf};
 
 use mago_syntax::cst::Node;
@@ -29,7 +21,6 @@ fn cases(dir: &str) -> Vec<PathBuf> {
     paths
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -52,8 +43,6 @@ impl Rule for Everywhere {
     }
 }
 
-/// Runs every case of `dir` through the rule `id`, configured with the case's options. `targets()` only spares the
-/// engine work, so the rule also runs on every node and must report the same.
 fn run(id: &str, dir: &str) {
     for path in cases(dir) {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
@@ -93,7 +82,6 @@ fn run(id: &str, dir: &str) {
     }
 }
 
-/// Each option is checked for its type, and an unknown one is refused.
 fn rejects(id: &str, bad: &[serde_json::Value]) {
     for options in bad {
         let mut rule = rules::all().into_iter().find(|r| r.id() == id).unwrap();

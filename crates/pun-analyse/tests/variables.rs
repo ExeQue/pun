@@ -1,8 +1,3 @@
-//! DefinedVariableRule and CompactVariablesRule through the public analyser. The expectations are PHPStan
-//! 2.3.1's exported level-0 diagnostics, not Mago's native undefined-variable issues.
-//! The custom oracle runs use PHP's `-d phpstan.restarted=1 -d register_argc_argv=0|1` and PHPStan's `--debug`:
-//! the turbo restart otherwise drops the INI setting that supplies cliArgumentsVariablesRegistered.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -495,8 +490,6 @@ fn engine_exception_reporting_preserves_certainty_and_switch_errors_propagate() 
         }
     }
 
-    // PHPStan 2.3.1 reports only "Undefined variable: $after" in the catch. Enabling Mago's
-    // separate exception diagnostics must not change that scope or invent a pre-call assignment.
     const THROWS: &str = "<?php
 /** @throws RuntimeException */
 function documented(): void {}
@@ -554,10 +547,7 @@ function transfer(bool $flag, bool $other, string $input): void {
     for (source, check_throws, threshold, expected) in [
         (THROWS, false, 200, Some([(true, false), (false, true)])),
         (THROWS, true, 200, Some([(true, false), (false, true)])),
-        // Exhausting the condition algebra budget cannot discard the continuing implicit else edge.
         (BRANCH, false, 0, Some([(false, false), (true, false)])),
-        // Fresh PHPStan 2.3.1 reads: &&'s true edge and ||'s false edge ran the output
-        // argument; the opposite edge and the post-expression join may have skipped it.
         (
             BOOLEAN_AND,
             false,

@@ -1,10 +1,3 @@
-//! The `laravel` group: rules ported from rector-laravel 2.7.3 (driftingly/rector-laravel, src/Rector/...), each in
-//! its own file, and what they share.
-//!
-//! rector-laravel builds new nodes with Rector's `NodeFactory` and prints them with php-parser's printer: a new call is
-//! pretty-printed (`name(arg, arg)`), a class it names is fully qualified (`\Illuminate\Support\Env`), and the nodes it
-//! keeps from the old code keep their own text. The rules here write the same text.
-
 mod add_factory_extends_phpdoc;
 mod add_has_factory_trait;
 mod add_query_closure_type;
@@ -145,7 +138,6 @@ use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 use names::resolve_class_name;
 
-/// The group's rules, in a fixed order.
 pub(crate) fn all() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(NoNegatedBlankFilled),
@@ -161,8 +153,6 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
         Box::new(PreferAbortIf),
         Box::new(PreferReportIf),
         Box::new(PreferThrowIf),
-        // Before PreferFacadeOverApp, which also rewrites the `resolve()` this writes: Rector's sorted rule list runs
-        // AppToResolveRector first, so both report `app(X)`.
         Box::new(PreferResolveHelper),
         Box::new(PreferFacadeOverApp),
         Box::new(NoRequestAll),
@@ -237,12 +227,10 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
     ]
 }
 
-/// `NodeNameResolver::isName` on an identifier (a method name): ASCII case-insensitive.
 pub(crate) fn is_name(name: &[u8], wanted: &str) -> bool {
     name.eq_ignore_ascii_case(wanted.as_bytes())
 }
 
-/// The name of a method call written as a plain identifier (`->name(...)`), not `->$name(...)` or `->{...}(...)`.
 pub(crate) fn member_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&'a [u8]> {
     match selector {
         ClassLikeMemberSelector::Identifier(id) => Some(id.value),
@@ -250,8 +238,6 @@ pub(crate) fn member_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<
     }
 }
 
-/// The fully qualified class name (without the leading `\`) of a static call's or `new`'s class written as a name;
-/// `self`, `static`, `parent` and expressions have none.
 pub(crate) fn class_name(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> Option<String> {
     match expr {
         Expression::Identifier(id) => Some(resolve_class_name(ancestors, id)),
@@ -259,13 +245,10 @@ pub(crate) fn class_name(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> O
     }
 }
 
-/// Whether the expression is the variable `$name` (`name` without the `$`).
 pub(crate) fn is_variable(expr: &Expression<'_>, name: &str) -> bool {
     matches!(unparenthesize(expr), Expression::Variable(Variable::Direct(v)) if &v.name[1..] == name.as_bytes())
 }
 
-/// The text of each argument, as php-parser's printer keeps an argument node: the source from its name or `...` to the
-/// end of its value.
 pub(crate) fn argument_texts<'s>(ctx: &Context<'s>, list: &ArgumentList<'_>) -> Vec<&'s str> {
     list.arguments
         .iter()
@@ -276,8 +259,6 @@ pub(crate) fn argument_texts<'s>(ctx: &Context<'s>, list: &ArgumentList<'_>) -> 
         .collect()
 }
 
-/// `CallLike::getArg($name, $position)`: the argument named `name`, or the unnamed one at `position`; unpacked
-/// arguments are skipped.
 pub(crate) fn get_arg<'a>(
     list: &'a ArgumentList<'a>,
     name: &str,
@@ -293,13 +274,10 @@ pub(crate) fn get_arg<'a>(
         .map(|(_, a)| a)
 }
 
-/// `name(arg, arg)`: a call php-parser's printer writes for a new call node over kept arguments.
 pub(crate) fn call(name: &str, args: &[&str]) -> String {
     format!("{name}({})", args.join(", "))
 }
 
-/// The nearest ancestor that is a different node from the one at `span` (Mago wraps a node in `Expression`, `Call`,
-/// `Access` and the like, all with the same span).
 fn parent<'n, 'ast, 'arena>(
     span: Span,
     ancestors: &'n [Node<'ast, 'arena>],
@@ -311,9 +289,6 @@ fn parent<'n, 'ast, 'arena>(
         .find(|(_, a)| node_span(*a) != span && !matches!(a, Node::Parenthesized(_)))
 }
 
-/// Whether the expression at `span` is written to, so that a call put in its place would not parse: an assignment's
-/// target (also inside a destructuring list), a reference, `++`/`--`, `isset()`, `unset()` or a `foreach` target.
-/// Rector rewrites some of these into code PHP rejects; Pun leaves them.
 pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
     let mut at = span;
     let mut index = ancestors.len();
@@ -336,12 +311,10 @@ pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
                 let target = node_span(&foreach.target);
                 return target.start <= at.start && at.end <= target.end;
             }
-            // `$a['x']['y'] = ...` writes to `$a['x']` too.
             Node::ArrayAccess(access) if node_span(access.array) == at => {
                 at = node_span(node);
                 index = i;
             }
-            // An item of `[...] = ` or `list(...) =`: go on up to the assignment.
             Node::ArrayElement(_)
             | Node::KeyValueArrayElement(_)
             | Node::ValueArrayElement(_)
@@ -355,9 +328,6 @@ pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
     }
 }
 
-/// `ArrayDimFetchContextNodeVisitor::markByRefArgs`: the expression at `span` (or the item read from it, as in
-/// `$a['x']['y']`) is an argument of a call to a known function whose parameter takes it by reference (a named
-/// argument by its name, past the end the last parameter when it is variadic).
 pub(crate) fn is_by_ref_argument(
     ctx: &Context<'_>,
     span: Span,
@@ -387,7 +357,6 @@ pub(crate) fn is_by_ref_argument(
     else {
         return false;
     };
-    // `ReflectionProvider::hasFunction()`: the namespaced name, then the global one.
     let facts = crate::rules::types::facts::facts(ctx);
     let local = matches!(
         call.function,
@@ -417,8 +386,6 @@ pub(crate) fn is_by_ref_argument(
     parameter.is_some_and(|p| p.flags.is_by_reference())
 }
 
-/// Whether the node at `span` lies in a string (`"{$a['x']}"`, a heredoc or a backtick command), as php-parser's
-/// `InterpolatedString` or `ShellExec` parts.
 pub(crate) fn in_string(ancestors: &[Node<'_, '_>]) -> bool {
     ancestors.iter().any(|a| {
         matches!(
@@ -432,9 +399,6 @@ pub(crate) fn in_string(ancestors: &[Node<'_, '_>]) -> bool {
     })
 }
 
-/// rector-laravel's `ArrayDimFetchContextNodeVisitor::IS_IN_SUPERGLOBAL_ASSIGN`: the node lies in an assignment to
-/// `$_SERVER`, `$_GET`, `$_POST`, `$_REQUEST` or `$_ENV` (or one of their items), in `isset()`, in `unset()` or in an
-/// interpolated string.
 pub(crate) fn in_superglobal_assign(ancestors: &[Node<'_, '_>]) -> bool {
     const SUPERGLOBALS: [&str; 5] = ["_SERVER", "_GET", "_POST", "_REQUEST", "_ENV"];
     ancestors.iter().any(|a| match a {
@@ -453,7 +417,6 @@ pub(crate) fn in_superglobal_assign(ancestors: &[Node<'_, '_>]) -> bool {
     })
 }
 
-/// The object of a method call when it is a call of the global function `name` with no arguments.
 pub(crate) fn is_bare_call(expr: &Expression<'_>, name: &str) -> bool {
     matches!(
         unparenthesize(expr),
@@ -462,14 +425,10 @@ pub(crate) fn is_bare_call(expr: &Expression<'_>, name: &str) -> bool {
     )
 }
 
-/// A report on `span` whose fix writes `code` there.
 pub(crate) fn replace(span: Span, message: String, code: String) -> Report {
     Report::fixed(span, message, Safety::Unsafe, vec![Edit::new(span, code)])
 }
 
-/// `RedirectBackToBackHelperRector` and `RedirectRouteToToRouteHelperRector`: `redirect()->method(...)` (the helper
-/// called with no arguments) and `Redirect::method(...)` (the `Illuminate\Support\Facades\Redirect` facade) become
-/// `helper(...)`, with the method's arguments.
 pub(crate) fn redirect_helper(
     node: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -502,8 +461,6 @@ pub(crate) fn redirect_helper(
     ));
 }
 
-/// PHPStan's `ObjectType::isSuperTypeOf` on a class name: `class` is one of `targets` (ignoring ASCII case), or a
-/// class the codebase knows that extends, implements or uses (itself or through a parent) one of them.
 pub(crate) fn is_a(ctx: &Context<'_>, class: &str, targets: &[&str]) -> bool {
     let target = |name: &[u8]| {
         targets
@@ -527,8 +484,6 @@ pub(crate) fn is_a(ctx: &Context<'_>, class: &str, targets: &[&str]) -> bool {
     })
 }
 
-/// Whether the expression holds an object of `class` (or a subclass the codebase knows): `$this` in such a class, or
-/// what [`is_object_of`](crate::rules::lint_b_helpers::is_object_of) proves from the syntax.
 pub(crate) fn is_object(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -537,7 +492,6 @@ pub(crate) fn is_object(
 ) -> bool {
     match unparenthesize(expr) {
         Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => {
-            // The class-like `$this` stands for; none in a trait, which Rector leaves alone.
             let own = ancestors.iter().rev().find_map(|a| {
                 let name = match a {
                     Node::Class(c) => c.name.value,

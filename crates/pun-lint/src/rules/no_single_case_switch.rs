@@ -1,15 +1,3 @@
-//! `lint/complexity/no-single-case-switch`, ported from Rector 2.8.4's `SingularSwitchToIfRector`
-//! (rules/CodeQuality/Rector/Switch_) with `SwitchManipulator::removeBreakNodes`.
-//!
-//! A `switch` with one `case` becomes an `if` that compares with `===`, its `break`s dropped (`break 2` becomes
-//! `break`). A `switch` with only `default` becomes the default's statements without any `break`. A `break` or `continue` nested in
-//! the case's statements keeps the `switch`. Rector stops with an error on a `default` with no statement left; Pun
-//! leaves that `switch` alone.
-//!
-//! The new code is laid out as php-parser's format-preserving printer lays it out: the new `if` printed anew with
-//! the statements moved to its indent, and the comments before the `switch` dropped; the statements of a `default`
-//! put in the `switch`'s place in the list, each on a line of its own.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind, Statement, SwitchBody, SwitchCase};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -43,7 +31,6 @@ impl Rule for NoSingleCaseSwitch {
             SwitchBody::ColonDelimited(b) => &b.cases,
         };
         let [case] = cases.as_slice() else { return };
-        // nested break/continue would lose the switch to target and cause a fatal error
         if has_nested_break_or_continue(case) {
             return;
         }
@@ -55,7 +42,6 @@ impl Rule for NoSingleCaseSwitch {
         };
         let items = items(source, tokens, case_node, condition.is_some());
         let span = node_span(switch);
-        // The comments php-parser keeps with the `switch`: from the token before it.
         let before = previous_token_end(source, tokens, span.start);
         let start = comments_between(tokens, before, span.start)
             .first()
@@ -92,8 +78,6 @@ impl Rule for NoSingleCaseSwitch {
     }
 }
 
-/// `hasNestedBreakOrContinue`: a `break` or `continue` below the case's statements (a top-level `break` goes with the
-/// `switch`), outside nested functions and classes.
 fn has_nested_break_or_continue(case: &SwitchCase<'_>) -> bool {
     fn find(node: Node<'_, '_>) -> bool {
         let mut found = false;
@@ -123,21 +107,17 @@ fn has_nested_break_or_continue(case: &SwitchCase<'_>) -> bool {
     })
 }
 
-/// One statement of the new code: its comments and its text. Comments after the last statement go, as in Rector.
 struct Item {
     comments: Vec<Span>,
     code: Code,
 }
 
 enum Code {
-    /// A statement as it was.
     Statement(Span),
-    /// A `break` with a lower level.
     Break(String),
 }
 
 impl Item {
-    /// The item at indent `level`: `pComments` and a newline, then the statement moved to that indent.
     fn print(&self, source: &str, tokens: &[Token], level: usize) -> String {
         let nl = format!("\n{}", " ".repeat(level));
         let comments = print_comments(source, &self.comments, &nl);
@@ -156,8 +136,6 @@ impl Item {
     }
 }
 
-/// The statements of the case, without the `break`s `removeBreakNodes` (with a condition) or `array_filter` (for a
-/// `default`) drops.
 fn items(source: &str, tokens: &[Token], case: Node<'_, '_>, with_condition: bool) -> Vec<Item> {
     let list = holder_list(source, tokens, case);
     let mut items = Vec::new();
@@ -188,8 +166,6 @@ fn items(source: &str, tokens: &[Token], case: Node<'_, '_>, with_condition: boo
     items
 }
 
-/// The edit for a `default` alone: its statements in the `switch`'s place, as php-parser's `pArray` prints a list
-/// item replaced by one (a replacement) or by several (a removal and insertions).
 fn default_edit(
     source: &str,
     tokens: &[Token],
@@ -208,7 +184,6 @@ fn default_edit(
     }
     let (list, index) = enclosing(source, tokens, ancestors);
     if list.frame == Frame::Bare {
-        // php-parser prints the parent again with braces.
         let inner = format!("\n{}", " ".repeat(outer + 4));
         let body: String = items
             .iter()
@@ -224,7 +199,6 @@ fn default_edit(
             .collect();
         return Edit::new(Span::new(before, span.end), code);
     }
-    // Removed from the start of the list: the statements go before the next one, each followed by a newline.
     let next = list.stmts.get(index + 1).map(|s| {
         let s = node_span(*s);
         comments_between(tokens, span.end, s.start)

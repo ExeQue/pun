@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpTag\LinebreakAfterOpeningTagFixer`.
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::rtrim};
 use std::path::Path;

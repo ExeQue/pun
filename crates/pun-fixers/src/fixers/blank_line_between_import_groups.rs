@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\BlankLineBetweenImportGroupsFixer`.
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Tokens, TokensAnalyzer};
@@ -48,8 +47,6 @@ impl BlankLineBetweenImportGroupsFixer {
     }
 
     fn ensure_line(&self, tokens: &mut Tokens, index: usize) {
-        // ponytail: upstream caches the line ending in a method-static (first config wins for the
-        // process); Pint always uses "\n", so reading the config each time is equivalent.
         let line_ending = self.whitespaces_config.get_line_ending().repeat(2);
         let index = Self::get_insert_index(tokens, index);
         let indent = WhitespacesAnalyzer::detect_indent(tokens, index);
@@ -76,7 +73,6 @@ impl Fixer for BlankLineBetweenImportGroupsFixer {
         "blank_line_between_import_groups"
     }
     fn priority(&self) -> i32 {
-        // Must run after OrderedImportsFixer.
         -40
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

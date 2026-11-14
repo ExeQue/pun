@@ -1,5 +1,3 @@
-//! Strict PHPStan 2.3.1 value-read/write contracts for closure imports. No gap allowances.
-
 use std::path::Path;
 
 use serde_json::Value;
@@ -32,7 +30,6 @@ fn check(case: &str) {
             let mut project = pun_analyse::Project::new(vec![file.clone()], vec![]);
             project.level = level;
             project.php_version = 80500;
-            // config.level1.neon enables this independently of the numeric level field.
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level >= 1,
@@ -130,8 +127,6 @@ fn capture_producer_matches_independently_observed_write_identities() {
             let Some(uses) = &closure.use_clause else {
                 return;
             };
-            // The oracle emits no VariableWritesNode for closures in skipped catches. A missing
-            // completed body elsewhere still fails the exact expected-record comparison below.
             let Some(node) = self.writes.get(&closure.span()) else {
                 return;
             };
@@ -264,8 +259,6 @@ fn completed_semantic_overrides_do_not_invent_unwalked_child_reads() {
     use mago_syntax::{cst::Expression, parser::parse_file};
     use std::borrow::Cow;
 
-    // This is a real semantic extension: a parenthesized expression denotes the literal 7,
-    // without evaluating its operand. VariableFlowBuilder::child may consume only stored results.
     struct LiteralParentheses;
     impl Provider for LiteralParentheses {
         fn meta() -> &'static ProviderMeta {

@@ -1,7 +1,3 @@
-//! PHPStan compatibility layer: NEON, phpstan.neon loading the way PHPStan's DI container resolves
-//! it, baselines, `ignoreErrors` and `@phpstan-ignore` comments; built-in
-//! symbols and PHPStan's type strings.
-
 pub mod comments;
 pub mod config;
 pub mod di;

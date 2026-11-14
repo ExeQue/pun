@@ -1,6 +1,3 @@
-//! Port of Mago's `no-only` (Pest): removes `->only()` from `test()` / `it()` / `describe()` / hook chains.
-//! Opt-in only (`Pun/no_only`). Unlike Mago, the whitespace before `->only()` goes too, so a chain broken
-//! over lines doesn't leave a lone `;`.
 use crate::analyzers::pest::chain_root_call;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -72,7 +69,6 @@ impl Fixer for NoOnly {
     }
 }
 
-/// Whether the chain ending at `arrow` starts with a call to one of Pest's test functions.
 fn chain_root_is_pest_function(tokens: &Tokens, arrow: usize) -> bool {
     chain_root_call(tokens, arrow).is_some_and(|(name, _, _)| {
         let n = tokens[name].get_content();
@@ -90,7 +86,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // test_with_only, it_with_only, describe_with_only, multiple_only
         assert_eq!(
             fix(
                 "<?php\n\ntest('example', function () {\n    expect(true)->toBeTrue();\n})->only();\n"
@@ -115,7 +110,6 @@ mod tests {
             ),
             "<?php\n\ntest('first', function () {});\nit('second', function () {});\n"
         );
-        // test_without_only
         let same = "<?php\n\ntest('example', function () {\n    expect(true)->toBeTrue();\n});\n\nit('does something', function () {\n    expect(1)->toBe(1);\n});\n";
         assert_eq!(fix(same), same);
     }

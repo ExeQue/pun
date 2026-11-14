@@ -1,6 +1,3 @@
-//! `pun init` end to end on scratch projects: a Laravel 13 + Pest 4 app and a plain PHP project. The expected output is
-//! context/plan/init.md §2 written out by hand (without the check and baseline lines, which wait for init 4); the
-//! error wording is crates/pun-config/src/schema.rs's.
 mod common;
 
 use common::pty::{pun, pun_with};
@@ -11,7 +8,6 @@ use std::path::{Path, PathBuf};
 const LARAVEL_JSON: &str = r#"{"require":{"php":"^8.4","laravel/framework":"^13.0"},"require-dev":{"pestphp/pest":"^4.0"}}"#;
 const LARAVEL_LOCK: &str = r#"{"packages":[{"name":"laravel/framework","version":"v13.2.0"}],"packages-dev":[{"name":"pestphp/pest","version":"v4.1.2"},{"name":"phpunit/phpunit","version":"12.3.4"}]}"#;
 const PLAIN_JSON: &str = r#"{"require":{"php":">=8.4"}}"#;
-/// The terminal env: a UTF-8 locale for the glyphs, no colour.
 const ENV: &[(&str, &str)] = &[("LANG", "C.UTF-8"), ("NO_COLOR", "1")];
 
 fn laravel(name: &str, extra: &[(&str, &str)]) -> PathBuf {
@@ -33,14 +29,11 @@ fn toml(style: &str, sets: &str, analyse: &str) -> String {
     )
 }
 
-/// What `pun_config::load` makes of the written pun.toml: the format preset, the lint sets, the analyse preset.
 fn loaded(d: &Path) -> (String, Vec<String>, AnalysePreset) {
     let c = pun_config::load(d, &Options::default()).unwrap();
     (c.preset.to_string(), c.lint.sets, c.analyse.preset)
 }
 
-/// `pun init` on a pseudo-terminal, typing `keys`; the output without ANSI sequences (dialoguer's theme colours its
-/// prompts whatever `NO_COLOR` says).
 fn tty(d: &Path, keys: &str) -> (String, Option<i32>) {
     let (out, code) = common::pty::pty(d, "init", keys, ENV);
     (common::strip_ansi(&out), code)
@@ -48,7 +41,6 @@ fn tty(d: &Path, keys: &str) -> (String, Option<i32>) {
 
 const NEXT: &str = "\n  ✔ Wrote pun.toml\n\n  Done. Run `pun check` any time; `pun check --fix` before you commit.\n  Add `pun check` to CI and your composer scripts.\n";
 
-/// No terminal: nothing is asked, the Laravel app gets the laravel style and the defaults.
 #[test]
 fn laravel_defaults_without_a_terminal() {
     let d = laravel("laravel", &[]);
@@ -70,7 +62,6 @@ fn laravel_defaults_without_a_terminal() {
         ("laravel".into(), sets, AnalysePreset::Recommended)
     );
 
-    // An existing pun.toml is never overwritten: exit 2, the file as it was.
     let (out, err, code) = pun_with(&d, &["init", "--style", "psr12"], ENV);
     assert_eq!(
         (out.as_str(), err.as_str(), code),
@@ -83,7 +74,6 @@ fn laravel_defaults_without_a_terminal() {
     assert!(read(&d, "pun.toml").contains("preset = \"laravel\""));
 }
 
-/// A project without Laravel gets psr12; `--yes` asks nothing either. ASCII glyphs without a UTF-8 locale.
 #[test]
 fn plain_project_gets_psr12() {
     let d = plain("plain");
@@ -98,7 +88,6 @@ fn plain_project_gets_psr12() {
         toml("psr12", "\"dead-code\", \"modernize\"", "recommended")
     );
 
-    // Without composer.json at all, the header says so.
     let d = common::project("init", "bare", &[]);
     let (out, _, _) = pun(&d, &["init"]);
     assert!(
@@ -107,7 +96,6 @@ fn plain_project_gets_psr12() {
     );
 }
 
-/// The flags replace the defaults; `--lint-sets ""` is no sets. PHPUnit is named when there is no Pest.
 #[test]
 fn flags_pick_the_choices() {
     let lock = r#"{"packages-dev":[{"name":"phpunit/phpunit","version":"dev-main"}]}"#;
@@ -144,8 +132,6 @@ fn flags_pick_the_choices() {
     assert_eq!(loaded(&d), ("psr12".into(), vec![], AnalysePreset::Basic));
 }
 
-/// An unknown set or preset is a run error in schema.rs's words, and nothing is written. `empty` is not a style init
-/// takes (clap rejects it, exit 2).
 #[test]
 fn bad_flags_are_rejected() {
     let d = plain("bad");
@@ -175,8 +161,6 @@ fn bad_flags_are_rejected() {
     assert!(!d.join("pun.toml").exists());
 }
 
-/// An old config without a terminal: init names `pun migrate`, writes nothing and exits 2 (it did not do what was
-/// asked; context/plan/init.md, assistant's call). Agent mode gets the same as one error line.
 #[test]
 fn old_config_without_a_terminal_points_to_migrate() {
     let d = laravel("old", &[("pint.json", "{}"), ("phpstan.neon", "")]);
@@ -200,7 +184,6 @@ fn old_config_without_a_terminal_points_to_migrate() {
     assert!(!d.join("pun.toml").exists());
 }
 
-/// Agent mode asks nothing and reports in one line, the next steps as its item.
 #[test]
 fn agent_mode() {
     let d = laravel("agent", &[]);
@@ -221,7 +204,6 @@ fn agent_mode() {
     );
 }
 
-/// On a terminal: three enters take the defaults, and the flow ends as init.md §2 does.
 #[test]
 fn terminal_accepts_the_defaults() {
     let d = laravel("tty", &[]);
@@ -231,7 +213,6 @@ fn terminal_accepts_the_defaults() {
         out.contains("  Pun · new project setup\n  Found Laravel 13, Pest 4, PHP ^8.4 (composer.json, composer.lock)\n"),
         "{out}"
     );
-    // dialoguer's ColorfulTheme: `? <prompt> ›` while asking, `✔ <prompt> · <answer>` once answered.
     for answer in [
         "? Code style ›",
         "✔ Code style · laravel",
@@ -251,7 +232,6 @@ fn terminal_accepts_the_defaults() {
         toml("laravel", "\"dead-code\", \"modernize\"", "recommended")
     );
 
-    // Down from psr12 wraps to laravel; tick `code-quality` too; one down to `strict`.
     let d = plain("tty-pick");
     let (out, code) = tty(&d, "\\033[B\\r\\033[B\\033[B \\r\\033[B\\r");
     assert_eq!(code, Some(0), "{out}");
@@ -265,7 +245,6 @@ fn terminal_accepts_the_defaults() {
         )
     );
 
-    // CI asks nothing, even on a terminal.
     let d = plain("tty-ci");
     let (out, code) = common::pty::pty(&d, "init", "", &[("CI", "true"), ENV[0], ENV[1]]);
     assert_eq!(code, Some(0), "{out}");
@@ -275,8 +254,6 @@ fn terminal_accepts_the_defaults() {
     );
 }
 
-/// On a terminal an old config is offered to `pun migrate`: yes runs it (its checklist then takes enter), no goes on
-/// with init.
 #[test]
 fn terminal_offers_migrate() {
     let d = laravel("tty-migrate", &[("pint.json", r#"{"preset":"psr12"}"#)]);
@@ -287,7 +264,6 @@ fn terminal_offers_migrate() {
         "{out}"
     );
     assert!(
-        // The fixture's composer.lock is hand-written without a content-hash, so it is reported and left out.
         out.ends_with(" ✔ pint.json      → [format] preset psr12, 0 rules changed, 2 rules → [lint]\n ✔ composer.json  → [require] 2, [require-dev] 1\n ⚠ composer.lock  not read: composer.lock has no content-hash; pun.lock not written\n ✔ Wrote pun.toml\n"),
         "{out}"
     );

@@ -1,9 +1,3 @@
-//! `lint/pest/prefer-chained-expect`, ported from pest-plugin-rector's `ChainExpectCallsRector`: consecutive
-//! `expect()` statements become one chain, the matchers of the same value added to it on lines of their own and
-//! another value joined with `->and($value)` (unless `merge-different-variables` is off). A value that may have side
-//! effects (a call, say) is joined with `->and()` instead, one statement at a time, and so is the value of a chain
-//! with a method that changes the subject (`and`, `json`, `each`, `match`, `sequence`, `unless`, `when`).
-
 use mago_syntax::cst::{
     Access, ArgumentList, ArrayElement, Call, ClassLikeConstantSelector, ClassLikeMemberSelector,
     CompositeString, Expression, Literal, MethodCall, Node, NodeKind, PropertyAccess, StringPart,
@@ -19,13 +13,11 @@ use super::{
 use crate::syntax::{node_span, same_expression, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `merge_different_variables`, on by default: `separate_variables` is its opposite.
 #[derive(Default)]
 pub struct PreferChainedExpect {
     separate_variables: bool,
 }
 
-/// `SUBJECT_TRANSFORMING_METHODS`: a chain with one of these is joined to the next statement with `->and()`.
 const SUBJECT_TRANSFORMING_METHODS: [&[u8]; 7] = [
     b"and",
     b"json",
@@ -36,30 +28,25 @@ const SUBJECT_TRANSFORMING_METHODS: [&[u8]; 7] = [
     b"when",
 ];
 
-/// An expression of the chain being built: an old method call kept whole, or a node Rector makes.
 #[derive(Clone)]
 enum Chain<'a> {
     Old(&'a MethodCall<'a>),
-    /// `new MethodCall($var, $call->name, $call->args)`.
     Call {
         var: Box<Chain<'a>>,
         call: &'a MethodCall<'a>,
         newline: bool,
     },
-    /// `new MethodCall($var, 'and', [new Arg($value)])`.
     And {
         var: Box<Chain<'a>>,
         value: &'a Expression<'a>,
         newline: bool,
     },
-    /// `new PropertyFetch($var, $fetch->name)`.
     Property {
         var: Box<Chain<'a>>,
         fetch: &'a PropertyAccess<'a>,
     },
 }
 
-/// A statement of the list: its old index, and the chain it holds now when Rector changed it.
 struct Stmt<'a> {
     index: usize,
     call: &'a MethodCall<'a>,
@@ -75,7 +62,6 @@ impl Rule for PreferChainedExpect {
         Some(STATEMENT_LISTS)
     }
 
-    /// `configure`: `merge-different-variables` (the plugin's `merge_different_variables`), a boolean.
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
         match options {
             serde_json::Value::Null => Ok(()),
@@ -108,8 +94,6 @@ impl Rule for PreferChainedExpect {
         let Some(list) = statement_list(ctx, node) else {
             return;
         };
-        // php-parser's statements, with what refactor() asks of them: an expression statement whose expression is a
-        // method call. The others only stop a run.
         let mut stmts: Vec<Option<Stmt<'_>>> = list
             .stmts
             .iter()
@@ -123,7 +107,6 @@ impl Rule for PreferChainedExpect {
                 })
             })
             .collect();
-        // Where each entry of `stmts` stands in the old list, for the statements that are not method calls.
         let mut order: Vec<usize> = (0..list.stmts.len()).collect();
         let starts: Vec<usize> = list.stmts.iter().map(|s| node_span(*s).start).collect();
         let commented = |s: &Stmt<'_>| has_comments(ctx, starts[s.index]);
@@ -158,7 +141,6 @@ impl Rule for PreferChainedExpect {
                         continue;
                     }
                     if !transforms_subject && is_side_effect_free(first) {
-                        // mergeSameVariable
                         let second = stmts.remove(key + 1).unwrap();
                         order.remove(key + 1);
                         let current = stmts[key].as_mut().unwrap();
@@ -219,8 +201,6 @@ impl Rule for PreferChainedExpect {
     }
 }
 
-/// `mergeDifferentVariableChains`: the statements after `key` on the value of the next one, their methods chained
-/// after `->and(value)` on the statement at `key`.
 fn merge_different<'a>(
     ctx: &Context<'_>,
     stmts: &mut Vec<Option<Stmt<'a>>>,
@@ -257,8 +237,6 @@ fn merge_different<'a>(
     current.chain = Some(chain);
 }
 
-/// `isSideEffectFree`: a value php-parser reads as a variable, a scalar (an interpolated string of such values), a
-/// constant, a class constant or a static property, a property or array read on such a value, or an array of them.
 fn is_side_effect_free(expr: &Expression<'_>) -> bool {
     let parts_free = |parts: &[StringPart<'_>]| {
         parts.iter().all(|part| match part {
@@ -287,7 +265,6 @@ fn is_side_effect_free(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// The values of an array literal's items, the keys left out as `isSideEffectFree` does.
 fn elements_free(elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>) -> bool {
     elements.iter().all(|element| match element {
         ArrayElement::KeyValue(e) => is_side_effect_free(e.value),
@@ -297,7 +274,6 @@ fn elements_free(elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>) -> boo
     })
 }
 
-/// `rebuildMethodChain`: `methods` written again on `base`.
 fn rebuild<'a>(base: Chain<'a>, methods: &[Link<'a>]) -> Chain<'a> {
     methods.iter().fold(base, |var, link| match link {
         Link::Method(call) => Chain::Call {
@@ -312,7 +288,6 @@ fn rebuild<'a>(base: Chain<'a>, methods: &[Link<'a>]) -> Chain<'a> {
     })
 }
 
-/// The names `collectChainMethods` gives for a statement's chain, as `getName` reads them (none for a dynamic name).
 fn names<'a>(statement: &Stmt<'a>) -> Vec<Option<&'a [u8]>> {
     fn walk<'a>(chain: &Chain<'a>, out: &mut Vec<Option<&'a [u8]>>) {
         match chain {
@@ -346,15 +321,12 @@ fn link_name<'a>(link: &Link<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `applyNewlineAttributes`: down the chain, each new method call on another method call goes on a line of its own,
-/// but not one right after `->and()` (the `->and()` call does) or after a property fetch. Old calls keep their text.
 fn newlines(current: &mut Chain<'_>) {
     let (var, flag) = match current {
         Chain::Call { var, newline, .. } | Chain::And { var, newline, .. } => (var, newline),
         Chain::Property { .. } | Chain::Old(_) => return,
     };
     match &mut **var {
-        // Old code below keeps its text: its flags show nowhere.
         Chain::Old(call) => {
             if !is_old_and(call) {
                 *flag = true;
@@ -381,10 +353,6 @@ fn newlines(current: &mut Chain<'_>) {
     }
 }
 
-/// The value of `->and()`, which `mergeDifferentVariableChains` strips of its `ORIGINAL_NODE`: php-parser prints the
-/// node itself anew (`pExpr_*`) and the nodes under it keep their text. The calls, fetches, `new` and arrays are
-/// printed anew; any other node keeps its text, which is what the printer writes for a variable or a literal written
-/// in the usual way, but not always for an operation, a closure or a string with variables (not ported).
 fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> String {
     let kept = |e: &Expression<'_>| kept_text(ctx, node_span(unparenthesize(e)), indent);
     let lhs = |e: &Expression<'_>, parens: fn(&Expression<'_>) -> bool| {
@@ -401,13 +369,11 @@ fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> Stri
         _ => kept_text(ctx, node_span(c), indent),
     };
     match unparenthesize(value) {
-        // pExpr_FuncCall
         Expression::Call(Call::Function(c)) => format!(
             "{}({})",
             lhs(c.function, call_lhs_requires_parens),
             args(&c.argument_list)
         ),
-        // pExpr_MethodCall, pExpr_NullsafeMethodCall
         Expression::Call(Call::Method(c)) => format!(
             "{}->{}({})",
             lhs(c.object, dereference_lhs_requires_parens),
@@ -420,7 +386,6 @@ fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> Stri
             print_member(ctx, &c.method, indent),
             args(&c.argument_list)
         ),
-        // pExpr_StaticCall: a variable name without braces
         Expression::Call(Call::StaticMethod(c)) => format!(
             "{}::{}({})",
             lhs(c.class, static_dereference_lhs_requires_parens),
@@ -430,7 +395,6 @@ fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> Stri
             },
             args(&c.argument_list)
         ),
-        // pExpr_PropertyFetch, pExpr_NullsafePropertyFetch, pExpr_StaticPropertyFetch, pExpr_ClassConstFetch
         Expression::Access(Access::Property(a)) => format!(
             "{}->{}",
             lhs(a.object, dereference_lhs_requires_parens),
@@ -451,19 +415,16 @@ fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> Stri
             lhs(a.class, static_dereference_lhs_requires_parens),
             constant(&a.constant)
         ),
-        // pExpr_ArrayDimFetch
         Expression::ArrayAccess(a) => format!(
             "{}[{}]",
             lhs(a.array, dereference_lhs_requires_parens),
             kept(a.index)
         ),
-        // pExpr_New, pNewOperand
         Expression::Instantiation(n) => format!(
             "new {}({})",
             lhs(n.class, new_operand_requires_parens),
             n.argument_list.as_ref().map(args).unwrap_or_default()
         ),
-        // pExpr_Array: `pMaybeMultiline($node->items, true)` in the syntax it was written in
         Expression::Array(a) => format!(
             "[{}]",
             print_nodes(ctx, &element_spans(&a.elements), true, indent)
@@ -480,7 +441,6 @@ fn element_spans(elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>) -> Vec
     elements.iter().map(node_span).collect()
 }
 
-/// php-parser's names: an identifier, `static`, `self` and `parent`.
 fn is_name_node(e: &Expression<'_>) -> bool {
     matches!(
         e,
@@ -491,7 +451,6 @@ fn is_name_node(e: &Expression<'_>) -> bool {
     )
 }
 
-/// `callLhsRequiresParens` (a `new` too: the printer's PHP version predates `new Foo()->bar()`).
 fn call_lhs_requires_parens(e: &Expression<'_>) -> bool {
     !(is_name_node(e)
         || matches!(
@@ -504,12 +463,10 @@ fn call_lhs_requires_parens(e: &Expression<'_>) -> bool {
         ))
 }
 
-/// `dereferenceLhsRequiresParens`: [`static_dereference_lhs_requires_parens`] but for a constant.
 fn dereference_lhs_requires_parens(e: &Expression<'_>) -> bool {
     static_dereference_lhs_requires_parens(e) && !matches!(e, Expression::ConstantAccess(_))
 }
 
-/// `staticDereferenceLhsRequiresParens`.
 fn static_dereference_lhs_requires_parens(e: &Expression<'_>) -> bool {
     !(is_name_node(e)
         || matches!(
@@ -524,7 +481,6 @@ fn static_dereference_lhs_requires_parens(e: &Expression<'_>) -> bool {
         ))
 }
 
-/// `newOperandRequiresParens`.
 fn new_operand_requires_parens(e: &Expression<'_>) -> bool {
     match unparenthesize(e) {
         e if is_name_node(e) => false,
@@ -537,13 +493,10 @@ fn new_operand_requires_parens(e: &Expression<'_>) -> bool {
     }
 }
 
-/// An old method call named `and` (`isName`, any case).
 fn is_old_and(call: &MethodCall<'_>) -> bool {
     super::is_name(&call.method, "and")
 }
 
-/// The chain printed by Rector's `pExpr_MethodCall` at `indent`: a call with the newline flag on another call goes on
-/// a line of its own, one level deeper.
 fn print(ctx: &Context<'_>, chain: &Chain<'_>, indent: usize) -> String {
     let call_like = |c: &Chain<'_>| !matches!(c, Chain::Property { .. });
     let link = |var: &Chain<'_>, newline: bool, name: String, args: String| {

@@ -1,18 +1,3 @@
-//! What Rector 2.8.4 asks about the methods of a class, shared by `no-empty-method` and `no-unused-private-method`:
-//! `IsClassMethodUsedAnalyzer` and `CallCollectionAnalyzer` (rules/DeadCode/NodeAnalyzer), `ArrayCallableMethodMatcher`
-//! (src/NodeCollector/NodeAnalyzer), `ClassMethodManipulator` (src/NodeManipulator) and
-//! `ControllerClassMethodManipulator` (rules/DeadCode/NodeManipulator), ported function by function.
-//!
-//! PHPStan's types come from Mago's analysis of the file (`getType()`: the type with docblocks read, else the native
-//! one). Every `mixed` receiver counts as implicit, without asking Mago's explicit-mixed flag: the receivers that reach
-//! the fluent fallback are calls, and Rector 2.8.4 on PHPStan 2.3.5 types an ordinary call whose return is `mixed`
-//! (declared natively or in a docblock) as implicit `mixed`. An explicit `mixed` variable, a call whose docblock names
-//! another class, and a nullsafe link at the root are no fluent chain on `$this`, so the method goes
-//! (tests/rector/RemoveUnusedPrivateMethodRector/Oracle/mixed_receivers.php.inc). PHPStan's `ArrayMapArgVisitor` stores
-//! a list of arguments where `isInArrayMap` asks for one `Arg`, so that check never matches (checked on the oracle) and
-//! is left out. A parent's `@method` tag (without a `__call` to back it) is not read: Pun's codebase has no doc
-//! comments.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -23,22 +8,17 @@ use super::types::facts::Facts;
 use super::types::{MAGIC, namespace_of};
 use crate::syntax::{node_span, unparenthesize};
 
-/// The class (php-parser's `Class_`, named or anonymous) a rule looks at.
 pub(crate) struct ClassInfo<'ast, 'arena> {
     pub node: Node<'ast, 'arena>,
     pub members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
     pub left_brace: mago_span::Span,
     pub right_brace: mago_span::Span,
-    /// The name PHPStan's types give the class: fully qualified, or Mago's name of an anonymous class.
     pub name: String,
     pub is_anonymous: bool,
-    /// `final` by keyword.
     pub is_final: bool,
-    /// The class it extends, fully qualified.
     pub extends: Option<String>,
 }
 
-/// The class `node` is, when it is a class or an anonymous class; `ancestors` lead to it.
 pub(crate) fn class_info<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -49,7 +29,6 @@ pub(crate) fn class_info<'ast, 'arena>(
     info
 }
 
-/// Visit the class `node` is; the rule's targets select classes or anonymous classes, and `ancestors` lead to it.
 pub(crate) fn with_class_info<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -87,7 +66,6 @@ pub(crate) fn with_class_info<'ast, 'arena>(
     }
 }
 
-/// The fully qualified name of a class-like named `name` declared at `ancestors`.
 pub(crate) fn qualified(ancestors: &[Node<'_, '_>], name: &[u8]) -> String {
     let name = String::from_utf8_lossy(name);
     match namespace_of(ancestors) {
@@ -96,7 +74,6 @@ pub(crate) fn qualified(ancestors: &[Node<'_, '_>], name: &[u8]) -> String {
     }
 }
 
-/// Whether the method has a modifier `f` picks.
 pub(crate) fn has_modifier(method: &Method<'_>, f: fn(&Modifier<'_>) -> bool) -> bool {
     method.modifiers.iter().any(f)
 }
@@ -109,7 +86,6 @@ pub(crate) fn is_protected(method: &Method<'_>) -> bool {
     has_modifier(method, |m| matches!(m, Modifier::Protected(_)))
 }
 
-/// php-parser's `isPublic()`: neither private nor protected.
 pub(crate) fn is_public(method: &Method<'_>) -> bool {
     !is_private(method) && !is_protected(method)
 }
@@ -122,14 +98,12 @@ pub(crate) fn is_static(method: &Method<'_>) -> bool {
     has_modifier(method, |m| matches!(m, Modifier::Static(_)))
 }
 
-/// php-parser's `ClassMethod::isMagic()`.
 pub(crate) fn is_magic(name: &[u8]) -> bool {
     MAGIC
         .iter()
         .any(|m| m.as_bytes().eq_ignore_ascii_case(name))
 }
 
-/// The doc comment php-parser gives the member at `index` of `class`.
 pub(crate) fn member_doc<'s>(
     source: &'s str,
     class: &ClassInfo<'_, '_>,
@@ -140,8 +114,6 @@ pub(crate) fn member_doc<'s>(
     doc_comment(source, from, node_span(member).start).map(|d| &source[d.start..d.end])
 }
 
-/// The names of the tags of a doc comment, `@` included: the first word of each line that starts with `@` (after the
-/// `*`), as phpdoc-parser's lexer reads a tag.
 pub(crate) fn doc_tags(doc: &str) -> Vec<&str> {
     doc.lines()
         .filter_map(|line| {
@@ -157,8 +129,6 @@ pub(crate) fn doc_tags(doc: &str) -> Vec<&str> {
         .collect()
 }
 
-/// The tags phpdoc-parser's `parseTagValue` reads into their own value nodes; any other tag is a
-/// `GenericTagValueNode` (or a Doctrine annotation when `(` follows).
 const KNOWN_TAGS: &[&str] = &[
     "@param",
     "@phpstan-param",
@@ -254,8 +224,6 @@ const KNOWN_TAGS: &[&str] = &[
     "@psalm-param-out",
 ];
 
-/// `ControllerClassMethodManipulator::isControllerClassMethod`: a public method with a generic doc tag (Nette's
-/// `@persistent`, an annotation) in a class whose parent's name ends with `Controller` or `Presenter`.
 pub(crate) fn is_controller_class_method(
     source: &str,
     class: &ClassInfo<'_, '_>,
@@ -276,7 +244,6 @@ pub(crate) fn is_controller_class_method(
         .is_some_and(|doc| doc_tags(doc).iter().any(|t| !KNOWN_TAGS.contains(t)))
 }
 
-/// `ClassMethodManipulator::isNamedConstructor`.
 pub(crate) fn is_named_constructor(class: &ClassInfo<'_, '_>, method: &Method<'_>) -> bool {
     if !method.name.value.eq_ignore_ascii_case(b"__construct") {
         return false;
@@ -290,8 +257,6 @@ pub(crate) fn is_named_constructor(class: &ClassInfo<'_, '_>, method: &Method<'_
     is_protected(method)
 }
 
-/// `ClassMethodManipulator::hasParentMethodOrInterfaceMethod`: a parent class has the method or `__call`, or an
-/// interface of the class declares it.
 pub(crate) fn has_parent_method_or_interface_method(
     facts: &Facts,
     class: &ClassInfo<'_, '_>,
@@ -311,8 +276,6 @@ pub(crate) fn has_parent_method_or_interface_method(
         })
 }
 
-/// Call `f` on `root` and each node below it with the nodes between (`root` first); `f` returns whether to go into
-/// the node's children. An explicit stack, as rules walk whole classes.
 pub(crate) fn walk<'ast, 'arena>(
     root: Node<'ast, 'arena>,
     f: &mut dyn FnMut(Node<'ast, 'arena>, &[Node<'ast, 'arena>]) -> bool,
@@ -331,9 +294,6 @@ pub(crate) fn walk<'ast, 'arena>(
     }
 }
 
-/// The class-like of a node at `path` (whose first node is `class.node`): its name as PHPStan's types give it and
-/// the class it extends. An anonymous class inside is its own scope, and so is a named class declared in a method
-/// body (Rector 2.8.4 resolves `self::class` there to the inner class).
 fn scope_of(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -375,10 +335,6 @@ fn scope_of(
     }
 }
 
-/// The class PHPStan's `ThisType` names when `object` is `$this` in a method that has one: the class of the
-/// innermost class scope, unless a static method or static closure leaves `$this` undefined. Mago gives `$this` no
-/// type where a fix round changed the file after the project's codebase was scanned, as the codebase's spans no
-/// longer match the file's.
 fn this_class(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -405,17 +361,13 @@ fn this_class(
     (!undefined).then(|| scope_of(facts, ancestors, class, path).0)
 }
 
-/// What `CallCollectionAnalyzer::isExists` reads of a caller's type.
 struct CallerType {
-    /// `getObjectClassNames()`.
     names: Vec<String>,
     never: bool,
-    /// `MixedType`, taken as implicit (see the module docs).
     mixed: bool,
 }
 
 impl CallerType {
-    /// A type the analyser did not reach is PHPStan's `MixedType` of a node without a scope.
     fn of(t: Option<&TUnion>) -> CallerType {
         CallerType {
             names: t.map(object_class_names).unwrap_or_default(),
@@ -433,13 +385,11 @@ impl CallerType {
     }
 }
 
-/// PHPStan's `getType()` of `expr`: with docblocks read, else native.
 pub(crate) fn type_of<'f>(facts: &'f Facts, expr: &Expression<'_>) -> Option<&'f TUnion> {
     let span = node_span(unparenthesize(expr));
     facts.full_type(span).or_else(|| facts.native_type(span))
 }
 
-/// `Type::getObjectClassNames()`: the classes of the object types of a union, without repeats.
 pub(crate) fn object_class_names(t: &TUnion) -> Vec<String> {
     let mut names: Vec<String> = Vec::new();
     for atomic in t.types.iter() {
@@ -459,7 +409,6 @@ pub(crate) fn object_class_names(t: &TUnion) -> Vec<String> {
     names
 }
 
-/// The name a method selector names, when it is an identifier.
 fn selector_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&'a [u8]> {
     match selector {
         ClassLikeMemberSelector::Identifier(id) => Some(id.value),
@@ -467,13 +416,10 @@ fn selector_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&'a [u8]>
     }
 }
 
-/// `CallCollectionAnalyzer::shouldSkip`: a dynamic name, or the method's own name (without case).
 fn should_skip(selector: &ClassLikeMemberSelector<'_>, method: &[u8]) -> bool {
     selector_name(selector).is_none_or(|n| n.eq_ignore_ascii_case(method))
 }
 
-/// A method call, null-safe method call or static call (first-class callables too) as `CallCollectionAnalyzer`
-/// sees it.
 enum CallSite<'ast, 'arena> {
     Object(
         &'ast Expression<'arena>,
@@ -496,8 +442,6 @@ fn call_site<'ast, 'arena>(node: Node<'ast, 'arena>) -> Option<CallSite<'ast, 'a
     })
 }
 
-/// `IsClassMethodUsedAnalyzer::isClassMethodUsed` for the method named `method` of `class`, which `ancestors` lead
-/// to.
 pub(crate) fn is_class_method_used(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -521,7 +465,6 @@ pub(crate) fn is_class_method_used(
     used || does_method_exist_in_trait(facts, class, method)
 }
 
-/// One call of `CallCollectionAnalyzer::isExists`.
 fn is_call_of(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -551,7 +494,6 @@ fn is_call_of(
         if caller.mixed
             && let Some(root) = root
         {
-            // A fluent chain on `$this` of methods without a return type.
             let mut names: Vec<&[u8]> = vec![selector_name(selector).unwrap_or(b"")];
             let mut current = unparenthesize(root);
             while let Expression::Call(Call::Method(call)) = current {
@@ -572,8 +514,6 @@ fn is_call_of(
     caller.names[0] == class.name && should_skip(selector, method)
 }
 
-/// The type `NodeTypeResolver` gives the class of a static call (`NameTypeResolver` for a name), and whether it is
-/// `self` or `static`.
 fn static_caller(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -616,7 +556,6 @@ fn static_caller(
     }
 }
 
-/// `IsClassMethodUsedAnalyzer::isClassMethodCalledInLocalArrayCall` for one array.
 fn is_array_call_of(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -635,8 +574,6 @@ fn is_array_call_of(
     }
 }
 
-/// Whether `ArrayCallableMethodMatcher::match` matches the array at all (a method of any class, or a dynamic one),
-/// asked while looking at the method `method`.
 pub(crate) fn is_array_callable(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -648,27 +585,17 @@ pub(crate) fn is_array_callable(
     match_array_callable(facts, ancestors, class, elements, path, method).is_some()
 }
 
-/// What `ArrayCallableMethodMatcher::match` returns.
 enum ArrayCallable {
-    /// `ArrayCallableDynamicMethod`: a class with a method name Rector cannot read.
     Dynamic,
-    Method {
-        class: String,
-        method: Vec<u8>,
-    },
+    Method { class: String, method: Vec<u8> },
 }
 
-/// How `ValueResolver::getValue` reads an item of an array.
 enum ItemValue {
-    /// A constant value.
     Constant,
-    /// An object of one class, which `extractConstantArrayTypeValue` leaves out.
     Object,
-    /// Anything else: the array has no value.
     Unknown,
 }
 
-/// `ArrayCallableMethodMatcher::match` for `[$caller, 'method']`, asked while looking at the method `method`.
 fn match_array_callable(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -687,7 +614,6 @@ fn match_array_callable(
     if path.iter().any(|n| matches!(n, Node::Attribute(_))) {
         return None;
     }
-    // `getValue()` of the array, as its keys.
     let mut keys: Vec<Vec<u8>> = Vec::new();
     for (index, (key, item)) in [(first_key, first_value), (second_key, second_value)]
         .into_iter()
@@ -728,7 +654,6 @@ fn match_array_callable(
     })
 }
 
-/// The key and value of an array item (php-parser's `ArrayItem`); `None` for a missing one (`[, $b] = ...`).
 pub(crate) fn element_parts<'a, 'b>(
     e: &'a ArrayElement<'b>,
 ) -> Option<(Option<&'a Expression<'b>>, &'a Expression<'b>)> {
@@ -740,8 +665,6 @@ pub(crate) fn element_parts<'a, 'b>(
     }
 }
 
-/// How `getValue()` reads one item of an array: what `ConstExprEvaluator` evaluates, else the constant scalar type,
-/// object or other type of the item.
 fn item_value(facts: &Facts, item: &Expression<'_>) -> ItemValue {
     match unparenthesize(item) {
         Expression::Literal(_) => return ItemValue::Constant,
@@ -772,7 +695,6 @@ fn item_value(facts: &Facts, item: &Expression<'_>) -> ItemValue {
     }
 }
 
-/// `isCallbackAtFunctionNames`: the array is an argument of a call of one of the functions `names` (as written).
 fn is_callback_of(path: &[Node<'_, '_>], names: &[&str]) -> bool {
     let call = path.iter().rev().find(|n| {
         !matches!(
@@ -795,7 +717,6 @@ fn is_callback_of(path: &[Node<'_, '_>], names: &[&str]) -> bool {
     names.contains(&written.trim_start_matches('\\'))
 }
 
-/// `resolveCallerType` when it gives a type with a class name (`TypeWithClassName`): that class.
 fn caller_class(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -838,7 +759,6 @@ fn caller_class(
             };
         }
     };
-    // `resolveClassContextType`.
     let codebase = &facts.codebase;
     let known = codebase.get_class_like(reference.as_bytes())?;
     if !codebase.method_exists(reference.as_bytes(), b"__construct")
@@ -857,9 +777,6 @@ fn caller_class(
         .then_some(reference)
 }
 
-/// `IsClassMethodUsedAnalyzer::doesMethodExistInTrait`: a trait the class uses (its own, its traits' and its
-/// parents', as `getTraits(true)` collects them) has a method of that name, or calls it on `$this`, `self`,
-/// `static`, `parent` or the class.
 fn does_method_exist_in_trait(facts: &Facts, class: &ClassInfo<'_, '_>, method: &[u8]) -> bool {
     let codebase = &facts.codebase;
     let mut traits: Vec<String> = Vec::new();
@@ -888,7 +805,6 @@ fn does_method_exist_in_trait(facts: &Facts, class: &ClassInfo<'_, '_>, method: 
     })
 }
 
-/// `isUsedByTrait`, on the trait named `trait_name` parsed from `source`.
 fn is_used_by_trait(source: &str, trait_name: &str, class_name: &str, method: &[u8]) -> bool {
     let arena = mago_allocator::LocalArena::new();
     let file = mago_database::file::File::ephemeral(
@@ -952,8 +868,6 @@ fn is_used_by_trait(source: &str, trait_name: &str, class_name: &str, method: &[
     used
 }
 
-/// `DataProviderMethodsFinder::findDataProviderNodesInClass`, as names: the methods of the class that a
-/// `@dataProvider` tag or a `DataProvider` attribute of one of its methods names.
 pub(crate) fn data_provider_methods(
     source: &str,
     ancestors: &[Node<'_, '_>],
@@ -964,8 +878,6 @@ pub(crate) fn data_provider_methods(
         .collect()
 }
 
-/// `DataProviderMethodsFinder::findDataProviderNodes(...)->getClassMethods()`, as names: the methods of the class
-/// that the `@dataProvider` tags (with `doc_tags`), then the `DataProvider` attributes, of member `index` name.
 pub(crate) fn method_data_providers(
     source: &str,
     ancestors: &[Node<'_, '_>],
@@ -983,7 +895,6 @@ pub(crate) fn method_data_providers(
         .collect();
     let mut out: Vec<Vec<u8>> = Vec::new();
     let mut add = |text: &[u8]| {
-        // `#^(?<method_name>\w+)(\(\))?#`
         let len = text
             .iter()
             .position(|b| !(b.is_ascii_alphanumeric() || *b == b'_'))
@@ -1035,10 +946,6 @@ pub(crate) fn method_data_providers(
     out
 }
 
-/// `StaticTypeMapper::mapPHPStanTypeToPhpParserNode` for a parameter or return type, printed as `NodeComparator`
-/// prints it: a keyword, `\Fully\Qualified` (`\A&\B` for an intersection, in its declared order), or `?` before one of
-/// those when the only other type is `null`. A union of two or more types (printed in PHPStan's sorted order) gives
-/// `None`, and so does `never`, which the oracle never finds equal.
 pub(crate) fn mapped_type_text(t: &TUnion) -> Option<String> {
     let mut texts: Vec<String> = Vec::new();
     let mut nullable = false;
@@ -1091,8 +998,6 @@ pub(crate) fn mapped_type_text(t: &TUnion) -> Option<String> {
     }
 }
 
-/// A type declaration as php-parser's printer prints it, names fully qualified; `None` for a union or a DNF type,
-/// which [`mapped_type_text`] never gives.
 pub(crate) fn hint_text(
     source: &str,
     ancestors: &[Node<'_, '_>],
@@ -1114,15 +1019,12 @@ pub(crate) fn hint_text(
     })
 }
 
-/// A value `ValueResolver::getValue` gives an expression, or a default value of a parameter, as far as Pun reads
-/// them: a literal scalar, `null`, a constant's name (`getValue` of an unknown constant), or `[]`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ConstValue {
     Scalar(super::rector_batch5::Value),
     EmptyArray,
 }
 
-/// `ValueResolver::getValue` of `expr`, when Pun reads it.
 pub(crate) fn expr_value(expr: &Expression<'_>) -> Option<ConstValue> {
     use super::rector_batch5::{Value, value};
     match unparenthesize(expr) {
@@ -1135,8 +1037,6 @@ pub(crate) fn expr_value(expr: &Expression<'_>) -> Option<ConstValue> {
     }
 }
 
-/// The default value of a parameter as native reflection gives it (`getDefaultValue()`): the one value of the type
-/// Mago infers for it (constants evaluated), else the literal written in the declaring file's source.
 pub(crate) fn default_value(
     facts: &Facts,
     param: &mago_codex::metadata::parameter::FunctionLikeParameterMetadata,
@@ -1144,7 +1044,6 @@ pub(crate) fn default_value(
     inferred_default(param).or_else(|| written_default(facts, param))
 }
 
-/// The default written in the source of the parameter, when it is a literal (a constant's value is not known here).
 fn written_default(
     facts: &Facts,
     param: &mago_codex::metadata::parameter::FunctionLikeParameterMetadata,
@@ -1170,14 +1069,11 @@ fn written_default(
         .default_value
         .as_ref()?
         .value;
-    // A constant's value is not in the source.
     (!matches!(unparenthesize(default), Expression::ConstantAccess(_)))
         .then(|| expr_value(default))
         .flatten()
 }
 
-/// The default value of a parameter, from the type Mago infers for it, when that type is one value (a float is read
-/// from the source).
 fn inferred_default(
     param: &mago_codex::metadata::parameter::FunctionLikeParameterMetadata,
 ) -> Option<ConstValue> {

@@ -1,6 +1,3 @@
-//! Level 3's DefaultValueTypesAssignedToPropertiesRule (`property.defaultValue`): a property's default value its type
-//! does not accept.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::recommended_level;
@@ -23,7 +20,6 @@ fn defaults<'p, 'arena>(p: &'p Property<'arena>) -> Vec<&'p PropertyConcreteItem
         .collect()
 }
 
-/// The default values, whose types the rule reads.
 pub(super) fn typed(p: &Property, spans: &mut Vec<Span>) {
     spans.extend(defaults(p).iter().map(|i| i.value.span()));
 }
@@ -42,7 +38,6 @@ pub(in super::super) fn property(c: &mut Checker, p: &Property) {
         "Property"
     };
     for item in defaults(p) {
-        // without a native type, `= null` is the implicit default
         if p.hint().is_none() && matches!(item.value, Expression::Literal(Literal::Null(_))) {
             continue;
         }

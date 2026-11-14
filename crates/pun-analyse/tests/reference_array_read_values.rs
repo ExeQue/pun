@@ -1,5 +1,3 @@
-//! Array references retain each operand's read, including ErrorType, before escape.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -86,8 +84,6 @@ fn reference_array_reads_match_complete_phpstan_records() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-// Render only the scalar and finite-array forms in this oracle. No analyzer conversion
-// is used, so ErrorType cannot be repaired by the PHPStan-style consumer under test.
 fn describe(ty: &TUnion) -> String {
     if ty.is_error() {
         return "*ERROR*".to_owned();

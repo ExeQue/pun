@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-redundant-condition`, ported from Rector 2.8.4's `RemoveNextSameValueConditionRector`
-//! (rules/DeadCode/Rector/Stmt).
-//!
-//! Two `if`s in a row, neither with an `elseif` or `else`, that check the same condition become one: the second's
-//! statements move to the end of the first, and its comments go before the first. The condition must have no side
-//! effect, and the first `if`'s statements must not use a variable of the condition.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -73,7 +66,6 @@ impl Rule for NoRedundantCondition {
             }
             let indent = line_indent(source, node_span(r#if).start);
             let mut edits = Vec::new();
-            // The second `if`'s comments join the first's.
             let between = node_span(r#if).end;
             if let Some(span) = comments(source, between, node_span(next_if).start) {
                 let text = comment_lines(source, span, indent);
@@ -83,7 +75,6 @@ impl Rule for NoRedundantCondition {
                     format!("{text}\n{indent}"),
                 ));
             }
-            // The second `if`'s statements go at the end of the first's.
             if !next.stmts.is_empty() {
                 let inner = format!("{indent}    ");
                 match view.stmts.frame {
@@ -104,7 +95,6 @@ impl Rule for NoRedundantCondition {
                             .unwrap();
                         edits.push(Edit::new(Span::new(at, at), format!("\n{inner}{moved}")));
                     }
-                    // `Frame::Bare`: a colon-delimited `if` (`Frame::Open`) was skipped above.
                     _ => {
                         let moved = moved_statements(ctx, &next.stmts, &inner);
                         let only = node_span(view.stmts.stmts[0]);
@@ -132,7 +122,6 @@ impl Rule for NoRedundantCondition {
     }
 }
 
-/// The comments of `span`, a line each at `indent`.
 fn comment_lines(source: &str, span: Span, indent: &str) -> String {
     super::rector_stmts::tokens(source, span.start, span.end)
         .iter()
@@ -142,7 +131,6 @@ fn comment_lines(source: &str, span: Span, indent: &str) -> String {
         .join(&format!("\n{indent}"))
 }
 
-/// `isCondVariableUsedInIfBody`: a variable of the condition is named anywhere in the `if`'s statements.
 fn condition_variable_used(condition: &Expression<'_>, statements: &[&Statement<'_>]) -> bool {
     let mut names = Vec::new();
     collect_names(Node::Expression(condition), &mut names);

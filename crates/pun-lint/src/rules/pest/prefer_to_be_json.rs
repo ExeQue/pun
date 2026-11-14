@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-be-json`, ported from pest-plugin-rector's `UseToBeJsonRector`: `expect(json_decode($string)
-//! !== null)->toBeTrue()` becomes `expect($string)->toBeJson()`; `=== null`, `toBeFalse()` or a `->not` give
-//! `->not->toBeJson()`. The new call is made on the chain's `expect()`, so what came between is dropped.
-
 use mago_syntax::cst::{BinaryOperator, Expression, FunctionCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -76,8 +72,6 @@ impl Rule for PreferToBeJson {
     }
 }
 
-/// `extractJsonDecodeCall`: the call of `json_decode` (named exactly) on one side of the comparison, with `null` on the
-/// other (the left side first).
 fn json_decode_call<'a>(
     left: &'a Expression<'a>,
     right: &'a Expression<'a>,

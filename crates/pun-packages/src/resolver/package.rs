@@ -1,13 +1,9 @@
-//! A package version as the resolver sees it: its normalized version, stability and links, loaded from the JSON a
-//! repository or lock publishes, plus the alias packages a branch alias or a root `x as y` requirement adds.
-
 use crate::constraint::{self, Constraint};
 use crate::version::{branch_alias, normalize, stability_of};
 use anyhow::{Context, Result};
 use serde_json::{Map, Value};
 use std::sync::Arc;
 
-/// Stabilities from most to least stable, with the values Composer compares.
 pub const STABILITIES: [(&str, u8); 5] = [
     ("stable", 0),
     ("RC", 5),
@@ -16,36 +12,29 @@ pub const STABILITIES: [(&str, u8); 5] = [
     ("dev", 20),
 ];
 
-/// The value of a stability name (`dev`, `RC`, ...), matched case-insensitively; unknown names are stable.
 pub fn stability_value(name: &str) -> u8 {
     (STABILITIES.iter())
         .find(|(s, _)| s.eq_ignore_ascii_case(name))
         .map_or(0, |(_, v)| *v)
 }
 
-/// A requirement, conflict, provide or replace on another package.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Link {
     pub target: String,
     pub constraint: Constraint,
-    /// The constraint as written (`^1.0`, `self.version`).
     pub pretty: String,
 }
 
-/// Where a package came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Origin {
     Root,
     Platform,
-    /// The lock of a partial update.
     Locked,
-    /// The repository at this index of the pool builder's list (the root's repository is 0).
     Repository(usize),
 }
 
 #[derive(Debug, Clone)]
 pub struct Package {
-    /// Lowercase.
     pub name: String,
     pub pretty_name: String,
     pub version: String,
@@ -56,19 +45,12 @@ pub struct Package {
     pub conflicts: Vec<Link>,
     pub provides: Vec<Link>,
     pub replaces: Vec<Link>,
-    /// For an alias, the index of the package it aliases in the same arena.
     pub alias_of: Option<usize>,
-    /// An alias from the root's `x as y` requirements or the lock's `aliases`.
     pub root_alias: bool,
-    /// An alias whose aliased package requires something at `self.version`.
     pub self_version_requires: bool,
     pub origin: Origin,
-    /// `type`, `library` when it has none.
     pub kind: String,
-    /// Marked abandoned, with or without a replacement.
     pub abandoned: bool,
-    /// The JSON the package was loaded from, as text (an alias shares its package's). Most versions in a pool are
-    /// never locked, so [`Package::data`] parses it only for those that are.
     pub data: Arc<str>,
 }
 
@@ -77,7 +59,6 @@ impl Package {
         self.stability == 20
     }
 
-    /// The package's name and every name it provides or replaces (`getNames()`), or without provides.
     pub fn names(&self, provides: bool) -> Vec<&str> {
         let mut names = vec![self.name.as_str()];
         let links = (if provides { &self.provides[..] } else { &[] })
@@ -91,7 +72,6 @@ impl Package {
         names
     }
 
-    /// The JSON the package was loaded from.
     pub fn data(&self) -> Map<String, Value> {
         serde_json::from_str(&self.data).expect("the JSON a package was loaded from")
     }
@@ -109,7 +89,6 @@ fn links_of<'a>(p: &'a mut Package, kind: &str) -> &'a mut Vec<Link> {
     }
 }
 
-/// Parses a link's constraint, `self.version` meaning the package's own pretty version.
 fn link(name: &str, pretty_version: &str, kind: &str, target: &str, pretty: &str) -> Result<Link> {
     let source = if pretty == "self.version" {
         pretty_version
@@ -139,8 +118,6 @@ fn link_description(kind: &str) -> &str {
     }
 }
 
-/// Loads a package (and its branch alias, which comes first) from its JSON, as `ArrayLoader` does, into `arena`.
-/// Returns the arena indices in the order a repository lists them.
 pub fn load(
     data: Map<String, Value>,
     origin: Origin,
@@ -230,8 +207,6 @@ pub fn load(
     })
 }
 
-/// Adds an alias of `arena[of]` at `version` (`AliasPackage`): `self.version` requirements point at the alias's
-/// version, and `self.version` conflicts, provides and replaces are added for it.
 pub fn alias_package(
     arena: &mut Vec<Package>,
     of: usize,
@@ -318,7 +293,6 @@ mod tests {
             .collect()
     }
 
-    /// Composer 2.11.2's `ArrayLoader::load` on the same data, in PHP 8.5: its messages, versions and links.
     #[test]
     fn loads_as_composer() {
         for (data, message) in [
@@ -360,13 +334,10 @@ mod tests {
         let data =
             json!({"name": "acme/a", "version": "dev-master", "version_normalized": "9999999-dev"});
         assert_eq!(loaded(data).unwrap()[0].version, "dev-master");
-        // A link that is not a string is skipped, and a later one for the same name wins.
         let data = json!({"name": "acme/a", "version": "1.0", "require": {"b/b": ["x"], "c/c": "^1", "C/C": "^2"}});
         assert_eq!(pretty(&loaded(data).unwrap()[0].requires), [("c/c", "^2")]);
     }
 
-    /// Composer 2.11.2's `CompleteAliasPackage` for a branch alias: `self.version` requirements point at the alias,
-    /// a `self.version` replace is added for it.
     #[test]
     fn aliases_as_composer() {
         let data = json!({
@@ -392,7 +363,6 @@ mod tests {
             [("acme/c", "self.version"), ("acme/c", "1.0.x-dev")]
         );
         assert!(alias.self_version_requires);
-        // The alias comes first and points at the branch, the first package in the arena.
         assert_eq!(
             (alias.alias_of, packages[1].version.as_str()),
             (Some(0), "dev-main")

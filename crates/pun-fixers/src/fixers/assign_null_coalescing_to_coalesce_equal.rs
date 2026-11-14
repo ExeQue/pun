@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\AssignNullCoalescingToCoalesceEqualFixer`.
 use crate::analyzers::abstract_short_operator_fixer::{ShortOperator, apply_fix};
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -16,7 +15,6 @@ impl ShortOperator for AssignNullCoalescingToCoalesceEqualFixer {
         if !tokens[index].is_kind(T_COALESCE) {
             return false;
         }
-        // make sure after '??' does not contain '? :'
         tokens
             .get_next_token_of_kind(index, &["?".into(), ";".into(), T_CLOSE_TAG.into()], true)
             .is_none_or(|next_index| !tokens[next_index].equals("?", true))

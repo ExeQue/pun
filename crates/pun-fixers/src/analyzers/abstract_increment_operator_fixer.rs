@@ -1,8 +1,6 @@
-//! Port of `PhpCsFixer\Fixer\AbstractIncrementOperatorFixer`.
 use pun_tokens::Kind::*;
 use pun_tokens::Tokens;
 
-/// `AbstractIncrementOperatorFixer::findStart`.
 pub(crate) fn find_start(tokens: &Tokens, mut index: usize) -> usize {
     loop {
         index = tokens.get_prev_meaningful_token(index).unwrap();

@@ -1,119 +1,78 @@
-//! A doc comment as the name handling reads and rewrites it: Rector's `PhpDocInfo` (phpdoc-parser 2.3's children, its
-//! `DoctrineAnnotationDecorator` taking a tag whose name resolves to a class for a Doctrine annotation), the
-//! `IdentifierTypeNode`s of its tags in `PhpDocNodeTraverser` order, and `PhpDocInfoPrinter::printFormatPreserving()`
-//! with the children whose identifiers changed reprinted (`(string) $phpDocChildNode`).
-//!
-//! Pun reprints the tags whose value it reads: `@param`, `@var`, `@return`, `@throws`, `@property`, `@template`,
-//! `@extends` and their kin (with the `phpstan-`, `psalm-` and `phan-` prefixes), and a Doctrine annotation whose
-//! arguments are strings, names, numbers and booleans. [`Doc::reprintable`] tells the callers where it cannot, so they
-//! leave the file alone rather than write half of Rector's change.
-
 use pun_phpstan::phpdoc::{self, Node, ShapeKey};
 
 use super::phpdoc_parser::{self as parser, ArrayItem, Key, Val, t};
 use crate::rules::phpdoc_writer::type_node::TypeNode;
 
-/// How a typed tag's value is laid out around its type.
 #[derive(Clone, Debug)]
 enum Form {
-    /// `ParamTagValueNode`: `Type &...$name description`.
     Param {
         reference: bool,
         variadic: bool,
         variable: String,
     },
-    /// `VarTagValueNode`: `Type $name description`, the name optional.
     Var(String),
-    /// `ReturnTagValueNode` and its kin: `Type description`.
     Plain,
-    /// `PropertyTagValueNode`, `ParamOutTagValueNode`, `ParamClosureThisTagValueNode`: `Type $name description`.
     Named(String),
-    /// Rector's `SpacingAwareTemplateTagValueNode`: `T of Bound description` (`of` or `as` as written).
-    Template { name: String, preposition: String },
+    Template {
+        name: String,
+        preposition: String,
+    },
 }
 
-/// A tag whose value holds types Pun reads and reprints.
 #[derive(Clone, Debug)]
 pub(crate) struct Typed {
     form: Form,
-    /// The type, or a template's bound (none without one).
     types: Vec<Node>,
     description: String,
-    /// The strings written in the value, each as printed ([`strings_of`]).
     strings: Vec<(Vec<u8>, Option<String>)>,
-    /// The identifiers [`Doc::set_ident`] replaced: a new `IdentifierTypeNode` has no `PARENT` attribute, so the
-    /// name importing no longer sees its template tag.
     replaced: Vec<usize>,
 }
 
-/// A Doctrine annotation: Rector's `SpacelessPhpDocTagNode` with a `DoctrineAnnotationTagValueNode`.
 #[derive(Clone, Debug)]
 pub(crate) struct Annotation {
-    /// The class the annotation's name resolves to (`RESOLVED_CLASS`).
     pub class: String,
-    /// The name of its `IdentifierTypeNode`: the tag's name as written, until a rule replaces it.
     pub identifier: String,
-    /// `originalContent`: the arguments as the decorator read them.
     original: String,
-    /// The arguments, as `StaticDoctrineAnnotationParser` makes them.
     pub values: Vec<ArrayItem>,
 }
 
 impl Annotation {
-    /// `getOriginalContent()`.
     pub(crate) fn original(&self) -> &str {
         &self.original
     }
 
-    /// `DoctrineAnnotationTagValueNode::__toString()` (the node is always changed): the values in parentheses, or
-    /// the empty parentheses as written.
     pub(crate) fn values_string(&self) -> String {
         match self.values.is_empty() {
             false => format!("({})", parser::join(&self.values)),
-            // empty brackets
             true => ["", "()"][usize::from(self.original == "()")].to_string(),
         }
     }
 }
 
-/// What a child of the doc is.
 #[derive(Clone, Debug)]
 pub(crate) enum Value {
-    /// `PhpDocTextNode`: its text.
     Text(String),
     Typed(Typed),
-    /// `GenericTagValueNode`: its value.
     Generic(String),
-    /// `DoctrineTagValueNode` whose name is no class (a template): its arguments as phpdoc-parser prints them, and
-    /// its description.
     Doctrine {
         args: Vec<parser::Printed>,
         description: String,
     },
-    /// `InvalidTagValueNode` whose name is no class: its value.
     Invalid(String),
     Annotation(Annotation),
-    /// Any other tag phpdoc-parser gives a value node of its own (`@method`, `@phpstan-type`,
-    /// `@phpstan-import-type`, `@phpstan-assert`, a typeless `@param`...).
     Other(Other),
 }
 
-/// A tag value `pun_phpstan` parses, with what its node prints that `pun_phpstan` leaves out.
 #[derive(Clone, Debug)]
 pub(crate) struct Other {
     value: phpdoc::TagValue,
-    /// The `description` property, for a value node that has one.
     description: Option<String>,
-    /// `TemplatePhpDocNodeVisitor::resolvePreposition()` of each `@method` template.
     prepositions: Vec<String>,
-    /// Each string in the `@method` parameters' defaults as printed, in order.
     quotes: Vec<String>,
     strings: Vec<(Vec<u8>, Option<String>)>,
 }
 
 impl Other {
-    /// The tag's `IdentifierTypeNode`s in `PhpDocNodeTraverser` order, with whether the parent of each is a template
-    /// (a `@method` template is a `SpacingAwareTemplateTagValueNode` without its lower bound and default).
     fn idents_mut(&mut self, f: &mut dyn FnMut(&mut String, bool)) {
         match &mut self.value {
             phpdoc::TagValue::Method {
@@ -140,7 +99,6 @@ impl Other {
         }
     }
 
-    /// The value node's `__toString()`.
     fn print(&self) -> Option<String> {
         let quote = |v: &[u8]| quote_of(&self.strings, v);
         let ty = |node: &Node| TypeNode::from_parsed_all(node, &quote).map(|t| t.to_string());
@@ -155,7 +113,6 @@ impl Other {
             } => {
                 let mut quotes = self.quotes.iter();
                 let mut printed = Vec::new();
-                // `MethodTagValueParameterNode`
                 for p in params {
                     let mut param = match &p.ty {
                         Some(t) => format!("{} ", ty(t)?),
@@ -169,7 +126,6 @@ impl Other {
                     }
                     printed.push(param);
                 }
-                // `SpacingAwareTemplateTagValueNode`
                 let mut generics = Vec::new();
                 for (t, preposition) in templates.iter().zip(&self.prepositions) {
                     generics.push(match &t.bound {
@@ -230,13 +186,11 @@ impl Other {
                 )
             }
             phpdoc::TagValue::ParamName(name) => format!("{name} {description}"),
-            // `@deprecated` (no other value has an identifier that changes)
             _ => description.to_string(),
         })
     }
 }
 
-/// `ConstExprNode::__toString()`; `quotes` gives each string as printed.
 fn const_expr(
     expr: &phpdoc::ConstExpr,
     quotes: &mut std::slice::Iter<'_, String>,
@@ -269,19 +223,13 @@ fn const_expr(
 
 #[derive(Clone, Debug)]
 pub(crate) struct Child {
-    /// `START_AND_END`: the first token and the token after the last; `None` for a node the decorator made.
     start_end: Option<(usize, usize)>,
-    /// The node object's identity.
     id: usize,
-    /// The tag's name, its `@` included; `None` for text.
     pub tag: Option<String>,
     pub value: Value,
-    /// Whether a node inside was replaced (`ChangedPhpDocNodeVisitor`): the child is reprinted.
     pub changed: bool,
 }
 
-/// An `IdentifierTypeNode` of the doc: its child, its place among the child's identifiers, its name, and whether its
-/// parent is a `TemplateTagValueNode`.
 #[derive(Clone, Debug)]
 pub(crate) struct Ident {
     pub child: usize,
@@ -290,18 +238,14 @@ pub(crate) struct Ident {
     pub template_parent: bool,
 }
 
-/// A doc comment.
 #[derive(Clone, Debug)]
 pub(crate) struct Doc {
     pub text: String,
     tokens: Vec<parser::Tok>,
     pub children: Vec<Child>,
-    /// The key of each child in PHP's array of them (`unset()` leaves gaps).
     keys: Vec<usize>,
-    /// The children that went (`PhpDocTagRemover`, a `NODE_REMOVE` traversal) or were replaced, with their keys.
     removed: Vec<(usize, Child)>,
     single_line: bool,
-    /// `LAST_PHP_DOC_TOKEN_POSITION`.
     last_token_position: Option<usize>,
 }
 
@@ -370,7 +314,6 @@ const TEMPLATE: &[&str] = &[
     "@phpstan-template-contravariant",
     "@psalm-template-contravariant",
 ];
-/// `NodeTypes::TYPE_AWARE_NODES`: the value nodes whose presence lets `ClassRenamer` rename the doc's types.
 pub(crate) fn is_type_aware(child: &Child) -> bool {
     let Value::Typed(typed) = &child.value else {
         return false;
@@ -392,18 +335,12 @@ pub(crate) fn is_type_aware(child: &Child) -> bool {
 }
 
 impl Doc {
-    /// Read the doc comment `text`; `resolve_tag` is `ClassAnnotationMatcher::resolveTagFullyQualifiedName()` and
-    /// `narrow` the class `ObjectTypeSpecifier::narrowToFullyQualifiedOrAliasedObjectType()` gives (`None` for a
-    /// template), at the node the doc belongs to. `None` where Pun does not follow how Rector's
-    /// `DoctrineAnnotationDecorator` draws the children: a `@\Class` inside a text, nested annotations split over
-    /// tags (`mergeNestedDoctrineAnnotations()`), arguments Rector's parsers never finish reading.
     pub(crate) fn parse(
         text: &str,
         resolve_tag: &dyn Fn(&str) -> String,
         narrow: &dyn Fn(&str) -> Option<String>,
     ) -> Option<Doc> {
         let tokens = parser::tokenize(text);
-        // where the type ends, or the token `TypeParser` throws at (the offset its message gives)
         let type_end = |start: usize| match phpdoc::parse_prefix(&text[start..]) {
             Ok((_, offset)) => Ok(start + offset),
             Err(error) => Err(start + error_offset(&error.message())),
@@ -430,7 +367,6 @@ impl Doc {
         Some(Doc {
             text: text.to_string(),
             single_line: !tokens.iter().any(|t| t.ty == t::PHPDOC_EOL),
-            // `setPositionOfLastToken()`
             last_token_position: children.last().and_then(|c| c.start_end).map(|se| se.1),
             tokens,
             children,
@@ -439,7 +375,6 @@ impl Doc {
         })
     }
 
-    /// The doc's `IdentifierTypeNode`s, in traversal order.
     pub(crate) fn idents(&self) -> Vec<Ident> {
         let mut out = Vec::new();
         for (child, c) in self.children.iter().enumerate() {
@@ -466,7 +401,6 @@ impl Doc {
                     }
                 }
                 Value::Annotation(annotation) => {
-                    // the annotation's own `IdentifierTypeNode`, then those of the annotations nested in its values
                     push(&annotation.identifier, false);
                     nested_identifiers(&annotation.values, &mut |name| push(name, false));
                 }
@@ -484,7 +418,6 @@ impl Doc {
         out
     }
 
-    /// Replace the identifier `ident` by `name`: its child is reprinted.
     pub(crate) fn set_ident(&mut self, ident: &Ident, name: &str) {
         let child = &mut self.children[ident.child];
         child.changed = true;
@@ -502,7 +435,6 @@ impl Doc {
                 }
                 typed.replaced.push(ident.index);
             }
-            // the annotation's own identifier, never printed (the tag's name is), or a nested one
             Value::Annotation(annotation) if ident.index == 0 => {
                 annotation.identifier = name.to_string();
             }
@@ -534,26 +466,19 @@ impl Doc {
         }
     }
 
-    /// Mark the child `child` changed (a value inside a Doctrine annotation was set).
     pub(crate) fn set_changed(&mut self, child: usize) {
         self.children[child].changed = true;
     }
 
-    /// `NameImportingPhpDocNodeVisitor::enterSpacelessPhpDocTagNode()`: the annotation `child` named `name` (its
-    /// `@` included), its value reprinted as `processDoctrineAnnotationTagValueNode()` marks it changed.
     pub(crate) fn set_tag(&mut self, child: usize, name: &str) {
         self.children[child].tag = Some(name.to_string());
         self.set_changed(child);
     }
 
-    /// `hasByTypes(NodeTypes::TYPE_AWARE_NODES)`.
     pub(crate) fn has_type_aware(&self) -> bool {
         self.children.iter().any(is_type_aware)
     }
 
-    /// `PhpDocInfo::getByAnnotationClasses()`: the first annotation of the first of `classes` that has one
-    /// (`DoctrineAnnotationTagValueNode::hasClassName()`: its identifier without `@`, or the class it resolves to),
-    /// nested ones included, as its child and that class.
     pub(crate) fn find_annotation<'c>(&self, classes: &[&'c str]) -> Option<(usize, &'c str)> {
         for class in classes {
             let is = |identifier: &str, resolved: &str| has_class_name(identifier, resolved, class);
@@ -569,7 +494,6 @@ impl Doc {
         None
     }
 
-    /// [`Self::find_annotation`]'s annotation: its child, the class it resolves to and its values.
     pub(crate) fn annotation_mut(
         &mut self,
         classes: &[&str],
@@ -590,10 +514,6 @@ impl Doc {
             })
     }
 
-    /// The class names `UnusedImportRemovingPostRector::findNamesInDocBlocks()` reads from the doc:
-    /// `getAnnotationClassNames()`, `getConstFetchNodeClassNames()`, `getGenericTagClassNames()`,
-    /// `getInlineGenericUsesTagClassNames()` and `getArrayItemNodeClassNames()`; `resolve` is
-    /// `NameScope::resolveStringName()` where the doc is.
     pub(crate) fn used_names(&self, resolve: &dyn Fn(&str) -> String) -> Vec<String> {
         let mut names: Vec<String> = self
             .idents()
@@ -607,7 +527,6 @@ impl Doc {
                         const_fetches(t, &mut |class| names.push(resolve(class)));
                     }
                 }
-                // `getArrayItemNodeClassNames()`: a string value `Class::NAME` (`ArrayItemClassNameDecorator`)
                 Value::Annotation(a) => array_items(&a.values, &mut |item| {
                     if let Val::Str(value) = &item.value
                         && let [class, _] = value.split("::").collect::<Vec<_>>()[..]
@@ -638,7 +557,6 @@ impl Doc {
                 _ => {}
             }
         }
-        // `INLINE_GENERIC_USES_CLASS_REFERENCE_REGEX`: `{@uses X}`, `{@used-by X}`, `{@see X}`
         let mut inline = Vec::new();
         let mut rest = self.text.as_str();
         while let Some(at) = rest.find("{@") {
@@ -689,8 +607,6 @@ impl Doc {
         names
     }
 
-    /// The names `ShortNameResolver::resolveFromStmtsDocBlocks()` reads, in order: the names of the tags that do not
-    /// start with a lower-case letter, and every identifier.
     pub(crate) fn short_names(&self) -> Vec<String> {
         let idents = self.idents();
         let mut names = Vec::new();
@@ -711,15 +627,12 @@ impl Doc {
         names
     }
 
-    /// `PhpDocTagRemover::removeTagValueFromNode()`, a `NODE_REMOVE` traversal: the child `i` goes, the others keep
-    /// their keys (`unset()`).
     pub(crate) fn remove(&mut self, i: usize) {
         let child = self.children.remove(i);
         let key = self.keys.remove(i);
         self.removed.push((key, child));
     }
 
-    /// `$phpDocNode->children[$key] = new PhpDocTextNode($text)`: the child `i` becomes a new text node.
     pub(crate) fn replace_with_text(&mut self, i: usize, text: String) {
         let text = Child {
             start_end: None,
@@ -732,16 +645,9 @@ impl Doc {
         self.removed.push((self.keys[i], child));
     }
 
-    /// `RemoveNodesStartAndEndResolver::resolve()`: for each child that went (`array_diff()` by the string of each,
-    /// in their order), the token before its first token and the token after it.
-    ///
-    /// (A child that went is a tag that the rule took: one of the same text is taken too, so `array_diff()` drops
-    /// none. Its start is no `PHPDOC_EOL`, and comes after the end of the one before it (or after `/**` for the
-    /// first, where `null < $seekPosition`), so the seek to the start of the line stops where it starts.)
     fn jumps(&self) -> Vec<(usize, usize)> {
         let mut removed = self.removed.clone();
         removed.sort_by_key(|(key, _)| *key);
-        // it's not there when comment block has empty row "\s\*\n"
         removed
             .iter()
             .filter_map(|(_, c)| c.start_end)
@@ -749,7 +655,6 @@ impl Doc {
             .collect()
     }
 
-    /// Whether every changed child can be printed as Rector prints it.
     pub(crate) fn reprintable(&self) -> bool {
         self.children
             .iter()
@@ -757,14 +662,11 @@ impl Doc {
             .all(|c| print_child(c).is_some())
     }
 
-    /// Whether a child changed.
     pub(crate) fn is_changed(&self) -> bool {
         self.children.iter().any(|c| c.changed)
     }
 
-    /// `PhpDocInfoPrinter::printFormatPreserving()`. Call it only when [`Self::reprintable`] holds.
     pub(crate) fn print(&self) -> String {
-        // `EmptyPhpDocDetector::isPhpDocNodeEmpty()`
         if self
             .children
             .iter()
@@ -777,11 +679,9 @@ impl Doc {
         let mut output = String::new();
         let count = self.children.len();
         for (child, key) in self.children.iter().zip(&self.keys) {
-            // `printDocChildNode()`, with the child's key in the array
             let key = key + 1;
             match child.start_end {
                 Some((start, end)) if !child.changed => {
-                    // `correctPreviouslyReprintedFirstNode()`
                     if current == 0 && key != 1 {
                         current = start - usize::from(self.tokens[start - 1].ty == t::PHPDOC_EOL);
                     }
@@ -806,7 +706,6 @@ impl Doc {
                 }
             }
         }
-        // `printEnd()`
         let last = self.last_token_position.unwrap_or(current);
         output = match last {
             0 => output + "\n */",
@@ -819,12 +718,10 @@ impl Doc {
         {
             output.insert_str(0, "/**");
         }
-        // `NEW_LINE_WITH_SPACE_REGEX`, then the `CALLABLE_REGEX` hotfix
         let output = output.replace(" \r\n", "\r\n").replace(" \n", "\n");
         callable_hotfix(&output)
     }
 
-    /// `addTokensFromTo()`, the removed children's tokens skipped (`appendToOutput()`).
     fn add_tokens_from_to(
         &self,
         mut output: String,
@@ -839,11 +736,9 @@ impl Doc {
                 .map_or("", |t| &self.text[t.start..t.end])
         };
         let mut from = from;
-        // include also space before, in case of inlined docs
         if from > 0 && self.tokens[from - 1].ty == t::HORIZONTAL_WS {
             from -= 1;
         }
-        // skip extra empty lines above if this is the last one
         if skip_empty_lines_above && text(from).contains('\n') && text(from + 1).contains('\n') {
             from += 1;
         }
@@ -859,7 +754,6 @@ impl Doc {
     }
 }
 
-/// `Strings::replace($phpDocString, '#callable(\s+)\(#', 'callable(')`.
 fn callable_hotfix(text: &str) -> String {
     let mut out = String::new();
     let mut rest = text;
@@ -879,8 +773,6 @@ fn callable_hotfix(text: &str) -> String {
     out
 }
 
-/// Every `IdentifierTypeNode` of `node` in `PhpDocNodeTraverser` order, `parent_template` for the node that is a
-/// template tag's bound itself.
 fn walk(node: &mut Node, parent_template: bool, f: &mut dyn FnMut(&mut String, bool)) {
     match node {
         Node::Ident(name) => f(name, parent_template),
@@ -960,7 +852,6 @@ fn walk(node: &mut Node, parent_template: bool, f: &mut dyn FnMut(&mut String, b
     }
 }
 
-/// The classes of the `Class::NAME` types in `node`.
 fn const_fetches(node: &Node, f: &mut dyn FnMut(&str)) {
     match node {
         Node::Const(phpdoc::ConstExpr::Fetch(class, _)) if !class.is_empty() => f(class),
@@ -974,7 +865,6 @@ fn const_fetches(node: &Node, f: &mut dyn FnMut(&str)) {
     }
 }
 
-/// `RectorAssert::className()`.
 pub(crate) fn is_class_name(name: &str) -> bool {
     !name.is_empty()
         && name.split('\\').all(|part| {
@@ -986,8 +876,6 @@ pub(crate) fn is_class_name(name: &str) -> bool {
         })
 }
 
-/// The `Other` value of the tag `name` that `pun_phpstan` parsed as `tag`; `value` is the doc's text from the
-/// tag's value to the end of the child, and `None` where Pun does not find where its description starts.
 fn other(tag: phpdoc::Tag, value: &str, description: impl Fn(usize) -> String) -> Option<Value> {
     let (mut prepositions, mut quotes, mut description_at) = (Vec::new(), Vec::new(), None);
     match &tag.value {
@@ -996,7 +884,6 @@ fn other(tag: phpdoc::Tag, value: &str, description: impl Fn(usize) -> String) -
             (prepositions, quotes, description_at) = (p, q, Some(at));
         }
         phpdoc::TagValue::Assert { .. } => description_at = Some(scan_assert(value)?),
-        // `TypelessParamTagValueNode` and `ParamImmediatelyInvokedCallableTagValueNode` and its kin: after the name
         phpdoc::TagValue::Param { .. } | phpdoc::TagValue::ParamName(_) => {
             description_at = Some(
                 tokens_from(value, 0)
@@ -1017,8 +904,6 @@ fn other(tag: phpdoc::Tag, value: &str, description: impl Fn(usize) -> String) -
     }))
 }
 
-/// The strings written in `value`: each as `pun_phpstan` reads it (`StringUnescaper`) and as `ConstExprStringNode`
-/// prints it, `None` where that print is no UTF-8.
 fn strings_of(value: &str) -> Vec<(Vec<u8>, Option<String>)> {
     let mut strings = Vec::new();
     for tok in parser::tokenize(value) {
@@ -1031,7 +916,6 @@ fn strings_of(value: &str) -> Vec<(Vec<u8>, Option<String>)> {
     strings
 }
 
-/// The string `value` as printed; `None` where Rector would print bytes that are no UTF-8.
 fn quote_of(strings: &[(Vec<u8>, Option<String>)], value: &[u8]) -> Option<String> {
     strings
         .iter()
@@ -1039,7 +923,6 @@ fn quote_of(strings: &[(Vec<u8>, Option<String>)], value: &[u8]) -> Option<Strin
         .and_then(|(_, printed)| printed.clone())
 }
 
-/// The byte of the input a `ParserException` message names (`getCurrentTokenOffset()`).
 fn error_offset(message: &str) -> usize {
     let (_, after) = message.rsplit_once(" at offset ").unwrap_or_default();
     after
@@ -1049,14 +932,12 @@ fn error_offset(message: &str) -> usize {
         .unwrap_or_default()
 }
 
-/// Where the type at the start of `value` (after white space) ends.
 fn type_end(value: &str, at: usize) -> Option<(Node, usize)> {
     let start = at + value[at..].len() - value[at..].trim_start_matches([' ', '\t']).len();
     let (node, offset) = phpdoc::parse_prefix(&value[start..]).ok()?;
     Some((node, start + offset))
 }
 
-/// The tokens of `value` from `at`, white space left out, each with its bytes made absolute.
 fn tokens_from(value: &str, at: usize) -> Vec<parser::Tok> {
     parser::tokenize(&value[at..])
         .into_iter()
@@ -1069,8 +950,6 @@ fn tokens_from(value: &str, at: usize) -> Vec<parser::Tok> {
         .collect()
 }
 
-/// `parseMethodTagValue()` on `value`: where its description starts, the preposition of each template, and each
-/// string in the parameters' defaults as printed.
 fn scan_method(value: &str) -> Option<(usize, Vec<String>, Vec<String>)> {
     let (first, mut end) = type_end(value, 0)?;
     if first == Node::Ident("static".into()) {
@@ -1079,7 +958,6 @@ fn scan_method(value: &str) -> Option<(usize, Vec<String>, Vec<String>)> {
     let toks = tokens_from(value, end);
     let mut i = usize::from(toks[0].ty == t::IDENTIFIER);
     let text = |tok: &parser::Tok| &value[tok.start..tok.end];
-    // the tokens of each bracketed run, split at its commas: `<...>`, then `(...)`
     let run = |open: u8, close: u8, i: &mut usize| -> Vec<Vec<parser::Tok>> {
         let mut parts = vec![Vec::new()];
         if toks[*i].ty != open {
@@ -1150,7 +1028,6 @@ fn scan_method(value: &str) -> Option<(usize, Vec<String>, Vec<String>)> {
     Some((toks.get(i.checked_sub(1)?)?.end, prepositions, quotes))
 }
 
-/// `parseAssertTagValue()` on `value`: where its description starts.
 fn scan_assert(value: &str) -> Option<usize> {
     let at = value.len() - value.trim_start_matches([' ', '\t', '!', '=']).len();
     let (_, end) = type_end(value, at)?;
@@ -1165,8 +1042,6 @@ fn scan_assert(value: &str) -> Option<usize> {
     Some(toks[i - 1].end)
 }
 
-/// The value phpdoc-parser gives the tag `name` from `from` to `to` (bytes of the doc); `None` where Pun does not
-/// read it.
 fn tag_value(
     text: &str,
     tokens: &[parser::Tok],
@@ -1180,8 +1055,6 @@ fn tag_value(
             if let Some(value) = typed(text, tokens, name, from, to) {
                 return Some(value);
             }
-            // a value its parser rejects is an `InvalidTagValueNode`; a parsed `@method` and its kin keep their own
-            // value node
             let doc = format!("/** {} */", &text[from - name.len()..to]);
             let tag = phpdoc::tags(&doc)?.into_iter().next()?;
             if let phpdoc::TagValue::Invalid(..) = tag.value {
@@ -1199,10 +1072,8 @@ fn tag_value(
     }
 }
 
-/// PHP's `trim()` characters.
 const PHP_WS: [char; 6] = [' ', '\t', '\n', '\r', '\0', '\x0B'];
 
-/// The children of the doc while `DoctrineAnnotationDecorator` works on them: PHP's array, each child under its key.
 #[derive(Default)]
 struct Slots {
     items: Vec<(usize, Child)>,
@@ -1210,7 +1081,6 @@ struct Slots {
 }
 
 impl Slots {
-    /// A new node object.
     fn child(
         &mut self,
         start_end: Option<(usize, usize)>,
@@ -1231,7 +1101,6 @@ impl Slots {
         self.items.iter().position(|(k, _)| *k == key)
     }
 
-    /// `$children[$key] = $child`: in its place, or last for a key the array lacks.
     fn set(&mut self, key: usize, child: Child) {
         match self.position(key) {
             Some(at) => self.items[at].1 = child,
@@ -1239,12 +1108,10 @@ impl Slots {
         }
     }
 
-    /// `unset($children[$key])`.
     fn unset(&mut self, key: usize) {
         self.items.retain(|(k, _)| *k != key);
     }
 
-    /// `array_splice($children, $offset, 0, $nodes)`: inserted at the position `offset`, the keys made anew.
     fn splice(&mut self, offset: usize, nodes: Vec<(String, Value)>) {
         let nodes: Vec<(usize, Child)> = nodes
             .into_iter()
@@ -1257,7 +1124,6 @@ impl Slots {
         }
     }
 
-    /// `while (isset($children[$key]) && $children[$key] !== $node) ++$key;`.
     fn find(&self, mut key: usize, id: usize) -> usize {
         while self
             .position(key)
@@ -1269,8 +1135,6 @@ impl Slots {
     }
 }
 
-/// `DoctrineAnnotationDecorator::mergeNestedDoctrineAnnotations()`: a generic value joined with the `})` text and
-/// the generic tags that follow it until it closes.
 fn merge_nested_doctrine_annotations(slots: &mut Slots) {
     let mut removed = Vec::new();
     for key in 0..slots.items.len() {
@@ -1285,7 +1149,6 @@ fn merge_nested_doctrine_annotations(slots: &mut Slots) {
             let child = &item.1;
             let combined = start_end.zip(child.start_end).map(|(a, b)| (a.0, b.1));
             match (&child.tag, &child.value) {
-                // `NESTED_ANNOTATION_END_REGEX`; the child after the text goes too
                 (_, Value::Text(text)) if text.contains("})") => {
                     value = format!("{value}\n{text}");
                     start_end = combined;
@@ -1308,8 +1171,6 @@ fn merge_nested_doctrine_annotations(slots: &mut Slots) {
     slots.items.retain(|(key, _)| !removed.contains(key));
 }
 
-/// `transformGenericTagValueNodesToDoctrineAnnotationTagValueNodes()` over the children as the array held them
-/// when it started; `None` where Rector's annotation parsers never finish.
 fn transform(
     slots: &mut Slots,
     resolve_tag: &dyn Fn(&str) -> String,
@@ -1318,13 +1179,11 @@ fn transform(
     for (key, child) in slots.items.clone() {
         let name = child.tag.clone().unwrap_or_default();
         match &child.value {
-            // the `@\FQN` use case
             Value::Text(text) => {
                 let nodes = resolve_fqn_annotations(text, resolve_tag)?;
                 if nodes.is_empty() {
                     continue;
                 }
-                // `processTextSpacelessInTextNode()`
                 let other = first_text(text);
                 let keep = !other.starts_with("@\\") && !other.trim_matches(PHP_WS).is_empty();
                 if keep {
@@ -1361,7 +1220,6 @@ fn transform(
                 )?;
             }
             Value::Generic(value) => {
-                // known doc tag to annotation class
                 let class = resolve_tag(&name);
                 if !class.contains('\\') && class != "Target" {
                     continue;
@@ -1372,7 +1230,6 @@ fn transform(
                     true => value.clone(),
                     false => first_text(value),
                 };
-                // its `ORIG_NODE` set to null, Rector still prints it as written
                 let annotation = slots.child(
                     child.start_end,
                     child.tag.clone(),
@@ -1389,8 +1246,6 @@ fn transform(
     Some(())
 }
 
-/// `processDoctrine()`: `values` are the printed arguments of a `DoctrineTagValueNode` (with its `description`) or
-/// an `InvalidTagValueNode`'s value. A name that is no class (a template) leaves the tag as it is.
 fn process_doctrine(
     slots: &mut Slots,
     child: &Child,
@@ -1421,13 +1276,10 @@ fn process_doctrine(
     let tag = format!("@{name}");
     let annotation = annotation(&tag, values, class, resolve_tag)?;
     let annotation = slots.child(child.start_end, Some(tag), annotation);
-    // the key the child had when the decorator started
     slots.set(key, annotation);
     Some(())
 }
 
-/// `processDescriptionAsSpacelessPhpDoctagNode()`: a description over lines with `@\Class` annotations gives them as
-/// children after the tag, which moves to the end of the array without them.
 fn process_description_as_spaceless(
     slots: &mut Slots,
     child: &Child,
@@ -1447,7 +1299,6 @@ fn process_description_as_spaceless(
     }
     let key = slots.find(key, child.id);
     slots.unset(key);
-    // `Strings::replace($description, LONG_ANNOTATION_REGEX, '')`, then `substr($description, 0, -7)`
     let stripped = parser::replace_all(long_annotation(), description, |_| String::new());
     let cut = stripped.len().saturating_sub(7);
     *description = String::from_utf8_lossy(&stripped.as_bytes()[..cut]).into_owned();
@@ -1457,7 +1308,6 @@ fn process_description_as_spaceless(
     Some(())
 }
 
-/// `LONG_ANNOTATION_REGEX`.
 fn long_annotation() -> &'static pcre2::bytes::Regex {
     static RE: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
     RE.get_or_init(|| {
@@ -1466,7 +1316,6 @@ fn long_annotation() -> &'static pcre2::bytes::Regex {
     })
 }
 
-/// `Strings::split($text, NEWLINE_ANNOTATION_FQCN_REGEX)[0]`: the text before the first line that starts with `@\`.
 fn first_text(text: &str) -> String {
     static RE: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
     let re = RE
@@ -1479,8 +1328,6 @@ fn first_text(text: &str) -> String {
     text[..end].to_string()
 }
 
-/// `resolveFqnAnnotationSpacelessPhpDocTagNode()`: an annotation of each `@\Class` in `text`, with its tag; `None`
-/// where Rector's parsers never finish reading one.
 fn resolve_fqn_annotations(
     text: &str,
     resolve_tag: &dyn Fn(&str) -> String,
@@ -1489,7 +1336,6 @@ fn resolve_fqn_annotations(
     for caps in long_annotation().captures_iter(text.as_bytes()).flatten() {
         let group = |name: &str| caps.name(name).map_or("", |m| &text[m.start()..m.end()]);
         let open: Vec<&str> = group("class_name").split('(').collect();
-        // `resolveAnnotationContent()`
         let content = match open.get(1).map(|o| o.trim_matches(PHP_WS)) {
             Some(o) if !o.ends_with('{') && !o.is_empty() => {
                 format!("(\"{}\")", o.trim_matches(['"', '\'']))
@@ -1504,7 +1350,6 @@ fn resolve_fqn_annotations(
 }
 
 impl Value {
-    /// The value node's `description` property, for one that has it.
     fn description_mut(&mut self) -> Option<&mut String> {
         match self {
             Value::Typed(typed) => Some(&mut typed.description),
@@ -1517,7 +1362,6 @@ impl Value {
     }
 }
 
-/// `STAR_COMMENT_REGEX`: the `*` that starts a line (white space before it), removed.
 fn star_comment(values: &str) -> String {
     values
         .split('\n')
@@ -1529,7 +1373,6 @@ fn star_comment(values: &str) -> String {
         .join("\n")
 }
 
-/// `createDoctrineSpacelessPhpDocTagNode()`; `None` where Rector's parsers never finish reading `content`.
 fn annotation(
     tag: &str,
     content: String,
@@ -1545,8 +1388,6 @@ fn annotation(
     }))
 }
 
-/// A `GenericTagValueNode`'s value: what follows the tag name, its leading white space aside, its lines joined by
-/// `\n`.
 fn generic_value(text: &str, tokens: &[parser::Tok], from: usize, to: usize) -> String {
     let mut value = String::new();
     for t in tokens.iter().filter(|t| t.start >= from && t.end <= to) {
@@ -1561,7 +1402,6 @@ fn generic_value(text: &str, tokens: &[parser::Tok], from: usize, to: usize) -> 
         .to_string()
 }
 
-/// `DoctrineAnnotationDecorator::isClosedContent()` (phpdoc-parser's tokens holding a bracket, counted).
 fn closed_content(value: &str) -> bool {
     let (mut open, mut close) = (0, 0);
     for token in parser::tokenize(value) {
@@ -1572,7 +1412,6 @@ fn closed_content(value: &str) -> bool {
     open == close
 }
 
-/// The identifiers of the annotations nested in `values`, each before its own values.
 fn nested_identifiers(values: &[ArrayItem], f: &mut dyn FnMut(&str)) {
     for item in values {
         for v in item_vals(item) {
@@ -1588,7 +1427,6 @@ fn nested_identifiers(values: &[ArrayItem], f: &mut dyn FnMut(&str)) {
     }
 }
 
-/// [`nested_identifiers`], to replace them.
 fn nested_identifiers_mut(values: &mut [ArrayItem], f: &mut dyn FnMut(&mut String)) {
     for item in values {
         let key = match &mut item.key {
@@ -1608,7 +1446,6 @@ fn nested_identifiers_mut(values: &mut [ArrayItem], f: &mut dyn FnMut(&mut Strin
     }
 }
 
-/// The value of `item`, then its key (`ArrayItemNode`'s properties in order).
 fn item_vals(item: &ArrayItem) -> impl Iterator<Item = &Val> {
     let key = match &item.key {
         Some(Key::Val(key)) => Some(key),
@@ -1617,7 +1454,6 @@ fn item_vals(item: &ArrayItem) -> impl Iterator<Item = &Val> {
     std::iter::once(&item.value).chain(key)
 }
 
-/// The `IdentifierTypeNode`s of a `DoctrineTagValueNode`'s keys and values (a text value has none).
 fn doctrine_identifiers(value: &mut Value) -> Vec<&mut String> {
     match value {
         Value::Doctrine { args, .. } => args
@@ -1630,12 +1466,10 @@ fn doctrine_identifiers(value: &mut Value) -> Vec<&mut String> {
     }
 }
 
-/// `DoctrineAnnotationTagValueNode::hasClassName()`.
 fn has_class_name(identifier: &str, resolved: &str, class: &str) -> bool {
     identifier.trim_matches('@') == class || resolved == class
 }
 
-/// Whether a nested annotation in `values` is one `is` accepts.
 fn locate(values: &[ArrayItem], is: &dyn Fn(&str, &str) -> bool) -> bool {
     values.iter().any(|item| {
         item_vals(item).any(|v| match v {
@@ -1648,8 +1482,6 @@ fn locate(values: &[ArrayItem], is: &dyn Fn(&str, &str) -> bool) -> bool {
     })
 }
 
-/// The first nested annotation in `values` that `is` accepts, in [`locate`]'s order: the class it resolves to and its
-/// values.
 fn locate_mut<'a>(
     values: &'a mut [ArrayItem],
     is: &dyn Fn(&str, &str) -> bool,
@@ -1682,7 +1514,6 @@ fn locate_mut<'a>(
     None
 }
 
-/// Every `ArrayItemNode` in `values`, nested ones included.
 fn array_items(values: &[ArrayItem], f: &mut dyn FnMut(&ArrayItem)) {
     for item in values {
         f(item);
@@ -1694,7 +1525,6 @@ fn array_items(values: &[ArrayItem], f: &mut dyn FnMut(&ArrayItem)) {
     }
 }
 
-/// `(string) $phpDocChildNode` of a changed child; `None` where Pun does not print it.
 fn print_child(child: &Child) -> Option<String> {
     let name = child.tag.as_deref().unwrap_or_default();
     match &child.value {
@@ -1730,10 +1560,8 @@ fn print_child(child: &Child) -> Option<String> {
             };
             Some(format!("{name} {}", value.trim()).trim().to_string())
         }
-        // `SpacelessPhpDocTagNode`: the name, then `DoctrineAnnotationTagValueNode::__toString()` (always changed)
         Value::Annotation(a) => Some(format!("{name}{}", a.values_string())),
         Value::Other(other) => Some(format!("{name} {}", other.print()?).trim().to_string()),
-        // `DoctrineTagValueNode::__toString()`: the annotation's name and arguments, then the description
         Value::Doctrine { args, description } => {
             let args = args
                 .iter()
@@ -1746,15 +1574,12 @@ fn print_child(child: &Child) -> Option<String> {
                     .to_string(),
             )
         }
-        // `PhpDocTextNode` (no name), `GenericTagValueNode`, `InvalidTagValueNode`
         Value::Text(value) | Value::Generic(value) | Value::Invalid(value) => {
             Some(format!("{name} {value}").trim_matches(PHP_WS).to_string())
         }
     }
 }
 
-/// The value of a typed tag from `from` to `to` (bytes of the doc), `None` for a tag Pun does not read this way or a
-/// value its parser rejects.
 fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize) -> Option<Value> {
     let value = &text[from..to];
     let skip =
@@ -1785,7 +1610,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
     let mut types = Vec::new();
     let mut limit_start = false;
     let (form, mut at) = if TEMPLATE.contains(&name) {
-        // `parseTemplateTagValue()`: a name, then `of` or `as` and the bound
         let name_len = rest
             .bytes()
             .take_while(|c| {
@@ -1812,8 +1636,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
                 break;
             }
         }
-        // a lower bound and a default, parsed: `SpacingAwareTemplateTagValueNode` keeps neither, so they are neither
-        // traversed nor printed
         let ident_char =
             |c: u8| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-' | b'\\') || c >= 0x80;
         for word in ["super", "="] {
@@ -1846,7 +1668,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
         || PLAIN.contains(&name)
         || NAMED.contains(&name)
     {
-        // a typeless `@param $a`
         if PARAM.contains(&name)
             && ((rest.starts_with('$') && !is_this(rest))
                 || rest.starts_with('&')
@@ -1867,7 +1688,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
             if variadic {
                 at = skip(at + 3);
             }
-            // `parseRequiredVariableName()`: a `TOKEN_VARIABLE`, which `$this` is not
             let len = variable_len(&value[at..]).filter(|_| !is_this(&value[at..]))?;
             let variable = value[at..at + len].to_string();
             at += len;
@@ -1891,7 +1711,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
             }
         } else if NAMED.contains(&name) {
             at = skip(at);
-            // `parseRequiredVariableName()`: a `TOKEN_VARIABLE`, which `$this` is not
             let len = variable_len(&value[at..]).filter(|_| !is_this(&value[at..]))?;
             let variable = value[at..at + len].to_string();
             at += len;
@@ -1904,7 +1723,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
     } else {
         return None;
     };
-    // `parseOptionalDescription($tokens, $limitStartToken)`
     let next = skip(at);
     if limit_start {
         let starts = &value[next..];
@@ -1913,7 +1731,6 @@ fn typed(text: &str, tokens: &[parser::Tok], name: &str, from: usize, to: usize)
         }
     }
     at = at.min(value.len());
-    // the description's lines joined by "\n", then `BetterPhpDocParser` puts ` * ` after each line break
     let description = generic_value(text, tokens, from + at, to).replace('\n', "\n * ");
     Some(Value::Typed(Typed {
         form,

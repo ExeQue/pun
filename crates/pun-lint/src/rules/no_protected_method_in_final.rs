@@ -1,10 +1,3 @@
-//! `lint/classes/no-protected-method-in-final`, ported from Rector 2.8.4's `PrivatizeFinalClassMethodRector`
-//! (rules/Privatization/Rector/ClassMethod).
-//!
-//! A `protected` method of a `final` class becomes `private`, except a magic method; a `final` modifier goes with it.
-//! See `lint_b_privatize` for the classes Pun knows enough about; a class that extends nothing cannot be a Laravel
-//! model nor call `parent::`, which Rector's other guards look for.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 

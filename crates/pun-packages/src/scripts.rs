@@ -1,7 +1,3 @@
-//! The root package's `scripts`, run for an event as Composer runs them: `@php x`, `@putenv K=V`, `@other-script`,
-//! a `Class::method` callback (called through a small PHP runner with the parts of Composer's event that scripts
-//! use), or a shell command with `vendor/bin` first on `PATH`.
-
 #![expect(
     clippy::print_stderr,
     reason = "each script is echoed before it runs, as Composer echoes it"
@@ -18,7 +14,6 @@ pub struct Runner<'a> {
     pub bin_dir: &'a str,
     pub manifest: &'a Map<String, Value>,
     pub dev_mode: bool,
-    /// `PHP_BINARY`, else `php` on `PATH`.
     pub php: String,
     env: Vec<(String, Option<String>)>,
     stack: Vec<String>,
@@ -56,7 +51,6 @@ impl<'a> Runner<'a> {
         }
     }
 
-    /// Runs every listener of `event`; a failing one stops the run with its exit code in the error.
     pub fn dispatch(&mut self, event: &str, args: &[String]) -> Result<()> {
         if self.stack.iter().any(|e| e == event) {
             bail!("Circular call to script handler '{event}' detected");
@@ -195,18 +189,15 @@ impl<'a> Runner<'a> {
     }
 }
 
-/// The PHP that `@php` and callbacks run: `PHP_BINARY` when set, else `php` from PATH.
 fn php_binary(env: Option<String>) -> String {
     env.filter(|p| !p.is_empty())
         .unwrap_or_else(|| "php".into())
 }
 
-/// `ProcessExecutor::escape` on a POSIX shell: always single-quoted.
 fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
-/// Splits on whitespace, keeping quoted parts together and unquoting them.
 fn split_args(command: &str) -> Vec<String> {
     let (mut out, mut word, mut quote, mut started) = (vec![], String::new(), None::<char>, false);
     for ch in command.chars() {
@@ -254,13 +245,9 @@ mod tests {
         Runner::new(dir, &vendor, &bin, &manifest, true).dispatch(event, &[])
     }
 
-    /// What Composer 2.11.2 does with the same scripts (`composer run-script a` in a copy): `@putenv` sets the
-    /// environment of later commands, `@b 'x y'` runs script b with that argument appended, `vendor/bin` comes first
-    /// on PATH, and COMPOSER_DEV_MODE is 1.
     #[test]
     fn commands_references_and_environment() {
         let d = project("run");
-        // `composer` on PATH stands in for Composer, which `@composer` runs.
         for (bin, line) in [("tool", "tool"), ("composer", "composer $*")] {
             std::fs::write(
                 d.join("vendor/bin").join(bin),
@@ -285,9 +272,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// Composer 2.11.2's `composer run-script a -- one "two words"` on the same scripts: a reference passes the
-    /// arguments where `@additional_args` stands (or at the end), a command takes them there too, `@no_additional_args`
-    /// drops them, `@php` runs PHP, and a reference to a script that doesn't exist (or to none) does nothing.
     #[test]
     fn arguments_like_composer() {
         let d = project("args");
@@ -336,13 +320,11 @@ mod tests {
             error(json!({"a": "@b", "b": "exit 4"}), "a"),
             "Script @b was called via a: Script exit 4 handling the b event returned with error code 4"
         );
-        // An event without scripts, and an empty one, do nothing.
         run(&d, json!({"a": ""}), "a").unwrap();
         run(&d, json!({}), "post-install-cmd").unwrap();
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// A `Class::method` callback gets an event with Composer's accessors; returning false fails it with code 1.
     #[test]
     fn php_callbacks() {
         let d = project("callback");
@@ -369,7 +351,6 @@ mod tests {
             error,
             "Script Acme\\Hooks::fail handling the x event returned with error code 1"
         );
-        // A class that isn't there is reported and skipped, as Composer skips it.
         run(&d, json!({"x": "Acme\\Missing::run"}), "x").unwrap();
         std::fs::remove_dir_all(&d).unwrap();
     }

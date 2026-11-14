@@ -1,28 +1,19 @@
-//! The sections of rules/mapping.toml, each parsed on its own the first time it is asked for: a `pun format` run
-//! needs the `[upstream.*]` fixer sections only, and the whole file is ten times bigger.
-
 use crate::MAPPING;
 use std::sync::{LazyLock, OnceLock};
 
-/// One `[a.b]` table of mapping.toml.
 pub(crate) struct Section {
-    /// The header's keys, unquoted: `["options", "format/arrays/syntax"]`.
     pub path: Vec<String>,
-    /// The text between the header and the next one.
     body: &'static str,
     table: OnceLock<toml::Table>,
 }
 
 impl Section {
-    /// The section's entries, in file order.
     pub(crate) fn table(&self) -> &toml::Table {
         self.table
             .get_or_init(|| toml::from_str(self.body).expect("rules/mapping.toml"))
     }
 }
 
-/// The keys of a table header line (`[options."format/x"]`), or `None` for any other line. A line counts as a header
-/// only when TOML reads it as one, so an array's `[...]` row at the start of a line is not.
 fn header(line: &str) -> Option<Vec<String>> {
     if !line.starts_with('[') {
         return None;
@@ -36,7 +27,6 @@ fn header(line: &str) -> Option<Vec<String>> {
     Some(path)
 }
 
-/// Every section, in file order.
 pub(crate) fn sections() -> &'static [Section] {
     static T: LazyLock<Vec<Section>> = LazyLock::new(|| {
         let mut out: Vec<Section> = vec![];
@@ -59,7 +49,6 @@ pub(crate) fn sections() -> &'static [Section] {
     &T
 }
 
-/// The section whose header is `path` (`["upstream", "pint"]`).
 pub(crate) fn section(path: &[&str]) -> &'static Section {
     sections()
         .iter()
@@ -67,7 +56,6 @@ pub(crate) fn section(path: &[&str]) -> &'static Section {
         .expect("rules/mapping.toml section")
 }
 
-/// The sections directly under `parent` (`upstream`), in file order, with the key that names each one.
 pub(crate) fn under(parent: &str) -> impl Iterator<Item = (&'static str, &'static Section)> {
     sections().iter().filter_map(move |s| match &s.path[..] {
         [p, k] if p == parent => Some((k.as_str(), s)),
@@ -91,7 +79,6 @@ mod tests {
             header(r#"[options."format/arrays/syntax"]"#),
             path(&["options", "format/arrays/syntax"])
         );
-        // A row of a multi-line array that starts the line, and an indented one: values, not headers.
         assert_eq!(
             header(r#"["format/imports/group", "format/imports/single-per-statement"],"#),
             None
@@ -100,7 +87,6 @@ mod tests {
         assert_eq!(header("x = 1"), None);
     }
 
-    /// Each section holds its own entries only (lines and keys read off rules/mapping.toml).
     #[test]
     fn sections_split_at_headers() {
         let meta = section(&["meta"]);

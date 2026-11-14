@@ -1,10 +1,3 @@
-//! `lint/style/prefer-compound-assignment`, ported from Rector 2.8.4's `CombinedAssignRector`
-//! (rules/CodeQuality/Rector/Assign) and `AssignAndBinaryMap`.
-//!
-//! `$value = $value + 5;` becomes `$value += 5;` when the assigned expression and the binary operation's left side are
-//! the same code. The fix is unsafe: for an expression with side effects (`$a[f()] = $a[f()] + 1`) the compound form
-//! evaluates it once instead of twice.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{AssignmentOperator, BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
@@ -50,8 +43,6 @@ impl Rule for PreferCompoundAssignment {
         if !same_code(ctx.source, var, node_span(left)) {
             return;
         }
-        // php-parser keeps no parentheses, so Rector prints the right operand bare. It does so even for `and`, `or`
-        // and `xor`, which bind looser than `+=` and change what the statement means; there Pun keeps the parentheses.
         let right = match unparenthesize(binary.rhs) {
             Expression::Binary(b)
                 if matches!(
@@ -85,8 +76,6 @@ impl Rule for PreferCompoundAssignment {
     }
 }
 
-/// `AssignAndBinaryMap::getAlternative`: the compound assignment for a binary operator, if PHP has one. `??` has
-/// `??=`, but php-parser's map does not list it.
 fn compound(op: &BinaryOperator<'_>) -> Option<&'static str> {
     Some(match op {
         BinaryOperator::Addition(_) => "+",

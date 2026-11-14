@@ -1,7 +1,3 @@
-//! `pun install`: installs pun.lock into `vendor/`. The dependencies come from pun.toml's dependency sections only;
-//! `pun migrate` moves a project's composer.json and composer.lock into pun.toml and pun.lock. Without a pun.lock,
-//! install resolves one first, as `pun update` does.
-
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
 use pun_packages::fetch::{Auth, Fetcher, composer_dirs};
@@ -91,7 +87,6 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         .map_or_else(|| here.clone(), |w| w.root.clone());
     let manifest = match pun_config::manifest::read(&root)? {
         Some(m) => m.json,
-        // A workspace's root may require nothing itself.
         None if workspace.is_some() => Map::new(),
         None if root.join("composer.json").is_file() => {
             bail!("the dependencies are still in composer.json: {MIGRATE}")

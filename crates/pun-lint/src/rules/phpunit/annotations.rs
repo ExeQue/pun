@@ -1,8 +1,3 @@
-//! What rector-phpunit's annotation-to-attribute rules (rules/AnnotationsToAttributes) share: a test class's or test
-//! method's doc comment (`PhpDocInfoFactory::createFromNode`), the values of its generic tags
-//! (`GenericTagValueNode`), the doc without the tags that moved (`PhpDocTagRemover`, `DocBlockUpdater`), and the new
-//! attribute groups as php-parser prints them when they are added to the node's `attrGroups`.
-
 use mago_syntax::cst::{
     AttributeList, LiteralStringKind, Namespace, NamespaceBody, Node, Property, Sequence,
     Statement, UseItem, UseItems,
@@ -16,21 +11,15 @@ use crate::rules::rector_stmts::{line_indent, previous_token_end, tokens};
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 
-/// A class, a method or a property that may get attributes: its span's start (attributes included), the end of its last
-/// attribute list, and its doc comment.
 pub(crate) struct Annotated<'s> {
     pub start: usize,
     pub last_attribute_end: Option<usize>,
     pub doc: Option<Doc<'s>>,
-    /// Whether another comment comes before the doc comment (php-parser reprints them all when the doc changes).
     other_comments: bool,
-    /// The end of the token before the node, where its comments may start.
     comments_from: usize,
 }
 
 impl<'s> Annotated<'s> {
-    /// The class, method or property `node` (or interface, function or parameter), whose ancestors are `ancestors`;
-    /// `None` for any other node.
     pub(crate) fn of(
         ctx: &Context<'s>,
         node: Node<'_, '_>,
@@ -53,7 +42,6 @@ impl<'s> Annotated<'s> {
         ))
     }
 
-    /// An actual property, plain or hooked, always has annotation context even without readable PHPDoc.
     pub(crate) fn property(
         ctx: &Context<'s>,
         property: &Property<'_>,
@@ -98,8 +86,6 @@ impl<'s> Annotated<'s> {
         }
     }
 
-    /// [`Self::of`] with the doc comment php-parser's `getDocComment()` reads: the last among the node's comments,
-    /// which other comments may follow.
     pub(crate) fn of_last(
         ctx: &Context<'s>,
         node: Node<'_, '_>,
@@ -108,17 +94,11 @@ impl<'s> Annotated<'s> {
         let mut annotated = Self::of(ctx, node, ancestors)?;
         if annotated.doc.is_none() {
             annotated.doc = Doc::last_of(ctx, ancestors, annotated.start);
-            // (a comment follows it)
             annotated.other_comments = annotated.doc.is_some();
         }
         Some(annotated)
     }
 
-    /// The edits that give the doc comment `new_doc` (`""` removes it; a node without one gets it) and add `groups` (each `#[...]`) after the
-    /// node's attributes: a line each, at the node's indentation. A changed doc is printed as php-parser's
-    /// `pComments()` does (`Comment::getReformattedText()`, then a line break and the node's indentation before the
-    /// node). `None` where Pun does not follow that printer: a tab in the indentation, another comment before the
-    /// doc, or a doc it reformats otherwise.
     pub(crate) fn edits(
         &self,
         source: &str,
@@ -132,7 +112,6 @@ impl<'s> Annotated<'s> {
         self.edits_at(source, new_doc, groups, &format!("\n{indent}"))
     }
 
-    /// [`Self::edits`] with `nl` the line break and indentation the printer writes before the node.
     pub(crate) fn edits_at(
         &self,
         source: &str,
@@ -148,7 +127,6 @@ impl<'s> Annotated<'s> {
                 return None;
             }
             if new_doc.is_empty() {
-                // The doc goes with the whitespace after it; what the node gets in front then takes its place.
                 let after =
                     doc.end + source[doc.end..].len() - source[doc.end..].trim_start().len();
                 if after == self.start && self.last_attribute_end.is_none() && !groups.is_empty() {
@@ -177,10 +155,6 @@ impl<'s> Annotated<'s> {
         Some(edits)
     }
 
-    /// The edit that gives the doc comment `new_doc` (`""` removes it) when other comments come before it, where
-    /// [`Self::edits`] gives none: php-parser's `pComments()` reprints every comment, each reformatted, joined and
-    /// followed by a line break and the node's indentation. `None` without other comments or with a tab in the
-    /// indentation.
     pub(crate) fn edit_with_comments(&self, source: &str, new_doc: &str) -> Option<Edit> {
         let doc = self.doc.as_ref().filter(|_| self.other_comments)?.span;
         let indent = line_indent(source, self.start);
@@ -211,17 +185,12 @@ impl<'s> Annotated<'s> {
     }
 }
 
-/// php-parser's `Comment::getReformattedText()` for a doc comment (`\r\n` read as `\n`), as far as Pun follows it:
-/// one line as it is; lines after the first that each start with white space and a `*` get ` *` for it; with `/**`
-/// alone on the first line, the white space before the closing `*/` comes off the start of every line; else every
-/// line loses the white space the least indented line after the first has beyond the width of the opening `/** `.
 pub(crate) fn reformatted(text: &str) -> String {
     let text = &text.replace("\r\n", "\n");
     let Some((first, _)) = text.split_once('\n') else {
         return text.clone();
     };
     if starred(text) {
-        // `preg_replace('(^\s+\*)m', ' *', $text)`: at each line start, white space (newlines too) and a `*`
         let b = text.as_bytes();
         let mut out = Vec::with_capacity(b.len());
         let mut i = 0;
@@ -239,19 +208,15 @@ pub(crate) fn reformatted(text: &str) -> String {
         }
         return String::from_utf8(out).unwrap();
     }
-    // `preg_match('(^/\*\*?\s*\n)')`: nothing but white space after the opening on the first line
     let opens_alone = first
         .strip_prefix("/*")
         .map(|r| r.strip_prefix('*').unwrap_or(r))
         .is_some_and(|r| r.bytes().all(is_pcre_space));
-    // `preg_match('(\n(\s*)\*/$)', ..., $matches)`: from the leftmost line break that only white space separates
-    // from the closing `*/`
     let body = text.strip_suffix("*/").unwrap_or(text);
     let run = &body[body
         .trim_end_matches(|c: char| c.is_ascii() && is_pcre_space(c as u8))
         .len()..];
     if let (true, Some(at)) = (opens_alone, run.find('\n')) {
-        // `preg_replace('(^' . preg_quote($matches[1]) . ')m', '', $text)`
         let prefix = &run.as_bytes()[at + 1..];
         return strip_line_starts(text, |rest| {
             if rest.starts_with(prefix) {
@@ -261,8 +226,6 @@ pub(crate) fn reformatted(text: &str) -> String {
             }
         });
     }
-    // `(^/\*\*?\s*(?!\s))`: the opening and the white space after it, against the shortest white space a line after
-    // the first starts with; `preg_replace('(^\s{' . $removeLen . '})m', '', $text)`, a no-op for a length below 1
     let b = text.as_bytes();
     let opening = 2 + usize::from(b.get(2) == Some(&b'*'));
     let opening = opening
@@ -285,8 +248,6 @@ pub(crate) fn reformatted(text: &str) -> String {
     })
 }
 
-/// `preg_replace('(^...)m', '', $text)`: at each line start, the length `matched` gives the text there comes off
-/// (`0` for no match); a match may take line breaks with it.
 fn strip_line_starts(text: &str, matched: impl Fn(&[u8]) -> usize) -> String {
     let b = text.as_bytes();
     let mut out = Vec::with_capacity(b.len());
@@ -305,13 +266,10 @@ fn strip_line_starts(text: &str, matched: impl Fn(&[u8]) -> usize) -> String {
     String::from_utf8(out).unwrap()
 }
 
-/// PCRE's `\s`.
 fn is_pcre_space(c: u8) -> bool {
     matches!(c, b' ' | b'\t' | b'\n' | b'\r' | 0x0B | 0x0C)
 }
 
-/// `preg_match('(^.*(?:\n\s+\*.*)+$)', $text)` on a text with a newline: after the first line, each line break is
-/// followed by white space (which may hold more line breaks) and a `*`, up to the end.
 fn starred(text: &str) -> bool {
     let b = text.as_bytes();
     let mut i = text.find('\n').unwrap();
@@ -328,19 +286,13 @@ fn starred(text: &str) -> bool {
     }
 }
 
-/// How Rector reads a tag child of a doc comment for `PhpDocInfo::getTagsByName()`.
 #[derive(Debug, PartialEq)]
 pub(crate) enum TagValue {
-    /// A `GenericTagValueNode`: its value.
     Generic(String),
-    /// A generic tag whose name resolves to a class, which `DoctrineAnnotationDecorator` turns into a
-    /// `DoctrineAnnotationTagValueNode` whose original content is the generic value.
     Annotation(String),
-    /// `@name(...)`: phpdoc-parser's Doctrine tag; what follows the name.
     Parenthesized(String),
 }
 
-/// `PhpDocParser::parseTagValue()`'s tags, whose value is not a `GenericTagValueNode`.
 const TYPED_TAGS: &[&str] = &[
     "param",
     "phpstan-param",
@@ -436,21 +388,12 @@ const TYPED_TAGS: &[&str] = &[
     "psalm-param-out",
 ];
 
-/// The `@name` tags of `doc` (case-sensitive, as `getTagsByName()` compares), each with its child index, as Rector
-/// reads them once `DoctrineAnnotationDecorator` has run; the node the doc belongs to has the ancestors `ancestors`.
-/// `None` where phpdoc-parser or that decorator draws the doc's children otherwise and Pun does not follow: a
-/// `"..."` over a line break, an `@\Class` or `@_tag`, a text
-/// with `})` (`mergeNestedDoctrineAnnotations()`), a generic tag with a further tag inside a line (phpdoc-parser
-/// starts a child there), or a generic tag whose brackets do not close before a later generic tag (which it takes
-/// in).
 pub(crate) fn named_tags(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
     doc: &Doc<'_>,
     name: &str,
 ) -> Option<Vec<(usize, TagValue)>> {
-    // A token that runs over a line break (a Doctrine annotation string `"..."`) moves the children's bounds, and
-    // the lexer stops at a character no token takes (a form feed), so what follows is lost.
     let tokens = phpdoc_tokens(doc.text_all());
     if tokens
         .iter()
@@ -514,8 +457,6 @@ pub(crate) fn named_tags(
     Some(tags)
 }
 
-/// The tag name at the start of a doc child's text, without its `@`: phpdoc-parser's `TOKEN_PHPDOC_TAG`
-/// (`@(?:[a-z][a-z0-9-\\]+:)?[a-z][a-z0-9-\\]*+`, without case).
 fn tag_name(text: &str) -> Option<&str> {
     let b = text.as_bytes();
     if b.first() != Some(&b'@') || !b.get(1).is_some_and(u8::is_ascii_alphabetic) {
@@ -539,8 +480,6 @@ fn tag_name(text: &str) -> Option<&str> {
     Some(&text[1..end])
 }
 
-/// `ClassAnnotationMatcher::resolveTagFullyQualifiedName()` for a tag name without a `\`, then whether
-/// `DoctrineAnnotationDecorator` takes the result for an annotation class (a `\` in it, or `Target`).
 fn is_annotation_class(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], tag: &str) -> bool {
     let namespace = ancestors.iter().rev().find_map(|a| match a {
         Node::Namespace(ns) => Some(
@@ -561,7 +500,6 @@ fn is_annotation_class(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], tag: &str)
             {
                 Some(namespaced)
             } else {
-                // `resolveAsAliased()`: an alias written as the tag, then the use imports' short names.
                 uses.iter()
                     .find(|u| u.alias.as_deref() == Some(tag))
                     .map(|u| u.name.clone())
@@ -574,16 +512,12 @@ fn is_annotation_class(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], tag: &str)
     resolved.contains('\\') || resolved == "Target"
 }
 
-/// A `use` import: its name, a group's prefix included, and its alias as written.
 struct UseImport {
     name: String,
     alias: Option<String>,
 }
 
-/// `FileNode::getUsesAndGroupUses()`: the imports of the file's namespace when it has exactly one, else of its top
-/// level; of every kind (class, function, constant).
 fn file_uses(ancestors: &[Node<'_, '_>]) -> Vec<UseImport> {
-    // the file's `Program`, the first ancestor
     let statements: Vec<&Statement<'_>> = ancestors
         .iter()
         .filter_map(|a| match a {
@@ -648,8 +582,6 @@ fn file_uses(ancestors: &[Node<'_, '_>]) -> Vec<UseImport> {
     imports
 }
 
-/// `UseImportNameMatcher::matchNameWithUses()` for a tag name without a `\`: the first import whose short name (its
-/// alias, else its last part) is the tag, without case; an aliased import gives its name and a `\`.
 fn match_name_with_uses(uses: &[UseImport], tag: &str) -> Option<String> {
     uses.iter().find_map(|u| {
         let short = u
@@ -663,8 +595,6 @@ fn match_name_with_uses(uses: &[UseImport], tag: &str) -> Option<String> {
     })
 }
 
-/// `DoctrineAnnotationDecorator::isClosedContent()`: as many of the content's phpdoc-parser tokens hold a `(` or a
-/// `{` as hold a `)` or a `}`.
 fn closed_content(content: &str) -> bool {
     let (mut open, mut close) = (0, 0);
     for token in phpdoc_tokens(content) {
@@ -674,8 +604,6 @@ fn closed_content(content: &str) -> bool {
     open == close
 }
 
-/// phpdoc-parser's `Lexer::tokenize()`: the text of each token, until a character no token matches (the lexer's
-/// regex is anchored).
 fn phpdoc_tokens(s: &str) -> Vec<&str> {
     let b = s.as_bytes();
     let mut tokens = Vec::new();
@@ -684,14 +612,12 @@ fn phpdoc_tokens(s: &str) -> Vec<&str> {
         let Some(len) = token_len(b, i) else {
             break;
         };
-        // A token ends at a character boundary: a multibyte character is a letter to every pattern that takes it.
         tokens.push(&s[i..i + len]);
         i += len;
     }
     tokens
 }
 
-/// The length of the token at `i`: `Lexer::generateRegexp()`'s alternatives in order, without case.
 fn token_len(b: &[u8], i: usize) -> Option<usize> {
     let at = |j: usize| b.get(j).copied();
     let start =
@@ -705,12 +631,10 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
         j
     };
     let rest = &b[i..];
-    // TOKEN_HORIZONTAL_WS
     let ws = run(i, &|c| matches!(c, Some(b' ' | b'\t')));
     if ws > i {
         return Some(ws - i);
     }
-    // TOKEN_IDENTIFIER
     let mut j = i;
     loop {
         let k = j + usize::from(at(j) == Some(b'\\'));
@@ -722,21 +646,18 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
     if j > i {
         return Some(j - i);
     }
-    // TOKEN_THIS_VARIABLE, TOKEN_VARIABLE
     if rest.len() >= 5 && rest[..5].eq_ignore_ascii_case(b"$this") && !word(at(i + 5)) {
         return Some(5);
     }
     if at(i) == Some(b'$') && start(at(i + 1)) {
         return Some(run(i + 2, &word) - i);
     }
-    // The one-character tokens up to TOKEN_COMMA.
     if matches!(
         b[i],
         b'&' | b'|' | b'?' | b'!' | b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b','
     ) {
         return Some(1);
     }
-    // TOKEN_COMMENT: up to the last place on the line before a line break or a `*/`.
     if rest.starts_with(b"//") {
         let eol = rest.iter().position(|c| matches!(c, b'\r' | b'\n'));
         let end = match eol {
@@ -755,19 +676,16 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
             return Some(op.len());
         }
     }
-    // TOKEN_OPEN_PHPDOC, TOKEN_CLOSE_PHPDOC
     if rest.starts_with(b"/**") && at(i + 3).is_some_and(|c| c.is_ascii_whitespace() || c == 0x0b) {
         return Some(3 + usize::from(at(i + 3) == Some(b' ')));
     }
     if rest.starts_with(b"*/") {
         return Some(2);
     }
-    // TOKEN_PHPDOC_TAG
     if b[i] == b'@' {
         if let Some(name) = tag_name(std::str::from_utf8(rest).ok()?) {
             return Some(1 + name.len());
         }
-        // TOKEN_DOCTRINE_TAG: `@[a-z_\\][a-z0-9_\:\\]*[a-z_][a-z0-9_]*`
         if matches!(at(i + 1), Some(b'_' | b'\\')) {
             let end = run(i + 2, &|c| {
                 c.is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b':' | b'\\'))
@@ -784,7 +702,6 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
             }
         }
     }
-    // TOKEN_PHPDOC_EOL
     let nl = i + usize::from(at(i) == Some(b'\r'));
     if at(nl) == Some(b'\n') {
         let mut j = run(nl + 1, &|c| matches!(c, Some(b' ' | b'\t')));
@@ -793,11 +710,9 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
         }
         return Some(j - i);
     }
-    // TOKEN_FLOAT, TOKEN_INTEGER
     if let Some(end) = number(b, i) {
         return Some(end - i);
     }
-    // TOKEN_SINGLE_QUOTED_STRING, TOKEN_DOUBLE_QUOTED_STRING
     if let quote @ (b'\'' | b'"') = b[i] {
         let mut j = i + 1;
         loop {
@@ -809,7 +724,6 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
             }
         }
     }
-    // TOKEN_DOCTRINE_ANNOTATION_STRING
     if b[i] == b'"' {
         let mut j = i + 1;
         loop {
@@ -821,11 +735,9 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
             }
         }
     }
-    // TOKEN_WILDCARD
     if b[i] == b'*' {
         return Some(1);
     }
-    // TOKEN_OTHER
     let mut j = i;
     while j < b.len() && !b[j].is_ascii_whitespace() && b[j] != 0x0b && !b[j..].starts_with(b"*/") {
         j += 1;
@@ -833,10 +745,8 @@ fn token_len(b: &[u8], i: usize) -> Option<usize> {
     (j > i).then_some(j - i)
 }
 
-/// The end of the `TOKEN_FLOAT` or else `TOKEN_INTEGER` at `i`, if one is there.
 fn number(b: &[u8], i: usize) -> Option<usize> {
     let at = |j: usize| b.get(j).copied();
-    // `[0-9]++(_[0-9]++)*` (any `digit`), or nothing.
     let digits = |from: usize, digit: &dyn Fn(u8) -> bool| -> Option<usize> {
         let mut j = from;
         while at(j).is_some_and(digit) {
@@ -862,7 +772,6 @@ fn number(b: &[u8], i: usize) -> Option<usize> {
         digits(sign, &dec)
     };
     let s = i + usize::from(matches!(at(i), Some(b'+' | b'-')));
-    // `D\.[0-9]*+(_[0-9]++)*(e…)?`
     if let Some(d) = digits(s, &dec)
         && at(d) == Some(b'.')
     {
@@ -875,7 +784,6 @@ fn number(b: &[u8], i: usize) -> Option<usize> {
         }
         return Some(exponent(j).unwrap_or(j));
     }
-    // `[0-9]*+(_[0-9]++)*\.D(e…)?`
     let mut j = s;
     while at(j).is_some_and(dec) {
         j += 1;
@@ -888,13 +796,11 @@ fn number(b: &[u8], i: usize) -> Option<usize> {
     {
         return Some(exponent(d).unwrap_or(d));
     }
-    // `D e[+\-]?D`
     if let Some(d) = digits(s, &dec)
         && let Some(e) = exponent(d)
     {
         return Some(e);
     }
-    // TOKEN_INTEGER
     if at(s) == Some(b'0') {
         let based = match at(s + 1) {
             Some(b'b' | b'B') => digits(s + 2, &|c| matches!(c, b'0' | b'1')),
@@ -909,8 +815,6 @@ fn number(b: &[u8], i: usize) -> Option<usize> {
     digits(s, &dec)
 }
 
-/// The `GenericTagValueNode` value of the doc tag `tag` named `name`: what follows the name, its leading whitespace
-/// aside, with each further line of the tag after its `*` and one space, the lines joined with `\n`.
 pub(crate) fn generic_tag_value(tag: &str, name: &str) -> String {
     let rest = &tag[1 + name.len()..];
     let mut lines = rest.split('\n');
@@ -922,7 +826,6 @@ pub(crate) fn generic_tag_value(tag: &str, name: &str) -> String {
             .trim_end_matches('\r')
             .to_string(),
     ];
-    // A blank line adds nothing.
     for line in lines {
         let line = line.trim_end_matches('\r').trim_start();
         let line = line.strip_prefix('*').unwrap_or(line);
@@ -933,9 +836,6 @@ pub(crate) fn generic_tag_value(tag: &str, name: &str) -> String {
     value.join("\n").trim_end().to_string()
 }
 
-/// `AnnotationToAttributeMapper::map()` for a string item, printed: `Class::CONSTANT`
-/// (`ClassConstFetchAnnotationToAttributeMapper`), else a string (`StringAnnotationToAttributeMapper`, its outer
-/// `"` gone), double-quoted when it has a `'` and no line break (`NamedArgsFactory::normalizeStringDoubleQuote()`).
 pub(crate) fn map_item(value: &str) -> String {
     if is_class_constant_item(value) {
         return value.to_string();
@@ -951,7 +851,6 @@ pub(crate) fn map_item(value: &str) -> String {
     print_str(value)
 }
 
-/// Whether [`map_item`] maps `value` to a `ClassConstFetch`: `Class::CONSTANT`, both names valid.
 pub(crate) fn is_class_constant_item(value: &str) -> bool {
     if value.starts_with('"') {
         return false;
@@ -963,7 +862,6 @@ pub(crate) fn is_class_constant_item(value: &str) -> bool {
             && is_constant_name(constant))
 }
 
-/// A `String_` as php-parser prints it, its kind as the mappers set it.
 fn print_str(value: &str) -> String {
     let kind = if value.contains('\'') && !value.contains('\n') {
         LiteralStringKind::DoubleQuoted
@@ -973,17 +871,14 @@ fn print_str(value: &str) -> String {
     print_string(kind, value.as_bytes()).unwrap_or_default()
 }
 
-/// `RectorAssert::className()`: `^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*(\\[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)*$`.
 fn is_class_name(name: &str) -> bool {
     name.split('\\').all(|part| is_name(part, 0x7f))
 }
 
-/// `RectorAssert::constantName()`: `^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$`.
 fn is_constant_name(name: &str) -> bool {
     is_name(name, 0x80)
 }
 
-/// A name of letters, `_`, digits (not first) and bytes from `high` up.
 fn is_name(name: &str, high: u8) -> bool {
     let b = name.as_bytes();
     let letter = |c: u8| c.is_ascii_alphabetic() || c == b'_' || c >= high;

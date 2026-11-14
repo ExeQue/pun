@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-invalid-return-tag`, ported from Rector 2.8.4's `RemoveReturnTagIncompatibleWithNativeTypeRector`
-//! (rules/DeadCode/Rector/ClassMethod).
-//!
-//! The first `@return` of a function's or method's doc comment goes when its type contradicts the native return type
-//! (`$native->isSuperTypeOf($doc)` is no); a narrower type stays. It also stays with a description, a generic type, a
-//! type alias of the class anywhere in it (`@phpstan-type`, `@psalm-type`, `@phan-type` or an imported one), a template
-//! of the method, or `$this` over a class type in a trait. The removal takes `@phan-return` along, not the `@phpstan-`
-//! and `@psalm-` tags; a doc comment left empty goes.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_phpstan::phpdoc::{Node as DocNode, TagValue, tags};
 use pun_problem::{Fix, Safety};
@@ -39,7 +30,6 @@ impl Rule for NoInvalidReturnTag {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // no native return type to compare against
         let Some((_, Some(return_type))) = function_like(&node) else {
             return;
         };
@@ -50,8 +40,6 @@ impl Rule for NoInvalidReturnTag {
         let Some((_, tag)) = first_named(&doc, "@return") else {
             return;
         };
-        // keep any documented explanation, and generic return types, which carry template info the native type
-        // cannot express
         if tag.has_description || matches!(tag.ty, DocNode::Generic { .. }) {
             return;
         }
@@ -60,7 +48,6 @@ impl Rule for NoInvalidReturnTag {
         {
             return;
         }
-        // the alias can be nested in a composed type as well, e.g. "ConfigArray|CustomConfig" or "?ConfigArray"
         let aliases = class_type_aliases(ctx, ancestors);
         if !aliases.is_empty() && contains_name(&tag.ty, &aliases) {
             return;
@@ -74,7 +61,6 @@ impl Rule for NoInvalidReturnTag {
             if scope.in_trait() && matches!(tag.ty, DocNode::This) && native.is_object_type() {
                 return false;
             }
-            // a subtype/narrowing is legitimate; only a contradiction is dead
             is_super(&native, &scope.map_doc(&tag.ty)).no()
         });
         if !contradicts {
@@ -94,7 +80,6 @@ impl Rule for NoInvalidReturnTag {
     }
 }
 
-/// The names of the `@template` tags of a doc comment (`PhpDocInfo::getTemplateNames()`).
 pub(crate) fn template_names(doc: &str) -> Vec<String> {
     (tags(doc).unwrap_or_default().into_iter())
         .filter_map(|t| match t.value {
@@ -104,7 +89,6 @@ pub(crate) fn template_names(doc: &str) -> Vec<String> {
         .collect()
 }
 
-/// `containsTypeAliasName()`: an identifier anywhere in the type node is one of `names`.
 fn contains_name(node: &DocNode, names: &[String]) -> bool {
     let any = |nodes: &[DocNode]| nodes.iter().any(|n| contains_name(n, names));
     match node {
@@ -136,8 +120,6 @@ fn contains_name(node: &DocNode, names: &[String]) -> bool {
     }
 }
 
-/// The type aliases the doc comment of the class-like around the node defines or imports
-/// (`ResolvedPhpDocBlock::getTypeAliasTags()` and `getTypeAliasImportTags()`).
 fn class_type_aliases(ctx: &crate::Context<'_>, ancestors: &[Node<'_, '_>]) -> Vec<String> {
     let Some(i) = ancestors.iter().rposition(|n| {
         matches!(

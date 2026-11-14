@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\StringLengthToEmptyFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{
     FunctionReferenceFinder, IS_RISKY, is_candidate,
 };
@@ -120,7 +119,7 @@ fn find_str_length_calls(tokens: &Tokens) -> Vec<(usize, usize, usize)> {
         let Some(candidate) = finder.find("strlen", tokens, i, Some(count)) else {
             break;
         };
-        i = candidate.1 + 1; // proceed to openParenthesisIndex
+        i = candidate.1 + 1;
         candidates.push(candidate);
     }
     candidates.reverse();
@@ -151,9 +150,8 @@ impl Fixer for StringLengthToEmptyFixer {
                 close_parenthesis_index,
             ) != 1
             {
-                continue; // must be one argument
+                continue;
             }
-            // test for leading `\` before `strlen` call
             let next_index = tokens
                 .get_next_meaningful_token(close_parenthesis_index)
                 .unwrap();
@@ -166,7 +164,6 @@ impl Fixer for StringLengthToEmptyFixer {
                 previous_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
             }
             let (operator_index, operand_index, replacement);
-            // test for yoda vs non-yoda fix case
             if is_operator_of_interest(&tokens[previous_index]) {
                 operator_index = previous_index;
                 operand_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
@@ -207,14 +204,12 @@ impl Fixer for StringLengthToEmptyFixer {
             } else {
                 continue;
             }
-            // prepare for fixing
             let keep = keep_parentheses(tokens, open_parenthesis_index, close_parenthesis_index);
             let operand_content = if replacement == T_IS_IDENTICAL {
                 "==="
             } else {
                 "!=="
             };
-            // apply fixing
             tokens.set(operand_index, Token::new(T_CONSTANT_ENCAPSED_STRING, "''"));
             tokens.set(operator_index, Token::new(replacement, operand_content));
             if !keep {

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\UseArrowFunctionsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::tokens_analyzer::TokensAnalyzer;
@@ -60,7 +59,6 @@ fn fix_lambda(tokens: &mut Tokens, index: usize) {
         next = tokens.get_next_meaningful_token(next).unwrap();
         while !tokens[next].equals(")", true) {
             if tokens[next].equals("&", true) {
-                // variables used by reference are not supported by arrow functions
                 return;
             }
             next = tokens.get_next_meaningful_token(next).unwrap();
@@ -99,7 +97,6 @@ fn fix_lambda(tokens: &mut Tokens, index: usize) {
         return;
     }
 
-    // Abort if closure has `use()` clause and return statement includes external files.
     if use_range.is_some()
         && (ret..semicolon).any(|i| {
             tokens[i].is_given_kind(&[T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE])
@@ -108,7 +105,6 @@ fn fix_lambda(tokens: &mut Tokens, index: usize) {
         return;
     }
 
-    // transform
     let mut tokens_to_insert = vec![Token::new(T_DOUBLE_ARROW, "=>")];
     if tokens.get_next_meaningful_token(ret) == Some(semicolon) {
         tokens_to_insert.push(Token::new(T_WHITESPACE, " "));

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoAlternativeSyntaxFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -24,7 +23,6 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
         let c = resolve(self.name(), options, &["fix_non_monolithic_code"])?;
-        // Future::getV4OrV3(false, true): v3 default.
         self.fix_non_monolithic_code = c.bool("fix_non_monolithic_code", true)?;
         Ok(())
     }
@@ -34,7 +32,6 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in (0..tokens.count()).rev() {
-            // The kind before any of the three edits, like upstream's `$token`.
             let kind = tokens[index].get_id();
             fix_elseif(index, kind, tokens);
             fix_else(index, kind, tokens);
@@ -43,7 +40,6 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
 }
 
-/// Upstream returns the structure index when no `(` follows; only `elseif` calls this, and it always has one.
 fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
     let next_index = tokens
         .get_next_meaningful_token(structure_token_index)
@@ -133,7 +129,6 @@ fn add_braces(tokens: &mut Tokens, token: Token, index: usize, mut colon_index: 
     if !tokens[index + 1].is_whitespace(None) {
         items.push(Token::new(T_WHITESPACE, " "));
     }
-    // increment the position of the colon by number of items inserted
     colon_index += items.len();
     tokens.clear_at(index);
     tokens.insert_at(index, items);

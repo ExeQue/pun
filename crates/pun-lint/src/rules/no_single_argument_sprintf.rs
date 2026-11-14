@@ -1,9 +1,3 @@
-//! `lint/strings/no-single-argument-sprintf`, ported from Rector 2.8.4's `UnwrapSprintfOneArgumentRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! `sprintf('value')` becomes `'value'`. The fix is unsafe: `sprintf('100%%')` gives `100%`, and a format with a
-//! placeholder but no value throws an `ArgumentCountError`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -33,7 +27,6 @@ impl Rule for NoSingleArgumentSprintf {
         if !named(c, "sprintf") {
             return;
         }
-        // One argument, not spread. Without arguments Rector reads a missing `getArgs()[0]` and changes nothing.
         let args = args(c);
         let [format] = args.as_slice() else { return };
         if format.is_unpacked() {

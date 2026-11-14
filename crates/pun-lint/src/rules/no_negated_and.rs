@@ -1,9 +1,3 @@
-//! `lint/complexity/no-negated-and`, ported from Rector 2.8.4's `NegatedAndsToPositiveOrsRector`
-//! (rules/CodeQuality/Rector/BooleanNot) with `BinaryOpManipulator::inverseBooleanAnd`.
-//!
-//! `!($a > 20 && $b <= 50)` becomes `$a <= 20 || $b > 50` by de Morgan's law: each side is negated, a comparison by
-//! its inverse operator, a `!` by dropping it, anything else by a new `!`. A chain of `&&` is left alone.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 

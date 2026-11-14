@@ -1,9 +1,3 @@
-//! Alias identity, not facade-service forwarding. Expectations come from PHPStan 2.3.1 with Laravel 13.23.0's
-//! AliasLoader/Facade/PackageManifest (Pinkary's installed vendor), and the reduced installed defaults below.
-//! Runtime cold-case and loaded-class collision controls use a fresh PHP process for each AliasLoader probe.
-//! Mago's constructors print canonical ReflectionClass::getName() identities; PHPStan's dumpType and Mago's
-//! signature types retain the written alias. Do not require invalid abstract constructions to infer a useful type.
-
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -78,7 +72,6 @@ impl App {
         run(&self.project())
             .unwrap()
             .into_iter()
-            // Dump probes also feed `types()`; this assertion checks the other alias diagnostics.
             .filter(|e| e.identifier != "phpstan.dumpType")
             .map(|e| e.message)
             .collect()
@@ -165,15 +158,12 @@ fn package_discovery_honours_root_and_package_dont_discover() {
     let app =
         App::new("<?php new \\Blade; \\PHPStan\\dumpType(new \\PackageAlias); new \\IgnoredAlias;");
     app.put("vendor/composer/installed.json", r#"[{"name":"vendor/one","extra":{"laravel":{"aliases":{"PackageAlias":"App\\Custom"},"dont-discover":["vendor/two"]}}},{"name":"vendor/two","extra":{"laravel":{"aliases":{"IgnoredAlias":"App\\Other"}}}}]"#);
-    // Discovery still finds installed targets through the root package's Composer declarations.
     app.put("composer.json", r#"{"autoload":{"psr-4":{"App\\":"app/","Illuminate\\":"vendor/laravel/framework/src/Illuminate/"}}}"#);
     assert_eq!(
         app.unknown(),
         ["Instantiated class IgnoredAlias not found."]
     );
     assert_eq!(app.types(), ["App\\Custom"]);
-    // Laravel computes ignoreAll from the root before collecting package exclusions. A package's '*' is
-    // not a wildcard, although its explicit package exclusions still apply (PackageManifest::build()).
     app.put("vendor/composer/installed.json", r#"[{"name":"vendor/one","extra":{"laravel":{"aliases":{"PackageAlias":"App\\Custom"},"dont-discover":["*","vendor/two"]}}},{"name":"vendor/two","extra":{"laravel":{"aliases":{"IgnoredAlias":"App\\Other"}}}}]"#);
     assert_eq!(
         app.unknown(),
@@ -209,7 +199,6 @@ fn cold_case_and_real_class_collision_do_not_invent_aliases() {
     assert_eq!(app.unknown(), ["Instantiated class blade not found."]);
     app.put("probe.php", "<?php new \\Blade; new \\blade;");
     assert_eq!(app.unknown(), Vec::<String>::new());
-    // Composer autoload.files are executed before the alias loader boots: an already-loaded real class wins.
     app.put(
         "app/Native.php",
         "<?php class Blade { public static function native(): bool { return true; } }",
@@ -258,7 +247,7 @@ fn unused_alias_targets_remain_lazy_and_no_context_means_no_laravel_aliases() {
         .iter_mut()
         .find(|a| a.class == b"app\\other")
         .unwrap();
-    unused.path = app.0.clone(); // A directory errors if read, even as root.
+    unused.path = app.0.clone();
     assert_eq!(
         run(&project)
             .unwrap()
@@ -284,7 +273,6 @@ fn aliases_in_signatures_and_phpdoc_are_visible_to_inference() {
     );
     assert_eq!(app.unknown(), Vec::<String>::new());
     assert_eq!(app.types(), ["Blade"]);
-    // Only the PHPDoc asks for the alias; it must not depend on an executable reference warming it first.
     app.put("probe.php", "<?php\n/** @return Blade */\nfunction identity() { throw new \\Exception; }\n\\PHPStan\\dumpType(identity());\n");
     assert_eq!(app.unknown(), Vec::<String>::new());
     assert_eq!(app.types(), ["Blade"]);
@@ -315,7 +303,6 @@ fn a_package_manifest_is_authoritative_even_when_discovery_would_find_more() {
         ["Instantiated class PackageAlias not found."]
     );
     assert_eq!(app.types(), ["int"]);
-    // flatMap() overwrites equal keys before filter(); an empty later package alias removes the package key.
     app.put("bootstrap/cache/packages.php", "<?php return ['z-first' => ['aliases' => ['Blade' => App\\Other::class]], 'a-last' => ['aliases' => ['Blade' => '']]];");
     assert_eq!(app.types(), ["int"]);
     app.put(
@@ -363,8 +350,6 @@ fn literal_forms_and_unknown_overrides_do_not_invent_defaults() {
     app.put("config/app.php", "<?php use Illuminate\\Support\\Facades\\Facade; return ['aliases' => Facade::defaultAliases()->merge(['Blade' => App\\Custom::class])->all()];");
     assert_eq!(app.types(), ["int"]);
     app.put("probe.php", "<?php new \\Blade;");
-    // These values cannot establish a literal alias. In particular, an unknown replacement must not resurrect
-    // a previous duplicate key or installed defaults. This is the native reader's conservative bootstrap limit.
     for code in [
         "<?php return ['aliases' => ['Blade' => App\\Custom::class, 'Blade' => getenv('BLADE_CLASS')]];",
         "<?php return ['aliases' => ['Blade' => $class::class]];",

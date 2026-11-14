@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-useless-condition`, ported from Rector 2.8.4's `RemoveDeadConditionAboveReturnRector`
-//! (rules/DeadCode/Rector/Return_).
-//!
-//! An `if` without `elseif` or `else`, right before a `return`, whose body is empty or returns the same thing, does
-//! nothing the `return` doesn't: it goes, unless its condition has a side effect.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 

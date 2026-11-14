@@ -1,5 +1,3 @@
-//! PHPStan 2.3.5's `RegexArrayShapeMatcher` (with `RegexGroupList`), building the types of `$matches`.
-
 use std::sync::Arc;
 
 use mago_codex::ttype::atomic::TAtomic;
@@ -18,18 +16,13 @@ pub(super) const PREG_PATTERN_ORDER: i64 = 1;
 pub(super) const PREG_SET_ORDER: i64 = 2;
 pub(super) const PREG_OFFSET_CAPTURE: i64 = 256;
 pub(super) const PREG_UNMATCHED_AS_NULL: i64 = 512;
-/// `RegexArrayShapeMatcher::PREG_UNMATCHED_AS_NULL_ON_72_73`.
 const PREG_UNMATCHED_AS_NULL_ON_72_73: i64 = 2048;
 
-/// A `$matches` entry's value: `ty`, as `array{ty, int<-1, max>}` with `offset` (`PREG_OFFSET_CAPTURE`), in a
-/// `list<...>` (or a `non-empty-list<...>` with `Some(true)`) with `list`. One call's patterns share the flags, so
-/// the values at an offset are all of one kind.
 #[derive(Clone, Debug, PartialEq)]
 struct Value {
     ty: RType,
     offset: bool,
     list: Option<bool>,
-    /// `non-empty-array<int<0, max>, ty>`: preg_match_all()'s marks by the index of the match that set them.
     by_match: bool,
 }
 
@@ -54,31 +47,24 @@ enum Key {
     Str(String),
 }
 
-/// A constant array (`ConstantArrayType`).
 #[derive(Clone, Debug, PartialEq)]
 struct Shape {
     entries: Vec<(Key, Value, bool)>,
     list: bool,
 }
 
-/// A type of `$matches`.
 #[derive(Clone, Debug, PartialEq)]
 enum Out {
     Shape(Shape),
-    /// `list<shape>` (`PREG_SET_ORDER`), non-empty or not.
     SetOrder(Vec<Shape>, bool),
 }
 
-/// The pieces of `RegexArrayShapeMatcher`'s state that come from configuration.
 #[derive(Clone, Copy)]
 pub(super) struct Php {
-    /// `PhpVersion::supportsPregUnmatchedAsNull()`.
     pub(super) unmatched_as_null: bool,
-    /// `PhpVersion::supportsPregCaptureOnlyNamedGroups()`.
     pub(super) capture_only_named: bool,
 }
 
-/// The flags argument: absent, a constant integer, or anything else (no shape then).
 #[derive(Clone, Copy, Debug)]
 pub(super) enum FlagsArg {
     Absent,
@@ -86,7 +72,6 @@ pub(super) enum FlagsArg {
     Unknown,
 }
 
-/// `matchPatternType()`: the type of `$matches` after matching each of `patterns`, or `None` for the declared one.
 pub(super) fn match_pattern(
     php: Php,
     patterns: &[String],
@@ -110,7 +95,6 @@ pub(super) fn match_pattern(
                     | PREG_SET_ORDER
                     | PREG_UNMATCHED_AS_NULL
                     | PREG_UNMATCHED_AS_NULL_ON_72_73);
-            // some other unsupported/unexpected flag was passed in
             if flags != value {
                 return None;
             }
@@ -124,7 +108,6 @@ pub(super) fn match_pattern(
     Some(to_union(&union(outs)))
 }
 
-/// `matchSubjectExpr()`'s type for constant patterns.
 pub(super) fn match_subject(php: Php, patterns: &[String]) -> Option<TUnion> {
     if patterns.is_empty() {
         return None;
@@ -138,7 +121,6 @@ pub(super) fn match_subject(php: Php, patterns: &[String]) -> Option<TUnion> {
     Some(RType::union(subject).to_union())
 }
 
-/// `TypeCombinator::union(array{}, $matched)`: preg_match()'s out type.
 pub(super) fn with_empty_array(matched: TUnion) -> TUnion {
     let mut types = vec![TAtomic::Array(TArray::Keyed(TKeyedArray::new()))];
     types.extend(matched.types.iter().filter(|a| !is_empty_array(a)).cloned());
@@ -149,7 +131,6 @@ fn is_empty_array(atomic: &TAtomic) -> bool {
     matches!(atomic, TAtomic::Array(TArray::Keyed(k)) if k.known_items.is_none() && k.parameters.is_none())
 }
 
-/// `[]`.
 fn get_keyed_array_empty() -> TUnion {
     TUnion::from_atomic(TAtomic::Array(TArray::Keyed(TKeyedArray::new())))
 }
@@ -161,7 +142,6 @@ struct Matcher {
     matches_all: bool,
 }
 
-/// `matchRegex()`.
 fn match_regex(
     php: Php,
     regex: &str,
@@ -169,7 +149,6 @@ fn match_regex(
     was_matched: Tri,
     matches_all: bool,
 ) -> Option<Vec<Out>> {
-    // `None`: regex could not be parsed by RegexParser
     let walk = groups::parse_groups(regex, php.capture_only_named)?;
     let m = Matcher {
         php,
@@ -194,8 +173,6 @@ fn match_regex(
     .flatten()
     .map(|id| &walk.alternations[id]);
     if list.has_duplicate_names_outside_of_alternation_branches(branches) {
-        // which of the groups sharing a name sets the named offset is only modelled
-        // for groups in different branches of a top level alternation
         return None;
     }
     if list.0.iter().any(Capturing::resets_group_counter)
@@ -204,8 +181,6 @@ fn match_regex(
             || only_top_level_alternation.is_none()
             || m.contains_unmatched_as_null())
     {
-        // groups in a branch reset (?|...) share offsets, which is only modelled
-        // when its alternation is the only top level alternation
         return None;
     }
 
@@ -213,8 +188,6 @@ fn match_regex(
         && was_matched.yes()
         && let Some(group) = only_optional_top_level_group
     {
-        // if only one top level capturing optional group exists
-        // we build a more precise tagged union of a empty-match and a match with the group
         let list = list.force_group_non_optional(&group);
         let mut outs = vec![m.build_array_type(
             &subject_base_type,
@@ -223,7 +196,6 @@ fn match_regex(
             &walk.mark_verbs,
         )];
         if !m.contains_unmatched_as_null() {
-            // positive match has a subject but not any capturing group
             outs.insert(0, m.subject_only(&subject_base_type));
         }
         return Some(outs);
@@ -232,7 +204,6 @@ fn match_regex(
         && only_optional_top_level_group.is_none()
         && let Some(alternation_id) = only_top_level_alternation
     {
-        // if only a single top level alternation exist built a more precise tagged union
         let alternation = &walk.alternations[alternation_id];
         let mut outs = Vec::new();
         let mut is_optional_alternation = false;
@@ -263,13 +234,10 @@ fn match_regex(
         if !m.contains_unmatched_as_null()
             && (alternation.count != alternation.combinations.len() || is_optional_alternation)
         {
-            // positive match has a subject but not any capturing group
             outs.push(m.subject_only(&subject_base_type));
         }
         return Some(outs);
     }
-    // the general case, which should work in all cases but does not yield the most
-    // precise result possible in some cases
     Some(vec![m.build_array_type(
         &subject_base_type,
         &list,
@@ -283,7 +251,6 @@ fn string() -> RType {
 }
 
 impl Matcher {
-    /// `ConstantArrayTypeBuilder` with the subject at offset 0 only.
     fn subject_only(&self, subject_base_type: &RType) -> Out {
         Out::Shape(Shape {
             entries: vec![(
@@ -295,7 +262,6 @@ impl Matcher {
         })
     }
 
-    /// `buildArrayType()`.
     fn build_array_type(
         &self,
         subject_base_type: &RType,
@@ -308,7 +274,6 @@ impl Matcher {
             entries: Vec::new(),
             list: false,
         };
-        // first item in matches contains the overall match.
         set_offset(
             &mut shape,
             Key::Int(0),
@@ -333,7 +298,6 @@ impl Matcher {
                     .iter()
                     .map(|m| RType::from(Atom::Const(m.clone()))),
             );
-            // marks are keyed by the index of the match that set them, matches without a mark are left out
             let by_match = self.matches_all && self.contains_pattern_order();
             set_offset(
                 &mut shape,
@@ -356,7 +320,6 @@ impl Matcher {
         !self.matches_all && !self.was_matched.yes()
     }
 
-    /// `createSubjectValueType()`.
     fn create_subject_value_type(&self, base_type: &RType) -> Value {
         if !self.matches_all {
             return remove_null(self.value_type(base_type));
@@ -371,19 +334,15 @@ impl Matcher {
         value
     }
 
-    /// `isGroupOptional()`.
     fn is_group_optional(&self, group: &Capturing, is_trailing_optional: bool) -> bool {
         if self.matches_all {
             return is_trailing_optional
                 && !self.contains_unmatched_as_null()
                 && self.contains_set_order();
         }
-        // preg_match()'s shapes are always for a match (PregMatchParameterOutTypeExtension adds `array{}` itself),
-        // so upstream's `!$wasMatched->yes()` case does not occur here
         is_trailing_optional && !self.contains_unmatched_as_null() && group.is_optional()
     }
 
-    /// `createGroupValueType()`.
     fn create_group_value_type(
         &self,
         group: &Capturing,
@@ -394,7 +353,6 @@ impl Matcher {
         if self.matches_all {
             let mut value = if !unmatched_as_null
                 && group.is_optional()
-                // an unmatched group followed by a matched one is reported as ''
                 && (!self.contains_set_order() || !is_last_group)
             {
                 remove_null(self.value_type(&RType::union([
@@ -437,7 +395,6 @@ impl Matcher {
         self.flags & PREG_OFFSET_CAPTURE != 0
     }
 
-    /// If no order flag is given, PREG_PATTERN_ORDER is assumed.
     fn contains_pattern_order(&self) -> bool {
         !self.contains_set_order()
     }
@@ -446,7 +403,6 @@ impl Matcher {
         self.flags & PREG_SET_ORDER != 0
     }
 
-    /// `containsUnmatchedAsNull()`: preg_match_all() with PREG_UNMATCHED_AS_NULL works consistently across php-versions.
     fn contains_unmatched_as_null(&self) -> bool {
         self.flags & PREG_UNMATCHED_AS_NULL != 0
             && (self.matches_all
@@ -454,7 +410,6 @@ impl Matcher {
                 || self.php.unmatched_as_null)
     }
 
-    /// `getUnmatchedGroupType()`: the type of an unmatched group followed by a matched one.
     fn unmatched_group_type(&self) -> RType {
         if self.flags & PREG_UNMATCHED_AS_NULL != 0 {
             Atom::Null.into()
@@ -463,7 +418,6 @@ impl Matcher {
         }
     }
 
-    /// `getValueType()`; unmatched groups return -1 as offset.
     fn value_type(&self, base_type: &RType) -> Value {
         let mut value = base_type.clone();
         if self.contains_unmatched_as_null() {
@@ -478,7 +432,6 @@ impl Matcher {
     }
 }
 
-/// `TypeCombinator::removeNull()` of a value.
 fn remove_null(value: Value) -> Value {
     if value.plain() {
         Value::str(value.ty.remove_null())
@@ -487,7 +440,6 @@ fn remove_null(value: Value) -> Value {
     }
 }
 
-/// `ConstantArrayTypeBuilder::setOffsetValueType()` with a constant key.
 fn set_offset(shape: &mut Shape, key: Key, value: Value, optional: bool) {
     if let Some(entry) = shape.entries.iter_mut().find(|(k, ..)| *k == key) {
         entry.1 = if optional {
@@ -501,7 +453,6 @@ fn set_offset(shape: &mut Shape, key: Key, value: Value, optional: bool) {
     shape.entries.push((key, value, optional));
 }
 
-/// `RegexGroupList`.
 #[derive(Clone)]
 struct GroupList(Vec<Capturing>);
 
@@ -522,7 +473,6 @@ impl GroupList {
         self.clone_and_re_parent(group, None, true)
     }
 
-    /// `cloneAndReParentList()`: a group below the target gets the forced group as its direct parent.
     fn clone_and_re_parent(
         &self,
         target: &Capturing,
@@ -574,8 +524,6 @@ impl GroupList {
         )
     }
 
-    /// `hasDuplicateNamesOutsideOfAlternationBranches()`: groups sharing a name (allowed by (?J)) are only understood
-    /// when each of them is in a different branch of the given alternation.
     fn has_duplicate_names_outside_of_alternation_branches(
         &self,
         alternation: Option<&groups::Alternation>,
@@ -639,8 +587,6 @@ impl GroupList {
     }
 }
 
-/// `TypeCombinator::union()` of the types of `$matches`: constant arrays reduced as `reduceArrays()` (with tagged
-/// unions preserved and without bleeding edge's unsealed arrays) reduces them, `list<...>` types merged.
 fn union(outs: Vec<Out>) -> Vec<Out> {
     let mut shapes = Vec::new();
     let mut set_order: Option<(Vec<Shape>, bool)> = None;
@@ -661,9 +607,7 @@ fn union(outs: Vec<Out>) -> Vec<Out> {
     out
 }
 
-/// `reduceArrays($constantArrays, true)` for sealed constant arrays (`legacyIsKeysSupersetOf()`, `legacyMergeWith()`).
 fn reduce_arrays(shapes: Vec<Shape>) -> Vec<Shape> {
-    // every shape holds offset 0, so upstream's empty array, moved last, does not occur
     let mut arrays: Vec<Option<Shape>> = Vec::new();
     for shape in shapes {
         if !arrays.iter().flatten().any(|a| *a == shape) {
@@ -711,7 +655,6 @@ fn reduce_arrays(shapes: Vec<Shape>) -> Vec<Shape> {
                 }
                 continue;
             };
-            // Merge two single-key arrays sharing the same key when their value types union into a single type
             if overlapping == 1
                 && a.entries.len() == 1
                 && b.entries.len() == 1
@@ -728,7 +671,6 @@ fn reduce_arrays(shapes: Vec<Shape>) -> Vec<Shape> {
                 scalars[j].as_deref(),
                 same_count,
             ) {
-                // neither array is a keys-superset of the other
                 continue;
             }
             if overlapping == a.entries.len() && is_keys_superset_of(b, a) {
@@ -747,7 +689,6 @@ fn reduce_arrays(shapes: Vec<Shape>) -> Vec<Shape> {
     arrays.into_iter().flatten().collect()
 }
 
-/// `getConstantScalarValuesByKey()`.
 fn constant_scalar_values(shape: &Shape) -> Vec<(Key, Atom)> {
     shape
         .entries
@@ -763,7 +704,6 @@ fn constant_scalar_values(shape: &Shape) -> Vec<(Key, Atom)> {
         .collect()
 }
 
-/// `haveDisjointConstantScalarValues()`.
 fn have_disjoint_constant_scalar_values(
     a: Option<&[(Key, Atom)]>,
     b: Option<&[(Key, Atom)]>,
@@ -791,8 +731,6 @@ fn have_disjoint_constant_scalar_values(
     false
 }
 
-/// `legacyIsKeysSupersetOf()`; `reduce_arrays()` asks only when `this` holds every key of `other`, so upstream's
-/// shorter-array and missing-key checks never fail.
 fn is_keys_superset_of(this: &Shape, other: &Shape) -> bool {
     let mut fail_on_different_value_type =
         this.entries.len() != other.entries.len() || this.entries.len() < 2;
@@ -817,7 +755,6 @@ fn is_keys_superset_of(this: &Shape, other: &Shape) -> bool {
         <= 1
 }
 
-/// `legacyMergeWith()`.
 fn merge_with(this: &Shape, other: &Shape) -> Shape {
     let entries = this
         .entries
@@ -839,7 +776,6 @@ fn merge_with(this: &Shape, other: &Shape) -> Shape {
     }
 }
 
-/// `TypeCombinator::union()` of two values.
 fn union_values(a: &Value, b: &Value) -> Value {
     Value {
         ty: RType::union([a.ty.clone(), b.ty.clone()]),
@@ -849,12 +785,10 @@ fn union_values(a: &Value, b: &Value) -> Value {
     }
 }
 
-/// A union type, not one array holding the union.
 fn is_union(value: &Value) -> bool {
     value.plain() && value.ty.0.len() > 1
 }
 
-/// `$a->isSuperTypeOf($b)->no()`: no value of one is a value of the other.
 fn values_disjoint(a: &Value, b: &Value) -> bool {
     a.ty.0
         .iter()

@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-start-with`, ported from pest-plugin-rector's `UseToStartWithRector`: `expect(str_starts_with($subject, $other))->toBeTrue()` becomes `expect($subject)->toStartWith($other)`, and `toBeFalse()` or a
-//! `->not` before the matcher becomes `->not->toStartWith()`. The checked value's type must be a string.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

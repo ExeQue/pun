@@ -1,9 +1,3 @@
-//! `lint/complexity/no-and-assignment`, ported from Rector 2.8.4's `AndAssignsToSeparateLinesRector`
-//! (rules/CodeQuality/Rector/LogicalAnd).
-//!
-//! `$token = 4 and $tokens[] = $token;` becomes two statements, `$token = 4;` and `$tokens[] = $token;`, on lines of
-//! their own. Only an expression statement whose whole expression is an `and` of two plain assignments changes.
-
 use mago_syntax::cst::{BinaryOperator, Expression, ExpressionStatement, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -67,7 +61,6 @@ fn check(
     });
 }
 
-/// php-parser's `Assign`: `=`, not a compound assignment or `= &`.
 fn is_assign(expr: &Expression<'_>) -> bool {
     matches!(expr, Expression::Assignment(a) if is_plain_assign(a))
 }

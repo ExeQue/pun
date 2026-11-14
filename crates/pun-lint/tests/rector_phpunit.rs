@@ -60,7 +60,6 @@ use pun_lint::rules::facts::with_sources;
 use pun_lint::rules::*;
 use pun_lint::{Linter, Rule};
 
-/// The PHP files under `dir`, recursively: `(path, code)`.
 fn sources(dir: &Path, out: &mut Vec<(String, String)>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -89,8 +88,6 @@ fn format(pipeline: &Pipeline, code: &str) -> String {
     }
 }
 
-/// Run every fixture of tests/rector/<class>/{Fixture,Oracle,Pun} through `rules` at PHP 8.4: the text edits must
-/// give the expected bytes, and the laravel preset's format of both must agree.
 fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
     let linter = Linter::new(rules, 80400);
     let preset = pun_config::rule_set(pun_config::preset_rules("laravel").unwrap()).unwrap();
@@ -297,8 +294,6 @@ fn use_specific_will_method() {
     check(PreferSpecificWillMethod, "UseSpecificWillMethodRector");
 }
 
-/// Pun/empty_element: an array with an empty element makes Rector fail on the file ("Cannot use empty array elements
-/// in arrays"); Pun leaves the call alone.
 #[test]
 fn single_with_consecutive_to_with() {
     check(
@@ -382,8 +377,6 @@ fn callback_single_assert_to_simpler() {
     );
 }
 
-/// Pun/no_expected and Pun/empty_element: an `assertSame()` without arguments, or an expected array with an empty
-/// element, makes Rector fail on the file; Pun leaves the call alone.
 #[test]
 fn narrow_single_will_return_callback() {
     check(
@@ -397,8 +390,6 @@ fn assert_func_call_to_p_h_p_unit_assert() {
     check(PreferAssert, "AssertFuncCallToPHPUnitAssertRector");
 }
 
-/// Pun/no_return_value: `willReturn()` without an argument makes Rector fail on the file (`resolveExternalUses()` gets
-/// `null`); Pun leaves the call alone.
 #[test]
 fn merge_with_callable_and_will_return() {
     check(
@@ -412,8 +403,6 @@ fn add_return_type_to_depended() {
     check(AddDependedTestReturnType, "AddReturnTypeToDependedRector");
 }
 
-/// Pun/abstract: an abstract constructor, or a constructor beside an abstract `setUp()`, makes Rector write an abstract
-/// `setUp()` with a body, which PHP rejects; Pun leaves the class alone.
 #[test]
 fn construct_class_method_to_set_up_test_case() {
     check(
@@ -456,27 +445,13 @@ fn with_callback_identical_to_standalone_asserts() {
     );
 }
 
-/// Pun/form_feed: phpdoc-parser's lexer stops at a form feed, so Rector takes the tag's value up to it and drops the
-/// rest of the doc; Pun leaves such a doc alone.
 #[test]
 fn ticket_annotation_to_attribute() {
-    // Pun/inline_tag: phpdoc-parser ends a generic tag's value at a further `@tag` inside its line and keeps that tag
-    // in the doc; Pun leaves such a doc alone. Pun/unclosed_bracket: a generic tag whose brackets do not close takes
-    // in the generic tags after it (`DoctrineAnnotationDecorator::mergeNestedDoctrineAnnotations()`), and Rector then
-    // prints their text twice; Pun leaves such a doc alone.
-    // Pun/other_comment: php-parser reprints every comment before a node whose doc changed, one per line; Pun
-    // leaves a doc with another comment before it alone.
     check(PreferTicketAttribute, "TicketAnnotationToAttributeRector");
 }
 
-/// Pun/doctrine: a `@dataProvider(...)` whose argument is more than a name, or with a further tag on its line, is one
-/// Pun does not rebuild as `DoctrineAnnotationDecorator` does; Pun leaves it alone.
 #[test]
 fn data_provider_annotation_to_attribute() {
-    // Pun/parenthesized: a Doctrine `@dataProvider(...)` whose brackets do not close on its line or that has more than
-    // one argument, whose content Rector rebuilds through phpdoc-parser's printer; Pun leaves such a doc alone.
-    // Pun/multiline_string: phpdoc-parser lexes a `"..."` over a line break as one token, which moves the doc's children;
-    // Pun leaves such a doc alone.
     check(
         PreferDataProviderAttribute,
         "DataProviderAnnotationToAttributeRector",
@@ -507,11 +482,8 @@ fn covers_annotation_with_value_to_attribute() {
     );
 }
 
-/// Pun/bigint: Rector decodes an integer past 64 bits as a string (`JSON_BIGINT_AS_STRING`); Pun leaves the tag alone.
 #[test]
 fn test_with_annotation_to_attribute() {
-    // Pun/invalid_json: a `@testWith` line that is not JSON makes Rector fail on the file (`JsonException`); Pun leaves
-    // the method alone.
     check(
         PreferTestWithAttribute,
         "TestWithAnnotationToAttributeRector",
@@ -520,10 +492,6 @@ fn test_with_annotation_to_attribute() {
 
 #[test]
 fn annotation_with_value_to_attribute() {
-    // config/configured_rule.php, as `pun migrate` writes its `AnnotationWithValueToAttribute` objects, and two more
-    // that its fixtures do not use (Oracle/values ran with all five). Pun/declined: a doc with a tag Pun's doc reader
-    // does not follow (`@\\...`, `@_...`), a tab-indented node (Rector indents the attribute with spaces) and an
-    // anonymous class that already has attributes; Pun leaves the class alone.
     let mut rule = PreferAttributeOverAnnotation::default();
     assert!(rule.configure(&serde_json::json!(null)).is_ok());
     assert!(rule.configure(&serde_json::json!(true)).is_err());
@@ -556,23 +524,18 @@ fn annotation_with_value_to_attribute() {
     check(rule, "AnnotationWithValueToAttributeRector");
 }
 
-/// Pun/bigint: Rector decodes an integer past 64 bits as a string (`JSON_BIGINT_AS_STRING`); Pun leaves the tag alone.
 #[test]
 fn test_with_to_data_provider() {
-    // Pun/not_an_array: a `@testWith` line that is not JSON, or JSON that is not an array or object, makes Rector fail
-    // on the file (`JsonException`, a `TypeError`); Pun leaves the class alone.
     check(PreferDataProvider, "TestWithToDataProviderRector");
 }
 
 #[test]
 fn finalize_test_case_class() {
-    // Fixture/ verbatim from rector-src 2.8.4 (rules-tests/...), a Rector core rule of the phpunit sets.
     check(RequireFinalTestCase, "FinalizeTestCaseClassRector");
 }
 
 #[test]
 fn add_tests_void_return_type_where_no_return() {
-    // Fixture/ verbatim from rector-src 2.8.4 (rules-tests/...), a Rector core rule of the phpunit sets.
     check(
         AddTestVoidReturn,
         "AddTestsVoidReturnTypeWhereNoReturnRector",
@@ -581,7 +544,6 @@ fn add_tests_void_return_type_where_no_return() {
 
 #[test]
 fn return_iterator_in_data_provider() {
-    // Fixture/ verbatim from rector-src 2.8.4 (rules-tests/...), a Rector core rule of the phpunit sets.
     check(
         AddDataProviderIteratorReturnType,
         "ReturnIteratorInDataProviderRector",
@@ -590,7 +552,6 @@ fn return_iterator_in_data_provider() {
 
 #[test]
 fn return_type_from_mock_object() {
-    // Fixture/ verbatim from rector-src 2.8.4 (rules-tests/...), a Rector core rule of the phpunit sets.
     check(
         AddReturnTypeFromMockObject,
         "ReturnTypeFromMockObjectRector",
@@ -605,8 +566,6 @@ fn expression_create_mock_to_create_stub() {
     );
 }
 
-/// The installed Rector is scoped and its copy of this rule compares against `RectorPrefix202608\PHPUnit\...\MockObject`,
-/// so it never fires; Oracle/ comes from that file with the prefix taken out of its `use`, run the same way.
 #[test]
 fn single_mock_property_type() {
     check(NoMockIntersectionProperty, "SingleMockPropertyTypeRector");
@@ -617,8 +576,6 @@ fn remove_never_used_mock_property() {
     check(NoUnusedMockProperty, "RemoveNeverUsedMockPropertyRector");
 }
 
-/// Pun/assigned_twice: Rector changes the last `createMock()` assigned to a property; run again, it changes the one
-/// before. Pun's fix loop runs the rule until nothing changes, so the expectation is Rector's second run.
 #[test]
 fn property_create_mock_to_create_stub() {
     check(PreferCreateStub, "PropertyCreateMockToCreateStubRector");
@@ -674,8 +631,6 @@ fn expects_param_to_mock_object() {
     check(AddMockObjectType, "ExpectsParamToMockObjectRector");
 }
 
-/// Pun/declined: a `@param` over several lines (Rector reads it as a tag without the variable and adds one more) and a
-/// tab-indented method (Rector writes the new doc at its own indentation, in spaces); Pun leaves the class alone.
 #[test]
 fn add_intersection_param_to_mock_object_param() {
     check(
@@ -700,8 +655,6 @@ fn allow_mock_objects_for_data_provider() {
     );
 }
 
-/// As for `single_mock_property_type`: the installed Rector's copy compares attributes against a prefixed `Depends`, so
-/// Oracle/ comes from the rule with the prefix taken out of its `use`.
 #[test]
 fn add_param_type_from_depends() {
     check(AddParamTypeDepends, "AddParamTypeFromDependsRector");
@@ -723,32 +676,16 @@ fn scalar_argument_to_expected_param_type() {
     );
 }
 
-/// Pun/rector_fails: a statement with a call on the mock but no `->method('literal')`, or a `createMock()` assigned to
-/// another spelling of the mock's variable, makes Rector fail on the file; Pun leaves the method alone.
-/// Pun/leading_backslash: a class string with a leading `\`, which Rector prints as `new \\X()`; Pun writes `new \X()`.
 #[test]
 fn entity_document_create_mock_to_direct_new() {
     check(NoEntityMock, "EntityDocumentCreateMockToDirectNewRector");
 }
 
-/// Pun/declined_types: `@return` types Pun does not read as PHPStan does (shapes, literals, integer ranges, callables,
-/// intersections, a blank before `<`, unions PHPStan merges); Pun leaves those providers alone.
-/// Pun/low_precedence: an item whose operator binds looser than `yield` (`and`, `or`) gets parentheses, where Rector
-/// writes `yield $a and $b`, which yields `$a` only.
-/// Pun/declined_docs: more docs Pun leaves alone where Rector changes them: a `@phpstan-return` tag, a type with `&`,
-/// a `(...)[]`, a key PHPStan reads as another (`float`, a union, a nested array's), a union nested in a union's
-/// generic. Pun/anonymous_self: `self` in an anonymous class,
-/// which Rector prints as `\AnonymousClass<hash>`. Pun/tabs: a provider indented with tabs, which Rector keeps.
-/// Pun/unread_doc and Pun/unread_parent_doc: a `@dataProvider` doc (of the class's or a parent's method) with an
-/// `@_tag`, which Pun's doc reader does not follow; Pun leaves the class alone. Pun/missing_element: an array with an
-/// empty element makes Rector fail on the file; Pun leaves the provider alone.
 #[test]
 fn yield_data_provider() {
     check(PreferYieldDataProvider, "YieldDataProviderRector");
 }
 
-/// Pun/rounds: a variable assigned `createStub()` twice; Rector changes the last call only (its collection keeps the
-/// last), and Pun's next fix round then finds the first alone and changes it too (lint.md's known difference: rounds).
 #[test]
 fn mock_object_arg_create_stub_to_create_mock() {
     check(
@@ -757,8 +694,6 @@ fn mock_object_arg_create_stub_to_create_mock() {
     );
 }
 
-/// Oracle/ ran with tests/phpunit-stubs autoloaded before Rector's own stubs-rector/ `TestCase` (which has only
-/// `createMock()`), as a project with PHPUnit installed has it, so inherited `TestCase` methods resolve.
 #[test]
 fn create_stub_over_create_mock_arg() {
     check(
@@ -767,14 +702,6 @@ fn create_stub_over_create_mock_arg() {
     );
 }
 
-/// Oracle/ ran with tests/phpunit-stubs autoloaded before Rector's stubs-rector/. Pun/declined: what Pun does not
-/// print as php-parser does, which Rector changes: a comment before the argument (Rector drops it), a `?>` in the
-/// closure, a value in parentheses that stays (Rector writes `return ();`), a closure that moves right, a closure
-/// printed anew with a comment or a line break in its parameters, and a tab indent across lines or before the `}` of
-/// a closure printed anew (Rector writes spaces). Pun/intersection_order: two classes of the receiver's intersection
-/// declare the method, one returning `void`; Rector reads the first as written, and Mago keeps an intersection's
-/// members in an order of its own, so Pun leaves the call alone. Pun/rector_fails: `setUp()` mocks a class written as an
-/// expression without a name (`$this->make()::class`), which makes Rector fail on the file; Pun leaves it alone.
 #[test]
 fn void_method_with_callback_to_will_return_callback() {
     check(
@@ -783,8 +710,6 @@ fn void_method_with_callback_to_will_return_callback() {
     );
 }
 
-/// Pun/unknown_class: `$x` is assigned a call that returns a class no file declares; PHPStan types it as that class,
-/// and Mago does not, so Pun adds no assert (the argument rule collects its variables alike).
 #[test]
 fn type_will_return_callable_arrow_function() {
     check(

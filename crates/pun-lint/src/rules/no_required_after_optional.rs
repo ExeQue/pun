@@ -1,12 +1,3 @@
-//! `lint/functions/no-required-after-optional`, ported from Rector 2.8.4's `OptionalParametersAfterRequiredRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! PHP deprecates a required parameter after an optional one. Each such parameter of a method, function or closure
-//! gets a default (and with it every required parameter after it, which now follows an optional one): `null` for an
-//! untyped, nullable or `null`-including parameter, a zero value for `string`, `int`, `float`, `bool`, `array`,
-//! `true` or `false` (the first of a union's members that has one), and `null` with the type made nullable for the
-//! rest. A variadic parameter stays.
-
 use mago_syntax::cst::{FunctionLikeParameterList, Hint, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -21,7 +12,6 @@ impl Rule for NoRequiredAfterOptional {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::NULLABLE_TYPE
         70100
     }
 
@@ -71,7 +61,6 @@ fn edits(source: &str, list: &FunctionLikeParameterList<'_>) -> Vec<Edit> {
         if !previous_optional {
             continue;
         }
-        // `processParam()`: from here on every parameter has a default.
         let end = node_span(&parameter.variable).end;
         let mut default = "null";
         match &parameter.hint {
@@ -108,7 +97,6 @@ fn edits(source: &str, list: &FunctionLikeParameterList<'_>) -> Vec<Edit> {
     edits
 }
 
-/// A union's members, in order.
 fn flatten<'a>(hint: &'a Hint<'a>, out: &mut Vec<&'a Hint<'a>>) {
     match hint {
         Hint::Union(union) => {
@@ -119,7 +107,6 @@ fn flatten<'a>(hint: &'a Hint<'a>, out: &mut Vec<&'a Hint<'a>>) {
     }
 }
 
-/// `mapReasonableParamValue()` for one type.
 fn reasonable(hint: &Hint<'_>) -> Option<&'static str> {
     match hint {
         Hint::String(_) => Some("''"),

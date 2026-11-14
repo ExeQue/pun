@@ -1,5 +1,3 @@
-//! Public rule expectations from PHPStan 2.3.1, including its upstream union-key fixtures.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -240,7 +238,6 @@ fn raw_phpdoc_ingestion_preserves_binary_values_and_error_offsets() {
     std::fs::create_dir_all(&root).unwrap();
     let file = root.join("raw.php");
     std::fs::write(&file, source).unwrap();
-    // Remove the scratch source even when the diagnostic assertion fails.
     let result = std::panic::catch_unwind(|| {
         for level in [0, 2] {
             let mut project = Project::new(vec![file.clone()], Vec::new());
@@ -337,8 +334,6 @@ fn bare_shape_spellings_and_object_properties_keep_their_existing_values() {
     use mago_names::resolver::NameResolver;
     use mago_syntax::parser::parse_file;
 
-    // The parser's bare-float extension is not a PHPStan shape-key grammar claim.
-    // Object property names retain their prior undecoded interior; only array semantics change.
     let source = br#"<?php
 /** @param array{1.5: int, +1.5: int, -1.5: int, name: int} $shape */
 function bare(array $shape): void {}

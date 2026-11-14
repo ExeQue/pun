@@ -1,11 +1,3 @@
-//! `lint/laravel/prefer-explicit-json-call`, ported from rector-laravel 2.7.3's `JsonCallToExplicitJsonCallRector`
-//! (src/Rector/MethodCall).
-//!
-//! On an object using `Illuminate\Foundation\Testing\Concerns\MakesHttpRequests`, `->json('post', $uri, ...)` becomes
-//! `->postJson($uri, ...)` (likewise `get`, `put`, `patch`, `delete` and `options`). A `GET` with data moves the data
-//! into its `route()` helper: `->json('GET', route('home'), $data)` becomes `->getJson(route('home', $data))`; a `GET`
-//! with headers or options, or with a `route()` call of several arguments, is left alone.
-
 use mago_syntax::cst::{Argument, Call, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -58,7 +50,6 @@ impl Rule for PreferExplicitJsonCall {
         let name = node_span(&call.method);
         let mut edits = vec![Edit::new(name, format!("{verb}Json"))];
         if verb == "get" && args.len() > 2 {
-            // `refactorGetMethodCall`: exactly three arguments, a `route()` of one argument, data unnamed or `data:`.
             let Expression::Call(Call::Function(route)) = unparenthesize(value(&args[1])) else {
                 return;
             };

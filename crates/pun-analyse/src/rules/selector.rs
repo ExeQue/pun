@@ -1,15 +1,9 @@
-//! `ParametersAcceptorSelector::selectFromArgs()`'s parameters of some built-ins typed from their arguments (the
-//! ArrayMapArgVisitor, ArrayFilterArgVisitor, ImplodeArgVisitor, ArrayWalkArgVisitor, ArrayFindArgVisitor and
-//! CurlSetOpt(Array)ArgVisitor cases): the callback's parameters from the array's types, `implode()`'s from the argument
-//! count, `curl_setopt()`'s value from the option.
-
 use pun_phpstan::symbols::ByRef;
 use pun_phpstan::types::{Level, Param, ShapeBuilder, Signature, Type, mixed, union};
 
 use super::params::{Acceptor, Arg, Counts, ParamType, Variants};
 use super::{Checker, declared};
 
-/// The variants of the built-in written `name` (lowercase, no leading `\`) for these arguments.
 pub(super) fn select_from_args(
     c: &Checker,
     name: &str,
@@ -36,7 +30,6 @@ pub(super) fn select_from_args(
         })))
     };
     let overridden = match name {
-        // ArrayMapArgVisitor: the arguments other than the callback, when there are any
         "array_map" if args.len() > 1 => {
             let mut params = Vec::new();
             for (i, a) in args.iter().enumerate() {
@@ -65,9 +58,7 @@ pub(super) fn select_from_args(
                 return variants;
             };
             let params = match args.get(2).and_then(ty) {
-                // ARRAY_FILTER_USE_KEY
                 Some(Type::ConstInt(2)) => vec![param("key", array.iterable_key_type())],
-                // ARRAY_FILTER_USE_BOTH
                 Some(Type::ConstInt(1)) => vec![
                     param("item", array.iterable_value_type()),
                     param("key", array.iterable_key_type()),
@@ -98,7 +89,6 @@ pub(super) fn select_from_args(
             ];
             Some((1, callable(params, Type::Bool)))
         }
-        // CurlSetOptArgVisitor: the value's type from the option's
         "curl_setopt" if args.len() >= 3 => {
             let option = ty(&args[1]).unwrap_or_else(mixed);
             let types: Option<Vec<Type>> = constant_scalars(&option)
@@ -107,7 +97,6 @@ pub(super) fn select_from_args(
                 .collect();
             types.filter(|ts| !ts.is_empty()).map(|ts| (2, union(ts)))
         }
-        // CurlSetOptArrayArgVisitor: the options array's shape from its keys
         "curl_setopt_array" if args.len() >= 2 => {
             let options = ty(&args[1]).unwrap_or_else(mixed);
             let keys = constant_scalars(&options.iterable_key_type());
@@ -129,7 +118,6 @@ pub(super) fn select_from_args(
     }
 }
 
-/// The first variant with parameter `p` typed `t`.
 fn with_type(c: &Checker, variants: Variants, p: usize, t: Type) -> Variants {
     let mut acceptor = variants.all.into_iter().next().expect("a variant");
     if let (Some(described), Some(param_type)) =
@@ -144,9 +132,6 @@ fn with_type(c: &Checker, variants: Variants, p: usize, t: Type) -> Variants {
     }
 }
 
-/// ClosureBindArgVisitor and ClosureBindToVarVisitor: `Closure::bind($var, $newThis)` (`p` 1) or
-/// `$var->bindTo($newThis)` (`p` 0) in a function-like whose parameter `$var` is `@param-closure-this` typed and keeps
-/// its original value at `at`: `$newThis` takes that type.
 pub(super) fn closure_bind(
     c: &Checker,
     var: &str,
@@ -167,8 +152,6 @@ pub(super) fn closure_bind(
     let Some(t) = declared::codex_closure_this(c, f, declaring).remove(var) else {
         return variants;
     };
-    // `ParameterVariableOriginalValueExpr`: no assignment to `$var` in the body before `at`
-    // ponytail: a textual scan (the body from its first `{`); a by-reference use or `foreach (... as $var)` is missed
     let source =
         String::from_utf8_lossy(&c.file.contents[f.span.start.offset as usize..at as usize]);
     let body = &source[source.find('{').unwrap_or(source.len())..];
@@ -191,7 +174,6 @@ pub(super) fn closure_bind(
     }
 }
 
-/// `getConstantScalarTypes()` of an option or key type.
 fn constant_scalars(t: &Type) -> Vec<Type> {
     match t {
         Type::ConstInt(_) | Type::ConstString(_) => vec![t.clone()],
@@ -200,15 +182,12 @@ fn constant_scalars(t: &Type) -> Vec<Type> {
     }
 }
 
-/// The value type of each curl option by the PHP version from which it holds, ascending.
 pub(super) fn curl_options() -> Vec<(u32, std::collections::HashMap<i64, String>)> {
     let by_version: std::collections::BTreeMap<u32, std::collections::HashMap<i64, String>> =
         serde_json::from_str(include_str!("curl-options.json")).expect("curl-options.json");
     by_version.into_iter().collect()
 }
 
-/// `getCurlOptValueType()`: the value type of curl option `option` (an integer the oracle's curl knows), exported
-/// per the PHP version from which it holds.
 fn curl_option(c: &Checker, option: &Type) -> Option<Type> {
     let Type::ConstInt(option) = option else {
         return None;
@@ -224,7 +203,6 @@ fn curl_option(c: &Checker, option: &Type) -> Option<Type> {
         .map(|t| pun_phpstan::resolve::resolve_str(t, None))
 }
 
-/// The values of each constant array `t` is (`getConstantArrays()`).
 fn constant_arrays(t: &Type) -> Vec<Vec<Type>> {
     match t {
         Type::ConstArray(a) => vec![a.values.clone()],
@@ -235,8 +213,6 @@ fn constant_arrays(t: &Type) -> Vec<Vec<Type>> {
     }
 }
 
-/// ImplodeArgVisitor: `(string $separator, array $array)` with two arguments (or the one named `array`), else
-/// `(array $separator)`.
 fn implode(c: &Checker, args: &[Arg], variants: Variants) -> Variants {
     let acceptor = variants
         .named

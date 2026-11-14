@@ -1,5 +1,3 @@
-//! PHPStan ErrorType identity through the public Analyzer and codex type APIs.
-
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::rc::Rc;
@@ -56,7 +54,6 @@ impl ExpressionHook for ErrorSource {
         if let Expression::Call(Call::Function(call)) = expression
             && matches!(call.function, Expression::Identifier(id) if id.value() == b"error_value")
         {
-            // The undefined-read and unset producers belong to separate patches.
             return Ok(ExpressionHookResult::SkipWithType(get_error()));
         }
         Ok(ExpressionHookResult::Continue)
@@ -143,7 +140,6 @@ fn analyzer_keeps_error_identity_without_infecting_offset_reads_or_overwrites() 
     }
 }
 
-// Only adapt display syntax. Marker identity and constraints remain assertions.
 fn mago_id(phpstan: &str) -> String {
     match phpstan {
         "mixed~null" => "nonnull".to_string(),
@@ -155,7 +151,6 @@ fn mago_id(phpstan: &str) -> String {
 }
 
 fn type_id(ty: &TUnion) -> String {
-    // Mago's empty flag tracks availability; both mixed forms have the same falsey values.
     if ty.is_falsy_mixed() {
         "falsy-mixed".to_string()
     } else {
@@ -176,7 +171,6 @@ fn check_type(label: &str, ty: &TUnion) {
     );
     let falsey = want["falsey"].as_bool().unwrap();
     assert_eq!(ty.is_falsy_mixed(), falsey, "{label}");
-    // PHPStan expands falsey values into a concrete union. Mago retains constrained mixed.
     if !falsey {
         assert_eq!(ty.is_mixed(), want["mixed"].as_bool().unwrap(), "{label}");
     }
@@ -290,7 +284,6 @@ fn public_intersections_apply_constraints_instead_of_infecting_the_result() {
             &intersect_union_types(left, right, &codebase).unwrap(),
         );
     }
-    // Narrowing subtracts excluded values. Unlike explicit intersection, ErrorType overrides it.
     check_type("error-null", &error.to_non_nullable());
     check_type("error-falsey", &error.to_truthy());
     check_type(
@@ -303,7 +296,6 @@ fn public_intersections_apply_constraints_instead_of_infecting_the_result() {
             TMixed::error().with_truthiness(TMixedTruthiness::Falsy),
         )),
     );
-    // No-op updates also keep identity.
     let unchanged = TMixed::error()
         .with_is_non_null(false)
         .with_truthiness(TMixedTruthiness::Undetermined);

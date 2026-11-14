@@ -1,5 +1,3 @@
-//! Source-owned array metadata and selected call dependencies, captured with PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

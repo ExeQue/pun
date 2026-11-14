@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\TernaryToElvisOperatorFixer`.
 use crate::analyzers::range_analyzer::{Range, range_equals_range};
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Proto, Tokens};
@@ -58,10 +57,10 @@ impl Fixer for TernaryToElvisOperatorFixer {
             }
             let next_index = tokens.get_next_meaningful_token(i).unwrap();
             if tokens[next_index].equals(":", true) {
-                continue; // Elvis is alive!
+                continue;
             }
             let Some(before_operator) = get_before_operator(tokens, i) else {
-                continue; // contains something we cannot fix because of priorities
+                continue;
             };
             let after_operator = get_after_operator(tokens, i);
             if range_equals_range(tokens, before_operator, after_operator) {
@@ -124,7 +123,6 @@ fn get_after_operator(tokens: &Tokens, index: usize) -> Range {
 }
 
 fn clear_meaningful_from_range(tokens: &mut Tokens, range: Range) {
-    // range.end must be meaningful!
     let mut i = range.end;
     while i >= range.start {
         tokens.clear_token_and_merge_surrounding_whitespace(i);

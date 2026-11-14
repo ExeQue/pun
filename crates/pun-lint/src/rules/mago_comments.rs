@@ -1,12 +1,3 @@
-//! Report rules on comments, ported from Mago 1.57.0's linter (mago-linter src/rule/clarity/):
-//!
-//! - `lint/style/require-todo-reference` (`tagged-todo`, tagged_todo.rs, and `tagged-fixme`, tagged_fixme.rs): a
-//!   comment with a line that starts with `TODO` (or `FIXME`), in any case, but has no `todo(` (`fixme(`) followed
-//!   by a non-space character anywhere on that line. One report per comment and tag; on one comment the FIXME
-//!   report comes first, as in Mago.
-//! - `lint/style/no-invalid-phpdoc` (`valid-docblock`, valid_docblock.rs): each syntax error mago-phpdoc-syntax finds
-//!   in a docblock.
-
 use mago_phpdoc_syntax::PHPDocParser;
 use mago_span::HasSpan;
 use mago_syntax::comments::comment_lines;
@@ -60,7 +51,6 @@ impl Rule for RequireTodoReference {
     }
 }
 
-/// Whether a line of the comment starts with `tag` and is not tagged.
 fn is_untagged(trivia: &Trivia<'_>, tag: &str) -> bool {
     comment_lines(trivia).into_iter().any(|(_, line)| {
         let start = line
@@ -74,13 +64,11 @@ fn is_untagged(trivia: &Trivia<'_>, tag: &str) -> bool {
         {
             return false;
         }
-        // A comment line of a `&str` source split at ASCII bytes is UTF-8, so nothing is lost.
         let lower = String::from_utf8_lossy(&stripped.to_ascii_lowercase()).into_owned();
         !is_tagged(&lower, tag)
     })
 }
 
-/// The regex `<tag>\((#|@)?\S+`: `<tag>(` followed by a non-whitespace character.
 fn is_tagged(line: &str, tag: &str) -> bool {
     let open = format!("{tag}(");
     line.match_indices(&open).any(|(i, _)| {

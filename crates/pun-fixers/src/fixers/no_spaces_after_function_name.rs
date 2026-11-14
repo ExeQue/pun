@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\NoSpacesAfterFunctionNameFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind, Kind::*, Tokens};
 use std::path::Path;
@@ -39,8 +38,6 @@ impl Fixer for NoSpacesAfterFunctionNameFixer {
         "no_spaces_after_function_name"
     }
     fn priority(&self) -> i32 {
-        // Must run before FunctionToConstantFixer, GetClassToClassKeywordFixer.
-        // Must run after PowToExponentiationFixer.
         3
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -51,12 +48,10 @@ impl Fixer for NoSpacesAfterFunctionNameFixer {
             if !tokens[index].equals("(", true) {
                 continue;
             }
-            // last non-whitespace token, can never be `null` always at least PHP open tag before it
             let last_token_index = tokens.get_prev_non_whitespace(index, None).unwrap();
             let end_parenthesis_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index);
             let next_non_white_space = tokens.get_next_meaningful_token(end_parenthesis_index);
-            // (`)` is never the last meaningful token of code that parses)
             if let Some(n) = next_non_white_space
                 && !tokens[n].equals(";", true)
                 && tokens[last_token_index].is_given_kind(&[

@@ -1,10 +1,3 @@
-//! `lint/security/no-literal-password`, ported from Mago 1.57.0's linter rule `no-literal-password`
-//! (rule/security/no_literal_password.rs).
-//!
-//! A sensitive name (a password, token, secret or API key, by name) given a non-empty string literal or an integer
-//! literal is reported on the name: in an assignment, an array `key => value`, a constant, a class constant, a
-//! property default, a parameter default and a named argument.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::{ArrayElement, Expression, Literal, Node, NodeKind};
 

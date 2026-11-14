@@ -1,5 +1,3 @@
-//! Native-only unset transfers consume the ordinary walk, not selected/PHPDoc state.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -113,7 +111,6 @@ fn split_top(value: &str, delimiter: char) -> Vec<&str> {
     parts
 }
 
-// Only display adaptation; actual array insertion-order conversion is independently owned.
 fn normalize(value: &str) -> String {
     if matches!(value, "array" | "array<array-key, mixed>") {
         return "array".to_owned();

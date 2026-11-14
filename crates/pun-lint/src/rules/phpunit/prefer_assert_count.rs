@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-assert-count`, ported from rector-phpunit's
-//! `AssertCompareOnCountableWithMethodToAssertCountRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertSame(5, count($a))` (or `sizeof()`, `iterator_count()`, or `$a->count()` on a `Countable`) becomes
-//! `assertCount(5, $a)`; `assertNotSame` and `assertNotEquals` become `assertNotCount`. A `Generator` is left alone.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
@@ -96,8 +90,6 @@ impl Rule for PreferAssertCount {
     }
 }
 
-/// `ObjectType($class)->isSuperTypeOf($type)->yes()` on the type Mago gives `expr`: every part is an object of
-/// `class` or a subclass.
 fn all_objects_of(ctx: &Context<'_>, expr: &Expression<'_>, class: &str) -> bool {
     let facts = facts(ctx);
     facts

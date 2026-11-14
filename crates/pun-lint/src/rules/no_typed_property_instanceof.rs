@@ -1,19 +1,3 @@
-//! `lint/dead-code/no-typed-property-instanceof`, ported from Rector 2.8.4's `RemoveTypedPropertyDeadInstanceOfRector`
-//! (rules/DeadCode/Rector/If_).
-//!
-//! In a class's methods, an `if` without `elseif` or `else` whose condition is `$this->property instanceof SomeClass`
-//! where the property's type is already that class (or a subclass of it) always runs: its statements take its place;
-//! `!$this->property instanceof SomeClass` never runs, so the `if` goes. The property must be promoted, assigned in
-//! the constructor, or declared in the class with a native type. Rector stops at the first loop it meets walking the
-//! methods in order (`STOP_TRAVERSAL`), so no `if` inside or after a loop changes; an `if` it changes is not walked
-//! into.
-//!
-//! The property's type is PHPStan's with docblocks read; for a private property without a type or `@var` tag,
-//! PHPStan (as Rector configures it, `inferPrivatePropertyTypeFromConstructor`) takes the type of the last value the
-//! constructor's own statements assign to it.
-//!
-//! php-parser's printer decides the bytes: see [`super::stmt_splice`].
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -99,7 +83,6 @@ impl Rule for NoTypedPropertyInstanceof {
     }
 }
 
-/// The class Rector refactors, and the nodes above it.
 struct Class<'c, 'ast, 'arena> {
     node: Node<'ast, 'arena>,
     ancestors: &'c [Node<'ast, 'arena>],
@@ -108,8 +91,6 @@ struct Class<'c, 'ast, 'arena> {
     extends: Option<&'ast Extends<'arena>>,
 }
 
-/// Where the `if`s the walk of the class's methods changes start: it stops at the first loop and does not go into an
-/// `if` it changes.
 fn visited_ifs(
     ctx: &Context<'_>,
     tokens: &[Token],
@@ -154,7 +135,6 @@ fn visited_ifs(
     changed
 }
 
-/// `refactorStmtAndInstanceof` for the `if` statement `chain` ends with.
 fn change(
     ctx: &Context<'_>,
     tokens: &[Token],
@@ -180,7 +160,6 @@ fn change(
         Expression::Binary(b) if matches!(b.operator, BinaryOperator::Instanceof(_)) => (b, false),
         _ => return None,
     };
-    // `$this->property` only
     let Expression::Access(Access::Property(fetch)) = unparenthesize(instanceof.lhs) else {
         return None;
     };
@@ -222,9 +201,6 @@ fn change(
     )))
 }
 
-/// `getType($this->property)`: the type with docblocks read; for a private property without a type or `@var` tag in
-/// a class with its own constructor, the type of the value the constructor last assigns to it in a statement of its
-/// own (`inferPrivatePropertyTypeFromConstructor`).
 fn property_type(
     source: &str,
     facts: &Facts,
@@ -285,7 +261,6 @@ fn property_type(
     found
 }
 
-/// Whether the doc comment before the property at `start` has a `@var` tag.
 fn has_var_tag(
     source: &str,
     start: usize,
@@ -304,7 +279,6 @@ fn has_var_tag(
     .is_some_and(|d| source[d.start..d.end].contains("@var"))
 }
 
-/// `isInPropertyPromotedParams`: a promoted parameter of the constructor is named like the property.
 fn is_promoted(class: &Class<'_, '_, '_>, name: &[u8]) -> bool {
     method(class.members, b"__construct").is_some_and(|m| {
         m.parameter_list
@@ -314,7 +288,6 @@ fn is_promoted(class: &Class<'_, '_, '_>, name: &[u8]) -> bool {
     })
 }
 
-/// `isSkippedPropertyFetch`: not assigned in the constructor, and not declared in the class with a native type.
 fn is_skipped(ctx: &Context<'_>, class: &Class<'_, '_, '_>, name: &[u8]) -> bool {
     let mut path = class.ancestors.to_vec();
     path.push(class.node);

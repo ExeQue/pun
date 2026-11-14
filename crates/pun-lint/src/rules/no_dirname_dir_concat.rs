@@ -1,13 +1,3 @@
-//! `lint/complexity/no-dirname-dir-concat`, ported from Rector 2.8.4's
-//! `DirnameDirConcatStringToDirectStringPathRector` (rules/CodeQuality/Rector/Concat).
-//!
-//! `dirname(__DIR__) . '/file.txt'` becomes `__DIR__ . '/../file.txt'`, and `dirname(__DIR__) . '\some\file.txt'`
-//! becomes `__DIR__ . '\..\some\file.txt'`. A `dirname()` with a level count stays, and so does a string without a
-//! path separator.
-//!
-//! The changed string prints again in its own quotes, escaped as php-parser escapes it. A heredoc stays (Rector
-//! changes it too).
-
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Literal, MagicConstant, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -38,7 +28,6 @@ impl Rule for NoDirnameDirConcat {
         if !matches!(concat.operator, BinaryOperator::StringConcat(_)) {
             return;
         }
-        // Mago parses `dirname(...)` as a partial application, so a function call is never a first-class callable.
         let Expression::Call(Call::Function(call)) = unparenthesize(concat.lhs) else {
             return;
         };
@@ -50,7 +39,6 @@ impl Rule for NoDirnameDirConcat {
         let Expression::Literal(Literal::String(string)) = unparenthesize(concat.rhs) else {
             return;
         };
-        // avoid multiple dir nesting for now
         let mut arguments = call.argument_list.arguments.iter();
         let (Some(first), None) = (arguments.next(), arguments.next()) else {
             return;
@@ -76,8 +64,6 @@ impl Rule for NoDirnameDirConcat {
     }
 }
 
-/// The new value of the string: `/../` (linux paths) or `\..\` (windows paths) before the value without its leading
-/// separators, or none for a value without a separator.
 fn direct_path(value: &[u8]) -> Option<Vec<u8>> {
     let separator = if value.contains(&b'/') {
         b'/'

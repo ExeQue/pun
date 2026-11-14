@@ -1,6 +1,3 @@
-//! What the rules read of a file's syntax beyond Mago's codex, taken once from the scan's parse: the namespaces and
-//! imports, the comments and parsed doc comments, and the declaration offsets and written parent lists.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_names::kind::NameKind;
@@ -11,17 +8,14 @@ use pun_phpstan::phpdoc;
 
 use super::doc::{Doc, FileScopes};
 
-/// One file's facts.
 pub(crate) struct Facts {
     pub scopes: FileScopes,
     pub comments: Comments,
     pub declarations: Declarations,
-    /// `declare(strict_types=1)` anywhere in the text, ignoring whitespace and case.
     pub strict_types: bool,
 }
 
 impl Facts {
-    /// `analysed`: the rules check this file, so they read every tag of its doc comments.
     pub(crate) fn of(contents: &[u8], program: &Program, analysed: bool) -> Facts {
         let mut scopes = FileScopes::of(program);
         let mut declarations = Declarations::default();
@@ -49,10 +43,8 @@ impl Facts {
     }
 }
 
-/// `declare(strict_types=1)` anywhere in `contents`, ignoring whitespace and case.
 fn strict_types(contents: &[u8]) -> bool {
     const PATTERN: &[u8] = b"declare(strict_types=1)";
-    // the pattern's first byte occurs nowhere else in it, so a mismatch restarts the match at that byte
     let mut matched = 0;
     for b in contents
         .iter()
@@ -71,20 +63,14 @@ fn strict_types(contents: &[u8]) -> bool {
     false
 }
 
-/// What the rules read of one doc comment.
 #[derive(Clone)]
 pub(crate) struct DocEntry {
     pub doc: Doc,
-    /// [`super::doc::tags()`]
     pub tags: Vec<(String, Vec<u8>)>,
-    /// [`super::declarations::doc_tags()`]
     pub names: Vec<String>,
-    /// PhpDocParser's tags, none where it throws; of a file the rules do not check, only [`SCANNED_TAGS`].
     pub phpdoc: Vec<phpdoc::Tag>,
 }
 
-/// The PhpDocParser tags the rules read of another file's doc comments: assertions and `@throws` of functions and
-/// methods; `@method`, `@property*`, `@mixin` and the require and sealed tags of class-likes.
 const SCANNED_TAGS: &[&str] = &[
     "@phpstan-assert",
     "@phpstan-assert-if-true",
@@ -116,7 +102,6 @@ const SCANNED_TAGS: &[&str] = &[
     "@phpstan-sealed",
 ];
 
-/// A prefix of each of [`SCANNED_TAGS`]: a doc comment without one has none of them.
 const SCANNED_PREFIXES: &[&[u8]] = &[
     b"@phpstan-",
     b"@psalm-",
@@ -127,7 +112,6 @@ const SCANNED_PREFIXES: &[&[u8]] = &[
     b"@mixin",
 ];
 
-/// The class-like tags [`Comments::keep_trait_tags()`] keeps only on traits.
 const TRAIT_TAGS: &[&str] = &[
     "@method",
     "@phan-method",
@@ -165,24 +149,17 @@ impl DocEntry {
 
 const NONE: u32 = u32::MAX;
 
-/// Each `*/` of a file with the comment starts the backward searches of [`Comments::doc_before()`] find before it,
-/// and the doc comments those close, parsed.
 #[derive(Default)]
 pub(crate) struct Comments {
-    /// The offset after each `*/`, ascending.
     ends: Vec<u32>,
-    /// The doc comment each `*/` closes (an index into `docs`), else NONE.
     doc: Vec<u32>,
-    /// The start of the last `/*` before each `*/`, else NONE.
     plain: Vec<u32>,
-    /// (start, end, entry)
     docs: Vec<(u32, u32, DocEntry)>,
 }
 
 impl Comments {
     pub(crate) fn of(contents: &[u8], analysed: bool) -> Comments {
         let mut out = Comments::default();
-        // the last two `/**` and `/*` seen: the last one can overlap the `*/` (`/**/`, `/*/`), the one before cannot
         let (mut doc_opens, mut opens, mut last_close) = ([None; 2], [None; 2], None);
         for p in 0..contents.len().saturating_sub(1) {
             match &contents[p..p + 2] {
@@ -194,7 +171,6 @@ impl Comments {
                 }
                 b"*/" => {
                     let end = p + 2;
-                    // the searches of the text before the `*/`: a `/**` or `/*` entirely before it
                     let doc_start = doc_opens[1].filter(|&s| s + 3 <= p).or(doc_opens[0]);
                     let plain_start = opens[1].filter(|&s| s + 2 <= p).or(opens[0]);
                     let doc = doc_start.filter(|&s| {
@@ -224,8 +200,6 @@ impl Comments {
         out
     }
 
-    /// Drops the `@method`, `@property*` and `@mixin` tags of every doc comment but the traits' at `traits`: of
-    /// another file the rules read those only of a trait, in the context of the analysed class using it.
     fn keep_trait_tags(&mut self, contents: &[u8], traits: &[u32]) {
         let kept: Vec<u32> = traits
             .iter()
@@ -244,13 +218,10 @@ impl Comments {
         }
     }
 
-    /// The index of the `*/` that ends at `end`.
     fn closing(&self, end: usize) -> Option<usize> {
         self.ends.binary_search(&(end as u32)).ok()
     }
 
-    /// The doc comment (`/**` ... `*/`) that ends right before `offset`, skipping other comments in between: the one
-    /// PHP's tokenizer reads (the start is the last `/**` before its `*/`, so `/*` inside the text is no start).
     pub(crate) fn doc_before<'c>(
         &'c self,
         contents: &'c [u8],
@@ -277,7 +248,6 @@ impl Comments {
         }
     }
 
-    /// The parsed doc comment at `start..end`, when it is one [`Comments::doc_before()`] finds.
     pub(crate) fn entry(&self, start: u32, end: u32) -> Option<&DocEntry> {
         let i = self
             .docs
@@ -287,8 +257,6 @@ impl Comments {
         (*found == start).then_some(entry)
     }
 
-    /// php-parser's `getDocComment()`: the last `/** */` comment before `offset` with only whitespace and other block
-    /// comments between.
     pub(crate) fn php_doc_comment<'c>(
         &self,
         contents: &'c [u8],
@@ -306,7 +274,6 @@ impl Comments {
             }
             let start = Some(self.plain[self.closing(end)?]).filter(|&s| s != NONE)? as usize;
             let comment = &contents[start..end];
-            // PHP's T_DOC_COMMENT: `/**` and whitespace
             if comment.starts_with(b"/**") && comment.get(3).is_some_and(u8::is_ascii_whitespace) {
                 return Some(comment);
             }
@@ -315,24 +282,17 @@ impl Comments {
     }
 }
 
-/// Declaration offsets the codex does not keep.
 #[derive(Default)]
 pub(crate) struct Declarations {
-    /// Where each property or constant declaration starts, by the offset of each item's name.
     pub starts: HashMap<u32, u32>,
-    /// The offsets of native `readonly` modifiers' properties, promoted parameters and classes.
     pub readonly: HashSet<u32>,
-    /// By class-like start: whether it is an interface, and its written `implements` (an interface's `extends`)
-    /// names, resolved, in order.
     pub parents: HashMap<u32, (bool, Vec<Vec<u8>>)>,
 }
 
 struct DeclarationWalker<'d> {
     out: &'d mut Declarations,
     scopes: &'d FileScopes,
-    /// The start of each trait declaration.
     traits: &'d mut Vec<u32>,
-    /// [`FileScopes`]' trait uses.
     trait_uses: &'d mut Vec<(u32, Vec<String>)>,
 }
 

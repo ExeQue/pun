@@ -1,5 +1,3 @@
-//! `--features pprof` builds only: `PUN_PPROF=<file>` samples every thread (SIGPROF, 997 Hz, works where `perf` is
-//! not allowed) and writes folded stacks (`a;b;c count`, flamegraph.pl / inferno input) to `<file>` on exit.
 pub(crate) struct Sampler(pprof::ProfilerGuard<'static>, std::ffi::OsString);
 
 pub(crate) fn start() -> Option<Sampler> {

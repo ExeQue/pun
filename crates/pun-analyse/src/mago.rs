@@ -1,6 +1,3 @@
-//! Mago's own analyser over a project (analyse.md Build 0, the engine spike): the issues it reports, by code, and the
-//! types it infers for the arguments of `\PHPStan\dumpType()`, optionally with Pun's Laravel plugin.
-
 use mago_allocator::LocalArena;
 use mago_analyzer::Analyzer;
 use mago_analyzer::analysis_result::AnalysisResult;
@@ -18,7 +15,6 @@ use crate::codebase::{self, CouldNotReadFile, read};
 use crate::laravel::{self, Laravel};
 use crate::{Project, display};
 
-/// One issue as Mago reports it.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MagoIssue {
     pub file: String,
@@ -27,7 +23,6 @@ pub struct MagoIssue {
     pub message: String,
 }
 
-/// The type Mago infers for the argument of a `\PHPStan\dumpType()` call, in Mago's own notation.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Dumped {
     pub file: String,
@@ -41,8 +36,6 @@ pub struct MagoRun {
     pub dumped: Vec<Dumped>,
 }
 
-/// Runs Mago's analyser over `project.analysed` with Mago's default plugins, plus Pun's Laravel plugin for the given
-/// Laravel app (its migrations and models).
 pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, CouldNotReadFile> {
     let (codebase, _) = codebase::build(project, laravel.as_ref().map(|app| app.root))?;
     let version = codebase::php_version(project.php_version);
@@ -66,7 +59,6 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
             Settings::new(version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        // ponytail: Mago's analyzer trips debug assertions on some code (as in rules::infer); the file is skipped
         let analysed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             analyzer.analyze_with_artifacts(program, &mut result)
         }));
@@ -75,7 +67,6 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
         };
         let name = display(path);
         for issue in result.issues {
-            // an issue without a primary span (none of Mago's issues so far) has no line, as in PHPStan's JSON
             let primary = issue.annotations.iter().find(|a| a.kind.is_primary());
             out.issues.push(MagoIssue {
                 file: name.clone(),
@@ -109,7 +100,6 @@ fn line(file: &File, span: Span) -> u32 {
     file.line_number(span.start.offset) + 1
 }
 
-/// The first argument of every `\PHPStan\dumpType()` call.
 struct DumpTypeCalls<'n, 'arena> {
     names: &'n ResolvedNames<'arena>,
     args: Vec<Span>,

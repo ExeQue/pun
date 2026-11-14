@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-equal-canonicalizing`, ported from pest-plugin-rector's `UseToEqualCanonicalizingRector`:
-//! `expect(sort($a))->toBe(sort($b))` (or `toEqual()`) becomes `expect($a)->toEqualCanonicalizing($b)`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

@@ -1,6 +1,3 @@
-//! The PHP files PHPStan config loading meets that need no PHP runtime: `phpstan-baseline.php` (and other configs that
-//! only build and `return` a literal array) and phpstan/extension-installer's `GeneratedConfig.php`.
-
 use crate::value::{Array, Key, Value};
 
 struct P<'a> {
@@ -137,7 +134,6 @@ impl P<'_> {
             .chars()
             .take_while(|c| c.is_ascii_digit() || *c == '-')
             .collect();
-        // (`1.5` is a float, not `1 . 5`: floats are not supported)
         let float = rest[num.len()..].starts_with('.')
             && rest[num.len() + 1..].starts_with(|c: char| c.is_ascii_digit());
         if let (false, Ok(n)) = (float, num.parse::<i64>()) {
@@ -172,8 +168,6 @@ impl P<'_> {
     }
 }
 
-/// `require $file` for a config that only assigns literals to variables, appends to them and returns an array
-/// (the shape of PHPStan's `--generate-baseline=*.php`). `__DIR__` is `dir`.
 pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
     let mut p = P {
         s: php,
@@ -218,7 +212,6 @@ pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
     }
 }
 
-/// `PHPStan\ExtensionInstaller\GeneratedConfig::EXTENSIONS` from the generated file.
 pub fn generated_config_extensions(php: &str, dir: &str) -> Result<Array, String> {
     let at = php
         .find("const EXTENSIONS")

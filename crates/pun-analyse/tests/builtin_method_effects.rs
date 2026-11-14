@@ -1,5 +1,3 @@
-//! Canonical builtin effects remain separate from source PHPDoc and unknown user effects.
-
 use std::borrow::Cow;
 use std::path::Path;
 

@@ -1,9 +1,3 @@
-//! `pun self-update`: replaces this binary with the latest release, or the one named, checked as the curl installer
-//! (docs/public/install) checks it: HTTPS only, the release's SHA-256, the GitHub build attestation when a signed-in
-//! `gh` can verify it (required with `PUN_REQUIRE_ATTESTATION=1`), an archive holding only `punphp-<target>/` files,
-//! and a binary that reports the version asked for. The new binary is written beside this one and renamed over it,
-//! so a running `pun` never sees half a file. A copy installed through Composer is updated by Composer instead.
-
 use anyhow::{Context, Result, bail};
 use sha2::{Digest, Sha256};
 use std::io::Read;

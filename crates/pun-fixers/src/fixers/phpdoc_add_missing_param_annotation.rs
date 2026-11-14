@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocAddMissingParamAnnotationFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -63,7 +62,6 @@ impl Fixer for PhpdocAddMissingParamAnnotationFixer {
                 index += 1;
                 continue;
             }
-            // ignore one-line phpdocs like `/** foo */`, as there is no place to put new annotations
             if !token_content.contains(&b'\n') {
                 index += 1;
                 continue;
@@ -92,7 +90,6 @@ impl Fixer for PhpdocAddMissingParamAnnotationFixer {
                 .unwrap();
             index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
 
-            // An ordered map keyed by name, as upstream's array: a repeated name keeps its first position.
             let mut arguments: Vec<ArgumentInformation> = Vec::new();
             for (start, end) in arguments_analyzer.get_arguments(tokens, open_index, index) {
                 let info = prepare_argument_information(tokens, start, end);

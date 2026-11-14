@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoUnneededControlParenthesesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
@@ -11,7 +10,6 @@ struct NoUnneededControlParenthesesFixer {
     statements: Vec<Statement>,
 }
 
-/// A `statements` value: the kind of statement whose parentheses may go.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Statement {
     Break,
@@ -26,7 +24,6 @@ enum Statement {
     YieldFrom,
 }
 
-/// The allowed `statements` values (upstream's order, which the error message lists) and their variants.
 const CHOICES: &[(&str, Statement)] = &[
     ("break", Statement::Break),
     ("clone", Statement::Clone),
@@ -88,7 +85,6 @@ const BEFORE_TYPES: &[Proto<'static>] = &[
     Proto::Kind(T_YIELD_FROM),
     Proto::Kind(T_BREAK),
     Proto::Kind(T_CONTINUE),
-    // won't be fixed, but true in concept, helpful for fast check
     Proto::Kind(T_REQUIRE),
     Proto::Kind(T_REQUIRE_ONCE),
     Proto::Kind(T_INCLUDE),
@@ -133,7 +129,6 @@ const KNOWN_NEGATIVE_PRE_TYPES: &[Kind] = &[
     T_UNSET,
     T_VARIABLE,
     T_WHILE,
-    // handled by the `include` rule
     T_REQUIRE,
     T_REQUIRE_ONCE,
     T_INCLUDE,
@@ -285,7 +280,6 @@ impl NoUnneededControlParenthesesFixer {
             }
             return;
         }
-        // last checks deal with operators, do not swap around
         if self.is_wrapped_part_of_operation(
             tokens,
             before_open_index,
@@ -322,7 +316,7 @@ impl NoUnneededControlParenthesesFixer {
         after: usize,
     ) -> bool {
         let before = prev(tokens, before);
-        if !(tokens[before].equals("?", true) // For BC reasons
+        if !(tokens[before].equals("?", true)
             || is_simple_assignment(tokens, before, after)
             || is_single_statement(tokens, before, after)
             || is_wrapped_fn_body(tokens, before, after)
@@ -333,7 +327,7 @@ impl NoUnneededControlParenthesesFixer {
         }
         let new_candidate_index = next(tokens, open);
         if tokens[new_candidate_index].is_kind(T_NEW) {
-            open = new_candidate_index; // `clone (new X)`, `clone (new X())`, clone (new X(Y))`
+            open = new_candidate_index;
         }
         !contains_operation(tokens, open, close)
     }
@@ -383,7 +377,6 @@ impl NoUnneededControlParenthesesFixer {
             after = get_after_access(tokens, after);
             boundaries_moved = true;
             if ta.is_unary_successor_operator(after) {
-                // post unary operation are only valid here
                 after = next(tokens, after);
             }
         }
@@ -398,7 +391,7 @@ impl NoUnneededControlParenthesesFixer {
         let before_is_binary_operation = ta.is_binary_operator(before);
         let after_is_binary_operation = ta.is_binary_operator(after);
         if before_is_binary_operation && after_is_binary_operation {
-            return true; // `+ (x) +`
+            return true;
         }
         let before_token = &tokens[before];
         let after_token = &tokens[after];
@@ -447,7 +440,6 @@ impl NoUnneededControlParenthesesFixer {
     }
 }
 
-// bounded `print|yield|yield from|require|require_once|include|include_once (X)`
 fn is_wrapped_language_construct_argument(tokens: &Tokens, before: usize, after: usize) -> bool {
     if !tokens[before].is_given_kind(&[
         T_PRINT,
@@ -463,10 +455,9 @@ fn is_wrapped_language_construct_argument(tokens: &Tokens, before: usize, after:
     is_wrapped_sequence_element(tokens, prev(tokens, before), after)
 }
 
-// any of `<?php|<?|<?=|;|throw|return|... (X) ;|T_CLOSE`
 fn is_single_statement(tokens: &Tokens, before: usize, after: usize) -> bool {
     if tokens[before].is_kind(T_CASE) {
-        return tokens[after].equals_any(&[":".into(), ";".into()], true); // `switch case`
+        return tokens[after].equals_any(&[":".into(), ";".into()], true);
     }
     if !tokens[after].equals_any(&[";".into(), T_CLOSE_TAG.into()], true) {
         return false;
@@ -486,7 +477,7 @@ fn is_wrapped_sequence_element(tokens: &Tokens, start: usize, end: usize) -> boo
     let start_is_comma = tokens[start].equals(",", true);
     let end_is_comma = tokens[end].equals(",", true);
     if start_is_comma && end_is_comma {
-        return true; // `,(X),`
+        return true;
     }
     let block_type_start = get_block(tokens, start, true);
     let block_type_end = get_block(tokens, end, false);
@@ -495,7 +486,6 @@ fn is_wrapped_sequence_element(tokens: &Tokens, start: usize, end: usize) -> boo
         || (block_type_end.is_some() && block_type_start.is_some())
 }
 
-// any of `for( (X); ;(X)) ;`
 fn is_wrapped_for_element(tokens: &Tokens, before: usize, after: usize) -> bool {
     let for_candidate_index = if tokens[before].equals("(", true) && tokens[after].equals(";", true)
     {
@@ -511,7 +501,6 @@ fn is_wrapped_for_element(tokens: &Tokens, before: usize, after: usize) -> bool 
     for_candidate_index.is_some_and(|i| tokens[i].is_kind(T_FOR))
 }
 
-// `fn() => (X);`
 fn is_wrapped_fn_body(tokens: &Tokens, before: usize, after: usize) -> bool {
     if !tokens[before].is_kind(T_DOUBLE_ARROW) {
         return false;
@@ -559,7 +548,6 @@ fn get_before_pre_unary_operation(tokens: &Tokens, mut index: usize) -> usize {
     }
 }
 
-// array access `(X)[` or `(X){` or object access `(X)->` or `(X)?->`
 fn is_access(tokens: &Tokens, index: usize) -> bool {
     let token = &tokens[index];
     token.is_object_operator()
@@ -614,8 +602,6 @@ fn contains_operation(tokens: &Tokens, mut start: usize, end: usize) -> bool {
     }
 }
 
-/// Upstream returns null for require/include(_once); those are KNOWN_NEGATIVE_PRE_TYPES, rejected before any call,
-/// so the port never needs the null.
 fn get_config_type(tokens: &Tokens, before: usize) -> Statement {
     for &(k, item) in TOKEN_TYPE_CONFIG_MAP {
         if tokens[before].is_kind(k) {

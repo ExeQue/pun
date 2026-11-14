@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-specific-true-false-assertion`, ported from rector-phpunit's
-//! `AssertTrueFalseToSpecificMethodRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertTrue(is_dir($a))` becomes `assertDirectoryExists($a)`, and likewise for the functions upstream lists and for
-//! `empty()`, with `assertFalse`, `assertNotTrue` and `assertNotFalse`. A name PHPUnit's `Assert` class lacks (where
-//! the codebase knows the class) takes its successor (`assertFileNotExists` becomes `assertFileDoesNotExist`). A call
-//! with a named or unpacked argument stays, and so does `is_callable()` with more than one.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Argument, Call, Construct, Expression, Identifier, Node, NodeKind};
 use pun_problem::Safety;
@@ -92,7 +84,6 @@ impl Rule for PreferSpecificTrueFalseAssertion {
             return;
         };
         let value = unparenthesize(first.value());
-        // the function's arguments, or the operand of `empty()`
         let (function, inner): (&str, Result<Vec<_>, &Expression<'_>>) = match value {
             Expression::Construct(Construct::Empty(empty)) => ("empty", Err(empty.value)),
             Expression::Call(Call::Function(f)) => {
@@ -101,7 +92,6 @@ impl Rule for PreferSpecificTrueFalseAssertion {
                     Expression::Identifier(Identifier::FullyQualified(id)) => &id.value[1..],
                     _ => return,
                 };
-                // a name that is not UTF-8 is none of the functions
                 let name = std::str::from_utf8(name).unwrap_or_default();
                 (name, Ok(f.argument_list.arguments.iter().collect()))
             }
@@ -113,7 +103,6 @@ impl Rule for PreferSpecificTrueFalseAssertion {
         else {
             return;
         };
-        // `hasUnmovableArgs`: arguments move up by position, so a named or unpacked one stays.
         if let Ok(args) = &inner
             && args.iter().any(|a| match a {
                 Argument::Named(_) => true,
@@ -130,7 +119,6 @@ impl Rule for PreferSpecificTrueFalseAssertion {
                 return;
             }
         }
-        // the is_callable() $syntax_only and $callable_name arguments have no counterpart in assertIsCallable()
         if function == "is_callable" && inner.as_ref().is_ok_and(|args| args.len() > 1) {
             return;
         }
@@ -171,7 +159,6 @@ impl Rule for PreferSpecificTrueFalseAssertion {
     }
 }
 
-/// `resolveExistingAssertMethodName`: the name, unless the codebase knows PHPUnit's `Assert` class without it.
 fn existing_assert_method_name(ctx: &Context<'_>, method: &'static str) -> &'static str {
     let facts = facts(ctx);
     if facts.codebase.get_class_like(ASSERT.as_bytes()).is_none()
@@ -187,7 +174,6 @@ fn existing_assert_method_name(ctx: &Context<'_>, method: &'static str) -> &'sta
         .map_or(method, |(_, new)| new)
 }
 
-/// `$type instanceof StringType`: a string type, a literal string or a class string, not a union.
 fn is_string_type(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     facts

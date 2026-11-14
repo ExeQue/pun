@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-implode-ternary`, ported from Rector 2.8.4's `TernaryImplodeToImplodeRector`
-//! (rules/CodeQuality/Rector/Ternary).
-//!
-//! `$values === [] ? '' : implode(',', $values)` becomes `implode(',', $values)`: joining an empty array gives the
-//! empty string already. `join()` counts as `implode()`.
-
 use mago_syntax::cst::{BinaryOperator, CompositeString, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -43,7 +37,6 @@ impl Rule for NoImplodeTernary {
             return;
         }
         let else_ = unparenthesize(t.r#else);
-        // A first-class callable (`implode(...)`) is a partial application in Mago, no function call.
         let Expression::Call(mago_syntax::cst::Call::Function(call)) = else_ else {
             return;
         };
@@ -70,7 +63,6 @@ impl Rule for NoImplodeTernary {
     }
 }
 
-/// php-parser's `Array_` without items: `[]` or `array()`.
 pub(super) fn is_empty_array(expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Array(a) => a.elements.is_empty(),
@@ -79,7 +71,6 @@ pub(super) fn is_empty_array(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// php-parser's `String_` with the value `''`: an empty quoted string, or a heredoc or nowdoc without content.
 fn is_empty_string(expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::Literal(Literal::String(s)) => s.value.is_some_and(<[u8]>::is_empty),

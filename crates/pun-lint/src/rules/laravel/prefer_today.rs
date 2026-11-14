@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-today`, ported from rector-laravel 2.7.3's `NowFuncWithStartOfDayMethodCallToTodayFuncRector`
-//! (src/Rector/FuncCall).
-//!
-//! `now()->startOfDay()` becomes `today()`, with the arguments of `now()` (`now('UTC')->startOfDay()` becomes
-//! `today('UTC')`). As upstream, the arguments of `startOfDay()` are dropped.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 
 use super::{argument_texts, call, is_name, member_name, replace};

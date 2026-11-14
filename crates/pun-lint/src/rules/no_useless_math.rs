@@ -1,16 +1,3 @@
-//! `lint/dead-code/no-useless-math`, ported from Rector 2.8.4's `RemoveDeadZeroAndOneOperationRector`
-//! (rules/DeadCode/Rector/Plus).
-//!
-//! An operation that cannot change a number goes, when its operands' native types are each all integers or all
-//! floats: `$a + 0`, `$a - 0`, `$a * 1`, `$a / 1`, `1 * $a`, `0 + $a`, and `0 - $a`, which becomes `-$a`; and
-//! `$a += 0`, `$a -= 0`, `$a *= 1` and `$a /= 1`, which become `$a`. The literal must be the integer `0` or `1`. A
-//! zero added to (or taken from, on the left) a value that may be a float stays, since it turns `-0.0` into `0.0`;
-//! a multiplication or division with a class constant stays.
-//!
-//! The kept operand keeps its code. Rector's printer puts it in parentheses when it is an operation in parentheses
-//! on the right of `1 *`; elsewhere it adds none, even where the new place binds tighter (`($a + $b) * 1 * 2`
-//! becomes `$a + $b * 2`). Pun keeps the parentheses that the meaning needs (lint.md: meaning over bytes).
-
 use mago_syntax::cst::{
     Access, AssignmentOperator, BinaryOperator, Expression, Literal, Node, NodeKind,
 };
@@ -72,7 +59,6 @@ impl Rule for NoUselessMath {
                             return;
                         }
                         if is_literal(left, 0) {
-                            // on a float, `0 + $x` turns -0.0 into 0.0 and `0 - $x` flips its sign
                             if !is_integer(&facts, binary.rhs) {
                                 return;
                             }
@@ -129,19 +115,16 @@ impl Rule for NoUselessMath {
     }
 }
 
-/// `isLiteralZero` and `isLiteralOne`: an integer literal of value `value`.
 fn is_literal(expr: &Expression<'_>, value: u64) -> bool {
     matches!(expr, Expression::Literal(Literal::Integer(i)) if i.value == Some(value))
 }
 
-/// `getNativeType($expr)->isInteger()->yes()`.
 fn is_integer(facts: &Facts, expr: &Expression<'_>) -> bool {
     facts
         .native_type(node_span(unparenthesize(expr)))
         .is_some_and(|t| !t.types.is_empty() && t.is_int())
 }
 
-/// `NodeTypeResolver::isNumberType`: the native type is all integers or all floats.
 fn is_number(facts: &Facts, expr: &Expression<'_>) -> bool {
     is_integer(facts, expr)
         || facts
@@ -154,8 +137,6 @@ fn text_of<'s>(source: &'s str, expr: &Expression<'_>) -> &'s str {
     &source[span.start..span.end]
 }
 
-/// The kept operand `expr` where the operation stood under `parent`: its code, in parentheses where the meaning needs
-/// them.
 fn operand_text(source: &str, expr: &Expression<'_>, parent: Option<Node<'_, '_>>) -> String {
     let inner = unparenthesize(expr);
     if keeps_parentheses(inner, parent) {
@@ -165,8 +146,6 @@ fn operand_text(source: &str, expr: &Expression<'_>, parent: Option<Node<'_, '_>
     }
 }
 
-/// `new UnaryMinus($right)` printed: `-` and the operand, in parentheses when it is an operation that binds looser
-/// than `-` (Pun) or its code starts with `-` (`pPrefixOp`).
 fn negated(source: &str, operand: &Expression<'_>) -> String {
     let text = text_of(source, operand);
     if operand_precedence(operand) < 20 || text.starts_with('-') {
@@ -176,8 +155,6 @@ fn negated(source: &str, operand: &Expression<'_>) -> String {
     }
 }
 
-/// `isMulParenthesized`: the right operand is an operation, the multiplication's last token is `)`, and the token
-/// before the operation is `(`.
 fn is_parenthesized_operation(ctx: &crate::Context<'_>, mul: Span, right: &Expression<'_>) -> bool {
     let source = ctx.source;
     let inner = unparenthesize(right);

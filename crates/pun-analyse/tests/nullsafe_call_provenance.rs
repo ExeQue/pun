@@ -1,4 +1,3 @@
-//! PHPStan 2.3.1 keeps genuine null returns distinct from a nullsafe short circuit.
 use std::borrow::Cow;
 
 use mago_allocator::LocalArena;
@@ -100,7 +99,6 @@ fn declared_null_and_nullable_template_bounds_are_not_short_circuit_provenance()
                     Position::new(start),
                     Position::new(start + call.len() as u32),
                 );
-                // Both fixture formals explicitly include null, independently of their ensured twin.
                 let receiver = &artifacts.nullsafe_method_receiver_types[&span];
                 assert_eq!(receiver.types.len(), 2, "{call}: {receiver:?}");
                 assert!(

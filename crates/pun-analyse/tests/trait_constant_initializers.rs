@@ -1,5 +1,3 @@
-//! Canonical trait initializers, from fresh actual PHPStan 2.3.1 public analyses.
-
 use std::path::Path;
 
 use pun_analyse::{analyse, reports};

@@ -1,9 +1,3 @@
-//! `lint/laravel/no-collection-aliases`, ported from rector-laravel 2.7.3's `UnaliasCollectionMethodsRector`
-//! (src/Rector/MethodCall).
-//!
-//! On an `Illuminate\Support\Enumerable`, `some()` becomes `contains()`, `average()` `avg()`, `unlessEmpty()`
-//! `whenNotEmpty()` and `unlessNotEmpty()` `whenEmpty()`.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

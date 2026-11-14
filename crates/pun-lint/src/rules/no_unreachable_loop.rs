@@ -1,9 +1,3 @@
-//! `lint/style/no-unreachable-loop`, ported from Mago 1.57.0's linter rule `loop-does-not-iterate`
-//! (rule/best_practices/loop_does_not_iterate.rs).
-//!
-//! A `for`, `foreach`, `while` or `do`-`while` whose body ends its first pass with an unconditional `break` (of one
-//! level) or `return`, with no `continue` or `goto` before it that could skip it, is reported on the whole loop.
-
 use mago_syntax::cst::{
     DeclareBody, Expression, ForBody, ForeachBody, IfBody, Literal, LiteralInteger, Node, NodeKind,
     Statement, WhileBody,
@@ -65,7 +59,6 @@ impl Rule for NoUnreachableLoop {
     }
 }
 
-/// `get_loop_terminator_from_statements`.
 fn terminator_in(statements: &[Statement<'_>]) -> bool {
     for statement in statements {
         if might_skip_terminator(statement) {
@@ -78,7 +71,6 @@ fn terminator_in(statements: &[Statement<'_>]) -> bool {
     false
 }
 
-/// `get_loop_terminator_from_statement`.
 fn terminator(statement: &Statement<'_>) -> bool {
     match statement {
         Statement::Block(block) => terminator_in(block.statements.as_slice()),
@@ -98,8 +90,6 @@ fn any(statements: &[Statement<'_>]) -> bool {
     statements.iter().any(might_skip_terminator)
 }
 
-/// `might_skip_terminator`, without Mago's arm for a namespace: PHP allows no namespace inside a loop, and Pun lints
-/// only code PHP parses.
 fn might_skip_terminator(statement: &Statement<'_>) -> bool {
     match statement {
         Statement::Continue(_) | Statement::Goto(_) => true,

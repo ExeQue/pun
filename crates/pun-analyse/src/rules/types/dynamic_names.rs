@@ -1,8 +1,3 @@
-//! NonStringableDynamicAccessCheck (`featureToggles.checkNonStringableDynamicAccess`, bleeding edge): the name of a
-//! dynamic method, static method or class constant must be a string, that of a property or static property something
-//! PHP casts to a string. Called by CallMethodsRule, CallStaticMethodsRule, ClassConstantRule and
-//! Access{,Static}PropertiesCheck (on reads); DefinedVariableRule's `variable.nameNotString` waits for that rule.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Cast, Level, StrictMixed, Type, cast_is_error};
@@ -18,7 +13,6 @@ pub(crate) const IDENTIFIERS: &[&str] = &[
     "staticProperty.nameNotString",
 ];
 
-/// A dynamic member name: `{$expr}`, `$var`.
 pub(in super::super) fn member(selector: &ClassLikeMemberSelector) -> Option<Span> {
     match selector {
         ClassLikeMemberSelector::Variable(v) => Some(v.span()),
@@ -27,7 +21,6 @@ pub(in super::super) fn member(selector: &ClassLikeMemberSelector) -> Option<Spa
     }
 }
 
-/// A dynamic constant name: `{$expr}`.
 pub(in super::super) fn constant(selector: &ClassLikeConstantSelector) -> Option<Span> {
     match selector {
         ClassLikeConstantSelector::Expression(e) => Some(e.expression.span()),
@@ -35,7 +28,6 @@ pub(in super::super) fn constant(selector: &ClassLikeConstantSelector) -> Option
     }
 }
 
-/// A dynamic static property name: `${$expr}`, `$$var`.
 pub(in super::super) fn static_property(v: &Variable) -> Option<Span> {
     match v {
         Variable::Indirect(i) => Some(unparen(i.expression).span()),
@@ -44,7 +36,6 @@ pub(in super::super) fn static_property(v: &Variable) -> Option<Span> {
     }
 }
 
-/// The expressions whose type the checks read: the holders and the names.
 pub(super) fn typed(e: &Expression, out: &mut Vec<Span>) {
     let (holder, name) = match e {
         Expression::Call(Call::Method(m)) => (Some(m.object.span()), member(&m.method)),
@@ -68,8 +59,6 @@ pub(super) fn typed(e: &Expression, out: &mut Vec<Span>) {
     }
 }
 
-/// `findTypeToCheck()` of the name at `name` against `isString()` (`castable`: against `toString()`): the name's
-/// type and the type found when that is not one; with checkThisOnly (levels 0 and 1) only a `$this` name is checked.
 pub(in super::super) fn not_string(
     c: &Checker,
     name: Span,
@@ -91,8 +80,6 @@ pub(in super::super) fn not_string(
     (!fine(&found)).then_some((ty, found))
 }
 
-/// `checkStringName()` (`castable` false: method, static method and class constant names) or
-/// `checkStringCastableName()` (property and static property names) of the name at `name`.
 pub(in super::super) fn check(
     c: &mut Checker,
     name: Span,
@@ -108,8 +95,6 @@ pub(in super::super) fn check(
     let Some((ty, found)) = not_string(c, name, castable) else {
         return;
     };
-    // the `%s` before the name's type: a class name as `$scope->resolveName()` (`self` and `static` the class,
-    // `parent` its parent), else the holder's type
     let class = c.class_scope();
     let keyword = |name: &str| match name.to_ascii_lowercase().as_str() {
         "self" | "static" => class.map(|k| k.original_name.to_string()),
@@ -125,14 +110,12 @@ pub(in super::super) fn check(
         Expression::Self_(_) => keyword("self"),
         Expression::Static(_) => keyword("static"),
         Expression::Parent(_) => keyword("parent"),
-        // a nullsafe access is checked as a plain one on the holder without `null`
         e => c
             .phpstan_type_at(e.span())
             .map(|t| if nullsafe { t.remove_null() } else { t })
             .map(|t| declared::with_classes(c, || t.describe(Level::TypeOnly))),
     };
     let Some(holder) = holder else { return };
-    // the castable check prints the expression's own type, the other the type it checked
     let given = if castable { ty } else { found };
     let given = declared::with_classes(c, || given.describe(Level::Precise));
     let line = c.line_of(name);

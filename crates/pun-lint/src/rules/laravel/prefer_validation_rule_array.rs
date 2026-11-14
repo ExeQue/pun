@@ -1,14 +1,3 @@
-//! `lint/laravel/prefer-validation-rule-array`, ported from rector-laravel 2.7.3's
-//! `ValidationRuleArrayStringValueToArrayRector` (src/Rector/MethodCall).
-//!
-//! In the rules array of `$request->validate([...])` (an `Illuminate\Http\Request`), `Validator::make($data, [...])`
-//! (the `Illuminate\Support\Facades\Validator` facade), `$factory->make($data, [...])` (an
-//! `Illuminate\Validation\Factory`, with exactly two arguments) and the first returned array of a form request's
-//! `rules()` method that has one, each keyed item whose value is a string becomes an array of the rules between its
-//! `|`s: `'name' => 'required|string'` becomes `'name' => ['required', 'string']`. php-parser prints each new string
-//! anew: a plain one single-quoted, an interpolated one double-quoted with each interpolation in `{}`. A heredoc or
-//! nowdoc is read as php-parser reads it (`parseDocString`), and prints the same way.
-
 use mago_allocator::{Arena, LocalArena};
 use mago_syntax::cst::{
     ArrayElement, ClassLikeMember, CompositeString, DocumentIndentation, DocumentKind,
@@ -131,8 +120,6 @@ fn report(node: Node<'_, '_>, edits: Vec<Edit>, out: &mut Vec<Report>) {
     ));
 }
 
-/// The edits of the first `return [...]` under `node` (in source order, parents first, closures included) whose
-/// array has a rule to split: Rector's traversal stops at the node after it.
 fn first_return_edits(ctx: &Context<'_>, node: Node<'_, '_>) -> Vec<Edit> {
     let (mut stack, mut children) = (vec![node], Vec::new());
     while let Some(node) = stack.pop() {
@@ -150,7 +137,6 @@ fn first_return_edits(ctx: &Context<'_>, node: Node<'_, '_>) -> Vec<Edit> {
     Vec::new()
 }
 
-/// `processValidationRules`: an edit for each keyed item of the array literal `rules` whose value is a string.
 fn rule_edits(ctx: &Context<'_>, rules: &Expression<'_>) -> Vec<Edit> {
     let elements = match rules {
         Expression::Array(a) => &a.elements,
@@ -185,7 +171,6 @@ fn rule_edits(ctx: &Context<'_>, rules: &Expression<'_>) -> Vec<Edit> {
             }
             _ => continue,
         };
-        // A string that is not UTF-8 stays (php-parser escapes its bytes one by one).
         if let Some(items) = items {
             edits.push(Edit::new(
                 node_span(value),
@@ -196,22 +181,17 @@ fn rule_edits(ctx: &Context<'_>, rules: &Expression<'_>) -> Vec<Edit> {
     edits
 }
 
-/// A part of an interpolated string as php-parser holds it: the decoded text of an `InterpolatedStringPart`, or an
-/// expression, printed as `{...}`.
 enum Part<'s> {
     Literal(Vec<u8>),
     Expression(&'s str),
 }
 
-/// `processStringRule`: the rules between the `|`s of a string, each printed as a new single-quoted string.
 fn string_rules(value: &[u8]) -> Option<Vec<String>> {
     (value.split(|b| *b == b'|'))
         .map(|rule| print_string(LiteralStringKind::SingleQuoted, rule))
         .collect()
 }
 
-/// `processInterpolatedStringRule`: the parts split at each `|` of their literal text, each rule printed as a new
-/// double-quoted string, an empty rule dropped.
 fn interpolated_rules(parts: &[Part<'_>]) -> Option<Vec<String>> {
     let mut rules: Vec<Vec<String>> = Vec::new();
     let mut current: Vec<String> = Vec::new();
@@ -242,8 +222,6 @@ fn interpolated_rules(parts: &[Part<'_>]) -> Option<Vec<String>> {
     )
 }
 
-/// The value of a heredoc or nowdoc php-parser reads as a `String_` (no interpolated part), as [`document_parts`]
-/// decodes it.
 pub(crate) fn document_value(ctx: &Context<'_>, doc: &DocumentString<'_>) -> Option<Vec<u8>> {
     let mut value = Vec::new();
     for part in document_parts(ctx, doc)? {
@@ -255,10 +233,6 @@ pub(crate) fn document_value(ctx: &Context<'_>, doc: &DocumentString<'_>) -> Opt
     Some(value)
 }
 
-/// php-parser's `parseDocString`: the parts of a heredoc or nowdoc, each literal part without the closing label's
-/// indentation at the start of its lines (`stripIndentation`), then decoded (a heredoc's escapes); a literal part left
-/// empty goes. The newline before the closing label is not in Mago's last part. Mixed tabs and spaces count as no
-/// indentation, as php-parser recovers from that error.
 fn document_parts<'s>(ctx: &Context<'s>, doc: &DocumentString<'_>) -> Option<Vec<Part<'s>>> {
     let indent = match doc.indentation {
         DocumentIndentation::Whitespace(n) | DocumentIndentation::Tab(n) => n,
@@ -281,8 +255,6 @@ fn document_parts<'s>(ctx: &Context<'s>, doc: &DocumentString<'_>) -> Option<Vec
         let value = match doc.kind {
             DocumentKind::Nowdoc => raw,
             DocumentKind::Heredoc => {
-                // Mago decodes a double-quoted string's escapes; a heredoc keeps `\"` as it is, so that
-                // backslash is doubled first.
                 let mut kept = Vec::with_capacity(raw.len());
                 let mut backslashes = 0;
                 for &b in &raw {
@@ -304,8 +276,6 @@ fn document_parts<'s>(ctx: &Context<'s>, doc: &DocumentString<'_>) -> Option<Vec
     Some(out)
 }
 
-/// `stripIndentation`: up to `indent` blanks taken from the start of each line (and of the text, when it starts a
-/// line).
 fn strip_indentation(raw: &[u8], indent: usize, at_line_start: bool) -> Vec<u8> {
     let mut out = Vec::with_capacity(raw.len());
     let mut line_start = at_line_start;

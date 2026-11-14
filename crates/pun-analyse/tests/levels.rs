@@ -13,7 +13,6 @@ use serde_json::Value;
 
 type Key = (String, i64, String, String, Option<String>);
 
-/// One case's result: its name, the purity gaps it confirmed, and its failure (with whether an exact rule failed).
 #[derive(Default)]
 struct Outcome {
     name: String,
@@ -22,7 +21,6 @@ struct Outcome {
     failure: Option<(String, String)>,
 }
 
-/// These newly ported contracts must also match inside fixtures with older, unrelated inference gaps.
 const EXACT: &[&str] = &[
     "variable.undefined",
     "variable.nameNotString",
@@ -31,7 +29,6 @@ const EXACT: &[&str] = &[
     "void.pure",
 ];
 
-/// The identifiers of the rules ported above level 0, and of level-0 rules whose errors the level fixtures hold.
 const PORTED: &[&str] = &[
     "phpstan.dumpType",
     "phpstan.dumpPhpDocType",
@@ -308,14 +305,12 @@ const PORTED: &[&str] = &[
     "staticProperty.internalTrait",
     "staticProperty.internalEnum",
     "label.unused",
-    // the bleeding-edge feature-toggle rules (off in the exported cases, which run without bleedingEdge)
     "assign.byRefForeachExpr",
     "constant.value",
     "constant.defineValue",
     "new.dateInterval",
     "new.dateTime",
     "new.dateTimeImmutable",
-    // ClassConstantRule's receiver checks through RuleLevelHelper::findTypeToCheck()
     "classConstant.notFound",
     "classConstant.nonObject",
     "classConstant.dynamicString",
@@ -326,7 +321,6 @@ const PORTED: &[&str] = &[
     "trait.unused",
     "propertyGetHook.noRead",
     "propertySetHook.noAssign",
-    // analyse dead-code (an-dead)
     "deadCode.unreachable",
     "classConstant.unused",
     "method.unused",
@@ -432,7 +426,6 @@ const PORTED: &[&str] = &[
     "constant.notFound",
     "class.missingExtends",
     "class.missingImplements",
-    // analyse types, levels 2-9 (an-types2)
     "argument.type",
     "argument.invalidPregQuote",
     "callable.nonCallable",
@@ -472,7 +465,6 @@ const PORTED: &[&str] = &[
     "staticMethod.private",
     "staticMethod.protected",
     "method.staticCall",
-    // analyse param-out and self-out (batch-paramout)
     "paramOut.type",
     "parameterByRef.type",
     "paramOut.unusedType",
@@ -484,7 +476,6 @@ const PORTED: &[&str] = &[
     "selfOut.type",
     "selfOut.static",
     "selfOut.unresolvableType",
-    // analyse pure functions, methods and property hooks (batch-pure)
     "impure.betweenPhpTags",
     "impure.die",
     "impure.echo",
@@ -545,7 +536,6 @@ const PORTED: &[&str] = &[
     "purePropertyHook.void",
 ];
 
-/// The `class.notFound` messages of the level-2 Generics and PHPDoc tag rules (other rules report the identifier at every level).
 const GENERICS_NOT_FOUND: &[&str] = &[
     "PHPDoc tag @template ",
     "PHPDoc tag @method template ",
@@ -565,21 +555,17 @@ const GENERICS_NOT_FOUND: &[&str] = &[
     "Iterating over an object of an unknown class ",
     "PHPDoc tag @phpstan-assert",
     "Invoking callable on an unknown class ",
-    // NonexistentOffsetInArrayDimFetchRule's
     "Access to offset ",
     "Access to an offset on an unknown class ",
-    // FunctionDefinitionCheck's (native types from level 0, PHPDoc ones from level 2)
     "Parameter $",
     "Function ",
     "Method ",
     "Anonymous function has invalid return type",
-    // ExistingClassesInPropertiesRule's and the property hooks' (PHPDoc types from level 2)
     "Property ",
     "Get hook for property ",
     "Set hook for property ",
 ];
 
-/// The `parameter.notFound` messages of the ported rules (the PHPDoc tag rules that report it are not all ported).
 const PARAMETER_NOT_FOUND: &[&str] = &[
     "PHPDoc tag @param-immediately-invoked-callable references unknown parameter",
     "PHPDoc tag @param-later-invoked-callable references unknown parameter",
@@ -616,9 +602,7 @@ fn phpstan_level_fixtures() {
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let root = tests.join("levels");
     let data = tests.join("rules/data");
-    // PUN_LEVELS_FILTER=Properties/ selects fixture paths; only executed cases can retire a gap.
     let filter = std::env::var("PUN_LEVELS_FILTER").unwrap_or_default();
-    // Half-open case bounds split large fixtures without rewriting their oracle records.
     let case_start = std::env::var("PUN_LEVELS_CASE_START").map_or(0, |v| v.parse().unwrap());
     let case_end = std::env::var("PUN_LEVELS_CASE_END").map_or(usize::MAX, |v| v.parse().unwrap());
     let filtered = !filter.is_empty() || case_start != 0 || case_end != usize::MAX;
@@ -628,8 +612,6 @@ fn phpstan_level_fixtures() {
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
         .map(str::to_string)
         .collect();
-    // Declaration purity is partial. Only these exact oracle-positive locations may be missing;
-    // older case-wide gaps must not swallow a regression in its supported declarations.
     let purity_gaps: BTreeSet<(String, String, i64)> =
         std::fs::read_to_string(root.join("void-pure-gaps.txt"))
             .unwrap()
@@ -654,7 +636,6 @@ fn phpstan_level_fixtures() {
         .filter(|p| p.is_dir())
         .collect();
     levels.sort();
-    // Every case is its own project, so they run in parallel; the outcomes are merged in order afterwards.
     let mut files_by_level = Vec::new();
     for dir in levels {
         let level: u8 = dir.file_name().unwrap().to_str().unwrap().parse().unwrap();
@@ -695,13 +676,12 @@ fn phpstan_level_fixtures() {
             };
             let ported = |id: &str, message: &str| {
                 PORTED.contains(&id)
-                || EXACT.contains(&id)
-                || (id == "class.notFound"
-                    && GENERICS_NOT_FOUND.iter().any(|p| message.starts_with(p)))
-                || (id == "parameter.notFound"
-                    && PARAMETER_NOT_FOUND.iter().any(|p| message.starts_with(p)))
-                // (ValueAssignedToClassConstantRule's errors share the identifier and are not ported)
-                || (id == "classConstant.phpDocType" && message.contains(" native type "))
+                    || EXACT.contains(&id)
+                    || (id == "class.notFound"
+                        && GENERICS_NOT_FOUND.iter().any(|p| message.starts_with(p)))
+                    || (id == "parameter.notFound"
+                        && PARAMETER_NOT_FOUND.iter().any(|p| message.starts_with(p)))
+                    || (id == "classConstant.phpDocType" && message.contains(" native type "))
             };
             let mut want: BTreeSet<Key> = case["errors"]
                 .as_array()
@@ -720,7 +700,6 @@ fn phpstan_level_fixtures() {
                 pun_analyse::ProjectOptions::CHECK_CLASS_CASE_SENSITIVITY,
                 level >= 2,
             );
-            // The pinned exports used PHP's register_argc_argv=0, independently of this host's INI.
             project.options.set(
                 pun_analyse::ProjectOptions::CLI_ARGUMENTS_VARIABLES_REGISTERED,
                 false,

@@ -1,18 +1,3 @@
-//! `lint/complexity/prefer-instance-method`, ported from Rector 2.8.4's `LocallyCalledStaticMethodToNonStaticRector`
-//! (rules/CodeQuality/Rector/ClassMethod), with `ClassMethodVisibilityGuard::isClassMethodVisibilityGuardedByParent`
-//! and `ArrayCallableMethodMatcher` (class_method.rs).
-//!
-//! A private static method of a class that the class calls as `self::m()` or `static::m()` (or `ClassName::m()`) from
-//! its instance methods becomes an instance method, and those calls become `$this->m()`. It stays static when a parent
-//! class or an interface has a method of that name, when a static method of the class calls it (`self::m()`,
-//! `static::m()`, `ClassName::m()`, or names any array callable), when a static closure or arrow function calls it,
-//! or when nothing calls it on `$this`, `self` or `static`.
-//!
-//! Rector looks at the methods in order on one class, so a method made non-static before stops counting as static for
-//! the methods after it. A call is printed anew: `$this->`, the method's declared name, and the arguments as written,
-//! joined by `, ` (one per line after their comments when one has some), as php-parser's `pMaybeMultiline` writes them.
-//! The modifiers before `function` are printed again in php-parser's order, without `static`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -55,7 +40,6 @@ impl Rule for PreferInstanceMethod {
         } else {
             class.name.clone()
         };
-        // the methods made non-static so far
         let mut converted: Vec<Span> = Vec::new();
         let mut edits = Vec::new();
         for method in methods.iter().filter(|m| is_candidate(m)) {
@@ -130,7 +114,6 @@ fn is_candidate(method: &Method<'_>) -> bool {
     is_private(method) && is_static(method)
 }
 
-/// The class's own methods (php-parser's `getMethods()`).
 fn class_methods<'ast, 'arena>(
     members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
 ) -> Vec<&'ast Method<'arena>> {
@@ -142,7 +125,6 @@ fn class_methods<'ast, 'arena>(
         .collect()
 }
 
-/// `isClassMethodVisibilityGuardedByParent`: a parent class or an interface of the class has a method `name`.
 fn is_guarded_by_parent(facts: &Facts, class: &ClassInfo<'_, '_>, name: &[u8]) -> bool {
     let codebase = &facts.codebase;
     codebase
@@ -154,8 +136,6 @@ fn is_guarded_by_parent(facts: &Facts, class: &ClassInfo<'_, '_>, name: &[u8]) -
         })
 }
 
-/// The class and method a static call (a first-class callable too) names, when the method is an identifier, with
-/// where its arguments start (after the `(`) and their spans.
 fn static_call<'ast, 'arena>(
     node: Node<'ast, 'arena>,
 ) -> Option<(&'ast Expression<'arena>, &'arena [u8], (usize, Vec<Span>))> {
@@ -184,7 +164,6 @@ fn static_call<'ast, 'arena>(
     }
 }
 
-/// `isNames($class, ['self', 'static', $className])`.
 fn is_own(ancestors: &[Node<'_, '_>], class: &Expression<'_>, class_name: &str) -> bool {
     match class {
         Expression::Self_(_) | Expression::Static(_) => true,
@@ -204,8 +183,6 @@ fn is_static_closure(node: &Node<'_, '_>) -> bool {
     }
 }
 
-/// `isClassMethodCalledInAnotherStaticClassMethod`: a method of `still_static` names any array callable or calls
-/// `name` statically on the class.
 fn is_called_in_static_method(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -238,7 +215,6 @@ fn is_called_in_static_method(
     found
 }
 
-/// `isNeverCalled`: nothing in the class calls `$this->name()`, `self::name()` or `static::name()`.
 fn is_never_called(class: Node<'_, '_>, name: &[u8]) -> bool {
     let mut called = false;
     walk(class, &mut |n, _| {
@@ -258,8 +234,6 @@ fn is_never_called(class: Node<'_, '_>, name: &[u8]) -> bool {
     !called
 }
 
-/// `new MethodCall(new Variable('this'), $classMethodName, $node->args)`, printed in place of the call at `span`
-/// whose arguments start at `from` and are at `items`.
 fn this_call(
     ctx: &crate::Context<'_>,
     span: Span,

@@ -1,14 +1,3 @@
-//! `lint/dead-code/no-future-php-version-check`, ported from Rector 2.8.4's `UnwrapFutureCompatibleIfPhpVersionRector`
-//! (rules/DeadCode/Rector/If_), with `ConditionResolver` and `ConditionEvaluator` (rules/DeadCode).
-//!
-//! An `if` without `elseif` whose condition is a `version_compare()` that the project's minimum PHP version decides
-//! is replaced by the branch that runs: the `if` statements when it holds, else the `else` statements, or nothing.
-//! `PHP_VERSION` and `PHP_VERSION_ID` stand for that minimum version. A `version_compare(..., '<')` against a version
-//! above the minimum is left alone, since newer PHP versions decide it the other way.
-//!
-//! Rector reads a version or an expected value that is not a literal from its type; Pun reads literals only and
-//! leaves the `if` alone otherwise (lint.md Build 8).
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -74,15 +63,12 @@ impl Rule for NoFuturePhpVersionCheck {
     }
 }
 
-/// The result of `version_compare()`: a boolean with a compare sign, else -1, 0 or 1.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Compared {
     Bool(bool),
     Int(i64),
 }
 
-/// `ConditionResolver::resolveFromExpr` and `ConditionEvaluator::evaluate`, then `refactor()`'s reading of the
-/// result: `Some(true)` when the `if` statements run, `Some(false)` when they do not.
 fn evaluate(cond: &Expression<'_>, version: i64) -> Option<bool> {
     let cond = unparenthesize(cond);
     let result = if let Some(call) = call_to(cond, "version_compare") {
@@ -107,12 +93,10 @@ fn evaluate(cond: &Expression<'_>, version: i64) -> Option<bool> {
             _ => return None,
         };
         let result = compare(call, version)?;
-        // `isEvaluatedAsTrue`: the expected value compared with `===` (`!==`), whatever the operator.
         let expected = value(other)?;
         let same = match (expected, result) {
             (Value::Bool(e), Compared::Bool(r)) => e == r,
             (Value::Int(e), Compared::Int(r)) => e == r,
-            // `ValueResolver` reads a constant as its name, a string.
             _ => false,
         };
         Compared::Bool(same != negated)
@@ -123,7 +107,6 @@ fn evaluate(cond: &Expression<'_>, version: i64) -> Option<bool> {
     })
 }
 
-/// `evaluateVersionCompareCondition` for a `version_compare()` call.
 fn compare(call: &FunctionCall<'_>, version: i64) -> Option<Compared> {
     let args: Vec<&Expression> = call
         .argument_list
@@ -154,13 +137,10 @@ fn compare(call: &FunctionCall<'_>, version: i64) -> Option<Compared> {
         ">=" | "ge" => first >= second,
         "==" | "eq" => first == second,
         "!=" | "<>" | "ne" => first != second,
-        // version_compare() throws on any other sign.
         _ => return None,
     }))
 }
 
-/// `resolveArgumentValue`: `PHP_VERSION` and `PHP_VERSION_ID` are the project's version, a string or float the
-/// version it writes, an integer itself.
 fn argument_version(expr: &Expression<'_>, version: i64) -> Option<i64> {
     match value(expr)? {
         Value::Constant(name) | Value::Str(name)

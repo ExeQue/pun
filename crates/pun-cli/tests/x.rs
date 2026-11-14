@@ -1,5 +1,3 @@
-//! `pun x` and `punx` on a tool from a path repository that Composer's global config.json lists, so nothing is
-//! downloaded. The tool has two commands; the expected outputs are what its scripts print.
 mod common;
 
 use common::{clean_env, write_files};
@@ -18,9 +16,6 @@ fn run(program: &Path, dir: &Path, home: &Path, args: &[&str]) -> (String, Strin
     (s(out.stdout), s(out.stderr), out.status.code())
 }
 
-/// The first run installs the tool into Pun's cache and runs the command named after the package, in the caller's
-/// directory and with its exit code; a later run under the name `punx` reuses the install and picks the command
-/// its first argument names.
 #[test]
 fn runs_a_packages_command() {
     let home = common::scratch("x", "home");
@@ -70,8 +65,6 @@ fn runs_a_packages_command() {
     assert_eq!((out.as_str(), code), ("", Some(2)), "{err}");
     assert!(!home.join("cache/x/acme/missing").exists());
 
-    // `list` names each install as the spec that runs it; `clean` with a constraint removes only that install,
-    // and without arguments removes the rest.
     let (_, err, code) = run(&punx, &work, &home, &["acme/tool:^1.0 || >=9", "other"]);
     assert_eq!(code, Some(0), "{err}");
     let (out, err, code) = run(&punx, &work, &home, &["list"]);

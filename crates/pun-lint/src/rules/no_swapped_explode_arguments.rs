@@ -1,10 +1,3 @@
-//! `lint/functions/no-swapped-explode-arguments`, ported from Mago 1.57.0's linter rule
-//! `suspicious-explode-arguments` (rule/correctness/suspicious_explode_arguments.rs), with its default `threshold`
-//! of 10 bytes.
-//!
-//! `explode($separator, $string)` whose second argument is a string literal of at most 10 bytes, and whose first is
-//! not a string literal at most as long, probably has its arguments swapped: the short literal is reported.
-
 use mago_syntax::cst::{Argument, Expression, Literal, LiteralString, Node, NodeKind};
 
 use super::lint_b_names::function_call_matches;
@@ -13,7 +6,6 @@ use crate::{Context, Report, Rule};
 
 pub struct NoSwappedExplodeArguments;
 
-/// Mago's `SuspiciousExplodeArgumentsConfig::threshold` default.
 const THRESHOLD: usize = 10;
 
 impl Rule for NoSwappedExplodeArguments {

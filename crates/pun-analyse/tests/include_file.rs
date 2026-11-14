@@ -1,17 +1,3 @@
-//! RequireFileExistsRule and IncludedFilePathResolver, pinned PHPStan 2.3.1. The JSON expectations come from
-//! fresh CLI runs with the fixture root as cwd and `php -d phpstan.restarted=1 -d include_path=.:/usr/share/php
-//! <oracle>/vendor/bin/phpstan analyse --debug -c <config>.neon --error-format=json --no-progress`.
-//! `--debug` disables the result cache and workers; phpstan.restarted prevents TurboProcessRestarter from dropping
-//! the explicit PHP ini setting. Default-runtime and no-restart runs produce identical diagnostics for the four
-//! feature-toggle configs. Environment runs change cwd/include_path exactly as the public Project fields do.
-//!
-//! Exported rule fixtures instead use the repository cwd and default CLI settings, ignoring RuleTestCase flags
-//! and method environment changes. Reproduce those expectations from revision cb3b7e99489b2e3789ee2eec10501cb7a72580ea:
-//! `php <oracle>/phpstan.phar analyse --debug --level=0 --error-format=json --no-progress <source>/tests/PHPStan/Rules/<file>`.
-//! Copy existing include targets from that source tree to the same relative paths under `fixtures/rules/data/`
-//! with `cp`, including both trait-directory and class-directory controls. Do not create intentionally missing
-//! targets. The exported fixture test below checks every include-bearing rules/levels case without gap exemptions.
-
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::path::PathBuf;
@@ -102,10 +88,6 @@ fn magic_dir_with_path_constants() {
     check("phpstan-both");
 }
 
-/// PHP 8.5.12's phar:// URL-stat versus zip://'s read-only/no-URL-stat wrapper. Generate archive bytes with
-/// `php -d phar.readonly=0 create-archives.php`, then `php capture-archives.php <phpstan.phar>` (the CLI's
-/// dependency-cache postprocessing crashes on traversal members). Native ok.php throws if executed; neither
-/// analyser executes it. An archive present only in include_path must not make a relative wrapper URL succeed.
 #[test]
 fn local_archive_members() {
     let root = root();
@@ -119,8 +101,6 @@ fn local_archive_members() {
     assert_errors(project, "phpstan-archives");
 }
 
-/// These dedicated environments were run through the CLI with explicit cwd/include_path settings, separately
-/// from the generic exported cases. There are intentionally empty, duplicate, relative and normalized entries.
 #[test]
 fn cwd_include_path_and_script_directory() {
     let root = root();

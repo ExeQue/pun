@@ -29,13 +29,11 @@ fn project(case: &Value, i: usize) -> PathBuf {
     d
 }
 
-/// The binary with the environment Pint ran with when the expectations were recorded (`env -i PATH HOME`).
 fn pun(dir: &Path, args: &[&str]) -> (i32, String) {
     let out = common::clean_env(&mut Command::new(common::PUN), &["PATH", "HOME"])
         .args(args)
         .current_dir(dir)
         .env("PUN_AGENT", "0")
-        // Pun's own output: a UTF-8 locale gets ✖ rather than its ASCII fallback.
         .env("LANG", "en_US.UTF-8")
         .output()
         .unwrap();
@@ -70,18 +68,14 @@ fn every_rule_matches_pint() {
                 case["test_exit"]
             ));
         }
-        // Pun's own output: a fixable file is a problem line naming the rule's Pun ID; Pint's `!` (a syntax error)
-        // is a `syntax-error` problem at the file.
         let pint_error =
             (case.get("test_stdout").and_then(Value::as_str)).is_some_and(|s| s.contains("\n  ! "));
-        // `pun migrate` folds the deprecated visibility_required into modifier_keywords.
         let fixer = if rule == "visibility_required" {
             "modifier_keywords"
         } else {
             rule
         };
         let id = pun_config::rule_of(fixer).unwrap_or(rule);
-        // `pun check` lists problems under each step as `path[:line:col]  rule[, rule…]` (output.md, Build 5).
         let file = case["file"].as_str().unwrap();
         let want = if pint_error { "syntax-error" } else { id };
         let named = (stdout.lines()).any(|l| {

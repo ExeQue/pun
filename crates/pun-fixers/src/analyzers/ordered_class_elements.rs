@@ -1,8 +1,5 @@
-//! `OrderedClassElementsFixer`'s `getElements` and `sortTokens`, which `PhpUnitDataProviderMethodOrderFixer` binds
-//! and calls too.
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind, Tokens};
-/// The PHPUnit methods, lower-cased, in their `phpunit` sort order.
 pub(crate) const PHPUNIT: &[&str] = &[
     "setupbeforeclass",
     "dosetupbeforeclass",

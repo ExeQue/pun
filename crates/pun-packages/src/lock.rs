@@ -1,9 +1,3 @@
-//! pun.lock: the exact packages a project installs, next to pun.toml. It is TOML holding what composer.lock holds:
-//! each package's metadata as its repository published it (version, dist, requirements, autoload rules, ...), in
-//! the same order, so `vendor/composer/installed.json` can be written from it byte for byte. `content-hash` is the
-//! md5 Composer computes over the parts of the manifest that decide the resolution, so a pun.lock says whether it
-//! still matches pun.toml.
-
 use crate::php::json_compact;
 use anyhow::{Context, Result, bail};
 use pun_config::toml_text;
@@ -11,13 +5,11 @@ use serde_json::{Map, Value};
 use std::fmt::Write;
 use std::path::Path;
 
-/// pun.lock's format version.
 pub const VERSION: i64 = 1;
 
 const HEADER: &str =
     "# pun.lock: the exact packages `pun install` installs. Written by Pun; do not edit by hand.\n";
 
-/// The top-level keys after `content-hash`, in the order pun.lock writes them.
 const SETTINGS: [&str; 9] = [
     "minimum-stability",
     "stability-flags",
@@ -33,15 +25,11 @@ const SETTINGS: [&str; 9] = [
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lock {
     pub content_hash: String,
-    /// [`SETTINGS`] that are set, in that order.
     pub settings: Map<String, Value>,
-    /// Each package as composer.lock's entry for it.
     pub packages: Vec<Map<String, Value>>,
     pub packages_dev: Vec<Map<String, Value>>,
 }
 
-/// `md5(json_encode(...))` of the manifest's `name`, `version`, links, stability settings, repositories, `extra`,
-/// `config.platform` and `config.policy`, with the top-level keys sorted (Composer's `Locker::getContentHash`).
 pub fn content_hash(manifest: &Map<String, Value>) -> String {
     const RELEVANT: [&str; 11] = [
         "name",
@@ -75,8 +63,6 @@ pub fn content_hash(manifest: &Map<String, Value>) -> String {
 }
 
 impl Lock {
-    /// composer.lock's text as a pun.lock. Its `content-hash` is Composer's, so it is fresh for pun.toml exactly when
-    /// composer.lock was fresh for composer.json (dependency sections migrate unchanged).
     pub fn from_composer_lock(text: &str) -> Result<Lock> {
         let mut json: Value =
             serde_json::from_str(text).context("composer.lock is not valid JSON")?;
@@ -114,8 +100,6 @@ impl Lock {
         })
     }
 
-    /// pun.lock's text: the header comment, `version`, `content-hash` and the settings, then one `[[packages]]` (or
-    /// `[[packages-dev]]`) table per package with dotted keys in composer.lock's order.
     pub fn to_toml(&self) -> String {
         let mut out = String::from(HEADER);
         writeln!(out, "version = {VERSION}").unwrap();
@@ -138,7 +122,6 @@ impl Lock {
         out
     }
 
-    /// pun.lock's text read back.
     pub fn parse(text: &str) -> Result<Lock> {
         let table: toml::Table = toml::from_str(text)?;
         let mut json = toml_text::to_json(&toml::Value::Table(table));
@@ -177,7 +160,6 @@ impl Lock {
         })
     }
 
-    /// `root/pun.lock`, or `None` when there is none.
     pub fn read(root: &Path) -> Result<Option<Lock>> {
         let path = root.join("pun.lock");
         match std::fs::read_to_string(&path) {
@@ -189,9 +171,6 @@ impl Lock {
         }
     }
 
-    /// composer.lock's text, as Composer's `Locker::setLockData` writes it: the readme, `content-hash`, both package
-    /// lists, then the settings in Composer's order; `stability-flags`, `platform` and `platform-dev` stay objects
-    /// when empty.
     pub fn to_composer_lock(&self) -> String {
         const README: [&str; 3] = [
             "This file locks the dependencies of your project to a known state",
@@ -244,7 +223,6 @@ impl Lock {
         text
     }
 
-    /// Every package, the dev ones last.
     pub fn all(&self) -> impl Iterator<Item = &Map<String, Value>> {
         self.packages.iter().chain(&self.packages_dev)
     }
@@ -255,7 +233,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// A composer.lock as Composer 2.11.2 writes it, trimmed to two packages.
     const COMPOSER_LOCK: &str = r#"{
     "_readme": ["This file locks the dependencies of your project to a known state"],
     "content-hash": "0f2b0c8f6a1d4e1b9c3a7d5e8f601234",
@@ -303,7 +280,6 @@ mod tests {
         ));
         let back = Lock::parse(&text).unwrap();
         assert_eq!(back, lock);
-        // composer.lock's own order, key by key, including the `null` reference left out.
         let want: Value = serde_json::from_str(COMPOSER_LOCK).unwrap();
         assert_eq!(Value::Object(back.packages[0].clone()), want["packages"][0]);
         assert_eq!(
@@ -313,8 +289,6 @@ mod tests {
         assert_eq!(back.all().count(), 2);
     }
 
-    /// The hash Composer 2.11.2 wrote into laravel/laravel's composer.lock for this composer.json's relevant keys
-    /// (`php -r 'echo Composer\Package\Locker::getContentHash($json);'`).
     #[test]
     fn content_hash_matches_composer() {
         let manifest = json!({

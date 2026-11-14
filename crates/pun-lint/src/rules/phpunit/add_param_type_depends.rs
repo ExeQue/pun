@@ -1,10 +1,3 @@
-//! `lint/phpunit/add-param-type-depends`, ported from rector-phpunit's `AddParamTypeFromDependsRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! In a test class, a public method with a single untyped parameter that depends on another method of the class (a
-//! `#[Depends('name')]` attribute with a string, else its first `@depends name` tag; `()` trimmed) gets that
-//! method's return type, as written.
-
 use mago_syntax::cst::{ClassLikeMember, Expression, Literal, Method, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -52,7 +45,6 @@ impl Rule for AddParamTypeDepends {
                 continue;
             }
             let param = method.parameter_list.parameters.first().unwrap();
-            // already known type
             if param.hint.is_some() {
                 continue;
             }
@@ -85,7 +77,6 @@ impl Rule for AddParamTypeDepends {
     }
 }
 
-/// `resolveDependsAnnotationOrAttributeMethod()`.
 fn depends_method(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -99,7 +90,6 @@ fn depends_method(
             resolve(scope, &a.name).eq_ignore_ascii_case("PHPUnit\\Framework\\Attributes\\Depends")
         });
     if let Some(attribute) = attribute {
-        // Rector reads `args[0]`, which fails without one
         let first = attribute.argument_list.as_ref()?.arguments.first()?;
         let value = first.value()?;
         if let Expression::Literal(Literal::String(_)) = value {

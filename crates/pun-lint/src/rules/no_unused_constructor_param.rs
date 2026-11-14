@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-unused-constructor-param`, ported from Rector 2.8.4's `RemoveUnusedConstructorParamRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `ClassMethodParamRemover` and `ComplexNodeRemover::
-//! processRemoveParamWithKeys`.
-//!
-//! A constructor's unused parameters go when they are the last ones (a used parameter after an unused one keeps them
-//! all), with their `@param` tags. An abstract constructor, one an implemented interface declares, and the documented
-//! constructor of an attribute class (its parameters can be markers) are left alone, as is a class the codebase does
-//! not know.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
@@ -69,7 +60,6 @@ impl Rule for NoUnusedConstructorParam {
         }) else {
             return;
         };
-        // Parameters an interface requires.
         if class.all_parent_interfaces.iter().any(|i| {
             codebase.get_class_like(i.as_bytes()).is_some_and(|i| {
                 i.methods

@@ -1,13 +1,3 @@
-//! `lint/functions/require-strict-in-array`, ported from Rector 2.8.4's `StrictInArrayRector`
-//! (rules/CodingStyle/Rector/FuncCall).
-//!
-//! `in_array($needle, $haystack)` with exactly two arguments gets `true` as its third when the haystack's native type
-//! is an array whose value type is a subtype of the needle's native type (`TypeComparator::isSubtype`, which is never
-//! true for a `mixed` needle). The native types are Mago's analyser's with docblocks blanked out, and the subtype
-//! check is Mago's `union_comparator::is_contained_by`. After a named argument Pun writes `strict: true`, where Rector
-//! writes a positional `true` that PHP rejects. In unreachable code (after a `return` or `exit()`) Pun leaves the call
-//! alone, where Rector still types it and adds `true`: Mago's analyser gives unreachable statements no types.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::comparator::ComparisonResult;
 use mago_codex::ttype::comparator::union_comparator::is_contained_by;
@@ -43,7 +33,6 @@ impl Rule for RequireStrictInArray {
     }
 }
 
-/// The report for `node` when it is an `in_array()` call that can be strict.
 fn strict(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], ctx: &Context<'_>) -> Option<Report> {
     let Node::FunctionCall(call) = node else {
         return None;
@@ -71,7 +60,6 @@ fn strict(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], ctx: &Context<'_>) -> 
     {
         return None;
     }
-    // `getIterableValueType()`: the union of the value types of the arrays (an empty array has none: `never`).
     let mut values: Vec<TAtomic> = Vec::new();
     let iterables = (haystack_type.types.iter())
         .filter_map(|atomic| get_iterable_parameters(atomic, &facts.codebase));
@@ -93,7 +81,6 @@ fn strict(node: Node<'_, '_>, ancestors: &[Node<'_, '_>], ctx: &Context<'_>) -> 
         return None;
     }
     let end = node_span(haystack).end;
-    // After named arguments a positional one is a compile error, where Rector writes one.
     let text = match matches!(needle, Argument::Named(_)) || matches!(haystack, Argument::Named(_))
     {
         true => ", strict: true",

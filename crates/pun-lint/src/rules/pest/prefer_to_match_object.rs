@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-match-object`, ported from pest-plugin-rector's `UseToMatchObjectRector`: consecutive
-//! `expect($user)->toHaveProperty('name', 'Nuno');` statements on the same object become
-//! `expect($user)->toMatchObject(['name' => 'Nuno', ...]);`.
-
 use mago_syntax::cst::{Expression, MethodCall, Node, NodeKind};
 use pun_problem::{Safety, Span};
 
@@ -80,7 +76,6 @@ impl Rule for PreferToMatchObject {
                 i += 1;
                 continue;
             }
-            // `chain` keeps only chains on `expect()`.
             let expect = expect_call(first).map(node_span).unwrap();
             let comments: Vec<Span> = stmts[i..j]
                 .iter()
@@ -122,7 +117,6 @@ impl Rule for PreferToMatchObject {
     }
 }
 
-/// `extractPropertyWithValue`: the name and the value of `->toHaveProperty(name, value)`, not after `->not`.
 fn property_with_value<'a>(
     call: &'a MethodCall<'a>,
 ) -> Option<(&'a Expression<'a>, &'a Expression<'a>)> {

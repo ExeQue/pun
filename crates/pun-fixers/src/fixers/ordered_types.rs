@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\OrderedTypesFixer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -53,7 +52,6 @@ enum Element {
     Catch,
 }
 
-/// One member of a union / intersection type; a DNF group `(A&B)` is a list.
 #[derive(Clone, PartialEq, Eq)]
 enum Type {
     Single(Vec<u8>),
@@ -83,7 +81,6 @@ impl Fixer for OrderedTypesFixer {
             &["sort_algorithm", "null_adjustment", "case_sensitive"],
         )?;
         self.alpha = c.string("sort_algorithm", "alpha", &["alpha", "none"])? == "alpha";
-        // `Future::getV4OrV3('always_last', 'always_first')`: Pint runs without future mode.
         self.null_adjustment = match c
             .string(
                 "null_adjustment",
@@ -117,8 +114,6 @@ impl Fixer for OrderedTypesFixer {
     }
 }
 
-/// index => element type, in PHP array order: the classy methods and properties (by index), then every
-/// other `catch`, `fn` and `function` in token order.
 fn get_elements(tokens: &Tokens) -> Vec<(usize, Element)> {
     let mut elements: Vec<(usize, Element)> = TokensAnalyzer::new(tokens)
         .get_classy_elements()
@@ -228,7 +223,6 @@ impl OrderedTypesFixer {
     fn sort_types(&self, type_analysis: &TypeAnalysis, tokens: &mut Tokens) {
         let name = &type_analysis.name;
         let (original_types, glue) = if name.contains(&b'|') && name.contains(&b'&') {
-            // a DNF type of the form (A&B)|C, available as of PHP 8.2
             collect_disjunctive_normal_form_types(name)
         } else {
             collect_union_or_intersection_types(name)

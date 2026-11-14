@@ -1,9 +1,3 @@
-//! `lint/phpunit/require-final-test-case`, ported from Rector 2.8.4's `FinalizeTestCaseClassRector`
-//! (rules/Privatization/Rector/Class_).
-//!
-//! A class that is neither abstract nor final, whose name ends in `Test` (not `TestCase`) and that is a
-//! `PHPUnit\Framework\TestCase`, becomes final.
-
 use mago_syntax::cst::{Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -38,7 +32,6 @@ impl Rule for RequireFinalTestCase {
             return;
         }
         let name = class.name.value;
-        // skip classes without "Test" suffix, as those are meant to be extended
         if name.ends_with(b"TestCase") || !name.ends_with(b"Test") {
             return;
         }
@@ -47,7 +40,6 @@ impl Rule for RequireFinalTestCase {
         if !class_is(ctx, &scope, &[TEST_CASE]) {
             return;
         }
-        // `Modifiers::toString()` writes `final` before `readonly`.
         let at = class
             .modifiers
             .first()

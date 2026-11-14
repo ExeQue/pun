@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-anonymous-migration`, ported from Mago 1.57.0's `prefer-anonymous-migration` (mago-linter
-//! src/rule/best_practices/prefer_anonymous_migration.rs).
-//!
-//! A named class that extends `Illuminate\Database\Migrations\Migration` (the resolved name, in any case) is
-//! reported: migrations are anonymous classes (`return new class extends Migration { ... };`).
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::rules::lint_b_names::resolve_class;

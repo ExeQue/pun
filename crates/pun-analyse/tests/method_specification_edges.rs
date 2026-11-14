@@ -1,5 +1,3 @@
-//! Effectful operand and loop joins must invalidate only affected method specifications.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};

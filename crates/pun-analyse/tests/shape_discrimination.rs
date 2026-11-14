@@ -1,6 +1,3 @@
-//! Complete PHPStan 2.3.1 records for tagged array-shape union reduction and offset filtering.
-//! Reproduce with fixtures/shape-discrimination/capture.php and the pinned PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Error, Project, run};

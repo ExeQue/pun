@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\GeneralPhpdocTagRenameFixer`, shared by the general_phpdoc_tag_rename fixer and
-//! phpdoc_no_alias_tag (an AbstractProxyFixer over it), so each fixer builds on its own under `PUN_FIXERS_ONLY`.
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, resolve};
 use crate::analyzers::preg::Preg;
 use anyhow::{Result, bail};
@@ -16,7 +14,6 @@ use std::path::Path;
 pub(crate) struct GeneralPhpdocTagRenameFixer {
     fix_annotation: bool,
     fix_inline: bool,
-    /// Normalized `replacements`, in PHP array order.
     replacements: Vec<(Vec<u8>, Vec<u8>)>,
     case_sensitive: bool,
 }
@@ -26,9 +23,6 @@ impl Fixer for GeneralPhpdocTagRenameFixer {
         "general_phpdoc_tag_rename"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocAddMissingParamAnnotationFixer, PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocScalarFixer,
-        // PhpdocToCommentFixer, PhpdocTypesFixer.
         11
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -46,7 +40,6 @@ impl Fixer for GeneralPhpdocTagRenameFixer {
         let fix_inline = r.bool("fix_inline", true)?;
         let case_sensitive = r.bool("case_sensitive", false)?;
         let mut normalized: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
-        // `array<string, string>`, which the resolver checks as `string[]`.
         r.check_types("replacements", &["string[]"])?;
         for (from, to) in r.php_array("replacements").unwrap_or_default() {
             let PhpKey::Str(from) = from else {

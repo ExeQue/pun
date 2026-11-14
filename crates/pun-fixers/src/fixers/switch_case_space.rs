@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\SwitchCaseSpaceFixer`.
 use crate::analyzers::control_case_structures_analyzer::ControlCaseStructuresAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Tokens};
@@ -34,7 +33,6 @@ impl Fixer for SwitchCaseSpaceFixer {
             for case_analysis in analysis.get_cases() {
                 let colon_index = case_analysis.get_colon_index();
                 let value_index = tokens.get_prev_non_whitespace(colon_index, None).unwrap();
-                // skip if there is no space between the colon and previous token or is space after comment
                 if value_index == colon_index - 1 || tokens[value_index].is_comment() {
                     continue;
                 }

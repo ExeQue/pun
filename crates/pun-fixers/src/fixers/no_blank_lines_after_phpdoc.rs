@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\NoBlankLinesAfterPhpdocFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::substr_count};
 use std::path::Path;
@@ -12,7 +11,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 fn fix_whitespace(tokens: &mut Tokens, index: usize) {
     let content = tokens[index].get_content();
     if substr_count(content, b"\n") > 1 {
-        // the final bit of the whitespace must be the next statement's indentation
         let last = content.iter().rposition(|&b| b == b'\n').unwrap();
         let new = content[last..].to_vec();
         tokens.set(index, Token::new(T_WHITESPACE, new));
@@ -24,9 +22,6 @@ impl Fixer for NoBlankLinesAfterPhpdocFixer {
         "no_blank_lines_after_phpdoc"
     }
     fn priority(&self) -> i32 {
-        // Must run before HeaderCommentFixer, PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocScalarFixer,
-        // PhpdocToCommentFixer, PhpdocTypesFixer.
         -20
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -37,8 +32,6 @@ impl Fixer for NoBlankLinesAfterPhpdocFixer {
             if !tokens[index].is_kind(T_DOC_COMMENT) {
                 continue;
             }
-            // get the next non-whitespace token inc comments, provided
-            // that there is whitespace between it and the current token
             let next = tokens.get_next_non_whitespace(index, None);
             if let Some(next) = next
                 && index + 2 == next

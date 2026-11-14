@@ -1,12 +1,8 @@
-//! NewStaticInAbstractClassStaticMethodRule (`featureToggles.newStaticInAbstractClassStaticMethod`, on with
-//! bleedingEdge).
-
 use mago_syntax::cst::*;
 
 use super::declared::original_name;
 use super::{Checker, FunctionScopeKind};
 
-/// `new static` in a static method of an abstract class.
 pub(super) fn instantiation(c: &mut Checker, new: &Instantiation) {
     if !c.on(crate::rules::Switches::NEW_STATIC_IN_ABSTRACT_CLASS_STATIC_METHOD)
         || !matches!(new.class, Expression::Static(_))

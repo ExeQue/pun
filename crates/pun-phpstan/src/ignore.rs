@@ -1,9 +1,3 @@
-//! Which reported errors PHPStan 2.3.5 drops: `ignoreErrors` (`IgnoredErrorHelper` / `IgnoredErrorHelperResult`, with
-//! `count`, `reportUnmatched` and the unmatched-pattern errors) and the `@phpstan-ignore*` comments
-//! (`LocalIgnoresProcessor`, `reportIgnoresWithoutComments`, the unmatched-line errors). Comment parsing is in
-//! `comments`. Everything is a pure function of the errors and the resolved config, except that `path` entries are
-//! looked up on disk the way PHPStan does (`is_file`, `FileExcluder`).
-
 use crate::comments::{Identifier, LinesToIgnore};
 use crate::neon::json_string;
 use crate::php::{FileExcluder, absolutize_path, is_match, normalize_path, preg, preg_quote};
@@ -12,20 +6,16 @@ use indexmap::IndexMap;
 use pcre2::bytes::Regex;
 use std::collections::HashMap;
 
-/// `PHPStan\Analyser\Error`, with the fields ignoring and the baseline formatters look at.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Error {
     pub message: String,
-    /// `getFile()`: the file description (a trait's errors carry the using class's file here).
     pub file: String,
     pub line: Option<i64>,
     pub can_be_ignored: bool,
-    /// `getFilePath()`: the file the error is in.
     pub file_path: String,
     pub trait_file_path: Option<String>,
     pub tip: Option<String>,
     pub identifier: Option<String>,
-    /// `isFixable()`: PHPStan has a fix (`getFixedErrorDiffs()`) for it.
     pub fixable: bool,
 }
 
@@ -52,7 +42,6 @@ impl Error {
     }
 }
 
-/// `isset($a[$k])`
 fn isset<'a>(v: &'a Value, k: &str) -> Option<&'a Value> {
     v.as_array()?.get_str(k).filter(|v| **v != Value::Null)
 }
@@ -61,7 +50,6 @@ fn str_of(v: Option<&Value>) -> Option<String> {
     v.and_then(Value::to_php_string)
 }
 
-/// `Nette\Utils\Json::encode()` of an `ignoreErrors` entry (schema-checked: strings, ints, bools, lists, maps).
 fn json(v: &Value) -> String {
     match v {
         Value::Null => "null".into(),
@@ -81,7 +69,6 @@ fn json(v: &Value) -> String {
     }
 }
 
-/// `IgnoredError::getIgnoredErrorLabel()`
 fn label(e: &Value) -> &'static str {
     if isset(e, "message").is_none() && isset(e, "rawMessage").is_some() {
         "Ignored error"
@@ -90,7 +77,6 @@ fn label(e: &Value) -> &'static str {
     }
 }
 
-/// `IgnoredError::stringifyPattern()`
 fn stringify(e: &Value) -> String {
     let Value::Array(_) = e else {
         return e.to_php_string().unwrap_or_default();
@@ -100,8 +86,6 @@ fn stringify(e: &Value) -> String {
         (None, Some(r)) => format!("\"{}\"", r.to_php_string().unwrap_or_default()),
         _ => String::new(),
     };
-    // (`identifiers` never reaches here: initialize() expanded it to `identifier`.) Pun's `rule` shows as the
-    // identifier does when there is none.
     if let Some(ids) = str_of(isset(e, "identifier").or_else(|| isset(e, "rule"))) {
         message = if message.is_empty() {
             ids
@@ -127,7 +111,6 @@ fn stringify(e: &Value) -> String {
     message
 }
 
-/// An entry's `message`, `rawMessage`, `identifier` and (Pun's) `rule`.
 type Fields = (
     Option<String>,
     Option<String>,
@@ -135,38 +118,26 @@ type Fields = (
     Option<String>,
 );
 
-/// `IgnoredErrorHelper::initialize()`'s result over the resolved `ignoreErrors` and `reportUnmatchedIgnoredErrors`.
 pub struct IgnoredErrors {
-    /// `getErrors()`: config entries PHPStan rejects here (reported before analysis).
     pub errors: Vec<String>,
-    /// Entries as matched (`ignoreErrorEntry['ignoreError']`) and as reported when unmatched (normalized `path`,
-    /// `realPath`).
     entries: Vec<(Value, Value)>,
     by_file: HashMap<String, Vec<usize>>,
     other: Vec<usize>,
     report_unmatched: bool,
-    /// Each entry's message pattern, compiled (`None` inside where it does not compile).
     patterns: Vec<Option<Option<Regex>>>,
-    /// The Pun rule of an identifier, for entries with Pun's `rule` key (`[[analyse.ignore]] rule`).
     rule_of: fn(&str) -> Option<&'static str>,
-    /// IgnoreErrorsConfigFixer::getEntriesByPath(): the config files' entries by normalized path, or by `""`.
     config_entries: HashMap<String, Vec<ConfigEntry>>,
     current_working_directory: String,
 }
 
-/// An `ignoreErrors` entry of a config file, with its values as loaded.
 struct ConfigEntry {
     file: String,
     values: Array,
-    /// The entry as written (`$entry['items']`: its keys, and whether a list field is a NEON list).
     raw: Value,
-    /// `None` for an entry of pun.toml, which unmatched errors are not reported in.
     line: Option<i64>,
-    /// The file mixes `\r\n` and `\n` (IgnoreErrorsConfigFixer::createNeonEdit() makes no edit then).
     mixed_line_breaks: bool,
 }
 
-/// IgnoreErrorsConfigFixer::ENTRY_KEYS
 const ENTRY_KEYS: [&str; 10] = [
     "message",
     "messages",
@@ -180,14 +151,10 @@ const ENTRY_KEYS: [&str; 10] = [
     "reportUnmatched",
 ];
 
-/// `IgnoredErrorHelperResult::process()`'s result.
 #[derive(Debug, Default, PartialEq)]
 pub struct Processed {
-    /// The remaining errors, then `ignore.count` / `ignore.unmatched` errors.
     pub errors: Vec<Error>,
-    /// The ignored errors with the entry that ignored them.
     pub ignored: Vec<(Error, Value)>,
-    /// Not file-specific errors (unmatched patterns without a file, errors that cannot be ignored).
     pub string_errors: Vec<String>,
 }
 
@@ -237,7 +204,6 @@ impl IgnoredErrors {
             }
         }
 
-        // Entries with the same path and message/identifier add up their counts.
         let mut uniqued: Vec<Value> = Vec::new();
         let mut keyed: HashMap<String, usize> = HashMap::new();
         for entry in expanded {
@@ -294,7 +260,6 @@ impl IgnoredErrors {
         let mut other = Vec::new();
         let mut entries = Vec::new();
         for (i, entry) in uniqued.into_iter().enumerate() {
-            // (initialize() re-checks for a message here; the expansion above always leaves one.)
             let mut reported = entry.clone();
             match str_of(isset(&entry, "path")) {
                 Some(path) if std::path::Path::new(&path).is_file() => {
@@ -316,7 +281,6 @@ impl IgnoredErrors {
                     Value::Array(_) => str_of(isset(entry, "message")),
                     _ => entry.to_php_string(),
                 };
-                // Literal `\r\n` / `\r` (backslash sequences, not newlines) become `\n`, as PHPStan does.
                 message.map(|pattern| {
                     let pattern = pattern
                         .replace(&preg_quote("\\r\\n", None), &preg_quote("\\n", None))
@@ -338,9 +302,6 @@ impl IgnoredErrors {
         }
     }
 
-    /// IgnoreErrorsConfigFixer::getEntriesByPath() over the container parameters' `allConfigFiles`, so an unmatched
-    /// entry without a file of its own is reported in the config file it is in (`findEntryLocation()`). The files
-    /// in the PHAR and in installed Composer packages are left out.
     pub fn with_config_files(mut self, parameters: &Array) -> IgnoredErrors {
         let string = |k: &str| str_of(parameters.get_str(k)).unwrap_or_default();
         let strings = |k: &str| -> Vec<String> {
@@ -351,7 +312,6 @@ impl IgnoredErrors {
                 .unwrap_or_default()
         };
         let cwd = string("currentWorkingDirectory");
-        // IgnoreErrorsConfigFixer::getParameters()
         let mut env = Array::new();
         for (k, v) in std::env::vars() {
             env.set(Key::from_string(k), Value::Str(v));
@@ -369,7 +329,6 @@ impl IgnoredErrors {
             if file.starts_with("phar://") || installed.has_file(&file) {
                 continue;
             }
-            // ponytail: entries in a .php config file are not looked for (findPhpEntries() needs PHP's parser)
             if file.ends_with(".php") {
                 continue;
             }
@@ -444,8 +403,6 @@ impl IgnoredErrors {
         self
     }
 
-    /// Pun's `[[analyse.ignore]]` entries as the config file's own (pun.toml, `file`): unmatched or over-counted ones
-    /// are fixable as IgnoreErrorsConfigFixer fixes the entries of a NEON file.
     pub fn with_config_entries(
         mut self,
         file: &str,
@@ -483,8 +440,6 @@ impl IgnoredErrors {
         self
     }
 
-    /// IgnoreErrorsConfigFixer::findEntries(): the entries `ignore` was made of, with the list field (`messages`,
-    /// ...) when it matched through a list that has other items too.
     fn find_entries(&self, ignore: &Value) -> Vec<(&ConfigEntry, Option<&'static str>)> {
         let e = match ignore {
             Value::Array(a) => Value::Array(a.clone()),
@@ -538,15 +493,11 @@ impl IgnoredErrors {
         found
     }
 
-    /// IgnoreErrorsConfigFixer::findEntryLocation(): the config file and line of the first entry `ignore` was made
-    /// of.
     fn entry_location(&self, ignore: &Value) -> Option<(String, i64)> {
         let (entry, _) = *self.find_entries(ignore).first()?;
         Some((entry.file.clone(), entry.line?))
     }
 
-    /// Whether IgnoreErrorsConfigFixer::removeUnmatched() has diffs: every entry is found, a list item only from a
-    /// list as written, and no file mixes line breaks.
     fn removes_unmatched(&self, ignore: &Value) -> bool {
         let found = self.find_entries(ignore);
         !found.is_empty()
@@ -562,8 +513,6 @@ impl IgnoredErrors {
             })
     }
 
-    /// Whether IgnoreErrorsConfigFixer::lowerCount() has a diff: one entry, not through a list, with the same
-    /// `count` written in it.
     fn lowers_count(&self, ignore: &Value) -> bool {
         let found = self.find_entries(ignore);
         let [(entry, None)] = found.as_slice() else {
@@ -575,12 +524,10 @@ impl IgnoredErrors {
             && !entry.mixed_line_breaks
     }
 
-    /// Pun's `rule` key: an entry with one ignores only errors whose identifier `rule_of` maps to that rule.
     pub fn with_rules(self, rule_of: fn(&str) -> Option<&'static str>) -> IgnoredErrors {
         IgnoredErrors { rule_of, ..self }
     }
 
-    /// `IgnoredError::shouldIgnore()`
     fn should_ignore(
         &self,
         error: &Error,
@@ -615,8 +562,6 @@ impl IgnoredErrors {
         true
     }
 
-    /// `IgnoredErrorHelperResult::process()`: `only_files` is true when only file-specific errors are reported (e.g.
-    /// the analysed paths are a subset), `analysed_files` the analysed paths.
     pub fn process(
         &self,
         errors: Vec<Error>,
@@ -627,11 +572,9 @@ impl IgnoredErrors {
         let mut unmatched: Vec<Option<Value>> =
             self.entries.iter().map(|(_, r)| Some(r.clone())).collect();
         let mut out = Processed::default();
-        // entry index => (times matched, its `count`)
         let mut real_counts: HashMap<usize, (i64, i64)> = HashMap::new();
         let mut matched_at: HashMap<usize, (String, Option<i64>)> = HashMap::new();
 
-        // Returns whether the error stays reported.
         let mut process_one = |error: &Error, i: usize, string_errors: &mut Vec<String>| -> bool {
             let ignore = &self.entries[i].0;
             let fields: Fields = (
@@ -785,7 +728,6 @@ impl IgnoredErrors {
                             out.errors.push(error);
                         }
                     }
-                    // without a file of its own, the error is reported in the config file the entry is in
                     None if !only_files => match self.entry_location(u) {
                         Some((file, line)) => out.errors.push(Error {
                             fixable: self.removes_unmatched(u),
@@ -802,9 +744,6 @@ impl IgnoredErrors {
     }
 }
 
-/// `LocalIgnoresProcessor::process()` for one analysed file: `lines` / `unmatched` are that file's `linesToIgnore` /
-/// `unmatchedLineIgnores` (errors whose `getFile()` is another file, e.g. trait contexts, are not ignored here).
-/// Returns (errors still reported, locally ignored errors).
 pub fn local_ignores(
     file: &str,
     errors: Vec<Error>,
@@ -856,8 +795,6 @@ pub fn local_ignores(
     (kept, ignored)
 }
 
-/// `reportIgnoresWithoutComments: true` (FileAnalyser): errors for comment-less ignores, which are then dropped from
-/// `lines` and `unmatched`.
 pub fn ignores_without_comments(
     file: &str,
     lines: &mut LinesToIgnore,
@@ -894,9 +831,6 @@ pub fn ignores_without_comments(
     errors
 }
 
-/// AnalyserResultFinalizer::fixAllLineErrorsIgnores() over one file's reported errors (`code` its contents): an
-/// `ignore.allLineErrors` error is fixable where LineIgnoreFixer turns the ignore into one of the identifiers of the
-/// ignorable errors reported on its line, which all have one.
 pub fn fix_all_line_errors(file: &str, code: Option<&[u8]>, errors: &mut [Error]) {
     let all_line =
         |e: &Error| e.identifier.as_deref() == Some("ignore.allLineErrors") && e.file == file;
@@ -916,7 +850,6 @@ pub fn fix_all_line_errors(file: &str, code: Option<&[u8]>, errors: &mut [Error]
         else {
             continue;
         };
-        // an error without an identifier cannot be ignored by one
         let ok = fixable.entry(line).or_insert(true);
         *ok &= e.identifier.is_some();
     }
@@ -931,9 +864,6 @@ pub fn fix_all_line_errors(file: &str, code: Option<&[u8]>, errors: &mut [Error]
     }
 }
 
-/// `reportUnmatchedIgnoredErrors` (AnalyserResultFinalizer): errors for the ignore comments nothing matched.
-/// `code` is the file's contents (`null` when it is not a file); the errors are fixable where UnmatchedIgnoreFixer
-/// removes the ignore.
 pub fn unmatched_line_errors(
     file: &str,
     code: Option<&[u8]>,
@@ -967,7 +897,6 @@ pub fn unmatched_line_errors(
     errors
 }
 
-/// `IgnoreParseErrorRule`: the `@phpstan-ignore` comments that did not parse.
 pub fn parse_errors(file: &str, errors: &IndexMap<i64, Vec<String>>) -> Vec<Error> {
     errors
         .iter()
@@ -984,11 +913,8 @@ pub fn parse_errors(file: &str, errors: &IndexMap<i64, Vec<String>>) -> Vec<Erro
         .collect()
 }
 
-/// PackageDependencyResolver::isFileOfInstalledPackage() over the projects' `vendor/composer/installed.json` (the
-/// install paths Composer also writes to installed.php).
 struct InstalledPackages {
     vendor_dirs: Vec<String>,
-    /// Install paths, longest first, and whether the package came from a path repository.
     packages: Vec<(String, bool)>,
 }
 
@@ -1000,7 +926,6 @@ impl InstalledPackages {
             serde_json::from_slice(&std::fs::read(p).ok()?).ok()
         };
         for root in project_paths {
-            // ComposerHelper::getComposerConfig() / getVendorDirFromComposerConfig()
             let Some(composer) = json(&format!("{root}/composer.json")) else {
                 continue;
             };
@@ -1047,7 +972,6 @@ impl InstalledPackages {
         {
             return false;
         }
-        // a file of no package, or of one that is not the project's own code
         self.packages
             .iter()
             .find(|(p, _)| file.starts_with(&format!("{p}/")))

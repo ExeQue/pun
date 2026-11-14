@@ -1,11 +1,3 @@
-//! Larastan's model factories: ModelFactoryDynamicStaticMethodReturnTypeExtension (`Model::factory()` is the model's
-//! factory), FactoryDynamicMethodReturnTypeExtension (whether the factory makes one model or many, which ModelFactoryType
-//! carries, narrows `create()` and `make()`) and ModelFactoryMethodsClassReflectionExtension (`trashed()` and the
-//! `for*()` and `has*()` relationship methods).
-//!
-//! Mago's types carry no ModelFactoryType, so a call that returns one records its `isSingleModel()` by the call's
-//! span, and a factory method reads its receiver's.
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -25,7 +17,6 @@ const FACTORY: &[u8] = b"Illuminate\\Database\\Eloquent\\Factories\\Factory";
 const ELOQUENT_COLLECTION: &[u8] = b"Illuminate\\Database\\Eloquent\\Collection";
 const SOFT_DELETES: &[u8] = b"Illuminate\\Database\\Eloquent\\SoftDeletes";
 
-/// TrinaryLogic of `isSingleModel()`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Single {
     Yes,
@@ -34,7 +25,6 @@ enum Single {
 }
 
 thread_local! {
-    /// `isSingleModel()` of each call whose type is a ModelFactoryType, by the call's span.
     static FACTORIES: RefCell<HashMap<Span, Single>> = RefCell::new(HashMap::new());
 }
 
@@ -46,7 +36,6 @@ fn object(name: mago_word::Word) -> TUnion {
     TUnion::from_atomic(TAtomic::Object(TObject::Named(TNamedObject::new(name))))
 }
 
-/// The ModelFactoryType of class `factory`, recorded for the call.
 fn factory_type(
     codebase: &CodebaseMetadata,
     invocation: &InvocationInfo<'_, '_, '_>,
@@ -58,7 +47,6 @@ fn factory_type(
     Some(object(k.original_name))
 }
 
-/// `Model::factory()`.
 pub(super) fn model_factory(
     context: &ProviderContext<'_, '_, '_>,
     model: &[u8],
@@ -70,7 +58,6 @@ pub(super) fn model_factory(
     }
     let single = match invocation.get_argument(0, &[b"count"]) {
         None => Single::Yes,
-        // `int|float|numeric-string`'s isSuperTypeOf(), negated
         Some(argument) => {
             let ty = context.get_expression_type(argument)?;
             let numeric = |t: &TAtomic| matches!(t, TAtomic::Scalar(s) if s.is_numeric());
@@ -87,7 +74,6 @@ pub(super) fn model_factory(
     factory_type(codebase, invocation, factory.as_bytes(), single)
 }
 
-/// `getFactoryReflection()`: the concrete factory `newFactory()` returns, else `Factory::resolveFactoryName()`'s.
 fn factory_class(codebase: &CodebaseMetadata, model: &[u8]) -> Option<mago_word::Word> {
     let k = codebase.get_class_like(model)?;
     if codebase.method_exists(model, b"newFactory") {
@@ -119,7 +105,6 @@ fn factory_class(codebase: &CodebaseMetadata, model: &[u8]) -> Option<mago_word:
             return Some(*factory);
         }
     }
-    // `Factory::$namespace` and the app namespace `App\`
     let name = String::from_utf8_lossy(k.original_name.as_bytes()).into_owned();
     let relative = name
         .strip_prefix("App\\Models\\")
@@ -133,12 +118,10 @@ fn factory_class(codebase: &CodebaseMetadata, model: &[u8]) -> Option<mago_word:
     })?
 }
 
-/// The receiver's ModelFactoryType: its `isSingleModel()`.
 fn receiver_single(receiver: Option<Span>) -> Option<Single> {
     FACTORIES.with(|f| f.borrow().get(&receiver?).copied())
 }
 
-/// The factory's `TModel`, or its parent's.
 fn model_of(codebase: &CodebaseMetadata, factory: &TNamedObject) -> Option<TUnion> {
     let k = codebase.get_class_like(factory.name.as_bytes())?;
     let defining = codebase.get_class_like(FACTORY)?.name;
@@ -151,7 +134,6 @@ fn model_of(codebase: &CodebaseMetadata, factory: &TNamedObject) -> Option<TUnio
     )
 }
 
-/// ModelFactoryMethodsClassReflectionExtension::hasMethod().
 pub(crate) fn has_magic_method(
     codebase: &CodebaseMetadata,
     factory: &TNamedObject,
@@ -185,7 +167,6 @@ pub(crate) fn has_magic_method(
     model.is_some_and(|m| codebase.method_exists(m.as_bytes(), relationship.as_bytes()))
 }
 
-/// FactoryDynamicMethodReturnTypeExtension on a factory method; `receiver` is the call's receiver.
 pub(super) fn factory_method(
     context: &ProviderContext<'_, '_, '_>,
     method: &[u8],
@@ -218,7 +199,6 @@ pub(super) fn factory_method(
         return None;
     };
     let Some(single) = receiver_single(receiver) else {
-        // not a ModelFactoryType: the method's own type, which Mago lacks for a magic method
         return (!codebase.method_exists(class, method)).then_some(original);
     };
     match name.to_ascii_lowercase().as_str() {
@@ -254,7 +234,6 @@ pub(super) fn factory_method(
         }
         _ => {}
     }
-    // `$originalReturnType->isSuperTypeOf($calledOnType)->yes()`: the factory, still a ModelFactoryType
     let returns_factory = !original.types.is_empty()
         && original.types.iter().all(|t| matches!(t, TAtomic::Object(TObject::Named(n)) if is(codebase, class, n.name.as_bytes())));
     if returns_factory {

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocVarWithoutNameFixer`.
 use crate::analyzers::docblock::{
     DocBlock, LineRef, type_expression::REGEX_IDENTIFIER,
 };

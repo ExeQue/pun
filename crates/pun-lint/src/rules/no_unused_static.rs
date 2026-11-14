@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-unused-static`, ported from Mago 1.57.0's `no-unused-static`
-//! (mago-linter src/rule/correctness/no_unused_static.rs).
-//!
-//! Reports a `static` variable of a function, method or closure that its body never reads or writes. Names that
-//! start with `$_` are left alone, and so is a body with a variable variable or an `extract()` call.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::mago_usage::{declarations, function_like_body, is_silenced_name, used_names};

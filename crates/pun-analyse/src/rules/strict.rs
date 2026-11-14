@@ -1,8 +1,3 @@
-//! phpstan-strict-rules (rules.neon, each rule on with its `strictRules.*` switch): ClosureUsesThisRule,
-//! RequireParentConstructCallRule, DynamicCallOnStaticMethodsRule and DynamicCallOnStaticMethodsCallableRule.
-//! UselessCastRule and MatchingTypeInSwitchCaseConditionRule. WrongCaseOfInheritedMethodRule is in overriding.rs,
-//! next to the ancestry it reads.
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -17,9 +12,6 @@ use pun_phpstan::types::{Level, Type, is_super_type_of};
 
 use super::{Checker, declared, members};
 
-/// The expressions whose types the rules read: the variables a non-static closure imports (ClosureUsesThisRule),
-/// from level 2 the object of a call to a method name some class declares static, a cast and its operand
-/// (UselessCastRule), and a switch's condition and case conditions.
 pub(super) fn typed_expressions(
     project: &super::Checks,
     codebase: &CodebaseMetadata,
@@ -123,7 +115,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Typed {
 
 const TIP: &str = "Because the type is coming from a PHPDoc, you can turn off this check by setting treatPhpDocTypesAsCertain: false in your %configurationFile%.";
 
-/// UselessCastRule: a cast whose (generalized) type already holds its operand's type.
 pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
     if !c.strict.contains(crate::StrictRules::USELESS_CAST)
         || !u.operator.is_cast()
@@ -141,8 +132,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
         return;
     };
     let cast = cast.generalize();
-    // ponytail: Mago tracks native types only in fully supported functions; otherwise a parameter is its declaration
-    // and a literal or constant has no PHPDoc input, and anything else has no native type known (it gets the tip)
     let native = || {
         c.phpstan_type_in(u.operand, &c.native_types)
             .or_else(|| match u.operand {
@@ -178,7 +167,6 @@ pub(super) fn cast(c: &mut Checker, u: &UnaryPrefix) {
     c.report(u, "cast.useless", message, tip);
 }
 
-/// MatchingTypeInSwitchCaseConditionRule: a case whose type the switch condition's type can never be.
 pub(super) fn switch(c: &mut Checker, s: &Switch) {
     if !c
         .strict
@@ -211,8 +199,6 @@ pub(super) fn switch(c: &mut Checker, s: &Switch) {
     }
 }
 
-/// ClosureUsesThisRule: a variable holding `$this` imported into a non-static closure. A closure inside the
-/// arguments of `Closure::bind()` is skipped (`isInClosureBind()`).
 pub(super) fn closure(c: &mut Checker, f: &Closure) {
     if !c.strict.contains(crate::StrictRules::CLOSURE_USES_THIS)
         || f.r#static.is_some()
@@ -237,7 +223,6 @@ pub(super) fn closure(c: &mut Checker, f: &Closure) {
     }
 }
 
-/// RequireParentConstructCallRule on method `m` of the class being walked.
 pub(super) fn constructor(c: &mut Checker, m: &Method<'_>) {
     if !c
         .strict
@@ -259,7 +244,6 @@ pub(super) fn constructor(c: &mut Checker, m: &Method<'_>) {
     let mut parent = k
         .direct_parent_class
         .and_then(|p| c.codebase.get_class_like(p.as_bytes()));
-    // a circular hierarchy (which PHP refuses) ends
     let mut depth = 0;
     while let Some(p) = parent
         && depth <= 64
@@ -272,7 +256,6 @@ pub(super) fn constructor(c: &mut Checker, m: &Method<'_>) {
         let constructor = members::method(c, p, b"__construct").filter(|f| {
             own(f) && !f.is_abstract() && !f.visibility().is_private() && !is_deprecated(f)
         });
-        // a PHP 4 constructor, looked up by the class's full name (so only in the global namespace)
         let named = members::method(c, p, p.original_name.as_bytes())
             .filter(|f| own(f) && !f.is_abstract());
         if constructor.is_some() || named.is_some() {
@@ -297,8 +280,6 @@ fn is_deprecated(m: &members::Method) -> bool {
     }
 }
 
-/// `callsParentConstruct()`: a `parent::__construct()` statement (`@` ignored), here or in the statements of a nested
-/// node that has a statement list (php-parser's `stmts`: an `if` body, loops, `try`, blocks, declarations).
 fn calls_parent_construct(statements: &[Statement]) -> bool {
     statements.iter().any(calls_in_statement)
 }
@@ -351,9 +332,6 @@ fn calls_in_expression(mut e: &Expression) -> bool {
     }
 }
 
-/// DynamicCallOnStaticMethodsRule (`$expr->name()`, `$expr?->name()`) and DynamicCallOnStaticMethodsCallableRule
-/// (`$expr->name(...)`). RuleLevelHelper::findTypeToCheck() checks only `$this` below level 2; from there the
-/// object's type drops `null` (below level 8) and the union members without the method (below level 7).
 pub(super) fn dynamic_call(
     c: &mut Checker,
     span: Span,
@@ -376,7 +354,6 @@ pub(super) fn dynamic_call(
         }
         vec![c.class_scope()]
     } else if c.level >= 2 {
-        // the object of every method call is typed from level 2
         c.type_of(object)
             .into_iter()
             .flat_map(|t| t.types.iter())

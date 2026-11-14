@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\MultilinePromotedPropertiesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use anyhow::Result;
@@ -34,7 +33,6 @@ impl Fixer for MultilinePromotedPropertiesFixer {
         "multiline_promoted_properties"
     }
     fn priority(&self) -> i32 {
-        // Must run before BracesPositionFixer, TrailingCommaInMultilineFixer.
         1
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -57,7 +55,6 @@ impl Fixer for MultilinePromotedPropertiesFixer {
         self.whitespaces_config = config.clone();
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // Upstream iterates the elements found before any edit, so later indices go stale the same way.
         let elements = TokensAnalyzer::new(tokens).get_classy_elements();
         for (&index, element) in &elements {
             if element.kind != ClassyElementType::Method {

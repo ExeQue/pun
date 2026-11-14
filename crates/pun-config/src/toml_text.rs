@@ -1,16 +1,8 @@
-//! TOML text for JSON values, as Pun writes its own files: `pun.toml`'s dependency sections (`pun migrate`) and
-//! `pun.lock`. Keys and strings are bare or quoted as TOML needs; a string with a backslash (a namespace) is written
-//! as a literal string, `'App\'`, so it reads as the PHP it names. JSON `null` has no TOML form: callers remove it
-//! first (see [`strip_nulls`]).
-
 use serde_json::{Map, Value};
 use std::fmt::Write;
 
-/// The longest inline value a [`section`] writes on one line; a longer array goes one item per line and a longer
-/// table becomes its own section.
 const WIDTH: usize = 100;
 
-/// `k` as a TOML key: bare when it is only ASCII letters, digits, `-` and `_`.
 pub fn key(k: &str) -> String {
     let bare = !k.is_empty()
         && k.bytes()
@@ -18,7 +10,6 @@ pub fn key(k: &str) -> String {
     if bare { k.to_string() } else { string(k) }
 }
 
-/// `s` as a TOML string: literal (`'...'`) when it has a backslash and no `'` or control character, else basic.
 pub fn string(s: &str) -> String {
     let control = |c: char| c.is_control() && c != '\t';
     if s.contains('\\') && !s.contains('\'') && !s.chars().any(control) {
@@ -41,14 +32,12 @@ pub fn string(s: &str) -> String {
     out
 }
 
-/// `v` on one line. Nulls inside are left out.
 pub fn inline(v: &Value) -> String {
     match v {
         Value::Null => String::new(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => match n.as_i64() {
             Some(i) => i.to_string(),
-            // A whole float keeps its `.0`: TOML reads `1` as an integer.
             None => format!("{:?}", n.as_f64().unwrap_or_default()),
         },
         Value::String(s) => string(s),
@@ -70,10 +59,6 @@ pub fn inline(v: &Value) -> String {
     }
 }
 
-/// `map` as the section `[path]` (`[[path]]` when `array`; the document's top level when `path` is empty),
-/// pun.toml style: values that fit on a line are written inline, then longer tables as their own `[path.key]` sections
-/// and lists of tables as `[[path.key]]`, in `map`'s order. TOML needs a table's own keys before its sub-tables, so
-/// those come last.
 pub fn section(out: &mut String, path: &str, map: &Map<String, Value>, array: bool) {
     if !path.is_empty() && !out.is_empty() && !out.ends_with("\n\n") {
         out.push('\n');
@@ -101,7 +86,6 @@ pub fn section(out: &mut String, path: &str, map: &Map<String, Value>, array: bo
             v => writeln!(out, "{} = {}", key(k), inline(v)).unwrap(),
         }
     }
-    // `[a.b]` alone defines `a`: a table with nothing but sub-tables gets no `[a]` of its own.
     if !path.is_empty() && (out.len() > start || array || later.is_empty()) {
         out.insert_str(start, &header);
     }
@@ -122,9 +106,6 @@ pub fn section(out: &mut String, path: &str, map: &Map<String, Value>, array: bo
     }
 }
 
-/// `map`'s entries as dotted keys under `prefix` (`source.url = "..."`), one value per line, so every key keeps its
-/// place in `map`'s order; pun.lock uses it, where the order is the order Composer writes. A non-empty table is
-/// spread into its keys, an empty one is `{}`, and a list is written inline.
 pub fn dotted(out: &mut String, prefix: &str, map: &Map<String, Value>) {
     for (k, v) in map {
         let name = match prefix {
@@ -139,12 +120,10 @@ pub fn dotted(out: &mut String, prefix: &str, map: &Map<String, Value>) {
     }
 }
 
-/// A non-empty list whose items are all tables: written as `[[path.key]]` sections.
 fn tables(items: &[Value]) -> bool {
     !items.is_empty() && items.iter().all(Value::is_object)
 }
 
-/// Whether `k = v` fits on a line: a table only when none of its values is a table or a list of tables.
 fn fits(k: &str, v: &Value) -> bool {
     let flat = match v {
         Value::Object(m) => !m.values().any(|v| match v {
@@ -157,7 +136,6 @@ fn fits(k: &str, v: &Value) -> bool {
     flat && key(k).len() + 3 + inline(v).len() <= WIDTH
 }
 
-/// Removes every `null` in `v`, naming each as a JSON pointer under `at` in `removed` (TOML has no null).
 pub fn strip_nulls(v: &mut Value, at: &str, removed: &mut Vec<String>) {
     match v {
         Value::Object(m) => {
@@ -188,7 +166,6 @@ pub fn strip_nulls(v: &mut Value, at: &str, removed: &mut Vec<String>) {
     }
 }
 
-/// `v` as JSON: what a section of pun.toml or pun.lock means in composer.json terms.
 pub fn to_json(v: &toml::Value) -> Value {
     match v {
         toml::Value::String(s) => Value::String(s.clone()),
@@ -208,7 +185,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// What `section` writes, read back by the `toml` crate, as JSON.
     fn round_trip(path: &str, v: &Value) -> Value {
         let mut out = String::new();
         section(&mut out, path, v.as_object().unwrap(), false);
@@ -228,7 +204,6 @@ mod tests {
         assert_eq!(inline(&json!({})), "{}");
         assert_eq!(string("\r\t"), "\"\\r\\t\"");
         assert_eq!(inline(&Value::Null), "");
-        // Nulls are left out at every level; a TOML datetime reads back as its text.
         let mut out = String::new();
         section(
             &mut out,
@@ -249,8 +224,6 @@ mod tests {
         );
     }
 
-    /// The renderer's output must mean the same JSON: a wrong quote, a table key after a sub-table, or a dropped
-    /// value fails the parse or the comparison.
     #[test]
     fn sections_read_back_as_the_same_json() {
         let v = json!({
@@ -276,7 +249,6 @@ mod tests {
             "empty": {},
         });
         assert_eq!(round_trip("package", &v), v);
-        // The top level: plain keys first, then the tables.
         let mut out = String::new();
         section(&mut out, "", v.as_object().unwrap(), false);
         let t: toml::Table = toml::from_str(&out).unwrap();
@@ -284,7 +256,6 @@ mod tests {
         assert!(out.starts_with("name = \"acme/app\"\n"));
     }
 
-    /// Dotted keys keep every key where it was, at every depth: a table after a sub-table, too.
     #[test]
     fn dotted_keys_keep_the_order() {
         let v = json!({"name": "a/b", "source": {"type": "git", "url": "u"}, "require": {"php": "^8.4"},

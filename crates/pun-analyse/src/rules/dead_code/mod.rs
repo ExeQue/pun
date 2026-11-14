@@ -1,5 +1,3 @@
-//! PHPStan's dead-code rules. Expected diagnostics come from the pinned PHPStan rule fixtures.
-
 mod conditions;
 mod finally;
 mod function_discard;
@@ -42,8 +40,6 @@ pub(super) fn try_statement(c: &mut Checker, t: &Try) {
     finally::check(c, t);
 }
 
-/// The function-like bodies whose VariableWritesNode a rule reads, so that the analysed program keeps them: the
-/// constructors (UnusedConstructorParametersRule), and with `unusedParameters` or `unusedVariable` every body.
 pub(in super::super) fn bodies(program: &Program, level: u8, every: bool) -> Vec<Span> {
     struct Bodies(Vec<Span>, bool);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Bodies {
@@ -114,7 +110,6 @@ pub(super) fn typed_statement(
     })
 }
 
-/// PHP-Parser replaces imported function aliases, but preserves names with namespace fallback.
 pub(in super::super) fn node_name<'arena>(
     names: &ResolvedNames<'arena>,
     id: &Identifier<'arena>,
@@ -126,7 +121,6 @@ pub(in super::super) fn node_name<'arena>(
     }
 }
 
-/// DefineParametersRule and UselessFunctionReturnValueRule.
 pub(super) fn function_call(c: &mut Checker, call: &FunctionCall) {
     let Expression::Identifier(id) = call.function else {
         return;
@@ -154,7 +148,6 @@ pub(super) fn function_call(c: &mut Checker, call: &FunctionCall) {
         "print_r" | "highlight_string" => "true",
         _ => return,
     };
-    // ArgumentsNormalizer::reorderArgs: named arguments occupy signature positions; unknown names append.
     let first_name = if name == "highlight_string" {
         b"string".as_slice()
     } else {
@@ -189,7 +182,6 @@ pub(super) fn function_call(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// UnusedClosureUsesRule consumes the semantic producer's VariableWritesNode.
 pub(super) fn closure(c: &mut Checker, closure: &Closure) {
     if c.level < 1 {
         return;
@@ -212,7 +204,6 @@ pub(super) fn closure(c: &mut Checker, closure: &Closure) {
     for capture in &uses.variables {
         let span = capture.variable.span();
         let (message, identifier) = if writes.writes.contains_key(&span) {
-            // a by-value use imports a value: it is unused unless that value is read on some path
             if writes.used.contains(&span) || writes.all_names {
                 continue;
             }
@@ -231,7 +222,6 @@ pub(super) fn closure(c: &mut Checker, closure: &Closure) {
                 )
             }
         } else if writes.is_variable_referenced(mago_word::word(capture.variable.name)) {
-            // a by-ref use aliases the outer variable: any mention counts
             continue;
         } else {
             (
@@ -255,7 +245,6 @@ pub(super) fn closure(c: &mut Checker, closure: &Closure) {
     }
 }
 
-/// UnusedParametersCheck::getUnusedParameterErrors(): `{}` in the messages is the parameter.
 fn unused_parameters(
     c: &mut Checker,
     span: Span,
@@ -273,7 +262,6 @@ fn unused_parameters(
     }
     let mut errors = Vec::new();
     for parameter in &parameters.parameters {
-        // a promoted parameter is a property: its value is always used
         if !parameter.modifiers.is_empty() || contract.contains(parameter.variable.name) {
             continue;
         }
@@ -306,8 +294,6 @@ fn unused_parameters(
     }
 }
 
-/// getContractReferencedParameterNames(): the subjects of assert tags and the parameters a conditional type in the
-/// signature switches on.
 fn contract_parameters(signature: &super::declared::Signature) -> HashSet<Vec<u8>> {
     use pun_phpstan::types::{Subject, Type};
     fn conditionals(t: &Type, found: &std::cell::RefCell<HashSet<Vec<u8>>>) {
@@ -321,7 +307,6 @@ fn contract_parameters(signature: &super::declared::Signature) -> HashSet<Vec<u8
             i.clone()
         });
     }
-    // (an assert on `$param->method()` or `$param->property` refers to `$param`)
     let found = std::cell::RefCell::new(
         signature
             .asserts
@@ -341,19 +326,16 @@ fn contract_parameters(signature: &super::declared::Signature) -> HashSet<Vec<u8
     for (_, ty, ..) in &signature.params {
         conditionals(ty, &found);
     }
-    // ponytail: decide_type() drops a PHPDoc offset access type PHPStan keeps (`T[($p is 0 ? 0 : key-of<T>)]`)
     for ty in &signature.phpdoc {
         conditionals(ty, &found);
     }
     found.into_inner()
 }
 
-/// isNoOpBody(): no statements but comments.
 fn no_op(body: &[Statement]) -> bool {
     body.iter().all(|s| matches!(s, Statement::Noop(_)))
 }
 
-/// UnusedFunctionParametersRule: level 4 with `featureToggles.unusedParameters`.
 pub(super) fn function_parameters(c: &mut Checker, f: &mago_syntax::cst::Function) {
     unused_variables(c, f.span(), Node::Function(f));
     if !c
@@ -383,7 +365,6 @@ pub(super) fn function_parameters(c: &mut Checker, f: &mago_syntax::cst::Functio
     );
 }
 
-/// UnusedMethodParametersRule (private methods) and UnusedConstructorParametersRule.
 pub(super) fn method_parameters(c: &mut Checker, m: &Method, name: &str) {
     let MethodBody::Concrete(body) = &m.body else {
         return;
@@ -495,7 +476,6 @@ pub(super) fn method_parameters(c: &mut Checker, m: &Method, name: &str) {
     }
 }
 
-/// Additional type queries for UnusedFunctionParametersCheck and UselessFunctionReturnValueRule.
 pub(super) fn typed_variable(v: &Variable) -> Option<Span> {
     match v {
         Variable::Indirect(v) => Some(v.expression.span()),

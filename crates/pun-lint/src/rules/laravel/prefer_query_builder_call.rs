@@ -1,15 +1,3 @@
-//! `lint/laravel/prefer-query-builder-call`, ported from rector-laravel 2.7.3's `EloquentMagicMethodToQueryBuilderRector`
-//! (src/Rector/StaticCall).
-//!
-//! A static call on an Eloquent model that `__callStatic` forwards to the query builder (`User::where(...)`) becomes a
-//! call on `query()` (`User::query()->where(...)`). The model is the class written, or the class of the object or
-//! class string the expression holds (the first model among an intersection's classes). The method must be one the
-//! model lacks (its own methods, inherited and from traits, docblocks not read) and that is a scope of the model
-//! (`scope` + the name with its first letter in upper case) or a public non-static method of
-//! `Illuminate\Database\Eloquent\Builder` or `Illuminate\Database\Query\Builder`; or one the model has as a public,
-//! non-static method declared in one of those builders. `query` itself and the `exclude-methods` stay (names compared
-//! exactly).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
@@ -40,8 +28,6 @@ impl Rule for PreferQueryBuilderCall {
         "lint/laravel/prefer-query-builder-call"
     }
 
-    /// `configure`: `exclude-methods` (rector-laravel's `exclude_methods`), or the list as `items` (Rector also takes
-    /// the configuration itself as the list), the method names to leave.
     fn configure(&mut self, options: &Value) -> Result<(), String> {
         let map = match options {
             Value::Null => return Ok(()),
@@ -117,8 +103,6 @@ impl Rule for PreferQueryBuilderCall {
     }
 }
 
-/// The class names `getType($class)` gives, as `getObjectClassNames()` (of the class-string's object type when it is
-/// a class string), in their order; only the first known class counts (`hasClass`), and it must be a model.
 fn classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], class: &Expression<'_>) -> Vec<String> {
     match unparenthesize(class) {
         Expression::Identifier(id) => return name_class(ancestors, id).into_iter().collect(),
@@ -128,7 +112,6 @@ fn classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], class: &Expression<'_>
         _ => {}
     }
     let facts = facts(ctx);
-    // a class Mago has no type for names no class
     let types = facts
         .full_type(node_span(class))
         .map_or(&[][..], |t| &t.types[..]);
@@ -156,7 +139,6 @@ fn classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], class: &Expression<'_>
     names
 }
 
-/// The classes of an object type, with those it is intersected with.
 fn object_names(atomic: &TAtomic) -> Vec<String> {
     let mut names: Vec<String> = object_class(atomic).into_iter().collect();
     if let TAtomic::Object(TObject::Named(n)) = atomic {
@@ -165,11 +147,9 @@ fn object_names(atomic: &TAtomic) -> Vec<String> {
     names
 }
 
-/// `isMagicMethod`.
 fn is_magic_method(ctx: &Context<'_>, model: &str, method: &str) -> bool {
     let facts = facts(ctx);
     let codebase = &facts.codebase;
-    // `get_declaring_method`, not `get_method`: `each`, `chunk` and `lazy` come to the builders from `BuildsQueries`.
     let public_instance = |class: &str| {
         codebase
             .get_declaring_method(class.as_bytes(), method.as_bytes())

@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-be-infinite`, ported from pest-plugin-rector's `UseToBeInfiniteRector`: `expect(is_infinite($value))->toBeTrue()` becomes `expect($value)->toBeInfinite()`, and `toBeFalse()` or a
-//! `->not` before the matcher becomes `->not->toBeInfinite()`. The checked value's type must be a float or integer.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

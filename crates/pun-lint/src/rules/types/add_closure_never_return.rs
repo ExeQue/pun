@@ -1,7 +1,3 @@
-//! `lint/types/add-closure-never-return`, ported from Rector 2.8.4's `AddClosureNeverReturnTypeRector`
-//! (rules/TypeDeclaration/Rector/Closure): a closure that never returns gets the `never` return type (see
-//! [`super::never`]).
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::never::{FunctionLike, NEVER_TYPE, add_never};

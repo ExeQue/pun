@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\TokensAnalyzer` (subset; see context/reference/tokens.md).
-
 use std::collections::BTreeMap;
 
 use crate::kind::Kind::{self, *};
@@ -17,7 +15,6 @@ pub enum ClassyElementType {
 }
 
 impl ClassyElementType {
-    /// Upstream's `'type'` string.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Property => "property",
@@ -45,7 +42,6 @@ pub struct ClassyModifiers {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MethodAttributes {
-    /// T_PUBLIC / T_PROTECTED / T_PRIVATE
     pub visibility: Option<Kind>,
     pub static_: bool,
     pub abstract_: bool,
@@ -69,7 +65,6 @@ impl<'a> TokensAnalyzer<'a> {
         idx(self.tokens.get_next_meaningful_token(i))
     }
 
-    /// index => element, ordered by index.
     pub fn get_classy_elements(&self) -> BTreeMap<usize, ClassyElement> {
         let mut elements = BTreeMap::new();
         let count = self.tokens.len() as isize - 2;
@@ -105,9 +100,6 @@ impl<'a> TokensAnalyzer<'a> {
         m
     }
 
-    /// Upstream returns either one list or per-namespace lists; this returns per-namespace
-    /// lists keyed by namespace ordinal (`per_namespace == false` puts everything under 0,
-    /// and callers take `[0]`).
     pub fn get_import_use_indexes(&self, per_namespace: bool) -> BTreeMap<usize, Vec<usize>> {
         let t = self.tokens;
         let mut uses: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
@@ -526,7 +518,6 @@ impl<'a> TokensAnalyzer<'a> {
                                 T_READONLY,
                                 T_FINAL,
                             ];
-                            // Upstream iterates findGivenKind's per-kind groups in this kind order.
                             let found = t.find_given_kinds(&kinds, open, Some(close));
                             for kd in kinds {
                                 for &m in &found[&kd] {

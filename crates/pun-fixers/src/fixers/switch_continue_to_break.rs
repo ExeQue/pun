@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\SwitchContinueToBreakFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Proto, Token, Tokens};
@@ -43,7 +42,6 @@ impl Run<'_> {
         let tokens = &*self.tokens;
         let token = &tokens[index];
         if token.is_given_kind(&[T_FOREACH, T_FOR, T_WHILE]) {
-            // go to first `(`, go to its close ')', go to first of '{', ';', '?>'
             let index = tokens
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
@@ -127,7 +125,7 @@ impl Run<'_> {
             .unwrap();
         let following = &self.tokens[following_index];
         if is_in_switch && following.equals(";", true) {
-            self.replace_continue_with_break_token(continue_index); // short continue 1 notation
+            self.replace_continue_with_break_token(continue_index);
             return following_index;
         }
         if !following.is_kind(T_LNUMBER) {
@@ -138,7 +136,7 @@ impl Run<'_> {
             .get_next_meaningful_token(following_index)
             .unwrap();
         if !self.tokens[after_index].equals(";", true) {
-            return after_index; // e.g. `continue 1 ?><?php + $a;`
+            return after_index;
         }
         let jump: Vec<u8> = following
             .get_content()
@@ -146,8 +144,6 @@ impl Run<'_> {
             .copied()
             .filter(|&c| c != b'_')
             .collect();
-        // hexdec / bindec / octdec ignore invalid digits. Upstream's "cannot process" and "> PHP_INT_MAX" exits are
-        // unreachable: every T_LNUMBER is 0-prefixed or decimal, and fits in an int (bigger literals lex as T_DNUMBER).
         let jump = if jump.len() > 2 && jump[1] == b'x' {
             base_dec(&jump, 16)
         } else if jump.len() > 2 && jump[1] == b'b' {
@@ -158,7 +154,7 @@ impl Run<'_> {
             base_dec(&jump, 10)
         };
         if is_in_switch && (jump == 1 || jump == 0) {
-            self.replace_continue_with_break_token(continue_index); // long continue 0/1 notation
+            self.replace_continue_with_break_token(continue_index);
             return after_index;
         }
         let destination = i128::from(depth) - jump + 1;
@@ -177,7 +173,6 @@ impl Run<'_> {
     }
 }
 
-/// PHP's hexdec/bindec/octdec (and a decimal cast): skip non-digits.
 fn base_dec(s: &[u8], base: u32) -> i128 {
     s.iter()
         .filter_map(|&c| (c as char).to_digit(base))

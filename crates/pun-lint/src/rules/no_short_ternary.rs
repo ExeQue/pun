@@ -1,7 +1,3 @@
-//! `lint/style/no-short-ternary`, ported from phpstan-strict-rules 2.0.12's `DisallowedShortTernaryRule`
-//! (identifier `ternary.shortNotAllowed`), the first upstream source of the rule in mapping.toml; Mago's
-//! `no-shorthand-ternary` reports the same nodes with another message. Every `a ?: b` is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

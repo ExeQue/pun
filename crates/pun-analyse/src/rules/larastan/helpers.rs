@@ -1,13 +1,3 @@
-//! Larastan's helper and container extensions, as Mago return type providers for the rules' inference:
-//!
-//! - Helpers\AppExtension (`app()`, `resolve()`), the container's `make()`, `makeWith()` and `resolve()`
-//!   (ApplicationMakeDynamicReturnTypeExtension, ContainerMakeDynamicReturnTypeExtension) and `App::make()`
-//!   (AppMakeDynamicReturnTypeExtension), all through AppMakeHelper;
-//! - Helpers\ValidatorExtension (`validator()`), Helpers\ValueExtension (`value()`), Helpers\StrExtension (`str()`),
-//!   and, with `generalizeEnvReturnType`, EnvFunctionDynamicFunctionReturnTypeExtension
-//!   (`env()`);
-//! - RequestFileExtension (`$request->file()`), RequestRouteExtension (`$request->route()`) and
-
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -44,7 +34,6 @@ const CONTAINER: &str = "Illuminate\\Contracts\\Container\\Container";
 const REQUEST: &str = "Illuminate\\Http\\Request";
 const UPLOADED_FILE: &str = "Illuminate\\Http\\UploadedFile";
 
-/// `new ObjectType($class)`, spelled as the codebase declares it.
 fn object(codebase: &CodebaseMetadata, class: &str) -> TUnion {
     let name = codebase.get_class_like(class.as_bytes()).map_or_else(
         || mago_word::word(class.trim_start_matches('\\')),
@@ -53,7 +42,6 @@ fn object(codebase: &CodebaseMetadata, class: &str) -> TUnion {
     TUnion::from_atomic(TAtomic::Object(TObject::Named(TNamedObject::new(name))))
 }
 
-/// `TypeCombinator::union()`.
 pub(super) fn union(
     codebase: &CodebaseMetadata,
     types: impl IntoIterator<Item = TUnion>,
@@ -65,7 +53,6 @@ pub(super) fn union(
     })
 }
 
-/// `TypeUtils::toBenevolentUnion()`, which Pun marks with both ignore flags.
 fn benevolent(mut t: TUnion) -> TUnion {
     if t.types.len() > 1 {
         t.set_ignore_nullable_issues(true);
@@ -74,8 +61,6 @@ fn benevolent(mut t: TUnion) -> TUnion {
     t
 }
 
-/// The return type of a callable part (`getCallableParametersAcceptors($scope)[0]->getReturnType()`): a callable
-/// signature's, mixed for a `Closure` object; `None` for a part that is no callable.
 fn callable_return(t: &TAtomic) -> Option<TUnion> {
     match t {
         TAtomic::Callable(TCallable::Signature(s)) => {
@@ -90,7 +75,6 @@ fn callable_return(t: &TAtomic) -> Option<TUnion> {
     }
 }
 
-/// `TypeTraverser::map()` replacing each callable part with its return type.
 pub(super) fn call_callables(codebase: &CodebaseMetadata, t: &TUnion) -> TUnion {
     union(
         codebase,
@@ -100,7 +84,6 @@ pub(super) fn call_callables(codebase: &CodebaseMetadata, t: &TUnion) -> TUnion 
     )
 }
 
-/// `$type->generalize(GeneralizePrecision::lessSpecific())`.
 pub(super) fn generalize(codebase: &CodebaseMetadata, t: &TUnion) -> TUnion {
     union(
         codebase,
@@ -141,7 +124,6 @@ pub(super) fn generalize(codebase: &CodebaseMetadata, t: &TUnion) -> TUnion {
     )
 }
 
-/// The constant strings of a type (`getConstantStrings()`), class strings included; empty unless every part is one.
 fn constant_strings(t: &TUnion) -> Vec<String> {
     let strings: Vec<String> = t
         .types
@@ -162,8 +144,6 @@ fn constant_strings(t: &TUnion) -> Vec<String> {
     }
 }
 
-/// AppMakeHelper::resolveTypeFromCall(): for each constant string, the class of what the container makes for it, else
-/// the class it names, else an ErrorType; mixed for a type without constant strings.
 fn app_make(
     app: &App,
     context: &ProviderContext<'_, '_, '_>,
@@ -179,8 +159,6 @@ fn app_make(
     Some(resolve_all(app, context.codebase(), strings))
 }
 
-/// HasContainer::resolve() for each constant string: the class of what the container makes for it, else the class
-/// it names, else an ErrorType.
 fn resolve_all(app: &App, codebase: &CodebaseMetadata, strings: Vec<String>) -> TUnion {
     let mut types = Vec::new();
     for s in strings {
@@ -200,9 +178,6 @@ fn resolve_all(app: &App, codebase: &CodebaseMetadata, strings: Vec<String>) -> 
     union(codebase, types)
 }
 
-/// ContainerArrayAccessDynamicMethodReturnTypeExtension: `$container['key']` (`offsetGet()`) on a container is what
-/// the container makes for each constant string of the key, else an ErrorType. Mago reads an `ArrayAccess` offset
-/// without asking the method providers, so the hook replaces the read's type.
 pub(crate) struct ContainerOffsets(pub(crate) Arc<App>);
 
 impl Provider for ContainerOffsets {
@@ -249,7 +224,6 @@ impl mago_analyzer::plugin::ExpressionHook for ContainerOffsets {
 
 pub(crate) struct Functions {
     pub(crate) app: Arc<App>,
-    /// `generalizeEnvReturnType`, which registers EnvFunctionDynamicFunctionReturnTypeExtension.
     pub(crate) generalize_env: bool,
 }
 
@@ -298,7 +272,6 @@ impl FunctionReturnTypeProvider for Functions {
                 codebase,
                 "Illuminate\\Contracts\\Validation\\Factory",
             )),
-            // TypeCombinator::intersect() of the class and the contract it implements
             "validator" => Some(object(codebase, "Illuminate\\Validation\\Validator")),
             "value" if count == 0 => Some(get_never()),
             "value" => Some(call_callables(codebase, &type_of(0)?)),
@@ -314,7 +287,6 @@ impl FunctionReturnTypeProvider for Functions {
     }
 }
 
-/// `ObjectShapeType($properties)` intersected with `stdClass`.
 fn std_class_shape(
     codebase: &CodebaseMetadata,
     properties: BTreeMap<mago_word::Word, (bool, TUnion)>,
@@ -334,7 +306,6 @@ fn std_class_shape(
     TAtomic::Object(TObject::Named(std_class))
 }
 
-/// A constant array's items (`getConstantArrays()` of one array), keys as strings.
 fn constant_array(a: &TAtomic) -> Option<Vec<(String, TUnion)>> {
     match a {
         TAtomic::Array(TArray::Keyed(k)) if k.parameters.is_none() => Some(
@@ -362,8 +333,6 @@ fn constant_array(a: &TAtomic) -> Option<Vec<(String, TUnion)>> {
     }
 }
 
-/// Helpers\LiteralExtension (`literal()`): a single unnamed argument's type (an unpacked constant array's as an
-/// object shape, a `stdClass` with an empty shape), else an object shape of the arguments by name or position.
 fn literal(
     context: &ProviderContext<'_, '_, '_>,
     invocation: &InvocationInfo<'_, '_, '_>,
@@ -490,7 +459,6 @@ impl MethodReturnTypeProvider for Methods {
                     0 => return Some(union(codebase, [route(), get_null()])),
                     2 => {
                         let t = context.get_expression_type(argument(1)?)?;
-                        // `isCallable()->yes()`: every part is a callable
                         match t
                             .types
                             .iter()
@@ -511,8 +479,6 @@ impl MethodReturnTypeProvider for Methods {
     }
 }
 
-/// AbortIfFunctionTypeSpecifyingExtension (`abort_if()`, `abort_unless()`, `throw_if()`, `throw_unless()`): after the
-/// call the condition is falsy (`*_if`) or truthy (`*_unless`); `abort_*` needs its code argument.
 pub(crate) struct AbortIf;
 
 impl Provider for AbortIf {

@@ -1,6 +1,3 @@
-//! `pun update`, `pun require` and `pun remove` on punphp-packages' install fixture after `pun migrate`, a project
-//! whose packages come from a path repository, so nothing is downloaded. The expected locks are what Composer
-//! 2.11.2 wrote for the same commands (`composer update`, `composer remove --dev acme/tools`), as pun.lock holds them.
 mod common;
 
 use common::pty::pun;
@@ -30,14 +27,12 @@ fn expected(name: &str) -> String {
     .unwrap()
 }
 
-/// Composer's lock for `text` as pun.lock holds it.
 fn as_pun_lock(text: &str) -> String {
     pun_packages::lock::Lock::from_composer_lock(text)
         .unwrap()
         .to_toml()
 }
 
-/// The fixture after `pun migrate`: its pun.toml and pun.lock, the latter Composer's composer.lock converted.
 fn migrated(name: &str) -> PathBuf {
     let d = fixture(name);
     let (out, err, code) = pun(&d, &["migrate", "--yes"]);
@@ -45,9 +40,6 @@ fn migrated(name: &str) -> PathBuf {
     d
 }
 
-/// Before `pun migrate`, the package commands refuse composer.json and composer.lock and say to migrate. After it,
-/// `pun update` without a lock writes what Composer wrote for the fixture; with one, it changes nothing;
-/// `--dry-run` writes nothing.
 #[test]
 fn update_writes_composers_lock() {
     let d = fixture("update");
@@ -65,7 +57,6 @@ fn update_writes_composers_lock() {
     let lock = as_pun_lock(&read(&d, "composer.lock"));
     assert_eq!(read(&d, "pun.lock"), lock);
     std::fs::remove_file(d.join("pun.lock")).unwrap();
-    // A composer.lock without a pun.lock is not read either.
     let (_, err, code) = pun(&d, &["install"]);
     assert_eq!(code, Some(2));
     assert!(
@@ -96,8 +87,6 @@ fn update_writes_composers_lock() {
     assert!(d.join("vendor/composer/installed.php").exists());
 }
 
-/// `pun remove` changes pun.lock as `composer remove --dev` changes composer.lock, takes the package out of
-/// pun.toml, and uninstalls it.
 #[test]
 fn remove_matches_composer() {
     let d = migrated("remove");
@@ -125,9 +114,6 @@ fn remove_matches_composer() {
     assert_eq!(code, Some(0), "{err}");
 }
 
-/// In a migrated project, `pun remove` then `pun require` without a version puts pun.toml and pun.lock back as they
-/// were: the version written is the `^1.2` Composer recommends for 1.2.0, and the lock's hash is pun.toml's.
-/// A requirement that can't resolve leaves both files alone and says why.
 #[test]
 fn require_edits_pun_toml() {
     let d = migrated("require");
@@ -172,9 +158,6 @@ fn require_edits_pun_toml() {
     }
 }
 
-/// A workspace: the root's pun.toml lists the members, which share the root's pun.lock and vendor/. Commands run
-/// in a member work on the whole workspace; `require` edits the member it runs in (or `-p`'s), writes the newest
-/// version as `^major.minor`, and leaves both files as they were when the request doesn't resolve.
 #[test]
 fn workspace_members_share_one_lock() {
     let d = common::scratch("update", "workspace");

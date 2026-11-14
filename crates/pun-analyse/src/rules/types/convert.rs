@@ -1,6 +1,3 @@
-//! Mago's inferred types as PHPStan's types (`pun_phpstan::types::Type`), so rules compare and describe them the way
-//! PHPStan's rules do (`Type::describe(VerbosityLevel)`).
-
 use std::collections::HashMap;
 use std::hash::BuildHasher;
 
@@ -29,10 +26,7 @@ use super::super::{Checker, arrays, declared, infer};
 use crate::text;
 
 thread_local! {
-    /// Converting a closure's parameter: its generic arguments came from the callable it is passed to, so a filled
-    /// template fallback is kept (see `object()`).
     static KEEP_FILLED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// The callee of a callback was found, but the parameter it is passed to has no callable signature.
     static WITHOUT_SIGNATURE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -50,12 +44,10 @@ enum ConversionScope {
 }
 
 impl Checker<'_, '_> {
-    /// `$scope->getType($expr)`: Mago's type of an expression the rules asked about, as PHPStan's.
     pub(in super::super) fn phpstan_type(&self, e: &mago_syntax::cst::Expression) -> Option<Type> {
         Some(self.phpstan_type_from(e, self.type_of(e)?))
     }
 
-    /// Convert an expression and all its dependencies in the supplied scope, without ordinary-scope recovery.
     pub(in super::super) fn phpstan_type_in(
         &self,
         e: &Expression,
@@ -64,7 +56,6 @@ impl Checker<'_, '_> {
         Some(self.phpstan_type_from_in(e, types.get(&e.span())?, types))
     }
 
-    /// Selectors are stored as spans rather than Expression nodes, but have the same scope-owned metadata.
     pub(in super::super) fn phpstan_type_at(&self, at: Span) -> Option<Type> {
         self.phpstan_type_at_in(at, &self.types)
     }
@@ -83,7 +74,6 @@ impl Checker<'_, '_> {
         }))
     }
 
-    /// Convert an observed scope value using the expression's own source metadata.
     pub(in super::super) fn phpstan_type_from(
         &self,
         e: &mago_syntax::cst::Expression,
@@ -92,15 +82,12 @@ impl Checker<'_, '_> {
         self.phpstan_type_from_with(e, t, &self.types, ConversionScope::Current)
     }
 
-    /// Restore source metadata using only the selected scope's dependency values, not Checker.types.
     pub(in super::super) fn phpstan_type_from_in(
         &self,
         e: &Expression,
         t: &TUnion,
         types: &HashMap<Span, TUnion, impl BuildHasher>,
     ) -> Type {
-        // The native observation map is a separate authority, not a PHPDoc-aware selected scope.
-        // Compare map identity, never equal values: an unrelated selected map keeps its own policy.
         if std::ptr::eq(
             std::ptr::from_ref(types).cast::<()>(),
             std::ptr::from_ref(&self.native_types).cast::<()>(),
@@ -118,8 +105,6 @@ impl Checker<'_, '_> {
             })
     }
 
-    /// `getNativeType` promotes native observations, not parameter or annotation PHPDoc.
-    /// Only literal, copy and offset edges provide an order, with every dependency observed natively.
     fn native_source_order(&self, at: Span) -> Option<Type> {
         self.native_types.get(&at)?;
         match self.origins.get(&at)? {
@@ -147,7 +132,6 @@ impl Checker<'_, '_> {
                     .position(|k| *k == key)
                     .map(|i| source.values[i].clone())
             }
-            // Declarations, calls and forgotten mutations are not native order evidence.
             _ => None,
         }
     }
@@ -180,8 +164,6 @@ impl Checker<'_, '_> {
                         },
                         _ => None,
                     });
-                // Mago's keyed arrays are BTreeMaps: only the literal still knows PHP's insertion order. Unknown
-                // keys/unpacks keep the inferred fallback, rather than inventing an order for a nonliteral shape.
                 let ty = self.literal_array(e, types, scope).unwrap_or_else(|| {
                     source
                         .as_ref()
@@ -202,9 +184,6 @@ impl Checker<'_, '_> {
     }
 
     fn restore_inferred(&self, at: Span, actual: Type, source: Option<&Type>) -> Type {
-        // MutatingScope::enterFunction/enterClassMethod converts parameter/return values to arguments.
-        // An inline @var annotation does not: its source restores that distinct template strategy.
-        // A built-in function's templates (`sort(...)`'s TArray) belong to no scope that is entered.
         let builtin = |t: &Template| {
             t.scope
                 .strip_prefix("function ")
@@ -217,12 +196,10 @@ impl Checker<'_, '_> {
         };
         let ty = inferred_argument_in(&actual, &[], &builtin);
         source.map_or(ty.clone(), |source| {
-            // a closure parameter without a type is the callable's parameter
             if matches!(ty, Type::Mixed { explicit: false }) && self.callback_parameter(at) {
                 return source.clone();
             }
             let restored = restore_metadata(ty, source, !self.source_is_mutated(at, &self.origins));
-            // a closure's parameter takes the type of the callable parameter it is passed to
             if self.closure_parameter(at) {
                 callable_arguments(restored, source)
             } else {
@@ -231,7 +208,6 @@ impl Checker<'_, '_> {
         })
     }
 
-    /// The expression is (a copy of) the parameter of a closure passed as an argument.
     fn callback_parameter(&self, at: Span) -> bool {
         let mut origin = self.origins.get(&at);
         while let Some(infer::Origin::Copy(from)) = origin {
@@ -240,14 +216,11 @@ impl Checker<'_, '_> {
         matches!(origin, Some(infer::Origin::Callback(..)))
     }
 
-    /// The expression is (a copy of) a closure's or an arrow function's parameter.
     fn closure_parameter(&self, at: Span) -> bool {
         let mut origin = self.origins.get(&at);
         while let Some(infer::Origin::Copy(from)) = origin {
             origin = self.origins.get(from);
         }
-        // A parameter of a closure passed as an argument: PHPStan intersects its native type with the callable's
-        // parameter type, so only that type's arguments survive
         if matches!(origin, Some(infer::Origin::Callback(..))) {
             fn has_arguments(t: &Type) -> bool {
                 match t {
@@ -259,10 +232,8 @@ impl Checker<'_, '_> {
             WITHOUT_SIGNATURE.set(false);
             let source =
                 declared::with_classes(self, || self.source_type(at, &self.origins, &self.types));
-            // a callee Pun cannot resolve (a call forwarded by `__call`) keeps Mago's inferred arguments
             return source.map_or(!WITHOUT_SIGNATURE.replace(false), |t| has_arguments(&t));
         }
-        // a closure that is not an argument keeps its native type, as PHPStan's ObjectType
         let Some(infer::Origin::Parameter(key, _, true)) = origin else {
             return false;
         };
@@ -275,8 +246,6 @@ impl Checker<'_, '_> {
         })
     }
 
-    /// Resolve an array-bearing source edge's template metadata. The actual keyed array now carries its
-    /// own constant/generic source kind; a declaration must not turn a refined generic array into a shape.
     fn source_array(&self, actual: &TUnion, source: &Type) -> Option<Type> {
         match source {
             Type::ConstArray(_) => match actual.types.as_ref() {
@@ -305,10 +274,7 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// Mago rejects a parenthesized intersection template bound, then reads its uses as a class name. Recover
-    /// only a parameter/annotation's own array template, resolved in that declaration's exact namespace scope.
     fn source_template(&self, at: Span, actual: &Type, source: &Type) -> Option<Type> {
-        // source_type() has already validated every deferred call on this edge.
         let mut origin = self.origins.get(&at)?;
         let key = loop {
             match origin {
@@ -344,8 +310,6 @@ impl Checker<'_, '_> {
         .then(|| source.clone())
     }
 
-    /// Only recover metadata from the expression's source edges. In particular, a structurally equal but
-    /// unrelated declaration is never evidence for an array's order or an implicit mixed's explicitness.
     fn source_type(
         &self,
         span: Span,
@@ -353,8 +317,6 @@ impl Checker<'_, '_> {
         types: &HashMap<Span, TUnion, impl BuildHasher>,
     ) -> Option<Type> {
         let source = self.origin_type(origins.get(&span)?, origins, types);
-        // Reconciliation may erase benevolence, but the original observed source value still owns it.
-        // Recover only through these source edges, never by matching an unrelated equal declaration.
         match types
             .get(&span)
             .filter(|t| super::super::return_types::is_benevolent(t))
@@ -367,7 +329,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// Mutable ordering scaffolds do not carry declarations' list-certainty metadata.
     fn source_is_mutated(&self, span: Span, origins: &infer::Origins) -> bool {
         let mut origin = origins.get(&span);
         while let Some(infer::Origin::AfterMethodCall(_, previous)) = origin {
@@ -469,9 +430,6 @@ impl Checker<'_, '_> {
             infer::Origin::AfterMethodCall(call, previous) => {
                 let actual = self.to_phpstan(types.get(&call.receiver)?);
                 let classes = actual.object_class_names();
-                // An annotation or magic fallback is not evidence for the invoked PHP signature. Every
-                // native alternative/variant must be known and reference-free, including unpacked calls.
-                // With no arguments no local can be passed by reference, even for an unknown receiver.
                 let safe = !call.has_arguments
                     || !classes.is_empty()
                         && classes.iter().all(|name| {
@@ -498,8 +456,6 @@ impl Checker<'_, '_> {
             }
             infer::Origin::Call(call) | infer::Origin::Callback(call, ..) => {
                 let (name, args) = (&call.name, &call.args);
-                // Larastan's LiteralExtension builds its object shape in argument order, which Mago's sorted
-                // properties lose; a single argument's type is its own (an unpacked array's order is its keys')
                 if self.larastan.is_some()
                     && call.receiver.is_none()
                     && call.class.is_none()
@@ -530,7 +486,6 @@ impl Checker<'_, '_> {
                     };
                     match args.as_slice() {
                         [(None, span)] => return self.source_type(*span, origins, types),
-                        // an unpacked argument (type_origins names it `...`): its arrays' keys are the properties
                         [(Some(unpacked), span)] if unpacked == "..." => {
                             return Some(match self.source_type(*span, origins, types)? {
                                 Type::Union(parts) => Type::Union(
@@ -554,8 +509,6 @@ impl Checker<'_, '_> {
                             .collect::<Option<Vec<_>>>()?,
                     ));
                 }
-                // Larastan's ModelOnlyDynamicMethodReturnTypeExtension builds its shape in argument order, which
-                // Mago's sorted keys lose: each argument's constant strings, else its arrays' items'
                 if self.larastan.is_some()
                     && matches!(origin, infer::Origin::Call(_))
                     && name.eq_ignore_ascii_case("only")
@@ -594,8 +547,6 @@ impl Checker<'_, '_> {
                     }
                     return Some(builder.get());
                 }
-                // These extensions preserve their input key/value types. The provider alone decides keys,
-                // cardinality and listness; this edge restores only information its Mago types cannot store.
                 if call.receiver.is_none()
                     && call.class.is_none()
                     && matches!(origin, infer::Origin::Call(_))
@@ -670,7 +621,6 @@ impl Checker<'_, '_> {
                             false,
                         );
                     }
-                    // ModelForwardsCallsExtension: a model's static call the model lacks is its builder's method
                     let (receiver, class) = if call.receiver.is_none()
                         && matches!(origin, infer::Origin::Callback(..))
                         && self.larastan.is_some()
@@ -694,7 +644,6 @@ impl Checker<'_, '_> {
                     } else {
                         (receiver, class)
                     };
-                    // RelationForwardsCallsExtension: a relation's method it lacks is its related model's builder's
                     let (receiver, class) = if matches!(origin, infer::Origin::Callback(..))
                         && self.larastan.is_some()
                         && let Type::Object(relation, args, _) = &receiver
@@ -731,8 +680,6 @@ impl Checker<'_, '_> {
                     } else {
                         (receiver, class)
                     };
-                    // MixinMethodsClassReflectionExtension: a method the class lacks is its `@mixin`'s
-                    // (`Relation<TRelatedModel>`'s `Builder<TRelatedModel>`)
                     let (receiver, class) = if matches!(origin, infer::Origin::Callback(..))
                         && super::super::members::method(self, class, name.as_bytes()).is_none()
                     {
@@ -765,7 +712,6 @@ impl Checker<'_, '_> {
                         false,
                     );
                     let mut map = pun_phpstan::types::infer_template_types(&pattern, &receiver);
-                    // a trait's or an ancestor's templates, as the receiver's class passes them on
                     if let Type::Object(receiver_name, actual, _) = &receiver
                         && !receiver_name.eq_ignore_ascii_case(&declared::original_name(declaring))
                     {
@@ -798,7 +744,6 @@ impl Checker<'_, '_> {
                 let infer::Origin::Callback(_, argument, parameter) = origin else {
                     return declared::codex_return(self, f, declaring).map(|t| {
                         let t = pun_phpstan::types::resolve_template_types(&t, &receiver_map);
-                        // a returned `static` or `$this` is the called-on object (`Builder<*>`)
                         let t = match &called {
                             Some(receiver) => {
                                 super::super::method_reflection::called_on(&t, receiver)
@@ -838,9 +783,6 @@ impl Checker<'_, '_> {
                         pun_phpstan::types::infer_template_types(p, &actual)
                     }));
                 }
-                // the callable part of the parameter type, as `(\Closure(Builder<T>): mixed)|null` passes it on
-                // ContextualClosureParameterResolver keeps a union's certainly callable members and unions their
-                // acceptors' parameters
                 fn signatures(t: &Type) -> Option<Vec<&Signature>> {
                     match t {
                         Type::Callable(Some(s)) | Type::Closure(s) => Some(vec![s]),
@@ -860,7 +802,6 @@ impl Checker<'_, '_> {
                     }
                 }
                 let resolved = pun_phpstan::types::resolve_template_types(callable, &map);
-                // a `static` in the callable is the called-on object
                 let resolved = match &called {
                     Some(receiver) => {
                         super::super::method_reflection::called_on(&resolved, receiver)
@@ -871,7 +812,6 @@ impl Checker<'_, '_> {
                     WITHOUT_SIGNATURE.set(true);
                     return None;
                 };
-                // the callee's own templates no other argument infers are their bounds
                 fn bounds(t: &Type) -> Type {
                     match t {
                         Type::Template(t)
@@ -893,7 +833,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// InitializerExprTypeResolver::getArrayType(), bounded to required constant keys and literal unpacks.
     fn literal_array(
         &self,
         e: &Expression,
@@ -915,7 +854,6 @@ impl Checker<'_, '_> {
             match element {
                 ArrayElement::KeyValue(kv) => {
                     let key = array_key(convert(kv.key)?)?;
-                    // There is no next auto index beyond PHP_INT_MAX. Keep Mago's result for that edge.
                     if key == Type::ConstInt(i64::MAX) {
                         return None;
                     }
@@ -930,7 +868,6 @@ impl Checker<'_, '_> {
                         return None;
                     }
                     for (key, value) in a.keys.iter().zip(&a.values) {
-                        // Unpacking renumbers integer keys, but replaces string keys in their original slots.
                         let key = matches!(key, Type::ConstString(_)).then(|| key.clone());
                         builder.set(key, value.clone(), false);
                     }
@@ -941,7 +878,6 @@ impl Checker<'_, '_> {
         Some(builder.get())
     }
 
-    /// A Mago type as PHPStan's.
     pub(in super::super) fn to_phpstan(&self, t: &TUnion) -> Type {
         if let Some(kind) = t.never_kind() {
             return Type::Never(match kind {
@@ -950,7 +886,6 @@ impl Checker<'_, '_> {
                 mago_codex::ttype::union::NeverKind::NonAccepting => NeverKind::NonAccepting,
             });
         }
-        // Combinators need declared variance before they decide whether generic alternatives are redundant.
         declared::with_classes(self, || {
             let types = union(t.types.iter().map(|a| self.atom(a)).collect());
             if super::super::return_types::is_benevolent(t) {
@@ -1009,8 +944,6 @@ impl Checker<'_, '_> {
                     _ => None,
                 })
                 .collect();
-            // Callable expansion erases declaration metadata too. Restore only matching source identities and
-            // explicitness, so an instantiated receiver or a narrower inferred value is never widened.
             for (param, source) in signature
                 .params
                 .iter_mut()
@@ -1026,8 +959,6 @@ impl Checker<'_, '_> {
         Box::new(signature)
     }
 
-    /// Mago fills a generic class written without type arguments with its templates' bounds, PHPStan keeps the
-    /// declaration's plain ObjectType (a union's member too).
     fn unfilled(&self, actual: Type, source: &Type) -> Type {
         match (actual, source) {
             (Type::Union(members), Type::Union(_)) => Type::Union(
@@ -1075,8 +1006,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// `InitializerExprTypeResolver::createFirstClassCallable()`: every positional source variant is a closure,
-    /// not the single acceptor selected for an invocation with no arguments.
     fn builtin_closures(
         &self,
         s: &mago_codex::ttype::atomic::callable::TCallableSignature,
@@ -1084,8 +1013,6 @@ impl Checker<'_, '_> {
         use mago_codex::identifier::function_like::FunctionLikeIdentifier;
         use pun_phpstan::{resolve::resolve_str, symbols::ByRef};
 
-        // get_source deliberately excludes bound partial applications: their declaration no longer describes
-        // the remaining parameters. Methods and user declarations retain the existing inferred conversion.
         let FunctionLikeIdentifier::Function(name) = s.get_source()? else {
             return None;
         };
@@ -1115,7 +1042,6 @@ impl Checker<'_, '_> {
                             variadic: p.variadic,
                         })
                         .collect();
-                    // This is the effective channel. The independently exported native/PHPDoc returns are not its value.
                     signature.ret = resolve_str(&variant.ret, None);
                     signature.templates.clear();
                     Type::Closure(signature)
@@ -1124,7 +1050,6 @@ impl Checker<'_, '_> {
         ))
     }
 
-    /// A class name as its reflection names it (the declaration's case, an anonymous class's display name).
     pub(super) fn reflected_name(&self, name: &[u8]) -> String {
         match self.codebase.get_class_like(name) {
             Some(k) if k.name.as_bytes().starts_with(b"{anonymous-class:") => self.display(k),
@@ -1161,7 +1086,6 @@ impl Checker<'_, '_> {
             }
             TAtomic::Callable(TCallable::Signature(s)) => {
                 if s.is_closure {
-                    // a `Closure` hint or tag is Mago's TCallableSignature::mixed(true), PHPStan's ObjectType
                     self.builtin_closures(s).unwrap_or_else(|| {
                         let signature = self.signature(s);
                         if unspecified_callable(&signature) {
@@ -1176,8 +1100,6 @@ impl Checker<'_, '_> {
                     Type::Callable(Some(self.signature(s)))
                 }
             }
-            // Mago's alias of a function-like (a closure assigned to a variable, `Closure::getCurrent()`): a ClosureType
-            // of its signature
             TAtomic::Callable(TCallable::Alias(id)) => {
                 mago_codex::ttype::expander::get_signature_of_function_like_identifier(
                     id,
@@ -1209,8 +1131,6 @@ impl Checker<'_, '_> {
     fn generic_parameter(&self, g: &TGenericParameter, bound: Type) -> Type {
         let scope = self.template_scope(&g.defining_entity);
         let name = text(g.parameter_name.as_bytes());
-        // Mago drops defaults from inferred generics. Resolve the exact defining entity, not a same-named
-        // template in the current caller's scope; this also works inside unions and nested containers.
         let source = match &g.defining_entity {
             GenericParent::FunctionLike(key) => self.codebase.function_likes.get(key).map(|f| {
                 declared::value_scope(self, f, self.codebase.get_class_like(key.0.as_bytes()))
@@ -1247,13 +1167,11 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// `TemplateTypeScope::describe()`.
     fn template_scope(&self, parent: &GenericParent) -> String {
         match parent {
             GenericParent::ClassLike(name) => {
                 format!("class {}", self.reflected_name(name.as_bytes()))
             }
-            // (Mago names a function's templates by an empty class and the function's lowercase name)
             GenericParent::FunctionLike((class, function)) if class.is_empty() => {
                 let name = self
                     .codebase
@@ -1266,7 +1184,6 @@ impl Checker<'_, '_> {
                     .codebase
                     .get_method(class.as_bytes(), method.as_bytes())
                     .map_or(method.as_bytes(), |m| m.original_name.as_bytes());
-                // the methods of a trait analysed in a class's context are that class's
                 let owner = match &self.trait_context {
                     Some(t)
                         if t.trait_name
@@ -1389,7 +1306,6 @@ impl Checker<'_, '_> {
             TObject::Any => Type::ObjectWithoutClass,
             TObject::Named(n) => {
                 let mut name = self.reflected_name(n.name.as_bytes());
-                // a trait's `$this` / `static` is the class the trait is analysed in
                 if (n.is_this || n.is_static)
                     && self
                         .codebase
@@ -1405,7 +1321,6 @@ impl Checker<'_, '_> {
                     .flat_map(|p| p.iter())
                     .map(|p| {
                         let argument = self.to_phpstan(p);
-                        // Constructor arguments have already undergone template inference in Mago.
                         if n.is_exact {
                             pun_phpstan::types::remove_final_by_keyword_overrides(&argument)
                         } else {
@@ -1413,16 +1328,12 @@ impl Checker<'_, '_> {
                         }
                     })
                     .collect();
-                // Mago fills a generic class written without type arguments with its templates' bounds or defaults;
-                // PHPStan keeps the plain ObjectType
                 let unfilled = !n.is_exact
                     && !KEEP_FILLED.get()
                     && n.type_parameters.as_ref().is_some_and(|p| {
                         !p.is_empty() && p.iter().all(TUnion::from_template_fallback)
                     });
                 let mut args = if unfilled { Vec::new() } else { args };
-                // and fills the omitted trailing arguments of one written with fewer, where PHPStan's
-                // GenericObjectType keeps the written ones (TypeNodeResolver adds only the templates' defaults)
                 if !n.is_exact
                     && !KEEP_FILLED.get()
                     && let Some(p) = n.type_parameters.as_ref()
@@ -1438,10 +1349,6 @@ impl Checker<'_, '_> {
                 } else if n.is_static {
                     Type::Static(name, args)
                 } else {
-                    // ClassReflection::asFinal() does not override abstract/non-class/native-final types.
-                    // NewHandler's own generic constructor resolves the class templates by traversing a
-                    // GenericObjectType; recreate() drops its outer reflection override. A dummy or
-                    // inherited constructor instead returns a freshly exact GenericObjectType.
                     let exact = n.is_exact
                         && self
                             .codebase
@@ -1507,8 +1414,6 @@ impl Checker<'_, '_> {
                         shape.values.push(self.to_phpstan(v));
                     }
                     shape.is_list = Tri::Yes;
-                    // a Mago list is a list: `TypeCombinator::intersect($shape, new AccessoryArrayListType())`, as
-                    // the builder alone leaves `array{0: a, 1?: b, 2?: c}` maybe a list
                     return intersect(vec![finish_shape(shape), Type::Accessory(Accessory::List)]);
                 }
                 let mut item = self.to_phpstan(&l.element_type);
@@ -1543,90 +1448,81 @@ impl Checker<'_, '_> {
                 }
                 intersect(parts)
             }
-            TArray::Keyed(k) => {
-                match &k.parameters {
-                    Some((key, value)) if !key.is_never() && !k.is_constant_shape() => {
-                        let mut keys = vec![self.to_phpstan(key)];
-                        let mut values = vec![self.to_phpstan(value)];
-                        for (k, (_, v)) in k.known_items.iter().flat_map(|k| k.iter()) {
-                            keys.push(self.key(k));
-                            values.push(self.to_phpstan(v));
-                        }
-                        let mut parts = vec![Type::array(union(keys), union(values))];
-                        if k.non_empty
-                            || k.known_items
-                                .as_ref()
-                                .is_some_and(|i| i.values().any(|(o, _)| !o))
-                        {
-                            parts.push(Type::Accessory(Accessory::NonEmptyArray));
-                        }
-                        parts.extend(
-                            k.known_items
-                                .iter()
-                                .flat_map(|k| k.iter())
-                                .filter(|&(_key, (optional, _value))| !optional)
-                                .map(|(key, (_optional, value))| {
-                                    Type::Accessory(Accessory::HasOffsetValue(
-                                        Box::new(self.key(key)),
-                                        Box::new(self.to_phpstan(value)),
-                                    ))
-                                }),
-                        );
-                        intersect(parts)
+            TArray::Keyed(k) => match &k.parameters {
+                Some((key, value)) if !key.is_never() && !k.is_constant_shape() => {
+                    let mut keys = vec![self.to_phpstan(key)];
+                    let mut values = vec![self.to_phpstan(value)];
+                    for (k, (_, v)) in k.known_items.iter().flat_map(|k| k.iter()) {
+                        keys.push(self.key(k));
+                        values.push(self.to_phpstan(v));
                     }
-                    parameters => {
-                        let mut shape = ConstArray::empty();
-                        for (key, (optional, v)) in k.known_items.iter().flat_map(|k| k.iter()) {
-                            if *optional {
-                                shape.optional.push(shape.keys.len());
-                            }
-                            shape.keys.push(self.key(key));
-                            shape.values.push(self.to_phpstan(v));
+                    let mut parts = vec![Type::array(union(keys), union(values))];
+                    if k.non_empty
+                        || k.known_items
+                            .as_ref()
+                            .is_some_and(|i| i.values().any(|(o, _)| !o))
+                    {
+                        parts.push(Type::Accessory(Accessory::NonEmptyArray));
+                    }
+                    parts.extend(
+                        k.known_items
+                            .iter()
+                            .flat_map(|k| k.iter())
+                            .filter(|&(_key, (optional, _value))| !optional)
+                            .map(|(key, (_optional, value))| {
+                                Type::Accessory(Accessory::HasOffsetValue(
+                                    Box::new(self.key(key)),
+                                    Box::new(self.to_phpstan(value)),
+                                ))
+                            }),
+                    );
+                    intersect(parts)
+                }
+                parameters => {
+                    let mut shape = ConstArray::empty();
+                    for (key, (optional, v)) in k.known_items.iter().flat_map(|k| k.iter()) {
+                        if *optional {
+                            shape.optional.push(shape.keys.len());
                         }
-                        if let Some((key, value)) = parameters
-                            && !key.is_never()
-                        {
-                            let key = self.to_phpstan(key);
-                            if shape.keys.is_empty() {
-                                shape.is_list = if key.is_integer().yes() {
-                                    Tri::Maybe
-                                } else {
-                                    Tri::No
-                                };
-                            }
-                            shape.unsealed = Some((key, self.to_phpstan(value)));
-                        }
-                        if shape.keys.is_empty() && shape.unsealed.is_some() {
-                            // Recreate an existing ConstantArrayType, not a new PHPDoc shape. The
-                            // builder intentionally normalizes newly declared empty shapes to ArrayType.
-                            Type::ConstArray(Box::new(shape))
-                        } else {
-                            // A truthy shape whose keys are all optional: `non-empty-array{0?: int}`.
-                            let non_empty = k.non_empty
-                                && !shape.keys.is_empty()
-                                && shape.optional.len() == shape.keys.len();
-                            let shape = finish_shape(shape);
-                            if non_empty {
-                                intersect(vec![shape, Type::Accessory(Accessory::NonEmptyArray)])
+                        shape.keys.push(self.key(key));
+                        shape.values.push(self.to_phpstan(v));
+                    }
+                    if let Some((key, value)) = parameters
+                        && !key.is_never()
+                    {
+                        let key = self.to_phpstan(key);
+                        if shape.keys.is_empty() {
+                            shape.is_list = if key.is_integer().yes() {
+                                Tri::Maybe
                             } else {
-                                shape
-                            }
+                                Tri::No
+                            };
+                        }
+                        shape.unsealed = Some((key, self.to_phpstan(value)));
+                    }
+                    if shape.keys.is_empty() && shape.unsealed.is_some() {
+                        Type::ConstArray(Box::new(shape))
+                    } else {
+                        let non_empty = k.non_empty
+                            && !shape.keys.is_empty()
+                            && shape.optional.len() == shape.keys.len();
+                        let shape = finish_shape(shape);
+                        if non_empty {
+                            intersect(vec![shape, Type::Accessory(Accessory::NonEmptyArray)])
+                        } else {
+                            shape
                         }
                     }
                 }
-            }
+            },
         }
     }
 }
 
-/// MutatingScope::unsetExpression writes each parent back with ConstantArrayTypeBuilder's slot order.
-/// This is a source-order scaffold only: removed values stay removed, and new values come from inference.
 fn unset_order(source: Type, keys: &[Option<Type>]) -> Type {
     match source {
         Type::ConstArray(mut shape) => {
             let (key, path) = keys.split_first().expect("an offset unset has a key");
-            // No single order is known beyond a weak/unknown key. A known parent before it can still
-            // be appended, even when the terminal key is unknown.
             let Some(key) = key else {
                 return Type::ConstArray(shape);
             };
@@ -1662,13 +1558,10 @@ fn unset_order(source: Type, keys: &[Option<Type>]) -> Type {
     }
 }
 
-/// Recover erased source metadata, never a declaration's broader value type over a concrete inferred type.
 fn restore(actual: Type, source: &Type) -> Type {
     restore_metadata(actual, source, true)
 }
 
-/// A closure parameter's native class intersected with the callable's `Builder<User>` or `Builder<*>` is the
-/// callable's (PHPStan's intersectButNotNever), where Mago keeps the template's bound.
 fn callable_arguments(actual: Type, source: &Type) -> Type {
     match (actual, source) {
         (actual, Type::Union(source)) => {
@@ -1703,7 +1596,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
         })
     };
     match (actual, source) {
-        // Mago reads Larastan's `model-property<T>` and `view-string` as `string`
         (Type::String, Type::Intersection(parts))
             if parts.iter().any(|p| {
                 matches!(
@@ -1719,8 +1611,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
         {
             actual.argument = source.argument;
             actual.default.clone_from(&source.default);
-            // A matching template identity proves which bound was erased. A concrete narrowed bound still
-            // wins; only Mago's unconstrained fallback can regain the source's callable-array intersection.
             actual.bound = if matches!(actual.bound, Type::Mixed { .. }) {
                 source.bound.clone()
             } else {
@@ -1728,8 +1618,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
             };
             Type::Template(actual)
         }
-        // a union inferred for a template bounded by a benevolent union (`TKey of array-key`) is not benevolent;
-        // only the bound itself, as the fallback, is
         (Type::Union(actual), Type::Template(source))
             if matches!(&source.bound, Type::Benevolent(bound)
                 if !(actual.len() == bound.len() && actual.iter().all(|a| bound.contains(a)))) =>
@@ -1749,8 +1637,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
             ))
         }
         (Type::Union(mut actual), Type::Union(source)) => {
-            // Reflection's first method comes from the first written alternative, not Mago's canonical
-            // atomic order. Reorder only surviving inferred alternatives; never reintroduce a removed one.
             actual.sort_by_key(|a| matching(a, source).unwrap_or(usize::MAX));
             Type::Union(
                 actual
@@ -1764,17 +1650,12 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
                     .collect(),
             )
         }
-        (actual, Type::Union(source)) => {
-            // A narrowed single alternative still owns its metadata, not its eliminated siblings' types.
-            matching(&actual, source).map_or_else(
-                || actual.clone(),
-                |i| restore_metadata(actual.clone(), &source[i], restore_list),
-            )
-        }
-        // Mago reads a `*` type argument as `mixed`; the declaration's bivariant wildcard survives in PHPStan
+        (actual, Type::Union(source)) => matching(&actual, source).map_or_else(
+            || actual.clone(),
+            |i| restore_metadata(actual.clone(), &source[i], restore_list),
+        ),
         (Type::Mixed { .. }, Type::Wildcard) => Type::Wildcard,
         (Type::Mixed { explicit: inferred }, Type::Mixed { explicit }) => Type::Mixed {
-            // Recover erased declaration metadata without erasing an assertion's source-owned identity.
             explicit: inferred || *explicit,
         },
         (
@@ -1787,8 +1668,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
             explicit: inferred || *explicit,
             excluded,
         },
-        // Mago's PHPDoc parser reads an unnamed trailing `&` as an intersection and rejects the tag. The
-        // surviving native callable is exactly TCallableSignature::mixed(false), not an inferred signature.
         (Type::Callable(None), source @ Type::Callable(Some(_))) => source.clone(),
         (Type::Callable(Some(actual)), source) if unspecified_callable(&actual) => {
             if matches!(source, Type::Callable(Some(_))) {
@@ -1805,7 +1684,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
                 actual
                     .into_iter()
                     .zip(source)
-                    // a declared benevolent argument (`array-key`) a dynamic return type narrowed is not restored
                     .map(|(a, s)| {
                         if matches!(s, Type::Benevolent(_))
                             && !pun_phpstan::types::is_super_type_of(&a, s).yes()
@@ -1828,8 +1706,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
         (Type::ConstArray(mut actual), Type::ConstArray(source))
             if actual.keys.iter().all(|k| source.keys.contains(k)) =>
         {
-            // ConstantArrayType::unsetOffset() keeps the surviving keys in their original slots. Mago's
-            // BTreeMap cannot retain that order, including inside weak writes' union alternatives.
             let positions: Vec<_> = source
                 .keys
                 .iter()
@@ -1857,8 +1733,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
             {
                 actual.is_list = source.is_list;
             } else if !restore_list {
-                // Reordering can disprove Mago's canonical map's listness, but never regain certainty
-                // lost by an actual unset. The mutable scaffold's original list flag is not evidence.
                 actual.is_list = actual
                     .is_list
                     .and(finish_shape((*actual).clone()).is_list());
@@ -1868,8 +1742,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
                     Some((restore(k.clone(), sk), restore(v.clone(), sv)))
                 }
                 (None, Some((Type::Never(NeverKind::Explicit | NeverKind::NonAccepting), _))) => {
-                    // ConstantArrayType's constructor treats every explicit never subclass as a sealed key
-                    // and normalizes its value to explicit never. The shared model stores that base kind.
                     Some((
                         Type::Never(NeverKind::Explicit),
                         Type::Never(NeverKind::Explicit),
@@ -1894,16 +1766,11 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
         (Type::Mixed { .. }, source @ (Type::Intersection(_) | Type::ConstArray(_)))
             if source.is_array().yes() && source.is_callable().yes() =>
         {
-            // Mago can reject a callable-array PHPDoc intersection outright. Its source-owned parameter
-            // or annotation still supplies that erased bound, even if PHPStan normalizes it to a shape;
-            // a concrete inferred value always wins.
             source.clone()
         }
         (actual @ Type::ConstArray(_), source @ Type::Intersection(parts))
             if source.is_array().yes() && source.is_callable().yes() =>
         {
-            // IntersectionType retains the callable conjunct for a constant array too. Restore the
-            // surviving shape's source order first; never replace narrowed values or removed keys.
             let actual = parts.iter().fold(actual, |actual, source| {
                 restore_metadata(actual, source, restore_list)
             });
@@ -1921,14 +1788,11 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
         (actual @ Type::Array(..), source @ Type::Intersection(_))
             if source.is_array().yes() && source.is_callable().yes() =>
         {
-            // Unlike a union's unrelated callable member, this source guarantees both properties. An
-            // intersection retains actual key/value narrowing instead of replacing it with the declaration.
             intersect(vec![actual, source.clone()])
         }
         (actual, Type::Intersection(parts)) => parts.iter().fold(actual, |actual, source| {
             restore_metadata(actual, source, restore_list)
         }),
-        // ObjectShapeType keeps its properties' order, which Mago's sorted properties lose
         (Type::ObjectShape(mut actual), Type::ObjectShape(source)) => {
             actual.sort_by_key(|(name, ..)| {
                 source
@@ -1942,8 +1806,6 @@ fn restore_metadata(actual: Type, source: &Type, restore_list: bool) -> Type {
     }
 }
 
-/// Whether two object shapes (alone or intersected) have the same properties: ObjectShapeType is only a maybe super
-/// type of another, so a reordered shape is matched by its property names.
 fn same_shape_properties(a: &Type, b: &Type) -> bool {
     fn names(t: &Type) -> Option<Vec<&str>> {
         match t {
@@ -1959,14 +1821,12 @@ fn same_shape_properties(a: &Type, b: &Type) -> bool {
     names(a).is_some_and(|a| names(b) == Some(a))
 }
 
-/// The native/common callable fallback, not a concrete closure or a signature with parameter/return information.
 fn unspecified_callable(s: &Signature) -> bool {
     matches!(s.params.as_slice(), [p] if p.name.is_empty() && !p.by_ref && p.variadic && p.optional && p.ty == mixed())
         && s.ret == mixed()
         && s.templates.is_empty()
 }
 
-/// A template's bound: an unbounded template's is the explicit `mixed` of `@template T`.
 fn explicit_mixed(t: Type) -> Type {
     if matches!(t, Type::Mixed { .. }) {
         Type::Mixed { explicit: true }
@@ -1975,12 +1835,10 @@ fn explicit_mixed(t: Type) -> Type {
     }
 }
 
-/// Value-level templates, recursively through class strings, shapes, bounds and other inferred containers.
 fn inferred_argument(t: &Type) -> Type {
     inferred_argument_in(t, &[], &|_| false)
 }
 
-/// TemplateTypeHelper::toArgument(): templates owned by a callable, and the `kept` ones, remain parameters.
 fn inferred_argument_in(t: &Type, owned: &[Template], kept: &dyn Fn(&Template) -> bool) -> Type {
     match t {
         Type::Template(t) => Type::Template(Box::new(Template {
@@ -2012,7 +1870,6 @@ fn literal_elements<'e, 'arena>(
     }
 }
 
-/// Constant scalar `toArrayKey()`: canonical decimal strings are ints; other strings keep their bytes.
 fn array_key(t: Type) -> Option<Type> {
     Some(match t {
         Type::ConstInt(_) => t,
@@ -2032,7 +1889,6 @@ fn array_key(t: Type) -> Option<Type> {
     })
 }
 
-/// A shape through PHPStan's ConstantArrayTypeBuilder (`array{}` for no items).
 fn finish_shape(shape: ConstArray) -> Type {
     let mut builder = pun_phpstan::types::ShapeBuilder::new();
     for (i, (k, v)) in shape.keys.iter().zip(&shape.values).enumerate() {
@@ -2063,8 +1919,6 @@ mod never_identity_tests {
         let project = crate::Project::new(vec![file.clone()], Vec::new());
         let (mut codebase, sources) = crate::codebase::build(&project, None).unwrap();
         let mut expected = Vec::new();
-        // Model the producer/consumer boundary directly: accepting explicit never has no declaration
-        // syntax. Its expression producers and call-evaluation facts are independently maintained.
         for (name, kind, ty) in [
             ("implicitValue", "implicit", get_never()),
             ("explicitValue", "explicit", get_explicit_never()),

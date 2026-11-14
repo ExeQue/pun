@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-assert-instanceof-over-empty`, ported from rector-phpunit's
-//! `AssertEmptyNullableObjectToAssertInstanceofRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `assertNotEmpty($x)` and `assertNotNull($x)` on a nullable object (a union of one class and
-//! `null`) become `assertInstanceOf(\X::class, $x)`. A message argument is kept after the object. An anonymous
-//! class has no name to write, so it stays.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Node, NodeKind};
@@ -44,7 +37,6 @@ impl Rule for PreferAssertInstanceofOverEmpty {
             return;
         };
         let value = first.value();
-        // a `UnionType` whose type without `null` is an `ObjectType`
         let facts = facts(ctx);
         let Some(ty) = facts.full_type(node_span(value)) else {
             return;
@@ -58,7 +50,6 @@ impl Rule for PreferAssertInstanceofOverEmpty {
             .filter(|a| !matches!(a, TAtomic::Null))
             .collect();
         let class = match rest[..] {
-            // Mago names an anonymous class `{anonymous-class:...}`.
             [TAtomic::Object(TObject::Named(named))]
                 if named.intersection_types.is_none()
                     && !named.is_this

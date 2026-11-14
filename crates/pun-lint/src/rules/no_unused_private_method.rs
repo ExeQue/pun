@@ -1,13 +1,3 @@
-//! `lint/dead-code/no-unused-private-method`, ported from Rector 2.8.4's `RemoveUnusedPrivateMethodRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `IsClassMethodUsedAnalyzer` and `DataProviderMethodsFinder` in
-//! `class_method.rs`.
-//!
-//! A private method of a named class goes when nothing in the class calls it (on a receiver of the class's type,
-//! through `self::`/`static::`, a fluent chain on `$this`, or an array callable), no trait the class uses declares or
-//! calls it, no test method names it as its data provider, and no `X::class::name()` call names it. Magic methods,
-//! a method that calls `$this->$name()` itself, and every method of a class with `__call` stay. A class that declares
-//! a named class in one of its methods is left alone, as the oracle leaves it.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -39,7 +29,6 @@ impl Rule for NoUnusedPrivateMethod {
     ) {
         let facts = facts(ctx);
         with_class_info(node, ancestors, &facts, |class| {
-            // The oracle leaves a class that declares a named class in a method body alone.
             let mut nested = false;
             walk(node, &mut |n, path| {
                 nested = nested || (!path.is_empty() && matches!(n, Node::Class(_)));
@@ -103,7 +92,6 @@ impl Rule for NoUnusedPrivateMethod {
     }
 }
 
-/// `resolveClassStringStaticCallNames`: the methods called as `X::class::name()`.
 fn class_string_static_calls(class: Node<'_, '_>) -> Vec<Vec<u8>> {
     let mut names = Vec::new();
     walk(class, &mut |node, _| {
@@ -124,9 +112,7 @@ fn class_string_static_calls(class: Node<'_, '_>) -> Vec<Vec<u8>> {
     names
 }
 
-/// `hasDynamicMethodCallOnFetchThis`: the method's own statements call `$this->$name()` (or `$this->{$name}()`).
 fn has_dynamic_method_call_on_this(method: &Method<'_>) -> bool {
-    // The whole method: its parameters' defaults and attributes cannot call a method.
     let mut found = false;
     walk(Node::Method(method), &mut |node, _| {
         let (object, selector) = match node {

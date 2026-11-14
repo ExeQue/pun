@@ -251,9 +251,6 @@ fn local_ignores_processor() {
     }
 }
 
-/// Pun's `rule` key (`[[analyse.ignore]] rule`, derived by hand from rules.md §4): an entry ignores the errors whose
-/// identifier is its rule's, is reported unmatched under the rule's name as an identifier-only entry is, and entries
-/// with the same path and rule add up their counts as PHPStan's do.
 #[test]
 fn rule_entries() {
     fn rule_of(id: &str) -> Option<&'static str> {
@@ -293,13 +290,10 @@ fn rule_entries() {
         p.string_errors,
         ["Ignored error pattern analyse/x/b was not matched in reported errors."]
     );
-    // Without the rule mapping nothing matches.
     let p = IgnoredErrors::new(&entries, true).process(vec![e("a.one")], false, &[], false);
     assert_eq!(p.errors.len(), 1);
 }
 
-/// `ignoreErrors` built outside a neon file goes through PHPStan's checks, with its messages
-/// (ContainerFactory::validateParameters, ValidateIgnoredErrorsExtension); a `rule` names what to ignore.
 #[test]
 fn validate_ignore_errors() {
     use pun_phpstan::config::validate_ignore_errors;
@@ -330,9 +324,6 @@ fn validate_ignore_errors() {
     assert!(e.starts_with("Invalid entry in ignoreErrors:\n"), "{e}");
 }
 
-/// PHPStan 2.3.5 reports an unmatched entry without a file of its own in the config file and line of the entry
-/// (IgnoreErrorsConfigFixer::findEntryLocation()), but not one in the files of an installed Composer package (a
-/// package from a path repository is the project's own code). Lines and messages derived from that class by hand.
 #[test]
 fn unmatched_entries_are_reported_in_their_config_file() {
     let dir = std::env::temp_dir().join(format!("pun-ignore-location-{}", std::process::id()));

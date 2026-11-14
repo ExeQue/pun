@@ -1,10 +1,3 @@
-//! `lint/complexity/no-constant-via-variable`, ported from Rector 2.8.4's `VariableConstFetchToClassConstFetchRector`
-//! (rules/CodeQuality/Rector/ClassConstFetch).
-//!
-//! `$value::NAME`, where the native type of `$value` is one known class that has the constant, becomes
-//! `\Fully\Qualified\Class::NAME` when that class is final by keyword (an enum is) or the constant it has is
-//! (`final public const`). A docblock's `@final` does not count.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{ClassLikeConstantSelector, Expression, Node, NodeKind};
@@ -46,7 +39,6 @@ impl Rule for NoConstantViaVariable {
             return;
         };
         let codebase = &facts.codebase;
-        // Mago gives a value of a class it does not know no named type, so a named one is known
         let metadata = match &t.types[..] {
             [TAtomic::Object(TObject::Named(n))] if !n.is_this && !n.is_static => {
                 codebase.get_class_like(n.name.as_bytes())
@@ -55,7 +47,6 @@ impl Rule for NoConstantViaVariable {
             _ => None,
         };
         let Some(metadata) = metadata else { return };
-        // `hasConstant()`: the class, a parent or an interface declares it, or an enum has the case
         let name = constant.value;
         let declared = std::iter::once(&metadata.name)
             .chain(metadata.all_parent_classes.iter())

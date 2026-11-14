@@ -1,5 +1,3 @@
-//! ParameterAllowedConstantsTest.php's reflection contract, from PHPStan 2.3.1.
-
 use pun_phpstan::symbols::{ConstantReflection, PhpVersion, symbols};
 
 #[test]

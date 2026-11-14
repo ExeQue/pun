@@ -1,7 +1,3 @@
-//! InvalidIncDecOperationRule (`*.expr`: `++`/`--` on what is not a variable, an offset or a property; `*.type`: on a
-//! type that is not a number, a (numeric) string, null, bool or an object with operator overloading, as of the PHP
-//! version).
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Accessory, Level, Type, intersect, is_super_type_of};
@@ -11,7 +7,6 @@ use super::super::{Checker, declared};
 pub(super) const IDENTIFIERS: &[&str] =
     &["preInc.type", "postInc.type", "preDec.type", "postDec.type"];
 
-/// The operand whose type the rule reads.
 pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
     match e {
         Expression::UnaryPrefix(u) if u.operator.is_increment_or_decrement() => {
@@ -22,10 +17,8 @@ pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
     }
 }
 
-/// `$var` is not a type `++`/`--` takes.
 fn types(c: &mut Checker, operand: &Expression, kind: &str, operator: &str) {
     let this = matches!(super::flow::unparen(operand), Expression::Variable(Variable::Direct(v)) if v.name == b"$this");
-    // (`checkThisOnly` at levels 0 and 1)
     if c.level < 2 && !this {
         return;
     }

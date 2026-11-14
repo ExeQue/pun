@@ -1,6 +1,3 @@
-//! Larastan's `SchemaAggregator` (src/Properties/SchemaAggregator.php, v3.14.0, itself from psalm/laravel-psalm-plugin):
-//! the tables and columns the `up()` methods of the migrations build, function by function.
-
 use std::collections::HashMap;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -14,7 +11,6 @@ use super::strings::{class_basename, snake};
 const SCHEMA_FACADE: &str = "Illuminate\\Support\\Facades\\Schema";
 const BLUEPRINT: &str = "Illuminate\\Database\\Schema\\Blueprint";
 
-/// `SchemaColumn`: a column's name, its readable type as a PHPDoc type string, and enum or set options.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Column {
     pub readable_type: String,
@@ -22,7 +18,6 @@ pub(super) struct Column {
     pub options: Option<Vec<String>>,
 }
 
-/// `SchemaTable`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct Table {
     pub columns: HashMap<String, Column>,
@@ -58,15 +53,12 @@ impl Table {
     }
 }
 
-/// `SchemaAggregator`. `model_key` answers `getModelReferenceType()`'s question about a model class: its table and
-/// primary key name (Larastan instantiates the model for that).
 pub(super) struct SchemaAggregator<'a> {
     pub tables: HashMap<String, Table>,
     codebase: &'a CodebaseMetadata,
     model_key: &'a dyn Fn(&str) -> Option<(String, String)>,
 }
 
-/// `$call->getArgs()[$i]->value`.
 fn arg<'x, 'arena>(list: &'x ArgumentList<'arena>, i: usize) -> Option<&'x Expression<'arena>> {
     list.arguments.get(i).map(|a| match a {
         Argument::Positional(p) => p.value,
@@ -74,7 +66,6 @@ fn arg<'x, 'arena>(list: &'x ArgumentList<'arena>, i: usize) -> Option<&'x Expre
     })
 }
 
-/// The value of a `String_` node.
 fn string(e: Option<&Expression<'_>>) -> Option<String> {
     match e? {
         Expression::Literal(Literal::String(s)) => {
@@ -91,7 +82,6 @@ fn member_name<'x>(selector: &'x ClassLikeMemberSelector) -> Option<&'x str> {
     }
 }
 
-/// The string items of an `Array_` node.
 fn string_items(e: &Expression) -> Option<Vec<String>> {
     let elements = match e {
         Expression::Array(a) => &a.elements,
@@ -106,7 +96,6 @@ fn string_items(e: &Expression) -> Option<Vec<String>> {
     )
 }
 
-/// `NodeFinder::findInstanceOf($stmts, Class_::class)`'s members, anonymous classes included.
 #[derive(Default)]
 struct Classes<'ast, 'arena>(Vec<&'ast Sequence<'arena, ClassLikeMember<'arena>>>);
 
@@ -119,7 +108,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Classes<'ast, 'arena> {
     }
 }
 
-/// `NodeFinder::findInstanceOf($node, Stmt\Expression::class)`.
 #[derive(Default)]
 struct ExpressionStatements<'ast, 'arena>(Vec<&'ast ExpressionStatement<'arena>>);
 
@@ -148,7 +136,6 @@ impl<'a> SchemaAggregator<'a> {
                 .is_instance_of(class.as_bytes(), parent.as_bytes())
     }
 
-    /// `$class->toCodeString() === '\Schema'` or a subclass of the Schema facade.
     fn is_schema(&self, class: &Expression, names: &ResolvedNames) -> bool {
         let Expression::Identifier(id) = class else {
             return false;
@@ -216,7 +203,6 @@ impl<'a> SchemaAggregator<'a> {
     }
 
     fn alter_table(&mut self, args: &ArgumentList, creating: bool, names: &ResolvedNames) {
-        // ponytail: a `Foo::TABLE` class constant as the table name is not read
         let Some(table) = string(arg(args, 0)) else {
             return;
         };
@@ -514,13 +500,11 @@ impl<'a> SchemaAggregator<'a> {
                 table.set_column(&format!("{column}_type"), "string", a.nullable, None);
                 table.set_column(&format!("{column}_id"), "string", a.nullable, None);
             }
-            // We know a property exists with a name, we just don't know its type.
             _ => table.set_column(column, "mixed", a.nullable, None),
         }
     }
 }
 
-/// `processStatementAlterMethod()`'s arguments.
 struct Alter<'x, 'arena> {
     first: Option<&'x MethodCall<'arena>>,
     column: String,
@@ -531,8 +515,6 @@ struct Alter<'x, 'arena> {
     stmt: &'x ExpressionStatement<'arena>,
 }
 
-/// `getNullableArgumentValue()`: `nullable()` and `nullable(<anything but a constant>)` are true, a constant only
-/// when it is written `true`.
 fn nullable_argument_value(call: &MethodCall) -> bool {
     match arg(&call.argument_list, 0) {
         None => true,
@@ -545,8 +527,6 @@ fn nullable_argument_value(call: &MethodCall) -> bool {
     }
 }
 
-/// `getUpdateStatements()`: the closure's statements, with the expression statements anywhere inside an `if` in
-/// place of the `if`.
 fn update_statements<'ast, 'arena>(
     body: &'ast Block<'arena>,
 ) -> Vec<&'ast ExpressionStatement<'arena>> {

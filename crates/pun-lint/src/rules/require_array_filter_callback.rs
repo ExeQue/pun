@@ -1,14 +1,3 @@
-//! `lint/functions/require-array-filter-callback`, ported from phpstan-strict-rules 2.0.12's `ArrayFilterStrictRule`
-//! (`arrayFilter.strict`), with PHPStan's defaults: PHPDoc types certain, `checkNullables` off (as below level 8).
-//!
-//! A call of PHP's `array_filter()` (the name `FuncCallNameResolver` resolves, arguments in parameter order as
-//! `ArgumentsNormalizer::reorderArgs` puts them, a skipped `callback` taking its default `null`) is reported:
-//!
-//! - With only the array, unless the array's value type is `bool`, an array, or a union whose every member is
-//!   always truthy or always falsy with both kinds present (`Foo|null`, `0|1`). PHPStan merges a `0` into an integer
-//!   range it touches (`positive-int|0` is `int<0, max>`) and `true|false` into `bool`.
-//! - With a callback whose type is `null`: `Parameter #2 of array_filter() cannot be null ... (null given).`
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::atomic::scalar::int::TInteger;
@@ -22,17 +11,11 @@ use crate::{Context, Report, Rule};
 
 pub struct RequireArrayFilterCallback;
 
-/// One argument after `ArgumentsNormalizer::reorderArgs`: an expression, or a skipped parameter's default (`null`
-/// for `callback`).
 enum Arg<'a> {
     Given(&'a Expression<'a>),
     Default,
 }
 
-/// `reorderArgs` for `array_filter(array $array, ?callable $callback = null, int $mode = 0)`. Without names the
-/// arguments stay as written. A named one moves to its parameter's place unless that place is taken (then it is
-/// dropped), and a name no parameter has goes after the rest. Holes before the last place take the default, and a
-/// hole at `$array`, which has none, makes PHPStan give up (`None`).
 fn reorder<'a>(args: &[&'a Argument<'a>]) -> Option<Vec<Arg<'a>>> {
     const PARAMS: [&[u8]; 3] = [b"array", b"callback", b"mode"];
     let mut slots: Vec<Option<&'a Expression<'a>>> = Vec::new();
@@ -67,8 +50,6 @@ fn reorder<'a>(args: &[&'a Argument<'a>]) -> Option<Vec<Arg<'a>>> {
     Some(out)
 }
 
-/// `Type::toBoolean()` of one member: `Some(true)` always truthy, `Some(false)` always falsy (`array{}` too, which
-/// Mago leaves undecided), `None` either.
 fn truthiness(atomic: &TAtomic) -> Option<bool> {
     if atomic.is_truthy() {
         Some(true)
@@ -79,10 +60,8 @@ fn truthiness(atomic: &TAtomic) -> Option<bool> {
     }
 }
 
-/// Whether the array value type `values` lets `array_filter()` go without a callback.
 fn allowed(values: &[TAtomic]) -> bool {
     let is_bool = |a: &TAtomic| matches!(a, TAtomic::Scalar(TScalar::Bool(_)));
-    // `isBoolean()->yes()`, `true|false` being `bool`.
     if !values.is_empty() && values.iter().all(is_bool) {
         return true;
     }
@@ -97,7 +76,6 @@ fn allowed(values: &[TAtomic]) -> bool {
     if has(true) && has(false) {
         return false;
     }
-    // A `0` next to or inside an integer range merges into it.
     let zero = values
         .iter()
         .any(|a| matches!(a, TAtomic::Scalar(TScalar::Integer(TInteger::Literal(0)))));

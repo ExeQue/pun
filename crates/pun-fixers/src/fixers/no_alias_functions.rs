@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\NoAliasFunctionsFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -8,7 +7,6 @@ use pun_tokens::{Token, Tokens};
 use serde_json::Value;
 use std::path::Path;
 
-/// alias => (replacement, required argument count for the `[name, count]` form).
 type Alias = (&'static str, &'static str, Option<usize>);
 
 #[derive(Default)]
@@ -42,9 +40,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 impl NoAliasFunctionsFixer {
-    /// configurePostNormalisation: array_merge of the chosen sets (string keys: later wins, position kept).
     fn set_sets(&mut self, sets: &[String]) {
-        // array_merge: the sets share no alias, and a set listed twice only adds identical, already-fixed entries.
         let mut aliases: Vec<Alias> = Vec::new();
         for set in sets {
             if set == "@all" {

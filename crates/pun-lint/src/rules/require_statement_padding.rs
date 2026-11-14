@@ -1,10 +1,3 @@
-//! `lint/style/require-statement-padding`, ported from Rector 2.8.4's `NewlineAfterStatementRector`
-//! (rules/CodingStyle/Rector/Stmt).
-//!
-//! A function, class, trait, interface, `if`, `foreach`, `for`, `while`, `do` or `try` statement, or a `switch`, gets
-//! a blank line after it when the next statement (or the comment before it) starts on the very next line. Rector
-//! skips a file with inline HTML.
-
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -36,7 +29,6 @@ impl Rule for RequireStatementPadding {
         };
         let mut edits = Vec::new();
         for (key, stmt) in list.stmts.iter().enumerate() {
-            // `STMTS_TO_HAVE_NEXT_NEWLINE`; a class member is never in a statement list Rector walks.
             if !matches!(
                 stmt,
                 Statement::Function(_)
@@ -53,7 +45,6 @@ impl Rule for RequireStatementPadding {
             ) {
                 continue;
             }
-            // The next statement, from its first comment (`CommentResolver`), or php-parser's trailing `Nop`.
             let next = match list.stmts.get(key + 1) {
                 Some(_) => list.with_comments(ctx, key + 1).start,
                 None => match list.nop_span(ctx.source) {
@@ -65,7 +56,6 @@ impl Rule for RequireStatementPadding {
             if lines_between(ctx.source, end, next) != 1 {
                 continue;
             }
-            // Rector prints the new empty statement as an empty line.
             edits.push(Edit::new(Span::new(end, end), "\n"));
         }
         let Some(first) = edits.first().map(|e| e.span) else {

@@ -1,15 +1,3 @@
-//! `lint/dead-code/no-unused-promoted-property`, ported from Rector 2.8.4's `RemoveUnusedPromotedPropertyRector`
-//! (rules/DeadCode/Rector/ClassMethod), with `PropertyFetchFinder::findLocalPropertyFetchesByName` and
-//! `PropertyWriteonlyAnalyzer::hasClassDynamicPropertyNames`.
-//!
-//! A private promoted constructor parameter whose property the class never fetches goes, with its `@param` tag; when
-//! the constructor reads the variable, only its modifiers go. A class with attributes, a `__get()` method, a trait,
-//! a property fetched by a dynamic name or `get_object_vars($this)`, or an interface that declares the constructor
-//! is left alone.
-//!
-//! Rector counts the fetches whose object has the class's type. Pun counts every fetch of that name in the class,
-//! on any object, so it keeps a property Rector may remove.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -86,14 +74,12 @@ impl Rule for NoUnusedPromotedProperty {
             if fetched(node, name) {
                 continue;
             }
-            // `findVariableOfName`: the constructor reads the variable, so only the property goes.
             let read = any_node(
                 Node::MethodBody(&constructor.body),
                 &|n| matches!(n, Node::Variable(Variable::Direct(v)) if v.name == param.variable.name),
             );
             if read {
                 let first = node_span(param.modifiers.first().unwrap()).start;
-                // php-parser reprints from the modifiers to the type, or to the variable, so an untyped `&` goes too.
                 let next = match &param.hint {
                     Some(hint) => node_span(hint).start,
                     None => node_span(&param.variable).start,
@@ -122,7 +108,6 @@ impl Rule for NoUnusedPromotedProperty {
     }
 }
 
-/// A fetch of the property `name` anywhere in the class: `$x->name`, `$x?->name` or `X::$name`.
 fn fetched(class: Node<'_, '_>, name: &[u8]) -> bool {
     let is_name = |selector: &ClassLikeMemberSelector<'_>| matches!(selector, ClassLikeMemberSelector::Identifier(id) if id.value == name);
     any_node(class, &|n| match n {
@@ -135,8 +120,6 @@ fn fetched(class: Node<'_, '_>, name: &[u8]) -> bool {
     })
 }
 
-/// `hasClassDynamicPropertyNames`: `get_object_vars($this)`, or a property fetched by a name that is not an
-/// identifier.
 fn dynamic_names(class: Node<'_, '_>) -> bool {
     any_node(class, &|n| {
         match n {
@@ -154,7 +137,6 @@ fn dynamic_names(class: Node<'_, '_>) -> bool {
     })
 }
 
-/// An interface of the class declares `__construct`.
 fn constructor_from_interface(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

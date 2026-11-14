@@ -1,5 +1,3 @@
-//! `pun list-files` (context/plan/config.md §7, after Mago's `list-files`): the files a command would check with the
-//! current pun.toml, one per line, relative to the project root and sorted.
 use crate::agent;
 use anyhow::{Result, bail};
 use clap::Args;
@@ -63,7 +61,6 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
     } else {
         let list: String = files.iter().map(|f| format!("{f}\n")).collect();
         if agent::enabled() {
-            // The count goes to stderr, so stdout stays one path per line (`pun list-files | xargs`).
             let detail: Vec<String> = command
                 .map(|c| format!("{} set", c.1))
                 .into_iter()

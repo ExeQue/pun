@@ -1,8 +1,3 @@
-//! Class-member declaration rules that read no inferred types: DuplicateDeclarationRule (with
-//! DuplicateDeclarationHelper), AbstractPrivateMethodRule, FinalPrivateMethodRule, FinalPrivateConstantRule and
-//! InvalidPromotedPropertiesRule, plus what they read of the class being declared (`InClassNode`'s ClassReflection)
-//! and of PHPDoc tags.
-
 use std::collections::HashSet;
 
 use mago_codex::symbol::SymbolKind;
@@ -11,21 +6,15 @@ use mago_syntax::cst::*;
 
 use super::Checker;
 
-/// The class-like a member is declared in, as its ClassReflection answers (in a trait walked in a class's context,
-/// that class).
 pub(super) struct Decl {
-    /// `getDisplayName()`.
     pub display: Option<String>,
     pub kind: SymbolKind,
     pub is_abstract: bool,
     pub is_readonly: bool,
-    /// `isImmutable()` from the declaration's own PHPDoc (or, in a trait's context, the class's whole answer).
     pub immutable_doc: bool,
-    /// The parent class, for `isImmutable()` and a property's `isVirtual()`.
     pub parent: Option<String>,
 }
 
-/// The tag names of a PHPDoc (`/** ... */`): phpdoc-parser's tags start a line, after the optional leading `*`.
 pub(super) fn doc_tags(doc: &[u8]) -> Vec<String> {
     let body = doc.strip_prefix(b"/**").unwrap_or(doc);
     let body = body.strip_suffix(b"*/").unwrap_or(body);
@@ -50,7 +39,6 @@ pub(super) fn doc_tags(doc: &[u8]) -> Vec<String> {
     tags
 }
 
-/// Whether a PHPDoc has one of `names`.
 pub(super) fn has_tag(tags: &[String], names: &[&str]) -> bool {
     tags.iter().any(|t| names.contains(&t.as_str()))
 }
@@ -70,20 +58,17 @@ const IMMUTABLE_TAGS: &[&str] = &[
     "@phpstan-immutable",
 ];
 
-/// ClassReflection::isImmutable() from a class's own PHPDoc: `@immutable` or `@readonly` tags.
 pub(super) fn immutable_tags(tags: &[String]) -> bool {
     has_tag(tags, IMMUTABLE_TAGS) || has_tag(tags, READONLY_TAGS)
 }
 
 impl<'arena> Checker<'_, 'arena> {
-    /// The tags of the PHPDoc right before `node` in this file.
     pub(super) fn tags_before(&self, node: impl HasSpan) -> Vec<String> {
         self.php_doc_comment(self.file.id, node.span().start.offset)
             .map(doc_tags)
             .unwrap_or_default()
     }
 
-    /// The class-like declared here, read from its declaration.
     pub(super) fn decl_of(
         &self,
         at: Span,
@@ -105,7 +90,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// The class `class` whose context a trait is walked in.
     pub(super) fn decl_of_class(&mut self, class: &str) -> Option<Decl> {
         let meta = self.codebase.get_class_like(class.as_bytes())?;
         Some(Decl {
@@ -120,7 +104,6 @@ impl<'arena> Checker<'_, 'arena> {
         })
     }
 
-    /// ClassReflection::isImmutable() of a class in the codebase: its PHPDoc or a parent's.
     pub(super) fn class_immutable(&mut self, class: &str, depth: usize) -> bool {
         let key = class.to_ascii_lowercase();
         if let Some(known) = self.immutable.get(&key) {
@@ -132,7 +115,6 @@ impl<'arena> Checker<'_, 'arena> {
         let own = self
             .php_doc_comment(meta.span.file_id, meta.span.start.offset)
             .is_some_and(|d| immutable_tags(&doc_tags(d)));
-        // a cyclic hierarchy is another rule's error
         let parent = meta
             .direct_parent_class
             .filter(|_| depth < 64)
@@ -143,10 +125,7 @@ impl<'arena> Checker<'_, 'arena> {
     }
 }
 
-/// DuplicateDeclarationRule: the duplicate constants, enum cases, properties (promoted ones too) and methods of a
-/// class, interface or enum.
 pub(super) fn duplicates<'arena>(c: &mut Checker<'_, 'arena>, members: &[ClassLikeMember<'arena>]) {
-    // called right after the Decl
     let decl = c.decls.last().expect("declared");
     let display = decl.display.clone().expect("named");
     let kind = match decl.kind {
@@ -157,7 +136,6 @@ pub(super) fn duplicates<'arena>(c: &mut Checker<'_, 'arena>, members: &[ClassLi
     duplicates_as(c, members, kind, &display);
 }
 
-/// DuplicateTraitDeclarationRule: the same checks on a trait, walked in the context of each class using it.
 pub(super) fn trait_duplicates<'arena>(
     c: &mut Checker<'_, 'arena>,
     members: &[ClassLikeMember<'arena>],
@@ -166,7 +144,6 @@ pub(super) fn trait_duplicates<'arena>(
     duplicates_as(c, members, "trait", display);
 }
 
-/// DuplicateDeclarationHelper::checkClassLike().
 fn duplicates_as<'arena>(
     c: &mut Checker<'_, 'arena>,
     members: &[ClassLikeMember<'arena>],
@@ -246,7 +223,6 @@ fn duplicates_as<'arena>(
     }
 }
 
-/// AbstractPrivateMethodRule and FinalPrivateMethodRule on a method (`name` is its name, a trait method's alias).
 pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, name: &str) {
     let decl = c.decls.last().expect("in a class-like");
     let (display, class_abstract, kind) = (decl.display.clone(), decl.is_abstract, decl.kind);
@@ -281,7 +257,6 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
     }
 }
 
-/// FinalPrivateConstantRule.
 pub(super) fn constant<'arena>(c: &mut Checker<'_, 'arena>, constant: &ClassLikeConstant<'arena>) {
     let Some(display) =
         c.decls.last().and_then(|d| d.display.clone()).filter(|_| {
@@ -303,8 +278,6 @@ pub(super) fn constant<'arena>(c: &mut Checker<'_, 'arena>, constant: &ClassLike
     }
 }
 
-/// A function-like for InvalidPromotedPropertiesRule: a method's name (a trait method's alias and original name) and
-/// whether it has a body.
 pub(super) enum FunctionLike<'n> {
     Method {
         name: &'n str,
@@ -314,7 +287,6 @@ pub(super) enum FunctionLike<'n> {
     Other,
 }
 
-/// InvalidPromotedPropertiesRule.
 pub(super) fn promoted<'arena>(
     c: &mut Checker<'_, 'arena>,
     at: Span,

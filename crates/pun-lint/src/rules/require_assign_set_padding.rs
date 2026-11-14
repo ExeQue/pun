@@ -1,12 +1,3 @@
-//! `lint/style/require-assign-set-padding`, ported from Rector 2.8.4's `NewlineBeforeNewAssignSetRector`
-//! (rules/CodingStyle/Rector/ClassMethod).
-//!
-//! In the body of a function, method or closure, after two statements that set or call on the same variable, a
-//! statement on another variable gets a blank line before it, unless the statement before it starts two or more lines
-//! above. A set is an assignment or a method call; `$this->a->b` counts as `this->a` (not the variable `$a`), `$a->b->c` as
-//! `a`. Rector skips a file
-//! with inline HTML.
-
 use crate::syntax::is_this;
 use mago_syntax::cst::{
     Access, AssignmentOperator, Call, ClassLikeMemberSelector, Expression, MethodBody, Node,
@@ -51,14 +42,12 @@ impl Rule for RequireAssignSetPadding {
         let mut edits = Vec::new();
         for (key, stmt) in list.stmts.iter().enumerate() {
             let current = subject(stmt);
-            // `isNewVariableThanBefore` and `isPrecededByEmptyLine` (start lines).
             if let (Some(c), Some(p), Some(pp)) = (&current, &previous, &before_previous)
                 && p == pp
                 && p != c
             {
                 let prev = node_span(list.stmts[key - 1]);
                 if lines_between(ctx.source, prev.start, node_span(*stmt).start) < 2 {
-                    // Rector prints the new empty statement as an empty line.
                     edits.push(Edit::new(Span::new(prev.end, prev.end), "\n"));
                 }
             }
@@ -83,7 +72,6 @@ impl Rule for RequireAssignSetPadding {
     }
 }
 
-/// `resolveCurrentStmtVariableName`: the name of what an assignment sets or a method call calls on.
 fn subject(stmt: &Statement<'_>) -> Option<String> {
     let Statement::Expression(e) = stmt else {
         return None;
@@ -101,7 +89,6 @@ fn subject(stmt: &Statement<'_>) -> Option<String> {
     {
         return None;
     }
-    // Down a chain of property fetches to what it starts on; on `$this`, the first property.
     let mut node = var;
     if let Expression::Access(Access::Property(_)) = var {
         let mut previous = var;
@@ -109,7 +96,6 @@ fn subject(stmt: &Statement<'_>) -> Option<String> {
             previous = node;
             node = p.object;
         }
-        // `$this->property`, namespaced so it does not collide with a local variable of the same name.
         if is_this(node) {
             return name(previous).map(|n| format!("this->{n}"));
         }
@@ -117,7 +103,6 @@ fn subject(stmt: &Statement<'_>) -> Option<String> {
     name(node)
 }
 
-/// `NodeNameResolver::getName()` for what can start a set: a variable, a property fetch, a function call.
 fn name(expr: &Expression<'_>) -> Option<String> {
     let bytes: &[u8] = match expr {
         Expression::Variable(Variable::Direct(v)) => &v.name[1..],

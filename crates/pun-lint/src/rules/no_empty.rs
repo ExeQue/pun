@@ -1,7 +1,3 @@
-//! `lint/style/no-empty`, ported from phpstan-strict-rules 2.0.12's `DisallowedEmptyRule` (identifier
-//! `empty.notAllowed`), the first upstream source of the rule in mapping.toml; Mago's `no-empty` reports the same
-//! nodes with another message. Every `empty(...)` is reported.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

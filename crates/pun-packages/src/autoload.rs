@@ -1,8 +1,3 @@
-//! The autoloader: `vendor/autoload.php` and the `vendor/composer/autoload_*.php` files, byte for byte as
-//! Composer 2's `AutoloadGenerator` writes them, so `Composer\Autoload\ClassLoader` loads the project the same way.
-//! Packages are ordered by how much depends on them (the root last), PSR-0 and PSR-4 prefixes longest first, and the
-//! class map sorted; `optimize` scans the PSR directories into the class map too.
-
 use crate::classmap::{ClassMap, Job, Rule};
 use crate::constraint::{Bound, lower_bound};
 use crate::installed::Installed;
@@ -18,7 +13,6 @@ use std::fmt::Write;
 use std::path::Path;
 use std::sync::LazyLock;
 
-/// `config.platform-check`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlatformCheck {
     Off,
@@ -27,26 +21,19 @@ pub enum PlatformCheck {
 }
 
 pub struct Options {
-    /// `-o` (or `config.optimize-autoloader`): the PSR directories go into the class map.
     pub optimize: bool,
-    /// `-a` (or `config.classmap-authoritative`): only the class map is used.
     pub authoritative: bool,
-    /// `--apcu-autoloader`, with `config.apcu-autoloader-prefix` when set.
     pub apcu: Option<Option<String>>,
     pub dev_mode: bool,
     pub platform_check: PlatformCheck,
-    /// Platform requirements left out of `platform_check.php` (`--ignore-platform-req`, `*` globs); `None` ignores them
-    /// all and writes no check.
     pub ignore_platform: Option<Vec<String>>,
     pub use_include_path: bool,
     pub prepend: bool,
     pub suffix: String,
 }
 
-/// What the dump wrote and found.
 #[derive(Debug, Default)]
 pub struct Dumped {
-    /// (path relative to the project, contents); `None` deletes the file.
     pub files: Vec<(String, Option<Vec<u8>>)>,
     pub classes: usize,
     pub warnings: Vec<String>,
@@ -55,10 +42,8 @@ pub struct Dumped {
 struct Pkg<'a> {
     name: String,
     json: &'a Map<String, Value>,
-    /// `""` for the root, `None` for a package without files.
     path: Option<String>,
     root: bool,
-    /// From `require-dev`; the platform check skips its requirements.
     dev: bool,
 }
 
@@ -75,8 +60,6 @@ impl Pkg<'_> {
     }
 }
 
-/// `PackageSorter::sortPackages`: each package weighs minus the packages that need it (and, recursively, what needs
-/// those), lightest first, ties by name.
 fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
     let mut usage: HashMap<String, Vec<String>> = HashMap::new();
     for p in &packages {
@@ -121,7 +104,6 @@ fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
     weighted.into_iter().map(|w| w.1).collect()
 }
 
-/// `autoload`, with the root's `autoload-dev` merged in as `array_merge_recursive` merges in dev mode.
 fn autoload(p: &Pkg, dev_mode: bool) -> Map<String, Value> {
     let mut a = p
         .json
@@ -181,7 +163,6 @@ fn strings(v: &Value) -> Vec<String> {
         .collect()
 }
 
-/// `parseAutoloadsType` for psr-0, psr-4 (prefix → paths) and classmap (paths, under the key `""`).
 fn mapping(packages: &[&Pkg], kind: &str, dev_mode: bool) -> Vec<(String, Vec<String>)> {
     let mut out: Vec<(String, Vec<String>)> = vec![];
     for p in packages {
@@ -214,7 +195,6 @@ fn mapping(packages: &[&Pkg], kind: &str, dev_mode: bool) -> Vec<(String, Vec<St
     out
 }
 
-/// A path as code in the generated files (`$vendorDir . '/x'`), and what it evaluates to.
 fn path_code(base: &str, vendor: &str, path: &str) -> (String, String) {
     let path = normalize(&if path.starts_with('/') {
         path.to_string()
@@ -249,7 +229,6 @@ fn path_code(base: &str, vendor: &str, path: &str) -> (String, String) {
     )
 }
 
-/// The `exclude-from-classmap` patterns as regex alternatives, each anchored at its package's real path.
 fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
     static UPDIR: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^((?:(?:\\\.){1,2}+/)+)").unwrap());
@@ -283,7 +262,6 @@ fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
             } else {
                 install.clone()
             };
-            // Composer's `realpath` of a package directory that isn't there gives no exclusion.
             let resolved = std::fs::canonicalize(format!("{dir}/{updir}")).ok();
             out.extend(resolved.map(|r| {
                 let quoted = preg_quote(r.to_string_lossy().as_bytes(), None);
@@ -294,7 +272,6 @@ fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
     out
 }
 
-/// `buildExclusionRegexWithVendorDir`: the exclusions that can match under `dir`, plus `vendor/` when `dir` holds it.
 fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex> {
     let mut excluded = excluded.to_vec();
     if vendor.starts_with(&format!("{dir}/")) {
@@ -314,7 +291,6 @@ fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex
         let (real, plain) = (quote(&real.to_string_lossy()), quote(dir));
         let symlink = real != plain;
         excluded.retain(|pattern| {
-            // The pattern's literal start; the regex matches every string.
             let prefix = (PREFIX.captures(pattern.as_bytes()).ok().flatten())
                 .map_or_else(String::new, |c| String::from_utf8_lossy(&c[1]).into_owned());
             let related = |d: &str| prefix.starts_with(d) || d.starts_with(&prefix);
@@ -327,7 +303,6 @@ fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex
     Regex::new(&format!("({})", excluded.join("|"))).ok()
 }
 
-/// Writes nothing itself: returns every file the dump produces, relative to `base`.
 pub fn dump(
     base: &str,
     vendor: &str,
@@ -358,7 +333,6 @@ pub fn dump(
             dev: p.dev,
         })
         .collect();
-    // Include paths of packages that still declare them, in `buildPackageMap` order: the root, then the rest.
     let mut include = vec![];
     for p in std::iter::once(&root_pkg).chain(&packages) {
         let Some(install) = &p.path else { continue };
@@ -394,7 +368,6 @@ pub fn dump(
     };
     let mut dumped = Dumped::default();
 
-    // psr-0 and psr-4 files, keeping what each path evaluates to for the static loader.
     let mut evaluated: HashMap<String, String> = HashMap::new();
     let mut map_file = |name: &str, entries: &[(String, Vec<String>)]| {
         let mut out = header(name);
@@ -421,7 +394,6 @@ pub fn dump(
     let namespaces = map_file("autoload_namespaces.php", &psr0);
     let psr4_text = map_file("autoload_psr4.php", &psr4);
 
-    // The class map: classmap entries, then (optimized) every PSR directory, longest prefix first.
     let mut map = ClassMap::default();
     let cwd = base.to_string();
     let mut jobs = vec![];
@@ -504,7 +476,6 @@ pub fn dump(
     }
     classmap_text.push_str(");\n");
 
-    // Files to include, dependencies first.
     let mut files: Vec<(String, String, String)> = vec![];
     for p in &sorted {
         let Some(install) = &p.path else { continue };
@@ -644,8 +615,6 @@ fn rel(base: &str, path: &str) -> String {
         .to_string()
 }
 
-/// `platform_check.php`: the highest lower bound of `php` the non-dev packages require, and with `full` the
-/// extensions they need that no package provides.
 fn platform_check(packages: &[Pkg], full: bool, ignored: &[String]) -> Option<String> {
     let is_ignored = |name: &str| ignored.iter().any(|g| name_matches(g, name));
     let mut lowest = Bound::zero();
@@ -728,7 +697,6 @@ fn platform_check(packages: &[Pkg], full: bool, ignored: &[String]) -> Option<St
     ))
 }
 
-/// `autoload_real.php`.
 fn real_file(o: &Options, include_path: bool, include_files: bool, platform: bool) -> String {
     let s = &o.suffix;
     let prepend = if o.prepend { "true" } else { "false" };
@@ -769,8 +737,6 @@ fn real_file(o: &Options, include_path: bool, include_files: bool, platform: boo
     f
 }
 
-/// `autoload_static.php`: the loader's arrays as `var_export` writes them, with the absolute paths turned back into
-/// `__DIR__ . '/..'` code.
 fn static_file(
     suffix: &str,
     target: &str,
@@ -793,8 +759,6 @@ fn static_file(
             })
             .collect()
     };
-    // Per prefix list: the prefixes grouped by first character (with their lengths for psr-4, else their paths),
-    // the paths by prefix, and the fallback paths of the empty prefix. A prefix seen again moves to the end.
     let group = |entries: &[(String, Vec<String>)],
                  lengths: bool|
      -> (Vec<(Key, Php)>, Vec<(Key, Php)>, Vec<(Key, Php)>) {

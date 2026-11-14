@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\EmptyLoopConditionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -81,7 +80,7 @@ fn fix_loop_while(tokens: &mut Tokens, index: usize, open_index: usize, end_inde
         && let Some(do_index) = get_do_index(tokens, index)
     {
         let semicolon = tokens.get_next_meaningful_token(end_index).unwrap();
-        clear_not_comments_in_range(tokens, index, semicolon); // clear including `;`
+        clear_not_comments_in_range(tokens, index, semicolon);
         tokens.clear_at(do_index);
         tokens.insert_at(do_index, while_replacement());
     }
@@ -98,7 +97,7 @@ fn fix_loop_for(tokens: &mut Tokens, index: usize, open_index: usize, end_index:
         }
         Some(do_index) => {
             let semicolon = tokens.get_next_meaningful_token(end_index).unwrap();
-            clear_not_comments_in_range(tokens, index, semicolon); // clear including `;`
+            clear_not_comments_in_range(tokens, index, semicolon);
             tokens.clear_at(do_index);
             tokens.insert_at(do_index, for_replacement());
         }

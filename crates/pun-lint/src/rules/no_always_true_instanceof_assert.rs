@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-always-true-instanceof-assert`, ported from Rector 2.8.4's `RemoveDeadInstanceOfAssertRector`
-//! (rules/DeadCode/Rector/StmtsAwareInterface).
-//!
-//! An `assert($value instanceof SomeClass);` statement with that one argument, where `$value` is a variable or a
-//! property fetch whose type (docblocks read) is already that class or a subclass of it, goes. A doc comment before it
-//! stays, as php-parser's `Nop`.
-//!
-//! php-parser's printer decides the bytes: see [`super::stmt_splice`].
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Access, BinaryOperator, Call, Expression, Node, NodeKind, Statement};
@@ -61,7 +52,6 @@ impl Rule for NoAlwaysTrueInstanceofAssert {
     }
 }
 
-/// What `refactor()` does to the statement `chain` ends with.
 fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) -> Option<Change> {
     let Node::Statement(statement @ Statement::Expression(e)) = chain[chain.len() - 1] else {
         return None;
@@ -79,7 +69,6 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
     }
 }
 
-/// `isDeadInstanceOfAssert`.
 fn is_dead_instanceof_assert(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],

@@ -1,5 +1,3 @@
-//! Expression-assignment scope transfers use structural identities and real scope lifetimes.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};

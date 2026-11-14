@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-redundant-promoted-assign`, ported from Rector 2.8.4's
-//! `RemoveUselessAssignFromPropertyPromotionRector` (rules/DeadCode/Rector/ClassMethod).
-//!
-//! A constructor whose body only assigns promoted parameters to their own properties (`$this->std = $std;`) does
-//! nothing the promotion does not already do; the assignments are removed. A readonly promoted property is left out:
-//! assigning it again is an error that the code may rely on. Any other statement in the body keeps it as it is.
-
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
@@ -41,7 +34,6 @@ impl Rule for NoRedundantPromotedAssign {
         if list.is_empty() {
             return;
         }
-        // Promoted parameters, readonly ones left out: assigning them again is an error on the first place.
         let names: Vec<&[u8]> = method
             .parameter_list
             .parameters
@@ -53,7 +45,6 @@ impl Rule for NoRedundantPromotedAssign {
         if names.is_empty() || list.nop {
             return;
         }
-        // Every statement must be `$this->name = $name;` for a promoted `name`, or nothing is removed.
         for statement in &list.stmts {
             let Some(assign) = expression(statement).and_then(assign) else {
                 return;
@@ -61,8 +52,6 @@ impl Rule for NoRedundantPromotedAssign {
             let Expression::Access(Access::Property(fetch)) = unparenthesize(assign.lhs) else {
                 return;
             };
-            // php-parser's name of `$this->$a` and `$this->{$a}` is the variable `$a`, and Rector's `getName` of a
-            // variable is its name.
             let property = match &fetch.property {
                 ClassLikeMemberSelector::Identifier(identifier) => Some(identifier.value),
                 ClassLikeMemberSelector::Variable(Variable::Direct(v)) => Some(&v.name[1..]),

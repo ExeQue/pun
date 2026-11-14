@@ -1,8 +1,3 @@
-//! Port of `PhpCsFixer\AbstractPhpdocToTypeDeclarationFixer`, shared by phpdoc_to_param_type,
-//! phpdoc_to_property_type and phpdoc_to_return_type, with the parts of `PhpCsFixer\DocBlock\TypeExpression` it calls
-//! that know the namespace (`getCommonType`, `allowsNull`, `getParentType`, `normalize`).
-//!
-//! The oracle runs on PHP 8.5, so every `\PHP_VERSION_ID` check is true.
 use crate::analyzers::analysis::NamespaceUseAnalysis;
 use crate::analyzers::docblock::type_expression::REGEX_IDENTIFIER;
 use crate::analyzers::docblock::{Annotation, DocBlock, TypeExpression};
@@ -16,11 +11,9 @@ use pun_tokens::php_compat::trim;
 use pun_tokens::{Token, Tokens};
 use serde_json::Value;
 
-/// Types newer than PHP 7.0 (`versionSpecificTypes`); all are available on PHP 8.5.
 const VERSION_SPECIFIC_TYPES: &[&[u8]] = &[b"void", b"iterable", b"object", b"mixed", b"never"];
 const SCALAR_TYPES: &[&[u8]] = &[b"bool", b"float", b"int", b"string"];
 
-/// `TypeExpression::ALIASES`.
 fn alias(t: &[u8]) -> Option<&'static [u8]> {
     Some(match t {
         b"boolean" | b"false" | b"true" => b"bool",
@@ -42,7 +35,6 @@ pub(crate) struct Options {
 impl Options {
     pub(crate) fn configure(name: &'static str, options: &Value) -> Result<Options> {
         let o = resolve(name, options, &["scalar_types", "union_types", "types_map"])?;
-        // `array<string, string>`, which the resolver checks as `string[]`.
         o.check_types("types_map", &["string[]"])?;
         let types_map = match o.get("types_map") {
             Some(Value::Object(m)) => m
@@ -64,14 +56,12 @@ impl Options {
     }
 }
 
-/// `{commonType, isNullable}`.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub(crate) struct TypeInfo {
     pub common_type: Vec<u8>,
     pub is_nullable: bool,
 }
 
-/// The namespace a docblock sits in and its imports, which `TypeExpression::normalize` resolves names with.
 pub(crate) struct Scope {
     namespace: NamespaceAnalysis,
     uses: Vec<NamespaceUseAnalysis>,
@@ -82,7 +72,6 @@ pub(crate) struct Common<'a> {
     pub is_skipped_type: fn(&[u8]) -> bool,
 }
 
-/// `findFunctionDocComment`.
 pub(crate) fn find_function_doc_comment(tokens: &Tokens, mut index: usize) -> Option<usize> {
     loop {
         index = tokens.get_prev_non_whitespace(index, None).unwrap();
@@ -101,8 +90,6 @@ pub(crate) fn find_function_doc_comment(tokens: &Tokens, mut index: usize) -> Op
     tokens[index].is_kind(T_DOC_COMMENT).then_some(index)
 }
 
-/// `getAnnotationsFromDocComment`: the docblock (its annotations are `doc.get_annotations_of_type(&[name])`) and the
-/// scope its types resolve in.
 pub(crate) fn doc_comment(tokens: &Tokens, doc_comment_index: usize) -> (DocBlock, Scope) {
     let namespace = NamespacesAnalyzer.get_namespace_at(tokens, doc_comment_index);
     let uses = NamespaceUsesAnalyzer.get_declarations_in_namespace(tokens, &namespace, false);
@@ -112,7 +99,6 @@ pub(crate) fn doc_comment(tokens: &Tokens, doc_comment_index: usize) -> (DocBloc
     )
 }
 
-/// `getTypesToExclude`.
 pub(crate) fn get_types_to_exclude(content: &[u8]) -> Vec<Vec<u8>> {
     let mut types_to_exclude = Vec::new();
     let doc = DocBlock::new(content);
@@ -139,13 +125,10 @@ pub(crate) fn get_types_to_exclude(content: &[u8]) -> Vec<Vec<u8>> {
     types_to_exclude
 }
 
-/// `isValidSyntax`: `Tokens::fromCode` throws a ParseError on code PHP's grammar rejects.
 pub(crate) fn is_valid_syntax(code: &str) -> bool {
     pun_format::lint(code.as_bytes()).is_ok()
 }
 
-/// `createTokensFromRawType`: `template` with the type, minus `clear_start` tokens at the start and `clear_end` at the
-/// end.
 pub(crate) fn tokens_from_raw_type(code: &str, clear_start: usize, clear_end: usize) -> Vec<Token> {
     let mut type_tokens = Tokens::from_code(code.as_bytes());
     let count = type_tokens.count();
@@ -155,7 +138,6 @@ pub(crate) fn tokens_from_raw_type(code: &str, clear_start: usize, clear_end: us
     type_tokens.iter().cloned().collect()
 }
 
-/// `createTypeDeclarationTokens`.
 pub(crate) fn create_type_declaration_tokens(
     raw_type_tokens: Vec<Token>,
     type_: &[u8],
@@ -166,7 +148,6 @@ pub(crate) fn create_type_declaration_tokens(
         new_tokens.push(Token::new(CT_NULLABLE_TYPE, "?"));
     }
     new_tokens.extend(raw_type_tokens);
-    // 'scalar's, 'void', 'iterable' and 'object' must be unqualified
     let mut keep = vec![true; new_tokens.len()];
     for i in 1..new_tokens.len() {
         let content = new_tokens[i].get_content();
@@ -185,7 +166,6 @@ pub(crate) fn create_type_declaration_tokens(
 }
 
 impl Common<'_> {
-    /// `getCommonTypeInfo`; `scope` is `None` for a `new TypeExpression($type, null, [])`.
     pub(crate) fn get_common_type_info(
         &self,
         types_expression: &TypeExpression,
@@ -227,7 +207,6 @@ impl Common<'_> {
         })
     }
 
-    /// `getUnionTypes`.
     pub(crate) fn get_union_types(
         &self,
         types_expression: &TypeExpression,
@@ -277,7 +256,6 @@ impl Common<'_> {
         Some(unique.join(&[types_expression.get_types_glue().unwrap()][..]))
     }
 
-    /// The type of one annotation: its common type, else its union type (not nullable), as the three fixers read it.
     pub(crate) fn type_info(
         &self,
         annotation: &Annotation,
@@ -298,7 +276,6 @@ impl Common<'_> {
     }
 }
 
-/// `TypeExpression::getCommonType`.
 fn get_common_type(types_expression: &TypeExpression, scope: Option<&Scope>) -> Option<Vec<u8>> {
     let mut main_type: Option<Vec<u8>> = None;
     for type_ in types_expression.get_types() {
@@ -323,7 +300,6 @@ fn get_common_type(types_expression: &TypeExpression, scope: Option<&Scope>) -> 
     main_type
 }
 
-/// `TypeExpression::allowsNull`.
 fn allows_null(types_expression: &TypeExpression) -> bool {
     types_expression
         .get_types()
@@ -331,7 +307,6 @@ fn allows_null(types_expression: &TypeExpression) -> bool {
         .any(|t| t == b"null" || t == b"mixed" || t.starts_with(b"?"))
 }
 
-/// `TypeExpression::getParentType`: the two normalized types in natural case-insensitive order, looked up.
 fn get_parent_type(type1: &[u8], type2: &[u8], scope: Option<&Scope>) -> Option<Vec<u8>> {
     let pair = [normalize(type1, scope), normalize(type2, scope)];
     let is = |a: &[u8], b: &[u8]| (pair[0] == a && pair[1] == b) || (pair[0] == b && pair[1] == a);
@@ -342,8 +317,6 @@ fn get_parent_type(type1: &[u8], type2: &[u8], scope: Option<&Scope>) -> Option<
     is(b"self", b"static").then(|| b"self".to_vec())
 }
 
-/// `TypeExpression::normalize`. Its alias, `[]` and `<` branches never apply here: `getCommonType` has already
-/// resolved aliases and cut `[]` and `<...>` off both types.
 fn normalize(type_: &[u8], scope: Option<&Scope>) -> Vec<u8> {
     const BUILT_IN: &[&[u8]] = &[
         b"array",

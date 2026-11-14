@@ -1,8 +1,3 @@
-//! Level 3's ThrowsVoidFunctionWithExplicitThrowPointRule, ThrowsVoidMethodWithExplicitThrowPointRule and
-//! ThrowsVoidPropertyHookWithExplicitThrowPointRule (`throws.void`): an explicit throw point of a function-like whose
-//! PHPDoc says `@throws void`, except a checked exception when `missingCheckedExceptionInThrows` is on. Also
-//! CatchWithUnthrownExceptionRule's `catch.alreadyCaught`: a catch whose types the catches above take.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -18,7 +13,6 @@ use super::missing_return::method_name;
 
 pub(super) const IDENTIFIERS: &[&str] = &["throws.void", "catch.alreadyCaught"];
 
-/// `getThrowType()->isVoid()->yes()` of the function-like at `at`.
 fn throws_void(c: &Checker, at: Span) -> bool {
     let Some((_, entry)) = c.doc_before(c.file.id, at.start.offset) else {
         return false;
@@ -37,8 +31,6 @@ fn throws_void(c: &Checker, at: Span) -> bool {
     !throws.is_empty() && throws.iter().all(|t| t == b"void")
 }
 
-/// The `@throws` types of a user function-like (built-in ones and `@throws void` give none).
-// ponytail: built-in functions' throw types (stubs, dynamic throw type extensions) are not read
 fn declared_throws(c: &Checker, f: &FunctionLikeMetadata) -> Vec<Type> {
     if f.flags.is_built_in() {
         return Vec::new();
@@ -50,7 +42,6 @@ fn declared_throws(c: &Checker, f: &FunctionLikeMetadata) -> Vec<Type> {
         .collect()
 }
 
-/// `TypeUtils::flattenTypes()`.
 fn flatten(t: Type) -> Vec<Type> {
     match t {
         Type::Union(ts) => ts,
@@ -58,7 +49,6 @@ fn flatten(t: Type) -> Vec<Type> {
     }
 }
 
-/// The explicit throw points of a body (not of the functions and classes in it), as each thrown type and where.
 struct Points<'c, 'a, 'arena> {
     c: &'c Checker<'a, 'arena>,
     points: Vec<(Span, Type)>,
@@ -73,7 +63,6 @@ impl<'a> Points<'_, 'a, '_> {
             Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => self.c.class_scope(),
             Expression::Self_(_) | Expression::Static(_) => self.c.class_scope(),
             Expression::Identifier(id) => self.c.codebase.get_class_like(self.c.names.get(id)),
-            // (a nullsafe call's holder without its null)
             e => match self
                 .c
                 .type_of(e)?
@@ -141,7 +130,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, '_> {
             self.points.extend(types.into_iter().map(|t| (n.span(), t)));
         }
     }
-    /// The try block's points a catch catches are gone.
     fn walk_try(&mut self, t: &'ast Try<'arena>, (): &mut ()) {
         let mut inner = Points {
             c: self.c,
@@ -191,7 +179,6 @@ fn check(c: &mut Checker, at: Span, of: &str, walk: impl FnOnce(&mut Points)) {
     let points = p.points;
     for (at, ty) in points {
         for t in flatten(ty) {
-            // (MissingCheckedExceptionInThrowsCheck reports it instead)
             if c.exceptions
                 .checks
                 .contains(crate::ExceptionChecks::MISSING_CHECKED_EXCEPTION_IN_THROWS)
@@ -252,10 +239,6 @@ pub(in super::super) fn hooks(c: &mut Checker, name: &[u8], list: &PropertyHookL
     }
 }
 
-/// `catch.alreadyCaught`: a catch type `TypeCombinator::remove()` of the types the catches above catch leaves nothing.
-/// A `Throwable` one matches every throw point of the try block instead.
-// ponytail: an empty try block (no throw points) still counts as throwing for a `Throwable` catch; `catch.neverThrown`
-// needs the try block's implicit throw points, not ported
 pub(in super::super) fn catches(c: &mut Checker, t: &Try) {
     if c.level < 4 {
         return;

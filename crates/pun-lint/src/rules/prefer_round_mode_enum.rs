@@ -1,10 +1,3 @@
-//! `lint/php-8.4/prefer-round-mode-enum`, ported from Rector 2.8.4's `RoundingModeEnumRector`
-//! (rules/Php84/Rector/FuncCall).
-//!
-//! `round($x, $p, PHP_ROUND_HALF_UP)` becomes `round($x, $p, \RoundingMode::HalfAwayFromZero)`, and likewise for the
-//! other three `PHP_ROUND_*` constants. Only a call with exactly three arguments whose third is one of those constants
-//! changes.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -21,7 +14,6 @@ impl Rule for PreferRoundModeEnum {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::ROUNDING_MODES
         80400
     }
 
@@ -45,7 +37,6 @@ impl Rule for PreferRoundModeEnum {
         let [_, _, mode] = args.as_slice() else {
             return;
         };
-        // `$modeArg instanceof ConstFetch`: `$modeArg->name->toString()`, as written, without a leading backslash.
         let Expression::ConstantAccess(constant) = value(mode) else {
             return;
         };

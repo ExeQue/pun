@@ -1,5 +1,3 @@
-//! Callable shape metadata must survive conversion without replacing narrowed or mutated values.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

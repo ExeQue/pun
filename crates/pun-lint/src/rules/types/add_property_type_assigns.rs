@@ -1,19 +1,3 @@
-//! `lint/types/add-property-type-assigns`, ported from Rector 2.8.4's `TypedPropertyFromAssignsRector`
-//! (rules/TypeDeclaration/Rector/Property) with `AllAssignNodePropertyTypeInferer` and `PropertyTypeDecorator`: an
-//! untyped private property gets the union of the native types of every value the class assigns to it.
-//!
-//! The values are the class's assignments to the property or to an offset of it (`AssignToPropertyTypeInferer`);
-//! `null` joins them unless the constructor always assigns the property or it has a default, and a `null` default adds
-//! `null` too. A property the class writes dynamically, one assigned a parameter without a native type, and one whose
-//! default the assigned types do not allow are left alone. A nullable union gets `= null` when it has no default. The
-//! `@var` goes when it says no more than the new type.
-//!
-//! The option `inline-public` (Rector's `inline_public`) types protected and public properties too. Properties a used
-//! trait declares or writes, whose declared type is `null`, `callable` or a class that does not exist, protected ones
-//! of a class that is not final or whose parent declares them, and those Doctrine maps (`Column`, `OneToMany`,
-//! `ManyToMany`, `ManyToOne`, `OneToOne`, and ODM's `ReferenceMany`, `EmbedMany`, `ReferenceOne`, `EmbedOne`, as an
-//! attribute or an annotation) are left alone, as is a class with a Doctrine `loadMetadata()` method.
-
 use mago_syntax::cst::{Node, NodeKind, PlainProperty};
 use pun_problem::{Edit, Safety, Span};
 
@@ -36,7 +20,6 @@ pub struct AddPropertyTypeAssigns {
     inline_public: bool,
 }
 
-/// `CollectionMapping::TO_MANY_CLASSES`, `TO_ONE_CLASSES` and `MappingClass::COLUMN`.
 const DOCTRINE_MAPPING: [&str; 9] = [
     "Doctrine\\ORM\\Mapping\\OneToMany",
     "Doctrine\\ORM\\Mapping\\ManyToMany",
@@ -105,7 +88,6 @@ impl Rule for AddPropertyTypeAssigns {
             if matches!(t, Ty::Mixed) {
                 continue;
             }
-            // decorateTypeWithNullableIfDefaultPropertyNull
             let t = match prop.default() {
                 Some(default) if is_null_literal(default) && !t.members().contains(&&Ty::Null) => {
                     mixed_passed_or_union(vec![t, Ty::Null], true)
@@ -122,7 +104,6 @@ impl Rule for AddPropertyTypeAssigns {
                 Span::new(at.start, at.start),
                 format!("{declaration} "),
             ));
-            // PropertyTypeDecorator::decoratePropertyUnionType: a nullable union gets a `null` default
             if t.is_union() && t.members().contains(&&Ty::Null) && prop.default().is_none() {
                 edits.push(Edit::new(Span::new(at.end, at.end), " = null"));
             }
@@ -147,8 +128,6 @@ impl Rule for AddPropertyTypeAssigns {
     }
 }
 
-/// `isDoctrineMappedProperty` (`AttrinationFinder::hasByMany`): a Doctrine mapping attribute, or a doc annotation
-/// naming one.
 fn is_doctrine_mapped(
     ctx: &crate::Context<'_>,
     prop: &PlainProperty<'_>,

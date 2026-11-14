@@ -1,12 +1,3 @@
-//! Which lint rules run on a file, at which level and whether their fixes apply (context/plan/lint.md §3, Build 2;
-//! oxlint's model): pun.toml's resolved `[lint]` rules, then each `[[lint.overrides]]` whose `files` globs match the
-//! file (later ones win), then `-A` / `-W` / `-D` in the order given. `-A` turns a rule or group off, `-W` and `-D`
-//! turn it on at `warn` or `error`; a group means every rule of it Pun can run.
-//!
-//! A rule runs natively (a `pun_lint` rule on Mago's tree), in the token pass (a PHP-CS-Fixer fixer), or in the
-//! engine (`lint/comments/no-unused-ignore`). A rule named in pun.toml, an override or on the command line that Pun
-//! can't run is a config error; one a set or a group turns on is skipped.
-
 use anyhow::{Result, bail};
 use pun_problem::Level;
 use pun_workspace::Exclusions;
@@ -15,10 +6,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 use std::sync::LazyLock;
 
-/// The engine's own rule: an `@pun-ignore` ID that suppressed nothing.
 pub(crate) const UNUSED_IGNORE: &str = "lint/comments/no-unused-ignore";
 
-/// `-A`, `-W` and `-D`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum CliLevel {
     Allow,
@@ -26,18 +15,13 @@ pub(crate) enum CliLevel {
     Deny,
 }
 
-/// How a rule runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Engine {
-    /// A `pun_lint` rule.
     Native,
-    /// A token fixer, by its PHP-CS-Fixer name.
     Token(&'static str),
-    /// Reported by the engine itself.
     Builtin,
 }
 
-/// A rule that is on: its level, whether `--fix` applies its fix (`fix = "off"` makes it report-only), its options.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct On {
     pub(crate) level: Level,
@@ -45,7 +29,6 @@ pub(crate) struct On {
     pub(crate) options: Value,
 }
 
-/// Lint rule IDs a ported token fixer backs, to the fixer's name.
 pub(crate) fn token_rules() -> &'static HashMap<&'static str, &'static str> {
     static T: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
         let ported: BTreeSet<&'static str> = pun_fixers::all().iter().map(|f| f.name()).collect();
@@ -60,14 +43,12 @@ pub(crate) fn token_rules() -> &'static HashMap<&'static str, &'static str> {
     &T
 }
 
-/// The native rules' IDs.
 pub(crate) fn native_rules() -> &'static BTreeSet<&'static str> {
     static T: LazyLock<BTreeSet<&'static str>> =
         LazyLock::new(|| pun_lint::rules::all().iter().map(|r| r.id()).collect());
     &T
 }
 
-/// How `id` runs, or `None` when Pun can't run it yet.
 pub(crate) fn engine(id: &str) -> Option<Engine> {
     if native_rules().contains(id) {
         return Some(Engine::Native);
@@ -92,8 +73,6 @@ pub(crate) struct Plan {
 }
 
 impl Plan {
-    /// The plan of `cfg`'s `[lint]` and the command line's levels. `Err` holds the rules Pun can't run that are
-    /// named somewhere.
     pub(crate) fn new(
         cfg: &pun_config::Config,
         cli: &[(CliLevel, String)],
@@ -145,7 +124,6 @@ impl Plan {
         }))
     }
 
-    /// Every rule that is on for some file: the base rules, those an override turns on, those `-W` / `-D` name.
     pub(crate) fn mentioned(&self) -> BTreeSet<&str> {
         let overridden = (self.overrides.iter()).flat_map(|(_, s)| {
             s.iter()
@@ -162,7 +140,6 @@ impl Plan {
             .collect()
     }
 
-    /// The rules on for `path`, by ID.
     pub(crate) fn for_file(&self, path: &Path) -> BTreeMap<String, On> {
         let mut on = self.base.clone();
         for (globs, settings) in &self.overrides {
@@ -173,7 +150,6 @@ impl Plan {
                 match s.level {
                     None => drop(on.remove(&s.id)),
                     Some(l) => {
-                        // pun-config rejects options in an override: the rule keeps its [lint.rules] options.
                         let options = on.get(&s.id).map_or(Value::Null, |o| o.options.clone());
                         let rule = On {
                             level: level(l),
@@ -208,8 +184,6 @@ impl Plan {
     }
 }
 
-/// The rule IDs a `-A` / `-W` / `-D` value names: a rule (`lint/style/x` or `style/x`), or a group (`lint/style` or
-/// `style`) as every rule of it Pun can run.
 fn targets(name: &str) -> Result<Vec<String>> {
     let id = match name.strip_prefix("lint/") {
         Some(_) => name.to_string(),
@@ -233,7 +207,6 @@ fn targets(name: &str) -> Result<Vec<String>> {
     Ok(in_group)
 }
 
-/// Whether `lint/<group>` names a group of rules/mapping.toml's `[meta.groups]`.
 fn is_group(id: &str) -> bool {
     (id.strip_prefix("lint/")).is_some_and(|group| {
         !group.contains('/') && pun_config::groups().iter().any(|g| g == group)
@@ -245,8 +218,6 @@ mod tests {
     use super::engine;
     use std::collections::BTreeSet;
 
-    /// rules/mapping.toml's `ported` flag, which the rule docs print as Ported or Planned, matches what Pun runs:
-    /// a lint rule `engine` knows, a format rule backed by a fixer in `pun_fixers::all()`.
     #[test]
     fn mapping_ported_matches_engine() {
         let mapping: toml::Table =

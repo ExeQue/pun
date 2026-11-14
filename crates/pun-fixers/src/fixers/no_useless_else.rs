@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoUselessElseFixer`.
 use crate::analyzers::abstract_no_useless_else_fixer::{PRIORITY, is_superfluous_else};
 use pun_format::Fixer;
 use pun_tokens::{Kind, Tokens, TokensAnalyzer};

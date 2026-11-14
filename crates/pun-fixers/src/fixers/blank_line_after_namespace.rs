@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\NamespaceNotation\BlankLineAfterNamespaceFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -56,7 +55,6 @@ impl Fixer for BlankLineAfterNamespaceFixer {
         "blank_line_after_namespace"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoUnusedImportsFixer.
         -20
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

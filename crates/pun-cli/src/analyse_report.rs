@@ -11,7 +11,6 @@ use sha2::{Digest, Sha256};
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// The formats, as `--format` takes them (PHPStan's `--error-format` names).
 pub(crate) const FORMATS: [&str; 9] = [
     "table",
     "raw",
@@ -24,23 +23,15 @@ pub(crate) const FORMATS: [&str; 9] = [
     "teamcity",
 ];
 
-/// What a report needs besides the errors.
 pub(crate) struct Context<'a> {
-    /// `raw`'s identifiers (PHPStan's `-v`, or a detected coding agent).
     pub(crate) verbose: bool,
-    /// The project root, PHPStan's current working directory.
     pub(crate) root: &'a Path,
-    /// The analysed paths (absolute), for `table`'s relative paths.
     pub(crate) paths: &'a [PathBuf],
-    /// The not-file-specific errors.
     pub(crate) general: &'a [String],
-    /// How many ignored errors have a fix (`getFixableIgnoredErrors()`), for `table`.
     pub(crate) fixable_ignored: usize,
-    /// pun.toml, relative to the root: teamcity's file for the not-file-specific errors (PHPStan's config file).
     pub(crate) config: Option<String>,
 }
 
-/// The report in `format`.
 pub(crate) fn render(format: &str, findings: &[Finding], cx: &Context) -> Result<String> {
     let (verbose, general) = (cx.verbose, cx.general);
     Ok(match format {
@@ -60,13 +51,10 @@ pub(crate) fn render(format: &str, findings: &[Finding], cx: &Context) -> Result
     })
 }
 
-/// `getLine() ?? ''` (`(string) null`).
 fn line(f: &Finding) -> String {
     f.line().map(|l| l.to_string()).unwrap_or_default()
 }
 
-/// RawErrorFormatter: `?:?:message` per not-file-specific error, then `file:line:message`, with ` [identifier=x]`
-/// under `-v`.
 fn raw(findings: &[Finding], general: &[String], verbose: bool) -> String {
     let mut out = String::new();
     for g in general {
@@ -83,7 +71,6 @@ fn raw(findings: &[Finding], general: &[String], verbose: bool) -> String {
     out
 }
 
-/// Nette's Json::encode: unescaped slashes and Unicode, but PHP still escapes U+2028 and U+2029.
 fn encode(value: &serde_json::Value, pretty: bool) -> String {
     let out = if pretty {
         let mut buf = Vec::new();
@@ -98,7 +85,6 @@ fn encode(value: &serde_json::Value, pretty: bool) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
-/// JsonErrorFormatter: totals, then the messages per file (absolute paths).
 fn json(findings: &[Finding], general: &[String], pretty: bool) -> String {
     use serde_json::{Map, Value, json};
     let mut files = Map::new();
@@ -131,7 +117,6 @@ fn json(findings: &[Finding], general: &[String], pretty: bool) -> String {
     encode(&value, pretty)
 }
 
-/// htmlspecialchars(ENT_XML1 | ENT_COMPAT): `&`, `<`, `>` and `"`.
 fn xml(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -139,7 +124,6 @@ fn xml(text: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// The findings grouped by `file` (a relative path), the files in the order they first appear.
 fn by_file<'f>(
     findings: &'f [Finding],
     file: impl Fn(&'f Finding) -> &'f str,
@@ -154,8 +138,6 @@ fn by_file<'f>(
     files
 }
 
-/// CheckstyleErrorFormatter: one `<file>` per file in error order, column 1; the not-file-specific errors in a
-/// `<file>` without a name. A trait's errors go under the trait's own file (`getTraitFilePath()`).
 fn checkstyle(findings: &[Finding], general: &[String]) -> String {
     let mut out = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<checkstyle>\n");
     let files = by_file(findings, |f| {
@@ -187,8 +169,6 @@ fn checkstyle(findings: &[Finding], general: &[String]) -> String {
     out
 }
 
-/// JunitErrorFormatter: one failing test case per error (`General error` without a file), or one passing `phpstan`
-/// case.
 fn junit(findings: &[Finding], general: &[String]) -> String {
     let n = findings.len() + general.len();
     let mut out = format!(
@@ -217,8 +197,6 @@ fn junit(findings: &[Finding], general: &[String]) -> String {
     out
 }
 
-/// GitlabErrorFormatter: a pretty JSON list; the fingerprint is the sha256 of the absolute path, line and message
-/// (of the message alone without a file).
 fn gitlab(findings: &[Finding], general: &[String]) -> String {
     let sha = |s: String| -> String {
         Sha256::digest(s)
@@ -249,8 +227,6 @@ fn gitlab(findings: &[Finding], general: &[String]) -> String {
     encode(&serde_json::Value::Array(list), true)
 }
 
-/// GithubErrorFormatter: `::error file=…,line=…,col=0::message` (`::error ::message` without a file), newlines as
-/// `%0A` and `@mentions` in backticks.
 fn github(findings: &[Finding], general: &[String]) -> String {
     let message = |m: &str| crate::github::mentions(&m.replace('\n', "%0A"));
     let mut out = String::new();
@@ -269,8 +245,6 @@ fn github(findings: &[Finding], general: &[String]) -> String {
     out
 }
 
-/// TeamcityErrorFormatter: nothing without errors; else the inspection type and one inspection per error (on the
-/// config file without one, `.` with none).
 fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> String {
     if findings.is_empty() && general.is_empty() {
         return String::new();
@@ -278,7 +252,6 @@ fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> S
     let escape = |s: &str| {
         let mut o = String::new();
         for c in s.chars() {
-            // Teamcity also escapes `\n` and `\r`, which no message and no path PHPStan analyses holds.
             match c {
                 '\'' | '|' | '[' | ']' => {
                     o.push('|');
@@ -318,14 +291,9 @@ fn teamcity(findings: &[Finding], general: &[String], config: Option<&str>) -> S
     out
 }
 
-/// TableErrorFormatter: one Symfony table per file (`Line` and the path), the identifier (🪪) and tip (💡) under
-/// each message (a fixable one marked 🔧), then the `[ERROR] Found N errors` block and how many errors `--fix` and
-/// `--fix-ignored` would fix; `[OK] No errors` without any. The paths are relative to the analysed paths' common
-/// directory (PHPStan's fuzzy relative path).
 fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
     let style = crate::table::Style::new(width);
     let errors = |n: usize| if n == 1 { "error" } else { "errors" };
-    // printFixableIgnoredErrors()
     let fixable_ignored = match cx.fixable_ignored {
         0 => String::new(),
         n => format!(
@@ -348,8 +316,6 @@ fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
                 if !f.ignorable() {
                     message.push_str(" (non-ignorable)");
                 }
-                // ponytail: PHPStan puts 💡 before each line of a multi-line tip (less its leading ` •`); Pun's tips
-                // are one line, so add that when a rule reports a bulleted tip.
                 if let Some(tip) = &f.tip {
                     message.push_str(&format!("\n💡  {tip}"));
                 }
@@ -387,8 +353,6 @@ fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
     out + &fixable_ignored
 }
 
-/// FuzzyRelativePathHelper: `file` without the deepest directory that the working directory and every analysed
-/// path share (the first analysed path may go deeper than the working directory), else relative to the root.
 fn fuzzy_relative(root: &Path, paths: &[PathBuf], file: &Path) -> String {
     let parts = |p: &Path| -> Vec<String> {
         let s = p.to_string_lossy();

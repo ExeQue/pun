@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassUsage\DateTimeImmutableFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat};
@@ -33,7 +32,7 @@ impl Fixer for DateTimeImmutableFixer {
             ),
         ];
         let mut is_in_namespace = false;
-        let mut is_imported = false; // e.g. use DateTime;
+        let mut is_imported = false;
 
         let mut limit = tokens.count();
         let mut index = 0;
@@ -69,7 +68,7 @@ impl Fixer for DateTimeImmutableFixer {
             let lowercase_content = php_compat::strtolower(token.get_content());
             if lowercase_content == b"datetime" {
                 fix_class_usage(tokens, index, is_in_namespace, is_imported);
-                limit = tokens.count(); // update limit, as fixing class usage may insert new token
+                limit = tokens.count();
                 index += 1;
                 continue;
             }
@@ -96,8 +95,8 @@ fn fix_class_usage(tokens: &mut Tokens, index: usize, is_in_namespace: bool, is_
             }
         }
     }
-    let mut is_used_alone = false; // e.g. new DateTime();
-    let mut is_used_with_leading_backslash = false; // e.g. new \DateTime();
+    let mut is_used_alone = false;
+    let mut is_used_with_leading_backslash = false;
     let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
     if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
         let prev_prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();

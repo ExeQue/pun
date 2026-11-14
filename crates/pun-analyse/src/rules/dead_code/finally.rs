@@ -1,5 +1,3 @@
-//! OverwrittenExitPointByFinallyRule and the exit points its virtual node reads.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -10,12 +8,10 @@ use super::super::types::flow::unparen;
 #[derive(Default)]
 pub(super) struct Result {
     always: bool,
-    /// `None`: a synthetic `break`/`continue` (getExitPointsForOuterLoop()), without a position.
     pub(super) exits: Vec<(Option<Span>, &'static str)>,
     pub(super) jumps: Vec<(Option<Span>, &'static str, u64)>,
 }
 
-/// PHPStan only builds FinallyExitPointsNode for an always-terminating finally block.
 pub(super) fn check(c: &mut Checker, t: &Try) {
     if c.level < 4 {
         return;
@@ -60,14 +56,11 @@ pub(super) fn check(c: &mut Checker, t: &Try) {
                 .map(|(span, kind)| (span, format!("The overwriting {kind} is on this line."))),
         );
     for (span, message) in messages {
-        // PHPStan's line of a node without a position
         let line = span.map_or(-1, |span| c.line_of(span));
         c.report_at_line(line, "finally.exitPoint", message, None);
     }
 }
 
-/// `isAlwaysTerminating()` of an expression's result: a `throw`, `exit` or never-returning call that is evaluated
-/// whatever happens (not in a closure, a short-circuited operand or a branch).
 fn terminates(c: &Checker, e: &Expression) -> bool {
     match e {
         Expression::Throw(_) | Expression::Construct(Construct::Exit(_) | Construct::Die(_)) => {
@@ -85,7 +78,6 @@ fn terminates(c: &Checker, e: &Expression) -> bool {
         {
             terminates(c, b.lhs)
         }
-        // the right side runs when the left is always null
         Expression::Binary(b) if matches!(b.operator, BinaryOperator::NullCoalesce(_)) => {
             terminates(c, b.lhs)
                 || (c.type_of(b.lhs).is_some_and(|t| t.is_null()) && terminates(c, b.rhs))
@@ -119,7 +111,6 @@ fn node_terminates(c: &Checker, n: Node) -> bool {
     }
 }
 
-/// `isAlwaysTerminating()` of a statement's result.
 pub(super) fn always_terminates(c: &Checker, s: &Statement) -> bool {
     statement(c, s).always
 }
@@ -299,7 +290,6 @@ fn loop_body(c: &Checker, s: &[Statement], condition: Option<bool>, do_while: bo
     result
 }
 
-/// getExitPointsForOuterLoop(): drop level 1; decrement above 2, otherwise retain a synthetic level 1.
 fn outer_loop(jumps: &mut Vec<(Option<Span>, &'static str, u64)>) {
     jumps.retain_mut(|(span, _, n)| {
         if *n == 1 {
@@ -318,7 +308,6 @@ fn level(e: Option<&Expression>) -> u64 {
     }
 }
 
-/// The expression types NodeScopeResolver reads to find never-returning calls and constant branches.
 pub(super) fn typed(program: &Program) -> Vec<Span> {
     struct Wanted {
         spans: Vec<Span>,
@@ -332,8 +321,6 @@ pub(super) fn typed(program: &Program) -> Vec<Span> {
             s: &'ast ExpressionStatement<'arena>,
             (): &mut (),
         ) {
-            // StatementHandler also terminates on the completed value, independently
-            // of a nested expression's isAlwaysTerminating flag (notably `new`).
             self.spans.push(s.expression.span());
         }
         fn walk_in_binary(&mut self, b: &'ast Binary<'arena>, (): &mut ()) {

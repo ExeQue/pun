@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 expectations for declaration metadata at resolved method-call source edges.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

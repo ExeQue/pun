@@ -1,6 +1,3 @@
-//! PHPStan's by-reference feedback uses the selected full holder in both lanes,
-//! not the final body's narrower or unavailable native scope.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -60,7 +57,6 @@ impl ExpressionHook for Observer {
     }
 }
 
-// Adapt scalar wrappers and equivalent generic-array and constant-shape displays.
 fn display(value: &str) -> String {
     let value = value
         .replace("array<array-key, mixed>", "array")

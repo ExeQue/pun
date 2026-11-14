@@ -26,14 +26,12 @@ use serde_json::Value;
 use super::declarations::has_tag;
 use super::declared::{self, default_is_null, original_name};
 
-/// How many ancestors the walks up a class hierarchy visit: a circular one (which PHP refuses) ends there.
 pub(super) const ANCESTRY: usize = 64;
 use super::Checker;
 use crate::bitset::BitSet;
 
 const TENTATIVE_TIP: &str = "Make it covariant, or use the #[\\ReturnTypeWillChange] attribute to temporarily suppress the error.";
 
-/// A parameter as `ExtendedParameterReflection` gives it.
 struct Param {
     name: String,
     native: Type,
@@ -42,7 +40,6 @@ struct Param {
     by_ref: bool,
 }
 
-/// A built-in method as NativeMethodReflection gives it.
 struct NativeMethod {
     name: String,
     visibility: Visibility,
@@ -64,13 +61,10 @@ pub(super) struct NativeClass {
     pub(super) parent: Option<String>,
     interfaces: Vec<String>,
     methods: HashMap<String, NativeMethod>,
-    /// The non-private properties it declares, by name.
     pub(super) properties: HashMap<String, NativeProperty>,
-    /// `ClassConstantReflection::getNativeType()`, not the constant's inferred value type.
     pub(super) constant_types: HashMap<String, Type>,
 }
 
-/// A built-in property as PhpPropertyReflection gives it.
 pub(super) struct NativeProperty {
     pub(super) is_public: bool,
     pub(super) is_static: bool,
@@ -178,7 +172,6 @@ fn native_class(v: &Value) -> NativeClass {
     }
 }
 
-/// The built-in classes at the project's PHP version, by lowercase name.
 pub(super) fn natives(php_version: u32) -> HashMap<String, NativeClass> {
     let data: Value = serde_json::from_str(include_str!("../../data/native-methods.json"))
         .expect("data/native-methods.json");
@@ -195,21 +188,18 @@ pub(super) fn natives(php_version: u32) -> HashMap<String, NativeClass> {
         .collect()
 }
 
-/// A class-like as PHPStan's reflection provider knows it.
 #[derive(Clone, Copy)]
 pub(super) enum Class<'a> {
     User(&'a ClassLikeMetadata),
     Builtin(&'a NativeClass),
 }
 
-/// A method found on a class (`getNativeMethod()`), with the class it is implemented in (a trait's user).
 #[derive(Clone, Copy)]
 enum Found<'a> {
     User {
         declaring: &'a ClassLikeMetadata,
         implementing: Class<'a>,
         f: &'a FunctionLikeMetadata,
-        /// The reflected lookup name and adapted visibility are independent of trait storage identity.
         name: mago_word::Word,
         visibility: Visibility,
     },
@@ -219,7 +209,6 @@ enum Found<'a> {
     },
 }
 
-/// What the comparisons read of a method (ExtendedMethodReflection).
 struct Facts {
     declaring: String,
     accepts_named_arguments: bool,
@@ -236,7 +225,6 @@ struct Facts {
     will_change: bool,
 }
 
-/// `isOptional()` of each parameter: it and every later one has a default or is variadic.
 fn optional_flags(defaults: impl ExactSizeIterator<Item = bool> + DoubleEndedIterator) -> BitSet {
     let mut out = BitSet::new(defaults.len());
     let mut optional = true;
@@ -254,7 +242,6 @@ fn has_attribute(f: &FunctionLikeMetadata, name: &[u8]) -> bool {
 }
 
 impl<'a> Checker<'a, '_> {
-    /// `ReflectionProvider::getClass()`.
     pub(super) fn reflected(&self, name: &str) -> Option<Class<'a>> {
         if let Some(k) = self
             .codebase
@@ -269,8 +256,6 @@ impl<'a> Checker<'a, '_> {
             .map(Class::Builtin)
     }
 
-    /// `hasNativeMethod()` / `getNativeMethod()`: the class's own methods, its traits', its parents' and its
-    /// interfaces'.
     fn native_method(&self, class: Class<'a>, lower: &str) -> Option<Found<'a>> {
         match class {
             Class::User(k) => {
@@ -317,13 +302,10 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// ClassReflection::getImmediateInterfaces(): exclude parent-provided and transitively inherited interfaces,
-    /// retaining native reflection's declaration order. Built-in entries already export this exact list.
     fn immediate_interfaces(&self, class: Class<'a>) -> Vec<Class<'a>> {
         let names: Vec<String> = match class {
             Class::User(k) => {
                 let is_enum = k.kind == SymbolKind::Enum;
-                // Mago adds an enum's interfaces under its own names; BetterReflection appends them
                 let mut names: Vec<String> = k
                     .direct_parent_interfaces
                     .iter()
@@ -336,8 +318,6 @@ impl<'a> Checker<'a, '_> {
                     })
                     .collect();
                 names.sort();
-                // The populated codex uses a set. Recover only its ordering from the declaration's CST, resolving
-                // imported names in that file rather than sorting either the aliases or resolved names.
                 if names.len() > 1
                     && let Some((_, order)) = self
                         .file_facts(k.span.file_id)
@@ -376,8 +356,6 @@ impl<'a> Checker<'a, '_> {
             .collect()
     }
 
-    /// Native reflection's complete interface-name set. User metadata already includes transitive ancestors;
-    /// the exported built-in data instead lists immediate interfaces, so expand just those native edges.
     fn native_interface_names(&self, class: Class<'a>) -> HashSet<String> {
         let mut names = HashSet::new();
         let mut pending = vec![class];
@@ -412,12 +390,10 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// BetterReflection's `ReflectionMethod::getPrototype()` of method `lower` implemented in `implementing`.
     fn br_prototype(&self, implementing: Class<'a>, lower: &str) -> Option<Found<'a>> {
         self.br_prototype_at(implementing, lower, 0)
     }
 
-    /// [`Self::br_prototype()`] `depth` ancestors up: a circular hierarchy (which PHP refuses) ends there.
     fn br_prototype_at(
         &self,
         implementing: Class<'a>,
@@ -431,14 +407,12 @@ impl<'a> Checker<'a, '_> {
             let p = self.reflected(b.methods.get(lower)?.prototype.as_deref()?)?;
             return self.native_method(p, lower);
         }
-        // a trait has no interfaces
         for i in self.immediate_interfaces(implementing) {
             if let Some(m) = self.native_method(i, lower) {
                 return Some(m);
             }
         }
         let parent = self.native_method(self.parent_class(implementing)?, lower)?;
-        // findPrototype()
         let prototype = if self.found_abstract(parent) {
             parent
         } else if self.found_visibility(parent).is_private() {
@@ -450,7 +424,6 @@ impl<'a> Checker<'a, '_> {
         (lower != "__construct" || self.found_abstract(prototype)).then_some(prototype)
     }
 
-    /// `isAbstract()` of a found method.
     fn found_abstract(&self, found: Found<'a>) -> bool {
         match found {
             Found::User { declaring, f, .. } => self.method_abstract(declaring, f),
@@ -465,8 +438,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The ancestor's template types of class `k` in a `static` of the ancestor (the method reflection is the
-    /// ancestor's as `k` sees it), and in a trait method `self` and `static` are the class using it.
     pub(super) fn localize(
         &self,
         t: &Type,
@@ -497,8 +468,6 @@ impl<'a> Checker<'a, '_> {
         self.with_ancestor_args(&t, k)
     }
 
-    /// [`Self::localize()`] with the declaring class's templates replaced by the types class `k`'s ancestry gives
-    /// them, as a parent's method reflection reached from `k` has them.
     fn instantiate(&self, t: &Type, declaring: &ClassLikeMetadata, k: &ClassLikeMetadata) -> Type {
         let t = self.localize(t, declaring, k);
         let name = original_name(declaring);
@@ -526,7 +495,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The template types class `k` gives its ancestor `name`.
     fn ancestor_args(&self, k: &ClassLikeMetadata, name: &str) -> Option<Vec<Type>> {
         let s = symbols::lookup(&original_name(k))?;
         let (_, args) = s
@@ -536,7 +504,6 @@ impl<'a> Checker<'a, '_> {
         Some(args.iter().map(|a| resolve_str(a, None)).collect())
     }
 
-    /// `isVariadic()` of a declared parameter: its `...` (Mago also flags one a `@param` tag makes variadic).
     fn native_variadic(&self, p: &FunctionLikeParameterMetadata) -> bool {
         p.flags.is_variadic()
             && self.file_contents(p.span.file_id).is_none_or(|contents| {
@@ -665,8 +632,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// The class declaring a found method, as `getDeclaringClass()->getDisplayName()` of the reflection reached from
-    /// class `k` shows it: with the template types `k`'s ancestry gives it.
     fn declaring_display(&self, k: &ClassLikeMetadata, found: Found<'a>) -> String {
         let name = match found {
             Found::User {
@@ -680,7 +645,6 @@ impl<'a> Checker<'a, '_> {
         self.ancestor_display(k, &name)
     }
 
-    /// `getAncestorWithClassName($name)->getDisplayName()` of class `k`.
     pub(super) fn ancestor_display(&self, k: &ClassLikeMetadata, name: &str) -> String {
         match self.ancestor_args(k, name) {
             Some(args) => format!(
@@ -694,8 +658,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// MethodPrototypeFinder::findPrototype(): the signature prototype, whether its visibility binds, and the
-    /// inheritance prototype.
     fn find_prototype(
         &self,
         k: &'a ClassLikeMetadata,
@@ -720,7 +682,6 @@ impl<'a> Checker<'a, '_> {
         }
         let mut prototype = method;
         if lower == "__construct" {
-            // the parent's own constructor binds only when its prototype is abstract
             let real = self
                 .br_prototype(implementing_of(method), lower)
                 .unwrap_or(method);
@@ -738,8 +699,6 @@ impl<'a> Checker<'a, '_> {
         Some((prototype, true, method))
     }
 
-    /// `getTraits(true)`: breadth-first `collectTraits()`, then the parents' traits, keyed by canonical name.
-    /// This reflection guard does not affect the statement handler's independent trait-use contexts.
     fn traits(&self, k: &'a ClassLikeMetadata) -> Vec<&'a ClassLikeMetadata> {
         let mut out = Vec::new();
         let mut current = Some(k);
@@ -771,8 +730,6 @@ impl<'a> Checker<'a, '_> {
         out
     }
 
-    /// ClassReflection::getInterfaces(): own immediate interfaces, parents' immediate interfaces and their
-    /// ancestors, then own interfaces' ancestors. Replacing an existing associative-array key keeps its position.
     pub(super) fn all_interfaces(&self, class: Class<'a>) -> Vec<Class<'a>> {
         let immediate = self.immediate_interfaces(class);
         let mut out = immediate.clone();
@@ -793,7 +750,6 @@ impl<'a> Checker<'a, '_> {
         out
     }
 
-    /// ClassReflection::collectInterfaces(), including its stack order and per-call visited set.
     fn collect_interfaces(
         &self,
         interface: Class<'a>,
@@ -827,10 +783,8 @@ fn implementing_of(found: Found) -> Class {
     }
 }
 
-/// An error a comparison found: identifier, message, tip, ignorable.
 type Message = (&'static str, String, Option<&'static str>, bool);
 
-/// MethodParameterComparisonHelper::isTypeCompatible() on PHP 8.
 fn compatible(a: &Type, b: &Type, mixed_explicitness: bool) -> bool {
     match (a, b) {
         (Type::Mixed { explicit }, Type::Mixed { explicit: other }) if mixed_explicitness => {
@@ -841,7 +795,6 @@ fn compatible(a: &Type, b: &Type, mixed_explicitness: bool) -> bool {
     }
 }
 
-/// MethodVisibilityComparisonHelper::compare().
 fn compare_visibility(
     prototype: &Facts,
     prototype_class: &str,
@@ -873,7 +826,6 @@ fn compare_visibility(
     Some(("method.visibility", message, None, false))
 }
 
-/// MethodParameterComparisonHelper::compare() on PHP 8.
 fn compare_parameters(
     prototype: &Facts,
     prototype_class: &str,
@@ -1002,11 +954,8 @@ fn compare_parameters(
     out
 }
 
-/// The analysed method as PhpMethodFromParserNodeReflection gives it, `name` being its name in the class (a trait
-/// method's alias).
 fn analysed(c: &Checker, m: &Method, name: &str, k: &ClassLikeMetadata) -> Facts {
     let lower = name.to_ascii_lowercase();
-    // a trait method keeps its visibility unless the `use` changes it (`foo as public`)
     let aliased = c.in_trait().and_then(|_| {
         k.trait_visibility_map
             .get(&mago_word::word(&lower))
@@ -1054,7 +1003,6 @@ fn analysed(c: &Checker, m: &Method, name: &str, k: &ClassLikeMetadata) -> Facts
         ),
         _ => native_ret,
     };
-    // transformStaticType(): `static` is the class's object type in a final class
     fn static_to_object(t: &Type) -> Type {
         match t {
             Type::Static(n, args) => Type::Object(n.clone(), args.clone(), false),
@@ -1102,7 +1050,6 @@ fn analysed(c: &Checker, m: &Method, name: &str, k: &ClassLikeMetadata) -> Facts
     }
 }
 
-/// A `#[name]` attribute on the method (names resolved).
 fn attribute(c: &Checker, m: &Method, name: &str) -> bool {
     m.attribute_lists
         .iter()
@@ -1110,7 +1057,6 @@ fn attribute(c: &Checker, m: &Method, name: &str) -> bool {
         .any(|a| c.resolved(&a.name).eq_ignore_ascii_case(name))
 }
 
-/// OverridingMethodRule and ConsistentConstructorRule on method `m` (named `name` in the class).
 pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, name: &str) {
     let k = c
         .class_scope()
@@ -1120,8 +1066,6 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
         let mut out = Vec::new();
         if c.method_rules.overriding_method {
             out = overriding_method(c, m, name, k, &mut collected);
-            // OverridingMethodRule::addErrors(): MethodSignatureRule (checkPhpDocMethodSignatures, level 3) when the
-            // rule itself found nothing
             if out.is_empty() && c.level >= 3 {
                 out = method_signature(c, m, name, k);
             }
@@ -1139,12 +1083,10 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
         if ignorable {
             c.report(m, id, message, tip);
         } else if id == "method.visibility" {
-            // MethodVisibilityComparisonHelper reports on the method name's line
             c.report_non_ignorable(m.name, id, message, tip);
         } else {
             c.report_non_ignorable(m, id, message, tip);
         }
-        // its fix removes the #[\Override] attribute
         if id == "method.override" {
             c.fixable_since(count);
         }
@@ -1328,10 +1270,6 @@ fn overriding_method<'a>(
     out
 }
 
-/// MethodSignatureRule against ParentMethodHelper::collectParentMethods(): the parent class's method, every
-/// interface's, and the abstract methods the class's traits (and theirs, and its parents') declare. Its purity checks
-/// (`featureToggles.reportMethodPurityOverride`), then the return and parameter types (`reportMaybesInMethodSignatures`
-/// stays off, so only incompatible ones).
 fn method_signature<'a>(
     c: &Checker<'a, '_>,
     m: &Method,
@@ -1339,7 +1277,6 @@ fn method_signature<'a>(
     k: &'a ClassLikeMetadata,
 ) -> Vec<Message> {
     let lower = name.to_ascii_lowercase();
-    // ponytail: `reportStaticMethodSignatures` stays at its default, off
     let is_static = m.modifiers.contains_static();
     if lower == "__construct" || is_static || m.modifiers.contains_private() {
         return Vec::new();
@@ -1418,7 +1355,6 @@ fn method_signature<'a>(
                 f,
                 ..
             } => {
-                // a trait method's `$this` is the class using the trait
                 let owner = match implementing {
                     Class::User(owner) if declaring.kind.is_trait() => owner,
                     _ => declaring,
@@ -1430,7 +1366,6 @@ fn method_signature<'a>(
                         t
                     }
                 };
-                // (resolved in the using class, so the trait's templates are its `@use` tag's types)
                 let (docs, ret) = declared::reflected_phpdoc_signature(c, f, owner, &facts.name);
                 let docs: Vec<Option<Type>> = f
                     .parameters
@@ -1453,10 +1388,8 @@ fn method_signature<'a>(
                     .collect();
                 (docs, ret.map(|t| c.instantiate(&rename(t), owner, k)))
             }
-            // ponytail: a built-in method's signature-map PHPDoc types are not exported, only its native ones
             Found::Builtin { .. } => (Vec::new(), None),
         };
-        // checkReturnTypeCompatibility()
         let returned = decide_type(
             method.ret.clone(),
             own_return.as_ref().map(Type::resolve_to_bounds),
@@ -1486,7 +1419,6 @@ fn method_signature<'a>(
                 true,
             ));
         }
-        // checkParameterTypeCompatibility()
         for (i, ((native, phpdoc), parent_param)) in
             own_params.iter().zip(&facts.params).enumerate()
         {
@@ -1517,7 +1449,6 @@ fn method_signature<'a>(
     out
 }
 
-/// A trait's own name in a type, as the class `owner` using the trait.
 fn self_to(t: &Type, trait_: &ClassLikeMetadata, owner: &ClassLikeMetadata) -> Type {
     let name = declared::original_name(trait_);
     let to = declared::original_name(owner);
@@ -1531,8 +1462,6 @@ fn self_to(t: &Type, trait_: &ClassLikeMetadata, owner: &ClassLikeMetadata) -> T
     }
 }
 
-/// MethodSignatureRule's `transformStaticType()`: a parent's `static` is the analysed class's (its object type when
-/// the class is final).
 fn transform_static(t: &Type, k: &ClassLikeMetadata) -> Type {
     let name = declared::original_name(k);
     match t {
@@ -1546,7 +1475,6 @@ fn transform_static(t: &Type, k: &ClassLikeMetadata) -> Type {
     }
 }
 
-/// MethodSignatureRule's purity messages for an impure method overriding `found`.
 fn purity_message(
     c: &Checker,
     found: Found,
@@ -1558,8 +1486,6 @@ fn purity_message(
     let (pure, unless_callable, unless_passed) = match found {
         Found::User { declaring, .. } => declared::method_purity(c, declaring, lower.as_bytes()),
         Found::Builtin { declaring, .. } => {
-            // NativeMethodReflection::isPure() negates hasSideEffects(); the export already includes
-            // its non-constructor void override. Native methods have neither conditional-purity tag.
             let pure = symbols::class(&declaring.name)
                 .and_then(|class| class.methods.get(lower))
                 .and_then(|method| match method.side_effects.as_str() {
@@ -1595,7 +1521,6 @@ fn purity_message(
     Some((id, message, None, true))
 }
 
-/// ConsistentConstructorRule.
 fn consistent_constructor<'a>(
     c: &Checker<'a, '_>,
     m: &Method,
@@ -1606,7 +1531,6 @@ fn consistent_constructor<'a>(
     if !name.eq_ignore_ascii_case("__construct") {
         return Vec::new();
     }
-    // ConsistentConstructorHelper::findConsistentConstructor()
     let mut current = c.parent_class(Class::User(k));
     let mut depth = 0;
     let constructor = loop {
@@ -1618,8 +1542,6 @@ fn consistent_constructor<'a>(
             return Vec::new();
         }
         let tags = c.class_tags(p);
-        // Mago gives a class with the tag a constructor when it declares none (DummyConstructorReflection's: public,
-        // without parameters)
         if has_tag(
             &tags,
             &[
@@ -1641,9 +1563,6 @@ fn consistent_constructor<'a>(
     out
 }
 
-/// WrongCaseOfInheritedMethodRule (phpstan-strict-rules, `matchingInheritedMethodNames`): method `name` of the
-/// class-like being walked written in another case than the same method of its parent class or of one of its
-/// interfaces (`hasNativeMethod()`, private ones included).
 pub(super) fn inherited_case(c: &mut Checker, m: &Method, name: &str) {
     if !c
         .strict

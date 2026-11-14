@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1's callable signatures survive only along their actual declaration source edges.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,10 +1,3 @@
-//! `lint/classes/no-null-property-init`, ported from Rector 2.8.4's `RemoveNullPropertyInitializationRector`
-//! (rules/DeadCode/Rector/PropertyProperty).
-//!
-//! `private $a = null;` becomes `private $a;`: an untyped property is `null` until it is set. A typed property
-//! keeps `= null`, since without it the property is uninitialized. The default must be the constant `null` in any
-//! case (`NULL`, `\null`).
-
 use mago_syntax::cst::{Node, NodeKind, Property, PropertyItem};
 use pun_problem::{Edit, Fix, Safety, Span};
 

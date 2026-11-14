@@ -1,13 +1,3 @@
-//! `pun vet`: every locked package must be reviewed by someone the project trusts, or exempted. Reviews live in
-//! `supply-chain/` beside the lock: `audits.toml` holds the project's own, `config.toml` the exemptions and the
-//! audit files the project imports from others, and `imports.lock` the imported audits as last fetched, so a check
-//! runs offline and an import changes only when someone refreshes it.
-//!
-//! A review covers one version (a full audit) or the changes from one version to another (a delta), against one
-//! criterion: `safe-to-run` (fine on a developer's machine and in CI) or `safe-to-deploy` (fine in production,
-//! which implies safe-to-run). `require` packages need safe-to-deploy, `require-dev` packages safe-to-run. A
-//! version is vetted when a chain of reviews leads to it from a full audit or an exemption.
-
 use crate::install::{fetcher, project};
 use crate::render::{ColorChoice, Look, Role, plural};
 use anyhow::{Context, Result, bail};
@@ -310,7 +300,6 @@ fn verdict(need: &Need, audits: &[&Audit], exemptions: &[Exemption]) -> Verdict 
     if reached.contains(&target) {
         return Verdict::Exempted;
     }
-    // The nearest reviewed version below, else above: the smallest set of changes to review.
     let below = (reached.iter())
         .filter(|v| compare(v, &target) < 0)
         .max_by(|a, b| compare(a, b).cmp(&0));
@@ -371,7 +360,6 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
             let fetcher = fetcher(&project.root, &project.manifest);
             let name = package.to_ascii_lowercase();
             let work = std::env::temp_dir().join(format!("pun-vet-{}", std::process::id()));
-            // Run from the work directory, so the diff names files as `<version>/<path>`.
             let (a, b) = (work.join(&from), work.join(&to));
             let unpacked = unpack_version(&fetcher, lock, &name, &from, &a)
                 .and_then(|()| unpack_version(&fetcher, lock, &name, &to, &b));

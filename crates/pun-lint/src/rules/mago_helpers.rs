@@ -1,14 +1,9 @@
-//! What the ports of Mago 1.57.0's linter rules share: mago-linter's rule/utils/misc.rs helpers, its scope stack
-//! (scope.rs) read from the ancestors, and the parsing of a rule's options, which keep Mago's (kebab-case) names.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Access, Expression, Method, MethodBody, Node, Statement, Variable};
 use pun_problem::Span;
 
 use crate::syntax::span;
 
-/// `get_class_like_header_span`: from the keyword to the name of a named class-like, the `class` keyword of an
-/// anonymous class, and the whole node for anything else.
 pub(crate) fn class_like_header_span(node: Node<'_, '_>) -> Span {
     span(match node {
         Node::Class(class) => class.class.span().join(class.name.span()),
@@ -20,8 +15,6 @@ pub(crate) fn class_like_header_span(node: Node<'_, '_>) -> Span {
     })
 }
 
-/// `is_method_setter_or_getter`: a method whose body only returns `$this->...` (and takes no parameter), or only
-/// assigns one parameter to `$this->...` and, maybe, returns `$this`.
 pub(crate) fn is_method_setter_or_getter(method: &Method<'_>) -> bool {
     let MethodBody::Concrete(block) = &method.body else {
         return false;
@@ -47,7 +40,6 @@ pub(crate) fn is_method_setter_or_getter(method: &Method<'_>) -> bool {
             if !is_accessing_property_of_this(assignment.lhs) {
                 return false;
             }
-            // The block has one or two statements, so it has a last one.
             match block.statements.last() {
                 Some(Statement::Return(r#return)) => r#return
                     .value
@@ -70,8 +62,6 @@ fn is_variable_named(expression: &Expression<'_>, name: &[u8]) -> bool {
     matches!(expression, Expression::Variable(Variable::Direct(v)) if v.name == name)
 }
 
-/// The innermost function-like (function, method, closure, arrow function) holding the node, Mago's
-/// `ScopeStack::get_function_like_scope`.
 pub(crate) fn function_like_scope<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
 ) -> Option<Node<'ast, 'arena>> {
@@ -83,8 +73,6 @@ pub(crate) fn function_like_scope<'ast, 'arena>(
     })
 }
 
-/// `ScopeStack::get_namespace`: the name of the namespace holding the node, without a leading `\`, empty outside
-/// one (and in an unnamed one).
 pub(crate) fn namespace<'arena>(ancestors: &[Node<'_, 'arena>]) -> &'arena [u8] {
     ancestors
         .iter()
@@ -98,8 +86,6 @@ pub(crate) fn namespace<'arena>(ancestors: &[Node<'_, 'arena>]) -> &'arena [u8] 
         .unwrap_or(b"")
 }
 
-/// Takes a rule's options, a table: `set` takes each key and value, and returns `None` when it does not know the
-/// key or the value has the wrong type.
 pub(crate) fn configure(
     options: &serde_json::Value,
     mut set: impl FnMut(&str, &serde_json::Value) -> Option<()>,
@@ -120,7 +106,6 @@ pub(crate) fn configure(
     }
 }
 
-/// A non-negative integer no larger than `max` (the size of the integer type Mago reads it into).
 pub(crate) fn uint(value: &serde_json::Value, max: u64) -> Option<usize> {
     value.as_u64().filter(|&n| n <= max).map(|n| n as usize)
 }

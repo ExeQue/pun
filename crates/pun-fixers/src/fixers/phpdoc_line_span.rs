@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocLineSpanFixer`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
@@ -36,7 +35,6 @@ const PROPERTY_PART_KINDS: &[Kind] = &[
     T_PUBLIC_SET,
 ];
 
-/// The option names, in upstream's order, with their defaults (`Some(true)` = multi, `Some(false)` = single).
 const OPTIONS: [(&str, Option<bool>); 8] = [
     ("class", Some(true)),
     ("trait_import", None),
@@ -49,7 +47,6 @@ const OPTIONS: [(&str, Option<bool>); 8] = [
 ];
 
 struct PhpdocLineSpanFixer {
-    /// The configured span per `OPTIONS` entry.
     spans: [Option<bool>; 8],
     whitespaces_config: WhitespacesFixerConfig,
 }

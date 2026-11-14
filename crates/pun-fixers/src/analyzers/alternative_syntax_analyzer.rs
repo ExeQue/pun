@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\AlternativeSyntaxAnalyzer`.
 use pun_tokens::{Kind, Kind::*, Proto, Tokens};
 
 pub(crate) struct AlternativeSyntaxAnalyzer;
@@ -101,8 +100,6 @@ foo(1) ?: 2;
 if ($a): if ($b): endif; endif;
 ";
 
-    // Expected values: the real AlternativeSyntaxAnalyzer on CODE, for every token index
-    // (findAlternativeSyntaxBlockEnd only where it does not throw).
     #[test]
     fn matches_php() {
         let tokens = Tokens::from_code(CODE);

@@ -1,15 +1,3 @@
-//! `lint/style/prefer-property-over-local-getter`, ported from Rector 2.8.4's `PrivatizeLocalGetterToPropertyRector`
-//! (rules/Privatization/Rector/MethodCall).
-//!
-//! `$this->getSome()` becomes `$this->some` when `getSome` is a method of the same class, private or of a final
-//! class, without parameters, whose only statement returns a property fetch. The fetch is copied as the getter writes
-//! it.
-//!
-//! Rector walks the whole class, the bodies of nested anonymous classes included, and matches their `$this` calls
-//! against the outer class. There `$this` is another object, so Pun stops at a nested class (which gets its own
-//! visit). Rector also drops the arguments of a call to the getter (`$this->getSome($x)`); Pun leaves such a call
-//! alone, since the arguments may have effects.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -72,8 +60,6 @@ impl Rule for PreferPropertyOverLocalGetter {
     }
 }
 
-/// Every method call under `node`, outside nested classes; a call replaced is not searched further (its arguments
-/// are none).
 fn node_calls<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     f: &mut impl FnMut(&'ast MethodCall<'arena>),
@@ -90,8 +76,6 @@ fn node_calls<'ast, 'arena>(
     node.visit_children(|child| node_calls(child, f));
 }
 
-/// The property fetch `call` turns into: `$this->name()` without arguments, where `name` is a method of the class
-/// that is private (or the class is final) and only returns a property fetch.
 fn getter_fetch<'ast>(
     ctx: &Context<'_>,
     call: &MethodCall<'_>,
@@ -107,7 +91,6 @@ fn getter_fetch<'ast>(
     let ClassLikeMemberSelector::Identifier(name) = &call.method else {
         return None;
     };
-    // `Class_::getMethod`: the first method of that name, ignoring ASCII case.
     let method = methods
         .iter()
         .find(|m| m.name.value.eq_ignore_ascii_case(name.value))?;
@@ -121,7 +104,6 @@ fn getter_fetch<'ast>(
     local_property_fetch(ctx, method)
 }
 
-/// `matchLocalPropertyFetchInGetterMethod`: no parameters and one statement, `return <property fetch>;`.
 fn local_property_fetch<'ast>(
     ctx: &Context<'_>,
     method: &'ast Method<'ast>,

@@ -1,6 +1,3 @@
-//! Port of `PhpCsFixer\AbstractFunctionReferenceFixer`: `isCandidate` (`T_STRING` found), `isRisky`
-//! (true) and `find()`. Fixers create one `FunctionReferenceFinder` per `fix()` call (it caches a
-//! `FunctionsAnalyzer` for that token collection).
 use super::functions_analyzer::FunctionsAnalyzer;
 use pun_tokens::{Kind::*, Tokens};
 
@@ -20,8 +17,6 @@ impl FunctionReferenceFinder {
         Self::default()
     }
 
-    /// `[function name index, open parenthesis, close parenthesis]` of the next global call to
-    /// `function_name_to_search` (case-insensitive) in `start..=end` (`end` defaults to the token count).
     pub(crate) fn find(
         &self,
         function_name_to_search: &str,

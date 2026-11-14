@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\EregToPregFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -12,7 +11,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(EregToPregFixer)
 }
 
-/// `FUNCTIONS`: the ereg function, its preg replacement and the modifier it adds.
 const FUNCTIONS: &[(&str, &str, &str)] = &[
     ("ereg", "preg_match", ""),
     ("eregi", "preg_match", "i"),
@@ -90,7 +88,6 @@ impl Fixer for EregToPregFixer {
     }
 }
 
-/// The first delimiter not in `pattern`, else the one it holds least often (the earlier one on a tie).
 fn get_best_delimiter(pattern: &[u8]) -> u8 {
     if let Some(&d) = DELIMITERS.iter().find(|&&d| !pattern.contains(&d)) {
         return d;

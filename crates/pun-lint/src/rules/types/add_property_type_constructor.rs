@@ -1,19 +1,3 @@
-//! `lint/types/add-property-type-constructor`, ported from Rector 2.8.4's `TypedPropertyFromStrictConstructorRector`
-//! (rules/TypeDeclaration/Rector/Property) with `TrustedClassMethodPropertyTypeInferer`: an untyped property the
-//! constructor assigns gets the type of what it assigns.
-//!
-//! The constructor's first assignment of a property named so whose value names a typed parameter (by
-//! `NodeNameResolver::getName`, so `$this->a = $this->b` and `$this->a = b()` name a parameter `$b` too) gives that
-//! parameter's declared type, `null` added for a `?T` or a `null` default; an `array` or variadic parameter takes the
-//! type of the first variable named as the property. Without one, the native types of the other values assigned in
-//! the constructor make a union. When every assignment in the class (`AssignToPropertyTypeInferer`) makes a union
-//! that differs, the property is left alone.
-//!
-//! A private or protected property gets the type, loses its default when the constructor always assigns it, and loses
-//! its `@var` when that says no more; a public one only gets a `@var` when it has none (or `@var mixed`). Properties a
-//! used trait declares or writes, whose declared type is `null`, `callable` or a class that does not exist, or that a
-//! parent class declares untyped, are left alone, as is a class with a Doctrine `loadMetadata()` method.
-
 use mago_syntax::cst::{
     Access, Block, ClassLikeMemberSelector, Expression, FunctionLikeParameter, Method, MethodBody,
     Node, NodeKind, Variable,
@@ -71,7 +55,6 @@ impl Rule for AddPropertyTypeConstructor {
         let test_case = is_test_case(&facts, &view);
         let mut edits: Vec<Edit> = Vec::new();
         for prop in &props {
-            // `PropertyTypeOverrideGuard`: `inline_public` only for a property that is not protected
             if !is_legal(&facts, &view, prop, true)
                 || (prop.is_protected() && !is_safe_protected_property(&facts, &view, prop.name()))
                 || !parent_allows(&facts, &view, prop.name())
@@ -143,7 +126,6 @@ impl Rule for AddPropertyTypeConstructor {
     }
 }
 
-/// Whether the class is a PHPUnit test case (`isObjectType($class, 'PHPUnit\Framework\TestCase')`).
 pub(crate) fn is_test_case(facts: &Facts, view: &ClassView<'_, '_>) -> bool {
     const TEST_CASE: &[u8] = b"phpunit\\framework\\testcase";
     view.parent
@@ -159,7 +141,6 @@ pub(crate) fn is_test_case(facts: &Facts, view: &ClassView<'_, '_>) -> bool {
             })
 }
 
-/// `TrustedClassMethodPropertyTypeInferer::inferProperty`, of the assignments in `constructor` (the method passed in).
 pub(crate) fn infer(
     facts: &Facts,
     view: &ClassView<'_, '_>,
@@ -176,7 +157,6 @@ pub(crate) fn infer(
     let params: Vec<&FunctionLikeParameter<'_>> =
         constructor.parameter_list.parameters.iter().collect();
     let param_named = |n: &[u8]| params.iter().copied().find(|p| &p.variable.name[1..] == n);
-    // 1. the first assignment whose value is not a call names a parameter
     let first = assigns.iter().find(|v| {
         !matches!(
             unparenthesize(v),
@@ -193,7 +173,6 @@ pub(crate) fn infer(
             let Some(hint) = &param.hint else {
                 return Ty::Mixed;
             };
-            // resolveParamTypeToPHPStanType puts `null` before the type of a `?T`
             let t = match hint {
                 mago_syntax::cst::Hint::Nullable(n) => {
                     mixed_passed_or_union(vec![Ty::Null, hint_ty(n.hint, &view.path, view)], false)
@@ -224,7 +203,6 @@ pub(crate) fn infer(
             mixed_passed_or_union(types, false)
         }
         None => {
-            // 2. the other values assigned
             let param_names: Vec<&[u8]> = params.iter().map(|p| &p.variable.name[1..]).collect();
             let types: Vec<Ty> = assigns
                 .iter()
@@ -237,7 +215,6 @@ pub(crate) fn infer(
             union(types)
         }
     };
-    // resolveType
     let assigned = is_property_assigned(ctx, view, test_case, name);
     match assigned_type(facts, view, prop, assigned) {
         Assigned::Type(exact) if exact.is_union() && !are_equal(&resolved, &exact) => Ty::Mixed,
@@ -245,8 +222,6 @@ pub(crate) fn infer(
     }
 }
 
-/// The values of the constructor's assignments to a property named `name` (`$x->name`, `X::$name`), outside nested
-/// classes, in source order.
 fn constructor_assigns<'a>(body: &'a Block<'a>, name: &[u8]) -> Vec<&'a Expression<'a>> {
     let mut out = Vec::new();
     let mut stack: Vec<Node<'a, 'a>> = body.statements.iter().rev().map(Node::Statement).collect();
@@ -268,7 +243,6 @@ fn constructor_assigns<'a>(body: &'a Block<'a>, name: &[u8]) -> Vec<&'a Expressi
     out
 }
 
-/// The name of a property fetch (`$x->name`, `X::$name`).
 fn fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     match expr {
         Expression::Access(Access::Property(p)) => match &p.property {
@@ -283,8 +257,6 @@ fn fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `NodeNameResolver::getName` of an assigned value, as far as it can name a parameter: a variable, a property fetch,
-/// a function call, a constant.
 fn get_name(expr: &Expression<'_>) -> Option<Vec<u8>> {
     match unparenthesize(expr) {
         Expression::Variable(Variable::Direct(v)) => Some(v.name[1..].to_vec()),
@@ -305,8 +277,6 @@ fn get_name(expr: &Expression<'_>) -> Option<Vec<u8>> {
     }
 }
 
-/// `getResolveParamStaticTypeAsPHPStanType`: the type of the first variable named `name` in the constructor's body,
-/// or `array`.
 fn first_variable_type(facts: &Facts, body: &Block<'_>, name: &[u8]) -> Ty {
     let mut stack: Vec<Node<'_, '_>> = body.statements.iter().rev().map(Node::Statement).collect();
     while let Some(node) = stack.pop() {

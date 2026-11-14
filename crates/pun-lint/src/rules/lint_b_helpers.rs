@@ -1,7 +1,3 @@
-//! What lint-b's Rector ports share: a call's arguments as php-parser sees them, the edits php-parser's
-//! format-preserving printer makes when an argument is added or removed, class names resolved as `NameResolver` does,
-//! and the object type of a variable where the syntax alone proves it (until analyse's types arrive, Build 8).
-
 use mago_syntax::cst::{
     Argument, ArgumentList, Assignment, AssignmentOperator, BinaryOperator, Call, Expression,
     ForeachTarget, Hint, Identifier, Instantiation, Literal, Method, MethodBody, NamespaceBody,
@@ -13,7 +9,6 @@ use super::rector_code_quality::named;
 use super::rector_stmts::{List, line_indent};
 use crate::syntax::{node_span, unparenthesize};
 
-/// `Arg::$value`.
 pub(super) fn value<'a>(arg: &'a Argument<'a>) -> &'a Expression<'a> {
     match arg {
         Argument::Positional(a) => a.value,
@@ -21,13 +16,10 @@ pub(super) fn value<'a>(arg: &'a Argument<'a>) -> &'a Expression<'a> {
     }
 }
 
-/// `$arg->unpack`.
 pub(super) fn unpacked(arg: &Argument<'_>) -> bool {
     matches!(arg, Argument::Positional(a) if a.ellipsis.is_some())
 }
 
-/// The edit php-parser's printer makes when it removes the argument at `index`: the argument and the separator before
-/// it, or, for the first, the argument and the text up to the next one (the callers never remove a sole argument).
 pub(super) fn remove_argument(list: &ArgumentList<'_>, index: usize) -> Edit {
     let items = list.arguments.as_slice();
     let span = node_span(&items[index]);
@@ -38,7 +30,6 @@ pub(super) fn remove_argument(list: &ArgumentList<'_>, index: usize) -> Edit {
     }
 }
 
-/// The edit php-parser's printer makes when it appends `code` as a new last argument.
 pub(super) fn append_argument(source: &str, list: &ArgumentList<'_>, code: &str) -> Edit {
     let spans: Vec<Span> = list.arguments.iter().map(node_span).collect();
     append_item(
@@ -49,10 +40,6 @@ pub(super) fn append_argument(source: &str, list: &ArgumentList<'_>, code: &str)
     )
 }
 
-/// The edit for an item php-parser's format-preserving printer appends to a comma-separated list whose items span
-/// `spans` and whose `(` ends at `open`: after the last item, or (`emptyListInsertionMap`) right after the `(`.
-/// `isMultiline()`: with a line break between every two items, the new one goes on a line of its own at the indent
-/// of the last.
 pub(super) fn append_item(source: &str, spans: &[Span], open: usize, code: &str) -> Edit {
     let Some(last) = spans.last() else {
         return Edit::new(Span::new(open, open), code.to_string());
@@ -68,8 +55,6 @@ pub(super) fn append_item(source: &str, spans: &[Span], open: usize, code: &str)
     Edit::new(Span::new(last.end, last.end), format!(", {code}"))
 }
 
-/// The namespace and the class imports (`use A\B as C;`: alias lower-cased => `A\B`) that apply at a node, from its
-/// ancestors.
 fn scope(ancestors: &[Node<'_, '_>]) -> (String, Vec<(String, String)>) {
     let mut namespace = String::new();
     let mut statements: Option<&[Statement<'_>]> = None;
@@ -123,8 +108,6 @@ fn scope(ancestors: &[Node<'_, '_>]) -> (String, Vec<(String, String)>) {
     (namespace, imports)
 }
 
-/// `NameResolver`'s fully qualified class name for `name` (without a leading backslash), as written at a node with
-/// these ancestors.
 pub(super) fn class_name(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> String {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     if let Identifier::FullyQualified(_) = name {
@@ -161,10 +144,6 @@ fn join(namespace: &str, name: &str) -> String {
     }
 }
 
-/// Whether the syntax proves that `expr` holds an object of class `class` (compared ignoring ASCII case): `new
-/// Class(...)` itself, or a variable that is a parameter declared with that class and never written, or that its scope
-/// assigns exactly once, with `new Class(...)`, before `at`. PHPStan's `isObjectType` also accepts subclasses, which
-/// needs reflection.
 pub(super) fn is_object_of(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -180,16 +159,11 @@ pub(super) fn is_object_of(
     }
 }
 
-/// What the syntax knows about an expression: the parameter declaration of a variable that is never written, or the
-/// one value a variable is assigned.
 pub(super) enum Known<'a> {
     Hint(&'a Hint<'a>),
     Value(&'a Expression<'a>),
 }
 
-/// See [`Known`]: `expr` itself unless it is a variable; for a variable, its parameter's type when it is never
-/// written, or the right side of its one plain assignment before `at` in its scope. An arrow function, and a closure
-/// through `use ($x)`, read the variable from the scope around them.
 pub(super) fn known<'a>(
     ancestors: &[Node<'a, '_>],
     expr: &'a Expression<'a>,
@@ -229,7 +203,6 @@ pub(super) fn known<'a>(
             .flatten();
         }
         if inherits {
-            // The value at the point the closure or arrow function is created.
             at = node_span(scope).start;
             continue;
         }
@@ -246,7 +219,6 @@ pub(super) fn known<'a>(
             [assignment] if node_span(*assignment).end <= at && plain(assignment) => {
                 Some(Known::Value(unparenthesize(assignment.rhs)))
             }
-            // Statements of the scope itself run in order, so the last of them before `at` decides the value.
             assignments if assignments.iter().all(|a| plain(a) && top_level(scope, a)) => {
                 assignments
                     .iter()
@@ -260,7 +232,6 @@ pub(super) fn known<'a>(
     None
 }
 
-/// Whether `assignment` is a statement of its own directly in the body of `scope`.
 fn top_level(scope: &Node<'_, '_>, assignment: &Assignment<'_>) -> bool {
     let statements = match scope {
         Node::Function(f) => f.body.statements.as_slice(),
@@ -269,7 +240,6 @@ fn top_level(scope: &Node<'_, '_>, assignment: &Assignment<'_>) -> bool {
             ..
         }) => b.statements.as_slice(),
         Node::Program(p) => p.statements.as_slice(),
-        // `known` asks only for these scopes (an abstract method has no assignments).
         _ => &[],
     };
     let span = node_span(assignment);
@@ -278,7 +248,6 @@ fn top_level(scope: &Node<'_, '_>, assignment: &Assignment<'_>) -> bool {
     })
 }
 
-/// A constant value of PHPStan's type for an expression.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Constant {
     Int(i64),
@@ -288,9 +257,6 @@ pub(super) enum Constant {
     Null,
 }
 
-/// `ValueResolver::getValue` where the syntax decides it: a literal, `-`/`+` on a number, `~` on a number or string, a
-/// constant PHPStan knows the value of (`PHP_INT_MAX` and the like; not the `PHP_FLOAT_*` ones, which it types
-/// `float`), or a variable whose one value (see [`known`]) is one of those.
 pub(super) fn constant(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -355,12 +321,9 @@ fn instantiates(ancestors: &[Node<'_, '_>], new: &Instantiation<'_>, class: &str
 #[derive(Default)]
 struct Writes<'ast, 'arena> {
     assignments: Vec<&'ast Assignment<'arena>>,
-    /// Where the variable is written some other way: by reference, as a loop variable, in `list()`, `global`,
-    /// `static`, `unset` or a closure's `use (&$x)`.
     other: Option<usize>,
 }
 
-/// Every write of the variable `name` under `node`; nested functions, closures and classes have their own scope.
 fn writes_of<'ast, 'arena>(node: Node<'ast, 'arena>, name: &[u8], out: &mut Writes<'ast, 'arena>) {
     node.visit_children(|child| match child {
         Node::Function(_)
@@ -421,7 +384,6 @@ fn writes_of<'ast, 'arena>(node: Node<'ast, 'arena>, name: &[u8], out: &mut Writ
     });
 }
 
-/// Whether the direct variable `name` appears anywhere under `node`.
 fn mentions(node: Node<'_, '_>, name: &[u8]) -> bool {
     if let Node::DirectVariable(v) = node {
         return v.name == name;
@@ -431,16 +393,12 @@ fn mentions(node: Node<'_, '_>, name: &[u8]) -> bool {
     found
 }
 
-/// A native type PHPStan's `getNativeType()` proves for an expression, as far as lint-b's rules ask.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Native {
     String,
     Int,
 }
 
-/// `getNativeType($expr)->isString()->yes()` or `->isInteger()->yes()`, where the syntax proves it: literals, an
-/// interpolated string, `.`, the string and int casts, `-`/`+` on an int, and a variable whose declaration or one value
-/// (see [`known`]) is one of those.
 pub(super) fn native(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -483,8 +441,6 @@ pub(super) fn native(
     }
 }
 
-/// php-parser's `pDereferenceLhs`: `expr` as the left side of `[...]`, `->` or `::`, in parentheses unless it is a
-/// variable, a name, a fetch, a call, an array or a plain string.
 pub(super) fn dereferenceable(source: &str, expr: &Expression<'_>) -> String {
     let expr = unparenthesize(expr);
     let code = &source[node_span(expr).start..node_span(expr).end];
@@ -502,8 +458,6 @@ pub(super) fn dereferenceable(source: &str, expr: &Expression<'_>) -> String {
     }
 }
 
-/// The built-in functions whose native return type is `array` (PHP 8.5's reflection, `ReflectionFunction::getReturnType()`
-/// without null), which PHPStan's native type of a call to them is.
 const ARRAY_FUNCTIONS: &[&str] = &[
     "array_change_key_case",
     "array_chunk",
@@ -638,8 +592,6 @@ const ARRAY_FUNCTIONS: &[&str] = &[
     "token_get_all",
 ];
 
-/// `getNativeType($expr)->isArray()->yes()` where the syntax proves it: an array literal, an `(array)` cast, or a
-/// variable declared `array` or whose one value (see [`known`]) is one of those.
 pub(super) fn is_native_array(
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
@@ -660,12 +612,6 @@ pub(super) fn is_native_array(
     }
 }
 
-/// The edit for Rector's removal of the statements `first..=last` of `list` with one new statement added in their
-/// place, as php-parser's `pArray()` prints that diff (two removals and an addition, never coalesced into a
-/// replacement). After a kept statement, the new one goes on the next line at that statement's indent, so the blanks
-/// and comments before the removed statements are lost and those after them are kept. From the list's start, the
-/// blanks before the removed statements are kept and the new statement runs straight into the next kept one (or the
-/// comments of the trailing `Nop`); with nothing kept after them, php-parser reprints the whole list.
 pub(super) fn replace_run(
     ctx: &crate::Context<'_>,
     list: &List<'_>,
@@ -694,11 +640,7 @@ pub(super) fn replace_run(
     }
 }
 
-/// `File::containsHTML()`, which keeps Rector's `HTMLAverseRectorInterface` rules off a file: an `InlineHTML`
-/// statement anywhere in it (the newline php-parser's `?>` takes is not one). `node` is the visited node.
 pub(super) fn contains_html(node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> bool {
-    // An explicit stack, not recursion: a debug build's `visit_children` frame is large enough that a recursive walk
-    // of a whole file overflows a 2 MB worker stack on pinkary.
     let mut stack = vec![ancestors.first().copied().unwrap_or(node)];
     while let Some(node) = stack.pop() {
         if let Node::Statement(Statement::Inline(inline)) = node
@@ -711,7 +653,6 @@ pub(super) fn contains_html(node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> b
     false
 }
 
-/// The number of line breaks in `source[from..to]`.
 pub(super) fn lines_between(source: &str, from: usize, to: usize) -> usize {
     source[from..to].bytes().filter(|&b| b == b'\n').count()
 }

@@ -1,4 +1,3 @@
-//! Larastan's resolved PHPDoc array-shape offsets through the public Project API.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,

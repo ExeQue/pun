@@ -1,5 +1,3 @@
-//! `OptionalToNullsafeOperatorRector` from rector-laravel 2.7.3.
-
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, CompositeString, Expression, Node, NodeKind,
 };
@@ -24,8 +22,6 @@ impl Rule for PreferNullsafe {
         80000
     }
 
-    /// `configure`: `exclude-methods` (rector-laravel's `exclude_methods`), the method names a call to keeps
-    /// `optional()`.
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
         match options {
             serde_json::Value::Null => Ok(()),
@@ -88,7 +84,6 @@ impl Rule for PreferNullsafe {
         if args.get(1).is_some_and(|a| !is_constant(a.value(), "null")) {
             return;
         }
-        // Unlike a call, a nullsafe property is legal inside isset(). Still reject an assignment within it.
         let ancestors = ancestors
             .iter()
             .rposition(|n| matches!(n, Node::IssetConstruct(_)))

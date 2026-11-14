@@ -1,8 +1,3 @@
-//! `lint/complexity/no-negated-comparison`, ported from Rector 2.8.4's `BooleanNotIdenticalToNotIdenticalRector`
-//! (rules/CodeQuality/Rector/Identical).
-//!
-//! `!($a === $b)` and `!$a === $b` become `$a !== $b` when both sides are `bool`.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -29,7 +24,6 @@ impl Rule for NoNegatedComparison {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // refactor(): a `!` over `===`, or processIdentical() on an `===` whose left side is a `!`.
         let (left, right) = match node {
             Node::UnaryPrefix(not) if not.operator.is_not() => {
                 let Expression::Binary(identical) = unparenthesize(not.operand) else {

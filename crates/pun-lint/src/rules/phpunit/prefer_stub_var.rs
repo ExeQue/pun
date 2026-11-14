@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-stub-var`, ported from rector-phpunit's `MockObjectVarToStubRector`
-//! (rules/PHPUnit120/Rector/Property).
-//!
-//! In a test class, a property whose native type is `PHPUnit\Framework\MockObject\Stub` (or an intersection with it)
-//! gets `\PHPUnit\Framework\MockObject\Stub` for each `MockObject` (by its short name) in the type of its first `@var`
-//! tag: the type itself, or a name in a union or an intersection. Rector runs it only for PHPUnit 11 and later; Pun
-//! leaves that to the rule's group.
-
 use mago_syntax::cst::{Hint, Node, NodeKind, Property};
 use pun_problem::Safety;
 
@@ -14,7 +6,6 @@ use super::phpdoc_type::{TagType, is_name, short_name, typed_tag, with_tag_type}
 use super::{is_in_test_class, resolve};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::STUB`.
 const STUB: &str = "PHPUnit\\Framework\\MockObject\\Stub";
 
 pub struct PreferStubVar;
@@ -36,11 +27,9 @@ impl Rule for PreferStubVar {
         out: &mut Vec<Report>,
     ) {
         let Node::Property(prop) = node else { return };
-        // only inside PHPUnit TestCase scope
         if !is_in_test_class(ctx, ancestors, None) {
             return;
         }
-        // only properties already converted to a Stub native type
         let hint = match prop {
             Property::Plain(p) => p.hint.as_ref(),
             Property::Hooked(p) => p.hint.as_ref(),
@@ -86,7 +75,6 @@ impl Rule for PreferStubVar {
                 if printed.iter().zip(members).all(|(p, m)| p == m) {
                     return;
                 }
-                // the format-preserving printer reprints the changed members only, the separators stay as written
                 let start = members[0].as_ptr() as usize;
                 let last = members[members.len() - 1];
                 let full = &doc.text_all()[start - doc.text_all().as_ptr() as usize..]

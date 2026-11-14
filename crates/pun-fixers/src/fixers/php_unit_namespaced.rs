@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitNamespacedFixer`.
 use crate::analyzers::abstract_php_unit_fixer::target_fulfills;
 use crate::analyzers::classy_analyzer::ClassyAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -188,7 +187,6 @@ impl Fixer for PhpUnitNamespacedFixer {
 }
 
 impl PhpUnitNamespacedFixer {
-    /// `generateReplacement`.
     fn generate_replacement(&self, original_class_name: &[u8]) -> Vec<Token> {
         let lower = strtolower(original_class_name);
         let mapped = CLASS_MAP
@@ -209,7 +207,6 @@ impl PhpUnitNamespacedFixer {
     }
 }
 
-/// `isImport`.
 fn is_import(tokens: &Tokens, curr_index: usize) -> bool {
     let mut prev_index = tokens.get_prev_meaningful_token(curr_index).unwrap();
     if tokens[prev_index].is_kind(T_NS_SEPARATOR) {

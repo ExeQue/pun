@@ -1,8 +1,3 @@
-//! Port of Mago's `no-redundant-nullsafe`: `$user?->name ?? 'Guest'` → `$user->name ?? 'Guest'` and
-//! `isset($user?->profile)` → `isset($user->profile)`: `??` and `isset` already read the property quietly.
-//! Opt-in only (`Pun/no_redundant_nullsafe`). Like Mago, only the last `?->` of the operand, and only when the
-//! property fetch is the whole left side of `??` (`'a' . $x?->b ?? 'c'` is `('a' . $x?->b) ?? 'c'`) or a whole
-//! `isset()` argument.
 use crate::analyzers::helpers::COMPOUND_ASSIGNMENTS;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -36,7 +31,6 @@ impl Fixer for NoRedundantNullsafe {
             else {
                 continue;
             };
-            // Parsed code never ends right after a property name, and a chain always follows the open tag.
             let after = tokens.get_next_meaningful_token(name).unwrap();
             let Some(start) = chain_start(tokens, i) else {
                 continue;
@@ -60,7 +54,6 @@ impl Fixer for NoRedundantNullsafe {
     }
 }
 
-/// First token of the access chain ending just before `op` (`$a->b()['c']?->`, `Foo::bar()?->`, `(expr)?->`).
 fn chain_start(tokens: &Tokens, op: usize) -> Option<usize> {
     let mut p = tokens.get_prev_meaningful_token(op)?;
     loop {
@@ -96,7 +89,7 @@ fn chain_start(tokens: &Tokens, op: usize) -> Option<usize> {
             {
                 p = tokens.get_prev_meaningful_token(q)?;
                 if tokens[q].is_kind(T_NS_SEPARATOR) && !tokens[p].is_kind(T_STRING) {
-                    return Some(q); // leading `\`
+                    return Some(q);
                 }
             }
             Some(q) if tokens[q].equals("$", true) || tokens[q].is_kind(T_NEW) => return None,
@@ -105,7 +98,6 @@ fn chain_start(tokens: &Tokens, op: usize) -> Option<usize> {
     }
 }
 
-/// Tokens after which an operand is the whole left side of `??` (everything of lower precedence).
 fn is_coalesce_boundary(t: &Token) -> bool {
     t.equals_any(
         &[
@@ -141,7 +133,6 @@ fn is_coalesce_boundary(t: &Token) -> bool {
     ])
 }
 
-/// The unmatched `(` around `k`, if no other bracket is in between.
 fn enclosing_paren(tokens: &Tokens, k: usize) -> Option<usize> {
     let mut p = tokens.get_prev_meaningful_token(k)?;
     loop {
@@ -162,7 +153,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // bad_example / good_example
         assert_eq!(
             fix(
                 "<?php\n\n$name = $user?->name ?? 'Guest';\n\nif (isset($user?->profile)) {\n    // Do something with $user->profile\n}\n"
@@ -219,7 +209,6 @@ mod tests {
             "<?php foo($u?->id);",
             "<?php isset($x[$u?->id]);",
             "<?php $x = $a == $u?->id ?? 0;",
-            // Dynamic property names end the chain walk: skipped.
             "<?php $x = $a->{'b'}?->c ?? 0;",
             "<?php $x = $u?->$p ?? 0;",
         ] {

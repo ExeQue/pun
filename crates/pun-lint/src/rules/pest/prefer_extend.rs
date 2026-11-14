@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-extend`, ported from pest-plugin-rector's `UsesToExtendRector` (Pest2ToPest3): `uses(...)` and
-//! `pest()->uses(...)` become `pest()->extend(...)` for classes and `pest()->use(...)` for traits.
-
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
     Access, ArgumentList, Expression, FunctionCall, MethodCall, Node, NodeKind,
@@ -34,7 +31,6 @@ impl Rule for PreferExtend {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // Rector goes down from the outermost call of a chain, and the call it replaces takes the ones below it.
         let span = match node {
             Node::MethodCall(call) => node_span(call),
             Node::FunctionCall(call) => node_span(call),
@@ -63,7 +59,6 @@ impl Rule for PreferExtend {
     }
 }
 
-/// The node at `span` is the object of a method call (through parentheses), which Rector visits first.
 fn object_of_parent_call(ancestors: &[Node<'_, '_>], span: Span) -> bool {
     let parent = ancestors
         .iter()
@@ -72,19 +67,16 @@ fn object_of_parent_call(ancestors: &[Node<'_, '_>], span: Span) -> bool {
     matches!(parent, Some(Node::MethodCall(m)) if node_span(unparenthesize(m.object)) == span)
 }
 
-/// `isName($funcCall, 'uses')`.
 fn is_uses(call: &FunctionCall<'_>) -> bool {
     function_name(call).is_some_and(|n| n.eq_ignore_ascii_case(b"uses"))
 }
 
-/// `refactorMethodCall`.
 fn refactor_method_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
     node: &MethodCall<'_>,
     indent: usize,
 ) -> Option<String> {
-    // A chain on `uses(...)`: all its method calls go after the new ones.
     let mut calls = vec![node];
     let mut current = node.object;
     while let Some(m) = method_call(current) {
@@ -97,7 +89,6 @@ fn refactor_method_call(
         calls.reverse();
         return transform(ctx, ancestors, None, &f.argument_list, &calls, indent);
     }
-    // A chain on `pest()` with a `->uses(...)` call: the calls after it go after the new ones, the ones before go.
     let uses_index = calls
         .iter()
         .position(|c| is_name(&c.method, "uses") && pest_call(c).is_some())?;
@@ -118,14 +109,11 @@ fn refactor_method_call(
     )
 }
 
-/// `getPestFuncCall`: the call of `pest()` at the root of the chain.
 fn pest_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCall<'a>> {
     root_func_call(call)
         .filter(|f| function_name(f).is_some_and(|n| n.eq_ignore_ascii_case(b"pest")))
 }
 
-/// `transformUsesArgs` / `transformPestUsesCall`: `pest()` (a new one, or the chain's own) with `->extend()` for the
-/// classes, `->use()` for the traits, and then `methods`.
 fn transform(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -158,8 +146,6 @@ fn transform(
     Some(out)
 }
 
-/// `separateClassesAndTraits`: the `X::...` arguments on a written class name, as printed, split by whether the
-/// class (resolved by the file's imports) is a known trait.
 fn classes_and_traits(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -173,7 +159,6 @@ fn classes_and_traits(
         let Expression::Access(Access::ClassConstant(fetch)) = value else {
             continue;
         };
-        // `$classConstFetch->class instanceof Name`: `static`, `self` and `parent` are names too, of no class.
         let resolved = match unparenthesize(fetch.class) {
             Expression::Identifier(name) => resolve_class(ancestors, name),
             Expression::Static(_) | Expression::Self_(_) | Expression::Parent(_) => Vec::new(),

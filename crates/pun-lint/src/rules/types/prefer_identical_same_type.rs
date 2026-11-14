@@ -1,15 +1,3 @@
-//! `lint/types/prefer-identical-same-type`, ported from Rector 2.8.4's `UseIdenticalOverEqualWithSameTypeRector`
-//! (rules/CodeQuality/Rector/Equal): `==` and `!=` (`<>`) become `===` and `!==` when both sides have the same
-//! native type (`getNativeType`, see [`super::facts`]).
-//!
-//! Neither side may be an array offset, `mixed`, or a type that may hold an object (an object, `callable`,
-//! `iterable`, an array whose keys or values may, a string naming a class as declared, which Rector's corrector makes
-//! a `class-string` of it). A string, `bool`, `int` or `float` type counts as its general type; any other type must
-//! be the same on both sides, and not a union.
-//!
-//! Rector prints the comparison anew: each side's own text with the parentheses php-parser's precedence needs (a
-//! ternary always keeps them), joined by the new operator, so comments between the sides go.
-
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -88,7 +76,6 @@ impl Rule for PreferIdenticalSameType {
     }
 }
 
-/// `hasObjectType`: whether a member of `t`, or of the key or value types of an array in it, may be an object.
 fn has_object(facts: &Facts, t: &TUnion) -> bool {
     t.types.iter().any(|a| atomic_has_object(facts, a))
 }
@@ -118,8 +105,6 @@ fn atomic_has_object(facts: &Facts, atomic: &TAtomic) -> bool {
     }
 }
 
-/// `$object::class`: PHPStan types it `class-string<X>` (which holds an object type) when the object's class `X` is
-/// final, and `string` otherwise; `None` for any other expression.
 fn object_class_fetch(facts: &Facts, expr: &Expression<'_>) -> Option<bool> {
     let Expression::Access(Access::ClassConstant(fetch)) = expr else {
         return None;
@@ -148,7 +133,6 @@ fn object_class_fetch(facts: &Facts, expr: &Expression<'_>) -> Option<bool> {
     })
 }
 
-/// Whether a class-like is declared under exactly the name `name`.
 fn is_declared_class(facts: &Facts, name: &[u8]) -> bool {
     facts
         .codebase
@@ -156,8 +140,6 @@ fn is_declared_class(facts: &Facts, name: &[u8]) -> bool {
         .is_some_and(|c| c.original_name.as_bytes() == name)
 }
 
-/// `normalizeScalarType`, as a key to compare: a string, `bool`, `int` or `float` type is its general type; any other
-/// type is itself. `None` for a union that is not one of those (Rector compares it, then skips it as a union).
 fn normalized(t: &TUnion) -> Option<String> {
     let all =
         |f: fn(&TScalar) -> bool| (t.types.iter()).all(|a| matches!(a, TAtomic::Scalar(s) if f(s)));
@@ -179,8 +161,6 @@ fn normalized(t: &TUnion) -> Option<String> {
     }
 }
 
-/// A side of the new comparison: its text, in parentheses where php-parser's precedence puts them (an operator that
-/// binds as loose as `===` or looser, and a ternary).
 fn operand(source: &str, expr: &Expression<'_>) -> String {
     let span = node_span(expr);
     let text = &source[span.start..span.end];

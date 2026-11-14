@@ -1,11 +1,3 @@
-//! `lint/classes/prefer-unserialize-method`, ported from Rector 2.8.4's `WakeupToUnserializeRector`
-//! (rules/Php85/Rector/Class_).
-//!
-//! PHP 8.5 deprecates `__wakeup()`. A class without `__unserialize()` gets its `__wakeup()` renamed to
-//! `__unserialize(array $data): void`, with a body that copies each entry of `$data` to the property of that name.
-//! The old body goes. php-parser prints the new body in place of a single old statement; for any other count it
-//! reprints the whole method. Pun leaves an abstract `__wakeup()` alone, where Rector would print a body for it.
-
 use mago_syntax::cst::{MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -23,7 +15,6 @@ impl Rule for PreferUnserializeMethod {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATED_METHOD_WAKEUP
         80500
     }
 
@@ -50,7 +41,6 @@ impl Rule for PreferUnserializeMethod {
         let source = ctx.source;
         let list = block_list(source, block);
         let edits = if list.len() == 1 {
-            // The one statement, or the `Nop` of a body that holds only comments.
             let old = list
                 .nop_span(source)
                 .filter(|_| list.stmts.is_empty())
@@ -100,7 +90,6 @@ impl Rule for PreferUnserializeMethod {
     }
 }
 
-/// The `foreach` Rector's `assignProperties()` builds, printed at `indent`.
 fn foreach(indent: &str) -> String {
     format!(
         "foreach ($data as $property => $value) {{\n\

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\SingleLineCommentStyleFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -45,7 +44,6 @@ impl Fixer for SingleLineCommentStyleFixer {
             }
             let token = tokens[index].clone();
             let content = token.get_content();
-            // substr($content, 2, -2) ?: ''
             let comment_content: &[u8] = if content.len() > 4 {
                 &content[2..content.len() - 2]
             } else {
@@ -53,7 +51,6 @@ impl Fixer for SingleLineCommentStyleFixer {
             };
 
             if self.hash_enabled && content.starts_with(b"#") {
-                // upstream skips `#[` (an attribute before PHP 8); PHP 8 never lexes it as a comment
                 tokens.set(
                     index,
                     Token::with_id(token.get_id(), [&b"//"[..], &content[1..]].concat()),

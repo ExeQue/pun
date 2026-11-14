@@ -1,6 +1,3 @@
-//! PHPStan's level-0 rules. One walk per analysed file; each `walk_in_*` hook is the `processNode()` of the rules
-//! registered for that node type, in PHPStan's source order.
-
 mod anonymous;
 mod array_column;
 mod array_fill;
@@ -147,8 +144,6 @@ pub(crate) fn reports(identifier: &str) -> bool {
 }
 
 pub(crate) const IDENTIFIERS: &[&str] = &[
-    // the throw point rules switched on by `exceptions.check.*` (MissingCheckedExceptionIn*ThrowsRule,
-    // MethodThrowTypeCovarianceRule)
     "missingType.checkedException",
     "throws.notCovariant",
     "throws.notCovariantWithImplicitVoid",
@@ -662,7 +657,6 @@ pub(crate) const IDENTIFIERS: &[&str] = &[
     "function.deprecated",
     "class.toStringDeprecated",
     "constant.deprecated",
-    // analyse dead-code (an-dead)
     "deadCode.unreachable",
     "classConstant.unused",
     "method.unused",
@@ -806,14 +800,11 @@ pub(crate) const IDENTIFIERS: &[&str] = &[
 pub(crate) const DISCOVERING_SYMBOLS_TIP: &str =
     "Learn more at https://phpstan.org/user-guide/discovering-symbols";
 
-/// The class-like a node is in (`$scope->getClassReflection()`).
 struct ClassScope {
     name: Option<String>,
-    /// Guards the constructor ends with, which PHPStan remembers in the other methods.
     constructor_guards: Vec<Guard>,
 }
 
-/// The identifier of `self`, `static` or `parent` (`e`) used outside of a class.
 fn out_of_class(e: &Expression) -> &'static str {
     match e {
         Expression::Self_(_) => "outOfClass.self",
@@ -822,7 +813,6 @@ fn out_of_class(e: &Expression) -> &'static str {
     }
 }
 
-/// How messages name a member the scope cannot access.
 fn restricted(v: mago_codex::visibility::Visibility) -> &'static str {
     if v.is_private() {
         "private"
@@ -831,21 +821,16 @@ fn restricted(v: mago_codex::visibility::Visibility) -> &'static str {
     }
 }
 
-/// A trait walked in the context of a class using it (see [`driver::check_file()`]).
 struct TraitContext {
-    /// The class's file and name.
     class_file: String,
     class: String,
     trait_name: String,
-    /// The trait's methods `use T { foo as bar; }` renames, by lowercase name.
     renames: HashMap<String, String>,
 }
 
-/// `$scope->getFunction()`: the function or method a node is in (closures don't change it).
 pub(crate) struct FunctionScope {
     pub name: String,
     pub kind: FunctionScopeKind,
-    /// `isDeprecated()`, when the deprecation rules run.
     pub deprecated: bool,
 }
 
@@ -856,14 +841,10 @@ pub(crate) enum FunctionScopeKind {
 }
 
 bitflags::bitflags! {
-    /// What a [`Checker`]'s walk has seen of its file.
     #[derive(Clone, Copy)]
     struct Walk: u8 {
-        /// `MutatingScope::fileHasCompilerHaltStatementCalls()` for this file's parsed program.
         const COMPILER_HALT = 1;
-        /// Inside the context walk's trait (in a context walk, nothing else reports).
         const IN_TARGET = 1 << 1;
-        /// DeclarePositionVisitor: no statement seen yet.
         const FIRST_STATEMENT = 1 << 2;
     }
 }
@@ -871,140 +852,82 @@ bitflags::bitflags! {
 pub(crate) struct Checker<'a, 'arena> {
     file: &'a File,
     walk: Walk,
-    /// The display names of the file's anonymous classes, by their codex name (see [`anonymous::names()`]).
     anonymous: HashMap<Vec<u8>, String>,
     property_access: property_access::State,
     relative_path: &'a crate::relative_path::RelativePath,
-    /// Mago's inferred types of the expressions rules ask about (see [`typed_expressions()`]).
     types: HashMap<Span, TUnion>,
-    /// ExpressionResult keep-void answers, read only behind Scope's explicit-null gate.
     keep_void_types: HashMap<Span, TUnion>,
-    /// Independent native answers from the same evaluations; absence never substitutes the full type.
     native_types: HashMap<Span, TUnion>,
-    /// The processed nullsafe receiver before its non-null plain twin, not the ensured operand view.
     nullsafe_method_receiver_types: HashMap<Span, TUnion>,
-    /// A property's new value after an offset write, by the root fetch's span (AssignHandler's PropertyAssignNode).
     property_offset_writes: HashMap<Span, TUnion>,
-    /// PHPStan VariableWritesNode results for completed closure bodies.
     variable_writes: HashMap<Span, mago_analyzer::variable_flow::VariableWritesNode>,
-    /// Requested PropertyInitializationExpr certainties immediately before real IssetCheck operands.
     property_initializations:
         HashMap<Span, mago_analyzer::property_initialization::PropertyInitializationCertainty>,
-    /// Resolved calls' own termination, independent of their provider-selected result type.
     call_terminations: HashMap<(u32, u32), bool>,
-    /// Operand-position answers for each method name, including its expression conversion dependencies.
     named_call_scopes: HashMap<Span, Vec<infer::NamedCallScope>>,
-    /// `$scope->hasVariableType()` where the wanted direct variables are read (see [`infer::analyse()`]).
     defined: HashMap<Span, pun_phpstan::types::Tri>,
-    /// The running inference blocks observed by DefinedVariableRule and CompactVariablesRule.
     variables: variables::Observations,
-    /// This inference run's source provenance for PHPDoc metadata Mago's types cannot retain.
     origins: infer::Origins,
     names: &'a ResolvedNames<'arena>,
     codebase: &'a CodebaseMetadata,
     classes: Vec<ClassScope>,
-    /// Guards in effect; `marks` are where enclosing blocks started (guards an early exit leaves last to the
-    /// block's end).
     guards: Vec<Guard>,
     marks: Vec<usize>,
     vars: HashMap<Vec<u8>, Vec<Guard>>,
     saved: Vec<Saved>,
     functions: Vec<FunctionScope>,
-    /// The functions and methods the walk is in (var_tags.rs reads their templates).
     var_tag_functions: Vec<mago_span::Span>,
-    /// Inside the arguments of class_exists() & co. (`inFunctionCallsStack`).
     in_exists_call: usize,
-    /// Spans of expressions PHPStan processes in a top-level ExpressionContext (`isInFirstLevelStatement()`):
-    /// expression statements, `for` initialisations and increments, arrow function and match arm bodies.
     top_level: HashSet<(u32, u32)>,
-    /// `f(...)` on the right of `|>`: analysed as the call `f($x)`, not as a first-class callable.
     piped: HashSet<Span>,
-    /// Closures whose `$this` is rebound: `(function () {...})->call($o)` (MethodCallHandler) and `Closure::bind()`
-    /// (StaticCallHandler), and inline `@param-closure-this` arguments (ArgumentsHandler). `->bindTo()` keeps the
-    /// scope's `$this` (oracle-checked).
     rebound: HashMap<Span, bind_scope::Binding>,
-    /// `Error::file`: the path, or `T.php (in context of class C)` inside a trait analysed for class C.
     label: String,
-    /// Set when walking a trait in a class's context (`$scope->isInTrait()`).
     trait_context: Option<TraitContext>,
-    /// Each `use T;` in a class body, to analyse T in the class's context.
     trait_uses: Vec<driver::TraitUse>,
-    /// The trait method being walked under its alias (span, alias).
     renamed: Option<(Span, String)>,
     php_version: u32,
-    /// PHPStan's reflection of built-ins at `php_version`.
     builtins: &'static pun_phpstan::symbols::Symbols,
-    /// The reflection data beside it.
     natives: &'a driver::Natives,
-    /// [`type_aliases::class_aliases()`] is resolving (a type alias's own NameScope has no aliases of its class but
-    /// through it).
     resolving_aliases: std::sync::atomic::AtomicBool,
-    /// Line ranges of the traits declared in this file (their ignores are never unmatched here).
     trait_lines: Vec<(i64, i64)>,
-    /// Scope boundaries: what `$scope->getFunction()` & co. see, and the goto labels of each.
     frames: Vec<Frame>,
-    /// `$scope->getNamespace()` per namespace statement entered (`None`: the global one).
     namespaces: Vec<Option<String>>,
-    /// Magic constants that are a parameter's default (MagicConstantParamDefaultVisitor).
     magic_defaults: HashSet<Span>,
-    /// DeclarePositionVisitor: the `declare`s that came after a statement.
     declares_not_first: Vec<Span>,
-    /// The class-likes being declared (InClassNode's ClassReflection), innermost last.
     decls: Vec<declarations::Decl>,
-    /// `isImmutable()` of the codebase's classes, by lowercase name.
     immutable: HashMap<String, bool>,
-    /// A symbol's file, and the files the scan read.
     files: &'a HashMap<FileId, PathBuf>,
     sources: &'a Sources,
-    /// This file's facts.
     facts: &'a facts::Facts,
-    /// [`driver::Checks`]'s function-likes of each file.
     function_likes: &'a HashMap<FileId, Vec<(Span, mago_codex::symbol::SymbolIdentifier)>>,
-    /// [`driver::Checks`]'s stub declarations: a patched declaration's span to its stub's, whose PHPDoc PHPStan reads.
     patched_docs: &'a HashMap<Span, Span>,
-    /// [`driver::Checks`]'s classes, built once per run.
     class_cache: &'a declared::ClassCache,
     syntax: syntax::State,
     assign: assign::State,
     signatures: signatures::State,
     class_names: class_names::State,
     arrays: arrays::State,
-    /// `throw` expressions that are an expression statement (StandaloneThrowExprVisitor).
     standalone_throws: HashSet<Span>,
-    /// [`driver::Checks`]'s level and `checkGenericIterableClasses`.
     level: u8,
-    /// The project's switches.
     switches: driver::Switches,
-    /// [`driver::Checks`]'s Larastan switches, when the config includes Larastan.
     larastan: Option<&'a Larastan>,
     larastan_state: larastan::State,
-    /// [`driver::Checks`]'s `@internal` method names, when the internal usage rules run.
     internal: Option<&'a internal::Names>,
-    /// UnreachableStatementNode positions and statement traversal after termination.
     unreachable: dead_code::UnreachableStatements,
-    /// LastConditionVisitor's attributes and more the constant condition rules read.
     conditions: dead_code::ConditionFacts,
-    /// The phpstan-strict-rules switches.
     strict: crate::StrictRules,
-    /// [`driver::Checks`]'s `exceptions.*` parameters.
     exceptions: &'a crate::Exceptions,
-    /// TooWideTypeCheck's switches.
     too_wide: crate::TooWide,
     include_settings: &'a include_file::Settings,
     include_state: include_file::State,
-    /// How many `Closure::bind()` calls the walk is inside (`isInClosureBind()`).
     closure_bind: usize,
-    /// [`driver::Checks`]'s feature-toggled rules.
     toggled: &'a driver::Toggled,
-    /// AssignToByRefExprFromForeachRule's statement entries (empty unless it runs).
     by_ref_foreach: by_ref_foreach::Entries,
-    /// Registrations of the owners of named-argument call and rename records.
     method_rules: crate::MethodRules,
     errors: Vec<Error>,
 }
 
 impl<'a, 'arena> Checker<'a, 'arena> {
-    /// A file's contents: this one, or one the scan read.
     fn file_contents(&self, id: FileId) -> Option<&'a [u8]> {
         if id == self.file.id {
             return Some(&self.file.contents[..]);
@@ -1012,7 +935,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         self.sources.scanned(id).map(|s| &s.file.contents[..])
     }
 
-    /// A file's facts: this one's, or those of one the scan read.
     fn file_facts(&self, id: FileId) -> Option<&'a facts::Facts> {
         if id == self.file.id {
             return Some(self.facts);
@@ -1020,15 +942,12 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         self.sources.scanned(id).map(|s| &s.facts)
     }
 
-    /// php-parser's doc comment of the node at `offset` in file `id` ([`facts::Comments::php_doc_comment()`]).
     fn php_doc_comment(&self, id: FileId, offset: u32) -> Option<&'a [u8]> {
         self.file_facts(id)?
             .comments
             .php_doc_comment(self.file_contents(id)?, offset as usize)
     }
 
-    /// [`Self::php_doc_comment()`] with its parsed form: the scan's, else parsed now (a comment [`Self::doc_before()`]
-    /// would not find: one with a stray `*/` in it).
     fn php_doc(
         &self,
         id: FileId,
@@ -1049,14 +968,12 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         ))
     }
 
-    /// The doc comment right before `offset` in file `id` ([`facts::Comments::doc_before()`]).
     fn doc_before(&self, id: FileId, offset: u32) -> Option<(&'a [u8], &'a facts::DocEntry)> {
         self.file_facts(id)?
             .comments
             .doc_before(self.file_contents(id)?, offset as usize)
     }
 
-    /// `class.noParent`: `{action} but C does not extend any class.`, for a parent:: or `new parent` in class `scope`.
     fn report_no_parent(&mut self, at: impl HasSpan, scope: &ClassLikeMetadata, action: &str) {
         let display = self.display(scope);
         self.report(
@@ -1067,7 +984,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         );
     }
 
-    /// The name of the function or method a node is in, empty outside one.
     fn function_name(&self) -> String {
         self.functions
             .last()
@@ -1075,7 +991,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
             .unwrap_or_default()
     }
 
-    /// The trait walked in a class's context, while inside it (`$scope->isInTrait()`).
     fn in_trait(&self) -> Option<&str> {
         self.trait_context
             .as_ref()
@@ -1113,15 +1028,12 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         });
     }
 
-    /// The errors reported since there were `count` are fixable (RuleErrorBuilder::fixNode() with a fix that
-    /// changes the code).
     fn fixable_since(&mut self, count: usize) {
         for e in &mut self.errors[count..] {
             e.fixable = true;
         }
     }
 
-    /// A `nonIgnorable()` error: no `@phpstan-ignore` or `ignoreErrors` entry removes it.
     fn report_non_ignorable(
         &mut self,
         at: impl HasSpan,
@@ -1136,8 +1048,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         }
     }
 
-    /// `(string) $node->name` after php-parser's NameResolver: an unqualified function or constant name stays as
-    /// written (it falls back to the global one at runtime), everything else is the resolved name.
     fn written_or_resolved(&self, id: &Identifier<'arena>) -> String {
         let text = match id {
             Identifier::Local(l) if !self.names.is_imported(&l.span) => l.value,
@@ -1146,13 +1056,11 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         String::from_utf8_lossy(text).into_owned()
     }
 
-    /// `Closure::bind(...)`.
     fn is_closure_bind(&self, call: &StaticMethodCall<'arena>) -> bool {
         matches!((call.class, &call.method), (Expression::Identifier(id), ClassLikeMemberSelector::Identifier(m))
             if self.resolved(id).eq_ignore_ascii_case("Closure") && m.value.eq_ignore_ascii_case(b"bind"))
     }
 
-    /// A rebound closure literal and the class of its bound `$this` (see [`Checker::bind_class()`]).
     fn rebind(&mut self, e: &Expression, class: Option<String>, defines_this: bool) {
         let e = types::flow::unparen(e);
         if matches!(e, Expression::Closure(_) | Expression::ArrowFunction(_)) {
@@ -1187,7 +1095,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
                     };
                     let method = match &a.method_reference {
                         TraitUseMethodReference::Identifier(m) => m,
-                        // Mago resolves only the `use` list's names: the one written the same is this trait
                         TraitUseMethodReference::Absolute(r) => {
                             if !self
                                 .written(r.trait_name.span())
@@ -1218,8 +1125,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         }
     }
 
-    /// processStmtNode() of a trait method in a context walk: skipped when the class's method of that name (after
-    /// `as` renames) is not this trait's, as when the class or another trait shadows it.
     fn shadowed(&self, class: &str, name: &str, trait_span: Span) -> bool {
         let this_trait = |f: &mago_codex::metadata::function_like::FunctionLikeMetadata| {
             f.span.file_id == trait_span.file_id
@@ -1229,7 +1134,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         self.codebase
             .get_class_like(class.as_bytes())
             .is_some_and(|k| {
-                // BetterReflection's own cases(), and a backed enum's from() and tryFrom(), replace an enum's others
                 let lower = name.to_ascii_lowercase();
                 (k.kind == SymbolKind::Enum
                     && (lower == "cases"
@@ -1257,7 +1161,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         self.codebase.get_class_like(name.as_bytes())
     }
 
-    /// The class-like a member is walked in and its display name (trait bodies are walked only in a class's context).
     fn member_scope(&self) -> (&'a ClassLikeMetadata, String) {
         let class = self
             .class_scope()
@@ -1270,7 +1173,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         (class, display)
     }
 
-    /// In an anonymous class's body (not in a trait it uses).
     fn in_anonymous_class(&self) -> bool {
         self.trait_context.is_none()
             && self
@@ -1303,8 +1205,6 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         let e = types::flow::unparen(e);
         let span = e.span();
         self.top_level.insert((span.start.offset, span.end.offset));
-        // PHPStan passes the statement's context on to a ternary's branches, the right side of `&&` / `||` and
-        // the operand of `@`
         match e {
             Expression::Conditional(c) => {
                 if let Some(then) = c.then {
@@ -1510,10 +1410,7 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         self.decls.pop();
         self.pop_frame();
     }
-    /// A trait is analysed only in the context of each class using it (see [`in_trait_context()`]).
     fn walk_trait(&mut self, t: &'ast Trait<'arena>, c: &mut ()) {
-        // Sources also retains scanned global declarations for initializer resolution. Retention is
-        // not admission to ordinary trait-body analysis.
         if self.file.file_type != mago_database::file::FileType::Host {
             return;
         }
@@ -1536,7 +1433,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
             .trait_context
             .as_ref()
             .is_some_and(|t| t.trait_name.eq_ignore_ascii_case(&name));
-        // the class's walk put it in the codebase
         let Some(decl) = target.then(|| self.decl_of_class(&class)).flatten() else {
             return;
         };
@@ -1582,7 +1478,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         self.classes.truncate(saved);
         self.decls.pop();
     }
-    // the constructor arguments are evaluated in the enclosing scope, before the class is entered
     fn walk_anonymous_class(&mut self, a: &'ast AnonymousClass<'arena>, c: &mut ()) {
         if let Some(arguments) = &a.argument_list {
             self.walk_partial_argument_list(arguments, c);
@@ -1805,7 +1700,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 set_hook::missing_types(self, p.variable.name, p.hint.as_ref(), hooks, p.span());
             }
         }
-        // a trait method under its `as` alias
         let method = match &self.renamed {
             Some((span, alias)) if *span == m.span() => alias.clone(),
             _ => String::from_utf8_lossy(m.name.value).into_owned(),
@@ -1853,7 +1747,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 hierarchy::callable_property(self, p.span(), p.variable.name, p.hint.as_ref());
             }
         }
-        // trait bodies are walked only in a class's context, so a method always has its class-like
         let class = self
             .class_scope()
             .expect("a method is walked inside its class-like");
@@ -1889,7 +1782,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 &types,
             );
         }
-        // PhpMethodFromParserNodeReflection's void methods
         let forced_void = m.name.value.eq_ignore_ascii_case(b"__construct")
             || [
                 "__construct",
@@ -1931,7 +1823,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
             attributes::TARGET_METHOD,
             "method",
         );
-        // a static method can run before any instance exists
         let guards =
             if m.name.value.eq_ignore_ascii_case(b"__construct") || m.modifiers.contains_static() {
                 Vec::new()
@@ -1994,7 +1885,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
             }
         }
         self.walk_expression(r#if.condition, c);
-        // (condition, statements) per branch; `None` is the `else`
         let mut branches: Vec<(Option<&Expression<'arena>>, Vec<&Statement<'arena>>)> = Vec::new();
         let has_else = match &r#if.body {
             IfBody::Statement(b) => {
@@ -2051,7 +1941,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                     });
                     self.assign.expressions = assignments;
                 }
-                // IfHandler prices the condition on the running falsey scope, before entering its branch.
                 known = match types::flow::unparen(cond) {
                     Expression::Literal(Literal::True(_)) => Some(true),
                     Expression::Literal(Literal::False(_) | Literal::Null(_)) => Some(false),
@@ -2090,7 +1979,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 assignment_paths.push(self.assign.expressions.clone());
             }
         }
-        // after the `if`: what holds in every branch that falls through
         if let Some((first, rest)) = survivors.split_first() {
             let after: Vec<Guard> = first
                 .iter()
@@ -2110,7 +1998,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
 
     fn walk_conditional(&mut self, cond: &'ast Conditional<'arena>, c: &mut ()) {
         dead_code::ternary(self, cond);
-        // an elvis `?:` is not checked
         if self
             .strict
             .contains(crate::StrictRules::BOOLEANS_IN_CONDITIONS)
@@ -2195,7 +2082,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 }
             }
         }
-        // Multiple result scopes go through mergeWith, which clears the assignment-expression table.
         if m.arms.len() > 1 {
             self.assign.expressions.clear();
         }
@@ -2204,7 +2090,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
     fn walk_assignment(&mut self, a: &'ast Assignment<'arena>, context: &mut ()) {
         self.walk_in_assignment(a, context);
         if assign::is_list_target(a.lhs) {
-            // KIND_LIST applies its targets after the RHS, keeping every item's key before its value.
             self.walk_expression(a.rhs, context);
             self.walk_expression(a.lhs, context);
         } else {
@@ -2392,7 +2277,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         if let ClassLikeMemberSelector::Identifier(m) = &call.method
             && m.value.eq_ignore_ascii_case(b"call")
         {
-            // MutatingScope::enterClosureCall() defines `$this` as the first argument's type
             let class = self.call_class(&call.argument_list);
             let defines_this = !call.argument_list.arguments.is_empty()
                 && match types::flow::unparen(call.object) {
@@ -2402,8 +2286,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 };
             self.rebind(call.object, class, defines_this);
         }
-        // A static closure has no `$this`, even when its parameter carries a binding annotation. The undefined
-        // variable check reports it; there is no receiver on which to check methods.
         if self.method_rules.call_methods && self.this_defined() {
             calls::method_call(self, call);
         }
@@ -2519,7 +2401,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
             self.closure_bind -= 1;
         }
     }
-    // a rebound closure is checked in its bound `$this`'s class (none when Pun cannot tell it)
     fn walk_out_closure(&mut self, f: &'ast Closure<'arena>, (): &mut ()) {
         self.assign.leave_scope();
         self.leave_this();
@@ -2634,7 +2515,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         for v in p.variables() {
             hierarchy::callable_property(self, v.span(), v.name, p.hint());
         }
-        // one ClassPropertyNode per property of the declaration
         if let Some(hint) = p.hint() {
             for _ in &names {
                 syntax::complex_type(self, hint);
@@ -2923,8 +2803,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
                 None,
             );
         }
-        // The UnreachableStatementNode is a Stmt with the original's doc comment. The phpdoc tag value rules and
-        // WrongVariableNameInVarTagRule skip virtual nodes.
         if self.unreachable.nodes.contains(&s.span()) {
             invalid_throws::node(self, s.span());
             var_tags::node(self, s.span());
@@ -3038,7 +2916,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         }
         self.syntax.parents.push(syntax::Parent::Loop);
         self.walk_expression(w.condition, c);
-        // the body starts where the condition held
         let statements: Vec<&Statement<'arena>> = match &w.body {
             WhileBody::Statement(s) => vec![s],
             WhileBody::ColonDelimited(b) => b.statements.iter().collect(),
@@ -3107,7 +2984,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
 }
 
 impl Checker<'_, '_> {
-    /// Whether the project turns `switch` on.
     pub(crate) fn on(&self, switch: Switches) -> bool {
         self.switches.contains(switch)
     }

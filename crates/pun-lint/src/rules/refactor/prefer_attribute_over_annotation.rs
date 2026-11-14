@@ -1,18 +1,3 @@
-//! `lint/refactor/prefer-attribute-over-annotation`, ported from Rector 2.8.4's `AnnotationToAttributeRector`
-//! (rules/Php80/Rector/Class_) with its `AnnotationToAttribute` configuration, on the name handling's doc comments
-//! (`rector_names::doc`) and attributes (`rector_names::attribute`).
-//!
-//! Options: `items`, a list of tables with `tag` (the annotation's class, or a simple tag's name), `attribute-class`
-//! (the tag when left out), `class-reference-fields` (the arguments whose string becomes `Class::class`) and
-//! `use-value-as-attribute-argument` (a simple tag's value is the attribute's argument), as `pun migrate` writes
-//! Rector's `AnnotationToAttribute` objects. It does nothing until configured.
-//!
-//! In the doc comment of a class, an interface, a method, a property, a parameter or a function, each Doctrine
-//! annotation of a configured class whose attribute class exists and is an attribute becomes that attribute (its
-//! arguments named, nested annotations `new` from PHP 8.1), and each simple tag of a configured name whose attribute
-//! class exists becomes the attribute with the tag's value. The tags go from the doc (a text after an annotation's
-//! closing parenthesis stays), and the attributes come after the node's own.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Node, NodeKind, Program};
 use pun_problem::{Edit, Safety, Span};
@@ -38,7 +23,6 @@ impl Rule for AnnotationToAttribute {
     fn id(&self) -> &'static str {
         "lint/refactor/prefer-attribute-over-annotation"
     }
-    /// Rector runs the rule once per file; a closure keeps its doc, which a second run would read again.
     fn once(&self) -> bool {
         true
     }
@@ -90,7 +74,6 @@ impl Rule for AnnotationToAttribute {
                 use_value_as_attribute_argument,
             });
         }
-        // `resolveWithChangedAttributesClass()`: an annotation already written with the attribute's class too
         for config in self.configs.clone() {
             if config.attribute_class != config.tag {
                 self.configs.push(AttributeConfig {
@@ -116,7 +99,6 @@ impl Rule for AnnotationToAttribute {
         let Node::Program(program) = node else {
             return;
         };
-        // `MinPhpVersionInterface`: attributes
         if self.configs.is_empty() || ctx.php_version < 80000 {
             return;
         }
@@ -134,8 +116,6 @@ impl Rule for AnnotationToAttribute {
     }
 }
 
-/// The imports `UseImportsResolver::resolveBareUses()` gives: the `use` statements (no group) of the file's only
-/// namespace or of a file without one, as `(name, alias)`, with each name's span.
 fn bare_uses(view: &FileView) -> Vec<(String, Option<String>, Span)> {
     if view.namespaces > 1 {
         return Vec::new();
@@ -153,7 +133,6 @@ fn bare_uses(view: &FileView) -> Vec<(String, Option<String>, Span)> {
 }
 
 impl AnnotationToAttribute {
-    /// The edits of every node the rule changes, `None` where Pun does not follow Rector on one.
     fn fix(
         &self,
         ctx: &Context<'_>,
@@ -166,10 +145,8 @@ impl AnnotationToAttribute {
             .iter()
             .map(|(n, a, _)| (n.clone(), a.clone()))
             .collect();
-        // the import each renamed `use` gets (`AttributeNameFactory`), by index
         let mut renamed: Vec<Option<String>> = vec![None; uses.len()];
         let mut edits = Vec::new();
-        // the nodes in the order the traverser enters them
         let mut stack = vec![(root, Vec::new())];
         while let Some((node, ancestors)) = stack.pop() {
             let mut path = ancestors.clone();
@@ -177,8 +154,6 @@ impl AnnotationToAttribute {
             for child in node.children().into_iter().rev() {
                 stack.push((child, path.clone()));
             }
-            // `Closure`, `ArrowFunction`: an expression's comments are not reprinted, so the doc stays as written and
-            // the attributes go before the node (`attrGroups` inline, `' '`)
             let lists = match node {
                 Node::Closure(closure) => {
                     Some(closure.attribute_lists.last().map(|l| node_span(l).end))
@@ -190,7 +165,6 @@ impl AnnotationToAttribute {
             };
             if let Some(lists) = lists {
                 let start = node_span(&node).start;
-                // php-parser gives the comments to the outermost node that starts after them
                 if ancestors
                     .iter()
                     .rev()
@@ -234,14 +208,12 @@ impl AnnotationToAttribute {
             };
             let printed: Vec<String> = groups.iter().map(ToString::to_string).collect();
             let new_doc = doc.print();
-            // `TokenStream::getIndent()`: a tab counts as 4 columns, and the printer indents with spaces
             let width: usize = line_indent(ctx.source, annotated.start)
                 .chars()
                 .map(|c| if c == '\t' { 4 } else { 1 })
                 .sum();
             let nl = format!("\n{}", " ".repeat(width));
             match annotated.edit_with_comments(ctx.source, &new_doc) {
-                // other comments before the doc: `pComments()` reprints them all, then the attributes follow
                 Some(mut edit) => match annotated.last_attribute_end {
                     Some(end) => {
                         edits.push(edit);
@@ -271,8 +243,6 @@ impl AnnotationToAttribute {
         Some(edits)
     }
 
-    /// `refactor()` on the doc comment at `span`: the doc without the tags that went and the attributes, `Some(None)`
-    /// without any, `None` where Pun does not read the doc.
     fn convert(
         &self,
         ctx: &Context<'_>,
@@ -302,8 +272,6 @@ impl AnnotationToAttribute {
         Some((!groups.is_empty()).then_some((doc, groups)))
     }
 
-    /// `processDoctrineAnnotationClasses()`: the attributes of the doc's Doctrine annotations of a configured class
-    /// (the doc loses them), none where one has a nested annotation that stays.
     fn doctrine_annotations(
         &self,
         ctx: &Context<'_>,
@@ -316,7 +284,6 @@ impl AnnotationToAttribute {
             let DocValue::Annotation(annotation) = &child.value else {
                 continue;
             };
-            // `matchAnnotationToAttribute()`: `hasClassName()`
             let identifier = annotation.identifier.trim_matches('@');
             let Some(config) = self
                 .configs
@@ -325,7 +292,6 @@ impl AnnotationToAttribute {
             else {
                 continue;
             };
-            // processed with the simple tags
             if config.use_value_as_attribute_argument
                 || !is_attribute_class(ctx, &config.attribute_class)
             {
@@ -351,14 +317,12 @@ impl AnnotationToAttribute {
         for (i, new) in renames {
             renamed[i] = Some(new);
         }
-        // (Pun only: and where Rector would print code PHP does not parse)
         if attributes
             .iter()
             .any(|a| attribute::has_remove_array_state(a) || attribute::is_invalid(a))
         {
             return Vec::new();
         }
-        // the annotations go, last first so the indexes hold; a text after the closing parenthesis stays
         for (i, _, annotation) in matched.iter().rev() {
             match attribute::trailing_comment(annotation.original()) {
                 Some(comment) => doc.replace_with_text(*i, comment),
@@ -368,8 +332,6 @@ impl AnnotationToAttribute {
         attributes
     }
 
-    /// `processGenericTags()`: the attributes of the doc's simple tags (a name without `\`) of a configured name
-    /// whose attribute class exists (the doc loses them, or keeps the comment after a value).
     fn simple_tags(&self, ctx: &Context<'_>, doc: &mut Doc) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut i = 0;
@@ -408,7 +370,6 @@ impl AnnotationToAttribute {
                 config,
                 resolved.as_ref().map(|(v, _)| v.as_str()),
             ));
-            // keep partial original comment, if useful
             match resolved {
                 Some((_, comment)) if !comment.is_empty() => {
                     doc.replace_with_text(i, comment);
@@ -421,12 +382,10 @@ impl AnnotationToAttribute {
     }
 }
 
-/// `RectorAssert::className()`.
 fn is_class_name(name: &str) -> bool {
     crate::rules::rector_names::doc::is_class_name(name)
 }
 
-/// `isExistingAttributeClass()`: the class exists and is marked `#[Attribute]`.
 fn is_attribute_class(ctx: &Context<'_>, class: &str) -> bool {
     has_class(ctx, class)
         && facts(ctx)
@@ -435,7 +394,6 @@ fn is_attribute_class(ctx: &Context<'_>, class: &str) -> bool {
             .is_some_and(|c| c.attribute_flags.is_some())
 }
 
-/// The constructor parameters of `class`: each name and whether its type has `int` (`containsInteger()`).
 fn constructor_parameters(ctx: &Context<'_>, class: &str) -> Vec<(String, bool)> {
     let codebase = &facts(ctx).codebase;
     let Some(constructor) = codebase.get_method(class.as_bytes(), b"__construct") else {
@@ -463,9 +421,6 @@ fn constructor_parameters(ctx: &Context<'_>, class: &str) -> Vec<(String, bool)>
         .collect()
 }
 
-/// `UnknownNamedArgsToOptionsFolder::resolveConstructorParameterNames()`: the names of the constructor's parameters
-/// when one of them is an `$options` that takes an array; `None` for an unknown class or constructor, or a variadic
-/// parameter.
 fn foldable_parameters(ctx: &Context<'_>, class: &str) -> Option<Vec<String>> {
     let facts = facts(ctx);
     let constructor = facts

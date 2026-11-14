@@ -1,11 +1,3 @@
-//! What the four `ForeachToArray*Rector` ports share (Rector 2.8.4, rules/Php84/Rector/Foreach_): a `foreach` whose
-//! only statement is an `if` that assigns and breaks, or returns, becomes one call of `array_all()`, `array_any()`,
-//! `array_find()` or `array_find_key()` with an arrow function of the `if`'s condition.
-//!
-//! Rector reads only the `if`'s own statements, so it drops an `else` or `elseif` of that `if`; Pun leaves such a
-//! `foreach` alone. Rector asks PHPStan whether the loop's subject is natively an array; Pun knows it where the syntax
-//! proves it (`lint_b_helpers::is_native_array`).
-
 use mago_syntax::cst::{
     Expression, Foreach, ForeachBody, ForeachTarget, Node, Statement, Variable,
 };
@@ -37,7 +29,6 @@ impl Kind {
     }
 }
 
-/// `refactor()` on one statement list: the first `foreach` that matches, as the edits and the span reported.
 pub(super) fn refactor(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -51,7 +42,6 @@ pub(super) fn refactor(
     early_return_pattern(ctx, ancestors, list, kind)
 }
 
-/// The parts of `foreach (subject as [key =>] $value) { if (cond) { ... } }`.
 struct Loop<'a> {
     subject: &'a Expression<'a>,
     key: Option<&'a Expression<'a>>,
@@ -60,7 +50,6 @@ struct Loop<'a> {
     body: Vec<&'a Statement<'a>>,
 }
 
-/// The `foreach`'s single statement, an `if` without `else` or `elseif`, and that `if`'s statements.
 fn parts<'a>(ctx: &Context<'_>, foreach: &'a Foreach<'a>) -> Option<Loop<'a>> {
     let stmts = match &foreach.body {
         ForeachBody::Statement(s) => body_list(ctx.source, s),
@@ -95,8 +84,6 @@ fn is_variable(expr: &Expression<'_>) -> bool {
     matches!(expr, Expression::Variable(Variable::Direct(_)))
 }
 
-/// The arrow function's parameters: the value, then the key when the condition uses it
-/// (`ForeachKeyUsedInConditionalAnalyzer`).
 fn params(ctx: &Context<'_>, l: &Loop<'_>) -> String {
     let mut params = text(ctx, l.value).to_string();
     if let Some(key) = l.key
@@ -109,7 +96,6 @@ fn params(ctx: &Context<'_>, l: &Loop<'_>) -> String {
     params
 }
 
-/// `array_*($subject, fn(params) => body)`.
 fn call(ctx: &Context<'_>, kind: Kind, l: &Loop<'_>, negate: bool) -> String {
     let body = if negate {
         match unparenthesize(l.condition) {
@@ -129,8 +115,6 @@ fn call(ctx: &Context<'_>, kind: Kind, l: &Loop<'_>, negate: bool) -> String {
     )
 }
 
-/// `refactorBooleanAssignmentPattern` (and `ForeachToArrayFind*Rector::refactor`): `$x = <init>;` then a `foreach`
-/// whose `if` assigns `$x = <found>;` and breaks.
 fn assignment_pattern(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -187,7 +171,6 @@ fn assignment_pattern(
     None
 }
 
-/// `isValidBooleanAssignmentForeachStructure` and `isValidForeachStructure`.
 fn valid_assignment(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -220,8 +203,6 @@ fn valid_assignment(
     found && is_native_array(ancestors, l.subject, node_span(foreach).start)
 }
 
-/// `refactorEarlyReturnPattern`: a `foreach` whose `if` returns `false` (`true` for `array_any`), then
-/// `return true;` (`false`).
 fn early_return_pattern(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

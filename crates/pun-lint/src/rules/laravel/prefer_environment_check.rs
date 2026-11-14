@@ -1,13 +1,3 @@
-//! `lint/laravel/prefer-environment-check`, ported from rector-laravel 2.7.3's `AppEnvironmentComparisonToParameterRector`
-//! (src/Rector/Expr).
-//!
-//! A call of `environment()` without arguments, on an `Illuminate\Contracts\Foundation\Application` or through the
-//! `Illuminate\Support\Facades\App` facade or a class named `App`, compared with `===`, `==`, `!==`, `!=` or `<>` to
-//! something (on either side), or passed to `in_array()` as the needle, takes that something as its argument:
-//! `$app->environment() === 'staging'` becomes `$app->environment('staging')`, and a negated comparison gets a `!`.
-//! Compared with `'local'` or `'production'`, a facade call or a call on an `Illuminate\Foundation\Application`
-//! becomes `isLocal()` or `isProduction()` instead.
-
 use mago_syntax::cst::{
     ArgumentList, BinaryOperator, Call, ClassLikeMemberSelector, Expression, Node, NodeKind,
 };
@@ -101,8 +91,6 @@ impl Rule for PreferEnvironmentCheck {
     }
 }
 
-/// `validMethodCall`: `environment()` without arguments on an application or through the `App` facade; the call's
-/// method and arguments.
 fn valid_call<'a>(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -132,8 +120,6 @@ fn valid_call<'a>(
     .then_some((method, list))
 }
 
-/// `getMethodName`: `isLocal` or `isProduction` for a string literal `'local'` or `'production'`, except on a method
-/// call whose object is no `Illuminate\Foundation\Application`.
 fn method_name(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

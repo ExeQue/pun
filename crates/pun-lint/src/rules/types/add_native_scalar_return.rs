@@ -1,9 +1,3 @@
-//! `lint/types/add-string-return-type` and `lint/types/add-numeric-return-type`, ported from Rector 2.8.4's
-//! `StringReturnTypeFromStrictStringReturnsRector` and `NumericReturnTypeFromStrictReturnsRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a function or method whose every `return` returns a value natively
-//! typed `string` (or `int`, or `float`), and whose end cannot be reached, gets that return type. Returns of only
-//! literals are left to the `-from-scalar` rules.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{CompositeString, Expression, Literal, Node, NodeKind};
 
@@ -40,7 +34,6 @@ impl Rule for AddStringReturn {
         let Some((f, values)) = returned(node, ancestors, ctx) else {
             return;
         };
-        // hasAlwaysStringScalarReturn
         let literal = |e: &&Expression<'_>| {
             matches!(
                 e,
@@ -90,7 +83,6 @@ impl Rule for AddNumericReturn {
         let Some((f, values)) = returned(node, ancestors, ctx) else {
             return;
         };
-        // isAlwaysNumeric
         let all = |kind: fn(&Expression<'_>) -> bool| values.iter().map(unnegated).all(kind);
         if all(|e| matches!(e, Expression::Literal(Literal::Float(_))))
             || all(|e| matches!(e, Expression::Literal(Literal::Integer(_))))

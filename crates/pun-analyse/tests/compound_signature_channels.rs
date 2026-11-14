@@ -1,5 +1,3 @@
-//! Source-owned ExtendedParametersAcceptor channels, captured directly from PHPStan 2.3.5.
-
 use pun_phpstan::symbols::{PhpVersion, symbols};
 use pun_phpstan::types::Level;
 use serde_json::Value;

@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-narrow-will-return-callback`, ported from rector-phpunit's
-//! `NarrowSingleWillReturnCallbackRector` (rules/CodeQuality/Rector/MethodCall) and its `MatchAndReturnMatch`.
-//!
-//! In a test class, `willReturnCallback()` of a closure holding only a `match` of a single arm `1 =>` that calls
-//! `assertSame()` or `assertEquals()` on a test case (and optionally `return match (...) { ... };`) becomes `with()`
-//! of the assertion's expected value (an array's item values a separate argument each), followed by
-//! `->willReturn(...)` of the returned match's first arm.
-
 use mago_syntax::cst::{
     Argument, ArrayElement, Call, Expression, Literal, Match, MatchArm, Node, NodeKind, Statement,
 };
@@ -118,7 +110,6 @@ impl Rule for PreferNarrowWillReturnCallback {
     }
 }
 
-/// `matchSingleMatchArmBodyWithConditionOne`.
 fn sole_arm_body_with_condition_one<'a>(m: &'a Match<'a>) -> Option<&'a Expression<'a>> {
     let [MatchArm::Expression(arm)] = m.arms.as_slice() else {
         return None;

@@ -1,8 +1,3 @@
-//! RestrictedClassConstantUsageRule with RestrictedInternalClassConstantUsageExtension (config.level0.neon, under
-//! `featureToggles.internalTag`) and phpstan-deprecation-rules' RestrictedDeprecatedClassConstantUsageExtension:
-//! using an `@internal` class constant, or a constant of an `@internal` class-like, from outside the root namespace
-//! that declares it, or a deprecated one; and ClassConstantRule's class-name check at `X::NAME`.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
@@ -12,7 +7,6 @@ use super::class_names::{self, Location, Member};
 use super::constants::declaring;
 use super::internal::{root_namespace, should_be_reported};
 
-/// `X::NAME`.
 pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
     let ClassLikeConstantSelector::Identifier(name) = &a.constant else {
         return;
@@ -27,8 +21,6 @@ pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
         Expression::Parent(_) => scope
             .and_then(|k| k.direct_parent_class)
             .and_then(|p| c.codebase.get_class_like(p.as_bytes())),
-        // RuleLevelHelper::findTypeToCheck() with checkThisOnly (levels 0 and 1), else the expression's type
-        // ponytail: the first class of a union only
         Expression::Variable(Variable::Direct(v))
             if v.name == b"$this" && c.level < 2 && c.this_defined() =>
         {
@@ -42,7 +34,6 @@ pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
     let Some(k) = referenced else {
         return;
     };
-    // `hasConstant()`: a constant (declared by the class-like holding it) or an enum case
     let found = match k.constants.get(&mago_word::word(name.value)) {
         Some(constant) => Some((declaring(c, k, constant), constant.flags.is_internal())),
         None => k
@@ -57,7 +48,6 @@ pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
         _ => None,
     };
     if let Expression::Identifier(id) = a.class {
-        // ClassConstantRule's ClassNameCheck at CLASS_CONSTANT_ACCESS
         let member = found.map(|(owner, internal)| Member {
             name: String::from_utf8_lossy(name.value).into_owned(),
             internal: internal || owner.flags.is_internal(),
@@ -80,7 +70,6 @@ pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
         super::deprecations::class_constant(c, owner, &constant, deprecation.clone())
     };
     let mut usages = Vec::new();
-    // RewrittenDeclaringClassClassConstantReflection: also restricted as the referenced class's own
     if let Some(u) = internal(owner).filter(|_| owner.name == k.name || internal(k).is_some()) {
         usages.push(u);
     }
@@ -92,7 +81,6 @@ pub(super) fn class_constant(c: &mut Checker, a: &ClassConstantAccess) {
     }
 }
 
-/// RestrictedInternalClassConstantUsageExtension: the message and identifier.
 fn restricted(
     c: &Checker,
     constant_internal: bool,

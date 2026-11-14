@@ -1,6 +1,3 @@
-//! `[files]` and each command's `exclude` (context/plan/config.md §3, §7). Expected sets are derived by hand from
-//! the plan's rules: the `[files]` set walks `paths` like PHP-CS-Fixer's `Finder::create()` and drops pun.toml's
-//! excludes (globs and plain prefixes matched Mago's way, relative to the project root); `format` is Pint's finder.
 extern crate punphp_workspace as pun_workspace;
 mod common;
 
@@ -61,7 +58,6 @@ exclude = ["tests/**"]
         "app/storage/Kept.php",
     ];
     let tests = ["tests/Feature/ExampleTest.php", "tests/Pest.php"];
-    // `pun list-files`: app and tests. `storage/**` is root-relative, so app/storage stays.
     assert_eq!(
         list(&root, toml, None, &[]).unwrap(),
         [
@@ -75,14 +71,11 @@ exclude = ["tests/**"]
         ]
         .concat()
     );
-    // `pun list-files --command analyse`: only app, without the Blade template.
     assert_eq!(list(&root, toml, Some(Command::Analyse), &[]).unwrap(), app);
-    // Lint has no exclude of its own here: the [files] set without the Blade template.
     assert_eq!(
         list(&root, toml, Some(Command::Lint), &[]).unwrap(),
         [&app[..], &tests].concat()
     );
-    // Format is Pint's finder: no `storage` dir at any depth, no IDE helpers, no Blade without the Blade rule.
     assert_eq!(
         list(&root, toml, Some(Command::Format), &[]).unwrap(),
         [
@@ -111,7 +104,6 @@ exclude = ["app/*.php", "Root.php"]
 paths = ["app"]
 exclude = ["app/Models"]
 "#;
-    // No [files] paths: the project root. Plain `tests` is a root-relative prefix; vendor/ is never listed.
     let all = [
         "Root.php",
         "app/A.php",
@@ -123,8 +115,6 @@ exclude = ["app/Models"]
         "storage/framework/S.php",
     ];
     assert_eq!(list(&root, toml, None, &[]).unwrap(), all);
-    // Mago's globs let `*` cross `/`: `app/*.php` drops every PHP file under app. Lint and analyse skip the root's
-    // `storage` (Pint's default excludes, root-relative) and Blade templates.
     assert_eq!(
         list(&root, toml, Some(Command::Lint), &[]).unwrap(),
         ["src/Other.php"]
@@ -133,7 +123,6 @@ exclude = ["app/Models"]
         list(&root, toml, Some(Command::Analyse), &[]).unwrap(),
         ["app/A.php", "app/_ide_helper.php", "app/storage/Kept.php"]
     );
-    // Format: Pint's `exclude: ["tests"]` (a dir name at any depth) plus the root-relative glob.
     assert_eq!(
         list(&root, toml, Some(Command::Format), &[]).unwrap(),
         ["Root.php", "app/A.php", "src/Other.php"]
@@ -144,7 +133,6 @@ exclude = ["app/Models"]
 fn path_arguments_replace_paths_but_keep_excludes() {
     let root = tree(TREE);
     let toml = "[files]\npaths = [\"app\"]\nexclude = [\"src/**\", \"app/Models\"]\n";
-    // An explicit file outside a skipped directory is listed; one a pun.toml exclude matches is not (Mago).
     assert_eq!(
         list(
             &root,
@@ -160,7 +148,6 @@ fn path_arguments_replace_paths_but_keep_excludes() {
         .unwrap(),
         ["tests/Pest.php", "vendor/x/V.php"]
     );
-    // Format keeps Pint's rule: with `in` set, path arguments replace the finder, excludes included.
     assert_eq!(
         list(
             &root,
@@ -179,7 +166,6 @@ fn path_arguments_replace_paths_but_keep_excludes() {
         list(&root, "[files]\npaths = [\"missing\"]\n", None, &[]).unwrap_err(),
         "The \"missing\" directory does not exist."
     );
-    // A [files] path may name a file.
     assert_eq!(
         list(
             &root,
@@ -209,8 +195,6 @@ fn stdin_filename_honours_glob_excludes() {
     assert!(!is_path_excluded(&cfg, &root.join("app/Models/X.php")));
 }
 
-/// The finder's errors carry their kind, so pun-cli picks Pint's exception (class, file, line) without reading the
-/// message: every site, through `files` and `discover`, with or without a command.
 #[test]
 fn errors_are_typed() {
     let root = tree(&["src/A.php"]);
@@ -233,8 +217,6 @@ fn errors_are_typed() {
     }
 }
 
-/// `pun analyse` drops excluded files from the symbol scan too: the same patterns as its file set, on absolute
-/// paths, with Pint's default directories as root-relative prefixes.
 #[test]
 fn exclusions_test_absolute_paths() {
     let root = tree(&[]);
@@ -259,7 +241,6 @@ fn exclusions_test_absolute_paths() {
     ] {
         assert!(!e.is_excluded(&root.join(kept)), "{kept}");
     }
-    // Lint has its own excludes: tests stay.
     let e = Exclusions::new(&cfg, Command::Lint).unwrap();
     assert!(!e.is_excluded(&root.join("tests/Unit/A.php")));
     assert!(e.is_excluded(&root.join("src/Generated.php")));

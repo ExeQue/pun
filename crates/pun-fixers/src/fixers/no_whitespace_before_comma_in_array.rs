@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\NoWhitespaceBeforeCommaInArrayFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -27,7 +26,6 @@ impl Fixer for NoWhitespaceBeforeCommaInArrayFixer {
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let o = resolve(self.name(), options, &["after_heredoc"])?;
-        // Future::getV4OrV3(true, false)
         self.after_heredoc = o.bool("after_heredoc", false)?;
         Ok(())
     }

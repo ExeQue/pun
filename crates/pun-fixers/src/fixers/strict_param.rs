@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Strict\StrictParamFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(StrictParamFixer)
 }
 
-/// `$map[$name]`: each parameter's default, `None` where the call must already pass it.
 fn params(name: &[u8]) -> Option<Vec<Option<Vec<Token>>>> {
     let true_token = || Some(vec![Token::new(T_STRING, "true")]);
     Some(match name {
@@ -92,7 +90,6 @@ fn fix_function(
     }
     let mut tokens_to_insert = Vec::new();
     for param in function_params.into_iter().skip(params_quantity) {
-        // function call do not have all params that are required to set useStrict flag, exit from method!
         let Some(param) = param else {
             return;
         };

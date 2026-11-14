@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\DoctrineAnnotation\DoctrineAnnotationArrayAssignmentFixer`.
 use crate::analyzers::doctrine_annotation::{self as doctrine, *};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;

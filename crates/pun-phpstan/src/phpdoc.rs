@@ -5,7 +5,6 @@
 //! Pun's own extension, used by the generated symbol data (scripts/export-phpstan-symbols.php) for types PHPStan's
 //! `toPhpDocNode()` cannot write: a whole type string `*ERROR*` or `*NEVER*` ([`parse`] only).
 
-// `StringUnescaper::unescapeString()`.
 use pun_tokens::php_compat::unescape_phpdoc_string as unescape;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,7 +49,6 @@ enum Tok {
     Wildcard,
 }
 
-/// `Lexer::TOKEN_LABELS`: how a ParserException names the token it expected.
 const LABELS: &[(Tok, &str)] = &[
     (Tok::Reference, "'&'"),
     (Tok::Inter, "'&'"),
@@ -101,7 +99,6 @@ impl Tok {
     }
 }
 
-/// `Lexer::generateRegexp()`'s alternatives in order (PCRE alternation: the first that matches wins).
 const PATTERNS: &[(Tok, &str)] = &[
     (Tok::Ws, r"[\x09\x20]++"),
     (
@@ -157,8 +154,6 @@ const PATTERNS: &[(Tok, &str)] = &[
     (Tok::Other, r"(?:(?!\*/)[^\s])++"),
 ];
 
-/// `Lexer::tokenize()`: (type, start, end, line). Like `preg_match_all` with the `A` modifier, lexing stops at the first
-/// byte no alternative matches (a lone `\r`, a vertical tab).
 fn tokenize(input: &[u8]) -> Vec<(Tok, usize, usize, usize)> {
     use std::sync::OnceLock;
     static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
@@ -193,7 +188,6 @@ fn tokenize(input: &[u8]) -> Vec<(Tok, usize, usize, usize)> {
         }
         offset = end;
     }
-    // where the lexing stopped: the end of input, or the first byte no alternative matches
     tokens.push((Tok::End, offset, offset, line));
     tokens
 }
@@ -202,9 +196,7 @@ fn tokenize(input: &[u8]) -> Vec<(Tok, usize, usize, usize)> {
 pub enum Node {
     Ident(String),
     This,
-    /// `*` (a generic argument), `NEVER` / `ERROR` for `*NEVER*` / `*ERROR*`
     Star(String),
-    /// a generic argument's call-site variance: `covariant T` (true) or `contravariant T` (false)
     Projection(bool, Box<Node>),
     Nullable(Box<Node>),
     Union(Vec<Node>),
@@ -224,7 +216,6 @@ pub enum Node {
         negated: bool,
     },
     Array(Box<Node>),
-    /// `T[K]`
     OffsetAccess(Box<Node>, Box<Node>),
     Generic {
         base: String,
@@ -232,7 +223,6 @@ pub enum Node {
     },
     Callable {
         ident: String,
-        /// `callable<T>(T): T`'s templates
         templates: Vec<TemplateTag>,
         params: Vec<CallableParam>,
         ret: Box<Node>,
@@ -268,7 +258,6 @@ pub enum ShapeKey {
     Int(String),
     Str(Vec<u8>),
     Ident(String),
-    /// `Class::NAME`
     Fetch(String, String),
 }
 
@@ -281,11 +270,9 @@ pub enum ConstExpr {
     False,
     Null,
     Array(Vec<(Option<ConstExpr>, ConstExpr)>),
-    /// `Class::NAME`, `Class::PREFIX_*`; a global constant has an empty class
     Fetch(String, String),
 }
 
-/// phpdoc-parser's `ParserException`: the token found and the one expected.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParseError {
     value: String,
@@ -296,7 +283,6 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    /// `ParserException::getMessage()`
     pub fn message(&self) -> String {
         format!(
             "Unexpected token {}, expected {}{} at offset {} on line {}",
@@ -312,20 +298,17 @@ impl ParseError {
     }
 }
 
-/// `json_encode($s, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)`: serde_json escapes the same characters.
 fn json_string(s: &str) -> String {
     serde_json::to_string(s).expect("a string")
 }
 
 type R<T> = Result<T, ParseError>;
 
-/// `TokenIterator`
 struct Tokens<'a> {
     input: &'a [u8],
     tokens: Vec<(Tok, usize, usize, usize)>,
     index: usize,
     saves: Vec<usize>,
-    /// `addEndOfLineToSkippedTokens()` is in effect
     skip_eol: bool,
     newline: Option<&'static str>,
 }
@@ -358,7 +341,6 @@ impl<'a> Tokens<'a> {
         let (_, start, end, _) = self.tokens[self.index];
         &self.input[start..end]
     }
-    /// Identifiers and diagnostic presentation remain textual; literal identity uses `bytes()`.
     fn value(&self) -> std::borrow::Cow<'_, str> {
         String::from_utf8_lossy(self.bytes())
     }
@@ -377,7 +359,6 @@ impl<'a> Tokens<'a> {
     fn preceded_by_ws(&self) -> bool {
         self.index > 0 && self.tokens[self.index - 1].0 == Tok::Ws
     }
-    /// `getSkippedHorizontalWhiteSpaceIfAny()`
     fn skipped_ws(&self) -> &str {
         if self.preceded_by_ws() {
             let (_, start, end, _) = self.tokens[self.index - 1];
@@ -387,7 +368,6 @@ impl<'a> Tokens<'a> {
         }
     }
     fn next(&mut self) {
-        // ponytail: PHP reads past the TOKEN_END (null); nothing reads after moving past it here
         self.index = (self.index + 1).min(self.tokens.len() - 1);
         self.skip_irrelevant();
     }
@@ -439,7 +419,6 @@ impl<'a> Tokens<'a> {
             }
         }
     }
-    /// `skipNewLineTokensAndConsumeComments()` (the comments are not kept)
     fn skip_nl(&mut self) {
         if self.is(Tok::Comment) {
             self.next();
@@ -467,13 +446,11 @@ impl<'a> Tokens<'a> {
     fn rollback(&mut self) {
         self.index = self.saves.pop().expect("a save point");
     }
-    /// The byte offset of the current token.
     fn offset(&self) -> usize {
         self.tokens[self.index].1
     }
 }
 
-/// `TypeStringResolver::resolve()`'s parse step: one type, then the end of input.
 pub fn parse(input: impl AsRef<[u8]>) -> R<Node> {
     let input = input.as_ref();
     if let Some(name) = input
@@ -489,15 +466,12 @@ pub fn parse(input: impl AsRef<[u8]>) -> R<Node> {
     Ok(node)
 }
 
-/// phpdoc-parser's `TypeParser::parse()` at the start of a PHPDoc tag's value: the type and the byte offset where
-/// the rest of the value starts.
 pub fn parse_prefix(input: impl AsRef<[u8]>) -> R<(Node, usize)> {
     let mut t = Tokens::new(input.as_ref());
     let node = parse_type(&mut t)?;
     Ok((node, t.offset()))
 }
 
-/// `TypeParser::parse()`
 fn parse_type(t: &mut Tokens) -> R<Node> {
     if t.is(Tok::Nullable) {
         return parse_nullable(t);
@@ -517,7 +491,6 @@ fn parse_type(t: &mut Tokens) -> R<Node> {
     }
 }
 
-/// `enrichTypeOnUnionOrIntersection()`
 fn enrich(t: &mut Tokens, ty: &Node) -> R<Option<Node>> {
     for (sep, wrap) in [
         (Tok::Union, Node::Union as fn(Vec<Node>) -> Node),
@@ -680,7 +653,6 @@ fn parse_atomic(t: &mut Tokens) -> R<Node> {
     const_type(t)
 }
 
-/// A constant expression as a type (`ConstTypeNode`); an array is no type.
 fn const_type(t: &mut Tokens) -> R<Node> {
     let at = t.error(Tok::Ident, None);
     let constant = parse_const_expr(t, false)?;
@@ -690,7 +662,6 @@ fn const_type(t: &mut Tokens) -> R<Node> {
     Ok(array_or_offset(t, Node::Const(constant)))
 }
 
-/// `isHtml()`: `<tag>` ... `</tag>` (a description, not generics).
 fn is_html(t: &mut Tokens) -> bool {
     t.next();
     if !t.is(Tok::Ident) {
@@ -714,7 +685,6 @@ fn is_html(t: &mut Tokens) -> bool {
     false
 }
 
-/// `parseGeneric()`
 fn parse_generic(t: &mut Tokens, base: String) -> R<Node> {
     t.consume(Tok::OpenAngle)?;
     t.skip_nl();
@@ -726,7 +696,6 @@ fn parse_generic(t: &mut Tokens, base: String) -> R<Node> {
             break;
         }
         first = false;
-        // `parseGenericTypeArgument()`
         if t.try_consume(Tok::Wildcard) {
             args.push(Node::Star("*".to_string()));
         } else if t.try_consume_value("contravariant") {
@@ -742,7 +711,6 @@ fn parse_generic(t: &mut Tokens, base: String) -> R<Node> {
     Ok(Node::Generic { base, args })
 }
 
-/// `TypeParser::parseTemplateTagValue()`
 fn parse_template(t: &mut Tokens, description: bool) -> R<TemplateTag> {
     let name = t.value().to_string();
     t.consume(Tok::Ident)?;
@@ -789,7 +757,6 @@ fn try_parse_callable(t: &mut Tokens, ident: &str, templates: bool) -> Option<No
 fn parse_callable(t: &mut Tokens, ident: &str, templates: bool) -> R<Node> {
     let mut tags = Vec::new();
     if templates {
-        // `parseCallableTemplates()`
         t.consume(Tok::OpenAngle)?;
         let mut first = true;
         while first || t.try_consume(Tok::Comma) {
@@ -893,7 +860,6 @@ fn parse_callable_return(t: &mut Tokens) -> R<Node> {
     const_type(t)
 }
 
-/// `tryParseArrayOrOffsetAccess()`: `T[]` and `T[K]` suffixes.
 fn array_or_offset(t: &mut Tokens, mut ty: Node) -> Node {
     while t.is(Tok::OpenSquare) {
         t.push();
@@ -1060,7 +1026,6 @@ fn parse_object_shape(t: &mut Tokens) -> R<Node> {
     Ok(Node::ObjectShape(items))
 }
 
-/// `ConstExprParser::parse()`; `doctrine`: the parser for Doctrine annotation arguments (`toDoctrine()`).
 fn parse_const_expr(t: &mut Tokens, doctrine: bool) -> R<ConstExpr> {
     match t.kind() {
         Tok::Float => {
@@ -1156,8 +1121,6 @@ fn parse_const_array(t: &mut Tokens, end: Tok, doctrine: bool) -> R<ConstExpr> {
     Ok(ConstExpr::Array(items))
 }
 
-/// `parseDoctrineString()`: a Doctrine string continues over the double-quoted and annotation strings after it
-/// (the value is kept as written).
 fn doctrine_string(t: &mut Tokens, mut text: Vec<u8>) -> Vec<u8> {
     while t.is_any(&[Tok::DoubleQuoted, Tok::DoctrineString]) {
         text.extend_from_slice(t.bytes());
@@ -1166,7 +1129,6 @@ fn doctrine_string(t: &mut Tokens, mut text: Vec<u8>) -> Vec<u8> {
     text
 }
 
-/// A PHPDoc tag (`PhpDocTagNode`) and the line it starts on, counted from the doc comment's first line.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Tag {
     pub name: String,
@@ -1174,7 +1136,6 @@ pub struct Tag {
     pub value: TagValue,
 }
 
-/// A `@template` tag's value (`TemplateTagValueNode`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct TemplateTag {
     pub name: String,
@@ -1183,7 +1144,6 @@ pub struct TemplateTag {
     pub default: Option<Node>,
 }
 
-/// A `@method` tag's parameter (`MethodTagValueParameterNode`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MethodParam {
     pub ty: Option<Node>,
@@ -1193,23 +1153,17 @@ pub struct MethodParam {
     pub default: Option<ConstExpr>,
 }
 
-/// A tag's value: phpdoc-parser's `PhpDocTagValueNode` subclasses, the descriptions left out.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TagValue {
-    /// `@param` (a typeless one has no type)
     Param {
         ty: Option<Node>,
         by_ref: bool,
         variadic: bool,
         name: String,
     },
-    /// `@param-immediately-invoked-callable`, `@param-later-invoked-callable`, `@pure-unless-callable-is-impure`,
-    /// `@pure-unless-parameter-passed`
     ParamName(String),
-    /// `@param-closure-this`, `@param-out`, `@property`
     TypedName(Node, String),
     Var(Node, String),
-    /// `@return`, `@throws`, `@mixin`, `@require-extends`, `@require-implements`, `@sealed`, `@self-out`
     Type(Node),
     Deprecated,
     Method {
@@ -1220,28 +1174,21 @@ pub enum TagValue {
         templates: Vec<TemplateTag>,
     },
     Template(TemplateTag),
-    /// `@extends`, `@implements`, `@use`
     Extends(Node),
-    /// `@phpstan-type`: the type, or why it does not parse (`InvalidTypeNode`)
     TypeAlias(String, Result<Node, ParseError>),
-    /// `@phpstan-import-type A from B as C`
     TypeAliasImport(String, String, Option<String>),
     Assert {
         ty: Node,
         parameter: String,
-        /// `->prop` or `->method()`
         member: Option<(String, bool)>,
         negated: bool,
         equality: bool,
     },
-    /// Any other tag: its text
     Generic(String),
     Doctrine,
-    /// A value the tag's parser rejects: its text and the error
     Invalid(String, ParseError),
 }
 
-/// `PhpDocParser::parse()` on a doc comment: its tags. `None` where it does not start with `/**`.
 pub fn tags(doc: impl AsRef<[u8]>) -> Option<Vec<Tag>> {
     let mut t = Tokens::new(doc.as_ref());
     t.consume(Tok::OpenPhpdoc).ok()?;
@@ -1282,7 +1229,6 @@ pub fn tags(doc: impl AsRef<[u8]>) -> Option<Vec<Tag>> {
     Some(children.into_iter().flatten().collect())
 }
 
-/// `parseChild()`: a tag, or `None` for text.
 fn parse_child(t: &mut Tokens) -> R<Option<Tag>> {
     let line = t.line();
     if t.is(Tok::PhpdocTag) {
@@ -1311,7 +1257,6 @@ fn parse_child(t: &mut Tokens) -> R<Option<Tag>> {
     Ok(None)
 }
 
-/// `parseText()`: the text up to the next tag or the end, its lines joined with the doc's newline.
 fn parse_text(t: &mut Tokens) -> String {
     let mut text = String::new();
     let mut savepoint = false;
@@ -1369,7 +1314,6 @@ fn parse_optional_description_after_doctrine_tag(t: &mut Tokens) -> R<String> {
                 return Ok(rest(t, &text));
             }
             if t.is(Tok::PhpdocTag) {
-                // parseChild() of a PHPDoc tag
                 t.push();
                 let name = t.value().to_string();
                 t.next();
@@ -1418,7 +1362,6 @@ fn parse_optional_description_after_doctrine_tag(t: &mut Tokens) -> R<String> {
     Ok(text.trim_matches([' ', '\t']).to_string())
 }
 
-/// `parseTagValue()`: a value the tag's parser rejects becomes `Invalid` with the text from the value's start.
 fn parse_tag_value(t: &mut Tokens, tag: &str) -> TagValue {
     t.push();
     match tag_value(t, tag) {
@@ -1633,7 +1576,6 @@ fn required_variable(t: &mut Tokens) -> R<String> {
     Ok(name)
 }
 
-/// `parseOptionalDescription()`; `limit`: right after a type, where `|`, `&` or no space is an error.
 fn parse_optional_description(t: &mut Tokens, limit: bool) -> R<String> {
     if limit {
         if t.is_any(&[Tok::Union, Tok::Inter]) {
@@ -1716,7 +1658,6 @@ fn parse_method_param(t: &mut Tokens) -> R<MethodParam> {
     })
 }
 
-/// `parseDoctrineTagValue()`: the arguments, then the description.
 fn parse_doctrine_tag_value(t: &mut Tokens) -> R<()> {
     parse_doctrine_arguments(t, false)?;
     parse_optional_description_after_doctrine_tag(t)?;
@@ -1751,7 +1692,6 @@ fn parse_doctrine_arguments(t: &mut Tokens, deep: bool) -> R<()> {
 }
 
 fn parse_doctrine_argument(t: &mut Tokens) -> R<()> {
-    // a quoted key, e.g. "key"="value", is not valid Doctrine syntax, but is accepted as the key
     if !t.is_any(&[Tok::Ident, Tok::DoubleQuoted, Tok::DoctrineString]) {
         return parse_doctrine_value(t);
     }

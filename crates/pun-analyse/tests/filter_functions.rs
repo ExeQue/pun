@@ -1,5 +1,3 @@
-//! Public PHPStan captures: dynamic providers must reach assignments and downstream argument checks.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

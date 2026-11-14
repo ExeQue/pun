@@ -1,5 +1,3 @@
-//! Canonical rule configuration controls the supported `void.pure` slice even while the complete
-//! PureFunctionRule/PureMethodRule mappings remain unported.
 mod common;
 
 use common::{PUN, clean_env, project};

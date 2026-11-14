@@ -1,9 +1,3 @@
-//! `lint/complexity/prefer-coalesce-over-empty-ternary`, ported from Rector 2.8.4's
-//! `TernaryEmptyArrayArrayDimFetchToCoalesceRector` (rules/CodeQuality/Rector/Ternary).
-//!
-//! `! empty($items) ? $items[0] : 'default'` becomes `$items[0] ?? 'default'` when `$items` is an array (PHPStan's
-//! `getType()`, read from the docblocks too).
-
 use mago_syntax::cst::{Construct, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 

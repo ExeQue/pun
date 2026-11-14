@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\NoNullPropertyInitializationFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::Tokens;
@@ -30,7 +29,6 @@ impl Fixer for NoNullPropertyInitializationFixer {
         let mut index = 0;
         while index < count {
             if tokens[index].is_given_kind(&[T_CLASS, T_TRAIT]) {
-                // Enums and interfaces do not have properties
                 class_level += 1;
                 in_class.insert(class_level, 1);
                 index = tokens
@@ -58,7 +56,6 @@ impl Fixer for NoNullPropertyInitializationFixer {
                 index += 1;
                 continue;
             }
-            // Ensure we are in a class but not in a method in case there are static variables defined
             if in_class[&class_level] != 1
                 || !tokens[index].is_given_kind(&[
                     T_PUBLIC,

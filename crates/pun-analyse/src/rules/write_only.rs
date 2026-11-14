@@ -1,7 +1,3 @@
-//! ReadingWriteOnlyPropertiesRule: reading a property that is not readable (a virtual property without a `get`
-//! hook, an `@property-write` tag). Level 0 and 1 run it with `checkThisOnly`, so only `$this->name` is checked;
-//! a static property is always readable.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_word::word;
@@ -9,7 +5,6 @@ use mago_word::word;
 use super::Checker;
 use super::property_access::in_expression_assign;
 
-/// A `$this->name` or `$this?->name` fetch.
 pub(super) fn read(
     c: &mut Checker,
     span: Span,
@@ -17,7 +12,7 @@ pub(super) fn read(
     selector: &ClassLikeMemberSelector,
 ) {
     let Expression::Variable(Variable::Direct(v)) = object else {
-        return; // ponytail: checkThisOnly is off from level 2, which needs every expression's type
+        return;
     };
     let ClassLikeMemberSelector::Identifier(name) = selector else {
         return;
@@ -29,8 +24,6 @@ pub(super) fn read(
         return;
     };
     let property = [b"$", name.value].concat();
-    // PhpClassReflectionExtension first: a native property is readable from its class unless it is virtual
-    // without a `get` hook
     let (declaring, readable) =
         if let Some((declaring, readable)) = c.native_readable(class, &property) {
             (declaring, readable)
@@ -57,7 +50,6 @@ pub(super) fn read(
     }
 }
 
-/// The node span a nullsafe fetch reports on.
 pub(super) fn null_safe(c: &mut Checker, p: &NullSafePropertyAccess) {
     read(c, p.span(), p.object, &p.property);
 }

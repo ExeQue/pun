@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NewWithParenthesesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -116,11 +115,9 @@ fn ensure(tokens: &mut Tokens, index: usize, parentheses: bool) {
         return;
     }
     let closing_index = tokens.get_next_meaningful_token(index).unwrap();
-    // constructor has arguments - parentheses can not be removed
     if !tokens[closing_index].equals(")", true) {
         return;
     }
-    // `new A()->method()` (PHP 8.4) keeps its parentheses
     if tokens[tokens.get_next_meaningful_token(closing_index).unwrap()].is_object_operator() {
         return;
     }

@@ -1,12 +1,3 @@
-//! The `refactor` group's configurable codemods, ported from Rector 2.8.4 (rules/Renaming, rules/Removing,
-//! rules/Transform), each in its own file, and what they share.
-//!
-//! `add-override-attribute` takes no options. Every other codemod does nothing until pun.toml gives it options. The options are the Rector rule's configuration as
-//! `pun migrate` writes it (crates/pun-config/src/migrate/rector.rs): a data map keeps its keys
-//! (`"lint/refactor/rename-function" = { view = "render" }`), and a list goes under `items`, a value object as a table of
-//! its properties kebab-cased (`items = [{ function = "f", argument-position = 2 }]`). `configure` checks them as the
-//! Rector rule's `configure()` and its value objects do (`Assert`, `RectorAssert`).
-
 mod add_override_attribute;
 mod prefer_attribute_over_annotation;
 mod remove_function_argument;
@@ -50,7 +41,6 @@ use super::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Rule};
 
-/// Every rule of the group, in a fixed order, unconfigured.
 pub(super) fn all() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(AddOverrideAttribute),
@@ -70,7 +60,6 @@ pub(super) fn all() -> Vec<Box<dyn Rule>> {
     ]
 }
 
-/// The options table, `None` when pun.toml gives none.
 fn table(options: &Value) -> Result<Option<&Map<String, Value>>, String> {
     match options {
         Value::Null => Ok(None),
@@ -79,7 +68,6 @@ fn table(options: &Value) -> Result<Option<&Map<String, Value>>, String> {
     }
 }
 
-/// A configuration that is a map of strings to strings (`Assert::allString`), in the order pun.toml writes it.
 pub(crate) fn string_map(options: &Value) -> Result<Vec<(String, String)>, String> {
     let Some(map) = table(options)? else {
         return Ok(Vec::new());
@@ -92,7 +80,6 @@ pub(crate) fn string_map(options: &Value) -> Result<Vec<(String, String)>, Strin
         .collect()
 }
 
-/// A configuration that is a list: the `items` array.
 pub(crate) fn items(options: &Value) -> Result<Vec<&Value>, String> {
     let Some(map) = table(options)? else {
         return Ok(Vec::new());
@@ -108,7 +95,6 @@ pub(crate) fn items(options: &Value) -> Result<Vec<&Value>, String> {
     }
 }
 
-/// One value object of an `items` list: a table whose keys are among `allowed`, every one of `required` present.
 pub(crate) fn object<'a>(
     item: &'a Value,
     allowed: &[&str],
@@ -129,7 +115,6 @@ pub(crate) fn object<'a>(
     Ok(map)
 }
 
-/// A string property of a value object.
 pub(crate) fn string(map: &Map<String, Value>, key: &str) -> Result<String, String> {
     map[key]
         .as_str()
@@ -137,14 +122,12 @@ pub(crate) fn string(map: &Map<String, Value>, key: &str) -> Result<String, Stri
         .ok_or_else(|| format!("`{key}` must be a string"))
 }
 
-/// An integer property of a value object.
 pub(crate) fn int(map: &Map<String, Value>, key: &str) -> Result<i64, String> {
     map[key]
         .as_i64()
         .ok_or_else(|| format!("`{key}` must be an integer"))
 }
 
-/// `RectorAssert`'s name patterns (byte-wise, as PCRE without `/u` reads them).
 static CLASS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?-u)^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*(\\[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)*$")
         .unwrap()
@@ -158,7 +141,6 @@ static FUNCTION: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-/// `RectorAssert::elementName`: `name` matches the pattern of its kind, or the error Rector throws.
 fn assert_name(name: &str, regex: &Regex, kind: &str) -> Result<(), String> {
     match regex.is_match(name.as_bytes()) {
         true => Ok(()),
@@ -166,37 +148,28 @@ fn assert_name(name: &str, regex: &Regex, kind: &str) -> Result<(), String> {
     }
 }
 
-/// `RectorAssert::className`.
 pub(crate) fn assert_class(name: &str) -> Result<(), String> {
     assert_name(name, &CLASS, "class")
 }
 
-/// `RectorAssert::constantName`.
 pub(crate) fn assert_constant(name: &str) -> Result<(), String> {
     assert_name(name, &METHOD_OR_CONSTANT, "constant")
 }
 
-/// `RectorAssert::methodName`.
 pub(crate) fn assert_method(name: &str) -> Result<(), String> {
     assert_name(name, &METHOD_OR_CONSTANT, "method")
 }
 
-/// `RectorAssert::functionName`.
 pub(crate) fn assert_function(name: &str) -> Result<(), String> {
     assert_name(name, &FUNCTION, "function")
 }
 
-/// What a function or constant name stands for.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Kind {
     Function,
     Constant,
 }
 
-/// `NodeNameResolver::getName()` of a function or constant `Name` node, after the `NameResolver` PHPStan's parser runs:
-/// a fully qualified name without its `\`; a name a `use function` / `use const` imports, or a qualified one, resolved
-/// (a qualified one through a class import of its first part, else into the namespace); any other name as written,
-/// since the global fallback leaves it unresolved.
 pub(crate) fn name_of(ancestors: &[Node<'_, '_>], name: &Identifier<'_>, kind: Kind) -> String {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     match name {
@@ -213,8 +186,6 @@ pub(crate) fn name_of(ancestors: &[Node<'_, '_>], name: &Identifier<'_>, kind: K
     }
 }
 
-/// `FuncCallNameResolver`: [`name_of`] the called name, except that an unqualified name the namespace declares a
-/// function of (`ReflectionProvider::hasFunction` on its namespaced name) is that function.
 pub(crate) fn function_name(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -233,8 +204,6 @@ pub(crate) fn function_name(
     resolved
 }
 
-/// What php-parser's `FuncCall` `node` calls: a call's function, or a first-class callable's (`f(...)`, which php-parser
-/// reads as a call with a `VariadicPlaceholder`). Mago's other partial applications are no php-parser node.
 pub(crate) fn called<'ast, 'arena>(node: Node<'ast, 'arena>) -> Option<&'ast Expression<'arena>> {
     match node {
         Node::FunctionCall(call) => Some(call.function),
@@ -248,19 +217,14 @@ pub(crate) fn called<'ast, 'arena>(node: Node<'ast, 'arena>) -> Option<&'ast Exp
     }
 }
 
-/// `NodeNameResolver::isStringName`: the same name without regard to ASCII case; an empty name matches nothing.
 pub(crate) fn is_name(resolved: &str, desired: &str) -> bool {
     !desired.is_empty() && resolved.eq_ignore_ascii_case(desired)
 }
 
-/// php-parser's `Name` for a new name: written as given, or fully qualified (with a leading `\`) for a
-/// `FullyQualified`.
 pub(crate) fn fully_qualified(name: &str) -> String {
     format!("\\{name}")
 }
 
-/// `isObjectTypeOfObjectType`: the same name, or, when the codebase knows `required`, a class it knows to extend or
-/// implement it (a class whose parent it does not know extends nothing it knows of).
 pub(crate) fn is_class(ctx: &Context<'_>, resolved: &str, required: &str) -> bool {
     let codebase = &facts(ctx).codebase;
     resolved == required
@@ -268,9 +232,6 @@ pub(crate) fn is_class(ctx: &Context<'_>, resolved: &str, required: &str) -> boo
             && codebase.is_instance_of(resolved.as_bytes(), required.as_bytes()))
 }
 
-/// `NodeTypeResolver::isObjectType($expr, new ObjectType($required))`: for a class name as `NameTypeResolver` types it
-/// (`self`, `static` the enclosing class, `parent` its parents), for any other expression on the type Mago gives it,
-/// `null` and `false` left out of a union, a class the codebase does not know matching its own name only.
 pub(crate) fn is_object_type(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -278,7 +239,6 @@ pub(crate) fn is_object_type(
     required: &str,
 ) -> bool {
     match unparenthesize(class) {
-        // `isObjectType()` answers no for a class constant fetch (an enum case among them).
         Expression::Access(mago_syntax::cst::Access::ClassConstant(_)) => false,
         Expression::Identifier(id) => is_class(ctx, &resolve_class_name(ancestors, id), required),
         Expression::Static(_) | Expression::Self_(_) => class_scope(ancestors)
@@ -311,8 +271,6 @@ pub(crate) fn is_object_type(
     }
 }
 
-/// `NameTypeResolver::resolveParent`: the enclosing class's parent classes; `None` outside a class, in an anonymous
-/// class, or for a class without a parent.
 fn parents(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> Option<Vec<String>> {
     let scope = class_scope(ancestors)?;
     scope.name.as_ref()?;
@@ -329,9 +287,6 @@ fn parents(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> Option<Vec<String>>
     Some(chain)
 }
 
-/// `ClassNameFromObjectTypeResolver::resolve()` on the type Mago gives `expr`: the one class an object type names. A
-/// union names one when its members are all objects of that class or its subclasses (`TypeCombinator` keeps the
-/// parent), none when a member is anything else (`null` too).
 pub(crate) fn object_class_name(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<String> {
     let facts = facts(ctx);
     let t = facts.full_type(node_span(unparenthesize(expr)))?;

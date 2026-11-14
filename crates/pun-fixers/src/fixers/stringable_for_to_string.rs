@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\StringableForToStringFixer`.
 use crate::analyzers::analysis::NamespaceUseAnalysis;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
 use pun_format::Fixer;

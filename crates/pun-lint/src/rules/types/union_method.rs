@@ -1,9 +1,3 @@
-//! PHPStan's type of a method call on a union, as a Mago analyser plugin. `UnionType::getUnresolvedMethodPrototype()`
-//! reads the method of the members whose `hasMethod()` is yes, and a class that only declares `__call` has not the
-//! method, so `(User|Collection)->commits()` is `User::commits()`'s type alone. Mago joins it with `__call`'s return
-//! (`mixed`): the provider here gives that magic call `never` instead, when another class of the receiver declares the
-//! method, so the call takes the declaring classes' type, and so do the chains and variables built on it.
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -21,8 +15,6 @@ use mago_span::{HasSpan, Span};
 use mago_syntax::cst::{Expression, MethodCall, NullSafeMethodCall};
 
 thread_local! {
-    /// The receiver of each method call being analysed on this thread, by the call's span: a provider sees the call
-    /// only, and the receiver's type is what it needs.
     static RECEIVERS: RefCell<HashMap<Span, Span>> = RefCell::new(HashMap::new());
 }
 
@@ -34,7 +26,6 @@ static META: ProviderMeta = ProviderMeta::new(
 
 static TARGETS: [MethodTarget; 1] = [MethodTarget::any_class(b"*")];
 
-/// Registers the plugin's hooks and provider.
 pub(crate) fn register(registry: &mut PluginRegistry) {
     registry.register_method_call_hook(UnionMethod);
     registry.register_nullsafe_method_call_hook(UnionMethod);
@@ -100,8 +91,6 @@ impl MethodReturnTypeProvider for UnionMethod {
         &TARGETS
     }
 
-    /// `never` for a call of `method` that `class` only takes through `__call`, when another class of the receiver
-    /// declares `method`: the union of the call's types is then the declaring classes'.
     fn get_return_type(
         &self,
         context: &ProviderContext<'_, '_, '_>,

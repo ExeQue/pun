@@ -1,11 +1,3 @@
-//! `lint/complexity/no-boolean-flag-parameter`, ported from Mago 1.57.0's `no-boolean-flag-parameter`
-//! (mago-linter src/rule/maintainability/no_boolean_flag_parameter.rs).
-//!
-//! Reports a parameter typed `bool` (not promoted) that the function branches on: it appears in the condition of an
-//! `if`, `elseif` or ternary of the body. A parameter of a function-like without a body (an abstract method, an
-//! arrow function) is always reported. Options: `exclude-constructors` (default true) and `exclude-setters`
-//! (default false, methods whose name starts with `set` and is longer than that).
-
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 
@@ -101,7 +93,6 @@ impl Rule for NoBooleanFlagParameter {
     }
 }
 
-/// `FlagParameterWalker`: whether the parameter appears in a branching condition.
 struct FlagWalker<'t> {
     target: &'t [u8],
     used_as_flag: bool,

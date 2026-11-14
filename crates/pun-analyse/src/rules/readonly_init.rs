@@ -1,13 +1,3 @@
-//! MissingReadOnlyPropertyAssignRule and MissingReadOnlyByPhpDocPropertyAssignRule (ClassPropertiesNode):
-//! `getUninitializedProperties()` over what ClassStatementsGatherer collects of the class and its traits (property
-//! nodes, property reads and writes, method calls, each method's return and execution-end scopes), with the part of
-//! the scope it reads: the certainty of `PropertyInitializationExpr` along each method's flow (assignments,
-//! `processCalledMethod()` for `$this->method()` in the constructor, an ancestor constructor's promoted properties).
-//! ponytail: the flow merges branches, loops (run zero or more times), `try`/`catch` (a catch from before or after
-//! the try) and closures (their parent's scope); `break`, `continue` and `goto` end a branch without leaving it, and
-//! only `throw`, `exit` and calls to functions and `$this` methods declared `never` terminate one. No ReadWritePropertiesExtension or
-//! AdditionalConstructorsExtension runs, nor `additionalConstructors`.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -28,14 +18,12 @@ use super::types::flow::is_this;
 use crate::codebase::parse;
 use crate::text;
 
-/// The certainty of each property's PropertyInitializationExpr; a property not in it is not initialized.
 type State = HashMap<String, Tri>;
 
 fn get(s: &State, p: &str) -> Tri {
     s.get(p).copied().unwrap_or(Tri::No)
 }
 
-/// MutatingScope::mergeWith(): what only one side has becomes a maybe.
 fn merge(a: &State, b: &State) -> State {
     let mut out = State::new();
     for (p, t) in a {
@@ -47,7 +35,6 @@ fn merge(a: &State, b: &State) -> State {
     out
 }
 
-/// MutatingScope::mergeInitializedProperties().
 fn merge_initialized(scope: &mut State, called: &State) {
     for (p, t) in called {
         let certainty = scope.get(p).map_or(*t, |u| t.or(*u));
@@ -55,47 +42,36 @@ fn merge_initialized(scope: &mut State, called: &State) {
     }
 }
 
-/// How a statement or expression leaves the flow.
 #[derive(Clone, Copy, PartialEq)]
 enum Flow {
     Next,
-    /// `break`/`continue`: the rest of the statement list is skipped.
     Skip,
-    /// Always terminating (`return`, `throw`, `exit`, a `never` call).
     Exit,
 }
 
-/// A PropertyRead or PropertyWrite on `$this`.
 struct Usage {
     property: String,
-    /// The source the usage is in (its file).
     source: usize,
     line: i64,
-    /// `None` for a read; a write's `isViaOffsetAccess()`.
     write: Option<bool>,
-    /// The initialization certainty of the property in the usage's scope, and in its parent's when in a closure.
     state: Tri,
     parent: Option<Tri>,
 }
 
-/// A method call on `$this` (MethodCall, StaticCall, a first-class callable) to a method of the class.
 struct Call {
     method: String,
     state: State,
 }
 
-/// What a method's walk gathers.
 #[derive(Default)]
 struct Gathered {
     usages: Vec<Usage>,
     calls: Vec<Call>,
 }
 
-/// A file the class or one of its traits is declared in.
 struct Source<'x> {
     file: &'x File,
     names: &'x ResolvedNames<'x>,
-    /// `getFileDescription()` of a trait's file in the class's context.
     label: Option<String>,
 }
 
@@ -103,20 +79,16 @@ struct MethodAst<'x> {
     name: String,
     method: &'x Method<'x>,
     source: usize,
-    /// Its position in the class's walk.
     order: usize,
-    /// `isConstructor`: `__construct`, or a trait's under an alias.
     constructor: bool,
 }
 
-/// A ClassPropertyNode.
 struct PropertyNode {
     name: String,
     line: i64,
     readonly: bool,
     readonly_by_phpdoc: bool,
     initial: Tri,
-    /// See [`offsets()`].
     offsets: (bool, bool),
 }
 
@@ -124,21 +96,15 @@ struct Ctx<'c, 'x> {
     c: &'c Checker<'c, 'x>,
     k: &'c ClassLikeMetadata,
     sources: Vec<Source<'x>>,
-    /// The properties' [`offsets()`].
     offsets: HashMap<String, (bool, bool)>,
-    /// The class's methods and its traits', by lowercase name.
     methods: HashMap<String, MethodAst<'x>>,
 }
 
-/// One walk of a method body (or, nested, of the method `processCalledMethod()` reads).
 struct Walk<'w, 'c, 'x> {
     ctx: &'w Ctx<'c, 'x>,
     source: usize,
-    /// `$this` is the object (not a static method or closure).
     this: bool,
-    /// In `__construct` and not inside `processCalledMethod()`: `$this->method()` merges what it initializes.
     constructor: bool,
-    /// The parent scope's state, in a closure.
     parent: Option<State>,
     gathered: Gathered,
     returns: Vec<State>,
@@ -208,7 +174,6 @@ impl<'x> Walk<'_, '_, 'x> {
         Flow::Next
     }
 
-    /// The branches of a construct, from `s`; `s` becomes their merge (unchanged when all of them exit).
     fn branches(
         &mut self,
         s: &mut State,
@@ -239,8 +204,6 @@ impl<'x> Walk<'_, '_, 'x> {
         Flow::Next
     }
 
-    /// A loop body (NodeScopeResolver runs it without the node callback until its entry scope, merged with its end,
-    /// stops changing, then once with it), from `s`; `s` becomes its end (`once`, a `do`-`while`) or the merge.
     fn looped(&mut self, s: &mut State, nodes: Vec<Node<'_, '_>>, once: bool) -> Flow {
         let run = |w: &mut Self, mut from: State| {
             let mut flow = Flow::Next;
@@ -286,11 +249,8 @@ impl<'x> Walk<'_, '_, 'x> {
 
     fn node(&mut self, n: Node<'_, '_>, s: &mut State) -> Flow {
         match n {
-            // an `if`, `elseif`, `while`, `for` condition, `foreach` expression, `do`-`while` condition or `return`
-            // value that always terminates does not end the flow (NodeScopeResolver reads only the statements')
             Node::If(i) => {
                 self.node(Node::Expression(i.condition), s);
-                // an elseif runs its condition, then its branch
                 let (branches, has_else) = match &i.body {
                     IfBody::Statement(b) => {
                         let mut out = vec![(vec![Node::Statement(b.statement)], true)];
@@ -541,7 +501,6 @@ impl<'x> Walk<'_, '_, 'x> {
                 {
                     merge_initialized(s, &end);
                 }
-                // ponytail: only a `$this` method declared to return `never` terminates, not other objects'
                 if flow == Flow::Next && method.is_some_and(|m| self.ctx.method_never(m)) {
                     return Flow::Exit;
                 }
@@ -614,7 +573,6 @@ impl<'x> Walk<'_, '_, 'x> {
                     && let Some(Argument::Positional(first)) = f.argument_list.arguments.first()
                     && is_this(first.value)
                 {
-                    // tryToApplyPropertyReads(): a PropertyFetch without a line, reported on the class's
                     let at = self.gathered.usages.len();
                     for p in self.ctx.instance_properties() {
                         self.usage(s, p.as_bytes(), f, None);
@@ -628,7 +586,6 @@ impl<'x> Walk<'_, '_, 'x> {
                         (u.line, u.source) = (line, 0);
                     }
                 }
-                // the trait files' names are not the checker's
                 let (by_ref, virtual_assigned) = if self.source == 0 {
                     (
                         super::assign::by_ref_arguments(self.ctx.c, f),
@@ -641,10 +598,6 @@ impl<'x> Walk<'_, '_, 'x> {
                 if flow == Flow::Next && name.is_some_and(|n| self.ctx.never(n)) {
                     return Flow::Exit;
                 }
-                // processVirtualAssign() of each argument passed by reference
-                // processVirtualAssign() of each argument passed by reference (createsNewVariable), then FuncCallHandler's
-                // of a built-in's array argument: writes that leave the property's initialization as it was
-                // ponytail: `$this->p[...]` arguments are not offset writes here
                 let by_ref = f
                     .argument_list
                     .arguments
@@ -673,7 +626,6 @@ impl<'x> Walk<'_, '_, 'x> {
         Flow::Next
     }
 
-    /// A closure's body: its own scope `inner`, `s` its parent's.
     fn nested(&mut self, s: &State, mut inner: State, f: impl FnOnce(&mut Self, &mut State)) {
         let parent = self.parent.replace(s.clone());
         let returns = std::mem::take(&mut self.returns);
@@ -701,7 +653,6 @@ impl<'x> Walk<'_, '_, 'x> {
             }
             return Flow::Next;
         }
-        // `$this->property[...] = ...`
         let mut root = target;
         let mut dims = Vec::new();
         loop {
@@ -720,7 +671,6 @@ impl<'x> Walk<'_, '_, 'x> {
             for d in dims.iter().rev() {
                 self.node(Node::Expression(d), s);
             }
-            // the write is gathered, and initializes the property, even when the value never returns
             let flow = self.node(Node::Expression(a.rhs), s);
             let (object, array_access) = self
                 .ctx
@@ -735,7 +685,6 @@ impl<'x> Walk<'_, '_, 'x> {
             s.insert(text(property), Tri::Yes);
             return flow;
         }
-        // list() and [] destructuring: the value first, then each element's target
         if let Expression::List(_) | Expression::Array(_) | Expression::LegacyArray(_) = target {
             if self.node(Node::Expression(a.rhs), s) == Flow::Exit {
                 return Flow::Exit;
@@ -752,7 +701,6 @@ impl<'x> Walk<'_, '_, 'x> {
         self.node(Node::Expression(a.rhs), s)
     }
 
-    /// The `$this->property` targets of a destructuring assignment.
     fn targets(&mut self, n: Node<'_, '_>, s: &mut State) {
         for child in n.children() {
             match child {
@@ -774,8 +722,6 @@ impl<'x> Ctx<'_, 'x> {
         text(self.k.name.as_bytes())
     }
 
-    /// The class (lowercase) a static call's `self`, `parent` or name resolves to when it is the class or one of
-    /// its ancestors (`resolveTypeByName()` gives a ThisType); `static` gives a StaticType.
     fn this_class(&self, source: usize, class: &Expression) -> Option<String> {
         let name = match class {
             Expression::Self_(_) => return Some(self.name()),
@@ -793,7 +739,6 @@ impl<'x> Ctx<'_, 'x> {
         .then_some(lower)
     }
 
-    /// The public and protected promoted properties `class` itself declares.
     fn promoted_of(&self, class: &str) -> Vec<String> {
         let Some(k) = self.c.codebase.get_class_like(class.as_bytes()) else {
             return Vec::new();
@@ -814,7 +759,6 @@ impl<'x> Ctx<'_, 'x> {
         out
     }
 
-    /// The class's non-static properties (`getNativeReflection()->getProperties()`).
     fn instance_properties(&self) -> Vec<String> {
         let mut out: Vec<String> = self
             .k
@@ -830,7 +774,6 @@ impl<'x> Ctx<'_, 'x> {
         out
     }
 
-    /// A function declared to return `never`.
     fn never(&self, name: &[u8]) -> bool {
         self.c.codebase.get_function(name).is_some_and(|f| {
             f.return_type_metadata
@@ -839,7 +782,6 @@ impl<'x> Ctx<'_, 'x> {
         })
     }
 
-    /// A method of the class declared to return `never`.
     fn method_never(&self, method: &[u8]) -> bool {
         matches!(
             super::members::method(self.c, self.k, method),
@@ -847,7 +789,6 @@ impl<'x> Ctx<'_, 'x> {
         )
     }
 
-    /// The initialization state at the method's start: its promoted parameters.
     fn start(m: &Method) -> State {
         m.parameter_list
             .parameters
@@ -857,8 +798,6 @@ impl<'x> Ctx<'_, 'x> {
             .collect()
     }
 
-    /// Walks method `name`: what it gathers and its end state (its execution ends and returns merged; `None`
-    /// when it has none).
     fn walk(&self, m: &MethodAst<'x>, nested: bool, carried: &State) -> (Gathered, Option<State>) {
         let is_static = m.method.modifiers.contains_static();
         let mut walk = Walk {
@@ -887,7 +826,6 @@ impl<'x> Ctx<'_, 'x> {
         (walk.gathered, end)
     }
 
-    /// `processCalledMethod()`: what a method of the class initializes, walked on its own.
     fn called_end(&self, method: &[u8]) -> Option<State> {
         if self.k.kind != SymbolKind::Class
             || self.k.name.as_bytes().starts_with(b"{anonymous-class:")
@@ -901,7 +839,6 @@ impl<'x> Ctx<'_, 'x> {
     }
 }
 
-/// The trait declarations `names` in `program`.
 fn traits_in<'p>(program: &'p Program<'p>, spans: &[mago_span::Span]) -> Vec<&'p Trait<'p>> {
     fn walk<'p>(
         statements: &'p [Statement<'p>],
@@ -921,7 +858,6 @@ fn traits_in<'p>(program: &'p Program<'p>, spans: &[mago_span::Span]) -> Vec<&'p
     out
 }
 
-/// The rules on class `k` (named, or anonymous) declared with `members`.
 pub(super) fn class<'arena>(
     c: &mut Checker<'_, 'arena>,
     k: &ClassLikeMetadata,
@@ -934,7 +870,6 @@ pub(super) fn class<'arena>(
     let (immutable_doc, parent, class_readonly) =
         (decl.immutable_doc, decl.parent.clone(), decl.is_readonly);
     let immutable = immutable_doc || parent.is_some_and(|p| c.class_immutable(&p, 0));
-    // the traits, with their own traits
     let mut traits: Vec<&ClassLikeMetadata> = Vec::new();
     let mut pending: Vec<&ClassLikeMetadata> = vec![k];
     while let Some(t) = pending.pop() {
@@ -974,7 +909,6 @@ pub(super) fn class<'arena>(
         names: c.names,
         label: None,
     }];
-    // (source, lowercase trait name, member)
     let mut trait_members: Vec<(usize, String, &ClassLikeMember)> = Vec::new();
     for (i, (file, (program, names))) in files.iter().zip(&parsed).enumerate() {
         sources.push(Source {
@@ -996,8 +930,6 @@ pub(super) fn class<'arena>(
             trait_members.extend(t.members.iter().map(|m| (i + 1, name.clone(), m)));
         }
     }
-    // the methods in the order PHPStan walks them (a trait's where the class first uses one), the class's own
-    // overriding its traits', and the aliases `use T { m as alias; }` adds
     let mut methods: HashMap<String, MethodAst> = HashMap::new();
     fn add<'x>(
         methods: &mut HashMap<String, MethodAst<'x>>,
@@ -1067,13 +999,10 @@ pub(super) fn class<'arena>(
             };
             let (trait_name, method) = match &a.method_reference {
                 TraitUseMethodReference::Identifier(m) => (None, m.value),
-                TraitUseMethodReference::Absolute(r) => {
-                    // unresolved by mago-names: matched by its last segments below
-                    (
-                        Some(text(r.trait_name.value()).to_ascii_lowercase()),
-                        r.method_name.value,
-                    )
-                }
+                TraitUseMethodReference::Absolute(r) => (
+                    Some(text(r.trait_name.value()).to_ascii_lowercase()),
+                    r.method_name.value,
+                ),
             };
             let found = trait_members
                 .iter()
@@ -1107,7 +1036,6 @@ pub(super) fn class<'arena>(
             .get("__construct")
             .map_or_else(|| "__construct".to_string(), |m| m.name.clone())
     });
-    // the ClassPropertyNodes: the properties, then each constructor's promoted parameters
     let mut nodes: Vec<PropertyNode> = Vec::new();
     let own = members.iter().map(|m| (0, m));
     for (source, member) in own.chain(trait_members.iter().map(|(s, _, m)| (*s, *m))) {
@@ -1154,7 +1082,6 @@ pub(super) fn class<'arena>(
             {
                 continue;
             }
-            // a trait's property the parent class declares too is the parent's
             let inherited = from_trait
                 && k.direct_parent_class
                     .and_then(|parent| {
@@ -1215,8 +1142,6 @@ pub(super) fn class<'arena>(
     }
 }
 
-/// What `$this->property[...] = ...` does on a property of native type `hint`: whether it is also a read (the type
-/// may be an object) and whether it goes through ArrayAccess::offsetSet() (`isArrayAccessOffsetWrite()`).
 fn offsets(c: &Checker, source: &Source, hint: &Hint) -> (bool, bool) {
     match hint {
         Hint::Nullable(n) => offsets(c, source, n.hint),
@@ -1238,17 +1163,14 @@ fn offsets(c: &Checker, source: &Source, hint: &Hint) -> (bool, bool) {
     }
 }
 
-/// An error: identifier, message, line, and the usage's file description when it is a trait's.
 type Reported = (&'static str, String, i64, Option<(String, String)>);
 
-/// `getInitializedProperties()`: `base`, or initialized in `scope`.
 fn initialized_in(scope: &State, base: &State) -> State {
     base.iter()
         .map(|(p, t)| (p.clone(), t.or(get(scope, p))))
         .collect()
 }
 
-/// ClassPropertiesNode::getUninitializedProperties() and the two rules' errors.
 fn uninitialized(
     ctx: &Ctx,
     nodes: Vec<PropertyNode>,
@@ -1265,9 +1187,7 @@ fn uninitialized(
         }
         original.insert(node.name.clone(), node);
     }
-    // each method's walk, by declared name
     let mut walked: Vec<(String, Gathered, Option<State>)> = Vec::new();
-    // in the class's order, each after a constructor starting from its end (`rememberConstructorScope()`)
     let mut in_order: Vec<&MethodAst> = ctx.methods.values().collect();
     in_order.sort_by_key(|m| m.order);
     let mut carried = State::new();
@@ -1308,7 +1228,6 @@ fn uninitialized(
                     .cloned()
                     .collect()
             };
-            // getMethodsCalledFromConstructor()
             let mut map: HashMap<String, State> = HashMap::new();
             map.insert(constructor, initial.clone());
             let mut methods = constructors.clone();
@@ -1365,8 +1284,6 @@ fn uninitialized(
                                 additional.push((usage.property.clone(), usage.line));
                             }
                         }
-                        // (a read in an additional constructor of a property the constructor initializes is skipped
-                        // upstream; Pun has no additional constructors)
                         None => {
                             let mut has = known.or(usage.state);
                             if has != Tri::Yes
@@ -1388,7 +1305,6 @@ fn uninitialized(
     };
     let mut out: Vec<Reported> = Vec::new();
     if ctx.c.on(crate::rules::Switches::UNINITIALIZED_PROPERTIES) {
-        // UninitializedPropertyRule: the properties neither rule above reports
         let plain = |name: &str| {
             original
                 .get(name)
@@ -1469,7 +1385,6 @@ fn uninitialized(
 }
 
 impl Checker<'_, '_> {
-    /// An error on `line` of the class's file, or of a trait's (`file`: its description and path).
     fn report_line(
         &mut self,
         line: i64,
@@ -1480,8 +1395,6 @@ impl Checker<'_, '_> {
         if self.trait_context.is_some() && !self.walk.contains(super::Walk::IN_TARGET) {
             return;
         }
-        // a class declared in a trait's method is checked in each using class's context, with its own scope (not in
-        // the trait)
         let (label, trait_file) = match file {
             Some((label, path)) => (label, Some(path)),
             None => (self.file_name(), None),

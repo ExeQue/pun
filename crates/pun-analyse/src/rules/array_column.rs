@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's ArrayColumnFunctionReturnTypeExtension and ArrayColumnHelper for rows that are arrays or `mixed`.
-//! Rows that are objects keep Mago's ArrayColumnProvider, and every call this port declines keeps the stub's type.
-
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -64,8 +61,6 @@ impl FunctionReturnTypeProvider for ArrayColumn {
     }
 }
 
-/// `getTypeFromFunctionCall()`: one constant array goes through `handleConstantArray()`, which declines when a row
-/// may lack the column; everything else through `handleAnyArray()`.
 fn return_type(
     array: &TUnion,
     column: &TUnion,
@@ -80,7 +75,6 @@ fn return_type(
     any_array(array, column, index, codebase)
 }
 
-/// The known entries of an array and its remaining key and value types.
 type Entries = (BTreeMap<ArrayKey, (bool, TUnion)>, Option<(TUnion, TUnion)>);
 
 fn entries(array: &TArray) -> Entries {
@@ -113,9 +107,6 @@ fn entries(array: &TArray) -> Entries {
     }
 }
 
-/// `handleConstantArray()`: the column of each row, in order or under the row's constant index key. A row that may
-/// lack the column, an optional row, an index key that is no single constant and an unsealed array are left to
-/// `handleAnyArray()`.
 fn constant_array(array: &TArray, column: &TUnion, index: Option<&TUnion>) -> Option<TUnion> {
     let (known, rest) = entries(array);
     if known.is_empty() || rest.is_some() {
@@ -153,7 +144,6 @@ fn constant_array(array: &TArray, column: &TUnion, index: Option<&TUnion>) -> Op
     Some(TUnion::from_atomic(TAtomic::Array(TArray::Keyed(keyed))))
 }
 
-/// `handleAnyArray()`.
 fn any_array(
     array: &TArray,
     column: &TUnion,
@@ -174,7 +164,6 @@ fn any_array(
         list.non_empty = non_empty;
         return Some(TUnion::from_atomic(TAtomic::Array(TArray::List(list))));
     };
-    // getReturnIndexType()
     let (key, certainty) = offset(&row, index)?;
     let key = if key.is_never() {
         get_int()
@@ -193,8 +182,6 @@ fn any_array(
     Some(TUnion::from_atomic(TAtomic::Array(TArray::Keyed(keyed))))
 }
 
-/// `getOffsetOrProperty()` of a row type: the type read at `offset` and whether every row has it. `None` for a row
-/// this port does not model (an object, a string).
 fn offset(row: &TUnion, offset: &TUnion) -> Option<(TUnion, Tri)> {
     if offset.is_null() {
         return Some((row.clone(), Tri::Yes));
@@ -206,7 +193,6 @@ fn offset(row: &TUnion, offset: &TUnion) -> Option<(TUnion, Tri)> {
         let (value, certainty) = match atomic {
             TAtomic::Mixed(_) => (Some(get_mixed()), Tri::Maybe),
             TAtomic::Array(array) => union_offset(array, &wanted),
-            // an object shape's readable properties (`getOffsetOrProperty()`'s property branch)
             TAtomic::Object(mago_codex::ttype::atomic::object::TObject::WithProperties(shape)) => {
                 let mut types: Option<TUnion> = None;
                 for name in offset.types.iter() {
@@ -229,7 +215,6 @@ fn offset(row: &TUnion, offset: &TUnion) -> Option<(TUnion, Tri)> {
                 }
                 (types, Tri::Yes)
             }
-            // neither property access nor offset access
             TAtomic::Null
             | TAtomic::Scalar(TScalar::Integer(_) | TScalar::Float(_) | TScalar::Bool(_)) => {
                 (None, Tri::No)
@@ -265,14 +250,12 @@ fn merge(left: TUnion, right: &TUnion) -> TUnion {
     TUnion::from_vec(atomics)
 }
 
-/// The column or index argument: one constant key, or any key of some kinds.
 enum Wanted {
     Key(ArrayKey),
     Kinds { int: bool, string: bool },
 }
 
 impl Wanted {
-    /// The members of a union of constant keys one by one, any other offset as a whole.
     fn all(offset: &TUnion) -> Option<Vec<Self>> {
         let constant = |atomic: &TAtomic| match atomic {
             TAtomic::Scalar(TScalar::Integer(integer)) => integer.is_literal(),
@@ -294,7 +277,6 @@ impl Wanted {
             return Some(Self::Key(ArrayKey::Integer(value)));
         }
         if let Some(value) = offset.get_single_literal_string_value() {
-            // a numeric string is cast to an integer key
             if value
                 .first()
                 .is_some_and(|b| b.is_ascii_digit() || *b == b'-')
@@ -325,7 +307,6 @@ impl Wanted {
         }
     }
 
-    /// Whether a key of the array's general key type can be this offset.
     fn within(&self, keys: &TUnion) -> bool {
         let (int, string) = match self {
             Self::Key(ArrayKey::Integer(_)) => (true, false),
@@ -340,8 +321,6 @@ impl Wanted {
     }
 }
 
-/// `hasOffsetValueType()` and `getOffsetValueType()` of one array for a union offset: the values of every member,
-/// and `TrinaryLogic::extremeIdentity()` of their certainties.
 fn union_offset(array: &TArray, wanted: &[Wanted]) -> (Option<TUnion>, Tri) {
     let mut found: Option<TUnion> = None;
     let mut certainty: Option<Tri> = None;
@@ -361,7 +340,6 @@ fn union_offset(array: &TArray, wanted: &[Wanted]) -> (Option<TUnion>, Tri) {
     (found, certainty.unwrap_or(Tri::No))
 }
 
-/// `hasOffsetValueType()` and `getOffsetValueType()` of one array.
 fn array_offset(array: &TArray, wanted: &Wanted) -> (Option<TUnion>, Tri) {
     let (known, rest) = entries(array);
     let mut found: Option<TUnion> = None;
@@ -393,7 +371,6 @@ fn array_offset(array: &TArray, wanted: &Wanted) -> (Option<TUnion>, Tri) {
     }
 }
 
-/// `castToArrayKeyType()` on PHP 8: `Type::toArrayKey()` of everything but arrays.
 fn to_array_key(key: &TUnion, codebase: &CodebaseMetadata) -> Option<TUnion> {
     let mut result: Option<TUnion> = None;
     for atomic in key.types.iter() {

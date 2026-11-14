@@ -1,10 +1,3 @@
-//! `lint/laravel/prefer-request-server`, ported from rector-laravel 2.7.3's `ServerVariableToRequestFacadeRector`
-//! (src/Rector/ArrayDimFetch).
-//!
-//! Reading `$_SERVER['NAME']` becomes `\Illuminate\Support\Facades\Request::server('NAME')`. Items inside an
-//! assignment to a superglobal, `isset()`, `unset()` or an interpolated string are left alone
-//! (`ArrayDimFetchContextNodeVisitor::IS_IN_SUPERGLOBAL_ASSIGN`), and so is any other place a call cannot be written to.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{

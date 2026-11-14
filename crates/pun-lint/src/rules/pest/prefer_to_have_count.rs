@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-count`, ported from pest-plugin-rector's `UseToHaveCountRector`:
-//! `expect(count($items))->toBe(3)` (or `sizeof()`, or `toEqual()`) becomes `expect($items)->toHaveCount(3)` when
-//! `$items` is known to be an array or iterable.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

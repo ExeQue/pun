@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\SwitchAnalyzer`.
 use super::control_case_structures_analyzer::ControlCaseStructuresAnalyzer;
 use pun_tokens::Tokens;
 
@@ -9,7 +8,6 @@ impl SwitchAnalyzer {
         if !tokens[index].equals(":", true) {
             return false;
         }
-        // Upstream caches per collection hash; Tokens keeps the indices until the next edit, sorted for the lookup.
         tokens
             .switch_colon_indices(|t| {
                 let mut indices = Self::get_colon_indices_for_switch(t);

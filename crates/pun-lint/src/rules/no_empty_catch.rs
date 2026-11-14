@@ -1,8 +1,3 @@
-//! `lint/control-flow/no-empty-catch`, ported from Mago 1.57.0's `no-empty-catch-clause`
-//! (mago-linter src/rule/correctness/no_empty_catch_clause.rs).
-//!
-//! Reports a `catch` block that holds no statement (only empty blocks and `;`), which swallows the exception.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Node, NodeKind, Statement};
 

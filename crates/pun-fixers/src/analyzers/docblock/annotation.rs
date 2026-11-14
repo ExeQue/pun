@@ -1,5 +1,3 @@
-//! `PhpCsFixer\DocBlock\Annotation`.
-
 use super::line::LineRef;
 use super::tag::Tag;
 use super::type_expression::{REGEX_IDENTIFIER, REGEX_TYPES, TypeExpression};
@@ -39,7 +37,6 @@ pub(crate) struct Annotation {
 }
 
 impl Annotation {
-    /// `lines` are `(index in the docblock, line)` pairs, like upstream's preserved-key slice.
     pub(crate) fn new(lines: Vec<(usize, LineRef)>) -> Self {
         let start = lines.first().unwrap().0;
         let end = lines.last().unwrap().0;
@@ -86,7 +83,6 @@ impl Annotation {
             b")(?:.*|$)/",
         ]
         .concat();
-        // Built from the types, so kept out of the pattern cache (it would grow with every distinct type).
         Preg::match_groups_uncached(&regex, &content).map(|m| m.name_str("variable").to_vec())
     }
 
@@ -102,7 +98,6 @@ impl Annotation {
 
     pub(crate) fn set_types(&self, types: &[Vec<u8>]) {
         let orig_types_content = self.get_types_content().unwrap_or_default();
-        // The glue only joins two or more types; skip re-parsing the expression for the usual single one.
         let new_types_content = match types {
             [one] => one.clone(),
             _ => types.join(
@@ -136,7 +131,6 @@ impl Annotation {
             ]
             .concat();
             let content = self.lines[index].borrow().get_content().to_vec();
-            // the replacement is a literal in upstream only by accident of content; keep preg_replace semantics
             let new = Preg::replace_limit_uncached(&pattern, line, &content, 1).0;
             self.lines[index].borrow_mut().set_content(new);
         }
@@ -175,7 +169,6 @@ impl Annotation {
         TAGS_WITH_TYPES.iter().any(|t| t.as_bytes() == name)
     }
 
-    /// Panics like upstream's RuntimeException when the tag does not support types.
     pub(crate) fn get_types_content(&self) -> Option<Vec<u8>> {
         if self.types_content.borrow().is_none() {
             let name = self.get_tag().get_name();
@@ -202,9 +195,6 @@ impl Annotation {
     }
 }
 
-/// The first path `getVariableName()`'s pattern tries at the first `@tag`, for ASCII content (where `\s`, the identifier
-/// class and the quoted types are all plain bytes): `@tag\s+` then `types\s*`, `&\s*`, `...\s*` greedily, then `$name`.
-/// That path is the regex's leftmost-first match whenever it succeeds; otherwise (`None`) the regex decides.
 fn variable_name_ascii(content: &[u8], tag: &[u8], types: &[u8]) -> Option<Vec<u8>> {
     if !content.is_ascii() {
         return None;
@@ -242,7 +232,6 @@ mod tests {
 
     #[test]
     fn variable_name_fast_path_matches_php() {
-        // Expected values: PHP 8.5 preg_match() with getVariableName()'s pattern on the same input.
         let v = |c: &str, tag: &str, ty: &str| {
             variable_name_ascii(c.as_bytes(), tag.as_bytes(), ty.as_bytes())
                 .map(|v| String::from_utf8(v).unwrap())
@@ -260,7 +249,6 @@ mod tests {
             Some("$x".into())
         );
         assert_eq!(v(" * @param\t\n  $x\n", "param", ""), Some("$x".into()));
-        // Not the first path (or no match at all): left to the regex.
         assert_eq!(v(" * @param int $1x\n", "param", "int"), None);
         assert_eq!(v(" * @param int x\n", "param", "int"), None);
         assert_eq!(v(" * @param$x\n", "param", ""), None);

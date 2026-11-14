@@ -1,9 +1,3 @@
-//! Declaration-owned effects, separate from NoopExpressionNode's explicit-throw/call-result model.
-//!
-//! `None` means a producer is not ported, not an empty list. This deliberately bounded projection of
-//! PHPStan's expression/statement results answers only list emptiness. In particular a throw point is
-//! not a union type: an implicit or residual Never-typed point must not disappear through type reduction.
-
 use std::collections::HashSet;
 
 use mago_span::HasSpan;
@@ -12,7 +6,6 @@ use pun_phpstan::types::{Tri, Type, is_super_type_of};
 
 use super::{Checker, declarations, declared, doc, members, reflection::Lookup, types::flow};
 
-/// CallToFunctionStatementWithoutSideEffectsRule::PHPSTAN_TESTING_FUNCTIONS.
 pub(super) const TESTING_FUNCTIONS: &[&str] = &[
     "PHPStan\\dumpNativeType",
     "PHPStan\\dumpType",
@@ -24,7 +17,6 @@ pub(super) const TESTING_FUNCTIONS: &[&str] = &[
     "PHPStan\\Testing\\assertVariableCertainty",
 ];
 
-/// ResolvedPhpDocBlock::isPure(): absence is unspecified; pure wins over impure.
 pub(super) fn purity(raw: &[u8]) -> Option<bool> {
     let tags = declarations::doc_tags(raw);
     if declarations::has_tag(
@@ -45,7 +37,6 @@ pub(super) fn purity(raw: &[u8]) -> Option<bool> {
     }
 }
 
-/// Conditional purity needs argument/parameter reflection, which this producer does not yet resolve.
 pub(super) fn conditional(raw: &[u8]) -> bool {
     declarations::doc_tags(raw).iter().any(|tag| {
         matches!(
@@ -77,7 +68,6 @@ impl Effects {
     }
 }
 
-/// FuncCall names are resolved by the name resolver, including imported names.
 pub(super) fn testing(c: &Checker, e: &Expression) -> bool {
     if let Expression::Parenthesized(p) = e {
         return testing(c, p.expression);
@@ -104,9 +94,7 @@ pub(super) fn body(c: &Checker, b: &Block) -> Option<Effects> {
 
 struct Producer<'c, 'code, 'names> {
     c: &'c Checker<'code, 'names>,
-    /// Proven plain-array containers. An unknown local may instead invoke ArrayAccess methods.
     arrays: HashSet<Vec<u8>>,
-    /// Offset unsets after aliases require a reference-aware scope transfer, not observed array types.
     referenced: bool,
 }
 
@@ -118,7 +106,6 @@ impl Producer<'_, '_, '_> {
     fn statements(&mut self, statements: &[Statement]) -> Option<Effects> {
         let mut effects = Effects::default();
         for statement in statements {
-            // StatementsHandler still visits declarations after an unconditional exit, not ordinary code.
             if effects.terminates && !matches!(statement, Statement::Function(_)) {
                 continue;
             }
@@ -133,8 +120,6 @@ impl Producer<'_, '_, '_> {
             Statement::Block(b) => self.block(b),
             Statement::Expression(s) => {
                 let mut effects = self.expression(s.expression)?;
-                // ExpressionHandler promotes an explicit-never *statement* to an exit. NewHandler
-                // itself only forwards argument termination: a nested never constructor is different.
                 effects.terminates |= self
                     .c
                     .type_of(s.expression)
@@ -162,14 +147,11 @@ impl Producer<'_, '_, '_> {
                 for value in &s.values {
                     effects.merge(self.unset(value)?);
                 }
-                // UnsetHandler forwards operand points but its statement is never always-terminating.
                 effects.terminates = false;
                 Some(effects)
             }
             Statement::If(i) => self.if_statement(i),
             Statement::Switch(s) => {
-                // SwitchHandler merges subject/case effects and each branch result. Without narrowing, this
-                // overapproximates reachable branches; only a known-empty result is consumed here.
                 let mut effects = self.expression(s.expression)?;
                 for case in s.body.cases() {
                     self.arrays.clear();
@@ -178,7 +160,7 @@ impl Producer<'_, '_, '_> {
                     }
                     effects.merge(self.statements(case.statements())?);
                 }
-                effects.terminates = false; // No all-branches exit proof yet; break only exits the switch.
+                effects.terminates = false;
                 self.arrays.clear();
                 Some(effects)
             }
@@ -188,8 +170,6 @@ impl Producer<'_, '_, '_> {
                 if effects.throws
                     && let Some(catch) = t.catch_clauses.first()
                 {
-                    // A narrower catch needs typed residual points (including PHPStan's fallback point).
-                    // Never substitute a reduced throw-type union for that producer.
                     let Hint::Identifier(id) = &catch.hint else {
                         return None;
                     };
@@ -219,12 +199,10 @@ impl Producer<'_, '_, '_> {
                     ..Effects::default()
                 })
             }
-            // Loop scope joins, hooks, globals, static variables, etc. need their own producers.
             _ => None,
         }
     }
 
-    /// IfHandler merges every condition's points, but only reachable bodies' points and termination.
     fn if_statement(&mut self, i: &If) -> Option<Effects> {
         let mut effects = Effects {
             terminates: true,
@@ -245,7 +223,6 @@ impl Producer<'_, '_, '_> {
             decided |= truth.yes();
         }
         if !decided {
-            // Without an else, the false path continues with the last condition's scope.
             self.branch(
                 i.body.else_statements().unwrap_or_default(),
                 &mut effects,
@@ -273,7 +250,6 @@ impl Producer<'_, '_, '_> {
         effects.throws |= result.throws;
         effects.terminates &= result.terminates;
         if !result.terminates {
-            // Only facts shared by every continuing branch survive; a terminating branch adds none.
             if let Some(arrays) = continuing {
                 arrays.retain(|name| branch.arrays.contains(name));
             } else {
@@ -284,8 +260,6 @@ impl Producer<'_, '_, '_> {
     }
 
     fn condition(&self, e: &Expression) -> Tri {
-        // These results do not depend on level-specific type requests. Unsupported spreads already
-        // return None from expression(), before literal-array truthiness is consulted.
         match e {
             Expression::Parenthesized(p) => self.condition(p.expression),
             Expression::Assignment(a) if a.operator.is_assign() => self.condition(a.rhs),
@@ -311,7 +285,6 @@ impl Producer<'_, '_, '_> {
             | Expression::Closure(_)
             | Expression::ArrowFunction(_) => Some(Effects::default()),
             Expression::Parenthesized(p) => self.expression(p.expression),
-            // ClassConstFetchHandler has no call/throw point for a literal class and constant name.
             Expression::Access(Access::ClassConstant(a))
                 if matches!(a.class, Expression::Identifier(_))
                     && matches!(a.constant, ClassLikeConstantSelector::Identifier(_)) =>
@@ -344,9 +317,6 @@ impl Producer<'_, '_, '_> {
             Expression::Array(a) => self.elements(a.elements.iter(), false, false),
             Expression::LegacyArray(a) => self.elements(a.elements.iter(), false, false),
             Expression::Assignment(a) if matches!(a.operator, AssignmentOperator::Coalesce(_)) => {
-                // AssignOpHandler prepares the read target BEFORE evaluating the value. Only a
-                // direct local or a single plain-array dimension has a complete producer here.
-                // PHPStan's isArray()->yes() includes template bounds; Mago's raw query does not.
                 let lhs_array = self.array(a.lhs)
                     || self
                         .c
@@ -372,18 +342,14 @@ impl Producer<'_, '_, '_> {
                         self.arrays.insert(v.name.to_vec());
                         let dimension = self.expression(offset.index)?;
                         if self.referenced || !self.array(offset.array) {
-                            return None; // The dimension may replace or escape the prepared container.
+                            return None;
                         }
-                        // AssignHandler::prepareTarget forwards dimension throw points, but neither
-                        // its impure points nor its termination flag (unlike ArrayDimFetchHandler).
                         read.throws |= dimension.throws;
                         read
                     }
                     _ => return None,
                 };
                 let before = self.arrays.clone();
-                // PHPStan retains the RHS's points even for a surely non-null target. Its exit is
-                // unconditional only when the prepared read is definitely null.
                 let mut value = self.expression(a.rhs)?;
                 let array = self.array(a.rhs);
                 value.terminates &= lhs_null;
@@ -398,7 +364,6 @@ impl Producer<'_, '_, '_> {
                 Some(effects)
             }
             Expression::Assignment(a) => {
-                // Concat may call __toString(); division/modulo have additional throw producers.
                 if !matches!(
                     a.operator,
                     AssignmentOperator::Assign(_) | AssignmentOperator::Addition(_)
@@ -417,13 +382,11 @@ impl Producer<'_, '_, '_> {
                 }
                 Some(effects)
             }
-            // BinaryOpHandler adds no call/throw points for comparisons; it merges both operands.
             Expression::Binary(b) if b.operator.is_comparison() => {
                 let mut effects = self.expression(b.lhs)?;
                 effects.merge(self.expression(b.rhs)?);
                 Some(effects)
             }
-            // BinaryOpHandler adds points only for division, modulo and concatenation.
             Expression::Binary(b)
                 if matches!(
                     b.operator,
@@ -447,7 +410,7 @@ impl Producer<'_, '_, '_> {
             }
             Expression::UnaryPrefix(u) if u.operator.is_reference() => {
                 let effects = self.expression(u.operand)?;
-                self.arrays.clear(); // An alias can subsequently replace the entire container.
+                self.arrays.clear();
                 self.referenced = true;
                 Some(effects)
             }
@@ -472,8 +435,6 @@ impl Producer<'_, '_, '_> {
             }
             Expression::UnaryPostfix(u) => self.target(u.operand, false),
             Expression::ArrayAccess(a) => {
-                // ArrayDimFetchHandler::composeResult gates offsetGet on the full receiver type:
-                // a non-array can also be definitely outside ArrayAccess. Price the dimension first.
                 let mut effects = self.expression(a.index)?;
                 if !self.array(a.array)
                     && !self.c.phpstan_type(a.array).is_some_and(|ty| {
@@ -503,11 +464,9 @@ impl Producer<'_, '_, '_> {
         }
     }
 
-    /// NewHandler's named-class path: argument results and reflected constructor effects, not the
-    /// constructor body's apparent purity. Legality and the stored object/never type are independent.
     fn instantiation(&mut self, new: &Instantiation) -> Option<Effects> {
         let Expression::Identifier(id) = new.class else {
-            return None; // Dynamic, relative and anonymous targets need their own reflection producers.
+            return None;
         };
         let mut effects = Effects::default();
         for arg in new
@@ -521,19 +480,17 @@ impl Producer<'_, '_, '_> {
                     Expression::Closure(_) | Expression::ArrowFunction(_)
                 )
             {
-                return None; // Unpack normalization and escaping callbacks are not modeled here.
+                return None;
             }
             effects.merge(self.expression(arg.value())?);
         }
         let class = self.c.class_like(&self.c.resolved(id));
         if matches!(class, Lookup::NotFound) {
-            // Both lists are nonempty even when InstantiationRule also reports class.notFound.
             effects.impure = true;
             effects.throws = true;
             self.arrays.clear();
         } else if let Some(constructor) = members::method(self.c, class.found()?, b"__construct") {
             let members::Method::User { declaring, f, .. } = constructor else {
-                // Built-in reflection does not yet carry constructor throw types/extensions.
                 return None;
             };
             self.c.file_contents(f.span.file_id)?;
@@ -551,7 +508,6 @@ impl Producer<'_, '_, '_> {
             {
                 return None;
             }
-            // PhpMethodReflection exempts constructors from the void-return-implies-impure rule.
             effects.impure |= pure != Some(true);
             if pure != Some(true) {
                 self.arrays.clear();
@@ -564,17 +520,14 @@ impl Producer<'_, '_, '_> {
             };
             let throws: Vec<_> = tags.iter().filter(|(name, _)| name == kind).collect();
             if throws.iter().any(|(_, value)| value.contains(&b'$')) {
-                return None; // Conditional throw types require argument-sensitive reflection.
+                return None;
             }
-            // No tag produces an implicit point; every non-void tag produces an explicit point,
-            // including never. Do not reduce the list to the union of its types.
             effects.throws |= throws.is_empty()
                 || !throws.iter().all(|(_, value)| {
                     value.split(u8::is_ascii_whitespace).find(|s| !s.is_empty())
                         == Some(b"void".as_slice())
                 });
         }
-        // A known named class without a constructor adds neither point, even if it is not instantiable.
         Some(effects)
     }
 
@@ -586,19 +539,16 @@ impl Producer<'_, '_, '_> {
         }
     }
 
-    /// UnsetHandler evaluates each operand, then removes the local or virtually assigns its new array.
     fn unset(&mut self, e: &Expression) -> Option<Effects> {
         match e {
             Expression::Variable(Variable::Direct(v)) => {
                 self.arrays.remove(v.name);
-                self.expression(e) // VariableHandler still produces superglobal access points.
+                self.expression(e)
             }
             Expression::ArrayAccess(a) => {
                 let Expression::Variable(Variable::Direct(v)) = a.array else {
-                    return None; // Nested/property roots need their own reads and virtual write-back.
+                    return None;
                 };
-                // ArrayDimFetchHandler walks the dimension BEFORE reading the receiver. It may replace
-                // the container or escape an alias, so neither proof may be taken before this walk.
                 let mut effects = self.expression(a.index)?;
                 let array = self.array(a.array)
                     || self
@@ -616,23 +566,18 @@ impl Producer<'_, '_, '_> {
                             })
                         }))
                 {
-                    return None; // Unknown/ArrayAccess containers need offsetGet AND offsetUnset points.
+                    return None;
                 }
                 effects.merge(self.expression(a.array)?);
-                // Only an actual array survives as an array fact. A non-array bound can become
-                // ErrorType after this virtual assignment, so the next unset must read its new type.
                 if array {
                     self.arrays.insert(v.name.to_vec());
                 }
                 Some(effects)
             }
-            // Property unsets add an impure point; dynamic variables/static properties need producers.
             _ => None,
         }
     }
 
-    /// AssignHandler::prepareTarget()/processArrayDestructuring(). A root [] target is fixed up recursively;
-    /// explicit list() does NOT fix up literal arrays in its items. Literal-array children are reads.
     fn target(&mut self, e: &Expression, fix_arrays: bool) -> Option<Effects> {
         match e {
             Expression::Variable(Variable::Direct(v)) => {
@@ -656,7 +601,6 @@ impl Producer<'_, '_, '_> {
                 Some(Effects::default())
             }
             Expression::ArrayAppend(a) if self.array(a.array) => Some(Effects::default()),
-            // Property writes, ArrayAccess, property hooks and dynamic names remain unknown here.
             Expression::Access(_) | Expression::ArrayAccess(_) | Expression::ArrayAppend(_) => None,
             e => self.expression(e),
         }
@@ -697,7 +641,6 @@ impl Producer<'_, '_, '_> {
             if matches!(arg, Argument::Positional(p) if p.ellipsis.is_some()) {
                 return None;
             }
-            // Callable invocation policies need their own producer, even for an explicitly pure callee.
             if matches!(
                 arg.value(),
                 Expression::Closure(_) | Expression::ArrowFunction(_)
@@ -720,13 +663,10 @@ impl Producer<'_, '_, '_> {
         if f.flags.is_built_in() {
             return None;
         }
-        // Source availability, not an absent PURE bit, establishes an unannotated user declaration.
         self.c.file_contents(f.span.file_id)?;
         let raw = declared::doc_at(self.c, f.span)
             .map(|(raw, _, _)| raw)
             .unwrap_or_default();
-        // Parameterized calls additionally need reference writes and immediately-invoked callable policies,
-        // including a callable passed through a local variable rather than a closure literal.
         if conditional(raw) || !f.parameters.is_empty() {
             return None;
         }
@@ -735,7 +675,6 @@ impl Producer<'_, '_, '_> {
             return None;
         }
         effects.impure |= ret.is_void() || purity(raw) != Some(true);
-        // PhpDocNodeResolver::resolveThrowsTags(): phpstan-throws takes precedence, all tags of that name merge.
         let tags = doc::tags(raw);
         let kind = if tags.iter().any(|(name, _)| name == "@phpstan-throws") {
             "@phpstan-throws"
@@ -744,7 +683,7 @@ impl Producer<'_, '_, '_> {
         };
         let throws: Vec<_> = tags.iter().filter(|(name, _)| name == kind).collect();
         if throws.is_empty() {
-            effects.throws = true; // FuncCallHandler's default implicit throw point, even on a pure call.
+            effects.throws = true;
         } else if !throws.iter().all(|(_, value)| {
             value.split(u8::is_ascii_whitespace).find(|s| !s.is_empty()) == Some(b"void".as_slice())
         }) {

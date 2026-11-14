@@ -8,7 +8,6 @@ use common::{PUN, read};
 use std::path::Path;
 use std::process::Command;
 
-/// stdout (time normalised) and exit code; only PATH (and coverage's variable) survive from the environment.
 fn run(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, Option<i32>) {
     let out = common::clean_env(&mut Command::new(PUN), &["PATH"])
         .args(args)
@@ -30,7 +29,6 @@ fn run(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, Option<i32>)
     (format!("{first}{sep}{rest}"), out.status.code())
 }
 
-/// The agent's view: PUN_AGENT=1.
 fn agent(dir: &Path, args: &[&str]) -> (String, Option<i32>) {
     run(dir, args, &[("PUN_AGENT", "1")])
 }
@@ -51,7 +49,6 @@ fn detection_priority() {
         a.extend(args);
         run(&d, &a, env).0.starts_with("pun format: fail")
     };
-    // The agent-detector crate (0.2.1, env only): each variable of its agents.rs, set to a non-empty value.
     for var in [
         "CURSOR_AGENT",
         "GEMINI_CLI",
@@ -79,7 +76,6 @@ fn detection_priority() {
         "CLAWHUB_WORKDIR",
         "AI_AGENT",
         "AGENT",
-        // laravel/agent-detector's AGENT_ENV_VARS entries the crate lacks.
         "GROK_PLUGIN_ROOT",
         "GROK_PLUGIN_DATA",
         "CODEX_SANDBOX_NETWORK_DISABLED",
@@ -95,13 +91,9 @@ fn detection_priority() {
         "ZCODE_ENV",
     ] {
         assert!(is_agent(&[], &[(var, "1")]), "{var}");
-        // Empty or blank values don't count.
         assert!(!is_agent(&[], &[(var, " ")]), "{var}");
     }
-    // No agent; no TTY (the test's pipes) is not an agent.
     assert!(!is_agent(&[], &[]));
-    // Cursor sets CURSOR_TRACE_ID in human terminals too (upstream dropped it for CURSOR_AGENT); it alone is no agent,
-    // but Cursor's agent terminals (CURSOR_AGENT) and other agents run inside Cursor still count.
     assert!(!is_agent(&[], &[("CURSOR_TRACE_ID", "1")]));
     assert!(is_agent(
         &[],
@@ -118,7 +110,6 @@ fn detection_priority() {
     ));
     assert!(!is_agent(&[], &[("CURSOR_EXTENSION_HOST_ROLE", "ui")]));
     assert!(!is_agent(&[], &[("AIDER", "1")]));
-    // PAO: PAO_DISABLE beats the env list and PAO_FORCE; PAO_FORCE turns it on; falsy values fall through.
     assert!(!is_agent(&[], &[("CLAUDECODE", "1"), ("PAO_DISABLE", "1")]));
     assert!(!is_agent(
         &[],
@@ -127,7 +118,6 @@ fn detection_priority() {
     assert!(is_agent(&[], &[("CLAUDECODE", "1"), ("PAO_DISABLE", "0")]));
     assert!(is_agent(&[], &[("PAO_FORCE", "YES")]));
     assert!(!is_agent(&[], &[("PAO_FORCE", "off")]));
-    // PUN_AGENT beats PAO and the env list; empty or junk falls through.
     assert!(!is_agent(&[], &[("PUN_AGENT", "0"), ("PAO_FORCE", "1")]));
     assert!(!is_agent(
         &[],
@@ -139,7 +129,6 @@ fn detection_priority() {
         &[],
         &[("PUN_AGENT", "maybe"), ("CLAUDECODE", "1")]
     ));
-    // The flags beat everything.
     assert!(is_agent(&["--agent"], &[("PUN_AGENT", "0")]));
     assert!(!is_agent(&["--no-agent"], &[("PUN_AGENT", "1")]));
     assert!(!is_agent(&["--no-agent"], &[("CLAUDECODE", "1")]));
@@ -147,7 +136,6 @@ fn detection_priority() {
         run(&d, &["format", "--agent", "--no-agent"], &[]).1,
         Some(2)
     );
-    // --no-agent under an agent is the human output byte for byte, but for the run's time at the end.
     let timeless = |(out, code): (String, Option<i32>)| {
         let head = out.strip_suffix("s\n").unwrap_or(&out);
         let head = head.trim_end_matches(|c: char| c.is_ascii_digit() || c == '.');
@@ -181,19 +169,16 @@ fn format() {
             Some(1)
         )
     );
-    // -v: the bare diff under each file, paths relative.
     assert_eq!(
         agent(&d, &["format", "--test", "-v"]).0,
         "pun format: fail, 1 file needs formatting (2 checked, Ts)\napp/A.php format/arrays/syntax\n--- app/A.php\n+++ app/A.php\n@@ -1,2 +1,2 @@\n <?php\n-$a = array(1);\n+$a = [1];\n"
     );
-    // An explicit --format keeps its reporter; --format=agent is Pint's JSON agent reporter.
     let (json, _) = agent(&d, &["format", "--test", "--format=json"]);
     assert!(json.starts_with(r#"{"about":"PHP CS Fixer"#), "{json}");
     assert_eq!(
         agent(&d, &["format", "--test", "--format=agent"]).0,
         r#"{"tool":"pint","result":"fail","files":[{"path":"app\/A.php","fixers":["array_syntax"]}]}"#
     );
-    // -q doesn't silence the summary.
     assert_eq!(
         agent(&d, &["format", "--repair", "-q"]),
         (
@@ -256,7 +241,6 @@ fn lint_and_check() {
             ("app/S.php", SELF),
         ],
     );
-    // Each lint rule prints its summary from rules/mapping.toml (Mago's rule description).
     let lint = format!(
         "{ALIAS_LINE}\napp/S.php lint/dead-code/no-self-assignment [fix:safe] Detects and removes self-assignments where a variable or property is assigned to itself.\n"
     );
@@ -267,7 +251,6 @@ fn lint_and_check() {
             Some(1)
         )
     );
-    // One file with format and lint rules: the format IDs on one line, each lint rule on its own.
     assert_eq!(
         agent(&d, &["check"]),
         (
@@ -277,8 +260,6 @@ fn lint_and_check() {
             Some(1)
         )
     );
-    // --fix applies every rule but those with `fix = "off"`, which are reported as remaining, like `--test` reports them,
-    // and fail the run.
     let remaining = "app/S.php lint/dead-code/no-self-assignment [fix:safe] [remaining] Detects and removes self-assignments where a variable or property is assigned to itself.\n";
     assert_eq!(
         agent(&d, &["lint", "--fix"]),
@@ -298,7 +279,6 @@ fn lint_and_check() {
         SELF,
         "remaining fixes are not written"
     );
-    // Again: nothing left to fix, the same rule remains.
     assert_eq!(
         agent(&d, &["lint", "--fix"]),
         (
@@ -306,7 +286,6 @@ fn lint_and_check() {
             Some(1)
         )
     );
-    // `pun check --fix` too, after the format rules ran.
     assert_eq!(
         agent(&d, &["check", "--fix"]),
         (
@@ -316,8 +295,6 @@ fn lint_and_check() {
             Some(1)
         )
     );
-    // Humans get Pun's own output (output.md §1): the remaining fix as a ✖ file line under its Pun ID, then the
-    // summary counting it as an error (hand-derived from the renderer's samples; the time varies).
     let (out, code) = run(&d, &["lint", "--fix"], &[("LANG", "en_US.UTF-8")]);
     assert_eq!(code, Some(1), "{out}");
     let (lines, summary) = out.trim_end().rsplit_once('\n').unwrap();
@@ -329,7 +306,6 @@ fn lint_and_check() {
         summary.starts_with("✖ 1 error · 3 files in ") && summary.ends_with('s'),
         "{out}"
     );
-    // Without remaining rules --fix passes as before.
     std::fs::write(d.join("app/S.php"), CLEAN).unwrap();
     assert_eq!(
         agent(&d, &["lint", "--fix"]),
@@ -355,11 +331,9 @@ fn errors() {
             Some(1)
         )
     );
-    // Errors that abort the run (Pint's boxes) are one line, with no progress before them, and exit 2.
     std::fs::write(d.join("app/D.php"), CLEAN).unwrap();
     let locked = d.join("app/A.php");
     std::fs::set_permissions(&locked, std::os::unix::fs::PermissionsExt::from_mode(0o000)).unwrap();
-    // Root reads a mode-000 file: there the run has no read error to report.
     if std::fs::read(&locked).is_err() {
         let got = agent(&d, &["format"]);
         assert_eq!(
@@ -381,7 +355,6 @@ fn errors() {
             Some(2)
         )
     );
-    // Config errors too, for every command.
     let empty = common::project("agent", "t", &[("app/A.php", ARRAY)]);
     for cmd in ["format", "lint", "config"] {
         assert_eq!(
@@ -396,7 +369,6 @@ fn errors() {
     }
 }
 
-/// --dirty and --diff list only the files git selects.
 #[test]
 fn git_selection() {
     let d = common::project(
@@ -454,7 +426,6 @@ fn config() {
         ],
     );
     let (human, _) = run(&d, &["config"], &[]);
-    // The summary line goes to stderr; stdout is the same TOML a human gets, so `pun config > file` stays TOML.
     assert_eq!(agent(&d, &["config"]), (human, Some(0)));
     let out = common::clean_env(&mut Command::new(PUN), &["PATH"])
         .arg("config")
@@ -490,7 +461,6 @@ fn migrate() {
         ],
     );
     let summary = "pun.toml (preset empty, 1 format rule, 1 lint rule), ignore comments";
-    // --dry-run: the summary first, then the diffs.
     let (out, code) = agent(&d, &["migrate", "--dry-run"]);
     assert_eq!(code, Some(0));
     assert!(
@@ -518,7 +488,6 @@ fn migrate() {
             summary.replacen("pun.toml", "pun.toml up to date", 1)
         )
     );
-    // A pun.toml that differs: the error as one line.
     std::fs::write(d.join("pint.json"), r#"{"preset":"psr12"}"#).unwrap();
     assert_eq!(
         agent(&d, &["migrate"]),
@@ -527,7 +496,6 @@ fn migrate() {
             Some(2)
         )
     );
-    // Unsupported rules: each one a line, skipped; the rest is written.
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     std::fs::write(
         d.join("pint.json"),
@@ -547,7 +515,6 @@ fn migrate() {
     );
 }
 
-/// No config at all: pun.toml's comment, the human lines and the agent summary say so (a starter, not "from pint.json").
 #[test]
 fn migrate_without_a_config() {
     let d = common::project("agent", "t", &[("app/A.php", CLEAN)]);
@@ -588,7 +555,6 @@ fn migrate_without_a_config() {
     );
 }
 
-/// The prettier pre-flight (`--blade`) under an agent: its error line, without Pint's yellow warning.
 #[test]
 fn prettier_preflight() {
     if Command::new("node").arg("-v").output().is_err() {
@@ -614,7 +580,6 @@ fn analyse_lines() {
         "analyse",
         &[("pun.toml", toml), ("src/a.php", errors)],
     );
-    // `path:line rule message` per error; a malformed comment (counted as an error) has no line of its own.
     assert_eq!(
         agent(&d, &["analyse"]),
         (
@@ -629,7 +594,6 @@ fn analyse_lines() {
             Some(0)
         )
     );
-    // With the baseline and the errors fixed: a pass that names the stale entries.
     std::fs::write(
         d.join("pun.toml"),
         format!("{toml}baseline = \"pun-baseline.toml\"\n"),
@@ -671,7 +635,6 @@ fn analyse_caps_long_lists() {
         agent(&d, &["analyse"]).0,
         format!("{head}{first}+1 more; run with -v for all\n")
     );
-    // `-v` is the flag the cap names, so it lists every error.
     assert_eq!(
         agent(&d, &["analyse", "-v"]).0,
         format!("{head}{first}{}", line(21))

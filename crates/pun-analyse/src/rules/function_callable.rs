@@ -1,5 +1,3 @@
-//! FunctionCallableRule: first-class function callables, not method/static callables, pipes or partial applications.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -8,14 +6,12 @@ use pun_phpstan::types::{Level, Type};
 use super::types::flow::unparen;
 use super::{Checker, DISCOVERING_SYMBOLS_TIP, declared, internal};
 
-/// RuleLevelHelper's `checkThisOnly` applies to expression callables too, including parenthesized `$this`.
 fn checked_expression(e: &Expression, level: u8) -> bool {
     !matches!(e, Expression::Identifier(_))
         && (level >= 2
             || matches!(unparen(e), Expression::Variable(Variable::Direct(v)) if v.name == b"$this"))
 }
 
-/// Only first-class function callables need their callee's type, not PHP 8.5 bound-argument applications.
 pub(super) fn typed_expressions(program: &Program, level: u8) -> Vec<Span> {
     struct Wanted(u8, Vec<Span>);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted {
@@ -58,8 +54,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, f: &FunctionPartialAppl
         );
     }
     let Some(mut ty) = found.ty else { return };
-    // NullsafeOperatorHelper removes only the chain's short-circuit null, not a nullable property/return. Mago
-    // records that distinction; the syntax check prevents a copied nullsafe result from being unwrapped too.
     if super::assign::contains_nullsafe(f.function)
         && c.type_of(unparen(f.function))
             .is_some_and(|raw| raw.has_nullsafe_null())
@@ -69,8 +63,6 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, f: &FunctionPartialAppl
             return;
         }
     }
-    // Mago's bare callable/Closure carry synthetic variadic signatures, not known callable signatures. Match
-    // their raw sentinels, not a converted signature's shape: explicit variadic PHPDoc signatures stay precise.
     for (common, bare) in [
         (
             mago_codex::ttype::get_mixed_callable(),

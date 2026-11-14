@@ -1,5 +1,3 @@
-//! Repeated expression specifications from real PHPUnit assertion metadata, through public Mago hooks.
-
 use std::borrow::Cow;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -137,8 +135,6 @@ fn oracle_records(capture: &str) -> Vec<Value> {
             if record["full"] == "*NEVER*" {
                 record["full"] = json!("never");
             }
-            // Mago's partial native lane does not publish these method-call observations.
-            // This is an availability boundary, not permission to select the native type.
             record.as_object_mut().unwrap().remove("native");
             record["observed_native"] = Value::Null;
             record

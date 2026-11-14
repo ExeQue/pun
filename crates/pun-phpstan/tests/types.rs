@@ -16,14 +16,10 @@ use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::symbols::{self, Function, PhpVersion};
 use pun_phpstan::types::{Level, is_super_type_of};
 
-/// `ConstantResolver` builds PHP_SAPI's union with `new UnionType()`, unnormalized; read back from its string it
-/// normalizes to `non-falsy-string` (the `PHP_SAPI` identifier itself resolves unnormalized, see `constants`).
 const UNNORMALIZED: &[&str] = &[
     "('apache' | 'apache2handler' | 'cgi' | 'cli' | 'cli-server' | 'embed' | 'fpm-fcgi' | 'litespeed' | 'phpdbg' | non-falsy-string)",
 ];
 
-/// PHPStan 2.3 signature types Pun does not model yet, as `Class::type`: `static` of an iterator whose
-/// `@extends` names its template arguments keeps them as arguments of the parent.
 const SIGNATURE_GAPS: &[&str] = &[
     "ParentIterator::static",
     "RecursiveCachingIterator::static",
@@ -40,8 +36,6 @@ fn describe(input: &str, ctx: Option<&str>) -> [String; 3] {
     [Level::Precise, Level::Value, Level::TypeOnly].map(|l| ty.describe(l))
 }
 
-/// (context class, type string, its three descriptions, the type string in Pun's syntax when it differs: a
-/// probe's function templates as `__template<...>`; a probe's iterable key and value types when it is iterable)
 type Row = (
     Option<String>,
     String,
@@ -114,7 +108,6 @@ fn reflected_types() {
     );
 }
 
-/// The type strings of one function's variants, each with what PHPStan's reflection describes it as.
 fn signature_strings(f: &Function) -> Vec<&str> {
     let mut strings = Vec::new();
     for v in f.variants.iter().chain(f.named.iter().flatten()) {
@@ -181,7 +174,6 @@ fn constants() {
     let symbols = symbols::symbols(PhpVersion::Php84);
     let mut failures = Vec::new();
     for (name, ty) in &symbols.constants {
-        // A constant named like a class (or a keyword) is not a constant to a PHPDoc type.
         if !name
             .bytes()
             .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
@@ -200,30 +192,21 @@ fn constants() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Probes Pun does not model yet (open for M2.3): a constant-key array type against `list`, subtracted mixed,
-/// object-shape and conditional intersections, callable arrays checked against the class's methods, generic
-/// arguments on a non-generic class.
 const PROBE_GAPS: &[&str] = &[
     "array{'Countable', 'count'}&callable",
     "array<1|2, int>&list",
     "non-empty-mixed",
     "object{a: int}&object{b: int}",
     "(T is int ? string : bool)&int",
-    // its iterable value is `static`, which symbols.json has as the bare class
     "SimpleXMLElement<int, string, bool>",
-    // call-site variance (`GenericObjectType`'s variances) is parsed but not kept
     "ArrayIterator<int, covariant string>",
     "ArrayIterator<contravariant int, string>",
-    // PHPStan 2.3's TypeCombinator: a possibly-empty shape intersected with a list keeps its 0..n key prefix
-    // (`ConstantArrayType::makeList()`), where Pun still gives `*NEVER*`
     "non-empty-list&array{a?: int}",
     "array<'a', int>&list",
     "list<int>&array{a?: int}",
     "non-empty-list<int>&array{a?: int}",
     "array{a?: int}&list<int>",
     "array{a?: int}&non-empty-list<int>",
-    // PHPStan 2.3's union keeps a template argument next to its bound's members (`int|string|TKey of
-    // (int|string)`), where Pun lets the template absorb them
     "array|static",
     "array|$this",
     "array{a: int}|static",
@@ -242,9 +225,6 @@ const PROBE_GAPS: &[&str] = &[
     "$this|non-empty-array<int>",
 ];
 
-/// `isSuperTypeOf()` pairs Pun does not answer like PHPStan 2.3 yet: a possibly-empty shape is maybe a list
-/// (2.3's `ConstantArrayType::isList()` over optional keys), and a generic class's invariant template argument
-/// compared with a wider one (2.3's template-argument variance check).
 const SUPER_GAPS: &[(&str, &str)] = &[
     ("list<int>", "array{a?: int}"),
     ("non-empty-list<int>", "array{a?: int}"),
@@ -256,7 +236,6 @@ fn probes() {
     check("type-probes.json", PROBE_GAPS);
 }
 
-/// `$a->isSuperTypeOf($b)` for every ordered pair of the probe atoms.
 #[test]
 fn super_types() {
     let f = fixture("type-super.json");
@@ -286,16 +265,12 @@ fn super_types() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Nette's `Strings::truncate` cuts before whitespace or ASCII punctuation, DEL not included: PHPStan 2.3.1's
-/// `(new ConstantStringType("aaaa bbbbbbbbbbbbbb\x7fcccc"))->describe(VerbosityLevel::value())`.
 #[test]
 fn long_constant_string_truncates_before_punctuation() {
     let ty = resolve_str("'aaaa bbbbbbbbbbbbbb\u{7f}cccc'", None);
     assert_eq!(ty.describe(Level::Value), "'aaaa…'");
 }
 
-/// PHPStan 2.3.1's `Printer::print(TypeStringResolver::resolve(...)->toPhpDocNode())`, with Exception as the class
-/// scope and T as an invariant function template. Array keys and nested values use PHPDoc, not precise descriptions.
 #[test]
 fn constant_array_phpdoc_serialization() {
     let rows = fixture("type-phpdoc-shapes.json");
@@ -313,14 +288,11 @@ fn constant_array_phpdoc_serialization() {
 
 const VERBOSITY_GAPS: &[&str] = &["Traversable<int>"];
 
-/// ponytail: a callable array's offsets (IntersectionType::hasOffsetValueType()) are not ported; checkOurKeys() sees a
-/// plain array's
 const ACCEPT_GAPS: &[(&str, &str)] = &[(
     "array{ArrayIterator<int, string>, ArrayIterator<int, int>}",
     "callable&array",
 )];
 
-/// TemplateStrictMixedType::isAcceptedBy() (`isSubTypeOf()`): the same template of mixed accepts it, another maybe.
 #[test]
 fn template_strict_mixed() {
     use pun_phpstan::types::{StrictMixed, Tri, accepts_with};
@@ -334,9 +306,6 @@ fn template_strict_mixed() {
     assert_eq!(accepts_with(&u, &t, true, sm), Tri::Maybe);
 }
 
-/// `$a->accepts($b, $strictTypes)` (strict and not) and `VerbosityLevel::getRecommendedLevelByType($a, $b)` for every
-/// ordered pair of the accept atoms; `strict-mixed` is RuleLevelHelper's StrictMixedType, an explicit `mixed` (or a
-/// template of mixed) under `StrictMixed`.
 #[test]
 fn accepts() {
     use pun_phpstan::types::{StrictMixed, accepts_with, recommended_level};
@@ -375,8 +344,6 @@ fn accepts() {
                 want.extend([strict, loose].map(|w| w.unwrap().to_string()));
             }
         }
-        // ponytail: the symbols carry no template variance, so a covariant built-in template (Traversable's) counts as
-        // invariant in getRecommendedLevelByType()
         if VERBOSITY_GAPS.contains(&a.unwrap()) {
             got.remove(0);
             want.remove(0);
@@ -396,8 +363,6 @@ fn accepts() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Whether `toString()`, `toNumber()`, `toInteger()`, `toFloat()` and `toBitwiseNotType()` are an ErrorType
-/// (`toBoolean()` never is), and `isCloneable()`.
 #[test]
 fn casts() {
     use pun_phpstan::types::{Cast, StrictMixed, cast_is_error};
@@ -439,9 +404,6 @@ fn casts() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// A StaticType of a class the symbols do not know is its plain object (`["Nope", "static", "static", "Yes", ...]` in
-/// type-accepts.json); the resolver makes an ErrorType of such a `static`, the analyser a StaticType of a project
-/// class outside `declared::with_classes()`.
 #[test]
 fn static_of_unknown_class() {
     use pun_phpstan::types::{Type, accepts};
@@ -449,8 +411,6 @@ fn static_of_unknown_class() {
     assert_eq!(format!("{:?}", accepts(&s, &s, true)), "Yes");
 }
 
-/// `inferTemplateTypes()` of each pattern from each received type, and the pattern resolved over the inferred map
-/// (type-infer.json).
 #[test]
 fn infer_template_types() {
     use pun_phpstan::types::{Template, Type, infer_template_types, resolve_template_types};
@@ -466,7 +426,6 @@ fn infer_template_types() {
             .into_iter()
             .map(|(n, _, t)| (n.to_string(), t.describe(Level::Precise)))
             .collect();
-        // what the arguments leave as `*ERROR*` is absorbed by a union member
         assert!(
             map.types()
                 .into_iter()
@@ -509,7 +468,6 @@ fn infer_template_types() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The reasons `accepts()` gives (type-reasons.json): every ordered pair of the reason atoms.
 #[test]
 fn accepts_reasons() {
     use pun_phpstan::types::{StrictMixed, accepts_reasons};
@@ -542,8 +500,6 @@ fn accepts_reasons() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Pinned public type comparisons: callable specialization, gradual accepts versus strict variance, and
-/// negative controls with checked mixed nested in generic arguments.
 #[test]
 fn generic_comparisons() {
     use pun_phpstan::types::{StrictMixed, accepts_reasons, accepts_with};
@@ -573,7 +529,6 @@ fn generic_comparisons() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// PHPStan 2.3.1 ConstantFloatType::equals(), isSuperTypeOf() and accepts(), including nested shapes.
 #[test]
 fn constant_float_identity() {
     use pun_phpstan::types::{ConstArray, Tri, Type, accepts};
@@ -606,7 +561,6 @@ fn constant_float_identity() {
     }
 }
 
-/// Per-object ClassReflection::asFinal(), not a change to the declaration or printed type identity.
 #[test]
 fn exact_objects_keep_phpstan_equality_containment_and_union_metadata_distinct() {
     use pun_phpstan::types::{
@@ -688,7 +642,6 @@ fn exact_objects_keep_phpstan_equality_containment_and_union_metadata_distinct()
             failures.push(format!("traversed {name}: want {want}\ngot {got}"));
         }
     }
-    // `Printer::print($type->toPhpDocNode())` of PHPStan 2.3.5, which prints class names fully qualified
     for (name, want) in oracle["phpdoc"].as_object().unwrap() {
         assert_eq!(
             to_phpdoc_fully_qualified(&types[name.as_str()]),
@@ -723,7 +676,6 @@ fn exact_objects_keep_phpstan_equality_containment_and_union_metadata_distinct()
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// UnionType/IntersectionType::equals() matches members without changing reflection's written order.
 #[test]
 fn compound_equality_keeps_order_for_reflection_not_invariant_generic_identity() {
     use pun_phpstan::types::Type;

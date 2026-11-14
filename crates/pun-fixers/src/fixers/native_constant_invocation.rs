@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ConstantNotation\NativeConstantInvocationFixer`. `fix_built_in` reads PHP's
-//! `get_defined_constants(true)` as the oracle sees it (analyzers/php_constants.rs).
 use crate::analyzers::constant_invocation::is_constant_invocation;
 use crate::analyzers::fixer_configuration_resolver::{Resolved, resolve};
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
@@ -16,10 +14,8 @@ const CASE_INSENSITIVE: &[&[u8]] = &[b"null", b"false", b"true"];
 #[derive(Default)]
 struct NativeConstantInvocationFixer {
     fix_built_in: bool,
-    /// `include` minus `exclude` (case-sensitive), without the `null`/`false`/`true` spellings.
     include: HashSet<Vec<u8>>,
     exclude: HashSet<Vec<u8>>,
-    /// `caseInsensitiveConstantsToEscape`: lowercase `null`/`false`/`true`.
     case_insensitive: HashSet<Vec<u8>>,
     scope_all: bool,
     strict: bool,
@@ -29,7 +25,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(NativeConstantInvocationFixer::default())
 }
 
-/// The `$constantChecker` allowed-values closure (an empty string passes, unlike native_function_invocation's).
 fn trimmed_names(
     c: &Resolved,
     fixer: &str,
@@ -46,7 +41,6 @@ fn trimmed_names(
 }
 
 impl NativeConstantInvocationFixer {
-    /// `isset($this->constantsToEscape[$content])`.
     fn is_constant_to_escape(&self, content: &[u8]) -> bool {
         let built_in = self.fix_built_in
             && std::str::from_utf8(content).is_ok_and(|c| INTERNAL_CONSTANTS.contains(c));
@@ -66,7 +60,6 @@ impl NativeConstantInvocationFixer {
         while index > start_index {
             let i = index;
             index -= 1;
-            // test if we are at a constant call
             if !tokens[i].is_kind(T_STRING) || !is_constant_invocation(tokens, i) {
                 continue;
             }
@@ -119,8 +112,6 @@ impl Fixer for NativeConstantInvocationFixer {
         self.strict = c.bool("strict", true)?;
         self.exclude = exclude.iter().map(|e| e.as_bytes().to_vec()).collect();
         self.include = include.iter().map(|i| i.as_bytes().to_vec()).collect();
-        // Case-insensitive constants handling: every `null`/`false`/`true` spelling left after the case-sensitive
-        // exclude, lowered, minus the lowered exclude.
         let lowered_exclude: HashSet<Vec<u8>> =
             exclude.iter().map(|e| strtolower(e.as_bytes())).collect();
         let built_ins = INTERNAL_CONSTANTS.iter().filter(|_| self.fix_built_in);
@@ -143,7 +134,6 @@ impl Fixer for NativeConstantInvocationFixer {
             self.fix_constant_invocations(tokens, 0, end);
             return;
         }
-        // 'scope' is 'namespaced' here
         let namespaces = tokens.namespace_declarations();
         for namespace in namespaces.iter().rev() {
             if namespace.is_global_namespace() {

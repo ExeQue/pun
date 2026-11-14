@@ -101,8 +101,6 @@ fn no_negated_condition() {
 
 #[test]
 fn no_negated_condition_fix() {
-    // Mago only reports; the expected code is derived by hand from Mago's help: drop the `!` (or turn `!==` into
-    // `===`, `!=` and `<>` into `==`) and swap the branches, keeping the parentheses the moved code needs.
     let linter = Linter::new(vec![Box::new(rules::NoNegatedCondition)], 80400);
     let input = "<?php\n\
         $a = !$b ? 1 : 2;\n\

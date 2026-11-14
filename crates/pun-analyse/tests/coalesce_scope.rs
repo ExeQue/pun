@@ -1,5 +1,3 @@
-//! Assignment certainty and optional coalesce writes through the public analyser, against PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

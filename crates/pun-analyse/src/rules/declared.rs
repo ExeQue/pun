@@ -1,8 +1,3 @@
-//! What PHPStan's reflection says a declaration's types are: native types (ParserNodeTypeToPHPStanType), PHPDoc
-//! types (FileTypeMapper, with PhpDocInheritanceResolver's inherited tags) and the type that wins
-//! (TypehintHelper::decideType()), as `pun_phpstan::types::Type`. Also the class reflection the type model asks
-//! about the project's classes ([`with_classes()`]).
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -29,13 +24,10 @@ use super::doc::{Doc, NameScope};
 use super::facts::DocEntry;
 use crate::text;
 
-/// A class-like's name as declared.
 pub(super) fn original_name(k: &ClassLikeMetadata) -> String {
     text(k.original_name.as_bytes())
 }
 
-/// The doc comment before the declaration at `span` (a stub's, for a declaration a stub patches), with the names
-/// in scope there: a stub's PHPDoc resolves in the stub's namespace and imports, at the stub declaration's offset.
 pub(super) fn doc_at<'a>(
     c: &Checker<'a, '_>,
     span: Span,
@@ -46,7 +38,6 @@ pub(super) fn doc_at<'a>(
     Some((raw, entry, names))
 }
 
-/// The `NameScope` of a PHPDoc at `span` in class-like `class` (`None` outside one), with `templates` in scope.
 pub(super) fn scope_at(c: &Checker, span: Span, class: Option<&ClassLikeMetadata>) -> NameScope {
     let span = c.patched_docs.get(&span).copied().unwrap_or(span);
     let names = c
@@ -65,7 +56,6 @@ pub(super) fn scope_at(c: &Checker, span: Span, class: Option<&ClassLikeMetadata
                 .templates
                 .insert(t.name.clone(), Type::Template(Box::new(t)));
         }
-        // a trait's PHPDoc in a using class's context has the trait's aliases
         let owner = c
             .in_trait()
             .and_then(|t| c.codebase.get_class_like(t.as_bytes()))
@@ -91,8 +81,6 @@ pub(super) fn parent_name(codebase: &CodebaseMetadata, k: &ClassLikeMetadata) ->
     )
 }
 
-/// `TemplateTypeFactory::fromTemplateTag()` for each `@template` of a PHPDoc, in `describe` scope (`class Foo`,
-/// `method Foo::bar()`, `function foo()`).
 fn templates(doc: &Doc, scope: &NameScope, describe: &str) -> Vec<TemplateType> {
     let resolve_all = |scope: &NameScope| -> Vec<TemplateType> {
         doc.templates
@@ -109,7 +97,6 @@ fn templates(doc: &Doc, scope: &NameScope, describe: &str) -> Vec<TemplateType> 
             })
             .collect()
     };
-    // a bound may name the PHPDoc's other templates: resolve with them unbounded, then with their bounds
     let mut scope = scope.clone();
     for t in &doc.templates {
         let placeholder = TemplateType {
@@ -123,7 +110,6 @@ fn templates(doc: &Doc, scope: &NameScope, describe: &str) -> Vec<TemplateType> 
             .templates
             .insert(t.name.clone(), Type::Template(Box::new(placeholder)));
     }
-    // (each pass resolves one more level of bounds naming bounds)
     let mut resolved = resolve_all(&scope);
     for _ in 0..doc.templates.len() {
         for t in &resolved {
@@ -140,7 +126,6 @@ fn templates(doc: &Doc, scope: &NameScope, describe: &str) -> Vec<TemplateType> 
     resolved
 }
 
-/// A class-like's own `@template` types.
 pub(super) fn class_templates(c: &Checker, k: &ClassLikeMetadata) -> Vec<TemplateType> {
     let Some((_, entry, names)) = doc_at(c, k.span) else {
         return Vec::new();
@@ -158,8 +143,6 @@ pub(super) fn class_templates(c: &Checker, k: &ClassLikeMetadata) -> Vec<Templat
     templates(doc, &scope, &format!("class {}", original_name(k)))
 }
 
-/// FileTypeMapper's template types of trait `t` used by `context`: the `@use T<...>` arguments of the `use`
-/// statement (`typeMapFromList()`), else the templates' bounds.
 fn trait_templates(
     c: &Checker,
     t: &ClassLikeMetadata,
@@ -215,7 +198,6 @@ fn trait_templates(
         .collect()
 }
 
-/// `ParserNodeTypeToPHPStanType::resolve()` of a native type in the analysed file, in class `class`.
 pub(super) fn native(c: &Checker, hint: &Hint, class: Option<&ClassLikeMetadata>) -> Type {
     native_with(c, hint, class, &|id| text(c.names.get(&id.span())))
 }
@@ -250,7 +232,6 @@ fn native_with(
                     h => members.push(native_with(c, h, class, name)),
                 }
             }
-            // ParserNodeTypeToPHPStanType: a member that is not an object makes the intersection `never`
             if !members.iter().all(|m| {
                 matches!(
                     m,
@@ -290,15 +271,11 @@ fn native_with(
     }
 }
 
-/// A reflected native hint in any source file. Codex canonicalizes its union: parse the written hint through
-/// the same native resolver instead, retaining PHPStan's alternative order and the declaration's imports.
 fn native_declaration(
     c: &Checker,
     t: &mago_codex::metadata::ttype::TypeMetadata,
     class: Option<&ClassLikeMetadata>,
 ) -> Type {
-    // Even a single `self` atom has already become the storage trait's name in the codex. Resolve the written
-    // contextual keyword instead, against the class consuming the method.
     let contextual = class.is_some()
         && c.file_contents(t.span.file_id).is_some_and(|contents| {
             contents
@@ -339,8 +316,6 @@ fn native_declaration(
     written.unwrap_or_else(|| from_tunion_in(c, &t.type_union, class))
 }
 
-/// `getType()` of each parameter of a function-like from the codex (a callee in any file): its native type decided
-/// with its PHPDoc type (a method's inherited one too), `declaring` being the class-like declaring a method.
 pub(super) fn codex_params(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -350,7 +325,6 @@ pub(super) fn codex_params(
     codex_parameter_types(c, f, declaring, doc)
 }
 
-/// Parameters in the reflected method's name scope, not the stored trait declaration's name scope.
 pub(super) fn reflected_params(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -372,7 +346,6 @@ fn codex_parameter_types(
         .iter()
         .map(|p| {
             let name = text(&p.name.0.as_bytes()[1..]);
-            // `isParameterValueNullable()` of a parameter that is no promoted property
             let null_default = !p.flags.is_promoted_property()
                 && p.default_type
                     .as_ref()
@@ -394,7 +367,6 @@ fn codex_parameter_types(
                 phpdoc = Some(t.clone().add_null());
             }
             match native {
-                // decideTypeFromReflection(null, ...): a variadic's array PHPDoc type is its item type
                 None if p.flags.is_variadic() => match phpdoc {
                     Some(Type::Array(_, item)) => *item,
                     Some(t @ Type::ConstArray(_)) => t.iterable_value_type(),
@@ -407,7 +379,6 @@ fn codex_parameter_types(
         .collect()
 }
 
-/// The `@param-closure-this` types of a function-like from the codex by parameter name (a method's inherited ones too).
 pub(super) fn codex_closure_this(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -425,7 +396,6 @@ pub(super) fn reflected_closure_this(
     reflected_doc(c, f, declaring, name).closure_this
 }
 
-/// The declaring class's policy and the resolved method PHPDoc, including its reflected alias name scope.
 pub(super) fn reflected_accepts_named(c: &Checker, class: &ClassLikeMetadata, name: &str) -> bool {
     !super::declarations::has_tag(&c.class_tags(class), &["@no-named-arguments"])
         && method_doc(c, class, name.as_bytes(), 0)
@@ -433,7 +403,6 @@ pub(super) fn reflected_accepts_named(c: &Checker, class: &ClassLikeMetadata, na
             .unwrap_or(true)
 }
 
-/// The PHPDoc return type of a function-like from the codex (a method's inherited one too).
 pub(super) fn codex_return(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -442,8 +411,6 @@ pub(super) fn codex_return(
     codex_doc(c, f, declaring).ret
 }
 
-/// `getReturnType()` of a reflected callable, not its raw `@return` tag. The reflected alias name determines the
-/// implicit magic return type; a function named `__construct` is still an ordinary function.
 pub(super) fn codex_return_type(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -461,7 +428,6 @@ pub(super) fn codex_return_type(
     )
 }
 
-/// `getThrowType()` of a reflected function or method: its `@throws`, a method's inherited one too.
 pub(super) fn reflected_throws(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -483,7 +449,6 @@ fn reflected_doc(
     }
 }
 
-/// The declaration's PHPDoc name/template scope, also when an inline value annotation is read from a closure.
 pub(super) fn value_scope(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -537,8 +502,6 @@ fn codex_doc(
     .unwrap_or_default()
 }
 
-/// `TypehintHelper::decideTypeFromReflection()` of a native type declaration Mago's codex holds (the `TUnion` its
-/// scanner built from the hint), declared in class-like `class`: what [`native()`] gives for the hint itself.
 pub(super) fn from_tunion(
     c: &Checker,
     t: &mago_codex::ttype::union::TUnion,
@@ -547,7 +510,6 @@ pub(super) fn from_tunion(
     from_tunion_in(c, t, Some(class))
 }
 
-/// [`from_tunion()`] in a class-like or not (a function's).
 pub(super) fn from_tunion_in(
     c: &Checker,
     t: &mago_codex::ttype::union::TUnion,
@@ -604,54 +566,39 @@ pub(super) fn from_tunion_in(
             Type::Object(text(name.as_bytes()), vec![], false)
         }
         TAtomic::Object(TObject::Any) => Type::ObjectWithoutClass,
-        // (an enum's name is an enum type once the enum is known)
         TAtomic::Object(TObject::Enum(e)) => Type::Object(text(e.name.as_bytes()), vec![], false),
         _ => Type::Mixed { explicit: true },
     };
     union(t.types.iter().map(atom).collect())
 }
 
-/// A function-like's types as its reflection gives them.
 pub(super) struct Signature {
-    /// (name, `getType()`, `getOutType()`, `getClosureThisType()`)
     pub params: Vec<(String, Type, Option<Type>, Option<Type>)>,
     pub ret: Type,
-    /// `getSelfOutType()`
     pub self_out: Option<Type>,
-    /// the parameters of `getAsserts()`, its own or inherited ones (without `$`)
     pub asserts: Vec<String>,
-    /// the PHPDoc parameter and return types before TypehintHelper::decideType()
     pub phpdoc: Vec<Type>,
 }
 
-/// The PHPDoc of a method as PHPStan resolves it, with what it inherits: parameter types by name, the return type.
 #[derive(Clone, Default)]
 struct Resolved {
     params: HashMap<String, Type>,
     ret: Option<Type>,
     accepts_named: Option<bool>,
-    /// `@param-out` and `@param-closure-this` types by parameter name
     outs: HashMap<String, Type>,
     closure_this: HashMap<String, Type>,
-    /// `@phpstan-self-out`
     self_out: Option<Type>,
-    /// the asserted parameters (without `$`)
     asserts: Vec<String>,
-    /// `isPure()`: `@pure` (and its aliases) or `@impure`
     pure: Option<bool>,
-    /// `@pure-unless-callable-is-impure` and `@pure-unless-parameter-passed` parameters
     pure_unless_callable: Vec<String>,
     pure_unless_passed: Vec<String>,
-    /// `@throws` (`getThrowType()`)
     throws: Option<Type>,
 }
 
-/// The parameters (without `$`) the tags `names` name.
 pub(super) fn tagged_params(raw: &[u8], names: &[&str]) -> Vec<String> {
     let raw = String::from_utf8_lossy(raw);
     raw.lines()
         .filter_map(|l| {
-            // a one-line `/** @tag $x */` starts with the docblock opener
             let l = l.trim_start();
             let mut words = l
                 .strip_prefix("/**")
@@ -666,10 +613,6 @@ pub(super) fn tagged_params(raw: &[u8], names: &[&str]) -> Vec<String> {
         .collect()
 }
 
-/// `isPure()` of method `name` declared in user class `class` (PhpClassReflectionExtension and PhpDocsResolver): its
-/// resolved PHPDoc's `@pure`/`@impure`, else the class's `@phpstan-all-methods-pure` (not on a method returning
-/// `void`) or `@phpstan-all-methods-impure`; with whether `getPureUnlessCallableIsImpureParameters()` and
-/// `getPureUnlessParameterPassedParameters()` are not empty.
 pub(super) fn method_purity(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -701,9 +644,6 @@ pub(super) fn method_purity(
     )
 }
 
-/// `getPureUnlessCallableIsImpureParameters()` and `getPureUnlessParameterPassedParameters()` of method `name` (its
-/// resolved PHPDoc, inherited tags renamed to the method's own parameters).
-/// With its resolved `@throws` type (`getThrowType()`).
 pub(super) fn method_conditional_purity(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -713,7 +653,6 @@ pub(super) fn method_conditional_purity(
     (doc.pure_unless_callable, doc.pure_unless_passed, doc.throws)
 }
 
-/// The own PHPDoc of method `m` declared in `class`, `self` being `context`.
 fn resolved_own(
     c: &Checker,
     m: &FunctionLikeMetadata,
@@ -788,8 +727,6 @@ fn resolved_own(
     })
 }
 
-/// `getResolvedPhpDoc()` of method `name` declared in `class` (its own PHPDoc merged with the inherited one), at
-/// most `depth` ancestors up.
 fn method_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -802,8 +739,6 @@ fn method_doc(
     if class.flags.contains(MetadataFlags::BUILTIN) {
         return builtin_method_doc(class, m, name);
     }
-    // FileTypeMapper::createPhpDocNodeMap() renames a trait method's name scope to its alias. Its original name
-    // therefore has no resolved PHPDoc in the using class, while native parameter declarations still apply.
     let storage = c
         .codebase
         .get_declaring_method_class(class.name.as_bytes(), name)
@@ -834,10 +769,6 @@ fn method_doc(
     inherit(c, class, name, own, &names, depth)
 }
 
-/// PhpClassReflectionExtension::findMethodPhpDocIncludingAncestors(): a method of a class the stubs know (its
-/// declaring class, a trait's user for a trait method) without a stub PHPDoc of its own takes the stub PHPDoc of
-/// the first ancestor (interfaces, traits, then the parent) that declares the method natively, in that ancestor's
-/// terms.
 fn ancestor_stub_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -861,7 +792,6 @@ fn ancestor_stub_doc(
     {
         return None;
     }
-    // ClassReflection::getAncestors() after the class itself: interfaces, traits, then the parent, each depth first
     fn collect<'a>(
         c: &Checker<'a, '_>,
         k: &'a ClassLikeMetadata,
@@ -902,7 +832,6 @@ fn ancestor_stub_doc(
     })
 }
 
-/// A built-in method's resolved PHPDoc, from PHPStan's reflection (its stubs), keyed by Mago's parameter names.
 fn builtin_method_doc(
     class: &ClassLikeMetadata,
     m: &FunctionLikeMetadata,
@@ -929,8 +858,6 @@ fn builtin_method_doc(
     })
 }
 
-/// `PhpDocInheritanceResolver::resolvePhpDocForMethod()`: the PHPDoc `current` with what the parent class's,
-/// else the first interface's, else an abstract trait method's PHPDoc adds.
 fn inherit(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -953,7 +880,6 @@ fn inherit(
         {
             return None;
         }
-        // (a PHPDoc at all: `getResolvedPhpDoc() !== null`)
         let parent_doc = method_doc(c, declaring.0, &lower, depth + 1)?;
         let parent_doc = {
             let map = |t: Type| ancestor_types(class, declaring.0, &t);
@@ -994,8 +920,6 @@ fn inherit(
     {
         return Some(found);
     }
-    // Mago gives a backed enum an internal `__internal_do_not_use__IntBackedEnum` (or String) interface, which
-    // stands for BackedEnum in PHPStan's reflection
     let interfaces = class.direct_parent_interfaces.iter().map(|i| {
         if i.as_bytes().starts_with(b"__internal_do_not_use__") {
             &b"BackedEnum"[..]
@@ -1010,7 +934,6 @@ fn inherit(
             return Some(found);
         }
     }
-    // an abstract method with a PHPDoc in one of the class's own traits
     for t in &class.used_traits {
         let (Some(trait_), Some(m)) = (
             c.codebase.get_class_like(t.as_bytes()),
@@ -1037,7 +960,6 @@ fn inherit(
     current
 }
 
-/// The class-like whose method `lower` `parent` has natively (declared, inherited or from a trait), and the method.
 fn declaring_method<'c>(
     codebase: &'c CodebaseMetadata,
     parent: &ClassLikeMetadata,
@@ -1052,10 +974,6 @@ fn declaring_method<'c>(
     Some((k, m))
 }
 
-/// `ResolvedPhpDocBlock::merge()` of the parameter and return tags: the parent's tags fill what `current` lacks,
-/// with the parent's parameter names mapped to the child's by position.
-/// `resolveTemplateTypeInTag()`: an inherited PHPDoc type `t` of ancestor `declaring`, with its templates as
-/// `class`'s `@extends`/`@implements` tags (or their defaults) give them.
 fn ancestor_types(class: &ClassLikeMetadata, declaring: &ClassLikeMetadata, t: &Type) -> Type {
     let (Some(k), Some(d)) = (
         symbols::lookup(&original_name(class)),
@@ -1096,7 +1014,6 @@ fn merge(
     let mut out = current.unwrap_or_default();
     out.accepts_named =
         Some(out.accepts_named.unwrap_or(true) && parent.accepts_named.unwrap_or(true));
-    // a constructor's parameters map by name (`resolveMethodPhpDocFromParentClass()`)
     let parent_names: Vec<String> = if constructor {
         positional.to_vec()
     } else {
@@ -1113,7 +1030,6 @@ fn merge(
             .cloned()
     };
     let rename = |name: String| mapped(&name).unwrap_or(name);
-    // `transformConditionalReturnTypeWithParameterNameMapping()`
     let types = |t: Type| rename_conditionals(&t, &mapped);
     if out.ret.is_none() {
         out.ret = parent.ret.map(types);
@@ -1124,11 +1040,9 @@ fn merge(
     if out.self_out.is_none() {
         out.self_out = parent.self_out;
     }
-    // `mergeThrowsTags()`
     if out.throws.is_none() {
         out.throws = parent.throws.map(types);
     }
-    // `mergeAssertTags()`
     if out.asserts.is_empty() {
         out.asserts = parent.asserts.into_iter().map(rename).collect();
     }
@@ -1140,7 +1054,6 @@ fn merge(
             .entry(rename(name))
             .or_insert_with(|| types(ty));
     }
-    // `mergePureTags()`, `mergeParamsPureUnless*()`
     out.pure = out.pure.or(parent.pure);
     for name in parent.pure_unless_callable {
         let name = rename(name);
@@ -1157,7 +1070,6 @@ fn merge(
     out
 }
 
-/// The conditional types on a parameter `mapped` names differently, renamed.
 fn rename_conditionals(t: &Type, mapped: &dyn Fn(&str) -> Option<String>) -> Type {
     let t = match t {
         Type::Conditional(c) => match &c.subject {
@@ -1175,8 +1087,6 @@ fn rename_conditionals(t: &Type, mapped: &dyn Fn(&str) -> Option<String>) -> Typ
     t.traverse(&|i| rename_conditionals(i, mapped))
 }
 
-/// The `NameScope` of method `m`'s own PHPDoc `doc`: the class's templates (a trait's as `context` uses it) and
-/// the method's.
 pub(super) fn method_scope(
     c: &Checker,
     m: &Method,
@@ -1210,8 +1120,6 @@ pub(super) fn method_scope(
     scope
 }
 
-/// FileTypeMapper's template map stack: an anonymous class's members see the templates of the function or method
-/// it is declared in (the innermost walked one around `at`).
 fn enclosing_templates(c: &Checker, at: Span, scope: &mut NameScope) {
     let Some(i) = c
         .var_tag_functions
@@ -1226,7 +1134,6 @@ fn enclosing_templates(c: &Checker, at: Span, scope: &mut NameScope) {
     };
     let described = match function.kind {
         super::FunctionScopeKind::Method { .. } => {
-            // (the class around the anonymous one)
             let class = c
                 .classes
                 .iter()
@@ -1249,7 +1156,6 @@ fn enclosing_templates(c: &Checker, at: Span, scope: &mut NameScope) {
     }
 }
 
-/// The `NameScope` of function `f`'s own PHPDoc `doc`, with its templates.
 pub(super) fn function_scope(c: &Checker, f: &Function, doc: &Doc) -> NameScope {
     let mut scope = scope_at(c, f.span(), None);
     let name = text(c.names.get(&f.name.span()));
@@ -1261,8 +1167,6 @@ pub(super) fn function_scope(c: &Checker, f: &Function, doc: &Doc) -> NameScope 
     scope
 }
 
-/// The parameters and return type of a method declared in the analysed file, in class-like `class` (`k`, the one
-/// it is declared in; `context`, the class a trait method is analysed for).
 pub(super) fn method(
     c: &Checker,
     m: &Method,
@@ -1280,8 +1184,6 @@ pub(super) fn method(
     )
 }
 
-/// The PHPDoc types FunctionDefinitionCheck reads from level 2: per parameter name its `@param`, `@param-out` and
-/// `@param-closure-this` types (`getPhpDocType()`, `getOutType()`, `getClosureThisType()`), and `@return`'s.
 pub(super) struct PhpDocTypes {
     pub params: HashMap<String, Vec<Type>>,
     pub ret: Option<Type>,
@@ -1297,7 +1199,6 @@ impl From<Resolved> for PhpDocTypes {
     }
 }
 
-/// [`PhpDocTypes`] of a method declared in the analysed file (see [`method()`]).
 pub(super) fn method_phpdoc(
     c: &Checker,
     m: &Method,
@@ -1305,7 +1206,6 @@ pub(super) fn method_phpdoc(
     context: &ClassLikeMetadata,
 ) -> PhpDocTypes {
     let mut resolved = method_resolved(c, m, k, context);
-    // a promoted property's `@var` is its parameter's PHPDoc type
     if m.name.value.eq_ignore_ascii_case(b"__construct") {
         for p in &m.parameter_list.parameters {
             if let Some(t) = promoted_var(c, p, Some(context)) {
@@ -1316,8 +1216,6 @@ pub(super) fn method_phpdoc(
     resolved.into()
 }
 
-/// `getPhpDocType()` of each parameter by name and `getPhpDocReturnType()` of a method declared in the analysed
-/// file, inherited ones too.
 pub(super) fn method_phpdoc_signature(
     c: &Checker,
     m: &Method,
@@ -1328,8 +1226,6 @@ pub(super) fn method_phpdoc_signature(
     (resolved.params, resolved.ret)
 }
 
-/// `getPhpDocType()` of each parameter by name and `getPhpDocReturnType()` of a reflected method `name` declared
-/// by `declaring`, inherited ones too.
 pub(super) fn reflected_phpdoc_signature(
     c: &Checker,
     f: &FunctionLikeMetadata,
@@ -1340,7 +1236,6 @@ pub(super) fn reflected_phpdoc_signature(
     (resolved.params, resolved.ret)
 }
 
-/// [`PhpDocTypes`] of a function declared in the analysed file.
 pub(super) fn function_phpdoc(c: &Checker, f: &Function) -> PhpDocTypes {
     function_resolved(c, f).into()
 }
@@ -1379,7 +1274,6 @@ fn method_resolved(
     inherit(c, context, m.name.value, own, &positional, 0).unwrap_or_default()
 }
 
-/// The parameters and return type of a function declared in the analysed file.
 pub(super) fn function(c: &Checker, f: &Function) -> Signature {
     let resolved = function_resolved(c, f);
     signature(
@@ -1429,7 +1323,6 @@ fn signature(
             let name = text(&p.variable.name[1..]);
             let native = p.hint.as_ref().map(|h| {
                 let t = native(c, h, class);
-                // `isParameterValueNullable($parameter) && $parameter->flags === 0`: not for a promoted property
                 if default_is_null(p) && p.modifiers.is_empty() {
                     t.add_null()
                 } else {
@@ -1442,8 +1335,6 @@ fn signature(
                 None
             };
             let mut phpdoc = promoted.or_else(|| doc.params.get(&name).cloned());
-            // PhpParameterFromParserNodeReflection::getType(): a `null` default makes the PHPDoc type nullable
-            // unless it infers a template type from it
             if default_is_null(p)
                 && let Some(t) = &phpdoc
                 && !has_template(t)
@@ -1475,7 +1366,6 @@ fn signature(
     }
 }
 
-/// `PhpMethodReflection::getReturnType()` of a magic method without a native return type.
 fn magic_return(name: &[u8]) -> Option<Type> {
     match name.to_ascii_lowercase().as_slice() {
         b"__construct" | b"__destruct" | b"__unset" | b"__wakeup" | b"__clone" | b"__set"
@@ -1499,7 +1389,6 @@ fn magic_return(name: &[u8]) -> Option<Type> {
     }
 }
 
-/// `getPhpDocs()`: a promoted constructor parameter's own `@var` (the only unnamed one, else the one naming it).
 fn promoted_var(
     c: &Checker,
     p: &FunctionLikeParameter,
@@ -1508,7 +1397,6 @@ fn promoted_var(
     if !p.is_promoted_property() {
         return None;
     }
-    // the doc comment must be the parameter's own (after the previous parameter)
     let (_, entry) = c.doc_before(c.file.id, p.span().start.offset)?;
     let doc = &entry.doc;
     let scope = scope_at(c, p.span(), class);
@@ -1520,7 +1408,6 @@ fn promoted_var(
     }
 }
 
-/// [`promoted_var()`] of a promoted parameter the codex holds, declared at `span` in any file.
 fn codex_promoted_var(
     c: &Checker,
     span: Span,
@@ -1550,7 +1437,6 @@ pub(crate) fn has_template(t: &Type) -> bool {
     found.get()
 }
 
-/// A constructor: `__construct` or a method named as its class (`resolveMethodPhpDocFromParentClass()`).
 fn is_constructor(k: &ClassLikeMetadata, lower: &[u8]) -> bool {
     let short = k
         .name
@@ -1561,7 +1447,6 @@ fn is_constructor(k: &ClassLikeMetadata, lower: &[u8]) -> bool {
     lower == b"__construct" || short.eq_ignore_ascii_case(lower)
 }
 
-/// A `= null` default.
 pub(super) fn default_is_null(p: &FunctionLikeParameter) -> bool {
     match p.default_value.as_ref().map(|d| d.value) {
         Some(Expression::Literal(Literal::Null(_))) => true,
@@ -1570,8 +1455,6 @@ pub(super) fn default_is_null(p: &FunctionLikeParameter) -> bool {
     }
 }
 
-/// A property's `getReadableType()`: the native type, narrowed by its `@var` (inherited from a parent's property
-/// when it has none).
 pub(super) fn property(
     c: &Checker,
     hint: Option<&Hint>,
@@ -1584,7 +1467,6 @@ pub(super) fn property(
         .doc_before(c.file.id, at.start.offset)
         .and_then(|(_, entry)| {
             let doc = &entry.doc;
-            // in a trait, its templates as the class's `@use` tag gives them (else their bounds)
             let mut scope = scope_at(c, at, Some(context));
             if let Some(t) = c
                 .in_trait()
@@ -1606,7 +1488,6 @@ pub(super) fn property(
     }
 }
 
-/// `PhpDocInheritanceResolver::resolvePhpDocForProperty()`'s `@var` from the parent class or an interface.
 fn inherited_property_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -1649,8 +1530,6 @@ fn inherited_property_doc(
                 .get(&text(name))
                 .map(|t| pun_phpstan::resolve::resolve_str(t, Some(&class.name)));
         }
-        // StubPhpDocProvider::findPropertyPhpDoc() of the reflection's declaring class: a trait's property is
-        // declared by the class that uses the trait, whose stub Mago does not patch
         let reflected = if declaring.kind.is_trait() {
             std::iter::successors(Some(parent), |k| {
                 k.direct_parent_class
@@ -1681,9 +1560,6 @@ fn inherited_property_doc(
     None
 }
 
-/// A property's declaration: Mago gives a plain property only its name's span, and the declaration starts at the
-/// modifiers and type before it.
-// ponytail: not past an attribute, nor to the first item of `public $a, $b`
 pub(super) fn property_span(
     c: &Checker,
     p: &mago_codex::metadata::property::PropertyMetadata,
@@ -1701,7 +1577,6 @@ pub(super) fn property_span(
     })
 }
 
-/// The `@var` of property `name` (without `$`) in its own declaration's PHPDoc.
 fn own_property_doc(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -1720,7 +1595,6 @@ fn own_property_doc(
     })
 }
 
-/// A property of any file: `decideType()` of its native type and its `@var` (its own, else an inherited one).
 pub(super) fn property_of(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -1739,12 +1613,10 @@ pub(super) fn property_of(
     }
 }
 
-/// The `NameScope` of a class-like's own PHPDoc (at `span`), with its templates.
 pub(super) fn class_scope(c: &Checker, span: Span, k: &ClassLikeMetadata) -> NameScope {
     scope_at(c, span, Some(k))
 }
 
-/// `scope` with a `@method` tag's own templates (`TemplateTypeScope::createWithMethod()`).
 pub(super) fn with_method_templates(
     scope: &NameScope,
     k: &ClassLikeMetadata,
@@ -1771,7 +1643,6 @@ pub(super) fn with_method_templates(
     scope
 }
 
-/// The doc comment of the class constant declaration whose item starts at `at`: the one before its modifiers.
 fn constant_doc<'a>(c: &Checker<'a, '_>, at: Span) -> Option<&'a DocEntry> {
     let contents = c.file_contents(at.file_id)?;
     let before = &contents[..(at.start.offset as usize).min(contents.len())];
@@ -1786,7 +1657,6 @@ fn constant_doc<'a>(c: &Checker<'a, '_>, at: Span) -> Option<&'a DocEntry> {
         .map(|(_, entry)| entry)
 }
 
-/// The single unnamed `@var` of a constant's PHPDoc (`resolveConstantVarPhpDocType()`).
 fn constant_var(
     c: &Checker,
     doc: &Doc,
@@ -1801,8 +1671,6 @@ fn constant_var(
     })
 }
 
-/// A class constant's `getPhpDocType()`: its own `@var`, else the parent class's or an interface's. `at` is the
-/// declaration's span or a codex item's span, in any file.
 pub(super) fn constant(
     c: &Checker,
     at: Span,
@@ -1822,8 +1690,6 @@ pub(super) fn constant(
     }
 }
 
-/// `resolvePhpDocForConstant()` from the parent class or the first immediate interface with a PHPDoc for it:
-/// `Some(type)` when one is found (its type `None` without a single unnamed `@var`).
 fn inherited_constant_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -1867,24 +1733,16 @@ fn inherited_constant_doc(
     None
 }
 
-/// The class reflection the type model asks about classes PHP does not define: the project's and its
-/// dependencies', from Mago's codebase and the classes' PHPDocs.
 pub(super) struct Classes<'c, 'a, 'arena> {
     checker: &'c Checker<'a, 'arena>,
     cache: RefCell<HashMap<String, Option<Arc<Class>>>>,
 }
 
 thread_local! {
-    /// classes being built (a cyclic hierarchy finds no class), across nested [`with_classes()`] calls: a class's
-    /// template bound naming the class itself is resolved while the class is built (`@template T of Error|self`)
     static BUILDING: RefCell<std::collections::HashSet<String>> = RefCell::new(std::collections::HashSet::new());
-    /// how many lookups found a class still being built: a class built meanwhile depends on the order it was asked
-    /// for in, so it stays out of the run's [`ClassCache`]
     static CYCLES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
-/// The classes built in one run, shared by every file's checks: a class's reflection reads only the codebase and
-/// PHPDocs, the same for every file.
 #[derive(Default)]
 pub(crate) struct ClassCache(std::sync::Mutex<HashMap<String, Option<Arc<Class>>>>);
 
@@ -1931,8 +1789,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
                 .get_class_like(w.as_bytes())
                 .map_or_else(|| text(w.as_bytes()), original_name)
         };
-        // BetterReflection's nominal hierarchy excludes require-extends/implements. Mago's populated
-        // all_parent_interfaces also contains ancestors of requirements, so follow only declared edges.
         let mut pending: Vec<_> = k
             .direct_parent_class
             .iter()
@@ -1954,7 +1810,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
                 );
             }
         }
-        // an enum's implicit interfaces (Mago names a backed one's by its backing type)
         if k.kind == SymbolKind::Enum {
             ancestors.retain(|a| a != "UnitEnum" && a != "BackedEnum");
             ancestors.push("UnitEnum".to_string());
@@ -1962,7 +1817,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
         }
         let own = class_templates(c, k);
         let generics = self.generics(k, &own);
-        // (`class_templates()` reads the templates of this PHPDoc, in its order)
         let variances = doc_at(c, k.span)
             .map(|(_, entry, _)| entry.doc.template_variances.clone())
             .unwrap_or_default();
@@ -2015,8 +1869,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
                     )
                 })
                 .collect(),
-            // the names and staticness only (StringType::accepts() asks for `__toString()`, a callable string or array
-            // for its method)
             methods: k
                 .declaring_method_ids
                 .iter()
@@ -2043,8 +1895,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
         })
     }
 
-    /// ObjectType::getIterableKeyType()/getIterableValueType() of a user class: an Iterator's `key()` and
-    /// `current()`, an IteratorAggregate's `getIterator()` return type's iterable types.
     fn iterable(&self, k: &ClassLikeMetadata) -> Option<(String, String)> {
         let c = self.checker;
         let returned = |method: &str| {
@@ -2079,8 +1929,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
         }
     }
 
-    /// The type arguments of each generic ancestor (`@extends` / `@implements`, through the parents' own), over the
-    /// class's templates.
     fn generics(
         &self,
         k: &ClassLikeMetadata,
@@ -2129,13 +1977,11 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
                 continue;
             };
             if p.templates.is_empty() {
-                // a non-generic parent passes its own ancestors' arguments on as they are
                 for (ancestor, args) in &p.generics {
                     out.entry(ancestor.clone()).or_insert_with(|| args.clone());
                 }
                 continue;
             }
-            // without `@extends`, the parent's templates resolve to their defaults, else their bounds
             let args = direct
                 .get(&parent.to_ascii_lowercase())
                 .cloned()
@@ -2164,8 +2010,6 @@ impl<'c, 'a, 'arena> Classes<'c, 'a, 'arena> {
     }
 }
 
-/// A type as the symbols' type strings write it: `to_phpdoc()` with each template as
-/// `__template<T, 'scope', bound[, default]>`, so it reads back as the same template.
 fn serialize(t: &Type) -> String {
     fn encode(t: &Type) -> Type {
         match t {
@@ -2189,7 +2033,6 @@ fn serialize(t: &Type) -> String {
     to_phpdoc(&encode(t))
 }
 
-/// Runs `f` with the type model knowing the project's classes.
 pub(super) fn with_classes<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
     let classes = Classes::new(c);
     let functions = |name: &str| c.codebase.get_function(name.as_bytes()).is_some();
@@ -2198,7 +2041,6 @@ pub(super) fn with_classes<R>(c: &Checker, f: impl FnOnce() -> R) -> R {
             symbols::with_functions(&functions, f)
         });
     };
-    // what Larastan's string types ask the app
     let strings = |query: pun_phpstan::types::StringQuery<'_>| match query {
         pun_phpstan::types::StringQuery::Property(t, name) => {
             c.has_property(t, format!("${name}").as_bytes(), false)

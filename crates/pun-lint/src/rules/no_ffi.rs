@@ -1,8 +1,3 @@
-//! `lint/security/no-ffi`, ported from Mago 1.57.0's linter rule `no-ffi` (rule/safety/no_ffi.rs).
-//!
-//! A static call on, a constant of, a `new` of, or a type hint naming `FFI`, `FFI\CData` or `FFI\CType` (resolved
-//! through the file's namespace and imports, ignoring case) is reported on the name.
-
 use mago_syntax::cst::{Expression, Hint, Identifier, Node, NodeKind};
 
 use super::lint_b_names::resolve_class;

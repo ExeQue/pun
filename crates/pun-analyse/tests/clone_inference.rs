@@ -1,4 +1,3 @@
-//! Clone result types and operand evaluation through the public Analyzer.
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -148,7 +147,6 @@ fn clone_results_and_single_operand_walk_match_public_phpstan_controls() {
             .as_str()
             .unwrap()
             .replace("*NEVER*", "never");
-        // Codex canonicalizes function scope names, but template parameter names remain case-sensitive.
         if let Some((prefix, scope)) = want.split_once(" (function ") {
             want = format!("{prefix} (function {}", scope.to_ascii_lowercase());
         }
@@ -235,8 +233,6 @@ fn neighboring_clone_and_operand_diagnostics_match_phpstan() {
 
 #[test]
 fn clone_preserves_never_identity_and_statement_continuation() {
-    // Match the independent PHPStan dynamic return extension, leaving the real
-    // mixed-returning declarations (and their intrinsic continuation) unchanged.
     struct NeverOperands;
     impl ExpressionHook for NeverOperands {
         fn after_expression(

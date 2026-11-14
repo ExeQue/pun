@@ -1,10 +1,3 @@
-//! `lint/php-8.5/no-finfo-buffer-context`, ported from Rector 2.8.4's `RemoveFinfoBufferContextArgRector`
-//! (rules/Php85/Rector/FuncCall).
-//!
-//! PHP 8.5 deprecates the unused `$context` argument of `finfo_buffer()` and `finfo::buffer()`, so it goes: the
-//! fourth argument (third for the method), or the one named `context`. Rector asks PHPStan whether the method's object
-//! is a `finfo`; Pun knows it only where the syntax proves it (see `lint_b_helpers::is_object_of`).
-
 use mago_syntax::cst::{Argument, ArgumentList, ClassLikeMemberSelector, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -21,7 +14,6 @@ impl Rule for NoFinfoBufferContext {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATE_FINFO_BUFFER_CONTEXT
         80500
     }
 
@@ -47,7 +39,6 @@ impl Rule for NoFinfoBufferContext {
                 {
                     return;
                 }
-                // In `finfo::buffer` the first parameter of `finfo_buffer` does not exist.
                 (&call.argument_list, 2)
             }
             _ => return,
@@ -67,7 +58,6 @@ impl Rule for NoFinfoBufferContext {
     }
 }
 
-/// `removeContextArg`: the index of the argument to remove.
 fn context_arg(list: &ArgumentList<'_>, position: usize) -> Option<usize> {
     let args = list.arguments.as_slice();
     if args.len() < position {

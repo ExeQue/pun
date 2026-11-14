@@ -1,8 +1,3 @@
-//! `lint/types/add-fluent-return-type`, ported from Rector 2.8.4's `ReturnTypeFromStrictFluentReturnRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a method that always returns `$this` (or `new static`) returns
-//! `static`, or `self` in a final or anonymous class, an enum, or before PHP 8.0; one that always returns `new self`
-//! returns `self`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::facts::facts;
@@ -13,9 +8,7 @@ use crate::{Context, Report, Rule};
 
 pub struct AddFluentReturn;
 
-/// `PhpVersionFeature::HAS_RETURN_TYPE`.
 const HAS_RETURN_TYPE: u32 = 70000;
-/// `PhpVersionFeature::STATIC_RETURN_TYPE`.
 const STATIC_RETURN_TYPE: u32 = 80000;
 
 impl Rule for AddFluentReturn {
@@ -77,8 +70,6 @@ impl Rule for AddFluentReturn {
     }
 }
 
-/// The returned objects as PHPStan's `TypeCombinator::union` joins them, when they are all of one class: `$this`
-/// and `static` of it make `static` (`$this` alone stays `$this`), and the class itself with either makes the class.
 fn one_class(kinds: &[Kind]) -> Option<(&str, bool, bool)> {
     let mut objects = kinds.iter().map(|k| match k {
         Kind::Object {

@@ -1,11 +1,3 @@
-//! `lint/dead-code/no-useless-filter-var`, ported from Rector 2.8.4's `RemoveFilterVarOnExactTypeRector`
-//! (rules/DeadCode/Rector/FuncCall).
-//!
-//! `filter_var($value, FILTER_VALIDATE_INT)` with exactly two arguments becomes `$value` when the value's native type
-//! is an integer; `FILTER_VALIDATE_FLOAT` does so for a float, and `FILTER_VALIDATE_BOOLEAN` or `FILTER_VALIDATE_BOOL`
-//! for a boolean. The value keeps its code; php-parser's printer puts parentheses around it where the place it moves
-//! to needs them.
-
 use mago_syntax::cst::{Argument, Call, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 

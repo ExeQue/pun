@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\StaticPrivateMethodFixer`.
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind::*, Token, Tokens, TokensAnalyzer};
@@ -29,7 +28,7 @@ impl Fixer for StaticPrivateMethodFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         loop {
             let mut anything_changed = false;
-            let end = tokens.count() - 3; // min. number of tokens to form a class candidate to fix
+            let end = tokens.count() - 3;
             for index in (1..=end).rev() {
                 if !tokens[index].is_kind(T_CLASS) {
                     continue;
@@ -49,8 +48,6 @@ impl Fixer for StaticPrivateMethodFixer {
 
 fn fix_class(tokens: &mut Tokens, class_open: usize, class_close: usize) -> bool {
     let mut fixed_methods: HashSet<Vec<u8>> = HashSet::new();
-    // Upstream's generator yields from the end, and each insert lands at or after the method it fixes, so the
-    // methods still to come keep their indices.
     for (function_keyword_index, method_open, method_close) in
         get_class_methods(tokens, class_open, class_close)
     {

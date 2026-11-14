@@ -1,12 +1,3 @@
-//! `lint/phpunit/add-depended-test-return-type`, ported from rector-phpunit's `AddReturnTypeToDependedRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! A public test method (`TestsNodeAnalyzer::isTestClassMethod`: named `test*`, with `#[Test]` or a `@test` tag) of a
-//! test class without a return type whose only `return` returns a value gets the native type of that value as its
-//! return type (`mapPHPStanTypeToPhpParserNode`, `true` and `false` kept). As in Rector, a test method without a
-//! return type that may end without returning a value stops the rule for the methods after it (Rector returns `null`
-//! after it changed the methods before).
-
 use mago_syntax::cst::{ClassLikeMember, Method, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -71,7 +62,6 @@ impl Rule for AddDependedTestReturnType {
             let [sole] = returns[..] else {
                 continue;
             };
-            // `has_only_return_with_expr()`: the return has a value
             let value = sole.value.unwrap();
             let Some(t) = facts
                 .native_type(node_span(value))
@@ -99,7 +89,6 @@ impl Rule for AddDependedTestReturnType {
     }
 }
 
-/// `TestsNodeAnalyzer::isTestClassMethod` for a public method whose previous token ends at `from`.
 fn is_test_method(
     source: &str,
     ancestors: &[Node<'_, '_>],

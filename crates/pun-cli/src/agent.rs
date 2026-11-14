@@ -1,6 +1,3 @@
-//! Agent mode (context/PLAN.md "Agent-optimised output"): under a coding agent every command prints a summary line,
-//! then one compiler-style line per finding (`path:line:col rule [fix:safe] message`), capped unless `-v`. No
-//! colours, boxes or progress. Exit codes don't change. Humans (no agent detected) get Pun's human output (context/plan/output.md).
 use std::fmt::Write as _;
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -15,8 +12,6 @@ struct Mode {
 
 static MODE: OnceLock<Mode> = OnceLock::new();
 
-/// Decide once per run: `--agent`/`--no-agent`, then `PUN_AGENT`, then PAO's `PAO_DISABLE`/`PAO_FORCE`, then
-/// [`detected`]. A missing TTY alone is not an agent.
 pub(crate) fn init(flag: Option<bool>, cmd: &'static str) {
     let on = flag
         .or_else(|| boolean("PUN_AGENT"))
@@ -30,7 +25,6 @@ pub(crate) fn init(flag: Option<bool>, cmd: &'static str) {
     });
 }
 
-/// laravel/agent-detector v2's `AgentDetector::AGENT_ENV_VARS` (380e6e4), in its order.
 const OWN: &[&str] = &[
     "CURSOR_AGENT",
     "GROK_PLUGIN_ROOT",
@@ -65,10 +59,6 @@ const OWN: &[&str] = &[
     "ZCODE_ENV",
 ];
 
-/// Pun's own list (upstream's env variables and its `/opt/.devin` check), then the crate for the agents only it
-/// knows. The crate's "cursor" entry is only `CURSOR_TRACE_ID`, which Cursor sets in human terminals too (upstream
-/// dropped it for `CURSOR_AGENT`), so that result is ignored. ponytail: the crate stops at that entry, so its
-/// crate-only variables (ROO_ACTIVE, TRAE_AI_SHELL_ID, ...) are missed inside Cursor; add them to OWN if that matters.
 fn detected() -> bool {
     OWN.iter()
         .any(|v| std::env::var(v).is_ok_and(|s| !s.trim().is_empty()))
@@ -78,7 +68,6 @@ fn detected() -> bool {
         })
 }
 
-/// PHP's FILTER_VALIDATE_BOOLEAN (as PAO reads its variables); `None` when unset, empty or neither true nor false.
 fn boolean(var: &str) -> Option<bool> {
     let v = std::env::var(var).ok()?.trim().to_ascii_lowercase();
     match v.as_str() {
@@ -100,7 +89,6 @@ pub(crate) fn cmd() -> &'static str {
     mode().cmd
 }
 
-/// `pun <cmd>: <result>[, <detail>] ([<checked>, ]0.21s)` and the findings, capped at CAP unless `all`.
 pub(crate) fn render(
     result: &str,
     detail: &[String],

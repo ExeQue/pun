@@ -1,12 +1,3 @@
-//! `lint/dead-code/no-unreachable-code`, ported from Rector 2.8.4's `RemoveUnreachableStatementRector`
-//! (rules/DeadCode/Rector/Stmt) with the `TerminatedNodeAnalyzer` it calls (src/NodeAnalyzer).
-//!
-//! In a list of statements, the statements after one that always ends the flow (`return`, `break`, `continue`, `exit`,
-//! `throw`, a `goto` not followed by its label, or an `if`/`else`, `try`/`catch` or `switch` whose every branch ends
-//! in `return`, `exit`, `throw` or such a loop, a trailing comment aside, or an infinite `while (true)`, `do`-`while`
-//! or `for (;;)` loop with no `break` or `goto`) are removed. Inline HTML and a comment stop the check, and a class or function
-//! declared after the end of a file or namespace stays: PHP hoists it.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -32,7 +23,6 @@ impl Rule for NoUnreachableCode {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // A cheap look first: two statements or more, one of them a candidate end of the flow.
         let raw = crate::syntax::statements(node);
         if raw.len() < 2 || !raw[..raw.len() - 1].iter().any(|s| may_terminate(s)) {
             return;
@@ -40,7 +30,6 @@ impl Rule for NoUnreachableCode {
         let Some(list) = holder_list(ctx.source, node, ancestors) else {
             return;
         };
-        // At least two items are needed.
         if list.len() < 2 {
             return;
         }
@@ -57,7 +46,6 @@ impl Rule for NoUnreachableCode {
             let end = list
                 .nop_span(ctx.source)
                 .map_or_else(|| node_span(*list.stmts.last().unwrap()).end, |s| s.end);
-            // A `?>` closing the removed statements goes with them, or it would print as inline HTML.
             let rest = &ctx.source[end..];
             let gap = rest.len() - rest.trim_start().len();
             let end = if rest[gap..].starts_with("?>") {
@@ -79,7 +67,6 @@ impl Rule for NoUnreachableCode {
     }
 }
 
-/// Whether a statement can end the flow at all, before the list is read as php-parser's.
 fn may_terminate(s: &Statement<'_>) -> bool {
     match s {
         Statement::Return(_)
@@ -97,15 +84,12 @@ fn may_terminate(s: &Statement<'_>) -> bool {
     }
 }
 
-/// `TerminatedNodeAnalyzer::isAlwaysTerminated`: whether `node` ends the flow before `current` (`None` for the `Nop`
-/// of a trailing comment). `top_level` is a file's or a namespace's list.
 fn is_always_terminated(
     source: &str,
     top_level: bool,
     node: &Statement<'_>,
     current: Option<&Statement<'_>>,
 ) -> bool {
-    // ALLOWED_CONTINUE_CURRENT_STMTS: InlineHTML, Nop.
     let Some(current) = current else {
         return false;
     };
@@ -125,7 +109,6 @@ fn is_always_terminated(
         return false;
     }
     match node {
-        // an infinite loop with no break never falls through to the next statement
         Statement::While(_) | Statement::DoWhile(_) | Statement::For(_) => {
             is_terminated_infinite_loop(node)
         }
@@ -164,7 +147,6 @@ fn is_terminated_in_last_stmts_switch(source: &str, switch: &Switch<'_>) -> bool
     if cases.is_empty() {
         return false;
     }
-    // A break/continue jumps out of the switch, so the next statement is still executable.
     if cases.iter().any(has_escaping_jump) {
         return false;
     }
@@ -188,7 +170,6 @@ fn is_terminated_in_last_stmts_switch(source: &str, switch: &Switch<'_>) -> bool
     has_default
 }
 
-/// `hasEscapingJump`: a `break`, `continue` or `goto` anywhere in the case, outside nested functions and classes.
 fn has_escaping_jump(case: &SwitchCase<'_>) -> bool {
     fn find(node: Node<'_, '_>) -> bool {
         match node {
@@ -232,7 +213,6 @@ fn is_terminated_in_last_stmts_try_catch(source: &str, r#try: &Try<'_>) -> bool 
 
 fn is_terminated_in_last_stmts_if(source: &str, r#if: &If<'_>) -> bool {
     let view = if_view(source, r#if);
-    // Without elseifs and else, what follows the if may run.
     if view.elseifs.is_empty() && view.else_.is_none() {
         return false;
     }
@@ -251,8 +231,6 @@ fn is_terminated_in_last_stmts_if(source: &str, r#if: &If<'_>) -> bool {
         .is_some_and(|(list, _)| is_terminated_in_last_stmts(list))
 }
 
-/// `isTerminatedInLastStmts`: the list ends with `exit`, `throw`, `return` or an infinite loop without `break`; a
-/// trailing comment (php-parser's `Nop`) executes nothing, so it does not count.
 fn is_terminated_in_last_stmts(list: &List<'_>) -> bool {
     match list.stmts.last().copied() {
         Some(Statement::Expression(e)) => is_exit_or_throw(e.expression),
@@ -264,20 +242,16 @@ fn is_terminated_in_last_stmts(list: &List<'_>) -> bool {
     }
 }
 
-/// `isTerminatedInfiniteLoop`: a `while`, `do`-`while` or `for` whose condition is always true, with no `break` or
-/// `goto` in its body (outside nested functions and classes).
 fn is_terminated_infinite_loop(r#loop: &Statement<'_>) -> bool {
     let infinite = match r#loop {
         Statement::While(w) => is_always_true(w.condition),
         Statement::DoWhile(d) => is_always_true(d.condition),
-        // `for (;;)` loops forever; otherwise the last condition decides
         Statement::For(f) => f.conditions.iter().last().is_none_or(|c| is_always_true(c)),
         _ => false,
     };
     infinite && !has_break_or_goto(Node::Statement(r#loop))
 }
 
-/// `isAlwaysTrue`: the constant `true` (any letter case) or an integer literal other than 0.
 fn is_always_true(expr: &Expression<'_>) -> bool {
     match crate::syntax::unparenthesize(expr) {
         Expression::Literal(Literal::True(_)) => true,
@@ -292,7 +266,6 @@ fn is_always_true(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `hasBreakOrGoto`: a `break` or `goto` anywhere below `node`, outside nested functions and classes.
 fn has_break_or_goto(node: Node<'_, '_>) -> bool {
     let mut found = false;
     node.visit_children(|child| {

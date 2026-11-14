@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\ArrayIndentationFixer`.
 use crate::analyzers::indentation_trait::{
     compute_new_line_content, extract_indent, is_new_line_token,
 };
@@ -60,8 +59,6 @@ impl Fixer for ArrayIndentationFixer {
         "array_indentation"
     }
     fn priority(&self) -> i32 {
-        // Must run before AlignMultilineCommentFixer, BinaryOperatorSpacesFixer.
-        // Must run after MethodArgumentSpaceFixer.
         29
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

@@ -1,9 +1,3 @@
-//! `lint/php-8.5/prefer-ord-first-byte`, ported from Rector 2.8.4's `OrdSingleByteRector` (rules/Php85/Rector/FuncCall).
-//!
-//! PHP 8.5 deprecates passing `ord()` more than one byte. A string argument becomes `$str[0]`; an int literal of
-//! several digits becomes its first digit. Rector asks PHPStan for the argument's native type and value; Pun knows
-//! them where the syntax does (see `lint_b_helpers::native` and `constant`).
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -20,7 +14,6 @@ impl Rule for PreferOrdFirstByte {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATE_ORD_WITH_MULTIBYTE_STRING
         80500
     }
 
@@ -44,7 +37,6 @@ impl Rule for PreferOrdFirstByte {
             return;
         };
         let at = node_span(call).start;
-        // php-parser has no node for parentheses.
         let expr = crate::syntax::unparenthesize(arg);
         let int_literal = match expr {
             Expression::Literal(Literal::String(s)) if s.value.is_some_and(|v| v.len() == 1) => {
@@ -63,10 +55,8 @@ impl Rule for PreferOrdFirstByte {
             return;
         }
         let new = match int_literal {
-            // refactorInt: the first digit.
             Some(v) => v.to_string()[..1].to_string(),
             None => {
-                // refactorStringType
                 if matches!(expr, Expression::ArrayAccess(_))
                     || matches!(constant(ancestors, expr, at), Some(Constant::Int(_)))
                 {
@@ -81,7 +71,6 @@ impl Rule for PreferOrdFirstByte {
             help: None,
             fix: Some(Fix {
                 safety: Safety::Safe,
-                // php-parser's span of the argument's value leaves out its parentheses, which stay.
                 edits: vec![Edit::new(node_span(expr), new)],
             }),
         });

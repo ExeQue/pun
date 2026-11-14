@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpTag\NoClosingTagFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};
 use std::path::Path;

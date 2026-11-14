@@ -1,5 +1,3 @@
-//! Native observation authority and source-order conversion through public analyzers.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -109,8 +107,6 @@ mod observations {
         }
     }
 
-    // Raw Mago maps cannot express insertion order. These adapters compare only native values;
-    // complete consumer diagnostics, not this canonical map comparison, prove PHP key order.
     fn native_value(value: &TUnion) -> Value {
         if let [TAtomic::Array(array)] = value.types.as_ref() {
             let mut items = BTreeMap::new();
@@ -144,7 +140,6 @@ mod observations {
         if value.is_mixed() {
             return json!("mixed");
         }
-        // Other observer events are not fixture observation points.
         json!("other")
     }
 

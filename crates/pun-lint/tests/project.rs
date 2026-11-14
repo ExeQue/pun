@@ -13,7 +13,6 @@ use pun_lint::rules::facts::{project_codebase, set_project_codebase};
 const ITEM: &str = "<?php\n\nclass Item\n{\n    public string $name = '';\n}\n";
 const HOLDER: &str = "<?php\n\nfinal class Holder\n{\n    private Item $item;\n\n    public function __construct()\n    {\n        $this->item = new Item();\n    }\n\n    public function name()\n    {\n        return $this->item->name;\n    }\n}\n";
 
-/// The tests take turns, as each sets the process-wide codebase.
 static LOCK: Mutex<()> = Mutex::new(());
 
 fn fix() -> String {
@@ -39,8 +38,6 @@ fn a_file_sees_the_project_codebase() {
     );
 }
 
-/// A deferred scan waits for the first rule that reads facts: `no-goto` reads none, so linting with it leaves the
-/// project unscanned, and the property rule then sees `Item` from the scan (the same expected code as above).
 #[test]
 fn a_deferred_scan_runs_when_a_rule_reads_facts() {
     use pun_lint::rules::NoGoto;
@@ -74,10 +71,6 @@ fn a_deferred_scan_runs_when_a_rule_reads_facts() {
     );
 }
 
-/// A fix round lints a file changed after the project's codebase was scanned, so Mago's analysis gives `$this` no
-/// type there. PHPStan types it as the class (`ThisType`), so the private method `$this` calls stays used. Expected:
-/// the file unchanged, as Rector 2.8.4 (`RemoveUnusedPrivateMethodRector` and `AppToFacadeRector`) keeps
-/// `getRecentlyViewed()` in Pinkary's app/Jobs/IncrementViews.php after rewriting its `app()` call.
 #[test]
 fn a_changed_file_keeps_its_methods_called_on_this() {
     use pun_lint::rules::NoUnusedPrivateMethod;
@@ -100,10 +93,6 @@ fn a_changed_file_keeps_its_methods_called_on_this() {
     assert_eq!(fixed, changed);
 }
 
-/// Classes Composer autoloads are scanned on demand, and `ClassMethodReturnTypeOverrideGuard` lets a method override
-/// a parent's untyped method only when both are in vendor/ or neither is. Expected: Rector 2.8.4
-/// (`ReturnTypeFromStrictConstantReturnRector` alone, PHP 8.4, `--autoload-file vendor/autoload.php` of a project
-/// whose psr-4 maps `Acme\` to vendor/acme/pkg/src/) types only the method whose parent is the project's.
 #[test]
 fn autoloaded_vendor_parents_guard_overrides() {
     let _lock = LOCK
@@ -146,9 +135,6 @@ fn autoloaded_vendor_parents_guard_overrides() {
     assert_eq!(fixed, expected);
 }
 
-/// Two class names that autoload to a file declaring neither: the walk scans that file for the first, and again for
-/// the second (the files are read and scanned ahead of the walk, once each). Expected (by hand, as in the test
-/// above): the method overriding the vendor parent's untyped method stays untyped.
 #[test]
 fn a_file_autoloaded_for_two_names_is_scanned_for_each() {
     let _lock = LOCK

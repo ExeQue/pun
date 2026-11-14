@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\TrailingCommaInMultilineFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -40,7 +39,6 @@ impl Fixer for TrailingCommaInMultilineFixer {
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let o = resolve(self.name(), options, &["after_heredoc", "elements"])?;
-        // Future::getV4OrV3(true, false)
         self.after_heredoc = o.bool("after_heredoc", false)?;
         self.elements = o.strings("elements", &["arrays"], ELEMENTS)?;
         Ok(())

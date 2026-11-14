@@ -1,10 +1,3 @@
-//! `lint/style/require-parent-visibility`, ported from Rector 2.8.4's `MakeInheritedMethodVisibilitySameAsParentRector`
-//! (rules/CodingStyle/Rector/ClassMethod).
-//!
-//! A method that overrides a public or protected method of a parent class gets that method's visibility. Magic methods,
-//! anonymous classes, and a public method an implemented interface declares are left alone. The parents are the
-//! classes the codebase knows, nearest first.
-
 use mago_codex::visibility::Visibility;
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
@@ -42,7 +35,6 @@ impl Rule for RequireParentVisibility {
         let Some(own) = own.filter(|_| class.extends.is_some()) else {
             return;
         };
-        // `getParents()`: the parent classes, nearest first, as far as they are known.
         let mut parents = Vec::new();
         let mut next = own.direct_parent_class;
         while let Some(parent) = next {
@@ -97,7 +89,6 @@ impl Rule for RequireParentVisibility {
             let Some(wanted) = wanted else {
                 continue;
             };
-            // php-parser's `pModifiers` prints the modifiers again, in its order.
             let mut words: Vec<&str> = Vec::new();
             let has = |f: fn(&Modifier<'_>) -> bool| method.modifiers.iter().any(f);
             if has(|m| matches!(m, Modifier::Final(_))) {

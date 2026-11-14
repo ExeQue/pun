@@ -1,12 +1,3 @@
-//! php-parser's view of Mago's tree for the dead-code and early-return rules ported from Rector:
-//! statement lists as php-parser keeps them (`stmts`, with the `Nop` it adds for comments at the end of a list), the
-//! parts of an `if`, what Rector's format-preserving printer writes when a rule removes, moves or replaces statements,
-//! and the checks several of these rules share (`TerminatedNodeAnalyzer`'s last-statement checks, `NodeComparator`
-//! with and without comments, `VariableAnalyzer`'s static, global and by-reference variables).
-//!
-//! The list, removal and re-indent helpers are a local copy of batch 1's `php_parser.rs` (in flight when this batch
-//! was written); PLAN.md has a follow-up row to merge the two.
-
 use mago_database::file::FileId;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
@@ -20,7 +11,6 @@ pub(crate) use super::php_parser::{Frame, line_indent};
 use crate::Context;
 use crate::syntax::{node_span, unparenthesize};
 
-/// One token of a region of the file: its kind and byte range in the file.
 #[derive(Clone, Copy)]
 pub(super) struct Token {
     pub kind: TokenKind,
@@ -28,8 +18,6 @@ pub(super) struct Token {
     pub end: usize,
 }
 
-/// The tokens of `source[from..to]`, which starts between two statements (or at the start of the file, where it is
-/// read as PHP reads a file: inline HTML first).
 pub(super) fn tokens(source: &str, from: usize, to: usize) -> Vec<Token> {
     let input = Input::new(FileId::zero(), &source.as_bytes()[from..to]);
     let mut lexer = if from == 0 {
@@ -49,10 +37,7 @@ pub(super) fn tokens(source: &str, from: usize, to: usize) -> Vec<Token> {
     out
 }
 
-/// The end of the last token in `[from, pos)` that is not whitespace or a comment, or `from` when there is none.
-/// php-parser's `T_OPEN_TAG` takes one newline after `<?php`, so that newline counts as part of the tag.
 pub(super) fn previous_token_end(ctx: &Context<'_>, from: usize, pos: usize) -> usize {
-    // `from` is a token boundary (a node's start), so the file's tokens in `[from, pos)` are the ones lexed there
     let tokens = ctx.tokens();
     let Some(token) = tokens[..tokens.partition_point(|t| t.end <= pos)]
         .iter()
@@ -72,8 +57,6 @@ pub(super) fn previous_token_end(ctx: &Context<'_>, from: usize, pos: usize) -> 
     end
 }
 
-/// Whether a comment comes in `[from, to)` after the last token there that is not trivia: php-parser's
-/// `maybeCreateZeroLengthNop`, which turns the comments before a list's closing token into a `Nop` statement.
 pub(super) fn trailing_comment(source: &str, from: usize, to: usize) -> bool {
     let mut found = false;
     for token in tokens(source, from, to) {
@@ -86,7 +69,6 @@ pub(super) fn trailing_comment(source: &str, from: usize, to: usize) -> bool {
     found
 }
 
-/// The start of the first comment in `[from, to)`, the comments php-parser keeps with the statement at `to`.
 pub(super) fn first_comment(source: &str, from: usize, to: usize) -> Option<usize> {
     tokens(source, from, to)
         .into_iter()
@@ -94,29 +76,22 @@ pub(super) fn first_comment(source: &str, from: usize, to: usize) -> Option<usiz
         .map(|t| t.start)
 }
 
-/// A statement list as php-parser keeps it.
 pub(crate) struct List<'a> {
-    /// The statements, without Mago's opening and closing tags and empty `;` statements, which php-parser drops.
     pub stmts: Vec<&'a Statement<'a>>,
-    /// Comments after the last statement: php-parser adds a `Nop` statement for them.
     pub nop: bool,
     pub frame: Frame,
-    /// The bytes of the list's contents, from after its opening token to its closing token.
     pub inner: Span,
 }
 
 impl<'a> List<'a> {
-    /// php-parser's `stmts === []`.
     pub(crate) fn is_empty(&self) -> bool {
         self.stmts.is_empty() && !self.nop
     }
 
-    /// The number of php-parser statements, the `Nop` included.
     pub(crate) fn len(&self) -> usize {
         self.stmts.len() + usize::from(self.nop)
     }
 
-    /// php-parser's last statement, `None` when the list is empty or ends with the `Nop` of a comment.
     pub(crate) fn last(&self) -> Option<&'a Statement<'a>> {
         if self.nop {
             return None;
@@ -124,7 +99,6 @@ impl<'a> List<'a> {
         self.stmts.last().copied()
     }
 
-    /// The span of the statement at `i` with the comments before it, which php-parser keeps with it.
     pub(crate) fn with_comments(&self, ctx: &crate::Context<'_>, i: usize) -> Span {
         let source = ctx.source;
         let span = node_span(self.stmts[i]);
@@ -135,7 +109,6 @@ impl<'a> List<'a> {
         )
     }
 
-    /// The end of the token before the statement at `i` (its comments are after it).
     pub(crate) fn before(&self, ctx: &crate::Context<'_>, i: usize) -> usize {
         let from = if i == 0 {
             self.inner.start
@@ -145,7 +118,6 @@ impl<'a> List<'a> {
         previous_token_end(ctx, from, node_span(self.stmts[i]).start)
     }
 
-    /// The span of the comments after the last statement (php-parser's trailing `Nop`).
     pub(crate) fn nop_span(&self, source: &str) -> Option<Span> {
         if !self.nop {
             return None;
@@ -163,7 +135,6 @@ impl<'a> List<'a> {
 fn kept(statement: &Statement<'_>) -> bool {
     match statement {
         Statement::OpeningTag(_) | Statement::ClosingTag(_) | Statement::Noop(_) => false,
-        // php-parser's `T_CLOSE_TAG` takes the newline after `?>`, which Mago keeps as inline HTML of its own.
         Statement::Inline(inline) => {
             !(matches!(inline.value, b"\n" | b"\r\n") && inline.span.start.offset > 0)
         }
@@ -196,7 +167,6 @@ fn end(s: mago_span::Span) -> usize {
     s.end.offset as usize
 }
 
-/// The statements of a `{ ... }` block.
 pub(super) fn block_list<'a>(source: &str, block: &'a Block<'a>) -> List<'a> {
     let (open, close) = (end(block.left_brace), start(block.right_brace));
     list(
@@ -208,8 +178,6 @@ pub(super) fn block_list<'a>(source: &str, block: &'a Block<'a>) -> List<'a> {
     )
 }
 
-/// php-parser's `stmts` of a control structure whose body is one statement: the block's statements, nothing for `;`,
-/// or the statement itself.
 pub(super) fn body_list<'a>(source: &str, statement: &'a Statement<'a>) -> List<'a> {
     match statement {
         Statement::Block(block) => block_list(source, block),
@@ -238,9 +206,6 @@ pub(super) fn open_list<'a>(
     )
 }
 
-/// The node kinds that hold a list of statements, php-parser's `StmtsAware` nodes (Rector's `NodeGroup::STMTS_AWARE`)
-/// as Mago has them. A control structure whose body is one statement keeps it as a list of one, which no rule of this
-/// batch changes.
 pub(super) const HOLDERS: &[NodeKind] = &[
     NodeKind::Program,
     NodeKind::Block,
@@ -256,8 +221,6 @@ pub(super) const HOLDERS: &[NodeKind] = &[
     NodeKind::DeclareColonDelimitedBody,
 ];
 
-/// The statement list of a node of [`HOLDERS`], or `None` for a block php-parser has no `StmtsAware` node for (a
-/// property hook's body).
 pub(super) fn holder_list<'a>(
     source: &str,
     holder: Node<'a, 'a>,
@@ -280,7 +243,6 @@ pub(super) fn holder_list<'a>(
                 .map_or(end(body.span()), |s| end(s.span()));
             open(&body.statements, end(body.terminator.span()), to)
         }
-        // A `case` has no trailing `Nop`: comments before the next `case` are that case's.
         Node::SwitchExpressionCase(case) => {
             case_list(source, &case.statements, end(case.separator.span()))
         }
@@ -330,7 +292,6 @@ pub(super) fn holder_list<'a>(
     })
 }
 
-/// Where a colon clause's statements end: at the next `elseif`, `else` or `endif` after it.
 fn clause_end(source: &str, span: mago_span::Span) -> usize {
     let from = end(span);
     tokens(source, from, source.len())
@@ -354,11 +315,6 @@ fn case_list<'a>(
     )
 }
 
-/// The edits for Rector's removal of the statements at `indices` from `list`, as php-parser's format-preserving
-/// printer removes a list item: a statement goes with the comments before it (php-parser keeps them with the node
-/// after them) and the blanks before it, back to the end of the token before it; the list's first statement goes
-/// with the blanks after it instead. A list left empty prints as `{`, a newline and `}` at the indent of the line
-/// the list opens on, or as `{}` around nothing where a control structure had one statement without braces.
 pub(super) fn remove(ctx: &crate::Context<'_>, list: &List<'_>, indices: &[usize]) -> Vec<Edit> {
     let source = ctx.source;
     if indices.len() == list.stmts.len() && !list.nop {
@@ -391,15 +347,12 @@ pub(super) fn remove(ctx: &crate::Context<'_>, list: &List<'_>, indices: &[usize
         .collect()
 }
 
-/// `source[span]` with up to `cut` bytes of leading blanks taken off every line after the first (or `add` put before
-/// it), except lines that start inside a token (a string, a heredoc, inline HTML).
 pub(super) fn reindent(source: &str, span: Span, from: &str, to: &str) -> String {
     let text = &source[span.start..span.end];
     if from == to {
         return text.to_string();
     }
     let toks = tokens(source, span.start, span.end);
-    // Heredocs and nowdocs, from `<<<` to the closing label: their lines are the string's bytes.
     let mut documents = Vec::new();
     let mut open = None;
     for t in &toks {
@@ -435,8 +388,6 @@ pub(super) fn reindent(source: &str, span: Span, from: &str, to: &str) -> String
     out
 }
 
-/// The statements of `list` (comments included, the trailing `Nop` too) as one text at the indent `to`, a line each:
-/// what Rector's printer writes when the statements move to a list at another depth.
 pub(super) fn moved_statements(ctx: &crate::Context<'_>, list: &List<'_>, to: &str) -> String {
     let source = ctx.source;
     let mut parts: Vec<String> = (0..list.stmts.len())
@@ -451,8 +402,6 @@ pub(super) fn moved_statements(ctx: &crate::Context<'_>, list: &List<'_>, to: &s
     parts.join(&format!("\n{to}"))
 }
 
-/// [`moved_statements`] inserted into an existing list by the format-preserving printer: it writes a moved `Nop`'s
-/// comments and then a new line for the empty `Nop`, whose indent `BetterStandardPrinter::pArray` strips.
 pub(super) fn inserted_statements(ctx: &crate::Context<'_>, list: &List<'_>, to: &str) -> String {
     let mut text = moved_statements(ctx, list, to);
     if list.nop {
@@ -461,15 +410,11 @@ pub(super) fn inserted_statements(ctx: &crate::Context<'_>, list: &List<'_>, to:
     text
 }
 
-/// The parts of an `if` as php-parser has them: `If_` with its `stmts`, its `elseifs` and its `else`. php-parser reads
-/// `else if` as an `else` whose only statement is an `if`.
 pub(super) struct IfView<'a> {
     pub condition: &'a Expression<'a>,
     pub stmts: List<'a>,
     pub elseifs: Vec<(&'a Expression<'a>, List<'a>, Span)>,
-    /// The `else` clause's statements and the clause's span.
     pub else_: Option<(List<'a>, Span)>,
-    /// Whether the `if` is written with `:` and `endif;`.
     pub colon: bool,
 }
 
@@ -527,7 +472,6 @@ pub(super) fn if_view<'a>(source: &str, r#if: &'a If<'a>) -> IfView<'a> {
     }
 }
 
-/// The expression of an expression statement, without its parentheses (php-parser has no node for them).
 pub(super) fn expression<'a>(statement: &'a Statement<'a>) -> Option<&'a Expression<'a>> {
     match statement {
         Statement::Expression(e) => Some(unparenthesize(e.expression)),
@@ -535,7 +479,6 @@ pub(super) fn expression<'a>(statement: &'a Statement<'a>) -> Option<&'a Express
     }
 }
 
-/// php-parser's `Assign` (`=`, not `=&`, which is `AssignRef`, nor a compound assignment).
 pub(super) fn assign<'a>(expr: &'a Expression<'a>) -> Option<&'a Assignment<'a>> {
     match unparenthesize(expr) {
         Expression::Assignment(a) if is_plain_assign(a) => Some(a),
@@ -543,13 +486,11 @@ pub(super) fn assign<'a>(expr: &'a Expression<'a>) -> Option<&'a Assignment<'a>>
     }
 }
 
-/// Whether an assignment is php-parser's `Assign`: `=`, not `=&` nor a compound assignment.
 pub(super) fn is_plain_assign(a: &Assignment<'_>) -> bool {
     matches!(a.operator, AssignmentOperator::Assign(_))
         && !matches!(a.rhs, Expression::UnaryPrefix(u) if u.operator.is_reference())
 }
 
-/// The name of a plain variable (`$name`, without the `$`), php-parser's `Variable` with a string name.
 pub(super) fn variable_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     match unparenthesize(expr) {
         Expression::Variable(Variable::Direct(v)) => Some(&v.name[1..]),
@@ -557,7 +498,6 @@ pub(super) fn variable_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// Whether an expression is php-parser's `Exit_` (`exit`, `die`) or `Throw_`.
 pub(super) fn is_exit_or_throw(expr: &Expression<'_>) -> bool {
     matches!(
         unparenthesize(expr),
@@ -565,9 +505,6 @@ pub(super) fn is_exit_or_throw(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// The tokens of `source[span]` without whitespace, comments included (a comment's lines without their leading
-/// blanks, as php-parser's `Comment::getReformattedText` re-indents them): Rector's `BetterStandardPrinter::print`,
-/// which prints the comments of the nodes it prints.
 fn tokens_with_comments(source: &str, span: Span) -> Vec<(TokenKind, String)> {
     tokens(source, span.start, span.end)
         .into_iter()
@@ -584,13 +521,11 @@ fn tokens_with_comments(source: &str, span: Span) -> Vec<(TokenKind, String)> {
         .collect()
 }
 
-/// Whether two lists print the same with their comments (Rector's `BetterStandardPrinter::print` on two `stmts`).
 pub(super) fn same_with_comments(ctx: &crate::Context<'_>, a: &List<'_>, b: &List<'_>) -> bool {
     let source = ctx.source;
     tokens_with_comments(source, printed(ctx, a)) == tokens_with_comments(source, printed(ctx, b))
 }
 
-/// The span php-parser prints for a list: the statements with the comments before the first and the trailing `Nop`.
 pub(super) fn printed(ctx: &crate::Context<'_>, list: &List<'_>) -> Span {
     let source = ctx.source;
     let start = if list.stmts.is_empty() {
@@ -606,8 +541,6 @@ pub(super) fn printed(ctx: &crate::Context<'_>, list: &List<'_>) -> Span {
     Span::new(start, end.max(start))
 }
 
-/// The list that holds `statement` (the node `ancestors` ends with is its parent), and the statement's index in it.
-/// A control structure's single statement is a list of one.
 pub(super) fn enclosing<'a>(
     source: &str,
     statement: &'a Statement<'a>,
@@ -621,7 +554,6 @@ pub(super) fn enclosing<'a>(
             None => body_list(source, statement),
         },
     };
-    // php-parser's list drops no `if` nor expression statement.
     let this = node_span(statement);
     let index = list
         .stmts
@@ -631,9 +563,6 @@ pub(super) fn enclosing<'a>(
     (list, index)
 }
 
-/// The edit that puts the statements `text(indent)` builds in place of the statement at `index` of `list` (Rector's
-/// `refactor()` returning several nodes). A control structure's single statement cannot hold several, so php-parser
-/// prints them in braces there.
 pub(super) fn replace_statement(
     source: &str,
     list: &List<'_>,
@@ -649,7 +578,6 @@ pub(super) fn replace_statement(
     Edit::new(span, text(indent))
 }
 
-/// The comments in `[from, to)`, from the start of the first to the end of the last.
 pub(super) fn comments(source: &str, from: usize, to: usize) -> Option<Span> {
     let comments: Vec<Token> = tokens(source, from, to)
         .into_iter()
@@ -658,8 +586,6 @@ pub(super) fn comments(source: &str, from: usize, to: usize) -> Option<Span> {
     Some(Span::new(comments.first()?.start, comments.last()?.end))
 }
 
-/// A block as php-parser's pretty printer writes it around `list` at the indent `indent`: `{`, the statements a line
-/// each one level deeper, and `}` on a line of its own.
 pub(super) fn braced(ctx: &crate::Context<'_>, list: &List<'_>, indent: &str) -> String {
     if list.is_empty() {
         return format!("{{\n{indent}}}");
@@ -671,9 +597,6 @@ pub(super) fn braced(ctx: &crate::Context<'_>, list: &List<'_>, indent: &str) ->
     )
 }
 
-/// Whether `node` or a node under it is a variable that prints as `target` (`BetterNodeFinder::findFirst` with
-/// `NodeComparator::areNodesEqual` against a variable): a variable anywhere, in a closure, an interpolated string or a
-/// parameter too.
 pub(super) fn has_equal_variable(source: &str, node: Node<'_, '_>, target: Span) -> bool {
     if matches!(
         node,
@@ -687,13 +610,8 @@ pub(super) fn has_equal_variable(source: &str, node: Node<'_, '_>, target: Span)
     found
 }
 
-/// `VariableAnalyzer::isStaticOrGlobal` for the variable `name` inside the statement `chain` ends with (as a
-/// `Node::Statement`): Rector's `GlobalVariableNodeVisitor` and `StaticVariableNodeVisitor` mark every variable of
-/// that name in the statements after a `global` or `static` statement of the same list, at any depth but not inside
-/// a class.
 pub(super) fn is_static_or_global(chain: &[Node<'_, '_>], name: &[u8]) -> bool {
     for j in 0..chain.len().saturating_sub(1) {
-        // A holder's child is a statement.
         let (holder, Node::Statement(statement)) = (chain[j], chain[j + 1]) else {
             continue;
         };
@@ -724,10 +642,6 @@ pub(super) fn is_static_or_global(chain: &[Node<'_, '_>], name: &[u8]) -> bool {
     false
 }
 
-/// `VariableAnalyzer::isUsedByReference` for a variable `name` at `at` with these ancestors: Rector's
-/// `ByRefVariableNodeVisitor` marks, in each function-like, every variable named like one of its parameters taken by
-/// reference, a variable it uses by reference (a closure), or a variable a closure met earlier in its body uses by
-/// reference.
 pub(super) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: usize) -> bool {
     let mut outermost = None;
     for node in ancestors {
@@ -748,7 +662,6 @@ pub(super) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: 
             return true;
         }
     }
-    // The closures the outermost function-like's walk meets before the variable.
     fn closures_before(node: Node<'_, '_>, name: &[u8], at: usize) -> bool {
         if node_span(&node).start >= at {
             return false;
@@ -777,7 +690,6 @@ fn by_ref_use(clause: &ClosureUseClause<'_>, name: &[u8]) -> bool {
         .any(|v| v.ampersand.is_some() && &v.variable.name[1..] == name)
 }
 
-/// Whether `node` or a node under it is a binary operation `op` matches (`BetterNodeFinder::findInstanceOf`).
 pub(super) fn has_binary(node: Node<'_, '_>, op: &dyn Fn(&BinaryOperator<'_>) -> bool) -> bool {
     if let Node::Binary(b) = node
         && op(&b.operator)
@@ -789,9 +701,6 @@ pub(super) fn has_binary(node: Node<'_, '_>, op: &dyn Fn(&BinaryOperator<'_>) ->
     found
 }
 
-/// `isInConstantExpression` of `RepeatedOrEqualToInArrayRector` and `RepeatedAndNotEqualToNotInArrayRector`
-/// (`DefaultValueNodeVisitor`'s attributes): the node lies in a parameter's default, a property's default or a class
-/// constant's value, where a call such as `in_array()` is not allowed.
 pub(super) fn is_in_constant_expression(ancestors: &[Node<'_, '_>]) -> bool {
     ancestors.iter().any(|a| {
         matches!(
@@ -803,9 +712,6 @@ pub(super) fn is_in_constant_expression(ancestors: &[Node<'_, '_>]) -> bool {
     })
 }
 
-/// `InArrayFromRepeatedCompareFactory::isSafeToEvaluateEagerly`: the array literal evaluates every value up front,
-/// while the `&&`/`||` chain stops early, so each value must be a plain variable (not `$$name`) or no dynamic
-/// expression (`ExprAnalyzer::isDynamicExpr`).
 pub(super) fn is_safe_to_evaluate_eagerly(expr: &Expression<'_>) -> bool {
     match crate::syntax::unparenthesize(expr) {
         Expression::Variable(v) => matches!(v, Variable::Direct(_)),
@@ -813,9 +719,6 @@ pub(super) fn is_safe_to_evaluate_eagerly(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `matchComparedAndDesiredValues` of `RepeatedOrEqualToInArrayRector` and `RepeatedAndNotEqualToNotInArrayRector`:
-/// the comparisons a chain of `chain` operators joins, left to right, as (compared, value) pairs, or `None` when an
-/// operand is not a comparison `compare` matches.
 pub(super) fn compared_values<'a>(
     binary: &'a Binary<'a>,
     chain: &dyn Fn(&BinaryOperator<'_>) -> bool,

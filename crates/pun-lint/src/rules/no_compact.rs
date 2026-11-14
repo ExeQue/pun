@@ -1,10 +1,3 @@
-//! `lint/complexity/no-compact`, ported from Rector 2.8.4's `CompactToVariablesRector` (rules/CodeQuality/Rector/
-//! FuncCall) and its `CompactConverter`.
-//!
-//! `compact('a', 'b')` is `['a' => $a, 'b' => $b]`. Rector also follows a variable whose type is a constant list of
-//! strings; without types Pun follows a local variable assigned once, to an array literal of string literals, and
-//! never written otherwise.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -46,7 +39,6 @@ impl Rule for NoCompact {
                 let Some(Argument::Positional(first)) = args.first() else {
                     return;
                 };
-                // Rector reads the first argument's type: an array literal of strings, or a variable holding one.
                 let Some(names) =
                     names(first.value).or_else(|| list_variable(ancestors, first.value))
                 else {
@@ -71,7 +63,6 @@ impl Rule for NoCompact {
     }
 }
 
-/// A string literal's value when it can name a variable.
 fn name(expr: &Expression<'_>) -> Option<String> {
     let Expression::Literal(Literal::String(s)) = unparenthesize(expr) else {
         return None;
@@ -84,7 +75,6 @@ fn name(expr: &Expression<'_>) -> Option<String> {
     .then(|| value.to_string())
 }
 
-/// `CompactConverter::hasAllArgumentsNamed`: every argument a string (so `compact()` is `[]`).
 fn all_named(args: &[&Argument<'_>]) -> Option<Vec<String>> {
     args.iter()
         .map(|a| match a {
@@ -94,7 +84,6 @@ fn all_named(args: &[&Argument<'_>]) -> Option<Vec<String>> {
         .collect()
 }
 
-/// The names in the array literal of strings a local variable is assigned once and never otherwise written.
 fn list_variable(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Vec<String>> {
     let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) else {
         return None;
@@ -120,7 +109,6 @@ fn list_variable(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Ve
             );
             false
         }
-        // A write through `$v[...]` (reads count too: Pun can't tell them apart here).
         Node::ArrayAccess(a) => {
             matches!(unparenthesize(a.array), Expression::Variable(Variable::Direct(l)) if l.name == target)
         }
@@ -144,7 +132,6 @@ fn list_variable(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Ve
     writes.into_iter().next().flatten()
 }
 
-/// The names of an array literal of strings.
 fn names(expr: &Expression<'_>) -> Option<Vec<String>> {
     let elements: Vec<&ArrayElement> = match unparenthesize(expr) {
         Expression::Array(a) => a.elements.iter().collect(),
@@ -154,7 +141,6 @@ fn names(expr: &Expression<'_>) -> Option<Vec<String>> {
     elements
         .iter()
         .map(|e| match e {
-            // `compact()` reads the values; a key does not matter.
             ArrayElement::Value(v) => name(v.value),
             ArrayElement::KeyValue(kv) => name(kv.value),
             _ => None,

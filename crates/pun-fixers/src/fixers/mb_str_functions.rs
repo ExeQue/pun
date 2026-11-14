@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\MbStrFunctionsFixer` (PHP 8.5 map; alternatives filtered by
-//! existence in the oracle PHP like upstream's `ReflectionFunction::isInternal`).
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use crate::analyzers::php_functions::is_internal_function;

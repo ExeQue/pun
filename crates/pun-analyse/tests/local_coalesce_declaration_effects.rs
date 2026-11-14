@@ -1,5 +1,3 @@
-//! Local ??= declaration effects through both public Project constructors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

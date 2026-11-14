@@ -1,18 +1,9 @@
-//! LarastanStubFilesExtension: `stubs/common` and every `stubs/<version>` directory whose version is at most the
-//! installed Laravel's, a later directory's stub replacing the one at the same relative path.
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// Larastan 3.14.0's `stubs` directory, for a Laravel app without Larastan in its vendor directory: Pun applies
-/// Larastan's behaviour to every Laravel app, and without these stubs `$this` in an `Artisan::command()` closure is
-/// an undefined variable.
 static BUNDLED: include_dir::Dir =
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/data/larastan-stubs");
 
-/// The stub files Larastan adds, in no particular order: the `stubs` directory of Larastan installed in `root`'s
-/// vendor directory, or of `root` itself when it is Larastan's checkout (StubFilesExtension's `dirname(__DIR__, 2)`).
-/// Without one, the bundled stubs under the path an install would have; [`bundled`] has their contents.
 pub(crate) fn files(root: &Path) -> Vec<PathBuf> {
     let stubs = package(root).join("stubs");
     let names: Vec<String> = match std::fs::read_dir(&stubs) {
@@ -28,7 +19,6 @@ pub(crate) fn files(root: &Path) -> Vec<PathBuf> {
     let mut versions: Vec<String> = names
         .into_iter()
         .filter(|n| n.starts_with(|c: char| c.is_ascii_digit()))
-        // without LARAVEL_VERSION (no app to boot), no versioned directory applies
         .filter(|n| laravel.as_deref().is_some_and(|l| compare(n, l).is_le()))
         .collect();
     versions.sort_by(|a, b| compare(a, b));
@@ -44,7 +34,6 @@ pub(crate) fn files(root: &Path) -> Vec<PathBuf> {
     found.into_values().collect()
 }
 
-/// The contents of a bundled stub, by the path [`files`] gave it.
 pub(crate) fn bundled(path: &Path) -> Option<&'static [u8]> {
     let mut parts = path.components().rev();
     let mut relative = PathBuf::new();
@@ -62,7 +51,6 @@ pub(crate) fn bundled(path: &Path) -> Option<&'static [u8]> {
         .map(include_dir::File::contents)
 }
 
-/// The bundled `*.stub` files below `dir`, by their path relative to the directory `name`.
 fn collect_bundled(
     dir: &include_dir::Dir,
     name: &str,
@@ -85,8 +73,6 @@ fn collect_bundled(
     }
 }
 
-/// Larastan's own directory (the extension's `dirname(__DIR__)`): its vendor install, or `root` when the project is
-/// Larastan's checkout.
 fn package(root: &Path) -> PathBuf {
     let installed = root.join("vendor/larastan/larastan");
     let own = std::fs::read_to_string(root.join("composer.json"))
@@ -100,7 +86,6 @@ fn package(root: &Path) -> PathBuf {
     }
 }
 
-/// The `*.stub` files below `dir`, by their path relative to `base`.
 fn collect(base: &Path, dir: &Path, found: &mut BTreeMap<PathBuf, PathBuf>) {
     for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
         let p = e.path();
@@ -113,8 +98,6 @@ fn collect(base: &Path, dir: &Path, found: &mut BTreeMap<PathBuf, PathBuf>) {
     }
 }
 
-/// LARAVEL_VERSION, which Larastan's bootstrap defines as the booted app's `version()`: the framework's
-/// `Application::VERSION`.
 pub(crate) fn laravel_version(root: &Path) -> Option<String> {
     let source = std::fs::read_to_string(
         root.join("vendor/laravel/framework/src/Illuminate/Foundation/Application.php"),
@@ -126,7 +109,6 @@ pub(crate) fn laravel_version(root: &Path) -> Option<String> {
     Some(rest[..rest.find(quote)?].to_string())
 }
 
-/// `version_compare()` of two dotted numeric versions.
 pub(crate) fn compare(a: &str, b: &str) -> std::cmp::Ordering {
     let parts = |v: &str| -> Vec<u64> { v.split('.').map(|p| p.parse().unwrap_or(0)).collect() };
     parts(a).cmp(&parts(b))

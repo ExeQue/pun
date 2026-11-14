@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-expect`, ported from pest-plugin-rector's `ConvertAssertToExpectRector`: `$this->assertX(...)`
-//! becomes the `expect()` chain with Pest's matching matcher, such as `$this->assertSame(42, $value)` to
-//! `expect($value)->toBe(42)`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
 use pun_problem::{Edit, Safety};
 
@@ -11,8 +7,6 @@ use crate::{Context, Report, Rule};
 
 pub struct PreferExpect;
 
-/// `SINGLE_ARG_ASSERTIONS`, `TWO_ARG_ASSERTIONS` and `THREE_ARG_ASSERTIONS`: the matcher, whether it is negated, and
-/// how many arguments the assertion needs.
 fn assertion(name: &[u8]) -> Option<(&'static str, bool, usize)> {
     Some(match name {
         b"assertTrue" => ("toBeTrue", false, 1),
@@ -119,7 +113,6 @@ impl Rule for PreferExpect {
         if arguments.len() < needed {
             return;
         }
-        // The checked value is the only argument, or the second; the expected value and the third go to the matcher.
         let span = node_span(call);
         let indent = indent_at(ctx, span.start);
         let text =

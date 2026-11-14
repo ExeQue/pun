@@ -1,5 +1,3 @@
-//! The symbols every rule queries: Mago's prelude (built-ins) extended with every analysed and scanned file.
-
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -62,7 +60,6 @@ use crate::{Project, autoload};
 /// PHPStan's unprefixed classes and functions (scripts/export-phpstan-api-stub.php): PHPStan always has them loaded.
 pub(crate) const PHPSTAN_API: &[u8] = include_bytes!("../data/phpstan-api.php");
 
-/// Whether `code` names PHPStan's own namespaces, so the (large) API stub is worth scanning.
 fn names_phpstan(code: &[u8]) -> bool {
     code.windows(8)
         .any(|w| w.eq_ignore_ascii_case(b"phpstan\\") || w.eq_ignore_ascii_case(b"phpparse"))
@@ -72,8 +69,6 @@ pub(crate) fn php_version(id: u32) -> PHPVersion {
     PHPVersion::new(id / 10000, id / 100 % 100, id % 100)
 }
 
-/// A file to analyse or scan that exists but can't be read. PHPStan stops the run on one (`FileReader`'s
-/// CouldNotReadFileException); a file that is gone is skipped instead.
 #[derive(Debug)]
 pub struct CouldNotReadFile {
     pub path: PathBuf,
@@ -92,7 +87,6 @@ impl std::error::Error for CouldNotReadFile {
     }
 }
 
-/// `path` as a Mago file, `None` when it does not exist.
 pub(crate) fn read(path: &Path, file_type: FileType) -> Result<Option<File>, CouldNotReadFile> {
     let contents = match std::fs::read(path) {
         Ok(contents) => contents,
@@ -118,7 +112,6 @@ pub(crate) fn read(path: &Path, file_type: FileType) -> Result<Option<File>, Cou
     )))
 }
 
-/// `file` parsed into `arena`, with its names resolved.
 pub(crate) fn parse<'arena>(
     arena: &'arena LocalArena,
     file: &File,
@@ -137,7 +130,6 @@ pub(crate) fn parse<'arena>(
     (program, NameResolver::new(arena).resolve(program))
 }
 
-/// Scans `file`, with the facts the rules read of its syntax, then resets `arena`, so one arena serves many files.
 fn scan(
     arena: &mut LocalArena,
     file: &File,
@@ -149,7 +141,6 @@ fn scan(
         let arena = &*arena;
         let (program, names) = parse(arena, file);
         let facts = Facts::of(&file.contents, program, file.file_type == FileType::Host);
-        // FileNodesFetcher rejects the whole file before exporting any reflection or autoload roots.
         let scanned = if !crate::parser::errors(file, program, version).is_empty() {
             CodebaseMetadata::default()
         } else {
@@ -164,8 +155,6 @@ fn scan(
         (scanned, facts)
     };
     arena.reset();
-    // PHPStan's source locators do not execute class_alias(). Admit only registrations already established by
-    // the Laravel loader below, before population can expose source-only aliases to inference or any rule.
     if !trusted_aliases {
         let keys = mago_codex::metadata::CodebaseEntryKeys {
             class_like_names: Vec::new(),
@@ -182,8 +171,6 @@ fn scan(
     (scanned, facts)
 }
 
-/// The prelude for one build at `php_version`: the first build of the process owns a fresh one (a single run keeps
-/// one copy, not a cached one and its clone); later builds clone one built once per PHP version.
 fn prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     static FIRST: AtomicBool = AtomicBool::new(true);
     static PHP84: LazyLock<(CodebaseMetadata, SymbolReferences)> =
@@ -199,8 +186,6 @@ fn prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     }
 }
 
-/// Mago's prelude, without the built-ins PHPStan's reflection at `php_version` doesn't know (symbols.json: newer
-/// PHP, other extensions), so a polyfill in vendor declares them as user code.
 fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     let Prelude {
         mut metadata,
@@ -221,8 +206,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
                 .functions
                 .contains_key(&String::from_utf8_lossy(name.as_bytes()).to_ascii_lowercase())
     });
-    // NativeMethodReflection's and NativeFunctionReflection's effect is a reflection fact, not a stub PHPDoc
-    // annotation.
     for ((class, name), method) in &mut metadata.function_likes {
         let name = String::from_utf8_lossy(name.as_bytes()).to_ascii_lowercase();
         let effects = if class.is_empty() {
@@ -245,9 +228,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
             });
         }
     }
-    // PHPStan's functionMap narrows some built-in functions' scalars where the prelude has the native type (`time()`'s
-    // `int<1, max>`, `sodium_crypto_sign_keypair()`'s `non-empty-string`). When both are the same union of an
-    // integer, a string, false and null, the function returns PHPStan's ranges and string accessories.
     for ((class, name), function) in &mut metadata.function_likes {
         if !class.is_empty() {
             continue;
@@ -291,7 +271,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
                         (get_int(), get_int_range(bound(from)?, bound(to)?))
                     }
                 };
-                // (the prelude's own refinements and conditional returns stay)
                 narrowed |= general != union;
                 ret.type_union
                     .types
@@ -306,9 +285,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
                 Some(TypeMetadata::new(TUnion::from_vec(reflected), span));
         }
     }
-    // PHPStan's own stubs type some built-in methods with other classes than Mago's prelude (ReflectionType for
-    // getReturnType() where the prelude lists its subclasses). When both are plain class names and null, the method
-    // returns PHPStan's reflected type.
     for ((class, name), method) in &mut metadata.function_likes {
         let Some([variant]) = builtins
             .classes
@@ -355,7 +331,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
                     .types
                     .first()
                     .cloned(),
-                // a generic class of one class argument (`Dom\NodeList<Dom\Element>`)
                 p => {
                     let (class, argument) = p.strip_suffix('>')?.split_once('<')?;
                     if !is_name(class) || !is_name(argument) {
@@ -391,8 +366,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
                 Some(TypeMetadata::new(TUnion::from_vec(reflected), span));
         }
     }
-    // PHPStan's stubs return a bare class template where the prelude adds null (`Iterator::current()`'s `null|V`), and
-    // its functionMap marks some method returns a BenevolentUnionType (`PDO::prepare()`'s `PDOStatement|false`).
     for ((class, name), method) in &mut metadata.function_likes {
         let Some([variant]) = builtins
             .classes
@@ -426,8 +399,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
             ret.type_union.set_ignore_falsable_issues(true);
         }
     }
-    // A built-in function the prelude types as a plain `array` returns its functionMap array type
-    // (`debug_backtrace()`'s `list<array{function: string, ...}>`).
     for ((scope, name), function) in &mut metadata.function_likes {
         if !scope.is_empty() || !function.flags.is_built_in() {
             continue;
@@ -467,8 +438,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
             function.return_type_metadata = Some(TypeMetadata::new(reflected, span));
         }
     }
-    // Runtime reflection supplies empty-array constructor defaults even when an API stub
-    // writes null (ArrayObject and ArrayIterator). Generic inference must see the real value.
     for ((class, name), constructor) in &mut metadata.function_likes {
         if !name.as_bytes().eq_ignore_ascii_case(b"__construct") {
             continue;
@@ -491,10 +460,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
             }
         }
     }
-    // ConstantResolver::resolvePredefinedConstant keeps both 32- and 64-bit values, not the host's
-    // stub initializer. Namespace fallback in Mago reads this metadata instead of its platform helper.
-    // Also retain numeric constants absent from the prelude (PHP 8.5's FILTER_THROW_ON_FAILURE)
-    // and non-finite float literals, which the scanner's PHPDoc types otherwise generalize.
     for (name, value) in &builtins.constants {
         use pun_phpstan::types::Type;
         let values = match pun_phpstan::resolve::resolve_str(value, None) {
@@ -525,7 +490,6 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     (metadata, symbol_references)
 }
 
-/// PHPStan's API stub's symbols, and the stub.
 fn scan_api(version: PHPVersion) -> (CodebaseMetadata, Scanned) {
     let stub = File::new(
         Cow::Borrowed(b"phpstan-api.php"),
@@ -543,27 +507,21 @@ fn scan_api(version: PHPVersion) -> (CodebaseMetadata, Scanned) {
     )
 }
 
-/// Files scanned by one task: small enough that the threads finish together.
 const CHUNK: usize = 32;
 
-/// A file the scan read, with the facts the rules read of its syntax.
 pub(crate) struct Scanned {
     pub(crate) file: Arc<File>,
     pub(crate) facts: Facts,
 }
 
-/// The files the scan read: by path, the analysed ones and the scanned ones with global constant declarations
-/// (whose code a rule reads whole); by id, every one with its facts.
 #[derive(Default)]
 pub(crate) struct Sources {
     files: HashMap<PathBuf, Arc<File>>,
     scanned: HashMap<FileId, Scanned>,
-    /// PHPStan's API stub, when an analysed file names PHPStan.
     api: Option<Scanned>,
 }
 
 impl Sources {
-    /// A file the scan read, PHPStan's API stub included.
     pub(crate) fn scanned(&self, id: FileId) -> Option<&Scanned> {
         self.scanned
             .get(&id)
@@ -585,14 +543,11 @@ impl std::ops::DerefMut for Sources {
     }
 }
 
-/// The codebase, and the analysed files' [`Sources`].
 pub(crate) fn build(
     project: &Project,
     laravel_root: Option<&Path>,
 ) -> Result<(CodebaseMetadata, Sources), CouldNotReadFile> {
-    // Larastan's `collection-of<TModel>`, which the type builder leaves to expansion
     let _ = mago_codex::ttype::expander::COLLECTION_OF_RESULT.set(crate::laravel::collection_of);
-    // and its `builder-of<TModel[, TRelation]>` and `relation-of<TModel, TRelation>`
     let _ = mago_codex::ttype::expander::BUILDER_OF_RESULT.set(crate::rules::late_builder);
     let version = php_version(project.php_version);
     let aliases = laravel_root
@@ -608,8 +563,6 @@ pub(crate) fn build(
         .chain(project.stubs.iter().map(|p| (p, FileType::Patch)))
         .filter(|(p, _)| seen.insert(*p))
         .collect();
-    // psr-4 and psr-0 files after them, scanned once a scanned file names their class (a file below two directories
-    // is one file with two classes)
     let eager = files.len();
     let mut at: HashMap<&PathBuf, usize> = HashMap::new();
     let mut classes = Vec::new();
@@ -624,18 +577,11 @@ pub(crate) fn build(
         classes.push((i, a));
     }
     let index = autoload::Index::new(classes.into_iter(), &aliases);
-    // Scanning is most of the time (the vendored files): in rounds, each the psr-4 and psr-0 files the previous one
-    // named, in chunks across the threads, merged in file order, while the prelude is built and PHPStan's reflection
-    // of built-ins is loaded (at the project's PHP version, which the rules read, and 8.4's, which pun-phpstan's type
-    // system reads), rather than by the first file that asks while the others wait.
     let php_version = project.php_version;
     let builtins = move || {
         crate::rules::builtins(php_version);
         pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::Php84)
     };
-    // PHPStan's API stub (one large file, about a quarter of the run on larastan and pest when scanned after the
-    // rounds) is scanned on its own thread as soon as an analysed file names PHPStan, beside the rounds; it is merged
-    // after them, as before
     let (names_phpstan_tx, names_phpstan_rx) = std::sync::mpsc::channel::<()>();
     let api = std::thread::spawn(move || names_phpstan_rx.recv().ok().map(|()| scan_api(version)));
     let (((mut metadata, mut references), _), scanned) = rayon::join(
@@ -674,7 +620,6 @@ pub(crate) fn build(
                             metadata.extend(symbols);
                             wanted.retain(|&w| !loaded.get(w));
                             if file_type == FileType::Host && names_phpstan(&file.contents) {
-                                // (the receiver is alive until the rounds end)
                                 let _ = names_phpstan_tx.send(());
                             }
                             let by_path = file_type == FileType::Host || has_constants;
@@ -719,8 +664,6 @@ pub(crate) fn build(
     if !used_aliases.is_empty() {
         used_aliases.sort_unstable();
         used_aliases.dedup();
-        // Feed declarations through Mago's class_alias scanner, before population resolves aliases, inheritance
-        // and signatures. Real declarations win and missing/cyclic targets stay unknown in its normal registry.
         let quote = |s: &str| s.replace('\\', "\\\\").replace('\'', "\\'");
         let mut declarations = String::from("<?php\n");
         for i in used_aliases {
@@ -743,10 +686,7 @@ pub(crate) fn build(
         metadata.extend(api);
         sources.api = Some(stub);
     }
-    // ponytail: Mago leaves a user-defined (analysed) class unpatched, where PHPStan's stub wins; stubs of vendor
-    // classes, the usual kind, apply alike
     metadata.apply_patches_pass();
-    // Mago materialises a patch's method over an existing one only; a stub's `@method` adds one, as PHPStan's does
     let pseudo: Vec<_> = (metadata.patch_function_likes.iter())
         .filter(|(key, _)| !metadata.function_likes.contains_key(key))
         .filter(|((class, name), _)| {
@@ -771,15 +711,9 @@ pub(crate) fn build(
     Ok((metadata, sources))
 }
 
-/// PhpClassReflectionExtension::findMethodPhpDocIncludingAncestors() for Mago: a method a stub-known vendor class
-/// declares without a stub PHPDoc of its own takes the stub PHPDoc of the first ancestor (interfaces, traits, then
-/// the parent) that has one for it, in place of its own (`Model::toArray()` takes `Arrayable::toArray()`'s, the
-/// Support collection's `pluck()` the Enumerable stub's): its return and parameter types, the ancestor's class
-/// templates as the class gives them, and its method templates. The rules read the same (`declared::method_doc()`).
 fn ancestor_stub_docs(metadata: &mut CodebaseMetadata) {
     use mago_codex::misc::GenericParent;
     use mago_codex::ttype::template::{TemplateResult, inferred_type_replacer};
-    // ClassReflection::getAncestors() after the class: interfaces, traits, then the parent, depth first
     fn visit(metadata: &CodebaseMetadata, name: mago_word::Word, order: &mut Vec<mago_word::Word>) {
         let Some(k) = metadata.class_likes.get(&name) else {
             return;
@@ -882,10 +816,7 @@ fn ancestor_stub_docs(metadata: &mut CodebaseMetadata) {
     }
 }
 
-/// Resolve referenced globals and constants of already-loaded user classes/interfaces. Autoload remains
-/// lazy, and evaluating one initializer never analyzes that file's unrelated executable bodies.
 fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, project: &Project) {
-    // each analysed file's constant inputs, in file order
     let version = php_version(project.php_version);
     let loaded: &CodebaseMetadata = metadata;
     let mut roots: Vec<Initializer> = project
@@ -917,8 +848,6 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
         .into_iter()
         .flatten()
         .collect();
-    // BetterReflection selects a non-private inherited constant before an explicitly reused trait.
-    // Normalize these copies before evaluating their source, without rebinding the selected owner.
     let inherited: Vec<_> = metadata
         .class_likes
         .iter()
@@ -982,8 +911,6 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
                 .collect::<Vec<_>>()
         })
         .collect();
-    // Loaded declarations must expose one canonical value to every consumer, including wildcard
-    // PHPDoc and existing class-string accesses whose member is not a static signature reference.
     roots.extend(metadata.class_likes.iter().flat_map(|(name, class)| {
         class
             .constants
@@ -1011,7 +938,6 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
                 })
         })
         .collect();
-    // every project file the scan read (not PHPStan's API stub, whose initializers keep their scanned values)
     let initializer_sources: HashMap<_, _> = sources
         .scanned
         .values()
@@ -1046,8 +972,6 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
     for name in roots {
         resolver.resolve(name);
     }
-    // Shadowed trait declarations are still checked independently. Resolve their source dependencies
-    // too; reading Consumer::VALUE would otherwise silently evaluate the overriding declaration.
     for (class, at) in trait_sources {
         resolver.evaluate(at, false, Some(class));
     }
@@ -1090,8 +1014,6 @@ enum Initializer {
     Class(mago_word::Word, mago_word::Word),
 }
 
-/// Ordinary inherited copies share a source declaration. Trait rebinding intentionally does not use
-/// this span identity: the same trait initializer can mean different things in different consumers.
 pub(crate) fn initializer_class(
     metadata: &CodebaseMetadata,
     at: Span,
@@ -1112,8 +1034,6 @@ fn smallest_containing<'m>(
         .min_by_key(|class| class.span.end.offset - class.span.start.offset)
 }
 
-/// A trait copy is implemented by its consuming class, unless a non-private parent constant was
-/// already selected. BetterReflection merges parents before traits, even after an explicit reuse.
 pub(crate) fn initializer_owner(
     metadata: &CodebaseMetadata,
     class: mago_word::Word,
@@ -1129,7 +1049,6 @@ pub(crate) fn initializer_owner(
     )
 }
 
-/// The owner of `class`'s copy of the constant declared at `span` in `source`.
 fn copy_owner(
     metadata: &CodebaseMetadata,
     class: mago_word::Word,
@@ -1159,8 +1078,6 @@ fn copy_owner(
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ConstantInputs<'_, 'arena> {
     fn walk_in_constant_access(&mut self, access: &'ast ConstantAccess<'arena>, (): &mut ()) {
-        // The same selection as ConstantAccess::analyze: existence stops fallback, and imported or
-        // qualified names can never accidentally select an unrelated global constant.
         let selected = selected_global(self.metadata, self.names, access);
         if let Some(selected) = selected.filter(|k| !k.flags.is_built_in()) {
             self.names_found.push(Initializer::Global(selected.name));
@@ -1213,16 +1130,12 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ConstantInputs<'_, 'arena> {
 struct Initializers<'a> {
     metadata: &'a mut CodebaseMetadata,
     sources: HashMap<FileId, &'a File>,
-    /// Each source is parsed once into `arena`; a file declares many constants.
     arena: &'a LocalArena,
     parsed: HashMap<FileId, ParsedSource<'a>>,
     version: PHPVersion,
     visited: HashSet<(Span, Option<mago_word::Word>)>,
-    /// Class constants already requested: a repeat selects the same declaration and owner.
     requested: HashSet<(mago_word::Word, mago_word::Word)>,
-    /// The classes holding each class constant declaration, by its span and name.
     copies: HashMap<(Span, mago_word::Word), Vec<mago_word::Word>>,
-    /// The classes declared in each file.
     classes: HashMap<FileId, Vec<mago_word::Word>>,
     path_constants: bool,
 }
@@ -1244,8 +1157,6 @@ impl Initializers<'_> {
             .get_class_constant(class.as_bytes(), name.as_bytes())
             .expect("selected class constant exists")
             .span;
-        // Synthetic API stubs and unavailable sources retain their scanned values. They cannot be
-        // re-evaluated, and must not trigger repeated declaring-owner searches or inherited copies.
         if !self.sources.contains_key(&at.file_id) {
             return;
         }
@@ -1257,8 +1168,6 @@ impl Initializers<'_> {
         let Some(owner) = copy_owner(self.metadata, class, name, at, source) else {
             return;
         };
-        // Population copies ordinary class/interface constants, keeping the declaration's span.
-        // Every copy with that declaring source identity gets the one raw initializer below.
         let copies: Vec<_> = (self.copies.get(&(at, name)).into_iter().flatten())
             .copied()
             .filter(|class| copy_owner(self.metadata, *class, name, at, source) == Some(owner))
@@ -1274,7 +1183,6 @@ impl Initializers<'_> {
             .constants
             .get_mut(&name)
             .expect("declaring constant exists");
-        // Preserve the scanner's direct-self sentinel and existing expansion cycle guards.
         if declaration
             .inferred_type
             .as_ref()
@@ -1284,7 +1192,6 @@ impl Initializers<'_> {
         }
         let previous = declaration.inferred_type.take();
         let value = self.evaluate(at, false, Some(owner)).or(previous);
-        // Native/PHPDoc declarations of the copies stay unchanged.
         for class in copies {
             self.metadata
                 .class_likes
@@ -1308,8 +1215,6 @@ impl Initializers<'_> {
         if !self.visited.insert((at, None)) {
             return;
         }
-        // ConstantResolver's currentlyResolving entry is mixed, not a copied scanner approximation.
-        // A global constant reflection uses its value, not its PHPDoc @var annotation.
         let previous = declaration.inferred_type.take();
         let declared = declaration.type_metadata.take();
         let mut value = self.evaluate(at, false, None);
@@ -1318,8 +1223,6 @@ impl Initializers<'_> {
             && let Some(previous) = previous.as_ref()
             && previous == &get_int_or_float()
         {
-            // Mago's full analyzer loses the scanner's numeric result when a cycle supplies mixed.
-            // Retain that existing bound, with PHPStan's benevolent-union flags, not an invented value.
             *value = previous.clone();
             value.set_ignore_nullable_issues(true);
             value.set_ignore_falsable_issues(true);
@@ -1363,8 +1266,6 @@ impl Initializers<'_> {
             class,
         };
         inputs.walk_expression(expression, &mut ());
-        // Expression holders must discover their declarations after their own dependencies have
-        // canonical values. Postorder also handles a class constant whose value is another holder.
         struct Holders<'ast, 'arena>(Vec<(&'ast Expression<'arena>, mago_word::Word)>);
         impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Holders<'ast, 'arena> {
             fn walk_out_class_constant_access(
@@ -1387,7 +1288,6 @@ impl Initializers<'_> {
         }
         let mut holders = Holders(Vec::new());
         holders.walk_expression(expression, &mut ());
-        // Literal/unsupported arguments without a constant dependency retain their scanner result.
         if require_global && inputs.names_found.is_empty() && holders.0.is_empty() {
             return None;
         }
@@ -1427,7 +1327,6 @@ impl Initializers<'_> {
             .inference(class)
             .initializer_type(arena, file, program, &names, expression, namespace);
         if inherited_benevolence && value == get_int_or_float() {
-            // Keep the numeric union's existing marker across the full evaluator's arithmetic join.
             value.set_ignore_nullable_issues(true);
             value.set_ignore_falsable_issues(true);
         }
@@ -1448,15 +1347,12 @@ impl Initializers<'_> {
     }
 }
 
-/// A source parsed for [`Initializers`]: its program, names and [`InitializerIndex`].
 type ParsedSource<'a> = (
     &'a Program<'a>,
     Rc<ResolvedNames<'a>>,
     Rc<InitializerIndex<'a, 'a>>,
 );
 
-/// What [`FindInitializer`] could select in one file, walked once: each candidate by its span in walk order (a later
-/// one wins), and the namespaces in walk order.
 #[derive(Default)]
 struct InitializerIndex<'ast, 'arena> {
     at: HashMap<Span, Vec<Candidate<'ast, 'arena>>>,
@@ -1465,14 +1361,11 @@ struct InitializerIndex<'ast, 'arena> {
 
 #[derive(Clone, Copy)]
 enum Candidate<'ast, 'arena> {
-    /// an expression, or a constant item's value
     Value(&'ast Expression<'arena>),
-    /// a function call's second argument (`define()`'s value), skipped for an argument
     Call(Option<&'ast Expression<'arena>>),
 }
 
 impl<'ast, 'arena> InitializerIndex<'ast, 'arena> {
-    /// [`FindInitializer`]'s expression and namespace for `at`.
     fn find(
         &self,
         at: Span,
@@ -1566,8 +1459,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for FindInitializer<'ast, 'arena>
     }
 }
 
-/// Compare a source initializer even when reflection selected a shadowing declaration. Dependencies
-/// were resolved at population time; this read-only entry point uses the same canonical engine.
 pub(crate) fn source_initializer(
     metadata: &CodebaseMetadata,
     file: &File,
@@ -1605,8 +1496,6 @@ pub(crate) fn source_initializer(
     )
 }
 
-/// Declaration/attribute checks use ordinary expression flow in each consuming class, independently
-/// of the raw reflection union and of the original trait file's first inference pass.
 pub(crate) fn trait_initializer_types(
     metadata: &CodebaseMetadata,
     file: &File,
@@ -1621,7 +1510,6 @@ pub(crate) fn trait_initializer_types(
     }
     impl Inputs<'_> {
         fn owns(&self, at: Span) -> bool {
-            // Nested anonymous/named classes keep their own lexical scope, not the trait consumer's.
             self.at.start.offset <= at.start.offset
                 && at.end.offset <= self.at.end.offset
                 && initializer_class(self.metadata, at).is_some_and(|k| k.span == self.at)
@@ -1723,10 +1611,6 @@ impl InitializerInference<'_> {
         expression: &'arena Expression<'arena>,
         namespace: Option<cst::Namespace<'arena>>,
     ) -> TUnion {
-        // Full inference supplies exact arithmetic only for independent subtrees without canonical
-        // control flow. Never evaluate such an operand inside its parent's condition: narrowing there
-        // would replace reflection unions with flow-selected values again. Unsupported reflection
-        // leaves are mixed; function extensions and constructor inference belong to ordinary flow.
         struct Islands<'ast, 'arena> {
             stack: Vec<(Span, bool)>,
             expressions: Vec<(&'ast Expression<'arena>, bool, Option<Span>)>,
@@ -1782,9 +1666,15 @@ impl InitializerInference<'_> {
                 .iter()
                 .copied()
                 .filter(|(expression, owned, parent)| {
-                    !owned && parent.is_none_or(|parent| scanner_owned.contains(&parent))
-                        // Class holder names are syntax, not standalone value expressions.
-                        && !matches!(expression, Expression::Identifier(_) | Expression::Self_(_) | Expression::Parent(_) | Expression::Static(_))
+                    !owned
+                        && parent.is_none_or(|parent| scanner_owned.contains(&parent))
+                        && !matches!(
+                            expression,
+                            Expression::Identifier(_)
+                                | Expression::Self_(_)
+                                | Expression::Parent(_)
+                                | Expression::Static(_)
+                        )
                 })
         {
             if let Some(value) = self
@@ -1803,16 +1693,12 @@ impl InitializerInference<'_> {
                 types.insert(expression.span(), value);
             }
         }
-        // Replay only the canonical nodes, in postorder, through the same scanner query. The type
-        // map supplies reflection-owned leaves, not a second arithmetic/control-flow evaluator.
         for (expression, _, _) in islands
             .expressions
             .into_iter()
             .filter(|(_, owned, _)| *owned)
         {
             let mut value = match expression {
-                // InitializerExprTypeResolver::getType(New_): constructor inference belongs only
-                // to declaration flow. Even self/parent/static are literal ObjectType identities.
                 Expression::Instantiation(new) => match new.class {
                     Expression::Identifier(name) => {
                         get_named_object(mago_word::word(names.get(name)), None)
@@ -1845,15 +1731,11 @@ impl InitializerInference<'_> {
                                 artifacts.get_expression_type(expression).cloned()
                             })
                             .unwrap_or_else(get_mixed),
-                        // InitializerExprTypeResolver::getType(ConstFetch) returns ErrorType when
-                        // reflection cannot find the constant. Ordinary expression flow stays separate.
                         None => {
                             get_literal_constant_type(access.name.value()).unwrap_or_else(get_error)
                         }
                     }
                 }
-                // The existing analyzer owns arithmetic, array keys and other enclosing syntax.
-                // Supply canonical children instead of reselecting their initializer branches.
                 _ if !matches!(
                     expression,
                     Expression::Conditional(_)
@@ -1890,8 +1772,6 @@ impl InitializerInference<'_> {
                 )
                 .unwrap_or_else(get_mixed),
             };
-            // Materialize PHPStan's removeFalsey result using the existing excluded-set
-            // representation. Mago's legacy truthiness flags alone lose this reflection identity.
             for atomic in value.types.to_mut() {
                 if let TAtomic::Mixed(mixed) = atomic
                     && mixed.is_truthy()
@@ -1973,7 +1853,6 @@ impl InitializerInference<'_> {
     }
 }
 
-/// Array inference consumes the same already-resolved initializer values as the scanner query.
 struct InitializerValues(HashMap<Span, TUnion>);
 
 impl mago_analyzer::plugin::ExpressionHook for InitializerValues {
@@ -1992,7 +1871,6 @@ impl mago_analyzer::plugin::ExpressionHook for InitializerValues {
     }
 }
 
-/// Isolated arithmetic islands need their lexical self/parent scope, not a synthetic global scope.
 struct InitializerScope {
     class: mago_word::Word,
     canonical: bool,

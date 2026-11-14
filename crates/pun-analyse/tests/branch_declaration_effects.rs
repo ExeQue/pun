@@ -1,5 +1,3 @@
-//! IfHandler's declaration effects, compared with every public PHPStan diagnostic field.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

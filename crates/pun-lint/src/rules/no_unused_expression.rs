@@ -1,18 +1,3 @@
-//! `lint/dead-code/no-unused-expression`, ported from Rector 2.8.4's `RemoveDeadStmtRector`
-//! (rules/DeadCode/Rector/Expression) and its `LivingCodeManipulator`.
-//!
-//! An expression statement whose value is thrown away goes, or keeps only the parts of it that may do something (the
-//! calls inside a concatenation, an array key, a dynamic name). Without types Pun is careful where Rector reflects:
-//! - a property fetch statement goes only for `$this->p`, `self::$p` or `static::$p` whose class declares `p` (Rector
-//!   keeps any fetch whose property it cannot find, as `__get` may run);
-//! - `$v[...]` and `clone $v` are kept whole when `$v` may be an object (`$this`, a parameter with a class type, or a
-//!   variable the function assigns a `new` to), where Rector asks whether the type is `ArrayAccess` or declares
-//!   `__clone`;
-//! - a `(void)` cast is kept (Rector keeps it for a `#[NoDiscard]` call).
-//!
-//! Rector writes the kept parts as statements in the order last-but-first, then first; Pun keeps their order, which
-//! keeps the order they run in.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -59,13 +44,10 @@ impl Rule for NoUnusedExpression {
         }
         let mut living = Vec::new();
         keep_living(ancestors, expr, &mut living);
-        // php-parser has no node for parentheses, so `(foo());` is the call itself.
         if living.len() == 1 && std::ptr::eq(living[0], unparenthesize(expr)) {
             return;
         }
-        // The statement's place: an item of a statement list, or the one statement of a control structure's body.
         let (list, key) = if HOLDERS.contains(&grand.kind()) {
-            // Rector removes the statement wherever it is, in a property hook's body too, where `holder_list` has none.
             let list = match grand {
                 Node::Block(block) => block_list(source, block),
                 _ => holder_list(source, *grand, &ancestors[..ancestors.len() - 2]).unwrap(),
@@ -85,7 +67,6 @@ impl Rule for NoUnusedExpression {
         let edits = if living.is_empty() {
             let before = list.before(ctx, key);
             match doc_comment(source, before, node_span(*stmt).start) {
-                // php-parser's Nop keeps the doc comment, and prints an empty line for itself.
                 Some(doc) if list.frame != Frame::Bare => {
                     let span = list.with_comments(ctx, key);
                     vec![Edit::new(
@@ -123,7 +104,6 @@ impl Rule for NoUnusedExpression {
     }
 }
 
-/// `PropertyFetchAnalyzer::isPropertyFetch`.
 fn is_property_fetch(expr: &Expression<'_>) -> bool {
     matches!(
         unparenthesize(expr),
@@ -133,7 +113,6 @@ fn is_property_fetch(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// Whether the fetch reads a property the enclosing class declares: Pun's stand-in for Rector's reflection.
 fn declared_property(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     let name: &[u8] = match unparenthesize(expr) {
         Expression::Access(Access::Property(p)) if is_this(p.object) => match &p.property {
@@ -151,7 +130,6 @@ fn declared_property(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
         _ => return false,
     };
     let Some(members) = scope.iter().rev().find_map(|n| match n {
-        // A trait's methods run without a class in Rector's scope, so it keeps their fetches.
         Node::Class(c) => Some(&c.members),
         Node::Enum(e) => Some(&e.members),
         Node::AnonymousClass(c) => Some(&c.members),
@@ -173,7 +151,6 @@ fn declared_property(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     })
 }
 
-/// `LivingCodeManipulator::keepLivingCodeFromExpr`: the parts of `expr` that may do something, in source order.
 fn keep_living<'a>(
     scope: &[Node<'_, '_>],
     expr: &'a Expression<'a>,
@@ -266,7 +243,6 @@ fn keep_living<'a>(
     }
 }
 
-/// A variable's name: nothing for `$a`, the name's living code for `${expr}` and `$$a`.
 fn variable<'a>(scope: &[Node<'_, '_>], v: &'a Variable<'a>, out: &mut Vec<&'a Expression<'a>>) {
     match v {
         Variable::Direct(_) => {}
@@ -287,8 +263,6 @@ fn member<'a>(
     }
 }
 
-/// Whether `expr` may hold an object: `$this`, a parameter with a class type, or a variable the enclosing function
-/// (or file) assigns a `new` to.
 fn may_be_object(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     let Expression::Variable(Variable::Direct(v)) = unparenthesize(expr) else {
         return false;
@@ -296,7 +270,6 @@ fn may_be_object(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if v.name == b"$this" {
         return true;
     }
-    // The statement's function, or the file (an arrow function holds no statement).
     let body = scope
         .iter()
         .rev()
@@ -329,7 +302,6 @@ fn may_be_object(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     })
 }
 
-/// A type that may name a class: anything but the built-in scalar and array types.
 fn class_hint(hint: &Hint<'_>) -> bool {
     match hint {
         Hint::Identifier(_)

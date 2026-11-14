@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ClassDefinitionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::Kind::*;
@@ -78,7 +77,6 @@ impl Fixer for ClassDefinitionFixer {
         tokens.is_any_token_kinds_found(CLASSY_KINDS)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // -4, one for count to index, 3 because min. of tokens for a classy location.
         let mut index = tokens.count() as isize - 4;
         while index > 0 {
             if tokens[index as usize].is_classy() {
@@ -92,7 +90,6 @@ impl Fixer for ClassDefinitionFixer {
 impl ClassDefinitionFixer {
     fn fix_classy_definition(&self, tokens: &mut Tokens, classy_index: usize) {
         let mut def = self.get_classy_definition_info(tokens, classy_index);
-        // PSR2 4.1 Lists of implements MAY be split across multiple lines, where each subsequent line is indented once.
         if let Some(implements) = def.implements {
             def.implements =
                 Some(self.fix_classy_definition_implements(tokens, def.open, implements));
@@ -101,8 +98,6 @@ impl ClassDefinitionFixer {
             let open = def.implements.map_or(def.open, |i| i.start);
             def.extends = Some(self.fix_classy_definition_extends(tokens, open, extends));
         }
-        // PSR2: class definition open curly brace must go on a new line.
-        // PSR12: anonymous class curly brace on same line if not multi line implements.
         def.open = self.fix_classy_definition_open_spacing(tokens, &def);
         let mut end = if let Some(i) = def.implements {
             i.start
@@ -112,7 +107,6 @@ impl ClassDefinitionFixer {
             tokens.get_prev_non_whitespace(def.open, None).unwrap()
         };
         if def.anonymous_class && !self.inline_constructor_arguments {
-            // anonymous class with `extends` and/or `implements`
             while !tokens[end].equals(")", true) && !tokens[end].is_kind(T_CLASS) {
                 let start = tokens.get_prev_meaningful_token(end).unwrap();
                 self.make_classy_definition_single_line(tokens, start, end);
@@ -122,7 +116,6 @@ impl ClassDefinitionFixer {
                 end = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, end);
             }
         }
-        // 4.1 The extends and implements keywords MUST be declared on the same line as the class name.
         self.make_classy_definition_single_line(tokens, def.start, end);
         sort_class_modifiers(tokens, &def);
     }

@@ -1,5 +1,3 @@
-//! Public type contracts captured from pinned PHPStan 2.3.1, independent of unset's producers.
-
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -74,7 +72,6 @@ fn codex_types() -> BTreeMap<&'static str, TUnion> {
     types
 }
 
-// Only spelling differs: Mago's scalar IDs, integer aliases and explicit never.
 fn codex_spelling(ty: &TUnion) -> String {
     let mut parts: Vec<_> = ty
         .types
@@ -710,7 +707,6 @@ fn negative_guard_exclusions_are_independent_of_native_tracking() {
             Default::default(),
         );
         if source == CALLS {
-            // Keep body inference available to callback providers; only call-site policy changes.
             for name in [
                 "guessedstring",
                 "guessednotint",
@@ -745,7 +741,6 @@ fn negative_guard_exclusions_are_independent_of_native_tracking() {
             .unwrap();
         let observed = std::mem::take(&mut *observed.lock().unwrap());
         if source == SOURCE {
-            // Actual PHPStan dumps mixed~int at line 8 and ErrorType after every failed-read guard.
             let TAtomic::Mixed(not_int) = observed[&8].get_single() else {
                 panic!("not mixed")
             };
@@ -758,7 +753,6 @@ fn negative_guard_exclusions_are_independent_of_native_tracking() {
                 );
             }
         } else if source == ARRAYS {
-            // PHPStan's array<mixed, mixed> after the join and repeated guard has explicit parameters.
             let TAtomic::Array(mago_codex::ttype::atomic::array::TArray::Keyed(array)) =
                 observed[&20].get_single()
             else {

@@ -1,12 +1,8 @@
-//! The renderer against output.md §1's samples, copied from the plan by hand, with and without colour. Colour codes
-//! are written out from docs/design/tokens.json by hand (`#FF7AB8` is `255;122;184`).
-
 use super::*;
 use pun_problem::{Edit, Fix, Span};
 use std::io::Write;
 use std::sync::{Arc, Mutex};
 
-/// `gum`, `mint`, `ok`, `ink-3` and `zap`, dark variants, at 24 bits; and the reset.
 const E: &str = "\x1b[38;2;255;122;184m";
 const OK: &str = "\x1b[38;2;142;240;200m";
 const R: &str = "\x1b[38;2;143;184;255m";
@@ -64,7 +60,6 @@ fn safe_fix() -> Option<Fix> {
     })
 }
 
-/// 40 filler lines, then lines 41 and 42 of PostController (indented 8 spaces), then a closing brace.
 fn post_controller() -> (String, Problem) {
     let mut source = "<?php\n".repeat(40);
     source.push_str("        $post = Post::find($id);\n        dd($post);\n}\n");
@@ -81,7 +76,6 @@ fn post_controller() -> (String, Problem) {
     (source, p)
 }
 
-/// Line 22 is blank, line 23 is `\treturn $user->fullName();` (a tab is one byte, so `fullName` is column 16).
 fn profile_controller() -> (String, Problem) {
     let mut source = "<?php\n".repeat(21);
     source.push_str("\n\treturn $user->fullName();\n");
@@ -293,7 +287,6 @@ fn ascii_frame() {
 
 #[test]
 fn multi_line_span_marks_each_line_from_its_code() {
-    // Lines 1-3; the span runs from `foo` on line 1 to `)` on line 3. Indentation is 2, under the 4-column cut.
     let source = "  $a = foo(\n    1,\n  );\n";
     let p = problem("lint/x/y", "a.php", (7, 22), "m", None, Level::Error);
     assert_eq!(
@@ -365,7 +358,6 @@ fn empty_span_and_span_past_the_line_end_mark_one_column() {
 
 #[test]
 fn span_inside_deep_indentation_keeps_the_indentation() {
-    // The span starts at column 1 of a line indented 12 spaces, so nothing is cut.
     let source = "            foo();\n";
     let p = problem("lint/x/y", "a.php", (0, 18), "m", None, Level::Error);
     assert_eq!(
@@ -382,7 +374,6 @@ fn span_inside_deep_indentation_keeps_the_indentation() {
 
 #[test]
 fn blank_line_inside_a_span_gets_no_marker() {
-    // Indented 8, cut to 4; line 2 is empty.
     let source = "        foo(\n\n        );\n";
     let p = problem("lint/x/y", "a.php", (8, 24), "m", None, Level::Error);
     assert_eq!(
@@ -472,7 +463,6 @@ fn summary_singulars_and_warnings_only() {
     assert_eq!(plain().summary(&errors), "✖ 1 error · 1 file in 0.01s\n");
 }
 
-/// init.md §2's "✔ Wrote pun.toml": only the glyph is coloured, `ok` without Unicode.
 #[test]
 fn done_line() {
     assert_eq!(plain().done("Wrote pun.toml"), "✔ Wrote pun.toml\n");
@@ -543,7 +533,6 @@ fn links_wrap_paths_and_rule_ids() {
         rules: vec!["format/arrays/syntax".into(), "syntax".into()],
     }];
     let path = "\x1b]8;;file:///my%20project/a.php\x1b\\a.php\x1b]8;;\x1b\\";
-    // A rule links to its docs page; a name that is not a rule has no page.
     let rule = "\x1b]8;;https://pun.laravel.cloud/docs/rules/format/arrays/syntax\x1b\\format/arrays/syntax\x1b]8;;\x1b\\, syntax";
     assert_eq!(
         r.file_lines(&files).concat(),
@@ -559,7 +548,6 @@ fn links_wrap_paths_and_rule_ids() {
         r.run_error(&e),
         "✖ \x1b]8;;file:///my%20project/a.php\x1b\\a.php:3\x1b]8;;\x1b\\  m\n"
     );
-    // Without links, plain text.
     let unlinked = Renderer::new(Look::plain(), "/p");
     assert_eq!(
         unlinked.file_lines(&files).concat(),
@@ -582,7 +570,6 @@ fn colour_depths_and_themes() {
         theme,
         ..Look::plain()
     };
-    // 16 colours: the standard codes.
     let basic = at(Depth::Ansi16, Theme::Dark);
     let codes: Vec<String> = [Role::Error, Role::Warning, Role::Ok, Role::Rule, Role::Dim]
         .iter()
@@ -598,7 +585,6 @@ fn colour_depths_and_themes() {
             "\x1b[2mx\x1b[0m"
         ]
     );
-    // Light variants at 24 bits; warnings and ✔ fall back to the terminal's yellow and green.
     let light = at(Depth::TrueColor, Theme::Light);
     assert_eq!(
         light.paint(Role::Error, "x"),
@@ -608,8 +594,6 @@ fn colour_depths_and_themes() {
     assert_eq!(light.paint(Role::Rule, "x"), "\x1b[38;2;29;95;204mx\x1b[0m");
     assert_eq!(light.paint(Role::Dim, "x"), "\x1b[38;2;107;98;128mx\x1b[0m");
     assert_eq!(light.paint(Role::Warning, "x"), "\x1b[33mx\x1b[0m");
-    // 256 colours: gum (255,122,184) -> cube (5,2,3) = 211; zap (255,229,61) -> (5,4,1) = 221; ink-3
-    // (156,146,174) -> grey 158 = 247, nearer than the cube's (175,135,175).
     let xterm = at(Depth::Ansi256, Theme::Dark);
     assert_eq!(xterm.paint(Role::Error, "x"), "\x1b[38;5;211mx\x1b[0m");
     assert_eq!(xterm.paint(Role::Warning, "x"), "\x1b[38;5;221mx\x1b[0m");
@@ -743,7 +727,6 @@ fn links_on_terminals_that_support_them() {
     ));
 }
 
-/// A `Write` the test can read back while the spinner thread holds the other end.
 #[derive(Clone, Default)]
 struct Shared(Arc<Mutex<Vec<u8>>>);
 
@@ -789,7 +772,6 @@ fn spinner_counts_files_then_clears_its_line() {
             }
         };
         wait_for("3/10 files");
-        // A later frame shows the new count.
         spinner.tick();
         wait_for("4/10 files");
         drop(spinner);
@@ -801,9 +783,6 @@ fn spinner_counts_files_then_clears_its_line() {
     }
 }
 
-/// format.md §9's `-v` diff, hand-derived from a two-hunk unified diff: the header and `\ No newline` markers are
-/// left out, each line carries its old and new number (blank where the line doesn't exist on that side), a blank
-/// context line ends at the bar, and `…` separates the hunks.
 #[test]
 fn diff_numbers_both_sides_and_separates_hunks() {
     let unified = "--- /p/a.php\n+++ /p/a.php\n@@ -1,3 +1,3 @@\n <?php\n-$a = array(1);\n+$a = [1];\n \n@@ -9,2 +9,2 @@\n x\r\n-y\n+z\n\\ No newline at end of file\n";
@@ -832,8 +811,6 @@ fn diff_numbers_both_sides_and_separates_hunks() {
     );
 }
 
-/// format.md §9's summary wording, hand-derived: fixing, `--test` with and without files to format, errors in red,
-/// singulars, ASCII.
 #[test]
 fn format_summary_samples() {
     let fixed = FormatSummary {
@@ -897,7 +874,6 @@ fn check_summary_and_pills() {
         links: false,
     };
     let dark = at(Depth::TrueColor, Theme::Dark);
-    // The summary: bold zap on dark, bold only on light, bold yellow at 16 colours.
     assert_eq!(
         dark.paint(Role::Summary, "x"),
         "\x1b[1;38;2;255;229;61mx\x1b[0m"
@@ -910,7 +886,6 @@ fn check_summary_and_pills() {
         at(Depth::Ansi16, Theme::Dark).paint(Role::Summary, "x"),
         "\x1b[1;33mx\x1b[0m"
     );
-    // Pills: the label centred in 9 columns, bold code-bg ink on the step's colour; plain without colour.
     assert_eq!(
         dark.pill(Step::Lint),
         "\x1b[1;38;2;23;18;31;48;2;255;122;184m  lint   \x1b[0m"

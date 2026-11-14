@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-not-modifier`, ported from pest-plugin-rector's `SimplifyExpectNotRector`:
-//! `expect(!$x)->toBeTrue()` becomes `expect($x)->toBeFalse()` (and the other way) when `$x` is always a bool, and
-//! `expect(!$x)->toBeEmpty()` becomes `expect($x)->not->toBeEmpty()` (or loses its `->not`).
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -44,7 +40,6 @@ impl Rule for PreferNotModifier {
         if !not.operator.is_not() {
             return;
         }
-        // `isCalledDirectlyOnExpect`.
         let mut var = unparenthesize(call.object);
         let modifier = property_fetch(var).filter(|p| is_name(&p.property, "not"));
         if let Some(modifier) = modifier {
@@ -66,7 +61,6 @@ impl Rule for PreferNotModifier {
                 };
                 rename(call, flipped)
             }
-            // `toggleNotModifier`.
             Some(b"toBeEmpty") => match modifier {
                 Some(modifier) => Edit::new(
                     Span::new(

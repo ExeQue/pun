@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NoUselessConcatOperatorFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
@@ -23,7 +22,6 @@ enum StrType {
     SingleQuote,
 }
 
-/// `_ConcatOperandType`.
 #[derive(Clone, Copy)]
 struct Operand {
     start: usize,
@@ -36,9 +34,6 @@ impl Fixer for NoUselessConcatOperatorFixer {
         "no_useless_concat_operator"
     }
     fn priority(&self) -> i32 {
-        // Must run before DateTimeCreateFromFormatCallFixer, EregToPregFixer, PhpUnitDedicateAssertInternalTypeFixer,
-        // RegularCallableCallFixer, SetTypeToCastFixer.
-        // Must run after ExplicitStringVariableFixer, NoBinaryStringFixer, SingleQuoteFixer.
         5
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
@@ -88,7 +83,6 @@ impl NoUselessConcatOperatorFixer {
         second_operand: Operand,
     ) {
         use StrType::*;
-        // if both operands are of the same type then these operands can always be merged
         if (first_operand.kind == DoubleQuote && second_operand.kind == DoubleQuote)
             || (first_operand.kind == SingleQuote && second_operand.kind == SingleQuote)
         {
@@ -112,7 +106,6 @@ impl NoUselessConcatOperatorFixer {
             );
             return;
         }
-        // if any is double and the other is not, check for simple other, than merge with "
         for (operand1, operand2) in [
             (first_operand, second_operand),
             (second_operand, first_operand),
@@ -161,7 +154,6 @@ impl NoUselessConcatOperatorFixer {
     }
 }
 
-/// `substr($s, 1, -1)`.
 fn inner(s: &[u8]) -> &[u8] {
     &s[1..s.len() - 1]
 }
@@ -170,7 +162,6 @@ fn get_concat_operand_type(tokens: &Tokens, index: usize, direction: isize) -> O
     if tokens[index].is_kind(T_CONSTANT_ENCAPSED_STRING) {
         let first_char = tokens[index].get_content()[0];
         if first_char == b'b' || first_char == b'B' {
-            // we don't care about these, priorities are set to do deal with these cases
             return None;
         }
         return Some(Operand {
@@ -235,7 +226,6 @@ fn merge_constant_escaped_string_var_operands(
     concat_operator_index: usize,
     second_operand: Operand,
 ) {
-    // build up the new content
     let mut new_content = Vec::new();
     for operand in [first_operand, second_operand] {
         let mut operand_content = Vec::new();
@@ -246,7 +236,6 @@ fn merge_constant_escaped_string_var_operands(
         }
         new_content.extend_from_slice(inner(&operand_content));
     }
-    // remove tokens making up the concat statement
     let mut i = Some(second_operand.end);
     while let Some(j) = i.filter(|&j| j >= second_operand.start) {
         tokens.clear_token_and_merge_surrounding_whitespace(j);
@@ -258,7 +247,6 @@ fn merge_constant_escaped_string_var_operands(
         tokens.clear_token_and_merge_surrounding_whitespace(j);
         i = tokens.get_prev_meaningful_token(j);
     }
-    // insert new tokens based on the new content
     let new_tokens = Tokens::from_code(&[&b"<?php \""[..], &new_content, b"\";"].concat());
     let insert_tokens = (1..new_tokens.count() - 1)
         .map(|i| new_tokens[i].clone())
@@ -289,15 +277,10 @@ fn operands_can_not_be_merged(
     first_operand: Operand,
     second_operand: Operand,
 ) -> bool {
-    // If the first operand does not end with a variable, no variables would be broken by concatenation. (Upstream
-    // first returns false when it is not a `"..."` with variables, but every caller passes one.)
     if !tokens[first_operand.end - 1].is_kind(T_VARIABLE) {
         return false;
     }
-    // e.g. " foo", ' bar', " $baz"; "-foo", '-bar', "-$baz"
     let allowed_patterns_for_second_operand = [r"/^ .*/", r"/^-(?!\>)/"];
-    // If the first operand ends with a variable, the second operand should match one of the allowed patterns.
-    // Otherwise, the concatenation can break a variable in the first operand.
     let code = tokens.generate_partial_code(second_operand.start, second_operand.end);
     let second_operand_inner_content = inner(&code);
     !allowed_patterns_for_second_operand

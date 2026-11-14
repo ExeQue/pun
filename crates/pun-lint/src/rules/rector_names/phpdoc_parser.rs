@@ -1,15 +1,5 @@
-//! phpdoc-parser 2.3 as Rector's `BetterPhpDocParser` runs it, where the name handling needs it token by token: the
-//! lexer with its token types, `TokenIterator` (and `BetterTokenIterator`), the children `parseWithNode()` reads with
-//! their `START_AND_END`, the Doctrine tag values (`parseDoctrineTagValue()` and the description after one), and
-//! Rector's `StaticDoctrineAnnotationParser` with its `PlainValueParser` and `ArrayParser`, which read an annotation's
-//! arguments into the `ArrayItemNode`s Rector prints.
-//!
-//! A tag in `parseTagValue()`'s list (`@param`, `@method`...) is left to the caller ([`Value::Known`]): only where it
-//! ends is read here.
-
 use std::sync::OnceLock;
 
-/// `Lexer::TOKEN_*`.
 pub(crate) mod t {
     pub(crate) const REFERENCE: u8 = 0;
     pub(crate) const UNION: u8 = 1;
@@ -51,7 +41,6 @@ pub(crate) mod t {
     pub(crate) const COMMENT: u8 = 37;
 }
 
-/// `Lexer::generateRegexp()`'s alternatives in order (PCRE alternation: the first that matches wins).
 const PATTERNS: &[(u8, &str)] = &[
     (t::HORIZONTAL_WS, r"[\x09\x20]++"),
     (
@@ -104,7 +93,6 @@ const PATTERNS: &[(u8, &str)] = &[
     (t::OTHER, r"(?:(?!\*/)[^\s])++"),
 ];
 
-/// A token: its type and its bytes `[start, end)` of the lexed text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Tok {
     pub ty: u8,
@@ -112,8 +100,6 @@ pub(crate) struct Tok {
     pub end: usize,
 }
 
-/// `Lexer::tokenize()`: the tokens, then `TOKEN_END`. Like `preg_match_all` with the `A` modifier, lexing stops at the
-/// first byte no alternative matches (a lone `\r`, a vertical tab).
 pub(crate) fn tokenize(input: &str) -> Vec<Tok> {
     static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re = RE.get_or_init(|| {
@@ -150,13 +136,11 @@ pub(crate) fn tokenize(input: &str) -> Vec<Tok> {
     tokens
 }
 
-/// A parse error (`ParserException`).
 #[derive(Debug)]
 pub(crate) struct Fail;
 
 type Parsed<T> = Result<T, Fail>;
 
-/// `TokenIterator` with `BetterTokenIterator`'s additions.
 pub(crate) struct Iter<'a> {
     text: &'a str,
     toks: &'a [Tok],
@@ -184,12 +168,10 @@ impl<'a> Iter<'a> {
         self.toks.get(i)
     }
 
-    /// `currentTokenType()`; past the end (where PHP reads `null`), `TOKEN_END`'s.
     pub(crate) fn ty(&self) -> u8 {
         self.token(self.index).map_or(t::END, |t| t.ty)
     }
 
-    /// `currentTokenValue()`; past the end, `""`.
     pub(crate) fn value(&self) -> &'a str {
         self.token(self.index)
             .map_or("", |t| &self.text[t.start..t.end])
@@ -254,7 +236,6 @@ impl<'a> Iter<'a> {
         self.index > 0 && self.toks[self.index - 1].ty == t::HORIZONTAL_WS
     }
 
-    /// `getSkippedHorizontalWhiteSpaceIfAny()`.
     fn skipped_ws(&self) -> &'a str {
         match self.preceded_by_ws() {
             true => {
@@ -265,7 +246,6 @@ impl<'a> Iter<'a> {
         }
     }
 
-    /// `joinUntil()`.
     fn join_until(&mut self, types: &[u8]) -> String {
         let mut joined = String::new();
         while !types.contains(&self.ty()) {
@@ -287,7 +267,6 @@ impl<'a> Iter<'a> {
         self.index = self.saves.pop().unwrap_or_default();
     }
 
-    /// `BetterTokenIterator::isNextTokenType()`.
     pub(crate) fn is_next(&mut self, types: &[u8]) -> bool {
         if self.index + 1 >= self.toks.len() {
             return false;
@@ -299,13 +278,11 @@ impl<'a> Iter<'a> {
         types.contains(&next)
     }
 
-    /// `getDetectedNewline() ?? "\n"`.
     fn newline(&self) -> &'static str {
         self.newline.unwrap_or("\n")
     }
 }
 
-/// A child of the doc as `BetterPhpDocParser::parseWithNode()` reads it, with its `START_AND_END`.
 #[derive(Clone, Debug)]
 pub(crate) struct RawChild {
     pub start: usize,
@@ -315,28 +292,21 @@ pub(crate) struct RawChild {
 
 #[derive(Clone, Debug)]
 pub(crate) enum Kind {
-    /// `PhpDocTextNode`.
     Text(String),
-    /// `PhpDocTagNode`: the tag's name as `resolveTag()` joins it, and its value.
     Tag { name: String, value: Value },
 }
 
 #[derive(Clone, Debug)]
 pub(crate) enum Value {
-    /// A tag in `parseTagValue()`'s list, which the caller reads.
     Known,
-    /// `GenericTagValueNode`: its value, runs of line breaks made one (`MULTI_NEW_LINES_REGEX`).
     Generic(String),
-    /// `DoctrineTagValueNode`: the arguments as phpdoc-parser prints them, and the description.
     Doctrine {
         args: Vec<Printed>,
         description: String,
     },
-    /// `InvalidTagValueNode`: the description read after it.
     Invalid(String),
 }
 
-/// The tags `PhpDocParser::parseTagValue()` gives a value node of their own.
 const KNOWN: &[&str] = &[
     "@param",
     "@phpstan-param",
@@ -432,8 +402,6 @@ const KNOWN: &[&str] = &[
     "@psalm-param-out",
 ];
 
-/// The doc parser: the doc's text and tokens, and `type_end`, which reads a type from a byte of the text (to the end
-/// of its line) and gives where it ends, or where phpdoc-parser's `TypeParser` throws.
 pub(crate) struct DocParser<'a> {
     pub iter: Iter<'a>,
     type_end: &'a dyn Fn(usize) -> Result<usize, usize>,
@@ -451,7 +419,6 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    /// `BetterPhpDocParser::parseWithNode()` before the decorators, and the position it stops at.
     pub(crate) fn parse_with_node(&mut self) -> Vec<RawChild> {
         let it = &mut self.iter;
         it.try_consume(t::OPEN_PHPDOC);
@@ -467,7 +434,6 @@ impl<'a> DocParser<'a> {
         children
     }
 
-    /// `parseChildAndStoreItsPositions()`: a child that throws is an empty text.
     fn parse_child_and_store_its_positions(&mut self) -> RawChild {
         let start = self.iter.index;
         let kind = self
@@ -480,7 +446,6 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    /// `PhpDocParser::parseChild()`.
     fn parse_child(&mut self) -> Parsed<Kind> {
         if self.iter.is(&[t::PHPDOC_TAG]) {
             return Ok(self.parse_tag());
@@ -497,7 +462,6 @@ impl<'a> DocParser<'a> {
         Ok(Kind::Text(self.parse_text()))
     }
 
-    /// `BetterPhpDocParser::parseTag()`: `resolveTag()` joins an identifier written right after the tag's name.
     fn parse_tag(&mut self) -> Kind {
         let mut name = self.iter.value().to_string();
         self.iter.next();
@@ -509,7 +473,6 @@ impl<'a> DocParser<'a> {
         Kind::Tag { name, value }
     }
 
-    /// `parseTagValue()`: where a value of a tag in its list ends, and the value of any other tag.
     fn parse_tag_value(&mut self, tag: &str) -> Value {
         self.iter.push();
         let parsed = match tag {
@@ -548,7 +511,6 @@ impl<'a> DocParser<'a> {
         }
     }
 
-    /// `parseTypeAliasTagValue()`: a type the line ends after, else the description read where the type stops.
     fn parse_type_alias(&mut self) -> Parsed<()> {
         self.iter.consume(t::IDENTIFIER)?;
         self.iter.try_consume(t::EQUAL);
@@ -562,12 +524,10 @@ impl<'a> DocParser<'a> {
         if end.is_ok() && self.iter.is(&[t::CLOSE_PHPDOC, t::PHPDOC_EOL]) {
             return Ok(());
         }
-        // the `ParserException`, at the token it throws at: `parseOptionalDescription()`
         self.parse_text();
         Ok(())
     }
 
-    /// `parseTypeAliasImportTagValue()`.
     fn parse_type_alias_import(&mut self) -> Parsed<()> {
         self.iter.consume(t::IDENTIFIER)?;
         if !(self.iter.ty() == t::IDENTIFIER && self.iter.try_consume_value("from")) {
@@ -580,7 +540,6 @@ impl<'a> DocParser<'a> {
         Ok(())
     }
 
-    /// `parseText()`.
     pub(crate) fn parse_text(&mut self) -> String {
         let it = &mut self.iter;
         let ends = [t::CLOSE_PHPDOC, t::END];
@@ -593,7 +552,6 @@ impl<'a> DocParser<'a> {
                 it.join_until(&[t::PHPDOC_EOL, t::CLOSE_PHPDOC, t::END])
             );
             text.push_str(&piece);
-            // (at a line break or the `*/` a doc ends with: phpdoc-parser's stop at the end never comes)
             if !savepoint {
                 it.push();
                 savepoint = true;
@@ -617,7 +575,6 @@ impl<'a> DocParser<'a> {
         text.trim_matches([' ', '\t']).to_string()
     }
 
-    /// `parseOptionalDescriptionAfterDoctrineTag()`.
     fn parse_optional_description_after_doctrine_tag(&mut self) -> String {
         let ends = [t::CLOSE_PHPDOC, t::END];
         let mut text = String::new();
@@ -696,20 +653,17 @@ impl<'a> DocParser<'a> {
         text.trim_matches([' ', '\t']).to_string()
     }
 
-    /// `parseDoctrineTagValue()`: the arguments as phpdoc-parser prints them, and the description.
     fn parse_doctrine_tag_value(&mut self) -> Parsed<(Vec<Printed>, String)> {
         let args = parse_doctrine_arguments(&mut self.iter, false)?;
         Ok((args, self.parse_optional_description_after_doctrine_tag()))
     }
 }
 
-/// `StringUnescaper::unescapeString()` of the string token `token`, its quotes included.
 pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
     let inner = &token[1..token.len() - 1];
     if token.starts_with('\'') {
         return inner.replace("\\\\", "\\").replace("\\'", "'").into_bytes();
     }
-    // `parseEscapeSequences()`
     static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re = RE.get_or_init(|| {
         pcre2::bytes::Regex::new(
@@ -742,7 +696,6 @@ pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
             b'v' => out.push(0x0b),
             b'e' => out.push(0x1b),
             b'x' | b'X' => out.push(number(&escape[1..], 16) as u8),
-            // `codePointToUtf8()`
             b'u' => {
                 let n = number(group(2), 16);
                 match n {
@@ -762,7 +715,6 @@ pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
                     _ => out.extend("\u{fffd}".as_bytes()),
                 }
             }
-            // `chr(octdec())`, modulo 256
             _ => out.push(number(escape, 8) as u8),
         }
         last = whole.end();
@@ -771,9 +723,6 @@ pub(crate) fn unescape_string(token: &str) -> Vec<u8> {
     out
 }
 
-/// `ConstExprStringNode::__toString()` of `value`, the string `written`: single-quoted with `addcslashes($value,
-/// '\'\\')`, else `escapeDoubleQuotedString()`. `None` where that leaves bytes that are no UTF-8 (a `\u{...}` escape
-/// of a surrogate or beyond U+10FFFF, which the regex lets through).
 pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
     if written.starts_with('\'') {
         let value = String::from_utf8_lossy(value);
@@ -782,7 +731,6 @@ pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
             value.replace('\\', "\\\\").replace('\'', "\\'")
         ));
     }
-    // `addcslashes($value, "\n\r\t\f\v\$\"\\")`
     let mut escaped = Vec::new();
     for &b in value {
         match b {
@@ -795,7 +743,6 @@ pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
             _ => escaped.push(b),
         }
     }
-    // control characters and bytes that are no UTF-8, each as `\xhh`
     static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re = RE.get_or_init(|| {
         pcre2::bytes::RegexBuilder::new()
@@ -830,7 +777,6 @@ pub(crate) fn print_string(value: &[u8], written: &str) -> Option<String> {
     String::from_utf8(out).ok().map(|out| format!("\"{out}\""))
 }
 
-/// `MULTI_NEW_LINES_REGEX`: a run of two or more line breaks made its last one.
 fn collapse_newlines(value: &str) -> String {
     static RE: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let re =
@@ -838,7 +784,6 @@ fn collapse_newlines(value: &str) -> String {
     replace_all(re, value, |caps| caps[caps.len() - 1].to_string())
 }
 
-/// `preg_replace_callback()` with `re`, `f` given the match and its groups.
 pub(crate) fn replace_all(
     re: &pcre2::bytes::Regex,
     value: &str,
@@ -859,8 +804,6 @@ pub(crate) fn replace_all(
     out
 }
 
-/// A Doctrine argument, array item or value as phpdoc-parser prints it: its pieces, each with whether it is an
-/// `IdentifierTypeNode` (a key, or a value that is a bare name).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct Printed(pub Vec<(String, bool)>);
 
@@ -873,14 +816,12 @@ impl Printed {
         Printed(vec![(name.to_string(), true)])
     }
 
-    /// `self`, then `separator` and `other`.
     fn then(mut self, separator: &str, other: Printed) -> Printed {
         self.0.push((separator.to_string(), false));
         self.0.extend(other.0);
         self
     }
 
-    /// `implode(', ', $items)` between `open` and `close`.
     fn wrap(open: &str, items: Vec<Printed>, close: &str) -> Printed {
         let mut printed = Printed::text(open);
         for (i, item) in items.into_iter().enumerate() {
@@ -896,7 +837,6 @@ impl std::fmt::Display for Printed {
     }
 }
 
-/// `parseDoctrineArguments()`.
 fn parse_doctrine_arguments(it: &mut Iter<'_>, deep: bool) -> Parsed<Vec<Printed>> {
     if !it.is(&[t::OPEN_PARENTHESES]) {
         return Ok(Vec::new());
@@ -928,7 +868,6 @@ fn parse_doctrine_arguments(it: &mut Iter<'_>, deep: bool) -> Parsed<Vec<Printed
     Ok(arguments)
 }
 
-/// `parseDoctrineArgument()`.
 fn parse_doctrine_argument(it: &mut Iter<'_>) -> Parsed<Printed> {
     if !it.is(&[t::IDENTIFIER]) {
         return parse_doctrine_argument_value(it);
@@ -951,7 +890,6 @@ fn parse_doctrine_argument(it: &mut Iter<'_>) -> Parsed<Printed> {
     }
 }
 
-/// `parseDoctrineArgumentValue()`, printed.
 fn parse_doctrine_argument_value(it: &mut Iter<'_>) -> Parsed<Printed> {
     if it.is(&[t::PHPDOC_TAG, t::DOCTRINE_TAG]) {
         let name = it.value().to_string();
@@ -989,7 +927,6 @@ fn parse_doctrine_argument_value(it: &mut Iter<'_>) -> Parsed<Printed> {
     }
 }
 
-/// `parseDoctrineArrayItem()`.
 fn parse_doctrine_array_item(it: &mut Iter<'_>) -> Parsed<Printed> {
     it.push();
     let keyed = parse_doctrine_array_key(it).and_then(|key| {
@@ -1010,7 +947,6 @@ fn parse_doctrine_array_item(it: &mut Iter<'_>) -> Parsed<Printed> {
     }
 }
 
-/// `parseDoctrineArrayKey()`, printed.
 fn parse_doctrine_array_key(it: &mut Iter<'_>) -> Parsed<Printed> {
     let value = it.value().to_string();
     match it.ty() {
@@ -1024,7 +960,6 @@ fn parse_doctrine_array_key(it: &mut Iter<'_>) -> Parsed<Printed> {
         }
         t::SINGLE_QUOTED_STRING => {
             it.next();
-            // `ConstExprStringNode` single-quoted: `StringUnescaper::unescapeString()`, printed with `addcslashes()`
             let unescaped = value[1..value.len() - 1]
                 .replace("\\\\", "\\")
                 .replace("\\'", "'");
@@ -1050,15 +985,12 @@ fn parse_doctrine_array_key(it: &mut Iter<'_>) -> Parsed<Printed> {
     }
 }
 
-/// A `ConstExprNode`, printed: a `ConstFetchNode` with a class, an array, or any other.
 enum Const {
     Printed(String),
     Fetch(String),
     Array,
 }
 
-/// `ConstExprParser::parse()` with Doctrine strings, printed (a `ConstFetchNode` is the only node an identifier
-/// followed by `::` gives here).
 fn parse_const_expr(it: &mut Iter<'_>) -> Parsed<Const> {
     let value = it.value().to_string();
     match it.ty() {
@@ -1115,7 +1047,6 @@ fn parse_const_expr(it: &mut Iter<'_>) -> Parsed<Const> {
     }
 }
 
-/// `ConstExprParser::parseArray()`: its items `expr` or `expr => expr`.
 fn parse_const_array(it: &mut Iter<'_>, end: u8) -> Parsed<Const> {
     if !it.try_consume(end) {
         loop {
@@ -1132,7 +1063,6 @@ fn parse_const_array(it: &mut Iter<'_>, end: u8) -> Parsed<Const> {
     Ok(Const::Array)
 }
 
-/// `parseDoctrineString()`: the strings that follow joined, as a `DoctrineConstExprStringNode` prints.
 fn parse_doctrine_string(it: &mut Iter<'_>, mut text: String) -> String {
     while it.is(&[t::DOUBLE_QUOTED_STRING, t::DOCTRINE_ANNOTATION_STRING]) {
         text.push_str(it.value());
@@ -1142,41 +1072,29 @@ fn parse_doctrine_string(it: &mut Iter<'_>, mut text: String) -> String {
     format!("\"{}\"", unescaped.replace('"', "\"\""))
 }
 
-/// A value of `ArrayItemNode` (or its key) as Rector's annotation parsers make it.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Val {
-    /// A PHP string, printed as it is.
     Str(String),
-    /// `StringNode`: printed in `"..."`, a `"` doubled.
     StringNode(String),
-    /// `null`, printed empty.
     Null,
-    /// `ConstExprTrueNode`, `ConstExprFalseNode`, `ConstExprIntegerNode`: printed.
     Const(String),
-    /// `CurlyListNode`.
     Curly(Vec<ArrayItem>),
-    /// A PHP array of `ArrayItemNode`s, printed one after the other.
     List(Vec<ArrayItem>),
-    /// A nested `DoctrineAnnotationTagValueNode`.
     Annotation(Box<Nested>),
 }
 
-/// A key of `ArrayItemNode`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Key {
-    /// An integer key, never printed.
     Int(i64),
     Val(Val),
 }
 
-/// `ArrayItemNode`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ArrayItem {
     pub key: Option<Key>,
     pub value: Val,
 }
 
-/// A nested `DoctrineAnnotationTagValueNode`: its identifier, the class it resolves to, its values.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Nested {
     pub identifier: String,
@@ -1185,7 +1103,6 @@ pub(crate) struct Nested {
 }
 
 impl ArrayItem {
-    /// `AbstractValuesAwareNode::isValueKeyEquals()`.
     pub(crate) fn key_is(&self, key: &str) -> bool {
         matches!(&self.key, Some(Key::Val(Val::StringNode(k) | Val::Str(k))) if k == key)
     }
@@ -1197,10 +1114,8 @@ impl std::fmt::Display for Val {
             Val::Str(s) | Val::Const(s) => f.write_str(s),
             Val::StringNode(s) => write!(f, "\"{}\"", s.replace('"', "\"\"")),
             Val::Null => Ok(()),
-            // `CurlyListNode::implode()`
             Val::Curly(items) => write!(f, "{{{}}}", join(items)),
             Val::List(items) => items.iter().try_for_each(|item| write!(f, "{item}")),
-            // `ArrayItemNode::__toString()` of a nested annotation
             Val::Annotation(nested) => {
                 write!(f, "@{}", nested.identifier.trim_start_matches('@'))?;
                 match nested.values.is_empty() {
@@ -1221,7 +1136,6 @@ impl std::fmt::Display for ArrayItem {
     }
 }
 
-/// The items joined by `, ` (`printValuesContent()`, `CurlyListNode::implode()`).
 pub(crate) fn join(items: &[ArrayItem]) -> String {
     items
         .iter()
@@ -1230,15 +1144,9 @@ pub(crate) fn join(items: &[ArrayItem]) -> String {
         .join(", ")
 }
 
-/// Why Rector's annotation parsers give no values: PHP throws (an object as an array key), or never returns (a
-/// string left open).
 #[derive(Debug)]
 pub(crate) struct Unparsable;
 
-/// Whether an annotation's content holds a single-quoted string as a value: Rector 2.8.4 reads the arguments with
-/// phpdoc-parser's Doctrine parser (rector-src 9a6fdb061a), whose `parseDoctrineArgumentValue()` refuses one, and the
-/// tag stays as it is (tests/rector/AnnotationToAttributeRector/Fixture/skip_single_quoted_*). `parseDoctrineArrayKey()`
-/// takes one as the key of a `{...}` item, so `{'a'=1}` is read.
 pub(crate) fn has_single_quoted(content: &str) -> bool {
     let toks: Vec<Tok> = tokenize(content)
         .into_iter()
@@ -1270,8 +1178,6 @@ pub(crate) fn has_single_quoted(content: &str) -> bool {
     false
 }
 
-/// Rector's `StaticDoctrineAnnotationParser` on the annotation content `content`; `resolve_tag` is
-/// `ClassAnnotationMatcher::resolveTagFullyQualifiedName()`, for the nested annotations.
 pub(crate) fn annotation_values(
     content: &str,
     resolve_tag: &dyn Fn(&str) -> String,
@@ -1289,13 +1195,11 @@ struct Static<'a, 'r> {
     resolve_tag: &'r dyn Fn(&str) -> String,
 }
 
-/// A value `resolveAnnotationValue()` gives: one value, or a key and its value.
 enum Resolved {
     Value(Val),
     Keyed(Val, Val),
 }
 
-/// A PHP array key.
 #[derive(Clone, PartialEq)]
 enum PhpKey {
     Int(i64),
@@ -1303,7 +1207,6 @@ enum PhpKey {
 }
 
 impl Static<'_, '_> {
-    /// `resolveAnnotationMethodCall()`.
     fn resolve_annotation_method_call(&mut self) -> Result<Vec<ArrayItem>, Unparsable> {
         if !self.it.is(&[t::OPEN_PARENTHESES]) {
             return Ok(Vec::new());
@@ -1315,19 +1218,16 @@ impl Static<'_, '_> {
         self.resolve_annotation_values()
     }
 
-    /// `resolveAnnotationValue()`.
     fn resolve_annotation_value(&mut self) -> Result<Resolved, Unparsable> {
         self.it.try_consume(t::PHPDOC_EOL);
         if !self.it.is_next(&[t::EQUAL]) {
             return Ok(Resolved::Value(self.parse_value()?));
         }
         let key = self.parse_value()?;
-        // `consumeTokenType(TOKEN_EQUAL)`: the key's parse may stop elsewhere, and PHP throws
         self.it.consume(t::EQUAL).map_err(|_| Unparsable)?;
         Ok(Resolved::Keyed(key, self.parse_value()?))
     }
 
-    /// `resolveAnnotationValues()`: the values in a PHP array, `array_merge()`d, then `createArrayFromValues()`.
     fn resolve_annotation_values(&mut self) -> Result<Vec<ArrayItem>, Unparsable> {
         let mut values: Vec<(PhpKey, Val)> = Vec::new();
         let first = self.resolve_annotation_value()?;
@@ -1356,7 +1256,6 @@ impl Static<'_, '_> {
             .collect())
     }
 
-    /// `StaticDoctrineAnnotationParser::parseValue()`.
     fn parse_value(&mut self) -> Result<Val, Unparsable> {
         if self.it.is(&[t::OPEN_CURLY_BRACKET]) {
             return Ok(Val::Curly(self.parse_curly_array()?));
@@ -1364,7 +1263,6 @@ impl Static<'_, '_> {
         self.parse_plain_value()
     }
 
-    /// `PlainValueParser::parseValue()`.
     fn parse_plain_value(&mut self) -> Result<Val, Unparsable> {
         let current = self.it.value().to_string();
         if self.it.is(&[t::END]) {
@@ -1381,15 +1279,11 @@ impl Static<'_, '_> {
         if self.it.is(&[t::OPEN_PARENTHESES]) {
             return self.parse_nested_annotation(current);
         }
-        // a lone `"`: Rector looks for the closing quote past the end and never returns
         (current != "\"").then_some(()).ok_or(Unparsable)?;
         Ok(Val::Str(current))
     }
 
-    /// `parseStringValue()`.
     fn parse_string_value(&mut self, mut current: String) -> Result<String, Unparsable> {
-        // `parseMultilineOrWhiteSpacedString()` on a `"` that no `"` closes: the lexer reads a string to the next `"` in
-        // the doc, so none follows, and Rector reads past the end and never returns
         if current.starts_with('"') && !current.ends_with('"') {
             return Err(Unparsable);
         }
@@ -1400,7 +1294,6 @@ impl Static<'_, '_> {
         Ok(current)
     }
 
-    /// `parseNestedDoctrineAnnotationTagValueNode()`.
     fn parse_nested_annotation(&mut self, name: String) -> Result<Val, Unparsable> {
         let values = self.resolve_annotation_method_call()?;
         let class = (self.resolve_tag)(&name);
@@ -1415,7 +1308,6 @@ impl Static<'_, '_> {
         })))
     }
 
-    /// `ArrayParser::parseCurlyArray()`.
     fn parse_curly_array(&mut self) -> Result<Vec<ArrayItem>, Unparsable> {
         let mut values = Vec::new();
         self.it.next();
@@ -1442,7 +1334,6 @@ impl Static<'_, '_> {
         Ok(values
             .into_iter()
             .map(|(key, value)| {
-                // `createArrayFromValues()`: an integer node's key is its value, a string
                 let key = key.map(|k| match k {
                     Val::Const(c) if c != "true" && c != "false" => Key::Val(Val::Str(c)),
                     k => Key::Val(k),
@@ -1452,7 +1343,6 @@ impl Static<'_, '_> {
             .collect())
     }
 
-    /// `ArrayParser::resolveArrayItem()`.
     fn resolve_array_item(&mut self) -> Result<(Option<Val>, Val), Unparsable> {
         self.it.try_consume(t::PHPDOC_EOL);
         let mut key = None;
@@ -1485,8 +1375,6 @@ impl Static<'_, '_> {
     }
 }
 
-/// `array_merge($values, [$key => $value])` or `$values[] = $value`: a string key already there keeps its place and
-/// takes the new value, integer keys are numbered again; an object key throws.
 fn merge(values: &mut Vec<(PhpKey, Val)>, resolved: Resolved) -> Result<(), Unparsable> {
     let next = values
         .iter()
@@ -1494,7 +1382,6 @@ fn merge(values: &mut Vec<(PhpKey, Val)>, resolved: Resolved) -> Result<(), Unpa
         .count() as i64;
     let (key, value) = match resolved {
         Resolved::Value(value) => (PhpKey::Int(next), value),
-        // (an integer string is a `ConstExprIntegerNode` already, which `matchConstantValue()` gives)
         Resolved::Keyed(Val::Str(key), value) => (PhpKey::Str(key), value),
         Resolved::Keyed(..) => return Err(Unparsable),
     };
@@ -1508,13 +1395,11 @@ fn merge(values: &mut Vec<(PhpKey, Val)>, resolved: Resolved) -> Result<(), Unpa
     Ok(())
 }
 
-/// The integer a PHP array key `key` is cast to: a decimal integer written as PHP prints it.
 fn php_int_key(key: &str) -> Option<i64> {
     let n: i64 = key.parse().ok()?;
     (n.to_string() == key).then_some(n)
 }
 
-/// `matchConstantValue()`.
 fn match_constant_value(value: &str) -> Option<Val> {
     match value.to_ascii_lowercase().as_str() {
         "false" => return Some(Val::Const("false".into())),
@@ -1524,13 +1409,11 @@ fn match_constant_value(value: &str) -> Option<Val> {
     php_int_key(value).map(|_| Val::Const(value.to_string()))
 }
 
-/// `createArrayItemFromKeyAndValue()`.
 fn create_array_item(key: Option<Key>, value: Val) -> ArrayItem {
     let quoted = |v: &str, q: char| v.len() >= 2 && v.starts_with(q) && v.ends_with(q);
     let value = match value {
         Val::Str(v) if quoted(&v, '"') => Val::StringNode(v[1..v.len() - 1].replace("\"\"", "\"")),
         Val::Str(v) if quoted(&v, '\'') => Val::Str(v.trim_matches('\'').to_string()),
-        // (`true` and `false` are `ConstExpr` nodes already)
         Val::Str(v) if v.eq_ignore_ascii_case("null") => Val::Null,
         value => value,
     };

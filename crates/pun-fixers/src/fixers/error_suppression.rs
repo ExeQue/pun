@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\ErrorSuppressionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -93,7 +92,6 @@ impl Fixer for ErrorSuppressionFixer {
                 start_index = prev_index;
                 prev_index = tokens.get_prev_meaningful_token(start_index).unwrap();
             }
-            // `$index = $prevIndex;` then the loop's `--$index`.
             index = prev_index as isize - 1;
             if Self::is_deprecation_error_call(tokens, function_index) {
                 if !self.mute_deprecation_error || tokens[prev_index].equals("@", true) {

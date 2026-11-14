@@ -1,8 +1,3 @@
-//! `pun update`, `pun require` and `pun remove`: resolve the dependencies again (all of them, or the packages named,
-//! with Composer's partial-update rules), write pun.lock, then install it as `pun install` does. `require` and
-//! `remove` edit pun.toml in memory and write it only once the new requirements resolve; when the install after
-//! fails, both files are put back.
-
 use crate::install::{InstallArgs, Project, fetcher, install_locked, project};
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
@@ -147,7 +142,6 @@ pub(crate) fn update_and_install(
         Err(problems) => return Ok(print_problems(&problems)),
     };
     let lock = locker::lock(&resolution, &project.manifest, &options);
-    // The resolve read tens of thousands of versions; free them on another thread while this one installs.
     std::thread::spawn(move || drop(resolution));
     finish(project, &plan, a, started, lock, None)
 }
@@ -261,7 +255,6 @@ fn finish(
     if let Some(e) = &edit {
         write(&e.path, &e.text)?;
     }
-    // pun.lock is TOML, which has no null: take it through composer.lock's reader, which drops them.
     let text = Lock::from_composer_lock(&lock.to_composer_lock())?.to_toml();
     write(&lock_path, &text)?;
     let result = if plan.resolve.no_install {
@@ -534,7 +527,6 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         return Ok(0);
     }
     let mut names: Vec<String> = pairs.iter().map(|(n, _)| n.to_ascii_lowercase()).collect();
-    // A member's requirements changed, so the member's own locked entry changes too.
     names.extend(target.member.clone());
     let plan = Plan {
         allow_list: if project.lock.is_some() {
@@ -552,8 +544,6 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         Ok(r) => r,
         Err(code) => return Ok(code),
     };
-    // Composer resolves a package named without a version at `*`, then writes the constraint for what it found
-    // and updates the lock's hash and stability flags to match.
     let mut lock = locker::lock(&resolution, &project.manifest, &options);
     let mut picked = vec![];
     for (name, version) in &pairs {
@@ -576,7 +566,6 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     }
     if !picked.is_empty() {
         if target.member.is_some() {
-            // The member's locked entry holds its requirements, so resolve again with the constraints written.
             target.apply(&mut project, &text)?;
             let (resolution, options) = match resolve_edit(&project, &plan, &a.install, &target)? {
                 Ok(r) => r,

@@ -1,5 +1,3 @@
-//! `PhpCsFixer\DocBlock\ShortDescription`.
-
 use super::DocBlock;
 
 pub(crate) struct ShortDescription<'a> {

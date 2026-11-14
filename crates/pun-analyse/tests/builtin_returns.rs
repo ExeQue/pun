@@ -1,6 +1,3 @@
-//! Built-in functions' return types from PHPStan 2.3.5 (fixtures/builtin-returns/phpstan.neon): min()/max(), the
-//! functionMap's integer ranges and non-empty strings, and array_column() with a union of constant keys.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,8 +1,3 @@
-//! What `vendor/composer/` says is installed: `installed.json` (each package's lock entry with where it went) and
-//! `installed.php` (the versions `Composer\InstalledVersions` answers with), written as Composer 2 writes them. The
-//! root package's version is guessed the way Composer guesses it: `COMPOSER_ROOT_VERSION`, the manifest's `version`,
-//! then the project's git branch.
-
 use crate::paths::shortest;
 use crate::php::{export_str, json_pretty};
 use crate::version::{branch_alias, is_platform, normalize, normalize_branch};
@@ -16,7 +11,6 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::LazyLock;
 
-/// The order Composer's `ArrayDumper` writes a package's keys in, with `install-path` added last.
 const ORDER: [&str; 37] = [
     "name",
     "version",
@@ -57,17 +51,14 @@ const ORDER: [&str; 37] = [
     "install-path",
 ];
 
-/// One installed package: its lock entry and where it is.
 #[derive(Debug, Clone)]
 pub struct Installed {
     pub package: Map<String, Value>,
-    /// Absolute and normalized; `None` for a metapackage, which installs no files.
     pub path: Option<String>,
     pub dev: bool,
 }
 
 impl Installed {
-    /// The lowercase name Composer keys packages by.
     pub fn name(&self) -> String {
         self.package["name"]
             .as_str()
@@ -75,7 +66,6 @@ impl Installed {
             .to_ascii_lowercase()
     }
 
-    /// The reference installed: the dist's, else the source's.
     pub fn reference(&self) -> Option<&str> {
         let get = |k: &str| {
             self.package
@@ -92,7 +82,6 @@ impl Installed {
     }
 }
 
-/// The root package as `installed.php` describes it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Root {
     pub name: String,
@@ -103,7 +92,6 @@ pub struct Root {
     pub aliases: Vec<String>,
 }
 
-/// The root package from the manifest (composer.json's shape) in `dir`.
 pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
     let name = manifest
         .get("name")
@@ -143,7 +131,6 @@ pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
     }
 }
 
-/// `VersionGuesser::getRootVersionFromEnv`: `COMPOSER_ROOT_VERSION`, with `1.2-dev` read as `1.2.x-dev`.
 pub(crate) fn root_version_from_env() -> Option<String> {
     static DEV: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?i)^(\d+(?:\.\d+)*)-dev$").unwrap());
@@ -156,18 +143,14 @@ pub(crate) fn root_version_from_env() -> Option<String> {
     })
 }
 
-/// A version guessed from git.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct GitVersion {
     pub pretty: String,
     pub version: String,
     pub commit: Option<String>,
-    /// A feature branch's own version (pretty, normalized), when it took another branch's version.
     pub feature: Option<(String, String)>,
 }
 
-/// `VersionGuesser::guessGitVersion`: the checked-out branch as `dev-<branch>` (a feature branch takes the version
-/// of the nearest non-feature branch), a detached HEAD as `dev-<commit>` or its exact tag.
 pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<GitVersion> {
     let git = |args: &[&str]| -> Option<String> {
         let out = Command::new("git")
@@ -271,7 +254,6 @@ pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<G
     let feature = feature_version
         .filter(|(v, p)| *v != version || *p != pretty)
         .map(|(v, p)| (x_dev(&v, p), v));
-    // A version means `git branch` listed the checked-out commit (a tag needs one), so the commit is known.
     Some(GitVersion {
         pretty: x_dev(&version, pretty),
         version,
@@ -280,7 +262,6 @@ pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<G
     })
 }
 
-/// `postprocess`: a normalized `1.9999999.9999999.9999999-dev` reads as `1.x-dev`.
 fn x_dev(version: &str, pretty: String) -> String {
     if version.ends_with("-dev") && version.contains(".9999999") {
         return crate::version::branch_alias(
@@ -312,8 +293,6 @@ fn is_feature_branch(manifest: &Map<String, Value>, branch: &str) -> bool {
     !Regex::new(&pattern).is_ok_and(|r| r.is_match(branch.as_bytes()).unwrap_or(false))
 }
 
-/// `installed.json`: every package with its normalized version, how it was installed and its path from
-/// `vendor/composer`, sorted by name.
 pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> String {
     let repo = format!("{vendor}/composer");
     let mut entries: Vec<(String, Value)> = (packages.iter())
@@ -338,7 +317,6 @@ pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> S
                     ordered.insert(k.into(), v);
                 }
             }
-            // Keys Composer doesn't dump are left out, as Composer drops them on load.
             (
                 p.package["name"].as_str().unwrap_or_default().to_string(),
                 Value::Object(ordered),
@@ -360,7 +338,6 @@ pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> S
     format!("{}\n", json_pretty(&json))
 }
 
-/// One package's entry in `installed.php`, as (key, value) in Composer's order.
 #[derive(Default)]
 struct Entry {
     fields: Vec<(&'static str, Php)>,
@@ -373,11 +350,9 @@ enum Php {
     Null,
     Bool(bool),
     List(Vec<String>),
-    /// An install path: `__DIR__ . '/<path>'` when relative.
     Path(Option<String>),
 }
 
-/// `installed.php`: the root package, then every package, replaced and provided name with its versions.
 pub fn installed_php(
     root: &Root,
     packages: &[Installed],
@@ -448,7 +423,6 @@ pub fn installed_php(
         root.aliases.clone(),
         false,
     );
-    // Replaced and provided names, the root's last.
     let links = (packages.iter())
         .map(|p| {
             (
@@ -538,7 +512,6 @@ pub fn installed_php(
     out
 }
 
-/// `appendPhpCode` for one level of keys.
 fn fields(out: &mut String, fields: &mut [(&str, Php)], level: usize) {
     let pad = "    ".repeat(level);
     for (k, v) in fields.iter() {
@@ -565,7 +538,6 @@ fn fields(out: &mut String, fields: &mut [(&str, Php)], level: usize) {
     }
 }
 
-/// `installed.json` read back: the name and installed reference of each package, to tell what is already there.
 pub fn read_installed(vendor: &Path) -> Result<Vec<Map<String, Value>>> {
     let path = vendor.join("composer/installed.json");
     let Ok(text) = std::fs::read_to_string(&path) else {
@@ -597,7 +569,6 @@ mod tests {
         }
     }
 
-    /// Composer 1 wrote installed.json as a bare list; Composer 2 reads both shapes.
     #[test]
     fn reads_both_installed_json_shapes() {
         let d = std::env::temp_dir().join(format!("pun-read-installed-{}", std::process::id()));
@@ -618,10 +589,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// The versions Composer 2.11.2's `VersionGuesser::guessVersion` and `getRootVersionFromEnv` give for the same
-    /// repository, built the same way: main, a 2.x branch cut before main's second commit, a tag on main, an
-    /// `origin/main` remote with its HEAD, a feature branch one commit past main, and a `stable-1` branch that
-    /// `non-feature-branches` keeps from being guessed.
     #[test]
     fn root_version_matches_composer() {
         let d = std::env::temp_dir().join(format!("pun-root-version-{}", std::process::id()));
@@ -729,8 +696,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// The text Composer 2.11.2 writes for the same packages (a scratch project installed with `composer install`):
-    /// a library, a metapackage, a dev package whose branch alias lists, and the names they replace and provide.
     #[test]
     fn installed_files_match_composer() {
         let packages = [
@@ -787,7 +752,6 @@ mod tests {
             installed_php(&root, &packages, "/p/vendor", "/p", true),
             include_str!("../tests/fixtures/installed.php")
         );
-        // A package outside every shared directory but `/` keeps its absolute path (`dumpToPhpCode`).
         let elsewhere = [installed(
             json!({"name": "acme/far", "version": "1.0.0"}),
             Some("/opt/far"),

@@ -1,17 +1,3 @@
-//! `lint/dead-code/no-always-true-instanceof`, ported from Rector 2.8.4's `RemoveDeadInstanceOfRector`
-//! (rules/DeadCode/Rector/If_).
-//!
-//! An `if` without `elseif` or `else` whose condition is `$value instanceof SomeClass` where the value's native type
-//! is already that class (or a subclass of it) always runs: its statements take its place. `!$value instanceof
-//! SomeClass` never runs, so the `if` goes, and `$value instanceof SomeClass && $other` becomes `$other`. A value
-//! assigned in the condition (`($value = new SomeClass()) instanceof SomeClass`) stays as a statement before the
-//! `if`'s statements, negated or not. The value must be no property, call or `new`, and the `if` not in a trait; the
-//! class must be written as a name, and the native type one class (`$this`, a nullable type or a union are not).
-//!
-//! php-parser's printer decides the bytes: see [`super::stmt_splice`]. Under a node other than a function, method,
-//! closure or `foreach`, an `if` that is its list's only statement and becomes several stays (php-parser prints the
-//! node anew there).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
@@ -60,7 +46,6 @@ impl Rule for NoAlwaysTrueInstanceof {
     }
 }
 
-/// What `refactor()` does to the `if` statement `chain` ends with.
 fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) -> Option<Change> {
     let Node::Statement(Statement::If(r#if)) = chain[chain.len() - 1] else {
         return None;
@@ -88,7 +73,6 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
             {
                 return None;
             }
-            // `$if->cond = $booleanAnd->right`
             let right = node_span(unparenthesize(b.rhs));
             let edit = Edit::new(node_span(cond), &source[right.start..right.end]);
             return Some(Change::Edits(vec![edit]));
@@ -126,8 +110,6 @@ fn report(span: Span, edits: Vec<Edit>) -> Report {
     }
 }
 
-/// `isInstanceofTheSameType() === true`: `$value instanceof Name` where the value is no property, call or `new`,
-/// outside a trait, and the value's native type is one class that is the named class or a subclass of it.
 fn is_same_type(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],

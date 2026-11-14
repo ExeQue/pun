@@ -1,7 +1,3 @@
-//! `lint/types/add-getter-return-phpdoc`, ported from Rector 2.8.4's
-//! `DocblockGetterReturnArrayFromPropertyDocblockVarRector` (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a
-//! getter declared `: array` that returns `$this->property` gets the property's `@var` array type as `@return`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::docblock::{
@@ -53,7 +49,6 @@ impl Rule for AddGetterReturnPhpdoc {
             if is_useful_array_tag(info.return_tag().map(|t| &t.ty)) {
                 continue;
             }
-            // `GetterClassMethodPropertyFinder::find()`: the property, or else a promoted parameter of the constructor
             let Some(name) = returned_this_property(m) else {
                 continue;
             };
@@ -74,7 +69,6 @@ impl Rule for AddGetterReturnPhpdoc {
             let Some(var) = property_info.var_tag() else {
                 continue;
             };
-            // is type useful?
             if !matches!(
                 var.parsed,
                 Some(DocNode::Generic { .. } | DocNode::Array(_))

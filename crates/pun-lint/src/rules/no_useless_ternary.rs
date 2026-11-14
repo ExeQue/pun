@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-useless-ternary`, ported from Rector 2.8.4's `RemoveUselessTernaryRector`
-//! (rules/DeadCode/Rector/Ternary).
-//!
-//! `$b ?: false` on a `bool`, `$a ?: []` on an `array` and `$i ?: 0` on an `int` are the condition itself, and so are
-//! `$b ? $b : false` and `$b ? true : false`. Rector reads the condition's native type; Pun takes a `bool` from the
-//! syntax (`syntax_types::is_bool`) and an `array` or `int` from a parameter declared so and never written.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 

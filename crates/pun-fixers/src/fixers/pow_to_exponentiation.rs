@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\PowToExponentiationFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{FunctionReferenceFinder, IS_RISKY};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use pun_format::Fixer;
@@ -12,7 +11,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(PowToExponentiationFixer)
 }
 
-/// `getAllowedKinds`.
 const ALLOWED_KINDS: &[Kind] = &[
     T_DNUMBER,
     T_LNUMBER,
@@ -87,7 +85,7 @@ fn find_pow_calls(tokens: &Tokens) -> Vec<(usize, usize, usize)> {
         let Some(candidate) = finder.find("pow", tokens, i, Some(end)) else {
             break;
         };
-        i = candidate.1 + 1; // proceed to openParenthesisIndex
+        i = candidate.1 + 1;
         candidates.push(candidate);
     }
     candidates
@@ -100,7 +98,6 @@ fn fix_pow_to_exponentiation(
     close_parenthesis_index: usize,
     arguments: &[(usize, usize)],
 ) -> usize {
-    // `reset($arguments)`: the end of the first argument.
     let comma = tokens
         .get_next_token_of_kind(arguments[0].1, &[",".into()], true)
         .unwrap();
@@ -110,7 +107,7 @@ fn fix_pow_to_exponentiation(
         .get_prev_meaningful_token(close_parenthesis_index)
         .unwrap();
     if tokens[previous_index].equals(",", true) {
-        tokens.clear_at(previous_index); // trailing ',' in function call (PHP 7.3)
+        tokens.clear_at(previous_index);
     }
     let mut added = 0;
     for &(argument_start_index, argument_end_index) in arguments.iter().rev() {

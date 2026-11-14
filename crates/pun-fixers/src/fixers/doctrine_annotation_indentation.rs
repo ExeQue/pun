@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\DoctrineAnnotation\DoctrineAnnotationIndentationFixer`.
 use crate::analyzers::doctrine_annotation::{self as doctrine, *};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -114,7 +113,6 @@ fn get_line_braces_count(tokens: &DocTokens, index: usize) -> (usize, usize) {
     (opening, closing)
 }
 
-/// Only called on a line whose braces don't balance, so a non-T_NONE token follows on the line.
 fn is_closing_line_with_meaningful_content(tokens: &DocTokens, index: usize) -> bool {
     let token = tokens.0[index + 1..]
         .iter()
@@ -135,7 +133,6 @@ fn indentation_can_be_fixed(
     {
         return true;
     }
-    // Upstream's loop returns on its first iteration: only the token after the line break counts.
     tokens
         .0
         .get(new_line_index + 1)

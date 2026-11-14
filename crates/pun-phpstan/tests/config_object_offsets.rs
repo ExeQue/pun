@@ -1,5 +1,3 @@
-//! Public offset operations for objects that do not implement ArrayAccess.
-
 use pun_phpstan::resolve::{resolve_late, resolve_str};
 use pun_phpstan::types::{Level, Type};
 use serde_json::{Value, json};
@@ -46,8 +44,6 @@ fn non_array_access_objects_use_reflection_offset_certainty() {
 
 #[test]
 fn unresolved_array_access_keeps_its_receiver_and_offset() {
-    // The retained oracle also records the four ArrayAccess/ArrayObject observations. Resolving
-    // their generic offsetGet signatures is a separate reflection prerequisite, not mixed.
     for name in ["ArrayAccess<int, string>", "ArrayObject<int, string>"] {
         for offset in [Type::ConstInt(0), Type::ConstString(b"key".to_vec())] {
             let input = Type::OffsetAccess(Box::new(resolve_str(name, None)), Box::new(offset));

@@ -1,7 +1,3 @@
-//! IncompatibleDefaultParameterTypeRule (functions, methods), IncompatibleClosureDefaultParameterTypeRule and
-//! IncompatibleArrowFunctionDefaultParameterTypeRule (`parameter.defaultValue`): a default value the parameter's type
-//! does not accept.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Type, accepts, recommended_level};
@@ -10,7 +6,6 @@ use super::super::{Checker, declared};
 
 pub(super) const IDENTIFIERS: &[&str] = &["parameter.defaultValue"];
 
-/// The default values, whose types the rule reads.
 pub(super) fn typed(params: &FunctionLikeParameterList, spans: &mut Vec<mago_span::Span>) {
     spans.extend(
         params
@@ -86,8 +81,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     check(c, &m.parameter_list, &types, &of);
 }
 
-/// A closure's or arrow function's parameters, by their native types.
-// ponytail: a closure's `@param` tags are not read; add them with a closure signature in declared.rs
 pub(in super::super) fn anonymous(c: &mut Checker, params: &FunctionLikeParameterList) {
     if c.level < 2 {
         return;

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocNoEmptyReturnFixer`.
 use crate::analyzers::docblock::DocBlock;
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
@@ -32,7 +31,6 @@ impl Fixer for PhpdocNoEmptyReturnFixer {
                 continue;
             }
             for annotation in annotations {
-                // fixAnnotation: getNormalizedTypes() is the lowercased types; one of them, `null` or `void`.
                 let types = annotation.get_types();
                 if types.len() == 1 && matches!(&strtolower(&types[0])[..], b"null" | b"void") {
                     annotation.remove();

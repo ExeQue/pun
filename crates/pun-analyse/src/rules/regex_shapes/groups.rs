@@ -1,7 +1,3 @@
-//! PHPStan 2.3.5's `RegexGroupParser` with its value objects (`RegexAlternation`, `RegexCapturingGroup`,
-//! `RegexNonCapturingGroup`, `RegexAstWalkResult`, `RegexGroupWalkResult`) and `RegexExpressionHelper`'s pattern
-//! helpers.
-
 use std::collections::BTreeSet;
 use std::rc::Rc;
 use std::sync::LazyLock;
@@ -11,10 +7,8 @@ use pun_phpstan::types::Tri;
 use super::parser::{self, Node};
 use super::types::{Atom, Flags, RType};
 
-/// `NOT_SUPPORTED_MODIFIERS`.
 const NOT_SUPPORTED_MODIFIERS: &[char] = &['J'];
 
-/// `LITERALS_LIMIT`.
 const LITERALS_LIMIT: usize = 100;
 
 const NEGATIVE_ASSERTIONS: &[&str] = &["#negativelookahead", "#negativelookbehind"];
@@ -33,15 +27,12 @@ const CONDITIONS: &[&str] = &[
     "#assertioncondition",
 ];
 
-/// `RegexAlternation`; its id is its index in [`Walk::alternations`].
 #[derive(Clone, Debug)]
 pub(super) struct Alternation {
     pub(super) count: usize,
-    /// `getGroupCombinations()`: capture group ids by branch index, in insertion order of the branch index.
     pub(super) combinations: Vec<(usize, Vec<i64>)>,
 }
 
-/// `RegexCapturingGroup`.
 #[derive(Clone, Debug)]
 pub(super) struct Capturing {
     pub(super) id: i64,
@@ -55,7 +46,6 @@ pub(super) struct Capturing {
     force_alternation_branch_matched: bool,
 }
 
-/// `RegexNonCapturingGroup`.
 #[derive(Clone, Debug)]
 pub(super) struct NonCapturing {
     alternation: Option<usize>,
@@ -137,7 +127,6 @@ impl Capturing {
         }
     }
 
-    /// `forceType()`: it sets the group's type, not its forced type, as upstream does.
     pub(super) fn force_type(&self, ty: RType) -> Self {
         Self { ty, ..self.clone() }
     }
@@ -189,7 +178,6 @@ impl Capturing {
         self.in_optional_quantification
     }
 
-    /// Asked only of a group in the top-level alternation, so upstream's `!$this->inAlternation()` case does not occur.
     pub(super) fn in_optional_alternation(&self) -> bool {
         let mut parent = self.parent.as_ref();
         while let Some(p) = parent.filter(|p| p.alternation_id() == self.alternation) {
@@ -213,7 +201,6 @@ impl Capturing {
     }
 }
 
-/// `RegexAstWalkResult`, with the alternations its groups point into.
 #[derive(Clone, Debug)]
 pub(super) struct AstWalk {
     capture_group_id: i64,
@@ -223,7 +210,6 @@ pub(super) struct AstWalk {
     pub(super) alternations: Vec<Alternation>,
 }
 
-/// `RegexGroupWalkResult`.
 #[derive(Clone, Debug)]
 struct GroupWalk {
     in_optional_quantification: bool,
@@ -251,17 +237,14 @@ impl GroupWalk {
     }
 }
 
-/// `RegexExpressionHelper::getPatternDelimiter()`.
 fn delimiter(pattern: &str) -> Option<u8> {
     ltrim(pattern).as_bytes().first().copied()
 }
 
-/// PHP's `ltrim()` with its default characters.
 fn ltrim(s: &str) -> &str {
     s.trim_start_matches([' ', '\t', '\n', '\r', '\0', '\x0B'])
 }
 
-/// `RegexExpressionHelper::getEndDelimiterPos()`.
 fn end_delimiter_pos(pattern: &str) -> Option<usize> {
     let end = match delimiter(pattern)? {
         b'{' => b'}',
@@ -273,19 +256,15 @@ fn end_delimiter_pos(pattern: &str) -> Option<usize> {
     pattern.bytes().rposition(|b| b == end)
 }
 
-/// `RegexExpressionHelper::getPatternModifiers()`.
 pub(super) fn pattern_modifiers(pattern: &str) -> Option<&str> {
     pattern.get(end_delimiter_pos(pattern)? + 1..)
 }
 
-/// `RegexExpressionHelper::removeDelimitersAndModifiers()`.
-/// The pattern compiled, so its end delimiter follows the start one.
 fn remove_delimiters_and_modifiers(pattern: &str) -> Option<&str> {
     let pattern = ltrim(pattern);
     pattern.get(1..end_delimiter_pos(pattern)?)
 }
 
-/// `RegexGroupParser::parseGroups()`; `capture_only_named_supported` is `PhpVersion::supportsPregCaptureOnlyNamedGroups()`.
 pub(super) fn parse_groups(regex: &str, capture_only_named_supported: bool) -> Option<AstWalk> {
     let modifiers = pattern_modifiers(regex).unwrap_or("").to_string();
     let mut ast = parse_ast(regex, &modifiers)?;
@@ -294,7 +273,6 @@ pub(super) fn parse_groups(regex: &str, capture_only_named_supported: bool) -> O
 
     let capture_only_named = capture_only_named_supported && modifiers.contains('n');
     let mut walk = AstWalk {
-        // use different start-index for groups to make it easier to distinguish groupids from other ids
         capture_group_id: 100,
         groups: Vec::new(),
         mark_verbs: Vec::new(),
@@ -317,7 +295,6 @@ pub(super) fn parse_groups(regex: &str, capture_only_named_supported: bool) -> O
 
     let subject = walker.walk_group_ast(&ast, false, GroupWalk::empty());
     if !subject.might_contain_empty_string_literal() && !contains_escape_k(&ast) {
-        // we could handle numeric-string, in case we know the regex is delimited by ^ and $
         if subject.non_falsy.yes() {
             walk.subject_base_type = Atom::Str(Flags {
                 non_empty: true,
@@ -335,18 +312,13 @@ pub(super) fn parse_groups(regex: &str, capture_only_named_supported: bool) -> O
     Some(walk)
 }
 
-/// The cached part of `parseGroups()`: the pattern compiles, no unsupported modifier, `RegexParser` parses it, and
-/// it calls no subroutine.
 fn parse_ast(regex: &str, modifiers: &str) -> Option<Node> {
-    // pattern is invalid, so let the RegularExpressionPatternRule report it
     pun_phpstan::php::preg(regex).ok()?;
     if modifiers.contains(NOT_SUPPORTED_MODIFIERS) {
         return None;
     }
     let stripped;
     let regex = if modifiers.contains('x') {
-        // in freespacing mode the # character starts a comment and runs until the end of the line
-        // but \# is an escaped literal hash, and (?#...) is an inline comment - neither starts a line comment
         static COMMENT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
             pcre2::bytes::Regex::new(r"(?<!\\)(?<!\(\?)#.*").expect("upstream comment pattern")
         });
@@ -357,18 +329,15 @@ fn parse_ast(regex: &str, modifiers: &str) -> Option<Node> {
             last = m.end();
         }
         out.extend_from_slice(&regex.as_bytes()[last..]);
-        // `#` and `\n` are ASCII, so cutting at them keeps the pattern UTF-8
         stripped = String::from_utf8(out).ok()?;
         stripped.as_str()
     } else {
         regex
     };
     let ast = parser::parse(remove_delimiters_and_modifiers(regex)?)?;
-    // a subroutine call matches what another group matches, but it does not set that group
     (!contains_subroutine_call(&ast)).then_some(ast)
 }
 
-/// `containsSubroutineCall()`.
 fn contains_subroutine_call(ast: &Node) -> bool {
     ast.token() == Some("subroutine") || ast.children().iter().any(contains_subroutine_call)
 }
@@ -380,8 +349,6 @@ fn empty_token() -> Node {
     }
 }
 
-/// `updateAlternationAstRemoveVerticalBarsAndAddEmptyToken()`. Upstream re-adds an empty branch under the bar's
-/// unset key, which PHP appends at the end of the array, so empty branches come after the others.
 fn update_alternation_ast(ast: &mut Node) {
     let Node::Rule { id, children } = ast else {
         return;
@@ -400,7 +367,6 @@ fn update_alternation_ast(ast: &mut Node) {
     children.extend((0..empties).map(|_| empty_token()));
 }
 
-/// `updateCapturingAstAddEmptyToken()`.
 fn update_capturing_ast(ast: &mut Node) {
     let Node::Rule { id, children } = ast else {
         return;
@@ -416,12 +382,10 @@ fn update_capturing_ast(ast: &mut Node) {
     }
 }
 
-/// `containsEscapeK()`.
 fn contains_escape_k(ast: &Node) -> bool {
     ast.token() == Some("match_point_reset") || ast.children().iter().any(contains_escape_k)
 }
 
-/// `getQuantificationRange()`.
 fn quantification_range(node: &Node) -> (Option<i64>, Option<i64>) {
     let last = node.children().last();
     let token = last
@@ -433,7 +397,6 @@ fn quantification_range(node: &Node) -> (Option<i64>, Option<i64>) {
         .and_then(Node::value)
         .unwrap_or("")
         .trim_end_matches(['+', '?']);
-    // sscanf('%d'): the digits between the braces (the token patterns allow nothing else)
     let numbers: Vec<i64> = value
         .trim_start_matches('{')
         .trim_end_matches('}')
@@ -446,7 +409,6 @@ fn quantification_range(node: &Node) -> (Option<i64>, Option<i64>) {
         "exactly_n" => (Some(numbers[0]), Some(numbers[0])),
         "zero_or_one" => (Some(0), Some(1)),
         "zero_or_more" => (Some(0), None),
-        // one_or_more: the grammar has no other quantifier token
         _ => (Some(1), None),
     }
 }
@@ -456,7 +418,6 @@ struct Walker<'a> {
 }
 
 impl Walker<'_> {
-    /// `walkRegexAst()`.
     fn walk_regex_ast(
         &self,
         ast: &Node,
@@ -498,8 +459,6 @@ impl Walker<'_> {
                     reset_group_counter: id == "#noncapturingreset",
                 })));
             }
-            // capturing groups in a negative assertion are never set when the whole pattern matches,
-            // capturing groups in a conditional subpattern are set only when its condition says so
             id if NEGATIVE_ASSERTIONS.contains(&id) || CONDITIONS.contains(&id) => {
                 parent_group = Some(Rc::new(Parent::NonCapturing(NonCapturing {
                     alternation,
@@ -567,19 +526,16 @@ impl Walker<'_> {
         }
     }
 
-    /// `allowConstantTypes()`.
     fn allow_constant_types(
         &self,
         repeated_more_than_once: bool,
         parent_group: Option<&Parent>,
     ) -> bool {
-        // if caseless, we don't use constant types because it likely yields too many combinations
         !self.modifiers.contains('i')
             && !repeated_more_than_once
             && !parent_group.is_some_and(Parent::resets_group_counter)
     }
 
-    /// `createGroupType()`.
     fn create_group_type(&self, group: &Node, maybe_constant: bool) -> RType {
         if let Some(root) = root_alternation(group) {
             return RType::union(
@@ -632,18 +588,15 @@ impl Walker<'_> {
         Atom::Str(Flags::default()).into()
     }
 
-    /// `walkGroupAst()`.
     fn walk_group_ast(&self, ast: &Node, mut in_class: bool, mut walk: GroupWalk) -> GroupWalk {
         let children = ast.children();
         let mut quantified_literals = None;
         let id = ast.id();
 
         if ASSERTIONS.contains(&id) {
-            // assertions are zero-width, they do not add anything to the matched string
             return walk;
         }
         if CONDITIONS.contains(&id) {
-            // which branch of a conditional subpattern matches is not known, it might match an empty string
             walk.only_literals = None;
             walk.numeric = Tri::No;
             return walk;
@@ -660,13 +613,11 @@ impl Walker<'_> {
                 if !non_falsy {
                     continue;
                 }
-                // a single token non-falsy on its own
                 walk.non_falsy = Tri::Yes;
                 break;
             }
             if meaningful_tokens > 0 {
                 walk.non_empty = Tri::Yes;
-                // two non-empty tokens concatenated results in a non-falsy string
                 if meaningful_tokens > 1 {
                     walk.non_falsy = Tri::Yes;
                 }
@@ -676,7 +627,6 @@ impl Walker<'_> {
             if min == Some(0) {
                 walk.in_optional_quantification = true;
             }
-            // repeating an atom that might match an empty string might match an empty string too
             if !walk.in_optional_quantification
                 && !self.is_maybe_empty_node(&children[0], &mut false)
             {
@@ -687,8 +637,6 @@ impl Walker<'_> {
                     walk.non_falsy = Tri::Yes;
                 }
             }
-            // "a?" yields 'a'|'', "a{1,2}" yields 'a'|'aa', etc. so a bounded quantification
-            // over constant literals can be combined with the surrounding literals
             quantified_literals = self.quantified_literals(ast, min, max, in_class, &walk);
             walk.only_literals = None;
         } else if id == "#class" && walk.only_literals.is_some() {
@@ -705,7 +653,6 @@ impl Walker<'_> {
             let literal = self.literal_value(ast, &mut only_literals, !in_class, false);
             walk.only_literals = only_literals;
             if ast.token() == Some("backreference") {
-                // matches what another group matched, the content is not known
                 walk.numeric = Tri::No;
             }
             if let Some(literal) = literal {
@@ -722,10 +669,7 @@ impl Walker<'_> {
             walk.only_literals = None;
         }
 
-        // the alternation has a child per branch: updateAlternationAst() adds an empty token to an empty one
         if id == "#alternation" {
-            // literals accumulated before the alternation form a common prefix that has to be
-            // combined with every branch, e.g. "a(b|c)" yields "ab"|"ac", not "b"|"c"
             let prefix = walk.only_literals.clone();
             let mut new_literals = Some(Vec::new());
             let (mut non_empty, mut non_falsy, mut numeric) = (Tri::Yes, Tri::Yes, Tri::Yes);
@@ -770,9 +714,6 @@ impl Walker<'_> {
             };
         }
 
-        // [^0-9] should not parse as numeric-string, and [^list-everything-but-numbers] is technically
-        // doable but really silly compared to just \d so we can safely assume the string is not numeric
-        // for negative classes
         if id == "#negativeclass" {
             walk.numeric = Tri::No;
         }
@@ -782,14 +723,11 @@ impl Walker<'_> {
         }
 
         if id == "#quantification" {
-            // the bottom walk above nulls the literals via the quantifier token,
-            // so restore the literals enumerated up-front for bounded quantifications
             walk.only_literals = quantified_literals;
         }
         walk
     }
 
-    /// `getQuantifiedLiterals()`.
     fn quantified_literals(
         &self,
         ast: &Node,
@@ -799,8 +737,6 @@ impl Walker<'_> {
         walk: &GroupWalk,
     ) -> Option<Vec<String>> {
         let (prefix, min, max) = (walk.only_literals.as_ref()?, min?, max?);
-        // walk the quantified atom standalone (everything but the trailing quantifier token);
-        // the atom itself is not optional, so reset the flag to let concatenations accumulate literals
         let atom_children = &ast.children()[..ast.children().len() - 1];
         let mut atom = GroupWalk {
             only_literals: Some(Vec::new()),
@@ -825,12 +761,10 @@ impl Walker<'_> {
         Some(new_literals)
     }
 
-    /// `isMaybeEmptyNode()`.
     fn is_maybe_empty_node(&self, node: &Node, is_non_falsy: &mut bool) -> bool {
         if ASSERTIONS.contains(&node.id()) || CONDITIONS.contains(&node.id()) {
             return true;
         }
-        // a quantification is maybe-empty when its minimum is 0, or when its atom is
         if node.id() == "#quantification" {
             match quantification_range(node).0 {
                 Some(0) => return true,
@@ -844,8 +778,6 @@ impl Walker<'_> {
             }
             return literal.is_empty();
         }
-        // an alternation is maybe-empty if any of its branches is maybe-empty,
-        // and non-falsy only if every branch is non-falsy
         if node.id() == "#alternation" {
             let mut maybe_empty = false;
             let mut all_non_falsy = true;
@@ -866,7 +798,6 @@ impl Walker<'_> {
             .all(|child| self.is_maybe_empty_node(child, is_non_falsy))
     }
 
-    /// `getLiteralValue()`.
     fn literal_value(
         &self,
         node: &Node,
@@ -877,7 +808,6 @@ impl Walker<'_> {
         let (Some(token), Some(value)) = (node.token(), node.value()) else {
             return None;
         };
-        // token is the token name from grammar without the namespace so literal and class:literal are both called literal here
         if matches!(token, "literal" | "range" | "class_" | "_class") {
             if self.modifiers.contains('x')
                 && value
@@ -889,7 +819,6 @@ impl Walker<'_> {
             let mut value = value.to_string();
             let mut is_escaped = false;
             if value.len() > 1 && value.starts_with('\\') {
-                // `substr($value, 1) ?: ''`: an escaped "0" is falsy, so it becomes ''
                 value = Some(value[1..].to_string())
                     .filter(|v| v != "0")
                     .unwrap_or_default();
@@ -911,14 +840,12 @@ impl Walker<'_> {
         if token != "capturing_name" {
             *only_literals = None;
         }
-        // character escape sequences, just return a fixed string
         if matches!(token, "character" | "dynamic_character" | "character_type") {
             if token == "character_type" && value == r"\d" {
                 return Some("0".into());
             }
             return Some(value.to_string());
         }
-        // [:digit:] and the like, more support coming later
         if token == "posix_class" {
             let literal = match value {
                 "[:digit:]" => "0",
@@ -936,14 +863,12 @@ impl Walker<'_> {
     }
 }
 
-/// `getRootAlternation()`.
 fn root_alternation(group: &Node) -> Option<&Node> {
     let children = group.children();
     match group.id() {
         "#capturing" if children.len() == 1 && children[0].id() == "#alternation" => {
             Some(&children[0])
         }
-        // 1st token within a named capturing group is a token holding the group-name
         "#namedcapturing" if children.len() == 2 && children[1].id() == "#alternation" => {
             Some(&children[1])
         }
@@ -951,13 +876,11 @@ fn root_alternation(group: &Node) -> Option<&Node> {
     }
 }
 
-/// `Strings::match($literal, '/^\d+$/') !== null`: `$` also matches before a final newline.
 fn is_digits(literal: &str) -> bool {
     let digits = literal.strip_suffix('\n').unwrap_or(literal);
     !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// `repeatLiterals()`.
 fn repeat_literals(literals: &[String], min: i64, max: i64) -> Option<Vec<String>> {
     let mut collected: Vec<String> = Vec::new();
     let mut seen: BTreeSet<String> = BTreeSet::new();

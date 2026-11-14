@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-comparison-matchers`, ported from pest-plugin-rector's `SimplifyComparisonExpectationsRector`:
-//! `expect($a > $b)->toBeTrue()` becomes `expect($a)->toBeGreaterThan($b)`, and `>=`, `<` and `<=` become
-//! `toBeGreaterThanOrEqual()`, `toBeLessThan()` and `toBeLessThanOrEqual()`.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

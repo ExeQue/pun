@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\CastNotation\ShortScalarCastFixer`.
 use pun_tokens::php_compat::str_replace;
 use pun_format::Fixer;
 use pun_tokens::php_compat::{strtolower, trim};

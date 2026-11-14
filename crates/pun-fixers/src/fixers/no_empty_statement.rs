@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\NoEmptyStatementFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Tokens, TokensAnalyzer};
 use std::path::Path;
@@ -53,7 +52,6 @@ impl NoEmptyStatementFixer {
             }
             return;
         }
-        // early return check, below only control structures with conditions are fixed
         if !tokens[before_curly_opening_index].equals(")", true) {
             return;
         }
@@ -73,7 +71,7 @@ impl NoEmptyStatementFixer {
                 .get_prev_meaningful_token(before_opening_brace_index)
                 .unwrap();
             if tokens[before_string_index].is_kind(T_FUNCTION) {
-                tokens.clear_token_and_merge_surrounding_whitespace(index); // implicit return
+                tokens.clear_token_and_merge_surrounding_whitespace(index);
             }
         }
     }
@@ -101,7 +99,6 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            // skip T_FOR parenthesis to ignore double `;` like `for ($i = 1; ; ++$i) {...}`
             if tokens[index].is_kind(T_FOR) {
                 index = tokens.find_block_end(
                     Tokens::BLOCK_TYPE_PARENTHESIS,
@@ -115,7 +112,6 @@ impl Fixer for NoEmptyStatementFixer {
                 continue;
             }
             let previous_meaningful_index = tokens.get_prev_meaningful_token(index).unwrap();
-            // A semicolon can always be removed if it follows a semicolon, '{' or opening tag.
             if tokens[previous_meaningful_index]
                 .equals_any(&["{".into(), ";".into(), T_OPEN_TAG.into()], true)
             {
@@ -123,7 +119,6 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            // A semicolon might be removed if it follows a '}' but only if the brace is part of certain structures.
             if tokens[previous_meaningful_index].equals("}", true) {
                 Self::fix_semicolon_after_curly_brace_close(
                     tokens,
@@ -139,7 +134,6 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            // A semicolon might be removed together with its noop statement, for example "<?php 1;"
             let pre_previous_meaningful_index = tokens
                 .get_prev_meaningful_token(previous_meaningful_index)
                 .unwrap();

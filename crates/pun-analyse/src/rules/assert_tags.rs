@@ -1,7 +1,3 @@
-//! FunctionAssertRule and MethodAssertRule (level 2, over AssertRuleHelper): a function's or method's
-//! `@phpstan-assert*` tags must name a parameter (or `$this`, its property or method) and assert a type that is
-//! resolvable, known, and neither impossible nor already certain for it.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::{Function, Method, ModifierSequenceExt};
 use pun_phpstan::phpdoc::{self, TagValue};
@@ -60,7 +56,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
                 &sig,
                 this,
             ),
-            // the inherited (implicit) asserts: only their parameter is checked
             None => sig
                 .asserts
                 .iter()
@@ -96,7 +91,6 @@ fn report(c: &mut Checker, at: Span, errors: Errors) {
     super::class_names::check(c, &names, case);
 }
 
-/// An assert tag: its tag name, type, parameter, `->member` (a method with `()`) and negation.
 type Assert = (
     &'static str,
     phpdoc::Node,
@@ -105,7 +99,6 @@ type Assert = (
     bool,
 );
 
-/// The parameters (without `$`) the asserts of a PHPDoc's `tags` name.
 pub(super) fn parameters(tags: &[phpdoc::Tag]) -> Vec<String> {
     asserts(tags)
         .into_iter()
@@ -113,7 +106,6 @@ pub(super) fn parameters(tags: &[phpdoc::Tag]) -> Vec<String> {
         .collect()
 }
 
-/// `resolveAssertTags()`: the first of the `@phpstan-`, `@psalm-` and `@phan-` prefixes with any assert.
 fn asserts(tags: &[phpdoc::Tag]) -> Vec<Assert> {
     for prefix in ["@phpstan", "@psalm", "@phan"] {
         let mut found = Vec::new();
@@ -123,7 +115,6 @@ fn asserts(tags: &[phpdoc::Tag]) -> Vec<Assert> {
             ("-assert-if-false", "@phpstan-assert-if-false"),
         ] {
             let tag = format!("{prefix}{suffix}");
-            // (by kind: the parameter asserts, then the property ones, then the method ones)
             let mut of: Vec<Assert> = tags
                 .iter()
                 .filter(|t| t.name == tag)
@@ -158,8 +149,6 @@ fn asserts(tags: &[phpdoc::Tag]) -> Vec<Assert> {
     Vec::new()
 }
 
-/// `$scope->getScopeType()` of the asserted expression: a property fetch or method call on the parameter's type,
-/// typed by the classes that have the member (an error type when none has it).
 fn member_type(c: &Checker, on: &Type, member: &(String, bool)) -> Type {
     let (name, method) = member;
     let found: Vec<Type> = on
@@ -193,7 +182,6 @@ fn member_type(c: &Checker, on: &Type, member: &(String, bool)) -> Type {
     }
 }
 
-/// AssertRuleHelper::check(); the class names to check for their case come last, as `(.., Some(class))`.
 fn check(
     c: &Checker,
     tags: &[phpdoc::Tag],

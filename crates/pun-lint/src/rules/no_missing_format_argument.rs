@@ -1,9 +1,3 @@
-//! `lint/functions/no-missing-format-argument`, ported from Mago 1.57.0's linter rule `no-missing-format-argument`
-//! (rule/correctness/no_missing_format_argument.rs).
-//!
-//! A `sprintf`-family call whose literal format string needs more values than the call passes, or a
-//! `vsprintf`-family call without its values array, is reported on its argument list.
-
 use mago_syntax::cst::{Argument, Expression, Literal, Node, NodeKind};
 
 use super::lint_b_names::function_call_matches_any;
@@ -17,7 +11,6 @@ enum ValuesModel {
     Array,
 }
 
-/// `FORMAT_FUNCTION_MODELS`: the function, the index of its format argument and how it takes the values.
 const MODELS: &[(&str, usize, ValuesModel)] = &[
     ("sprintf", 0, ValuesModel::Variadic),
     ("printf", 0, ValuesModel::Variadic),
@@ -111,8 +104,6 @@ impl Rule for NoMissingFormatArgument {
     }
 }
 
-/// `parse_format_string`: the number of placeholders, and how many values they need (`%%` is not one; `%n$` takes
-/// value n).
 fn parse_format_string(bytes: &[u8]) -> (usize, usize) {
     let len = bytes.len();
     let mut i = 0;

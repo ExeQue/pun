@@ -1,5 +1,3 @@
-//! The analyser hook behind `Facts::implicit_array_writes`.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -26,7 +24,6 @@ const SUPERGLOBALS: [&[u8]; 9] = [
     b"$_ENV",
 ];
 
-/// The state of each watched variable by assignment span; a loop body analysed twice with different answers is a maybe.
 pub(super) struct Observer(pub Arc<Mutex<HashMap<(u32, u32), (String, u8)>>>);
 
 impl Provider for Observer {
@@ -74,7 +71,6 @@ impl ExpressionHook for Observer {
         }
         let block = context.block_context();
         let certainty = block.variable_certainty(mago_word::word(variable.name));
-        // in a loop, this write defines the variable for the next iteration
         let in_loop = (block.break_types.iter()).any(|b| matches!(b, BreakContext::Loop(_)));
         let state = if certainty.is_defined() {
             YES

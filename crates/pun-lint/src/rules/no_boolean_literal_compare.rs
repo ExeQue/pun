@@ -1,9 +1,3 @@
-//! `lint/complexity/no-boolean-literal-compare`, ported from Rector 2.8.4's `SimplifyBoolIdenticalTrueRector`
-//! (rules/CodeQuality/Rector/Identical).
-//!
-//! `$bool === true` is `$bool`, `$bool !== false` is `$bool`, `$bool !== true` is `!$bool` and `!$x === false` is
-//! `$x`, where `$bool` is natively a `bool` (read from the syntax, `syntax_types::is_bool`).
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -85,7 +79,6 @@ impl Rule for NoBooleanLiteralCompare {
     }
 }
 
-/// `ValueResolver::isTrue` / `isFalse`.
 pub(super) fn truth(expr: &Expression<'_>) -> Option<bool> {
     match unparenthesize(expr) {
         Expression::Literal(Literal::True(_)) => Some(true),

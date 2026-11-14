@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocTagCasingFixer` (an AbstractProxyFixer over general_phpdoc_tag_rename).
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::general_phpdoc_tag_rename::GeneralPhpdocTagRenameFixer;
 use anyhow::{Result, anyhow};
@@ -21,13 +20,11 @@ impl Fixer for PhpdocTagCasingFixer {
         "phpdoc_tag_casing"
     }
     fn priority(&self) -> i32 {
-        // AbstractProxyFixer: the proxied general_phpdoc_tag_rename's priority.
         self.proxy.priority()
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let r = resolve(self.name(), options, &["tags"])?;
         let tags = r.strings("tags", &["inheritDoc"], &[])?;
-        // configurePostNormalisation: `$replacements[$tag] = $tag`.
         let mut replacements = Map::new();
         for tag in tags {
             replacements.insert(tag.clone(), Value::String(tag));
@@ -59,7 +56,6 @@ impl Fixer for PhpdocTagCasingFixer {
 mod tests {
     use super::*;
 
-    /// PhpdocTagCasingFixerTest::provideInvalidConfigurationCases: the messages the real fixer's configure() throws.
     #[test]
     fn invalid_configuration() {
         let raw = std::fs::read(concat!(

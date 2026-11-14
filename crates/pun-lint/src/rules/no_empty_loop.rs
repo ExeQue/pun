@@ -1,8 +1,3 @@
-//! `lint/dead-code/no-empty-loop`, ported from Rector 2.8.4's `RemoveDeadLoopRector` (rules/DeadCode/Rector/For_).
-//!
-//! A `do`, `for`, `foreach` or `while` loop with no statements goes, unless one of its expressions (the right side,
-//! for a plain assignment) has a side effect.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
@@ -56,9 +51,7 @@ impl Rule for NoEmptyLoop {
         }) {
             return;
         }
-        // The loop's place: an item of a statement list, or the one statement of a control structure's body.
         let edits = if HOLDERS.contains(&grand.kind()) {
-            // Rector removes the loop wherever it is, in a property hook's body too, where `holder_list` has none.
             let list = match grand {
                 Node::Block(block) => block_list(source, block),
                 _ => holder_list(source, *grand, &ancestors[..ancestors.len() - 2]).unwrap(),
@@ -88,8 +81,6 @@ fn offset(span: mago_span::Span) -> (usize, usize) {
     (span.start.offset as usize, span.end.offset as usize)
 }
 
-/// The loop's php-parser `stmts` and the expressions Rector checks: `cond` for `do` and `while`, `init`, `cond` and
-/// `loop` for `for`, `expr` and `valueVar` for `foreach`.
 fn parts<'a>(source: &str, stmt: &'a Statement<'a>) -> Option<(List<'a>, Vec<&'a Expression<'a>>)> {
     Some(match stmt {
         Statement::DoWhile(r#do) => (body_list(source, r#do.statement), vec![r#do.condition]),

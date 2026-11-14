@@ -1,8 +1,3 @@
-//! `lint/types/prefer-specific-return-type`, ported from Rector 2.8.4's `NarrowObjectReturnTypeRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a method of a final class, or a final method, declared to return
-//! `object` or a class that is neither final nor an interface, whose every `return` returns an object of one class
-//! below it, returns that class instead. A `@return` naming one type takes the class too, unless it names it already.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
@@ -47,7 +42,6 @@ impl Rule for PreferSpecificReturnType {
         let (Some(m), Some(return_type)) = (f.method, f.return_type) else {
             return;
         };
-        // an `Identifier` or a `FullyQualified` name, as php-parser's name resolver leaves a class name
         let declared = match &return_type.hint {
             Hint::Object(_) => "object".to_string(),
             Hint::Identifier(id) => resolve_class_name(ancestors, id),
@@ -65,14 +59,11 @@ impl Rule for PreferSpecificReturnType {
         let Some(actual) = actual_returned_class(&facts, &f, ancestors) else {
             return;
         };
-        // already most narrow type
         if declared == actual {
             return;
         }
         let codebase = &facts.codebase;
         if declared != "object" {
-            // non-existing class, already last final object, or no class (this rule narrows only object or class
-            // types, not interfaces)
             let Some(class) = codebase.get_class_like(declared.as_bytes()) else {
                 return;
             };
@@ -83,7 +74,6 @@ impl Rule for PreferSpecificReturnType {
         let target = f.target(ctx);
         let info = target.doc.map(|_| target.info(ctx.source));
         let class = class_name(ancestors);
-        // isNarrowingValid
         if declared != "object" {
             if !is_instance_of(codebase, &actual, &declared) {
                 return;
@@ -106,7 +96,6 @@ impl Rule for PreferSpecificReturnType {
             node_span(&return_type.hint),
             format!("\\{actual}"),
         )];
-        // updateDocblock
         if let Some(mut info) = info
             && let Some(tag) = info.return_tag()
             && let TypeNode::Identifier(_) = tag.ty
@@ -135,13 +124,11 @@ impl Rule for PreferSpecificReturnType {
     }
 }
 
-/// `ObjectType($parent)->isSuperTypeOf(ObjectType($child))->yes()` between two class names.
 fn is_instance_of(codebase: &CodebaseMetadata, child: &str, parent: &str) -> bool {
     codebase.get_class_like(child.as_bytes()).is_some()
         && codebase.is_instance_of(child.as_bytes(), parent.as_bytes())
 }
 
-/// `getActualReturnedClass()`: the one class whose objects every `return` returns natively, not an anonymous class.
 fn actual_returned_class(
     facts: &Facts,
     f: &FunctionLike<'_, '_>,
@@ -157,7 +144,6 @@ fn actual_returned_class(
         let [class] = &t.object_class_names()[..] else {
             return None;
         };
-        // skip anonymous classes, they have no usable name
         if class.starts_with("class@anonymous") || class.starts_with("{anonymous-class") {
             return None;
         }
@@ -174,8 +160,6 @@ fn actual_returned_class(
     returned
 }
 
-/// `isNarrowingValidFromParent()`: every ancestor (not a built-in class) with the method, whose native return type is
-/// one class, takes the actual class, and does not document a generic object.
 fn is_narrowing_valid_from_parent(
     facts: &Facts,
     scope: &super::ClassScope,
@@ -214,8 +198,6 @@ fn is_narrowing_valid_from_parent(
     true
 }
 
-/// The class of a native return type that is an `ObjectType`: one class, not `static` (a parent's enum return type
-/// leaves no class to narrow to, as a child may only declare the enum too).
 fn object_type(t: &TUnion) -> Option<String> {
     match &t.types[..] {
         [TAtomic::Object(TObject::Named(n))] if !n.is_static && n.intersection_types.is_none() => {

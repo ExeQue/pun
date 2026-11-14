@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-assert-string-contains`, ported from rector-phpunit's `AssertFalseStrposToContainsRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertNotFalse(strpos($a, $b))` becomes `assertStringContainsString($b, $a)`, and `assertFalse(...)` becomes
-//! `assertStringNotContainsString(...)`; `stripos()` is read as `strpos()`, as upstream does.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -19,8 +13,6 @@ const RENAME: &[(&str, &str)] = &[
     ("assertNotFalse", "assertStringContainsString"),
 ];
 
-/// Whether `program` has an `assertFalse(strpos($a, $b))` or `assertNotFalse(...)` call this rule rewrites, a change
-/// Rector reports.
 fn has_reported_change(program: Node<'_, '_>) -> bool {
     any_node(program, &|n| {
         let Some(call) = AnyCall::of(n) else {
@@ -83,9 +75,6 @@ impl Rule for PreferAssertStringContains {
             return;
         };
         let Expression::Call(Call::Function(strpos)) = value else {
-            // Upstream renames the call before it finds no function call to take the arguments from, and returns
-            // null: Rector 2.8.4 prints a file only when a rule reported a change there, so the rename stays only
-            // beside a reported one (Pun counts this rule's own).
             if !ancestors
                 .first()
                 .is_some_and(|program| has_reported_change(*program))

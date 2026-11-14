@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-assert-instances-of`, ported from rector-phpunit's `SimplifyForeachInstanceOfRector`
-//! (rules/CodeQuality/Rector/Foreach_).
-//!
-//! A `foreach` whose only statement is `assertInstanceOf($class, $item)` on its value becomes
-//! `assertContainsOnlyInstancesOf($class, $items)`. As upstream, any method or static call named
-//! `assertInstanceOf` counts, a third argument (a message) keeps the loop, and the comments before the loop go.
-
 use mago_syntax::cst::{Call, Expression, ForeachBody, ForeachTarget, Node, NodeKind, Statement};
 use pun_problem::{Edit, Safety, Span};
 

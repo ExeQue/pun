@@ -26,7 +26,6 @@ fn check(rule: impl Rule + 'static, class: &str) {
 
 #[test]
 fn remove_useless_var_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessVarTag)],
         "RemoveUselessVarTagRector",
@@ -40,7 +39,6 @@ fn remove_useless_var_tag() {
 
 #[test]
 fn remove_useless_param_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessParamTag)],
         "RemoveUselessParamTagRector",
@@ -66,7 +64,6 @@ fn remove_useless_param_tag() {
 
 #[test]
 fn remove_useless_return_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessReturnTag)],
         "RemoveUselessReturnTagRector",
@@ -100,8 +97,6 @@ fn remove_return_tag_incompatible_with_native_type() {
 
 #[test]
 fn remove_useless_union_return_docblock() {
-    // the fixtures' config sets `phpVersion(PhpVersionFeature::UNION_TYPES)`
-    // the laravel preset's `no_superfluous_phpdoc_tags` removes the same tags in these
     run_class_with(
         vec![Box::new(NoUselessPhpdocType)],
         "RemoveUselessUnionReturnDocblockRector",

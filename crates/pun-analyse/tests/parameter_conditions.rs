@@ -1,5 +1,3 @@
-//! Function-entry conditional parameter holders, through public diagnostics and hooks.
-
 use std::path::Path;
 
 use serde_json::Value;

@@ -1,9 +1,6 @@
-//! Token helpers shared by the Pest `Pun/*` rules (Pun's own; Mago's `rule/utils/pest.rs` works on its AST).
 use pun_tokens::Kind::*;
 use pun_tokens::Tokens;
 
-/// Whether the name at `name` is called as a global function: not a method or static call, a declaration or
-/// `new`, and not qualified (`Foo\name`, `namespace\name`). `\name` counts.
 pub(crate) fn is_global_function_call(tokens: &Tokens, name: usize) -> bool {
     tokens.get_prev_meaningful_token(name).is_none_or(|b| {
         !tokens[b].is_given_kind(&[
@@ -19,8 +16,6 @@ pub(crate) fn is_global_function_call(tokens: &Tokens, name: usize) -> bool {
     })
 }
 
-/// Walks `root(...)->a()->b->` back from the `->` at `arrow` to its root, and returns the root as (name, `(`, `)`)
-/// when it is a global function call.
 pub(crate) fn chain_root_call(tokens: &Tokens, arrow: usize) -> Option<(usize, usize, usize)> {
     let is_arrow =
         |k: usize| tokens[k].is_given_kind(&[T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR]);
@@ -38,7 +33,6 @@ pub(crate) fn chain_root_call(tokens: &Tokens, arrow: usize) -> Option<(usize, u
             return None;
         };
         match tokens.get_prev_meaningful_token(name) {
-            // An arrow always has at least the open tag before it.
             Some(b) if is_arrow(b) => p = tokens.get_prev_meaningful_token(b).expect("open tag"),
             _ => {
                 return open
@@ -56,8 +50,6 @@ pub(crate) struct ExpectMatcher {
     pub close: usize,
 }
 
-/// Matches `expect(<arg>)[->not]-><method>()` with `method` at `i`: the matcher must apply directly to `expect()`
-/// (no `->and()` in between, where Mago would rewrite the wrong expectation).
 pub(crate) fn match_expect_matcher(tokens: &Tokens, i: usize) -> Option<ExpectMatcher> {
     let arrow = tokens
         .get_prev_meaningful_token(i)

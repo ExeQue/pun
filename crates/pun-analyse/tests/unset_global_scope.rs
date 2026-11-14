@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1's holder invalidation is not a definitely-absent refinement.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

@@ -1,10 +1,3 @@
-//! `lint/complexity/prefer-in-array`, ported from Rector 2.8.4's `RepeatedOrEqualToInArrayRector`
-//! (rules/CodeQuality/Rector/BooleanOr).
-//!
-//! Three comparisons or more of the same expression joined by `||`, `$a === 'a' || $a === 'b' || $a === 'c'`, become
-//! `in_array($a, ['a', 'b', 'c'], true)`; with `==` the call is not strict. A chain that mixes `==` and `===` stays,
-//! and so does one with a value that may have side effects (a call), or one in a default or class constant value.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -41,7 +34,6 @@ impl Rule for PreferInArray {
         let compare = |op: &BinaryOperator<'_>| {
             matches!(op, BinaryOperator::Equal(_) | BinaryOperator::Identical(_))
         };
-        // in_array() func call is not allowed in a constant expression
         if is_in_constant_expression(ancestors) {
             return;
         }
@@ -51,14 +43,12 @@ impl Rule for PreferInArray {
         if pairs.len() < 3 || !pairs.iter().all(|(_, v)| is_safe_to_evaluate_eagerly(v)) {
             return;
         }
-        // All compared expressions must be equal to the last one.
         let (compared, _) = pairs[pairs.len() - 1];
         if !pairs.iter().all(|(c, _)| equal(ctx, c, compared)) {
             return;
         }
         let identicals = has_binary(node, &|op| matches!(op, BinaryOperator::Identical(_)));
         let equals = has_binary(node, &|op| matches!(op, BinaryOperator::Equal(_)));
-        // Mixed `===` and `==` stay as they are: https://3v4l.org/24cFl
         if identicals && equals {
             return;
         }

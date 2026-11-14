@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-defer`, ported from pest-plugin-rector's `Pest2ToPest3\TapToDeferRector`: `->tap()` in an
-//! `expect()` chain becomes `->defer()`, its Pest 3 name.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

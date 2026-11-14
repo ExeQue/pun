@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\StaticLambdaFixer`.
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind::*, Token, Tokens, TokensAnalyzer};
@@ -34,14 +33,13 @@ impl Fixer for StaticLambdaFixer {
             }
             let prev = tokens.get_prev_meaningful_token(i).unwrap();
             if tokens[prev].is_kind(T_STATIC) {
-                continue; // lambda is already 'static'
+                continue;
             }
             let arguments_start_index = tokens
                 .get_next_token_of_kind(i, &["(".into()], true)
                 .unwrap();
             let arguments_end_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, arguments_start_index);
-            // figure out where the lambda starts and ends
             let (lambda_open_index, lambda_end_index) = if tokens[i].is_kind(T_FUNCTION) {
                 let open = tokens
                     .get_next_token_of_kind(arguments_end_index, &["{".into()], true)
@@ -57,9 +55,8 @@ impl Fixer for StaticLambdaFixer {
                 continue;
             }
             if is_direct_subject_of_binding(tokens, i, lambda_end_index) {
-                continue; // "(function () {})->bindTo($foo)" would warn ("Cannot bind an instance to a static closure") once made static
+                continue;
             }
-            // make the lambda static
             tokens.insert_at(
                 i,
                 vec![
@@ -67,13 +64,11 @@ impl Fixer for StaticLambdaFixer {
                     Token::new(T_WHITESPACE, " "),
                 ],
             );
-            index -= 4; // fixed after a lambda, closes candidate is at least 4 tokens before that
+            index -= 4;
         }
     }
 }
 
-/// `isDirectSubjectOfBinding`: the lambda itself, wrapped in parentheses, is the subject of `->bindTo(...)` or
-/// `->call(...)` (making it static would produce "Cannot bind an instance to a static closure", deprecated in PHP 8.5).
 fn is_direct_subject_of_binding(tokens: &Tokens, lambda_index: usize, lambda_end_index: usize) -> bool {
     let Some(after_lambda_index) = tokens.get_next_meaningful_token(lambda_end_index) else {
         return false;
@@ -83,7 +78,7 @@ fn is_direct_subject_of_binding(tokens: &Tokens, lambda_index: usize, lambda_end
     }
     let wrap_start_index = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, after_lambda_index);
     if tokens.get_next_meaningful_token(wrap_start_index) != Some(lambda_index) {
-        return false; // the parentheses contain more than the lambda
+        return false;
     }
     if let Some(before_wrap_index) = tokens.get_prev_meaningful_token(wrap_start_index)
         && tokens[before_wrap_index].equals_any(
@@ -91,7 +86,7 @@ fn is_direct_subject_of_binding(tokens: &Tokens, lambda_index: usize, lambda_end
             true,
         )
     {
-        return false; // the lambda is an argument of a call, whose return value is the subject instead
+        return false;
     }
     let object_operator_index = tokens.get_next_meaningful_token(after_lambda_index).unwrap();
     if !tokens[object_operator_index].is_object_operator() {
@@ -106,7 +101,7 @@ fn has_possible_reference_to_this(tokens: &Tokens, start_index: usize, end_index
     while i <= end_index {
         let token = &tokens[i];
         if token.is_kind(T_VARIABLE) && strtolower(token.get_content()) == b"$this" {
-            return true; // directly accessing '$this'
+            return true;
         }
         if token.is_given_kind(&[
             T_INCLUDE,
@@ -133,11 +128,11 @@ fn has_possible_reference_to_this(tokens: &Tokens, start_index: usize, end_index
         if token.equals("$", true) {
             let next_index = tokens.get_next_meaningful_token(i).unwrap();
             if tokens[next_index].is_kind(T_VARIABLE) {
-                return true; // "$$a" case
+                return true;
             }
         }
         if token.equals((T_STRING, "parent"), false) {
-            return true; // parent:: case
+            return true;
         }
         i += 1;
     }

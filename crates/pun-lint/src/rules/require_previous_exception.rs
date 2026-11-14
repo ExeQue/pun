@@ -1,17 +1,3 @@
-//! `lint/complexity/require-previous-exception`, ported from Rector 2.8.4's `ThrowWithPreviousExceptionRector`
-//! (rules/CodeQuality/Rector/Catch_).
-//!
-//! In a `catch` with a variable, each `throw new <Name>(...)` below it (at any depth) passes the caught exception on:
-//! the message (`$e->getMessage()`) when there is no argument, the code (`$e->getCode()`) when the constructor has a
-//! `$code` parameter, and the exception at the constructor's first parameter that takes a `Throwable`. The constructor
-//! comes from the class's reflection, docblock types read: an unknown class, or one without a constructor, takes the
-//! exception third. Rector 2.8.4 runs the rule until nothing changes and php-parser prints the exception after the last
-//! argument, so a positional exception is repeated until it reaches the constructor's position.
-//!
-//! Rector drops the `new`'s original node, so php-parser prints it anew (`pExpr_New`): `new`, the class as written,
-//! and the arguments as written joined with `, ` (`pMaybeMultiline`: a line each, one level deeper, when one has
-//! comments before it).
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -50,7 +36,6 @@ impl Rule for RequirePreviousException {
         let Expression::Instantiation(new) = t.exception else {
             return;
         };
-        // Each `catch` around the throw refactors it in turn, the outermost first; the first that changes it wins.
         let caught = ancestors.iter().filter_map(|a| match a {
             Node::TryCatchClause(c) => c.variable.as_ref().map(|v| v.name),
             _ => None,
@@ -80,17 +65,13 @@ impl Rule for RequirePreviousException {
     }
 }
 
-/// One argument of the new `new`: its name, and its value, as source text (`None`: as written at that span).
 struct Arg {
     name: Option<String>,
     value: String,
-    /// The written argument, when it is one (for the renamed one, the text between its name and its value).
     written: Option<Span>,
-    /// Where the written argument starts.
     start: usize,
 }
 
-/// `refactorThrow`: the `new` printed anew with the caught `$variable` passed on, if Rector changes it.
 fn refactor(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -106,7 +87,6 @@ fn refactor(
     };
     let facts = facts(ctx);
     let codebase = facts.documented();
-    // `hasClass()` and `getConstructor()`: an unknown class (`self` too) has no constructor
     let constructor = class
         .as_deref()
         .filter(|c| codebase.get_class_like(c.as_bytes()).is_some())
@@ -130,7 +110,6 @@ fn refactor(
         .as_ref()
         .map(|l| l.arguments.iter().collect())
         .unwrap_or_default();
-    // exception is bundled
     if written.len() > position {
         return None;
     }
@@ -166,7 +145,6 @@ fn refactor(
         args[0] = Arg {
             name: Some("message".into()),
             value: format!("{var}->getMessage()"),
-            // the text between the name and the value
             written: Some(Span::new(
                 node_span(&first.name).end,
                 node_span(first.value).start,
@@ -176,7 +154,6 @@ fn refactor(
         changed = true;
     }
     let code_name = named.then(|| "code".to_string());
-    // fewer than two arguments here means a missing code (checked above)
     if args.len() < 2 {
         args.push(new_arg(code_name.clone(), format!("{var}->getCode()")));
         changed = true;
@@ -189,14 +166,9 @@ fn refactor(
             );
             args.push(previous);
         } else {
-            // nothing changed before: a named `previous` second follows a positional or named first argument that
-            // is not `previous` too
             return None;
         }
     } else if has_parameter("previous") && !has_argument(&args, "previous") {
-        // Rector sets `args[$position]`, which php-parser prints after the last argument; Rector 2.8.4 reprints and
-        // runs the rule again until nothing changes, so a positional exception goes in until it reaches its position
-        // (`new \ErrorException('m', 1)` gets `$e` four times).
         let count = if named {
             1
         } else {
@@ -220,7 +192,6 @@ fn new_arg(name: Option<String>, value: String) -> Arg {
     }
 }
 
-/// `pExpr_New` with the arguments `args`, at the indent of the line `throw_start` is on.
 fn print_new(source: &str, throw_start: usize, new: &Instantiation<'_>, args: &[Arg]) -> String {
     let level = indentation(source, throw_start);
     let tokens = crate::rules::php_parser::lex(source);
@@ -247,7 +218,6 @@ fn print_new(source: &str, throw_start: usize, new: &Instantiation<'_>, args: &[
             reprint(source, &tokens, span, adjust)
         }
         (Some(span), Some(name)) => {
-            // the renamed `previous:` argument: the text between its name and value kept
             format!("{name}{}{}", &source[span.start..span.end], arg.value)
         }
         (_, Some(name)) => format!("{name}: {}", arg.value),
@@ -280,23 +250,17 @@ fn print_new(source: &str, throw_start: usize, new: &Instantiation<'_>, args: &[
     format!("new {class}({list})")
 }
 
-/// `areNodesEqual($value, $caughtThrowableVariable)`: the same variable.
 fn is_variable(value: &Expression<'_>, variable: &[u8]) -> bool {
     matches!(unparenthesize(value), Expression::Variable(Variable::Direct(d)) if d.name == variable)
 }
 
-/// Whether `resolveExceptionArgumentPosition` stops at a parameter of type `t`: with one object class in it,
-/// `Throwable` not a no for a supertype of it; else, `null` taken out, a yes.
 fn takes_throwable(codebase: &CodebaseMetadata, t: Option<&TUnion>) -> bool {
     let Some(t) = t else {
-        // no type: mixed, a maybe
         return false;
     };
     let mut classes: Vec<String> = t.types.iter().filter_map(class_name).collect();
     classes.dedup();
     if let [class] = &classes[..] {
-        // Rector 2.8.4 on PHPStan 2.3.5: a lone class is a maybe unless it is final or a trait; in a union with
-        // other types (`?Foo` too), only a `Throwable` class stops it
         if t.types.len() == 1 {
             return throwable_of(codebase, class) != Some(false);
         }
@@ -313,8 +277,6 @@ fn takes_throwable(codebase: &CodebaseMetadata, t: Option<&TUnion>) -> bool {
             .all(|a| class_name(a).is_some_and(|c| throwable_of(codebase, &c) == Some(true)))
 }
 
-/// The class an object type names (`getObjectClassNames()`), a class Mago does not know too; an enum, which cannot
-/// be a `Throwable`, has none here.
 fn class_name(atomic: &TAtomic) -> Option<String> {
     let name = match atomic {
         TAtomic::Object(TObject::Named(n)) => n.name,
@@ -324,8 +286,6 @@ fn class_name(atomic: &TAtomic) -> Option<String> {
     Some(String::from_utf8_lossy(name.as_bytes()).into_owned())
 }
 
-/// `(new ObjectType('Throwable'))->isSuperTypeOf(new ObjectType($class))`: `Some(true)` for a yes, `Some(false)` for a
-/// no, `None` for a maybe.
 fn throwable_of(codebase: &CodebaseMetadata, class: &str) -> Option<bool> {
     let metadata = codebase.get_class_like(class.as_bytes())?;
     if codebase.is_instance_of(class.as_bytes(), b"Throwable") {

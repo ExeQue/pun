@@ -1,12 +1,3 @@
-//! `lint/phpunit/prefer-same-for-scalars`, ported from rector-phpunit's `AssertEqualsToSameRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `assertEquals()` becomes `assertSame()` (and `assertNotEquals()` `assertNotSame()`) when the
-//! expected value is a scalar, an enum case, a class constant or an array of scalars, and the comparison cannot be
-//! one `assertEquals()` makes loosely: the actual value's native type is not a union, `mixed`, `never`, a number of
-//! the other kind, a string for a number, or a `Stringable` object for a string, and an array compares to an array
-//! with the same keys in the same order.
-
 use mago_syntax::cst::{
     Access, ArrayElement, CompositeString, Expression, Literal, Node, NodeKind, Statement,
 };
@@ -77,8 +68,6 @@ impl Rule for PreferSameForScalars {
     }
 }
 
-/// `isScalarType`: `FloatType`, `IntegerType`, `StringType`, `ConstantArrayType` or a `BooleanType` that is not a
-/// constant.
 fn is_scalar_type(t: &PType) -> bool {
     matches!(
         t,
@@ -98,7 +87,6 @@ fn is_scalar_or_enum_value(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `hasNonScalarType`: an item (at any depth) is not a scalar.
 fn has_non_scalar_type(values: &[PType]) -> bool {
     values.iter().any(|v| match v {
         PType::ConstantArray { values, .. } => has_non_scalar_type(values),
@@ -133,9 +121,6 @@ fn skip_constant_array(
     expected_keys != actual_keys
 }
 
-/// The keys of an array literal in the order written, for `expr` or for the variable `expr` names when the
-/// statements before it in its function assign it one array literal. Mago keeps a constant array's keys sorted, where
-/// PHPStan keeps them in order.
 fn written_keys(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Vec<Key>> {
     let literal = match unparenthesize(expr) {
         Expression::Variable(mago_syntax::cst::Variable::Direct(v)) => {
@@ -173,7 +158,6 @@ fn written_keys(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Vec
     Some(keys)
 }
 
-/// The array literal last assigned to `$name` by a statement of the enclosing function body before `before`.
 fn assigned_array<'a>(
     ancestors: &[Node<'a, 'a>],
     name: &[u8],
@@ -231,8 +215,6 @@ fn skip_loose(ctx: &Context<'_>, expected: &Expression<'_>, actual: &Expression<
     )
 }
 
-/// PHP's `is_numeric()` on a string: optional leading whitespace, a sign, digits with an optional fraction and
-/// exponent, and optional trailing whitespace.
 fn is_numeric(value: &[u8]) -> bool {
     let s = String::from_utf8_lossy(value);
     let t = s.trim_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);

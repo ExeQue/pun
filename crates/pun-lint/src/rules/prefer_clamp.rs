@@ -1,9 +1,3 @@
-//! `lint/php-8.6/prefer-clamp`, ported from Rector 2.8.4's `MinMaxToClampRector` (rules/Php86/Rector/FuncCall).
-//!
-//! `max($min, min($max, $value))`, `min($max, max($min, $value))` and their argument orders become
-//! `clamp($value, $min, $max)`. The inner call must have one known bound and one value; Rector asks PHPStan whether a
-//! bound's native type is a constant scalar, Pun knows it where the syntax does (see `lint_b_helpers::constant`).
-
 use mago_syntax::cst::{Argument, Call, Expression, FunctionCall, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -20,7 +14,6 @@ impl Rule for PreferClamp {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::CLAMP
         80600
     }
 
@@ -67,7 +60,6 @@ impl Rule for PreferClamp {
         if !supported(first) || !supported(second) {
             return;
         }
-        // matchValueAndKnownBound
         let known = |e: &Expression<'_>| constant(ancestors, e, at).is_some();
         let (value_expr, inner_bound) = match (known(value(first)), known(value(second))) {
             (true, false) => (value(second), value(first)),
@@ -99,12 +91,10 @@ impl Rule for PreferClamp {
     }
 }
 
-/// `isSupportedArg`: neither unpacked nor named.
 fn supported(arg: &Argument<'_>) -> bool {
     !unpacked(arg) && matches!(arg, Argument::Positional(_))
 }
 
-/// `$expr instanceof FuncCall`.
 fn inner_call<'a>(expr: &'a Expression<'a>) -> Option<&'a FunctionCall<'a>> {
     match unparenthesize(expr) {
         Expression::Call(Call::Function(call)) => Some(call),

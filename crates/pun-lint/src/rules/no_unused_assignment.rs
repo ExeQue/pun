@@ -1,14 +1,3 @@
-//! `lint/dead-code/no-unused-assignment`, ported from Rector 2.8.4's `RemoveUnusedVariableAssignRector`
-//! (rules/DeadCode/Rector/Assign), with `NoDiscardCallAnalyzer`, `ReservedKeywordAnalyzer::isNativeVariable` and
-//! `VariableAnalyzer`.
-//!
-//! In the statements of a function or a method (not the ones nested in them), `$x = expr;` goes when no later
-//! statement uses `$x`. When `expr` calls something (`SideEffectNodeDetector::detectCallExpr`), the call stays as a
-//! statement, without its casts, with the assignment's comments. Left alone: a body with an `include`, `compact()` or
-//! `get_defined_vars()`; a superglobal; a variable `global` or `static` before, taken by reference by the function or a
-//! closure, or assigned by reference in an earlier statement; a call to a `#[\NoDiscard]` function or method; an object
-//! whose class has a `__destruct()`; and `null` assigned to a variable holding an object of a built-in class.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -72,7 +61,6 @@ impl Rule for NoUnusedAssignment {
     }
 }
 
-/// The statements of the function or method whose body holds the statement `chain` ends with.
 fn body<'ast, 'arena>(chain: &[Node<'ast, 'arena>]) -> Option<&'ast Block<'arena>> {
     let n = chain.len();
     let Node::Block(block) = *chain.get(n.checked_sub(2)?)? else {
@@ -86,7 +74,6 @@ fn body<'ast, 'arena>(chain: &[Node<'ast, 'arena>]) -> Option<&'ast Block<'arena
     is_body.then_some(block)
 }
 
-/// What `refactor()` does to the statement `chain` ends with.
 fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) -> Option<Change> {
     let n = chain.len();
     let Node::Statement(statement) = chain[n - 1] else {
@@ -96,14 +83,12 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
     let key = stmts
         .iter()
         .position(|s| node_span(*s) == node_span(statement))?;
-    // `shouldSkip()`: we cannot be sure here
     if stmts
         .iter()
         .any(|s| any_node(Node::Statement(s), &skips_body))
     {
         return None;
     }
-    // `resolvedAssignedVariablesByStmtPosition()`, up to this statement
     let mut refs: Vec<Vec<u8>> = Vec::new();
     for s in &stmts[..key] {
         collect_refs(s, &mut refs);
@@ -140,7 +125,6 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
     if !has_call_like {
         return Some(Change::Remove);
     }
-    // `cleanCastedExpr()`, the statement's comments mirrored
     let mut expr = unparenthesize(assign.rhs);
     while let Expression::UnaryPrefix(u) = expr
         && u.operator.is_cast()
@@ -155,7 +139,6 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
     }]))
 }
 
-/// An `include` or `require`, or a call to `compact()` or `get_defined_vars()`.
 fn skips_body(node: Node<'_, '_>) -> bool {
     match node {
         Node::IncludeConstruct(_)
@@ -178,9 +161,6 @@ fn skips_body(node: Node<'_, '_>) -> bool {
     }
 }
 
-/// The names of the variables the top-level statement `statement` makes references to: an `=&` statement's variable,
-/// the variables a closure in an assigned value uses by reference, and, in a statement that holds statements (the
-/// `stmts` of `NodeGroup::STMTS_AWARE`), every `=&` variable inside it.
 fn collect_refs(statement: &Statement<'_>, refs: &mut Vec<Vec<u8>>) {
     let Some(expr) = expression(statement) else {
         let holds_statements = matches!(
@@ -222,7 +202,6 @@ fn collect_refs(statement: &Statement<'_>, refs: &mut Vec<Vec<u8>>) {
     if !is_plain_assign(assign) {
         return;
     }
-    // not into a class or a function
     let mut stack = vec![Node::Expression(assign.rhs)];
     while let Some(node) = stack.pop() {
         match node {
@@ -240,13 +219,11 @@ fn collect_refs(statement: &Statement<'_>, refs: &mut Vec<Vec<u8>>) {
     }
 }
 
-/// php-parser's `AssignRef`: `$a = &$b`.
 fn is_assign_ref(a: &Assignment<'_>) -> bool {
     matches!(a.operator, AssignmentOperator::Assign(_))
         && matches!(a.rhs, Expression::UnaryPrefix(u) if u.operator.is_reference())
 }
 
-/// `ReservedKeywordAnalyzer::isNativeVariable`: PHPStan's `Scope::SUPERGLOBAL_VARIABLES`.
 pub(super) fn is_native_variable(name: &[u8]) -> bool {
     [
         &b"GLOBALS"[..],
@@ -262,7 +239,6 @@ pub(super) fn is_native_variable(name: &[u8]) -> bool {
     .contains(&name)
 }
 
-/// `NoDiscardCallAnalyzer::isNoDiscardCall`: a call to a function or method declared with `#[\NoDiscard]`.
 fn is_no_discard_call(facts: &Facts, chain: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     let codebase = &facts.codebase;
     let no_discard = |attributes: &[mago_codex::metadata::attribute::AttributeMetadata]| {
@@ -273,7 +249,6 @@ fn is_no_discard_call(facts: &Facts, chain: &[Node<'_, '_>], expr: &Expression<'
             let Some(name) = called_function_name(chain, call.function) else {
                 return false;
             };
-            // `ReflectionProvider::hasFunction()`: the namespaced name, then the global one
             let local = matches!(call.function, Expression::Identifier(Identifier::Local(_)));
             let namespaced = class_imports(chain)
                 .0
@@ -304,7 +279,6 @@ fn is_no_discard_call(facts: &Facts, chain: &[Node<'_, '_>], expr: &Expression<'
     })
 }
 
-/// `getObjectClassNames()` of the type Mago gives `expr`: the classes of its object types, `$this`'s too.
 fn object_class_names(facts: &Facts, expr: &Expression<'_>) -> Vec<String> {
     fn names(atomic: &TAtomic, out: &mut Vec<String>) {
         match atomic {
@@ -333,7 +307,6 @@ fn object_class_names(facts: &Facts, expr: &Expression<'_>) -> Vec<String> {
     out
 }
 
-/// The class a static call's class part names: `self` and `static` the class around it, `parent` its parent.
 fn static_class_names(
     facts: &Facts,
     chain: &[Node<'_, '_>],
@@ -379,7 +352,6 @@ fn parent_of(codebase: &CodebaseMetadata, class: &str) -> Option<String> {
     )
 }
 
-/// The class of the object type (`ObjectType`, not `$this`'s `ThisType` nor a union) Mago gives the code at `span`.
 fn object_class(facts: &Facts, span: pun_problem::Span) -> Option<&[u8]> {
     match facts.full_type(span)?.types.as_ref() {
         [TAtomic::Object(TObject::Named(object))] if !object.is_this => {
@@ -389,7 +361,6 @@ fn object_class(facts: &Facts, span: pun_problem::Span) -> Option<&[u8]> {
     }
 }
 
-/// `isObjectWithDestructMethod()`: the value is an object whose class has a `__destruct()`.
 fn is_object_with_destruct_method(facts: &Facts, expr: &Expression<'_>) -> bool {
     object_class(facts, node_span(expr)).is_some_and(|class| {
         facts
@@ -399,9 +370,6 @@ fn is_object_with_destruct_method(facts: &Facts, expr: &Expression<'_>) -> bool 
     })
 }
 
-/// `isNullResetOfInternalObject()`: `null` assigned to a variable that holds an object of a built-in class, which
-/// releases what the object holds. The variable's type before the assignment is Mago's where the function last names
-/// it before the statement at `start`, or at the value last assigned to it.
 fn is_null_reset_of_internal_object(
     facts: &Facts,
     chain: &[Node<'_, '_>],

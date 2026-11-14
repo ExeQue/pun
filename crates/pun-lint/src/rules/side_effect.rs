@@ -15,7 +15,6 @@ use super::rector_stmts::is_plain_assign;
 const PURE: &str = include_str!("../../data/pure-functions.txt");
 const THROWABLES: &str = include_str!("../../data/throwables.txt");
 
-/// Whether the lowercased `name` is in the sorted, newline-separated `list`, split once into `cache`.
 pub(crate) fn listed(
     list: &'static str,
     cache: &'static OnceLock<Vec<&'static str>>,
@@ -27,7 +26,6 @@ pub(crate) fn listed(
         .is_ok()
 }
 
-/// `PureFunctionDetector::detect`: the call's function is a built-in one PHPStan knows has no side effects.
 pub(crate) fn is_pure_call(ancestors: &[Node<'_, '_>], call: &FunctionCall<'_>) -> bool {
     static CACHE: OnceLock<Vec<&'static str>> = OnceLock::new();
     let Expression::Identifier(identifier) = call.function else {
@@ -44,8 +42,6 @@ pub(crate) fn is_pure_call(ancestors: &[Node<'_, '_>], call: &FunctionCall<'_>) 
     listed(PURE, &CACHE, &name)
 }
 
-/// `SideEffectNodeDetector::detect`: a plain assignment, or any part of `expr` that
-/// [`call_has_side_effect`] reports.
 pub(crate) fn has_side_effect(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     if let Expression::Assignment(assignment) = crate::syntax::unparenthesize(expr)
         && is_plain_assign(assignment)
@@ -58,10 +54,7 @@ pub(crate) fn has_side_effect(ancestors: &[Node<'_, '_>], expr: &Expression<'_>)
     })
 }
 
-/// php-parser's `NodeFinder::findFirst`: whether `node` or a node inside it matches.
 pub(crate) fn any_node(node: Node<'_, '_>, f: &dyn Fn(Node<'_, '_>) -> bool) -> bool {
-    // An explicit stack, not recursion: rules call this on whole functions and classes, and a debug build's
-    // recursive walk of one ran out of a 2 MB worker stack on pinkary.
     let mut stack = vec![node];
     while let Some(node) = stack.pop() {
         if f(node) {
@@ -72,7 +65,6 @@ pub(crate) fn any_node(node: Node<'_, '_>, f: &dyn Fn(Node<'_, '_>) -> bool) -> 
     false
 }
 
-/// `SideEffectNodeDetector::detectCallExpr` for one expression (not the ones inside it).
 pub(crate) fn call_has_side_effect(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     match expr {
         Expression::Call(Call::StaticMethod(call)) => {

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocReturnSelfReferenceFixer`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, resolve};
 use crate::analyzers::utils::natural_language_join;
@@ -52,7 +51,6 @@ impl Fixer for PhpdocReturnSelfReferenceFixer {
         let mut replacements: Vec<(Vec<u8>, Vec<u8>)> = vec![];
         for (from, to) in entries {
             let to = to.as_str().unwrap();
-            // the normalizer strtolower()s string keys
             let from = match from {
                 PhpKey::Str(k) => format!("string#{}", k.to_ascii_lowercase()),
                 k => k.typed(),

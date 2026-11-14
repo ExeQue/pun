@@ -1,7 +1,3 @@
-//! `lint/security/no-eval`, ported from Mago 1.57.0's linter rule `no-eval` (rule/safety/no_eval.rs).
-//!
-//! Every `eval(...)` is reported on its `eval` keyword: it runs arbitrary code.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use crate::syntax::node_span;

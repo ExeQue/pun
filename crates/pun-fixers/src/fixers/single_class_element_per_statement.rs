@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\SingleClassElementPerStatementFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -36,7 +35,7 @@ impl Fixer for SingleClassElementPerStatementFixer {
         for (&index, element) in elements.iter().rev() {
             let ty = element.kind.as_str();
             if !self.elements.iter().any(|e| e == ty) {
-                continue; // not in configuration
+                continue;
             }
             fix_element(tokens, ty, index);
         }
@@ -61,7 +60,7 @@ fn fix_element(tokens: &mut Tokens, ty: &str, index: usize) {
             continue;
         }
         if repeat_token.equals_any(&[";".into(), CT_PROPERTY_HOOK_BRACE_OPEN.into()], true) {
-            return; // no repeating found, no fixing needed
+            return;
         }
         if repeat_token.equals(",", true) {
             break;

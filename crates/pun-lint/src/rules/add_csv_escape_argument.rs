@@ -1,11 +1,3 @@
-//! `lint/php-8.4/add-csv-escape-argument`, ported from Rector 2.8.4's `AddEscapeArgumentRector`
-//! (rules/Php84/Rector/FuncCall).
-//!
-//! PHP 8.4 deprecates relying on the default `$escape` of the CSV functions, so a call that leaves it out gets
-//! `escape: '\\'`, the old default: `fputcsv()`, `fgetcsv()` and `str_getcsv()`, and `SplFileObject`'s
-//! `setCsvControl()`, `fputcsv()` and `fgetcsv()`. Rector asks PHPStan whether the method's object is an
-//! `SplFileObject`; Pun knows it only where the syntax proves it (see `lint_b_helpers::is_object_of`).
-
 use mago_syntax::cst::{Argument, ArgumentList, ClassLikeMemberSelector, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 
@@ -22,7 +14,6 @@ impl Rule for AddCsvEscapeArgument {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::REQUIRED_ESCAPE_PARAMETER
         80400
     }
 
@@ -49,7 +40,6 @@ impl Rule for AddCsvEscapeArgument {
                 (&call.argument_list, at_most)
             }
             Node::MethodCall(call) => {
-                // `$this->getName($node->name)` compared with `in_array(..., true)`: the name as written.
                 let ClassLikeMemberSelector::Identifier(name) = &call.method else {
                     return;
                 };
@@ -85,7 +75,6 @@ impl Rule for AddCsvEscapeArgument {
     }
 }
 
-/// `shouldSkipNamedArg` (an argument named `escape`), or an escape argument already passed by position.
 fn skip(list: &ArgumentList<'_>, at_most: usize) -> bool {
     list.arguments.len() > at_most
         || list

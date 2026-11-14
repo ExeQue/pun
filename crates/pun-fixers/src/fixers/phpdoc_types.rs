@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocTypesFixer`.
 use crate::analyzers::abstract_phpdoc_types_fixer as base;
 use crate::analyzers::docblock::TypeExpression;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -37,10 +36,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 impl PhpdocTypesFixer {
-    /// normalize() only lowercases a type whose lowercase form is in the set, so a docblock where every
-    /// case-insensitive occurrence of those names is already lowercase comes out unchanged.
     fn may_change(&self, doc: &[u8]) -> bool {
-        // Only an uppercase ASCII letter can start or sit inside such an occurrence.
         doc.iter()
             .enumerate()
             .filter(|(_, b)| b.is_ascii_uppercase())

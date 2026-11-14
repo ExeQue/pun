@@ -1,7 +1,3 @@
-//! Complete PHPStan 2.3.1 diagnostics for CallMethodsRule's per-name filtered scopes, including the
-//! FunctionCallParametersCheck collector's unpacked argument dependencies and evaluation positions.
-//! Reproduce with fixtures/filtered-named-arguments/capture.php and the pinned PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Error, Project, run};

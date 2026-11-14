@@ -1,7 +1,3 @@
-//! What the rules that add a parameter type share: where php-parser's printer writes a new `Param::$type`, Rector's
-//! `StaticTypeMapper::mapPHPStanTypeToPhpParserNode` for a parameter (`TypeKind::PARAM`) on Mago's types, and the
-//! array types Rector's `NodeTypeResolver::getType` gives after its `NodeTypeCorrector`.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -15,16 +11,11 @@ use super::declare::{atomic_declaration, union_order};
 use super::facts::Facts;
 use crate::rules::class_method::type_of;
 
-/// `PhpVersionFeature::NULL_FALSE_TRUE_STANDALONE_TYPE`.
 const NULL_FALSE_TRUE_STANDALONE_TYPE: u32 = 80200;
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
-/// `PhpVersionFeature::NULLABLE_TYPE`.
 const NULLABLE_TYPE: u32 = 70100;
-/// `PhpVersionFeature::DNF_TYPES`.
 const DNF_TYPES: u32 = 80200;
 
-/// Where a new type goes: before the `&`, the `...` or the variable (after attributes and modifiers).
 pub(crate) fn hint_at(param: &FunctionLikeParameter<'_>) -> usize {
     param
         .ampersand
@@ -32,19 +23,15 @@ pub(crate) fn hint_at(param: &FunctionLikeParameter<'_>) -> usize {
         .map_or(param.variable.span.start.offset, |s| s.start.offset) as usize
 }
 
-/// The edit that gives `param` the type `declaration`.
 pub(crate) fn add_hint(param: &FunctionLikeParameter<'_>, declaration: &str) -> Edit {
     let at = hint_at(param);
     Edit::new(Span::new(at, at), format!("{declaration} "))
 }
 
-/// Whether PHPStan's type is a `MixedType`: Mago's union holds `mixed` (a union with `mixed` is `mixed` in PHPStan).
 pub(crate) fn is_mixed(t: &TUnion) -> bool {
     t.types.is_empty() || t.types.iter().any(|a| matches!(a, TAtomic::Mixed(_)))
 }
 
-/// `mapPHPStanTypeToPhpParserNode($type, TypeKind::PARAM)` for the union `t`: one type maps alone, more as a union
-/// (`TypeKind::UNION` for each member, repeats dropped, `null` with one other written `?T`).
 pub(crate) fn param_declaration(
     t: &TUnion,
     codebase: &CodebaseMetadata,
@@ -53,8 +40,6 @@ pub(crate) fn param_declaration(
     param_declaration_in(t, codebase, php_version, &[])
 }
 
-/// [`param_declaration`] with the classes of a union in the order `order` names them (lowercase short names, see
-/// [`doc_order`]): PHPStan keeps a docblock union as written, where Mago sorts it.
 pub(crate) fn param_declaration_in(
     t: &TUnion,
     codebase: &CodebaseMetadata,
@@ -70,8 +55,6 @@ pub(crate) fn param_declaration_in(
     )
 }
 
-/// [`param_declaration`] of the members of a union in the order given (PHPStan's `UnionType` as Rector builds it,
-/// not sorted).
 pub(crate) fn param_declaration_unsorted(
     types: &[TAtomic],
     codebase: &CodebaseMetadata,
@@ -135,13 +118,10 @@ fn declaration_of(
             if php_version < UNION_TYPES {
                 return None;
             }
-            // `NativePhpTypeNodeHelper::union()` (PHPStan 2.3, Rector 2.8.4): the other members in order, `null` last
             let mut many: Vec<String> = many.iter().filter(|n| *n != "null").cloned().collect();
             if many.len() < names.len() {
                 many.push("null".to_string());
             }
-            // `NativePhpTypeNodeHelper::union()`: PHP rejects redundant members, so `object` takes in the class names
-            // and intersections beside it, and `iterable` an `array`
             let object = many.iter().any(|n| n == "object");
             let iterable = many.iter().any(|n| n == "iterable");
             many.retain(|n| {
@@ -149,7 +129,6 @@ fn declaration_of(
                     && (n.starts_with('\\') || n == "self" || n == "static" || n.contains('&')))
                     && !(iterable && n == "array")
             });
-            // `A|(A&B)` is `A`: an intersection with a part that is a member of its own goes
             let plain: Vec<String> = many
                 .iter()
                 .filter(|n| !n.contains('&'))
@@ -189,7 +168,6 @@ fn declaration_of(
     }
 }
 
-/// Sort the class names of `names` among their own slots by where `order` names them; the rest stay put.
 fn order_classes(names: &mut [String], order: &[String]) {
     let slots: Vec<usize> = (0..names.len())
         .filter(|&i| names[i].starts_with('\\'))
@@ -207,8 +185,6 @@ fn order_classes(names: &mut [String], order: &[String]) {
     }
 }
 
-/// The words of the docblock of the innermost function, method or closure of `ancestors`, lowercased, in the order
-/// written: the order of the classes of a union PHPStan read from it.
 pub(crate) fn doc_order(ctx: &crate::Context<'_>, ancestors: &[Node<'_, '_>]) -> Vec<String> {
     let Some(at) = ancestors
         .iter()
@@ -227,9 +203,6 @@ pub(crate) fn doc_order(ctx: &crate::Context<'_>, ancestors: &[Node<'_, '_>]) ->
         .collect()
 }
 
-/// The values' types of a constant array in the order PHPStan's `ConstantArrayType` keeps them, the order its keys
-/// were set: the literal's own where `expr` is one; Mago's where its keys are integers. `None` for a constant array
-/// with string keys that is not a literal, whose order Mago does not keep (it sorts the keys).
 pub(crate) fn constant_values<'ast, 'arena>(
     facts: &Facts,
     ancestors: &[Node<'ast, 'arena>],
@@ -241,7 +214,6 @@ pub(crate) fn constant_values<'ast, 'arena>(
         .iter()
         .flat_map(|v| v.types.iter().cloned())
         .collect();
-    // a variable last assigned a literal with the same values
     let source = assigned(ancestors, expr);
     let expr = if std::ptr::eq(source, expr) {
         expr
@@ -258,7 +230,6 @@ pub(crate) fn constant_values<'ast, 'arena>(
         Expression::LegacyArray(a) => Some(a.elements.iter().collect()),
         _ => None,
     };
-    // the values of a literal in the order written; a spread (`...$a`) takes Mago's order
     let written: Option<Vec<&Expression<'_>>> = elements.and_then(|elements| {
         elements
             .iter()
@@ -285,8 +256,6 @@ pub(crate) fn constant_values<'ast, 'arena>(
     (!string_keyed || flat.iter().all(|t| *t == flat[0])).then_some(flat)
 }
 
-/// The members of a union as PHPStan has them: a template type is its bound, `array-key` is `int|string` and
-/// `scalar` is `int|float|string|bool`. `None` for a template bound that is `mixed`.
 fn expand(types: &[TAtomic]) -> Option<Vec<TAtomic>> {
     let mut out = Vec::new();
     for t in types {
@@ -313,7 +282,6 @@ fn expand(types: &[TAtomic]) -> Option<Vec<TAtomic>> {
     Some(out)
 }
 
-/// PHPStan's `TypeCombinator`: `true` with `false` is `bool`, and `bool` takes in either.
 fn normalize_bool(types: Vec<&TAtomic>) -> Vec<&TAtomic> {
     let is_true = |t: &TAtomic| matches!(t, TAtomic::Scalar(TScalar::Bool(b)) if b.is_true());
     let is_false = |t: &TAtomic| matches!(t, TAtomic::Scalar(TScalar::Bool(b)) if b.is_false());
@@ -340,10 +308,8 @@ fn normalize_bool(types: Vec<&TAtomic>) -> Vec<&TAtomic> {
 
 static BOOL: TAtomic = TAtomic::Scalar(TScalar::bool());
 
-/// One type that is not a union, as a parameter type.
 fn single(t: &TAtomic, codebase: &CodebaseMetadata, php_version: u32) -> Option<String> {
     match t {
-        // `NullType::toNativePhpTypeNode()`: a standalone `null` from PHP 8.2 (PHPStan 2.3)
         TAtomic::Null if php_version >= NULL_FALSE_TRUE_STANDALONE_TYPE => Some("null".to_string()),
         TAtomic::Null | TAtomic::Void | TAtomic::Never | TAtomic::Mixed(_) => None,
         TAtomic::Scalar(TScalar::Bool(b)) if !b.is_general() => Some(str::to_string(
@@ -359,8 +325,6 @@ fn single(t: &TAtomic, codebase: &CodebaseMetadata, php_version: u32) -> Option<
     }
 }
 
-/// A type that is not `null` or a constant `bool`, as a declaration: `$this` is `self` outside a return type; a
-/// `static` that Mago keeps from a static call is the class it names (PHPStan resolves it there).
 fn member(t: &TAtomic, codebase: &CodebaseMetadata, php_version: u32) -> Option<String> {
     match t {
         TAtomic::Object(TObject::Named(named))
@@ -368,7 +332,6 @@ fn member(t: &TAtomic, codebase: &CodebaseMetadata, php_version: u32) -> Option<
         {
             Some("self".to_string())
         }
-        // `TypeCombinator::intersect()` keeps of `A&B` the one that is a subtype of the other
         TAtomic::Object(TObject::Named(named))
             if !named.is_this && !named.is_static && named.intersection_types.is_some() =>
         {
@@ -419,8 +382,6 @@ fn member(t: &TAtomic, codebase: &CodebaseMetadata, php_version: u32) -> Option<
     }
 }
 
-/// A `static` or `$this` of the class the code is in as `$this` (Rector writes `self` for it); one of another class
-/// (`Carbon::now()`, `$date->addMinutes(5)`, `$class::cases()`) is the class it names.
 pub(crate) fn own_static(t: &TAtomic, class: Option<&str>) -> TAtomic {
     match t {
         TAtomic::Object(TObject::Named(named)) if named.is_static || named.is_this => {
@@ -434,23 +395,16 @@ pub(crate) fn own_static(t: &TAtomic, class: Option<&str>) -> TAtomic {
     }
 }
 
-/// The array types Rector's `getType()` tells apart, after `NodeTypeCorrector::correctType` (a list is a plain
-/// `ArrayType`, a non-empty array is `array<mixed, mixed>`).
 pub(crate) enum ArrayShape {
-    /// `ConstantArrayType`, with its values.
     Constant(Vec<TUnion>),
-    /// `ArrayType`, with its item type; `None` for `mixed`.
     General(Option<TUnion>),
 }
 
-/// The array shape of PHPStan's `getType()` of `expr`. A non-empty array counts only where a docblock makes it one:
-/// Mago also knows it of built-in calls (`explode()`, `Enum::cases()`) and literals, where PHPStan does not.
 pub(crate) fn array_shape_of(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
     expr: &Expression<'_>,
 ) -> Option<ArrayShape> {
-    // `array_slice($array, 0)` with a positive length or none keeps a non-empty array non-empty
     if let Some(sliced) = head_slice(expr)
         && matches!(
             array_shape_of(facts, ancestors, sliced),
@@ -460,7 +414,6 @@ pub(crate) fn array_shape_of(
         return Some(ArrayShape::General(None));
     }
     let span = crate::syntax::node_span(crate::syntax::unparenthesize(expr));
-    // a value PHPStan does not type, or a literal array of one, is (an array of) `mixed`
     let literal = match crate::syntax::unparenthesize(expr) {
         Expression::Array(a) => a.elements.iter().collect(),
         Expression::LegacyArray(a) => a.elements.iter().collect(),
@@ -496,8 +449,6 @@ pub(crate) fn array_shape_of(
     array_shape(t, !native_non_empty || emptiness_checked(ancestors, expr))
 }
 
-/// Whether `expr` is a variable that an `empty()` or `!` before it in its function tests, which narrows it in PHPStan
-/// as in Mago (an early return on it leaves it non-empty).
 fn emptiness_checked(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     use mago_syntax::cst::{UnaryPrefixOperator, Variable};
     let Expression::Variable(Variable::Direct(variable)) = crate::syntax::unparenthesize(expr)
@@ -529,8 +480,6 @@ fn emptiness_checked(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool 
     checked
 }
 
-/// `AccessoryNonEmptyArrayTypeCorrector`: the item type of a non-empty array whose items are strings with an accessory
-/// (`non-empty-string`, `lowercase-string`, ...: an `IntersectionType` in PHPStan) is `string`, of others `mixed`.
 fn accessory_string(item: &TUnion) -> Option<TUnion> {
     use mago_codex::ttype::atomic::scalar::string::TStringCasing;
     let accessory = |a: &TAtomic| {
@@ -541,10 +490,6 @@ fn accessory_string(item: &TUnion) -> Option<TUnion> {
         .then(|| TUnion::from_vec(vec![TAtomic::Scalar(TScalar::string())]))
 }
 
-/// The members of the item type of the array `$this->name` reads, as written in the property's docblock (`@var
-/// array<int, string|int|null>`), each a lowercase short name, with `array` for an array type and `string` for a
-/// class string: PHPStan keeps a declared union in the order written, where Mago sorts it. `None` where the property
-/// is not one array or a member is not a plain type.
 fn declared_items(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -587,7 +532,6 @@ fn declared_items(
         .collect()
 }
 
-/// `text` split at each `separator` outside brackets.
 fn top_level(text: &str, separator: char) -> Vec<&str> {
     let mut parts = Vec::new();
     let (mut depth, mut start) = (0i32, 0);
@@ -606,7 +550,6 @@ fn top_level(text: &str, separator: char) -> Vec<&str> {
     parts
 }
 
-/// A member of a docblock union as [`declared_items`] names it.
 fn declared_member(member: &str) -> Option<String> {
     let lower = member.to_ascii_lowercase();
     if lower.ends_with("[]")
@@ -632,8 +575,6 @@ fn declared_member(member: &str) -> Option<String> {
     )
 }
 
-/// [`param_declaration`] of `item`, the item type of the array `expr`, its members in the declared order where
-/// [`declared_items`] names each of them.
 pub(crate) fn item_declaration(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -651,7 +592,6 @@ pub(crate) fn item_declaration(
         return Some(declaration);
     }
     let mut ordered: Vec<&str> = Vec::new();
-    // `TypeCombinator::union` puts the arrays after the other types, and `null` last
     let rank = |o: &String| match o.as_str() {
         "array" => 1,
         "null" => 2,
@@ -673,7 +613,6 @@ pub(crate) fn item_declaration(
     })
 }
 
-/// The array of `array_slice($array, 0)` or `array_slice($array, 0, $n)` with a positive literal `$n`.
 fn head_slice<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
     use crate::rules::lint_b_helpers::value;
     use crate::rules::rector_code_quality::named;
@@ -692,7 +631,6 @@ fn head_slice<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
     .then(|| args[0])
 }
 
-/// The function, method or closure around the code, or the file for code outside any.
 fn code_scope<'ast, 'arena>(ancestors: &[Node<'ast, 'arena>]) -> Option<Node<'ast, 'arena>> {
     ancestors
         .iter()
@@ -707,7 +645,6 @@ fn code_scope<'ast, 'arena>(ancestors: &[Node<'ast, 'arena>]) -> Option<Node<'as
         .copied()
 }
 
-/// The value of `expr` where it is a variable: the right-hand side of its last `=` before `expr` in its function.
 fn assigned<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
     expr: &'ast Expression<'arena>,
@@ -735,12 +672,6 @@ fn assigned<'ast, 'arena>(
     value
 }
 
-/// Whether `expr` is (a variable assigned) `explode()` without a limit of a lowercase or uppercase string
-/// (`strtolower()` and the like, or a variable assigned one): PHPStan's `ExplodeFunctionDynamicReturnTypeExtension`
-/// gives it `non-empty-list<lowercase-string>`, whose item `AccessoryNonEmptyArrayTypeCorrector` makes `string`.
-/// Not where a `str_contains()`, `str_starts_with()` or `str_ends_with()` of the haystack proves the delimiter is
-/// there: the extension then gives an unsealed constant array. PHPStan finds that call only by its fully qualified
-/// name, so an unqualified one counts outside a namespace only (checked with Rector 2.8.4).
 fn cased_explode<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
     expr: &'ast Expression<'arena>,
@@ -793,9 +724,6 @@ fn cased_explode<'ast, 'arena>(
     !proven
 }
 
-/// A call PHPStan's return type extensions make a non-empty list where Mago gives a list (checked with Rector 2.8.4):
-/// `explode()` but with a negative limit, and `range()` but of literal integers with 50 items or fewer (a constant
-/// array).
 fn non_empty_call(expr: &Expression<'_>) -> bool {
     use crate::rules::lint_b_helpers::value;
     use crate::rules::rector_code_quality::named;
@@ -829,10 +757,6 @@ fn non_empty_call(expr: &Expression<'_>) -> bool {
     false
 }
 
-/// The array shape of `t`; with `non_empty`, a non-empty array is `array<mixed, mixed>`. Several arrays are PHPStan's
-/// `TypeCombinator::union` of them, as far as Pun follows it: with a general array among them, one `ArrayType` whose
-/// item type is the union of theirs (Mago keeps them apart), non-empty only when each of them is; constant arrays only
-/// stay a union.
 fn array_shape(t: &TUnion, non_empty: bool) -> Option<ArrayShape> {
     let arrays: Vec<&TArray> = t
         .types
@@ -904,8 +828,6 @@ fn one_array_shape(array: &TArray, non_empty: bool) -> Option<ArrayShape> {
     })
 }
 
-/// `ConstantArrayType::getItemType()` or `ArrayType::getItemType()`: the union of a constant array's values, or the
-/// item type; `None` for `mixed` or a constant array without values (`never`).
 pub(crate) fn item_type(shape: &ArrayShape) -> Option<TUnion> {
     match shape {
         ArrayShape::Constant(values) => {
@@ -923,8 +845,6 @@ pub(crate) fn item_type(shape: &ArrayShape) -> Option<TUnion> {
     }
 }
 
-/// `TypeCombinator::union()` of a constant array's values (`types`, in order): the types that are not constant scalars
-/// or arrays keep their order, then come the arrays, then the constant scalars (`null` and literal values), by kind in the order the kinds come.
 pub(crate) fn constant_values_union(types: &[TAtomic]) -> Vec<TAtomic> {
     let kind = |t: &TAtomic| match t {
         TAtomic::Null => Some(0),
@@ -936,7 +856,6 @@ pub(crate) fn constant_values_union(types: &[TAtomic]) -> Vec<TAtomic> {
         }),
         _ => None,
     };
-    // the arrays come after the other types
     let mut out: Vec<TAtomic> = types
         .iter()
         .filter(|t| kind(t).is_none() && !matches!(t, TAtomic::Array(_)))
@@ -960,15 +879,11 @@ pub(crate) fn constant_values_union(types: &[TAtomic]) -> Vec<TAtomic> {
     out
 }
 
-/// What [`traverse`] does after a node.
 pub(crate) enum Flow {
     Continue,
     Stop,
 }
 
-/// `traverseNodesWithCallable()` over the children of `node`, outer nodes first, without entering nested functions,
-/// closures, arrow functions and classes (an anonymous class's arguments are walked, as php-parser keeps them on the
-/// `new`), until `f` stops it. Returns whether it stopped.
 pub(crate) fn traverse<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     f: &mut dyn FnMut(Node<'ast, 'arena>) -> Flow,
@@ -1000,10 +915,6 @@ pub(crate) fn traverse<'ast, 'arena>(
     stopped
 }
 
-/// PHPStan's `TypeCombinator::union()` of `args` (each a type's members, a union when it has more than one), for
-/// general types as Rector's `TypeFactory` leaves them: one type that is not a union or an array stays; otherwise the
-/// members keep their order but for merging, where an equal type or a supertype later on takes the place (members of
-/// one argument are not compared), the arrays become one array after them, then the enum cases, then `null`.
 pub(crate) fn phpstan_union(codebase: &CodebaseMetadata, args: Vec<Vec<TAtomic>>) -> Vec<TAtomic> {
     if let [one] = args.as_slice()
         && let [single] = one.as_slice()
@@ -1064,7 +975,6 @@ pub(crate) fn phpstan_union(codebase: &CodebaseMetadata, args: Vec<Vec<TAtomic>>
     out
 }
 
-/// `$a->isSuperTypeOf($b)->yes()` for general types: equal ones, or a class and its subclass.
 fn is_supertype(codebase: &CodebaseMetadata, a: &TAtomic, b: &TAtomic) -> bool {
     if a == b {
         return true;

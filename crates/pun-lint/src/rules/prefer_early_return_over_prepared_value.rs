@@ -1,10 +1,3 @@
-//! `lint/style/prefer-early-return-over-prepared-value`, ported from Rector 2.8.4's
-//! `PreparedValueToEarlyReturnRector` (rules/EarlyReturn/Rector/Return_), with `IfManipulator::isIfWithoutElseAndElseIfs`
-//! and the `BareSingleAssignIf` value object.
-//!
-//! A variable set to a default, then set by `if`s that each hold only that assignment, then returned, becomes early
-//! returns: each `if` returns its value, the default assignment goes and the `return` returns the default.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -34,7 +27,6 @@ impl Rule for PreferEarlyReturnOverPreparedValue {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // A cheap look first: an `if` and a `return`.
         let raw = crate::syntax::statements(node);
         if !raw.iter().any(|s| matches!(s, Statement::If(_)))
             || !raw.iter().any(|s| matches!(s, Statement::Return(_)))
@@ -61,11 +53,9 @@ impl Rule for PreferEarlyReturnOverPreparedValue {
     }
 }
 
-/// An `if` with no `else` whose only statement assigns: `BareSingleAssignIf`.
 struct BareSingleAssignIf<'a> {
     condition: &'a Expression<'a>,
     statement: &'a Statement<'a>,
-    /// Where the statement's comments start.
     comments_start: usize,
     assign: &'a Assignment<'a>,
 }
@@ -105,9 +95,7 @@ fn refactor(ctx: &Context<'_>, list: &List<'_>) -> Option<(Vec<Edit>, Span)> {
         found = Some(r#return);
         break;
     }
-    // The cheap look found a `return` in the list.
     let r#return = found.unwrap();
-    // Match the exact variable.
     let returned = r#return.value.map(unparenthesize)?;
     if !matches!(returned, Expression::Variable(_)) {
         return None;
@@ -126,7 +114,6 @@ fn refactor(ctx: &Context<'_>, list: &List<'_>) -> Option<(Vec<Edit>, Span)> {
     let mut edits = remove(ctx, list, &[position]);
     for b in &bare {
         let value = node_span(unparenthesize(b.assign.rhs));
-        // A new `Return_` in place of the statement: its comments go.
         edits.push(Edit::new(
             Span::new(b.comments_start, node_span(b.statement).end),
             format!("return {};", &source[value.start..value.end]),
@@ -144,7 +131,6 @@ fn refactor(ctx: &Context<'_>, list: &List<'_>) -> Option<(Vec<Edit>, Span)> {
     Some((edits, span))
 }
 
-/// Whether a loop assigns the variable again (`findFirst` of an `Assign` to an equal variable, anywhere under it).
 fn reassigns(ctx: &Context<'_>, node: Node<'_, '_>, var: &Expression<'_>) -> bool {
     if let Node::Assignment(a) = node
         && is_plain_assign(a)
@@ -173,7 +159,6 @@ fn match_bare_single_assign_if<'a>(
     if view.else_.is_some() || !view.elseifs.is_empty() {
         return None;
     }
-    // The next statement is another `if` or the `return`.
     if !matches!(
         list.stmts.get(key + 1),
         Some(Statement::If(_) | Statement::Return(_))
@@ -188,7 +173,6 @@ fn match_bare_single_assign_if<'a>(
     })
 }
 
-/// `isVariableSharedInAssignIfsAndReturn`.
 fn is_variable_shared(
     ctx: &Context<'_>,
     bare: &[BareSingleAssignIf<'_>],

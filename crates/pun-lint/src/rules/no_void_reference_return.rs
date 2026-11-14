@@ -1,9 +1,3 @@
-//! `lint/functions/no-void-reference-return`, ported from Mago 1.57.0's linter rule `no-void-reference-return`
-//! (rule/deprecation/no_void_reference_return.rs).
-//!
-//! From PHP 8.2, returning by reference (`function &f(): void`) from a `void` function, method, closure or arrow
-//! function, or from a `set` property hook, is deprecated. The `&` is reported.
-
 use mago_span::Span;
 use mago_syntax::cst::{FunctionLikeReturnTypeHint, Hint, Node, NodeKind};
 

@@ -1,5 +1,3 @@
-//! Inherited TemplateIntersectionType array/accessory views, captured from PHPStan 2.3.1.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{Accessory, Level, Template, Tri, Type, intersect, union};
 use serde_json::{Value, json};

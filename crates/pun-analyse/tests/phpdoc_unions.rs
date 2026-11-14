@@ -1,5 +1,3 @@
-//! PHPDoc union construction through the public analyser, using real PHPStan 2.3.1 expectations.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -86,9 +84,6 @@ fn native_return_checks_accept_benevolent_members_without_relaxing_strict_unions
         }
     }
 
-    // PHPStan 2.3.1 BenevolentUnionType::isAcceptedBy ORs member acceptance.
-    // Fresh public Type::accepts(..., true) controls for array<mixed>|float|int:
-    // int and float accept only the benevolent union; string and bool accept neither.
     for (return_type, accepts_benevolent) in [
         ("int", true),
         ("float", true),

@@ -1,5 +1,3 @@
-//! Reason metadata is invisible to PHPStan type identity, queries, acceptance and descriptions.
-
 use pun_phpstan::resolve::{Scope, resolve_in, resolve_late, resolve_str};
 use pun_phpstan::symbols::{self, Class};
 use pun_phpstan::types::{
@@ -205,7 +203,6 @@ fn deferred_array_shape_keys_resolve_before_their_error_is_reported() {
             cast_is_error(&original, Cast::String, StrictMixed::default()),
             row["castStringError"]
         );
-        // ErrorType's pre-existing iterable getters are outside the late-shape array contract.
         if row["queries"]["isArray"] == "Yes" {
             assert_eq!(
                 original.iterable_key_type().describe(Level::Precise),
@@ -235,8 +232,6 @@ fn deferred_array_shape_keys_resolve_before_their_error_is_reported() {
     }
 }
 
-/// The analyser does not yet produce mixed~int for !is_int guards. Test the owning public type contract with
-/// PHPStan's actual narrowed source type instead of silently discarding the missing flow information.
 #[test]
 fn offset_comparison_reasons_are_not_the_direct_mixed_intersection_fast_path() {
     let oracle: Value =

@@ -1,9 +1,6 @@
-//! Type-owned getConstantStrings/getConstantArrays, including UnionType's domain-sensitive benevolent policy.
-
 use super::*;
 
 impl Type {
-    /// `getConstantStrings()`: template subclasses inherit extraction from their concrete parent.
     pub fn constant_strings(&self) -> Vec<Vec<u8>> {
         match self.unreasoned() {
             Type::ConstString(s) => vec![s.clone()],
@@ -11,8 +8,6 @@ impl Type {
                 let mut bound = &template.bound;
                 while let Type::Template(template) = bound {
                     bound = &template.bound;
-                    // TemplateTypeFactory selects TemplateStringType before TemplateConstantStringType
-                    // when the bound is itself a string template. Its inherited extraction is empty.
                     if matches!(bound, Type::ConstString(_)) {
                         return vec![];
                     }
@@ -27,8 +22,6 @@ impl Type {
         }
     }
 
-    /// `getConstantArrays()`. A callable-array intersection owns exactly offsets 0 and 1, even when its
-    /// array member is generic; each value comes from that offset, not the union of all array items.
     pub fn constant_arrays(&self) -> Vec<ConstArray> {
         match self.unreasoned() {
             _ if self.is_callable_array() => {
@@ -65,8 +58,6 @@ impl Type {
         }
     }
 
-    /// UnionType/BenevolentUnionType::pickFromTypes(). Only a benevolent union can skip empty results
-    /// from members outside the requested domain; a broad string/array still cancels its extraction.
     fn pick_constants<T>(
         &self,
         types: &[Type],
@@ -86,8 +77,6 @@ impl Type {
         values
     }
 
-    /// The constant integer getOffsetValueType() queries needed by callable-array synthesis. Callable
-    /// and array accessories contribute mixed unless they own this exact offset's value.
     fn callable_array_offset(&self, index: i64) -> Type {
         let key = Type::ConstInt(index);
         match self.unreasoned() {

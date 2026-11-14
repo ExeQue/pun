@@ -1,14 +1,3 @@
-//! `lint/dead-code/no-useless-continue`, ported from Rector 2.8.4's `RemoveDeadContinueRector`
-//! (rules/DeadCode/Rector/For_).
-//!
-//! A `continue` (or `continue 1`, or `continue 0`) as the last statement of a loop body does nothing; Rector removes
-//! it, and again while the new last statement is one. A comment after it is a php-parser `Nop` statement, so the
-//! loop keeps its `continue`.
-//!
-//! Mago 1.57.0's `no-redundant-continue` (mapped "same") fires on every fixture Rector changes, and reports only the
-//! last statement. It also fires when a comment follows the `continue`, and not on `continue 0;`, `continue (1);`,
-//! or a `continue;` followed by an empty `;`, where Rector removes it.
-
 use mago_syntax::cst::{
     DoWhile, Expression, ForBody, ForeachBody, ForeachTarget, Literal, Node, NodeKind, Sequence,
     Statement, TokenSeparatedSequence, WhileBody,
@@ -42,8 +31,6 @@ impl Rule for NoUselessContinue {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
-        // A cheap look first, before the file is read into tokens: the body's last statement must be a `continue`
-        // that can go.
         let open = |s, colon: mago_span::Span, end: mago_span::Span| {
             Body::Open(s, colon.end.offset as usize, end.start.offset as usize)
         };
@@ -78,7 +65,6 @@ impl Rule for NoUselessContinue {
             Body::One(s) => body_list(tokens, s),
             Body::Open(s, from, to) => open_list(tokens, s, from, to),
         };
-        // refactor: pop the last statement while canRemoveLastStatement.
         if list.nop {
             return;
         }
@@ -90,7 +76,6 @@ impl Rule for NoUselessContinue {
         let mut indices = removable;
         indices.reverse();
         let edits = if matches!(body, Body::Open(..)) && indices.len() == list.len() {
-            // An alternative-syntax body left empty: php-parser's printer writes the loop again, with braces.
             let span = node_span(&node);
             let indent = line_indent(ctx.source, span.start);
             vec![Edit::new(
@@ -112,7 +97,6 @@ impl Rule for NoUselessContinue {
     }
 }
 
-/// A loop's header as php-parser's printer writes it, from the source's expressions.
 fn header(source: &str, node: Node<'_, '_>) -> String {
     let text = |e: &Expression| {
         let s = node_span(unparenthesize(e));
@@ -149,15 +133,12 @@ fn header(source: &str, node: Node<'_, '_>) -> String {
     }
 }
 
-/// A loop's body: one statement (maybe a block), or the statements of an alternative syntax, from after its `:` to
-/// the keyword that ends it.
 #[derive(Clone, Copy)]
 enum Body<'ast, 'arena> {
     One(&'ast Statement<'arena>),
     Open(&'ast Sequence<'arena, Statement<'arena>>, usize, usize),
 }
 
-/// Whether the last statement php-parser keeps (Mago's `;` and tags aside) is a removable `continue`.
 fn ends_with_continue(statements: &[Statement<'_>]) -> bool {
     statements
         .iter()
@@ -170,7 +151,6 @@ fn ends_with_continue(statements: &[Statement<'_>]) -> bool {
         .is_some_and(is_removable)
 }
 
-/// `isRemovable`: a `continue` without a level, or with an integer level below 2.
 fn is_removable(statement: &Statement<'_>) -> bool {
     let Statement::Continue(c) = statement else {
         return false;

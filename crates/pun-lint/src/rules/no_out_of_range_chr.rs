@@ -1,8 +1,3 @@
-//! `lint/php-8.5/no-out-of-range-chr`, ported from Rector 2.8.4's `ChrArgModuloRector` (rules/Php85/Rector/FuncCall).
-//!
-//! PHP 8.5 deprecates passing `chr()` an integer outside 0-255, so such an argument becomes `$x % 256`. Rector asks
-//! PHPStan for the argument's value; Pun knows it where the syntax does (see `lint_b_helpers::constant`).
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -19,7 +14,6 @@ impl Rule for NoOutOfRangeChr {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATE_OUTSIDE_INTERVEL_VAL_IN_CHR_FUNCTION
         80500
     }
 
@@ -48,8 +42,6 @@ impl Rule for NoOutOfRangeChr {
             return;
         }
         let at = node_span(call).start;
-        // Rector reads the argument with `ValueResolver::getValue()`, which does not resolve `PHP_INT_MAX` and the
-        // other PHP constants that `constant` knows for `MinMaxToClampRector`.
         if let Some(Known::Value(v)) = known(ancestors, first, at)
             && let Expression::ConstantAccess(_) = unsigned(v)
         {
@@ -61,9 +53,6 @@ impl Rule for NoOutOfRangeChr {
         if (0..=255).contains(&v) {
             return;
         }
-        // The new `Mod` node takes the place of the argument's value, whose span in php-parser leaves out its
-        // parentheses, so they stay around it; `constant` only knows literals, signed literals and variables, which
-        // bind tighter than `%`.
         let inner = node_span(unparenthesize(first));
         let edits = vec![Edit::new(
             inner,
@@ -81,7 +70,6 @@ impl Rule for NoOutOfRangeChr {
     }
 }
 
-/// `expr` without a leading `-` or `+`.
 fn unsigned<'a>(expr: &'a Expression<'a>) -> &'a Expression<'a> {
     match unparenthesize(expr) {
         Expression::UnaryPrefix(u)

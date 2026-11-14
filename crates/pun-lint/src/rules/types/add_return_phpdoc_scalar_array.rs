@@ -1,7 +1,3 @@
-//! `lint/types/add-return-phpdoc-scalar-array`, ported from Rector 2.8.4's
-//! `AddReturnDocblockForScalarArrayFromAssignsRector` (rules/TypeDeclaration/Rector/ClassMethod): a function or method
-//! that returns variables it starts as `[]` and only appends scalars of one type to gets `@return T[]`.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_phpstan::types::{Type, mixed};
 
@@ -41,7 +37,6 @@ impl Rule for AddReturnPhpdocScalarArray {
         };
         let target = f.target(ctx);
         let mut info = target.info(ctx.source);
-        // `getReturnType()` must be the implicit `mixed` of no `@return` tag
         if info.return_tag().is_some() {
             return;
         }
@@ -56,7 +51,6 @@ impl Rule for AddReturnPhpdocScalarArray {
         if !has_only_return_with_expr(&place, body, &returns) {
             return;
         }
-        // `extractReturnedVariableNames()`
         let mut names: Vec<&str> = Vec::new();
         for r in &returns {
             if let Some(name) = r.value.and_then(variable_name)
@@ -91,7 +85,6 @@ impl Rule for AddReturnPhpdocScalarArray {
     }
 }
 
-/// `resolveScalarArrayTypeForVariable()`: `$name` is assigned `[]` and appended scalars of one type.
 fn scalar_array_type(ctx: &Context<'_>, function: Node<'_, '_>, name: &str) -> Option<Type> {
     let (mut initialized, mut appended) = (false, false);
     let mut types = Vec::new();
@@ -121,7 +114,6 @@ fn scalar_array_type(ctx: &Context<'_>, function: Node<'_, '_>, name: &str) -> O
     types.into_iter().next()
 }
 
-/// `resolveScalarType()`.
 fn scalar_type(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Type> {
     match expr {
         Expression::Literal(Literal::String(_)) => Some(Type::String),
@@ -131,7 +123,6 @@ fn scalar_type(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<Type> {
     }
 }
 
-/// `$type->isScalar()->yes()`.
 fn is_scalar(t: &Type) -> bool {
     match t {
         Type::Bool

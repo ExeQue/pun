@@ -1,7 +1,3 @@
-//! Level 3's return statements: ReturnTypeRule (functions, methods), ClosureReturnTypeRule and
-//! ArrowFunctionReturnTypeRule over FunctionReturnTypeCheck (`return.type`, `return.empty`, `return.void`,
-//! `return.never`).
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -13,12 +9,10 @@ use super::missing_return::{generator_return, late, method_name};
 
 pub(super) const IDENTIFIERS: &[&str] = &["return.type", "return.empty", "return.void"];
 
-/// A body's own `return` statements (not those of nested functions and classes) and whether it yields.
 #[derive(Default)]
 pub(super) struct Returns<'ast, 'arena> {
     pub(super) returns: Vec<&'ast Return<'arena>>,
     yields: Vec<&'ast Yield<'arena>>,
-    /// The expressions that are statements.
     statements: Vec<Span>,
     pub(super) generator: bool,
 }
@@ -52,7 +46,6 @@ pub(super) fn returns<'ast, 'arena>(b: &'ast Block<'arena>) -> Returns<'ast, 'ar
     r
 }
 
-/// The returned values whose types the rules read, of the function-likes with a body.
 pub(super) fn typed(b: &Block, spans: &mut Vec<Span>) {
     let r = returns(b);
     spans.extend(r.returns.iter().filter_map(|r| r.value).map(|v| v.span()));
@@ -61,27 +54,22 @@ pub(super) fn typed(b: &Block, spans: &mut Vec<Span>) {
     }
 }
 
-/// The yields of an arrow function's expression.
 fn arrow_yields<'ast, 'arena>(e: &'ast Expression<'arena>) -> Vec<&'ast Yield<'arena>> {
     let mut r = Returns::default();
     r.walk_expression(e, &mut ());
     r.yields
 }
 
-/// [`typed()`] of an arrow function.
 pub(super) fn typed_arrow(e: &Expression, spans: &mut Vec<Span>) {
     for y in arrow_yields(e) {
         super::yields::typed(y, spans);
     }
 }
 
-/// `declare(strict_types=1)` in the file.
 pub(super) fn strict_types(c: &Checker) -> bool {
     c.facts.strict_types
 }
 
-/// `TemplateTypeHelper::toArgument()`: MutatingScope gives a function body its PHPDoc return type with every template
-/// on TemplateTypeArgumentStrategy.
 fn to_argument(t: &Type) -> Type {
     match t {
         Type::Template(tt) => Type::Template(Box::new(pun_phpstan::types::Template {
@@ -93,7 +81,6 @@ fn to_argument(t: &Type) -> Type {
     }
 }
 
-/// `FunctionReturnTypeCheck::checkReturnType()` for one return of a function-like described by `of`.
 fn check(
     c: &mut Checker,
     ret: &Type,
@@ -127,8 +114,6 @@ fn check(
     let Some(mut value_type) = c.phpstan_type(value) else {
         return;
     };
-    // assistant's call: Mago types `new static`, `new $class` (of `static::class`) and a call returning `static` as
-    // the class itself, where PHPStan keeps `static`; a returned object of the class is taken as `static`
     if let (Type::Static(..), Type::Object(name, args, _)) = (&ret, &value_type) {
         value_type = Type::Static(name.clone(), args.clone());
     }
@@ -157,7 +142,6 @@ fn check(
         })
     });
     if let Some((identifier, message)) = message {
-        // RuleErrorBuilder::acceptsReasonsTip() of the AcceptsResult
         let tip = (identifier == "return.type")
             .then(|| declared::with_classes(c, || levels.accepts_tip(&ret, &value_type, strict)))
             .flatten();
@@ -165,8 +149,6 @@ fn check(
     }
 }
 
-/// `NodeScanner::nodeIsOrContainsYield()`: a yield anywhere in the body, nested closures and classes included, which
-/// is what the function or method reflection's `isGenerator()` reads.
 struct ContainsYield(bool);
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for ContainsYield {
@@ -235,8 +217,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     body(c, b, &ret, &of);
 }
 
-/// A closure with a native return type (without one, the type is inferred from its returns).
-// ponytail: a closure's PHPDoc `@return` is not read
 pub(in super::super) fn closure(c: &mut Checker, f: &Closure) {
     if c.level < 3 {
         return;
@@ -280,8 +260,6 @@ pub(in super::super) fn arrow_function(c: &mut Checker, f: &ArrowFunction) {
     super::yields::check(c, &arrow_yields(f.expression), &[], &ret, strict);
 }
 
-/// The hooks of property `name` (with its `$`): a `get` hook returns the property's type (an `=> expr` body is its
-/// return), a `set` hook returns void.
 pub(in super::super) fn hooks(
     c: &mut Checker,
     name: &[u8],

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NotOperatorWithSpaceFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};

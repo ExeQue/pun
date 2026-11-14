@@ -1,5 +1,3 @@
-//! NonexistentParentClassType's identity and inherited operations, captured from PHPStan 2.3.1.
-
 use std::cell::Cell;
 
 use pun_phpstan::resolve::{resolve_late, resolve_str};
@@ -174,7 +172,6 @@ fn phpdoc_parent_is_a_sentinel_only_in_a_parentless_class_scope() {
             );
         }
     }
-    // Native unresolved `parent` is deliberately still constructed as a named object by its producer.
     assert_eq!(
         json!(ty("named-parent").object_class_names()),
         capture()["nativeParent"]

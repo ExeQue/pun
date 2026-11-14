@@ -1,5 +1,3 @@
-//! IssetCheck's virtual markers come from real incoming constructor/helper scopes.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

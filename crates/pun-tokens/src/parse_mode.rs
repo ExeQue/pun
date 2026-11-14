@@ -1,12 +1,3 @@
-//! `token_get_all($code, TOKEN_PARSE)` differs from plain lexing only in that the parser
-//! retags semi-reserved keywords it reduces as `identifier` (and `readonly` used as a
-//! function name) to T_STRING (zend_lex_tstring feedback). PHP-CS-Fixer tokenizes with
-//! TOKEN_PARSE, so `Tokens::from_code` applies this.
-//!
-//! ponytail: context heuristic over neighbouring tokens instead of a parser; covers every
-//! grammar rule that calls zend_lex_tstring, verified by the `parse` parity mode. Code that
-//! PHP would reject with a ParseError is not detected.
-
 use crate::kind::Kind::{self, *};
 use crate::lexer::RawToken;
 
@@ -128,23 +119,25 @@ pub fn apply_parse_mode(tokens: &mut [RawToken<'_>]) {
             || pk == Some(T_FUNCTION)
             || (is_amp(prev) && kind(prev2) == Some(T_FUNCTION))
             || pk == Some(T_NAMESPACE)
-            // class constant / enum case name: `const LIST = 1`, `case Default = 1`
             || is_char(next, b"=")
             || (pk == Some(T_CASE) && is_char(next, b";"))
-            // named argument: `foo(default: 1)`
             || (is_char(next, b":") && (is_char(prev, b"(") || is_char(prev, b",")))
-            // trait alias: `foo as list;`, `foo as public match;`
             || (pk == Some(T_AS)
                 && !is_member_modifier(k)
                 && !(matches!(k, T_LIST | T_ARRAY) && is_char(next, b"(")))
             || (pk.is_some_and(is_member_modifier) && kind(prev2) == Some(T_AS))
-            // trait method reference: `use T { list as foo; }`
             || (kind(next) == Some(T_AS) && (is_char(prev, b"{") || is_char(prev, b";")))
-            // `readonly(...)` function call
             || (k == T_READONLY
                 && is_char(next, b"(")
-                && !pk.is_some_and(|p| is_member_modifier(p) || matches!(p, T_VAR | T_PUBLIC_SET | T_PROTECTED_SET | T_PRIVATE_SET))
-                && !(is_char(prev, b"{") || is_char(prev, b";") || is_char(prev, b"}") || is_char(prev, b"(") || is_char(prev, b",")));
+                && !pk.is_some_and(|p| {
+                    is_member_modifier(p)
+                        || matches!(p, T_VAR | T_PUBLIC_SET | T_PROTECTED_SET | T_PRIVATE_SET)
+                })
+                && !(is_char(prev, b"{")
+                    || is_char(prev, b";")
+                    || is_char(prev, b"}")
+                    || is_char(prev, b"(")
+                    || is_char(prev, b",")));
         if yes {
             demote.push(i);
         }

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\EncodingFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Token, Tokens};
 use std::path::Path;
@@ -16,7 +15,6 @@ impl Fixer for EncodingFixer {
         "encoding"
     }
     fn priority(&self) -> i32 {
-        // must run first (at least before Fixers that using Tokens) - for speed reason of whole fixing process
         100
     }
     fn is_candidate(&self, _tokens: &Tokens) -> bool {

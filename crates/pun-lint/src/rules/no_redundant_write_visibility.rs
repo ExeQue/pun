@@ -1,9 +1,3 @@
-//! `lint/complexity/no-redundant-write-visibility`, ported from Mago 1.57.0's `no-redundant-write-visibility`
-//! (mago-linter src/rule/redundancy/no_redundant_write_visibility.rs).
-//!
-//! Reports a property's write visibility (`public(set)`, `protected(set)`, `private(set)`) that repeats its read
-//! visibility, so it has no effect.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::{Modifier, ModifierSequenceExt, Node, NodeKind};
 

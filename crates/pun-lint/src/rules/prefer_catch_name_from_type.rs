@@ -1,13 +1,3 @@
-//! `lint/style/prefer-catch-name-from-type`, ported from Rector 2.8.4's `CatchExceptionNameMatchingTypeRector`
-//! (rules/CodingStyle/Rector/Catch_) and `PropertyNaming::fqnToVariableName` (rules/Naming/Naming).
-//!
-//! A `try` among the statements of a function, method, closure, namespace or a file without one, with one `catch`
-//! of one type and a variable, names the variable after the type as written (`catch (PDOException $e)` takes
-//! `$pdoException`), unless the scope already has that variable for sure, which stops the renaming of the `try`s
-//! after it too. The variable is renamed in the `catch` body, and in the statements after the `try` as Rector walks
-//! them: the next one, then every second one from the one after it, each up to its first assignment to a variable or
-//! a `catch` that names either variable.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -57,7 +47,6 @@ fn rename(
         .stmts
         .iter()
         .position(|s| node_span(*s) == node_span(statement))?;
-    // `return null` on a name the scope has stops the `try`s after it.
     for earlier in list.stmts.iter().take(key + 1) {
         if let Some((old, new)) = sole_catch(earlier).map(names)
             && old != new
@@ -78,7 +67,6 @@ fn rename(
     let mut edits = vec![Edit::new(node_span(variable), new_var.clone())];
     let mut renamed = Vec::new();
     collect(Node::Block(&catch.block), old_var.as_bytes(), &mut renamed);
-    // `replaceNextUsageVariable`: the statement after the `try`, then every second one from the one after that.
     let mut visit = |stmt: &Statement<'_>| {
         let mut stopped = false;
         next_usages(
@@ -116,7 +104,6 @@ fn rename(
     })
 }
 
-/// `shouldSkip`'s complement: the `catch` of a `try` with one `catch` of one type that has a variable.
 type Catch<'a> = (
     &'a TryCatchClause<'a>,
     &'a Identifier<'a>,
@@ -136,7 +123,6 @@ fn sole_catch<'a>(statement: &'a Statement<'a>) -> Option<Catch<'a>> {
     }
 }
 
-/// The variable's name and the one its type gives it, both without `$`.
 fn names((_, id, variable): Catch<'_>) -> (String, String) {
     let written = String::from_utf8_lossy(id.value());
     let written = written.trim_start_matches('\\');
@@ -144,8 +130,6 @@ fn names((_, id, variable): Catch<'_>) -> (String, String) {
     (old, fqn_to_variable_name(&new_variable_name(written)))
 }
 
-/// Whether the statement list `holder` is one Rector visits: a function's, method's or closure's body, a namespace's,
-/// or a file's without a namespace.
 fn is_rector_holder(holder: Node<'_, '_>, above: &[Node<'_, '_>]) -> bool {
     let parent = above
         .iter()
@@ -165,7 +149,6 @@ fn is_rector_holder(holder: Node<'_, '_>, above: &[Node<'_, '_>]) -> bool {
     }
 }
 
-/// Every variable named `name` under `node`.
 fn collect(node: Node<'_, '_>, name: &[u8], out: &mut Vec<pun_problem::Span>) {
     if let Node::DirectVariable(v) = node
         && v.name == name
@@ -175,8 +158,6 @@ fn collect(node: Node<'_, '_>, name: &[u8], out: &mut Vec<pun_problem::Span>) {
     node.visit_children(|child| collect(child, name, out));
 }
 
-/// The variables named `old` in `node`, in php-parser's order, up to an assignment to a variable or a `catch` that
-/// `shouldSkipFollowingCatch`.
 fn next_usages(
     ancestors: &[Node<'_, '_>],
     node: Node<'_, '_>,
@@ -229,7 +210,6 @@ fn lcfirst(s: &str) -> String {
     out
 }
 
-/// `resolveNewVariableName`: `lcfirst`, and a leading abbreviation lowered (`#^([A-Za-z]+?)([A-Z]{1}[a-z]{1})([A-Za-z]*)#`).
 fn new_variable_name(type_name: &str) -> String {
     let name = lcfirst(type_name);
     let b = name.as_bytes();
@@ -244,13 +224,11 @@ fn new_variable_name(type_name: &str) -> String {
     name
 }
 
-/// `PropertyNaming::fqnToVariableName` of `new ObjectType($class)`.
 pub(crate) fn fqn_to_variable_name(class: &str) -> String {
     let short = class.rsplit('\\').next().unwrap_or(class);
     let name = remove_interface_suffix_prefix(short, "interface");
     let name = remove_interface_suffix_prefix(&name, "abstract");
     let name = name.replace('_', "");
-    // `prolongIfTooShort`
     if (name == "Factory" || name == "Repository")
         && !class.ends_with("Repository")
         && !class.ends_with("Factory")

@@ -1,11 +1,3 @@
-//! `lint/laravel/prefer-collected-by-attribute`, ported from rector-laravel 2.7.3's
-//! `CollectedByPropertyToCollectedByAttributeRector` (src/Rector/Class_).
-//!
-//! A model (or anonymous model) without `#[CollectedBy]` whose `newCollection()` method has one statement,
-//! `return new Name(...);`, loses the method and gets `#[\Illuminate\Database\Eloquent\Attributes\CollectedBy(Name::class)]`,
-//! the name as written. `new static(...)` is left alone: Rector writes `static::class`, which PHP rejects in an
-//! attribute.
-
 use mago_syntax::cst::{Expression, MethodBody, Node, NodeKind, Statement};
 
 use super::property_attribute::{ClassView, MODEL, report, rewrite};
@@ -59,7 +51,6 @@ impl Rule for PreferCollectedByAttribute {
     }
 }
 
-/// `resolveCollectedByValue()`: `Name::class` for a body that is only `return new Name(...);`.
 fn collected_by_value(source: &str, method: &mago_syntax::cst::Method<'_>) -> Option<String> {
     let MethodBody::Concrete(block) = &method.body else {
         return None;

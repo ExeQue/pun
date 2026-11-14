@@ -1,6 +1,3 @@
-//! Array writes must replace stale absence without changing unrelated conditional holders or index reads.
-//! Expectations are PHPStan 2.3.1's JSON from fixtures/array-assignment-certainty/phpstan.neon.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

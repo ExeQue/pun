@@ -1,6 +1,3 @@
-//! Mago 1.57.0's linter helper for the early-exit rules (rule/utils/early_exit.rs), used by lint-b's port of
-//! `prefer-early-continue`.
-
 use mago_syntax::cst::{
     BinaryOperator, Block, Expression, If, IfBody, Statement, UnaryPrefixOperator,
 };
@@ -16,9 +13,6 @@ pub(super) struct EarlyExitPattern {
     pub is_early_exit_statement: fn(&Statement<'_>) -> bool,
 }
 
-/// `check_early_exit`: an `if` without `else`/`elseif` whose body has more than `max_allowed_statements` statements
-/// and is not itself an early exit is reported on the `if`, with a fix that negates the condition, exits in the
-/// `if` and moves the body after it.
 pub(super) fn check_early_exit(
     source: &str,
     if_stmt: &If<'_>,
@@ -86,8 +80,6 @@ pub(super) fn check_early_exit(
             .any(|b| !b.is_ascii_whitespace())
     };
     let exit_block = format!("{{ {}; }}", pattern.keyword);
-    // The body's statements, the end of what opens them (`{` or `:`) and the span of what closes them (`}`, or
-    // `endif;`), or for a body that is one statement without braces, that statement.
     let (statements, open, close) = match &if_stmt.body {
         IfBody::Statement(body) => match body.statement {
             Statement::Block(block) => (
@@ -119,8 +111,6 @@ pub(super) fn check_early_exit(
             )
         }
     };
-    // The body is not empty: `body_len` is above `max_allowed_statements` (Mago's fix for an empty body only runs
-    // when that option is below 0, which it cannot be).
     let (first, last) = (&statements[0], &statements[statements.len() - 1]);
     let first_start = node_span(first).start;
     edits.push(if gap_has_comment(open.end, first_start) {
@@ -152,7 +142,6 @@ fn push(if_stmt: &If<'_>, pattern: &EarlyExitPattern, edits: Vec<Edit>, out: &mu
     });
 }
 
-/// `extract_single_if_from_statement`.
 pub(super) fn single_if<'ast, 'arena>(stmt: &'ast Statement<'arena>) -> Option<&'ast If<'arena>> {
     match stmt {
         Statement::If(r#if) => Some(r#if),
@@ -161,7 +150,6 @@ pub(super) fn single_if<'ast, 'arena>(stmt: &'ast Statement<'arena>) -> Option<&
     }
 }
 
-/// `extract_single_if_from_statements`: the `if` that is the only statement that is not empty.
 pub(super) fn single_if_in<'ast, 'arena>(
     stmts: &'ast [Statement<'arena>],
 ) -> Option<&'ast If<'arena>> {

@@ -1,5 +1,3 @@
-//! OverridingConstantRule: PHPStan 2.3.1's diagnostics, including non-ignorable native errors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

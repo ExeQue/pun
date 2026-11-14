@@ -1,14 +1,8 @@
-//! Inference PHPStan 2.3.5 reports at level max on reduced cases from a Laravel application
-//! (fixtures/inference-parity/phpstan.neon): templates bound by class-strings, closures and their captures,
-//! array_filter() and array_reduce() callbacks, integer division, object shapes and preg_match() matches.
-//! fixtures/bleeding-edge holds cases that bleedingEdge.neon changes, with PHPStan's output with and without it.
-
 use std::path::Path;
 
 use pun_analyse::{Project, ProjectOptions, reports, run};
 use serde_json::Value;
 
-/// Pun's errors at level max on `files` of `fixture` against PHPStan's `expected` output.
 fn assert_parity(fixture: &str, files: &[&str], options: ProjectOptions, expected: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures")
@@ -53,10 +47,6 @@ fn reduced_application_cases() {
     );
 }
 
-/// `[analyse] bleeding-edge`: template arguments a body decides (`box([1, null])` is `Box<0|1, 1|null>`) and closure
-/// parameters typed by what the closure is passed to (b.php); without it, the same cases and array_flip() and
-/// array_intersect_key() shapes (a.php). Bleeding edge's unsealed array shapes are not ported, so a.php runs only
-/// without it.
 #[test]
 fn bleeding_edge_inference() {
     assert_parity(

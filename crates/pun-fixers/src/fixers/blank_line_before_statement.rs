@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\BlankLineBeforeStatementFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -124,8 +123,6 @@ impl Fixer for BlankLineBeforeStatementFixer {
         "blank_line_before_statement"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoExtraBlankLinesFixer, NoUselessElseFixer, NoUselessReturnFixer, ReturnAssignmentFixer,
-        // YieldFromArrayToYieldsFixer.
         -21
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -136,7 +133,6 @@ impl Fixer for BlankLineBeforeStatementFixer {
             &["break", "continue", "declare", "return", "throw", "try"],
             &keys,
         )?;
-        // `$fixTokenMap[$key] = ...` then array_values: duplicates keep their first position.
         let mut fix_token_map: Vec<Kind> = Vec::new();
         for key in &statements {
             let kind = TOKEN_MAP.iter().find(|(k, _)| k == key).unwrap().1;

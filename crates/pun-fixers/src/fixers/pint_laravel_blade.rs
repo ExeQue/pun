@@ -1,6 +1,3 @@
-//! Port of Pint's `App\Fixers\LaravelBlade\Fixer` (+ `App\BladeFormatter`, `App\Support\Prettier`):
-//! formats `*.blade.php` files with prettier (prettier-plugin-blade, resolved from the project's
-//! node_modules like Pint does) wrapped in Pint's pre/post formatters.
 #[path = "pint_laravel_blade/alpine_mask_patterns.rs"]
 mod alpine_mask_patterns;
 #[path = "pint_laravel_blade/collapse_single_attribute.rs"]
@@ -24,8 +21,6 @@ use pun_format::Fixer;
 use pun_tokens::Tokens;
 use std::path::Path;
 
-/// `preset`: the run's preset (Pint's `ConfigurationJsonRepository::preset()`: `--preset`, else pint.json's `preset`,
-/// else "laravel"); embedded PHP is formatted with that preset's rules.
 struct LaravelBladeFixer {
     preset: String,
 }
@@ -50,7 +45,6 @@ impl Fixer for LaravelBladeFixer {
         self.preset = preset.into();
     }
     fn fix(&self, file: &Path, tokens: &mut Tokens) {
-        // SplFileInfo::getRealPath()
         let path = std::fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
         let path_str = path.to_string_lossy().into_owned();
         if !path_str.ends_with(".blade.php") {
@@ -60,10 +54,7 @@ impl Fixer for LaravelBladeFixer {
         if is_ignored(&path_str) {
             return;
         }
-        // PrettierException (or a failed masker regex): the runner reports the file as errored with the message and
-        // leaves it untouched. Pun's fixers panic where upstream throws.
         let content = format(&path_str, &content, &self.preset).unwrap_or_else(|e| panic!("{e}"));
-        // Tokens::setCode() rejects an empty string, so clear the tokens directly.
         if content.is_empty() {
             for index in 0..tokens.count() {
                 tokens.clear_at(index);
@@ -75,7 +66,6 @@ impl Fixer for LaravelBladeFixer {
     }
 }
 
-/// Ignorables: Envoy, BoostGuidelines, EmailView.
 fn is_ignored(path: &str) -> bool {
     let basename = path.rsplit('/').next().unwrap_or(path);
     let path = path.replace('\\', "/");
@@ -85,8 +75,6 @@ fn is_ignored(path: &str) -> bool {
         || path.contains("resources/views/mail/")
 }
 
-/// `BladeFormatter::format`: pre-formatters, prettier, then post-formatters in declaration order. A masker that
-/// cannot restore its placeholders (`UnrestorableContentException`) discards the run: the file stays as it was.
 fn format(path: &str, content: &[u8], preset: &str) -> Result<Vec<u8>> {
     let mut spacing = escaped_directive_spacing::EscapedDirectiveSpacing::default();
     spacing.pre_format(content);
@@ -164,7 +152,6 @@ mod tests {
             );
             if let Some(post_input) = case.get("post_input") {
                 let post_input = post_input.as_str().unwrap().as_bytes();
-                // `null`: postFormat threw UnrestorableContentException.
                 let got = match formatter {
                     "AlpineMaskPatterns" => alpine.post_format(post_input).ok(),
                     "EscapedDirectiveSpacing" => Some(spacing.post_format(post_input).unwrap()),
@@ -179,10 +166,6 @@ mod tests {
         }
     }
 
-    /// An unclosed `<script>` with 8 quoted attributes in a 34 KB template: the masker's `<style|script>` pattern
-    /// exhausts PHP's backtrack limit (`preg_last_error_msg()` on PHP 8.5: "Backtrack limit exhausted"). Pint writes an
-    /// empty file there; Pun fails the file the way a PrettierException does (a panic is the runner's per-file error)
-    /// and leaves its tokens untouched. The failure comes before prettier, so no worker starts.
     #[test]
     fn masker_regex_failure_fails_the_file() {
         let attributes: String = (1..=8).map(|i| format!(" data-a{i}=\"v{i}\"")).collect();

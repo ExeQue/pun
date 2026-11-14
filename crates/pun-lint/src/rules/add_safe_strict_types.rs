@@ -1,23 +1,3 @@
-//! `lint/statements/add-safe-strict-types`, ported from Rector 2.8.4's `SafeDeclareStrictTypesRector`
-//! (rules/TypeDeclaration/Rector/StmtsAwareInterface) and its `StrictTypeSafetyChecker` (rules/TypeDeclaration/
-//! NodeAnalyzer).
-//!
-//! A file without `declare(strict_types=...)` and without inline HTML gets `declare(strict_types=1);` when strict mode
-//! cannot change what it does: every call, `new` and attribute reaches a function or method whose parameters accept
-//! each argument's native type in strict mode, every function's returns are accepted by its return type, and every
-//! `=` to a property is accepted by the property's native type. PHPStan's `accepts($type, strictTypes: true)` is
-//! pun-phpstan's, with a `mixed` value as a `StrictMixedType`; the native type of a value is Mago's
-//! ([`Facts::native_type`]).
-//!
-//! Where Rector reads reflection, Pun reads:
-//! - a built-in function's or method's parameters: PHPStan's own signatures (`pun_phpstan::symbols`);
-//! - a user one's: Mago's codebase, the native type with the PHPDoc type over it (`TypehintHelper::decideType`);
-//! - a method: the one class of its receiver's type (`getObjectClassNames()`, so a nullable or a union receiver has
-//!   none), looked up with the methods PHPDocs declare (`@method`), as `hasMethod()` with a scope does.
-//!
-//! A return type `self` or `parent` is Rector's `SelfStaticType` or `ParentStaticType`, which accepts no value a scope
-//! gives (checked on the oracle), so a function declaring one and returning a value is never safe.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::metadata::parameter::FunctionLikeParameterMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -54,7 +34,6 @@ impl Rule for AddSafeStrictTypes {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersion::PHP_70
         70000
     }
 
@@ -95,9 +74,7 @@ impl Rule for AddSafeStrictTypes {
     }
 }
 
-/// `isFileStrictTypeSafe`: every node of the file passes its check.
 fn is_file_strict_type_safe(facts: &Facts, program: Node<'_, '_>) -> bool {
-    // depth first, with the ancestors of each node
     let mut stack = vec![(program, 0usize)];
     let mut path: Vec<Node<'_, '_>> = Vec::new();
     while let Some((node, depth)) = stack.pop() {
@@ -113,11 +90,9 @@ fn is_file_strict_type_safe(facts: &Facts, program: Node<'_, '_>) -> bool {
     true
 }
 
-/// The check of `StrictTypeSafetyChecker` that `node` gets, if any.
 fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> bool {
     let at = At { facts, ancestors };
     match node {
-        // `isCallLikeSafe`
         Node::FunctionCall(c) => {
             let Expression::Identifier(id) = c.function else {
                 return false;
@@ -133,7 +108,6 @@ fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -
                 .and_then(|class| at.method_parameters(&class, name.value))
                 .is_some_and(|p| at.are_args_safe(&args(&c.argument_list), &p))
         }
-        // `resolveFunctionLikeReflectionFromCall` has no reflection for a nullsafe call
         Node::NullSafeMethodCall(_) => false,
         Node::StaticMethodCall(c) => {
             let ClassLikeMemberSelector::Identifier(name) = &c.method else {
@@ -160,7 +134,6 @@ fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -
                 _ => false,
             }
         }
-        // `isAttributeSafe`
         Node::Attribute(attribute) => {
             let class = resolve_class_name(ancestors, &attribute.name);
             let arguments = attribute
@@ -172,7 +145,6 @@ fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -
                 _ => false,
             }
         }
-        // `areFunctionReturnsTypeSafe`
         Node::Function(f) => {
             at.are_returns_safe(f.return_type_hint.as_ref(), Returns::Block(&f.body))
         }
@@ -189,7 +161,6 @@ fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -
             a.return_type_hint.as_ref(),
             Returns::Expression(a.expression),
         ),
-        // `isPropertyAssignSafe`
         Node::Assignment(a) if matches!(a.operator, AssignmentOperator::Assign(_)) => {
             at.is_property_assign_safe(a.lhs, a.rhs)
         }
@@ -197,7 +168,6 @@ fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -
     }
 }
 
-/// An argument as `areArgsSafe` reads it.
 struct Arg<'a> {
     value: &'a Expression<'a>,
     name: Option<&'a [u8]>,
@@ -221,7 +191,6 @@ fn args<'a>(list: &'a ArgumentList<'a>) -> Vec<Arg<'a>> {
         .collect()
 }
 
-/// The arguments of an attribute or an anonymous class; `None` with a placeholder (no valid code has one there).
 fn partial_args<'a>(list: &'a PartialArgumentList<'a>) -> Option<Vec<Arg<'a>>> {
     (list.arguments.iter())
         .map(|a| {
@@ -237,27 +206,23 @@ fn partial_args<'a>(list: &'a PartialArgumentList<'a>) -> Option<Vec<Arg<'a>>> {
         .collect()
 }
 
-/// A parameter as `ParameterReflection` gives it: its name (without `$`), `getType()` and `isVariadic()`.
 struct Param {
     name: Vec<u8>,
     r#type: Type,
     variadic: bool,
 }
 
-/// What a function returns: the `return`s of its body, or an arrow function's expression.
 enum Returns<'a> {
     Block(&'a mago_syntax::cst::Block<'a>),
     Expression(&'a Expression<'a>),
 }
 
-/// Where a node is: the file's facts and the node's ancestors.
 struct At<'a, 'ast, 'arena> {
     facts: &'a Facts,
     ancestors: &'a [Node<'ast, 'arena>],
 }
 
 impl At<'_, '_, '_> {
-    /// `areArgsSafe`.
     fn are_args_safe(&self, args: &[Arg<'_>], parameters: &[Param]) -> bool {
         args.iter().enumerate().all(|(position, arg)| {
             if arg.unpack {
@@ -279,7 +244,6 @@ impl At<'_, '_, '_> {
         })
     }
 
-    /// `areFunctionReturnsTypeSafe`.
     fn are_returns_safe(
         &self,
         hint: Option<&FunctionLikeReturnTypeHint<'_>>,
@@ -313,7 +277,6 @@ impl At<'_, '_, '_> {
         })
     }
 
-    /// `isPropertyAssignSafe`.
     fn is_property_assign_safe(&self, var: &Expression<'_>, value: &Expression<'_>) -> bool {
         let (class, name) = match var {
             Expression::Access(Access::Property(p)) => {
@@ -330,7 +293,6 @@ impl At<'_, '_, '_> {
             }
             _ => return true,
         };
-        // `resolvePropertyReflectionFromPropertyFetch`: a property the class declares natively
         let Some(property) = class.and_then(|c| {
             self.facts
                 .codebase
@@ -348,11 +310,9 @@ impl At<'_, '_, '_> {
         )
     }
 
-    /// `ClassNameFromObjectTypeResolver::resolve(getType($expr))`: the one class of the expression's type.
     fn single_class(&self, expr: &Expression<'_>) -> Option<String> {
         let span = mago_span::HasSpan::span(expr);
         let span = pun_problem::Span::new(span.start.offset as usize, span.end.offset as usize);
-        // inside a trait PHPStan does not know `$this` (see `Facts::native_type`)
         self.facts.native_type(span)?;
         let t = self.facts.full_type(span)?;
         match t.types.as_ref() {
@@ -364,8 +324,6 @@ impl At<'_, '_, '_> {
         }
     }
 
-    /// The class a `new` or a static call names: a name, `self`, `static`, `parent`, or the one class of an
-    /// expression's type.
     fn class_of_reference(&self, class: &Expression<'_>) -> Option<String> {
         let scope = || class_scope(self.ancestors);
         match class {
@@ -376,7 +334,6 @@ impl At<'_, '_, '_> {
         }
     }
 
-    /// `resolveFunctionReflectionFromFuncCall` and the parameters of the variant the call selects.
     fn function_parameters(&self, id: &mago_syntax::cst::Identifier<'_>) -> Option<Vec<Param>> {
         let (resolved, explicit) = resolve_function(self.ancestors, id);
         let written = id.value().strip_prefix(b"\\").unwrap_or(id.value());
@@ -399,7 +356,6 @@ impl At<'_, '_, '_> {
         ))
     }
 
-    /// `resolveMethodReflection($class, $method, $scope)` and its parameters.
     fn method_parameters(&self, class: &str, method: &[u8]) -> Option<Vec<Param>> {
         let documented = self.facts.documented();
         documented.get_class_like(class.as_bytes())?;
@@ -417,12 +373,10 @@ impl At<'_, '_, '_> {
             .facts
             .codebase
             .get_declaring_method(class.as_bytes(), method);
-        // a method only a PHPDoc declares (`@method`) has no native signature
         Some(user_parameters(native.unwrap_or(doc), Some(doc)))
     }
 }
 
-/// The parameters of PHPStan's signature of a built-in function or method, of its first variant.
 fn builtin_parameters(function: &pun_phpstan::symbols::Function) -> Option<Vec<Param>> {
     let variant = function.variants.first()?;
     Some(
@@ -436,7 +390,6 @@ fn builtin_parameters(function: &pun_phpstan::symbols::Function) -> Option<Vec<P
     )
 }
 
-/// The parameters of a user function: `decideType()` of the native type and the PHPDoc type.
 fn user_parameters(
     native: &FunctionLikeMetadata,
     documented: Option<&FunctionLikeMetadata>,
@@ -461,7 +414,6 @@ fn user_parameters(
         .collect()
 }
 
-/// A PHPDoc type of Mago's as PHPStan's, with the accessory types of a string Mago keeps as flags.
 fn doc_type(t: &TUnion) -> Type {
     let members: Vec<Type> = (t.types.iter())
         .map(|a| match a {
@@ -488,7 +440,6 @@ fn doc_type(t: &TUnion) -> Type {
     }
 }
 
-/// The declared return type as PHPStan's, Rector's `SelfStaticType` and `ParentStaticType` accepting nothing.
 fn declared_type(t: &RType) -> Type {
     match t {
         RType::Object(Object::SelfStatic(_) | Object::ParentStatic(_)) => {
@@ -499,7 +450,6 @@ fn declared_type(t: &RType) -> Type {
     }
 }
 
-/// `isTypeSafeForStrictMode`: `accepts($value, strictTypes: true)`, a `mixed` value as a `StrictMixedType`.
 fn is_type_safe_for_strict_mode(declared: &Type, value: &Type) -> bool {
     accepts_with(
         declared,

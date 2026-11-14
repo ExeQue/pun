@@ -1,5 +1,3 @@
-//! New-object template defaults: exact PHPStan 2.3.1 diagnostics through the public API.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -109,8 +107,6 @@ fn bounds_spl_and_weakmap_without_defaults() {
         .into_iter()
         .map(|d| (d.line, d.type_id))
         .collect();
-    // Compatibility with Mago 1.59's unchanged no-default branches, not PHPStan bound parity.
-    // The pinned codex renders Placeholder as `_`; instantiation keeps SPL's special `never`.
     assert_eq!(
         got,
         [
@@ -161,7 +157,6 @@ fn inferred_mixed_is_not_an_absent_inference() {
             )
         })
         .collect();
-    // Read the public raw type: Pun's existing display drops implicit mixed in a list.
     assert_eq!(got, want);
 }
 

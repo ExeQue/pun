@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-be-truthy-falsy`, ported from pest-plugin-rector's `SimplifyToBeTruthyFalsyRector`:
-//! `expect((bool) $x)->toBeTrue()` and `expect(boolval($x))->toBeTrue()` become `expect($x)->toBeTruthy()`, and
-//! `toBeFalse()` becomes `toBeFalsy()`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::Safety;
 

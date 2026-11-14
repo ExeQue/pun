@@ -1,5 +1,3 @@
-//! Missing destructuring offsets remain ErrorType; genuine mixed assignments still warn.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run_mago};
@@ -8,7 +6,6 @@ use serde_json::Value;
 #[test]
 fn error_assignments_preserve_primary_errors_and_types_without_suppressing_mixed() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/assignment-error-values");
-    // PHPStan 2.3.1, phpstan-src cb3b7e99489b2e3789ee2eec10501cb7a72580ea, level 8, PHP 8.5.
     let oracle: Value =
         serde_json::from_slice(&std::fs::read(root.join("expected.json")).unwrap()).unwrap();
     let messages = oracle["files"]["values.php"]["messages"]
@@ -25,7 +22,6 @@ fn error_assignments_preserve_primary_errors_and_types_without_suppressing_mixed
         .filter(|issue| issue.code == "mixed-assignment")
         .map(|issue| i64::from(issue.line))
         .collect();
-    // Only the final dump assigns genuine mixed. ErrorType and null assignments must not warn.
     let mixed_lines: Vec<_> = messages
         .iter()
         .filter(|message| message["message"] == "Dumped type: mixed")
@@ -57,8 +53,6 @@ fn error_assignments_preserve_primary_errors_and_types_without_suppressing_mixed
         .collect();
     assert_eq!(got_types, expected_types);
 
-    // Compare the complete native issue stream, not Pun's separate PHPStan-style consumer.
-    // The inherited unit fixtures distinguish empty, keyed and list offset errors by these codes.
     let mut got: Vec<_> = raw
         .issues
         .iter()

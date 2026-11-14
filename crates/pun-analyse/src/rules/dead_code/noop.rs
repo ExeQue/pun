@@ -1,9 +1,3 @@
-//! NoopRule and the CallTo{Function,Method,StaticMethod,Constructor}StatementWithoutSideEffects rules: their
-//! NoopExpressionNode is an expression statement without impure points or explicit throw points (not `++`/`--`).
-//! ponytail: the impure points are a syntactic model of the expression handlers: calls are pure only when PHPStan's
-//! reflection says so (a built-in's hasSideEffects(), `@pure`), a variable call or a pipe is impure, an implicit
-//! `__toString()` or a property hook never is, and a closure argument is impure unless its body is one pure return.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -32,12 +26,10 @@ const SUPERGLOBALS: &[&[u8]] = &[
     b"$_ENV",
 ];
 
-/// An expression's impure points and assignments.
 #[derive(Default)]
 struct Points {
     impure: bool,
     assign: bool,
-    /// the keys of the calls whose impure points PossiblyPureCallTransitivePurityResolver resolves
     keys: Vec<String>,
 }
 
@@ -47,7 +39,6 @@ impl Points {
     }
 }
 
-/// PHPStan's `pureUnlessCallableIsImpureParameters` (resources/functionMetadata.php).
 pub(in super::super) const PURE_UNLESS_CALLABLE_IS_IMPURE: &[(&str, &[&str])] = &[
     ("array_all", &["callback"]),
     ("array_any", &["callback"]),
@@ -76,7 +67,6 @@ pub(in super::super) const PURE_UNLESS_CALLABLE_IS_IMPURE: &[(&str, &[&str])] = 
     ("preg_replace_callback", &["callback"]),
 ];
 
-/// SimpleImpurePoint::SIDE_EFFECT_FLIP_PARAMETERS: no side effects when the `return` argument is true.
 pub(in super::super) const FLIP: &[&str] = &["print_r", "var_export", "highlight_string"];
 
 const PURE_TAGS: &[&str] = &[
@@ -88,7 +78,6 @@ const PURE_TAGS: &[&str] = &[
 ];
 const IMPURE_TAGS: &[&str] = &["@impure", "@phpstan-impure"];
 
-/// `hasSideEffects()`.
 #[derive(PartialEq, Clone, Copy)]
 enum Effects {
     Yes,
@@ -104,21 +93,18 @@ fn builtin_effects(s: &str) -> Effects {
     }
 }
 
-/// A `@phpstan-assert` tag.
 pub(super) fn asserts(f: &FunctionLikeMetadata) -> bool {
     !f.assertions.is_empty()
         || !f.assertions_inferred
             && !(f.if_true_assertions.is_empty() && f.if_false_assertions.is_empty())
 }
 
-/// A `@throws` tag other than `void`: the call's explicit throw point.
 fn throws_explicitly(f: &FunctionLikeMetadata) -> bool {
     f.thrown_types
         .iter()
         .any(|t| t.from_docblock && !t.type_union.is_void())
 }
 
-/// Php{Function,Method}Reflection::hasSideEffects(): a void return, else its `@pure` or `@impure` tag.
 fn user_effects(c: &Checker, f: &FunctionLikeMetadata) -> Effects {
     let constructor =
         f.method_metadata.is_some() && f.name.as_bytes().eq_ignore_ascii_case(b"__construct");
@@ -129,7 +115,6 @@ fn user_effects(c: &Checker, f: &FunctionLikeMetadata) -> Effects {
     {
         return Effects::Yes;
     }
-    // (a `$this` return, after the tags)
     let this = f.method_metadata.is_some()
         && f.return_type_metadata.as_ref().is_some_and(|r| {
             matches!(r.type_union.types.as_ref(), [TAtomic::Object(TObject::Named(n))] if n.is_this)
@@ -154,8 +139,6 @@ fn method_effects(c: &Checker, m: &Method) -> Effects {
     }
 }
 
-/// The class a method or static call is on: `$this`, `self`, `static`, a name, or one named object type (`null`
-/// aside, as a nullsafe call's).
 fn class_of<'a>(c: &Checker<'a, '_>, e: &Expression) -> Option<&'a ClassLikeMetadata> {
     match unparen(e) {
         Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => c.class_scope(),
@@ -179,7 +162,6 @@ fn class_of<'a>(c: &Checker<'a, '_>, e: &Expression) -> Option<&'a ClassLikeMeta
     }
 }
 
-/// ReflectionProvider::getFunction() of a named call.
 pub(in super::super) enum Function<'a> {
     User(&'a FunctionLikeMetadata),
     Builtin(&'static symbols::Function),
@@ -272,7 +254,6 @@ impl Checker<'_, '_> {
                     (AssignmentOperator::Assign(_), Expression::UnaryPrefix(u))
                         if u.operator.is_reference() =>
                     {
-                        // a property assigned by reference
                         let mut target = unparen(u.operand);
                         while let Expression::ArrayAccess(ArrayAccess { array, .. }) = target {
                             target = unparen(array);
@@ -311,7 +292,6 @@ impl Checker<'_, '_> {
                 self.points(a.object, p);
                 self.selector_points(&a.property, p);
             }
-            // a static property fetch on a name is impure; on an expression, the expression's points replace it
             Expression::Access(Access::StaticProperty(a)) => match unparen(a.class) {
                 Expression::Identifier(_)
                 | Expression::Self_(_)
@@ -331,7 +311,6 @@ impl Checker<'_, '_> {
             Expression::Construct(Construct::Empty(i)) => self.points(i.value, p),
             Expression::Clone(k) => self.points(k.object, p),
             Expression::Match(m) => {
-                // a match that isn't exhaustive has an explicit UnhandledMatchError throw point
                 p.impure |= !self.exhaustive(m);
                 self.points(m.expression, p);
                 for arm in &m.arms {
@@ -348,7 +327,6 @@ impl Checker<'_, '_> {
                             self.function_pure(f.function, Some(&f.argument_list)),
                             &f.argument_list,
                         ),
-                        // FuncCallHandler: the callable's impure points, none for a string naming no function
                         callee => {
                             self.points(callee, p);
                             let pure = match callee {
@@ -388,7 +366,6 @@ impl Checker<'_, '_> {
                 }
                 self.arguments(args, p);
             }
-            // a first-class callable only creates a Closure
             Expression::PartialApplication(_) => {}
             Expression::Pipe(pipe) => {
                 self.points(pipe.input, p);
@@ -401,7 +378,6 @@ impl Checker<'_, '_> {
             }
             Expression::AnonymousClass(a) => {
                 let name = mago_codex::get_anonymous_class_name(self.file, a.span());
-                // its own constructor runs here: ponytail, pure only when its body is empty
                 let own = a.members.iter().find_map(|m| match m {
                     ClassLikeMember::Method(m)
                         if m.name.value.eq_ignore_ascii_case(b"__construct") =>
@@ -447,7 +423,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// An argument list: a closure or arrow function argument runs its body (when the callee calls it).
     fn arguments(&self, args: &ArgumentList, p: &mut Points) {
         for arg in &args.arguments {
             match unparen(arg.value()) {
@@ -462,7 +437,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// processAssignVar(): a write to a local variable (or its offsets) is no impure point.
     fn assign_points(&self, var: &Expression, p: &mut Points) {
         p.assign = true;
         let mut target = unparen(var);
@@ -490,8 +464,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// MatchHandler's `$isExhaustive`: a `default` arm, or a subject of finite values the arms all match (its remaining
-    /// type is never).
     pub(in super::super) fn exhaustive(&self, m: &Match) -> bool {
         let values = |e: &Expression| -> Option<Vec<Vec<u8>>> {
             let mut values = Vec::new();
@@ -535,7 +507,6 @@ impl Checker<'_, '_> {
             let MatchArm::Expression(a) = arm else {
                 return true;
             };
-            // a condition of one value
             covered.extend(
                 a.conditions
                     .iter()
@@ -559,13 +530,11 @@ impl Checker<'_, '_> {
         members::method(self, class, name.value)
     }
 
-    /// A method call without an impure point or an explicit throw point.
     fn method_pure(&self, on: &Expression, method: &ClassLikeMemberSelector) -> bool {
         self.method_target(on, method)
             .is_some_and(|m| self.method_without_effects(&m))
     }
 
-    /// `method_pure()` of a call, which a Date* dynamic throw type extension's explicit throw point makes impure.
     fn method_call_pure(
         &self,
         call: &Expression,
@@ -590,7 +559,6 @@ impl Checker<'_, '_> {
             }
     }
 
-    /// A function call without an impure point (SimpleImpurePoint::createFromVariant()) or an explicit throw point.
     fn function_pure(&self, callee: &Expression, args: Option<&ArgumentList>) -> bool {
         let Some(function) = function_of(self, callee) else {
             return false;
@@ -644,7 +612,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// A function named by a string: whether it has no side effects, `None` when there is no such function.
     fn string_callable(&self, name: &[u8]) -> Option<bool> {
         let lower = String::from_utf8_lossy(name)
             .trim_start_matches('\\')
@@ -663,7 +630,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// `$acceptor->isPure()->yes()` of a callable argument.
     fn callable_pure(&self, e: &Expression) -> bool {
         match unparen(e) {
             Expression::Literal(Literal::String(s)) => {
@@ -696,9 +662,7 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// NewHandler: a known class without a constructor, or a constructor without side effects.
     fn constructor_pure(&self, new: &Instantiation) -> bool {
-        // ponytail: a class only PHPStan's reflection knows (Lookup::Opaque) counts as impure
         matches!(unparen(new.class), Expression::Identifier(id)
             if self.class_like(&self.resolved(id)).found().is_some_and(|k| self.class_constructor_pure(k)))
     }
@@ -708,13 +672,11 @@ impl Checker<'_, '_> {
     }
 }
 
-/// isPure() and hasSideEffects() maybe, no `@phpstan-assert` and no `@throws` but void.
 pub(super) fn possibly_pure(c: &Checker, f: &FunctionLikeMetadata) -> bool {
     user_effects(c, f) == Effects::Maybe && !asserts(f) && !throws_explicitly(f)
 }
 
 impl Checker<'_, '_> {
-    /// A call's impure point: the keys of the callables it targets, else an impure point nothing resolves.
     fn call_point(&self, e: &Expression, p: &mut Points) {
         match self.call_keys(e) {
             Some(keys) => p.keys.extend(keys),
@@ -722,7 +684,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// PossiblyPureCallTransitivePurityResolver::resolveCall(), none for a callee with an explicit throw point.
     fn call_keys(&self, e: &Expression) -> Option<Vec<String>> {
         let user = |f: &FunctionLikeMetadata| (!throws_explicitly(f)).then_some(());
         match e {
@@ -766,7 +727,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// A method call's key: an instance method must not be overridable.
     fn method_keys(
         &self,
         on: &Expression,
@@ -796,8 +756,6 @@ impl Checker<'_, '_> {
         )
     }
 
-    /// The methods an instance call targets on each class of its receiver, when none can be overridden: private,
-    /// final, of a final class, or on an object a `new` created.
     fn fixed_methods(
         &self,
         on: &Expression,
@@ -812,7 +770,6 @@ impl Checker<'_, '_> {
                 vec![self.class_scope()?]
             }
             e => {
-                // in PHPStan's union order
                 let names = self.phpstan_type(e)?.remove_null().object_class_names();
                 names
                     .iter()
@@ -834,8 +791,6 @@ impl Checker<'_, '_> {
         (!methods.is_empty()).then_some(methods)
     }
 
-    /// resolveDependencies() of a body: the keys its calls depend on, none when it has another impure point or an
-    /// explicit throw point.
     pub(super) fn body_dependencies(&self, statements: &[Statement]) -> Option<Vec<String>> {
         struct Body<'c, 'a, 'b> {
             c: &'c Checker<'a, 'b>,
@@ -861,7 +816,6 @@ impl Checker<'_, '_> {
                 self.p.impure = true;
             }
             fn walk_in_unset(&mut self, u: &'ast Unset<'arena>, (): &mut ()) {
-                // a property unset
                 for value in &u.values {
                     let mut target = unparen(value);
                     while let Expression::ArrayAccess(a) = target {
@@ -883,8 +837,6 @@ impl Checker<'_, '_> {
         (!body.p.impure).then_some(body.p.keys)
     }
 
-    /// Possibly Pure{FuncCall,MethodCall,StaticCall,New}Collector: a call statement to a callable whose purity the
-    /// declarations decide, with the keys of its targets.
     pub(super) fn possibly_pure_call(&self, e: &Expression) -> Option<(&'static str, Vec<String>)> {
         let possibly = |m: &Method| matches!(m, Method::User { f, .. } if user_effects(self, f) == Effects::Maybe);
         match e {
@@ -970,7 +922,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// The argument for parameter `name` at `position`: named, or positional before any named one.
 fn argument<'e, 'arena>(
     args: &'e ArgumentList<'arena>,
     name: &str,
@@ -996,7 +947,6 @@ fn element<'e, 'arena>(e: &'e ArrayElement<'arena>) -> Vec<&'e Expression<'arena
     }
 }
 
-/// The NoopExpressionNode rules on an expression statement.
 pub(super) fn statement(c: &mut Checker, s: &ExpressionStatement) {
     if c.level < 4 {
         return;
@@ -1073,10 +1023,8 @@ fn noop(c: &mut Checker, e: &Expression, assign: bool) {
     }
 }
 
-/// NoopRule's checks after the operators: every expression but a call, a named `new`, an assignment or a closure.
 fn noop_expression(c: &mut Checker, e: &Expression) {
     match e {
-        // NoopRule: a call is printed only when its callee is callable: here, a string naming a function
         Expression::Call(Call::Function(f)) if matches!(unparen(f.function), Expression::Literal(Literal::String(s)) if s.value.and_then(|n| c.string_callable(n)).is_some()) =>
         {
             report_expression(c, e);
@@ -1104,7 +1052,6 @@ fn report_expression(c: &mut Checker, e: &Expression) {
     );
 }
 
-/// CallTo{Function,Method,StaticMethod,Constructor}StatementWithoutSideEffectsRule.
 fn side_effects(c: &mut Checker, e: &Expression) {
     let message = match e {
         Expression::Call(Call::Function(FunctionCall {
@@ -1155,7 +1102,6 @@ fn side_effects(c: &mut Checker, e: &Expression) {
     }
 }
 
-/// CallToConstructorStatementWithoutSideEffectsRule: a pure `new` names a class Pun knows.
 fn new_message(c: &Checker, id: &Identifier) -> Option<String> {
     let k = c.class_like(&c.resolved(id)).found()?;
     let display = c.display(k);
@@ -1199,7 +1145,6 @@ fn method_message(
     ))
 }
 
-/// The expressions [`statement()`] asks the type of: the statement's calls and the receivers of its method calls.
 pub(super) fn typed(s: &ExpressionStatement) -> Vec<Span> {
     struct Wanted(Vec<Span>);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted {
@@ -1246,7 +1191,6 @@ pub(super) fn typed(s: &ExpressionStatement) -> Vec<Span> {
     w.0
 }
 
-/// php-parser's Standard printer, for the expressions NoopRule prints; other nodes print as written.
 pub(super) fn print(c: &Checker, e: &Expression) -> String {
     let written = || c.written(e.span());
     match e {
@@ -1257,7 +1201,6 @@ pub(super) fn print(c: &Checker, e: &Expression) -> String {
             print(c, &Expression::Variable(v.variable.clone()))
         ),
         Expression::Variable(Variable::Indirect(v)) => format!("${{{}}}", print(c, v.expression)),
-        // pCallLhs(): a string callee is parenthesized
         Expression::Call(Call::Function(f)) => format!(
             "({})({})",
             print(c, f.function),
@@ -1268,7 +1211,6 @@ pub(super) fn print(c: &Checker, e: &Expression) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        // (a `new` binds tighter than any operator)
         Expression::Parenthesized(p) if matches!(p.expression, Expression::Instantiation(_)) => {
             print(c, p.expression)
         }
@@ -1305,7 +1247,6 @@ pub(super) fn print(c: &Checker, e: &Expression) -> String {
             format!("{}::{constant}", print(c, a.class))
         }
         Expression::Identifier(id) => format!("\\{}", c.resolved(id)),
-        // the operator as written; a cast in php-parser's canonical spelling
         Expression::UnaryPrefix(u) => {
             let op: String = c
                 .written(u.operator.span())
@@ -1360,7 +1301,6 @@ pub(super) fn print(c: &Checker, e: &Expression) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        // pNewAnonymous() then the class body on the next line
         Expression::AnonymousClass(a) => {
             let mut out = String::from("new class");
             let args: Vec<String> = a
@@ -1386,7 +1326,6 @@ pub(super) fn print(c: &Checker, e: &Expression) -> String {
             out.push('\n');
             out
         }
-        // pExpr_ArrowFunction(): inline attribute groups with resolved names, then `fn(...) => `
         Expression::ArrowFunction(f) => {
             let mut out = String::new();
             for list in &f.attribute_lists {
@@ -1449,7 +1388,6 @@ fn selector(c: &Checker, s: &ClassLikeMemberSelector) -> String {
     }
 }
 
-/// A dynamic member name: PHPStan prints a constant string as the name, anything else in braces.
 fn braced(c: &Checker, e: &Expression) -> String {
     match unparen(e) {
         Expression::Literal(Literal::String(LiteralString {

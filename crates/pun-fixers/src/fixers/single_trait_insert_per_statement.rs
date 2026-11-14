@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\SingleTraitInsertPerStatementFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -14,7 +13,6 @@ impl Fixer for SingleTraitInsertPerStatementFixer {
     fn name(&self) -> &'static str {
         "single_trait_insert_per_statement"
     }
-    /// Must run before BracesFixer, SpaceAfterSemicolonFixer.
     fn priority(&self) -> i32 {
         36
     }
@@ -33,7 +31,6 @@ impl Fixer for SingleTraitInsertPerStatementFixer {
     }
 }
 
-/// `candidates`: ',' indices to fix, last first.
 fn fix_trait_use(tokens: &mut Tokens, use_trait_index: usize, candidates: &[usize]) {
     for &comma_index in candidates {
         let mut inserts = vec![
@@ -58,7 +55,7 @@ fn get_candidates(tokens: &Tokens, index: usize) -> Vec<usize> {
     let mut index = tokens.get_next_token_of_kind(index, &kinds, true).unwrap();
     while !tokens[index].equals(";", true) {
         if tokens[index].equals("{", true) {
-            return vec![]; // do not fix use cases with grouping
+            return vec![];
         }
         indices.push(index);
         index = tokens.get_next_token_of_kind(index, &kinds, true).unwrap();

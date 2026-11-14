@@ -1,23 +1,3 @@
-//! `lint/dead-code/no-empty-block`, ported from Rector 2.8.4's `RemoveDeadIfForeachForRector`
-//! (rules/DeadCode/Rector/For_), with `ConditionInverter` and `BinaryOpManipulator::invertCondition`.
-//!
-//! In a statement list, an `if`, `for` or `foreach` whose body has no statement (php-parser's `stmts === []`: a
-//! comment is a `Nop` statement) is removed, unless:
-//!
-//! - an `if` has `elseif` branches, or its condition calls something or assigns (`=`);
-//! - a `for` has a variable in its header that the statements after it use;
-//! - a `foreach` iterates over something that calls or assigns, or the statements after it use a variable of the
-//!   iterated expression or of the value (Rector checks the value twice and never the key).
-//!
-//! An `if` with an empty body and an `else` becomes `if (<inverted condition>) <else body>`. Rector reprints the
-//! whole `if` then, braces and all; its printer drops the parentheses of `!($a ? $b : $c)`, which changes what the
-//! condition means, and Pun keeps them (lint.md: meaning over bytes).
-//!
-//! Mago 1.57.0's `no-empty-loop` (mapped "same") differs, checked on these fixtures: it looks at `while` and
-//! `do`-`while` too but never at `if`, counts a body of only comments as empty, and deletes the loop even when its
-//! header calls something or a later statement uses its variables (it fires on Rector's `skip_*` fixtures). This
-//! rule follows Rector.
-
 use mago_syntax::cst::{
     AssignmentOperator, Binary, BinaryOperator, Expression, ForBody, ForeachBody, ForeachTarget,
     IfBody, Node, NodeKind, Sequence, Statement, UnaryPrefixOperator,
@@ -51,7 +31,6 @@ impl Rule for NoEmptyBlock {
         out: &mut Vec<Report>,
     ) {
         let Some(body) = body_of(node) else { return };
-        // A cheap look before the file is read into tokens: no statement in the body, by Mago's count.
         let looks_empty = match body {
             Body::One(Statement::Block(b)) => b.statements.iter().all(dropped),
             Body::One(s) => dropped(s),
@@ -69,12 +48,10 @@ impl Rule for NoEmptyBlock {
         if !list.is_empty() {
             return;
         }
-        // Rector works on the list that holds the statement.
         let (list, key) = enclosing(source, tokens, ancestors);
         let try_ = try_of(ancestors);
         let fix = match node {
             Node::If(r#if) => {
-                // With the `else`: its statements, and the text from the end of the `if` body to the end of the `else`.
                 let (else_if, else_part) = match &r#if.body {
                     IfBody::Statement(b) => (
                         !b.else_if_clauses.is_empty(),
@@ -102,8 +79,6 @@ impl Rule for NoEmptyBlock {
                     return;
                 }
                 match else_part {
-                    // `$node->stmts = $node->else->stmts`: the same empty list, so php-parser's printer keeps the
-                    // body as it is and writes only the condition again.
                     Some((else_list, gone)) if else_list.is_empty() => vec![
                         Edit::new(
                             node_span(r#if.condition),
@@ -144,7 +119,6 @@ impl Rule for NoEmptyBlock {
             }
             _ => {
                 let Node::Foreach(foreach) = node else { return };
-                // the iterated expression itself may have side effects
                 if has_side_effect(foreach.expression) {
                     return;
                 }
@@ -175,7 +149,6 @@ impl Rule for NoEmptyBlock {
     }
 }
 
-/// The statements php-parser does not keep.
 fn dropped(s: &Statement<'_>) -> bool {
     matches!(
         s,
@@ -183,15 +156,12 @@ fn dropped(s: &Statement<'_>) -> bool {
     )
 }
 
-/// A body: one statement (maybe a block), or the statements of an alternative syntax, from after its `:` to the
-/// next branch or the keyword that ends it.
 #[derive(Clone, Copy)]
 enum Body<'ast, 'arena> {
     One(&'ast Statement<'arena>),
     Open(&'ast Sequence<'arena, Statement<'arena>>, usize, usize),
 }
 
-/// The body of an `if`, `for` or `foreach`, whose statement list is php-parser's `$stmt->stmts`.
 fn body_of<'ast, 'arena>(node: Node<'ast, 'arena>) -> Option<Body<'ast, 'arena>> {
     let after = |s: mago_span::Span| s.end.offset as usize;
     let start = |s: mago_span::Span| s.start.offset as usize;
@@ -226,7 +196,6 @@ fn body_of<'ast, 'arena>(node: Node<'ast, 'arena>) -> Option<Body<'ast, 'arena>>
     })
 }
 
-/// `hasNodeSideEffect`: a call, a `new`, or an assignment with `=` anywhere in the expression.
 fn has_side_effect(expr: &Expression<'_>) -> bool {
     fn walk(node: Node<'_, '_>) -> bool {
         match node {
@@ -236,7 +205,6 @@ fn has_side_effect(expr: &Expression<'_>) -> bool {
             | Node::AnonymousClass(_) => {
                 return true;
             }
-            // `$a = &$b` is php-parser's AssignRef, not an Assign.
             Node::Assignment(a)
                 if matches!(a.operator, AssignmentOperator::Assign(_))
                     && !matches!(
@@ -255,8 +223,6 @@ fn has_side_effect(expr: &Expression<'_>) -> bool {
     walk(Node::Expression(expr))
 }
 
-/// The names (without `$`) of the variables in `node`, as `BetterNodeFinder::findInstanceOf(..., Variable::class)`
-/// and `getName` give them: a variable variable has no name, which Rector turns into `''`.
 fn variables(node: Node<'_, '_>) -> Vec<Vec<u8>> {
     let mut out = Vec::new();
     fn walk(node: Node<'_, '_>, parent: Option<Node<'_, '_>>, out: &mut Vec<Vec<u8>>) {
@@ -279,7 +245,6 @@ fn variables(node: Node<'_, '_>) -> Vec<Vec<u8>> {
     out
 }
 
-/// `ConditionInverter::createInvertedCondition`, printed.
 pub(crate) fn inverted_condition(source: &str, condition: &Expression<'_>) -> String {
     let text = |e: &Expression| {
         let s = node_span(e);
@@ -289,7 +254,6 @@ pub(crate) fn inverted_condition(source: &str, condition: &Expression<'_>) -> St
     match condition {
         Expression::Binary(binary) => {
             if let Some(op) = inverted_operator(binary) {
-                // A new node: php-parser prints its operands without parentheses unless precedence needs them.
                 let operand = |e: &Expression| -> String {
                     let inner = unparenthesize(e);
                     let own = match inner {
@@ -313,15 +277,12 @@ pub(crate) fn inverted_condition(source: &str, condition: &Expression<'_>) -> St
         Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Not(_)) => {
             text(unparenthesize(u.operand)).to_string()
         }
-        // `!$a = f()` is `!($a = f())` in PHP, and Rector prints it so.
         Expression::Assignment(_) => format!("!{}", text(condition)),
         _ if keeps_parentheses(condition, None) => format!("!({})", text(condition)),
         _ => format!("!{}", text(condition)),
     }
 }
 
-/// `BinaryOpManipulator::invertCondition` as `createInvertedCondition` uses it: the comparison's inverse, unless a
-/// side is `||`. `||` itself inverts to `&&`, which `createInvertedCondition` then turns into `!(...)`.
 fn inverted_operator(binary: &Binary<'_>) -> Option<&'static str> {
     let is_or = |e: &Expression| {
         matches!(

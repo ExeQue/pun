@@ -1,9 +1,3 @@
-//! `lint/types/add-datetime-property-type`, ported from Rector 2.8.4's `MergeDateTimePropertyTypeDeclarationRector`
-//! (rules/TypeDeclaration/Rector/Class_).
-//!
-//! A private property typed `\DateTime` whose `@var` says `DateTimeInterface` gets the type `\DateTimeInterface`; the
-//! `@var` tags go when the first has no description.
-
 use mago_syntax::cst::{ClassLikeMember, Hint, Modifier, Node, NodeKind, Property};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -51,7 +45,6 @@ impl Rule for AddDatetimePropertyType {
         let Some(Hint::Identifier(type_name)) = hint else {
             return;
         };
-        // `FullyQualified::toString() !== 'DateTime'`: compared as resolved, case and all.
         if resolve_class_name(ancestors, type_name) != "DateTime"
             || !modifiers.iter().any(|m| matches!(m, Modifier::Private(_)))
         {

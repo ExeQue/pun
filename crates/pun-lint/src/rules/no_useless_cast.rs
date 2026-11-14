@@ -1,20 +1,3 @@
-//! `lint/dead-code/no-useless-cast`, ported from Rector 2.8.4's `RecastingRemovalRector` (rules/DeadCode/Rector/Cast).
-//!
-//! A cast to the type its value already has goes: `(string)`, `(bool)`, `(int)`, `(float)`, `(object)` or `(array)`
-//! of a value whose native type is that type (PHPStan's `StringType`, `BooleanType`, `IntegerType`, `FloatType`,
-//! `ObjectType` or `ArrayType`, their constant forms included), and `(array)` of a constant array. It stays on an
-//! array item, on a property without a native type (or one PHPStan has no reflection of, such as a magic one), and on
-//! a variable whose native type is wider than its type, that may be undefined, or that another variable's constant
-//! string names.
-//!
-//! Mago's types stand in for PHPStan's native ones, which refine a string only by its case (`strtolower()` gives an
-//! intersection type, no `StringType`) and an array not at all; `$a ** $b` of integers is `int|float` unless both are
-//! literals, and `$this` is PHPStan's `ThisType`, which is no `ObjectType`. An enum's `name` and `value` are no
-//! native properties.
-//!
-//! The value keeps its code. Rector prints it without the parentheses the cast's operand had; Pun keeps the ones the
-//! meaning needs (lint.md: meaning over bytes).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -36,7 +19,6 @@ use crate::{Context, Report, Rule};
 
 pub struct NoUselessCast;
 
-/// The PHPStan type class a native type is an instance of, for the casts.
 #[derive(PartialEq, Clone, Copy)]
 enum Kind {
     String,
@@ -82,7 +64,6 @@ impl Rule for NoUselessCast {
         };
         let expr = unparenthesize(c.operand);
         let facts = facts(ctx);
-        // a constant (other than `true`, `false` and `null`) has no native type
         if matches!(expr, Expression::ConstantAccess(_)) {
             return;
         }
@@ -90,7 +71,6 @@ impl Rule for NoUselessCast {
             return;
         };
         let mut kind = kind(native);
-        // `$a ** $b` of integers is `int|float` for PHPStan unless both are known
         if let Expression::Binary(b) = expr
             && matches!(b.operator, BinaryOperator::Exponentiation(_))
             && kind == Kind::Int
@@ -129,12 +109,10 @@ fn is_int_literal(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// The PHPStan class of the type Mago's `t` stands for.
 fn kind(t: &TUnion) -> Kind {
     match t.types.as_ref() {
         [atomic] => atomic_kind(atomic),
         [a, b] if is_bool(a) && is_bool(b) => Kind::Bool,
-        // Mago's union of arrays is one `ArrayType` for PHPStan
         types if types.iter().all(|a| matches!(a, TAtomic::Array(_))) => Kind::Array,
         _ => Kind::Other,
     }
@@ -147,7 +125,6 @@ fn is_bool(atomic: &TAtomic) -> bool {
 fn atomic_kind(atomic: &TAtomic) -> Kind {
     match atomic {
         TAtomic::Mixed(_) => Kind::Mixed,
-        // PHPStan's native types refine a string only by its case (`strtolower()`, `strtoupper()`)
         TAtomic::Scalar(TScalar::String(s))
             if s.literal.is_none() && s.casing != TStringCasing::Unspecified =>
         {
@@ -158,7 +135,6 @@ fn atomic_kind(atomic: &TAtomic) -> Kind {
         TAtomic::Scalar(TScalar::Integer(_)) => Kind::Int,
         TAtomic::Scalar(TScalar::Float(_)) => Kind::Float,
         TAtomic::Scalar(TScalar::Bool(_)) => Kind::Bool,
-        // nor an array: a list or a non-empty array is a plain `ArrayType` there
         TAtomic::Array(TArray::Keyed(k)) if k.parameters.is_none() => Kind::ConstantArray,
         TAtomic::Array(_) => Kind::Array,
         TAtomic::Object(TObject::Named(n)) if !n.is_this => Kind::Object,
@@ -167,7 +143,6 @@ fn atomic_kind(atomic: &TAtomic) -> Kind {
     }
 }
 
-/// `shouldSkip`: an array item, a property PHPStan has no native type of, or `isNonTypedFromParam`.
 fn should_skip(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -190,7 +165,6 @@ fn should_skip(
                     }
                 }
             };
-            // a dynamic name, or a value of no single class: no native property
             if let ClassLikeMemberSelector::Identifier(id) = &p.property
                 && let Some(class) = class
             {
@@ -227,7 +201,6 @@ fn should_skip(
             }
         }
         Expression::Variable(Variable::Direct(_)) => {
-            // `hasVariableType()` must be a yes, and the type within the native type
             native.possibly_undefined()
                 || facts
                     .full_type(node_span(expr))
@@ -238,8 +211,6 @@ fn should_skip(
     }
 }
 
-/// The defined variables loop of `isNonTypedFromParam`: a variable of the function-like around the cast (before
-/// `at`) holds a literal string that is the name of one of its variables, which a variable variable may write.
 pub(super) fn names_variable(ancestors: &[Node<'_, '_>], at: usize) -> bool {
     let Some(root) = ancestors.iter().rev().find(|a| {
         matches!(
@@ -281,8 +252,6 @@ pub(super) fn names_variable(ancestors: &[Node<'_, '_>], at: usize) -> bool {
     values.iter().any(|v| names.contains(&v.as_slice()))
 }
 
-/// The class `$this` and `self` stand for: the enclosing class-like (Mago's name for an anonymous class). In a trait,
-/// where PHPStan types no `$this` (Mago's facts leave it untyped), `self` is the trait.
 fn this_class(facts: &Facts, ancestors: &[Node<'_, '_>]) -> Option<String> {
     ancestors
         .iter()
@@ -299,9 +268,7 @@ fn this_class(facts: &Facts, ancestors: &[Node<'_, '_>]) -> Option<String> {
         })
 }
 
-/// `hasNativeProperty()` and a native type other than `mixed` on the property `name` (with its `$`) of `class`.
 fn has_native_type(facts: &Facts, class: &str, name: &str) -> bool {
-    // an enum's `name` and `value` are no native properties for PHPStan
     if facts
         .codebase
         .get_class_like(class.as_bytes())
@@ -316,10 +283,7 @@ fn has_native_type(facts: &Facts, class: &str, name: &str) -> bool {
         .is_some_and(|t| !t.type_union.is_mixed())
 }
 
-/// `$nativeType->isSuperTypeOf($type)->yes()`, for the native types the casts keep: every part of `full` is of the
-/// native type's kind.
 pub(super) fn within(full: &TUnion, native: &TUnion) -> bool {
-    // a constant array is the supertype of itself alone
     let constant = |a: &TAtomic| match a {
         TAtomic::Array(TArray::Keyed(k)) => k.parameters.is_none() && k.known_items.is_some(),
         TAtomic::Array(TArray::List(l)) => l.known_elements.is_some() && l.element_type.is_never(),

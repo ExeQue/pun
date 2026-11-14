@@ -1,6 +1,3 @@
-//! Level 2's InvalidBinaryOperationRule (`binaryOp.invalid`, `assignOp.invalid`): an arithmetic, bitwise or concat
-//! operation whose result type (InitializerExprTypeResolver's `getPlusType()` and co.) is an ErrorType.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Cast, Level, StrictMixed, Type, cast_is_error, is_super_type_of, mixed};
@@ -23,7 +20,6 @@ enum Op {
     BitXor,
     ShiftLeft,
     ShiftRight,
-    /// `|>`, a call of its right side
     Pipe,
 }
 
@@ -63,7 +59,6 @@ fn assign_op(op: &AssignmentOperator) -> Option<Op> {
     })
 }
 
-/// The operands the rule reads.
 pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
     match e {
         Expression::Binary(b) if binary_op(&b.operator).is_some() => {
@@ -80,7 +75,6 @@ pub(super) fn typed(e: &Expression, spans: &mut Vec<Span>) {
 const TRUE: Type = Type::ConstBool(true);
 const FALSE: Type = Type::ConstBool(false);
 
-/// `getConstantScalarTypes()`: the constant scalars a type is a union of (`bool` is `true|false`).
 fn constant_scalars(t: &Type) -> Option<Vec<&Type>> {
     match t {
         Type::ConstInt(_)
@@ -100,7 +94,6 @@ fn constant_scalars(t: &Type) -> Option<Vec<&Type>> {
     }
 }
 
-/// The value of a constant scalar's `toNumber()` (a numeric string's, a bool's, null's).
 fn number(t: &Type) -> f64 {
     match t {
         Type::ConstInt(i) => *i as f64,
@@ -114,7 +107,6 @@ fn number(t: &Type) -> f64 {
     }
 }
 
-/// `$base->exponentiate($exponent)` is an ErrorType.
 fn pow_fails(base: &Type, exponent: &Type) -> bool {
     match base {
         Type::Union(ts) | Type::Benevolent(ts) => ts.iter().any(|t| pow_fails(t, exponent)),
@@ -127,7 +119,6 @@ fn pow_fails(base: &Type, exponent: &Type) -> bool {
             matches!(exponent, Type::Never(_))
                 || is_super_type_of(&Type::ObjectWithoutClass, exponent).no()
         }
-        // ExponentiateHelper
         _ => match exponent {
             Type::Union(ts) => ts.iter().any(|t| pow_fails(base, t)),
             _ => !is_super_type_of(
@@ -145,12 +136,10 @@ fn pow_fails(base: &Type, exponent: &Type) -> bool {
     }
 }
 
-/// The operation's type is an ErrorType, `sm` saying which `mixed` is a StrictMixedType.
 fn fails(op: Op, l: &Type, r: &Type, sm: StrictMixed) -> bool {
     if op == Op::Pow {
         return pow_fails(l, r);
     }
-    // PipeHandler's FuncCall of the right side: an ErrorType when it is no callable
     if op == Op::Pipe {
         return r.is_callable().no();
     }
@@ -158,8 +147,6 @@ fn fails(op: Op, l: &Type, r: &Type, sm: StrictMixed) -> bool {
     if op == Op::Concat {
         return cast_is_error(l, Cast::String, sm) || cast_is_error(r, Cast::String, sm);
     }
-    // (a never operand, whose result is never, is no type to check)
-    // ponytail: more than CALCULATE_SCALARS_LIMIT (128) pairs of constant scalars are evaluated all the same
     if let (Some(ls), Some(rs)) = (constant_scalars(l), constant_scalars(r)) {
         let bitwise = matches!(op, Op::BitAnd | Op::BitOr | Op::BitXor);
         return ls.iter().any(|a| {
@@ -181,7 +168,6 @@ fn fails(op: Op, l: &Type, r: &Type, sm: StrictMixed) -> bool {
     };
     let common = |l: &Type, r: &Type| l.is_array().yes() || r.is_array().yes() || num(l) || num(r);
     match op {
-        // (a `mixed` operand, which the level checks only as a StrictMixedType, is no MixedType here)
         Op::BitAnd | Op::BitOr | Op::BitXor => {
             let (ls, rs) = (l.is_string(), r.is_string());
             !(ls.yes() && rs.yes()) && ((ls.maybe() && rs.maybe()) || num(l) || num(r))
@@ -216,7 +202,6 @@ fn fails(op: Op, l: &Type, r: &Type, sm: StrictMixed) -> bool {
     }
 }
 
-/// `$scope->getType($e)` filtered as `findTypeToCheck()` with the operation's callback.
 fn checked(c: &Checker, e: &Expression, op: Op, sm: StrictMixed) -> Option<Type> {
     let callback = |t: &Type| match op {
         Op::Concat => !cast_is_error(t, Cast::String, sm),
@@ -242,7 +227,6 @@ fn check(
         let (Some(l), Some(r)) = (checked(c, left, op, sm), checked(c, right, op, sm)) else {
             return false;
         };
-        // the GMP and BcMath\Number operator extensions type the operations of those objects
         let extension = |t: &Type| {
             ["GMP", "BcMath\\Number"]
                 .iter()

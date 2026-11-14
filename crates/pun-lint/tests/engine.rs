@@ -1,5 +1,3 @@
-//! The engine: one parse, problems, the fix loop and its errors. Expected values are derived by hand.
-
 use std::path::{Path, PathBuf};
 
 use mago_span::HasSpan;
@@ -10,7 +8,6 @@ use pun_problem::{Edit, Fix, Level, Safety, Span};
 #[test]
 fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
     let linter = Linter::new(rules::all(), 80400);
-    // strict types declared, so statements/add-safe-strict-types has nothing to add
     let code = "<?php\ndeclare(strict_types=1);\n$a = $a + 1;\n";
     let problems = linter.check(Path::new("src/a.php"), code).unwrap();
     assert_eq!(problems.len(), 1);
@@ -18,7 +15,7 @@ fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
     let compound = &problems[0];
     assert_eq!(compound.rule, "lint/style/prefer-compound-assignment");
     assert_eq!(compound.path, PathBuf::from("src/a.php"));
-    assert_eq!(compound.span, Span::new(31, 42)); // `$a = $a + 1`
+    assert_eq!(compound.span, Span::new(31, 42));
     assert_eq!(compound.level, Level::Error);
     assert_eq!(
         compound.message,
@@ -43,8 +40,6 @@ fn rules_below_their_php_version_do_not_run() {
 
 #[test]
 fn fix_counts_rounds_and_keeps_problems_without_a_fix() {
-    // Round 1 unwraps the outer parentheses; the inner ones overlap it and wait. Round 2 unwraps them. ReportOnly's
-    // problem stays.
     let rules: Vec<Box<dyn Rule>> = vec![Box::new(ReportOnly), Box::new(Unwrap)];
     let linter = Linter::new(rules, 80400);
     let code = "<?php\n$a = ((1));\ntry { } finally { }\n";
@@ -52,8 +47,8 @@ fn fix_counts_rounds_and_keeps_problems_without_a_fix() {
     assert_eq!(fixed.source, "<?php\n$a = 1;\ntry { } finally { }\n");
     assert_eq!(fixed.rounds, 2);
     assert_eq!(fixed.applied.len(), 2);
-    assert_eq!(fixed.applied[0].span, Span::new(11, 16)); // `((1))`, in the original source
-    assert_eq!(fixed.applied[1].span, Span::new(11, 14)); // `(1)`, in round 2's source
+    assert_eq!(fixed.applied[0].span, Span::new(11, 16));
+    assert_eq!(fixed.applied[1].span, Span::new(11, 14));
     assert_eq!(fixed.remaining.len(), 1);
     assert_eq!(fixed.remaining[0].rule, "lint/test/report-only");
 }
@@ -77,7 +72,7 @@ fn a_file_that_does_not_parse_is_refused() {
     let LintError::Syntax { span, .. } = &err else {
         panic!("{err:?}");
     };
-    assert_eq!(span.start, 11); // the `;`
+    assert_eq!(span.start, 11);
     assert!(err.to_string().starts_with("syntax error: "), "{err}");
     assert_eq!(
         linter
@@ -123,7 +118,6 @@ fn fixes_that_never_settle_stop_after_max_rounds() {
 #[test]
 fn a_panicking_rule_fails_its_file_only() {
     let linter = Linter::new(vec![Box::new(Panics)], 80400);
-    // `unwrap()` on a `None` and a formatted `panic!` carry their message as `&str` and `String`.
     for (code, message) in [
         ("<?php\ntry { } finally { }\n", "no finally"),
         ("<?php\nbreak;\n", "line 2"),
@@ -137,17 +131,14 @@ fn a_panicking_rule_fails_its_file_only() {
         );
         assert_eq!(err.to_string(), format!("a lint rule panicked: {message}"));
     }
-    // A payload that is no text gives an empty message.
     let err = linter.check(Path::new("a.php"), "<?php\ncontinue;\n");
     assert_eq!(err.unwrap_err().to_string(), "a lint rule panicked: ");
-    // The next file is linted as usual.
     assert_eq!(
         linter.check(Path::new("b.php"), "<?php\n$a = 1;\n"),
         Ok(vec![])
     );
 }
 
-/// Panics on `try` (a `&str` payload), `break` (a `String`) and `continue` (neither).
 struct Panics;
 
 impl Rule for Panics {
@@ -171,7 +162,6 @@ impl Rule for Panics {
     }
 }
 
-/// Reports every `try`, with no fix.
 struct ReportOnly;
 
 impl Rule for ReportOnly {
@@ -197,7 +187,6 @@ impl Rule for ReportOnly {
     }
 }
 
-/// Reports nothing, and needs PHP 8.4.
 struct NeedsPhp84;
 
 impl Rule for NeedsPhp84 {
@@ -219,7 +208,6 @@ impl Rule for NeedsPhp84 {
     }
 }
 
-/// Replaces each parenthesized expression with its inside.
 struct Unwrap;
 
 impl Rule for Unwrap {
@@ -250,7 +238,6 @@ impl Rule for Unwrap {
     }
 }
 
-/// Deletes every statement terminator `;`.
 struct DropSemicolons;
 
 impl Rule for DropSemicolons {
@@ -280,7 +267,6 @@ impl Rule for DropSemicolons {
     }
 }
 
-/// Appends a newline at the end of the file, every time.
 struct AlwaysAppend;
 
 impl Rule for AlwaysAppend {

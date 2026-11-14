@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\ArrayPushFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -67,9 +66,6 @@ impl Fixer for ArrayPushFixer {
                 continue;
             }
 
-            // first argument must be a variable (with possibly array indexing etc.),
-            // after that nothing meaningful should be there till the next `,` or `)`
-            // if `)` than we cannot fix it (it is a single argument call)
             let first_argument_stop = get_first_argument_end(tokens, open_brace_index);
             let first_argument_stop = tokens
                 .get_next_meaningful_token(first_argument_stop)
@@ -78,8 +74,6 @@ impl Fixer for ArrayPushFixer {
                 continue;
             }
 
-            // second argument can be about anything but ellipsis, we must make sure there is not
-            // a third argument (or more) passed to `array_push`
             let second_argument_start = tokens
                 .get_next_meaningful_token(first_argument_stop)
                 .unwrap();

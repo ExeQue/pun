@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 use pun_format::Pipeline;
 use pun_lint::{Linter, Rule, rules};
 
-/// The fixtures of `tests/rector/<rector>/{Fixture,Oracle,Pun}`, or of the one directory `rector` names.
 fn fixtures(rector: &str) -> Vec<(PathBuf, String, String)> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
@@ -33,7 +32,6 @@ fn fixtures(rector: &str) -> Vec<(PathBuf, String, String)> {
     paths
         .into_iter()
         .filter(|path| {
-            // Pun lints only UTF-8 files, so it leaves any other alone: such a fixture must expect no change.
             let bytes = std::fs::read(path).unwrap();
             let utf8 = std::str::from_utf8(&bytes).is_ok();
             assert!(
@@ -71,8 +69,6 @@ fn laravel() -> Pipeline {
     Pipeline::new(&rules, &pun_fixers::all).unwrap()
 }
 
-/// Every fixture of `dir` with `rule` alone at `php_version`: the raw fix equals the expected code, so do the
-/// formatted ones, and the rule applied a fix exactly when the fixture expects a change.
 fn run(rule: impl Rule + 'static, php_version: u32, dir: &str) {
     let linter = Linter::new(vec![Box::new(rule)], php_version);
     let pipeline = laravel();
@@ -83,12 +79,10 @@ fn run(rule: impl Rule + 'static, php_version: u32, dir: &str) {
             .unwrap()
             .display()
             .to_string();
-        // Rector's test runner trims both halves; the expected half often lacks the input's final newline.
         if input.ends_with('\n') && !expected.ends_with('\n') {
             expected.push('\n');
         }
         let fixed = linter.fix(&path, &input).unwrap();
-        // Every fixture is checked before the test fails, so one run lists all that differ.
         if fixed.source != expected
             || format(&pipeline, &fixed.source) != format(&pipeline, &expected)
             || fixed.applied.is_empty() != (input == expected)
@@ -160,7 +154,6 @@ fn remove_finfo_buffer_context_arg() {
 
 #[test]
 fn null_debug_info_return() {
-    // Rector's tests run with PhpVersionProvider::provide() at 100000 (PHP 10.0).
     run(rules::NoNullDebugInfo, 100000, "NullDebugInfoReturnRector");
 }
 

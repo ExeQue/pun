@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-cast-in-concat`, ported from Rector 2.8.4's `RemoveConcatAutocastRector`
-//! (rules/DeadCode/Rector/Concat).
-//!
-//! `'a' . (string) $b` becomes `'a' . $b`: `.` casts to string already. php-parser reads `(binary)` as a string cast
-//! too. Rector keeps the parentheses of a cast operand that is a binary operation (`WRAPPED_IN_PARENTHESES`) and
-//! prints any other operand bare; Pun also keeps them around other operands that bind looser than `.`.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -53,7 +46,6 @@ impl Rule for NoCastInConcat {
     }
 }
 
-/// `removeStringCast`: the edit that replaces a string cast with its operand.
 fn remove_string_cast(source: &str, side: &Expression<'_>) -> Option<Edit> {
     let Expression::UnaryPrefix(cast) = unparenthesize(side) else {
         return None;
@@ -67,7 +59,6 @@ fn remove_string_cast(source: &str, side: &Expression<'_>) -> Option<Edit> {
     let operand = unparenthesize(cast.operand);
     let wrapped = matches!(cast.operand, Expression::Parenthesized(_))
         && match operand {
-            // php-parser's `instanceof` is no `BinaryOp`, and binds tighter than `.`.
             Expression::Binary(b) => !matches!(b.operator, BinaryOperator::Instanceof(_)),
             _ => keeps_parentheses(operand, None),
         };

@@ -1,9 +1,3 @@
-//! `lint/style/prefer-instanceof-stringable`, ported from Mago 1.57.0's linter rule `instanceof-stringable`
-//! (rule/clarity/instanceof_stringable.rs).
-//!
-//! `is_object($x) && method_exists($x, '__toString')` (either way round, with `&&`) is reported on the whole
-//! expression: since PHP 8.0 a class with `__toString()` implements `Stringable`.
-
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Literal, Node, NodeKind, Variable};
 
 use super::lint_b_names::function_call_matches;

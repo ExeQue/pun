@@ -1,7 +1,3 @@
-//! What Rector 2.8.4's docblock type rules (rules/TypeDeclarationDocblocks and the docblock rules of
-//! rules/TypeDeclaration) share: a function or method as a `ClassMethod|Function_`, `ReturnNodeFinder`, and the
-//! report whose fix writes the changed doc comment through [`crate::rules::phpdoc_writer`].
-
 use crate::syntax::is_this;
 use mago_syntax::cst::{
     Access, Assignment, AssignmentOperator, Block, ClassLikeMember, ClassLikeMemberSelector,
@@ -17,17 +13,13 @@ use crate::Report;
 use crate::rules::phpdoc_writer::{DocTarget, PhpDocInfo};
 use crate::syntax::node_span;
 
-/// A `ClassMethod` or `Function_`.
 pub(crate) struct FunctionLike<'ast, 'arena> {
     pub name: Span,
     pub name_text: &'arena [u8],
-    /// php-parser's start of the node (its first attribute or modifier).
     pub start: usize,
-    /// The body; `None` for an abstract method.
     pub body: Option<&'ast Block<'arena>>,
     pub parameters: &'ast FunctionLikeParameterList<'arena>,
     pub return_type: Option<&'ast FunctionLikeReturnTypeHint<'arena>>,
-    /// The method, when it is one.
     pub method: Option<&'ast Method<'arena>>,
 }
 
@@ -59,13 +51,10 @@ impl<'ast, 'arena> FunctionLike<'ast, 'arena> {
         }
     }
 
-    /// `$node->returnType instanceof Node && ! $this->isName($node->returnType, 'array')`: a return type other than
-    /// `array`.
     pub(crate) fn has_non_array_return_type(&self) -> bool {
         self.return_type.is_some_and(|r| !is_array_hint(&r.hint))
     }
 
-    /// Whether it is a private method.
     pub(crate) fn is_private(&self) -> bool {
         self.method.is_some_and(|m| {
             m.modifiers
@@ -74,8 +63,6 @@ impl<'ast, 'arena> FunctionLike<'ast, 'arena> {
         })
     }
 
-    /// `ReturnNodeFinder::findOnlyReturnWithExpr()`: the one `return` of the body, when it has a value and the end of
-    /// the body cannot be reached.
     pub(crate) fn only_return_with_expr(
         &self,
         place: &Place<'_, '_, '_>,
@@ -88,24 +75,19 @@ impl<'ast, 'arena> FunctionLike<'ast, 'arena> {
         Some(returns[0])
     }
 
-    /// The doc comment target of the node.
     pub(crate) fn target(&self, ctx: &crate::Context<'_>) -> DocTarget {
         DocTarget::of(ctx, self.start)
     }
 }
 
-/// `$this->isName($typeNode, 'array')`: the hint is `array` (case-insensitively).
 pub(crate) fn is_array_hint(hint: &Hint<'_>) -> bool {
     matches!(hint, Hint::Array(_))
 }
 
-/// The class `ancestors` lead to, for `self` in a doc type.
 pub(crate) fn class_name(ancestors: &[Node<'_, '_>]) -> Option<String> {
     class_scope(ancestors).and_then(|s| s.name)
 }
 
-/// The report of a rule that changed `info`, the doc comment of `target`; `None` when the printed doc leaves the
-/// source as it is (Rector rewrites a not useful `mixed[]` tag with the same `mixed[]`).
 pub(crate) fn doc_report(
     span: Span,
     message: &str,
@@ -121,8 +103,6 @@ pub(crate) fn doc_report(
     )
 }
 
-/// The report of a rule that changed the doc comments `changes` (a target and its changed doc each); `None` when
-/// none of them changes the source.
 pub(crate) fn docs_report(
     span: Span,
     message: &str,
@@ -136,13 +116,11 @@ pub(crate) fn docs_report(
     report(span, message, source, edits)
 }
 
-/// The report with the `edits` that change the source, if any does.
 fn report(span: Span, message: &str, source: &str, mut edits: Vec<Edit>) -> Option<Report> {
     edits.retain(|edit| source[edit.span.start..edit.span.end] != edit.text);
     (!edits.is_empty()).then(|| Report::fixed(span, message.to_string(), Safety::Unsafe, edits))
 }
 
-/// `Type::getReferencedClasses()`.
 pub(crate) fn referenced_classes(t: &Type) -> Vec<String> {
     match t {
         Type::Object(name, args, _) => {
@@ -170,8 +148,6 @@ pub(crate) fn referenced_classes(t: &Type) -> Vec<String> {
     }
 }
 
-/// A class's members (`Class_`, an anonymous class too), whether it is anonymous, and where its report points (its
-/// name, or `class` of an anonymous class).
 pub(crate) fn class_members<'ast, 'arena>(
     node: Node<'ast, 'arena>,
 ) -> Option<(&'ast Sequence<'arena, ClassLikeMember<'arena>>, bool, Span)> {
@@ -182,7 +158,6 @@ pub(crate) fn class_members<'ast, 'arena>(
     }
 }
 
-/// `Class_::getMethods()`.
 pub(crate) fn methods<'ast, 'arena>(
     members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
 ) -> impl Iterator<Item = &'ast Method<'arena>> {
@@ -192,7 +167,6 @@ pub(crate) fn methods<'ast, 'arena>(
     })
 }
 
-/// `Class_::getMethod()`: the method of that name, case-insensitively.
 pub(crate) fn method<'ast, 'arena>(
     members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
     name: &str,
@@ -200,18 +174,14 @@ pub(crate) fn method<'ast, 'arena>(
     methods(members).find(|m| m.name.value.eq_ignore_ascii_case(name.as_bytes()))
 }
 
-/// A `Property` statement as Rector reads it.
 pub(crate) struct PropertyView<'ast, 'arena> {
     pub start: usize,
     pub hint: Option<&'ast Hint<'arena>>,
-    /// The names of its items, without `$`.
     pub names: Vec<&'arena str>,
-    /// The default of its first item.
     pub default: Option<&'ast Expression<'arena>>,
     pub is_private: bool,
 }
 
-/// `Class_::getProperties()`.
 pub(crate) fn properties<'ast, 'arena>(
     members: &'ast Sequence<'arena, ClassLikeMember<'arena>>,
 ) -> Vec<PropertyView<'ast, 'arena>> {
@@ -248,7 +218,6 @@ pub(crate) fn properties<'ast, 'arena>(
         .collect()
 }
 
-/// The name of a direct variable, without `$`.
 pub(crate) fn variable_name<'a>(expr: &Expression<'a>) -> Option<&'a str> {
     match expr {
         Expression::Variable(Variable::Direct(v)) => std::str::from_utf8(&v.name[1..]).ok(),
@@ -256,7 +225,6 @@ pub(crate) fn variable_name<'a>(expr: &Expression<'a>) -> Option<&'a str> {
     }
 }
 
-/// `$this->name` of a property fetch on `$this`: the name.
 pub(crate) fn this_property<'a>(expr: &Expression<'a>) -> Option<&'a str> {
     match expr {
         Expression::Access(Access::Property(p)) if is_this(p.object) => match &p.property {
@@ -267,7 +235,6 @@ pub(crate) fn this_property<'a>(expr: &Expression<'a>) -> Option<&'a str> {
     }
 }
 
-/// The statements of a method's body (`null` for an abstract method).
 pub(crate) fn method_statements<'ast, 'arena>(
     m: &'ast Method<'arena>,
 ) -> Option<Vec<&'ast Statement<'arena>>> {
@@ -277,7 +244,6 @@ pub(crate) fn method_statements<'ast, 'arena>(
     }
 }
 
-/// The property `$this->x` the sole `return` statement of a method returns.
 pub(crate) fn returned_this_property<'arena>(m: &Method<'arena>) -> Option<&'arena str> {
     match method_statements(m)?.as_slice() {
         [Statement::Return(r)] => this_property(r.value?),
@@ -285,8 +251,6 @@ pub(crate) fn returned_this_property<'arena>(m: &Method<'arena>) -> Option<&'are
     }
 }
 
-/// `BetterNodeFinder::findInstancesOfScoped()` over `node`'s children: each node `found` takes, not looking into
-/// classes, functions and closures (methods and arrow functions are looked into).
 pub(crate) fn find_scoped<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     found: &mut dyn FnMut(Node<'ast, 'arena>),
@@ -305,7 +269,6 @@ pub(crate) fn find_scoped<'ast, 'arena>(
     });
 }
 
-/// The simple assignments (`=`) under `node`, scoped.
 pub(crate) fn assignments<'ast, 'arena>(node: Node<'ast, 'arena>) -> Vec<&'ast Assignment<'arena>> {
     let mut out = Vec::new();
     find_scoped(node, &mut |n| {

@@ -1,9 +1,3 @@
-//! `pun init` (context/plan/init.md): writes pun.toml for a project without a Pint, PHP-CS-Fixer, PHPStan, Rector or
-//! Mago config. It reads composer.json and composer.lock, asks three questions (code style, lint sets, analysis
-//! preset) with defaults that fit the project, and writes only those three choices. A project with an old config is
-//! `pun migrate`'s: a terminal is offered it, anything else is told so and nothing is written. `--yes`, agent mode,
-//! `CI` or no terminal ask nothing and take the defaults or the flags. Workflow wiring (composer scripts, CI, hooks) is
-//! printed, never written.
 use crate::render::{ColorChoice, Look, Renderer};
 use crate::{agent, migrate, root};
 use anyhow::{Result, bail};
@@ -242,7 +236,6 @@ fn found(root: &Path, c: &Composer) -> String {
     if let Some(l) = &c.pest {
         parts.push(format!("Pest {}", version(l)));
     } else if let Some(l) = &c.phpunit {
-        // Pest runs on PHPUnit, so PHPUnit is named only without Pest.
         parts.push(format!("PHPUnit {}", version(l)));
     }
     if let Some(php) = &c.php {

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\YieldFromArrayToYieldsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -28,7 +27,6 @@ impl Fixer for YieldFromArrayToYieldsFixer {
         let yield_tokens = || vec![Token::new(T_YIELD, "yield"), Token::new(T_WHITESPACE, " ")];
         let mut inserts: BTreeMap<usize, Vec<Token>> = BTreeMap::new();
         let tokens_count = tokens.count();
-        // getYieldsFromToUnpack is a generator: each candidate is found on the tokens as fixed so far.
         for index in 1..tokens_count {
             let Some((start_index, end_index)) = yield_from_to_unpack(tokens, index) else {
                 continue;

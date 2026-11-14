@@ -1,8 +1,3 @@
-//! `lint/pest/prefer-to-be-true-false`, ported from pest-plugin-rector's `SimplifyToLiteralBooleanRector`:
-//! `->toBe(true)` becomes `->toBeTrue()`, `->toBe(false)` `->toBeFalse()` and `->toBe(null)` `->toBeNull()`;
-//! `->toEqual(true)` and `->toEqual(false)` only when the checked value is always a bool, and `->toBe([])` /
-//! `->toEqual('')` become `->toBeEmpty()` when it is always an array / a string.
-
 use mago_syntax::cst::{Expression, Literal, MethodCall, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -51,7 +46,6 @@ impl Rule for PreferToBeTrueFalse {
     }
 }
 
-/// `getMatcherForLiteral`.
 fn matcher_for_literal(
     ctx: &Context<'_>,
     call: &MethodCall<'_>,

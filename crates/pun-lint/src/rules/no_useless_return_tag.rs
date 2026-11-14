@@ -1,14 +1,3 @@
-//! `lint/phpdoc/no-useless-return`, ported from Rector 2.8.4's `RemoveUselessReturnTagRector`
-//! (rules/DeadCode/Rector/ClassMethod) with `ReturnTagRemover` and `DeadReturnTagValueNodeAnalyzer`
-//! (rules/DeadCode/PhpDoc).
-//!
-//! The first `@return` of a function's or method's doc comment goes when the native return type already says what
-//! it says, or when it says nothing useful next to it (`@return void`, `@return mixed`, any type over a native
-//! `void` or `never` but `never` over `void`, a nullable doc type over its native type without `null`). It stays
-//! with a description, a generic or other type the native one cannot say, a template type, `$this` in a trait,
-//! `true` or `false` over a native `bool`, or a union with `true`, `false`, a `mixed[]` or a generic member. The
-//! removal takes `@phan-return` along, not the `@phpstan-` and `@psalm-` tags; a doc comment left empty goes.
-
 use mago_syntax::cst::{Hint, Node, NodeKind};
 use pun_phpstan::phpdoc::Node as DocNode;
 use pun_problem::{Fix, Safety};
@@ -78,7 +67,6 @@ impl Rule for NoUselessReturnTag {
     }
 }
 
-/// `DeadReturnTagValueNodeAnalyzer::isDead()`.
 fn is_dead(tag: &TypeTag, return_type: &Hint<'_>, scope: &TypeScope<'_, '_, '_, '_>) -> bool {
     if tag.has_description || matches!(tag.ty, DocNode::Generic { .. }) {
         return false;
@@ -123,8 +111,6 @@ fn is_dead_not_equal(
     doc_type.is_union() && are_types_equal(&remove_null(doc_type), native)
 }
 
-/// Whether the `@return` says something next to the native type: not `mixed`, and over a native `void` only
-/// `never`; nothing over a native `never`.
 fn has_useful_phpdoc_type(tag: &TypeTag, return_type: &Hint<'_>) -> bool {
     if matches!(&tag.ty, DocNode::Ident(n) if n == "mixed") {
         return false;

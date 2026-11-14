@@ -1,15 +1,3 @@
-//! `lint/dead-code/no-useless-variable`, ported from Rector 2.8.4's `SimplifyUselessVariableRector`
-//! (rules/CodeQuality/Rector/FunctionLike), with the attributes of its `ByRefVariableNodeVisitor`,
-//! `GlobalVariableNodeVisitor`, `StaticVariableNodeVisitor` and `ByRefReturnNodeVisitor`.
-//!
-//! In a statement list, the first `return` after another statement decides: when that statement assigns the variable
-//! the `return` returns (`$x = expr; return $x;`), it goes and the `return` returns the value (`return expr;`); a
-//! compound assignment stays. Left alone: a `return` by reference, an assignment with a comment, a `return` after a
-//! comment that names the variable (commented-out code), a `return` with a doc comment's `@var` type, a variable `global` or `static` earlier in a list that holds
-//! the `return`, one a function-like around it takes or a closure before it uses by reference, and one that held an
-//! object of an instantiable class before the assignment (its native type, read where the assignment's right side or
-//! else the closest place before it names the variable).
-
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -103,9 +91,6 @@ impl Rule for NoUselessVariable {
     }
 }
 
-/// `AssignAndBinaryMap::getAlternative`: the binary operator of a compound assignment, with its operand limits; none
-/// for `??=`.
-/// `IS_INSIDE_BYREF_FUNCTION_LIKE`: the list is in a function-like that returns by reference (`function &f()`).
 fn returns_by_reference(ancestors: &[Node<'_, '_>], holder: Node<'_, '_>) -> bool {
     let function = std::iter::once(holder)
         .chain(ancestors.iter().rev().copied())
@@ -133,8 +118,6 @@ fn returns_by_reference(ancestors: &[Node<'_, '_>], holder: Node<'_, '_>) -> boo
     }
 }
 
-/// `IS_GLOBAL_VAR` and `IS_STATIC_VAR`: a `global $x;` or `static $x;` before the statement on the way to the
-/// `return` in a list that holds it, up to the class it is in.
 fn is_static_or_global(
     holder: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -182,8 +165,6 @@ fn is_static_or_global(
     false
 }
 
-/// `IS_BYREF_VAR`: a function-like around the `return` takes the variable by reference (a parameter, or a closure's
-/// `use`), or a closure inside one, before the variable, uses it by reference.
 fn is_used_by_reference(
     holder: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -222,8 +203,6 @@ fn is_used_by_reference(
         })
 }
 
-/// `CallAnalyzer::isNewInstance`: before the assignment, the variable's native type is one class, which can be
-/// instantiated (a class, not abstract, its constructor public).
 fn is_new_instance(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -251,7 +230,6 @@ fn is_new_instance(
         _ => None,
     };
     let facts = facts(ctx);
-    // A parameter's native type is its declaration's.
     let class =
         match params.and_then(|l| l.parameters.iter().find(|p| node_span(&p.variable) == read)) {
             Some(param) => match &param.hint {
@@ -279,8 +257,6 @@ fn is_new_instance(
     })
 }
 
-/// Where the variable `name` last got its value under `node` before `before`, not inside a class or a function-like
-/// other than `node`: the last place that names it, or the right side of a later plain assignment to it.
 pub(crate) fn find_last(
     node: Node<'_, '_>,
     name: &[u8],
@@ -316,7 +292,6 @@ pub(crate) fn find_last(
     });
 }
 
-/// `hasSomeComment`: comments before the statement, which php-parser gives it.
 fn has_comment(ctx: &crate::Context<'_>, from: usize, statement: &Statement<'_>) -> bool {
     let source = ctx.source;
     let start = node_span(statement).start;
@@ -325,8 +300,6 @@ fn has_comment(ctx: &crate::Context<'_>, from: usize, statement: &Statement<'_>)
         .any(|t| t.kind.is_comment())
 }
 
-/// `isVariableMentionedInComment`: a comment before the `return` (php-parser's comments of the `return`, from the end
-/// of the statement before it) names the returned variable (`$name`), which may be commented-out code.
 fn is_mentioned_in_comment(
     source: &str,
     previous: &Statement<'_>,
@@ -342,7 +315,6 @@ fn is_mentioned_in_comment(
         .any(|t| t.kind.is_comment() && source[t.start..t.end].contains(name.as_ref()))
 }
 
-/// `isReturnWithVarAnnotation`: the `return`'s doc comment has a `@var` type that is not `mixed`.
 fn has_var_type(source: &str, previous: &Statement<'_>, r#return: &Return<'_>) -> bool {
     let start = node_span(r#return).start;
     let Some(doc) = tokens(source, node_span(previous).end, start)

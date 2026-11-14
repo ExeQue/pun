@@ -1,6 +1,3 @@
-//! AccessPropertiesRule and AccessPropertiesInAssignRule (AccessPropertiesCheck). Level 0 and 1 run them with
-//! `checkThisOnly`, so only `$this->name` is checked, against the class `$this` is.
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -17,31 +14,19 @@ use super::types::flow::unparen;
 pub(super) const TIP: &str =
     "Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property";
 
-/// What the walk needs to know of a file's property fetches before it reaches them.
 #[derive(Default)]
 pub(super) struct State {
-    /// `isUndefinedExpressionAllowed()`: inside `isset()`, `empty()`, `unset()`, the left of `??` and a list
-    /// destructuring target, with the expressions they hold (lookForSetAllowedUndefinedExpressions).
     allowed: HashSet<(u32, u32)>,
-    /// `isInExpressionAssign()`: the property fetch an assignment (not a compound one) writes, or whose offset it
-    /// writes.
     assigned: HashSet<(u32, u32)>,
-    /// `isInExpressionAssign()` as ReadingWriteOnlyPropertiesRule sees it: also the target of `??=`, of a foreach
-    /// and the referenced side of `= &`.
     expression_assign: HashSet<(u32, u32)>,
-    /// `isInExpressionAssign()` of an offset fetch: every link of the target of `=`, `??=` and a foreach (a
-    /// destructuring's items too) and the referenced side of `= &`.
     dim_assigned: HashSet<(u32, u32)>,
-    /// Whether `$this` is defined in each function-like entered (static methods and closures have none).
     this: crate::bitset::BitSet,
 }
 
-/// `isUndefinedExpressionAllowed()` of the expression at `span`.
 pub(super) fn undefined_allowed(c: &Checker, span: Span) -> bool {
     c.property_access.allowed.contains(&key(span))
 }
 
-/// `isInExpressionAssign()` of the offset fetch at `span`.
 pub(super) fn dim_assigned(c: &Checker, span: Span) -> bool {
     c.property_access.dim_assigned.contains(&key(span))
 }
@@ -55,7 +40,6 @@ struct Contexts<'s> {
 }
 
 impl Contexts<'_> {
-    /// lookForExpressionCallback().
     fn allow(&mut self, e: &Expression) {
         let e = unparen(e);
         if !matches!(e, Expression::ArrayAppend(_)) {
@@ -86,7 +70,6 @@ impl Contexts<'_> {
         }
     }
 
-    /// The root of an assignment target (through its offsets), and a destructuring's items.
     fn assigned(&mut self, e: &Expression) {
         match unparen(e) {
             Expression::ArrayAccess(a) => self.assigned(a.array),
@@ -101,7 +84,6 @@ impl Contexts<'_> {
         }
     }
 
-    /// The offset fetches of an assignment target (AssignHandler's `enterExpressionAssign()` of each link).
     fn dim_assigned(&mut self, e: &Expression) {
         match unparen(e) {
             e @ Expression::ArrayAccess(a) => {
@@ -126,7 +108,6 @@ impl Contexts<'_> {
         }
     }
 
-    /// A target [`State::expression_assign`] adds (through a `&`).
     fn expression_assigned(&mut self, e: &Expression) {
         let mut root = unparen(e);
         loop {
@@ -143,7 +124,6 @@ impl Contexts<'_> {
             Expression::List(_) | Expression::Array(_) => {
                 let assigned = self.state.assigned.clone();
                 self.assigned(root);
-                // a destructuring only adds to the expression assigns
                 self.state.assigned = assigned;
             }
             _ => {
@@ -207,14 +187,12 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Contexts<'_> {
     }
 }
 
-/// The [`State`] of `program`.
 pub(super) fn state(program: &Program) -> State {
     let mut state = State::default();
     Contexts { state: &mut state }.walk_program(program, &mut ());
     state
 }
 
-/// The guard of `$variable->name` with a written name (`$this` included).
 fn fetch_guard(e: &Expression) -> Option<Guard> {
     let Expression::Access(Access::Property(p)) = unparen(e) else {
         return None;
@@ -235,7 +213,6 @@ fn var_guard(var: &[u8], name: &[u8]) -> Guard {
     ))
 }
 
-/// The key of a variable an `isset()` of its offset gives a HasOffsetType.
 pub(super) fn offset_guard(var: &[u8]) -> Guard {
     Guard::Expr(format!("{}[]", String::from_utf8_lossy(var)))
 }
@@ -248,12 +225,10 @@ fn this_name<'a>(p: &'a PropertyAccess) -> Option<&'a [u8]> {
     }
 }
 
-/// The expression key of `$this->name` that guards remember.
 fn guard(name: &[u8]) -> Guard {
     var_guard(b"$this", name)
 }
 
-/// The `$this->name` fetches a condition specifies a type for (TypeSpecifier), as guards.
 pub(super) fn narrowed(
     e: &Expression,
     truthy: bool,
@@ -270,7 +245,6 @@ pub(super) fn narrowed(
         return;
     }
     match e {
-        // a true `isset()` and a false `empty()` give the fetches a type
         Expression::Construct(Construct::Isset(i)) if truthy => {
             for v in &i.values {
                 chain(v, resolve, out);
@@ -294,7 +268,6 @@ pub(super) fn narrowed(
     }
 }
 
-/// `isset()` specifies every fetch of the chain.
 fn chain(e: &Expression, resolve: &dyn Fn(&Identifier) -> String, out: &mut Vec<Guard>) {
     let e = unparen(e);
     if let Some(g) = fetch_guard(e) {
@@ -305,7 +278,6 @@ fn chain(e: &Expression, resolve: &dyn Fn(&Identifier) -> String, out: &mut Vec<
     }
     match e {
         Expression::ArrayAccess(a) => {
-            // a variable's offset: the variable is an intersection with HasOffsetType
             if let Expression::Variable(Variable::Direct(v)) = unparen(a.array) {
                 out.push(offset_guard(v.name));
             }
@@ -317,7 +289,6 @@ fn chain(e: &Expression, resolve: &dyn Fn(&Identifier) -> String, out: &mut Vec<
     }
 }
 
-/// How a static fetch's class is written in a scope key: `self`, `static`, `parent` or the resolved name.
 fn class_key(e: &Expression, resolve: &dyn Fn(&Identifier) -> String) -> Option<String> {
     Some(match unparen(e) {
         Expression::Self_(_) => "self".to_string(),
@@ -328,7 +299,6 @@ fn class_key(e: &Expression, resolve: &dyn Fn(&Identifier) -> String) -> Option<
     })
 }
 
-/// The scope key of `C::$name`.
 fn static_fetch(e: &Expression, resolve: &dyn Fn(&Identifier) -> String) -> Option<Guard> {
     let Expression::Access(Access::StaticProperty(p)) = e else {
         return None;
@@ -344,9 +314,6 @@ fn static_key(p: &StaticPropertyAccess, resolve: &dyn Fn(&Identifier) -> String)
     )))
 }
 
-/// Expression identity, not the selector's inferred names: writing `self::${$name}` does not define
-/// `self::${$other}` even when both variables have the same finite type. Identifier-shaped literals share the
-/// direct key (Printer::pObjectProperty); other literal bytes must not look like variable dependencies.
 fn static_selector_key(v: &Variable) -> Option<String> {
     match v {
         Variable::Direct(v) => Some(String::from_utf8_lossy(v.name).into_owned()),
@@ -374,18 +341,14 @@ fn static_selector_key(v: &Variable) -> Option<String> {
     }
 }
 
-/// The scope key of a true `property_exists(C::class, 'name')`.
 fn exists_key(class: &str, name: &str) -> Guard {
     Guard::Expr(format!("property_exists({class}::class, '{name}')"))
 }
 
-/// PropertyExistsTypeSpecifyingExtension: a true `property_exists($this, 'x')` gives `$this` the property, and
-/// a true `property_exists(C::class, 'x')` is remembered for AccessStaticPropertiesCheck.
 fn property_exists(f: &FunctionCall, resolve: &dyn Fn(&Identifier) -> String) -> Option<Guard> {
     let Expression::Identifier(id) = f.function else {
         return None;
     };
-    // an unqualified call falls back to the global function
     let function = match id {
         Identifier::Local(l) => String::from_utf8_lossy(l.value).into_owned(),
         _ => resolve(id),
@@ -419,17 +382,12 @@ impl Checker<'_, '_> {
         self.property_access.this.push(defined);
     }
 
-    /// A closure or arrow function: `$this` as in its parent unless it is static.
     pub(super) fn enter_closure_this(&mut self, is_static: bool) {
         let parent = self.property_access.this.last().unwrap_or(false);
         self.property_access.this.push(parent && !is_static);
     }
 
-    /// `$this++`/`--$this` leave `$this` a non-object type, so no later `$this->x` is checked (oracle-checked).
-    // ponytail: the rest of the function, not just the paths after it; and `$this[] = ...` on a class without
-    // ArrayAccess, after which PHPStan describes `$this` as `ArrayAccess&C`
     pub(super) fn incremented(&mut self, operand: &Expression) {
-        // Inc/dec also produces a PropertyAssignNode, for direct and expression names alike.
         if let Expression::Access(Access::StaticProperty(p)) = unparen(operand) {
             static_check(self, p);
         }
@@ -440,7 +398,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// Whether `$this` is defined where the walk is.
     pub(super) fn this_defined(&self) -> bool {
         self.property_access.this.last().unwrap_or(false)
     }
@@ -458,7 +415,6 @@ impl Checker<'_, '_> {
         self.guards.contains(&g)
     }
 
-    /// `hasExpressionType()` of `$object->name` (a variable's).
     pub(super) fn has_fetch_type(&self, object: &Expression, name: &str) -> bool {
         match unparen(object) {
             Expression::Variable(Variable::Direct(v)) => {
@@ -469,7 +425,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// `$this->name = ...` (a compound assignment and a destructuring too) leaves `$this->name` an expression type.
 pub(super) fn assigned(c: &mut Checker, a: &Assignment) {
     remember(c, a.lhs);
 }
@@ -480,7 +435,6 @@ fn remember(c: &mut Checker, e: &Expression) {
         c.guards.push(g);
         return;
     }
-    // PHPStan remembers a dynamic static fetch's expression after a write, but not a direct static name.
     if let Expression::Access(Access::StaticProperty(p)) = e
         && !matches!(p.property, Variable::Direct(_))
         && let Some(g) = static_key(p, &|id| c.resolved(id))
@@ -504,9 +458,7 @@ fn remember(c: &mut Checker, e: &Expression) {
     }
 }
 
-/// AccessPropertiesRule on one property fetch.
 pub(super) fn read(c: &mut Checker, p: &PropertyAccess) {
-    // checkStringCastableName() runs on every fetch, the assigned one too
     if let Some(name) = super::types::dynamic_names::member(&p.property) {
         super::types::dynamic_names::check(
             c,
@@ -524,8 +476,6 @@ pub(super) fn read(c: &mut Checker, p: &PropertyAccess) {
     check(c, p, false);
 }
 
-/// AccessPropertiesInAssignRule: an assignment (not a compound one) to a property, one of its offsets, or a
-/// destructuring item.
 pub(super) fn assign(c: &mut Checker, a: &Assignment) {
     if matches!(a.operator, AssignmentOperator::Assign(_)) {
         written(c, a.lhs);
@@ -552,7 +502,6 @@ fn written_item(c: &mut Checker, el: &ArrayElement) {
     }
 }
 
-/// `ClassReflection::allowsDynamicProperties()`.
 pub(super) fn allows_dynamic_properties(c: &Checker, k: &ClassLikeMetadata) -> bool {
     allows_dynamic_properties_at(c, k, &mut HashSet::from([k.name]))
 }
@@ -565,7 +514,6 @@ fn allows_dynamic_properties_at(
     if k.kind == SymbolKind::Enum {
         return false;
     }
-    // PhpVersion::deprecatesDynamicProperties()
     if c.php_version < 80200 {
         return true;
     }
@@ -575,7 +523,6 @@ fn allows_dynamic_properties_at(
     {
         return true;
     }
-    // Only this class-like's own ObjectType requirements contribute dynamic capability, before readonly.
     if super::require_tags::tag_types(c, k, super::require_tags::EXTENDS)
         .into_iter()
         .any(|ty| {
@@ -594,7 +541,6 @@ fn allows_dynamic_properties_at(
     if k.flags.is_readonly() {
         return false;
     }
-    // the universal object crates (`stdClass` and its children)
     if c.codebase.is_instance_of(k.name.as_bytes(), b"stdClass") {
         return true;
     }
@@ -610,13 +556,10 @@ fn allows_dynamic_properties_at(
         })
 }
 
-/// `hasNativeMethod()`.
 fn has_native_method(c: &Checker, k: &ClassLikeMetadata, name: &str) -> bool {
     super::members::method(c, k, name.as_bytes()).is_some()
 }
 
-/// A native property of `k` by name (`$` included) as BetterReflection's `hasProperty()` sees it: declared by the
-/// class, its traits or a parent (Mago leaves a parent's private one out of `declaring_property_ids`); `Some(is_static)`.
 pub(super) fn native_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> Option<bool> {
     let p = c
         .codebase
@@ -624,8 +567,6 @@ pub(super) fn native_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8
     Some(p.flags.is_static() || is_static_hooked(c, p))
 }
 
-/// Mago drops `static` from a hooked property (PHP refuses one), while PHPStan's reflection keeps it: read the
-/// modifiers from the declaration's source.
 fn is_static_hooked(c: &Checker, p: &mago_codex::metadata::property::PropertyMetadata) -> bool {
     let (Some(span), Some(name)) = (p.span, p.name_span) else {
         return false;
@@ -635,7 +576,6 @@ fn is_static_hooked(c: &Checker, p: &mago_codex::metadata::property::PropertyMet
     }
     c.file_contents(span.file_id).is_some_and(|contents| {
         let head = &contents[span.start.offset as usize..name.start.offset as usize];
-        // past any attribute group; a property type cannot be `static`
         let modifiers = head.rsplit(|&b| b == b']').next().unwrap_or(head);
         modifiers
             .split(|b| b.is_ascii_whitespace())
@@ -643,8 +583,6 @@ fn is_static_hooked(c: &Checker, p: &mago_codex::metadata::property::PropertyMet
     })
 }
 
-/// Native/dynamic property extensions: a non-static native property, else (when dynamic properties are allowed)
-/// an `@property` tag. Native unset reflection resolves the require-extends fallback after these extensions.
 pub(super) fn has_instance_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
     if native_property(c, k, property) == Some(false) {
         return true;
@@ -652,13 +590,10 @@ pub(super) fn has_instance_property(c: &Checker, k: &ClassLikeMetadata, property
     if k.kind == SymbolKind::Enum {
         return false;
     }
-    // ponytail: the mixin and require-extends extensions (and Larastan's) are not consulted
     allows_dynamic_properties(c, k)
         && (k.magic_property_ids.contains_key(&word(property)) || is_universal_object_crate(c, k))
 }
 
-/// UniversalObjectCratesClassReflectionExtension with the default `universalObjectCratesClasses: [stdClass]`, and
-/// Larastan's `Illuminate\Http\Request` and `Illuminate\Support\Optional`.
 fn is_universal_object_crate(c: &Checker, k: &ClassLikeMetadata) -> bool {
     let larastan: &[&[u8]] = match c.larastan {
         Some(_) => &[
@@ -687,14 +622,12 @@ fn check(c: &mut Checker, p: &PropertyAccess, write: bool) {
     let mut property = Vec::with_capacity(name.len() + 1);
     property.push(b'$');
     property.extend_from_slice(name);
-    // the write check runs in the scope before the assignment, where no undefined expression is allowed
     let allowed = !write && c.property_access.allowed.contains(&key(p.span()));
     let has = has_instance_property(c, class, &property);
     let has_static = native_property(c, class, &property) == Some(true);
     if has {
-        return; // ponytail: asymmetric visibility (`private(set)`) on a parent's property
+        return;
     }
-    // the class reflection extensions: a mixin's or a required class's property
     if c.has_property(
         &pun_phpstan::types::Type::Object(
             String::from_utf8_lossy(class.name.as_bytes()).into_owned(),
@@ -708,7 +641,6 @@ fn check(c: &mut Checker, p: &PropertyAccess, write: bool) {
     {
         return;
     }
-    // `isFinal()`: the keyword or `@final` (Mago's flag holds both); an anonymous class is final
     let is_final = class.flags.is_final()
         || class
             .original_name
@@ -721,14 +653,11 @@ fn check(c: &mut Checker, p: &PropertyAccess, write: bool) {
     if c.has_expression_type(name) {
         return;
     }
-    // !reportMagicProperties (level 0); ponytail: with Larastan a class with `__get` needs its property extensions
-    // (model properties), so it stays unchecked
     if (c.level == 0 || c.larastan.is_some())
         && (has_native_method(c, class, "__get") || has_native_method(c, class, "__set"))
     {
         return;
     }
-    // this_name() took the name from an identifier
     let name_line = p.property.span();
     let display_name = String::from_utf8_lossy(name).into_owned();
     let mut parent = class
@@ -736,7 +665,6 @@ fn check(c: &mut Checker, p: &PropertyAccess, write: bool) {
         .and_then(|n| c.codebase.get_class_like(n.as_bytes()));
     while let Some(k) = parent {
         if has_instance_property(c, k, &property) {
-            // `canReadProperty()`/`canWriteProperty()` from the class: only a parent's private property is refused
             if k.properties
                 .get(&word(&property))
                 .is_some_and(|x| x.read_visibility.is_private())
@@ -776,7 +704,6 @@ fn check(c: &mut Checker, p: &PropertyAccess, write: bool) {
     );
 }
 
-/// AccessPropertiesRule on a nullsafe fetch, which it sees as a fetch on the object without `null`.
 pub(super) fn null_safe_read(c: &mut Checker, p: &NullSafePropertyAccess) {
     if let Some(name) = super::types::dynamic_names::member(&p.property) {
         super::types::dynamic_names::check(
@@ -793,7 +720,6 @@ pub(super) fn null_safe_read(c: &mut Checker, p: &NullSafePropertyAccess) {
     super::types::property_fetch(c, p.span(), p.object, &p.property, true, allowed);
 }
 
-/// AccessStaticPropertiesRule on one static property fetch.
 pub(super) fn static_read(c: &mut Checker, p: &StaticPropertyAccess) {
     if let Some(name) = super::types::dynamic_names::static_property(&p.property) {
         super::types::dynamic_names::check(
@@ -812,20 +738,15 @@ pub(super) fn static_read(c: &mut Checker, p: &StaticPropertyAccess) {
     static_check(c, p);
 }
 
-/// The class a static property fetch names: `None` when nothing is left to check.
 enum Holder<'a> {
-    /// `self`/`static` (`static` describes as `static(C)`), or a named class.
     Class(&'a ClassLikeMetadata, bool),
     Done,
 }
 
-/// `ClassReflection::hasStaticProperty()`.
 pub(super) fn has_static_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
     native_property(c, k, property) == Some(true)
 }
 
-/// AccessStaticPropertiesCheck::check(): dispatch each constant string of a dynamic selector without casting
-/// non-string names or selecting one alternative of a nonconstant union.
 fn static_check(c: &mut Checker, p: &StaticPropertyAccess) {
     if let Variable::Direct(v) = &p.property {
         return static_check_named(c, p, v.name);
@@ -839,7 +760,6 @@ fn static_check(c: &mut Checker, p: &StaticPropertyAccess) {
     }
 }
 
-/// AccessStaticPropertiesCheck::processSingleProperty(); `property` includes its leading `$`.
 fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]) {
     let name = String::from_utf8_lossy(&property[1..]).into_owned();
     let at = super::types::dynamic_names::static_property(&p.property)
@@ -878,7 +798,6 @@ fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]
                 );
                 return;
             };
-            // an unknown parent is no parent (`getParentClass()`)
             let parent = scope
                 .direct_parent_class
                 .and_then(|p| c.codebase.get_class_like(p.as_bytes()));
@@ -933,8 +852,6 @@ fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]
             }
         }
         _ => {
-            // The receiver checker still owns type/visibility checks; give it the selected name's location,
-            // not the surrounding `${...}` span (the expression can start on another line).
             let named = StaticPropertyAccess {
                 class: p.class,
                 double_colon: p.double_colon,
@@ -949,8 +866,6 @@ fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]
     let Holder::Class(class, is_static) = holder else {
         return;
     };
-    // PHPStan 2.3.5 reports `isset(self::$x)` and a read after `self::$x = ...` alike (oracle-checked), so neither
-    // the allowed-undefined contexts nor assignments exempt a static fetch
     let declared = c
         .codebase
         .get_declaring_property(class.name.as_bytes(), property)
@@ -1021,7 +936,7 @@ fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]
         .unwrap_or(class);
     let declaring_name = String::from_utf8_lossy(declaring.original_name.as_bytes()).into_owned();
     if super::calls::can_call(c, c.class_scope(), &declaring_name, visibility) {
-        return; // ponytail: asymmetric set visibility on static properties (PHP 8.5)
+        return;
     }
     let v = super::restricted(visibility);
     let message = format!(
@@ -1031,7 +946,6 @@ fn static_check_named(c: &mut Checker, p: &StaticPropertyAccess, property: &[u8]
     c.report(at, &format!("staticProperty.{v}"), message, None);
 }
 
-/// `isInExpressionAssign()` of a property fetch, for ReadingWriteOnlyPropertiesRule.
 pub(super) fn in_expression_assign(c: &Checker, e: Span) -> bool {
     c.property_access.expression_assign.contains(&key(e))
 }

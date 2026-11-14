@@ -1,13 +1,3 @@
-//! `lint/phpunit/prefer-assert`, ported from rector-phpunit's `AssertFuncCallToPHPUnitAssertRector`
-//! (rules/CodeQuality/Rector/FuncCall).
-//!
-//! In the methods of a test class or a Behat context, `assert()` becomes the PHPUnit assertion it checks:
-//! `assert($a == $b)` `assertEquals($b, $a)`, `===` `assertSame()`, `!== null` `assertNotNull()`, a `(bool)` cast or a
-//! `method_exists()` call `assertTrue()`, and `instanceof` of a class name `assertInstanceOf(X::class, ...)` (the name as written); a second
-//! argument stays as the message. The call is `$this->...()`, or `\PHPUnit\Framework\Assert::...()` in a static
-//! method or a Behat context, and from the first static closure or anonymous class of a method on (Rector's flag is
-//! never reset within the method).
-
 use mago_syntax::cst::{
     BinaryOperator, Call, Expression, Method, MethodBody, Modifier, Node, NodeKind,
     UnaryPrefixOperator,
@@ -98,13 +88,10 @@ fn is_static(method: &Method<'_>) -> bool {
         .any(|m| matches!(m, Modifier::Static(_)))
 }
 
-/// `isBehatContext`: the class's reflection is a `Behat\Behat\Context\Context`.
 fn is_behat_context(ctx: &Context<'_>, scope: &[Node<'_, '_>]) -> bool {
     own_class_reflection(ctx, scope).is_some_and(|name| is_a(ctx, &name, &[BEHAT_CONTEXT]))
 }
 
-/// `NodeNameResolver::isName` on a function call: the name as written (an imported name resolved), without a leading
-/// `\`, against `name`.
 fn is_function(
     ancestors: &[Node<'_, '_>],
     call: &mago_syntax::cst::FunctionCall<'_>,
@@ -122,7 +109,6 @@ fn is_function(
     resolved.eq_ignore_ascii_case(name)
 }
 
-/// The new assertion call for `assert(...)`, as php-parser prints it.
 fn assert_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

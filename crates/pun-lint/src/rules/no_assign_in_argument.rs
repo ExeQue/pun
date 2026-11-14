@@ -1,9 +1,3 @@
-//! `lint/functions/no-assign-in-argument`, ported from Mago 1.57.0's linter rule `no-assign-in-argument`
-//! (rule/correctness/no_assign_in_argument.rs).
-//!
-//! An argument that is an assignment, through any parentheses (`f($a = 1)`, `f(x: ($a .= 'b'))`), is reported, in a
-//! call's argument list and in a partial application's.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 
 use crate::syntax::node_span;

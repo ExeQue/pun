@@ -1,5 +1,3 @@
-//! CallToFunctionStatementWithNoDiscardRule, including callable expressions and pipe calls.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
@@ -50,7 +48,6 @@ fn method_must_use(c: &Checker, m: members::Method) -> bool {
     }
 }
 
-/// `getCallableParametersAcceptors()` on constant strings and invokable objects.
 fn string_must_use(c: &Checker, name: &[u8]) -> Option<bool> {
     let name = name.strip_prefix(b"\\").unwrap_or(name);
     if let Some((class, method)) = name
@@ -95,7 +92,6 @@ fn array_items<'t>(c: &Checker, a: &'t TArray) -> Vec<(Type, bool, &'t TUnion)> 
     }
 }
 
-/// The callable's value description, keeping literals and signatures structured instead of parsing Mago IDs.
 fn value_type(c: &Checker, t: &TUnion) -> Type {
     union(
         t.types
@@ -159,10 +155,8 @@ fn value_type(c: &Checker, t: &TUnion) -> Type {
     )
 }
 
-/// None means not definitely callable; Maybe preserves a callable PHPDoc's unknown NoDiscard contract.
 fn callable_must_use(c: &Checker, a: &TAtomic) -> Option<Tri> {
     match a {
-        // Mago resolves callable aliases to signatures before storing expression types.
         TAtomic::Callable(TCallable::Signature(sig)) => Some(
             sig.invocation_target()
                 .and_then(|id| c.codebase.get_function_like(&id))
@@ -244,7 +238,6 @@ pub(super) fn statement(c: &mut Checker, s: &ExpressionStatement) {
     } else {
         let Some(t) = c.type_of(name) else { return };
         let mut required = Tri::No;
-        // TypeCombinator::union() keeps the last of equal types, such as two closures of one signature
         let values: Vec<_> = t
             .types
             .iter()

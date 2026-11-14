@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-float-delta-parameter`, ported from rector-phpunit's
-//! `AssertEqualsOrAssertSameFloatParameterToSpecificMethodsTypeRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! A method call `assertEquals(1.5, $a)` or `assertSame(1.5, $a)` with a float literal first becomes
-//! `assertEqualsWithDelta(1.5, $a, PHP_FLOAT_EPSILON)`, keeping a third argument (the message) after it.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -41,7 +35,6 @@ impl Rule for NoFloatDeltaParameter {
         let (Some(first), Some(second)) = (args.first().copied(), args.get(1).copied()) else {
             return;
         };
-        // php-parser's `Float_`, which also holds an integer above `PHP_INT_MAX`
         if !matches!(
             unparenthesize(first.value()),
             Expression::Literal(Literal::Float(_))

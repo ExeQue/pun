@@ -1,5 +1,3 @@
-//! Position-owned native Isset/coalesce transfers, through the public Analyzer.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -121,7 +119,6 @@ fn split_top(value: &str, delimiter: char) -> Vec<&str> {
     parts
 }
 
-// Display adaptation only: PHPStan literal syntax versus Mago's tagged scalars.
 fn normalize(value: &str) -> String {
     if matches!(value, "array" | "array<array-key, mixed>") {
         return "array".to_owned();

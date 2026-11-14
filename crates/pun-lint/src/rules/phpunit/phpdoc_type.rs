@@ -1,26 +1,13 @@
-//! The typed tags (`@var`, `@return`, `@param`) of a doc comment as phpdoc-parser reads them, as far as Pun follows:
-//! a type that is a name (`IdentifierTypeNode`), or a union or an intersection of names, each maybe with `[]`s, then
-//! the variable and the description. A tag whose type changes keeps its text around the type (phpdoc-parser's
-//! format-preserving printer); [`TypedTag::print_with`] prints a tag value node anew: `@tag type $variable description`,
-//! single-spaced.
-
 use crate::rules::lint_b_doc::Doc;
 
-/// The type of a typed tag.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TagType<'s> {
-    /// A name (`IdentifierTypeNode`).
     Name(&'s str),
-    /// A union of two or more types, as written (`UnionTypeNode`).
     Union(Vec<&'s str>),
-    /// An intersection of two or more types, as written (`IntersectionTypeNode`).
     Intersection(Vec<&'s str>),
-    /// Any other type, e.g. `Foo[]`, as written.
     Other(&'s str),
 }
 
-/// A typed tag of a doc comment: its index among the doc's children, its name (`@var`), type, variable and
-/// description.
 #[derive(Debug, Clone)]
 pub(crate) struct TypedTag<'s> {
     pub index: usize,
@@ -31,7 +18,6 @@ pub(crate) struct TypedTag<'s> {
 }
 
 impl TypedTag<'_> {
-    /// The tag with the type `ty`, as phpdoc-parser prints a changed tag.
     pub(crate) fn print_with(&self, ty: &str) -> String {
         let rest = format!("{} {}", self.variable, self.description);
         let value = format!("{ty} {}", rest.trim());
@@ -39,9 +25,6 @@ impl TypedTag<'_> {
     }
 }
 
-/// The first `name` tag (`@var`, `@return`) of `doc`, or, with `variable`, the first that names it (`@param`).
-/// `Err(())` where Pun does not read the tag as phpdoc-parser does: a value over several lines, or a type it does not
-/// parse.
 pub(crate) fn typed_tag<'s>(
     doc: &Doc<'s>,
     name: &str,
@@ -66,7 +49,6 @@ pub(crate) fn typed_tag<'s>(
     Ok(None)
 }
 
-/// The tag value `rest` (after the tag name) parsed: a type, then a variable and a description.
 fn parse<'s>(index: usize, name: &'s str, rest: &'s str) -> Option<TypedTag<'s>> {
     let value = rest.trim_start_matches([' ', '\t']);
     let mut members = Vec::new();
@@ -119,9 +101,6 @@ fn parse<'s>(index: usize, name: &'s str, rest: &'s str) -> Option<TypedTag<'s>>
     })
 }
 
-/// The length of a type at the start of `s` that is no union or intersection: a name, maybe after a `?` and with
-/// brackets after it (generics, shapes, `[]`s), or a parenthesized type. `None` for anything else, or for brackets
-/// with white space or a `,` inside (phpdoc-parser prints those its own way), a `:` or a quote.
 fn member_len(s: &str) -> Option<usize> {
     let b = s.as_bytes();
     let mut i = usize::from(b.first() == Some(&b'?'));
@@ -161,29 +140,22 @@ fn member_len(s: &str) -> Option<usize> {
     (depth == 0 && !matches!(b.get(i), Some(b':'))).then_some(i)
 }
 
-/// Whether a member is a bare name (`IdentifierTypeNode`).
 pub(crate) fn is_name(member: &str) -> bool {
     member
         .bytes()
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-' | b'\\') || c >= 0x80)
 }
 
-/// The short name of a type name (after its last `\`).
 pub(crate) fn short_name(name: &str) -> &str {
     name.rsplit('\\').next().unwrap_or(name)
 }
 
-/// The doc comment after `PhpDocTypeChanger` sets the type of the tag `name` (`@var`, `@return`) to `ty`: the type
-/// replaced in place, or, without one, a new tag `name ty` added (a new doc for a node without one). `None` where
-/// [`typed_tag`] does not read the doc.
 pub(crate) fn with_tag_type(doc: Option<&Doc<'_>>, name: &str, ty: &str) -> Option<String> {
     let added = format!("{name} {ty}");
     let Some(doc) = doc else {
         return Some(format!("/**\n * {added}\n */"));
     };
     match typed_tag(doc, name, None).ok()? {
-        // Rector 2.8.4 prints with phpdoc-parser's format-preserving printer: only the type node is printed anew,
-        // the white space around it stays.
         Some(tag) => {
             let text = doc.text_all();
             let members: Vec<&str> = match &tag.ty {

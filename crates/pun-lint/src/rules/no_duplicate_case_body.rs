@@ -1,10 +1,3 @@
-//! `lint/dead-code/no-duplicate-case-body`, ported from Rector 2.8.4's `RemoveDuplicatedCaseInSwitchRector`
-//! (rules/DeadCode/Rector/Switch_).
-//!
-//! Cases of a `switch` whose bodies are the same code ending the case (a `break` or `return` among its statements)
-//! are grouped: the later ones move up under the first, which keeps the body, and their own bodies go. Two bodies
-//! that start with `break` only count as the same when their comments are the same too.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -46,7 +39,6 @@ impl Rule for NoDuplicateCaseBody {
             .iter()
             .map(|c| holder_list(source, case_node(c), &[]).unwrap())
             .collect();
-        // Which case's statements each case holds.
         let mut body: Vec<Option<usize>> = (0..cases.len())
             .map(|i| (!lists[i].is_empty()).then_some(i))
             .collect();
@@ -96,7 +88,6 @@ impl Rule for NoDuplicateCaseBody {
         if !changed {
             return;
         }
-        // The cases: where each one's comments start, and the text php-parser prints for it without them.
         let mut starts = Vec::new();
         let mut previous = open;
         for case in cases {
@@ -108,7 +99,6 @@ impl Rule for NoDuplicateCaseBody {
         let texts: Vec<String> = (0..cases.len())
             .map(|i| {
                 let span = node_span(&cases[i]);
-                // php-parser's printer keeps the text of a case it moves; it prints anew one whose statements changed.
                 if body[i] == (!lists[i].is_empty()).then_some(i) {
                     return source[span.start..span.end].to_string();
                 }
@@ -140,8 +130,6 @@ impl Rule for NoDuplicateCaseBody {
             let start = node_span(&cases[i]).start;
             (starts[i] < start).then(|| source[starts[i]..start].trim_end())
         };
-        // `pArray` on the diff of the old order and the new one. The first case stays first, so the diff starts with
-        // a keep: nothing is added before it or removed at the start.
         let nl = format!("\n{}", line_indent(source, node_span(&cases[0]).start));
         let mut text = String::new();
         let mut pos = open;
@@ -191,7 +179,6 @@ fn case_node<'a>(case: &'a SwitchCase<'a>) -> Node<'a, 'a> {
     }
 }
 
-/// `areSwitchStmtsEqualsAndWithBreak`.
 fn are_equal_and_with_break(ctx: &crate::Context<'_>, current: &List<'_>, next: &List<'_>) -> bool {
     let source = ctx.source;
     let is_break = |l: &List<'_>| matches!(l.stmts.first(), Some(Statement::Break(_)));
@@ -207,7 +194,6 @@ fn are_equal_and_with_break(ctx: &crate::Context<'_>, current: &List<'_>, next: 
         .any(|s| matches!(s, Statement::Break(_) | Statement::Return(_)))
 }
 
-/// An element of php-parser's `Differ` on lists of case numbers.
 #[derive(Clone, Copy)]
 enum Elem {
     Keep(usize, usize),
@@ -216,7 +202,6 @@ enum Elem {
     Replace(usize, usize),
 }
 
-/// php-parser's `Differ::diff` (Myers) from the cases `0..n` to the order `new`.
 fn diff(n: usize, new: &[usize]) -> Vec<Elem> {
     let m = new.len();
     let max = (n + m) as isize;
@@ -255,7 +240,6 @@ fn diff(n: usize, new: &[usize]) -> Vec<Elem> {
             k - 1
         };
         let prev_x = v[at(prev_k)];
-        // At `d` 0 it is -1, below the start.
         let prev_y = prev_x as isize - prev_k;
         while x > prev_x && y as isize > prev_y {
             out.push(Elem::Keep(x - 1, new[y - 1]));
@@ -278,7 +262,6 @@ fn diff(n: usize, new: &[usize]) -> Vec<Elem> {
     out
 }
 
-/// `Differ::coalesceReplacements`: a run of removals followed by as many additions is a run of replacements.
 fn coalesce_replacements(diff: Vec<Elem>) -> Vec<Elem> {
     let mut out = Vec::new();
     let mut i = 0;

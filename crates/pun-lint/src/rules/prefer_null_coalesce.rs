@@ -1,9 +1,3 @@
-//! `lint/complexity/prefer-null-coalesce`, ported from Rector 2.8.4's
-//! `ArrayKeyExistsTernaryThenValueToCoalescingRector` (rules/CodeQuality/Rector/Ternary).
-//!
-//! `array_key_exists($key, $values) ? $values[$key] : null` becomes `$values[$key] ?? null`. The two differ only when
-//! the key holds `null`, and then both give `null`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -36,7 +30,6 @@ impl Rule for PreferNullCoalesce {
         let Some(Expression::ArrayAccess(fetch)) = t.then.map(unparenthesize) else {
             return;
         };
-        // areArrayKeysExistsArgsMatchingDimFetch: the array is the second argument and the key the first.
         let args = args(call);
         if args.len() < 2
             || !equal(ctx, fetch.array, args[1].value())

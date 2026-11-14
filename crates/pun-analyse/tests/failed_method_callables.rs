@@ -1,4 +1,3 @@
-//! Pinned PHPStan 2.3.1 fallback values are bare Closure objects, not bottom or signatures.
 use std::{
     borrow::Cow,
     path::Path,
@@ -43,16 +42,12 @@ use serde_json::{Value, json};
 
 const SOURCE: &[u8] = include_bytes!("fixtures/failed-method-callables/cases.php");
 const ORACLE: &str = include_str!("fixtures/failed-method-callables/expected.json");
-// These are raw Analyzer controls. The existing ordinary-call bleeding-edge
-// method.nameNotString observation gap is outside this producer port.
 const SELECTORS: &[u8] = include_bytes!("fixtures/failed-method-callables/selectors.php");
 const SELECTOR_ORACLE: &str =
     include_str!("fixtures/failed-method-callables/expected-selectors.json");
 const COMPATIBILITY: &[u8] = include_bytes!("fixtures/failed-method-callables/compatibility.php");
 const COMPATIBILITY_ORACLE: &str =
     include_str!("fixtures/failed-method-callables/expected-compatibility.json");
-// A template-bound Closure retains the refinement that the direct PHPDoc
-// Closure&callable spelling currently loses in Mago's type builder.
 const COMPATIBILITY_CONTROLS: &[u8] =
     include_bytes!("fixtures/failed-method-callables/compatibility-controls.php");
 const COMPATIBILITY_CONTROLS_ORACLE: &str =
@@ -302,8 +297,6 @@ fn ordinary_selectors_still_validate_and_actual_partial_application_keeps_its_ow
             IssueCode::InvalidMethodAccess.as_str(),
             IssueCode::InvalidMethodAccess.as_str(),
             IssueCode::MethodAccessOnNull.as_str(),
-            // Both unknown-signature invocations return mixed. Raw Mago warns
-            // on those assignments; Pun's PHPStan-facing consumer omits it.
             IssueCode::MixedAssignment.as_str(),
             IssueCode::MixedAssignment.as_str(),
             IssueCode::NonExistentMethod.as_str(),
@@ -325,8 +318,6 @@ fn ordinary_selectors_still_validate_and_actual_partial_application_keeps_its_ow
             1,
             "ordinary calls still reject integer selectors"
         );
-        // Properties retain their existing integer-to-string coercion, then report
-        // the missing property through Mago's ordinary property resolver.
         assert!(result.issues.iter().any(|issue| issue.code.as_deref() == Some(IssueCode::NonExistentProperty.as_str())), "{:?}", result.issues);
         let oracle: Value = serde_json::from_str(SELECTOR_ORACLE).unwrap();
         for row in oracle["types"].as_array().unwrap() {
@@ -414,8 +405,6 @@ fn opaque_closure_compatibility_preserves_signatures_purity_and_object_boundarie
                         assert_eq!(describe(ty), row["native"]);
                     }
                 }
-                // Mago distinguishes definite and possible argument errors. Both
-                // correspond to PHPStan's argument.type; no other issue is dropped.
                 let mut actual: Vec<_> = result
                     .issues
                     .iter()
@@ -549,8 +538,6 @@ fn opaque_closure_acceptance_is_not_a_subtype_proof() {
                 "an accepted but unproven subtype must survive a union: {name}"
             );
         }
-        // One definite alternative is sufficient, in either order. An earlier
-        // merely accepted callable must not contaminate the nominal match.
         for reverse in [false, true] {
             let mut alternatives = target.types.to_vec();
             alternatives.extend_from_slice(&opaque.types);
@@ -666,8 +653,6 @@ fn opaque_closure_acceptance_is_not_a_subtype_proof() {
         );
     }
 
-    // Inference variables are definite matches under the existing relation,
-    // even when another alternative only accepts the opaque Closure.
     let mut alternatives = typed.types.to_vec();
     alternatives.push(TAtomic::Variable(word("Callback")));
     let mut result = ComparisonResult::new();

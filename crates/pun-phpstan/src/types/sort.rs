@@ -1,11 +1,3 @@
-//! PHP's sorting path used by `UnionTypeHelper::sortTypes()`. Keep the comparison sequence: its
-//! NullType comparator is non-reflexive, so a different stable sort does not produce the same order.
-//!
-//! Ported from php/php-src 136e049ac10b032c83018e65b63b6df858943750 (PHP 8.5.12):
-//! - `Zend/zend_sort.c`: `zend_sort_2` through `zend_sort_5`, `zend_insert_sort`, `zend_sort`.
-//! - `Zend/zend_hash.c`: `zend_hash_sort_internal` stores original bucket positions.
-//! - `ext/standard/array.c`: `php_array_user_compare` / `stable_sort_fallback` break zero-result ties.
-
 /*
  * The Zend Engine License, Version 2.00
  * Copyright (c) 1999-2006 Zend Technologies Ltd. All rights reserved.

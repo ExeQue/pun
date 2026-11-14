@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\NoExtraBlankLinesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, PREG_SPLIT_NO_EMPTY, Preg};
 use crate::analyzers::switch_analyzer::SwitchAnalyzer;
@@ -182,7 +181,6 @@ impl Run<'_> {
         self.fix_after_token(index);
     }
 
-    /// Remove white line(s) after the index of a block type, but only if the block is not on one line.
     fn fix_structure_open_close_if_multi_line(&mut self, index: usize) {
         let (block_type, _) = Tokens::detect_block_type(&self.tokens[index]).unwrap();
         let body_end = self.tokens.find_block_end(block_type, index);
@@ -193,7 +191,7 @@ impl Run<'_> {
                 self.remove_empty_lines_after_line_with_token_at(index);
                 break;
             }
-            i -= 1; // index >= 1 (a block opener is never token 0), so this cannot underflow
+            i -= 1;
         }
     }
 
@@ -248,13 +246,10 @@ impl Fixer for NoExtraBlankLinesFixer {
         "no_extra_blank_lines"
     }
     fn priority(&self) -> i32 {
-        // Must run before BlankLineBeforeStatementFixer.
-        // Must run after ClassAttributesSeparationFixer, CombineConsecutiveUnsetsFixer, EmptyLoopBodyFixer, ...
         -20
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let r = resolve(self.name(), options, &["tokens"])?;
-        // "use_trait" only triggers a deprecation upstream.
         let tokens_configuration = r.strings("tokens", &["extra"], AVAILABLE_TOKENS)?;
         let mut token_equals_map = Vec::new();
         if tokens_configuration.iter().any(|t| t == "comma") {
@@ -264,13 +259,13 @@ impl Fixer for NoExtraBlankLinesFixer {
             .iter()
             .any(|t| t == "curly_brace_block")
         {
-            token_equals_map.push(("{", Callback::FixStructureOpenCloseIfMultiLine)); // i.e. not: CT::T_ARRAY_INDEX_BRACE_OPEN
+            token_equals_map.push(("{", Callback::FixStructureOpenCloseIfMultiLine));
         }
         if tokens_configuration
             .iter()
             .any(|t| t == "parenthesis_brace_block")
         {
-            token_equals_map.push(("(", Callback::FixStructureOpenCloseIfMultiLine)); // i.e. not: CT::T_CLASS_INSTANTIATION_PARENTHESIS_OPEN
+            token_equals_map.push(("(", Callback::FixStructureOpenCloseIfMultiLine));
         }
         let config_map = |c: &str| -> Option<(Kind, Callback)> {
             Some(match c {
@@ -292,7 +287,6 @@ impl Fixer for NoExtraBlankLinesFixer {
                 _ => return None,
             })
         };
-        // PHP array assignment: a repeated kind keeps its first position
         let token_kind_callback_map = tokens_configuration.iter().filter_map(|c| config_map(c)).collect();
         self.token_kind_callback_map = token_kind_callback_map;
         self.token_equals_map = token_equals_map;

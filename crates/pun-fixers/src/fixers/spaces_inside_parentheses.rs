@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\SpacesInsideParenthesesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -39,7 +38,6 @@ impl Fixer for SpacesInsideParenthesesFixer {
                     continue;
                 }
                 let prev_index = tokens.get_prev_meaningful_token(index);
-                // ignore parenthesis for T_ARRAY
                 if prev_index.is_some_and(|p| tokens[p].is_kind(T_ARRAY)) {
                     continue;
                 }
@@ -48,7 +46,6 @@ impl Fixer for SpacesInsideParenthesesFixer {
                 if !tokens[tokens.get_next_non_whitespace(index, None).unwrap()].is_comment() {
                     remove_space_around_token(tokens, index + 1);
                 }
-                // remove space before closing `)` if it is not `list($a, $b, )` case
                 if !tokens[tokens.get_prev_meaningful_token(end_index).unwrap()].equals(",", true) {
                     remove_space_around_token(tokens, end_index - 1);
                 }
@@ -63,14 +60,12 @@ impl Fixer for SpacesInsideParenthesesFixer {
                 let (block_type, _) = Tokens::detect_block_type(&tokens[index]).unwrap();
                 let end_parenthesis_index = tokens.find_block_end(block_type, index);
 
-                // if not other content than spaces in block remove spaces
                 if end_parenthesis_index == index + 2 && tokens[index + 1].get_content() == b" " {
                     remove_space_around_token(tokens, index + 1);
                     index += 1;
                     continue;
                 }
 
-                // don't process if the next token is `)`
                 let next_meaningful_token_index = tokens.get_next_meaningful_token(index).unwrap();
                 if tokens[next_meaningful_token_index].get_content() == b")" {
                     index += 1;

@@ -1,11 +1,3 @@
-//! `lint/control-flow/no-else-after-return`, ported from Rector 2.8.4's `RemoveAlwaysElseRector`
-//! (rules/EarlyReturn/Rector/If_).
-//!
-//! When a branch of an `if` ends the flow (`return`, `throw`, `continue`, `exit`), the branch after it needs no
-//! `else`: the `else` statements move after the `if`, and an `elseif` after such a branch becomes an `if` of its own.
-//! Rector's printer writes the new `if`s anew, a statement a line, and an `elseif` or `else` it keeps from the old
-//! `if` on a line of its own after the `}`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -38,7 +30,6 @@ impl Rule for NoElseAfterReturn {
             return;
         };
         let source = ctx.source;
-        // A cheap look first: an `elseif` or an `else` to remove.
         let has_more = match &r#if.body {
             IfBody::Statement(b) => !b.else_if_clauses.is_empty() || b.else_clause.is_some(),
             IfBody::ColonDelimited(b) => !b.else_if_clauses.is_empty() || b.else_clause.is_some(),
@@ -52,7 +43,6 @@ impl Rule for NoElseAfterReturn {
         }
         let (list, index) = enclosing(source, s, ancestors);
         let items = if view.elseifs.is_empty() {
-            // Without `elseif`s, there is an `else`.
             let (else_stmts, _) = view.else_.as_ref().unwrap();
             let mut items = vec![Item::Kept];
             if !else_stmts.is_empty() {
@@ -73,8 +63,6 @@ impl Rule for NoElseAfterReturn {
                     .join(&format!("\n{indent}"))
             })
         } else {
-            // The printer puts the nodes before the kept `if` (the modified one) on lines of their own, the first
-            // with the comments of the old `if`, and leaves the kept `if` its old whitespace.
             let before = list.before(ctx, index);
             let start = list.with_comments(ctx, index).start;
             let indent = line_indent(source, node_span(r#if).start);
@@ -108,21 +96,14 @@ impl Rule for NoElseAfterReturn {
     }
 }
 
-/// One node of what `refactor()` returns in place of the `if`.
 enum Item<'v, 'a> {
-    /// The `if` itself, its `else` removed.
     Kept,
-    /// A new `if` with the condition and statements of a clause (0 is the `if`, then the `elseif`s), its comments.
     NewIf(usize),
-    /// The `if` with a clause's condition and statements, and the `elseif`s it keeps.
     ModifiedIf(usize, Vec<usize>),
-    /// A clause printed on its own: an `elseif`, or the `else` (`usize::MAX`).
     Clause(usize),
-    /// The statements of the `else`.
     Stmts(&'v List<'a>),
 }
 
-/// A clause of the `if`: its condition (none for the `else`), its statements and the comments before it.
 struct Clause<'v, 'a> {
     condition: Option<&'a Expression<'a>>,
     stmts: &'v List<'a>,
@@ -154,7 +135,6 @@ fn clauses<'v, 'a>(source: &str, view: &'v IfView<'a>) -> Vec<Clause<'v, 'a>> {
     out
 }
 
-/// `handleElseIfs`, on clause numbers: 0 is the `if`, 1.. the `elseif`s.
 fn handle_else_ifs<'v, 'a>(source: &str, view: &'v IfView<'a>) -> Vec<Item<'v, 'a>> {
     let breaks =
         |clause: usize| !does_not_last_statement_break_flow(source, clause_stmts(view, clause));
@@ -162,8 +142,6 @@ fn handle_else_ifs<'v, 'a>(source: &str, view: &'v IfView<'a>) -> Vec<Item<'v, '
     let mut remaining: Vec<usize> = (1..=view.elseifs.len()).collect();
     while !remaining.is_empty() {
         let current = remaining.remove(0);
-        // When the last statement of the `elseif` does not end the flow, it takes the `if`'s place and the `elseif`s
-        // after it that end the flow (or are empty) are printed after it, on their own.
         if !breaks(current) {
             let (kept, own): (Vec<usize>, Vec<usize>) = remaining
                 .iter()
@@ -241,8 +219,6 @@ fn print(
                 braced(ctx, clause.stmts, indent)
             );
             if let Item::ModifiedIf(_, kept) = item {
-                // php-parser's `pStmt_If` writes ` elseif` after the `}`; the comments before an `elseif` it keeps come
-                // first, the `elseif` on the next line.
                 for &e in kept {
                     text.push(' ');
                     text.push_str(&print_clause(ctx, &clauses[e], indent));
@@ -263,7 +239,6 @@ fn print(
     }
 }
 
-/// An `elseif` or `else` printed on its own, with the comments before it.
 fn print_clause(ctx: &Context<'_>, clause: &Clause<'_, '_>, indent: &str) -> String {
     let source = ctx.source;
     let head = clause
@@ -283,8 +258,6 @@ fn print_clause(ctx: &Context<'_>, clause: &Clause<'_, '_>, indent: &str) -> Str
     }
 }
 
-/// `doesNotLastStatementBreakFlow`: the last statement is not a `return`, `throw`, `continue` or `exit`, nor an
-/// `if`/`else` whose every branch ends in one.
 fn does_not_last_statement_break_flow(source: &str, stmts: &List<'_>) -> bool {
     match stmts.last() {
         Some(Statement::If(inner)) => {

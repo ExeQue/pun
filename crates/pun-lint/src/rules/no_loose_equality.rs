@@ -1,7 +1,3 @@
-//! `lint/operators/no-loose-equality`, ported from phpstan-strict-rules 2.0.12's `DisallowedLooseComparisonRule`
-//! (identifiers `equal.notAllowed` and `notEqual.notAllowed`). Every `==`, `!=` and `<>` is reported, with the
-//! message PHPStan gives without bleeding edge (`includeOperandTypesInErrorMessage` off).
-
 use mago_syntax::cst::{BinaryOperator, Node, NodeKind};
 
 use crate::syntax::node_span;

@@ -1,6 +1,3 @@
-//! The walk behind `check`: a rule sees every node `Node::visit_children` yields, in the same order, with the same
-//! ancestors. The expected walk comes from Mago's `visit_children`, which the engine does not use.
-
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -12,7 +9,6 @@ use pun_lint::syntax::node_span;
 use pun_lint::{Context, Linter, Report, Rule};
 use pun_problem::Span;
 
-/// Reports every node, with its kind and its ancestors' kinds as the message.
 struct Record;
 
 impl Rule for Record {
@@ -42,7 +38,6 @@ fn kinds(path: &[Node<'_, '_>]) -> String {
     names.join(" > ")
 }
 
-/// The same reports from a walk over `visit_children`.
 fn expected<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     path: &mut Vec<Node<'ast, 'arena>>,
@@ -75,7 +70,6 @@ fn check_walks_the_nodes_of_visit_children_with_their_ancestors() {
             mago_syntax::parser::parse_file_content(&arena, FileId::zero(), source.as_bytes());
         let mut want = Vec::new();
         expected(Node::Program(program), &mut Vec::new(), &mut want);
-        // `check` sorts its problems by start offset, keeping the walk's order at the same offset.
         want.sort_by_key(|(span, _)| span.start);
         assert_eq!(got, want, "{name}");
         seen.extend(
@@ -83,8 +77,5 @@ fn check_walks_the_nodes_of_visit_children_with_their_ancestors() {
                 .map(|(_, path)| path.rsplit(" > ").next().unwrap().to_string()),
         );
     }
-    // The files hold every node type `visit_children` yields: Mago's 227 `Node` variants less the 4 that only a
-    // syntax error makes (`Error`, `MissingTerminator` and the two missing selectors) and the 2 `TraitUseAdaptation`
-    // cases, whose children it yields directly.
     assert_eq!(seen.len(), 221, "{seen:?}");
 }

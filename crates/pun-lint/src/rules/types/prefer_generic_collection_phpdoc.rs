@@ -1,7 +1,3 @@
-//! `lint/types/prefer-generic-collection-phpdoc`, ported from Rector 2.8.4's
-//! `NarrowArrayCollectionUnionReturnDocblockRector` (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a
-//! `@return Item[]|Collection` (or `ArrayCollection`) becomes `@return Collection<int, Item>`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::docblock::FunctionLike;
@@ -30,7 +26,6 @@ impl Rule for PreferGenericCollectionPhpdoc {
             return;
         };
         let target = f.target(ctx);
-        // `createFromNode()`: no doc comment, no return tag
         if target.doc.is_none() {
             return;
         }
@@ -52,7 +47,6 @@ impl Rule for PreferGenericCollectionPhpdoc {
     }
 }
 
-/// `matchGenericCollectionTypeNode()`.
 fn match_generic_collection(types: &[TypeNode]) -> Option<TypeNode> {
     if types.len() != 2 {
         return None;

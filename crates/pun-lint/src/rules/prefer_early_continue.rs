@@ -1,11 +1,3 @@
-//! `lint/style/prefer-early-continue`, ported from Mago 1.57.0's linter rule `prefer-early-continue`
-//! (rule/best_practices/prefer_early_continue.rs, with rule/utils/early_exit.rs in `lint_b_early_exit`), at its
-//! default `max-allowed-statements` of 0.
-//!
-//! A loop whose whole body is one `if` without `else` is reported on the `if`, unless the `if` only exits (`continue`,
-//! `break`, `return` or `throw`). The fix negates the condition, makes the `if` `continue`, and moves its body after
-//! it.
-
 use mago_syntax::cst::{Expression, ForBody, ForeachBody, Node, NodeKind, Statement, WhileBody};
 
 use super::lint_b_early_exit::{EarlyExitPattern, check_early_exit, single_if, single_if_in};

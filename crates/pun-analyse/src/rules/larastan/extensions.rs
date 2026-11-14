@@ -1,17 +1,3 @@
-//! Larastan's dynamic return type extensions that answer from the booted app (see [`crate::larastan::app::App`]),
-//! as Mago return type providers for the rules' inference:
-//!
-//! - Helpers\AuthExtension (`auth()`), Helpers\NowAndTodayExtension (`now()`, `today()`),
-//!   DoubleUnderscoreHelperReturnTypeExtension (`__()`);
-//! - AuthManagerExtension, GuardExtension, RequestUserExtension and AuthExtension (`user()`);
-//! - StorageDynamicStaticMethodReturnTypeExtension (`Storage::disk()`), AppEnvironmentReturnTypeExtension and
-//!   AppFacadeEnvironmentReturnTypeExtension (`environment()`);
-//! - ContractsMethodsExtension's methods: a method an `Illuminate\Contracts` interface lacks is its concrete's;
-//! - DateExtension (the `Date` facade's creating methods);
-//! - Helpers\CollectExtension (`collect()`) and CollectionFilterRejectDynamicReturnTypeExtension (`filter()`,
-//!   `reject()` and `where()` of an `Enumerable`);
-//! - the model factory extensions (`Model::factory()` and a factory's methods), in [`super::factories`].
-
 use std::sync::Arc;
 
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
@@ -52,7 +38,6 @@ const ENUMERABLE: &str = "Illuminate\\Support\\Enumerable";
 const COLLECTION: &str = "Illuminate\\Support\\Collection";
 const ELOQUENT_COLLECTION: &str = "Illuminate\\Database\\Eloquent\\Collection";
 
-/// `new ObjectType($class)`, spelled as the codebase declares it.
 fn object(codebase: &CodebaseMetadata, class: &str) -> TAtomic {
     let name = codebase.get_class_like(class.as_bytes()).map_or_else(
         || mago_word::word(class.trim_start_matches('\\')),
@@ -61,7 +46,6 @@ fn object(codebase: &CodebaseMetadata, class: &str) -> TAtomic {
     TAtomic::Object(TObject::Named(TNamedObject::new(name)))
 }
 
-/// `TypeCombinator::addNull(TypeCombinator::union(...$authModels))`, `None` without models.
 fn auth_models(codebase: &CodebaseMetadata, models: Vec<String>) -> Option<TUnion> {
     if models.is_empty() {
         return None;
@@ -71,7 +55,6 @@ fn auth_models(codebase: &CodebaseMetadata, models: Vec<String>) -> Option<TUnio
     Some(TUnion::from_vec(types))
 }
 
-/// `Guard&StatefulGuard`.
 fn stateful_guard(codebase: &CodebaseMetadata) -> TUnion {
     let TAtomic::Object(TObject::Named(mut guard)) = object(codebase, GUARD) else {
         unreachable!()
@@ -80,7 +63,6 @@ fn stateful_guard(codebase: &CodebaseMetadata) -> TUnion {
     TUnion::from_atomic(TAtomic::Object(TObject::Named(guard)))
 }
 
-/// The single constant string of an expression's type (`getConstantStrings()` with one member).
 fn constant_string(context: &ProviderContext<'_, '_, '_>, span: Span) -> Option<String> {
     let ty = context.get_expression_type(&span)?;
     match ty.types.as_ref() {
@@ -91,7 +73,6 @@ fn constant_string(context: &ProviderContext<'_, '_, '_>, span: Span) -> Option<
     }
 }
 
-/// The app, and CollectExtension's `inferFromUsage`.
 pub(crate) struct Functions(pub(crate) Arc<App>, pub(crate) bool);
 
 impl Provider for Functions {
@@ -128,7 +109,6 @@ impl FunctionReturnTypeProvider for Functions {
             "now" | "today" => Some(TUnion::from_atomic(object(codebase, &self.0.date_class))),
             "collect" => collect(context, invocation, self.1),
             "__" if invocation.has_no_arguments() => Some(get_null()),
-            // TransHelperReturnTypeExtension
             "trans" if invocation.has_no_arguments() => Some(TUnion::from_atomic(object(
                 codebase,
                 "Illuminate\\Contracts\\Translation\\Translator",
@@ -139,8 +119,6 @@ impl FunctionReturnTypeProvider for Functions {
     }
 }
 
-/// DoubleUnderscoreHelperReturnTypeExtension's, TransHelperReturnTypeExtension's and
-/// TranslatorGetReturnTypeExtension's `array|string`, benevolent.
 fn translation() -> TUnion {
     let mut ty = TUnion::from_vec(
         get_mixed_keyed_array()
@@ -155,7 +133,6 @@ fn translation() -> TUnion {
     ty
 }
 
-/// The method extensions; the file's contents locate a call's receiver (see [`Methods::receiver_argument`]).
 pub(crate) struct Methods(pub(crate) Arc<App>, pub(crate) Vec<u8>);
 
 impl Provider for Methods {
@@ -224,8 +201,6 @@ impl MethodReturnTypeProvider for Methods {
             "get" if is("Illuminate\\Contracts\\Translation\\Translator") => {
                 return Some(translation());
             }
-            // GuardDynamicStaticMethodReturnTypeExtension: the class of the driver of the default guard without an
-            // argument, else of the guard its constant string names
             "guard"
                 if receiver.eq_ignore_ascii_case(b"Illuminate\\Support\\Facades\\Auth")
                     || class.eq_ignore_ascii_case(b"Illuminate\\Support\\Facades\\Auth") =>
@@ -240,7 +215,6 @@ impl MethodReturnTypeProvider for Methods {
                     None => stateful_guard(codebase),
                 });
             }
-            // DateExtension: `get_class(now())`, nullable or falsable where Carbon's method returns null or false
             "create"
             | "createfromdate"
             | "createfromtime"
@@ -307,7 +281,6 @@ impl MethodReturnTypeProvider for Methods {
             }
             _ => {}
         }
-        // ContractsMethodsExtension
         let k = codebase.get_class_like(receiver)?;
         if !k.kind.is_interface()
             || !k
@@ -335,8 +308,6 @@ impl MethodReturnTypeProvider for Methods {
     }
 }
 
-/// FormRequestSafeDynamicMethodReturnTypeExtension: `safe()` with a constant array is the shape of the array's
-/// constant string values, each `mixed`.
 fn form_request_safe(
     context: &ProviderContext<'_, '_, '_>,
     invocation: &InvocationInfo<'_, '_, '_>,
@@ -383,7 +354,6 @@ fn form_request_safe(
     ))))
 }
 
-/// `new BenevolentUnionType([new IntegerType(), new StringType()])`.
 fn benevolent_array_key() -> TUnion {
     let mut ty = TUnion::from_vec(vec![
         TAtomic::Scalar(TScalar::int()),
@@ -394,7 +364,6 @@ fn benevolent_array_key() -> TUnion {
     ty
 }
 
-/// `new GenericObjectType($class, $arguments)`.
 pub(super) fn generic(codebase: &CodebaseMetadata, class: &str, arguments: Vec<TUnion>) -> TUnion {
     let TAtomic::Object(TObject::Named(object)) = object(codebase, class) else {
         unreachable!()
@@ -404,8 +373,6 @@ pub(super) fn generic(codebase: &CodebaseMetadata, class: &str, arguments: Vec<T
     )))
 }
 
-/// A class template's type in the object's class (`getActiveTemplateTypeMap()->getType()`), `None` when the class has
-/// no such template.
 fn active_template(
     codebase: &CodebaseMetadata,
     object: &TNamedObject,
@@ -424,7 +391,6 @@ fn active_template(
     )
 }
 
-/// A method reflection's `getDeclaringClass()`: the class that declares the method or uses the trait that does.
 fn reflection_declaring_class(
     codebase: &CodebaseMetadata,
     class: &[u8],
@@ -436,7 +402,6 @@ fn reflection_declaring_class(
         .map(|id| id.get_class_name())
 }
 
-/// The bound of a template type (`$type->getBound()` of a TemplateType), else the type.
 fn bound(t: TUnion) -> TUnion {
     match t.types.as_ref() {
         [TAtomic::GenericParameter(g)] => (*g.constraint).clone(),
@@ -444,8 +409,6 @@ fn bound(t: TUnion) -> TUnion {
     }
 }
 
-/// Helpers\CollectExtension with CollectionHelper::determineGenericCollectionTypeFromType().
-// ponytail: a value neither an object nor an array (its `toArray()` type) keeps the stub's return type
 fn collect(
     context: &ProviderContext<'_, '_, '_>,
     invocation: &InvocationInfo<'_, '_, '_>,
@@ -460,7 +423,6 @@ fn collect(
         )
     };
     let Some(argument) = invocation.get_argument(0, &[b"value"]) else {
-        // inferred from what the body does with the collection
         return (!infer_from_usage).then(default);
     };
     let ty = context.get_expression_type(argument)?;
@@ -488,7 +450,6 @@ fn collect(
                     .all(|o| codebase.is_instance_of(o.name.as_bytes(), parent.as_bytes()))
         };
         if all(ENUMERABLE) {
-            // getTypeFromEloquentCollection()
             let key = if codebase
                 .is_instance_of(first.name.as_bytes(), ELOQUENT_COLLECTION.as_bytes())
                 || first
@@ -504,7 +465,6 @@ fn collect(
             return Some(generic(codebase, COLLECTION, vec![key, model]));
         }
         if all("Traversable") {
-            // getTypeFromIterator()
             let metadata = codebase.get_class_like(first.name.as_bytes())?;
             let templates: Vec<TUnion> = metadata
                 .template_types
@@ -524,7 +484,6 @@ fn collect(
             });
         }
     }
-    // not an array: `toArray()`'s key and value types, for scalars `array{0: <value>}` (null is `array{}`)
     let scalars: Vec<TAtomic> = ty
         .types
         .iter()
@@ -544,7 +503,6 @@ fn collect(
             vec![key, TUnion::from_vec(scalars)],
         ));
     }
-    // `$type->isIterableAtLeastOnce()->no()` of an array: the empty array
     let empty = !ty.types.is_empty()
         && ty.types.iter().all(|t| match t {
             TAtomic::Array(a) => a.is_empty(),
@@ -553,7 +511,6 @@ fn collect(
     empty.then(default)
 }
 
-/// An integer type without the literal `value`, as `int<min, value - 1>|int<value + 1, max>` where its range allows.
 fn without_int(t: &TInteger, value: i64) -> Vec<TAtomic> {
     let int = |i: TInteger| TAtomic::Scalar(TScalar::Integer(i));
     match *t {
@@ -564,7 +521,6 @@ fn without_int(t: &TInteger, value: i64) -> Vec<TAtomic> {
     }
 }
 
-/// `TypeCombinator::removeFalsey()`.
 fn remove_falsey(ty: &TUnion) -> TUnion {
     use mago_codex::ttype::atomic::mixed::truthiness::TMixedTruthiness;
     TUnion::from_vec(
@@ -590,7 +546,6 @@ fn remove_falsey(ty: &TUnion) -> TUnion {
     )
 }
 
-/// `TypeCombinator::removeTruthy()`: the falsy values of each type.
 fn remove_truthy(ty: &TUnion) -> TUnion {
     TUnion::from_vec(
         ty.types
@@ -616,7 +571,6 @@ fn remove_truthy(ty: &TUnion) -> TUnion {
                         ]
                     }
                 }
-                // `intersect(mixed, StaticTypeFactory::falsey())`
                 TAtomic::Mixed(_) => [
                     TScalar::literal_int(0),
                     TScalar::literal_float(0.0),
@@ -640,9 +594,6 @@ fn remove_truthy(ty: &TUnion) -> TUnion {
     )
 }
 
-/// `$scope->filterByTruthyValue($expr)` (or `filterByFalseyValue()`) for variable `name` of type `ty`.
-// ponytail: TypeSpecifier's `&&`/`||`, `!`, `is_*()`, a variable's truthiness and `===`/`!==` against a literal; any
-// other condition leaves the type as it is
 fn narrow(
     context: &ProviderContext<'_, '_, '_>,
     expression: &Expression<'_>,
@@ -653,11 +604,9 @@ fn narrow(
     use mago_codex::ttype::comparator::{ComparisonResult, atomic_comparator};
     let codebase = context.codebase();
     let is_var = |e: &Expression<'_>| matches!(e.unparenthesized(), Expression::Variable(Variable::Direct(d)) if d.name == name);
-    // the type-checking functions' types, without Mago's int-to-float coercion
     let contained = |a: &TAtomic, b: &TAtomic| {
         atomic_comparator::is_contained_by(codebase, a, b, true, &mut ComparisonResult::default())
     };
-    // `TypeCombinator::intersect()` / `remove()` with one atomic type
     let intersect = |ty: TUnion, with: &TAtomic| {
         let kept: Vec<TAtomic> = ty
             .types
@@ -707,7 +656,6 @@ fn narrow(
             narrow(context, unary.operand, name, ty, !truthy)
         }
         Expression::Binary(binary) => match &binary.operator {
-            // `a && b` is true when both are, false when a is or (a being true) b is; `a || b` the other way round
             BinaryOperator::And(_)
             | BinaryOperator::LowAnd(_)
             | BinaryOperator::Or(_)
@@ -724,7 +672,6 @@ fn narrow(
                 let either = narrow(context, binary.lhs, name, ty, !and);
                 add_union_type(either, &both, codebase, CombinerOptions::default())
             }
-            // an integer compared with an integer literal: the range on the condition's side
             BinaryOperator::LessThan(_)
             | BinaryOperator::LessThanOrEqual(_)
             | BinaryOperator::GreaterThan(_)
@@ -736,7 +683,6 @@ fn narrow(
                     Some([TAtomic::Scalar(TScalar::Integer(TInteger::Literal(n)))]) => Some(*n),
                     _ => None,
                 };
-                // `$v < n` as (less, inclusive) of `$v`
                 let less = matches!(
                     binary.operator,
                     BinaryOperator::LessThan(_) | BinaryOperator::LessThanOrEqual(_)
@@ -756,7 +702,6 @@ fn narrow(
                 } else {
                     return ty;
                 };
-                // the false side of `<` is `>=`
                 let (less, inclusive) = if truthy {
                     (less, inclusive)
                 } else {
@@ -843,7 +788,6 @@ fn narrow(
                 _ => ty,
             }
         }
-        // `isset($v['a'], $v['b'])`: in the true context each offset exists and is not null
         Expression::Construct(mago_syntax::cst::Construct::Isset(isset)) if truthy => {
             let mut ty = ty;
             for value in &isset.values {
@@ -872,8 +816,6 @@ fn narrow(
     }
 }
 
-/// `$v` where `isset($v[key])` holds: shapes that declare the key make it required and non-null, sealed shapes without
-/// it are left out; other members stay.
 fn has_non_null_offset(ty: &TUnion, key: &ArrayKey) -> TUnion {
     use mago_codex::ttype::atomic::array::TArray;
     let mut kept = Vec::with_capacity(ty.types.len());
@@ -906,8 +848,6 @@ fn has_non_null_offset(ty: &TUnion, key: &ArrayKey) -> TUnion {
     }
 }
 
-/// EloquentCollectionMapDynamicReturnTypeExtension: `map()` and `mapWithKeys()` of an Eloquent collection are an
-/// Eloquent collection of the callback's models, else a base collection of its result.
 fn eloquent_collection_map(
     context: &ProviderContext<'_, '_, '_>,
     method: &str,
@@ -952,13 +892,11 @@ fn eloquent_collection_map(
         key = super::helpers::union(codebase, keys);
         value = super::helpers::union(codebase, values);
     }
-    // `(new ObjectType(Model::class))->isSuperTypeOf($mappedValueType)`: Some(true) yes, Some(false) no, None maybe
     let model = b"Illuminate\\Database\\Eloquent\\Model";
     let is_model = |a: &TAtomic| match a {
         TAtomic::Object(TObject::Named(n)) if codebase.is_instance_of(n.name.as_bytes(), model) => {
             Some(true)
         }
-        // another class is no model, an interface may be one
         TAtomic::Object(TObject::Named(n)) => codebase
             .get_class_like(n.name.as_bytes())
             .is_some_and(|c| !c.kind.is_interface())
@@ -981,9 +919,6 @@ fn eloquent_collection_map(
         let class = String::from_utf8_lossy(called_on.name.as_bytes()).into_owned();
         return Some(generic(codebase, &class, vec![key, value]));
     }
-    // a value that surely is no model leaves `map()` to the stub's conditional return type, whose else branch this
-    // is; it is built here for a pinned subclass (no templates) and for open class templates (`$this->map()`), which
-    // the conditional's `static<TKey, ...>` branch does not resolve
     let generic_receiver = codebase
         .get_class_like(called_on.name.as_bytes())
         .is_some_and(|k| !k.template_types.is_empty());
@@ -998,8 +933,6 @@ fn eloquent_collection_map(
 }
 
 impl Methods {
-    /// CollectionFilterRejectDynamicReturnTypeExtension: the called-on collection class with its `TKey` and its
-    /// `TValue` as the callback's first parameter narrowed by its returned condition.
     fn filter_reject(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -1009,7 +942,6 @@ impl Methods {
         let codebase = context.codebase();
         let receiver = self.receiver(invocation, method.as_bytes())?;
         let called_on = context.get_expression_type(&receiver)?;
-        // `getObjectClassReflections()[0]`, generic
         let first = called_on.types.iter().find_map(|t| match t {
             TAtomic::Object(TObject::Named(n)) => Some(n),
             _ => None,
@@ -1023,7 +955,6 @@ impl Methods {
         }
         let declaring =
             reflection_declaring_class(codebase, first.name.as_bytes(), method.as_bytes())?;
-        // `getTemplateType()` of an unresolved template argument is the argument itself
         let key = active_template(codebase, first, declaring.as_bytes(), "TKey")?;
         let key = if key
             .types
@@ -1036,7 +967,6 @@ impl Methods {
         };
         let unresolved = active_template(codebase, first, declaring.as_bytes(), "TValue")?;
         let value = bound(unresolved.clone());
-        // an unresolved template argument the narrowing leaves as it is stays unresolved
         let keep = |narrowed: TUnion| {
             if narrowed == value
                 && unresolved
@@ -1080,7 +1010,6 @@ impl Methods {
                     arrow.expression,
                 ))
             }
-            // `where()` may have a non-callable first argument
             _ if method == "where" => return None,
             _ => None,
         };
@@ -1093,8 +1022,6 @@ impl Methods {
         Some(generic(codebase, &class, vec![key, keep(narrowed)]))
     }
 
-    /// CollectionWhereNotNullDynamicReturnTypeExtension: the called-on collection class with its `TKey` and its
-    /// `TValue` (or `TModel`) without null, and without the scalar types when a key that is never null is given.
     fn where_not_null(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -1115,7 +1042,6 @@ impl Methods {
         let template = |name: &str| active_template(codebase, &first, declaring.as_bytes(), name);
         let key = template("TKey")?;
         let value = template("TValue").or_else(|| template("TModel"))?;
-        // `$scope->getType($key)->isNull()->no()`
         let keyed = invocation
             .get_argument(0, &[b"key"])
             .and_then(|a| context.get_expression_type(a))
@@ -1146,7 +1072,6 @@ impl Methods {
         Some(generic(codebase, &class, vec![key, value]))
     }
 
-    /// The receiver expression of a method call, found in the source before the method's name.
     fn receiver(&self, invocation: &InvocationInfo<'_, '_, '_>, method: &[u8]) -> Option<Span> {
         let call = invocation.span();
         let arguments = invocation.inner().arguments_source.span();
@@ -1167,8 +1092,6 @@ impl Methods {
         ))
     }
 
-    /// GuardExtension::getGuardFromMethodCall(): the receiver's only argument, when the receiver is a call
-    /// (`auth()->guard('api')->user()`), found in the source between the receiver's last parentheses.
     fn receiver_argument(&self, invocation: &InvocationInfo<'_, '_, '_>) -> Option<Span> {
         let call = invocation.span();
         let arguments = invocation.inner().arguments_source.span();
@@ -1182,7 +1105,6 @@ impl Methods {
             .strip_suffix(b"->")?;
         let before = before.strip_suffix(b"?").unwrap_or(before).trim_ascii_end();
         let close = before.len().checked_sub(1).filter(|&i| before[i] == b')')?;
-        // the matching `(`, and no top-level comma inside
         let mut depth = 0usize;
         let mut open = None;
         for i in (0..close).rev() {

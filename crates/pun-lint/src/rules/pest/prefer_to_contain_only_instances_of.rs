@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-contain-only-instances-of`, ported from pest-plugin-rector's
-//! `UseToContainOnlyInstancesOfRector`: `expect($items)->each->toBeInstanceOf(User::class)` becomes
-//! `expect($items)->toContainOnlyInstancesOf(User::class)` when the checked value is known to be iterable.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -53,7 +49,6 @@ impl Rule for PreferToContainOnlyInstancesOf {
             "Use `toContainOnlyInstancesOf()` instead of `->each->toBeInstanceOf()`.",
             Safety::Unsafe,
             vec![
-                // `$node->var = $node->var->var`.
                 Edit::new(
                     Span::new(
                         node_span(unparenthesize(each.object)).end,

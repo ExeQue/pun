@@ -1,15 +1,10 @@
-//! Port of `PhpCsFixer\AbstractNoUselessElseFixer` (shared by no_useless_else and no_superfluous_elseif).
 use pun_tokens::{Kind::*, Tokens};
 
-/// `getPriority()`: should be run before NoWhitespaceInBlankLineFixer, NoExtraBlankLinesFixer,
-/// BracesFixer and after NoEmptyStatementFixer.
 pub(crate) const PRIORITY: i32 = 39;
 
 pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
     let mut previous_block_start = index;
     loop {
-        // Check if all 'if', 'else if ' and 'elseif' blocks above this 'else' always end,
-        // if so this 'else' is overcomplete.
         let (start, previous_block_end) = get_previous_block(tokens, previous_block_start);
         previous_block_start = start;
 
@@ -57,7 +52,6 @@ pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
             return false;
         }
 
-        // implicit continue, i.e. delete candidate
         if tokens[previous_block_start].is_kind(T_IF) {
             return true;
         }
@@ -94,11 +88,8 @@ fn is_in_conditional(tokens: &Tokens, index: usize, lower_limit_index: usize) ->
         return true;
     }
     if !tokens[candidate_index].equals(")", true) {
-        return false; // token is ';' or close tag
+        return false;
     }
-    // token is always ')' here.
-    // If it is part of the condition the token is always in, return false.
-    // If it is not it is a nested condition so return true
     let open = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, candidate_index);
     tokens
         .get_prev_meaningful_token(open)
@@ -122,8 +113,6 @@ fn is_in_condition_without_braces(
             return false;
         }
         if token.equals("{", true) {
-            // Upstream steps over a `{` owned by for/foreach/while/do, but walking back from the candidate meets
-            // no ")" (else isInConditional held), so this "{" opens the if/elseif/else block itself: not OK.
             return false;
         }
         if token.equals(")", true) {

@@ -1,9 +1,3 @@
-//! `lint/complexity/prefer-in-array-over-search`, ported from Rector 2.8.4's `SimplifyArraySearchRector`
-//! (rules/CodeQuality/Rector/Identical) with `BinaryOpManipulator::matchFirstAndSecondConditionNode`.
-//!
-//! `array_search($a, $b) !== false` becomes `in_array($a, $b)` and `array_search($a, $b) === false` becomes
-//! `!in_array($a, $b)`, with `false` on either side. The arguments stay as they are, a strict third one included.
-
 use mago_syntax::cst::{BinaryOperator, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
@@ -45,7 +39,6 @@ impl Rule for PreferInArrayOverSearch {
             return;
         };
         let call = call_to(search, "array_search").expect("matched above");
-        // NodeFactory::createFuncCall prints the arguments again, each as it was, separated by `, `.
         let arguments: Vec<&str> = args(call).iter().map(|a| text(ctx, *a)).collect();
         let call = format!("in_array({})", arguments.join(", "));
         let span = node_span(b);

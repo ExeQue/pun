@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitNoExpectationAnnotationFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::docblock::{Annotation, DocBlock};
 
@@ -67,7 +66,6 @@ impl PhpUnitNoExpectationAnnotationFixer {
             }
             let function_index = i;
             let mut doc_block_index = i;
-            // ignore abstract functions
             let brace_index = tokens
                 .get_next_token_of_kind(function_index, &[";".into(), "{".into()], true)
                 .unwrap();
@@ -139,7 +137,6 @@ impl PhpUnitNoExpectationAnnotationFixer {
             whitespace.extend(&original_indent);
             whitespace.extend(self.whitespaces_config.get_indent().as_bytes());
             new_methods[0] = Token::new(T_WHITESPACE, whitespace);
-            // apply changes
             let mut doc_content = doc.get_content();
             if doc_content.is_empty() {
                 doc_content = b"/** */".to_vec();
@@ -159,7 +156,6 @@ impl PhpUnitNoExpectationAnnotationFixer {
         }
     }
 
-    /// `annotationsToParamList`.
     fn annotations_to_param_list(&self, annotations: &HashMap<Vec<u8>, Vec<u8>>) -> Vec<Vec<u8>> {
         let mut params = Vec::new();
         let expected = &annotations[b"expectedException".as_slice()];
@@ -188,7 +184,6 @@ impl PhpUnitNoExpectationAnnotationFixer {
     }
 }
 
-/// `extractContentFromAnnotation`.
 fn extract_content_from_annotation(annotation: &Annotation) -> Vec<u8> {
     let tag = annotation.get_tag().get_name().to_vec();
     let annotation_content = annotation.get_content();

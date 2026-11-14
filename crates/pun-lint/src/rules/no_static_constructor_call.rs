@@ -1,12 +1,3 @@
-//! `lint/classes/no-static-constructor-call`, ported from phpstan-strict-rules 2.0.12's
-//! `IllegalConstructorStaticCallRule` (identifier `constructor.call`).
-//!
-//! `Foo::__construct()` (the method name in any case) is reported unless it is in a method named exactly
-//! `__construct` (a closure or arrow function inside counts as the method) of a class, and `Foo` (or `parent`) names a
-//! class the class extends, directly or not. A trait is not analysed on its own upstream, so Pun leaves its methods
-//! alone. Where Pun cannot follow the parents to the top (a class it does not know, such as one from vendor/, which
-//! PHPStan reads), any class name but `self`, `static` and the class's own is allowed.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Node, NodeKind};
 
 use super::rector_batch5::resolve_class_name;
@@ -55,13 +46,11 @@ impl Rule for NoStaticConstructorCall {
     }
 }
 
-/// `isCollectCallingConstructor`, and whether the call is in a trait, which Pun leaves alone.
 fn is_calling_parent_constructor(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
     class: &Expression<'_>,
 ) -> bool {
-    // `$scope->getFunction()`: closures and arrow functions keep the function they are in.
     let function = ancestors.iter().rev().find_map(|a| match a {
         Node::Method(m) => Some(m.name.value),
         Node::Function(f) => Some(f.name.value),
@@ -94,7 +83,6 @@ fn is_calling_parent_constructor(
         Expression::Identifier(id) => resolve_class_name(ancestors, id),
         _ => return false,
     };
-    // `getParentClassesNames()`, as far as the codebase knows them.
     let codebase = &facts(ctx).codebase;
     let mut next = scope.parent_class;
     while let Some(parent) = next {
@@ -102,7 +90,6 @@ fn is_calling_parent_constructor(
             return true;
         }
         let Some(class) = codebase.get_class_like(parent.as_bytes()) else {
-            // ponytail: an unknown class's own parents are unknown, so any other name may be one of them.
             return scope
                 .name
                 .is_none_or(|own| !own.eq_ignore_ascii_case(&called));

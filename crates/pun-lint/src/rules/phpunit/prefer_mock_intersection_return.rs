@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-mock-intersection-return`, ported from rector-phpunit's
-//! `ChangeMockObjectReturnUnionToIntersectionRector` (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! In a test class, a method whose first `@return` tag has a union type with `MockObject` or `Stub` (short, or fully
-//! qualified with or without the leading `\`) among its names gets the intersection of the same types.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 
@@ -44,7 +38,6 @@ impl Rule for PreferMockIntersectionReturn {
         let TagType::Union(members) = &tag.ty else {
             return;
         };
-        // must contain a MockObject or Stub member to be a mock union
         let is_mock = |m: &&str| {
             [
                 "PHPUnit\\Framework\\MockObject\\MockObject",

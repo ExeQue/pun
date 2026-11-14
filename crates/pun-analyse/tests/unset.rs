@@ -1,5 +1,3 @@
-//! UnsetRule against actual PHPStan 2.3.1 oracle output. tests/rules.rs runs the upstream UnsetRuleTest fixtures.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -196,8 +194,6 @@ fn native_writable_overlays_resolve_inherited_and_generic_types() {
     );
 }
 
-// These CLI captures were independently checked against PHPStan's public Analyser. Keep trait-context file
-// suffixes as well as every diagnostic; a trait checked in an invalid consumer must not borrow required members.
 fn required_native_oracle(name: &str, scanned: &[&str]) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/unset");
     let expected: Value =

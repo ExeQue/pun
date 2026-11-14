@@ -1,10 +1,3 @@
-//! `lint/laravel/no-controller-middleware`, ported from Mago 1.57.0's `middleware-in-routes` (mago-linter
-//! src/rule/best_practices/middleware_in_routes.rs).
-//!
-//! `$this->middleware(...)` in a class whose name ends in `Controller` (as written, in any part of the class but a
-//! nested class-like) is reported: middleware belongs in the routes file. The innermost class-like decides, so an
-//! anonymous class, an interface, a trait or an enum inside a controller is no controller. There is no fix.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
 
 use super::{is_name, member_name};
@@ -30,7 +23,6 @@ impl Rule for NoControllerMiddleware {
         out: &mut Vec<Report>,
     ) {
         let Node::MethodCall(call) = node else { return };
-        // `is_within_controller`: the innermost class-like scope is a class named `...Controller`
         let scope = ancestors.iter().rev().find_map(|a| match a {
             Node::Class(c) => Some(Some(c.name.value)),
             Node::AnonymousClass(_) | Node::Interface(_) | Node::Trait(_) | Node::Enum(_) => {

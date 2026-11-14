@@ -1,8 +1,3 @@
-//! `lint/types/add-magic-method-return-type`, ported from Rector 2.8.4's `KnownMagicClassMethodTypeRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): the parameters of `__call`, `__callStatic`, `__get`, `__set`, `__isset`
-//! and `__unset` get their known types (`string` for the name, `array` for `__call`'s arguments, `mixed` for
-//! `__set`'s value), and `__get` returns `mixed`, in a class whose parents do not declare the method.
-
 use mago_syntax::cst::{FunctionLikeParameter, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -14,7 +9,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddMagicMethodTypes;
 
-/// `PhpVersionFeature::MIXED_TYPE`.
 const MIXED_TYPE: u32 = 80000;
 
 impl Rule for AddMagicMethodTypes {
@@ -40,7 +34,6 @@ impl Rule for AddMagicMethodTypes {
         let Node::Method(method) = node else {
             return;
         };
-        // Rector visits classes, anonymous ones too, not traits, interfaces or enums.
         let in_class = ancestors.iter().rev().find_map(|a| match a {
             Node::Class(_) | Node::AnonymousClass(_) => Some(true),
             Node::Interface(_) | Node::Trait(_) | Node::Enum(_) => Some(false),

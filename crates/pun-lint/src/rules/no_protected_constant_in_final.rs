@@ -1,10 +1,3 @@
-//! `lint/classes/no-protected-constant-in-final`, ported from Rector 2.8.4's `PrivatizeFinalClassConstantRector`
-//! (rules/Privatization/Rector/ClassConst).
-//!
-//! A `protected` constant of a `final` class becomes `private`, one declared alone (`const A = 1, B = 2;` stays);
-//! a `final` modifier goes with it.
-//! See `lint_b_privatize` for the classes Pun knows enough about.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 

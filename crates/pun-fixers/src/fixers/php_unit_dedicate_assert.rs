@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDedicateAssertFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{
     AssertCall, PreviousAssertCalls, apply_fix, is_candidate, target_fulfills,
 };
@@ -12,8 +11,6 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// A `FIX_MAP` entry that is an array: the positive and negative assertions (`None` for `false`), the argument
-/// count and whether the two arguments swap.
 struct FixDetails {
     positive: &'static str,
     negative: Option<&'static str>,
@@ -30,8 +27,6 @@ const fn details(positive: &'static str, negative: Option<&'static str>) -> FixD
     }
 }
 
-/// The array entries of `FIX_MAP`; its `true` entries (`is_array`, `is_bool`, ...) are absent, as `isset` and
-/// `is_array` treat them alike with a function `FIX_MAP` lacks.
 fn fix_map(function: &[u8]) -> Option<FixDetails> {
     Some(match function {
         b"array_key_exists" => FixDetails {
@@ -78,7 +73,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `configurePostNormalisation`.
 fn functions(target: &str) -> Vec<&'static str> {
     let mut functions = vec![
         "array_key_exists",
@@ -141,7 +135,6 @@ impl Fixer for PhpUnitDedicateAssertFixer {
         apply_fix(tokens, |tokens, start_index, end_index| {
             let mut calls = PreviousAssertCalls::new(start_index, end_index);
             while let Some(assert_call) = calls.next(tokens) {
-                // test and fix for assertTrue/False to dedicated asserts
                 match assert_call.lowered_name.as_slice() {
                     b"asserttrue" | b"assertfalse" => {
                         self.fix_assert_true_false(tokens, &assert_call);
@@ -157,7 +150,6 @@ impl Fixer for PhpUnitDedicateAssertFixer {
 }
 
 impl PhpUnitDedicateAssertFixer {
-    /// `fixAssertTrueFalse`.
     fn fix_assert_true_false(&self, tokens: &mut Tokens, assert_call: &AssertCall) {
         let mut test_default_namespace_token_index = None;
         let mut test_index = tokens
@@ -249,7 +241,6 @@ impl PhpUnitDedicateAssertFixer {
     }
 }
 
-/// `fixAssertTrueFalseInstanceof`.
 fn fix_assert_true_false_instanceof(
     tokens: &mut Tokens,
     assert_call: &AssertCall,
@@ -278,7 +269,6 @@ fn fix_assert_true_false_instanceof(
         }
     }
     if tokens[class_end_index].equals_any(&[",".into(), ")".into()], true) {
-        // do the fixing
         let is_instance_of_var = class_part_tokens[0].is_kind(T_VARIABLE);
         let mut new_tokens = class_part_tokens;
         if !is_instance_of_var {
@@ -298,7 +288,6 @@ fn fix_assert_true_false_instanceof(
         } else {
             b"assertNotInstanceOf"
         };
-        // Upstream keys each new token by its own index from `testIndex` on, so each goes before a different old token.
         let slices: BTreeMap<usize, Vec<Token>> = new_tokens
             .into_iter()
             .enumerate()
@@ -310,15 +299,10 @@ fn fix_assert_true_false_instanceof(
     true
 }
 
-/// `fixAssertSameEquals`.
 fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
-    // @ $this->/self::assertEquals/Same([$nextIndex])
     let expected_index = tokens
         .get_next_meaningful_token(assert_call.open_brace_index)
         .unwrap();
-    // do not fix
-    // let $a = [1,2]; $b = "2";
-    // "$this->assertEquals("2", count($a)); $this->assertEquals($b, count($a)); $this->assertEquals(2.1, count($a));"
     if tokens[expected_index].is_kind(T_VARIABLE) {
         let next = tokens.get_next_meaningful_token(expected_index).unwrap();
         if !tokens[next].equals(",", true) {
@@ -327,12 +311,10 @@ fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     } else if !tokens[expected_index].is_kind(T_LNUMBER) {
         return;
     }
-    // @ $this->/self::assertEquals/Same([$nextIndex,$commaIndex])
     let comma_index = tokens.get_next_meaningful_token(expected_index).unwrap();
     if !tokens[comma_index].equals(",", true) {
         return;
     }
-    // @ $this->/self::assertEquals/Same([$nextIndex,$commaIndex,$countCallIndex])
     let mut count_call_index = tokens.get_next_meaningful_token(comma_index).unwrap();
     let default_namespace_token_index = if tokens[count_call_index].is_kind(T_NS_SEPARATOR) {
         let index = count_call_index;
@@ -346,7 +328,7 @@ fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     }
     let lower_content = strtolower(tokens[count_call_index].get_content());
     if lower_content != b"count" && lower_content != b"sizeof" {
-        return; // not a call to "count" or "sizeOf"
+        return;
     }
     let count_call_open_brace_index = tokens.get_next_meaningful_token(count_call_index).unwrap();
     if !tokens[count_call_open_brace_index].equals("(", true) {
@@ -375,7 +357,6 @@ fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     tokens.set(assert_call.index, Token::new(T_STRING, name.to_vec()));
 }
 
-/// `removeFunctionCall`.
 fn remove_function_call(
     tokens: &mut Tokens,
     call_ns_index: Option<usize>,
@@ -396,7 +377,6 @@ fn remove_function_call(
     tokens.clear_token_and_merge_surrounding_whitespace(close_index);
 }
 
-/// `swapArguments`, with `cloneAndClearTokens`.
 fn swap_arguments(tokens: &mut Tokens, arguments: &BTreeMap<usize, usize>) {
     let mut arguments = arguments.iter();
     let (&first_argument_index, &first_argument_end_index) = arguments.next().unwrap();
@@ -415,7 +395,6 @@ fn swap_arguments(tokens: &mut Tokens, arguments: &BTreeMap<usize, usize>) {
     tokens.insert_at(first_argument_index, second_clone);
 }
 
-/// `cloneAndClearTokens`.
 fn clone_and_clear_tokens(tokens: &mut Tokens, start: usize, end: usize) -> Vec<Token> {
     let mut clone = Vec::new();
     for i in start..=end {

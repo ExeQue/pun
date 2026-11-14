@@ -1,14 +1,3 @@
-//! PHPStan's `Type::describe(VerbosityLevel::typeOnly())` for the types Mago's analyser gives, as the report rules
-//! ported from phpstan-strict-rules print them in their messages (`Variable method call on %s.`).
-//!
-//! A union is described as PHPStan's `UnionType` describes itself at that level: each member generalized (a literal
-//! `'a'` is `string`, `1` is `int`, an enum case stays `Enum::Case`, `true` and `false` stay, both are `bool`), the
-//! arrays merged into one as `TypeCombinator::union` merges them, the same descriptions merged, sorted as
-//! `UnionTypeHelper::sortTypes` sorts them (`null` last, `true` and `false` before it, the rest by `strcasecmp` of their
-//! descriptions), and joined with `|`; anything with `mixed` in it is `mixed`. An object is its class name, with its
-//! type arguments in `<>` when it has them, a class the codebase does not know too; `$this` is `$this(Class)` and
-//! `static` is `static(Class)`.
-
 use mago_codex::ttype::TType;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -18,9 +7,6 @@ use mago_codex::ttype::atomic::reference::TReference;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::union::TUnion;
 
-/// One member of a union, generalized, as the parts of the union it stands for (`array-key` is `int` and `string`); an
-/// intersection (`A&B`) is one part, its members described and sorted as `IntersectionType::describe` sorts them
-/// (`UnionTypeHelper::sortTypes`).
 fn atomic(t: &TAtomic) -> Vec<String> {
     let Some(others) = t.get_intersection_types().filter(|o| !o.is_empty()) else {
         return single(t);
@@ -34,11 +20,9 @@ fn atomic(t: &TAtomic) -> Vec<String> {
 fn single(t: &TAtomic) -> Vec<String> {
     let one = |s: &str| vec![s.to_string()];
     match t {
-        // The value of a call of a `void` function is `null` in PHPStan's scope.
         TAtomic::Null | TAtomic::Void => one("null"),
         TAtomic::Never => one("never"),
         TAtomic::Scalar(s) => match s {
-            // `ConstantBooleanType` is not generalized.
             TScalar::Bool(b) if b.is_true() => one("true"),
             TScalar::Bool(b) if b.is_false() => one("false"),
             TScalar::Bool(_) => one("bool"),
@@ -46,7 +30,6 @@ fn single(t: &TAtomic) -> Vec<String> {
             TScalar::Float(_) => one("float"),
             TScalar::String(_) | TScalar::ClassLikeString(_) => one("string"),
             TScalar::ArrayKey => vec!["int".into(), "string".into()],
-            // `numeric-string` is `string` once generalized.
             TScalar::Numeric => vec!["float".into(), "int".into(), "string".into()],
             TScalar::Generic => vec!["bool".into(), "float".into(), "int".into(), "string".into()],
         },
@@ -71,21 +54,16 @@ fn single(t: &TAtomic) -> Vec<String> {
                 vec![name]
             }
         }
-        // An enum case is `EnumCaseObjectType`, `Enum::Case`.
         TAtomic::Object(TObject::Enum(e)) => match &e.case {
             Some(case) => vec![format!("{}::{case}", e.name)],
             None => vec![e.name.to_string()],
         },
         TAtomic::Object(_) => one("object"),
-        // A class the codebase does not know stays a reference; PHPStan's `ObjectType` describes it by its name.
         TAtomic::Reference(TReference::Symbol { name, .. }) => vec![name.to_string()],
         _ => one("mixed"),
     }
 }
 
-/// An array as PHPStan sees it: its keys (`None` for any key, `array-key`), its values (`None` for `mixed`), whether it
-/// is a `list<V>`, whether it is empty (`array{}`), and for a constant list (`array{1, 2}`) its required and total
-/// number of items.
 struct Array {
     keys: Option<Vec<String>>,
     values: Option<Vec<String>>,
@@ -109,15 +87,12 @@ impl Array {
                         shape: None,
                     };
                 };
-                // A list of known items is a constant array, `array<int, V>`.
                 keys.push("int".into());
                 for (_, value) in known.values() {
                     values.extend(parts(value));
                 }
                 let required = known.values().filter(|(optional, _)| !optional).count();
                 shape = Some((required, known.len()));
-                // Mago folds `array{}` into a list that may be empty; PHPStan keeps it apart, which generalizes the
-                // list.
                 if !l.non_empty {
                     shape = None;
                     list = true;
@@ -159,7 +134,6 @@ impl Array {
         }
     }
 
-    /// `ConstantArrayType::generalize`, as a union generalizes its members: a constant list is a `list<V>`.
     fn generalize(self) -> Array {
         Array {
             list: self.list || self.shape.is_some(),
@@ -168,11 +142,7 @@ impl Array {
         }
     }
 
-    /// `TypeCombinator::union` of two arrays: the keys and values joined, a list while both are. `array{}` stays apart
-    /// (`reduceArrays`), so the union generalizes the other; two constant lists merge into one, the items past the
-    /// shorter one optional.
     fn merge(self, other: Array) -> Array {
-        // An empty one second.
         let mut pair = [self, other];
         pair.sort_by_key(|a| a.empty);
         let [this, other] = pair;
@@ -194,13 +164,11 @@ impl Array {
         }
     }
 
-    /// `ArrayType::describe`: `array` for any key and value, `array<V>` for any key, `array<K, V>` else, `list<V>`.
     fn print(self) -> String {
         if self.empty {
             return "array".into();
         }
         let values = self.values.map_or("mixed".into(), join);
-        // `shouldBeDescribedAsAList`: a constant list with more than one optional item (they are its last ones).
         let list = self.list
             || self
                 .shape
@@ -214,7 +182,6 @@ impl Array {
     }
 }
 
-/// A union of `parts` as `UnionType::describe` prints it.
 fn join(mut parts: Vec<String>) -> String {
     let mut seen: Vec<String> = Vec::new();
     parts.retain(|p| {
@@ -233,7 +200,6 @@ fn join(mut parts: Vec<String>) -> String {
             parts.push("bool".into());
         }
     }
-    // `null` last, a `true` or `false` (`ConstantBooleanType`) before it, the rest by `strcasecmp`.
     let rank = |p: &str| (p == "null", p == "true" || p == "false");
     parts.sort_by(|a, b| {
         (rank(a).cmp(&rank(b)))
@@ -243,8 +209,6 @@ fn join(mut parts: Vec<String>) -> String {
     parts.join("|")
 }
 
-/// `$type->describe(VerbosityLevel::typeOnly())` for `t`. A lone `array-key` is the benevolent union
-/// `(int|string)`.
 pub(crate) fn describe(t: &TUnion) -> String {
     if let [TAtomic::Scalar(TScalar::ArrayKey)] = t.types.as_ref() {
         return "(int|string)".into();
@@ -266,7 +230,6 @@ pub(crate) fn describe(t: &TUnion) -> String {
             _ => parts.extend(atomic(a)),
         }
     }
-    // Beside other types the union generalizes the array.
     let others = !parts.is_empty();
     parts.extend(arrays.map(|a| if others { a.generalize() } else { a }.print()));
     join(parts)

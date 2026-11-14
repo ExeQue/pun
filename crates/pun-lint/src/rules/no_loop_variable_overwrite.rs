@@ -1,9 +1,3 @@
-//! `lint/control-flow/no-loop-variable-overwrite`, ported from phpstan-strict-rules 2.0.12's
-//! `OverwriteVariablesWithForeachRule` (identifiers `foreach.keyOverwrite` and `foreach.valueOverwrite`).
-//!
-//! A `foreach` key or value variable (or one in a destructuring value) is reported when the scope already has it
-//! for sure, read from the syntax as `no-for-init-overwrite` reads it.
-
 use mago_syntax::cst::{
     Array, ArrayElement, Expression, ForeachTarget, List, Node, NodeKind, UnaryPrefixOperator,
     Variable,
@@ -43,7 +37,6 @@ impl Rule for NoLoopVariableOverwrite {
     }
 }
 
-/// `checkValueVar()`: the value variable, or the items of a `list()` or `[]` destructuring.
 fn check_value_var(
     foreach: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -64,7 +57,6 @@ fn check_value_var(
     }
 }
 
-/// A key or value variable (`&$value` too) the scope already has.
 fn check(
     foreach: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],

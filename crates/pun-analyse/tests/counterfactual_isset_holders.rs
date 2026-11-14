@@ -1,5 +1,3 @@
-//! Non-true isset invalidates a holder, rather than asserting that it is absent.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};

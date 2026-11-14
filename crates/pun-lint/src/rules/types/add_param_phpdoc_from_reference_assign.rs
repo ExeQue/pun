@@ -1,7 +1,3 @@
-//! `lint/types/add-param-phpdoc-from-reference-assign`, ported from Rector 2.8.4's
-//! `AddParamArrayDocblockFromAssignsParamToParamReferenceRector` (rules/TypeDeclarationDocblocks/Rector/ClassMethod):
-//! a by-reference parameter declared `array` that a private method assigns one item to gets that item's type as `T[]`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_phpstan::types::{Type, mixed};
 
@@ -31,8 +27,6 @@ impl Rule for AddParamPhpdocFromReferenceAssign {
         let Some(f) = FunctionLike::of(node).filter(|f| f.method.is_some()) else {
             return;
         };
-        // a by-ref param type is invariant in PHPStan; narrowing it below array breaks callers passing a plain array,
-        // which are invisible for a non-private method
         if !matches!(node, Node::Method(m) if m.modifiers.iter().any(|m| matches!(m, mago_syntax::cst::Modifier::Private(_))))
         {
             return;
@@ -50,7 +44,6 @@ impl Rule for AddParamPhpdocFromReferenceAssign {
             if is_useful_array_tag(info.param_tag(&name).map(|t| &t.ty)) {
                 continue;
             }
-            // `ArrayDimFetchFinder::findDimFetchAssignToVariableName()`
             let exprs: Vec<&Expression<'_>> = assignments(node)
                 .into_iter()
                 .filter(|a| match a.lhs {
@@ -60,11 +53,9 @@ impl Rule for AddParamPhpdocFromReferenceAssign {
                 })
                 .map(|a| a.rhs)
                 .collect();
-            // to kick off with one
             let [expr] = exprs.as_slice() else {
                 continue;
             };
-            // (a type Pun does not map, such as a closure's, adds nothing)
             if let Some(t) = expr_type(ctx, &scope, expr)
                 && decorate_param(
                     &mut info,

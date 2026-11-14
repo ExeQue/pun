@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\PhpdocToPropertyTypeFixer`.
 use crate::analyzers::abstract_phpdoc_to_type_declaration_fixer::{
     Common, Options, Scope, TypeInfo, create_type_declaration_tokens, doc_comment,
     get_types_to_exclude, is_valid_syntax, tokens_from_raw_type,
@@ -26,7 +25,6 @@ fn is_skipped_type(type_: &[u8]) -> bool {
     matches!(type_, b"resource" | b"null")
 }
 
-/// `TYPE_CHECK_TEMPLATE`.
 fn type_check_code(type_: &[u8]) -> String {
     format!(
         "<?php class A {{ private {} $b; }}",
@@ -34,8 +32,6 @@ fn type_check_code(type_: &[u8]) -> String {
     )
 }
 
-/// `findNextUntypedPropertiesDeclaration`: the property names in order with their indices (a repeated name keeps its
-/// first place and its last index, as a PHP array).
 fn find_next_untyped_properties_declaration(
     tokens: &Tokens,
     mut index: usize,
@@ -64,7 +60,6 @@ fn find_next_untyped_properties_declaration(
 }
 
 impl PhpdocToPropertyTypeFixer {
-    /// `fixClass`.
     fn fix_class(
         &self,
         common: &Common,
@@ -127,7 +122,6 @@ impl PhpdocToPropertyTypeFixer {
                 type_info.is_nullable,
             );
             new_tokens.push(Token::new(T_WHITESPACE, " "));
-            // `$tokensToInsert += $this->fixClass(...)`: an index already planned keeps its tokens.
             tokens_to_insert
                 .entry(property_indices[0].1)
                 .or_insert(new_tokens);
@@ -136,7 +130,6 @@ impl PhpdocToPropertyTypeFixer {
     }
 }
 
-/// `resolveApplicableType`.
 fn resolve_applicable_type(
     common: &Common,
     property_indices: &[(Vec<u8>, usize)],

@@ -1,5 +1,3 @@
-//! TemplateTypeTrait::equals() at PHPStan 2.3.1 cb3b7e99 ignores the inference strategy, not template identity.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{Accessory, Level, Template, Type, intersect, is_super_type_of, union};
 use serde_json::Value;
@@ -29,7 +27,6 @@ fn template_identity_ignores_strategy_but_keeps_scope_name_bound_and_default() {
         );
         assert_eq!(base == other, row["equals"].as_bool().unwrap(), "{row}");
         if row["equals"].as_bool().unwrap() {
-            // A generic's invariant arguments must not reject the same template after toArgument().
             let object = |t| Type::Object("ArrayObject".into(), vec![Type::Int, t], false);
             assert_eq!(
                 format!(
@@ -42,7 +39,6 @@ fn template_identity_ignores_strategy_but_keeps_scope_name_bound_and_default() {
     }
 }
 
-/// PHPStan 2.3.1's TemplateTypeHelper::toArgument() preserves this change through IntersectionType::traverse().
 #[test]
 fn traversal_retains_strategy_changes_even_when_template_identity_is_equal() {
     let array = |argument| {
@@ -69,8 +65,6 @@ fn traversal_retains_strategy_changes_even_when_template_identity_is_equal() {
     );
 }
 
-/// TypeCombinator uses instanceof ArrayType/ConstantArrayType/IterableType, including their template subclasses.
-/// Its supertype reductions and shape mutations retain identity, but rebuilding intersected arrays does not.
 #[test]
 fn array_intersections_rebuild_only_when_the_bound_requires_it() {
     let rows: Value =

@@ -1,13 +1,3 @@
-//! `lint/types/add-param-type-property`, ported from Rector 2.8.4's `AddParamTypeFromPropertyTypeRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with `PropertyFetchAnalyzer::isVariableAssignToThisPropertyFetch` and
-//! `ParamTypeAddGuard`: an untyped parameter of a method that the method assigns to properties of its own class
-//! (`$this->name = $name`) gets the union of those properties' native types, unless the method overrides a parent's.
-//!
-//!
-//! Inside `if (! $this->name)`, PHPStan's native type of an untyped property is its falsy values (`0|0.0|''|'0'|
-//! array{}|false|null`), which Rector generalizes to `array|bool|int|float|string|null` (PHPStan 2.3's
-//! `NativePhpTypeNodeHelper::union()` puts `null` last); inside `if ($this->name === null)` it is `null`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
@@ -24,10 +14,8 @@ use crate::rules::class_method::qualified;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::TYPED_PROPERTIES`.
 const TYPED_PROPERTIES: u32 = 70400;
 
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
 
 pub struct AddParamTypeProperty;
@@ -100,7 +88,6 @@ impl Rule for AddParamTypeProperty {
     }
 }
 
-/// The name the codebase knows the class of `ancestors` by.
 fn own_class(facts: &Facts, ancestors: &[Node<'_, '_>]) -> Option<String> {
     let at = ancestors.iter().rposition(|a| {
         matches!(
@@ -111,30 +98,22 @@ fn own_class(facts: &Facts, ancestors: &[Node<'_, '_>]) -> Option<String> {
     match ancestors[at] {
         Node::AnonymousClass(c) => Some(facts.anonymous_class_name(mago_span::HasSpan::span(c))),
         Node::Class(c) => Some(qualified(&ancestors[..at], c.name.value)),
-        // a trait's or an enum's method: Rector adds no type (checked with Rector 2.8.4)
         _ => None,
     }
 }
 
-/// PHPStan's native type of a property `$name` is assigned to.
 enum PropertyType {
-    /// The declared type, `None` for `mixed`.
     Native(Option<TUnion>),
-    /// An untyped property's falsy values, inside `if (! $this->property)`.
     Falsy,
-    /// An untyped property inside `if ($this->property === null)`.
     Null,
 }
 
-/// The native types of the properties `$name` is assigned to in `body`, outside nested classes and functions
-/// (closures are looked into); `None` when it is assigned to none.
 fn property_types(
     facts: &Facts,
     class: &str,
     body: Node<'_, '_>,
     name: &[u8],
 ) -> Option<Vec<PropertyType>> {
-    // the statements `if (! $this->property)` runs, by property
     let mut falsy: Vec<(Vec<u8>, Span)> = Vec::new();
     let mut null: Vec<(Vec<u8>, Span)> = Vec::new();
     walk(body, &mut |node| {
@@ -199,7 +178,6 @@ fn property_types(
     (!types.is_empty()).then_some(types)
 }
 
-/// The property name (`$name`, as the codebase keys it) of `$this->name`, `self::$name` or `static::$name`.
 fn local_property(expr: &Expression<'_>) -> Option<Vec<u8>> {
     match unparenthesize(expr) {
         Expression::Access(mago_syntax::cst::Access::Property(fetch)) if matches!(unparenthesize(fetch.object), Expression::Variable(Variable::Direct(v)) if v.name == b"$this") => {
@@ -220,8 +198,6 @@ fn local_property(expr: &Expression<'_>) -> Option<Vec<u8>> {
     }
 }
 
-/// `createMixedPassedOrUnionType` of the property types, as a parameter type; none when one is `mixed`, untyped or
-/// declared so (Rector writes no type for a `mixed` property, checked with Rector 2.8.4).
 fn declaration(facts: &Facts, types: &[PropertyType], php_version: u32) -> Option<String> {
     if types.iter().all(|t| matches!(t, PropertyType::Falsy)) {
         return (php_version >= UNION_TYPES)
@@ -251,7 +227,6 @@ fn declaration(facts: &Facts, types: &[PropertyType], php_version: u32) -> Optio
     param_declaration(&union, &facts.codebase, php_version)
 }
 
-/// Call `f` on every node under `node`, not entering classes and named functions.
 fn walk<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Node<'ast, 'arena>)) {
     node.visit_children(|child| match child {
         Node::Class(_)
@@ -267,8 +242,6 @@ fn walk<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Node<'ast, 'ar
     });
 }
 
-/// `ParamTypeAddGuard::isLegal`: the variable is not assigned with `=`, not in an `if` condition and not in a
-/// ternary, anywhere in the body.
 pub(crate) fn is_legal(body: Node<'_, '_>, name: &[u8]) -> bool {
     fn has_variable(node: Node<'_, '_>, name: &[u8]) -> bool {
         crate::rules::side_effect::any_node(

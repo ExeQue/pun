@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocNoAliasTagFixer` (an AbstractProxyFixer over general_phpdoc_tag_rename).
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::general_phpdoc_tag_rename::GeneralPhpdocTagRenameFixer;
 use anyhow::{Result, anyhow};
@@ -21,14 +20,11 @@ impl Fixer for PhpdocNoAliasTagFixer {
         "phpdoc_no_alias_tag"
     }
     fn priority(&self) -> i32 {
-        // AbstractProxyFixer: the proxied general_phpdoc_tag_rename's priority.
         self.proxy.priority()
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let r = resolve(self.name(), options, &["replacements"])?;
-        // `array<string, string>`, which the resolver checks as `string[]`.
         r.check_types("replacements", &["string[]"])?;
-        // Future::getV4OrV3(['const' => 'var'], []) + [...]: Pint runs without future mode.
         let replacements = r.get("replacements").cloned().unwrap_or_else(|| {
             json!({
                 "property-read": "property",
@@ -37,7 +33,6 @@ impl Fixer for PhpdocNoAliasTagFixer {
                 "link": "see",
             })
         });
-        // configurePostNormalisation: re-label the proxied fixer's exception (`Preg::replace('/^\[.+?\] /', '', ...)`).
         self.proxy
             .configure(&json!({
                 "fix_annotation": true,
@@ -65,7 +60,6 @@ impl Fixer for PhpdocNoAliasTagFixer {
 mod tests {
     use super::*;
 
-    /// PhpdocNoAliasTagFixerTest::provideInvalidConfigurationCases: the messages the real fixer's configure() throws.
     #[test]
     fn invalid_configuration() {
         let raw = std::fs::read(concat!(

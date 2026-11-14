@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\IncrementStyleFixer`.
 use crate::analyzers::abstract_increment_operator_fixer::find_start;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;

@@ -1,9 +1,3 @@
-//! `lint/dead-code/no-false-ternary`, ported from Rector 2.8.4's `TernaryToBooleanOrFalseToBooleanAndRector`
-//! (rules/DeadCode/Rector/Ternary).
-//!
-//! `cond ? $bool : false` is `cond && $bool` when `$bool` is a `bool` (read from the syntax, `syntax_types::is_bool`)
-//! other than `true`.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
@@ -69,8 +63,6 @@ impl Rule for NoFalseTernary {
     }
 }
 
-/// Whether php-parser's printer puts `expr` in parentheses as an operand of `&&`: it binds looser (or, on the
-/// right of the left-associative `&&`, the same).
 fn below_and(expr: &Expression<'_>, right: bool) -> bool {
     match expr {
         Expression::Binary(b) => match b.operator {

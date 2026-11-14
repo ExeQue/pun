@@ -1,9 +1,3 @@
-//! `lint/functions/require-strict-array-search`, ported from Rector 2.8.4's `StrictArraySearchRector`
-//! (rules/CodingStyle/Rector/FuncCall).
-//!
-//! `array_search($needle, $haystack)` gets `true` as its third argument. Rector adds it after named arguments too,
-//! which PHP rejects (a positional argument after a named one); Pun leaves such a call alone.
-
 use mago_syntax::cst::{Argument, Node, NodeKind};
 use pun_problem::{Fix, Safety};
 

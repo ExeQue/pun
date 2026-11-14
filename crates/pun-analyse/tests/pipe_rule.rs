@@ -1,5 +1,3 @@
-//! PipeOperatorRule through the public analyser, using PHPStan 2.3.1 oracle diagnostics.
-
 use std::path::Path;
 
 use pun_analyse::{IDENTIFIERS, Project, run};

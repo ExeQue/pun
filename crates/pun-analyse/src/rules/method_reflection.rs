@@ -1,6 +1,3 @@
-//! The method reflection consumed by CallMethodsRule and its named-argument collector. Leaf lookup stays in
-//! receivers; composition happens before selecting an acceptor in the call's per-name scope.
-
 use mago_codex::visibility::Visibility;
 use pun_phpstan::types::{Level, Tri, Type};
 
@@ -11,14 +8,11 @@ pub(super) struct Method<'a> {
     pub display: String,
     pub name: String,
     pub variants: params::Variants,
-    /// Resolved class context for structural parameter descriptions, not a call-template inference result.
     variant_types: Vec<Vec<Type>>,
     pub accepts: bool,
     pub private: bool,
     pub public: bool,
     pub final_class: bool,
-    /// Combined parameter types, template maps and return intersections are not yet a semantic signature.
-    /// Both consumers can bind names/counts, but must not type-check against an arbitrary surviving leaf.
     pub compound: bool,
 }
 
@@ -39,7 +33,6 @@ impl<'a> Method<'a> {
         let (display, names, args) = context(c, receiver, &declaring);
         let mut variants = declaring.variants();
         let scope = format!("class {}", declaring.declaring_name());
-        // `static` in a PHPDoc type resolves against the class reflection (a nested one too)
         let variant_types = declared::with_classes(c, || {
             variants
                 .all
@@ -74,7 +67,6 @@ impl<'a> Method<'a> {
         }
     }
 
-    /// UnionTypeMethodReflection: first declaring class, every original variant, restrictive visibility/policy.
     pub(super) fn union(c: &Checker, mut methods: Vec<Self>, name: &[u8]) -> Option<Self> {
         let mut combined = params::combine(
             &methods
@@ -120,7 +112,6 @@ impl<'a> Method<'a> {
         Some(first)
     }
 
-    /// IntersectionTypeMethodReflection::getMethodWithMostParameters(): variadic wins, then width, first tie.
     pub(super) fn intersection(mut methods: Vec<Self>, name: &[u8]) -> Option<Self> {
         if methods.len() == 1 {
             return methods.pop();
@@ -166,7 +157,6 @@ impl<'a> Method<'a> {
         }
     }
 
-    /// FunctionCallParametersCheck receives these separately from the combined acceptor in PHPStan.
     pub(super) fn select(
         &self,
         c: &Checker,
@@ -184,8 +174,6 @@ impl<'a> Method<'a> {
     }
 }
 
-/// `CalledOnTypeUnresolvedMethodPrototypeReflection`: a method called on an object resolves its `static` and
-/// `$this` types to that object; called on `static`/`$this` they stay late.
 pub(super) fn called_on(t: &Type, receiver: &Type) -> Type {
     match t {
         Type::Static(..) | Type::This(_) if matches!(receiver, Type::Object(..)) => {
@@ -195,8 +183,6 @@ pub(super) fn called_on(t: &Type, receiver: &Type) -> Type {
     }
 }
 
-/// ObjectType resolves the declaring ancestor's class template map before composing reflections. This display
-/// keeps supplied generic arguments (including through mixins), or the declaring class's defaults/bounds.
 fn context(
     c: &Checker,
     receiver: &Type,
@@ -216,7 +202,6 @@ fn context(
                 .unwrap_or_default(),
             _ => Vec::new(),
         };
-        // The real declaring reflection already owns its templates; do not invent a fallback class lookup.
         let templates: Vec<_> = match method {
             members::Method::User { declaring, .. } => declared::class_templates(c, declaring)
                 .into_iter()

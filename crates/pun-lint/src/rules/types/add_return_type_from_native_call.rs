@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-native-call`, ported from Rector 2.8.4's `ReturnTypeFromStrictNativeCallRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod, with `AddReturnTypeFromStrictNativeCall`,
-//! `StrictNativeFunctionReturnTypeAnalyzer` and `ExclusiveNativeCallLikeReturnMatcher`): a function or method whose
-//! every `return` returns a call of one of PHP's own functions or methods gets the union of the calls' types.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 
@@ -55,7 +50,6 @@ impl Rule for AddReturnTypeFromNativeCall {
         }
         let mut types: Vec<TAtomic> = Vec::new();
         for value in returns.iter().filter_map(|r| r.value) {
-            // `ExclusiveNativeCallLikeReturnMatcher`: a function, method or static method call of a built-in
             let target = match value {
                 Expression::Call(Call::Function(c)) => Target::Function(c.function),
                 Expression::Call(Call::Method(c)) => Target::Method(c.object, &c.method),
@@ -65,7 +59,6 @@ impl Rule for AddReturnTypeFromNativeCall {
             if !callee(&facts, target, ancestors).is_some_and(|m| m.flags.is_built_in()) {
                 return;
             }
-            // `NodeTypeResolver::getType`: the call's type with the docblocks read
             let Some(t) = facts.full_type(node_span(value)) else {
                 return;
             };

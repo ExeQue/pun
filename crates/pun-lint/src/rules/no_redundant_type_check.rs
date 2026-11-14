@@ -1,11 +1,3 @@
-//! `lint/dead-code/no-redundant-type-check`, ported from Rector 2.8.4's `RemoveRedundantTypeCheckRector`
-//! (rules/DeadCode/Rector/BinaryOp).
-//!
-//! `$value === null || !is_string($value)` on a `?string` is `$value === null`: without `null` the value is always a
-//! string. `$items && is_array($items)` on an array is `$items`. The check must be `is_string`, `is_int`, `is_float`,
-//! `is_bool`, `is_array`, `is_object` or an alias, written in lower case, with the variable as its only argument, and
-//! the variable's native type must make it always true. A variable `isNonTypedFromParam` doubts stays.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
@@ -57,7 +49,6 @@ impl Rule for NoRedundantTypeCheck {
     }
 }
 
-/// Handles "null === $value || ! is_string($value)", where is_string() can never fail once null is excluded
 fn refactor_boolean_or(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -70,7 +61,6 @@ fn refactor_boolean_or(
     if !matches!(identical.operator, BinaryOperator::Identical(_)) {
         return false;
     }
-    // `matchNullComparedExpr`
     let compared = if is_constant(identical.lhs, "null") {
         identical.rhs
     } else if is_constant(identical.rhs, "null") {
@@ -101,7 +91,6 @@ fn refactor_boolean_or(
     !nulls.is_empty() && is_always_matching_type(name, &rest)
 }
 
-/// Handles "$items && is_array($items)", where is_array() can never fail on an array type
 fn refactor_boolean_and(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -118,7 +107,6 @@ fn refactor_boolean_and(
     if native_type(&facts, ancestors, left).is_none() {
         return false;
     }
-    // the type is already narrowed by the truthy check on the left
     facts
         .native_type(node_span(argument))
         .is_some_and(|checked| {
@@ -126,8 +114,6 @@ fn refactor_boolean_and(
         })
 }
 
-/// The native type of `variable`, unless `isNonTypedFromParam` doubts it (the docblock type can be wider than the
-/// real value).
 fn native_type<'f>(
     facts: &'f Facts,
     ancestors: &[Node<'_, '_>],
@@ -135,7 +121,6 @@ fn native_type<'f>(
 ) -> Option<&'f [TAtomic]> {
     let span = node_span(variable);
     let native = facts.native_type(span)?;
-    // `hasVariableType()` must be a yes; a union native type must equal the type, any other must contain it
     let doubted = native.possibly_undefined()
         || facts.full_type(span).is_some_and(|full| {
             if native.types.len() > 1 {
@@ -149,8 +134,6 @@ fn native_type<'f>(
     (!doubted).then_some(native.types.as_ref())
 }
 
-/// `matchTypeCheckFuncCall`: the name of the function in "is_<type>($expectedExpr)", a call with a single argument,
-/// and that argument.
 fn match_type_check_func_call<'a>(
     ctx: &Context<'_>,
     expr: &'a Expression<'a>,
@@ -169,7 +152,6 @@ fn match_type_check_func_call<'a>(
     Some((function_name(call)?, unparenthesize(argument.value())))
 }
 
-/// `getName()` of a call: the name as written, without a leading backslash.
 fn function_name<'a>(call: &'a FunctionCall<'a>) -> Option<&'a [u8]> {
     match call.function {
         Expression::Identifier(Identifier::Local(id)) => Some(id.value),
@@ -178,7 +160,6 @@ fn function_name<'a>(call: &'a FunctionCall<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `isAlwaysMatchingType`: PHPStan's `isString()`, `isInteger()` and so on say yes for every part of the type.
 fn is_always_matching_type(name: &[u8], types: &[&TAtomic]) -> bool {
     let matches: fn(&TAtomic) -> bool = match name {
         b"is_string" => |a| {

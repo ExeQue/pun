@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocListTypeFixer`.
 use crate::analyzers::abstract_phpdoc_types_fixer as base;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;

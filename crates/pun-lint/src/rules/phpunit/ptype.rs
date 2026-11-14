@@ -1,6 +1,3 @@
-//! PHPStan's type classes as rector-phpunit's rules test them (`$type instanceof IntegerType`, `->isString()->yes()`),
-//! read from the types Mago gives an expression ([`facts`]).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -13,47 +10,26 @@ use crate::Context;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 
-/// An array key of a `ConstantArrayType`.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Key {
     Int(i64),
     Str(String),
 }
 
-/// The PHPStan class of a type.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PType {
-    /// `IntegerType` (a `ConstantIntegerType` when `constant`).
-    Integer {
-        constant: bool,
-    },
-    /// `FloatType`.
-    Float {
-        constant: bool,
-    },
-    /// `StringType`, with the value of a `ConstantStringType`.
-    String {
-        constant: Option<String>,
-    },
-    /// `BooleanType`.
+    Integer { constant: bool },
+    Float { constant: bool },
+    String { constant: Option<String> },
     Boolean,
-    /// `ConstantBooleanType`.
     ConstantBoolean,
-    /// `ConstantArrayType`: an array whose keys are all known, in order, with their values' types.
-    ConstantArray {
-        keys: Vec<Key>,
-        values: Vec<PType>,
-    },
-    /// `ArrayType`.
+    ConstantArray { keys: Vec<Key>, values: Vec<PType> },
     Array,
-    /// `ObjectType` (an enum case too), by class name.
     Object(String),
     Null,
     Mixed,
     Never,
-    /// `UnionType`.
     Union,
-    /// Any other type.
     Other,
 }
 
@@ -71,13 +47,11 @@ impl PType {
     }
 }
 
-/// The PHPStan class of a Mago type.
 pub(crate) fn of(t: &TUnion) -> PType {
     let types: Vec<&TAtomic> = t.types.iter().collect();
     match types.as_slice() {
         [] => PType::Never,
         [atomic] => atomic_of(atomic),
-        // distinct bools: `bool`, or `true` and `false`, which PHPStan joins into a `BooleanType`
         many if many
             .iter()
             .all(|a| matches!(a, TAtomic::Scalar(s) if s.is_bool())) =>
@@ -88,7 +62,6 @@ pub(crate) fn of(t: &TUnion) -> PType {
     }
 }
 
-/// `TypeCombinator::removeNull` then [`of`].
 pub(crate) fn without_null(t: &TUnion) -> PType {
     let mut kept = t.clone();
     let types: Vec<TAtomic> = t
@@ -119,7 +92,6 @@ fn atomic_of(atomic: &TAtomic) -> PType {
         TAtomic::Scalar(TScalar::Bool(_)) => PType::ConstantBoolean,
         TAtomic::Array(TArray::Keyed(k)) if k.parameters.is_none() => {
             let (mut keys, mut values) = (Vec::new(), Vec::new());
-            // a native type's keys are expanded: an integer or a string, never a class constant
             for (key, (_, value)) in k.known_items.iter().flat_map(|m| m.iter()) {
                 keys.push(match key {
                     ArrayKey::Integer(i) => Key::Int(*i),
@@ -140,7 +112,6 @@ fn atomic_of(atomic: &TAtomic) -> PType {
             PType::ConstantArray { keys, values }
         }
         TAtomic::Array(_) => PType::Array,
-        // `getNativeType()`: an anonymous class's object is an `ObjectWithoutClassType`
         TAtomic::Object(TObject::Named(n))
             if n.name.as_bytes().starts_with(b"{anonymous-class:") =>
         {
@@ -157,8 +128,6 @@ fn atomic_of(atomic: &TAtomic) -> PType {
     }
 }
 
-/// The type of a literal, from its syntax (Mago types no expression in code after a `never` call, where PHPStan
-/// still does).
 fn literal(expr: &Expression<'_>) -> Option<PType> {
     Some(match unparenthesize(expr) {
         Expression::Literal(Literal::Integer(_)) => PType::Integer { constant: true },
@@ -172,7 +141,6 @@ fn literal(expr: &Expression<'_>) -> Option<PType> {
     })
 }
 
-/// `NodeTypeResolver::getNativeType`, as a PHPStan class; `None` where Mago has no type.
 pub(crate) fn native(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<PType> {
     literal(expr).or_else(|| {
         facts(ctx)
@@ -181,9 +149,7 @@ pub(crate) fn native(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<PType> 
     })
 }
 
-/// [`native`] with `null` removed from the type.
 pub(crate) fn native_without_null(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<PType> {
-    // `TypeCombinator::removeNull(null)` is `never`
     literal(expr)
         .map(|t| if t == PType::Null { PType::Never } else { t })
         .or_else(|| {
@@ -193,7 +159,6 @@ pub(crate) fn native_without_null(ctx: &Context<'_>, expr: &Expression<'_>) -> O
         })
 }
 
-/// `$type->isInteger()->yes()` on the native type of `expr` without `null`: every part is an integer.
 pub(crate) fn native_is_integer(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     native_parts(
         ctx,
@@ -202,7 +167,6 @@ pub(crate) fn native_is_integer(ctx: &Context<'_>, expr: &Expression<'_>) -> boo
     )
 }
 
-/// `$type->isString()->yes()` on the native type of `expr` without `null`: every part is a string.
 pub(crate) fn native_is_string(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     native_parts(
         ctx,

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\DateTimeCreateFromFormatCallFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
 use pun_format::Fixer;
@@ -128,7 +127,7 @@ fn get_first_argument_token_index(
             .get_next_meaningful_token(argument_start_index)
             .is_some_and(|n| n <= argument_end_index)
     {
-        return None; // argument is not a simple single string
+        return None;
     }
     tokens[argument_start_index]
         .is_kind(T_CONSTANT_ENCAPSED_STRING)

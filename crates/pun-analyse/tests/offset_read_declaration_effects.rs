@@ -1,5 +1,3 @@
-//! Full-record offset-read effects, including receivers which are not arrays or ArrayAccess.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 
@@ -13,7 +11,6 @@ fn offset_read_declaration_effects_match_complete_phpstan_records() {
     .unwrap();
     let mut failures = Vec::new();
     for (file, levels) in [
-        // Strict mixed/union offset legality is a separate, incomplete rule producer at level 10.
         ("values", [0, 4].as_slice()),
         ("objects", [0, 4].as_slice()),
         ("unknown", [0, 4].as_slice()),

@@ -1,4 +1,3 @@
-//! Complete public PHPStan diagnostics retain written trait-alias spelling independently of lookup casing.
 use std::path::Path;
 
 use pun_analyse::{Project, run};

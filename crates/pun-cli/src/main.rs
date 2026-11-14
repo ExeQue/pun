@@ -1,5 +1,3 @@
-//! `pun` binary. `pun format` takes Pint's flags and keeps its exit codes and machine formats; the human output is
-//! Pun's own (crate::render). Every command reads pun.toml.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -51,7 +49,6 @@ static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[derive(Parser)]
 #[command(
     name = "pun",
-    // Composer's shim runs a cached `pun-<version>-<target>` file; the usage line says `pun` all the same.
     bin_name = "pun",
     version,
     about = "Pun: format, lint and analyse PHP in one binary"
@@ -278,7 +275,6 @@ pub(crate) struct PunArgs {
 pub(crate) const STACK: usize = 36 * 1024 * 1024;
 
 fn main() -> ExitCode {
-    // `pun analyse` parses and analyses on the calling thread too, so the command runs on a thread with that stack.
     let run = std::thread::Builder::new()
         .name("main".into())
         .stack_size(STACK)
@@ -291,7 +287,6 @@ fn main() -> ExitCode {
 fn run() -> ExitCode {
     #[cfg(feature = "pprof")]
     let sampler = sampler::start();
-    // Under the name `punx`, the binary is `pun x`.
     let mut args: Vec<std::ffi::OsString> = std::env::args_os().collect();
     if (args.first().map(std::path::Path::new))
         .and_then(std::path::Path::file_stem)
@@ -327,7 +322,6 @@ fn run() -> ExitCode {
     agent::init(flag, name);
     let github_actions = std::env::var_os("GITHUB_ACTIONS").is_some_and(|v| v == "true");
     let mut cmd = cli.cmd;
-    // Other commands' errors are Pun's own run errors.
     let other = report::Failure {
         pint: false,
         machine: false,
@@ -350,7 +344,6 @@ fn run() -> ExitCode {
         }
         _ => (None, other),
     };
-    // One rayon pool for every pass, capped by `--max-processes` (read like Pint's intval()).
     let threads = max_processes
         .as_deref()
         .map(pun_tokens::php_compat::intval)
@@ -391,7 +384,6 @@ fn run() -> ExitCode {
     if let Some(s) = sampler {
         s.report();
     }
-    // Exit 2: Pun couldn't run (output.md §2).
     ExitCode::from(result.unwrap_or_else(|e| report::fail(e, &failure)))
 }
 
@@ -447,7 +439,6 @@ fn show_config(
     let sources: Vec<String> = (cfg.sources.iter())
         .map(|s| s.strip_prefix(&root).unwrap_or(s).display().to_string())
         .collect();
-    // TOML starts with the files it was resolved from, as a comment.
     let toml = match sources.is_empty() {
         true => toml::to_string(&v)?,
         false => format!(
@@ -457,7 +448,6 @@ fn show_config(
         ),
     };
     if fmt.is_none() && agent::enabled() {
-        // Agent mode: what was loaded in one line on stderr, so stdout stays the TOML (`pun config > file`).
         let detail = [
             format!("preset {}", cfg.preset),
             format!("PHP {}", cfg.php),

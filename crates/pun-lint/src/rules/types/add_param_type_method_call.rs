@@ -1,12 +1,3 @@
-//! `lint/types/add-param-type-method-call`, ported from Rector 2.8.4's `AddMethodCallBasedStrictParamTypeRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with `PrivateMethodFlagger`, `LocalMethodCallFinder`,
-//! `CallTypesResolver::resolveStrictTypesFromCalls` and `ClassMethodParamTypeCompleter`: an untyped parameter of a
-//! method only its own class can call (private, or protected or final in a final class that extends and implements
-//! nothing) gets the union of the native types its class's calls pass at its position.
-//!
-//! Option: `treat-classes-as-final` (default false), Rector's `treatClassesAsFinal()` feature flag: a class that is
-//! not abstract counts as final.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -25,7 +16,6 @@ use crate::rules::mago_helpers::{boolean, configure};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// php-parser's `ClassMethod::$magicNames`.
 const MAGIC_METHODS: [&str; 17] = [
     "__construct",
     "__destruct",
@@ -102,7 +92,6 @@ impl Rule for AddParamTypeMethodCall {
             let modifier = |f: fn(&Modifier<'_>) -> bool| method.modifiers.iter().any(f);
             let private = modifier(|m| matches!(m, Modifier::Private(_)));
             let protected = modifier(|m| matches!(m, Modifier::Protected(_)));
-            // PrivateMethodFlagger::isClassMethodPrivate
             let only_own = private
                 || (modifier(|m| matches!(m, Modifier::Final(_))) && !open)
                 || (is_final && !open && protected);
@@ -149,8 +138,6 @@ impl Rule for AddParamTypeMethodCall {
     }
 }
 
-/// `ClassMethodParamVendorLockResolver::isVendorLocked`: a magic method, or a method that is not private and an
-/// interface of the class declares.
 fn is_vendor_locked(facts: &Facts, class: &str, method: &Method<'_>, private: bool) -> bool {
     let name = String::from_utf8_lossy(method.name.value).to_ascii_lowercase();
     if MAGIC_METHODS.contains(&name.as_str()) {
@@ -172,10 +159,6 @@ fn is_vendor_locked(facts: &Facts, class: &str, method: &Method<'_>, private: bo
         })
 }
 
-/// `LocalMethodCallFinder::match` and `CallTypesResolver::resolveStrictTypesFromCalls`: for each argument position of
-/// the calls of `method` on the class (`$this->method()`, `self::method()`, on any value of the class) in its
-/// methods, the union of the arguments' native types in the order met (literal values made general, arrays one
-/// `array`); `None` at a position where one is `mixed`. `None` for all when a call unpacks an argument.
 fn call_types(
     facts: &Facts,
     scoped: &[Node<'_, '_>],
@@ -235,8 +218,6 @@ fn call_types(
     (!unpacked).then_some(positions)
 }
 
-/// `normalizeType()` and `TypeFactory::uniquateTypes` of a native type's members: `$this` is its class, a class the
-/// codebase does not know is `mixed` (`None`), a literal value its general type.
 fn strict_types(facts: &Facts, types: &[TAtomic]) -> Option<Vec<TAtomic>> {
     let mut out = Vec::new();
     for t in types {
@@ -260,8 +241,6 @@ fn strict_types(facts: &Facts, types: &[TAtomic]) -> Option<Vec<TAtomic>> {
     (!out.is_empty()).then_some(out)
 }
 
-/// Add `atomic` unless an equal type is in already: an object of the same class, or an array (`unwrapConstantArrayTypes`
-/// makes every array an `array`).
 pub(super) fn push_unique(types: &mut Vec<TAtomic>, atomic: TAtomic) {
     let class = |a: &TAtomic| match a {
         TAtomic::Object(TObject::Named(n)) => Some(n.name.as_bytes().to_ascii_lowercase()),
@@ -277,7 +256,6 @@ pub(super) fn push_unique(types: &mut Vec<TAtomic>, atomic: TAtomic) {
     }
 }
 
-/// `ClassNameFromObjectTypeResolver::resolve($type) === $className`: the one object class of the type is the class.
 fn is_class(types: &[TAtomic], class: &str) -> bool {
     let [TAtomic::Object(TObject::Named(n))] = types else {
         return false;
@@ -285,11 +263,9 @@ fn is_class(types: &[TAtomic], class: &str) -> bool {
     n.name.as_bytes() == class.as_bytes()
 }
 
-/// The class a static call's class part names: `self`, `static` or a name (`parent` is another class).
 fn static_class(scoped: &[Node<'_, '_>], class: &Expression<'_>) -> Option<String> {
     let at = scoped.len() - 1;
     match unparenthesize(class) {
-        // the rule visits classes only, so `scoped[at]` is the class
         Expression::Self_(_) | Expression::Static(_) => {
             let Node::Class(c) = scoped[at] else {
                 return None;
@@ -301,9 +277,7 @@ fn static_class(scoped: &[Node<'_, '_>], class: &Expression<'_>) -> Option<Strin
     }
 }
 
-/// `ClassMethodParamTypeCompleter::isAcceptedByDefault`: the new type accepts the parameter's default value.
 fn accepts(facts: &Facts, types: &[TAtomic], default: &Expression<'_>) -> bool {
-    // a default without a type (an unknown constant) is `mixed` to `mapPhpParserNodePHPStanType`, which `accepts()`
     let Some(default) = type_of(facts, default) else {
         return true;
     };
@@ -322,7 +296,6 @@ fn accepts(facts: &Facts, types: &[TAtomic], default: &Expression<'_>) -> bool {
     })
 }
 
-/// Call `f` on every node under `node`, closures and nested classes included (`BetterNodeFinder::find`).
 pub(crate) fn walk<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Node<'ast, 'arena>)) {
     node.visit_children(|child| {
         f(child);
@@ -330,11 +303,9 @@ pub(crate) fn walk<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Nod
     });
 }
 
-/// The array key a literal index names (`'1'` is the integer key `1`).
 fn literal_key(index: &Expression<'_>) -> Option<ArrayKey> {
     match unparenthesize(index) {
         Expression::Literal(Literal::String(s)) => {
-            // PHP's key cast: a decimal integer string is that integer
             let v = String::from_utf8_lossy(s.value?);
             Some(match v.parse::<i64>() {
                 Ok(n) if n.to_string() == v => ArrayKey::Integer(n),
@@ -348,8 +319,6 @@ fn literal_key(index: &Expression<'_>) -> Option<ArrayKey> {
     }
 }
 
-/// Whether `expr` reads a key an array shape may lack (`$shape['dirname']` of `pathinfo()`): PHPStan's native type of
-/// it is none Rector maps (checked with Rector 2.8.4), where Mago adds `null`, unless the shape has the key.
 fn is_optional_offset(facts: &Facts, expr: &Expression<'_>) -> bool {
     let Expression::ArrayAccess(access) = unparenthesize(expr) else {
         return false;

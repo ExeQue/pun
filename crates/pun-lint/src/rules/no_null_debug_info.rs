@@ -1,9 +1,3 @@
-//! `lint/php-8.5/no-null-debug-info`, ported from Rector 2.8.4's `NullDebugInfoReturnRector`
-//! (rules/Php85/Rector/ClassMethod).
-//!
-//! PHP 8.5 deprecates returning `null` from `__debugInfo()`, so `return null;` and a bare `return;` in that method
-//! return `[]`. Returns inside nested functions, closures and classes are theirs, and stay.
-
 use mago_syntax::cst::{MethodBody, Node, NodeKind, Return};
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -19,7 +13,6 @@ impl Rule for NoNullDebugInfo {
     }
 
     fn min_php_version(&self) -> u32 {
-        // PhpVersionFeature::DEPRECATED_NULL_DEBUG_INFO_RETURN
         80500
     }
 
@@ -65,7 +58,6 @@ impl Rule for NoNullDebugInfo {
     }
 }
 
-/// Every `return` under `node`, outside nested classes, functions and closures.
 pub(crate) fn returns<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     f: &mut impl FnMut(&'ast Return<'arena>),

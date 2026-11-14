@@ -1,18 +1,9 @@
-//! What the three `PrivatizeFinalClass*Rector` ports share (Rector 2.8.4, rules/Privatization): a `protected` member
-//! of a `final` class becomes `private`.
-//!
-//! Rector asks PHPStan's reflection whether a parent class, an interface or a trait declares or uses the member, and
-//! skips a class whose parent or interfaces it cannot load. The syntax knows only the class itself, so Pun changes a
-//! class that extends nothing and uses no trait, where no ancestor can hold the member (an interface's members are
-//! public, so a `protected` one of the same name could not exist).
-
 use mago_syntax::cst::{Class, ClassLikeMember, Modifier, Node, Sequence};
 use pun_problem::{Edit, Span};
 
 use super::rector_batch5::modifiers_text;
 use crate::syntax::node_span;
 
-/// The class when it is `final`, extends nothing and uses no trait.
 pub(super) fn final_class<'a>(node: Node<'a, '_>) -> Option<&'a Class<'a>> {
     let Node::Class(c) = node else { return None };
     let class = c;
@@ -27,7 +18,6 @@ pub(super) fn final_class<'a>(node: Node<'a, '_>) -> Option<&'a Class<'a>> {
     (is_final && class.extends.is_none() && !uses_trait).then_some(class)
 }
 
-/// `isProtected()`: the `protected` keyword (an asymmetric `protected(set)` is no visibility of its own).
 pub(super) fn is_protected(modifiers: &Sequence<'_, Modifier<'_>>) -> bool {
     modifiers
         .iter()
@@ -40,9 +30,6 @@ pub(super) fn is_protected(modifiers: &Sequence<'_, Modifier<'_>>) -> bool {
         })
 }
 
-/// `VisibilityManipulator::makePrivate()` as php-parser prints a changed `flags`: the modifiers again in its order
-/// (`pModifiers`), each followed by a space, in place of the old ones and the blanks after them. `final` goes too
-/// (only a constructor may be both, and no caller passes one).
 pub(super) fn make_private(source: &str, modifiers: &Sequence<'_, Modifier<'_>>) -> Edit {
     let start = node_span(modifiers.first().expect("a protected member has modifiers")).start;
     let end = node_span(modifiers.last().expect("a protected member has modifiers")).end;

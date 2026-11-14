@@ -1,24 +1,3 @@
-//! `lint/control-flow/prefer-returned-condition`, ported from Rector 2.8.4's `SimplifyIfReturnBoolRector`
-//! (rules/CodeQuality/Rector/If_).
-//!
-//! An `if` without `elseif` or `else` whose one statement is `return true;` or `return false;`, followed by a
-//! `return` of the other boolean, becomes one `return` of the condition: `if (c) { return true; } return false;` is
-//! `return c;`, and with the booleans swapped `return !c;` (`!==` for `===`, `!=` for `==`, the operand of a `!`).
-//! After `return false;` for a `!==` or `!=` condition, the next `return` may be anything; it must be `true` for
-//! the change. A condition with `!=` anywhere in its code (`!=`, `!==`, `<>`) is only taken after `return false;`
-//! when the condition itself is one of those comparisons. Rector changes the first such pair of a statement list.
-//!
-//! `ExprBoolCaster::boolCastOrNullCompareIfNeeded` decides the returned value: a condition of the file whose type is
-//! not `bool` (PHPStan's, docblocks read) gets `(bool)`, unless it is a binary operation or a `!`; one whose type
-//! has `null` and is else always truthy (objects, non-falsy constants) becomes `... !== null`. The comments of the
-//! `if`, of the `return` after it and of the `return` in it go before the new `return`.
-//!
-//! php-parser's printer decides the bytes: a condition of the file keeps its code; the comparison, `!` or `!== null`
-//! Rector builds is printed anew, and with it every binary operation it holds (`BetterStandardPrinter`'s
-//! `wrapBinaryOpWithBrackets`), with php-parser's spacing and only the parentheses precedence needs; the other
-//! operands keep their code. Where an operand that keeps its code would need parentheses there, Rector's output
-//! means something else, and Pun leaves the code alone. See [`super::stmt_splice`] for the statements.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -63,7 +42,6 @@ impl Rule for PreferReturnedCondition {
         let tokens = tokens(ctx);
         let (list, index) = enclosing(source, tokens, ancestors);
         let facts = facts(ctx);
-        // `refactor()` changes the first pair of the list it takes
         let Some((at, (code, inner))) = (1..list.stmts.len())
             .find_map(|k| new_return(ctx, tokens, &facts, &list, k).map(|c| (k, c)))
         else {
@@ -74,7 +52,6 @@ impl Rule for PreferReturnedCondition {
         }
         let r#if = node_span(list.stmts[at - 1]);
         let r#return = node_span(list.stmts[at]);
-        // `CommentsMerger::keepComments($newReturn, [$if, $return, $ifInnerNode])`
         let comments: Vec<Span> = [r#if, r#return, inner]
             .into_iter()
             .flat_map(|s| {
@@ -107,8 +84,6 @@ impl Rule for PreferReturnedCondition {
     }
 }
 
-/// The returned value of the `return` that takes the place of the `if` at `k - 1` of `list` and the `return` at `k`,
-/// when `refactor()` changes them, and the span of the `return` in the `if`.
 fn new_return(
     ctx: &Context<'_>,
     tokens: &[Token],
@@ -120,7 +95,6 @@ fn new_return(
         return None;
     };
     let parts = if_parts(tokens, r#if);
-    // `shouldSkipIfAndReturn`
     if parts.has_elseifs || parts.has_else || parts.stmts.stmts.len() != 1 || parts.stmts.nop {
         return None;
     }
@@ -159,7 +133,6 @@ fn new_return(
     } else if !is_not_comparison {
         return None;
     }
-    // `resolveReturn`
     let flipped = |op: &BinaryOperator<'_>| match op {
         BinaryOperator::Identical(_) => Some("!=="),
         BinaryOperator::NotIdentical(_) => Some("==="),
@@ -172,7 +145,6 @@ fn new_return(
     } else if let Some((left, op, right)) = comparison(cond)
         && let Some(flipped) = flipped(op)
     {
-        // after `return false;`, a `!==` or `!=` needs `return true;` next
         if not_equal(op) && !next_true {
             return None;
         }
@@ -187,7 +159,6 @@ fn new_return(
     Some((code, inner_span))
 }
 
-/// A binary operation's operands and operator.
 fn comparison<'a>(
     e: &'a Expression<'a>,
 ) -> Option<(
@@ -201,10 +172,8 @@ fn comparison<'a>(
     }
 }
 
-/// php-parser's `MAX_PRECEDENCE`.
 const MAX: i32 = 1000;
 
-/// Whether `print($cond)` holds `!=`: an operator `!=`, `!==` or `<>` (printed `!=`), or a string with it.
 fn prints_not_equal(ctx: &Context<'_>, tokens: &[Token], cond: &Expression<'_>) -> bool {
     let span = node_span(cond);
     tokens
@@ -215,12 +184,9 @@ fn prints_not_equal(ctx: &Context<'_>, tokens: &[Token], cond: &Expression<'_>) 
         })
 }
 
-/// `boolCastOrNullCompareIfNeeded` on an expression of the file, printed (`None` as in [`leaf`]). Where Mago's
-/// facts give no type, PHPStan's is `mixed`.
 fn cast(ctx: &Context<'_>, facts: &Facts, expr: &Expression<'_>) -> Option<String> {
     let not = matches!(expr, Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Not(_)));
     let binary_op = matches!(expr, Expression::Binary(b) if !b.operator.is_instanceof());
-    // a `!` and the binary operations but `??` are never null
     let coalesce = matches!(expr, Expression::Binary(b) if b.operator.is_null_coalesce());
     if not || (binary_op && !coalesce) {
         return Some(text(ctx, expr).to_string());
@@ -244,7 +210,6 @@ fn cast(ctx: &Context<'_>, facts: &Facts, expr: &Expression<'_>) -> Option<Strin
     Some(format!("(bool) {}", leaf(ctx, expr, 10, MAX)?))
 }
 
-/// `StaticTypeAnalyzer::isAlwaysTruableType` on one type of a union without its `null`.
 fn always_truthy(atomic: &TAtomic) -> bool {
     match atomic {
         TAtomic::Object(TObject::Named(n)) => n.intersection_types.is_none(),
@@ -262,27 +227,22 @@ fn always_truthy(atomic: &TAtomic) -> bool {
     }
 }
 
-/// An expression printed by php-parser at a place of precedence `limit` (`lhs` as in `pPrefixOp`): a binary
-/// operation anew, anything else with its code; `None` where that code needed parentheses php-parser does not add.
 fn fresh(ctx: &Context<'_>, expr: &Expression<'_>, limit: i32, lhs: i32) -> Option<String> {
     let expr = unparenthesize(expr);
     match expr {
         Expression::Binary(b) => match operator(&b.operator) {
             Some(op) => fresh_infix(ctx, b.lhs, op, b.rhs, binary(&b.operator), limit, lhs),
-            // `instanceof` is no binary operation for php-parser
             None => leaf(ctx, expr, limit, lhs),
         },
         _ => leaf(ctx, expr, limit, lhs),
     }
 }
 
-/// The code of an operand php-parser keeps, or `None` where it needs parentheses at its new place.
 fn leaf(ctx: &Context<'_>, expr: &Expression<'_>, limit: i32, lhs: i32) -> Option<String> {
     let expr = unparenthesize(expr);
     (!needs_parens(prec(expr), limit, Some(lhs))).then(|| text(ctx, expr).to_string())
 }
 
-/// `pInfixOp` for a new binary operation of `left` and `right` at a place of precedence `limit`.
 fn fresh_infix(
     ctx: &Context<'_>,
     left: &Expression<'_>,
@@ -302,7 +262,6 @@ fn fresh_infix(
     Some(if wrap { format!("({code})") } else { code })
 }
 
-/// The operator of a php-parser `BinaryOp` as it prints it.
 fn operator(op: &BinaryOperator<'_>) -> Option<&'static str> {
     Some(match op {
         BinaryOperator::Addition(_) => "+",

@@ -1,13 +1,3 @@
-//! `lint/complexity/prefer-property-default`, ported from Rector 2.8.4's `InlineConstructorDefaultToPropertyRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! A constructor statement `$this->name = <value known at compile time>;` becomes the default value of the property
-//! `name`, and goes from the constructor. The statement's comments move above the property, after its own. Rector
-//! looks at the constructor's statements in order and stops at the first `if`, which may break the flow; what it
-//! changed before stays. Only a `final` class changes (a child class may skip the constructor and rely on the default). After
-//! `parent::__construct()`, a property that a parent class declares is left alone, and so is a readonly property or
-//! class, or a property a property hook reads.
-
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
@@ -47,8 +37,6 @@ impl Rule for PreferPropertyDefault {
         let MethodBody::Concrete(block) = &constructor.body else {
             return;
         };
-        // A child class may bypass the constructor and depend on the declared property default; php-parser gives an
-        // anonymous class no `final` flag.
         if modifiers.iter().any(|m| matches!(m, Modifier::Readonly(_)))
             || !matches!(node, Node::Class(_))
             || !modifiers.iter().any(|m| matches!(m, Modifier::Final(_)))
@@ -59,11 +47,9 @@ impl Rule for PreferPropertyDefault {
         scope.push(node);
         let mut has_parent_construct_call = false;
         let list = block_list(source, block);
-        // Per property item: the new default and the comments to move, in order.
         let mut moved: Vec<(&PropertyItem, &Property, String, Vec<Span>)> = Vec::new();
         let mut removed = vec![false; list.stmts.len()];
         for (index, statement) in list.stmts.iter().enumerate() {
-            // Code that may break the flow.
             if matches!(statement, Statement::If(_)) {
                 break;
             }
@@ -88,7 +74,6 @@ impl Rule for PreferPropertyDefault {
             if is_dynamic_expr(assign.rhs) || read_in_hooks(members, name) {
                 continue;
             }
-            // parent constructor may set the very same property, keep assign order as is
             if has_parent_construct_call && is_property_defined_in_parent_class(ctx, &scope, name) {
                 continue;
             }
@@ -120,7 +105,6 @@ impl Rule for PreferPropertyDefault {
             return;
         }
         let mut edits = remove_statements(ctx, &list, &removed);
-        // The comments, per property declaration.
         let mut comments: Vec<(&Property, Vec<Span>)> = Vec::new();
         for (item, property, code, item_comments) in &moved {
             edits.push(match item {
@@ -172,7 +156,6 @@ impl Rule for PreferPropertyDefault {
     }
 }
 
-/// `matchAssignedLocalPropertyName`: `$this->name`.
 fn assigned_property<'a>(lhs: &'a Expression<'a>) -> Option<&'a [u8]> {
     let Expression::Access(Access::Property(fetch)) = unparenthesize(lhs) else {
         return None;
@@ -186,7 +169,6 @@ fn assigned_property<'a>(lhs: &'a Expression<'a>) -> Option<&'a [u8]> {
     (var.name.eq_ignore_ascii_case(b"$this")).then_some(name.value)
 }
 
-/// `isFoundInAnyPropertyHooks`: a `$this->name` fetch in a property hook.
 fn read_in_hooks(members: &Sequence<'_, ClassLikeMember<'_>>, name: &[u8]) -> bool {
     members.iter().any(|m| match m {
         ClassLikeMember::Property(Property::Hooked(p)) => {
@@ -212,7 +194,6 @@ fn assigned_property_access(a: &PropertyAccess<'_>, name: &[u8]) -> bool {
         && matches!(&a.property, ClassLikeMemberSelector::Identifier(id) if id.value.eq_ignore_ascii_case(name))
 }
 
-/// The first property item named `name` in a declaration that is not readonly.
 fn find_property<'a>(
     members: &'a Sequence<'a, ClassLikeMember<'a>>,
     name: &[u8],
@@ -225,7 +206,6 @@ fn find_property<'a>(
             Property::Plain(p) => (&p.modifiers, p.items.iter().collect()),
             Property::Hooked(p) => (&p.modifiers, vec![&p.item]),
         };
-        // A readonly property cannot have a default value.
         if modifiers.iter().any(|m| matches!(m, Modifier::Readonly(_))) {
             return None;
         }
@@ -236,7 +216,6 @@ fn find_property<'a>(
     })
 }
 
-/// `isParentConstructCall`: `parent::__construct(...)`, the method name in any letter case.
 fn is_parent_construct_call(expr: &Expression<'_>) -> bool {
     matches!(
         unparenthesize(expr),
@@ -246,8 +225,6 @@ fn is_parent_construct_call(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// `isPropertyDefinedInParentClass`: a parent class of the class (`scope` ends with it) has the property, its own or
-/// inherited. A class or parent the codebase does not know may have it ("unknown parent, keep it safe").
 fn is_property_defined_in_parent_class(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\MultilineCommentOpeningClosingFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;

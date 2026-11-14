@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-mock-intersection-property`, ported from rector-phpunit's `SingleMockPropertyTypeRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! In a test class, a property typed with a union or an intersection of exactly two types, one of them
-//! `PHPUnit\Framework\MockObject\MockObject`, is typed with that one alone, written as it was.
-
 use mago_syntax::cst::{ClassLikeMember, Hint, Node, NodeKind, Property};
 use pun_problem::{Edit, Safety};
 
@@ -11,7 +5,6 @@ use super::{class_body, is_in_test_class, resolve, text};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// `MockObject::class`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 pub struct NoMockIntersectionProperty;
@@ -70,8 +63,6 @@ impl Rule for NoMockIntersectionProperty {
     }
 }
 
-/// The types of a union or an intersection, as php-parser lists them in its `UnionType` or `IntersectionType`: a
-/// nested one of the same kind (`union` says which kind the outer one is) adds its types.
 fn flatten<'a>(hint: &'a Hint<'a>, union: Option<bool>, out: &mut Vec<&'a Hint<'a>>) {
     match hint {
         Hint::Union(u) if union != Some(false) => {

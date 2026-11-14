@@ -1,6 +1,3 @@
-//! `pun analyse`: PHPStan 2.3.5's rules, level by level, on Mago's parser, name resolution and
-//! codex. Errors carry PHPStan's identifier and message so baselines and `ignoreErrors` keep matching.
-
 mod autoload;
 mod bitset;
 mod codebase;
@@ -27,53 +24,37 @@ pub use project::{
 pub use relative_path::RelativePath;
 pub use rules::{Larastan, LarastanSwitches};
 
-/// One reported error, as `phpstan analyse --error-format=json` prints it.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Error {
     pub file: String,
-    /// PHPStan's `-1` for a node without a position (a synthetic `break`).
     pub line: i64,
     pub identifier: String,
     pub message: String,
     pub tip: Option<String>,
-    /// Whether ignore comments, configured ignores and baselines may suppress this error.
     pub can_be_ignored: bool,
-    /// PHPStan's `isFixable()`: `--fix` has a fix for it (the JSON formats' `fixable`, the table's 🔧).
     pub fixable: bool,
 }
 
-/// Identifiers Pun reports. Errors with other identifiers are PHPStan's alone for now.
 pub const IDENTIFIERS: &[&str] = rules::IDENTIFIERS;
 
-/// Whether Pun reports `identifier` at some level: [`IDENTIFIERS`], the level-6 missingType rules, the level-2
-/// generics rules and Larastan's.
 pub fn reports(identifier: &str) -> bool {
     rules::reports(identifier)
 }
 
-/// Analyses the project the resolved `phpstan.neon` describes.
 pub fn analyse(project_root: &Path, config: &Resolved) -> Result<Vec<Error>, CouldNotReadFile> {
     run(&Project::from_config(project_root, &config.parameters))
 }
 
-/// Analyses `project.analysed`, knowing the symbols of `project.scanned` too, then drops what
-/// `@phpstan-ignore*` comments and `ignoreErrors` ignore, as `phpstan analyse` reports it. A file that exists but
-/// can't be read stops the run, as it stops PHPStan's.
 pub fn run(project: &Project) -> Result<Vec<Error>, CouldNotReadFile> {
     Ok(analyse_project(project)?.errors)
 }
 
-/// What [`analyse_project`] reports.
 pub struct Analysis {
-    /// The file-specific errors, sorted.
     pub errors: Vec<Error>,
-    /// PHPStan's not-file-specific errors: `ignoreErrors` entries without a file path nothing matched.
     pub general: Vec<String>,
-    /// `getFixableIgnoredErrors()`: how many ignored errors (by comments or `ignoreErrors`) have a fix.
     pub fixable_ignored: usize,
 }
 
-/// [`run`], with PHPStan's not-file-specific errors.
 pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> {
     let (codebase, sources) = codebase::build(project, None)?;
     let files: std::collections::HashMap<_, _> = project
@@ -107,7 +88,6 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
             .contains(crate::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS),
         project.method_rules.renamed_named_arguments,
     );
-    // the codebase is large: freed off the critical path
     std::thread::spawn(move || drop((codebase, sources)));
     let analysed: Vec<String> = project.analysed.iter().map(|p| display(p)).collect();
     let errors = rules::conditions_in_traits(errors);
@@ -131,7 +111,6 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
             fixable: e.fixable,
         })
         .collect();
-    // PHPStan's AnalysisResult orders diagnostics by file, line and message, not identifier.
     errors.sort_by(|a, b| (&a.file, a.line, &a.message).cmp(&(&b.file, b.line, &b.message)));
     Ok(Analysis {
         errors,
@@ -144,17 +123,14 @@ fn display(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }
 
-/// `b` as text, invalid UTF-8 replaced.
 pub(crate) fn text(b: &[u8]) -> String {
     String::from_utf8_lossy(b).into_owned()
 }
 
-/// Files below `dir` with one of `extensions`, sorted. Subdirectories are walked in parallel.
 fn php_files(dir: &Path, extensions: &[String]) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
-    // the entry's own type (readdir's d_type) saves a stat per entry; a symlink is followed as before
     let mut entries: Vec<_> = entries
         .flatten()
         .map(|e| {

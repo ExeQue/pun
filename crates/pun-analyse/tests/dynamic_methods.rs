@@ -1,4 +1,3 @@
-//! Complete PHPStan 2.3.1 diagnostics for constant dynamic CallMethodsRule operands.
 use std::path::Path;
 
 use pun_analyse::{Project, run};

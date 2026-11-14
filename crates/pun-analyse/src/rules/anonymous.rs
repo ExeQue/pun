@@ -1,7 +1,3 @@
-//! The names PHPStan prints for anonymous classes: BetterReflectionProvider::getAnonymousClassReflection()'s
-//! `<parent>@anonymous/<relative path>:<line>`, with AnonymousClassVisitor's `:<index>` when several start on one
-//! line.
-
 use std::collections::HashMap;
 
 use mago_codex::get_anonymous_class_name;
@@ -23,7 +19,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Collect<'ast, 'arena> {
     }
 }
 
-/// php-parser's start of the `Class_` node: its attributes, else its modifiers, else `class`.
 fn start(a: &AnonymousClass) -> u32 {
     a.attribute_lists
         .first()
@@ -34,7 +29,6 @@ fn start(a: &AnonymousClass) -> u32 {
         .offset
 }
 
-/// The display name of each anonymous class of `file`, by Mago's codex name for it.
 pub(crate) fn names(
     file: &File,
     program: &Program,
@@ -45,7 +39,6 @@ pub(crate) fn names(
         classes: Vec::new(),
     };
     collect.walk_program(program, &mut ());
-    // PHPStan's file names are absolute; a run's are relative to its working directory
     let path = relative.get(&absolute(std::path::Path::new(&*String::from_utf8_lossy(
         &file.name,
     ))));
@@ -80,14 +73,10 @@ pub(crate) fn names(
     out
 }
 
-/// `ClassReflection::getName()` of an anonymous class declared in `file` (absolute), from its display name
-/// `<parent>@anonymous/<path>:<line>[:<index>]`: AnonymousClassNameHelper's `AnonymousClass` followed by the md5 of
-/// `<path>:<line>[:<index>]`, the path relative to the working directory (SimpleRelativePathHelper).
 pub(crate) fn internal_name(display: &str, file: &str, relative: &RelativePath) -> String {
     let fuzzy = display
         .split_once("@anonymous/")
         .map_or(display, |(_, k)| k);
-    // the line and index follow the last `:` pair of the fuzzy path
     let at = fuzzy
         .rsplit_once(':')
         .map(|(head, tail)| match head.rsplit_once(':') {
@@ -103,14 +92,12 @@ pub(crate) fn internal_name(display: &str, file: &str, relative: &RelativePath) 
     format!("AnonymousClass{hex}")
 }
 
-/// RFC 1321 MD5.
 fn md5(input: &[u8]) -> [u8; 16] {
     const S: [u32; 64] = [
         7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5,
         9, 14, 20, 5, 9, 14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10,
         15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
     ];
-    // K[i] = floor(abs(sin(i + 1)) * 2^32)
     let k: Vec<u32> = (0..64)
         .map(|i| (f64::from(i + 1).sin().abs() * 4_294_967_296.0) as u32)
         .collect();

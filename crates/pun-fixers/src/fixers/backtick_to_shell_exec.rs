@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\BacktickToShellExecFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -49,8 +48,6 @@ fn fix_backticks(tokens: &mut Tokens, backtick_tokens: BTreeMap<usize, Token>) {
     inner.remove(0);
     inner.pop();
 
-    // Double-quoted strings are parsed differently if they contain
-    // variables or not, so we need to build the new token array accordingly
     let count = inner.len();
     let mut new_tokens = vec![Token::new(T_STRING, "shell_exec"), Token::char("(")];
     if count != 1 {
@@ -62,7 +59,6 @@ fn fix_backticks(tokens: &mut Tokens, backtick_tokens: BTreeMap<usize, Token>) {
             continue;
         }
         let mut content = token.get_content().to_vec();
-        // Escaping special chars depends on the context: too tricky
         if Preg::r#match("/[`\"']/u", &content) {
             return;
         }

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\NullableTypeDeclarationFixer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -68,7 +67,6 @@ impl Fixer for NullableTypeDeclarationFixer {
     }
 }
 
-/// index => true for 'property', false for 'function'.
 fn get_elements(tokens: &Tokens) -> BTreeMap<usize, bool> {
     let mut elements: BTreeMap<usize, bool> = TokensAnalyzer::new(tokens)
         .get_classy_elements()
@@ -112,7 +110,7 @@ fn is_type_normalizable(type_analysis: &TypeAnalysis) -> bool {
         return false;
     }
     if type_.contains(&b'&') {
-        return false; // skip DNF types
+        return false;
     }
     if !type_.contains(&b'|') {
         return true;

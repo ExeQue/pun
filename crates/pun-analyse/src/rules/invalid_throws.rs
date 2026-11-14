@@ -1,7 +1,3 @@
-//! PHPStan 2.3.5's InvalidThrowsPhpDocValueRule (level 2). Raw class/function/method declarations are skipped:
-//! their virtual nodes supply the declaration's own name/template scope. Hooks are virtual nodes too; closure
-//! expressions are not statements and do not acquire a declaration check.
-
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::{AnonymousClass, Function, Method, Statement};
@@ -15,7 +11,6 @@ use super::{Checker, declared, require_tags, var_tags};
 
 pub(super) const IDENTIFIERS: &[&str] = &["throws.notThrowable"];
 
-/// `processNode()` for php-parser's real statements. The virtual declaration entry points run in their new scope.
 pub(super) fn statement(c: &mut Checker, statement: &Statement) {
     if matches!(
         statement,
@@ -34,14 +29,12 @@ pub(super) fn statement(c: &mut Checker, statement: &Statement) {
     node(c, statement.span());
 }
 
-/// `InFunctionNode`: not an inherited reflection throw type, and not the surrounding function's templates.
 pub(super) fn function(c: &mut Checker, function: &Function) {
     check(c, function.span(), |c, entry| {
         declared::function_scope(c, function, &entry.doc)
     });
 }
 
-/// `InClassMethodNode`: the method's own tags, resolved in the declaring trait's/using class's context.
 pub(super) fn method(c: &mut Checker, method: &Method) {
     let (Some(context), Some(declaring)) = (
         c.class_scope(),
@@ -54,7 +47,6 @@ pub(super) fn method(c: &mut Checker, method: &Method) {
     });
 }
 
-/// The anonymous `InClassNode` starts at its attributes/modifiers/`class`, not its enclosing `new` expression.
 pub(super) fn anonymous(c: &mut Checker, class: &AnonymousClass) {
     let start = class
         .attribute_lists
@@ -65,13 +57,10 @@ pub(super) fn anonymous(c: &mut Checker, class: &AnonymousClass) {
     node(c, start.join(class.span()));
 }
 
-/// Other statements and virtual class/hook nodes: FileTypeMapper's class and enclosing function name scope.
 pub(super) fn node(c: &mut Checker, at: Span) {
     check(c, at, |c, _| statement_scope(c, at));
 }
 
-/// FileTypeMapper also pushes a hook's own template map, both for its virtual node and its body statements.
-/// Use the source hook's span/name, including when walking a trait's property in a using class's context.
 fn statement_scope(c: &Checker, at: Span) -> NameScope {
     let scope = var_tags::scope(c, at);
     let Some(context) = c.class_scope() else {
@@ -120,8 +109,6 @@ fn check(c: &mut Checker, at: Span, scope: impl FnOnce(&Checker, &DocEntry) -> N
     }
 }
 
-/// `PhpDocNodeResolver::resolveThrowsTags()`: all valid tags of the first supported name, unioned. A malformed
-/// preferred tag does not hide valid ordinary tags, and unrelated tools' tag names are not aliases.
 pub(super) fn throws_type(tags: &[phpdoc::Tag], scope: &NameScope) -> Option<Type> {
     for name in ["@phpstan-throws", "@throws"] {
         let types: Vec<_> = tags
@@ -139,7 +126,6 @@ pub(super) fn throws_type(tags: &[phpdoc::Tag], scope: &NameScope) -> Option<Typ
     None
 }
 
-/// `InvalidThrowsPhpDocValueRule::isThrowsValid()`, in its upstream branch order.
 fn is_throws_valid(c: &Checker, ty: &Type) -> bool {
     if ty.is_void().yes() {
         return true;
@@ -153,8 +139,6 @@ fn is_throws_valid(c: &Checker, ty: &Type) -> bool {
             .all(|inner| !inner.is_void().yes() && is_throws_valid(c, inner));
     }
     let mut constrained = vec![ty.clone()];
-    // TemplateObjectType inherits ObjectType's class reflections. The bound supplies those reflections, not an
-    // unrelated declaration or native inference flag; the actual throws type remains the template itself.
     let mut reflected = ty;
     while let Type::Template(template) = reflected {
         reflected = &template.bound;

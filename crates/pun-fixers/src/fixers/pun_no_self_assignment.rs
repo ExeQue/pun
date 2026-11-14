@@ -1,8 +1,3 @@
-//! Port of Mago's `no-self-assignment`, for variables: deletes `$a = $a;` statements.
-//! Opt-in only (`Pun/no_self_assignment`). Property self-assignments (`$this->x = $this->x;`, which Mago also
-//! deletes as "potentially unsafe") are left alone: `__set`, property hooks, Eloquent mutators and readonly
-//! properties give them effects. The only effect dropped for variables is that `$a = $a;` on an undefined
-//! `$a` warns and then defines it as `null`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -56,7 +51,6 @@ impl Fixer for NoSelfAssignment {
                 continue;
             }
             tokens.clear_range(i, semi);
-            // Drop the statement's line: merge the whitespace before and after it, keeping the later one.
             if i > 0
                 && tokens[i - 1].is_whitespace(None)
                 && semi + 1 < tokens.count()
@@ -88,7 +82,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // bad_example: only the variable case is fixed.
         assert_eq!(
             fix("<?php\n\n$a = $a;\n$this->x = $this->x;\n$foo->bar = $foo->bar;\n"),
             "<?php\n\n$this->x = $this->x;\n$foo->bar = $foo->bar;\n"
