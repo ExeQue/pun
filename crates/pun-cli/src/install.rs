@@ -66,6 +66,10 @@ pub(crate) struct Project {
     /// The file the lock was read from.
     pub(crate) lock_name: &'static str,
     pub(crate) notes: Vec<String>,
+    /// The workspace the project is the root of; `manifest` then holds the members too.
+    pub(crate) workspace: Option<crate::workspace::Workspace>,
+    /// The directory the command started in: the root, or a directory below it.
+    pub(crate) here: PathBuf,
 }
 
 impl Project {
@@ -93,14 +97,21 @@ pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
 }
 
 /// The project in `working_dir` (or the current directory). With `create`, a directory without dependencies is a
-/// new project whose dependencies go in pun.toml.
+/// new project whose dependencies go in pun.toml. In a workspace member, the project is the workspace's root.
 pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Project> {
-    let root = match working_dir {
+    let here = match working_dir {
         Some(d) => d
             .canonicalize()
             .with_context(|| format!("can't open {}", d.display()))?,
         None => crate::root()?,
     };
+    let workspace = crate::workspace::find(&here)?;
+    let root = workspace
+        .as_ref()
+        .map_or_else(|| here.clone(), |w| w.root.clone());
+    // A workspace's root may require nothing itself.
+    let toml_manifest = (pun_config::manifest::read(&root)?.map(|m| m.json))
+        .or_else(|| workspace.as_ref().map(|_| Map::new()));
     let mut notes = vec![];
     let composer_lock = |root: &PathBuf| -> Result<Option<Lock>> {
         match std::fs::read_to_string(root.join("composer.lock")) {
@@ -110,17 +121,17 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
                 .map(Some),
         }
     };
-    let (manifest, pun_toml, lock, lock_name) = match pun_config::manifest::read(&root)? {
-        Some(m) => match Lock::read(&root)? {
-            Some(lock) => (m.json, true, Some(lock), "pun.lock"),
+    let (manifest, pun_toml, lock, lock_name) = match toml_manifest {
+        Some(json) => match Lock::read(&root)? {
+            Some(lock) => (json, true, Some(lock), "pun.lock"),
             None => match composer_lock(&root)? {
                 Some(lock) => {
                     std::fs::write(root.join("pun.lock"), lock.to_toml())
                         .context("can't write pun.lock")?;
                     notes.push("wrote pun.lock from composer.lock".to_string());
-                    (m.json, true, Some(lock), "pun.lock")
+                    (json, true, Some(lock), "pun.lock")
                 }
-                None => (m.json, true, None, "pun.lock"),
+                None => (json, true, None, "pun.lock"),
             },
         },
         None => {
@@ -133,6 +144,8 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
                         lock: None,
                         lock_name: "pun.lock",
                         notes,
+                        workspace: None,
+                        here,
                     });
                 }
                 bail!(
@@ -156,6 +169,10 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
             }
         }
     };
+    let manifest = match &workspace {
+        Some(w) => w.manifest(manifest),
+        None => manifest,
+    };
     Ok(Project {
         root,
         manifest,
@@ -163,6 +180,8 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         lock,
         lock_name,
         notes,
+        workspace,
+        here,
     })
 }
 

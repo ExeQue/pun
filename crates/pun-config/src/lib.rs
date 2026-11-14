@@ -224,7 +224,8 @@ fn parse(
         toml::from_str(text).with_context(|| format!("invalid {}", path.display()))?;
     // The dependency sections are `pun install`'s; they are checked here so every command reports a broken one.
     manifest::parse(path, &table)?;
-    table.retain(|k, _| !manifest::SECTIONS.contains(&k));
+    // `[workspace]` is the package manager's too, read where it installs.
+    table.retain(|k, _| !manifest::SECTIONS.contains(&k) && k != "workspace");
     let toml: PunToml = table
         .try_into()
         .with_context(|| format!("invalid {}", path.display()))?;

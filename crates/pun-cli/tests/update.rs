@@ -134,3 +134,78 @@ fn require_edits_pun_toml() {
         assert_eq!(code, Some(2), "{err}");
     }
 }
+
+/// A workspace: the root's pun.toml lists the members, which share the root's pun.lock and vendor/. Commands run
+/// in a member work on the whole workspace; `require` edits the member it runs in (or `-p`'s), writes the newest
+/// version as `^major.minor`, and leaves both files as they were when the request doesn't resolve.
+#[test]
+fn workspace_members_share_one_lock() {
+    let d = common::scratch("update", "workspace");
+    common::write_files(
+        &d,
+        &[
+            (
+                "ext/log/composer.json",
+                r#"{"name": "ext/log", "version": "2.3.0"}"#,
+            ),
+            (
+                "repo/pun.toml",
+                "[workspace]\nmembers = [\"packages/*\"]\n\n[[repositories]]\ntype = \"path\"\nurl = \"../ext/log\"\n\n[[repositories]]\n\"packagist.org\" = false\n",
+            ),
+            (
+                "repo/packages/core/pun.toml",
+                "[package]\nname = \"acme/core\"\n",
+            ),
+            (
+                "repo/packages/billing/composer.json",
+                "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\"\n    }\n}\n",
+            ),
+        ],
+    );
+    let (root, billing) = (d.join("repo"), d.join("repo/packages/billing"));
+    let (out, err, code) = pun(&billing, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    for (link, target) in [("billing", "packages/billing"), ("core", "packages/core")] {
+        let path = root.join("vendor/acme").join(link);
+        assert_eq!(
+            std::fs::read_link(&path).unwrap(),
+            Path::new("../..").join(target),
+            "{link}"
+        );
+    }
+    assert!(!billing.join("vendor").exists() && !billing.join("pun.lock").exists());
+
+    let (out, err, code) = pun(&billing, &["require", "ext/log"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert_eq!(
+        read(&billing, "composer.json"),
+        "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\",\n        \"ext/log\": \"^2.3\"\n    }\n}\n"
+    );
+    let lock = read(&root, "pun.lock");
+    assert!(lock.contains("require.\"ext/log\" = \"^2.3\""), "{lock}");
+    assert!(root.join("vendor/ext/log").exists());
+
+    let core = read(&root, "packages/core/pun.toml");
+    let (out, err, code) = pun(&root, &["require", "-p", "acme/core", "ext/log:^9"]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("ext/log ^9, but the only version found is 2.3.0"),
+        "{err}"
+    );
+    assert_eq!(
+        (
+            read(&root, "packages/core/pun.toml"),
+            read(&root, "pun.lock")
+        ),
+        (core, lock)
+    );
+
+    let (_, err, code) = pun(&root, &["require", "-p", "acme/nope", "ext/log"]);
+    assert_eq!(code, Some(2));
+    assert!(
+        err.contains(
+            "acme/nope is not a workspace member; the members are acme/billing, acme/core"
+        ),
+        "{err}"
+    );
+}

@@ -69,6 +69,10 @@ pub(crate) struct RequireArgs {
     /// Edit the manifest without resolving or installing.
     #[arg(long)]
     no_update: bool,
+    /// In a workspace, the member whose manifest to edit; the default is the member holding the current directory,
+    /// else the root.
+    #[arg(short = 'p', long = "package", value_name = "MEMBER")]
+    member: Option<String>,
     #[command(flatten)]
     resolve: ResolveArgs,
     #[command(flatten)]
@@ -86,6 +90,10 @@ pub(crate) struct RemoveArgs {
     /// Edit the manifest without resolving or installing.
     #[arg(long)]
     no_update: bool,
+    /// In a workspace, the member whose manifest to edit; the default is the member holding the current directory,
+    /// else the root.
+    #[arg(short = 'p', long = "package", value_name = "MEMBER")]
+    member: Option<String>,
     #[command(flatten)]
     resolve: ResolveArgs,
     #[command(flatten)]
@@ -376,36 +384,119 @@ fn print_changes(old: Option<&Lock>, new: &Lock) {
     }
 }
 
-/// The manifest file of a project, and its text now (`None` when it doesn't exist yet).
-fn manifest_file(project: &Project) -> (PathBuf, Option<String>) {
-    let name = if project.pun_toml {
-        "pun.toml"
-    } else {
-        "composer.json"
-    };
-    let path = project.root.join(name);
-    let text = std::fs::read_to_string(&path).ok();
-    (path, text)
+/// The manifest an edit changes: the project's own, or a workspace member's, as its file holds it.
+struct Target {
+    path: PathBuf,
+    pun_toml: bool,
+    /// The file's text now; `None` when it doesn't exist yet.
+    original: Option<String>,
+    manifest: Map<String, Value>,
+    /// The member's package name, when the edit is a member's.
+    member: Option<String>,
 }
 
-/// The manifest an edited text holds, in composer.json's shape.
-fn parse_manifest(project: &Project, path: &Path, text: &str) -> Result<Map<String, Value>> {
-    if project.pun_toml {
-        let table: toml::Table = toml::from_str(text).context("invalid pun.toml")?;
-        Ok(pun_config::manifest::parse(path, &table)?
-            .map(|m| m.json)
-            .unwrap_or_default())
-    } else {
-        serde_json::from_str(text).context("invalid composer.json")
+impl Target {
+    fn file(&self, project: &Project) -> String {
+        let path = self.path.strip_prefix(&project.root).unwrap_or(&self.path);
+        path.display().to_string()
+    }
+
+    fn parse(&self, text: &str) -> Result<Map<String, Value>> {
+        if self.pun_toml {
+            let table: toml::Table =
+                toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
+            Ok(pun_config::manifest::parse(&self.path, &table)?
+                .map(|m| m.json)
+                .unwrap_or_default())
+        } else if text.is_empty() {
+            Ok(Map::new())
+        } else {
+            serde_json::from_str(text).with_context(|| format!("invalid {}", self.path.display()))
+        }
+    }
+
+    /// Makes the edit visible to the resolver: a member's file is written now, since the workspace's path
+    /// repository reads it; the root's manifest is replaced in memory.
+    fn apply(&self, project: &mut Project, text: &str) -> Result<()> {
+        if self.member.is_some() {
+            return write(&self.path, text);
+        }
+        let parsed = self.parse(text)?;
+        project.manifest = match &project.workspace {
+            Some(w) => w.manifest(parsed),
+            None => parsed,
+        };
+        Ok(())
+    }
+
+    /// Takes back what [`Target::apply`] wrote.
+    fn undo(&self) -> Result<()> {
+        match &self.member {
+            Some(_) => restore(&self.path, self.original.as_deref()),
+            None => Ok(()),
+        }
     }
 }
 
-fn sort_packages(project: &Project) -> bool {
-    project
-        .manifest
-        .get("config")
-        .and_then(|c| c.get("sort-packages"))
-        == Some(&Value::Bool(true))
+/// The manifest `require` and `remove` edit: `-p`'s member, the member holding the current directory, or the
+/// project's own.
+fn target(project: &Project, member: Option<&str>) -> Result<Target> {
+    let chosen = match &project.workspace {
+        Some(w) => w.member(member, &project.here)?,
+        None if member.is_some() => {
+            bail!("-p names a workspace member, and this project has no [workspace]")
+        }
+        None => None,
+    };
+    let (path, pun_toml, member) = match chosen {
+        Some(m) => {
+            let toml = pun_config::manifest::read(&m.dir)?.is_some();
+            let file = if toml { "pun.toml" } else { "composer.json" };
+            (m.dir.join(file), toml, Some(m.name.clone()))
+        }
+        None => {
+            let file = if project.pun_toml {
+                "pun.toml"
+            } else {
+                "composer.json"
+            };
+            (project.root.join(file), project.pun_toml, None)
+        }
+    };
+    let original = std::fs::read_to_string(&path).ok();
+    let mut target = Target {
+        path,
+        pun_toml,
+        original,
+        manifest: Map::new(),
+        member,
+    };
+    target.manifest = target.parse(target.original.as_deref().unwrap_or_default())?;
+    Ok(target)
+}
+
+/// Resolves after an edit; when it doesn't resolve, takes the edit back and gives the exit code.
+fn resolve_edit(
+    project: &Project,
+    plan: &Plan,
+    a: &InstallArgs,
+    target: &Target,
+) -> Result<std::result::Result<(Resolution, Options), u8>> {
+    match resolve(project, plan, a) {
+        Ok(Ok(r)) => Ok(Ok(r)),
+        Ok(Err(problems)) => {
+            target.undo()?;
+            Ok(Err(print_problems(&problems)))
+        }
+        Err(e) => {
+            target.undo()?;
+            Err(e)
+        }
+    }
+}
+
+fn sort_packages(manifest: &Map<String, Value>) -> bool {
+    manifest.get("config").and_then(|c| c.get("sort-packages")) == Some(&Value::Bool(true))
 }
 
 /// The names in a link section matching `pattern` (a name, or a `vendor/*` pattern).
@@ -423,14 +514,13 @@ fn required(manifest: &Map<String, Value>, section: &str, pattern: &str) -> Vec<
 pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), true)?;
+    let target = target(&project, a.member.as_deref())?;
     let (section, other) = if a.dev {
         ("require-dev", "require")
     } else {
         ("require", "require-dev")
     };
-    let root_name = project
-        .manifest
-        .get("name")
+    let own_name = (target.manifest.get("name"))
         .and_then(Value::as_str)
         .map(str::to_ascii_lowercase);
     let pairs = name_version_pairs(&a.packages);
@@ -438,7 +528,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         if !is_platform(name) && name.split('/').filter(|p| !p.is_empty()).count() != 2 {
             bail!("{name} is not a package name: write it as vendor/name");
         }
-        if root_name.as_deref() == Some(name.to_ascii_lowercase().as_str()) {
+        if own_name.as_deref() == Some(name.to_ascii_lowercase().as_str()) {
             bail!("the project is {name}, so it can't require itself");
         }
         if let Some(v) = version.as_deref().filter(|v| *v != "self.version") {
@@ -446,11 +536,11 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
                 .with_context(|| format!("{name}: {v} is not a version constraint"))?;
         }
     }
-    let sort = a.sort_packages || sort_packages(&project);
-    let set = |project: &Project, text: &str, name: &str, constraint: &str| -> Result<String> {
-        if project.pun_toml {
+    let sort = a.sort_packages || sort_packages(&target.manifest);
+    let set = |text: &str, name: &str, constraint: &str| -> Result<String> {
+        if target.pun_toml {
             let text = toml_set(text, section, name, constraint, sort)?;
-            if required(&project.manifest, other, name).is_empty() {
+            if required(&target.manifest, other, name).is_empty() {
                 Ok(text)
             } else {
                 toml_remove(&text, other, name)
@@ -459,26 +549,22 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
             json_set(text, section, other, name, constraint, sort)
         }
     };
-    let (path, original) = manifest_file(&project);
-    let mut text = original.clone().unwrap_or_default();
+    let mut text = target.original.clone().unwrap_or_default();
     for (name, version) in &pairs {
-        if !required(&project.manifest, other, name).is_empty() {
+        if !required(&target.manifest, other, name).is_empty() {
             eprintln!(" ! {name} moves from {other} to {section}");
         }
-        text = set(&project, &text, name, version.as_deref().unwrap_or("*"))?;
+        text = set(&text, name, version.as_deref().unwrap_or("*"))?;
     }
-    let file = path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .into_owned();
+    let file = target.file(&project);
     if a.no_update {
-        write(&path, &text)?;
+        write(&target.path, &text)?;
         eprintln!("Updated {file}");
         return Ok(0);
     }
-    project.manifest = parse_manifest(&project, &path, &text)?;
-    let names: Vec<String> = pairs.iter().map(|(n, _)| n.to_ascii_lowercase()).collect();
+    let mut names: Vec<String> = pairs.iter().map(|(n, _)| n.to_ascii_lowercase()).collect();
+    // A member's requirements changed, so the member's own locked entry changes too.
+    names.extend(target.member.clone());
     let plan = Plan {
         allow_list: if project.lock.is_some() {
             names
@@ -490,9 +576,10 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         dry_run: false,
     };
     pre_update(&project, &a.install, &plan)?;
-    let (resolution, options) = match resolve(&project, &plan, &a.install)? {
+    target.apply(&mut project, &text)?;
+    let (resolution, options) = match resolve_edit(&project, &plan, &a.install, &target)? {
         Ok(r) => r,
-        Err(problems) => return Ok(print_problems(&problems)),
+        Err(code) => return Ok(code),
     };
     // Composer resolves a package named without a version at `*`, then writes the constraint for what it found
     // and updates the lock's hash and stability flags to match.
@@ -513,18 +600,28 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
                 " ! {constraint} looks like a feature branch, which may not keep working for long"
             );
         }
-        text = set(&project, &text, name, &constraint)?;
+        text = set(&text, name, &constraint)?;
         picked.push((name.to_ascii_lowercase(), constraint));
     }
     if !picked.is_empty() {
-        project.manifest = parse_manifest(&project, &path, &text)?;
-        locker::update_hash(&mut lock, &project.manifest, &picked)?;
+        if target.member.is_some() {
+            // The member's locked entry holds its requirements, so resolve again with the constraints written.
+            target.apply(&mut project, &text)?;
+            let (resolution, options) = match resolve_edit(&project, &plan, &a.install, &target)? {
+                Ok(r) => r,
+                Err(code) => return Ok(code),
+            };
+            lock = locker::lock(&resolution, &project.manifest, &options);
+        } else {
+            target.apply(&mut project, &text)?;
+            locker::update_hash(&mut lock, &project.manifest, &picked)?;
+        }
     }
     eprintln!("Updated {file}");
     let edit = Edit {
-        path,
+        path: target.path,
         text,
-        original,
+        original: target.original,
     };
     finish(&mut project, &plan, &a.install, started, lock, Some(edit))
 }
@@ -532,14 +629,14 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
 pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), false)?;
-    let (path, original) = manifest_file(&project);
-    let mut text = original.clone().unwrap_or_default();
+    let target = target(&project, a.member.as_deref())?;
+    let mut text = target.original.clone().unwrap_or_default();
     let mut removed = vec![];
     for pattern in &a.packages {
         let mut found = false;
         for section in ["require", "require-dev"] {
-            for name in required(&project.manifest, section, pattern) {
-                text = if project.pun_toml {
+            for name in required(&target.manifest, section, pattern) {
+                text = if target.pun_toml {
                     toml_remove(&text, section, &name)?
                 } else {
                     json_remove(&text, section, &name)?
@@ -555,17 +652,13 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
     if removed.is_empty() {
         return Ok(0);
     }
-    let file = path
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .into_owned();
+    let file = target.file(&project);
     if a.no_update {
-        write(&path, &text)?;
+        write(&target.path, &text)?;
         eprintln!("Updated {file}");
         return Ok(0);
     }
-    project.manifest = parse_manifest(&project, &path, &text)?;
+    removed.extend(target.member.clone());
     let plan = Plan {
         allow_list: if project.lock.is_some() {
             removed
@@ -577,16 +670,17 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
         dry_run: false,
     };
     pre_update(&project, &a.install, &plan)?;
-    let (resolution, options) = match resolve(&project, &plan, &a.install)? {
+    target.apply(&mut project, &text)?;
+    let (resolution, options) = match resolve_edit(&project, &plan, &a.install, &target)? {
         Ok(r) => r,
-        Err(problems) => return Ok(print_problems(&problems)),
+        Err(code) => return Ok(code),
     };
     let lock = locker::lock(&resolution, &project.manifest, &options);
     eprintln!("Updated {file}");
     let edit = Edit {
-        path,
+        path: target.path,
         text,
-        original,
+        original: target.original,
     };
     finish(&mut project, &plan, &a.install, started, lock, Some(edit))
 }

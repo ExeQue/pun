@@ -31,6 +31,7 @@ mod table;
 mod update;
 mod vet;
 mod watch;
+mod workspace;
 mod x;
 
 use anyhow::Result;

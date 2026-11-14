@@ -191,18 +191,20 @@ Every feature here keeps the project working under plain Composer: it reads only
 `extra.pun` (Composer ignores `extra`), and an unused feature changes nothing Pun writes. Each one is built after the
 step it depends on.
 
-1. **Workspaces (monorepos), as Cargo and pnpm have them.** After step 9.
-   - The root `composer.json` opts in with `extra.pun.workspace.members`, a list of globs (`["packages/*", "apps/*"]`).
-     Each member is a directory with its own `composer.json`. Pun checks that the root also lists the globs as `path`
-     repositories, so `composer install` at the root resolves the same members. `pun workspace init` writes both.
+1. **Workspaces (monorepos), as Cargo and pnpm have them.** Built (2026-11-14) as below, except where noted.
+   - The root `pun.toml` opts in with `[workspace] members`, a list of globs (`["packages/*", "apps/*"]`), since the
+     dependencies live in pun.toml (Pushpak, 2026-11-14). Each member is a directory with its own pun.toml or
+     composer.json. Pun adds a `path` repository per glob and requires each member at `*@dev` in memory; nothing is
+     written to the root manifest. Not built: `pun workspace init`.
    - One `composer.lock` and one `vendor/` at the root, as Cargo keeps one `Cargo.lock` and one `target/`. Members
      are installed as path packages (symlinked) and every member's `require` joins one resolution, so the whole
      repository gets one version of each package.
    - Every command finds the workspace root by walking up from the current directory, so `pun install` works in any
      member.
    - `-p <member>` (Cargo's flag; pnpm calls it `--filter`) picks members by name or glob: `pun require -p acme/billing
-     guzzlehttp/guzzle` edits that member's `composer.json` and updates the root lock. Without a constraint, `require`
-     uses the constraint other members already have for that package.
+     guzzlehttp/guzzle` edits that member's manifest and updates the root lock; in a member, the member is the default.
+     Not built: without a constraint, `require` should use the constraint other members already have for that
+     package (it writes the newest `^major.minor` today).
    - `pun composer run-script --workspace <script>` runs a script in every member that defines it, in dependency
      order, with independent members in parallel. `pun check`, `format`, `lint` and `analyse` take `--workspace` too
      and use each member's own `pun.toml`.

@@ -176,7 +176,7 @@ fn expand_path(path: &str) -> String {
 }
 
 /// The packages a `path` repository offers (`PathRepository::initialize`): each directory its `url` glob matches
-/// that holds a composer.json, with a `path` dist.
+/// that holds a composer.json (or a pun.toml with dependency sections), with a `path` dist.
 pub fn path_packages(root: &Path, config: &Map<String, Value>) -> Result<Vec<Map<String, Value>>> {
     let Some(url) = config.get("url").and_then(Value::as_str) else {
         bail!("You must specify the `url` configuration for the path repository");
@@ -215,8 +215,13 @@ pub fn path_packages(root: &Path, config: &Map<String, Value>) -> Result<Vec<Map
     for dir in matches {
         let path = root.join(&dir);
         let file = path.join("composer.json");
-        let Ok(json) = std::fs::read_to_string(&file) else {
-            continue;
+        let json = match std::fs::read_to_string(&file) {
+            Ok(json) => json,
+            // A package that keeps its manifest in pun.toml, as a Pun workspace member may.
+            Err(_) => match pun_config::manifest::read(&path)? {
+                Some(m) => Value::Object(m.json).to_string(),
+                None => continue,
+            },
         };
         let Value::Object(mut package) = serde_json::from_str(&json)
             .with_context(|| format!("{} does not contain valid JSON", file.display()))?
