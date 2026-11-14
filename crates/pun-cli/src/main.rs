@@ -73,7 +73,7 @@ enum Cmd {
     Analyse(Box<analyse::AnalyseArgs>),
     /// Write pun.toml from pint.json or .php-cs-fixer(.dist).php, rector.php and phpstan.neon, and rewrite `@php-cs-fixer-ignore` comments.
     Migrate(migrate::MigrateArgs),
-    /// Install the locked dependencies (pun.lock, or composer.lock) into vendor/, with Composer's autoloader;
+    /// Install pun.lock into vendor/, with Composer's autoloader;
     /// without a lock, resolve one first.
     Install(install::InstallArgs),
     /// Resolve the dependencies again (all, or the packages named), write the lock and install it.

@@ -1,6 +1,7 @@
-//! What a project's composer.json and composer.lock say about it (context/plan/config.md §5 and Build 5): the PHP
-//! version from `require.php` (the lowest version the constraint admits) and the Laravel, Pest and PHPUnit versions
-//! locked in composer.lock (`packages` and `packages-dev`).
+//! What a project's dependencies say about it (context/plan/config.md §5 and Build 5): the PHP version from
+//! `require.php` (the lowest version the constraint admits) and the Laravel, Pest and PHPUnit versions locked
+//! (`packages` and `packages-dev`). They come from pun.toml and pun.lock when pun.toml holds the dependencies, and
+//! from composer.json and composer.lock in a project whose dependencies Composer still manages.
 
 use crate::constraint;
 use anyhow::{Context, Result};
@@ -83,38 +84,59 @@ impl Composer {
     }
 }
 
-/// Reads `root/composer.json` and `root/composer.lock`. A missing file is not an error; an unreadable one, invalid
-/// JSON or an unparsable `require.php` is.
+/// Reads pun.toml's dependency sections and pun.lock, or without those composer.json and composer.lock. A missing
+/// file is not an error; an unreadable one, invalid JSON or TOML, or an unparsable `require.php` is.
 pub fn detect(root: &Path) -> Result<Composer> {
     let mut out = Composer::default();
-    if let Some(json) = read(&root.join("composer.json"), &mut out.sources)? {
+    let (manifest, lock) = match crate::manifest::read(root)? {
+        Some(m) => {
+            out.sources.push(m.path);
+            let lock = read_toml(&root.join("pun.lock"), &mut out.sources)?;
+            (Some(Value::Object(m.json)), lock)
+        }
+        None => (
+            read(&root.join("composer.json"), &mut out.sources)?,
+            read(&root.join("composer.lock"), &mut out.sources)?,
+        ),
+    };
+    if let Some(json) = manifest {
         out.php = php_require(&json)?;
         out.platform_php =
             (json.pointer("/config/platform/php").and_then(Value::as_str)).map(str::to_string);
     }
-    if let Some(lock) = read(&root.join("composer.lock"), &mut out.sources)? {
-        for key in ["packages", "packages-dev"] {
-            for p in lock
-                .get(key)
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-            {
-                let slot = match p.get("name").and_then(Value::as_str) {
-                    Some("laravel/framework") => &mut out.laravel,
-                    Some("pestphp/pest") => &mut out.pest,
-                    Some("phpunit/phpunit") => &mut out.phpunit,
-                    _ => continue,
-                };
-                let version = p.get("version").and_then(Value::as_str).unwrap_or("");
-                *slot = Some(Locked {
-                    version: version.to_string(),
-                    semver: semver(version),
-                });
-            }
+    for key in ["packages", "packages-dev"] {
+        for p in (lock.as_ref())
+            .and_then(|l| l.get(key))
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let slot = match p.get("name").and_then(Value::as_str) {
+                Some("laravel/framework") => &mut out.laravel,
+                Some("pestphp/pest") => &mut out.pest,
+                Some("phpunit/phpunit") => &mut out.phpunit,
+                _ => continue,
+            };
+            let version = p.get("version").and_then(Value::as_str).unwrap_or("");
+            *slot = Some(Locked {
+                version: version.to_string(),
+                semver: semver(version),
+            });
         }
     }
     Ok(out)
+}
+
+/// pun.lock as JSON, or `None` when there is none.
+fn read_toml(path: &Path, sources: &mut Vec<PathBuf>) -> Result<Option<Value>> {
+    let text = match std::fs::read_to_string(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        r => r.with_context(|| format!("can't read {}", path.display()))?,
+    };
+    let table: toml::Table =
+        toml::from_str(&text).with_context(|| format!("invalid {}", path.display()))?;
+    sources.push(path.to_path_buf());
+    Ok(Some(crate::toml_text::to_json(&toml::Value::Table(table))))
 }
 
 /// `require.php` of a composer.json.
@@ -264,6 +286,36 @@ mod tests {
         assert_eq!(c.php, None);
         assert_eq!(c.laravel, locked("v12.0.1", Some(v(12, 0, 1))));
         assert_eq!(c.sources, [d.join("composer.lock")]);
+    }
+
+    /// Once pun.toml holds the dependencies, pun.toml and pun.lock are read and the composer.json and composer.lock
+    /// left beside them are not, since `pun update` changes only the pun files.
+    #[test]
+    fn pun_files_win_over_composers() {
+        let d = dir(&[
+            ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
+            (
+                "composer.lock",
+                &lock(&pkg("laravel/framework", "v12.0.1"), ""),
+            ),
+            (
+                "pun.toml",
+                "[require]\nphp = \"^8.5\"\n\n[config.platform]\nphp = \"8.5.1\"\n",
+            ),
+            (
+                "pun.lock",
+                "version = 1\ncontent-hash = \"0\"\n\n[[packages]]\nname = \"laravel/framework\"\nversion = \"v13.1.0\"\n\n[[packages-dev]]\nname = \"pestphp/pest\"\nversion = \"v5.0.3\"\n",
+            ),
+        ]);
+        let c = detect(&d).unwrap();
+        assert_eq!(c.php.map(|p| p.lowest), Some(Some(v(8, 5, 0))));
+        assert_eq!(c.platform_php.as_deref(), Some("8.5.1"));
+        assert_eq!(c.laravel, locked("v13.1.0", Some(v(13, 1, 0))));
+        assert_eq!(c.pest, locked("v5.0.3", Some(v(5, 0, 3))));
+        assert_eq!(c.sources, [d.join("pun.toml"), d.join("pun.lock")]);
+        // Without pun.lock, nothing is locked, whatever composer.lock says.
+        std::fs::remove_file(d.join("pun.lock")).unwrap();
+        assert_eq!(detect(&d).unwrap().laravel, None);
     }
 
     /// Versions as corpus/pinkary's composer.lock pins them: Laravel in `packages`, Pest and PHPUnit in

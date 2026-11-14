@@ -53,7 +53,7 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `composer.json` `require.php`, otherwise 8.4. Without it, `pun analyse` uses `composer.json` `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
+| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` (in `[require]`, or `composer.json` before `pun migrate`), otherwise 8.4. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
 | `[files] paths` | Default paths when no command-line paths are given. Each must be inside the project; a path that leaves it, directly or through a symlink, is a config error |
 | `[files] exclude` | Shared exclusions, combined with command-specific exclusions |
 
@@ -98,7 +98,7 @@ Selection applies in this order, with later settings taking precedence:
 
 A table without `level` defaults to `"error"`. Warnings do not fail unless a warning limit is set. `--fix` applies available fixes except rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit set rules depend on packages detected in `composer.lock`. PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
+Laravel, Pest, and PHPUnit set rules depend on the packages locked in `pun.lock` (or `composer.lock` before `pun migrate`). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
 
 ## [analyse]
 

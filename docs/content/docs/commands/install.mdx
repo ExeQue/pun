@@ -9,20 +9,15 @@ pun install --no-dev --classmap-authoritative
 pun install --ignore-platform-req=ext-imagick
 ```
 
-`pun install` installs the exact versions in `pun.lock` into `vendor/`. The result is the tree `composer install` produces: the same package files, `vendor/autoload.php`, `vendor/composer/installed.json` and `installed.php`, the autoloader, `platform_check.php`, and the `vendor/bin` proxies. Composer, Laravel's `package:discover`, and `Composer\InstalledVersions` read it unchanged, so you can switch between `pun install` and `composer install` in either direction.
+`pun install` installs the exact versions in `pun.lock` into `vendor/`. The result is the tree `composer install` produces from the same lock: the same package files, `vendor/autoload.php`, `vendor/composer/installed.json` and `installed.php`, the autoloader, `platform_check.php`, and the `vendor/bin` proxies. Composer, Laravel's `package:discover`, and `Composer\InstalledVersions` read it unchanged, so you can switch between `pun install` and `composer install` in either direction.
 
 On pinkary, a Laravel app with 211 packages, a fresh install takes about 1.7 seconds against Composer's 13.5 seconds when both caches hold the archives. With nothing to change, it takes 0.65 seconds against 6.7 seconds.
 
 ## Where the dependencies come from
 
-| `pun.toml` has `[require]` | Manifest | Lock |
-| --- | --- | --- |
-| Yes | `pun.toml` | `pun.lock`. Without one, Pun imports `composer.lock` and writes `pun.lock`. |
-| No | `composer.json` | `pun.lock`, else `composer.lock` |
+`pun install` reads the dependency sections of `pun.toml` and installs `pun.lock`. It never reads `composer.json` or `composer.lock`: in a project that still keeps its dependencies there, it exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate), which moves `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`.
 
-Run [`pun migrate`](/docs/commands/migrate) to move `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`.
-
-Without a lock, `pun install` resolves the dependencies to their newest versions, writes the lock, and installs it, as [`pun update`](/docs/commands/update) does. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
+Without a `pun.lock`, `pun install` resolves the dependencies to their newest versions, writes `pun.lock`, and installs it, as [`pun update`](/docs/commands/update) does. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
 
 ## What an install does
 
@@ -74,4 +69,4 @@ Pun installs from dist archives (`zip` and `tar`) and path repositories. Package
 | Code | When |
 | --- | --- |
 | 0 | Installed |
-| 2 | Requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |
+| 2 | A project not migrated yet, requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |

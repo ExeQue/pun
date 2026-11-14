@@ -1,5 +1,5 @@
 //! Workspaces: a root pun.toml lists member directories (`[workspace] members = ["packages/*"]`), each a package
-//! with its own pun.toml or composer.json. The repository shares one pun.lock and one vendor/ at the root: every
+//! with its own pun.toml. The repository shares one pun.lock and one vendor/ at the root: every
 //! member is a path package symlinked into vendor/, and the members' requirements join one resolution, so the
 //! repository gets one version of each package. Commands run in a member work on the whole workspace.
 
@@ -89,16 +89,16 @@ fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
     })
 }
 
-/// The package name of the member in `dir` (pun.toml's `[package] name`, else composer.json's `name`); `None` when
-/// the directory holds neither file.
+/// The package name of the member in `dir`, from its pun.toml's `[package] name`; `None` when the directory is not
+/// a package.
 fn name_of(dir: &Path) -> Result<Option<String>> {
     let manifest = match pun_config::manifest::read(dir)? {
         Some(m) => m.json,
-        None => match std::fs::read_to_string(dir.join("composer.json")) {
-            Ok(text) => serde_json::from_str(&text)
-                .with_context(|| format!("invalid {}", dir.join("composer.json").display()))?,
-            Err(_) => return Ok(None),
-        },
+        None if dir.join("composer.json").is_file() => bail!(
+            "the workspace member in {} keeps its dependencies in composer.json: run `pun migrate` there",
+            dir.display()
+        ),
+        None => return Ok(None),
     };
     match manifest.get("name").and_then(Value::as_str) {
         Some(name) => Ok(Some(name.to_ascii_lowercase())),

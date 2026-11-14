@@ -14,7 +14,7 @@ A workspace is a repository that holds several packages, such as a monorepo of a
    members = ["packages/*", "apps/*"]
    ```
 
-2. Give each member a `pun.toml` or a `composer.json` with its package name:
+2. Give each member a `pun.toml` with its package name. For a member that still has a `composer.json`, run `pun migrate` in its directory first.
 
    ```toml packages/billing/pun.toml
    [package]
@@ -28,7 +28,7 @@ A workspace is a repository that holds several packages, such as a monorepo of a
 
 The root needs no requirements of its own. Pun requires every member at the root and installs each one as a path package, symlinked into `vendor/`. A member requires another member like any package, at `*` or the constraint you want.
 
-`*` and `?` in a glob match within one directory name. Directories without a `pun.toml` or `composer.json` are skipped. Two members can't have the same name.
+`*` and `?` in a glob match within one directory name. Directories without a `pun.toml` are skipped. Two members can't have the same name.
 
 ## Work in a member
 
@@ -46,4 +46,3 @@ At the root without `-p`, they edit the root's `pun.toml`. When a request doesn'
 ## Limits
 
 - `pun install` doesn't notice when a member's requirements change outside `pun require` and `pun remove`. Run `pun update <member>` after you edit a member's manifest by hand.
-- Composer doesn't read `[workspace]`, so `composer install` at the root doesn't install the members.

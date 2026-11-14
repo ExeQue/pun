@@ -184,7 +184,9 @@ pub fn load(root: &Path, opts: &Options) -> Result<Config> {
     } else {
         let t = std::fs::read_to_string(&path)
             .with_context(|| format!("can't read {}", path.display()))?;
-        sources.push(path.clone());
+        if !sources.contains(&path) {
+            sources.push(path.clone());
+        }
         t
     };
     parse(root, &path, &text, opts, &composer, sources)
@@ -511,7 +513,10 @@ fn check_composer(composer: &Composer) -> Result<()> {
         && std::env::var_os("PUN_IGNORE_PHP_CONSTRAINT").is_none()
     {
         bail!(
-            "composer.json requires PHP \"{}\", which allows PHP < 8.4. Pun only supports projects on PHP 8.4+; raise the constraint (for example \"^8.4\") or keep using Pint.",
+            "{} requires PHP \"{}\", which allows PHP < 8.4. Pun only supports projects on PHP 8.4+; raise the constraint (for example \"^8.4\") or keep using Pint.",
+            (composer.sources.first())
+                .and_then(|p| p.file_name())
+                .map_or("composer.json".into(), |f| f.to_string_lossy()),
             php.constraint
         );
     }

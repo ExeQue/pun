@@ -1,16 +1,14 @@
 //! `pun update`, `pun require` and `pun remove`: resolve the dependencies again (all of them, or the packages named,
-//! with Composer's partial-update rules), write the lock (pun.lock, or composer.lock in a project not migrated),
-//! then install it as `pun install` does. `require` and `remove` edit pun.toml (or composer.json) in memory and
-//! write it only once the new requirements resolve; when the install after fails, both files are put back.
+//! with Composer's partial-update rules), write pun.lock, then install it as `pun install` does. `require` and
+//! `remove` edit pun.toml in memory and write it only once the new requirements resolve; when the install after
+//! fails, both files are put back.
 
 use crate::install::{InstallArgs, Project, fetcher, install_locked, project};
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
 use pun_packages::fetch::composer_dirs;
 use pun_packages::lock::Lock;
-use pun_packages::manifest_edit::{
-    json_remove, json_set, name_version_pairs, toml_remove, toml_set,
-};
+use pun_packages::manifest_edit::{name_version_pairs, toml_remove, toml_set};
 use pun_packages::resolver::pool::Transitive;
 use pun_packages::resolver::{self, Options, Resolution, explain, locker, platform, repos};
 use pun_packages::scripts::Runner;
@@ -258,18 +256,14 @@ fn finish(
     if plan.dry_run {
         return Ok(0);
     }
-    let lock_file = project.lock_file();
+    let lock_file = "pun.lock";
     let lock_path = project.root.join(lock_file);
     let lock_backup = std::fs::read_to_string(&lock_path).ok();
     if let Some(e) = &edit {
         write(&e.path, &e.text)?;
     }
-    let text = if lock_file == "pun.lock" {
-        // pun.lock is TOML, which has no null: take it through composer.lock's reader, which drops them.
-        Lock::from_composer_lock(&lock.to_composer_lock())?.to_toml()
-    } else {
-        lock.to_composer_lock()
-    };
+    // pun.lock is TOML, which has no null: take it through composer.lock's reader, which drops them.
+    let text = Lock::from_composer_lock(&lock.to_composer_lock())?.to_toml();
     write(&lock_path, &text)?;
     let result = if plan.resolve.no_install {
         (!a.no_scripts)
@@ -280,7 +274,7 @@ fn finish(
                 0
             })
     } else {
-        install_locked(project, &lock, lock_file, a, started, true)
+        install_locked(project, &lock, a, started, true)
     };
     if let Some(e) = edit
         && !matches!(result, Ok(0))
@@ -384,10 +378,9 @@ fn print_changes(old: Option<&Lock>, new: &Lock) {
     }
 }
 
-/// The manifest an edit changes: the project's own, or a workspace member's, as its file holds it.
+/// The pun.toml an edit changes: the project's own, or a workspace member's.
 struct Target {
     path: PathBuf,
-    pun_toml: bool,
     /// The file's text now; `None` when it doesn't exist yet.
     original: Option<String>,
     manifest: Map<String, Value>,
@@ -402,17 +395,11 @@ impl Target {
     }
 
     fn parse(&self, text: &str) -> Result<Map<String, Value>> {
-        if self.pun_toml {
-            let table: toml::Table =
-                toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
-            Ok(pun_config::manifest::parse(&self.path, &table)?
-                .map(|m| m.json)
-                .unwrap_or_default())
-        } else if text.is_empty() {
-            Ok(Map::new())
-        } else {
-            serde_json::from_str(text).with_context(|| format!("invalid {}", self.path.display()))
-        }
+        let table: toml::Table =
+            toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
+        Ok(pun_config::manifest::parse(&self.path, &table)?
+            .map(|m| m.json)
+            .unwrap_or_default())
     }
 
     /// Makes the edit visible to the resolver: a member's file is written now, since the workspace's path
@@ -448,25 +435,14 @@ fn target(project: &Project, member: Option<&str>) -> Result<Target> {
         }
         None => None,
     };
-    let (path, pun_toml, member) = match chosen {
-        Some(m) => {
-            let toml = pun_config::manifest::read(&m.dir)?.is_some();
-            let file = if toml { "pun.toml" } else { "composer.json" };
-            (m.dir.join(file), toml, Some(m.name.clone()))
-        }
-        None => {
-            let file = if project.pun_toml {
-                "pun.toml"
-            } else {
-                "composer.json"
-            };
-            (project.root.join(file), project.pun_toml, None)
-        }
+    let (dir, member) = match chosen {
+        Some(m) => (m.dir.as_path(), Some(m.name.clone())),
+        None => (project.root.as_path(), None),
     };
+    let path = dir.join("pun.toml");
     let original = std::fs::read_to_string(&path).ok();
     let mut target = Target {
         path,
-        pun_toml,
         original,
         manifest: Map::new(),
         member,
@@ -538,15 +514,11 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     }
     let sort = a.sort_packages || sort_packages(&target.manifest);
     let set = |text: &str, name: &str, constraint: &str| -> Result<String> {
-        if target.pun_toml {
-            let text = toml_set(text, section, name, constraint, sort)?;
-            if required(&target.manifest, other, name).is_empty() {
-                Ok(text)
-            } else {
-                toml_remove(&text, other, name)
-            }
+        let text = toml_set(text, section, name, constraint, sort)?;
+        if required(&target.manifest, other, name).is_empty() {
+            Ok(text)
         } else {
-            json_set(text, section, other, name, constraint, sort)
+            toml_remove(&text, other, name)
         }
     };
     let mut text = target.original.clone().unwrap_or_default();
@@ -636,11 +608,7 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
         let mut found = false;
         for section in ["require", "require-dev"] {
             for name in required(&target.manifest, section, pattern) {
-                text = if target.pun_toml {
-                    toml_remove(&text, section, &name)?
-                } else {
-                    json_remove(&text, section, &name)?
-                };
+                text = toml_remove(&text, section, &name)?;
                 removed.push(name.to_ascii_lowercase());
                 found = true;
             }

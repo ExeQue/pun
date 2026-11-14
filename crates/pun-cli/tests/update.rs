@@ -1,6 +1,6 @@
-//! `pun update`, `pun require` and `pun remove` on punphp-packages' install fixture, a project whose packages come
-//! from a path repository, so nothing is downloaded. The expected composer.json and composer.lock texts are what
-//! Composer 2.11.2 wrote for the same commands (`composer update`, `composer remove --dev acme/tools`).
+//! `pun update`, `pun require` and `pun remove` on punphp-packages' install fixture after `pun migrate`, a project
+//! whose packages come from a path repository, so nothing is downloaded. The expected locks are what Composer
+//! 2.11.2 wrote for the same commands (`composer update`, `composer remove --dev acme/tools`), as pun.lock holds them.
 mod common;
 
 use common::pty::pun;
@@ -30,22 +30,59 @@ fn expected(name: &str) -> String {
     .unwrap()
 }
 
-/// Without a lock, `pun update` writes the composer.lock Composer wrote for the fixture; with one, it changes
-/// nothing; `--dry-run` writes nothing.
+/// Composer's lock for `text` as pun.lock holds it.
+fn as_pun_lock(text: &str) -> String {
+    pun_packages::lock::Lock::from_composer_lock(text)
+        .unwrap()
+        .to_toml()
+}
+
+/// The fixture after `pun migrate`: its pun.toml and pun.lock, the latter Composer's composer.lock converted.
+fn migrated(name: &str) -> PathBuf {
+    let d = fixture(name);
+    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    d
+}
+
+/// Before `pun migrate`, the package commands refuse composer.json and composer.lock and say to migrate. After it,
+/// `pun update` without a lock writes what Composer wrote for the fixture; with one, it changes nothing;
+/// `--dry-run` writes nothing.
 #[test]
 fn update_writes_composers_lock() {
     let d = fixture("update");
-    let composer_lock = read(&d, "composer.lock");
+    for command in ["install", "update", "remove acme/lib"] {
+        let args: Vec<&str> = command.split(' ').collect();
+        let (out, err, code) = pun(&d, &args);
+        assert_eq!(code, Some(2), "{out}{err}");
+        assert!(
+            err.contains("the dependencies are still in composer.json: run `pun migrate`"),
+            "{err}"
+        );
+    }
+    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    let lock = as_pun_lock(&read(&d, "composer.lock"));
+    assert_eq!(read(&d, "pun.lock"), lock);
+    std::fs::remove_file(d.join("pun.lock")).unwrap();
+    // A composer.lock without a pun.lock is not read either.
+    let (_, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(2));
+    assert!(
+        err.contains("there is a composer.lock but no pun.lock"),
+        "{err}"
+    );
     std::fs::remove_file(d.join("composer.lock")).unwrap();
+
     let (out, err, code) = pun(&d, &["update", "--dry-run"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(err.contains(" + acme/lib 1.2.0\n"), "{err}");
-    assert!(!d.join("composer.lock").exists());
+    assert!(!d.join("pun.lock").exists());
 
     let (out, err, code) = pun(&d, &["update", "--no-install"]);
     assert_eq!(code, Some(0), "{out}{err}");
-    assert_eq!(read(&d, "composer.lock"), composer_lock);
-    assert!(!d.join("vendor").exists());
+    assert_eq!(read(&d, "pun.lock"), lock);
+    assert!(!d.join("vendor").exists() && !d.join("composer.lock").exists());
 
     let (out, err, code) = pun(&d, &["update", "acme/lib", "acme/nope"]);
     assert_eq!(code, Some(0), "{out}{err}");
@@ -55,14 +92,16 @@ fn update_writes_composers_lock() {
             && err.contains(" + packages: 2 installed\n"),
         "{err}"
     );
-    assert_eq!(read(&d, "composer.lock"), composer_lock);
+    assert_eq!(read(&d, "pun.lock"), lock);
     assert!(d.join("vendor/composer/installed.php").exists());
 }
 
-/// `pun remove` edits composer.json and the lock as `composer remove --dev` does, and uninstalls the package.
+/// `pun remove` changes pun.lock as `composer remove --dev` changes composer.lock, takes the package out of
+/// pun.toml, and uninstalls it.
 #[test]
 fn remove_matches_composer() {
-    let d = fixture("remove");
+    let d = migrated("remove");
+    let toml = read(&d, "pun.toml");
     let (out, err, code) = pun(&d, &["install"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(d.join("vendor/acme/tools").exists());
@@ -74,12 +113,12 @@ fn remove_matches_composer() {
         "{err}"
     );
     assert_eq!(
-        read(&d, "composer.json"),
-        expected("remove-tools.composer.json")
+        read(&d, "pun.toml"),
+        toml.replace("\n[require-dev]\n\"acme/tools\" = \"^0.3\"\n", "")
     );
     assert_eq!(
-        read(&d, "composer.lock"),
-        expected("remove-tools.composer.lock")
+        read(&d, "pun.lock"),
+        as_pun_lock(&expected("remove-tools.composer.lock"))
     );
     assert!(!d.join("vendor/acme/tools").exists());
     let (_, err, code) = pun(&d, &["remove", "acme/absent"]);
@@ -91,9 +130,7 @@ fn remove_matches_composer() {
 /// A requirement that can't resolve leaves both files alone and says why.
 #[test]
 fn require_edits_pun_toml() {
-    let d = fixture("require");
-    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
-    assert_eq!(code, Some(0), "{out}{err}");
+    let d = migrated("require");
     let (toml, lock) = (read(&d, "pun.toml"), read(&d, "pun.lock"));
 
     let (out, err, code) = pun(&d, &["remove", "acme/lib", "--no-install"]);
@@ -157,8 +194,8 @@ fn workspace_members_share_one_lock() {
                 "[package]\nname = \"acme/core\"\n",
             ),
             (
-                "repo/packages/billing/composer.json",
-                "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\"\n    }\n}\n",
+                "repo/packages/billing/pun.toml",
+                "[package]\nname = \"acme/billing\"\n\n[require]\n\"acme/core\" = \"*\"\n",
             ),
         ],
     );
@@ -178,8 +215,8 @@ fn workspace_members_share_one_lock() {
     let (out, err, code) = pun(&billing, &["require", "ext/log"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert_eq!(
-        read(&billing, "composer.json"),
-        "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\",\n        \"ext/log\": \"^2.3\"\n    }\n}\n"
+        read(&billing, "pun.toml"),
+        "[package]\nname = \"acme/billing\"\n\n[require]\n\"acme/core\" = \"*\"\n\"ext/log\" = \"^2.3\"\n"
     );
     let lock = read(&root, "pun.lock");
     assert!(lock.contains("require.\"ext/log\" = \"^2.3\""), "{lock}");

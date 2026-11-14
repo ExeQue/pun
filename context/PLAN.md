@@ -18,10 +18,10 @@ The launch phase has started: cleanup, then the first Composer release. CI stays
   `curl -fsSL https://pun.laravel.cloud/install | sh` installs the latest release without Composer, and the release
   archives carry GitHub build attestations (Pushpak, 2026-11-14). No crate, npm package or Homebrew tap is published (`publish = false` in every crate).
   plan/foundations.md §4.
-- **Package manager** (plan/packages.md): `pun install` from pun.lock (or composer.lock), `pun migrate`'s
-  composer.json step and `pun self-update` are built. On pinkary `pun install` writes Composer's exact `vendor/` in
+- **Package manager** (plan/packages.md): `pun install` from pun.lock, `pun migrate`'s composer.json step and
+  `pun self-update` are built. Only `pun migrate` reads composer.json and composer.lock. On pinkary `pun install` writes Composer's exact `vendor/` in
   1.7 s fresh and 0.65 s with nothing to do (Composer: 13.5 s and 6.7 s). The resolver, `pun update`, `pun require`
-  and `pun remove` are built: on pinkary `pun update` writes Composer's exact composer.lock in 6.5 s and 376 MB
+  and `pun remove` are built: on pinkary `pun update` writes Composer's exact lock in 6.5 s and 376 MB
   (Composer: 8.5 s and 165 MB). `pun x` (`punx`) runs a package's command from Pun's cache.
   `pun vet` checks the lock against audits and exemptions in supply-chain/. Workspaces (`[workspace] members` in the
   root pun.toml, one lock and vendor/, `-p` for require and remove) are built.

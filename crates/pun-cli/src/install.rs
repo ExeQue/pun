@@ -1,6 +1,6 @@
-//! `pun install`: installs the locked dependencies into `vendor/`. The manifest comes from pun.toml's dependency
-//! sections, or composer.json in a project not migrated yet; the lock from pun.lock, or composer.lock (imported into
-//! pun.lock when pun.toml holds the dependencies). Without a lock, install resolves one first, as `pun update` does.
+//! `pun install`: installs pun.lock into `vendor/`. The dependencies come from pun.toml's dependency sections only;
+//! `pun migrate` moves a project's composer.json and composer.lock into pun.toml and pun.lock. Without a pun.lock,
+//! install resolves one first, as `pun update` does.
 
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
@@ -56,33 +56,20 @@ pub(crate) struct InstallArgs {
     pub(crate) no_progress: bool,
 }
 
-/// A project's dependencies: the manifest in composer.json's shape, and its lock when it has one.
+/// A project's dependencies: pun.toml's dependency sections in composer.json's shape, and pun.lock when it exists.
 pub(crate) struct Project {
     pub(crate) root: PathBuf,
     pub(crate) manifest: Map<String, Value>,
-    /// The dependencies live in pun.toml, so the lock is pun.lock.
-    pub(crate) pun_toml: bool,
     pub(crate) lock: Option<Lock>,
-    /// The file the lock was read from.
-    pub(crate) lock_name: &'static str,
-    pub(crate) notes: Vec<String>,
     /// The workspace the project is the root of; `manifest` then holds the members too.
     pub(crate) workspace: Option<crate::workspace::Workspace>,
     /// The directory the command started in: the root, or a directory below it.
     pub(crate) here: PathBuf,
 }
 
-impl Project {
-    /// The lock file an update writes: pun.lock beside pun.toml, or beside a composer.json that already has one;
-    /// composer.lock otherwise.
-    pub(crate) fn lock_file(&self) -> &'static str {
-        if self.pun_toml || self.lock_name == "pun.lock" {
-            "pun.lock"
-        } else {
-            "composer.lock"
-        }
-    }
-}
+/// What a project not migrated yet is told.
+pub(crate) const MIGRATE: &str =
+    "run `pun migrate` to move composer.json and composer.lock into pun.toml and pun.lock";
 
 /// The downloader for a project: Composer's cache, the project's and the global auth.json, and `secure-http`.
 pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
@@ -109,66 +96,22 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
     let root = workspace
         .as_ref()
         .map_or_else(|| here.clone(), |w| w.root.clone());
-    // A workspace's root may require nothing itself.
-    let toml_manifest = (pun_config::manifest::read(&root)?.map(|m| m.json))
-        .or_else(|| workspace.as_ref().map(|_| Map::new()));
-    let mut notes = vec![];
-    let composer_lock = |root: &PathBuf| -> Result<Option<Lock>> {
-        match std::fs::read_to_string(root.join("composer.lock")) {
-            Err(_) => Ok(None),
-            Ok(text) => Lock::from_composer_lock(&text)
-                .context("invalid composer.lock")
-                .map(Some),
+    let manifest = match pun_config::manifest::read(&root)? {
+        Some(m) => m.json,
+        // A workspace's root may require nothing itself.
+        None if workspace.is_some() => Map::new(),
+        None if root.join("composer.json").is_file() => {
+            bail!("the dependencies are still in composer.json: {MIGRATE}")
         }
+        None if create => Map::new(),
+        None => bail!(
+            "no dependencies here: pun.toml has no [require]; add one with `pun require <package>`"
+        ),
     };
-    let (manifest, pun_toml, lock, lock_name) = match toml_manifest {
-        Some(json) => match Lock::read(&root)? {
-            Some(lock) => (json, true, Some(lock), "pun.lock"),
-            None => match composer_lock(&root)? {
-                Some(lock) => {
-                    std::fs::write(root.join("pun.lock"), lock.to_toml())
-                        .context("can't write pun.lock")?;
-                    notes.push("wrote pun.lock from composer.lock".to_string());
-                    (json, true, Some(lock), "pun.lock")
-                }
-                None => (json, true, None, "pun.lock"),
-            },
-        },
-        None => {
-            let Ok(text) = std::fs::read_to_string(root.join("composer.json")) else {
-                if create {
-                    return Ok(Project {
-                        root,
-                        manifest: Map::new(),
-                        pun_toml: true,
-                        lock: None,
-                        lock_name: "pun.lock",
-                        notes,
-                        workspace: None,
-                        here,
-                    });
-                }
-                bail!(
-                    "no dependencies here: pun.toml has no [require] and there is no composer.json"
-                );
-            };
-            let json: Map<String, Value> =
-                serde_json::from_str(&text).context("invalid composer.json")?;
-            match Lock::read(&root)? {
-                Some(lock) => (json, false, Some(lock), "pun.lock"),
-                None => {
-                    let lock = composer_lock(&root)?;
-                    if lock.is_some() {
-                        notes.push(
-                            "run `pun migrate` to move the dependencies into pun.toml and pun.lock"
-                                .to_string(),
-                        );
-                    }
-                    (json, false, lock, "composer.lock")
-                }
-            }
-        }
-    };
+    let lock = Lock::read(&root)?;
+    if lock.is_none() && root.join("composer.lock").is_file() {
+        bail!("there is a composer.lock but no pun.lock: {MIGRATE}");
+    }
     let manifest = match &workspace {
         Some(w) => w.manifest(manifest),
         None => manifest,
@@ -176,10 +119,7 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
     Ok(Project {
         root,
         manifest,
-        pun_toml,
         lock,
-        lock_name,
-        notes,
         workspace,
         here,
     })
@@ -189,10 +129,7 @@ pub(crate) fn run(a: InstallArgs) -> Result<u8> {
     let started = Instant::now();
     let mut project = project(a.working_dir.as_ref(), false)?;
     if project.lock.is_none() {
-        eprintln!(
-            "No {} yet: resolving the dependencies to their latest versions",
-            project.lock_file()
-        );
+        eprintln!("No pun.lock yet: resolving the dependencies to their latest versions");
         return crate::update::update_and_install(
             &mut project,
             crate::update::Plan::default(),
@@ -201,7 +138,7 @@ pub(crate) fn run(a: InstallArgs) -> Result<u8> {
         );
     }
     let lock = project.lock.take().expect("a lock");
-    install_locked(&project, &lock, project.lock_name, &a, started, false)
+    install_locked(&project, &lock, &a, started, false)
 }
 
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
@@ -209,7 +146,6 @@ pub(crate) fn run(a: InstallArgs) -> Result<u8> {
 pub(crate) fn install_locked(
     project: &Project,
     lock: &Lock,
-    lock_name: &str,
     a: &InstallArgs,
     started: Instant,
     update: bool,
@@ -237,7 +173,7 @@ pub(crate) fn install_locked(
     let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev);
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };
     eprintln!(
-        "Installing {} from {lock_name}",
+        "Installing {} from pun.lock",
         crate::agent::count(total, "package")
     );
     if !a.no_scripts && !update {
@@ -260,7 +196,7 @@ pub(crate) fn install_locked(
     let warn = look.paint(Role::Warning, look.glyph("⚠", "!"));
     if report.stale_lock {
         eprintln!(
-            " {warn} {lock_name} is out of date with the dependencies it locks: they changed since it was written, so run `pun update` to refresh it"
+            " {warn} pun.lock is out of date with the dependencies it locks: they changed since it was written, so run `pun update` to refresh it"
         );
     }
     let mut changes = vec![];
@@ -297,7 +233,7 @@ pub(crate) fn install_locked(
         };
         eprintln!(" {ok} autoloader: {} {noun}", report.classes);
     }
-    for w in report.warnings.iter().chain(&project.notes) {
+    for w in &report.warnings {
         eprintln!(" {warn} {w}");
     }
     let secs = started.elapsed().as_secs_f64();

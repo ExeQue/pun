@@ -10,7 +10,7 @@ punx friendsofphp/php-cs-fixer fix --dry-run
 pun x squizlabs/php_codesniffer phpcbf src
 ```
 
-`pun x` installs a Composer package into Pun's cache and runs one of its commands in the current directory. The package never enters your project's `composer.json`, `pun.toml`, or `vendor/`, and each tool gets its own dependencies, so two tools can't conflict. `punx` is the same command under a shorter name: the installer puts it beside `pun`.
+`pun x` installs a Composer package into Pun's cache and runs one of its commands in the current directory. The package never enters your project's `pun.toml`, `pun.lock`, or `vendor/`, and each tool gets its own dependencies, so two tools can't conflict. `punx` is the same command under a shorter name: the installer puts it beside `pun`.
 
 The first run of a package resolves its newest stable release and installs it, as [`pun install`](/docs/commands/install) does. Later runs reuse that install and start at once. When the last resolve is more than a day old, the run resolves again to pick up a new release. If that fails, for example offline, the run uses the version it has.
 
