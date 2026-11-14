@@ -25,14 +25,12 @@ pub struct Options {
     pub ignore_platform: IgnorePlatform,
 }
 
-/// A package the install added.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Added {
     pub name: String,
     pub version: String,
 }
 
-/// A package the install replaced with another version or commit.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Updated {
     pub name: String,
@@ -52,7 +50,6 @@ pub struct Report {
     pub warnings: Vec<String>,
 }
 
-/// The directories packages and their binaries go in, from `vendor-dir` and `bin-dir`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dirs {
     pub vendor: String,
@@ -84,9 +81,7 @@ pub fn dirs(base: &str, manifest: &Map<String, Value>) -> Dirs {
     Dirs { vendor, bin }
 }
 
-/// The project `install` works on.
 struct Project<'a> {
-    /// The directory resolved.
     dir: PathBuf,
     /// `dir` as the generated PHP files spell it.
     dir_str: String,
@@ -158,7 +153,6 @@ fn locked_packages(lock: &Lock, vendor: &str, no_dev: bool) -> Result<Vec<Instal
     Ok(packages)
 }
 
-/// The packages vendor/composer/installed.json lists, by lowercase name.
 fn previous(vendor: &Path) -> Result<HashMap<String, LockedPackage>> {
     Ok((read_installed(vendor)?.into_iter())
         .filter(|p| p.get("name").is_some_and(Value::is_string))
@@ -234,7 +228,6 @@ fn remove_stale(
     Ok(())
 }
 
-/// Downloads and unpacks the packages at `todo` in parallel; every failure is in the error.
 fn download(
     fetcher: &Fetcher,
     packages: &[Installed],
@@ -273,7 +266,6 @@ fn download(
     Ok(())
 }
 
-/// Writes vendor/composer's installed.json, installed.php and InstalledVersions.php.
 fn write_repository(
     project: &Project,
     packages: &[Installed],

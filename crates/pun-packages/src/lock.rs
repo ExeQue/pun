@@ -50,7 +50,6 @@ impl LockedPackage {
         self.0.get(key).and_then(Value::as_str)
     }
 
-    /// The name as written; a lock rejects a package without one.
     pub fn pretty_name(&self) -> &str {
         self.str("name").unwrap_or_default()
     }
@@ -63,7 +62,6 @@ impl LockedPackage {
         self.str("version").unwrap_or_default()
     }
 
-    /// The package type (`type`), such as `library` or `metapackage`.
     pub fn kind(&self) -> Option<&str> {
         self.str("type")
     }
@@ -88,7 +86,6 @@ impl LockedPackage {
         }
     }
 
-    /// The paths in `bin`.
     pub fn bins(&self) -> impl Iterator<Item = &str> {
         (self.0.get("bin").and_then(Value::as_array))
             .into_iter()
@@ -96,7 +93,6 @@ impl LockedPackage {
             .filter_map(Value::as_str)
     }
 
-    /// The lowercase targets of the `require`, `provide`, `replace` or `conflict` links.
     pub fn link_targets(&self, kind: &str) -> impl Iterator<Item = String> {
         (self.0.get(kind).and_then(Value::as_object))
             .into_iter()

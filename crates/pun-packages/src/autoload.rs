@@ -20,7 +20,6 @@ pub enum PlatformCheck {
     Full,
 }
 
-/// Which classes the class map lists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Scan {
     /// The classes of the `classmap` rules.
@@ -32,7 +31,6 @@ pub enum Scan {
     Authoritative,
 }
 
-/// Whether the loader caches what it finds in APCu, and under which prefix.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Apcu {
     #[default]
@@ -68,14 +66,12 @@ pub struct Dumped {
     pub warnings: Vec<String>,
 }
 
-/// An `autoload.files` entry: its identifier, the PHP expression of its path, and the path.
 struct FileEntry {
     id: String,
     code: String,
     path: String,
 }
 
-/// What autoload_static.php lists.
 struct StaticMaps<'a> {
     psr0: &'a [(String, Vec<String>)],
     psr4: &'a [(String, Vec<String>)],
@@ -85,7 +81,6 @@ struct StaticMaps<'a> {
     files: &'a [FileEntry],
 }
 
-/// The optional files autoload_real.php loads.
 struct Loads {
     include_paths: bool,
     files: bool,
