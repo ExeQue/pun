@@ -2,9 +2,7 @@
 //! nette/neon v3.3.4 results) plus extra inputs for branches it doesn't reach (tests/fixtures/neon-extra.json, same
 //! exporter).
 
-mod common;
-
-use common::{fixture, tagged, untagged};
+use crate::common::{fixture, tagged, untagged};
 use pun_phpstan::neon;
 
 fn run(name: &str) {

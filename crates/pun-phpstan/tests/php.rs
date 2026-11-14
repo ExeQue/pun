@@ -1,8 +1,6 @@
 //! php.rs against real PHP and PHPStan 2.3.1 (tests/fixtures/php.json, scripts/export-php-helpers-fixtures.php).
 
-mod common;
-
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::php;
 use serde_json::{Value as J, json};
 
@@ -86,7 +84,7 @@ fn php_config_files() {
         let php = std::fs::read_to_string(format!("{dir}/{name}")).unwrap();
         let got = pun_phpstan::phpfile::load_config(&php, "{dir}");
         if name.starts_with("ok-") {
-            let got = common::tagged(&pun_phpstan::Value::Array(got.unwrap()));
+            let got = crate::common::tagged(&pun_phpstan::Value::Array(got.unwrap()));
             assert_eq!(got, want[&name], "{name}");
         } else {
             assert!(got.is_err(), "{name}: {got:?}");

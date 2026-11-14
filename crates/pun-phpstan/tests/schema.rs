@@ -1,9 +1,7 @@
 //! parametersSchema building and validation against PHPStan 2.3.1's ContainerFactory::validateParameters()
 //! (tests/fixtures/schema.json, scripts/export-schema-fixtures.php).
 
-mod common;
-
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::config::ProjectFiles;
 use pun_phpstan::{Value, di, schema};
 use serde_json::json;

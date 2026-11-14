@@ -7,11 +7,9 @@
     reason = "the helpers print the failing case before the test asserts"
 )]
 
-mod common;
-
 use std::collections::HashMap;
 
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::symbols::{self, Function, PhpVersion};
 use pun_phpstan::types::{Level, is_super_type_of};

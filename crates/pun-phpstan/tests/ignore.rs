@@ -1,9 +1,7 @@
 //! `@phpstan-ignore*` comment parsing and `ignoreErrors` matching against PHPStan 2.3.5's own classes
 //! (tests/fixtures/comments.json and ignore.json, exported by scripts/export-ignore-fixtures.php).
 
-mod common;
-
-use common::{fixture, placeholders, tagged, untagged};
+use crate::common::{fixture, placeholders, tagged, untagged};
 use pun_phpstan::comments::{self, LinesToIgnore};
 use pun_phpstan::ignore::{Error, IgnoredErrors};
 use pun_phpstan::{Array, Key, Value};

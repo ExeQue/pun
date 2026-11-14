@@ -1,9 +1,7 @@
-mod common;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::resolve::{resolve_str, with_type_nodes};
 use pun_phpstan::symbols::{self, Class, Template as ClassTemplate};
 use pun_phpstan::types::{

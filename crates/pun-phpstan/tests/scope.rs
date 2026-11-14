@@ -1,12 +1,10 @@
 //! Type strings in a project scope and `decideType()`, against PHPStan 2.3.1
 //! (`php scripts/export-phpstan-symbols.php probes` writes the fixtures).
 
-mod common;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::phpdoc;
 use pun_phpstan::resolve::{
     Scope, const_expr, has_global_alias, key_or_value_of, resolve_in, resolve_late, resolve_str,

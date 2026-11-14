@@ -1,5 +1,3 @@
-#![allow(dead_code, reason = "each test binary uses a subset")]
-
 use pun_phpstan::{Array, Entity, Key, Value};
 use serde_json::{Value as J, json};
 

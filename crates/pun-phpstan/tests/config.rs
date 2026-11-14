@@ -2,11 +2,9 @@
 //! `scripts/export-phpstan-config-fixtures.php`): edge-case configs in tests/fixtures/config/<case>/ and the corpus
 //! projects' own configs (tests/fixtures/config-corpus/*.json; needs `scripts/corpus.sh` and `.oracle/phpstan`).
 
-mod common;
-
 use std::path::{Path, PathBuf};
 
-use common::{dumped, fixture, placeholders};
+use crate::common::{dumped, fixture, placeholders};
 use pun_phpstan::config::{Options, resolve};
 use serde_json::{Value as J, json};
 
