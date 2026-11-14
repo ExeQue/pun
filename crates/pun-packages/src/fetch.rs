@@ -6,6 +6,7 @@ use crate::php::sha1;
 use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -219,6 +220,33 @@ pub enum Fetched {
     Body(Vec<u8>, Option<String>),
 }
 
+/// Looks each host up once per run. Every connection a parallel fetch opens would ask DNS again, and dozens of
+/// lookups at once lose queries that the static Linux binary's resolver (musl's) retries only after seconds.
+#[derive(Debug, Default)]
+struct OnceResolver {
+    resolved: std::sync::Mutex<HashMap<String, ureq::unversioned::resolver::ResolvedSocketAddrs>>,
+}
+
+impl ureq::unversioned::resolver::Resolver for OnceResolver {
+    fn resolve(
+        &self,
+        uri: &ureq::http::Uri,
+        config: &ureq::config::Config,
+        timeout: ureq::unversioned::transport::NextTimeout,
+    ) -> Result<ureq::unversioned::resolver::ResolvedSocketAddrs, ureq::Error> {
+        let key = format!("{:?}{:?}", uri.scheme(), uri.authority());
+        // Held through the lookup, so the connections opened at once wait for one answer.
+        let mut resolved = self.resolved.lock().expect("the resolver's cache");
+        if let Some(addrs) = resolved.get(&key) {
+            return Ok(addrs.clone());
+        }
+        let addrs = ureq::unversioned::resolver::DefaultResolver::default()
+            .resolve(uri, config, timeout)?;
+        resolved.insert(key, addrs.clone());
+        Ok(addrs)
+    }
+}
+
 pub struct Fetcher {
     agent: ureq::Agent,
     cache: Option<PathBuf>,
@@ -233,9 +261,18 @@ impl Fetcher {
             .user_agent(format!("pun/{}", env!("CARGO_PKG_VERSION")))
             .https_only(secure_http)
             .http_status_as_error(false)
+            // Keep every connection a parallel fetch opened, so the next round of metadata requests and the
+            // downloads after it skip the TLS handshake (ureq keeps 3 per host by default).
+            .max_idle_connections(64)
+            .max_idle_connections_per_host(64)
             .build();
+        let agent = ureq::Agent::with_parts(
+            config,
+            ureq::unversioned::transport::DefaultConnector::new(),
+            OnceResolver::default(),
+        );
         Fetcher {
-            agent: config.into(),
+            agent,
             cache,
             auth,
             secure_http,
