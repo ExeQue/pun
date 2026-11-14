@@ -167,8 +167,10 @@ what CI and most teammates run, and it needs no resolver.
 - ~~`composer.json` and `composer.lock` stay the source of truth~~: the dependencies move to pun.toml and pun.lock,
   "like phast" (Pushpak, 2026-11-14). The format is Pun's own: composer.json's keys in TOML, not phast's schema.
   `pun migrate` is the only command that reads composer.json and composer.lock: no package command falls back to
-  them, and none writes them (Pushpak, 2026-11-14). The config loader's detection (PHP version, Laravel, Pest) reads
-  pun.toml and pun.lock once pun.toml holds the dependencies.
+  them, and none writes them (Pushpak, 2026-11-14). `pun migrate` leaves composer.json and composer.lock in place
+  (Pushpak, 2026-11-14). The config loader's detection (PHP version, Laravel, Pest) reads pun.toml and pun.lock once
+  pun.toml holds the dependencies, and falls back to composer.json and composer.lock in a project not migrated
+  (Pushpak, 2026-11-14).
 - Port Composer's solver, not PubGrub, so the lock matches Composer's (assistant's call, AGENTS.md "Match the upstream
   tool").
 - Composer plugins must work (Pushpak, 2026-11-13): every allowed plugin runs through the plugin host on Composer's

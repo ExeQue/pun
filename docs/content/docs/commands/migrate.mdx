@@ -76,7 +76,7 @@ When the project has a `composer.json`, migrate appends its dependencies to `pun
 - `pun.lock` keeps `composer.lock`'s content hash, packages, and order. The dependencies in `pun.toml` hash to the same value, so `pun install` treats the lock as current.
 - `$schema` is dropped. Keys that composer.json does not define, and `null` values, are reported and skipped.
 
-`composer.json` and `composer.lock` stay in place, so Composer keeps working. A `pun.toml` written by an earlier `pun migrate` without dependencies gets them added.
+`composer.json` and `composer.lock` stay in place. Pun's package commands never read them again, and `pun update` changes only `pun.lock`, so they fall behind after the first update. A `pun.toml` written by an earlier `pun migrate` without dependencies gets them added.
 
 ## Ignore comments
 
