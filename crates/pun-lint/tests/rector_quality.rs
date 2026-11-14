@@ -1,4 +1,4 @@
-//! Rector's own fixtures for the dead-code, phpdoc, complexity and control-flow rules of the quality batch, copied
+//! Rector's own fixtures for the dead-code, phpdoc, complexity and control-flow rules tested here, copied
 //! verbatim from rector-src 2.8.4 (`.oracle/rector`, rules-tests/...) into tests/rector/<Rector class>/Fixture, with
 //! the classes they use in Source/. Oracle/ holds extra inputs with what Rector 2.8.4 (`.oracle/rector-ecosystem`, the
 //! rule alone, `phpVersion(80400)`) wrote for them; Pun/ holds the cases where Pun differs from Rector on purpose, its

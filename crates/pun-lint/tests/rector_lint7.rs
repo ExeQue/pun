@@ -1,4 +1,4 @@
-//! Upstream fixtures for the lint 7 small rules, laid out as in tests/rector.rs: Fixture/ verbatim from rector-src
+//! Upstream fixtures for the rules tested here, laid out as in tests/rector.rs: Fixture/ verbatim from rector-src
 //! 2.8.4, Oracle/ with what Rector 2.8.4 (`.oracle/rector-bin`, the rule alone) wrote. Each must pass as
 //! `pun lint --fix == expected` and `format(pun lint --fix) == format(expected)`.
 //!
