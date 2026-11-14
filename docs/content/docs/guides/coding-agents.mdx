@@ -32,6 +32,10 @@ Overrides apply in this order, highest priority first:
 
 An explicit `--format` takes precedence over automatic compact output. For format, lint, and check, `--format=json` selects PHP-CS-Fixer's JSON and `--format=agent` selects Pint's JSON agent reporter. Neither is Pun's plain-text agent mode.
 
+## Laravel Boost
+
+The `punphp/pun` Composer package ships a [Laravel Boost](https://github.com/laravel/boost) guideline and a `pun-development` skill. `php artisan boost:install` offers them when `composer.lock` lists `punphp/pun` as a direct dependency, because Boost reads packages from `composer.lock`, not `pun.lock`. They tell the agent to run `pun check --fix --dirty` after it changes PHP files, and to use Pun's package commands in place of Composer's.
+
 ## Markdown docs
 
 Append `.md` to a docs URL for Markdown. [`/llms.txt`](/llms.txt) lists the documentation pages.
