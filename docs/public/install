@@ -189,7 +189,9 @@ main() {
     # second install never sees half a file.
     cp "$new" "$bin/.pun.$$" || fail "could not write to $bin"
     mv -f "$bin/.pun.$$" "$bin/pun" || fail "could not write $bin/pun"
-    say "installed pun $version to $bin/pun"
+    # `punx` is `pun x`: the same binary under another name.
+    ln -sf pun "$bin/punx" || fail "could not write $bin/punx"
+    say "installed pun $version to $bin/pun, with punx beside it"
 
     case ":${PATH:-}:" in
         *":$bin:"*) ;;

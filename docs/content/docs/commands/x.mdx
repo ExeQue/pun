@@ -1,0 +1,59 @@
+---
+title: pun x
+description: Run a command from a Composer package without adding it to the project.
+---
+
+```bash
+punx laravel new example-app
+punx phpstan:^2.1 analyse src
+punx friendsofphp/php-cs-fixer fix --dry-run
+pun x squizlabs/php_codesniffer phpcbf src
+```
+
+`pun x` installs a Composer package into Pun's cache and runs one of its commands in the current directory. The package never enters your project's `composer.json`, `pun.toml`, or `vendor/`, and each tool gets its own dependencies, so two tools can't conflict. `punx` is the same command under a shorter name: the installer puts it beside `pun`.
+
+The first run of a package resolves its newest stable release and installs it, as [`pun install`](/docs/commands/install) does. Later runs reuse that install and start at once. When the last resolve is more than a day old, the run resolves again to pick up a new release. If that fails, for example offline, the run uses the version it has.
+
+The command's output, input, and exit code are its own. Pun writes its install progress to stderr.
+
+## Name the package
+
+Write the package as Composer names it, `vendor/name`. To pin a version, add a constraint after a colon: `vendor/name:^1.2`. Each constraint gets its own install, so you can keep several versions of one tool.
+
+These short names stand for popular packages:
+
+| Name | Package |
+| --- | --- |
+| `laravel` | `laravel/installer` |
+| `pint` | `laravel/pint` |
+| `envoy` | `laravel/envoy` |
+| `phpstan` | `phpstan/phpstan` |
+| `psalm` | `vimeo/psalm` |
+| `rector` | `rector/rector` |
+| `php-cs-fixer` | `friendsofphp/php-cs-fixer` |
+| `phpcs`, `phpcbf` | `squizlabs/php_codesniffer` |
+| `phpunit` | `phpunit/phpunit` |
+| `pest` | `pestphp/pest` |
+| `phpmd` | `phpmd/phpmd` |
+
+## Pick the command
+
+A package's commands are the files its `bin` lists. Pun runs, in this order:
+
+1. The command your first argument names, as in `pun x squizlabs/php_codesniffer phpcbf`. The rest of the arguments go to it.
+2. The command a short name stands for, as `phpcbf` does.
+3. The package's only command.
+4. The command named after the package, as `phpstan` is for `phpstan/phpstan`, which also lists `phpstan.phar`.
+
+When none applies, `pun x` lists the package's commands and exits 2.
+
+## Where installs live
+
+Installs live in `$PUN_CACHE_DIR/x`. Without `PUN_CACHE_DIR`, the cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. Delete a package's directory there to remove it. Downloads go through Composer's cache, so a package your projects already use doesn't download again.
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| The command's | The command ran |
+| 2 | The package didn't resolve or install, or it has no command to run |

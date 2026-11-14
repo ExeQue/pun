@@ -30,6 +30,7 @@ mod self_update;
 mod table;
 mod update;
 mod watch;
+mod x;
 
 use anyhow::Result;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
@@ -80,6 +81,8 @@ enum Cmd {
     /// Remove packages from require or require-dev, then update and install.
     #[command(visible_alias = "rm")]
     Remove(update::RemoveArgs),
+    /// Run a command from a Composer package without adding it to the project (`punx` for short).
+    X(x::XArgs),
     /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
     Init(init::InitArgs),
     /// Replace this pun with the latest release (or the one named), verified as the installer verifies it.
@@ -291,7 +294,15 @@ fn main() -> ExitCode {
 fn run() -> ExitCode {
     #[cfg(feature = "pprof")]
     let sampler = sampler::start();
-    let matches = Cli::command().get_matches();
+    // Under the name `punx`, the binary is `pun x`.
+    let mut args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    if (args.first().map(std::path::Path::new))
+        .and_then(std::path::Path::file_stem)
+        .is_some_and(|n| n == "punx")
+    {
+        args.insert(1, "x".into());
+    }
+    let matches = Cli::command().get_matches_from(args);
     let mut cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     if let (Cmd::Lint(cmd) | Cmd::Check(cmd), Some((_, sub))) = (&mut cli.cmd, matches.subcommand())
     {
@@ -308,6 +319,7 @@ fn run() -> ExitCode {
         Cmd::Update(_) => "update",
         Cmd::Require(_) => "require",
         Cmd::Remove(_) => "remove",
+        Cmd::X(_) => "x",
         Cmd::SelfUpdate(_) => "self-update",
         Cmd::ListFiles(_) => "list-files",
         Cmd::Config { .. } => "config",
@@ -362,6 +374,7 @@ fn run() -> ExitCode {
         Cmd::Update(a) => update::run(a),
         Cmd::Require(a) => update::require(a),
         Cmd::Remove(a) => update::remove(a),
+        Cmd::X(a) => x::run(a),
         Cmd::SelfUpdate(a) => self_update::run(a),
         Cmd::ListFiles(a) => list_files::run(a),
         Cmd::Config {
