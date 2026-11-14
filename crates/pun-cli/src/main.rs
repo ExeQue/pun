@@ -102,9 +102,6 @@ enum Cmd {
     ListFiles(list_files::ListFilesArgs),
     /// Print the resolved configuration.
     Config {
-        /// Accepted and ignored: printing is all `pun config` does.
-        #[arg(long)]
-        show: bool,
         /// Output format (default: toml).
         #[arg(long, value_enum)]
         format: Option<ConfigFormat>,
@@ -204,12 +201,6 @@ pub(crate) struct FormatArgs {
     /// File path context for stdin input.
     #[arg(long)]
     stdin_filename: Option<PathBuf>,
-    /// Pint's `--cache-file`, accepted and ignored: Pun has no cache (Pint 1.32 writes PHP-CS-Fixer's there).
-    #[arg(long = "cache-file", hide = true)]
-    _cache_file: Option<String>,
-    /// Accepted for Pint compatibility; Pun always runs in parallel.
-    #[arg(short, long)]
-    parallel: bool,
     /// The number of threads (default: one per core). Read like Pint's intval(), so any value is accepted.
     #[arg(long)]
     max_processes: Option<String>,
@@ -228,8 +219,6 @@ pub(crate) struct FormatArgs {
     /// `--color=never` (Pint's spelling).
     #[arg(long, hide = true)]
     no_ansi: bool,
-    #[arg(short = 'n', long, hide = true)]
-    no_interaction: bool,
     #[command(flatten)]
     pun: PunArgs,
     /// `GITHUB_ACTIONS=true`, read once in `main`: human output gets GitHub annotations after it.
@@ -279,9 +268,6 @@ pub(crate) struct PunArgs {
     /// Print the fixers the run applies, in priority order (to stderr).
     #[arg(long)]
     explain: bool,
-    /// Accepted and ignored, for scripts written when Pun had a cache: every run checks every file.
-    #[arg(long = "no-cache", hide = true)]
-    _no_cache: bool,
     /// Keep running and re-format files as they change (Pun).
     #[arg(long, conflicts_with_all = ["stdin", "stdin_filename"])]
     watch: bool,

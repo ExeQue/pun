@@ -51,12 +51,6 @@ pub(crate) struct AnalyseArgs {
     /// Colour the output: auto, always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
-    /// Accepted for PHPStan compatibility; Pun shows progress only on a terminal after one second.
-    #[arg(long, hide = true)]
-    no_progress: bool,
-    /// Accepted for PHPStan compatibility; Pun has no memory limit.
-    #[arg(long, hide = true)]
-    memory_limit: Option<String>,
     /// `GITHUB_ACTIONS=true`: human output gets GitHub annotations after it.
     #[arg(skip)]
     pub(crate) github_actions: bool,

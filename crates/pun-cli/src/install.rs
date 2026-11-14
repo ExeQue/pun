@@ -47,13 +47,6 @@ pub(crate) struct InstallArgs {
     /// Run in this directory instead of the current one.
     #[arg(short = 'd', long, value_name = "DIR")]
     pub(crate) working_dir: Option<PathBuf>,
-    /// Accepted for Composer's CI flags; Pun never asks and always installs from dists.
-    #[arg(short = 'n', long, hide = true)]
-    pub(crate) no_interaction: bool,
-    #[arg(long, hide = true)]
-    pub(crate) prefer_dist: bool,
-    #[arg(long, hide = true)]
-    pub(crate) no_progress: bool,
 }
 
 /// A project's dependencies: pun.toml's dependency sections in composer.json's shape, and pun.lock when it exists.

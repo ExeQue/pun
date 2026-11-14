@@ -336,46 +336,17 @@ fn repair_and_bail_match_pint() {
     }
 }
 
-/// `--parallel`/`-p` only changes scheduling; `--max-processes` takes anything (intval), with or without -p.
+/// `--max-processes` takes anything (intval).
 #[test]
-fn parallel_matches_pint() {
+fn max_processes_matches_pint() {
     let Some(cx) = Cx::new() else { return };
     for args in [
-        &["--parallel"][..],
-        &["-p", "--test"],
-        &["--parallel", "--max-processes=1", "--test"],
-        &["--parallel", "--max-processes=abc", "--test"],
+        &["--max-processes=1", "--test"][..],
+        &["--max-processes=abc", "--test"],
         &["--max-processes=3", "--test"],
     ] {
         cx.same("", "", args);
     }
-}
-
-/// Pint's `--cache-file` (its presets never cache, so nothing is written) and Pun's old `--no-cache` are accepted
-/// and change nothing.
-#[test]
-fn cache_flags_are_ignored_like_pint() {
-    let Some(cx) = Cx::new() else { return };
-    // Pint 1.32 writes PHP-CS-Fixer's cache there (keyed by the PHP runtime's version); Pun has no cache, so the
-    // file is the only difference.
-    for args in [
-        &["--cache-file=c/pint.cache", "--test"][..],
-        &["--cache-file", "c/pint.cache"],
-    ] {
-        let mut want = cx.pint("", "", args, b"");
-        assert!(want.files.remove("c/pint.cache").is_some(), "{args:?}");
-        let mut got = cx.ours("", "", args, b"");
-        if common::human(args) {
-            (want.stdout, got.stdout) = common::human_pair(
-                &want.stdout,
-                &got.stdout,
-                want.files.keys(),
-                got.files.keys(),
-            );
-        }
-        assert_eq!(got, want, "{args:?}");
-    }
-    cx.same_as("", "", &["--no-cache", "--test"], &["--test"], b"");
 }
 
 /// `--config` (relative to the cwd, from a subdirectory too), `--no-config` (beats `--config` and the cwd's

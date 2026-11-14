@@ -82,9 +82,6 @@ pub(crate) struct RemoveArgs {
     /// Packages to remove (`vendor/*` patterns too), from require or require-dev, whichever holds them.
     #[arg(required = true)]
     packages: Vec<String>,
-    /// Accepted for Composer's flag: Pun removes a package from whichever section holds it.
-    #[arg(long, hide = true)]
-    dev: bool,
     /// Edit the manifest without resolving or installing.
     #[arg(long)]
     no_update: bool,

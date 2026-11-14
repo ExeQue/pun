@@ -202,13 +202,7 @@ fn matches_pint() {
         &["app/Clean.php"],
         &["app/Clean.php", "--format=agent"],
         &["app/Clean.php", "--test", "--format=txt"],
-        &[
-            "app",
-            "--test",
-            "--parallel",
-            "--max-processes=2",
-            "--no-interaction",
-        ],
+        &["app", "--test", "--max-processes=2"],
         &["--test", "--preset=empty"],
     ] {
         cx.same(&dir, &tree, &[], args, &[], b"");
@@ -693,7 +687,7 @@ fn pun_only_behaviour() {
     assert!(out.contains(r#""files":[]"#), "{out}");
 
     // config: the resolved config under Pun rule IDs, TOML by default, JSON on request.
-    let (out, _, code) = pun(&dir, &["config", "--show", "--format=json"]);
+    let (out, _, code) = pun(&dir, &["config", "--format=json"]);
     assert_eq!(code, Some(0));
     let v: serde_json::Value = serde_json::from_str(&out).unwrap();
     assert_eq!(v["format"]["preset"], "empty");
