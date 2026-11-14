@@ -299,24 +299,7 @@ fn run() -> ExitCode {
     {
         cmd.levels = levels(sub);
     }
-    let name = match &cli.cmd {
-        Cmd::Format(_) => "format",
-        Cmd::Lint(_) => "lint",
-        Cmd::Check(_) => "check",
-        Cmd::Analyse(_) => "analyse",
-        Cmd::Migrate(_) => "migrate",
-        Cmd::Init(_) => "init",
-        Cmd::Install(_) => "install",
-        Cmd::Update(_) => "update",
-        Cmd::Require(_) => "require",
-        Cmd::Remove(_) => "remove",
-        Cmd::X(_) => "x",
-        Cmd::Vet(_) => "vet",
-        Cmd::SelfUpdate(_) => "self-update",
-        Cmd::ListFiles(_) => "list-files",
-        Cmd::Config { .. } => "config",
-        Cmd::Explain { .. } => "explain",
-    };
+    let name = matches.subcommand_name().unwrap_or_default();
     let flag = (cli.agent || cli.no_agent).then_some(cli.agent);
     agent::init(flag, name);
     let github_actions = std::env::var_os("GITHUB_ACTIONS").is_some_and(|v| v == "true");

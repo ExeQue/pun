@@ -6,13 +6,13 @@ const CAP: usize = 20;
 
 struct Mode {
     on: bool,
-    cmd: &'static str,
+    cmd: String,
     start: Instant,
 }
 
 static MODE: OnceLock<Mode> = OnceLock::new();
 
-pub(crate) fn init(flag: Option<bool>, cmd: &'static str) {
+pub(crate) fn init(flag: Option<bool>, cmd: &str) {
     let on = flag
         .or_else(|| boolean("PUN_AGENT"))
         .or_else(|| boolean("PAO_DISABLE").filter(|d| *d).map(|_| false))
@@ -20,7 +20,7 @@ pub(crate) fn init(flag: Option<bool>, cmd: &'static str) {
         .unwrap_or_else(detected);
     let _ = MODE.set(Mode {
         on,
-        cmd,
+        cmd: cmd.to_string(),
         start: Instant::now(),
     });
 }
@@ -86,7 +86,7 @@ fn mode() -> &'static Mode {
 }
 
 pub(crate) fn cmd() -> &'static str {
-    mode().cmd
+    &mode().cmd
 }
 
 pub(crate) fn render(
