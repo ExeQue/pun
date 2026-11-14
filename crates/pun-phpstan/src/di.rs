@@ -1,3 +1,4 @@
+use crate::config::Error;
 use crate::neon;
 use crate::php::{absolutize_path, normalize_path};
 use crate::value::{Array, Entity, Key, Value};
@@ -92,7 +93,7 @@ pub(crate) fn expand(
     var: &Value,
     params: &Array,
     recursive: Option<&[String]>,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     match var {
         Value::Array(a) => Ok(Value::Array(expand_array(a, params, recursive)?)),
         Value::Entity(e) => Ok(statement(
@@ -136,7 +137,7 @@ fn expand_string(
     params: &Array,
     recursive: Option<&[String]>,
     only_string: bool,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     let parts = split_placeholders(s);
     let mut res: Vec<Value> = Vec::new();
     let mut dynamic = false;
@@ -152,9 +153,10 @@ fn expand_string(
             } else if matches!(val, Value::Entity(_)) {
                 dynamic = true;
             } else if !val.is_scalar() {
-                return Err(format!(
-                    "Unable to concatenate non-scalar parameter '{part}' into '{s}'."
-                ));
+                return Err(Error::NonScalarConcatenation {
+                    parameter: (*part).to_string(),
+                    into: s.to_string(),
+                });
             }
             res.push(val);
         }
@@ -177,7 +179,7 @@ fn expand_parameter(
     params: &Array,
     recursive: Option<&[String]>,
     only_string: bool,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     let mut val = Value::Array(params.clone());
     let mut path: Vec<&str> = Vec::new();
     let keys: Vec<&str> = parameter.split('.').collect();
@@ -195,10 +197,7 @@ fn expand_parameter(
             {
                 let path_str = path.join(".");
                 if rec.contains(&path_str) {
-                    return Err(format!(
-                        "Circular reference detected for parameters: %{}%",
-                        rec.join("%, %")
-                    ));
+                    return Err(Error::CircularReference(rec.to_vec()));
                 }
                 let mut rec = rec.to_vec();
                 rec.push(path_str);
@@ -210,7 +209,7 @@ fn expand_parameter(
         } else if matches!(val, Value::Entity(_)) {
             val = statement(Value::str("(?)[?]"), Array::list([val, Value::str(*key)]));
         } else {
-            return Err(format!("Missing parameter '{parameter}'."));
+            return Err(Error::MissingParameter(parameter.to_string()));
         }
     }
     Ok(val)
@@ -220,7 +219,7 @@ pub(crate) fn expand_array(
     a: &Array,
     params: &Array,
     recursive: Option<&[String]>,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let mut res = Array::new();
     for (k, v) in a.iter() {
         let k = match k {
@@ -249,12 +248,14 @@ pub fn load_neon(
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let contents = files
         .read(file)
-        .ok_or_else(|| format!("File '{file}' is missing or is not readable."))?;
-    let decoded =
-        neon::decode_bytes(&contents).map_err(|e| format!("Error while loading {file}: {e}"))?;
+        .ok_or_else(|| Error::Unreadable(file.to_string()))?;
+    let decoded = neon::decode_bytes(&contents).map_err(|error| Error::Neon {
+        file: file.to_string(),
+        error,
+    })?;
     let arr = match decoded {
         Value::Array(a) => a,
         Value::Null => Array::new(),
@@ -307,7 +308,7 @@ pub(crate) fn process(
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let mut res = Array::new();
     for (key, mut val) in arr {
         let mut key = key;
@@ -323,9 +324,7 @@ pub(crate) fn process(
                     val = Value::Array(a);
                 }
                 _ => {
-                    return Err(format!(
-                        "Replacing operator is available only for arrays, item '{s}' is not array."
-                    ));
+                    return Err(Error::ReplacingNonArray(s.clone()));
                 }
             }
             key = Key::from_string(stripped);
@@ -399,7 +398,7 @@ pub(crate) fn process(
     Ok(res)
 }
 
-pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
+pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), Error> {
     if let Value::Array(a) = v
         && a.is_list()
     {
@@ -421,7 +420,10 @@ pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
         Value::Array(_) => "array".to_string(),
         _ => "object _PHPStan_95d9e8b05\\Nette\\DI\\Definitions\\Statement".to_string(),
     };
-    Err(format!("The {label} expects to be list, {ty} given."))
+    Err(Error::NotAList {
+        label: label.to_string(),
+        given: ty,
+    })
 }
 
 pub(crate) fn expand_included_file(included: &str, main: &str) -> String {
@@ -443,7 +445,7 @@ pub(crate) fn load_file(
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let ext = file
         .rsplit_once('.')
         .map(|(_, e)| e.to_ascii_lowercase())
@@ -454,11 +456,14 @@ pub(crate) fn load_file(
         "php" => {
             let contents = files
                 .read(file)
-                .ok_or_else(|| format!("File '{file}' is missing or is not readable."))?;
+                .ok_or_else(|| Error::Unreadable(file.to_string()))?;
             crate::phpfile::load_config(&String::from_utf8_lossy(&contents), &dirname(file))
-                .map_err(|e| format!("Unsupported PHP config {file}: {e}"))
+                .map_err(|error| Error::UnsupportedPhp {
+                    file: file.to_string(),
+                    error,
+                })
         }
-        _ => Err(format!("Unknown file extension '{file}'.")),
+        _ => Err(Error::UnknownExtension(file.to_string())),
     }
 }
 
@@ -486,23 +491,23 @@ impl<'a> Loader<'a> {
         }
     }
 
-    pub(crate) fn load(&mut self, file: &str) -> Result<Vec<Array>, String> {
+    pub(crate) fn load(&mut self, file: &str) -> Result<Vec<Array>, Error> {
         self.load_inner(file, false)
     }
 
-    pub(crate) fn load_merged(&mut self, file: &str) -> Result<Array, String> {
+    pub(crate) fn load_merged(&mut self, file: &str) -> Result<Array, Error> {
         Ok(self.load_inner(file, true)?.pop().unwrap_or_default())
     }
 
-    fn load_inner(&mut self, file: &str, merged: bool) -> Result<Vec<Array>, String> {
+    fn load_inner(&mut self, file: &str, merged: bool) -> Result<Vec<Array>, Error> {
         if self.generate_baseline.as_deref() == Some(normalize_path(file).as_str()) {
             return Ok(Vec::new());
         }
         if !self.files.is_file(file) {
-            return Err(format!("File '{file}' is missing or is not readable."));
+            return Err(Error::Unreadable(file.to_string()));
         }
         if self.loaded.iter().any(|f| f == file) {
-            return Err(format!("Recursive included file '{file}'"));
+            return Err(Error::RecursiveInclude(file.to_string()));
         }
         self.loaded.push(file.to_string());
         let mut data = load_file(self.files, file, &self.expand_relative, &self.parameters)?;

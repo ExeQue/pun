@@ -51,7 +51,7 @@ fn got(o: &Options, map: &[(&str, &str)]) -> J {
             json!({ "parameters": dumped(&pun_phpstan::Value::Array(r.parameters)) }),
             map,
         ),
-        Err(e) => placeholders(json!({ "error": e }), map),
+        Err(e) => placeholders(json!({ "error": e.to_string() }), map),
     }
 }
 
@@ -213,7 +213,7 @@ fn unreadable_default_config() {
     };
     let got = resolve(&o)
         .map(|_| ())
-        .map_err(|e| e.replace(&*dir.to_string_lossy(), "{cwd}"));
+        .map_err(|e| e.to_string().replace(&*dir.to_string_lossy(), "{cwd}"));
     std::fs::remove_dir_all(&dir).unwrap();
     if !readable {
         assert_eq!(

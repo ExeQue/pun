@@ -52,7 +52,7 @@ fn check(dir: &Path, neon: &str) -> Result<(), String> {
         config: Some(format!("{root}/{neon}.neon")),
         ..Options::for_project(&root)
     };
-    let config = resolve(&options)?;
+    let config = resolve(&options).map_err(|e| e.to_string())?;
     let prefix = format!("{root}/");
     let mut got: Vec<Key> = analyse(dir, &config)
         .unwrap()

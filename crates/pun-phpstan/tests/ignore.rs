@@ -315,10 +315,13 @@ fn validate_ignore_errors() {
         validate_ignore_errors(&params(&[
             ("rule", Value::str("analyse/x/a")),
             ("count", Value::Int(2))
-        ])),
+        ]))
+        .map_err(|e| e.to_string()),
         Err("Invalid configuration:\nAn ignoreErrors entry with count field must also contain path field.".into())
     );
-    let e = validate_ignore_errors(&params(&[("message", Value::str("#(#"))])).unwrap_err();
+    let e = validate_ignore_errors(&params(&[("message", Value::str("#(#"))]))
+        .unwrap_err()
+        .to_string();
     assert!(e.starts_with("Invalid entry in ignoreErrors:\n"), "{e}");
 }
 

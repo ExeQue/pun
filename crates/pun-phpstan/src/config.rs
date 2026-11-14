@@ -1,10 +1,121 @@
+use std::fmt;
+
 use crate::di::{
     self, Files, Loader, assert_list, dirname, escape, escape_percent, expand,
     expand_included_file, merge, merge_arrays,
 };
 use crate::php::{absolutize_path, is_fnmatch_pattern, normalize_path, parent_relative_path, preg};
-use crate::schema;
 use crate::value::{Array, Key, Value};
+use crate::{neon, phpfile, schema};
+
+/// Why a PHPStan configuration could not be resolved, displayed as PHPStan (or Nette DI) words it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    Unreadable(String),
+    Neon {
+        file: String,
+        error: neon::Error,
+    },
+    UnsupportedPhp {
+        file: String,
+        error: phpfile::Error,
+    },
+    UnknownExtension(String),
+    RecursiveInclude(String),
+    NotAList {
+        label: String,
+        given: String,
+    },
+    ReplacingNonArray(String),
+    MissingParameter(String),
+    CircularReference(Vec<String>),
+    NonScalarConcatenation {
+        parameter: String,
+        into: String,
+    },
+    MissingProjectConfig(String),
+    MissingLevelConfig(String),
+    GeneratedConfig(phpfile::Error),
+    ExtensionIncludeNotString {
+        package: String,
+        given: &'static str,
+    },
+    MissingExtensionConfig(String),
+    IncludedMultipleTimes(Vec<String>),
+    Schema(schema::Error),
+    /// PHPStan's `InvalidConfigurationException`s, each printed as `Invalid configuration:\n<message>`.
+    Invalid(Vec<String>),
+    InvalidExcludePaths(String),
+    InvalidIgnoreErrors(String),
+    UnresolvedStatement,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Unreadable(file) => write!(f, "File '{file}' is missing or is not readable."),
+            Error::Neon { file, error } => write!(f, "Error while loading {file}: {error}"),
+            Error::UnsupportedPhp { file, error } => {
+                write!(f, "Unsupported PHP config {file}: {error}")
+            }
+            Error::UnknownExtension(file) => write!(f, "Unknown file extension '{file}'."),
+            Error::RecursiveInclude(file) => write!(f, "Recursive included file '{file}'"),
+            Error::NotAList { label, given } => {
+                write!(f, "The {label} expects to be list, {given} given.")
+            }
+            Error::ReplacingNonArray(item) => write!(
+                f,
+                "Replacing operator is available only for arrays, item '{item}' is not array."
+            ),
+            Error::MissingParameter(name) => write!(f, "Missing parameter '{name}'."),
+            Error::CircularReference(names) => write!(
+                f,
+                "Circular reference detected for parameters: %{}%",
+                names.join("%, %")
+            ),
+            Error::NonScalarConcatenation { parameter, into } => write!(
+                f,
+                "Unable to concatenate non-scalar parameter '{parameter}' into '{into}'."
+            ),
+            Error::MissingProjectConfig(file) => {
+                write!(f, "Project config file at path {file} does not exist.")
+            }
+            Error::MissingLevelConfig(file) => write!(f, "Level config file {file} was not found."),
+            Error::GeneratedConfig(error) => write!(f, "{error}"),
+            Error::ExtensionIncludeNotString { package, given } => write!(
+                f,
+                "Cannot include config from package {package}, expecting string file path but got {given}"
+            ),
+            Error::MissingExtensionConfig(file) => {
+                write!(f, "Config file {file} does not exist or isn't readable")
+            }
+            Error::IncludedMultipleTimes(files) => {
+                let what = if files.len() == 1 {
+                    "This file is included multiple times:"
+                } else {
+                    "These files are included multiple times:"
+                };
+                write!(f, "{what}\n- {}", files.join("\n- "))
+            }
+            Error::Schema(error) => write!(f, "{error}"),
+            Error::Invalid(messages) => {
+                let messages: Vec<String> = messages
+                    .iter()
+                    .map(|m| format!("Invalid configuration:\n{m}"))
+                    .collect();
+                f.write_str(&messages.join("\n"))
+            }
+            Error::InvalidExcludePaths(message) | Error::InvalidIgnoreErrors(message) => {
+                f.write_str(message)
+            }
+            Error::UnresolvedStatement => {
+                f.write_str("Class \"Nette\\DI\\ServiceCreationException\" not found")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 macro_rules! conf {
     ($($name:literal),* $(,)?) => {
@@ -164,14 +275,14 @@ fn get<'a>(a: &'a Array, path: &[&str]) -> Option<&'a Value> {
     Some(v).filter(|v| **v != Value::Null)
 }
 
-pub fn resolve(o: &Options) -> Result<Resolved, String> {
+pub fn resolve(o: &Options) -> Result<Resolved, Error> {
     let phar = std::fs::canonicalize(&o.phar)
         .map_or_else(|_| o.phar.clone(), |p| p.to_string_lossy().into_owned());
     let files = ProjectFiles::new(&phar);
     resolve_with(&Options { phar, ..o.clone() }, &files)
 }
 
-pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> {
+pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, Error> {
     let cwd = normalize_path(&o.cwd);
     let mut env = Array::new();
     for (k, v) in &o.env {
@@ -219,9 +330,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     let mut paths_from_config: Vec<String> = Vec::new();
     if let Some(config) = &config {
         if !files.is_file(config) {
-            return Err(format!(
-                "Project config file at path {config} does not exist."
-            ));
+            return Err(Error::MissingProjectConfig(config.clone()));
         }
         let expand_relative = vec![
             "[parameters][paths][]".to_string(),
@@ -256,17 +365,17 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     if let Some(l) = &level {
         let file = format!("{config_dir}/config.level{l}.neon");
         if !files.is_file(&file) {
-            return Err(format!("Level config file {file} was not found."));
+            return Err(Error::MissingLevelConfig(file));
         }
         additional.push(file);
     }
     if let Some(generated) = &o.generated_config {
         let php = files
             .read(generated)
-            .ok_or_else(|| format!("File '{generated}' is missing or is not readable."))?;
+            .ok_or_else(|| Error::Unreadable(generated.clone()))?;
         let dir = dirname(generated);
-        let extensions =
-            crate::phpfile::generated_config_extensions(&String::from_utf8_lossy(&php), &dir)?;
+        let extensions = phpfile::generated_config_extensions(&String::from_utf8_lossy(&php), &dir)
+            .map_err(Error::GeneratedConfig)?;
         for (name, ext) in extensions.iter() {
             let Some(ext) = ext.as_array() else { continue };
             let includes = get(ext, &["extra", "includes"])
@@ -275,11 +384,10 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
                 .unwrap_or_default();
             for inc in includes.values() {
                 let Value::Str(inc) = inc else {
-                    return Err(format!(
-                        "Cannot include config from package {}, expecting string file path but got {}",
-                        name.as_string(),
-                        inc.gettype()
-                    ));
+                    return Err(Error::ExtensionIncludeNotString {
+                        package: name.as_string(),
+                        given: inc.gettype(),
+                    });
                 };
                 let mut path = get(ext, &["relative_install_path"])
                     .and_then(Value::to_php_string)
@@ -293,9 +401,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
                 }
                 let path = path.expect("set");
                 if !files.is_file(&path) {
-                    return Err(format!(
-                        "Config file {path} does not exist or isn't readable"
-                    ));
+                    return Err(Error::MissingExtensionConfig(path));
                 }
                 additional.push(path);
             }
@@ -329,26 +435,15 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
         }
     }
     if !duplicates.is_empty() {
-        let what = if duplicates.len() == 1 {
-            "This file is included multiple times:"
-        } else {
-            "These files are included multiple times:"
-        };
-        return Err(format!(
-            "{what}\n- {}",
-            duplicates
-                .iter()
-                .map(|d| d.as_str())
-                .collect::<Vec<_>>()
-                .join("\n- ")
+        return Err(Error::IncludedMultipleTimes(
+            duplicates.into_iter().cloned().collect(),
         ));
     }
     let project_config = project_config.as_array().cloned().expect("merged arrays");
     let attribute_services_directories = attribute_services_directories(
         project_config.get_str("attributeServicesDirectories"),
         &cwd,
-    )
-    .map_err(|e| format!("Invalid configuration:\n{e}"))?;
+    )?;
     let expand_relative: Vec<String> = project_config
         .get_str("expandRelativePaths")
         .and_then(Value::as_array)
@@ -481,10 +576,10 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     {
         let extra = extra.as_string();
         let hint = schema::suggestion(&known, &extra);
-        return Err(format!(
-            "Invalid configuration:\nFound section '{extra}' in configuration, but corresponding extension is missing{}",
+        return Err(Error::Invalid(vec![format!(
+            "Found section '{extra}' in configuration, but corresponding extension is missing{}",
             hint.map_or(".".to_string(), |h| format!(", did you mean '{h}'?"))
-        ));
+        )]));
     }
 
     if validate {
@@ -493,22 +588,18 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let errors = schema::parameters_schema(&schema_section)?
+        let errors = schema::parameters_schema(&schema_section)
+            .map_err(Error::Schema)?
             .validate(&Value::Array(params.clone()), &["parameters"]);
         if !errors.is_empty() {
-            return Err(errors
-                .iter()
-                .map(|e| format!("Invalid configuration:\n{e}"))
-                .collect::<Vec<_>>()
-                .join("\n"));
+            return Err(Error::Invalid(errors));
         }
         validate_php_version(&params)?;
-        validate_ignore_error_entries(&params)
-            .map_err(|e| format!("Invalid configuration:\n{e}"))?;
+        validate_ignore_error_entries(&params)?;
     }
     params.remove(&Key::from("env"));
     if contains_statement(&Value::Array(params.clone())) {
-        return Err("Class \"Nette\\DI\\ServiceCreationException\" not found".into());
+        return Err(Error::UnresolvedStatement);
     }
     Ok(Resolved { parameters: params })
 }
@@ -531,7 +622,7 @@ fn config_files(
     files: &dyn Files,
     file: &str,
     loader_params: &Array,
-) -> Result<(Vec<String>, Array), String> {
+) -> Result<(Vec<String>, Array), Error> {
     let mut data = if file.ends_with(".php") {
         di::load_file(files, file, &[], &Array::new())?
     } else {
@@ -563,16 +654,16 @@ fn config_files(
 fn attribute_services_directories(
     section: Option<&Value>,
     cwd: &str,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, Error> {
     let entries = match section {
         None | Some(Value::Null) => return Ok(Vec::new()),
         Some(Value::Array(a)) if a.is_empty() => return Ok(Vec::new()),
         Some(Value::Array(a)) => a,
         Some(_) => {
-            return Err(
+            return Err(Error::Invalid(vec![
                 "The attributeServicesDirectories section must contain a list of directory paths."
                     .to_string(),
-            );
+            ]));
         }
     };
     let mut errors = Vec::new();
@@ -617,7 +708,7 @@ fn attribute_services_directories(
     if errors.is_empty() {
         Ok(kept)
     } else {
-        Err(errors.join("\n\n"))
+        Err(Error::Invalid(vec![errors.join("\n\n")]))
     }
 }
 
@@ -644,7 +735,7 @@ fn validate_exclude_paths(
     params: &mut Array,
     validate: bool,
     config: Option<&str>,
-) -> Result<(), String> {
+) -> Result<(), Error> {
     let exclude = params
         .get_str("excludePaths")
         .and_then(Value::as_array)
@@ -698,7 +789,7 @@ fn validate_exclude_paths(
                 out.push_str(&format!("\t\t\t- {p} (?)\n"));
             }
         }
-        return Err(out);
+        return Err(Error::InvalidExcludePaths(out));
     }
     let mut unwrapped = Array::new();
     for (k, paths) in new {
@@ -725,7 +816,7 @@ fn ignore_errors(params: &Array) -> Array {
         .unwrap_or_default()
 }
 
-fn validate_ignored_errors(params: &Array) -> Result<(), String> {
+fn validate_ignored_errors(params: &Array) -> Result<(), Error> {
     let ignore = ignore_errors(params);
     if ignore.is_empty() {
         return Ok(());
@@ -791,25 +882,25 @@ fn validate_ignored_errors(params: &Array) -> Result<(), String> {
         out.push_str("\n\n");
     }
     out.push_str("To ignore non-existent paths in ignoreErrors,\nset reportUnmatchedIgnoredErrors: false in your configuration file.\n");
-    Err(out)
+    Err(Error::InvalidIgnoreErrors(out))
 }
 
-fn validate_php_version(params: &Array) -> Result<(), String> {
+fn validate_php_version(params: &Array) -> Result<(), Error> {
     if let Some(Value::Array(v)) = params.get_str("phpVersion")
         && let (Some(Value::Int(min)), Some(Value::Int(max))) = (v.get_str("min"), v.get_str("max"))
         && max < min
     {
-        return Err("Invalid configuration:\nInvalid PHP version range: phpVersion.max should be greater or equal to phpVersion.min.".into());
+        return Err(Error::Invalid(vec!["Invalid PHP version range: phpVersion.max should be greater or equal to phpVersion.min.".into()]));
     }
     Ok(())
 }
 
-pub fn validate_ignore_errors(params: &Array) -> Result<(), String> {
+pub fn validate_ignore_errors(params: &Array) -> Result<(), Error> {
     validate_ignored_errors(params)?;
-    validate_ignore_error_entries(params).map_err(|e| format!("Invalid configuration:\n{e}"))
+    validate_ignore_error_entries(params)
 }
 
-fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
+fn validate_ignore_error_entries(params: &Array) -> Result<(), Error> {
     let ignore = ignore_errors(params);
     let at_least = [
         "message",
@@ -825,10 +916,10 @@ fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
         let Value::Array(e) = entry else { continue };
         let has = |k: &str| e.contains(&Key::from(k));
         if !at_least.iter().any(|k| has(k)) && !has("rule") {
-            return Err(format!(
+            return Err(Error::Invalid(vec![format!(
                 "An ignoreErrors entry must contain at least one of the following fields: {}.",
                 at_least.join(", ")
-            ));
+            )]));
         }
         for group in [
             &["rawMessage", "rawMessages", "message", "messages"][..],
@@ -838,17 +929,17 @@ fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
             for (i, a) in group.iter().enumerate() {
                 for b in &group[i + 1..] {
                     if has(a) && has(b) {
-                        return Err(format!(
+                        return Err(Error::Invalid(vec![format!(
                             "An ignoreErrors entry cannot contain both {a} and {b} fields."
-                        ));
+                        )]));
                     }
                 }
             }
         }
         if has("count") && !has("path") {
-            return Err(
+            return Err(Error::Invalid(vec![
                 "An ignoreErrors entry with count field must also contain path field.".into(),
-            );
+            ]));
         }
     }
     Ok(())

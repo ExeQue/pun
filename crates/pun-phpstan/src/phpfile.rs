@@ -1,4 +1,35 @@
+use std::fmt;
+
 use crate::value::{Array, Key, Value};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    Unexpected { near: String, line: usize },
+    UnterminatedString,
+    UndefinedVariable(String),
+    NotAnArray(String),
+    NoArrayReturned,
+    NoExtensionsConstant,
+    NoExtensionsValue,
+    ExtensionsNotAnArray,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Unexpected { near, line } => write!(f, "unexpected {near:?} on line {line}"),
+            Error::UnterminatedString => f.write_str("unterminated string"),
+            Error::UndefinedVariable(name) => write!(f, "undefined ${name}"),
+            Error::NotAnArray(name) => write!(f, "${name} is not an array"),
+            Error::NoArrayReturned => f.write_str("the config does not return an array"),
+            Error::NoExtensionsConstant => f.write_str("no EXTENSIONS constant"),
+            Error::NoExtensionsValue => f.write_str("no EXTENSIONS value"),
+            Error::ExtensionsNotAnArray => f.write_str("EXTENSIONS is not an array"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 struct P<'a> {
     s: &'a str,
@@ -41,7 +72,7 @@ impl P<'_> {
         matches
     }
 
-    fn expect(&mut self, t: &str) -> Result<(), String> {
+    fn expect(&mut self, t: &str) -> Result<(), Error> {
         if self.eat(t) {
             Ok(())
         } else {
@@ -49,13 +80,14 @@ impl P<'_> {
         }
     }
 
-    fn unexpected(&self) -> String {
-        let line = self.s[..self.i].matches('\n').count() + 1;
-        let near: String = self.s[self.i..].chars().take(20).collect();
-        format!("unexpected {near:?} on line {line}")
+    fn unexpected(&self) -> Error {
+        Error::Unexpected {
+            near: self.s[self.i..].chars().take(20).collect(),
+            line: self.s[..self.i].matches('\n').count() + 1,
+        }
     }
 
-    fn var_name(&mut self) -> Result<String, String> {
+    fn var_name(&mut self) -> Result<String, Error> {
         self.expect("$")?;
         let n: String = self.s[self.i..]
             .chars()
@@ -65,7 +97,7 @@ impl P<'_> {
         Ok(n)
     }
 
-    fn expr(&mut self) -> Result<Value, String> {
+    fn expr(&mut self) -> Result<Value, Error> {
         let mut v = self.term()?;
         while self.eat(".") {
             let r = self.term()?;
@@ -76,7 +108,7 @@ impl P<'_> {
         Ok(v)
     }
 
-    fn term(&mut self) -> Result<Value, String> {
+    fn term(&mut self) -> Result<Value, Error> {
         self.skip();
         let rest = &self.s[self.i..];
         if rest.starts_with('\'') {
@@ -99,7 +131,7 @@ impl P<'_> {
                     c => out.push(c),
                 }
             }
-            return Err("unterminated string".into());
+            return Err(Error::UnterminatedString);
         }
         if self.eat("__DIR__") {
             return Ok(Value::str(self.dir));
@@ -128,7 +160,7 @@ impl P<'_> {
                 .rev()
                 .find(|(n, _)| *n == name)
                 .map(|(_, v)| v.clone())
-                .ok_or_else(|| format!("undefined ${name}"));
+                .ok_or(Error::UndefinedVariable(name));
         }
         let num: String = rest
             .chars()
@@ -143,7 +175,7 @@ impl P<'_> {
         Err(self.unexpected())
     }
 
-    fn items(&mut self, close: &str) -> Result<Value, String> {
+    fn items(&mut self, close: &str) -> Result<Value, Error> {
         let mut a = Array::new();
         loop {
             if self.eat(close) {
@@ -168,7 +200,7 @@ impl P<'_> {
     }
 }
 
-pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
+pub fn load_config(php: &str, dir: &str) -> Result<Array, Error> {
     let mut p = P {
         s: php,
         i: 0,
@@ -184,7 +216,7 @@ pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
             let v = p.expr()?;
             return match v {
                 Value::Array(a) => Ok(a),
-                _ => Err("the config does not return an array".into()),
+                _ => Err(Error::NoArrayReturned),
             };
         } else {
             p.skip();
@@ -202,7 +234,7 @@ pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
             if push {
                 let Some((_, Value::Array(a))) = p.vars.iter_mut().rev().find(|(n, _)| *n == name)
                 else {
-                    return Err(format!("${name} is not an array"));
+                    return Err(Error::NotAnArray(name));
                 };
                 a.push(v);
             } else {
@@ -212,11 +244,11 @@ pub fn load_config(php: &str, dir: &str) -> Result<Array, String> {
     }
 }
 
-pub fn generated_config_extensions(php: &str, dir: &str) -> Result<Array, String> {
+pub fn generated_config_extensions(php: &str, dir: &str) -> Result<Array, Error> {
     let at = php
         .find("const EXTENSIONS")
-        .ok_or("no EXTENSIONS constant")?;
-    let eq = php[at..].find('=').ok_or("no EXTENSIONS value")? + at + 1;
+        .ok_or(Error::NoExtensionsConstant)?;
+    let eq = php[at..].find('=').ok_or(Error::NoExtensionsValue)? + at + 1;
     let mut p = P {
         s: php,
         i: eq,
@@ -225,6 +257,6 @@ pub fn generated_config_extensions(php: &str, dir: &str) -> Result<Array, String
     };
     match p.expr()? {
         Value::Array(a) => Ok(a),
-        _ => Err("EXTENSIONS is not an array".into()),
+        _ => Err(Error::ExtensionsNotAnArray),
     }
 }

@@ -160,7 +160,8 @@ fn project(
     use pun_phpstan::ignore::IgnoredErrors;
     use pun_phpstan::{Array, Key, Value};
     let mut params = cfg.analyse.parameters(&cfg.root);
-    pun_phpstan::config::validate_ignore_errors(&params).map_err(|e| run_error(e, None))?;
+    pun_phpstan::config::validate_ignore_errors(&params)
+        .map_err(|e| run_error(e.to_string(), None))?;
     let mut extensions = Array::new();
     extensions.push(Value::Str("php".into()));
     params.set(Key::Str("fileExtensions".into()), Value::Array(extensions));

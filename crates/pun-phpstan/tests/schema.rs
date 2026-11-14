@@ -29,7 +29,7 @@ fn container_factory_validate_parameters() {
             .unwrap();
         let got = match schema::parameters_schema(&section) {
             Ok(s) => json!({ "messages": s.validate(&Value::Array(params), &["parameters"]) }),
-            Err(e) => json!({ "exception": e }),
+            Err(e) => json!({ "exception": e.to_string() }),
         };
         let want = match case.get("exception").and_then(|e| e.as_str()) {
             Some(e) if e.contains(" called in ") || e.contains(" passed in ") => {

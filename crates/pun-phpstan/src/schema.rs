@@ -1,5 +1,44 @@
+use std::fmt;
+
 use crate::value::{Array, Key, Value};
 use pun_tokens::php_compat::float_to_string;
+
+/// Why `parametersSchema` could not be built: what Nette's schema `Expect` (or PHP itself) throws.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    Internal,
+    SchemaArgumentNotStatement,
+    SchemaWithoutArguments,
+    ExpectedSchema,
+    StructureNotArray,
+    StructureItemNotSchema,
+    ArrayOfWithoutType,
+    TooFewArguments,
+    UndefinedMethod { class: &'static str, method: String },
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Error::Internal => "Internal error.",
+            Error::SchemaArgumentNotStatement => "schema() should contain another statement().",
+            Error::SchemaWithoutArguments => "schema() should have at least one argument.",
+            Error::ExpectedSchema => "expected a schema",
+            Error::StructureNotArray => "structure() expects an array",
+            Error::StructureItemNotSchema => "Structure items must be schemas (PHP's TypeError)",
+            Error::ArrayOfWithoutType => "arrayOf() expects a type",
+            Error::TooFewArguments => "Too few arguments",
+            Error::UndefinedMethod { class, method } => {
+                return write!(
+                    f,
+                    "Call to undefined method _PHPStan_95d9e8b05\\Nette\\Schema\\Elements\\{class}::{method}()."
+                );
+            }
+        })
+    }
+}
+
+impl std::error::Error for Error {}
 
 #[derive(Clone, Debug)]
 enum Kind {
@@ -52,16 +91,16 @@ fn type_schema(ty: &str) -> Schema {
     s
 }
 
-fn entity_name(v: &Value) -> Result<&str, String> {
-    v.as_str().ok_or_else(|| "Internal error.".to_string())
+fn entity_name(v: &Value) -> Result<&str, Error> {
+    v.as_str().ok_or(Error::Internal)
 }
 
-fn argument(arg: &Value, required: bool) -> Result<Arg, String> {
+fn argument(arg: &Value, required: bool) -> Result<Arg, Error> {
     match arg {
         Value::Entity(e) if e.value == Value::str("schema") => {
             let statements: Vec<&Value> = e.attributes.values().collect();
             if statements.iter().any(|s| !matches!(s, Value::Entity(_))) {
-                return Err("schema() should contain another statement().".into());
+                return Err(Error::SchemaArgumentNotStatement);
             }
             Ok(Arg::Schema(process_schema(&statements, required)?))
         }
@@ -89,11 +128,11 @@ enum Arg {
 }
 
 impl Arg {
-    fn schema(self) -> Result<Schema, String> {
+    fn schema(self) -> Result<Schema, Error> {
         match self {
             Arg::Schema(s) => Ok(s),
             Arg::Value(Value::Str(t)) => Ok(type_schema(&t)),
-            _ => Err("expected a schema".into()),
+            _ => Err(Error::ExpectedSchema),
         }
     }
 
@@ -120,7 +159,7 @@ impl Arg {
     }
 }
 
-fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, String> {
+fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, Error> {
     let mut schema: Option<Schema> = None;
     for st in statements {
         let Value::Entity(e) = st else { unreachable!() };
@@ -134,14 +173,14 @@ fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, Strin
             Some(s) => call(s, name, args)?,
         });
     }
-    let mut schema = schema.ok_or("schema() should have at least one argument.")?;
+    let mut schema = schema.ok_or(Error::SchemaWithoutArguments)?;
     if required {
         schema.required = true;
     }
     Ok(schema)
 }
 
-fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
+fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, Error> {
     Ok(match name {
         "anyOf" => new(Kind::AnyOf(
             args.into_iter()
@@ -153,22 +192,22 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
         )),
         "structure" => {
             let Some(Arg::Map(items)) = args.into_iter().next() else {
-                return Err("structure() expects an array".into());
+                return Err(Error::StructureNotArray);
             };
             let items = items
                 .into_iter()
                 .map(|(k, a)| match a {
                     Arg::Schema(s) => Ok((k, s)),
-                    _ => Err("Structure items must be schemas (PHP's TypeError)".to_string()),
+                    _ => Err(Error::StructureItemNotSchema),
                 })
-                .collect::<Result<_, String>>()?;
+                .collect::<Result<_, Error>>()?;
             let mut s = new(Kind::Structure { items, other: None });
             s.required = true;
             s
         }
         "arrayOf" | "listOf" => {
             let mut it = args.into_iter();
-            let value = it.next().ok_or("arrayOf() expects a type")?.schema()?;
+            let value = it.next().ok_or(Error::ArrayOfWithoutType)?.schema()?;
             let key = it.next().map(Arg::schema).transpose()?;
             let mut s = type_schema(if name == "listOf" { "list" } else { "array" });
             if let Kind::Type { items, .. } = &mut s.kind {
@@ -180,7 +219,7 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
             &args
                 .into_iter()
                 .next()
-                .ok_or(TOO_FEW)?
+                .ok_or(Error::TooFewArguments)?
                 .value()
                 .to_php_string()
                 .unwrap_or_default(),
@@ -195,9 +234,7 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
     })
 }
 
-const TOO_FEW: &str = "Too few arguments";
-
-fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
+fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, Error> {
     let first_number = args.first().and_then(Arg::number);
     match (name, &mut s.kind) {
         ("nullable", Kind::Type { ty, .. }) => *ty = format!("null|{ty}"),
@@ -230,7 +267,13 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
                     .map_or_else(|| Ok(type_schema("mixed")), Arg::schema)?,
             ));
         }
-        ("default", _) => s.default = args.into_iter().next().ok_or(TOO_FEW)?.value(),
+        ("default", _) => {
+            s.default = args
+                .into_iter()
+                .next()
+                .ok_or(Error::TooFewArguments)?
+                .value();
+        }
         ("required", _) => {
             s.required = args
                 .into_iter()
@@ -244,15 +287,16 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
                 Kind::Structure { .. } => "Structure",
                 Kind::AnyOf(_) => "AnyOf",
             };
-            return Err(format!(
-                "Call to undefined method _PHPStan_95d9e8b05\\Nette\\Schema\\Elements\\{class}::{m}()."
-            ));
+            return Err(Error::UndefinedMethod {
+                class,
+                method: m.to_string(),
+            });
         }
     }
     Ok(s)
 }
 
-pub fn parameters_schema(section: &Array) -> Result<Schema, String> {
+pub fn parameters_schema(section: &Array) -> Result<Schema, Error> {
     let mut items = Vec::new();
     for (k, v) in section.iter() {
         let ks = k.as_string();
