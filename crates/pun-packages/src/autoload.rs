@@ -1,6 +1,6 @@
 use crate::classmap::{ClassMap, Job, Rule};
 use crate::constraint::{Bound, lower_bound};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::installed::Installed;
 use crate::paths::{normalize, shortest, shortest_code};
 use crate::php::{Key, Php, export_str, md5, strtr, var_export};
@@ -195,7 +195,7 @@ fn mapping(packages: &[&Pkg], kind: &str, dev_mode: bool) -> Vec<(String, Vec<St
     out
 }
 
-fn path_code(base: &str, vendor: &str, path: &str) -> (String, String) {
+fn path_code(base: &str, vendor: &str, path: &str) -> Result<(String, String)> {
     let path = normalize(&if path.starts_with('/') {
         path.to_string()
     } else {
@@ -213,23 +213,23 @@ fn path_code(base: &str, vendor: &str, path: &str) -> (String, String) {
         }
     };
     static PHAR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\.phar([\\/]|$)").unwrap());
-    let phar = PHAR.is_match(rel.as_bytes()).unwrap_or(false);
+    let phar = PHAR.is_match(rel.as_bytes())?;
     let code = format!(
         "{}{prefix}{}",
         if phar { "'phar://' . " } else { "" },
         export_str(&rel)
     );
-    (
+    Ok((
         code,
         if phar {
             format!("phar://{value}")
         } else {
             value
         },
-    )
+    ))
 }
 
-fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
+fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Result<Vec<String>> {
     static UPDIR: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^((?:(?:\\\.){1,2}+/)+)").unwrap());
     let mut out = vec![];
@@ -253,7 +253,7 @@ fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
             }
             let mut pattern = strtr(&collapsed, &[("\\*\\*", ".+?"), ("\\*", "[^/]+?")]);
             let mut updir = String::new();
-            if let Ok(Some(m)) = UPDIR.find(pattern.as_bytes()) {
+            if let Some(m) = UPDIR.find(pattern.as_bytes())? {
                 updir = pattern[..m.end()].replace("\\.", ".");
                 pattern = pattern[m.end()..].to_string();
             }
@@ -269,10 +269,10 @@ fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Vec<String> {
             }));
         }
     }
-    out
+    Ok(out)
 }
 
-fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex> {
+fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Result<Option<Regex>> {
     let mut excluded = excluded.to_vec();
     if vendor.starts_with(&format!("{dir}/")) {
         excluded.push(
@@ -281,7 +281,7 @@ fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex
         );
     }
     if excluded.is_empty() {
-        return None;
+        return Ok(None);
     }
     if let Ok(real) = std::fs::canonicalize(dir) {
         static PREFIX: LazyLock<Regex> = LazyLock::new(|| {
@@ -290,17 +290,21 @@ fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Option<Regex
         let quote = |s: &str| String::from_utf8_lossy(&preg_quote(s.as_bytes(), None)).into_owned();
         let (real, plain) = (quote(&real.to_string_lossy()), quote(dir));
         let symlink = real != plain;
-        excluded.retain(|pattern| {
-            let prefix = (PREFIX.captures(pattern.as_bytes()).ok().flatten())
+        let mut related = vec![];
+        for pattern in excluded {
+            let prefix = (PREFIX.captures(pattern.as_bytes())?)
                 .map_or_else(String::new, |c| String::from_utf8_lossy(&c[1]).into_owned());
-            let related = |d: &str| prefix.starts_with(d) || d.starts_with(&prefix);
-            related(&real) || (symlink && related(&plain))
-        });
+            let under = |d: &str| prefix.starts_with(d) || d.starts_with(&prefix);
+            if under(&real) || (symlink && under(&plain)) {
+                related.push(pattern);
+            }
+        }
+        excluded = related;
     }
     if excluded.is_empty() {
-        return None;
+        return Ok(None);
     }
-    Regex::new(&format!("({})", excluded.join("|"))).ok()
+    Ok(Some(Regex::new(&format!("({})", excluded.join("|")))?))
 }
 
 pub fn dump(
@@ -357,7 +361,7 @@ pub fn dump(
         .unwrap_or_default();
     psr0.sort_by(|a, b| b.0.as_bytes().cmp(a.0.as_bytes()));
     psr4.sort_by(|a, b| b.0.as_bytes().cmp(a.0.as_bytes()));
-    let excluded = exclusions(&sorted_refs, o.dev_mode, base);
+    let excluded = exclusions(&sorted_refs, o.dev_mode, base)?;
 
     let vendor_code = shortest_code(&target, vendor, true, false);
     let base_code = shortest_code(vendor, base, true, false).replace("__DIR__", "$vendorDir");
@@ -373,13 +377,12 @@ pub fn dump(
         let mut out = header(name);
         out.push_str("return array(\n");
         for (ns, paths) in entries {
-            let codes: Vec<String> = (paths.iter())
-                .map(|p| {
-                    let (code, value) = path_code(base, vendor, p);
-                    evaluated.insert(code.clone(), value);
-                    code
-                })
-                .collect();
+            let mut codes = vec![];
+            for p in paths {
+                let (code, value) = path_code(base, vendor, p)?;
+                evaluated.insert(p.clone(), value);
+                codes.push(code);
+            }
             writeln!(
                 out,
                 "    {} => array({}),",
@@ -389,10 +392,10 @@ pub fn dump(
             .unwrap();
         }
         out.push_str(");\n");
-        out
+        Ok::<_, Error>(out)
     };
-    let namespaces = map_file("autoload_namespaces.php", &psr0);
-    let psr4_text = map_file("autoload_psr4.php", &psr4);
+    let namespaces = map_file("autoload_namespaces.php", &psr0)?;
+    let psr4_text = map_file("autoload_psr4.php", &psr4)?;
 
     let mut map = ClassMap::default();
     let cwd = base.to_string();
@@ -403,7 +406,7 @@ pub fn dump(
         } else {
             format!("{base}/{given}")
         });
-        let exclude = exclusion_regex(&dir, &excluded, vendor);
+        let exclude = exclusion_regex(&dir, &excluded, vendor)?;
         jobs.push(Job {
             dir,
             given: given.clone(),
@@ -432,7 +435,7 @@ pub fn dump(
                         format!("{base}/{dir}")
                     });
                     if Path::new(&dir).is_dir() {
-                        let exclude = exclusion_regex(&dir, &excluded, vendor);
+                        let exclude = exclusion_regex(&dir, &excluded, vendor)?;
                         jobs.push(Job {
                             given: dir.clone(),
                             dir,
@@ -470,7 +473,7 @@ pub fn dump(
     classmap_text.push_str("return array(\n");
     let mut class_values = vec![];
     for (class, path) in &classes {
-        let (code, value) = path_code(base, vendor, path);
+        let (code, value) = path_code(base, vendor, path)?;
         writeln!(classmap_text, "    {} => {code},", export_str(class)).unwrap();
         class_values.push((class.clone(), value));
     }
@@ -489,7 +492,7 @@ pub fn dump(
             } else {
                 format!("{install}/{path}")
             };
-            let (code, value) = path_code(base, vendor, &relative);
+            let (code, value) = path_code(base, vendor, &relative)?;
             let id = md5(format!("{}:{path}", p.name).as_bytes());
             match files.iter_mut().find(|f| f.0 == id) {
                 Some(f) => (f.1, f.2) = (code, value),
@@ -507,15 +510,16 @@ pub fn dump(
         out
     });
 
-    let include_text = (!include.is_empty()).then(|| {
+    let mut include_text = None;
+    if !include.is_empty() {
         let mut out = header("include_paths.php");
         out.push_str("return array(\n");
         for p in &include {
-            writeln!(out, "    {},", path_code(base, vendor, p).0).unwrap();
+            writeln!(out, "    {},", path_code(base, vendor, p)?.0).unwrap();
         }
         out.push_str(");\n");
-        out
-    });
+        include_text = Some(out);
+    }
 
     let platform = match (&o.ignore_platform, o.platform_check) {
         (None, _) | (_, PlatformCheck::Off) => None,
@@ -751,10 +755,9 @@ fn static_file(
     let values = |paths: &[String]| -> Vec<(Key, Php)> {
         (paths.iter().enumerate())
             .map(|(i, p)| {
-                let code = path_code(base, vendor, p).0;
                 (
                     Key::Int(i as i64),
-                    Php::Str(evaluated.get(&code).cloned().unwrap_or_default()),
+                    Php::Str(evaluated.get(p).cloned().unwrap_or_default()),
                 )
             })
             .collect()

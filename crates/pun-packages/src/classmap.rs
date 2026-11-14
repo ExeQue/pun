@@ -451,15 +451,19 @@ fn list(job: &Job) -> Result<Vec<(String, PathBuf)>> {
             job.given
         ),
     }
-    files.retain(|(path, real)| {
-        let php = [".php", ".inc", ".hh"].iter().any(|e| path.ends_with(e));
-        php && !job.exclude.as_ref().is_some_and(|x| {
-            x.is_match(real.to_string_lossy().as_bytes())
-                .unwrap_or(false)
-                || x.is_match(path.as_bytes()).unwrap_or(false)
-        })
-    });
-    Ok(files)
+    let mut kept = vec![];
+    for (path, real) in files {
+        if ![".php", ".inc", ".hh"].iter().any(|e| path.ends_with(e)) {
+            continue;
+        }
+        if let Some(x) = &job.exclude
+            && (x.is_match(real.to_string_lossy().as_bytes())? || x.is_match(path.as_bytes())?)
+        {
+            continue;
+        }
+        kept.push((path, real));
+    }
+    Ok(kept)
 }
 
 fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {

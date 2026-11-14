@@ -314,14 +314,9 @@ impl Fetcher {
                 );
             }
         }
-        if let Some(path) = &cached
-            && let Some(dir) = path.parent()
-            && std::fs::create_dir_all(dir).is_ok()
-        {
-            let tmp = path.with_extension(format!("{kind}.{}.tmp", std::process::id()));
-            if std::fs::write(&tmp, &bytes).is_ok() {
-                let _ = std::fs::rename(&tmp, path);
-            }
+        if let Some(path) = &cached {
+            // The cache is best effort, as Composer's: a failed write only costs a download next time.
+            let _ = store(path, &bytes);
         }
         Ok((bytes, false))
     }
@@ -403,6 +398,17 @@ impl Fetcher {
     }
 }
 
+/// Writes `bytes` to `path` through a temporary file, so a reader never sees half a file.
+pub(crate) fn store(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    std::fs::create_dir_all(path.parent().unwrap_or(Path::new("/")))?;
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(format!(".{}.tmp", std::process::id()));
+    std::fs::write(&tmp, bytes)?;
+    std::fs::rename(&tmp, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
+}
+
 static METADATA: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?:\._.*|\.DS_Store|__MACOSX|\.AppleDouble|\.fseventsd|\.Spotlight-V100|\.Trashes|(?i:thumbs\.db|desktop\.ini))$")
         .expect("valid pattern")
@@ -435,13 +441,12 @@ pub fn unpack(kind: &str, bytes: &[u8], target: &Path) -> Result<()> {
         let entries: Vec<PathBuf> = std::fs::read_dir(&tmp)?
             .filter_map(|e| e.ok().map(|e| e.path()))
             .collect();
-        let content: Vec<&PathBuf> = (entries.iter())
-            .filter(|p| {
-                !METADATA
-                    .is_match(p.file_name().unwrap_or_default().as_encoded_bytes())
-                    .unwrap_or(false)
-            })
-            .collect();
+        let mut content: Vec<&PathBuf> = vec![];
+        for p in &entries {
+            if !METADATA.is_match(p.file_name().unwrap_or_default().as_encoded_bytes())? {
+                content.push(p);
+            }
+        }
         let from = match content.as_slice() {
             [only] if only.is_dir() => (*only).clone(),
             _ => tmp.clone(),
@@ -776,7 +781,7 @@ mod tests {
         );
         assert!(error.contains("HTTP 404"), "{error}");
 
-        let (base, seen) = serve(BODY, 6);
+        let (base, seen) = serve(BODY, 7);
         let uncached = Fetcher::new(None, Auth::default(), false);
         let url = format!("{base}/a.zip");
         assert_eq!(
@@ -800,6 +805,20 @@ mod tests {
             unwritable.archive(&package(&url, "")).unwrap(),
             (BODY.to_vec(), false)
         );
+        let taken = dir.join("taken");
+        let slot = taken
+            .join("files/acme/lib")
+            .join(format!("{}.zip", sha1(url.as_bytes())));
+        std::fs::create_dir_all(slot.join("x")).unwrap();
+        let fetcher = Fetcher::new(Some(taken), Auth::default(), false);
+        assert_eq!(
+            fetcher.archive(&package(&url, "")).unwrap(),
+            (BODY.to_vec(), false)
+        );
+        assert_eq!(
+            std::fs::read_dir(slot.parent().unwrap()).unwrap().count(),
+            1
+        );
         let error = format!(
             "{:#}",
             uncached
@@ -807,7 +826,7 @@ mod tests {
                 .unwrap_err()
         );
         assert!(error.ends_with("/busy: HTTP 503"), "{error}");
-        assert_eq!(seen.iter().take(6).count(), 6);
+        assert_eq!(seen.iter().take(7).count(), 7);
         let closed = std::net::TcpListener::bind("127.0.0.1:0")
             .unwrap()
             .local_addr()

@@ -146,7 +146,7 @@ pub fn install(
     });
     for p in &packages {
         let name = p.name();
-        if !NAME.is_match(name.as_bytes()).unwrap_or(false) {
+        if !NAME.is_match(name.as_bytes())? {
             bail!("pun.lock has a package named `{name}`, which is not a valid package name");
         }
     }
@@ -190,9 +190,7 @@ pub fn install(
         let changed = todo.iter().any(|&i| packages[i].name() == *name);
         if gone || changed {
             for bin in bins {
-                let _ = std::fs::remove_file(
-                    Path::new(&bin_dir).join(bin.rsplit('/').next().unwrap_or(bin)),
-                );
+                remove_file(&Path::new(&bin_dir).join(bin.rsplit('/').next().unwrap_or(bin)))?;
             }
         }
         if gone {
@@ -318,9 +316,7 @@ pub fn install(
             let path = format!("{base_str}/{rel}");
             match body {
                 Some(bytes) => write_if_changed(&path, &bytes)?,
-                None => {
-                    let _ = std::fs::remove_file(&path);
-                }
+                None => remove_file(Path::new(&path))?,
             }
         }
         if !o.no_plugins {
@@ -458,6 +454,13 @@ fn place(
                 .unwrap_or("none");
             bail!("it has no dist archive, and installing from {kind} sources is not supported yet")
         }
+    }
+}
+
+fn remove_file(path: &Path) -> std::io::Result<()> {
+    match std::fs::remove_file(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        result => result,
     }
 }
 

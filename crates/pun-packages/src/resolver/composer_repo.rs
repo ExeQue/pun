@@ -183,14 +183,9 @@ fn fetch_file(
                 data.insert("last-modified".into(), m.into());
             }
             let text = Value::Object(data).to_string().into_bytes();
-            if let Some(path) = cache
-                && let Some(dir) = path.parent()
-                && std::fs::create_dir_all(dir).is_ok()
-            {
-                let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
-                if std::fs::write(&tmp, &text).is_ok() {
-                    let _ = std::fs::rename(&tmp, &path);
-                }
+            if let Some(path) = cache {
+                // The cache is best effort, as Composer's: a failed write only costs a download next time.
+                let _ = crate::fetch::store(&path, &text);
             }
             Ok(Some(text))
         }
