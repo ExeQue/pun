@@ -14,3 +14,6 @@ pub mod plugins;
 pub mod resolver;
 pub mod scripts;
 pub mod version;
+
+/// Looks up an environment variable. The binary passes `&|k| std::env::var(k).ok()`; tests pass fixed values.
+pub type Env<'a> = &'a dyn Fn(&str) -> Option<String>;

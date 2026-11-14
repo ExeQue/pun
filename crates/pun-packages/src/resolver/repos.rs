@@ -1,8 +1,9 @@
 use super::composer_repo::{ComposerRepository, PACKAGIST};
 use super::pool::{ArrayRepository, Repository, filtered};
+use crate::Env;
 use crate::error::{Context, Error, Result, bail};
 use crate::fetch::Fetcher;
-use crate::installed::{git_version, root_version_from_env};
+use crate::installed::{git_version, root_version};
 use crate::php::{Key, serialize, sha1};
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
@@ -118,6 +119,7 @@ pub fn open<'a>(
     manifest: &Map<String, Value>,
     global: Option<&Value>,
     fetcher: &'a Fetcher,
+    env: Env,
 ) -> Result<Vec<Box<dyn Repository + 'a>>> {
     let mut sources = vec![];
     sources.extend(global);
@@ -134,7 +136,7 @@ pub fn open<'a>(
             }
             "package" => Box::new(ArrayRepository::from_config(&config)?),
             "path" => {
-                let packages = path_packages(root, &config, root_version_from_env().as_deref())?;
+                let packages = path_packages(root, &config, env)?;
                 Box::new(ArrayRepository::of(packages))
             }
             "vcs" | "git" | "github" | "gitlab" | "bitbucket" | "git-bitbucket" | "svn"
@@ -149,8 +151,8 @@ pub fn open<'a>(
     Ok(out)
 }
 
-fn expand_path(path: &str) -> String {
-    let env = |k: &str| std::env::var(k).unwrap_or_default();
+fn expand_path(path: &str, env: Env) -> String {
+    let env = |k: &str| env(k).unwrap_or_default();
     if let Some(rest) = path.strip_prefix('~')
         && (rest.starts_with('/') || rest.starts_with('\\'))
     {
@@ -171,12 +173,13 @@ fn expand_path(path: &str) -> String {
 pub fn path_packages(
     root: &Path,
     config: &Map<String, Value>,
-    root_version: Option<&str>,
+    env: Env,
 ) -> Result<Vec<Map<String, Value>>> {
     let Some(url) = config.get("url").and_then(Value::as_str) else {
         bail!("You must specify the `url` configuration for the path repository");
     };
-    let url = expand_path(url);
+    let url = expand_path(url, env);
+    let root_version = root_version(env);
     let mut options = match config.get("options") {
         Some(Value::Object(o)) => o.clone(),
         _ => Map::new(),
@@ -255,11 +258,11 @@ pub fn path_packages(
             package.insert("version".into(), v);
         }
         if !package.contains_key("version")
-            && let Some(v) = root_version
+            && let Some(v) = &root_version
             && head(&path).is_some()
             && head(&path) == head(root)
         {
-            package.insert("version".into(), v.into());
+            package.insert("version".into(), v.as_str().into());
         }
         if reference == "auto"
             && path.join(".git").is_dir()
@@ -525,7 +528,7 @@ mod tests {
         git(&["commit", "-q", "--allow-empty", "-m", "two"]);
         let commit = head(&x).unwrap();
         let read = |config: Value| -> Vec<Value> {
-            (path_packages(&d, config.as_object().unwrap(), None)
+            (path_packages(&d, config.as_object().unwrap(), &|_| None)
                 .unwrap()
                 .iter())
             .map(|p| {
@@ -624,7 +627,7 @@ mod tests {
             json!({"type": "path", "url": "nothing/*"}),
             json!({"type": "path"}),
         ] {
-            assert!(path_packages(&d, bad.as_object().unwrap(), None).is_err());
+            assert!(path_packages(&d, bad.as_object().unwrap(), &|_| None).is_err());
         }
         std::fs::remove_dir_all(&d).unwrap();
     }
@@ -666,7 +669,12 @@ mod tests {
         git("feat", &["commit", "-q", "--allow-empty", "-m", "two"]);
         let commit = head(&d.join("feat")).unwrap();
         let read = |root: &str, config: Value, version: Option<&str>| {
-            let got = path_packages(&d.join(root), config.as_object().unwrap(), version);
+            let env = |k: &str| {
+                version
+                    .filter(|_| k == "COMPOSER_ROOT_VERSION")
+                    .map(String::from)
+            };
+            let got = path_packages(&d.join(root), config.as_object().unwrap(), &env);
             got.map(|packages| -> Vec<Value> {
                 (packages.iter())
                     .map(|p| json!([p["name"], p["version"], p["dist"]["reference"]]))
@@ -731,7 +739,9 @@ mod tests {
         let open = |repositories: Value| {
             let manifest = json!({ "repositories": repositories });
             let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-            let opened = open(root, manifest.as_object().unwrap(), None, &fetcher);
+            let opened = open(root, manifest.as_object().unwrap(), None, &fetcher, &|_| {
+                None
+            });
             opened.map(|r| r.len()).map_err(|e| e.to_string())
         };
         let repos = json!([
@@ -777,14 +787,14 @@ mod tests {
                 .is_match(b".git")
                 .unwrap()
         );
-        // SAFETY: tests in this crate do not read HOME or PUN_TEST_DIR concurrently.
-        unsafe { std::env::set_var("PUN_TEST_DIR", "/srv") };
-        assert_eq!(expand_path("$PUN_TEST_DIR/a"), "/srv/a");
-        assert_eq!(expand_path("%PUN_TEST_DIR%/a"), "/srv/a");
-        assert_eq!(
-            expand_path("~/a"),
-            format!("{}/a", std::env::var("HOME").unwrap())
-        );
-        assert_eq!(expand_path("a/~"), "a/~");
+        let env = |k: &str| match k {
+            "HOME" => Some("/home/me".to_string()),
+            "PUN_TEST_DIR" => Some("/srv".to_string()),
+            _ => None,
+        };
+        assert_eq!(expand_path("$PUN_TEST_DIR/a", &env), "/srv/a");
+        assert_eq!(expand_path("%PUN_TEST_DIR%/a", &env), "/srv/a");
+        assert_eq!(expand_path("~/a", &env), "/home/me/a");
+        assert_eq!(expand_path("a/~", &env), "a/~");
     }
 }

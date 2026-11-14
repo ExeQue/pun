@@ -162,8 +162,10 @@ fn dispatch(project: &Project, a: &InstallArgs, event: &str) -> Result<()> {
         &bin_dir,
         &project.manifest,
         !a.no_dev,
+        &|k| std::env::var(k).ok(),
     )
-    .dispatch(event, &[])
+    .dispatch(event, &[])?;
+    Ok(())
 }
 
 /// The global config.json's `repositories`.
@@ -207,13 +209,21 @@ fn resolve(
     let platform = platform::detect(&php, overrides)?;
     let fetcher = fetcher(&project.root, &project.manifest);
     let global = global_repositories();
-    let repositories = repos::open(&project.root, &project.manifest, global.as_ref(), &fetcher)?;
+    let env = |k: &str| std::env::var(k).ok();
+    let repositories = repos::open(
+        &project.root,
+        &project.manifest,
+        global.as_ref(),
+        &fetcher,
+        &env,
+    )?;
     let resolved = resolver::resolve(
         &project.manifest,
         platform,
         repositories,
         project.lock.as_ref(),
         &options,
+        &env,
     )?;
     Ok(match resolved {
         Ok(resolution) => Ok((resolution, options)),
@@ -510,7 +520,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         if required(&target.manifest, other, name).is_empty() {
             Ok(text)
         } else {
-            toml_remove(&text, other, name)
+            Ok(toml_remove(&text, other, name)?)
         }
     };
     let mut text = target.original.clone().unwrap_or_default();

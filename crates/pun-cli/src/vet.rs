@@ -604,7 +604,8 @@ fn unpack_version(
         .and_then(|d| d.get("type"))
         .and_then(Value::as_str))
     .unwrap_or("zip");
-    unpack(kind, &bytes, target)
+    unpack(kind, &bytes, target)?;
+    Ok(())
 }
 
 /// The metadata Packagist publishes for `name` at `version`.

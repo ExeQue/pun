@@ -532,7 +532,8 @@ mod tests {
             object(json!({"name": "ext-json", "version": "8.5.12"})),
         ];
         let options = Options::default();
-        let resolved = super::super::resolve(&manifest, platform, vec![repo], None, &options);
+        let resolved =
+            super::super::resolve(&manifest, platform, vec![repo], None, &options, &|_| None);
         let resolution = resolved.unwrap().unwrap_or_else(|_| panic!("no solution"));
         for (name, want) in names {
             assert_eq!(

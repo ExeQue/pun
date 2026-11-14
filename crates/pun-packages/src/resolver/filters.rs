@@ -1,4 +1,5 @@
 use super::package::{Origin, Package};
+use crate::Env;
 use crate::constraint::{self, Constraint};
 use crate::error::{Error, Result, bail};
 use crate::version::name_matches;
@@ -228,8 +229,6 @@ fn enabled(v: Option<&Value>) -> Option<&Map<String, Value>> {
         _ => Some(&EMPTY),
     }
 }
-
-pub type Env<'a> = &'a dyn Fn(&str) -> Option<String>;
 
 fn env_bool(env: Env, name: &str) -> Result<Option<bool>> {
     match env(name).as_deref() {

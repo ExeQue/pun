@@ -104,6 +104,7 @@ fn resolves_as_composer() {
             repositories,
             lock.as_ref(),
             &options,
+            &|_| None,
         ) {
             Err(_) | Ok(Err(_)) => "fails".to_string(),
             Ok(Ok(r)) => {
@@ -452,7 +453,7 @@ fn pools_as_composer() {
         for (i, repo) in case["repos"].as_array().unwrap().iter().enumerate() {
             let index = i + 1;
             if repo.get("type").is_some() {
-                let packages = path_packages(&dir, &as_map(repo), None).unwrap();
+                let packages = path_packages(&dir, &as_map(repo), &|_| None).unwrap();
                 repos.push(Box::new(ArrayRepository::of(packages)));
                 continue;
             }

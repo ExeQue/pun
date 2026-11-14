@@ -158,7 +158,8 @@ pub(crate) fn install_locked(
     };
     let fetcher = fetcher(root, manifest);
     let (vendor, bin_dir) = dirs(&root.to_string_lossy(), manifest);
-    let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev);
+    let env = |k: &str| std::env::var(k).ok();
+    let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev, &env);
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };
     eprintln!(
         "Installing {} from pun.lock",
@@ -174,7 +175,7 @@ pub(crate) fn install_locked(
             scripts.dispatch(event, &[])
         }
     };
-    let report = install(root, manifest, lock, &fetcher, &options, &mut events)?;
+    let report = install(root, manifest, lock, &fetcher, &options, &env, &mut events)?;
     drop(events);
     if !a.no_scripts {
         scripts.dispatch(post, &[])?;

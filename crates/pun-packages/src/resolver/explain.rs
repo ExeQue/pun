@@ -144,7 +144,15 @@ mod tests {
         let packages = packages.as_array().unwrap().iter().cloned().map(object);
         let repo: Box<dyn Repository> = Box::new(ArrayRepository::of(packages.collect()));
         let lock = lock.map(|l| Lock::from_composer_lock(&l.to_string()).unwrap());
-        let resolved = resolve(&manifest, platform, vec![repo], lock.as_ref(), options).unwrap();
+        let resolved = resolve(
+            &manifest,
+            platform,
+            vec![repo],
+            lock.as_ref(),
+            options,
+            &|_| None,
+        )
+        .unwrap();
         let mut lines = explain(&resolved.err().expect("no solution"), &manifest);
         for l in &mut lines {
             l.sort();

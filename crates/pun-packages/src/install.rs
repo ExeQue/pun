@@ -1,3 +1,4 @@
+use crate::Env;
 use crate::autoload::{self, PlatformCheck};
 use crate::bins;
 use crate::error::{Context, Result, bail};
@@ -99,6 +100,7 @@ pub fn install(
     lock: &Lock,
     fetcher: &Fetcher,
     o: &Options,
+    env: Env,
     events: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<Report> {
     let base_dir =
@@ -205,7 +207,7 @@ pub fn install(
     }
 
     let cores = std::thread::available_parallelism().map_or(8, usize::from);
-    let threads = download_threads(std::env::var("COMPOSER_MAX_PARALLEL_HTTP").ok(), cores);
+    let threads = download_threads(env("COMPOSER_MAX_PARALLEL_HTTP"), cores);
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
         .build()?;
@@ -239,7 +241,7 @@ pub fn install(
         &format!("{repo}/installed.json"),
         installed_json(&packages, &vendor, dev_mode).as_bytes(),
     )?;
-    let root_pkg = root(manifest, &base_dir);
+    let root_pkg = root(manifest, &base_dir, env);
     write_if_changed(
         &format!("{repo}/installed.php"),
         installed_php(&root_pkg, &packages, &vendor, &base_str, dev_mode).as_bytes(),

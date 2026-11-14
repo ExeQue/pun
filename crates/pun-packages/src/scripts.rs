@@ -3,6 +3,7 @@
     reason = "each script is echoed before it runs, as Composer echoes it"
 )]
 
+use crate::Env;
 use crate::error::{Context, Result, bail};
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -15,6 +16,7 @@ pub struct Runner<'a> {
     pub manifest: &'a Map<String, Value>,
     pub dev_mode: bool,
     pub php: String,
+    path: String,
     env: Vec<(String, Option<String>)>,
     stack: Vec<String>,
 }
@@ -26,15 +28,16 @@ impl<'a> Runner<'a> {
         bin_dir: &'a str,
         manifest: &'a Map<String, Value>,
         dev_mode: bool,
+        env: Env,
     ) -> Self {
-        let php = php_binary(std::env::var("PHP_BINARY").ok());
         Runner {
             base,
             vendor,
             bin_dir,
             manifest,
             dev_mode,
-            php,
+            php: php_binary(env("PHP_BINARY")),
+            path: env("PATH").unwrap_or_default(),
             env: vec![],
             stack: vec![],
         }
@@ -173,7 +176,7 @@ impl<'a> Runner<'a> {
     fn command(&self, program: &str) -> Command {
         let mut c = Command::new(program);
         c.current_dir(self.base);
-        let path = std::env::var("PATH").unwrap_or_default();
+        let path = &self.path;
         if Path::new(self.bin_dir).is_dir() && !path.split(':').any(|p| p == self.bin_dir) {
             c.env("PATH", format!("{}:{path}", self.bin_dir));
         }
@@ -242,7 +245,10 @@ mod tests {
         let manifest = json!({"scripts": scripts}).as_object().unwrap().clone();
         let vendor = dir.join("vendor").to_string_lossy().into_owned();
         let bin = dir.join("vendor/bin").to_string_lossy().into_owned();
-        Runner::new(dir, &vendor, &bin, &manifest, true).dispatch(event, &[])
+        Runner::new(dir, &vendor, &bin, &manifest, true, &|k| {
+            std::env::var(k).ok()
+        })
+        .dispatch(event, &[])
     }
 
     #[test]
@@ -284,9 +290,11 @@ mod tests {
         let vendor = d.join("vendor").to_string_lossy().into_owned();
         let bin = d.join("vendor/bin").to_string_lossy().into_owned();
         let args = ["one".to_string(), "two words".to_string()];
-        Runner::new(&d, &vendor, &bin, &manifest, true)
-            .dispatch("a", &args)
-            .unwrap();
+        Runner::new(&d, &vendor, &bin, &manifest, true, &|k| {
+            std::env::var(k).ok()
+        })
+        .dispatch("a", &args)
+        .unwrap();
         assert_eq!(
             std::fs::read_to_string(d.join("out.txt")).unwrap(),
             "b one two words extra\nc one two words\nn\nphp\n"

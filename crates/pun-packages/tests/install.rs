@@ -28,10 +28,18 @@ fn try_run(dir: &Path, lock: &Lock, o: &Options) -> pun_packages::error::Result<
         serde_json::from_str(&std::fs::read_to_string(dir.join("composer.json")).unwrap()).unwrap();
     let fetcher = Fetcher::new(Some(dir.join("cache")), Auth::default(), true);
     let mut events = vec![];
-    let report = install(dir, &manifest, lock, &fetcher, o, &mut |e: &str| {
-        events.push(e.to_string());
-        Ok(())
-    })?;
+    let report = install(
+        dir,
+        &manifest,
+        lock,
+        &fetcher,
+        o,
+        &|_| None,
+        &mut |e: &str| {
+            events.push(e.to_string());
+            Ok(())
+        },
+    )?;
     let expected: &[&str] = if o.no_autoloader {
         &[]
     } else {

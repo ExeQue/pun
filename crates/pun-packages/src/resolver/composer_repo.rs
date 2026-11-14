@@ -567,10 +567,13 @@ mod tests {
         use super::super::{Options, locker, repos, resolve};
         let options = Options::default();
         let run = || -> Result<String> {
-            let repositories = repos::open(std::path::Path::new("."), manifest, None, fetcher)?;
+            let repositories =
+                repos::open(std::path::Path::new("."), manifest, None, fetcher, &|_| {
+                    None
+                })?;
             let php = json!({"name": "php", "version": "8.5.0"});
             let platform = vec![php.as_object().unwrap().clone()];
-            let resolved = resolve(manifest, platform, repositories, None, &options)?;
+            let resolved = resolve(manifest, platform, repositories, None, &options, &|_| None)?;
             let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };

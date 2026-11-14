@@ -1,3 +1,4 @@
+use crate::Env;
 use crate::error::Result;
 use crate::paths::shortest;
 use crate::php::{export_str, json_pretty};
@@ -92,7 +93,7 @@ pub struct Root {
     pub aliases: Vec<String>,
 }
 
-pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
+pub fn root(manifest: &Map<String, Value>, dir: &Path, env: Env) -> Root {
     let name = manifest
         .get("name")
         .and_then(Value::as_str)
@@ -104,7 +105,7 @@ pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
         .unwrap_or("library")
         .to_string();
     let (pretty, normalized, reference) = match (
-        root_version_from_env(),
+        root_version(env),
         manifest.get("version").and_then(Value::as_str),
     ) {
         (Some(v), _) => (v.clone(), normalize(&v).unwrap_or(v), None),
@@ -131,12 +132,10 @@ pub fn root(manifest: &Map<String, Value>, dir: &Path) -> Root {
     }
 }
 
-pub(crate) fn root_version_from_env() -> Option<String> {
+pub(crate) fn root_version(env: Env) -> Option<String> {
     static DEV: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(?i)^(\d+(?:\.\d+)*)-dev$").unwrap());
-    let v = std::env::var("COMPOSER_ROOT_VERSION")
-        .ok()
-        .filter(|v| !v.is_empty())?;
+    let v = env("COMPOSER_ROOT_VERSION").filter(|v| !v.is_empty())?;
     Some(match DEV.captures(v.as_bytes()).ok().flatten() {
         Some(c) => format!("{}.x-dev", String::from_utf8_lossy(&c[1])),
         None => v,
@@ -608,7 +607,7 @@ mod tests {
         let manifest = |v: Value| v.as_object().unwrap().clone();
         let plain = manifest(json!({"name": "acme/app", "non-feature-branches": ["stable-.*"]}));
         let guess = |m: &Map<String, Value>| {
-            let r = root(m, &d);
+            let r = root(m, &d, &|_| None);
             (r.pretty_version, r.version, r.reference)
         };
         let at = |v: &str, n: &str, commit: &str| {
@@ -686,12 +685,12 @@ mod tests {
             ("dev-main", "dev-main", "dev-main"),
             ("v2.0", "v2.0", "2.0.0.0"),
         ] {
-            // SAFETY: no other test in this binary reads or writes this variable.
-            unsafe { std::env::set_var("COMPOSER_ROOT_VERSION", env) };
-            let got = guess(&versioned);
-            // SAFETY: as above.
-            unsafe { std::env::remove_var("COMPOSER_ROOT_VERSION") };
-            assert_eq!(got, (pretty.into(), normalized.into(), None));
+            let env = |k: &str| (k == "COMPOSER_ROOT_VERSION").then(|| env.to_string());
+            let r = root(&versioned, &d, &env);
+            assert_eq!(
+                (r.pretty_version, r.version, r.reference),
+                (pretty.into(), normalized.into(), None)
+            );
         }
         std::fs::remove_dir_all(&d).unwrap();
     }
