@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::install::{fetcher, project};
 use crate::render::{ColorChoice, Look, Role, plural};
 use anyhow::{Context, Result, bail};
@@ -309,7 +310,7 @@ fn verdict(need: &Need, audits: &[&Audit], exemptions: &[Exemption]) -> Verdict 
     Verdict::Unvetted(below.or(above).map(|k| shown[k].clone()))
 }
 
-pub(crate) fn run(a: VetArgs) -> Result<u8> {
+pub(crate) fn run(a: VetArgs) -> Result<Exit> {
     let project = project(None, false)?;
     let lock = (project.lock.as_ref())
         .with_context(|| "no lock to vet: run `pun install` or `pun update` first".to_string())?;
@@ -354,7 +355,7 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
                 });
             store.write()?;
             println!("Recorded your {} review of {name} {what}", criteria.name());
-            Ok(0)
+            Ok(Exit::Success)
         }
         Some(VetCommand::Diff { package, from, to }) => {
             let fetcher = fetcher(&project.root, &project.manifest);
@@ -370,8 +371,8 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
                     .status()
                     .context("can't run git, which pun vet diff shows the changes with")?;
                 Ok(match status.code() {
-                    Some(0 | 1) => 0,
-                    _ => 2,
+                    Some(0 | 1) => Exit::Success,
+                    _ => Exit::RunError,
                 })
             });
             let _ = std::fs::remove_dir_all(&work);
@@ -388,7 +389,7 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
                 unpack_version(&fetcher, lock, &name, &version, &dir)?;
             }
             println!("{}", dir.display());
-            Ok(0)
+            Ok(Exit::Success)
         }
         Some(VetCommand::Prune) => {
             let mut store = store.context(NO_STORE)?;
@@ -414,7 +415,7 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
                 "Removed {} the lock no longer needs",
                 plural(before - after, "exemption", "exemptions")
             );
-            Ok(0)
+            Ok(Exit::Success)
         }
         Some(VetCommand::FetchImports) => {
             let mut store = store.context(NO_STORE)?;
@@ -426,7 +427,7 @@ pub(crate) fn run(a: VetArgs) -> Result<u8> {
                 "Fetched {}",
                 plural(store.imports.imports.len(), "import", "imports")
             );
-            Ok(0)
+            Ok(Exit::Success)
         }
     }
 }
@@ -439,7 +440,7 @@ fn check(
     needs: &[Need],
     root: &Path,
     manifest: &Map<String, Value>,
-) -> Result<u8> {
+) -> Result<Exit> {
     let Some(mut store) = store else {
         bail!("{NO_STORE}, with every locked package exempted");
     };
@@ -474,7 +475,7 @@ fn check(
             "{ok} Vetted {}: {audited} audited, {exempted} exempted",
             plural(needs.len(), "package", "packages")
         );
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let cross = look.paint(Role::Error, look.glyph("✖", "x"));
     println!(
@@ -500,11 +501,11 @@ fn check(
         "\nRecord each review with `pun vet certify <package> <version>` (`<from> <to>` for changes), or exempt the \
          package in supply-chain/config.toml."
     );
-    Ok(1)
+    Ok(Exit::Failure)
 }
 
 /// `pun vet init`: supply-chain/ with every locked package exempted at its version and criterion.
-fn init(root: &Path, needs: &[Need]) -> Result<u8> {
+fn init(root: &Path, needs: &[Need]) -> Result<Exit> {
     let dir = root.join("supply-chain");
     if dir.exists() {
         bail!("supply-chain/ exists already");
@@ -532,7 +533,7 @@ fn init(root: &Path, needs: &[Need]) -> Result<u8> {
         "Wrote supply-chain/ with {} exempted; review them over time and record each with `pun vet certify`",
         plural(needs.len(), "package", "packages")
     );
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// Fetches each imported audit file, keeping the audits of the packages the lock has.

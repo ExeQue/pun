@@ -1,5 +1,5 @@
 use crate::run::{LintOpts, Stage, format, load_config};
-use crate::{FormatArgs, root};
+use crate::{Exit, FormatArgs, root};
 use anyhow::Result;
 use notify::{EventKind, RecursiveMode, Watcher};
 use std::collections::{HashMap, HashSet};
@@ -10,7 +10,7 @@ use std::time::Duration;
 
 const DEBOUNCE: Duration = Duration::from_millis(100);
 
-pub(crate) fn run(mut a: FormatArgs) -> Result<u8> {
+pub(crate) fn run(mut a: FormatArgs) -> Result<Exit> {
     a.pun.watch = false;
     let started_by = parent();
     let root = root()?;
@@ -39,11 +39,11 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<u8> {
     loop {
         let first = loop {
             match rx.recv_timeout(Duration::from_secs(1)) {
-                _ if parent() != started_by => return Ok(0),
+                _ if parent() != started_by => return Ok(Exit::Success),
                 Ok(Ok(e)) if matches!(e.kind, EventKind::Access(_)) => {}
                 Ok(e) => break e,
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
-                Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(0),
+                Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(Exit::Success),
             }
         };
         let mut changed = HashSet::new();
@@ -58,7 +58,7 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<u8> {
             add(e);
         }
         if !root.exists() {
-            return Ok(0);
+            return Ok(Exit::Success);
         }
         let files =
             match load_config(&a, &root).and_then(|cfg| pun_workspace::discover(&cfg, &a.paths)) {
@@ -94,7 +94,7 @@ pub(crate) fn run(mut a: FormatArgs) -> Result<u8> {
     }
 }
 
-fn report(a: &FormatArgs, r: Result<u8>) {
+fn report(a: &FormatArgs, r: Result<Exit>) {
     if let Err(e) = r {
         crate::report::fail(e, &a.failure());
     }

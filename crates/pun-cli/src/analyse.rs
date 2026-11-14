@@ -1,6 +1,6 @@
 use crate::render::{Look, Renderer, Summary};
 use crate::report::Abort;
-use crate::{agent, analyse_report, baseline, github, render, root};
+use crate::{Exit, agent, analyse_report, baseline, github, render, root};
 use anyhow::Result;
 use clap::Args;
 use pun_config::rule_of_identifier;
@@ -367,7 +367,7 @@ pub(crate) fn problem(f: &Finding, source: &str, index: &LineIndex) -> Problem {
     }
 }
 
-pub(crate) fn run(a: AnalyseArgs) -> Result<u8> {
+pub(crate) fn run(a: AnalyseArgs) -> Result<Exit> {
     let started = Instant::now();
     let root = root()?;
     let opts = Options {
@@ -386,7 +386,7 @@ pub(crate) fn run(a: AnalyseArgs) -> Result<u8> {
     present(&a, &cfg, &analysed, started)
 }
 
-fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<u8> {
+fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<Exit> {
     let root = &cfg.root;
     let errors = analysed.findings.len() + analysed.malformed.len() + analysed.general.len();
     match a.format.as_deref() {
@@ -418,7 +418,11 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
             }
         }
     }
-    Ok(u8::from(errors > 0))
+    Ok(if errors > 0 {
+        Exit::Failure
+    } else {
+        Exit::Success
+    })
 }
 
 fn unsupported_format(e: &anyhow::Error) -> anyhow::Error {
@@ -431,7 +435,7 @@ fn generate_baseline(
     cfg: &Config,
     path: Option<&Path>,
     started: Instant,
-) -> Result<u8> {
+) -> Result<Exit> {
     let path = match path {
         Some(path) => path.to_path_buf(),
         None => PathBuf::from(cfg.analyse.baseline.as_deref().unwrap_or(baseline::DEFAULT)),
@@ -453,10 +457,10 @@ fn generate_baseline(
     if agent::enabled() {
         let detail = [format!("baseline {shown} written with {errors}")];
         print!("{}", agent::render("ok", &detail, "", &[], false));
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     if a.quiet {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let look = Look::stdout(a.color.unwrap_or(render::ColorChoice::Auto));
     let r = Renderer::new(look, &cfg.root);
@@ -473,7 +477,7 @@ fn generate_baseline(
             started.elapsed().as_secs_f64()
         ))
     );
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// Problem blocks, sorted by file and line, then the summary; a note when baseline entries no longer match.

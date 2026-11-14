@@ -1,5 +1,5 @@
 use crate::render::{ColorChoice, Look, Role};
-use crate::{agent, report, root};
+use crate::{Exit, agent, report, root};
 use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use pun_config::migrate;
@@ -169,7 +169,7 @@ fn ask(detected: &[(Source, String)]) -> Result<Vec<Source>> {
         .collect())
 }
 
-pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
+pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
     let root = root()?;
     let pint = a.config.as_deref().unwrap_or(Path::new("pint.json"));
     let detected = detect(&root, pint);
@@ -193,7 +193,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
         println!("N{}.", &nothing[1..]);
         if interactive && !starter()? {
             report.finish(Mark::Skip, "Nothing written".into(), vec![], "");
-            return Ok(0);
+            return Ok(Exit::Success);
         }
     }
     let rector_installed = root.join("vendor/rector/rector").is_dir();
@@ -236,7 +236,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
             detail,
             "",
         );
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let from = format_source.as_ref().map(|s| rel(&root, &s.1));
     let arrow = report.look.glyph("→", "->");
@@ -420,7 +420,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<u8> {
         None => String::new(),
     };
     report.finish(mark, last, detail, &checked);
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// composer.json's dependencies for pun.toml, with the files they bring along.

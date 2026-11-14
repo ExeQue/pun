@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
 use pun_packages::autoload::{Apcu, Scan};
@@ -115,7 +116,7 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
     })
 }
 
-pub(crate) fn run(a: InstallArgs) -> Result<u8> {
+pub(crate) fn run(a: InstallArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.working_dir.as_ref(), false)?;
     if project.lock.is_none() {
@@ -139,7 +140,7 @@ pub(crate) fn install_locked(
     a: &InstallArgs,
     started: Instant,
     update: bool,
-) -> Result<u8> {
+) -> Result<Exit> {
     let (root, manifest) = (&project.root, &project.manifest);
     let look = Look::stderr(ColorChoice::Auto);
     let (pre, post) = if update {
@@ -244,5 +245,5 @@ pub(crate) fn install_locked(
         "{}",
         look.paint(Role::Summary, &format!("Installed in {secs:.1}s"))
     );
-    Ok(0)
+    Ok(Exit::Success)
 }

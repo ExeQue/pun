@@ -1,5 +1,5 @@
 use crate::render::{ColorChoice, Look, Renderer};
-use crate::{agent, migrate, root};
+use crate::{Exit, agent, migrate, root};
 use anyhow::{Result, bail};
 use dialoguer::console::Term;
 use pun_config::composer::{Composer, Locked};
@@ -34,7 +34,7 @@ const STYLES: [&str; 2] = ["laravel", "psr12"];
 /// The lint sets ticked by default (init.md §2).
 const DEFAULT_SETS: [&str; 2] = ["dead-code", "modernize"];
 
-pub(crate) fn run(a: InitArgs) -> Result<u8> {
+pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     let root = root()?;
     if root.join("pun.toml").exists() {
         bail!(
@@ -113,7 +113,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
         ];
         let next = ["next: run `pun check`, `pun check --fix` before committing; add `pun check` to CI and composer scripts".to_string()];
         print!("{}", agent::render("ok", &detail, "", &next, false));
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     if !interactive {
         println!("Code style: {style}");
@@ -127,7 +127,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
     println!("\n  {}", r.done("Wrote pun.toml").trim_end());
     println!("\n  Done. Run `pun check` any time; `pun check --fix` before you commit.");
     println!("  Add `pun check` to CI and your composer scripts.");
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// The three questions, each starting on its default.

@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::install::{InstallArgs, project};
 use crate::update::{Plan, update_and_install};
 use anyhow::{Context, Result, bail};
@@ -39,7 +40,7 @@ const ALIASES: [(&str, &str, &str); 12] = [
 /// How long a resolve stays current before a run looks for a newer release.
 const FRESH: Duration = Duration::from_hours(24);
 
-pub(crate) fn run(a: XArgs) -> Result<u8> {
+pub(crate) fn run(a: XArgs) -> Result<Exit> {
     let (spec, rest) = a.args.split_first().expect("clap requires the package");
     match spec.as_str() {
         "list" => return list(),
@@ -170,7 +171,7 @@ fn installs() -> Result<Vec<(String, String, PathBuf)>> {
 
 /// `punx list`: each install, as the spec that runs it, with the version it has. A directory a run is still
 /// installing into has no version yet and isn't listed.
-fn list() -> Result<u8> {
+fn list() -> Result<Exit> {
     let rows: Vec<_> = (installs()?.into_iter())
         .filter_map(|(name, constraint, dir)| {
             let version = installed_version(&dir, &name)?;
@@ -182,13 +183,13 @@ fn list() -> Result<u8> {
         .collect();
     if rows.is_empty() {
         println!("No packages are installed.");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let width = rows.iter().map(|(s, _)| s.len()).max().unwrap_or(0);
     for (spec, version) in rows {
         println!("{spec:width$}  {version}");
     }
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// The version of `name` that `dir` has installed.
@@ -203,7 +204,7 @@ fn installed_version(dir: &Path, name: &str) -> Option<String> {
 
 /// `punx clean`: removes every install, or those of the packages named. A package named without a constraint
 /// loses all its installs; with one, only that constraint's.
-fn clean(specs: &[String]) -> Result<u8> {
+fn clean(specs: &[String]) -> Result<Exit> {
     let wanted = (specs.iter())
         .map(|spec| {
             let (name, constraint, _) = package(spec)?;
@@ -232,7 +233,7 @@ fn clean(specs: &[String]) -> Result<u8> {
         "Removed {removed} install{}.",
         if removed == 1 { "" } else { "s" }
     );
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// Installs the package into `dir` unless its install there is less than a day old.
@@ -264,7 +265,7 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     let result = project(args.working_dir.as_ref(), false)
         .and_then(|mut p| update_and_install(&mut p, Plan::default(), &args, Instant::now()));
     match result {
-        Ok(0) => {
+        Ok(Exit::Success) => {
             let _ = std::fs::File::options()
                 .append(true)
                 .open(&lock)
@@ -279,7 +280,7 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
             let _ = std::fs::remove_dir_all(dir);
             let _ = dir.parent().map(std::fs::remove_dir);
             match result {
-                Ok(code) => bail!("{name} didn't install (exit {code})"),
+                Ok(code) => bail!("{name} didn't install (exit {})", code as u8),
                 Err(e) => Err(e),
             }
         }
@@ -339,7 +340,7 @@ fn pick<'a>(
 }
 
 /// Runs the command in the current directory with the terminal, and exits with its status.
-fn exec(command: &Path, args: &[String]) -> Result<u8> {
+fn exec(command: &Path, args: &[String]) -> Result<Exit> {
     let mut cmd = std::process::Command::new(command);
     cmd.args(args);
     #[cfg(unix)]
@@ -353,6 +354,10 @@ fn exec(command: &Path, args: &[String]) -> Result<u8> {
         let status = cmd
             .status()
             .with_context(|| format!("can't run {}", command.display()))?;
-        Ok(status.code().map_or(1, |c| u8::try_from(c).unwrap_or(1)))
+        std::process::exit(
+            status
+                .code()
+                .map_or(1, |c| u8::try_from(c).map_or(1, i32::from)),
+        )
     }
 }

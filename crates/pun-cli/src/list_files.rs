@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::agent;
 use anyhow::{Result, bail};
 use clap::Args;
@@ -31,7 +32,7 @@ enum CommandArg {
     Analyse,
 }
 
-pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
+pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
     let json = match a.format.as_deref() {
         None => false,
         Some("json") => true,
@@ -71,5 +72,5 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
         list
     };
     std::io::stdout().write_all(out.as_bytes())?;
-    Ok(0)
+    Ok(Exit::Success)
 }

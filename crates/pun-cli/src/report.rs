@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::console::{self, format as fmt};
 use crate::fix_report::{self, Change};
 use crate::render::{
@@ -186,7 +187,7 @@ pub(crate) struct Failure {
     pub(crate) color: ColorChoice,
 }
 
-pub(crate) fn fail(e: anyhow::Error, f: &Failure) -> u8 {
+pub(crate) fn fail(e: anyhow::Error, f: &Failure) -> Exit {
     let abort = match e.downcast::<Abort>() {
         Ok(a) => a,
         Err(e) if f.pint => {
@@ -214,7 +215,7 @@ pub(crate) fn fail(e: anyhow::Error, f: &Failure) -> u8 {
             print!("{}", github::run_error(&abort.message));
         }
     }
-    2
+    Exit::RunError
 }
 
 fn error_line(message: &str) -> usize {

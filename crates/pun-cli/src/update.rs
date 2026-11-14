@@ -1,3 +1,4 @@
+use crate::Exit;
 use crate::install::{InstallArgs, Project, fetcher, install_locked, project};
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
@@ -107,7 +108,7 @@ struct Edit {
     original: Option<String>,
 }
 
-pub(crate) fn run(a: UpdateArgs) -> Result<u8> {
+pub(crate) fn run(a: UpdateArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), false)?;
     if let Some(lock) = &project.lock {
@@ -135,7 +136,7 @@ pub(crate) fn update_and_install(
     plan: Plan,
     a: &InstallArgs,
     started: Instant,
-) -> Result<u8> {
+) -> Result<Exit> {
     pre_update(project, a, &plan)?;
     let (resolution, options) = match resolve(project, &plan, a)? {
         Ok(r) => r,
@@ -233,7 +234,7 @@ fn resolve(
 }
 
 /// Prints why the requirements don't resolve; the exit code, 2 as Composer's.
-fn print_problems(problems: &[Vec<String>]) -> u8 {
+fn print_problems(problems: &[Vec<String>]) -> Exit {
     let look = Look::stderr(ColorChoice::Auto);
     let cross = look.paint(Role::Error, look.glyph("✖", "x"));
     eprintln!("{cross} The requirements can't be resolved:");
@@ -243,7 +244,7 @@ fn print_problems(problems: &[Vec<String>]) -> u8 {
             eprintln!("    - {l}");
         }
     }
-    2
+    Exit::RunError
 }
 
 /// Prints the changes, writes the manifest edit and the lock, then installs; a failed install after an edit puts
@@ -255,10 +256,10 @@ fn finish(
     started: Instant,
     lock: Lock,
     edit: Option<Edit>,
-) -> Result<u8> {
+) -> Result<Exit> {
     print_changes(project.lock.as_ref(), &lock);
     if plan.dry_run {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let lock_file = "pun.lock";
     let lock_path = project.root.join(lock_file);
@@ -274,13 +275,13 @@ fn finish(
             .transpose()
             .map(|_| {
                 eprintln!("Wrote {lock_file}; vendor/ is unchanged (--no-install)");
-                0
+                Exit::Success
             })
     } else {
         install_locked(project, &lock, a, started, true)
     };
     if let Some(e) = edit
-        && !matches!(result, Ok(0))
+        && !matches!(result, Ok(Exit::Success))
     {
         restore(&e.path, e.original.as_deref())?;
         restore(&lock_path, lock_backup.as_deref())?;
@@ -460,7 +461,7 @@ fn resolve_edit(
     plan: &Plan,
     a: &InstallArgs,
     target: &Target,
-) -> Result<std::result::Result<(Resolution, Options), u8>> {
+) -> Result<std::result::Result<(Resolution, Options), Exit>> {
     match resolve(project, plan, a) {
         Ok(Ok(r)) => Ok(Ok(r)),
         Ok(Err(problems)) => {
@@ -490,7 +491,7 @@ fn required(manifest: &Map<String, Value>, section: &str, pattern: &str) -> Vec<
     .collect()
 }
 
-pub(crate) fn require(a: RequireArgs) -> Result<u8> {
+pub(crate) fn require(a: RequireArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), true)?;
     let target = target(&project, a.member.as_deref())?;
@@ -535,7 +536,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     if a.no_update {
         write(&target.path, &text)?;
         eprintln!("Updated {file}");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let mut names: Vec<String> = pairs.iter().map(|(n, _)| n.to_ascii_lowercase()).collect();
     names.extend(target.member.clone());
@@ -597,7 +598,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     finish(&mut project, &plan, &a.install, started, lock, Some(edit))
 }
 
-pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
+pub(crate) fn remove(a: RemoveArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), false)?;
     let target = target(&project, a.member.as_deref())?;
@@ -617,13 +618,13 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
         }
     }
     if removed.is_empty() {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let file = target.file(&project);
     if a.no_update {
         write(&target.path, &text)?;
         eprintln!("Updated {file}");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     removed.extend(target.member.clone());
     let plan = Plan {

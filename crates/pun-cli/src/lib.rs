@@ -263,6 +263,22 @@ pub(crate) struct PunArgs {
     watch: bool,
 }
 
+/// What a run tells the shell. Pint's 0 and 1, and 2 when Pun couldn't run, where Pint exits 1.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u8)]
+pub(crate) enum Exit {
+    Success = 0,
+    /// Problems found, or files changed under `--test` or `--repair`.
+    Failure = 1,
+    RunError = 2,
+}
+
+impl From<Exit> for ExitCode {
+    fn from(exit: Exit) -> ExitCode {
+        ExitCode::from(exit as u8)
+    }
+}
+
 /// The stack of every thread that parses, lints or analyses: they recurse as deep as the syntax tree, and a long
 /// chain of concatenations or `&&` overflows the 8 MiB of a main thread and Rust's 2 MiB default.
 pub(crate) const STACK: usize = 36 * 1024 * 1024;
@@ -359,18 +375,18 @@ fn run() -> ExitCode {
         } => show_config(format, config, preset),
         Cmd::Explain { rule } => pun_config::explain(&rule).map(|t| {
             print!("{t}");
-            0
+            Exit::Success
         }),
     };
     #[cfg(feature = "pprof")]
     if let Some(s) = sampler {
         s.report();
     }
-    ExitCode::from(result.unwrap_or_else(|e| report::fail(e, &failure)))
+    result.unwrap_or_else(|e| report::fail(e, &failure)).into()
 }
 
 /// `pun lint` / `pun check`: a `pun format` run over other rules; without `--fix` nothing is written.
-fn stage(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<u8> {
+fn stage(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<Exit> {
     let mut a = cmd.args;
     a.test |= !cmd.fix;
     let lint = LintOpts {
@@ -407,7 +423,7 @@ fn show_config(
     fmt: Option<ConfigFormat>,
     config: Option<PathBuf>,
     preset: Option<String>,
-) -> Result<u8> {
+) -> Result<Exit> {
     let root = root()?;
     let cfg = pun_config::load(
         &root,
@@ -444,5 +460,5 @@ fn show_config(
     } else {
         print!("{toml}");
     }
-    Ok(0)
+    Ok(Exit::Success)
 }

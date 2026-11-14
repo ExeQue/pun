@@ -1,7 +1,7 @@
 use crate::lint_plan::{self, CliLevel, Engine, On, Plan};
 use crate::render::{Look, RunError, Spinner};
 use crate::report::{self, Abort, FileResult, Status};
-use crate::{FormatArgs, root};
+use crate::{Exit, FormatArgs, root};
 use anyhow::Result;
 use pun_config::{Config, Options, Rule};
 use pun_format::{LintError, Pipeline};
@@ -128,7 +128,7 @@ struct Processed {
     remaining: Option<FileResult>,
 }
 
-pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> {
+pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit> {
     let started = std::time::Instant::now();
     let root = root()?;
     let cfg = load_config(&a, &root)?;
@@ -368,7 +368,13 @@ pub(crate) fn format(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<u8> 
         }
     };
     eprint!("{}", base.profile_report());
-    Ok(if crashed { 2 } else { u8::from(failed) })
+    Ok(if crashed {
+        Exit::RunError
+    } else if failed {
+        Exit::Failure
+    } else {
+        Exit::Success
+    })
 }
 
 fn project_codebase(cfg: &Config, files: Vec<PathBuf>) {
@@ -900,7 +906,7 @@ fn is_blade(path: &Path) -> bool {
     path.to_string_lossy().ends_with(".blade.php")
 }
 
-fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<u8> {
+fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<Exit> {
     let mut code = Vec::new();
     std::io::stdin().read_to_end(&mut code)?;
     let mut out = std::io::stdout().lock();
@@ -914,7 +920,7 @@ fn stdin(a: &FormatArgs, cfg: &Config, engine: &Pipeline) -> Result<u8> {
         fix_text(cfg, engine, &ctx, a.stdin_filename.is_some(), &code)?
     };
     out.write_all(fixed.as_deref().unwrap_or(&code))?;
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 fn fix_text(

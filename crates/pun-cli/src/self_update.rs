@@ -1,3 +1,4 @@
+use crate::Exit;
 use anyhow::{Context, Result, bail};
 use sha2::{Digest, Sha256};
 use std::io::Read;
@@ -16,7 +17,7 @@ pub(crate) struct SelfUpdateArgs {
     check: bool,
 }
 
-pub(crate) fn run(a: SelfUpdateArgs) -> Result<u8> {
+pub(crate) fn run(a: SelfUpdateArgs) -> Result<Exit> {
     let exe = std::env::current_exe()?
         .canonicalize()
         .context("can't find the running pun")?;
@@ -39,11 +40,11 @@ pub(crate) fn run(a: SelfUpdateArgs) -> Result<u8> {
     let version = &tag[1..];
     if a.version.is_none() && pun_packages::version::compare(version, current) <= 0 {
         eprintln!("pun {current} is up to date (the latest release is {version})");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     if a.check {
         eprintln!("pun {version} is out (this is {current}); run `pun self-update` to install it");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
 
     let target = target()?;
@@ -84,7 +85,7 @@ pub(crate) fn run(a: SelfUpdateArgs) -> Result<u8> {
     }
     result?;
     eprintln!("Updated pun {current} → {version} at {}", exe.display());
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// A plain release version: `v` and three dot-separated numbers, then only letters, digits, dots and dashes.
