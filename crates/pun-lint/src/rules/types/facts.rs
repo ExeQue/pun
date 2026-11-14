@@ -391,13 +391,17 @@ impl Facts {
             Settings::new(self.version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        // An analysis error only ends the walk early, so what the observer saw until then stands; after a panic the
+        // observations may be half-recorded, so none are kept.
+        let analysed = contained("analyser", &file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
-        }));
+        })
+        .is_some();
         let found = found
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let mut out: Vec<_> = (found.iter())
+            .filter(|_| analysed)
             .filter(|(_, (_, state))| *state != super::implicit_array_observer::YES)
             .map(|(span, (name, state))| {
                 (
@@ -542,10 +546,9 @@ impl Facts {
         let settings = Settings::new(self.version);
         let analyzer = Analyzer::new(&arena, &file, &names, &self.documented, &PLUGINS, settings);
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        contained("analyser", &file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
-        }))
-        .ok()
+        })
         .and_then(Result::ok)
     }
 
@@ -746,10 +749,9 @@ impl Facts {
             },
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        let artifacts = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let artifacts = contained("analyser", &file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
-        }))
-        .ok()
+        })
         .and_then(Result::ok);
         if let Some(artifacts) = &artifacts {
             let unknown = |t: &TUnion| {
@@ -1231,9 +1233,9 @@ fn scan_symbols<'a>(
     names: &ResolvedNames<'a>,
     version: PHPVersion,
 ) -> CodebaseMetadata {
-    let mut scanned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let mut scanned = contained("scanner", file, || {
         scan_program(arena, file, program, names, version)
-    }))
+    })
     .unwrap_or_default();
     mark_anonymous_classes_final(&mut scanned);
     if file.file_type == FileType::Vendored {
@@ -1242,6 +1244,29 @@ fn scan_symbols<'a>(
         });
     }
     scanned
+}
+
+/// Runs one of Mago's passes over `file`. Mago panics on some inputs; that should cost the rules reading this fact
+/// their type information for the file, not the whole run, so the panic stops here, and is named on stderr because
+/// those rules then go quiet on the file.
+fn contained<T>(pass: &str, file: &File, run: impl FnOnce() -> T) -> Option<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(run))
+        .map_err(|panic| {
+            let message = (panic.downcast_ref::<&str>().map(ToString::to_string))
+                .or_else(|| panic.downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            #[expect(
+                clippy::print_stderr,
+                reason = "a contained panic has no other channel to the user"
+            )]
+            {
+                eprintln!(
+                    "pun: Mago's {pass} panicked on {}, so the lint rules that need its types skip that file: {message}",
+                    String::from_utf8_lossy(&file.name)
+                );
+            }
+        })
+        .ok()
 }
 
 fn mark_anonymous_classes_final(scanned: &mut CodebaseMetadata) {
@@ -1290,9 +1315,9 @@ fn refresh_closures(
     let arena = LocalArena::new();
     let program = parse_file(&arena, &file);
     let names = NameResolver::new(&arena).resolve(program);
-    let mut scanned = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let mut scanned = contained("scanner", &file, || {
         scan_program(&arena, &file, program, &names, version)
-    }))
+    })
     .unwrap_or_default();
     mark_anonymous_classes_final(&mut scanned);
     scanned.set_file_signature(file.id, build_file_signature(&file, program, &names));
@@ -1430,4 +1455,24 @@ fn isset_property_regions<'a>(program: &'a Program<'a>) -> Vec<(&'a [u8], u32, u
             .any(|(n, at)| n == name && from <= at && at < to)
     });
     regions
+}
+
+#[cfg(test)]
+mod tests {
+    use mago_database::file::FileType;
+
+    #[test]
+    fn a_panicking_pass_yields_no_fact() {
+        let file = super::mago_file("a.php", "<?php", FileType::Host);
+        assert_eq!(super::contained("scanner", &file, || 1), Some(1));
+        assert_eq!(
+            super::contained("scanner", &file, || -> i32 { panic!("boom") }),
+            None
+        );
+        let pass = "scanner";
+        assert_eq!(
+            super::contained(pass, &file, || -> i32 { panic!("{pass} failed") }),
+            None
+        );
+    }
 }
