@@ -121,7 +121,7 @@ tests; where Pun deliberately differs from Mago, the test asserts Pun's output a
 | `Pun/sensitive_parameter` | sensitive-parameter | adds `#[\SensitiveParameter]` to params named `*password`/`*token`/`*secret`/`*apikey`/`*api_key` unless boolean-typed or already marked | none (it is Mago's name heuristic, so lexer `$token`s get marked too; harmless). Attribute syntax needs PHP ≥ 8.0, the effect 8.2 |
 | `Pun/no_redundant_nullsafe` | no-redundant-nullsafe | `$user?->name ?? 'Guest'` / `isset($user?->profile)` → `->` | only when the property fetch is the whole left side of `??` (`'a' . $x?->b ?? 'c'` is `('a' . $x?->b) ?? 'c'`) |
 
-Tests: `PUN_FIXERS_ONLY=$(ls crates/pun-fixers/src/fixers/pun_*.rs | xargs -n1 basename | sed 's/.rs$//' | paste -sd,) cargo test -p punphp-fixers --lib pun_`
+Tests: `cargo test -p punphp-fixers --lib pun_`
 (34 tests: Mago's cases plus edge cases). All twelve new rules were also run together on copies of Pinkary,
 laravel-framework and Pest; every changed file still passes `php -l`.
 

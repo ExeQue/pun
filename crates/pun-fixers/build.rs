@@ -2,11 +2,6 @@ use std::{env, fs, path::Path};
 
 fn main() {
     println!("cargo:rerun-if-changed=src/fixers");
-    println!("cargo:rerun-if-env-changed=PUN_FIXERS_ONLY");
-    let only: Option<Vec<String>> = env::var("PUN_FIXERS_ONLY")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .map(|s| s.split(',').map(|x| x.trim().to_string()).collect());
     let mut names: Vec<String> = fs::read_dir("src/fixers")
         .unwrap()
         .filter_map(|e| {
@@ -17,7 +12,6 @@ fn main() {
                 .strip_suffix(".rs")
                 .map(String::from)
         })
-        .filter(|n| only.as_ref().is_none_or(|o| o.contains(n)))
         .collect();
     names.sort();
     let mut out = String::new();

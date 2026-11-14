@@ -3,8 +3,6 @@
 #
 #   scripts/coverage.sh                    # every crate; rewrites the generated part of context/reports/COVERAGE.md
 #   scripts/coverage.sh punphp-tokens pun-config   # some crates (package or dir name); updates only their rows
-#   PUN_FIXERS_ONLY=pun_no_only scripts/coverage.sh # one fixer: its file(s) + the analyzers it touches;
-#                                                   # gate is the fixer's own files; context/reports/COVERAGE.md untouched
 #   COVERAGE_VERBOSE=1 ...                 # print every file, not only the ones below 100%
 #
 # Instrumented builds live in target/coverage (reused between runs, never the shared target/llvm-cov-target),
@@ -31,17 +29,14 @@ for toml in crates/*/Cargo.toml; do
   ALL+=("$pkg")
 done
 
-ONLY="${PUN_FIXERS_ONLY:-}"
-if [ $# -eq 0 ]; then
-  if [ -n "$ONLY" ]; then set -- punphp-fixers; else set -- "${ALL[@]}"; fi
-fi
+[ $# -gt 0 ] || set -- "${ALL[@]}"
 
 status=0
 for arg in "$@"; do
   dir="${DIR_OF[$arg]:-}"
   [ -n "$dir" ] || { echo "unknown crate: $arg" >&2; exit 2; }
   pkg=$(sed -n 's/^name *= *"\(.*\)"/\1/p' "$dir/Cargo.toml" | head -1)
-  echo "== $pkg ($dir)${ONLY:+ PUN_FIXERS_ONLY=$ONLY}" >&2
+  echo "== $pkg ($dir)" >&2
   cargo llvm-cov clean --profraw-only
   # `report` maps every test/bin/example executable under the target dir; a stale one adds phantom
   # uncovered lines, so drop them all. Only the executables relink; libraries and dependencies are reused.
@@ -49,16 +44,12 @@ for arg in "$@"; do
   find "$CARGO_LLVM_COV_TARGET_DIR/debug" "$CARGO_LLVM_COV_TARGET_DIR/debug/deps" "$CARGO_LLVM_COV_TARGET_DIR/debug/examples" \
     "$CARGO_LLVM_COV_TARGET_DIR"/debug/build/punphp*/*/out -maxdepth 1 -type f -perm -u+x ! -name '*.*' -delete 2>/dev/null || true
   tests_ok=1
-  filter=()
-  # One fixer: only its own unit tests + the upstream fixture runner + tests/cases.rs oracle_* tests (which PUN_FIXERS_ONLY already narrows), so
-  # "analyzers touched" means touched by this fixer, not by the analyzers' own unit tests.
-  if [ -n "$ONLY" ]; then filter=(-- upstream_fixtures oracle_); for n in ${ONLY//,/ }; do filter+=("$n::"); done; fi
-  timeout "${COVERAGE_TIMEOUT:-3600}" nice cargo llvm-cov --no-report -p "$pkg" --no-fail-fast "${filter[@]}" >&2 || tests_ok=0
-  lcov="$OUT/$pkg${ONLY:+.only}.lcov"
+  timeout "${COVERAGE_TIMEOUT:-3600}" nice cargo llvm-cov --no-report -p "$pkg" --no-fail-fast >&2 || tests_ok=0
+  lcov="$OUT/$pkg.lcov"
   nice cargo llvm-cov report --lcov --output-path "$lcov" >&2
-  python3 - "$ROOT" "$dir" "$pkg" "$lcov" "$tests_ok" "$ONLY" <<'PY' || status=1
+  python3 - "$ROOT" "$dir" "$pkg" "$lcov" "$tests_ok" <<'PY' || status=1
 import json, os, re, sys
-root, cdir, pkg, lcov, tests_ok, only = sys.argv[1:]
+root, cdir, pkg, lcov, tests_ok = sys.argv[1:]
 verbose = bool(os.environ.get("COVERAGE_VERBOSE"))
 doc = os.path.join(root, "context/reports/COVERAGE.md")
 text = open(doc).read() if os.path.exists(doc) else ""
@@ -90,15 +81,6 @@ for f, da in sorted(files.items()):
     miss = [n for n, c in lines.items() if c == 0]
     rows.append((f, len(lines), len(lines) - len(miss), miss))
 
-if only:
-    names = [n.strip() for n in only.split(",") if n.strip()]
-    mine = lambda f: any(f == f"{cdir}/src/fixers/{n}.rs" or f.startswith(f"{cdir}/src/fixers/{n}/") for n in names)
-    gate = [r for r in rows if mine(r[0])]
-    touched = [r for r in rows if r[0].startswith(f"{cdir}/src/analyzers/") and r[2] > 0]
-    if not gate: print(f"no files for PUN_FIXERS_ONLY={only}", file=sys.stderr); sys.exit(2)
-else:
-    gate, touched = rows, []
-
 def pct(t, h): return 100.0 if t == 0 else 100.0 * h / t
 def table(rs, title, all_rows, show_missing):
     print(f"\n{title}\n{'file':70} {'lines':>6} {'hit':>6} {'%':>7}")
@@ -106,49 +88,47 @@ def table(rs, title, all_rows, show_missing):
         if all_rows or h < t:
             print(f"{f:70} {t:6} {h:6} {pct(t, h):6.2f}%" + (f"  missing: {ranges(miss)}" if miss and show_missing else ""))
 
-T, H = sum(r[1] for r in gate), sum(r[2] for r in gate)
-table(gate, f"{pkg}{' PUN_FIXERS_ONLY=' + only if only else ''}: {pct(T, H):.2f}% ({H}/{T} lines)", verbose or bool(only), True)
-if touched: table(touched, "analyzers touched (informational; not gated here)", True, verbose)
+T, H = sum(r[1] for r in rows), sum(r[2] for r in rows)
+table(rows, f"{pkg}: {pct(T, H):.2f}% ({H}/{T} lines)", verbose, True)
 if tests_ok != "1": print(f"\n{pkg}: TESTS FAILED")
 ok = tests_ok == "1" and H == T
 
-if not only:
-    res = os.path.join(os.path.dirname(lcov), "summary.json")
-    summary = json.load(open(res)) if os.path.exists(res) else {}
-    # A fresh target/coverage has no summary.json: keep the other crates' rows from the report instead of dropping
-    # them. Their uncovered files go back to the crate that owns the path (punphp-<x> in crates/pun-<x>, punphp in
-    # crates/pun-cli).
-    old = re.search(r"<!-- coverage:begin.*?<!-- coverage:end -->", text, flags=re.S)
-    if old:
-        dir_of = lambda p: "crates/pun-cli/" if p == "punphp" else f"crates/pun-{p.removeprefix('punphp-')}/"
-        for p, t, h, ok_ in re.findall(r"^\| (\S+) \| (\d+) \| (\d+) \| [\d.]+% \| (ok|FAILED) \|$", old.group(0), flags=re.M):
-            if p in summary: continue
-            summary[p] = {"lines": int(t), "hit": int(h), "tests_ok": ok_ == "ok", "files": [], "raw": [
-                l for l in re.findall(r"^- `\S+` .*$", old.group(0), flags=re.M) if l[3:].startswith(dir_of(p))]}
-    summary[pkg] = {"lines": T, "hit": H, "tests_ok": tests_ok == "1",
-                    "files": [[f, t, h, ranges(m)] for f, t, h, m in rows if h < t]}
-    json.dump(summary, open(res, "w"), indent=1)
-    gen = ["<!-- coverage:begin (generated by scripts/coverage.sh; edit outside the markers) -->",
-           "| crate | lines | hit | line % | tests |", "|---|---:|---:|---:|---|"]
-    for p, s in sorted(summary.items()):
-        gen.append(f"| {p} | {s['lines']} | {s['hit']} | {pct(s['lines'], s['hit']):.2f}% | {'ok' if s['tests_ok'] else 'FAILED'} |")
-    gen.append("\nUncovered lines:\n")
-    any_miss = False
-    for p, s in sorted(summary.items()):
-        for f, t, h, m in s["files"]:
-            any_miss = True
-            gen.append(f"- `{f}` {pct(t, h):.2f}% ({t - h} lines): {m}")
-        for l in s.get("raw", []):
-            any_miss = True
-            gen.append(l)
-    if not any_miss: gen.append("- none")
-    gen.append("<!-- coverage:end -->")
-    block = "\n".join(gen)
-    if "<!-- coverage:begin" in text:
-        text = re.sub(r"<!-- coverage:begin.*?<!-- coverage:end -->", lambda _: block, text, flags=re.S)
-    else:
-        text = "# Coverage\n\n" + block + "\n\n## Exclusions\n\n- none\n" + text
-    open(doc, "w").write(text)
+res = os.path.join(os.path.dirname(lcov), "summary.json")
+summary = json.load(open(res)) if os.path.exists(res) else {}
+# A fresh target/coverage has no summary.json: keep the other crates' rows from the report instead of dropping
+# them. Their uncovered files go back to the crate that owns the path (punphp-<x> in crates/pun-<x>, punphp in
+# crates/pun-cli).
+old = re.search(r"<!-- coverage:begin.*?<!-- coverage:end -->", text, flags=re.S)
+if old:
+    dir_of = lambda p: "crates/pun-cli/" if p == "punphp" else f"crates/pun-{p.removeprefix('punphp-')}/"
+    for p, t, h, ok_ in re.findall(r"^\| (\S+) \| (\d+) \| (\d+) \| [\d.]+% \| (ok|FAILED) \|$", old.group(0), flags=re.M):
+        if p in summary: continue
+        summary[p] = {"lines": int(t), "hit": int(h), "tests_ok": ok_ == "ok", "files": [], "raw": [
+            l for l in re.findall(r"^- `\S+` .*$", old.group(0), flags=re.M) if l[3:].startswith(dir_of(p))]}
+summary[pkg] = {"lines": T, "hit": H, "tests_ok": tests_ok == "1",
+                "files": [[f, t, h, ranges(m)] for f, t, h, m in rows if h < t]}
+json.dump(summary, open(res, "w"), indent=1)
+gen = ["<!-- coverage:begin (generated by scripts/coverage.sh; edit outside the markers) -->",
+       "| crate | lines | hit | line % | tests |", "|---|---:|---:|---:|---|"]
+for p, s in sorted(summary.items()):
+    gen.append(f"| {p} | {s['lines']} | {s['hit']} | {pct(s['lines'], s['hit']):.2f}% | {'ok' if s['tests_ok'] else 'FAILED'} |")
+gen.append("\nUncovered lines:\n")
+any_miss = False
+for p, s in sorted(summary.items()):
+    for f, t, h, m in s["files"]:
+        any_miss = True
+        gen.append(f"- `{f}` {pct(t, h):.2f}% ({t - h} lines): {m}")
+    for l in s.get("raw", []):
+        any_miss = True
+        gen.append(l)
+if not any_miss: gen.append("- none")
+gen.append("<!-- coverage:end -->")
+block = "\n".join(gen)
+if "<!-- coverage:begin" in text:
+    text = re.sub(r"<!-- coverage:begin.*?<!-- coverage:end -->", lambda _: block, text, flags=re.S)
+else:
+    text = "# Coverage\n\n" + block + "\n\n## Exclusions\n\n- none\n" + text
+open(doc, "w").write(text)
 sys.exit(0 if ok else 1)
 PY
 done

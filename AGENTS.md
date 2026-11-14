@@ -39,7 +39,7 @@ scripts/coverage.sh punphp-tokens
 - `cargo clippy --workspace --all-targets -- -D warnings` must pass. Every crate uses the shared `[workspace.lints]`; silence a single hit with `#[expect(lint, reason = "...")]`.
 - `punphp-analyse`'s tests are one binary (`tests/main.rs` declares each file as a module). With `CARGO_PROFILE_DEV_OPT_LEVEL=1`, as CI sets it, it builds in about 5 minutes and runs in about 10 on 8 cores. `levels::` and `rules::` are the two slowest tests; leave them out with `-E 'not test(/^(levels|rules)::/)'` while you iterate. A new test file needs a `mod` line in `tests/main.rs`.
 - CI runs the tests with cargo-nextest, one process per test. Locally, `cargo nextest run` and `cargo test` both work.
-- `PUN_FIXERS_ONLY=a,b` makes `build.rs` compile only fixers `a` and `b`.
+- `crates/pun-fixers/build.rs` registers every file in `src/fixers/` as a fixer, so a new fixer is one file with a `pub(crate) fn fixer()`.
 - `pun-harness` compares Pint with `pun migrate` followed by `pun check --fix`. Add `--fixer <name>` to test one rule.
 - `scripts/cli-parity.sh` compares the exit codes, machine formats, and resulting files of Pint and `pun` byte for byte.
 - `scripts/fuzz-parity.sh` is a mutation fuzzer that compares Pun with Pint. It needs a freshly built `target/debug/pun`.
