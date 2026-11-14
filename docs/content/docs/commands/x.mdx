@@ -47,13 +47,29 @@ A package's commands are the files its `bin` lists. Pun runs, in this order:
 
 When none applies, `pun x` lists the package's commands and exits 2.
 
-## Where installs live
+## Manage installs
 
-Installs live in `$PUN_CACHE_DIR/x`. Without `PUN_CACHE_DIR`, the cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. Delete a package's directory there to remove it. Downloads go through Composer's cache, so a package your projects already use doesn't download again.
+```bash
+punx list
+punx clean phpstan
+punx clean
+```
+
+`punx list` prints each install as the package you'd pass to run it, with the version it has:
+
+```text
+laravel/installer     v5.24.2
+phpstan/phpstan:^2.1  2.1.40
+```
+
+`punx clean` removes every install. Name packages to remove only theirs: `punx clean phpstan` removes every version of `phpstan/phpstan`, and `punx clean phpstan:^2.1` removes only the `^2.1` install. The next run of a removed package installs it again.
+
+Installs live in `$PUN_CACHE_DIR/x`. Without `PUN_CACHE_DIR`, the cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. Downloads go through Composer's cache, so a package your projects already use doesn't download again.
 
 ## Exit codes
 
 | Code | When |
 | --- | --- |
 | The command's | The command ran |
+| 0 | `list` or `clean` finished |
 | 2 | The package didn't resolve or install, or it has no command to run |

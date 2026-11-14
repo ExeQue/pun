@@ -507,7 +507,6 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | packages: resolve memory (376 MB on pinkary against Composer's 165 MB): the pool's links and parsed constraints per version | todo |
 | packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
-| packages: `punx` follow-ups: `punx list` and `punx clean` for the cache's installs, as cpx has them | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |
 | later: LSP; run, test; native Blade; extension system | after 1.0 |
 | later: analyse 7, Pest and PHPUnit typing (analyse.md §9) | after 1.0 |

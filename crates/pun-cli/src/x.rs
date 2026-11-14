@@ -14,7 +14,8 @@ use std::time::{Duration, Instant, SystemTime};
 #[derive(clap::Args)]
 pub(crate) struct XArgs {
     /// The package (`vendor/name`, `vendor/name:^1.2` or an alias such as `laravel`), then the command when the
-    /// package has several, then the command's arguments.
+    /// package has several, then the command's arguments. `list` prints the installs in the cache, and
+    /// `clean [PACKAGE...]` removes them (all, or the packages named).
     #[arg(
         required = true,
         num_args = 1..,
@@ -46,6 +47,12 @@ const FRESH: Duration = Duration::from_hours(24);
 
 pub(crate) fn run(a: XArgs) -> Result<u8> {
     let (spec, rest) = a.args.split_first().expect("clap requires the package");
+    // Neither name can be a package: a package has a slash, and no alias is either.
+    match spec.as_str() {
+        "list" => return list(),
+        "clean" => return clean(rest),
+        _ => {}
+    }
     let (name, constraint, alias_command) = package(spec)?;
     let dir = tool_dir(&name, &constraint)?;
     std::fs::create_dir_all(&dir).with_context(|| format!("can't create {}", dir.display()))?;
@@ -125,6 +132,117 @@ fn tool_dir(name: &str, constraint: &str) -> Result<PathBuf> {
         }
     }
     Ok(cache_dir()?.join("x").join(name).join(version))
+}
+
+/// The constraint a directory name from `tool_dir` stands for.
+fn constraint_of(dir_name: &str) -> String {
+    if dir_name == "latest" {
+        return "*".into();
+    }
+    let (mut out, mut rest) = (Vec::new(), dir_name.as_bytes());
+    while let Some((&b, tail)) = rest.split_first() {
+        let hex = tail.get(..2).and_then(|h| std::str::from_utf8(h).ok());
+        match hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
+            Some(byte) if b == b'%' => {
+                out.push(byte);
+                rest = &tail[2..];
+            }
+            _ => {
+                out.push(b);
+                rest = tail;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Every install in the cache: (package, constraint, directory), sorted by package, then constraint.
+fn installs() -> Result<Vec<(String, String, PathBuf)>> {
+    let entries = |dir: &Path| -> Vec<(String, PathBuf)> {
+        (std::fs::read_dir(dir).into_iter().flatten().flatten())
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|e| (e.file_name().to_string_lossy().into_owned(), e.path()))
+            .collect()
+    };
+    let mut all = Vec::new();
+    for (vendor, vendor_dir) in entries(&cache_dir()?.join("x")) {
+        for (package, package_dir) in entries(&vendor_dir) {
+            for (version, dir) in entries(&package_dir) {
+                all.push((format!("{vendor}/{package}"), constraint_of(&version), dir));
+            }
+        }
+    }
+    all.sort();
+    Ok(all)
+}
+
+/// `punx list`: each install, as the spec that runs it, with the version it has. A directory a run is still
+/// installing into has no version yet and isn't listed.
+fn list() -> Result<u8> {
+    let rows: Vec<_> = (installs()?.into_iter())
+        .filter_map(|(name, constraint, dir)| {
+            let version = installed_version(&dir, &name)?;
+            Some(match constraint.as_str() {
+                "*" => (name, version),
+                _ => (format!("{name}:{constraint}"), version),
+            })
+        })
+        .collect();
+    if rows.is_empty() {
+        println!("No packages are installed.");
+        return Ok(0);
+    }
+    let width = rows.iter().map(|(s, _)| s.len()).max().unwrap_or(0);
+    for (spec, version) in rows {
+        println!("{spec:width$}  {version}");
+    }
+    Ok(0)
+}
+
+/// The version of `name` that `dir` has installed.
+fn installed_version(dir: &Path, name: &str) -> Option<String> {
+    let text = std::fs::read_to_string(dir.join("vendor/composer/installed.json")).ok()?;
+    let installed: Value = serde_json::from_str(&text).ok()?;
+    let package = (installed.get("packages")?.as_array()?)
+        .iter()
+        .find(|p| p.get("name").and_then(Value::as_str) == Some(name))?;
+    package.get("version")?.as_str().map(str::to_owned)
+}
+
+/// `punx clean`: removes every install, or those of the packages named. A package named without a constraint
+/// loses all its installs; with one, only that constraint's.
+fn clean(specs: &[String]) -> Result<u8> {
+    let wanted = (specs.iter())
+        .map(|spec| {
+            let (name, constraint, _) = package(spec)?;
+            let pinned = spec.contains([':', '@']);
+            Ok((name, pinned.then_some(constraint)))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let mut removed = 0;
+    for (name, constraint, dir) in installs()? {
+        let matches = |(n, c): &(String, Option<String>)| {
+            *n == name && c.as_ref().is_none_or(|c| *c == constraint)
+        };
+        if !wanted.is_empty() && !wanted.iter().any(matches) {
+            continue;
+        }
+        // Wait for a run that is installing into this directory.
+        if let Ok(guard) = std::fs::File::open(dir.join(".lock")) {
+            let _ = guard.lock();
+        }
+        std::fs::remove_dir_all(&dir).with_context(|| format!("can't remove {}", dir.display()))?;
+        // Drop the package's and vendor's directories once they are empty.
+        let package_dir = dir.parent();
+        let _ = package_dir.map(std::fs::remove_dir);
+        let _ = package_dir.and_then(Path::parent).map(std::fs::remove_dir);
+        removed += 1;
+    }
+    println!(
+        "Removed {removed} install{}.",
+        if removed == 1 { "" } else { "s" }
+    );
+    Ok(0)
 }
 
 /// Installs the package into `dir` unless its install there is less than a day old.

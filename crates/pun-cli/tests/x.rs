@@ -69,4 +69,37 @@ fn runs_a_packages_command() {
     let (out, err, code) = run(&punx, &work, &home, &["acme/missing"]);
     assert_eq!((out.as_str(), code), ("", Some(2)), "{err}");
     assert!(!home.join("cache/x/acme/missing").exists());
+
+    // `list` names each install as the spec that runs it; `clean` with a constraint removes only that install,
+    // and without arguments removes the rest.
+    let (_, err, code) = run(&punx, &work, &home, &["acme/tool:^1.0 || >=9", "other"]);
+    assert_eq!(code, Some(0), "{err}");
+    let (out, err, code) = run(&punx, &work, &home, &["list"]);
+    assert_eq!(
+        (out.as_str(), code),
+        (
+            "acme/tool              1.0.0\nacme/tool:^1.0 || >=9  1.0.0\n",
+            Some(0)
+        ),
+        "{err}"
+    );
+    let (out, err, code) = run(pun, &work, &home, &["x", "clean", "acme/tool:*"]);
+    assert_eq!(
+        (out.as_str(), code),
+        ("Removed 1 install.\n", Some(0)),
+        "{err}"
+    );
+    let (out, _, _) = run(&punx, &work, &home, &["list"]);
+    assert_eq!(out, "acme/tool:^1.0 || >=9  1.0.0\n");
+    let (out, err, code) = run(&punx, &work, &home, &["clean"]);
+    assert_eq!(
+        (out.as_str(), code),
+        ("Removed 1 install.\n", Some(0)),
+        "{err}"
+    );
+    assert!(!home.join("cache/x/acme").exists());
+    let (out, _, _) = run(&punx, &work, &home, &["list"]);
+    assert_eq!(out, "No packages are installed.\n");
+    let (out, err, code) = run(&punx, &work, &home, &["clean", "not-a-package"]);
+    assert_eq!((out.as_str(), code), ("", Some(2)), "{err}");
 }
