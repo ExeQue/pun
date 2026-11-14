@@ -87,15 +87,27 @@ fn php_config_files() {
             let got = crate::common::tagged(&pun_phpstan::Value::Array(got.unwrap()));
             assert_eq!(got, want[&name], "{name}");
         } else {
-            assert!(got.is_err(), "{name}: {got:?}");
+            let message = match name.as_str() {
+                "unsupported-no-open-tag.php" => Some("unexpected \"no php\\n\" on line 1"),
+                "unsupported-push-scalar.php" => Some("$x is not an array"),
+                "unsupported-scalar.php" => Some("the config does not return an array"),
+                "unsupported-undefined.php" => Some("undefined $nope"),
+                "unsupported-unterminated.php" => Some("unterminated string"),
+                _ => None,
+            };
+            let got = got.unwrap_err().to_string();
+            if let Some(message) = message {
+                assert_eq!(got, message, "{name}");
+            }
         }
     }
-    for not_generated in [
-        "<?php class X {}",
-        "<?php const EXTENSIONS;",
-        "<?php const EXTENSIONS = 5;",
+    for (not_generated, message) in [
+        ("<?php class X {}", "no EXTENSIONS constant"),
+        ("<?php const EXTENSIONS;", "no EXTENSIONS value"),
+        ("<?php const EXTENSIONS = 5;", "EXTENSIONS is not an array"),
     ] {
-        assert!(pun_phpstan::phpfile::generated_config_extensions(not_generated, "/").is_err());
+        let got = pun_phpstan::phpfile::generated_config_extensions(not_generated, "/");
+        assert_eq!(got.unwrap_err().to_string(), message);
     }
 }
 

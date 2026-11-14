@@ -14,7 +14,7 @@ sections after it are kept by hand. The gate notes that used to open this file a
 | punphp-harness | 235 | 235 | 100.00% | ok |
 | punphp-lint | 74043 | 73169 | 98.82% | ok |
 | punphp-packages | 10547 | 10547 | 100.00% | ok |
-| punphp-phpstan | 11672 | 11399 | 97.66% | ok |
+| punphp-phpstan | 11723 | 11463 | 97.78% | ok |
 | punphp-problem | 105 | 105 | 100.00% | ok |
 | punphp-tokens | 3958 | 3892 | 98.33% | ok |
 | punphp-workspace | 457 | 457 | 100.00% | ok |
@@ -150,24 +150,32 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/types/rector_type.rs` 79.55% (9 lines): 31-34, 66-68, 70, 76
 - `crates/pun-lint/src/rules/types/type_factory.rs` 97.77% (7 lines): 405-411
 - `crates/pun-lint/src/rules/types/union_method.rs` 95.45% (3 lines): 47-49
-- `crates/pun-phpstan/src/comments.rs` 99.51% (1 lines): 156
-- `crates/pun-phpstan/src/config.rs` 98.75% (8 lines): 206, 292, 353, 616-619, 707
-- `crates/pun-phpstan/src/di.rs` 99.25% (3 lines): 69, 487, 489
-- `crates/pun-phpstan/src/fixers.rs` 92.58% (23 lines): 100, 120, 132, 138, 146, 166, 211, 248, 281, 320-322, 359, 383, 387, 392, 395, 411, 418, 433-436
-- `crates/pun-phpstan/src/ignore.rs` 93.21% (51 lines): 305, 374, 377, 380, 384, 390, 402, 404, 417, 422, 424, 429, 449-457, 459-461, 464-465, 467, 469, 471-480, 482-484, 534, 557, 572-575, 1005, 1021, 1028, 1030
-- `crates/pun-phpstan/src/neon.rs` 98.81% (7 lines): 467, 554, 615, 617, 620, 624, 785
-- `crates/pun-phpstan/src/phpdoc.rs` 99.92% (1 lines): 439
-- `crates/pun-phpstan/src/resolve.rs` 97.80% (19 lines): 78, 212, 529, 612, 680, 734, 773-778, 949, 952, 968-970, 1103, 1128
-- `crates/pun-phpstan/src/schema.rs` 99.46% (3 lines): 184, 654, 700
-- `crates/pun-phpstan/src/symbols.rs` 95.75% (9 lines): 63-65, 188-190, 368, 438, 444
-- `crates/pun-phpstan/src/types.rs` 99.04% (34 lines): 163, 1071, 1481, 1563, 1565, 1607, 2026, 2033, 2068, 2337, 2554, 2639, 2916, 3048-3050, 3075, 3627-3628, 3985, 3987, 3989, 3992, 4202-4211, 4213
-- `crates/pun-phpstan/src/types/accepts.rs` 99.00% (4 lines): 56, 149, 379, 381
-- `crates/pun-phpstan/src/types/larastan.rs` 0.00% (87 lines): 26-29, 32-34, 36, 43-46, 48-50, 53-55, 58-62, 64, 66-70, 72, 75-78, 80, 84-104, 106-108, 110-111, 113, 115, 118-124, 126, 129-134, 137-144, 146, 148
-- `crates/pun-phpstan/src/types/mixed.rs` 91.37% (12 lines): 85-87, 89-91, 93-96, 117, 197
-- `crates/pun-phpstan/src/types/reasons.rs` 96.90% (8 lines): 48-53, 115, 308
-- `crates/pun-phpstan/src/types/templates.rs` 99.68% (1 lines): 33
-- `crates/pun-phpstan/src/types/unresolvable.rs` 99.29% (1 lines): 104
-- `crates/pun-phpstan/src/types/verbosity.rs` 98.67% (1 lines): 50
+- `crates/pun-phpstan/src/comments.rs` 99.51% (1 lines): 145
+- `crates/pun-phpstan/src/config.rs` 98.79% (8 lines): 291, 375, 432, 663-666, 748
+- `crates/pun-phpstan/src/di.rs` 99.51% (2 lines): 62, 459
+- `crates/pun-phpstan/src/fixers.rs` 92.58% (23 lines): 86, 106, 118, 124, 132, 146, 188, 222, 252, 288-290, 324, 345, 348, 352, 355, 370, 377, 390-393
+- `crates/pun-phpstan/src/ignore.rs` 93.21% (51 lines): 270, 333, 336, 339, 343, 349, 361, 363, 376, 381, 383, 388, 406-414, 416-418, 421-422, 424, 426, 428-437, 439-441, 489, 508, 521-524, 930, 946, 953, 955
+- `crates/pun-phpstan/src/neon.rs` 98.81% (7 lines): 452, 537, 593, 595, 598, 602, 758
+- `crates/pun-phpstan/src/phpdoc.rs` 99.92% (1 lines): 421
+- `crates/pun-phpstan/src/resolve.rs` 98.01% (17 lines): 178, 486, 569, 636, 685, 724-729, 883, 886, 900-902, 1031
+- `crates/pun-phpstan/src/schema.rs` 99.48% (3 lines): 215, 680, 724
+- `crates/pun-phpstan/src/symbols.rs` 96.98% (6 lines): 61-63, 348, 418, 424
+- `crates/pun-phpstan/src/types.rs` 98.84% (1 lines): 173
+- `crates/pun-phpstan/src/types/accepts.rs` 99.01% (4 lines): 46, 133, 356, 358
+- `crates/pun-phpstan/src/types/classes.rs` 99.07% (1 lines): 19
+- `crates/pun-phpstan/src/types/const_array.rs` 98.59% (6 lines): 55, 133, 407, 534-536
+- `crates/pun-phpstan/src/types/describe.rs` 99.02% (5 lines): 278, 280, 473, 480, 515
+- `crates/pun-phpstan/src/types/larastan.rs` 0.00% (80 lines): 19-24, 26-30, 32-36, 38, 40-44, 46, 48-51, 53, 55-75, 77-81, 83, 85, 87-93, 95, 97-102, 104-111, 113, 115
+- `crates/pun-phpstan/src/types/mixed.rs` 91.37% (12 lines): 77-79, 81-83, 85-88, 108, 184
+- `crates/pun-phpstan/src/types/queries.rs` 99.82% (1 lines): 700
+- `crates/pun-phpstan/src/types/reasons.rs` 96.90% (8 lines): 43-48, 109, 294
+- `crates/pun-phpstan/src/types/super_type.rs` 98.96% (7 lines): 29, 555-556, 895, 897, 899, 902
+- `crates/pun-phpstan/src/types/templates.rs` 99.68% (1 lines): 26
+- `crates/pun-phpstan/src/types/to_phpdoc.rs` 99.40% (1 lines): 83
+- `crates/pun-phpstan/src/types/traverse.rs` 98.86% (1 lines): 65
+- `crates/pun-phpstan/src/types/union.rs` 98.27% (11 lines): 282-291, 293
+- `crates/pun-phpstan/src/types/unresolvable.rs` 99.29% (1 lines): 96
+- `crates/pun-phpstan/src/types/verbosity.rs` 98.67% (1 lines): 44
 - `crates/pun-tokens/src/lexer.rs` 99.42% (5 lines): 83, 259, 411, 729, 943
 - `crates/pun-tokens/src/php_compat.rs` 89.55% (60 lines): 17-22, 24-46, 48-53, 55-70, 74-76, 79, 81-83, 336, 477
 - `crates/pun-tokens/src/tokens.rs` 99.87% (1 lines): 837
@@ -184,8 +192,8 @@ Uncovered lines:
 - `crates/pun-cli/src/run.rs:997` the panic hook's call of the default hook: it prints a panic outside a file's isolated fixing, which only a Pun bug causes; every panic a test can trigger is a fixer's, inside `isolated`.
 - `crates/pun-cli/src/pint_error.rs:77` `Thrown::of`'s fallback to Laravel Zero's ConsoleException for an untyped error: every error a format, lint or check run can hit today is typed (Finder, annotation, read/write) or already an `Abort`, so the fallback only guards future errors.
 - `crates/pun-cli/src/watch.rs:56` the watch channel's `Disconnected`: the notify watcher holds the sender and lives as long as the loop, so the channel never disconnects while it waits.
-- `crates/pun-phpstan/src/resolve.rs:39` a global type alias whose definition refers to itself: PHPStan's UsefulTypeAliasResolver throws ShouldNotHappenException ("Circular definition for type alias"); Pun resolves `*ERROR*` instead of recursing forever.
-- `crates/pun-phpstan/src/resolve.rs:985` a `true`/`false`/`null`/array constant expression as a type: phpdoc-parser reads only `@var null ::X`-like tag values so, and PHPStan's TypeNodeResolver throws ShouldNotHappenException on them; Pun resolves `*ERROR*` instead of crashing.
+- `crates/pun-phpstan/src/resolve.rs:58` a global type alias whose definition refers to itself: PHPStan's UsefulTypeAliasResolver throws ShouldNotHappenException ("Circular definition for type alias"); Pun resolves `*ERROR*` instead of recursing forever.
+- `crates/pun-phpstan/src/resolve.rs:1055` a `true`/`false`/`null`/array constant expression as a type: phpdoc-parser reads only `@var null ::X`-like tag values so, and PHPStan's TypeNodeResolver throws ShouldNotHappenException on them; Pun resolves `*ERROR*` instead of crashing.
 - `crates/pun-cli/src/migrate.rs:557` closest_preset's "nothing to switch" return: every PHPStan level leaves some rules of its closest Pun preset off (level 0: the basic preset's 11-12 non-level-0 rules, with or without bleedingEdge), so a migrated `[analyse]` always has on/off lines.
 - `crates/pun-analyse/src/rules/return_types.rs:77-79` `Provider::meta()` of the built-in return provider: as for the Laravel hook, `PluginRegistry` reads `meta()` only for its own library plugins.
 - `crates/pun-analyse/src/rules/return_types.rs:1275-1277` the same for the benevolent-return provider.
@@ -197,7 +205,7 @@ Uncovered lines:
 - `crates/pun-analyse/src/rules/regex_shapes/mod.rs:106-108` the same for the preg_match() shape provider.
 - `crates/pun-analyse/src/mago.rs:74` the upstream-panic fallback that skips only the failing file. The former debug-panic.php (`int&mixed`) no longer triggers it, and signed integer division overflow is now fixed in the maintained analyzer. The containment guard remains for unexpected upstream failures.
 - `crates/pun-analyse/src/rules/types/convert.rs:912` a symbolic class-constant array key (`array{Foo::BAR: int}`): canonical expansion resolves known literal keys before conversion. Unknown or nonliteral keys can remain symbolic inside Mago, but no public input is known to carry one into this converter. The fallback returns `Error`. This is the existing exclusion shifted by type conversion handling, not a newly excluded branch.
-- `crates/pun-phpstan/src/symbols.rs:167-169` `Visitor::expecting()` of the symbols.json map reader: serde calls it only to word the error for malformed input, and symbols.json is compiled in (every map in it is an object or `[]`).
+- `crates/pun-phpstan/src/symbols.rs:172-174` `Visitor::expecting()` of the symbols.json map reader: serde calls it only to word the error for malformed input, and symbols.json is compiled in (every map in it is an object or `[]`).
 - `crates/pun-lint/src/rules/laravel/prefer_nullsafe.rs:49` the non-target node guard: `Linter` dispatches this rule only for MethodCall and PropertyAccess, as its `targets()` requires.
 - `crates/pun-lint/src/rules/laravel/prefer_env_helper.rs:34` the non-target node guard: `Linter` dispatches only ArrayAccess for this rule.
 - `crates/pun-lint/src/rules/add_csv_escape_argument.rs:71` the non-target node guard: `Linter` dispatches only FunctionCall and MethodCall for this rule.

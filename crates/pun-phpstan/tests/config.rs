@@ -222,3 +222,38 @@ fn unreadable_default_config() {
         );
     }
 }
+
+/// Configs PHPStan reads by running PHP, which Pun cannot: the errors name the file and what Pun's reader stopped at.
+#[test]
+fn pun_only_config_errors() {
+    let dir = std::env::temp_dir().join(format!("pun-phpstan-pun-only-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let dir = dir.canonicalize().unwrap();
+    let cwd = dir.to_string_lossy().into_owned();
+    std::fs::write(dir.join("scalar.php"), "<?php return 5;").unwrap();
+    std::fs::write(dir.join("Generated.php"), "<?php class X {}").unwrap();
+    let error = |neon: &str, generated: Option<&str>| {
+        std::fs::write(dir.join("phpstan.neon"), neon).unwrap();
+        let o = Options {
+            cwd: cwd.clone(),
+            phar: format!("{ROOT}/phpstan.phar"),
+            generated_config: generated.map(|g| format!("{cwd}/{g}")),
+            ..Options::default()
+        };
+        resolve(&o)
+            .map(|_| ())
+            .unwrap_err()
+            .to_string()
+            .replace(&cwd, "{cwd}")
+    };
+    let php_include = error("includes:\n  - scalar.php\n", None);
+    let generated = error("", Some("Generated.php"));
+    let schema = error("parametersSchema:\n  foo: structure(1)\n", None);
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(
+        php_include,
+        "Unsupported PHP config {cwd}/scalar.php: the config does not return an array"
+    );
+    assert_eq!(generated, "no EXTENSIONS constant");
+    assert_eq!(schema, "structure() expects an array");
+}
