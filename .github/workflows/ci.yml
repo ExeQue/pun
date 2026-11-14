@@ -19,6 +19,8 @@ env:
   CARGO_INCREMENTAL: 0
   # No test reads debug info, and without it the workspace builds and links faster.
   CARGO_PROFILE_DEV_DEBUG: 0
+  # Pun's own crates at opt-level 1: the tests run about twice as fast, for a minute more of building.
+  CARGO_PROFILE_DEV_OPT_LEVEL: 1
   # The PCRE2 the release binaries bundle, not the runner's older system library.
   PCRE2_SYS_STATIC: 1
 
@@ -73,9 +75,23 @@ jobs:
             corpus/laravel-pint
           key: corpus4-${{ hashFiles('corpus/manifest.toml', 'scripts/corpus.sh') }}
       - run: scripts/corpus.sh pinkary laravel-framework larastan laravel-pint
-      # punphp-analyse's 170 test targets need about 56 GB of disk and 40 minutes on 8 cores, more than a hosted
-      # runner has. Run them with scripts/analyse-tests.sh before a release.
-      - run: cargo test --workspace --exclude punphp-analyse --locked
+      - uses: taiki-e/install-action@nextest
+      - run: cargo nextest run --workspace --exclude punphp-analyse --locked
+
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/oracle
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: rui314/setup-mold@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: analyse
+          cache-on-failure: true
+      - uses: taiki-e/install-action@nextest
+      - run: cargo nextest run -p punphp-analyse --locked
 
   parity:
     runs-on: ubuntu-latest

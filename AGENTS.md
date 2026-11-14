@@ -27,7 +27,7 @@ Run these checks in this order, cheapest first:
 ```sh
 cargo test -p punphp-<x>
 cargo test -p punphp-fixers <substring>
-scripts/analyse-tests.sh
+cargo nextest run -p punphp-analyse
 cargo build -p punphp -p punphp-harness
 target/debug/pun-harness format --corpus pinkary --diffs 5
 scripts/cli-parity.sh "ARGS"...
@@ -37,7 +37,8 @@ scripts/coverage.sh punphp-tokens
 
 - Package `punphp-<x>` lives in `crates/pun-<x>` and is imported as `pun_<x>`.
 - `cargo clippy --workspace --all-targets -- -D warnings` must pass. Every crate uses the shared `[workspace.lints]`; silence a single hit with `#[expect(lint, reason = "...")]`.
-- `scripts/analyse-tests.sh` builds every `punphp-analyse` test target once and runs the binaries in parallel. Every target must pass. The whole run takes about 40 minutes on 8 cores, a quarter of it building. `SKIP="levels rules"` leaves out the two slowest (about 7 and 3 minutes alone) while you iterate.
+- `punphp-analyse`'s tests are one binary (`tests/main.rs` declares each file as a module). With `CARGO_PROFILE_DEV_OPT_LEVEL=1`, as CI sets it, it builds in about 5 minutes and runs in about 10 on 8 cores. `levels::` and `rules::` are the two slowest tests; leave them out with `-E 'not test(/^(levels|rules)::/)'` while you iterate. A new test file needs a `mod` line in `tests/main.rs`.
+- CI runs the tests with cargo-nextest, one process per test. Locally, `cargo nextest run` and `cargo test` both work.
 - `PUN_FIXERS_ONLY=a,b` makes `build.rs` compile only fixers `a` and `b`.
 - `pun-harness` compares Pint with `pun migrate` followed by `pun check --fix`. Add `--fixer <name>` to test one rule.
 - `scripts/cli-parity.sh` compares the exit codes, machine formats, and resulting files of Pint and `pun` byte for byte.
@@ -117,7 +118,7 @@ Every Rector run uses `--dry-run --clear-cache`.
 3. Prefix long commands with `timeout 900 nice`, for example `timeout 900 nice cargo test -p punphp-tokens`.
 4. Build and test only the crates you changed (`-p`). Give each concurrent build its own `CARGO_TARGET_DIR`
    (`target-<name>`) so two cargo runs never wait on one lock or reuse each other's stale artifacts.
-5. Delete scratch target dirs and downloads when you no longer need them. Keep `target/`. A target dir with every analyse test built is about 56 GB, so check `df -h` before you start another one.
+5. Delete scratch target dirs and downloads when you no longer need them. Keep `target/`. Check `df -h` before you start another one.
 
 Corpus runs cover one fixer on one project. While you iterate, use Pinkary or laravel-framework.
 

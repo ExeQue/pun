@@ -157,7 +157,7 @@ redundant_clone = "warn"
 needless_collect = "warn"
 
 # Tests and debug builds run Mago and the other dependencies optimized (about 1.8x on the analyse fixture suites),
-# with line tables only, so the 170 analyse test binaries stay small; Pun's own crates stay unoptimized so they
+# with line tables only, so the test binaries stay small; Pun's own crates stay unoptimized so they
 # rebuild fast.
 [profile.dev.package."*"]
 opt-level = 2

@@ -10,9 +10,14 @@ repository.workspace = true
 homepage.workspace = true
 keywords = ["php", "phpstan", "static-analysis"]
 categories.workspace = true
+autotests = false
 
 [lib]
 name = "pun_analyse"
+
+[[test]]
+name = "analyse"
+path = "tests/main.rs"
 
 [dependencies]
 pun-phpstan.workspace = true

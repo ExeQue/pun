@@ -48,7 +48,6 @@ jobs:
             corpus/laravel-pint
           key: corpus4-${{ hashFiles('corpus/manifest.toml', 'scripts/corpus.sh') }}
       - run: scripts/corpus.sh pinkary laravel-framework larastan laravel-pint
-      # every crate but punphp-analyse, for the reason in the test job
       - run: CARGO_BUILD_JOBS="$(nproc)" scripts/coverage.sh punphp-tokens punphp-format punphp-fixers punphp-config punphp-workspace punphp-problem punphp-phpstan punphp-lint punphp punphp-harness
       - if: always()
         run: cat context/reports/COVERAGE.md >> "$GITHUB_STEP_SUMMARY"
