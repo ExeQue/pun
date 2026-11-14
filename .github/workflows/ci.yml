@@ -76,7 +76,7 @@ jobs:
           key: corpus4-${{ hashFiles('corpus/manifest.toml', 'scripts/corpus.sh') }}
       - run: scripts/corpus.sh pinkary laravel-framework larastan laravel-pint
       - uses: taiki-e/install-action@nextest
-      - run: cargo nextest run --workspace --exclude punphp-analyse --locked
+      - run: cargo nextest run --workspace --exclude punphp-analyse --locked --no-fail-fast
 
   analyse:
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
           shared-key: analyse
           cache-on-failure: true
       - uses: taiki-e/install-action@nextest
-      - run: cargo nextest run -p punphp-analyse --locked
+      - run: cargo nextest run -p punphp-analyse --locked --no-fail-fast
 
   parity:
     runs-on: ubuntu-latest
