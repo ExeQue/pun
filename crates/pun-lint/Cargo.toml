@@ -5,9 +5,18 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
+autotests = false
 
 [lib]
 name = "pun_lint"
+
+[[test]]
+name = "lint"
+path = "tests/main.rs"
+
+[[test]]
+name = "project"
+path = "tests/project.rs"
 
 [dependencies]
 pun-problem.workspace = true

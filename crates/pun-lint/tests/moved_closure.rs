@@ -7,6 +7,9 @@ use std::path::Path;
 
 #[test]
 fn project_fix_rounds_keep_the_moved_arrow_typed() {
+    let _turn = crate::PROJECT
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let source = include_str!("fixtures/moved-closure/f.php");
     let expected = include_str!("fixtures/moved-closure/f.expected.php");
     set_project_codebase(Some(project_codebase(

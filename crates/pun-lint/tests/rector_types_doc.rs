@@ -1,6 +1,4 @@
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_stubs, run_dirs};
+use crate::common::{run_class, run_class_at, run_class_stubs, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::Rule;
 use pun_lint::rules::{

@@ -32,9 +32,7 @@
 //! `Countable&iterable` and Rector 2.8.4 writes `: \Countable` (`NativePhpTypeNodeHelper::intersection()` drops the
 //! `iterable`); Mago narrows it to `never`, so Pun leaves the closure alone.
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_stubs, run_oracle_class};
+use crate::common::{run_class, run_class_at, run_class_stubs, run_oracle_class};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddArrayReturn, AddArrowFunctionReturn, AddBoolReturn, AddBoolReturnFromConst,
@@ -573,7 +571,7 @@ fn child_doctrine_repository_class_type() {
 
 #[test]
 fn property_contracts_assignment_flows() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_assignment_flows"],
@@ -584,7 +582,7 @@ fn property_contracts_assignment_flows() {
 
 #[test]
 fn property_contracts_trait_writes() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_trait_writes"],
@@ -595,7 +593,7 @@ fn property_contracts_trait_writes() {
 
 #[test]
 fn property_contracts_doc_narrowing() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_doc_narrowing"],
@@ -606,7 +604,7 @@ fn property_contracts_doc_narrowing() {
 
 #[test]
 fn property_contracts_doc_unions() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_doc_unions"],
@@ -617,7 +615,7 @@ fn property_contracts_doc_unions() {
 
 #[test]
 fn property_contracts_known_url_components() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRectorPhp82",
         &["Oracle/property_contracts_known_url_components"],
@@ -628,7 +626,7 @@ fn property_contracts_known_url_components() {
 
 #[test]
 fn property_contracts_documented_constructor_types() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_documented_constructor_types"],
@@ -639,7 +637,7 @@ fn property_contracts_documented_constructor_types() {
 
 #[test]
 fn property_contracts_partial_defaults() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_partial_defaults"],
@@ -650,7 +648,7 @@ fn property_contracts_partial_defaults() {
 
 #[test]
 fn property_contracts_parent_roundtrip() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_parent_roundtrip"],
@@ -661,7 +659,7 @@ fn property_contracts_parent_roundtrip() {
 
 #[test]
 fn property_contracts_getter_dnf() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeSetterGetter)],
         "PropertyTypeFromStrictSetterGetterRector",
         &["Oracle/property_contracts_getter_dnf"],
@@ -672,7 +670,7 @@ fn property_contracts_getter_dnf() {
 
 #[test]
 fn property_contracts_constructor_dnf_boundaries() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_constructor_dnf_boundaries"],
@@ -683,7 +681,7 @@ fn property_contracts_constructor_dnf_boundaries() {
 
 #[test]
 fn property_contracts_getter_union_boundaries() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeSetterGetter)],
         "PropertyTypeFromStrictSetterGetterRector",
         &["Oracle/property_contracts_getter_union_boundaries"],
@@ -694,7 +692,7 @@ fn property_contracts_getter_union_boundaries() {
 
 #[test]
 fn property_contracts_scalar_hint_comparisons() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_scalar_hint_comparisons"],

@@ -70,10 +70,6 @@ fn laravel() -> Pipeline {
     pipeline
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
     run_class_at(rules, class, 80400);
 }
@@ -82,10 +78,6 @@ pub(crate) fn run_class_at(rules: Vec<Box<dyn Rule>>, class: &str, php_version: 
     run_class_full(rules, class, php_version, &[], &[], true);
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_class_with(
     rules: Vec<Box<dyn Rule>>,
     class: &str,
@@ -95,10 +87,6 @@ pub(crate) fn run_class_with(
     run_class_full(rules, class, php_version, &[], preset_too, true);
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_class_stubs(
     rules: Vec<Box<dyn Rule>>,
     class: &str,
@@ -108,10 +96,6 @@ pub(crate) fn run_class_stubs(
     run_class_full(rules, class, php_version, stubs, &[], true);
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_class_paths(
     rules: Vec<Box<dyn Rule>>,
     class: &str,
@@ -128,10 +112,6 @@ pub(crate) fn run_class_paths(
     );
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_oracle_class(rules: Vec<Box<dyn Rule>>, class: &str, php_version: u32) {
     run_class_full(rules, class, php_version, &[], &[], false);
 }
@@ -172,10 +152,6 @@ fn check_dirs(class: &str, fixture: bool) {
     );
 }
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
 pub(crate) fn run_dirs(
     rules: Vec<Box<dyn Rule>>,
     class: &str,

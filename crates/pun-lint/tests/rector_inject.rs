@@ -37,11 +37,9 @@
 //! - ArgumentFuncCallToMethodCallRector/Pun/parent_private_method: the parent's private method called.
 //! - ArgumentFuncCallToMethodCallRector/Pun/static_property: a static property read as `$this->s`.
 
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::{run_class, run_class_at, run_dirs};
+use crate::common::{run_class, run_class_at, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::rules::{PreferConstructorInjection, ReplaceStaticWithMethod};
 use pun_lint::{Linter, Rule};

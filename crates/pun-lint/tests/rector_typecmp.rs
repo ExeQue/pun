@@ -11,9 +11,7 @@
 //! the `IS_BYREF_VAR` attribute set when the file was parsed; Pun's next fix round parses the new source, finds no
 //! reference and removes the assignment.
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_with};
+use crate::common::{run_class, run_class_with};
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoInvalidReturnTag, NoRedundantNullableCheck, NoUnusedAssignment, NoUselessParamTag,

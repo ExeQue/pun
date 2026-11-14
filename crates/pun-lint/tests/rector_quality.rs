@@ -48,11 +48,9 @@
 //! InlineArrayReturnAssignRector/Fixture/with_first_class_callable: `new SomeAssignedObject(...)` is not PHP, and
 //! Mago's parser rejects the file.
 
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::run_class;
+use crate::common::run_class;
 use mago_syntax::cst::Node;
 use pun_lint::rules::{
     AddPropertyTypeAssigns, AddPropertyTypeConstructor, NoAlwaysFalseCondition, NoAlwaysTrueIf,
@@ -221,7 +219,7 @@ fn remove_default_value_from_assigned_property_on_every_node() {
 
 #[test]
 fn typed_property_from_assigns_on_every_node() {
-    lint_c::run_class_stubs(
+    crate::common::run_class_stubs(
         vec![Box::new(Everywhere(Box::new(
             AddPropertyTypeAssigns::default(),
         )))],
@@ -233,7 +231,7 @@ fn typed_property_from_assigns_on_every_node() {
 
 #[test]
 fn typed_property_from_strict_constructor_on_every_node() {
-    lint_c::run_class_stubs(
+    crate::common::run_class_stubs(
         vec![Box::new(Everywhere(Box::new(AddPropertyTypeConstructor)))],
         "TypedPropertyFromStrictConstructorRector",
         80100,

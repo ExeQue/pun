@@ -21,9 +21,7 @@
 //! AnnotationToAttributeRector/Oracle/strings_more.php.inc and `C1` of values_edge.php.inc (an annotation with a
 //! single-quoted value stays, rector-src 9a6fdb061a).
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_with, run_dirs};
+use crate::common::{run_class, run_class_at, run_class_with, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::rules::{
     AddOverrideAttribute, AnnotationToAttribute, NoExtraArguments, PreferClassNameConstant,

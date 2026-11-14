@@ -4,9 +4,7 @@
 //! `phpVersion(80400)`) wrote for them; Pun/ holds the cases where Pun keeps the meaning but not Rector's bytes. Each
 //! one must pass as `format(pun lint --fix) == format(expected)`, and the text edits must give the expected bytes.
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_stubs};
+use crate::common::{run_class, run_class_at, run_class_stubs};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddParamTypeArrayAnyAll, AddParamTypeArrayDimFetch, AddParamTypeArrayFunction,

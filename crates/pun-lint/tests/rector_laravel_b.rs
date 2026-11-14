@@ -8,15 +8,9 @@
 //! change it. Each one must pass as `format(pun lint --fix) == format(expected)` with format being the laravel preset,
 //! and the text edits must give the expected bytes before format too.
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::{run_class_paths, run_dirs};
+use crate::common::{run_class_paths, run_dirs};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddFactoryExtendsPhpdoc, AddHasFactoryTrait, AddQueryClosureType, AddRelationGenerics,
