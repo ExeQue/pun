@@ -2,8 +2,9 @@ use mago_syntax::cst::{ArgumentList, BinaryOperator, Call, Expression, Node, Nod
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_name, is_a, is_name, member_name};
-use crate::rules::lint_b_helpers::{Constant, append_argument, constant};
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::arguments::append_argument;
+use crate::rules::support::expressions::{named, text};
+use crate::rules::support::values::{Constant, constant};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

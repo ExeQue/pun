@@ -1,4 +1,4 @@
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TagType<'s> {

@@ -4,7 +4,7 @@ use pun_problem::Safety;
 use super::{
     Is, Trinary, func_call, is_name, matcher_subject, set_call_arguments, subject_holder, type_is,
 };
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

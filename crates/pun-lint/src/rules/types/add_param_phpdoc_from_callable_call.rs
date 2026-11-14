@@ -5,8 +5,10 @@ use pun_phpstan::types::{Type, mixed, union};
 
 use super::docblock::{FunctionLike, class_name, doc_report, is_array_hint, variable_name};
 use super::names::resolve_class_name;
-use crate::rules::phpdoc_writer::type_mapper::{create_mixed_passed_or_union_type, is_mixed};
-use crate::rules::phpdoc_writer::{change_param_type, native_expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::{
+    create_mixed_passed_or_union_type, is_mixed,
+};
+use crate::rules::support::phpdoc_writer::{change_param_type, native_expr_type};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

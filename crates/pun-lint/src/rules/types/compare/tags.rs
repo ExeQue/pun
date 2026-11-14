@@ -1,6 +1,6 @@
 use pun_phpstan::phpdoc::{ConstExpr, Node, parse_prefix};
 
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Kind {

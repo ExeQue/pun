@@ -14,7 +14,7 @@ use super::type_factory::{Created, infer_returns};
 use super::{
     SCALAR_TYPES, add_return_type, class_scope, has_only_return_with_expr, returns_scoped, untyped,
 };
-use crate::rules::require_named_argument_order::{Target, callee};
+use crate::rules::complexity::require_named_argument_order::{Target, callee};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

@@ -5,8 +5,8 @@ use pun_problem::Safety;
 use super::add_param_type_array_function::ARRAY_AND_CALLBACK_POSITIONS;
 use super::facts::facts;
 use super::param::{ArrayShape, Flow, add_hint, array_shape_of, traverse};
-use crate::rules::lint_b_helpers::value;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -6,8 +6,10 @@ use super::docblock::{FunctionLike, doc_report, referenced_classes};
 use super::facts::facts;
 use super::never::has_parent_class_method;
 use super::silent_void::Place;
-use crate::rules::phpdoc_writer::type_mapper::{generalize_constant_array, is_useful_array_tag};
-use crate::rules::phpdoc_writer::{TypeNode, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::{
+    generalize_constant_array, is_useful_array_tag,
+};
+use crate::rules::support::phpdoc_writer::{TypeNode, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocDirectArray;

@@ -7,11 +7,10 @@ use mago_syntax::token::TokenKind;
 use pun_problem::{Edit, Safety, Span};
 
 use super::class_string;
-use super::no_bare_mock_assign::variable_name;
-use crate::rules::class_method::walk;
-use crate::rules::php_parser::previous_token_end;
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::class_members::walk;
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{assign, block_list, expression, variable_name};
+use crate::rules::support::statements::previous_token_end;
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -388,7 +387,7 @@ fn is_entity_class(facts: &Facts, class: &str) -> bool {
         return false;
     };
     let start = metadata.span.start.offset as usize;
-    let all = crate::rules::php_parser::lex(&source);
+    let all = crate::rules::support::statements::lex(&source);
     let from = previous_token_end(&source, &all, start);
     all.iter()
         .rfind(|t| t.start >= from && t.end <= start && t.kind == TokenKind::DocBlockComment)

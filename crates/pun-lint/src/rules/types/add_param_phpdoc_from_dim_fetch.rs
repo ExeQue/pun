@@ -5,8 +5,8 @@ use super::class_scope;
 use super::docblock::{FunctionLike, doc_report, find_scoped, is_array_hint, variable_name};
 use super::facts::facts;
 use super::never::has_parent_class_method;
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
-use crate::rules::phpdoc_writer::{TypeNode, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::{TypeNode, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddParamPhpdocFromDimFetch;

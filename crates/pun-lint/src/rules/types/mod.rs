@@ -8,6 +8,7 @@ mod add_bool_return_from_const;
 mod add_closure_never_return;
 mod add_closure_return;
 mod add_closure_void_return;
+pub(super) mod add_datetime_property_type;
 mod add_fluent_return;
 mod add_function_void_return;
 mod add_getter_return_phpdoc;

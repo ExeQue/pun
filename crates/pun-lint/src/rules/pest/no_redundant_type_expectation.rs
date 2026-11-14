@@ -5,7 +5,7 @@ use pun_problem::{Edit, Safety};
 
 use super::{func_call, has_comments, identifier, is_expect_chain, method_call, property_fetch};
 use crate::rules::phpunit::expr_text;
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -211,7 +211,7 @@ fn is_numeric(s: &[u8]) -> bool {
 }
 
 fn hash_comment_within(ctx: &Context<'_>, start: usize, end: usize) -> bool {
-    super::super::php_parser::tokens(ctx)
+    crate::rules::support::statements::tokens(ctx)
         .iter()
         .any(|t| t.start >= start && t.end <= end && t.kind.is_comment())
 }

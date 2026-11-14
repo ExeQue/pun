@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, TEST_CASE, maybe_multiline, receiver_is};
 use crate::rules::laravel::is_variable;
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

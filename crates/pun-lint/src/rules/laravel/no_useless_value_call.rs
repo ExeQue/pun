@@ -5,7 +5,7 @@ use mago_syntax::cst::{Node, NodeKind};
 
 use super::print::moved_value;
 use super::replace;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

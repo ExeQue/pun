@@ -3,8 +3,8 @@ use mago_syntax::cst::{
 };
 
 use super::{in_string, in_superglobal_assign, is_by_ref_argument, is_written, parent, replace};
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_code_quality::{Prec, in_parent};
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::expressions::{Prec, in_parent};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

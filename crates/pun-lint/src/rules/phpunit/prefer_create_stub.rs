@@ -5,7 +5,7 @@ use pun_problem::{Edit, Safety};
 
 use super::no_unused_mock_property::property_fetch_name;
 use super::{AnyCall, class_body, is_in_test_class, resolve, text};
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::rules::types::compare::mapper::flatten;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

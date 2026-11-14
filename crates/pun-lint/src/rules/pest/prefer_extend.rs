@@ -8,7 +8,7 @@ use super::{
     function_name, indent_at, is_name, kept_text, method_call, print_args, print_member,
     root_func_call,
 };
-use crate::rules::lint_b_names::resolve_class;
+use crate::rules::support::names::resolve_class;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_test_case_call, new_call, string_value};
 use crate::rules::laravel::get_arg;
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::{Context, Report, Rule};
 
 const TYPE_VALUE_TO_METHOD: &[(&str, &str)] = &[

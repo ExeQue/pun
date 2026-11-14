@@ -128,9 +128,9 @@ use mago_syntax::cst::{
 };
 use pun_problem::{Edit, Safety, Span};
 
-use super::rector_code_quality::text;
 use super::types::facts::facts;
 use crate::rules::phpunit::expr_text;
+use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -250,7 +250,7 @@ pub(crate) fn chain_root<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCal
 }
 
 pub(crate) fn expect_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCall<'a>> {
-    chain_root(call).filter(|root| super::rector_code_quality::named(root, "expect"))
+    chain_root(call).filter(|root| crate::rules::support::expressions::named(root, "expect"))
 }
 
 pub(crate) fn is_expect_chain(call: &MethodCall<'_>) -> bool {
@@ -632,7 +632,7 @@ fn uses_this(node: Node<'_, '_>) -> bool {
 }
 
 pub(crate) fn has_comments(ctx: &Context<'_>, start: usize) -> bool {
-    super::php_parser::tokens(ctx)
+    crate::rules::support::statements::tokens(ctx)
         .iter()
         .rev()
         .find(|t| t.end <= start && t.kind != mago_syntax::token::TokenKind::Whitespace)
@@ -668,7 +668,7 @@ pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
     };
     let mut out = String::with_capacity(text.len());
     let mut at = span.start;
-    for &t in super::php_parser::tokens(ctx) {
+    for &t in crate::rules::support::statements::tokens(ctx) {
         if t.end <= span.start || t.start >= span.end {
             continue;
         }
@@ -689,7 +689,7 @@ pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
 }
 
 pub(crate) fn indent_at(ctx: &Context<'_>, pos: usize) -> usize {
-    super::php_parser::line_indent(ctx.source, pos).len()
+    crate::rules::support::statements::line_indent(ctx.source, pos).len()
 }
 
 pub(crate) fn kept_text(ctx: &Context<'_>, span: Span, indent: usize) -> String {
@@ -701,7 +701,7 @@ pub(crate) fn kept_text(ctx: &Context<'_>, span: Span, indent: usize) -> String 
 }
 
 pub(crate) fn comment_spans(ctx: &Context<'_>, start: usize) -> Vec<Span> {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let before = tokens
         .iter()
         .rev()
@@ -856,7 +856,7 @@ pub(crate) fn print_links(ctx: &Context<'_>, links: &[Link<'_>], indent: usize) 
 }
 
 pub(crate) fn comments_start(ctx: &Context<'_>, start: usize) -> usize {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let before = tokens
         .iter()
         .rev()
@@ -993,7 +993,7 @@ pub(crate) struct OldStmt {
 
 pub(crate) fn old_statements(
     ctx: &Context<'_>,
-    list: &super::php_parser::List<'_, '_>,
+    list: &crate::rules::support::statements::List<'_, '_>,
 ) -> Vec<OldStmt> {
     let mut olds: Vec<OldStmt> = list
         .stmts
@@ -1010,7 +1010,7 @@ pub(crate) fn old_statements(
         .collect();
     if list.nop {
         let after = olds.last().map_or(list.inner.start, |s| s.end);
-        let tokens = super::php_parser::tokens(ctx);
+        let tokens = crate::rules::support::statements::tokens(ctx);
         let comments: Vec<_> = tokens
             .iter()
             .filter(|t| t.start >= after && t.end <= list.inner.end && t.kind.is_comment())
@@ -1028,7 +1028,7 @@ pub(crate) fn old_statements(
 
 fn old_comments(ctx: &Context<'_>, old: &OldStmt) -> Vec<Span> {
     let end = if old.nop { old.end } else { old.start };
-    super::php_parser::tokens(ctx)
+    crate::rules::support::statements::tokens(ctx)
         .iter()
         .filter(|t| t.start >= old.comments && t.end <= end && t.kind.is_comment())
         .map(|t| Span::new(t.start, t.end))
@@ -1042,7 +1042,7 @@ pub(crate) fn print_list(
     mut pos: usize,
     items: &[Item<'_>],
 ) -> Option<(String, usize)> {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let tag_in = |from: usize, to: usize| {
         use mago_syntax::token::TokenKind as K;
         tokens.iter().any(|t| {
@@ -1210,12 +1210,12 @@ pub(crate) fn rewrite_list(
     ctx: &Context<'_>,
     holder: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
-    list: &super::php_parser::List<'_, '_>,
+    list: &crate::rules::support::statements::List<'_, '_>,
     items: &[Item<'_>],
 ) -> Option<Vec<Edit>> {
     let parent = ancestors.last().copied();
     let grandparent = ancestors.len().checked_sub(2).map(|i| ancestors[i]);
-    use super::php_parser::Frame;
+    use crate::rules::support::statements::Frame;
     let olds = old_statements(ctx, list);
     let braces = matches!(list.frame, Frame::Braces { .. });
     let program = matches!(holder, Node::Program(_));
@@ -1329,7 +1329,7 @@ pub(crate) fn rewrite_list(
             Some(vec![Edit::new(span, out)])
         }
         (Node::Program(_), _) => {
-            let tokens = super::php_parser::tokens(ctx);
+            let tokens = crate::rules::support::statements::tokens(ctx);
             use mago_syntax::token::TokenKind as K;
             tokens
                 .first()
@@ -1402,12 +1402,12 @@ pub(crate) const STATEMENT_LISTS: &[NodeKind] = &[
 pub(crate) fn statement_list<'ast, 'arena>(
     ctx: &Context<'_>,
     node: Node<'ast, 'arena>,
-) -> Option<super::php_parser::List<'ast, 'arena>> {
+) -> Option<crate::rules::support::statements::List<'ast, 'arena>> {
     if !STATEMENT_LISTS.contains(&node.kind()) {
         return None;
     }
-    let tokens = super::php_parser::tokens(ctx);
-    let mut list = super::php_parser::holder_list(ctx.source, tokens, node);
+    let tokens = crate::rules::support::statements::tokens(ctx);
+    let mut list = crate::rules::support::statements::holder_list(ctx.source, tokens, node);
     list.stmts.retain(|s| match s {
         Statement::Inline(inline) => {
             !(matches!(inline.value, b"\n" | b"\r\n")

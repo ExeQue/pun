@@ -4,7 +4,7 @@ use mago_syntax::cst::{
 
 use super::object_type::is_object_type;
 use super::{get_arg, is_name, member_name, replace};
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::expressions::{named, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

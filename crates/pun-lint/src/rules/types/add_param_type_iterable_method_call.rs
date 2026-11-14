@@ -11,7 +11,7 @@ use pun_problem::{Edit, Safety};
 use super::facts::{Facts, facts};
 use super::names::resolve_class_name;
 use super::param::{add_hint, param_declaration};
-use crate::rules::class_method::type_of;
+use crate::rules::support::class_members::type_of;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

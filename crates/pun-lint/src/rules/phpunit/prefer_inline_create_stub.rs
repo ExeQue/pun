@@ -8,8 +8,10 @@ use super::no_bare_mock_assign::scoped;
 use super::no_unused_mock_property::local_property_fetches;
 use super::{AnyCall, class_body, class_string, is_in_test_class, remove_class_members, resolve};
 use crate::rules::laravel::is_a;
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{assign, block_list, expression, first_comment, line_indent};
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{
+    assign, block_list, expression, first_comment, line_indent,
+};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

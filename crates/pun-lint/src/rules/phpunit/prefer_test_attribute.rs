@@ -2,7 +2,7 @@ use mago_span::HasSpan;
 use mago_syntax::cst::{Method, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
 
-use crate::rules::lint_b_names::resolve_class;
+use crate::rules::support::names::resolve_class;
 use crate::syntax::span;
 use crate::{Context, Report, Rule};
 

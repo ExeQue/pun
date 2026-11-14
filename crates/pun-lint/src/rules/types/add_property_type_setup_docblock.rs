@@ -1,4 +1,5 @@
 use mago_syntax::cst::{Modifier, Node, NodeKind};
+use pun_phpstan::phpdoc::Node as PhpDocNode;
 use pun_problem::{Edit, Safety, Span};
 
 use super::add_property_type_constructor::is_test_case;
@@ -10,12 +11,11 @@ use super::facts::facts;
 use super::property_type::{
     ClassView, TYPED_PROPERTIES, Ty, VarTag, doc_type, property_declaration, ty, variable_span,
 };
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::no_redundant_property_default::is_property_assigned;
-use crate::rules::no_useless_var_tag::{Target, is_dead};
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
+use crate::rules::phpdoc::no_useless_var_tag::{Target, is_dead};
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
-use pun_phpstan::phpdoc::Node as PhpDocNode;
 
 pub struct AddPropertyTypeSetupDocblock;
 

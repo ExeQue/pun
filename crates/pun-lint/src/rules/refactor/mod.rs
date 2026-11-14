@@ -1,4 +1,5 @@
 mod add_override_attribute;
+pub(super) mod no_negated_condition;
 mod prefer_attribute_over_annotation;
 mod remove_function_argument;
 mod remove_function_call;
@@ -35,9 +36,11 @@ use mago_syntax::cst::{Expression, Identifier, Node, PartialArgument};
 use regex::bytes::Regex;
 use serde_json::{Map, Value};
 
-use super::rector_batch5::{imported, imported_member, resolve_class_name, scope_statements};
 use super::types::class_scope;
 use super::types::facts::facts;
+use crate::rules::support::names::{
+    imported, imported_member, resolve_class_name, scope_statements,
+};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Rule};
 

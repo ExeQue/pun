@@ -8,8 +8,8 @@ use super::docblock::{FunctionLike, doc_report};
 use super::facts::facts;
 use super::names::resolve_class_name;
 use super::silent_void::Place;
-use crate::rules::phpdoc_writer::change_return_type;
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::change_return_type;
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocJsonArray;

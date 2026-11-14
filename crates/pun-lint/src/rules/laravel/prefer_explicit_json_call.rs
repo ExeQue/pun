@@ -2,8 +2,8 @@ use mago_syntax::cst::{Argument, Call, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
 use super::{is_object, member_name};
-use crate::rules::lint_b_helpers::{remove_argument, value};
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::arguments::{remove_argument, value};
+use crate::rules::support::expressions::{named, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

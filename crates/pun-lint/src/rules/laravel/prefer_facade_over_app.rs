@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Access, Call, Expression, Identifier, Node, NodeKind, Variable};
 
 use super::{argument_texts, call, is_name, member_name, replace};
-use crate::rules::rector_batch5::imported_function;
+use crate::rules::support::names::imported_function;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

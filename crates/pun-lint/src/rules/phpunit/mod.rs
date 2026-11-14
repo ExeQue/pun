@@ -86,8 +86,8 @@ mod require_mock_expects;
 pub(crate) mod require_strict_types_in_tests;
 mod require_string_assert_argument;
 
-pub(crate) use crate::rules::rector_batch5::resolve_class_name as resolve;
-pub(crate) use crate::rules::rector_code_quality::text;
+pub(crate) use crate::rules::support::expressions::text;
+pub(crate) use crate::rules::support::names::resolve_class_name as resolve;
 pub use add_allow_mock_objects_attribute::AddAllowMockObjectsAttribute;
 pub use add_closure_return_type_from_assert::AddClosureReturnTypeFromAssert;
 pub use add_data_provider_allow_mock_objects::AddDataProviderAllowMockObjects;
@@ -557,8 +557,8 @@ pub(crate) fn new_call(ctx: &Context<'_>, call: &AnyCall<'_>, name: &str, args: 
 }
 
 pub(crate) fn string_value(expr: &Expression<'_>) -> Option<String> {
-    match crate::rules::rector_batch5::value(expr)? {
-        crate::rules::rector_batch5::Value::Str(s) => Some(s),
+    match crate::rules::support::values::value(expr)? {
+        crate::rules::support::values::Value::Str(s) => Some(s),
         _ => None,
     }
 }
@@ -654,15 +654,16 @@ pub(crate) fn rewrite_args(
     let mut delayed: Vec<String> = Vec::new();
     let mut indent = String::new();
     let comment_start = |from: usize, i: usize| {
-        crate::rules::rector_stmts::first_comment(source, from, old[i].start)
+        crate::rules::support::statement_edits::first_comment(source, from, old[i].start)
             .unwrap_or(old[i].start)
     };
     for (index, elem) in diff.iter().enumerate() {
         match *elem {
             Elem::Keep(o, n) | Elem::Replace(o, n) => {
                 before_first_keep = false;
-                indent =
-                    " ".repeat(crate::rules::rector_stmts::line_indent(source, old[o].start).len());
+                indent = " ".repeat(
+                    crate::rules::support::statement_edits::line_indent(source, old[o].start).len(),
+                );
                 let from = comment_start(pos, o);
                 if !skip_removed {
                     result.push_str(&source[pos..from]);
@@ -910,9 +911,9 @@ pub(crate) fn method_anew(
     block: &mago_syntax::cst::Block<'_>,
 ) -> String {
     let source = ctx.source;
-    use crate::rules::rector_stmts::{block_list, line_indent};
+    use crate::rules::support::statement_edits::{block_list, line_indent};
     let indent = line_indent(source, node_span(method).start);
-    let mut out = crate::rules::rector_batch5::modifiers_text(&method.modifiers);
+    let mut out = crate::rules::support::class_members::modifiers_text(&method.modifiers);
     out.push_str("function ");
     if method.ampersand.is_some() {
         out.push('&');
@@ -941,11 +942,11 @@ pub(crate) fn method_anew(
 
 pub(crate) fn block_anew(
     ctx: &crate::Context<'_>,
-    list: &crate::rules::rector_stmts::List<'_>,
+    list: &crate::rules::support::statement_edits::List<'_>,
     indent: &str,
 ) -> String {
     let source = ctx.source;
-    use crate::rules::rector_stmts::{line_indent, reindent, tokens};
+    use crate::rules::support::statement_edits::{line_indent, reindent, tokens};
     let inner = format!("{indent}    ");
     let mut lines = Vec::new();
     let comments = |from: usize, to: usize, lines: &mut Vec<String>| {
@@ -986,7 +987,7 @@ pub(crate) fn maybe_multiline(
     indent: &str,
 ) -> String {
     let source = ctx.source;
-    use crate::rules::rector_stmts::{previous_token_end, tokens};
+    use crate::rules::support::statement_edits::{previous_token_end, tokens};
     let mut from = from;
     let mut printed = Vec::new();
     for span in items {
@@ -1028,8 +1029,8 @@ pub(crate) fn remove_class_members(
     node: Node<'_, '_>,
     removed: &[bool],
 ) -> Vec<Edit> {
-    use crate::rules::rector_batch5::{modifiers_text, remove_members};
-    use crate::rules::rector_stmts::{first_comment, line_indent};
+    use crate::rules::support::class_members::{modifiers_text, remove_members};
+    use crate::rules::support::statement_edits::{first_comment, line_indent};
     use mago_span::HasSpan;
     use mago_syntax::cst::{AttributeList, Extends, Implements, Sequence};
     let text = |s: mago_span::Span| &source[s.start.offset as usize..s.end.offset as usize];

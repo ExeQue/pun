@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind, PartialArgument};
 
 use super::property_attribute::{ClassView, MODEL, is_string_node, moved_value, report, rewrite};
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::names::resolve_class_name;
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 

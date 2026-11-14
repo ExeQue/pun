@@ -5,9 +5,9 @@ use serde_json::Value;
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::prefer_test_with_attribute::php_trim;
 use super::{class_body, is_in_test_class};
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_batch5::merge;
-use crate::rules::rector_stmts::{line_indent, previous_token_end};
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::rewrites::merge;
+use crate::rules::support::statement_edits::{line_indent, previous_token_end};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

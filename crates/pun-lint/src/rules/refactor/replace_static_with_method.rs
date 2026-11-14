@@ -1,8 +1,10 @@
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Method, Modifier, Node, NodeKind};
 
 use super::{assert_class, assert_method, items, object, string};
-use crate::rules::class_dependency::{Outcome, call_args, inject, is_first_class, placeholder};
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::class_dependency::{
+    Outcome, call_args, inject, is_first_class, placeholder,
+};
+use crate::rules::support::names::resolve_class_name;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

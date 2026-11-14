@@ -6,7 +6,7 @@ use super::facts::facts;
 use super::native::{Kind, returned_constants, returned_kinds};
 use super::silent_void::Place;
 use super::{add_return_type, any_scoped, class_scope, returns_scoped, untyped};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromParam;

@@ -2,8 +2,8 @@ use mago_syntax::cst::{ArrayElement, Expression, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{is_in_test_class, is_public};
-use crate::rules::rector_batch5::has_attribute;
-use crate::rules::rector_stmts::{line_indent, previous_token_end, reindent, tokens};
+use crate::rules::support::names::has_attribute;
+use crate::rules::support::statement_edits::{line_indent, previous_token_end, reindent, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

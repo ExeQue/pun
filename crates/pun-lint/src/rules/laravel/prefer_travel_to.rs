@@ -82,7 +82,7 @@ fn class_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
         return false;
     };
     let own = String::from_utf8_lossy(class.name.value);
-    let own = match crate::rules::rector_batch5::scope_statements(ancestors).0 {
+    let own = match crate::rules::support::names::scope_statements(ancestors).0 {
         Some(ns) => format!("{ns}\\{own}"),
         None => own.into_owned(),
     };
@@ -113,7 +113,7 @@ fn closure_this_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], inde
     }) else {
         return false;
     };
-    let Some(name) = crate::rules::rector_batch5::called_function_name(ancestors, call.function)
+    let Some(name) = crate::rules::support::names::called_function_name(ancestors, call.function)
     else {
         return false;
     };

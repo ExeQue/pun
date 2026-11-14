@@ -12,7 +12,7 @@ use super::property_type::{
     is_safe_protected_property, is_var_tag_useless, mixed_passed_or_union, parent_allows,
     property_declaration, union, variable_span,
 };
-use crate::rules::no_redundant_property_default::is_property_assigned;
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

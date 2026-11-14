@@ -5,7 +5,7 @@ use super::{
     Is, Trinary, first_value, func_call, is_name, set_call_arguments, subject_holder, texts,
     type_is,
 };
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

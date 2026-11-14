@@ -2,7 +2,7 @@ use mago_syntax::cst::{Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::Safety;
 
 use super::{Kind, called, is_name, items, name_of};
-use crate::rules::rector_stmts::{enclosing, remove};
+use crate::rules::support::statement_edits::{enclosing, remove};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

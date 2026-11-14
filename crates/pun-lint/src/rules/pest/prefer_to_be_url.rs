@@ -4,8 +4,8 @@ use pun_problem::{Edit, Safety, Span};
 use super::{
     Is, Trinary, first_value, func_call, is_name, property_fetch, rename, subject_holder, type_is,
 };
-use crate::rules::rector_code_quality::is_constant;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

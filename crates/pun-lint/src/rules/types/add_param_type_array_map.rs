@@ -7,8 +7,8 @@ use super::facts::facts;
 use super::param::{
     ArrayShape, add_hint, array_shape_of, doc_order, is_mixed, own_static, param_declaration_in,
 };
-use crate::rules::lint_b_helpers::value;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -8,8 +8,8 @@ use super::no_bare_mock_assign::scoped;
 use super::{
     AnyCall, class_body, is_in_test_class, object_class, own_class, remove_class_members, resolve,
 };
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

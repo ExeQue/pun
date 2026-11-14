@@ -6,8 +6,8 @@ use pun_problem::Safety;
 
 use super::annotations::{Annotated, TagValue, map_item, named_tags};
 use super::is_in_test_class;
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::names::resolve_class_name;
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 

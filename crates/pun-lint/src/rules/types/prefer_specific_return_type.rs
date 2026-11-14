@@ -14,7 +14,7 @@ use super::docblock::{FunctionLike, class_name};
 use super::facts::{Facts, facts, is_builtin_class};
 use super::names::resolve_class_name;
 use super::{ancestor_names, class_scope, returns_scoped};
-use crate::rules::phpdoc_writer::{DocTarget, TypeNode};
+use crate::rules::support::phpdoc_writer::{DocTarget, TypeNode};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

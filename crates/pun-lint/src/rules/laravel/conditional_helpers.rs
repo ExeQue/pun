@@ -1,10 +1,10 @@
 use mago_syntax::cst::{Access, BinaryOperator, Expression, Node, Variable};
 
 use super::{argument_texts, member_name, replace};
-use crate::rules::php_parser::{line_indent, tokens};
-use crate::rules::rector_code_quality::{call_to, operand, text};
-use crate::rules::rector_conditions::{comments_between, print_comments};
-use crate::rules::rector_stmts::{expression, if_view};
+use crate::rules::support::conditions::{comments_between, print_comments};
+use crate::rules::support::expressions::{call_to, operand, text};
+use crate::rules::support::statement_edits::{expression, if_view};
+use crate::rules::support::statements::{line_indent, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report};
 

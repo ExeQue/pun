@@ -18,9 +18,9 @@ use pun_problem::{Edit, Span};
 
 use super::facts::Facts;
 use super::names::resolve_class_name;
-use crate::rules::lint_b_doc::Doc;
 use crate::rules::phpunit::annotations::Annotated;
 use crate::rules::phpunit::phpdoc_type::{TagType, TypedTag, typed_tag, with_tag_type};
+use crate::rules::support::docblocks::Doc;
 use crate::rules::types::compare::mapper::flatten;
 use crate::syntax::{node_span, unparenthesize};
 

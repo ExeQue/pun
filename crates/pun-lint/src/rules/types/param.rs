@@ -9,7 +9,7 @@ use pun_problem::{Edit, Span};
 
 use super::declare::{atomic_declaration, union_order};
 use super::facts::Facts;
-use crate::rules::class_method::type_of;
+use crate::rules::support::class_members::type_of;
 
 const NULL_FALSE_TRUE_STANDALONE_TYPE: u32 = 80200;
 const UNION_TYPES: u32 = 80000;
@@ -193,7 +193,7 @@ pub(crate) fn doc_order(ctx: &crate::Context<'_>, ancestors: &[Node<'_, '_>]) ->
         return Vec::new();
     };
     let start = crate::syntax::node_span(&ancestors[at]).start;
-    let Some(doc) = crate::rules::lint_b_doc::Doc::of(ctx, &ancestors[..at], start) else {
+    let Some(doc) = crate::rules::support::docblocks::Doc::of(ctx, &ancestors[..at], start) else {
         return Vec::new();
     };
     doc.text_all()
@@ -614,8 +614,8 @@ pub(crate) fn item_declaration(
 }
 
 fn head_slice<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
-    use crate::rules::lint_b_helpers::value;
-    use crate::rules::rector_code_quality::named;
+    use crate::rules::support::arguments::value;
+    use crate::rules::support::expressions::named;
     use mago_syntax::cst::{Call, Literal};
     let Expression::Call(Call::Function(call)) = crate::syntax::unparenthesize(expr) else {
         return None;
@@ -676,8 +676,8 @@ fn cased_explode<'ast, 'arena>(
     ancestors: &[Node<'ast, 'arena>],
     expr: &'ast Expression<'arena>,
 ) -> bool {
-    use crate::rules::lint_b_helpers::value;
-    use crate::rules::rector_code_quality::named;
+    use crate::rules::support::arguments::value;
+    use crate::rules::support::expressions::named;
     use mago_syntax::cst::{Call, FunctionCall, Identifier, Variable};
     fn call_of<'b>(e: &'b Expression<'b>) -> Option<&'b FunctionCall<'b>> {
         match crate::syntax::unparenthesize(e) {
@@ -725,8 +725,8 @@ fn cased_explode<'ast, 'arena>(
 }
 
 fn non_empty_call(expr: &Expression<'_>) -> bool {
-    use crate::rules::lint_b_helpers::value;
-    use crate::rules::rector_code_quality::named;
+    use crate::rules::support::arguments::value;
+    use crate::rules::support::expressions::named;
     use mago_syntax::cst::{Call, Literal, UnaryPrefixOperator};
     let Expression::Call(Call::Function(call)) = crate::syntax::unparenthesize(expr) else {
         return false;

@@ -6,8 +6,8 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, class_parents, is_in_test_class, own_class, remove_class_members};
-use crate::rules::rector_batch5::{merge, remove_statements};
-use crate::rules::rector_stmts::{
+use crate::rules::support::rewrites::{merge, remove_statements};
+use crate::rules::support::statement_edits::{
     List, block_list, inserted_statements, line_indent, reindent, tokens,
 };
 use crate::rules::types::facts::facts;

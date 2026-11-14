@@ -12,7 +12,7 @@ use super::compare::{Object, RType};
 use super::docblock::{FunctionLike, variable_name};
 use super::facts::{Facts, facts};
 use super::{returns_scoped, untyped};
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

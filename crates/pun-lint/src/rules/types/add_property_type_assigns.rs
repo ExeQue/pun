@@ -8,10 +8,10 @@ use super::property_type::{
     is_legal, is_null_literal, is_var_tag_useless, mixed_passed_or_union, property_declaration,
     variable_span,
 };
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::mago_helpers::{boolean, configure};
-use crate::rules::no_redundant_property_default::is_property_assigned;
-use crate::rules::rector_batch5::{has_attribute, imported};
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::{has_attribute, imported};
+use crate::rules::support::options::{boolean, configure};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

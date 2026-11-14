@@ -6,8 +6,8 @@ use pun_problem::{Edit, Safety};
 
 use super::{class_body, expr_text, is_in_test_class, own_class_reflection};
 use crate::rules::laravel::is_a;
-use crate::rules::rector_batch5::imported_function;
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::names::imported_function;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -19,7 +19,7 @@ use super::never::is_test_class;
 use super::param::{
     Flow, add_hint, own_static, param_declaration_unsorted, phpstan_union, traverse,
 };
-use crate::rules::class_method::{class_info, method_data_providers, type_of};
+use crate::rules::support::class_members::{class_info, method_data_providers, type_of};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

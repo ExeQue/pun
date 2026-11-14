@@ -32,7 +32,7 @@ impl Rule for PreferNarrowWithConsecutive {
         let Some(first) = args.first().copied() else {
             return;
         };
-        if crate::rules::lint_b_helpers::unpacked(first) {
+        if crate::rules::support::arguments::unpacked(first) {
             return;
         }
         let creates = args.iter().any(|a| {

@@ -2,8 +2,8 @@ use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_phpstan::types::{Type, mixed};
 
 use super::docblock::{FunctionLike, assignments, doc_report, is_array_hint, variable_name};
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
-use crate::rules::phpdoc_writer::{decorate_param, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::{decorate_param, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddParamPhpdocFromReferenceAssign;

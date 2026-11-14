@@ -3,7 +3,7 @@ use mago_syntax::cst::{
 };
 
 use super::replace;
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::expressions::{named, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

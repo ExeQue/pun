@@ -8,7 +8,7 @@ use pun_problem::Safety;
 
 use super::facts::{Facts, facts};
 use super::param::{Flow, add_hint, param_declaration, traverse};
-use crate::rules::class_method::type_of;
+use crate::rules::support::class_members::type_of;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

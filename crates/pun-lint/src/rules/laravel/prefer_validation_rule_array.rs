@@ -9,9 +9,9 @@ use pun_problem::{Edit, Safety};
 
 use super::object_type::is_object_type;
 use super::{is_a, is_name, member_name};
-use crate::rules::class_method::qualified;
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_code_quality::text;
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

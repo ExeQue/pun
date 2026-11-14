@@ -6,7 +6,7 @@ use super::property_type::{
     ClassView, Ty, VarTag, is_null_literal, is_var_tag_useless_as, variable_span,
 };
 use crate::rules::phpunit::phpdoc_type::{TagType, is_name};
-use crate::rules::rector_batch5::imported;
+use crate::rules::support::names::imported;
 use crate::{Context, Report, Rule};
 
 const CONTEXT: &str = "Behat\\Behat\\Context\\Context";

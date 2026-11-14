@@ -3,7 +3,7 @@ use pun_problem::Safety;
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::is_in_test_class;
-use crate::rules::prefer_absolute_include::print_string;
+use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 

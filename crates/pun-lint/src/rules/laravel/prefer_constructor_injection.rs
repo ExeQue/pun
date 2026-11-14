@@ -1,9 +1,9 @@
 use mago_syntax::cst::{Expression, Method, MethodBody, Modifier, Node, NodeKind};
 
-use crate::rules::class_dependency::{Outcome, call_args, inject, is_first_class};
 use crate::rules::refactor::{
     assert_class, assert_function, assert_method, function_name, is_name, items, object, string,
 };
+use crate::rules::support::class_dependency::{Outcome, call_args, inject, is_first_class};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

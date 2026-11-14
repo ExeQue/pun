@@ -5,7 +5,7 @@ use super::docblock::{FunctionLike, assignments, doc_report, variable_name};
 use super::facts::facts;
 use super::silent_void::Place;
 use super::{class_scope, has_only_return_with_expr, returns_scoped};
-use crate::rules::phpdoc_writer::{change_return_type, native_expr_type};
+use crate::rules::support::phpdoc_writer::{change_return_type, native_expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocScalarArray;

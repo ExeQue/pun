@@ -20,7 +20,7 @@ pub struct Context<'a> {
     pub source: &'a str,
     pub path: &'a Path,
     pub php_version: u32,
-    tokens: OnceCell<Vec<rules::php_parser::Token>>,
+    tokens: OnceCell<Vec<rules::support::statements::Token>>,
     facts: OnceCell<Rc<rules::types::facts::Facts>>,
     dead_code_facts: OnceCell<Rc<rules::types::facts::Facts>>,
 }
@@ -37,9 +37,9 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub(crate) fn tokens(&self) -> &[rules::php_parser::Token] {
+    pub(crate) fn tokens(&self) -> &[rules::support::statements::Token] {
         self.tokens
-            .get_or_init(|| rules::php_parser::lex(self.source))
+            .get_or_init(|| rules::support::statements::lex(self.source))
     }
 }
 

@@ -5,8 +5,8 @@ use serde_json::Value;
 
 use super::annotations::{Annotated, TagValue, map_item, named_tags};
 use super::is_public;
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::has_attribute;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 

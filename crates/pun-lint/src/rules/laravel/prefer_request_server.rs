@@ -3,7 +3,7 @@ use mago_syntax::cst::{Node, NodeKind};
 use super::{
     in_string, in_superglobal_assign, is_by_ref_argument, is_variable, is_written, replace,
 };
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

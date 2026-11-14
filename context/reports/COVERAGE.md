@@ -207,28 +207,28 @@ Uncovered lines:
 - `crates/pun-phpstan/src/symbols.rs:172-174` `Visitor::expecting()` of the symbols.json map reader: serde calls it only to word the error for malformed input, and symbols.json is compiled in (every map in it is an object or `[]`).
 - `crates/pun-lint/src/rules/laravel/prefer_nullsafe.rs:49` the non-target node guard: `Linter` dispatches this rule only for MethodCall and PropertyAccess, as its `targets()` requires.
 - `crates/pun-lint/src/rules/laravel/prefer_env_helper.rs:34` the non-target node guard: `Linter` dispatches only ArrayAccess for this rule.
-- `crates/pun-lint/src/rules/add_csv_escape_argument.rs:71` the non-target node guard: `Linter` dispatches only FunctionCall and MethodCall for this rule.
-- `crates/pun-lint/src/rules/no_assign_in_condition.rs:43` the non-target node guard: `Linter` dispatches only the condition-holding nodes its `targets()` lists for this rule.
-- `crates/pun-lint/src/rules/no_bool_ternary.rs:34` the non-target node guard: `Linter` dispatches only Conditional for this rule.
-- `crates/pun-lint/src/rules/no_boolean_literal_compare.rs:33` the non-target node guard: `Linter` dispatches only Binary for this rule.
-- `crates/pun-lint/src/rules/no_compact.rs:35` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
-- `crates/pun-lint/src/rules/no_false_ternary.rs:33` the non-target node guard: `Linter` dispatches only Conditional for this rule.
-- `crates/pun-lint/src/rules/no_redundant_property_default.rs:49` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
-- `crates/pun-lint/src/rules/no_redundant_write_visibility.rs:32` the non-target node guard: `Linter` dispatches only Property for this rule.
-- `crates/pun-lint/src/rules/no_sole_value_sprintf.rs:35` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
-- `crates/pun-lint/src/rules/no_unused_expression.rs:48` the non-target node guard: `Linter` dispatches only ExpressionStatement for this rule.
-- `crates/pun-lint/src/rules/no_unused_private_method_param.rs:45` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
-- `crates/pun-lint/src/rules/no_unused_private_property.rs:56` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
-- `crates/pun-lint/src/rules/no_useless_ternary.rs:42` the non-target node guard: `Linter` dispatches only Conditional for this rule.
-- `crates/pun-lint/src/rules/prefer_empty_string_identical.rs:35` the non-target node guard: `Linter` dispatches only Binary for this rule.
-- `crates/pun-lint/src/rules/prefer_min_max.rs:33` the non-target node guard: `Linter` dispatches only Conditional for this rule.
-- `crates/pun-lint/src/rules/prefer_property_default.rs:39` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
-- `crates/pun-lint/src/rules/require_assign_set_padding.rs:45` the non-target node guard: `Linter` dispatches only Function, Method and Closure for this rule.
-- `crates/pun-lint/src/rules/require_is_a_allow_string.rs:34` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
-- `crates/pun-lint/src/rules/no_empty_loop.rs:42` the loop guard: `Linter` dispatches only loop statements, whose parent is a Statement under some node.
-- `crates/pun-lint/src/rules/no_empty_loop.rs:45` the loop guard: `parts()` gives `None` only for a statement that is not a loop, and `Linter` dispatches only loops.
-- `crates/pun-lint/src/rules/no_empty_loop.rs:130` the same: the non-loop arm of `parts()`.
-- `crates/pun-lint/src/rules/mago_usage.rs:36` the non-function arm of `function_like_body()`: its callers pass only functions, methods and closures.
+- `crates/pun-lint/src/rules/php_8_4/add_csv_escape_argument.rs:72` the non-target node guard: `Linter` dispatches only FunctionCall and MethodCall for this rule.
+- `crates/pun-lint/src/rules/control_flow/no_assign_in_condition.rs:43` the non-target node guard: `Linter` dispatches only the condition-holding nodes its `targets()` lists for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_bool_ternary.rs:34` the non-target node guard: `Linter` dispatches only Conditional for this rule.
+- `crates/pun-lint/src/rules/complexity/no_boolean_literal_compare.rs:33` the non-target node guard: `Linter` dispatches only Binary for this rule.
+- `crates/pun-lint/src/rules/complexity/no_compact.rs:35` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_false_ternary.rs:33` the non-target node guard: `Linter` dispatches only Conditional for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_redundant_property_default.rs:49` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
+- `crates/pun-lint/src/rules/complexity/no_redundant_write_visibility.rs:32` the non-target node guard: `Linter` dispatches only Property for this rule.
+- `crates/pun-lint/src/rules/complexity/no_sole_value_sprintf.rs:35` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_unused_expression.rs:48` the non-target node guard: `Linter` dispatches only ExpressionStatement for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_unused_private_method_param.rs:45` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_unused_private_property.rs:57` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_useless_ternary.rs:42` the non-target node guard: `Linter` dispatches only Conditional for this rule.
+- `crates/pun-lint/src/rules/strings/prefer_empty_string_identical.rs:35` the non-target node guard: `Linter` dispatches only Binary for this rule.
+- `crates/pun-lint/src/rules/complexity/prefer_min_max.rs:33` the non-target node guard: `Linter` dispatches only Conditional for this rule.
+- `crates/pun-lint/src/rules/complexity/prefer_property_default.rs:40` the non-target node guard: `Linter` dispatches only Class and AnonymousClass for this rule.
+- `crates/pun-lint/src/rules/style/require_assign_set_padding.rs:45` the non-target node guard: `Linter` dispatches only Function, Method and Closure for this rule.
+- `crates/pun-lint/src/rules/complexity/require_is_a_allow_string.rs:34` the non-target node guard: `Linter` dispatches only FunctionCall for this rule.
+- `crates/pun-lint/src/rules/dead_code/no_empty_loop.rs:42` the loop guard: `Linter` dispatches only loop statements, whose parent is a Statement under some node.
+- `crates/pun-lint/src/rules/dead_code/no_empty_loop.rs:45` the loop guard: `parts()` gives `None` only for a statement that is not a loop, and `Linter` dispatches only loops.
+- `crates/pun-lint/src/rules/dead_code/no_empty_loop.rs:130` the same: the non-loop arm of `parts()`.
+- `crates/pun-lint/src/rules/support/scope_usage.rs:36` the non-function arm of `function_like_body()`: its callers pass only functions, methods and closures.
 - `crates/pun-lint/src/rules/types/add_closure_never_return.rs:34` the non-target node guard: `Linter` dispatches only Closure for this rule.
 - `crates/pun-lint/src/rules/types/add_closure_return.rs:51` the non-target node guard: `Linter` dispatches only Closure for this rule.
 - `crates/pun-lint/src/rules/types/add_closure_return.rs:123` the non-target node guard: `Linter` dispatches only ArrowFunction for this rule.
@@ -240,15 +240,15 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/types/add_fluent_return.rs:45` the same: a method with no class scope.
 - `crates/pun-lint/src/rules/types/add_never_return.rs:66` the non-target node guard: `Linter` dispatches only Function and Method for this rule.
 - `crates/pun-lint/src/rules/types/add_return_type_from_param.rs:47` the non-target node guard: `Linter` dispatches only Function and Method for this rule.
-- `crates/pun-lint/src/rules/lint_b_helpers.rs:260` a scope without a Program ancestor: `known()` walks up to the file, which is always there.
-- `crates/pun-lint/src/rules/lint_b_helpers.rs:273` `top_level()` of a scope `known()` never passes (it asks only for functions, concrete methods and the file).
-- `crates/pun-lint/src/rules/rector_batch5.rs:392` a scope without a Program ancestor: class-name lookups start inside the file's walk, whose first ancestor is Program.
-- `crates/pun-lint/src/rules/syntax_types.rs:114` `parameter()`'s `unreachable!()` arm: `rposition` selects only Function, Method, Closure, or ArrowFunction, and the match handles all four.
+- `crates/pun-lint/src/rules/support/values.rs:121` a scope without a Program ancestor: `known()` walks up to the file, which is always there.
+- `crates/pun-lint/src/rules/support/values.rs:134` `top_level()` of a scope `known()` never passes (it asks only for functions, concrete methods and the file).
+- `crates/pun-lint/src/rules/support/names.rs:404` a scope without a Program ancestor: class-name lookups start inside the file's walk, whose first ancestor is Program.
+- `crates/pun-lint/src/rules/support/syntax_types.rs:113` `parameter()`'s `unreachable!()` arm: `rposition` selects only Function, Method, Closure, or ArrowFunction, and the match handles all four.
 - `crates/pun-lint/src/rules/types/names.rs:20` a scope without a Program ancestor.
-- `crates/pun-lint/src/rules/prefer_boolean_and_or.rs:95` the end of the walk up: it stops at the first ancestor that is not a `&&`/`||` operand, before running out of ancestors (the file is a Program).
-- `crates/pun-lint/src/rules/prefer_boolean_and_or.rs:162` `instanceof` as an operator text: an operand `instanceof` binds tighter than every operator the rule rewrites, so it is printed with its operand, never re-joined infix.
-- `crates/pun-lint/src/rules/no_unused_private_property.rs:383` an ExpressionStatement whose parent is not a Statement: the parser always wraps it in one.
-- `crates/pun-lint/src/rules/prefer_property_default.rs:142` overlapping edits: the constructor assignment removed and the property default added never overlap (one is in the constructor body, the other at the property).
+- `crates/pun-lint/src/rules/operators/prefer_boolean_and_or.rs:97` the end of the walk up: it stops at the first ancestor that is not a `&&`/`||` operand, before running out of ancestors (the file is a Program).
+- `crates/pun-lint/src/rules/operators/prefer_boolean_and_or.rs:164` `instanceof` as an operator text: an operand `instanceof` binds tighter than every operator the rule rewrites, so it is printed with its operand, never re-joined infix.
+- `crates/pun-lint/src/rules/dead_code/no_unused_private_property.rs:383` an ExpressionStatement whose parent is not a Statement: the parser always wraps it in one.
+- `crates/pun-lint/src/rules/complexity/prefer_property_default.rs:143` overlapping edits: the constructor assignment removed and the property default added never overlap (one is in the constructor body, the other at the property).
 - `crates/pun-lint/src/rules/types/add_return_type_from_ternary.rs:67` a ternary whose native type has `mixed`: no input found, Mago types none of `mixed` branches here (tried `mixed $a` branches at PHP 8.0 in rector_types.rs `left_alone_at_other_versions`).
 - `crates/pun-lint/src/rules/types/add_return_type_from_property.rs:79` a `mixed` returned type: `typed_property()` already refuses a `mixed` property and PHPStan/Mago type a typed property as declared.
 - `crates/pun-lint/src/rules/types/facts.rs:716` LLVM's closing-brace region for missing native artifacts after an upstream analyzer error or panic. No deterministic public input is known on this snapshot; the complete lint suite passes without taking this failure path. This existing exclusion moved with arithmetic inference. Keep the containment boundary rather than depend on an upstream bug to test it.
@@ -256,7 +256,7 @@ Uncovered lines:
 - `crates/pun-lint/src/rules/types/declare.rs:168` `void` as a declaration: callers drop `void` (no value) before asking for a declaration.
 - `crates/pun-lint/src/rules/types/declare.rs:202` an intersection with a non-object member: Mago builds intersections only of object types.
 - `crates/pun-lint/src/rules/types/declare.rs:351` `void`, `mixed` or `null` (below 7.1) in a union: `add_union_return` refuses `mixed`/`void` before, and the union rule needs PHP 8.0.
-- `crates/pun-lint/src/rules/types/mod.rs:369` `unreachable!()` after the class-like kinds `rposition` matched.
+- `crates/pun-lint/src/rules/types/mod.rs:370` `unreachable!()` after the class-like kinds `rposition` matched.
 - `crates/pun-lint/src/rules/types/never.rs:190` a method with no class scope (see add_method_void_return).
 - `crates/pun-lint/src/rules/types/never.rs:197` a named class the codebase lacks: the codebase is built from this file, which declares it.
 - `crates/pun-lint/src/rules/laravel/prefer_request_server.rs:34` the non-target node guard: `Linter` dispatches only ArrayAccess for this rule.

@@ -3,7 +3,7 @@ use mago_syntax::cst::{Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::{Edit, Safety};
 
 use super::{assert_class, int, items, object, string};
-use crate::rules::rector_code_quality::{operand, text};
+use crate::rules::support::expressions::{operand, text};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

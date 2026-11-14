@@ -8,8 +8,8 @@ use super::param::{
     item_declaration, item_type, param_declaration_unsorted,
 };
 use crate::rules::laravel::get_arg;
-use crate::rules::lint_b_helpers::value;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::expressions::named;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

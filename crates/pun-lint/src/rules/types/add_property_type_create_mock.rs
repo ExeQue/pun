@@ -8,7 +8,7 @@ use super::property_type::{
     Assigned, ClassView, Prop, TYPED_PROPERTIES, Ty, assigned_type, default_span, hint_ty,
     property_declaration, variable_span,
 };
-use crate::rules::no_redundant_property_default::is_property_assigned;
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

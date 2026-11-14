@@ -16,9 +16,9 @@ use super::param::{
     Flow, add_hint, array_shape_of, doc_order, is_mixed, item_type, param_declaration_unsorted,
     traverse,
 };
-use crate::rules::class_method::type_of;
-use crate::rules::lint_b_helpers::value;
-use crate::rules::rector_code_quality::{args, named};
+use crate::rules::support::arguments::value;
+use crate::rules::support::class_members::type_of;
+use crate::rules::support::expressions::{args, named};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -2,8 +2,8 @@ use mago_syntax::cst::{Call, Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class};
-use crate::rules::rector_code_quality::is_constant;
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

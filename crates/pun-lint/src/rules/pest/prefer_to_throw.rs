@@ -8,7 +8,7 @@ use super::{
     Item, comments_start, expect_argument, function_name, indent_at, is_expect_chain, is_name,
     kept_text, method_call, old_statements, p_stmts, statement_expression,
 };
-use crate::rules::php_parser::{block_list, tokens};
+use crate::rules::support::statements::{block_list, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

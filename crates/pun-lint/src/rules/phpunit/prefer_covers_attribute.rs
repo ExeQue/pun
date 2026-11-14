@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::{Annotated, TagValue, is_class_constant_item, map_item, named_tags};
 use super::{class_body, is_in_test_class};
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};

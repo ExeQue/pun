@@ -7,7 +7,7 @@ use super::annotations::Annotated;
 use super::phpdoc_type::{TagType, typed_tag, with_tag_type};
 use super::{AnyCall, class_body, expr_name, is_in_test_class, resolve};
 use crate::Context;
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::syntax::unparenthesize;
 use crate::{Report, Rule};
 

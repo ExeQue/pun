@@ -12,7 +12,7 @@ use mago_syntax::token::TokenKind;
 use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, TEST_CASE_LEGACY, class_body, class_is, resolve, string_value};
-use crate::rules::rector_stmts::{
+use crate::rules::support::statement_edits::{
     assign, block_list, expression, first_comment, line_indent, previous_token_end, reindent,
     tokens,
 };

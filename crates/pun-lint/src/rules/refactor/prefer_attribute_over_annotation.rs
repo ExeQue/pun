@@ -5,11 +5,11 @@ use serde_json::Value;
 
 use super::{items, object};
 use crate::rules::phpunit::annotations::Annotated;
-use crate::rules::rector_names::attribute::{self, Attribute, AttributeConfig};
-use crate::rules::rector_names::doc::{Doc, Value as DocValue};
-use crate::rules::rector_names::resolve::{self, Scope, has_class};
-use crate::rules::rector_names::view::{FileView, UseView};
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::rector_names::attribute::{self, Attribute, AttributeConfig};
+use crate::rules::support::rector_names::doc::{Doc, Value as DocValue};
+use crate::rules::support::rector_names::resolve::{self, Scope, has_class};
+use crate::rules::support::rector_names::view::{FileView, UseView};
+use crate::rules::support::statement_edits::line_indent;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
@@ -173,7 +173,8 @@ impl AnnotationToAttribute {
                 {
                     continue;
                 }
-                let Some(doc_comment) = crate::rules::lint_b_doc::Doc::of(ctx, &ancestors, start)
+                let Some(doc_comment) =
+                    crate::rules::support::docblocks::Doc::of(ctx, &ancestors, start)
                 else {
                     continue;
                 };
@@ -383,7 +384,7 @@ impl AnnotationToAttribute {
 }
 
 fn is_class_name(name: &str) -> bool {
-    crate::rules::rector_names::doc::is_class_name(name)
+    crate::rules::support::rector_names::doc::is_class_name(name)
 }
 
 fn is_attribute_class(ctx: &Context<'_>, class: &str) -> bool {

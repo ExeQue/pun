@@ -11,8 +11,8 @@ use super::facts::{Facts, facts};
 use super::silent_void::Place;
 use super::type_factory::{Created, infer_returns};
 use super::{SCALAR_TYPES, class_scope, has_only_return_with_expr, returns_scoped, untyped};
-use crate::rules::phpdoc_writer::type_mapper::is_mixed;
-use crate::rules::phpdoc_writer::{DocTarget, change_return_type, phpstan_type};
+use crate::rules::support::phpdoc_writer::type_mapper::is_mixed;
+use crate::rules::support::phpdoc_writer::{DocTarget, change_return_type, phpstan_type};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

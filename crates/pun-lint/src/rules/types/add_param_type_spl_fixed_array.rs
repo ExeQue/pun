@@ -91,7 +91,7 @@ impl Rule for AddParamTypeSplFixedArray {
                 if appended.is_empty() {
                     text
                 } else {
-                    let Some(doc) = crate::rules::lint_b_doc::Doc::parse(&text) else {
+                    let Some(doc) = crate::rules::support::docblocks::Doc::parse(&text) else {
                         return;
                     };
                     let appended: Vec<&str> = appended.iter().map(String::as_str).collect();

@@ -4,7 +4,7 @@ use pun_problem::Safety;
 use super::{
     AnyCall, NewArg, expr_name, is_test_case_call_named, old_args, renamed, rewrite_args, text,
 };
-use crate::rules::side_effect::any_node;
+use crate::rules::support::side_effects::any_node;
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 

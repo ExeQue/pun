@@ -16,7 +16,7 @@ use super::names::resolve_class_name;
 use super::object_type::{is_object_type, object_class};
 use super::print::set_param_type;
 use super::{is_name, member_name};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::rules::types::class_scope;
 use crate::rules::types::declare::{expression_order, return_declaration};
 use crate::rules::types::facts::{Facts, facts};

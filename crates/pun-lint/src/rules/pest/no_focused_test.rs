@@ -2,7 +2,7 @@ use mago_syntax::cst::{MethodCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{identifier, root_func_call};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -4,8 +4,8 @@ use pun_problem::{Edit, Safety, Span};
 use super::object_type::is_object_type;
 use super::prefer_latest_oldest::{Got, get_value};
 use super::print::kept_nodes;
-use crate::rules::rector_conditions::indentation;
-use crate::rules::rector_stmts::previous_token_end;
+use crate::rules::support::conditions::indentation;
+use crate::rules::support::statement_edits::previous_token_end;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

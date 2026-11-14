@@ -7,7 +7,7 @@ use pun_problem::{Edit, Safety, Span};
 use super::facts::facts;
 use super::prefer_instanceof::needs_parentheses;
 use super::rector_type::{RectorType, get_type};
-use crate::rules::rector_code_quality::{is_constant, text};
+use crate::rules::support::expressions::{is_constant, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

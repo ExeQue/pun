@@ -353,7 +353,7 @@ pub(crate) fn is_by_ref_argument(
     else {
         return false;
     };
-    let Some(name) = crate::rules::rector_batch5::called_function_name(ancestors, call.function)
+    let Some(name) = crate::rules::support::names::called_function_name(ancestors, call.function)
     else {
         return false;
     };
@@ -421,7 +421,7 @@ pub(crate) fn is_bare_call(expr: &Expression<'_>, name: &str) -> bool {
     matches!(
         unparenthesize(expr),
         Expression::Call(Call::Function(f))
-            if super::rector_code_quality::named(f, name) && f.argument_list.arguments.is_empty()
+            if crate::rules::support::expressions::named(f, name) && f.argument_list.arguments.is_empty()
     )
 }
 
@@ -512,6 +512,6 @@ pub(crate) fn is_object(
             });
             own.is_some_and(|own| is_a(ctx, &own, &[class]))
         }
-        e => crate::rules::lint_b_helpers::is_object_of(ancestors, e, class, node_span(e).start),
+        e => crate::rules::support::values::is_object_of(ancestors, e, class, node_span(e).start),
     }
 }

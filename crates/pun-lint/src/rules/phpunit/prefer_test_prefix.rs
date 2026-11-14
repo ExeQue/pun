@@ -2,8 +2,10 @@ use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_body, is_in_test_class};
-use crate::rules::rector_batch5::{doc_comment, doc_without_tags, member_from, merge};
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::class_members::member_from;
+use crate::rules::support::docblocks::{doc_comment, doc_without_tags};
+use crate::rules::support::rewrites::merge;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

@@ -2,9 +2,9 @@ use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 
-use crate::rules::rector_names::phpdoc_parser::Val;
-use crate::rules::rector_names::post::{Carry, Options, Session, doc_type};
-use crate::rules::rector_names::resolve::{has_class, resolve_tag};
+use crate::rules::support::rector_names::phpdoc_parser::Val;
+use crate::rules::support::rector_names::post::{Carry, Options, Session, doc_type};
+use crate::rules::support::rector_names::resolve::{has_class, resolve_tag};
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 
@@ -132,7 +132,7 @@ impl RenameClass {
         let codebase = &facts(ctx).codebase;
         for i in 0..session.name_count() {
             let name = session.view.names[i].clone();
-            if name.kind == crate::rules::rector_names::view::Kind::Function {
+            if name.kind == crate::rules::support::rector_names::view::Kind::Function {
                 continue;
             }
             let Some(old) = session.fully_qualified(i).map(str::to_string) else {

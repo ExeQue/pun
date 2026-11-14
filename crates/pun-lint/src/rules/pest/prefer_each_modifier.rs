@@ -8,7 +8,7 @@ use super::{
     Link, chain_links, comments_start, expect_call, first_value, indent_at, kept_text, method_call,
     print_links, shift,
 };
-use crate::rules::php_parser::{block_list, open_list, tokens};
+use crate::rules::support::statements::{block_list, open_list, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -37,7 +37,7 @@ impl Rule for PreferEachModifier {
         let list = match &foreach.body {
             ForeachBody::Statement(Statement::Block(block)) => block_list(tokens, block),
             ForeachBody::Statement(statement) => {
-                super::super::php_parser::body_list(tokens, statement)
+                crate::rules::support::statements::body_list(tokens, statement)
             }
             ForeachBody::ColonDelimited(body) => open_list(
                 tokens,

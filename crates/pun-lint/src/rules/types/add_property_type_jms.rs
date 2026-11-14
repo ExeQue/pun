@@ -7,7 +7,7 @@ use pun_problem::{Edit, Safety, Span};
 use super::facts::facts;
 use super::property_type::{ClassView, Prop, VarTag, is_legal, variable_span};
 use crate::rules::phpunit::phpdoc_type::TagType;
-use crate::rules::rector_batch5::{has_attribute, resolve_class_name};
+use crate::rules::support::names::{has_attribute, resolve_class_name};
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 

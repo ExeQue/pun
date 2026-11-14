@@ -10,7 +10,7 @@ use super::class_scope;
 use super::facts::{Facts, facts};
 use super::has_parent_class_method;
 use super::param::{add_hint, is_mixed, param_declaration};
-use crate::rules::class_method::qualified;
+use crate::rules::support::class_members::qualified;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -244,12 +244,12 @@ fn walk<'ast, 'arena>(node: Node<'ast, 'arena>, f: &mut dyn FnMut(Node<'ast, 'ar
 
 pub(crate) fn is_legal(body: Node<'_, '_>, name: &[u8]) -> bool {
     fn has_variable(node: Node<'_, '_>, name: &[u8]) -> bool {
-        crate::rules::side_effect::any_node(
+        crate::rules::support::side_effects::any_node(
             node,
             &|n| matches!(n, Node::Variable(Variable::Direct(v)) if v.name == name),
         )
     }
-    !crate::rules::side_effect::any_node(body, &|node| match node {
+    !crate::rules::support::side_effects::any_node(body, &|node| match node {
         Node::Assignment(a) => {
             matches!(a.operator, AssignmentOperator::Assign(_))
                 && !matches!(a.rhs, Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Reference(_)))

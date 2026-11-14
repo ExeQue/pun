@@ -1,7 +1,7 @@
 use mago_syntax::cst::*;
 use mago_syntax::utils::reference::{MethodReference, find_method_references_in_block};
 
-use crate::rules::lint_b_names::{function_call_matches, resolve_class};
+use crate::rules::support::names::{function_call_matches, resolve_class};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

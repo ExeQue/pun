@@ -5,10 +5,10 @@ use super::class_scope;
 use super::docblock::{FunctionLike, doc_report, referenced_classes};
 use super::facts::{Facts, facts};
 use super::silent_void::Place;
-use crate::rules::phpdoc_writer::type_mapper::{
+use crate::rules::support::phpdoc_writer::type_mapper::{
     const_array_key_type, is_useful_array_tag, uniquate_types,
 };
-use crate::rules::phpdoc_writer::{decorate_return, expr_type};
+use crate::rules::support::phpdoc_writer::{decorate_return, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocCommonObject;

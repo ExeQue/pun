@@ -4,7 +4,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Span};
 
 use super::{is_name, is_written, member_name, replace};
-use crate::rules::rector_code_quality::{Prec, call_to, is_constant, prec, text};
+use crate::rules::support::expressions::{Prec, call_to, is_constant, prec, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

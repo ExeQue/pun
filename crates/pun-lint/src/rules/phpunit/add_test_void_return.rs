@@ -2,8 +2,8 @@ use mago_syntax::cst::{ClassLikeMember, MethodBody, Node, NodeKind};
 
 use super::annotations::named_tags;
 use super::{class_body, is_in_test_class, is_public};
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::has_attribute;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::{VOID_TYPE, add_return_type, has_exclusive_void};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};

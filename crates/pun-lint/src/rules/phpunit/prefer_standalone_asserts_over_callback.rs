@@ -5,7 +5,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, is_in_test_class, maybe_multiline, resolve};
-use crate::rules::rector_stmts::{List, block_list, line_indent, reindent};
+use crate::rules::support::statement_edits::{List, block_list, line_indent, reindent};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -1,4 +1,3 @@
-use crate::syntax::is_this;
 use mago_syntax::cst::{
     Access, Assignment, AssignmentOperator, Block, ClassLikeMember, ClassLikeMemberSelector,
     Expression, FunctionLikeParameterList, FunctionLikeReturnTypeHint, Hint, Method, MethodBody,
@@ -10,7 +9,8 @@ use pun_problem::{Edit, Safety, Span};
 use super::silent_void::Place;
 use super::{class_scope, has_only_return_with_expr, returns_scoped};
 use crate::Report;
-use crate::rules::phpdoc_writer::{DocTarget, PhpDocInfo};
+use crate::rules::support::phpdoc_writer::{DocTarget, PhpDocInfo};
+use crate::syntax::is_this;
 use crate::syntax::node_span;
 
 pub(crate) struct FunctionLike<'ast, 'arena> {

@@ -14,8 +14,8 @@ use super::{
     Item, func_call, function_name, identifier, method_call, old_statements, p_stmts, rewrite_list,
     statement_expression, statement_list,
 };
-use crate::rules::lint_b_names::resolve_class;
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
+use crate::rules::support::names::resolve_class;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

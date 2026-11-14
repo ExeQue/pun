@@ -1,4 +1,3 @@
-use crate::syntax::is_this;
 use mago_syntax::cst::{
     Call, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, MethodBody, Modifier, Node,
     NodeKind, Variable,
@@ -10,7 +9,8 @@ use super::facts::facts;
 use super::property_type::{ClassView, TYPED_PROPERTIES, VarTag, variable_span};
 use crate::rules::phpunit::annotations::Annotated;
 use crate::rules::phpunit::phpdoc_type::{TagType, is_name};
-use crate::rules::rector_batch5::imported;
+use crate::rules::support::names::imported;
+use crate::syntax::is_this;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

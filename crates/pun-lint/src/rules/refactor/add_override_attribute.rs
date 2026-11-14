@@ -1,10 +1,10 @@
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind, Property};
 use pun_problem::{Edit, Safety, Span};
 
-use super::super::class_method::qualified;
-use super::super::rector_batch5::resolve_class_name;
-use super::super::rector_stmts::line_indent;
 use super::super::types::facts::facts;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::names::resolve_class_name;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

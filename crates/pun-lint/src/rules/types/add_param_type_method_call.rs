@@ -11,8 +11,8 @@ use pun_problem::{Edit, Safety};
 use super::facts::{Facts, facts};
 use super::names::resolve_class_name;
 use super::param::{add_hint, param_declaration_unsorted};
-use crate::rules::class_method::{qualified, type_of};
-use crate::rules::mago_helpers::{boolean, configure};
+use crate::rules::support::class_members::{qualified, type_of};
+use crate::rules::support::options::{boolean, configure};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

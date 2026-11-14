@@ -7,7 +7,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::{is_in_test_class, is_public, resolve};
-use crate::rules::rector_stmts::assign;
+use crate::rules::support::statement_edits::assign;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

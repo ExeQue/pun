@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 
 use super::{is_name, member_name};
-use crate::rules::lint_b_names::function_call_matches;
+use crate::rules::support::names::function_call_matches;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

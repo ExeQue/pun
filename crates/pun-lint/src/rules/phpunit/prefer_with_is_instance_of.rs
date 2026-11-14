@@ -2,7 +2,7 @@ use mago_syntax::cst::{BinaryOperator, Call, Expression, Node, NodeKind, Stateme
 use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class, resolve};
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

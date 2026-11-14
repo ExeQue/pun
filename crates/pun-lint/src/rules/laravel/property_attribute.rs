@@ -1,10 +1,12 @@
-use crate::rules::rector_code_quality::is_constant;
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Safety, Span};
 
-use crate::rules::rector_batch5::{has_attribute, member_from, remove_items};
-use crate::rules::rector_conditions::{indentation, reprint};
-use crate::rules::rector_stmts::{first_comment, line_indent};
+use crate::rules::support::class_members::member_from;
+use crate::rules::support::conditions::{indentation, reprint};
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::names::has_attribute;
+use crate::rules::support::rewrites::remove_items;
+use crate::rules::support::statement_edits::{first_comment, line_indent};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report};
@@ -363,7 +365,12 @@ pub(crate) fn moved_value(
     let span = node_span(unparenthesize(expr));
     let adjust =
         indentation(source, class_start(class)) as isize - indentation(source, span.start) as isize;
-    reprint(source, &crate::rules::php_parser::lex(source), span, adjust)
+    reprint(
+        source,
+        &crate::rules::support::statements::lex(source),
+        span,
+        adjust,
+    )
 }
 
 fn class_start(class: &ClassView<'_, '_>) -> usize {

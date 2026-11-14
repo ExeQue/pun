@@ -1,6 +1,6 @@
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
-    Argument, Call, Expression, ForeachBody, MethodBody, Node, NodeKind, PartialArgument, Variable,
+    Argument, Call, Expression, ForeachBody, MethodBody, Node, NodeKind, PartialArgument,
 };
 use pun_problem::{Edit, Safety};
 
@@ -9,8 +9,10 @@ use super::{
     ASSERT, AnyCall, TEST_CASE, class_string, expr_name, is_in_test_class, own_class_reflection,
     receiver_is, text,
 };
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{List, assign, block_list, body_list, expression, holder_list};
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{
+    List, assign, block_list, body_list, expression, holder_list, variable_name,
+};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -143,13 +145,6 @@ fn create_mock_arg<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
         return None;
     }
     Some(call.args().into_iter().next()?.value())
-}
-
-pub(super) fn variable_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
-    match unparenthesize(expr) {
-        Expression::Variable(Variable::Direct(v)) => Some(&v.name[1..]),
-        _ => None,
-    }
 }
 
 fn is_variable(expr: &Expression<'_>, name: &str) -> bool {

@@ -5,9 +5,9 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Span};
 
 use crate::Context;
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_stmts::{line_indent, previous_token_end, tokens};
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::statement_edits::{line_indent, previous_token_end, tokens};
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 

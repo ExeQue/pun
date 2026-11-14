@@ -4,8 +4,8 @@ use pun_phpstan::types::{Type, mixed};
 use super::docblock::{
     assignments, class_members, docs_report, is_array_hint, methods, properties, this_property,
 };
-use crate::rules::phpdoc_writer::type_mapper::{is_useful_array_tag, uniquate_types};
-use crate::rules::phpdoc_writer::{DocTarget, decorate_var, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::{is_useful_array_tag, uniquate_types};
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_var, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddVarPhpdocFromDimFetch;

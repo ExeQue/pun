@@ -32,7 +32,7 @@ impl Rule for PreferSimpleMockExpectation {
             return;
         }
         let args = call.args();
-        if args.len() != 1 || crate::rules::lint_b_helpers::unpacked(args[0]) {
+        if args.len() != 1 || crate::rules::support::arguments::unpacked(args[0]) {
             return;
         }
         let name = if call.is_name(&["withConsecutive"]) {

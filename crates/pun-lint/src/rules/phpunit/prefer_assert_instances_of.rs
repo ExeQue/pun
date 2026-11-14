@@ -2,7 +2,7 @@ use mago_syntax::cst::{Call, Expression, ForeachBody, ForeachTarget, Node, NodeK
 use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, expr_text, text};
-use crate::rules::php_parser::{body_list, open_list, previous_token_end, tokens};
+use crate::rules::support::statements::{body_list, open_list, previous_token_end, tokens};
 use crate::syntax::{node_span, same_expression};
 use crate::{Context, Report, Rule};
 
@@ -70,8 +70,9 @@ impl Rule for PreferAssertInstancesOf {
         );
         let span = node_span(foreach);
         let from = previous_token_end(ctx.source, tokens, span.start);
-        let start = crate::rules::rector_stmts::first_comment(ctx.source, from, span.start)
-            .unwrap_or(span.start);
+        let start =
+            crate::rules::support::statement_edits::first_comment(ctx.source, from, span.start)
+                .unwrap_or(span.start);
         out.push(Report::fixed(
             span,
             "Use `assertContainsOnlyInstancesOf()` instead of a loop.",

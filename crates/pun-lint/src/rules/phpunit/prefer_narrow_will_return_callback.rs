@@ -4,8 +4,8 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, NewArg, expr_text, is_in_test_class, is_test_case_call_named, rewrite_args};
-use crate::rules::rector_batch5::merge;
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::rewrites::merge;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 

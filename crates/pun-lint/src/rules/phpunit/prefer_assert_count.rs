@@ -5,7 +5,7 @@ use pun_problem::Safety;
 
 use super::{AnyCall, NewArg, expr_text, is_test_case_call_named, rewrite_args};
 use crate::rules::laravel::is_a;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

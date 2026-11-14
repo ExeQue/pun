@@ -4,8 +4,8 @@ use mago_syntax::cst::{
 
 use super::annotations::{TagValue, named_tags};
 use super::{class_body, is_in_test_class};
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::resolve_class_name;
 use crate::rules::types::{add_return_type, any_scoped};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};

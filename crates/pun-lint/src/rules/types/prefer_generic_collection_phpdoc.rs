@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::docblock::FunctionLike;
-use crate::rules::phpdoc_writer::TypeNode;
+use crate::rules::support::phpdoc_writer::TypeNode;
 use crate::{Context, Report, Rule};
 
 pub struct PreferGenericCollectionPhpdoc;

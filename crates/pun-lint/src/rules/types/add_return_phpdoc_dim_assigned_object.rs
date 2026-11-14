@@ -5,8 +5,8 @@ use super::class_scope;
 use super::docblock::{FunctionLike, class_name, doc_report, variable_name};
 use super::facts::facts;
 use super::silent_void::Place;
-use crate::rules::phpdoc_writer::type_mapper::{is_mixed, is_useful_array_tag};
-use crate::rules::phpdoc_writer::{DocTarget, decorate_return, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::{is_mixed, is_useful_array_tag};
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_return, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocDimAssignedObject;

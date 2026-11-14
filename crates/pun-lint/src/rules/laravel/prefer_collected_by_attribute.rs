@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Expression, MethodBody, Node, NodeKind, Statement};
 
 use super::property_attribute::{ClassView, MODEL, report, rewrite};
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

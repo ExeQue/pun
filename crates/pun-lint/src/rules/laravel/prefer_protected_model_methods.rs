@@ -3,7 +3,7 @@ use pun_problem::{Edit, Safety, Span};
 
 use super::is_a;
 use super::object_type::{is_hint_type, object_class};
-use crate::rules::rector_batch5::has_attribute;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::facts::facts;
 use crate::rules::types::{ClassScope, class_scope};
 use crate::syntax::node_span;

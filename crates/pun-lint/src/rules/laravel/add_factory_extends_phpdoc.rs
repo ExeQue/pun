@@ -7,9 +7,9 @@ use pun_problem::{Edit, Safety, Span};
 use super::is_a;
 use super::names::resolve_class_name;
 use super::prefer_validation_rule_array::document_value;
-use crate::rules::class_method::qualified;
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_conditions::indentation;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::conditions::indentation;
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

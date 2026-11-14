@@ -11,8 +11,8 @@ use super::facts::{Facts, facts};
 use super::names::resolve_class_name;
 use super::rector_type::{RectorType, get_type};
 use super::{ClassScope, class_scope};
-use crate::rules::rector_batch5::called_function_name;
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
+use crate::rules::support::names::called_function_name;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

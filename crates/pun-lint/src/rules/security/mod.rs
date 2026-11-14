@@ -1,0 +1,10 @@
+pub(super) mod no_debug_calls;
+pub(super) mod no_eval;
+pub(super) mod no_ffi;
+pub(super) mod no_global;
+pub(super) mod no_insecure_comparison;
+pub(super) mod no_literal_password;
+pub(super) mod no_request_variable;
+pub(super) mod no_tainted_data;
+pub(super) mod require_preg_quote_delimiter;
+pub(super) mod restricted;

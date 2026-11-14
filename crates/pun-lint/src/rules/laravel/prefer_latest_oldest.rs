@@ -5,6 +5,7 @@ use mago_syntax::cst::{
     Literal, Node, NodeKind, Variable,
 };
 use pun_problem::{Edit, Safety, Span};
+use pun_tokens::php_compat::float_to_string;
 use pun_tokens::php_compat::fnmatch;
 
 use super::object_type::{
@@ -12,11 +13,10 @@ use super::object_type::{
 };
 use super::print::reprinted_call;
 use super::{is_name, member_name};
-use crate::rules::rector_batch5::{Value, value};
+use crate::rules::support::values::{Value, value};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
-use pun_tokens::php_compat::float_to_string;
 
 pub struct PreferLatestOldest {
     pub allowed_patterns: Vec<String>,

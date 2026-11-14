@@ -2,8 +2,8 @@ use mago_syntax::cst::{ClassLikeMember, Hint, Method, MethodBody, Modifier, Node
 use pun_problem::{Edit, Span};
 
 use super::property_attribute::{ClassView, MODEL, report};
-use crate::rules::rector_batch5::{has_attribute, resolve_class_name};
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::names::{has_attribute, resolve_class_name};
+use crate::rules::support::statement_edits::line_indent;
 use crate::rules::types::compare::mapper::flatten;
 use crate::rules::types::facts::facts;
 use crate::rules::types::{class_scope, has_parent_class_method};

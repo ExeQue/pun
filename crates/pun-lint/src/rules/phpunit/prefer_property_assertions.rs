@@ -7,8 +7,8 @@ use pun_problem::{Edit, Safety, Span};
 
 use super::print_float;
 use super::{AnyCall, is_in_test_class};
-use crate::rules::rector_batch5::{Value, value};
-use crate::rules::rector_stmts::{Frame, enclosing, line_indent};
+use crate::rules::support::statement_edits::{Frame, enclosing, line_indent};
+use crate::rules::support::values::{Value, value};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

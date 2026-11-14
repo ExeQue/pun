@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{argument_texts, call, class_name, is_a, replace};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

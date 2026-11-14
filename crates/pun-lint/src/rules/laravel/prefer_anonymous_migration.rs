@@ -1,6 +1,6 @@
 use mago_syntax::cst::{Node, NodeKind};
 
-use crate::rules::lint_b_names::resolve_class;
+use crate::rules::support::names::resolve_class;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

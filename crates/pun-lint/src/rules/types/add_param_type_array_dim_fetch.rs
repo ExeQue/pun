@@ -9,19 +9,19 @@ use mago_syntax::cst::{
     FunctionLikeParameterList, Instantiation, MethodBody, Modifier, Node, NodeKind,
     UnaryPrefixOperator, Variable,
 };
+use pun_problem::{Safety, Span};
 
 use super::add_param_type_method_call::walk;
 use super::class_scope;
 use super::facts::{Facts, facts};
 use super::has_parent_class_method;
 use super::param::{Flow, add_hint, traverse};
-use crate::rules::class_method::type_of;
-use crate::rules::lint_b_helpers::value;
 use crate::rules::phpunit::string_value;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::class_members::type_of;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
-use pun_problem::{Safety, Span};
 
 pub struct AddParamTypeArrayDimFetch;
 
@@ -65,7 +65,7 @@ impl Rule for AddParamTypeArrayDimFetch {
         {
             return;
         }
-        let doc = crate::rules::lint_b_doc::Doc::of(ctx, ancestors, node_span(&node).start);
+        let doc = crate::rules::support::docblocks::Doc::of(ctx, ancestors, node_span(&node).start);
         let passed = matches!(node, Node::Closure(_))
             && ancestors
                 .iter()

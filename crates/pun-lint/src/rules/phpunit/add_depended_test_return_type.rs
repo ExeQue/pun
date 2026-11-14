@@ -2,7 +2,9 @@ use mago_syntax::cst::{ClassLikeMember, Method, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_body, is_in_test_class, is_public};
-use crate::rules::rector_batch5::{doc_comment, has_attribute, member_from};
+use crate::rules::support::class_members::member_from;
+use crate::rules::support::docblocks::doc_comment;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::declare::{return_declaration, union_order};
 use crate::rules::types::facts::facts;
 use crate::rules::types::silent_void::Place;

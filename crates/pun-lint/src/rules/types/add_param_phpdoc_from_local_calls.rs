@@ -9,11 +9,11 @@ use pun_phpstan::types::{Type, mixed, union};
 use super::docblock::{class_name, docs_report, is_array_hint, methods};
 use super::facts::facts;
 use super::names::resolve_class_name;
-use crate::rules::phpdoc_writer::type_mapper::{
+use crate::rules::support::phpdoc_writer::type_mapper::{
     const_array_item_type, const_array_key_type, create_mixed_passed_or_union_type, is_mixed,
     is_useful_array_tag,
 };
-use crate::rules::phpdoc_writer::{DocTarget, decorate_param, expr_type};
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_param, expr_type};
 use crate::syntax::is_this;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};

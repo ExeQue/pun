@@ -8,16 +8,16 @@ use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::{TEST_CASE, class_parents, is_in_test_class, resolve};
-use crate::rules::class_method::{ClassInfo, class_info, is_class_method_used, walk};
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::lint_b_names::resolve_class_at;
-use crate::rules::php_parser::{Token, tokens};
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_code_quality::{needs_parens, prec};
-use crate::rules::rector_conditions::{comments_between, indentation, print_comments, reprint};
-use crate::rules::rector_stmts::{
+use crate::rules::support::class_members::{ClassInfo, class_info, is_class_method_used, walk};
+use crate::rules::support::conditions::{comments_between, indentation, print_comments, reprint};
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::expressions::{needs_parens, prec};
+use crate::rules::support::names::resolve_class_at;
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{
     List, block_list, first_comment, line_indent, previous_token_end,
 };
+use crate::rules::support::statements::{Token, tokens};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

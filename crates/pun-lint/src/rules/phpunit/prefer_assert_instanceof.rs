@@ -5,7 +5,7 @@ use super::{
     AnyCall, NewArg, expr_name, expr_text, is_test_case_call_named, old_args, renamed, resolve,
     rewrite_args, text,
 };
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 

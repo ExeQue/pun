@@ -6,11 +6,11 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
 
-use super::super::class_method::qualified;
 use super::super::types::facts::facts;
 use super::{
     assert_class, assert_method, is_class, is_object_type, items, object, object_class_name, string,
 };
+use crate::rules::support::class_members::qualified;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -46,7 +46,7 @@ fn is_enum_case_of(
     let Expression::Identifier(id) = fetch.class else {
         return false;
     };
-    let name = super::super::rector_batch5::resolve_class_name(ancestors, id);
+    let name = crate::rules::support::names::resolve_class_name(ancestors, id);
     facts(ctx)
         .codebase
         .get_class_like(name.as_bytes())

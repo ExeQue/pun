@@ -8,7 +8,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
-use crate::rules::rector_stmts::{
+use crate::rules::support::statement_edits::{
     List, assign, block_list, body_list, expression, first_comment, holder_list, line_indent,
 };
 use crate::rules::types::facts::facts;

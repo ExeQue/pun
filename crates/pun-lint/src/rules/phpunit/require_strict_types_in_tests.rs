@@ -2,8 +2,8 @@ use mago_syntax::cst::{Namespace, NamespaceBody, Node, NodeKind, Sequence, State
 use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
-use crate::rules::lint_b_helpers::contains_html;
-use crate::rules::rector_stmts::{open_list, printed, tokens, trailing_comment};
+use crate::rules::support::statement_edits::contains_html;
+use crate::rules::support::statement_edits::{open_list, printed, tokens, trailing_comment};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

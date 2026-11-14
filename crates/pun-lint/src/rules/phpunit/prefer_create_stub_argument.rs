@@ -9,7 +9,7 @@ use super::prefer_create_stub_expression::{
     is_super_type_of_mock_object, is_test_class_method, is_used_for_mocking,
 };
 use super::{AnyCall, is_in_test_class, object_class, own_class, resolve};
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};

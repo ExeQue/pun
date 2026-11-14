@@ -2,7 +2,7 @@ use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 
 use super::{AnyCall, is_test_case_call_named, remove_first_arg};
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::{Context, Report, Rule};
 
 pub struct PreferAssertTrueFalse;

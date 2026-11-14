@@ -1,0 +1,77 @@
+use mago_syntax::cst::{Node, NodeKind, Statement};
+use pun_problem::{Edit, Fix, Safety, Span};
+
+use crate::rules::support::statement_edits::{HOLDERS, holder_list};
+use crate::rules::support::statement_edits::{contains_html, lines_between};
+use crate::syntax::node_span;
+use crate::{Context, Report, Rule};
+
+pub struct RequireStatementPadding;
+
+impl Rule for RequireStatementPadding {
+    fn id(&self) -> &'static str {
+        "lint/style/require-statement-padding"
+    }
+
+    fn targets(&self) -> Option<&'static [NodeKind]> {
+        Some(HOLDERS)
+    }
+
+    fn visit<'ast, 'arena>(
+        &self,
+        node: Node<'ast, 'arena>,
+        ancestors: &[Node<'ast, 'arena>],
+        ctx: &Context<'_>,
+        out: &mut Vec<Report>,
+    ) {
+        let Some(list) = holder_list(ctx.source, node, ancestors) else {
+            return;
+        };
+        let mut edits = Vec::new();
+        for (key, stmt) in list.stmts.iter().enumerate() {
+            if !matches!(
+                stmt,
+                Statement::Function(_)
+                    | Statement::Class(_)
+                    | Statement::Trait(_)
+                    | Statement::Interface(_)
+                    | Statement::If(_)
+                    | Statement::Foreach(_)
+                    | Statement::DoWhile(_)
+                    | Statement::While(_)
+                    | Statement::For(_)
+                    | Statement::Try(_)
+                    | Statement::Switch(_)
+            ) {
+                continue;
+            }
+            let next = match list.stmts.get(key + 1) {
+                Some(_) => list.with_comments(ctx, key + 1).start,
+                None => match list.nop_span(ctx.source) {
+                    Some(nop) => nop.start,
+                    None => continue,
+                },
+            };
+            let end = node_span(*stmt).end;
+            if lines_between(ctx.source, end, next) != 1 {
+                continue;
+            }
+            edits.push(Edit::new(Span::new(end, end), "\n"));
+        }
+        let Some(first) = edits.first().map(|e| e.span) else {
+            return;
+        };
+        if contains_html(node, ancestors) {
+            return;
+        }
+        out.push(Report {
+            span: first,
+            message: "Add a blank line after the statement.".to_string(),
+            help: None,
+            fix: Some(Fix {
+                safety: Safety::Safe,
+                edits,
+            }),
+        });
+    }
+}

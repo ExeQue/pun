@@ -2,7 +2,7 @@ use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{Kind, assert_function, called, int, is_name, items, name_of, object, string};
-use crate::rules::rector_batch5::list_removal;
+use crate::rules::support::rewrites::list_removal;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

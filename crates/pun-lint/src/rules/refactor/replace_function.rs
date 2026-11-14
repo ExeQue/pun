@@ -6,7 +6,7 @@ use super::{
     string_map,
 };
 use crate::rules::phpunit::maybe_multiline;
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
