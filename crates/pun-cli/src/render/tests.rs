@@ -1,5 +1,5 @@
 //! The renderer against output.md §1's samples, copied from the plan by hand, with and without colour. Colour codes
-//! are written out from design/tokens.json by hand (`#FF7AB8` is `255;122;184`).
+//! are written out from docs/design/tokens.json by hand (`#FF7AB8` is `255;122;184`).
 
 use super::*;
 use pun_problem::{Edit, Fix, Span};

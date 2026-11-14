@@ -35,4 +35,4 @@ Pun would not be possible without [Mago](https://github.com/carthage-software/ma
 
 ## License
 
-Pun is open-sourced software licensed under the [MIT license](LICENSE). The licences of ported code are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Pun is open-sourced software licensed under the [MIT license](LICENSE). The licences of ported code are in [licenses/THIRD_PARTY_NOTICES.md](licenses/THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [licenses/THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).

@@ -1,8 +1,8 @@
 # Third-party notices
 
-Pun's own code is licensed under the MIT license in `LICENSE`. Pun also ports code, links libraries and copies test
-data from the projects below; their notices follow. The Rust crates in the `pun` binary and their license texts are in
-`THIRD_PARTY_LICENSES.md`.
+Pun's own code is licensed under the MIT license in the repository's `LICENSE`. Pun also ports code, links libraries
+and copies test data from the projects below; their notices follow. The Rust crates in the `pun` binary and their
+license texts are in `THIRD_PARTY_LICENSES.md`.
 
 ## Zend Engine
 

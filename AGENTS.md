@@ -173,7 +173,7 @@ The only author is Pushpak Chhajed <pushpak1300@gmail.com>. Do not add `Co-autho
 
 - `docs/content/docs/*.mdx`: the pages.
 - `docs/pages/index.astro`: the homepage.
-- `docs/theme.css`: the brand tokens. They mirror `design/tokens.json`.
+- `docs/theme.css`: the brand tokens. They mirror `docs/design/tokens.json`.
 - Internal notes (plan, decisions, tasks, reference) live in `context/`, not `docs/`.
 
 When a change alters a flag, a rule, or behavior, update the matching page under `docs/content/docs/`. The `blume` and `blume-update-docs` skills in `.claude/skills/` cover the tooling.

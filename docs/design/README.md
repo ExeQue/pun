@@ -4,7 +4,7 @@ Pun is one fast Rust binary for the whole PHP toolchain: `pun format`, `pun lint
 
 The brand is **Sticker Pop**: cream paper, pastel fills, thick ink outlines, and hard offset shadows, like a laptop lid covered in stickers. The surface is loud and cheeky. Underneath, every claim is a number that the repo can reproduce.
 
-![The Pun mascot](../docs/public/mascot-512.png)
+![The Pun mascot](../public/mascot-512.png)
 
 ## Voice
 
