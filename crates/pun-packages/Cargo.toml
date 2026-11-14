@@ -10,7 +10,6 @@ publish.workspace = true
 name = "pun_packages"
 
 [dependencies]
-anyhow.workspace = true
 libc.workspace = true
 md-5.workspace = true
 pcre2.workspace = true

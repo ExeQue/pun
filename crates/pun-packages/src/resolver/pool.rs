@@ -1,8 +1,8 @@
 use super::filters::{Advisory, Filters, ListEntry};
 use super::package::{Origin, Package, alias_package, load};
 use crate::constraint::{Bound, Constraint, Op};
+use crate::error::{Result, bail};
 use crate::version::{is_platform, name_matches};
-use anyhow::Result;
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 use std::cell::RefCell;
@@ -189,17 +189,17 @@ pub fn filtered<'a>(
                     .map(str::to_ascii_lowercase)
                     .collect(),
             )),
-            Some(_) => anyhow::bail!("\"{key}\" key for repository should be an array"),
+            Some(_) => bail!("\"{key}\" key for repository should be an array"),
         }
     };
     let (only, exclude) = (names("only")?, names("exclude")?);
     if only.is_some() && exclude.is_some() {
-        anyhow::bail!("Only one of \"only\" and \"exclude\" can be specified for a repository");
+        bail!("Only one of \"only\" and \"exclude\" can be specified for a repository");
     }
     let canonical = match config.get("canonical") {
         None => true,
         Some(Value::Bool(b)) => *b,
-        Some(_) => anyhow::bail!("\"canonical\" key for repository should be a boolean"),
+        Some(_) => bail!("\"canonical\" key for repository should be a boolean"),
     };
     if only.is_none() && exclude.is_none() && canonical {
         return Ok(inner);

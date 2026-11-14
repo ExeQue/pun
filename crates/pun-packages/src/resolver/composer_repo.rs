@@ -2,9 +2,9 @@ use super::filters::{Advisory, ListEntry};
 use super::package::{Origin, Package, load, stability_value};
 use super::pool::{Found, Loaded, Repository, Stabilities};
 use crate::constraint::Constraint;
+use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetched, Fetcher};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
-use anyhow::{Context, Result, bail};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -571,7 +571,7 @@ mod tests {
             let php = json!({"name": "php", "version": "8.5.0"});
             let platform = vec![php.as_object().unwrap().clone()];
             let resolved = resolve(manifest, platform, repositories, None, &options)?;
-            let resolution = resolved.map_err(|_| anyhow::anyhow!("no solution"))?;
+            let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };
         run().map_err(|e| format!("{e:#}"))

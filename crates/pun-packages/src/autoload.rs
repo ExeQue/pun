@@ -1,10 +1,10 @@
 use crate::classmap::{ClassMap, Job, Rule};
 use crate::constraint::{Bound, lower_bound};
+use crate::error::Result;
 use crate::installed::Installed;
 use crate::paths::{normalize, shortest, shortest_code};
 use crate::php::{Key, Php, export_str, md5, strtr, var_export};
 use crate::version::name_matches;
-use anyhow::Result;
 use pcre2::bytes::Regex;
 use pun_tokens::php_compat::{preg_quote, strnatcasecmp};
 use serde_json::{Map, Value};

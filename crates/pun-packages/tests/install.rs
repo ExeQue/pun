@@ -23,7 +23,7 @@ fn copy(from: &Path, to: &Path) {
     }
 }
 
-fn try_run(dir: &Path, lock: &Lock, o: &Options) -> anyhow::Result<Report> {
+fn try_run(dir: &Path, lock: &Lock, o: &Options) -> pun_packages::error::Result<Report> {
     let manifest: Map<String, Value> =
         serde_json::from_str(&std::fs::read_to_string(dir.join("composer.json")).unwrap()).unwrap();
     let fetcher = Fetcher::new(Some(dir.join("cache")), Auth::default(), true);

@@ -1,7 +1,7 @@
 use super::package::{Origin, Package};
 use crate::constraint::{self, Constraint};
+use crate::error::{Error, Result, bail};
 use crate::version::name_matches;
-use anyhow::{Result, bail};
 use serde_json::{Map, Value};
 
 #[derive(Debug, Clone)]
@@ -361,9 +361,9 @@ impl Filters {
             let mut period = duration(c.and_then(|c| c.get("period")))?;
             if let Some(p) = &env_period {
                 period = duration(Some(&Value::String(p.clone()))).map_err(|_| {
-                    anyhow::anyhow!(
+                    Error::msg(format!(
                         "Invalid value for COMPOSER_POLICY_COOLDOWN_PERIOD: {p}. Use formats like '7 days', '24 hours', or an integer number of seconds."
-                    )
+                    ))
                 })?;
             }
             let block = env_bool(env, "COMPOSER_POLICY_COOLDOWN_BLOCK")?.unwrap_or_else(|| {

@@ -11,9 +11,9 @@ pub mod repos;
 pub mod solver;
 
 use crate::constraint::{self, Constraint};
+use crate::error::{Result, bail};
 use crate::lock::Lock;
 use crate::version::{ALIAS, group, is_platform, normalize, stability_of};
-use anyhow::{Result, bail};
 use indexmap::IndexMap;
 use package::{Origin, Package, load, stability_value};
 use pcre2::bytes::Regex;

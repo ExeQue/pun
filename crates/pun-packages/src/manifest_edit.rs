@@ -1,5 +1,5 @@
+use crate::error::{Context, Result, bail};
 use crate::version::is_platform;
-use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use pun_config::toml_text;
 use pun_tokens::php_compat::strnatcmp;

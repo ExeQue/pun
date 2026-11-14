@@ -1,6 +1,6 @@
 use crate::constraint::{self, Constraint};
+use crate::error::{Context, Result, bail};
 use crate::version::{branch_alias, normalize, stability_of};
-use anyhow::{Context, Result};
 use serde_json::{Map, Value};
 use std::sync::Arc;
 
@@ -136,7 +136,7 @@ pub fn load(
     let pretty_version = match data.get("version") {
         Some(Value::String(s)) => s.clone(),
         Some(Value::Number(n)) => n.to_string(),
-        _ => anyhow::bail!("Package {pretty_name} has no version defined."),
+        _ => bail!("Package {pretty_name} has no version defined."),
     };
     let version = match data.get("version_normalized").and_then(Value::as_str) {
         Some(v) if v != "9999999-dev" => v.to_string(),

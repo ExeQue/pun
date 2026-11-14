@@ -3,7 +3,7 @@
     reason = "each script is echoed before it runs, as Composer echoes it"
 )]
 
-use anyhow::{Context, Result, bail};
+use crate::error::{Context, Result, bail};
 use serde_json::{Map, Value};
 use std::path::Path;
 use std::process::Command;

@@ -1,9 +1,9 @@
 use super::composer_repo::{ComposerRepository, PACKAGIST};
 use super::pool::{ArrayRepository, Repository, filtered};
+use crate::error::{Context, Error, Result, bail};
 use crate::fetch::Fetcher;
 use crate::installed::{git_version, root_version_from_env};
 use crate::php::{Key, serialize, sha1};
-use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -213,7 +213,8 @@ pub fn path_packages(
         let json = match std::fs::read_to_string(&file) {
             Ok(json) => json,
             Err(_) => {
-                let Some(m) = pun_config::manifest::read(&path)? else {
+                let Some(m) = pun_config::manifest::read(&path).map_err(|e| Error::foreign(&*e))?
+                else {
                     continue;
                 };
                 Value::Object(m.json).to_string()

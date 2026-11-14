@@ -1,5 +1,5 @@
+use crate::error::{Context, Error, Result, bail};
 use crate::php::sha1;
-use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -360,7 +360,7 @@ impl Fetcher {
                     if !(status == 429 || status >= 500) {
                         bail!("HTTP {status} from {url}");
                     }
-                    anyhow::anyhow!("HTTP {status} from {url}")
+                    Error::msg(format!("HTTP {status} from {url}"))
                 }
                 Err(e) => e.into(),
             };
@@ -390,7 +390,7 @@ impl Fetcher {
                     if !(status == 429 || status >= 500) {
                         bail!("HTTP {status}");
                     }
-                    anyhow::anyhow!("HTTP {status}")
+                    Error::msg(format!("HTTP {status}"))
                 }
                 Err(e) => e.into(),
             };

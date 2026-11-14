@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::error::{Error, Result, bail};
 use pcre2::bytes::{Regex, RegexBuilder};
 use pun_tokens::{Kind, tokenize};
 use rayon::prelude::*;
@@ -357,14 +357,12 @@ impl ClassMap {
             })
             .collect();
         for (job, files) in jobs.iter().zip(&listed) {
-            let files = files.as_ref().map_err(|e| anyhow::anyhow!("{e}"))?;
+            let files = files.as_ref().map_err(Error::msg)?;
             for (path, real) in files {
                 if self.scanned.contains(real) {
                     continue;
                 }
-                let mut classes = parsed[unique[real.as_path()]]
-                    .clone()
-                    .map_err(anyhow::Error::msg)?;
+                let mut classes = parsed[unique[real.as_path()]].clone().map_err(Error::msg)?;
                 if job.rule == Rule::Classmap {
                     self.scanned.insert(real.clone());
                 } else {
@@ -448,7 +446,7 @@ fn list(job: &Job) -> Result<Vec<(String, PathBuf)>> {
     match std::fs::canonicalize(dir) {
         Ok(real) if dir.is_file() => files.push((job.dir.clone(), real)),
         Ok(real) if dir.is_dir() => walk(&job.dir, &real, &mut files),
-        _ => anyhow::bail!(
+        _ => bail!(
             "Could not scan for classes inside \"{}\" which does not appear to be a file nor a folder",
             job.given
         ),

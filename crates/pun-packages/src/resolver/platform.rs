@@ -1,5 +1,5 @@
+use crate::error::{Context, Result, bail};
 use crate::version::normalize;
-use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value, json};
 use std::process::Command;

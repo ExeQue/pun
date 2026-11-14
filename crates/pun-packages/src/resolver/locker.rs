@@ -1,6 +1,7 @@
 use super::package::Package;
 use super::platform::PLUGIN_API;
 use super::{Options, Resolution};
+use crate::error::Result;
 use crate::lock::{Lock, content_hash};
 use crate::version::is_platform;
 use pcre2::bytes::Regex;
@@ -368,7 +369,7 @@ pub fn update_hash(
     lock: &mut Lock,
     manifest: &Map<String, Value>,
     picked: &[(String, String)],
-) -> anyhow::Result<()> {
+) -> Result<()> {
     lock.content_hash = content_hash(manifest);
     let minimum = super::package::stability_value(
         manifest

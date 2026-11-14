@@ -2,6 +2,7 @@ pub mod autoload;
 pub mod bins;
 pub mod classmap;
 pub mod constraint;
+pub mod error;
 pub mod fetch;
 pub mod install;
 pub mod installed;

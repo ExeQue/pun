@@ -1,7 +1,7 @@
+use crate::error::Result;
 use crate::paths::shortest;
 use crate::php::{export_str, json_pretty};
 use crate::version::{branch_alias, is_platform, normalize, normalize_branch};
-use anyhow::Result;
 use pcre2::bytes::Regex;
 use pun_tokens::php_compat::strnatcmp;
 use serde_json::{Map, Value};

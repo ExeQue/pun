@@ -1,12 +1,12 @@
 use crate::autoload::{self, PlatformCheck};
 use crate::bins;
+use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetcher, link_path, remove, unpack};
 use crate::installed::{Installed, installed_json, installed_php, read_installed, root};
 use crate::lock::{Lock, content_hash};
 use crate::paths::normalize;
 use crate::plugins;
 use crate::version::is_platform;
-use anyhow::{Context, Result, bail};
 use pcre2::bytes::Regex;
 use rayon::prelude::*;
 use serde_json::{Map, Value};

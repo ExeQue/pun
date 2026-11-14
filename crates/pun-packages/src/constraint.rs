@@ -1,5 +1,5 @@
+use crate::error::{Result, bail};
 use crate::version::{ALIAS, MODIFIER, compare, group, normalize, re, stability_of};
-use anyhow::{Result, bail};
 use pcre2::bytes::{Captures, Regex};
 use std::borrow::Cow;
 use std::cell::RefCell;

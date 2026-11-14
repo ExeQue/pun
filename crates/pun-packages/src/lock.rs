@@ -1,5 +1,5 @@
+use crate::error::{Context, Result, bail};
 use crate::php::json_compact;
-use anyhow::{Context, Result, bail};
 use pun_config::toml_text;
 use serde_json::{Map, Value};
 use std::fmt::Write;
@@ -358,7 +358,10 @@ mod tests {
             err.to_string(),
             format!("invalid {}", d.join("pun.lock").display())
         );
-        assert_eq!(err.root_cause().to_string(), "pun.lock has no content-hash");
+        assert_eq!(
+            std::error::Error::source(&err).unwrap().to_string(),
+            "pun.lock has no content-hash"
+        );
         std::fs::remove_file(d.join("pun.lock")).unwrap();
         std::fs::create_dir(d.join("pun.lock")).unwrap();
         let err = Lock::read(&d).unwrap_err().to_string();
