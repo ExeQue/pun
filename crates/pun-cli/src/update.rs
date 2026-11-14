@@ -7,7 +7,7 @@ use pun_packages::manifest_edit::{name_version_pairs, toml_remove, toml_set};
 use pun_packages::resolver::pool::Transitive;
 use pun_packages::resolver::{self, Options, Resolution, explain, locker, platform, repos};
 use pun_packages::scripts::Runner;
-use pun_packages::version::{compare, is_platform, name_matches, normalize};
+use pun_packages::version::{IgnorePlatform, compare, is_platform, name_matches, normalize};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -154,8 +154,10 @@ fn pre_update(project: &Project, a: &InstallArgs, plan: &Plan) -> Result<()> {
 }
 
 fn dispatch(project: &Project, a: &InstallArgs, event: &str) -> Result<()> {
-    let (vendor, bin_dir) =
-        pun_packages::install::dirs(&project.root.to_string_lossy(), &project.manifest);
+    let pun_packages::install::Dirs {
+        vendor,
+        bin: bin_dir,
+    } = pun_packages::install::dirs(&project.root.to_string_lossy(), &project.manifest);
     Runner::new(
         &project.root,
         &vendor,
@@ -196,8 +198,7 @@ fn resolve(
         prefer_stable: r.prefer_stable,
         prefer_lowest: r.prefer_lowest,
         minimal_changes: r.minimal_changes,
-        ignore_platform: a.ignore_platform_req.clone(),
-        ignore_all_platform: a.ignore_platform_reqs,
+        ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
     let php = std::env::var("PHP_BINARY")
         .ok()

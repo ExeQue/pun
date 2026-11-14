@@ -14,7 +14,7 @@ use crate::Env;
 use crate::constraint::{self, AND, Constraint, OR, split};
 use crate::error::{Result, bail};
 use crate::lock::Lock;
-use crate::version::{ALIAS, group, is_platform, normalize, stability_of};
+use crate::version::{ALIAS, IgnorePlatform, group, is_platform, normalize, stability_of};
 use indexmap::IndexMap;
 use package::{Origin, Package, load, stability_value};
 use pcre2::bytes::Regex;
@@ -34,8 +34,7 @@ pub struct Options {
     pub prefer_stable: bool,
     pub prefer_lowest: bool,
     pub minimal_changes: bool,
-    pub ignore_platform: Vec<String>,
-    pub ignore_all_platform: bool,
+    pub ignore_platform: IgnorePlatform,
 }
 
 pub struct Resolution {
@@ -151,14 +150,7 @@ fn links(manifest: &Map<String, Value>, kind: &str) -> Vec<(String, String)> {
 }
 
 fn ignored_by(options: &Options) -> impl Fn(&str) -> bool + '_ {
-    move |name: &str| {
-        is_platform(name)
-            && (options.ignore_all_platform
-                || options
-                    .ignore_platform
-                    .iter()
-                    .any(|p| crate::version::name_matches(p, name)))
-    }
+    move |name: &str| is_platform(name) && options.ignore_platform.ignores(name)
 }
 
 pub fn resolve(
@@ -238,7 +230,7 @@ pub fn resolve(
         let mut lock = vec![];
         let mut by_name: HashMap<String, usize> = HashMap::new();
         for data in locked.all() {
-            for p in load(data.clone(), Origin::Locked, &mut arena)? {
+            for p in load(data.0.clone(), Origin::Locked, &mut arena)? {
                 by_name.insert(arena[p].name.clone(), arena[p].alias_of.unwrap_or(p));
                 lock.push(p);
             }
@@ -562,7 +554,7 @@ mod tests {
         );
         let m = json!({"require": {"ext-absent": "*", "a/a": "^1.0"}, "require-dev": {"b/b": "*"}, "repositories": versions()});
         let ignore = Options {
-            ignore_platform: vec!["ext-absent".into()],
+            ignore_platform: IgnorePlatform::Listed(vec!["ext-absent".into()]),
             ..Options::default()
         };
         assert_eq!(

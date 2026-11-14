@@ -12,7 +12,7 @@ use pun_packages::resolver::pool::{
 };
 use pun_packages::resolver::repos::path_packages;
 use pun_packages::resolver::{Options, locker, resolve};
-use pun_packages::version::normalize;
+use pun_packages::version::{IgnorePlatform, normalize};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 
@@ -25,10 +25,11 @@ fn options(args: &[Value]) -> Options {
             "--minimal-changes" => o.minimal_changes = true,
             "--prefer-lowest" => o.prefer_lowest = true,
             "--prefer-stable" => o.prefer_stable = true,
-            "--ignore-platform-reqs" => o.ignore_all_platform = true,
+            "--ignore-platform-reqs" => o.ignore_platform = IgnorePlatform::All,
             _ if a.starts_with("--ignore-platform-req=") => {
-                o.ignore_platform
-                    .push(a["--ignore-platform-req=".len()..].to_string());
+                if let IgnorePlatform::Listed(listed) = &mut o.ignore_platform {
+                    listed.push(a["--ignore-platform-req=".len()..].to_string());
+                }
             }
             _ if a.starts_with('-') => {}
             name => o.allow_list.push(name.to_string()),

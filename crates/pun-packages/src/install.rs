@@ -1,44 +1,62 @@
 use crate::Env;
-use crate::autoload::{self, PlatformCheck};
+use crate::autoload::{self, Apcu, PlatformCheck, Scan};
 use crate::bins;
 use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetcher, link_path, remove, unpack};
 use crate::installed::{Installed, installed_json, installed_php, read_installed, root};
-use crate::lock::{Lock, content_hash};
+use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::paths::normalize;
 use crate::plugins;
-use crate::version::is_platform;
+use crate::version::{IgnorePlatform, is_platform};
 use pcre2::bytes::Regex;
 use rayon::prelude::*;
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Default)]
 pub struct Options {
     pub no_dev: bool,
-    pub optimize: bool,
-    pub authoritative: bool,
-    pub apcu: bool,
-    pub apcu_prefix: Option<String>,
+    pub scan: Scan,
+    pub apcu: Apcu,
     pub no_autoloader: bool,
     pub no_plugins: bool,
-    pub ignore_platform: Vec<String>,
-    pub ignore_all_platform: bool,
+    pub ignore_platform: IgnorePlatform,
+}
+
+/// A package the install added.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Added {
+    pub name: String,
+    pub version: String,
+}
+
+/// A package the install replaced with another version or commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Updated {
+    pub name: String,
+    pub from: String,
+    pub to: String,
 }
 
 #[derive(Debug, Default)]
 pub struct Report {
-    pub installed: Vec<(String, String)>,
-    pub updated: Vec<(String, String, String)>,
+    pub installed: Vec<Added>,
+    pub updated: Vec<Updated>,
     pub removed: Vec<String>,
     pub kept: usize,
     pub cached: usize,
     pub classes: usize,
     pub stale_lock: bool,
     pub warnings: Vec<String>,
+}
+
+/// The directories packages and their binaries go in, from `vendor-dir` and `bin-dir`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Dirs {
     pub vendor: String,
-    pub bin_dir: String,
+    pub bin: String,
 }
 
 fn config_str<'a>(config: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
@@ -58,40 +76,22 @@ fn config_path(base: &str, value: &str, vendor: &str) -> String {
     })
 }
 
-pub fn dirs(base: &str, manifest: &Map<String, Value>) -> (String, String) {
+pub fn dirs(base: &str, manifest: &Map<String, Value>) -> Dirs {
     let config = manifest.get("config").and_then(Value::as_object);
     let get = |k: &str| config.and_then(|c| config_str(c, k));
     let vendor = config_path(base, get("vendor-dir").unwrap_or("vendor"), "");
-    let bin_dir = config_path(base, get("bin-dir").unwrap_or("{$vendor-dir}/bin"), &vendor);
-    (vendor, bin_dir)
+    let bin = config_path(base, get("bin-dir").unwrap_or("{$vendor-dir}/bin"), &vendor);
+    Dirs { vendor, bin }
 }
 
-fn previous(vendor: &Path) -> Result<HashMap<String, Map<String, Value>>> {
-    Ok((read_installed(vendor)?.into_iter())
-        .filter_map(|p| Some((p.get("name")?.as_str()?.to_ascii_lowercase(), p)))
-        .collect())
-}
-
-fn version(p: &Map<String, Value>) -> String {
-    p.get("version")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string()
-}
-
-fn reference(p: &Map<String, Value>) -> Option<String> {
-    let get = |k: &str| {
-        p.get(k)?
-            .get("reference")?
-            .as_str()
-            .filter(|r| !r.is_empty())
-            .map(String::from)
-    };
-    if p.contains_key("dist") {
-        get("dist").or_else(|| get("source"))
-    } else {
-        get("source")
-    }
+/// The project `install` works on.
+struct Project<'a> {
+    /// The directory resolved.
+    dir: PathBuf,
+    /// `dir` as the generated PHP files spell it.
+    dir_str: String,
+    manifest: &'a Map<String, Value>,
+    dirs: Dirs,
 }
 
 pub fn install(
@@ -103,107 +103,146 @@ pub fn install(
     env: Env,
     events: &mut dyn FnMut(&str) -> Result<()>,
 ) -> Result<Report> {
-    let base_dir =
+    let dir =
         std::fs::canonicalize(base).with_context(|| format!("can't open {}", base.display()))?;
-    let base_str = base_dir.to_string_lossy().into_owned();
-    let config = manifest
-        .get("config")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
-    let (vendor, bin_dir) = dirs(&base_str, manifest);
+    let dir_str = dir.to_string_lossy().into_owned();
+    let project = Project {
+        dirs: dirs(&dir_str, manifest),
+        dir,
+        dir_str,
+        manifest,
+    };
     let mut report = Report {
-        vendor: vendor.clone(),
-        bin_dir: bin_dir.clone(),
         stale_lock: content_hash(manifest) != lock.content_hash,
         ..Report::default()
     };
+    let mut packages = locked_packages(lock, &project.dirs.vendor, o.no_dev)?;
+    let before = previous(Path::new(&project.dirs.vendor))?;
+    let todo = compare(&packages, &before, &mut report);
+    remove_stale(&before, &packages, &todo, &project.dirs, &mut report)?;
+    download(fetcher, &packages, &todo, base, env, &mut report)?;
+    write_repository(&project, &packages, !o.no_dev, env)?;
+    link_bins(&packages, &project.dirs, &mut report)?;
+    packages.sort_by_key(Installed::name);
+    if !o.no_autoloader {
+        dump_autoloader(&project, lock, &packages, o, events, &mut report)?;
+    }
+    Ok(report)
+}
 
-    let mut packages: Vec<Installed> = (lock.packages.iter().map(|p| (p, false)))
-        .chain(
-            lock.packages_dev
-                .iter()
-                .filter(|_| !o.no_dev)
-                .map(|p| (p, true)),
-        )
-        .map(|(p, dev)| {
-            let name = p
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_ascii_lowercase();
-            let meta = p.get("type").and_then(Value::as_str) == Some("metapackage");
-            Installed {
-                package: p.clone(),
-                path: (!meta).then(|| format!("{vendor}/{name}")),
-                dev,
-            }
-        })
-        .collect();
-    static NAME: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+/// The lock's packages, and the dev ones unless `no_dev`, each with the directory it installs in.
+fn locked_packages(lock: &Lock, vendor: &str, no_dev: bool) -> Result<Vec<Installed>> {
+    static NAME: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"^[a-z0-9](?:[_.-]?[a-z0-9]++)*+/[a-z0-9](?:(?:[_.]|-{1,2})?[a-z0-9]++)*+$")
             .unwrap()
     });
+    let packages: Vec<Installed> = (lock.packages.iter().map(|p| (p, false)))
+        .chain(
+            lock.packages_dev
+                .iter()
+                .filter(|_| !no_dev)
+                .map(|p| (p, true)),
+        )
+        .map(|(p, dev)| Installed {
+            package: p.clone(),
+            path: (p.kind() != Some("metapackage")).then(|| format!("{vendor}/{}", p.name())),
+            dev,
+        })
+        .collect();
     for p in &packages {
         let name = p.name();
         if !NAME.is_match(name.as_bytes())? {
             bail!("pun.lock has a package named `{name}`, which is not a valid package name");
         }
     }
+    Ok(packages)
+}
 
-    let vendor_path = Path::new(&vendor);
-    let before = previous(vendor_path)?;
-    let mut todo: Vec<usize> = vec![];
+/// The packages vendor/composer/installed.json lists, by lowercase name.
+fn previous(vendor: &Path) -> Result<HashMap<String, LockedPackage>> {
+    Ok((read_installed(vendor)?.into_iter())
+        .filter(|p| p.get("name").is_some_and(Value::is_string))
+        .map(|p| (p.name(), p))
+        .collect())
+}
+
+/// Counts each package as kept, updated or added; the indexes of the ones to place.
+fn compare(
+    packages: &[Installed],
+    before: &HashMap<String, LockedPackage>,
+    report: &mut Report,
+) -> Vec<usize> {
+    let mut todo = vec![];
     for (i, p) in packages.iter().enumerate() {
         let name = p.name();
-        let old = before.get(&name);
         let present = p.path.as_ref().is_none_or(|path| Path::new(path).exists());
-        match old {
+        match before.get(&name) {
             Some(old)
                 if present
-                    && reference(old) == reference(&p.package)
-                    && version(old) == version(&p.package) =>
+                    && old.reference() == p.package.reference()
+                    && old.version() == p.package.version() =>
             {
                 report.kept += 1;
             }
             Some(old) => {
-                report
-                    .updated
-                    .push((name, version(old), version(&p.package)));
+                report.updated.push(Updated {
+                    name,
+                    from: old.version().to_string(),
+                    to: p.package.version().to_string(),
+                });
                 todo.push(i);
             }
             None => {
-                report.installed.push((name, version(&p.package)));
+                report.installed.push(Added {
+                    name,
+                    version: p.package.version().to_string(),
+                });
                 todo.push(i);
             }
         }
     }
+    todo
+}
+
+/// Removes the binaries of the packages that change or go, and the directories of the ones that go.
+fn remove_stale(
+    before: &HashMap<String, LockedPackage>,
+    packages: &[Installed],
+    todo: &[usize],
+    dirs: &Dirs,
+    report: &mut Report,
+) -> Result<()> {
     let locked: Vec<String> = packages.iter().map(Installed::name).collect();
-    for (name, old) in &before {
-        let bins = old
-            .get("bin")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str);
+    for (name, old) in before {
         let gone = !locked.contains(name);
         let changed = todo.iter().any(|&i| packages[i].name() == *name);
         if gone || changed {
-            for bin in bins {
-                remove_file(&Path::new(&bin_dir).join(bin.rsplit('/').next().unwrap_or(bin)))?;
+            for bin in old.bins() {
+                remove_file(&Path::new(&dirs.bin).join(bin.rsplit('/').next().unwrap_or(bin)))?;
             }
         }
         if gone {
             if let Some(dir) = old.get("install-path").and_then(Value::as_str) {
-                let dir = normalize(&format!("{vendor}/composer/{dir}"));
-                if dir.starts_with(&format!("{vendor}/")) {
+                let dir = normalize(&format!("{}/composer/{dir}", dirs.vendor));
+                if dir.starts_with(&format!("{}/", dirs.vendor)) {
                     remove(Path::new(&dir))?;
                 }
             }
             report.removed.push(name.clone());
         }
     }
+    Ok(())
+}
 
+/// Downloads and unpacks the packages at `todo` in parallel; every failure is in the error.
+fn download(
+    fetcher: &Fetcher,
+    packages: &[Installed],
+    todo: &[usize],
+    base: &Path,
+    env: Env,
+    report: &mut Report,
+) -> Result<()> {
     let cores = std::thread::available_parallelism().map_or(8, usize::from);
     let threads = download_threads(env("COMPOSER_MAX_PARALLEL_HTTP"), cores);
     let pool = rayon::ThreadPoolBuilder::new()
@@ -231,37 +270,42 @@ pub fn install(
     if !errors.is_empty() {
         bail!("{}", errors.join("\n"));
     }
+    Ok(())
+}
 
+/// Writes vendor/composer's installed.json, installed.php and InstalledVersions.php.
+fn write_repository(
+    project: &Project,
+    packages: &[Installed],
+    dev_mode: bool,
+    env: Env,
+) -> Result<()> {
+    let vendor = &project.dirs.vendor;
     let repo = format!("{vendor}/composer");
     std::fs::create_dir_all(&repo)?;
-    let dev_mode = !o.no_dev;
     write_if_changed(
-        &format!("{repo}/installed.json"),
-        installed_json(&packages, &vendor, dev_mode).as_bytes(),
+        Path::new(&format!("{repo}/installed.json")),
+        installed_json(packages, vendor, dev_mode).as_bytes(),
     )?;
-    let root_pkg = root(manifest, &base_dir, env);
+    let root_pkg = root(project.manifest, &project.dir, env);
     write_if_changed(
-        &format!("{repo}/installed.php"),
-        installed_php(&root_pkg, &packages, &vendor, &base_str, dev_mode).as_bytes(),
+        Path::new(&format!("{repo}/installed.php")),
+        installed_php(&root_pkg, packages, vendor, &project.dir_str, dev_mode).as_bytes(),
     )?;
     write_if_changed(
-        &format!("{repo}/InstalledVersions.php"),
+        Path::new(&format!("{repo}/InstalledVersions.php")),
         include_bytes!("../assets/InstalledVersions.php"),
-    )?;
+    )
+}
 
+/// Writes the bin proxies in Composer's install order; the first package to claim a name keeps it.
+fn link_bins(packages: &[Installed], dirs: &Dirs, report: &mut Report) -> Result<()> {
     let mut claimed: HashSet<String> = HashSet::new();
-    for i in install_order(&packages) {
+    for i in install_order(packages) {
         let p = &packages[i];
         let Some(path) = &p.path else { continue };
-        let names: Vec<String> = (p
-            .package
-            .get("bin")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten())
-        .filter_map(|b| b.as_str().map(String::from))
-        .collect();
-        let (proxies, warnings) = bins::proxies(&p.name(), path, &names, &bin_dir, &vendor);
+        let names: Vec<String> = p.package.bins().map(String::from).collect();
+        let (proxies, warnings) = bins::proxies(&p.name(), path, &names, &dirs.bin, &dirs.vendor);
         report.warnings.extend(warnings);
         for proxy in proxies {
             if !claimed.insert(proxy.name.clone()) {
@@ -272,66 +316,103 @@ pub fn install(
                 ));
                 continue;
             }
-            bins::write(&proxy, Path::new(&bin_dir))?;
+            bins::write(&proxy, Path::new(&dirs.bin))?;
         }
     }
+    Ok(())
+}
 
-    packages.sort_by_key(Installed::name);
-    if !o.no_autoloader {
-        let check = match config.get("platform-check") {
-            Some(Value::Bool(false)) => PlatformCheck::Off,
-            Some(Value::Bool(true)) => PlatformCheck::Full,
-            _ => PlatformCheck::PhpOnly,
-        };
-        let autoload_file = format!("{vendor}/autoload.php");
-        let existing = std::fs::read_to_string(&autoload_file)
-            .ok()
-            .and_then(|text| {
-                let re = Regex::new(r"ComposerAutoloaderInit([^:\s]+)::").ok()?;
-                let caps = re.captures(text.as_bytes()).ok()??;
-                Some(String::from_utf8_lossy(&caps[1]).into_owned())
-            });
-        let suffix = config_str(&config, "autoloader-suffix")
-            .map(String::from)
-            .or(existing)
-            .unwrap_or_else(|| lock.content_hash.clone());
-        let apcu = (o.apcu || o.apcu_prefix.is_some() || config_bool(&config, "apcu-autoloader"))
-            .then(|| o.apcu_prefix.clone());
-        let options = autoload::Options {
-            optimize: o.optimize || config_bool(&config, "optimize-autoloader"),
-            authoritative: o.authoritative || config_bool(&config, "classmap-authoritative"),
-            apcu,
-            dev_mode,
-            platform_check: check,
-            ignore_platform: (!o.ignore_all_platform).then(|| o.ignore_platform.clone()),
-            use_include_path: config_bool(&config, "use-include-path"),
-            prepend: config.get("prepend-autoloader") != Some(&Value::Bool(false)),
-            suffix,
-        };
-        events("pre-autoload-dump")?;
-        let dumped = autoload::dump(&base_str, &vendor, manifest, &packages, &options)?;
-        report.classes = dumped.classes;
-        report.warnings.extend(dumped.warnings);
-        for (rel, body) in dumped.files {
-            let path = format!("{base_str}/{rel}");
-            match body {
-                Some(bytes) => write_if_changed(&path, &bytes)?,
-                None => remove_file(Path::new(&path))?,
-            }
+/// The autoloader's options: the command's, raised by the root's `config`.
+fn autoload_options(
+    config: &Map<String, Value>,
+    vendor: &str,
+    lock: &Lock,
+    o: &Options,
+    dev_mode: bool,
+) -> Result<autoload::Options> {
+    let platform_check = match config.get("platform-check") {
+        Some(Value::Bool(false)) => PlatformCheck::Off,
+        Some(Value::Bool(true)) => PlatformCheck::Full,
+        _ => PlatformCheck::PhpOnly,
+    };
+    static SUFFIX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"ComposerAutoloaderInit([^:\s]+)::").unwrap());
+    let existing = match std::fs::read_to_string(format!("{vendor}/autoload.php")) {
+        Ok(text) => (SUFFIX.captures(text.as_bytes())?)
+            .map(|caps| String::from_utf8_lossy(&caps[1]).into_owned()),
+        Err(_) => None,
+    };
+    let suffix = config_str(config, "autoloader-suffix")
+        .map(String::from)
+        .or(existing)
+        .unwrap_or_else(|| lock.content_hash.clone());
+    let configured = if config_bool(config, "classmap-authoritative") {
+        Scan::Authoritative
+    } else if config_bool(config, "optimize-autoloader") {
+        Scan::Optimized
+    } else {
+        Scan::Classmap
+    };
+    let apcu = match &o.apcu {
+        Apcu::Off if config_bool(config, "apcu-autoloader") => Apcu::RandomPrefix,
+        apcu => apcu.clone(),
+    };
+    Ok(autoload::Options {
+        scan: o.scan.max(configured),
+        apcu,
+        dev_mode,
+        platform_check,
+        ignore_platform: o.ignore_platform.clone(),
+        use_include_path: config_bool(config, "use-include-path"),
+        prepend: config.get("prepend-autoloader") != Some(&Value::Bool(false)),
+        suffix,
+    })
+}
+
+/// Writes the autoloader between the `pre-autoload-dump` and `post-autoload-dump` events, then the files of
+/// the plugins Pun runs.
+fn dump_autoloader(
+    project: &Project,
+    lock: &Lock,
+    packages: &[Installed],
+    o: &Options,
+    events: &mut dyn FnMut(&str) -> Result<()>,
+    report: &mut Report,
+) -> Result<()> {
+    let empty = Map::new();
+    let config = (project.manifest.get("config"))
+        .and_then(Value::as_object)
+        .unwrap_or(&empty);
+    let vendor = &project.dirs.vendor;
+    let options = autoload_options(config, vendor, lock, o, !o.no_dev)?;
+    events("pre-autoload-dump")?;
+    let dumped = autoload::dump(
+        &project.dir_str,
+        vendor,
+        project.manifest,
+        packages,
+        &options,
+    )?;
+    report.classes = dumped.classes;
+    report.warnings.extend(dumped.warnings);
+    for file in dumped.files {
+        let path = format!("{}/{}", project.dir_str, file.path);
+        match file.bytes {
+            Some(bytes) => write_if_changed(Path::new(&path), &bytes)?,
+            None => remove_file(Path::new(&path))?,
         }
-        if !o.no_plugins {
-            let refs: Vec<&Installed> = packages.iter().collect();
-            let out = plugins::after_dump(manifest, &refs);
-            for (rel, bytes) in out.files {
-                write_if_changed(&format!("{vendor}/{rel}"), &bytes)?;
-            }
-            for name in out.unsupported {
-                report.warnings.push(format!("pun does not run the Composer plugin {name} yet, so the files it writes on install are missing"));
-            }
-        }
-        events("post-autoload-dump")?;
     }
-    Ok(report)
+    if !o.no_plugins {
+        let refs: Vec<&Installed> = packages.iter().collect();
+        let out = plugins::after_dump(project.manifest, &refs);
+        for (rel, bytes) in out.files {
+            write_if_changed(Path::new(&format!("{vendor}/{rel}")), &bytes)?;
+        }
+        for name in out.unsupported {
+            report.warnings.push(format!("pun does not run the Composer plugin {name} yet, so the files it writes on install are missing"));
+        }
+    }
+    events("post-autoload-dump")
 }
 
 fn download_threads(env: Option<String>, cores: usize) -> usize {
@@ -342,19 +423,9 @@ fn download_threads(env: Option<String>, cores: usize) -> usize {
 fn names(p: &Installed) -> Vec<String> {
     let mut out = vec![p.name()];
     for kind in ["provide", "replace"] {
-        out.extend(link_targets(p, kind));
+        out.extend(p.package.link_targets(kind));
     }
     out
-}
-
-fn link_targets(p: &Installed, kind: &str) -> Vec<String> {
-    (p.package
-        .get(kind)
-        .and_then(Value::as_object)
-        .into_iter()
-        .flatten())
-    .map(|(target, _)| target.to_ascii_lowercase())
-    .collect()
 }
 
 fn install_order(packages: &[Installed]) -> Vec<usize> {
@@ -367,8 +438,8 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
         }
     }
     let required = |i: usize| -> Vec<usize> {
-        (link_targets(&packages[i], "require").iter())
-            .flat_map(|t| providers.get(t).into_iter().flatten().copied())
+        (packages[i].package.link_targets("require"))
+            .flat_map(|t| providers.get(&t).into_iter().flatten().copied())
             .collect()
     };
     let mut roots: Vec<usize> = by_name.clone();
@@ -398,7 +469,7 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
     let mut wanted: [Vec<String>; 2] = Default::default();
     for &i in order.iter().rev() {
         let p = &packages[i];
-        let kind = p.package.get("type").and_then(Value::as_str);
+        let kind = p.package.kind();
         let modifies = kind == Some("composer-plugin")
             && (p.package.get("extra")).and_then(|e| e.get("plugin-modifies-downloads"))
                 == Some(&Value::Bool(true));
@@ -412,7 +483,7 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
             rest.insert(0, i);
             continue;
         };
-        let requires: Vec<String> = (link_targets(p, "require").into_iter())
+        let requires: Vec<String> = (p.package.link_targets("require"))
             .filter(|r| !is_platform(r))
             .collect();
         if [modifies, plugin][g] && requires.is_empty() {
@@ -425,13 +496,8 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
     front.into_iter().flatten().chain(rest).collect()
 }
 
-fn place(
-    fetcher: &Fetcher,
-    package: &Map<String, Value>,
-    base: &Path,
-    target: &Path,
-) -> Result<bool> {
-    let dist = package.get("dist").and_then(Value::as_object);
+fn place(fetcher: &Fetcher, package: &LockedPackage, base: &Path, target: &Path) -> Result<bool> {
+    let dist = package.dist();
     match dist.and_then(|d| d.get("type")).and_then(Value::as_str) {
         Some("path") => {
             let url = dist
@@ -464,36 +530,18 @@ fn remove_file(path: &Path) -> std::io::Result<()> {
     }
 }
 
-fn write_if_changed(path: &str, bytes: &[u8]) -> Result<()> {
+fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<()> {
     if std::fs::read(path).ok().as_deref() == Some(bytes) {
         return Ok(());
     }
-    std::fs::create_dir_all(Path::new(path).parent().unwrap_or(Path::new("/")))?;
-    std::fs::write(path, bytes).with_context(|| format!("can't write {path}"))
+    std::fs::create_dir_all(path.parent().unwrap_or(Path::new("/")))?;
+    std::fs::write(path, bytes).with_context(|| format!("can't write {}", path.display()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
-
-    #[test]
-    fn references() {
-        let r = |v: Value| reference(v.as_object().unwrap());
-        assert_eq!(
-            r(json!({"dist": {"reference": "d"}, "source": {"reference": "s"}})).as_deref(),
-            Some("d")
-        );
-        assert_eq!(
-            r(json!({"dist": {"reference": ""}, "source": {"reference": "s"}})).as_deref(),
-            Some("s")
-        );
-        assert_eq!(
-            r(json!({"source": {"reference": "s"}})).as_deref(),
-            Some("s")
-        );
-        assert_eq!(r(json!({"dist": {"url": "u"}})), None);
-    }
 
     #[test]
     fn download_threads_follow_composer_max_parallel_http() {
@@ -521,7 +569,7 @@ mod tests {
         ]
         .into_iter()
         .map(|p| Installed {
-            package: p.as_object().unwrap().clone(),
+            package: LockedPackage(p.as_object().unwrap().clone()),
             path: None,
             dev: false,
         })

@@ -1,6 +1,7 @@
 use crate::error::{Context, Result, bail};
 use crate::php::json_compact;
 use pun_config::toml_text;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::fmt::Write;
 use std::path::Path;
@@ -26,8 +27,82 @@ const SETTINGS: [&str; 9] = [
 pub struct Lock {
     pub content_hash: String,
     pub settings: Map<String, Value>,
-    pub packages: Vec<Map<String, Value>>,
-    pub packages_dev: Vec<Map<String, Value>>,
+    pub packages: Vec<LockedPackage>,
+    pub packages_dev: Vec<LockedPackage>,
+}
+
+/// One package of a lock, in composer.lock's shape. The keys keep the order they were read in, so a lock writes
+/// back byte for byte; the accessors name the keys Pun reads.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct LockedPackage(pub Map<String, Value>);
+
+impl std::ops::Deref for LockedPackage {
+    type Target = Map<String, Value>;
+
+    fn deref(&self) -> &Map<String, Value> {
+        &self.0
+    }
+}
+
+impl LockedPackage {
+    fn str(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(Value::as_str)
+    }
+
+    /// The name as written; a lock rejects a package without one.
+    pub fn pretty_name(&self) -> &str {
+        self.str("name").unwrap_or_default()
+    }
+
+    pub fn name(&self) -> String {
+        self.pretty_name().to_ascii_lowercase()
+    }
+
+    pub fn version(&self) -> &str {
+        self.str("version").unwrap_or_default()
+    }
+
+    /// The package type (`type`), such as `library` or `metapackage`.
+    pub fn kind(&self) -> Option<&str> {
+        self.str("type")
+    }
+
+    pub fn dist(&self) -> Option<&Map<String, Value>> {
+        self.0.get("dist").and_then(Value::as_object)
+    }
+
+    /// The commit or version the package installs at: the dist's, else the source's, as Composer reads it.
+    pub fn reference(&self) -> Option<&str> {
+        let get = |k: &str| {
+            self.0
+                .get(k)?
+                .get("reference")?
+                .as_str()
+                .filter(|r| !r.is_empty())
+        };
+        if self.0.contains_key("dist") {
+            get("dist").or_else(|| get("source"))
+        } else {
+            get("source")
+        }
+    }
+
+    /// The paths in `bin`.
+    pub fn bins(&self) -> impl Iterator<Item = &str> {
+        (self.0.get("bin").and_then(Value::as_array))
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+    }
+
+    /// The lowercase targets of the `require`, `provide`, `replace` or `conflict` links.
+    pub fn link_targets(&self, kind: &str) -> impl Iterator<Item = String> {
+        (self.0.get(kind).and_then(Value::as_object))
+            .into_iter()
+            .flatten()
+            .map(|(target, _)| target.to_ascii_lowercase())
+    }
 }
 
 pub fn content_hash(manifest: &Map<String, Value>) -> String {
@@ -74,12 +149,14 @@ impl Lock {
             Some(Value::String(h)) => h.clone(),
             _ => bail!("composer.lock has no content-hash"),
         };
-        let mut packages = |key: &str| -> Result<Vec<Map<String, Value>>> {
+        let mut packages = |key: &str| -> Result<Vec<LockedPackage>> {
             match root.shift_remove(key) {
                 None => Ok(vec![]),
                 Some(Value::Array(items)) => (items.into_iter())
                     .map(|p| match p {
-                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => Ok(m),
+                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => {
+                            Ok(LockedPackage(m))
+                        }
                         _ => bail!(
                             "composer.lock: every entry of {key} must be a package with a name"
                         ),
@@ -136,12 +213,14 @@ impl Lock {
         let Some(Value::String(content_hash)) = root.shift_remove("content-hash") else {
             bail!("pun.lock has no content-hash");
         };
-        let mut packages = |key: &str| -> Result<Vec<Map<String, Value>>> {
+        let mut packages = |key: &str| -> Result<Vec<LockedPackage>> {
             match root.shift_remove(key) {
                 None => Ok(vec![]),
                 Some(Value::Array(items)) => (items.into_iter())
                     .map(|p| match p {
-                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => Ok(m),
+                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => {
+                            Ok(LockedPackage(m))
+                        }
                         _ => bail!("pun.lock: every [[{key}]] needs a name"),
                     })
                     .collect(),
@@ -189,7 +268,7 @@ impl Lock {
         ] {
             lock.insert(
                 key.into(),
-                list.iter().cloned().map(Value::Object).collect(),
+                list.iter().map(|p| Value::Object(p.0.clone())).collect(),
             );
         }
         let defaults = [
@@ -223,7 +302,7 @@ impl Lock {
         text
     }
 
-    pub fn all(&self) -> impl Iterator<Item = &Map<String, Value>> {
+    pub fn all(&self) -> impl Iterator<Item = &LockedPackage> {
         self.packages.iter().chain(&self.packages_dev)
     }
 }
@@ -281,12 +360,37 @@ mod tests {
         let back = Lock::parse(&text).unwrap();
         assert_eq!(back, lock);
         let want: Value = serde_json::from_str(COMPOSER_LOCK).unwrap();
-        assert_eq!(Value::Object(back.packages[0].clone()), want["packages"][0]);
         assert_eq!(
-            Value::Object(back.packages_dev[0].clone()),
+            Value::Object(back.packages[0].0.clone()),
+            want["packages"][0]
+        );
+        assert_eq!(
+            Value::Object(back.packages_dev[0].0.clone()),
             json!({"name": "acme/tool", "version": "dev-main", "dist": {"type": "path", "url": "packages/tool"}, "type": "metapackage", "extra": {}})
         );
         assert_eq!(back.all().count(), 2);
+    }
+
+    #[test]
+    fn references() {
+        let r = |v: Value| {
+            LockedPackage(v.as_object().unwrap().clone())
+                .reference()
+                .map(String::from)
+        };
+        assert_eq!(
+            r(json!({"dist": {"reference": "d"}, "source": {"reference": "s"}})).as_deref(),
+            Some("d")
+        );
+        assert_eq!(
+            r(json!({"dist": {"reference": ""}, "source": {"reference": "s"}})).as_deref(),
+            Some("s")
+        );
+        assert_eq!(
+            r(json!({"source": {"reference": "s"}})).as_deref(),
+            Some("s")
+        );
+        assert_eq!(r(json!({"dist": {"url": "u"}})), None);
     }
 
     #[test]

@@ -73,7 +73,7 @@ mod tests {
 
     fn package(p: Value) -> Installed {
         Installed {
-            package: p.as_object().unwrap().clone(),
+            package: crate::lock::LockedPackage(p.as_object().unwrap().clone()),
             path: None,
             dev: false,
         }

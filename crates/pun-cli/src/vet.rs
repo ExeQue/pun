@@ -595,7 +595,7 @@ fn unpack_version(
         })
         .cloned();
     let package = match locked {
-        Some(p) => p,
+        Some(p) => p.0,
         None => packagist_version(fetcher, name, version)?,
     };
     let (bytes, _) = fetcher.archive(&package)?;

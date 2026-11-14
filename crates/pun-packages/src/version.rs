@@ -204,6 +204,37 @@ fn pretty_alias(normalized: String) -> (String, String) {
     (normalized, pretty)
 }
 
+/// The platform requirements `--ignore-platform-req` and `--ignore-platform-reqs` leave out.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IgnorePlatform {
+    /// The requirements matching one of these names or `*` globs.
+    Listed(Vec<String>),
+    All,
+}
+
+impl Default for IgnorePlatform {
+    fn default() -> IgnorePlatform {
+        IgnorePlatform::Listed(vec![])
+    }
+}
+
+impl IgnorePlatform {
+    pub fn new(listed: Vec<String>, all: bool) -> IgnorePlatform {
+        if all {
+            IgnorePlatform::All
+        } else {
+            IgnorePlatform::Listed(listed)
+        }
+    }
+
+    pub fn ignores(&self, name: &str) -> bool {
+        match self {
+            IgnorePlatform::All => true,
+            IgnorePlatform::Listed(patterns) => patterns.iter().any(|p| name_matches(p, name)),
+        }
+    }
+}
+
 pub fn name_matches(pattern: &str, name: &str) -> bool {
     let (pattern, name) = (pattern.to_ascii_lowercase(), name.to_ascii_lowercase());
     let mut parts = pattern.split('*');

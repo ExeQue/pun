@@ -1,5 +1,6 @@
 use crate::Env;
 use crate::error::Result;
+use crate::lock::LockedPackage;
 use crate::paths::shortest;
 use crate::php::{export_str, json_pretty};
 use crate::version::{branch_alias, is_platform, normalize, normalize_branch};
@@ -54,32 +55,14 @@ const ORDER: [&str; 37] = [
 
 #[derive(Debug, Clone)]
 pub struct Installed {
-    pub package: Map<String, Value>,
+    pub package: LockedPackage,
     pub path: Option<String>,
     pub dev: bool,
 }
 
 impl Installed {
     pub fn name(&self) -> String {
-        self.package["name"]
-            .as_str()
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-    }
-
-    pub fn reference(&self) -> Option<&str> {
-        let get = |k: &str| {
-            self.package
-                .get(k)?
-                .get("reference")?
-                .as_str()
-                .filter(|r| !r.is_empty())
-        };
-        if self.package.contains_key("dist") {
-            get("dist").or_else(|| get("source"))
-        } else {
-            get("source")
-        }
+        self.package.name()
     }
 }
 
@@ -296,7 +279,7 @@ pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> S
     let repo = format!("{vendor}/composer");
     let mut entries: Vec<(String, Value)> = (packages.iter())
         .map(|p| {
-            let mut m = p.package.clone();
+            let mut m = p.package.0.clone();
             let version = m.get("version").and_then(Value::as_str).unwrap_or_default();
             let normalized = normalize(version).unwrap_or_else(|_| version.to_string());
             m.insert("version_normalized".into(), Value::String(normalized));
@@ -316,10 +299,7 @@ pub fn installed_json(packages: &[Installed], vendor: &str, dev_mode: bool) -> S
                     ordered.insert(k.into(), v);
                 }
             }
-            (
-                p.package["name"].as_str().unwrap_or_default().to_string(),
-                Value::Object(ordered),
-            )
+            (p.package.pretty_name().to_string(), Value::Object(ordered))
         })
         .collect();
     entries.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
@@ -388,24 +368,16 @@ pub fn installed_php(
         );
     };
     for p in packages {
-        let pretty = p
-            .package
-            .get("version")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
+        let pretty = p.package.version();
         let normalized = normalize(pretty).unwrap_or_else(|_| pretty.to_string());
-        let kind = p
-            .package
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or("library");
+        let kind = p.package.kind().unwrap_or("library");
         let path = p.path.as_ref().map(|path| shortest(&repo, path, true));
         let aliases = branch_alias(&p.package).map(|a| a.1).into_iter().collect();
         add(
             p.name(),
             pretty,
             &normalized,
-            reference(p.reference()),
+            reference(p.package.reference()),
             kind,
             path,
             aliases,
@@ -423,17 +395,7 @@ pub fn installed_php(
         false,
     );
     let links = (packages.iter())
-        .map(|p| {
-            (
-                &p.package,
-                p.dev,
-                p.package
-                    .get("version")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-            )
-        })
+        .map(|p| (&p.package.0, p.dev, p.package.version().to_string()))
         .collect::<Vec<_>>();
     let mut sources: Vec<(&Map<String, Value>, bool, String)> = links;
     let root_links = Map::new();
@@ -537,7 +499,7 @@ fn fields(out: &mut String, fields: &mut [(&str, Php)], level: usize) {
     }
 }
 
-pub fn read_installed(vendor: &Path) -> Result<Vec<Map<String, Value>>> {
+pub fn read_installed(vendor: &Path) -> Result<Vec<LockedPackage>> {
     let path = vendor.join("composer/installed.json");
     let Ok(text) = std::fs::read_to_string(&path) else {
         return Ok(vec![]);
@@ -551,7 +513,7 @@ pub fn read_installed(vendor: &Path) -> Result<Vec<Map<String, Value>>> {
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|p| p.as_object().cloned())
+        .filter_map(|p| p.as_object().cloned().map(LockedPackage))
         .collect())
 }
 
@@ -562,7 +524,7 @@ mod tests {
 
     fn installed(p: Value, path: Option<&str>, dev: bool) -> Installed {
         Installed {
-            package: p.as_object().unwrap().clone(),
+            package: LockedPackage(p.as_object().unwrap().clone()),
             path: path.map(String::from),
             dev,
         }

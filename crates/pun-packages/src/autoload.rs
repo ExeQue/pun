@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use crate::installed::Installed;
 use crate::paths::{normalize, shortest, shortest_code};
 use crate::php::{Key, Php, export_str, md5, strtr, var_export};
-use crate::version::name_matches;
+use crate::version::IgnorePlatform;
 use pcre2::bytes::Regex;
 use pun_tokens::php_compat::{preg_quote, strnatcasecmp};
 use serde_json::{Map, Value};
@@ -20,23 +20,76 @@ pub enum PlatformCheck {
     Full,
 }
 
+/// Which classes the class map lists.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum Scan {
+    /// The classes of the `classmap` rules.
+    #[default]
+    Classmap,
+    /// The PSR-0 and PSR-4 classes too (`--optimize-autoloader`).
+    Optimized,
+    /// As `Optimized`, and the loader looks nowhere else (`--classmap-authoritative`).
+    Authoritative,
+}
+
+/// Whether the loader caches what it finds in APCu, and under which prefix.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum Apcu {
+    #[default]
+    Off,
+    /// A prefix picked at random on each dump.
+    RandomPrefix,
+    Prefix(String),
+}
+
 pub struct Options {
-    pub optimize: bool,
-    pub authoritative: bool,
-    pub apcu: Option<Option<String>>,
+    pub scan: Scan,
+    pub apcu: Apcu,
     pub dev_mode: bool,
     pub platform_check: PlatformCheck,
-    pub ignore_platform: Option<Vec<String>>,
+    pub ignore_platform: IgnorePlatform,
     pub use_include_path: bool,
     pub prepend: bool,
     pub suffix: String,
 }
 
+/// A file of the autoloader, relative to the project when it is inside it.
+#[derive(Debug, PartialEq, Eq)]
+pub struct DumpedFile {
+    pub path: String,
+    /// `None` when the file is not needed, so an older one is removed.
+    pub bytes: Option<Vec<u8>>,
+}
+
 #[derive(Debug, Default)]
 pub struct Dumped {
-    pub files: Vec<(String, Option<Vec<u8>>)>,
+    pub files: Vec<DumpedFile>,
     pub classes: usize,
     pub warnings: Vec<String>,
+}
+
+/// An `autoload.files` entry: its identifier, the PHP expression of its path, and the path.
+struct FileEntry {
+    id: String,
+    code: String,
+    path: String,
+}
+
+/// What autoload_static.php lists.
+struct StaticMaps<'a> {
+    psr0: &'a [(String, Vec<String>)],
+    psr4: &'a [(String, Vec<String>)],
+    /// Each PSR path's absolute form.
+    evaluated: &'a HashMap<String, String>,
+    classes: &'a [(String, String)],
+    files: &'a [FileEntry],
+}
+
+/// The optional files autoload_real.php loads.
+struct Loads {
+    include_paths: bool,
+    files: bool,
+    platform_check: bool,
 }
 
 struct Pkg<'a> {
@@ -415,7 +468,7 @@ pub fn dump(
             namespace: String::new(),
         });
     }
-    if o.optimize || o.authoritative {
+    if o.scan != Scan::Classmap {
         let mut scan: Vec<(String, Vec<(Rule, Vec<String>)>)> = vec![];
         for (rule, entries) in [(Rule::Psr4, &psr4), (Rule::Psr0, &psr0)] {
             for (ns, paths) in entries {
@@ -479,7 +532,7 @@ pub fn dump(
     }
     classmap_text.push_str(");\n");
 
-    let mut files: Vec<(String, String, String)> = vec![];
+    let mut files: Vec<FileEntry> = vec![];
     for p in &sorted {
         let Some(install) = &p.path else { continue };
         for path in autoload(p, o.dev_mode)
@@ -494,17 +547,21 @@ pub fn dump(
             };
             let (code, value) = path_code(base, vendor, &relative)?;
             let id = md5(format!("{}:{path}", p.name).as_bytes());
-            match files.iter_mut().find(|f| f.0 == id) {
-                Some(f) => (f.1, f.2) = (code, value),
-                None => files.push((id, code, value)),
+            match files.iter_mut().find(|f| f.id == id) {
+                Some(f) => (f.code, f.path) = (code, value),
+                None => files.push(FileEntry {
+                    id,
+                    code,
+                    path: value,
+                }),
             }
         }
     }
     let files_text = (!files.is_empty()).then(|| {
         let mut out = header("autoload_files.php");
         out.push_str("return array(\n");
-        for (id, code, _) in &files {
-            writeln!(out, "    {} => {code},", export_str(id)).unwrap();
+        for f in &files {
+            writeln!(out, "    {} => {},", export_str(&f.id), f.code).unwrap();
         }
         out.push_str(");\n");
         out
@@ -522,27 +579,24 @@ pub fn dump(
     }
 
     let platform = match (&o.ignore_platform, o.platform_check) {
-        (None, _) | (_, PlatformCheck::Off) => None,
-        (Some(ignored), check) => platform_check(&sorted, check == PlatformCheck::Full, ignored),
+        (IgnorePlatform::All, _) | (_, PlatformCheck::Off) => None,
+        (ignored, check) => platform_check(&sorted, check == PlatformCheck::Full, ignored),
     };
 
-    let static_text = static_file(
-        &o.suffix,
-        &target,
-        vendor,
-        base,
-        &psr0,
-        &psr4,
-        &evaluated,
-        &class_values,
-        &files,
-    );
-    let real = real_file(
-        o,
-        include_text.is_some(),
-        files_text.is_some(),
-        platform.is_some(),
-    );
+    let maps = StaticMaps {
+        psr0: &psr0,
+        psr4: &psr4,
+        evaluated: &evaluated,
+        classes: &class_values,
+        files: &files,
+    };
+    let static_text = static_file(&o.suffix, &target, vendor, base, &maps);
+    let loads = Loads {
+        include_paths: include_text.is_some(),
+        files: files_text.is_some(),
+        platform_check: platform.is_some(),
+    };
+    let real = real_file(o, &loads);
     let autoload_php = format!(
         "<?php\n\n// autoload.php @generated by Composer\n\nif (PHP_VERSION_ID < 50600) {{\n    if (!headers_sent()) {{\n        header('HTTP/1.1 500 Internal Server Error');\n    }}\n    $err = 'Composer 2.3.0 dropped support for autoloading on PHP <5.6 and you are running '.PHP_VERSION.', please upgrade PHP or use Composer 2.2 LTS via \"composer self-update --2.2\". Aborting.'.PHP_EOL;\n    if (!ini_get('display_errors')) {{\n        if (PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg') {{\n            fwrite(STDERR, $err);\n        }} elseif (!headers_sent()) {{\n            echo $err;\n        }}\n    }}\n    throw new RuntimeException($err);\n}}\n\nrequire_once __DIR__ . '/composer/autoload_real.php';\n\nreturn ComposerAutoloaderInit{}::getLoader();\n",
         o.suffix
@@ -584,10 +638,10 @@ pub fn dump(
         Some(static_text),
     );
     dumped_push(&mut dumped, &target, base, "platform_check.php", platform);
-    dumped.files.push((
-        rel(base, &format!("{vendor}/autoload.php")),
-        Some(autoload_php.into_bytes()),
-    ));
+    dumped.files.push(DumpedFile {
+        path: rel(base, &format!("{vendor}/autoload.php")),
+        bytes: Some(autoload_php.into_bytes()),
+    });
     dumped_push(&mut dumped, &target, base, "autoload_real.php", Some(real));
     dumped_push(
         &mut dumped,
@@ -607,10 +661,10 @@ pub fn dump(
 }
 
 fn dumped_push(dumped: &mut Dumped, target: &str, base: &str, name: &str, body: Option<String>) {
-    dumped.files.push((
-        rel(base, &format!("{target}/{name}")),
-        body.map(String::into_bytes),
-    ));
+    dumped.files.push(DumpedFile {
+        path: rel(base, &format!("{target}/{name}")),
+        bytes: body.map(String::into_bytes),
+    });
 }
 
 fn rel(base: &str, path: &str) -> String {
@@ -619,8 +673,7 @@ fn rel(base: &str, path: &str) -> String {
         .to_string()
 }
 
-fn platform_check(packages: &[Pkg], full: bool, ignored: &[String]) -> Option<String> {
-    let is_ignored = |name: &str| ignored.iter().any(|g| name_matches(g, name));
+fn platform_check(packages: &[Pkg], full: bool, ignored: &IgnorePlatform) -> Option<String> {
     let mut lowest = Bound::zero();
     let mut php64 = false;
     let mut providers: HashMap<String, Vec<String>> = HashMap::new();
@@ -642,7 +695,7 @@ fn platform_check(packages: &[Pkg], full: bool, ignored: &[String]) -> Option<St
             continue;
         }
         for (target, constraint) in p.links("require") {
-            if is_ignored(&target) {
+            if ignored.ignores(&target) {
                 continue;
             }
             if (target == "php" || target == "php-64bit")
@@ -701,28 +754,32 @@ fn platform_check(packages: &[Pkg], full: bool, ignored: &[String]) -> Option<St
     ))
 }
 
-fn real_file(o: &Options, include_path: bool, include_files: bool, platform: bool) -> String {
+fn real_file(o: &Options, loads: &Loads) -> String {
     let s = &o.suffix;
     let prepend = if o.prepend { "true" } else { "false" };
     let mut f = format!(
         "<?php\n\n// autoload_real.php @generated by Composer\n\nclass ComposerAutoloaderInit{s}\n{{\n    private static $loader;\n\n    public static function loadClassLoader($class)\n    {{\n        if ('Composer\\Autoload\\ClassLoader' === $class) {{\n            require __DIR__ . '/ClassLoader.php';\n        }}\n    }}\n\n    /**\n     * @return \\Composer\\Autoload\\ClassLoader\n     */\n    public static function getLoader()\n    {{\n        if (null !== self::$loader) {{\n            return self::$loader;\n        }}\n\n"
     );
-    if platform {
+    if loads.platform_check {
         f.push_str("        require __DIR__ . '/platform_check.php';\n\n");
     }
     write!(f, "        spl_autoload_register(array('ComposerAutoloaderInit{s}', 'loadClassLoader'), true, {prepend});\n        self::$loader = $loader = new \\Composer\\Autoload\\ClassLoader(\\dirname(__DIR__));\n        spl_autoload_unregister(array('ComposerAutoloaderInit{s}', 'loadClassLoader'));\n\n").unwrap();
-    if include_path {
+    if loads.include_paths {
         f.push_str("        $includePaths = require __DIR__ . '/include_paths.php';\n        $includePaths[] = get_include_path();\n        set_include_path(implode(PATH_SEPARATOR, $includePaths));\n\n");
     }
     write!(f, "        require __DIR__ . '/autoload_static.php';\n        call_user_func(\\Composer\\Autoload\\ComposerStaticInit{s}::getInitializer($loader));\n\n").unwrap();
-    if o.authoritative {
+    if o.scan == Scan::Authoritative {
         f.push_str("        $loader->setClassMapAuthoritative(true);\n");
     }
-    if let Some(prefix) = &o.apcu {
-        let prefix = prefix.clone().unwrap_or_else(|| {
+    let prefix = match &o.apcu {
+        Apcu::Off => None,
+        Apcu::Prefix(prefix) => Some(prefix.clone()),
+        Apcu::RandomPrefix => {
             let seed = format!("{s}{:?}", std::time::SystemTime::now());
-            md5(seed.as_bytes())[..20].to_string()
-        });
+            Some(md5(seed.as_bytes())[..20].to_string())
+        }
+    };
+    if let Some(prefix) = prefix {
         writeln!(
             f,
             "        $loader->setApcuPrefix({});",
@@ -734,24 +791,21 @@ fn real_file(o: &Options, include_path: bool, include_files: bool, platform: boo
         f.push_str("        $loader->setUseIncludePath(true);\n");
     }
     writeln!(f, "        $loader->register({prepend});\n").unwrap();
-    if include_files {
+    if loads.files {
         write!(f, "        $filesToLoad = \\Composer\\Autoload\\ComposerStaticInit{s}::$files;\n        $requireFile = \\Closure::bind(static function ($fileIdentifier, $file) {{\n            if (empty($GLOBALS['__composer_autoload_files'][$fileIdentifier])) {{\n                $GLOBALS['__composer_autoload_files'][$fileIdentifier] = true;\n\n                require $file;\n            }}\n        }}, null, null);\n        foreach ($filesToLoad as $fileIdentifier => $file) {{\n            $requireFile($fileIdentifier, $file);\n        }}\n\n").unwrap();
     }
     f.push_str("        return $loader;\n    }\n}\n");
     f
 }
 
-fn static_file(
-    suffix: &str,
-    target: &str,
-    vendor: &str,
-    base: &str,
-    psr0: &[(String, Vec<String>)],
-    psr4: &[(String, Vec<String>)],
-    evaluated: &HashMap<String, String>,
-    classes: &[(String, String)],
-    files: &[(String, String, String)],
-) -> String {
+fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &StaticMaps) -> String {
+    let StaticMaps {
+        psr0,
+        psr4,
+        evaluated,
+        classes,
+        files,
+    } = *maps;
     let values = |paths: &[String]| -> Vec<(Key, Php)> {
         (paths.iter().enumerate())
             .map(|(i, p)| {
@@ -803,7 +857,7 @@ fn static_file(
     let (prefixes0, _, fallback0) = group(psr0, false);
     let files = files
         .iter()
-        .map(|f| (Key::of(&f.0), Php::Str(f.2.clone())))
+        .map(|f| (Key::of(&f.id), Php::Str(f.path.clone())))
         .collect();
     let classes = classes
         .iter()

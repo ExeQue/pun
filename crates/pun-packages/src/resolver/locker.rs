@@ -2,7 +2,7 @@ use super::package::Package;
 use super::platform::PLUGIN_API;
 use super::{Options, Resolution};
 use crate::error::Result;
-use crate::lock::{Lock, content_hash};
+use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::version::is_platform;
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
@@ -10,11 +10,11 @@ use std::cmp::Ordering;
 use std::sync::LazyLock;
 
 pub fn lock(resolution: &Resolution, manifest: &Map<String, Value>, options: &Options) -> Lock {
-    let dump_all = |list: &[usize]| -> Vec<Map<String, Value>> {
-        let mut out: Vec<Map<String, Value>> =
-            list.iter().map(|&p| dump(&resolution.arena[p])).collect();
-        let s = |m: &Map<String, Value>, k: &str| m[k].as_str().unwrap_or_default().to_string();
-        out.sort_by_key(|a| s(a, "name"));
+    let dump_all = |list: &[usize]| -> Vec<LockedPackage> {
+        let mut out: Vec<LockedPackage> = (list.iter())
+            .map(|&p| LockedPackage(dump(&resolution.arena[p])))
+            .collect();
+        out.sort_by_key(|a| a.pretty_name().to_string());
         out
     };
     let aliases: Vec<Value> = (resolution.aliases.iter())

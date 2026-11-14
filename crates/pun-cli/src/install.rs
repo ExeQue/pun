@@ -1,9 +1,11 @@
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
+use pun_packages::autoload::{Apcu, Scan};
 use pun_packages::fetch::{Auth, Fetcher, composer_dirs};
-use pun_packages::install::{Options, dirs, install};
+use pun_packages::install::{Dirs, Options, dirs, install};
 use pun_packages::lock::Lock;
 use pun_packages::scripts::Runner;
+use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -145,19 +147,31 @@ pub(crate) fn install_locked(
     } else {
         ("pre-install-cmd", "post-install-cmd")
     };
+    let scan = if a.classmap_authoritative {
+        Scan::Authoritative
+    } else if a.optimize_autoloader {
+        Scan::Optimized
+    } else {
+        Scan::Classmap
+    };
+    let apcu = match &a.apcu_autoloader_prefix {
+        Some(prefix) => Apcu::Prefix(prefix.clone()),
+        None if a.apcu_autoloader => Apcu::RandomPrefix,
+        None => Apcu::Off,
+    };
     let options = Options {
         no_dev: a.no_dev,
-        optimize: a.optimize_autoloader,
-        authoritative: a.classmap_authoritative,
-        apcu: a.apcu_autoloader,
-        apcu_prefix: a.apcu_autoloader_prefix.clone(),
+        scan,
+        apcu,
         no_autoloader: a.no_autoloader,
         no_plugins: a.no_plugins,
-        ignore_platform: a.ignore_platform_req.clone(),
-        ignore_all_platform: a.ignore_platform_reqs,
+        ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
     let fetcher = fetcher(root, manifest);
-    let (vendor, bin_dir) = dirs(&root.to_string_lossy(), manifest);
+    let Dirs {
+        vendor,
+        bin: bin_dir,
+    } = dirs(&root.to_string_lossy(), manifest);
     let env = |k: &str| std::env::var(k).ok();
     let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev, &env);
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };

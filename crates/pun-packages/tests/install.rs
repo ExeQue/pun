@@ -1,6 +1,8 @@
 use pun_packages::fetch::{Auth, Fetcher};
-use pun_packages::install::{Options, Report, install};
+use pun_packages::install::{Added, Options, Report, Updated, install};
 use pun_packages::lock::Lock;
+use pun_packages::lock::LockedPackage;
+use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -47,6 +49,13 @@ fn try_run(dir: &Path, lock: &Lock, o: &Options) -> pun_packages::error::Result<
     };
     assert_eq!(events, expected);
     Ok(report)
+}
+
+fn added(name: &str, version: &str) -> Added {
+    Added {
+        name: name.into(),
+        version: version.into(),
+    }
 }
 
 fn run(dir: &Path, lock: &Lock, o: &Options) -> Report {
@@ -114,10 +123,7 @@ fn install_matches_composer() {
     assert!(!report.stale_lock);
     assert_eq!(
         report.installed,
-        [
-            ("acme/lib".to_string(), "1.2.0".to_string()),
-            ("acme/tools".to_string(), "0.3.1".to_string())
-        ]
+        [added("acme/lib", "1.2.0"), added("acme/tools", "0.3.1")]
     );
     same_as_composer(&tmp, "project-expected");
     assert_eq!(
@@ -174,7 +180,7 @@ fn autoloader_and_bin_corner_cases_match_composer() {
         Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
             .unwrap();
     let o = Options {
-        ignore_platform: vec!["php".into(), "ext-sodium-*".into()],
+        ignore_platform: IgnorePlatform::Listed(vec!["php".into(), "ext-sodium-*".into()]),
         ..Options::default()
     };
     let report = run(&tmp, &lock, &o);
@@ -214,7 +220,7 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     let legacy = (missing.packages.iter_mut())
         .find(|p| p["name"] == "acme/legacy")
         .unwrap();
-    legacy["autoload"]["classmap"] = serde_json::json!(["code/", "gone/"]);
+    legacy.0["autoload"]["classmap"] = serde_json::json!(["code/", "gone/"]);
     assert_eq!(
         try_run(&tmp, &missing, &o).unwrap_err().to_string(),
         format!(
@@ -234,19 +240,23 @@ fn lock_changes_plugins_and_failures() {
         Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
             .unwrap();
     run(&tmp, &lock, &Options::default());
-    let package = |v: Value| v.as_object().unwrap().clone();
+    let package = |v: Value| LockedPackage(v.as_object().unwrap().clone());
 
     let mut changed = lock.clone();
-    changed.packages[0]["version"] = "1.2.1".into();
+    changed.packages[0].0["version"] = "1.2.1".into();
     changed.packages.push(package(
         serde_json::json!({"name": "acme/meta", "version": "1.0.0", "type": "metapackage"}),
     ));
     let report = run(&tmp, &changed, &Options::default());
     assert_eq!(
         report.updated,
-        [("acme/lib".into(), "1.2.0".into(), "1.2.1".into())]
+        [Updated {
+            name: "acme/lib".into(),
+            from: "1.2.0".into(),
+            to: "1.2.1".into()
+        }]
     );
-    assert_eq!(report.installed, [("acme/meta".into(), "1.0.0".into())]);
+    assert_eq!(report.installed, [added("acme/meta", "1.0.0")]);
     assert!(!tmp.join("vendor/acme/meta").exists());
 
     let zip = {
@@ -285,7 +295,7 @@ fn lock_changes_plugins_and_failures() {
          installing acme/src: it has no dist archive, and installing from git sources is not supported yet"
     );
     let mut bad = lock.clone();
-    bad.packages[0]["name"] = "Acme/Not Valid".into();
+    bad.packages[0].0["name"] = "Acme/Not Valid".into();
     assert_eq!(
         try_run(&tmp, &bad, &Options::default())
             .unwrap_err()
@@ -325,7 +335,7 @@ fn lock_changes_plugins_and_failures() {
     std::fs::remove_file(tmp.join("src/Wrong.php")).unwrap();
 
     let ignore_php = Options {
-        ignore_platform: vec!["php".into()],
+        ignore_platform: IgnorePlatform::Listed(vec!["php".into()]),
         ..Options::default()
     };
     run(&tmp, &lock, &ignore_php);
