@@ -196,66 +196,16 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
             return Ok(Exit::Success);
         }
     }
-    let rector_installed = root.join("vendor/rector/rector").is_dir();
-    let rows: Vec<_> = (plan(&detected, &chosen).into_iter())
-        .map(|(s, f, a)| match (s, a) {
-            (Source::Rector, Action::Migrate) if !rector_installed => (s, f, Action::NoVendor),
-            (Source::Phpstan, Action::Migrate) if needs_vendor(&root, &root.join(&f)) => {
-                (s, f, Action::NoVendor)
-            }
-            _ => (s, f, a),
-        })
-        .collect();
-    let format_source = (rows.iter())
-        .find(|r| r.2 == Action::Migrate && r.0.format())
-        .map(|r| (r.0, root.join(&r.1)));
-    let rector = (rows.iter())
-        .find(|r| r.2 == Action::Migrate && r.0 == Source::Rector)
-        .map(|r| root.join(&r.1));
-    let phpstan = (rows.iter())
-        .find(|r| r.2 == Action::Migrate && r.0 == Source::Phpstan)
-        .map(|r| root.join(&r.1));
+    let rows = without_vendor(&root, plan(&detected, &chosen));
+    let sources = Sources::of(&root, &rows);
     let has_format = detected.iter().any(|d| d.0.format());
-    if (chosen.is_empty() && !detected.is_empty()) || (format_source.is_none() && has_format) {
-        let why = if chosen.is_empty() {
-            "nothing selected"
-        } else {
-            "no Pint or PHP-CS-Fixer config selected"
-        };
-        let rows: Vec<_> = (rows.into_iter())
-            .map(|(s, f, a)| match a {
-                Action::Migrate => (s, f, Action::Held),
-                a => (s, f, a),
-            })
-            .collect();
-        report.configs(&rows, pint, &["", "", ""]);
-        let detail = vec![format!("{why}, pun.toml not written")];
-        report.finish(
-            Mark::Skip,
-            format!("N{}; pun.toml not written", &why[1..]),
-            detail,
-            "",
-        );
+    if (chosen.is_empty() && !detected.is_empty()) || (sources.format.is_none() && has_format) {
+        hold(report, rows, pint, chosen.is_empty());
         return Ok(Exit::Success);
     }
-    let from = format_source.as_ref().map(|s| rel(&root, &s.1));
+    let from = sources.format.as_ref().map(|s| rel(&root, &s.1));
     let arrow = report.look.glyph("→", "->");
-    let mut m = convert(&root, &a, pint, format_source, &mut report)?;
-    let mut lint = String::new();
-    if let Some(r) = &rector {
-        lint = rector_lint(&root, r, &mut m.parts, &mut report)?;
-        m.toml = m.parts.render();
-    }
-    let mut analyse = String::new();
-    if let Some(p) = &phpstan {
-        let level;
-        (analyse, level) = phpstan_analyse(&root, p, &mut m.parts, &mut report)?;
-        if interactive && let Some(plain) = closest_preset(&root, &m.parts, level)? {
-            m.parts = plain;
-            analyse.push_str(", switched to the preset");
-        }
-        m.toml = m.parts.render();
-    }
+    let body = body(&root, &a, pint, &sources, interactive, &mut report)?;
     let header = match &from {
         Some(f) => format!(" from {f}."),
         None if detected.is_empty() => format!(": {nothing}; starter config."),
@@ -264,7 +214,10 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
             pint.display()
         ),
     };
-    let tooling = format!("# Written by `pun migrate`{header}\n{}", m.toml);
+    let tooling = format!(
+        "# Written by `pun migrate`{header}\n{}",
+        body.migration.toml
+    );
     let (deps, problems) = composer(&root, a.dry_run)?;
     let toml = match &deps {
         Some(d) => format!("{tooling}\n{}", d.deps.toml),
@@ -278,7 +231,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
         );
     }
     let cfg = pun_config::from_toml(&root, &toml)?;
-    let mut edits = ignore_rewrites(&root, &cfg, phpstan.is_some(), &mut report);
+    let mut edits = ignore_rewrites(&root, &cfg, sources.phpstan.is_some(), &mut report);
     let rewritten = edits.len();
     let written = old.as_deref() != Some(&toml);
     if written {
@@ -290,79 +243,10 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
         d
     });
     report.diffs = apply(&root, &edits, a.dry_run)?;
-    let mut moved = format!(
-        "{arrow} [format] preset {}, {} changed",
-        m.preset,
-        agent::count(m.format_rules, "rule")
-    );
-    if m.lint_rules > 0 {
-        let lint = agent::count(m.lint_rules, "rule");
-        moved += &format!(", {lint} {arrow} [lint]");
-    }
-    let moved = [
-        moved,
-        format!("{arrow} {lint}"),
-        format!("{arrow} {analyse}"),
-    ];
+    let moved = body.moved(arrow);
     report.configs(&rows, pint, &moved.each_ref().map(String::as_str));
     if let Some(d) = deps {
-        let counts: Vec<String> = [
-            ("[require]", d.deps.require),
-            ("[require-dev]", d.deps.require_dev),
-        ]
-        .iter()
-        .filter(|c| c.1 > 0)
-        .map(|(s, n)| format!("{s} {n}"))
-        .collect();
-        let counts = if counts.is_empty() {
-            "pun.toml".to_string()
-        } else {
-            counts.join(", ")
-        };
-        report.line(Mark::Done, "composer.json", format!("{arrow} {counts}"));
-        report.findings.0.push("composer.json migrated".into());
-        if let Some(n) = d.locked {
-            let state = if d.lock_current {
-                "already up to date"
-            } else if a.dry_run {
-                "to write"
-            } else {
-                "written"
-            };
-            report.line(
-                Mark::Done,
-                "composer.lock",
-                format!("{arrow} pun.lock, {} ({state})", agent::count(n, "package")),
-            );
-            report
-                .findings
-                .0
-                .push(format!("composer.lock migrated {state}"));
-        }
-        if !d.deps.auth.is_empty() {
-            let keys: Vec<&str> = d.deps.auth.keys().map(String::as_str).collect();
-            let ignored = std::fs::read_to_string(root.join(".gitignore")).is_ok_and(|g| {
-                g.lines()
-                    .any(|l| matches!(l.trim(), "auth.json" | "/auth.json"))
-            });
-            let hint = if ignored {
-                ""
-            } else {
-                "; add auth.json to .gitignore"
-            };
-            report.line(
-                Mark::Warn,
-                "credentials",
-                format!("{arrow} auth.json ({}){hint}", keys.join(", ")),
-            );
-            report.findings.0.push(format!(
-                "credentials moved to auth.json ({}){hint}",
-                keys.join(", ")
-            ));
-        }
-        for (key, why) in &d.deps.skipped {
-            report.unsupported(key, why, format!("composer.json {key} skipped {why}"));
-        }
+        report.composer(&root, &d, arrow);
     }
     for (file, why) in problems {
         report.line(Mark::Warn, file, why.clone());
@@ -373,54 +257,143 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
         report.line(
             Mark::Done,
             "ignore comments",
-            match phpstan {
+            match sources.phpstan {
                 Some(_) => format!("{arrow} @pun-ignore in {files}"),
                 None => format!("{arrow} @pun-ignore-file in {files}"),
             },
         );
     }
-    let toml = if from.is_some() {
-        "pun.toml"
-    } else {
-        "starter pun.toml"
-    };
-    let state = match (written, a.dry_run) {
-        (false, _) => "already up to date",
-        (true, true) => "to write",
-        (true, false) => "written",
-    };
-    let ignores = if a.dry_run { "to rewrite" } else { "rewritten" };
-    let detail = vec![
-        format!(
-            "{toml} {} (preset {}, {}, {})",
-            state.trim_start_matches("already "),
-            cfg.preset,
-            agent::count(cfg.rules.len(), "format rule"),
-            agent::count(cfg.lint.rules.len(), "lint rule")
-        ),
-        format!(
-            "ignore comments {ignores} in {}",
-            agent::count(rewritten, "file")
-        ),
-    ];
-    let starter = if from.is_some() {
-        String::new()
-    } else {
-        format!(" (preset {})", cfg.preset)
-    };
-    let (mark, last) = match (written, a.dry_run) {
-        (false, true) => (Mark::Skip, format!("Dry run: {toml} is already up to date")),
-        (false, false) => (Mark::Done, format!("{toml} is already up to date")),
-        (true, true) => (Mark::Skip, format!("Dry run: would write {toml}{starter}")),
-        (true, false) => (Mark::Done, format!("Wrote {toml}{starter}")),
-    };
     let checked = match &from {
         Some(f) => format!("from {f}"),
         None if detected.is_empty() => nothing,
         None => String::new(),
     };
-    report.finish(mark, last, detail, &checked);
+    report.summary(&cfg, from.is_none(), written, rewritten, &checked);
     Ok(Exit::Success)
+}
+
+/// A selected rector.php without `vendor/rector/rector`, or a phpstan.neon that includes from a missing `vendor/`,
+/// can't be read.
+fn without_vendor(
+    root: &Path,
+    rows: Vec<(Source, String, Action)>,
+) -> Vec<(Source, String, Action)> {
+    let rector_installed = root.join("vendor/rector/rector").is_dir();
+    (rows.into_iter())
+        .map(|(s, f, a)| match (s, a) {
+            (Source::Rector, Action::Migrate) if !rector_installed => (s, f, Action::NoVendor),
+            (Source::Phpstan, Action::Migrate) if needs_vendor(root, &root.join(&f)) => {
+                (s, f, Action::NoVendor)
+            }
+            _ => (s, f, a),
+        })
+        .collect()
+}
+
+/// The configs migrated into each part of pun.toml.
+struct Sources {
+    /// Pint's or PHP-CS-Fixer's, for `[format]`.
+    format: Option<(Source, PathBuf)>,
+    rector: Option<PathBuf>,
+    phpstan: Option<PathBuf>,
+}
+
+impl Sources {
+    fn of(root: &Path, rows: &[(Source, String, Action)]) -> Sources {
+        let find = |of: &dyn Fn(Source) -> bool| {
+            (rows.iter())
+                .find(|r| r.2 == Action::Migrate && of(r.0))
+                .map(|r| (r.0, root.join(&r.1)))
+        };
+        Sources {
+            format: find(&Source::format),
+            rector: find(&|s| s == Source::Rector).map(|r| r.1),
+            phpstan: find(&|s| s == Source::Phpstan).map(|r| r.1),
+        }
+    }
+}
+
+/// Nothing is written: nothing was selected, or no Pint or PHP-CS-Fixer config among what was.
+fn hold(mut report: Report, rows: Vec<(Source, String, Action)>, pint: &Path, nothing: bool) {
+    let why = if nothing {
+        "nothing selected"
+    } else {
+        "no Pint or PHP-CS-Fixer config selected"
+    };
+    let rows: Vec<_> = (rows.into_iter())
+        .map(|(s, f, a)| match a {
+            Action::Migrate => (s, f, Action::Held),
+            a => (s, f, a),
+        })
+        .collect();
+    report.configs(&rows, pint, &["", "", ""]);
+    let detail = vec![format!("{why}, pun.toml not written")];
+    report.finish(
+        Mark::Skip,
+        format!("N{}; pun.toml not written", &why[1..]),
+        detail,
+        "",
+    );
+}
+
+/// pun.toml's tooling part, and what rector.php and phpstan.neon became.
+struct Body {
+    migration: migrate::Migration,
+    lint: String,
+    analyse: String,
+}
+
+impl Body {
+    /// What each config's line says it became: the format config's, rector.php's and phpstan.neon's.
+    fn moved(&self, arrow: &str) -> [String; 3] {
+        let m = &self.migration;
+        let mut moved = format!(
+            "{arrow} [format] preset {}, {} changed",
+            m.preset,
+            agent::count(m.format_rules, "rule")
+        );
+        if m.lint_rules > 0 {
+            let lint = agent::count(m.lint_rules, "rule");
+            moved += &format!(", {lint} {arrow} [lint]");
+        }
+        [
+            moved,
+            format!("{arrow} {}", self.lint),
+            format!("{arrow} {}", self.analyse),
+        ]
+    }
+}
+
+/// `[format]` from the format config, then `[lint]` from rector.php and `[analyse]` from phpstan.neon.
+fn body(
+    root: &Path,
+    a: &MigrateArgs,
+    pint: &Path,
+    sources: &Sources,
+    interactive: bool,
+    report: &mut Report,
+) -> Result<Body> {
+    let mut m = convert(root, a, pint, sources.format.clone(), report)?;
+    let mut lint = String::new();
+    if let Some(r) = &sources.rector {
+        lint = rector_lint(root, r, &mut m.parts, report)?;
+        m.toml = m.parts.render();
+    }
+    let mut analyse = String::new();
+    if let Some(p) = &sources.phpstan {
+        let level;
+        (analyse, level) = phpstan_analyse(root, p, &mut m.parts, report)?;
+        if interactive && let Some(plain) = closest_preset(root, &m.parts, level)? {
+            m.parts = plain;
+            analyse.push_str(", switched to the preset");
+        }
+        m.toml = m.parts.render();
+    }
+    Ok(Body {
+        migration: m,
+        lint,
+        analyse,
+    })
 }
 
 /// composer.json's dependencies for pun.toml, with the files they bring along.
@@ -906,6 +879,118 @@ impl Report {
     }
 
     /// Prints everything, ending with `last` (humans) or the summary line built from `detail` and `checked` (agents).
+    /// composer.json's lines: its dependencies, composer.lock's packages, the credentials and the skipped keys.
+    fn composer(&mut self, root: &Path, d: &Composer, arrow: &str) {
+        let counts: Vec<String> = [
+            ("[require]", d.deps.require),
+            ("[require-dev]", d.deps.require_dev),
+        ]
+        .iter()
+        .filter(|c| c.1 > 0)
+        .map(|(s, n)| format!("{s} {n}"))
+        .collect();
+        let counts = if counts.is_empty() {
+            "pun.toml".to_string()
+        } else {
+            counts.join(", ")
+        };
+        self.line(Mark::Done, "composer.json", format!("{arrow} {counts}"));
+        self.findings.0.push("composer.json migrated".into());
+        if let Some(n) = d.locked {
+            let state = if d.lock_current {
+                "already up to date"
+            } else if self.dry_run {
+                "to write"
+            } else {
+                "written"
+            };
+            self.line(
+                Mark::Done,
+                "composer.lock",
+                format!("{arrow} pun.lock, {} ({state})", agent::count(n, "package")),
+            );
+            self.findings
+                .0
+                .push(format!("composer.lock migrated {state}"));
+        }
+        if !d.deps.auth.is_empty() {
+            let keys: Vec<&str> = d.deps.auth.keys().map(String::as_str).collect();
+            let ignored = std::fs::read_to_string(root.join(".gitignore")).is_ok_and(|g| {
+                g.lines()
+                    .any(|l| matches!(l.trim(), "auth.json" | "/auth.json"))
+            });
+            let hint = if ignored {
+                ""
+            } else {
+                "; add auth.json to .gitignore"
+            };
+            self.line(
+                Mark::Warn,
+                "credentials",
+                format!("{arrow} auth.json ({}){hint}", keys.join(", ")),
+            );
+            self.findings.0.push(format!(
+                "credentials moved to auth.json ({}){hint}",
+                keys.join(", ")
+            ));
+        }
+        for (key, why) in &d.deps.skipped {
+            self.unsupported(key, why, format!("composer.json {key} skipped {why}"));
+        }
+    }
+
+    /// The last line, and agent mode's detail: what happened to pun.toml (a `starter` one without a format config)
+    /// and the ignore comments.
+    fn summary(
+        self,
+        cfg: &pun_config::Config,
+        starter: bool,
+        written: bool,
+        rewritten: usize,
+        checked: &str,
+    ) {
+        let toml = if starter {
+            "starter pun.toml"
+        } else {
+            "pun.toml"
+        };
+        let state = match (written, self.dry_run) {
+            (false, _) => "already up to date",
+            (true, true) => "to write",
+            (true, false) => "written",
+        };
+        let ignores = if self.dry_run {
+            "to rewrite"
+        } else {
+            "rewritten"
+        };
+        let detail = vec![
+            format!(
+                "{toml} {} (preset {}, {}, {})",
+                state.trim_start_matches("already "),
+                cfg.preset,
+                agent::count(cfg.rules.len(), "format rule"),
+                agent::count(cfg.lint.rules.len(), "lint rule")
+            ),
+            format!(
+                "ignore comments {ignores} in {}",
+                agent::count(rewritten, "file")
+            ),
+        ];
+        let preset = if starter {
+            format!(" (preset {})", cfg.preset)
+        } else {
+            String::new()
+        };
+        let (mark, last) = match (written, self.dry_run) {
+            (false, true) => (Mark::Skip, format!("Dry run: {toml} is already up to date")),
+            (false, false) => (Mark::Done, format!("{toml} is already up to date")),
+            (true, true) => (Mark::Skip, format!("Dry run: would write {toml}{preset}")),
+            (true, false) => (Mark::Done, format!("Wrote {toml}{preset}")),
+        };
+        self.finish(mark, last, detail, checked);
+    }
+
     fn finish(mut self, mark: Mark, last: String, detail: Vec<String>, checked: &str) {
         if !self.items.is_empty() {
             self.findings
