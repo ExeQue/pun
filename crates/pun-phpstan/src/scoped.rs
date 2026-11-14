@@ -9,7 +9,7 @@ pub(crate) trait Family: 'static {
 pub(crate) struct Scoped<F: Family>(Cell<Option<&'static F::Of<'static>>>);
 
 impl<F: Family> Scoped<F> {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(Cell::new(None))
     }
 

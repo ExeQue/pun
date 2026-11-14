@@ -13,7 +13,7 @@ impl Family for Answer {
 }
 
 thread_local! {
-    static ANSWER: Scoped<Answer> = const { Scoped::new() };
+    static ANSWER: Scoped<Answer> = Scoped::new();
 }
 
 pub fn with_larastan_strings<R>(

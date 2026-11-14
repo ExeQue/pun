@@ -465,7 +465,7 @@ impl Family for Provider {
 }
 
 thread_local! {
-    static PROVIDER: Scoped<Provider> = const { Scoped::new() };
+    static PROVIDER: Scoped<Provider> = Scoped::new();
 }
 
 pub fn with_classes<R>(provider: &dyn Fn(&str) -> Option<Arc<Class>>, f: impl FnOnce() -> R) -> R {
@@ -488,7 +488,7 @@ impl Family for FunctionProvider {
 }
 
 thread_local! {
-    static FUNCTIONS: Scoped<FunctionProvider> = const { Scoped::new() };
+    static FUNCTIONS: Scoped<FunctionProvider> = Scoped::new();
 }
 
 pub fn with_functions<R>(provider: &dyn Fn(&str) -> bool, f: impl FnOnce() -> R) -> R {

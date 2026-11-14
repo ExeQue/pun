@@ -29,7 +29,7 @@ impl Family for TypeNodes {
 }
 
 thread_local! {
-    static TYPE_NODES: Scoped<TypeNodes> = const { Scoped::new() };
+    static TYPE_NODES: Scoped<TypeNodes> = Scoped::new();
 }
 
 pub fn with_type_nodes<R>(
