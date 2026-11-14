@@ -23,7 +23,7 @@ The launch phase has started: cleanup, then the first Composer release. CI stays
   1.7 s fresh and 0.65 s with nothing to do (Composer: 13.5 s and 6.7 s). The resolver, `pun update`, `pun require`
   and `pun remove` are built: on pinkary `pun update` writes Composer's exact composer.lock in 6.5 s and 376 MB
   (Composer: 8.5 s and 165 MB). `pun x` (`punx`) runs a package's command from Pun's cache.
-  Next: `pun vet`, then workspaces.
+  `pun vet` checks the lock against audits and exemptions in supply-chain/. Next: workspaces.
 - **Green on main** (54df451, 2026-11-08): every crate's tests, all 174 analyse targets, harness on pinkary 799/799
   identical, `scripts/cli-parity.sh` identical, and `cargo clippy --workspace --all-targets -- -D warnings` clean.
   `cargo fmt --all --check` is clean too (rustfmt.toml, default width).
@@ -505,6 +505,7 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | packages: finish steps 8 and 9 (plan/packages.md): `pun update` against `composer update` on every corpus project and 20 recorded partial updates, `vcs` repositories, and the root `filter.summary-url` | todo |
 | packages: resolve memory (376 MB on pinkary against Composer's 165 MB): the pool's links and parsed constraints per version | todo |
 | packages: punphp-packages back to 100% line coverage (90.19% after the resolver: composer_repo.rs, explain.rs, locker.rs, manifest_edit.rs) | doing |
+| packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: `punx` follow-ups: `punx list` and `punx clean` for the cache's installs, as cpx has them | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |
 | later: LSP; run, test; native Blade; extension system | after 1.0 |

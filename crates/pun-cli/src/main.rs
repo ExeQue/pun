@@ -29,6 +29,7 @@ mod sampler;
 mod self_update;
 mod table;
 mod update;
+mod vet;
 mod watch;
 mod x;
 
@@ -83,6 +84,8 @@ enum Cmd {
     Remove(update::RemoveArgs),
     /// Run a command from a Composer package without adding it to the project (`punx` for short).
     X(x::XArgs),
+    /// Check that every locked package was reviewed or exempted (supply-chain/), and record reviews.
+    Vet(vet::VetArgs),
     /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
     Init(init::InitArgs),
     /// Replace this pun with the latest release (or the one named), verified as the installer verifies it.
@@ -320,6 +323,7 @@ fn run() -> ExitCode {
         Cmd::Require(_) => "require",
         Cmd::Remove(_) => "remove",
         Cmd::X(_) => "x",
+        Cmd::Vet(_) => "vet",
         Cmd::SelfUpdate(_) => "self-update",
         Cmd::ListFiles(_) => "list-files",
         Cmd::Config { .. } => "config",
@@ -375,6 +379,7 @@ fn run() -> ExitCode {
         Cmd::Require(a) => update::require(a),
         Cmd::Remove(a) => update::remove(a),
         Cmd::X(a) => x::run(a),
+        Cmd::Vet(a) => vet::run(a),
         Cmd::SelfUpdate(a) => self_update::run(a),
         Cmd::ListFiles(a) => list_files::run(a),
         Cmd::Config {

@@ -89,7 +89,7 @@ fn package(spec: &str) -> Result<(String, String, Option<&'static str>)> {
 }
 
 /// Pun's cache directory: `PUN_CACHE_DIR`, else the platform's user cache directory.
-fn cache_dir() -> Result<PathBuf> {
+pub(crate) fn cache_dir() -> Result<PathBuf> {
     let env = |k: &str| {
         std::env::var_os(k)
             .filter(|v| !v.is_empty())
