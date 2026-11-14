@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-tautology-ternary`, ported from Rector 2.8.4's `SimplifyTautologyTernaryRector`
+//! `lint/dead-code/no-useless-ternary`, ported from Rector 2.8.4's `SimplifyTautologyTernaryRector`
 //! (rules/CodeQuality/Rector/Ternary) with `BinaryOpManipulator::matchFirstAndSecondConditionNode`.
 //!
 //! `$a !== $b ? $a : $b` is always `$a`, and `$a === $b ? $a : $b` is always `$b`: the ternary compares the two
@@ -15,7 +15,7 @@ pub struct NoTautologyTernary;
 
 impl Rule for NoTautologyTernary {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-tautology-ternary"
+        "lint/dead-code/no-useless-ternary"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

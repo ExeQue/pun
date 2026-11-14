@@ -7,7 +7,7 @@ pagination: false
 
 Class, interface, trait and enum declarations and their members.
 
-Across commands: format: 8, lint: 20, analyse: 63.
+Across commands: format: 8, lint: 15, analyse: 63.
 
 <CardGroup cols={2}>
 <Card title="lint/classes/add-stringable">
@@ -33,15 +33,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 [`lint/classes/no-null-property-default`](/docs/rules/lint/classes/no-null-property-default)
 
 Properties MUST not be explicitly initialised with `null` except when they have a type declaration (PHP 7.4).
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/classes/no-null-property-init">
-
-[`lint/classes/no-null-property-init`](/docs/rules/lint/classes/no-null-property-init)
-
-Remove initialization with null value from property declarations
 
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
@@ -91,15 +82,6 @@ Removes redundant readonly from properties in readonly classes.
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/classes/no-redundant-readonly-property">
-
-[`lint/classes/no-redundant-readonly-property`](/docs/rules/lint/classes/no-redundant-readonly-property)
-
-In a readonly class, drop `readonly` from properties and promoted parameters
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/classes/no-static-constructor-call">
 
 [`lint/classes/no-static-constructor-call`](/docs/rules/lint/classes/no-static-constructor-call)
@@ -143,33 +125,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 Inside an enum or `final`/anonymous class, `self` should be preferred over `static`.
 
 Enabled by the [`modernize`](/docs/rules/sets/modernize), [`code-quality`](/docs/rules/sets/code-quality) sets. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/classes/prefer-self-over-static">
-
-[`lint/classes/prefer-self-over-static`](/docs/rules/lint/classes/prefer-self-over-static)
-
-Change `static::*` to `self::*` on final class or private static members
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/classes/prefer-serialize-method">
-
-[`lint/classes/prefer-serialize-method`](/docs/rules/lint/classes/prefer-serialize-method)
-
-Change __sleep() to __serialize() with correct return values
-
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
-
-</Card>
-<Card title="lint/classes/prefer-unserialize-method">
-
-[`lint/classes/prefer-unserialize-method`](/docs/rules/lint/classes/prefer-unserialize-method)
-
-Change __wakeup() to __unserialize()
-
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
 
 </Card>
 <Card title="lint/classes/require-class-matches-file">

@@ -7,7 +7,7 @@ pagination: false
 
 Laravel (ecosystem: on when composer.lock has laravel/framework).
 
-Across commands: format: 1, lint: 100, analyse: 15.
+Across commands: format: 1, lint: 97, analyse: 15.
 
 <CardGroup cols={2}>
 <Card title="lint/laravel/add-factory-extends-phpdoc">
@@ -613,15 +613,6 @@ Makes Model attributes and scopes protected
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed. Additional upstream gates: `checkModelMethodVisibility (default false)`.
 
 </Card>
-<Card title="lint/laravel/prefer-query-builder-call">
-
-[`lint/laravel/prefer-query-builder-call`](/docs/rules/lint/laravel/prefer-query-builder-call)
-
-The EloquentMagicMethodToQueryBuilderRule is designed to automatically transform certain magic method calls on Eloquent Models into corresponding Query Builder method calls.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
-
-</Card>
 <Card title="lint/laravel/prefer-queue-attribute">
 
 [`lint/laravel/prefer-queue-attribute`](/docs/rules/lint/laravel/prefer-queue-attribute)
@@ -719,15 +710,6 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 Use Sleep::sleep() and Sleep::usleep() instead of the sleep() and usleep() function.
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
-
-</Card>
-<Card title="lint/laravel/prefer-status-assertion-method">
-
-[`lint/laravel/prefer-status-assertion-method`](/docs/rules/lint/laravel/prefer-status-assertion-method)
-
-Replace `(new \Illuminate\Testing\TestResponse)->assertStatus(200)` with `(new \Illuminate\Testing\TestResponse)->assertOk()`
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when laravel is installed.
 
 </Card>
 <Card title="lint/laravel/prefer-stop-on-first-failure-attribute">
@@ -845,15 +827,6 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 Changes the uniqueFor property to use the UniqueFor attribute
 
 Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Runs when laravel is installed.
-
-</Card>
-<Card title="lint/laravel/prefer-validation-rule-array">
-
-[`lint/laravel/prefer-validation-rule-array`](/docs/rules/lint/laravel/prefer-validation-rule-array)
-
-Convert string validation rules into arrays for Laravel's Validator.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when laravel is installed.
 
 </Card>
 <Card title="lint/laravel/prefer-view-array">

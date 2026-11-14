@@ -227,6 +227,9 @@ fn targets(name: &str) -> Result<Vec<String>> {
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect();
+    if let Some(merged) = pun_config::merged_into(&id) {
+        bail!("`{name}` was merged into `{merged}`: use `{merged}`");
+    }
     if in_group.is_empty() && !is_group(&id) {
         bail!("`{name}` is not a lint rule or group");
     }

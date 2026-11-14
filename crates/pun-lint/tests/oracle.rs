@@ -5,51 +5,15 @@ use std::path::Path;
 
 use pun_lint::{Linter, Rule, rules};
 
-/// The rule the oracle files below were written for.
-fn spike_rules() -> Vec<Box<dyn Rule>> {
-    vec![Box::new(rules::PreferCompoundAssignment)]
-}
-
-fn check_oracle(name: &str) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/oracle")
-        .join(name);
-    let content = std::fs::read_to_string(&path).unwrap();
-    let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(spike_rules(), 80400).fix(&path, input).unwrap();
-    assert_eq!(fixed.source, expected, "{name}");
-}
-
-#[test]
-fn compound_assignment() {
-    check_oracle("prefer_compound_assignment.php.inc");
-}
-
-#[test]
-fn compound_assignment_keeps_parentheses_around_low_precedence_operators() {
-    // Rector writes `$a += $b or $c;`, which PHP reads as `($a += $b) or $c`. Pun keeps the meaning (hand-derived).
-    let linter = Linter::new(spike_rules(), 80400);
-    let fixed = linter
-        .fix(
-            Path::new("a.php"),
-            "<?php\n$a = $a + ($b or $c);\n$a = $a . (($b xor $c));\n$a = $a - ($b and $c);\n",
-        )
-        .unwrap();
-    assert_eq!(
-        fixed.source,
-        "<?php\n$a += ($b or $c);\n$a .= (($b xor $c));\n$a -= ($b and $c);\n"
-    );
-}
-
 #[test]
 fn unused_foreach_key_with_a_missing_array_element_in_compact() {
-    // As above for the dead-code rules' copy of CompactFuncCallAnalyzer: the null item is skipped and 'k' is found,
+    // The dead-code rules' copy of CompactFuncCallAnalyzer: the null item is skipped and 'k' is found,
     // so the key stays.
     let code = "<?php\nforeach ($a as $k => $v) { compact([, 'k']); }\n";
     assert_eq!(fix_with(rules::NoUnusedForeachKey, code), code);
 }
 
-/// Like `check_oracle`, for a file of one dead-code rule: Rector ran with only that rule's class (`withRules`) and
+/// A file of one dead-code rule, checked against Rector: Rector ran with only that rule's class (`withRules`) and
 /// `withPhpVersion(80400)`.
 fn check_rule_oracle(rule: impl Rule + 'static, name: &str) {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -166,36 +130,10 @@ fn duplicate_array_key() {
 }
 
 #[test]
-fn null_property_init() {
-    check_rule_oracle(rules::NoNullPropertyInit, "no_null_property_init.php.inc");
-}
-
-#[test]
-fn null_property_init_in_parentheses() {
-    // Rector's printer fails on `= (null)` ("Encountered unexpected token") and leaves the file; the default is
-    // still null (hand-derived).
-    assert_eq!(
-        fix_with(
-            rules::NoNullPropertyInit,
-            "<?php\nclass A { public $h = (null); }\n"
-        ),
-        "<?php\nclass A { public $h; }\n"
-    );
-}
-
-#[test]
 fn redundant_final_const() {
     check_rule_oracle(
         rules::NoRedundantFinalConst,
         "no_redundant_final_const.php.inc",
-    );
-}
-
-#[test]
-fn unused_closure_variable() {
-    check_rule_oracle(
-        rules::NoUnusedClosureVariable,
-        "no_unused_closure_variable.php.inc",
     );
 }
 

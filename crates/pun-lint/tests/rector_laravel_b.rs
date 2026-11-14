@@ -24,8 +24,7 @@ use pun_lint::rules::{
     NoCollectionAliases, NoNegatedContains, NoNegatedFilter, NoNegatedWhen, NoUselessValueCall,
     NoUselessWithCall, PreferClassContainerKey, PreferClosureOnlyBind, PreferCollectionAll,
     PreferDispatchHelper, PreferEnvironmentCheck, PreferLatestOldest, PreferProtectedModelMethods,
-    PreferQueryBuilderCall, PreferRequestValidate, PreferStatusAssertionMethod,
-    PreferTypedAssertClosure, PreferValidationRuleArray,
+    PreferRequestValidate, PreferTypedAssertClosure,
 };
 
 fn check(rule: impl Rule + 'static, class: &str) {
@@ -60,14 +59,6 @@ fn reverse_conditionable_method_call() {
 }
 
 #[test]
-fn assert_status_to_assert_method() {
-    check(
-        PreferStatusAssertionMethod,
-        "AssertStatusToAssertMethodRector",
-    );
-}
-
-#[test]
 fn app_environment_comparison_to_parameter() {
     check(
         PreferEnvironmentCheck,
@@ -96,14 +87,6 @@ fn remove_redundant_with_calls() {
 #[test]
 fn dispatch_to_helper_functions() {
     check(PreferDispatchHelper, "DispatchToHelperFunctionsRector");
-}
-
-#[test]
-fn validation_rule_array_string_value_to_array() {
-    check(
-        PreferValidationRuleArray,
-        "ValidationRuleArrayStringValueToArrayRector",
-    );
 }
 
 #[test]
@@ -256,34 +239,6 @@ fn add_has_factory_to_models_options() {
         rule.configure(&serde_json::json!({"items": ["App\\*"]}))
             .is_err()
     );
-}
-
-/// The fixtures run with rector-laravel's config/configured_rule.php (`exclude_methods`); Oracle/ without options.
-#[test]
-fn eloquent_magic_method_to_query_builder() {
-    let class = "EloquentMagicMethodToQueryBuilderRector";
-    let stubs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector-laravel-stubs");
-    let mut rule = PreferQueryBuilderCall::default();
-    rule.configure(&serde_json::json!({
-        "exclude-methods": ["excludablePublicMethodBelongsToEloquentQueryBuilder"]
-    }))
-    .unwrap();
-    run_dirs(vec![Box::new(rule)], class, &["Fixture"], 80400, &[&stubs]);
-    let default: Vec<Box<dyn Rule>> = vec![Box::new(PreferQueryBuilderCall::default())];
-    run_dirs(default, class, &["Oracle", "Pun"], 80400, &[&stubs]);
-}
-
-#[test]
-fn eloquent_magic_method_to_query_builder_options() {
-    let mut rule = PreferQueryBuilderCall::default();
-    rule.configure(&serde_json::json!(null)).unwrap();
-    assert!(rule.configure(&serde_json::json!(true)).is_err());
-    assert!(rule.configure(&serde_json::json!({})).is_err());
-    assert!(rule.configure(&serde_json::json!({"other": []})).is_err());
-    assert!(rule.configure(&serde_json::json!({"items": [1]})).is_err());
-    rule.configure(&serde_json::json!({"items": ["a"]}))
-        .unwrap();
-    assert_eq!(rule.exclude_methods, ["a"]);
 }
 
 /// The fixtures and Oracle/ run with rector-laravel's config/configured_rule.php (`encrypter` to the `Encrypter`

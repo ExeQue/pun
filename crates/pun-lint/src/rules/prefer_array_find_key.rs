@@ -1,4 +1,4 @@
-//! `lint/php-8.4/prefer-array-find-key`, ported from Rector 2.8.4's `ForeachToArrayFindKeyRector` (rules/Php84/Rector/Foreach_); the shared code and what Pun does
+//! `lint/php-8.4/prefer-array-find`, ported from Rector 2.8.4's `ForeachToArrayFindKeyRector` (rules/Php84/Rector/Foreach_); the shared code and what Pun does
 //! differently are in `lint_b_foreach`.
 
 use mago_syntax::cst::{Node, NodeKind, Statement};
@@ -12,7 +12,7 @@ pub struct PreferArrayFindKey;
 
 impl Rule for PreferArrayFindKey {
     fn id(&self) -> &'static str {
-        "lint/php-8.4/prefer-array-find-key"
+        "lint/php-8.4/prefer-array-find"
     }
 
     fn min_php_version(&self) -> u32 {

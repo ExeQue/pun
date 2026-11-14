@@ -7,7 +7,7 @@ pagination: false
 
 Code that never runs, or whose result is never used.
 
-Across commands: format: 0, lint: 64, analyse: 42.
+Across commands: format: 0, lint: 54, analyse: 42.
 
 <CardGroup cols={2}>
 <Card title="lint/dead-code/no-always-false-condition">
@@ -37,15 +37,6 @@ Remove instanceof checks and assert(instanceof) calls that are always true for t
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/dead-code/no-always-true-instanceof-assert">
-
-[`lint/dead-code/no-always-true-instanceof-assert`](/docs/rules/lint/dead-code/no-always-true-instanceof-assert)
-
-Remove assert() with instanceof check on a value whose type is already known
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/dead-code/no-and-true">
 
 [`lint/dead-code/no-and-true`](/docs/rules/lint/dead-code/no-and-true)
@@ -53,15 +44,6 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 Remove `and true` that has no added value
 
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/dead-code/no-bool-ternary">
-
-[`lint/dead-code/no-bool-ternary`](/docs/rules/lint/dead-code/no-bool-ternary)
-
-Remove unnecessary ternary expressions
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
 <Card title="lint/dead-code/no-cast-in-concat">
@@ -136,15 +118,6 @@ Remove or report if/for/foreach/while statements with an empty body.
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/dead-code/no-empty-loop">
-
-[`lint/dead-code/no-empty-loop`](/docs/rules/lint/dead-code/no-empty-loop)
-
-Remove loop with no body
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/dead-code/no-empty-method">
 
 [`lint/dead-code/no-empty-method`](/docs/rules/lint/dead-code/no-empty-method)
@@ -208,33 +181,6 @@ Removes non-existing @var annotations above the code
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/dead-code/no-mirror-assignment">
-
-[`lint/dead-code/no-mirror-assignment`](/docs/rules/lint/dead-code/no-mirror-assignment)
-
-Remove `$value = $value` assignments.
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour). Intent: correctness.
-
-</Card>
-<Card title="lint/dead-code/no-null-default-argument">
-
-[`lint/dead-code/no-null-default-argument`](/docs/rules/lint/dead-code/no-null-default-argument)
-
-Remove default null argument, where null is already a default param value
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/dead-code/no-null-default-named-argument">
-
-[`lint/dead-code/no-null-default-named-argument`](/docs/rules/lint/dead-code/no-null-default-named-argument)
-
-Remove named null argument, where null is already a default param value
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/dead-code/no-null-tag-value">
 
 [`lint/dead-code/no-null-tag-value`](/docs/rules/lint/dead-code/no-null-tag-value)
@@ -251,15 +197,6 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 Remove assign before if/else that overrides the variable in both branches
 
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: unsafe (can change behaviour).
-
-</Card>
-<Card title="lint/dead-code/no-overwritten-assignment">
-
-[`lint/dead-code/no-overwritten-assignment`](/docs/rules/lint/dead-code/no-overwritten-assignment)
-
-Remove an assignment that the next statement overwrites without reading it.
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
 </Card>
 <Card title="lint/dead-code/no-parent-call-without-parent">
@@ -341,15 +278,6 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 Detects and removes self-assignments where a variable or property is assigned to itself.
 
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour). Intent: correctness.
-
-</Card>
-<Card title="lint/dead-code/no-tautology-ternary">
-
-[`lint/dead-code/no-tautology-ternary`](/docs/rules/lint/dead-code/no-tautology-ternary)
-
-Use the value a ternary always gives when it compares the two values it chooses between.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
 <Card title="lint/dead-code/no-typed-property-instanceof">
@@ -487,15 +415,6 @@ Flags `static $x;` declarations whose name is never read or written
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: correctness.
 
 </Card>
-<Card title="lint/dead-code/no-unused-test-method-param">
-
-[`lint/dead-code/no-unused-test-method-param`](/docs/rules/lint/dead-code/no-unused-test-method-param)
-
-Remove parameter of private test class method, that is overridden by direct assign before its first use
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/dead-code/no-useless-cast">
 
 [`lint/dead-code/no-useless-cast`](/docs/rules/lint/dead-code/no-useless-cast)
@@ -574,16 +493,7 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 
 Simplify ternaries whose result does not depend on the condition, or that equal a boolean expression.
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/dead-code/no-useless-variable">
-
-[`lint/dead-code/no-useless-variable`](/docs/rules/lint/dead-code/no-useless-variable)
-
-Remove useless variable assigns
-
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+Enabled by the [`dead-code`](/docs/rules/sets/dead-code), [`code-quality`](/docs/rules/sets/code-quality) sets. Fix: safe (keeps behaviour).
 
 </Card>
 </CardGroup>

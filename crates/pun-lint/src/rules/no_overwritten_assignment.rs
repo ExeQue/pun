@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-overwritten-assignment`, ported from Rector 2.8.4's `RemoveDoubleAssignRector`
+//! `lint/dead-code/no-unused-assignment`, ported from Rector 2.8.4's `RemoveDoubleAssignRector`
 //! (rules/DeadCode/Rector/Assign).
 //!
 //! An assignment the next statement assigns again to the same variable or property goes: `$value = 1; $value = 2;`
@@ -18,7 +18,7 @@ pub struct NoOverwrittenAssignment;
 
 impl Rule for NoOverwrittenAssignment {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-overwritten-assignment"
+        "lint/dead-code/no-unused-assignment"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

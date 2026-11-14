@@ -339,6 +339,19 @@ fn parse(
     })
 }
 
+/// The rule a removed rule was merged into: `name` is an ID in a rule's `replaces` (`lint/arrays/prefer-array-append`),
+/// with or without its `<command>/`.
+pub fn merged_into(name: &str) -> Option<&'static str> {
+    rules().iter().find_map(|(id, e)| {
+        let replaces = e.get("replaces")?.as_array()?;
+        replaces
+            .iter()
+            .filter_map(toml::Value::as_str)
+            .any(|old| old == name || old.split_once('/').is_some_and(|(_, rest)| rest == name))
+            .then_some(id.as_str())
+    })
+}
+
 /// The Pun rule ID behind a name from before the `<command>/<group>/<name>` IDs: an upstream rule (`array_syntax`,
 /// `Pint/laravel_blade`, `StrictInArray`, `method.notFound`, Mago's `no-empty`) under any casing or separators (the
 /// earlier auto-derived names were kebab-cased upstream names: `final-class`, `simplify-mirror-assign`), and the old

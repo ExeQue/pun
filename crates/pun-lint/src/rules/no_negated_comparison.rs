@@ -1,4 +1,4 @@
-//! `lint/complexity/no-negated-comparison`, ported from Rector 2.8.4's `BooleanNotIdenticalToNotIdenticalRector`
+//! `lint/complexity/prefer-simple-condition`, ported from Rector 2.8.4's `BooleanNotIdenticalToNotIdenticalRector`
 //! (rules/CodeQuality/Rector/Identical).
 //!
 //! `!($a === $b)` and `!$a === $b` become `$a !== $b` when both sides are `bool`.
@@ -15,7 +15,7 @@ pub struct NoNegatedComparison;
 
 impl Rule for NoNegatedComparison {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-negated-comparison"
+        "lint/complexity/prefer-simple-condition"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

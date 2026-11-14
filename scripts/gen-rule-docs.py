@@ -182,6 +182,14 @@ def rule_page(data: dict, rid: str, rule: dict, sources: list[dict], urls: dict,
     body += "\n\n## Replaces\n\n"
     body += "\n".join(f"- {upstream_link(s, urls)} ({s['tool']}{', risky' if s.get('risky') else ''})."
                       for s in sources) or "Pun-only rule. No upstream equivalent."
+    if rule.get("replaces"):
+        body += "\n\n## Merged rules\n\nThis rule merges rules that used to be separate in Pun because each came from a different upstream tool:\n\n"
+        body += "\n".join(f"- `{old}`" for old in rule["replaces"])
+        body += ("\n\n`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets "
+                 "one rule. A pun.toml that still names an old ID stops with an error that names this rule, and "
+                 "`pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).")
+        if rule.get("note"):
+            body += "\n\n" + prose(rule["note"])
     value = {"format": "true", "lint": '"error"', "analyse": '"on"'}[command]
     body += "\n\n## Configuration\n\n" + code(f'[{command}.rules]\n"{group}/{name}" = {value}', "toml title=\"pun.toml\"")
     file_only = command == "format" or any(s["tool"] in ("php-cs-fixer", "pint") for s in sources)
@@ -419,12 +427,13 @@ Analyzer links lead to Mago's analyzer overview: Mago 1.57 has no per-code refer
 def migration_pages(data: dict, rows: list[dict], urls: dict) -> dict[Path, str]:
     out, tables = {}, {}
     pun_only = [f"{cmd}/{key}" for cmd, rules in data["rules"].items() for key, rule in rules.items() if rule.get("pun_only")]
+    # Every upstream name of a rule, across tools: Rector's and PHP-CS-Fixer's names of one merged rule meet here.
+    by_rule = defaultdict(list)
+    for row in rows:
+        if row.get("pun"):
+            by_rule[row["pun"]].append(row["name"])
     for tool, sections in TOOLS.items():
         selected = [r for r in rows if r["tool"] in sections]
-        by_rule = defaultdict(list)
-        for row in selected:
-            if row.get("pun"):
-                by_rule[row["pun"]].append(row["name"])
         tables[tool] = []
         unsupported = defaultdict(list)
         for row in selected:
@@ -459,13 +468,30 @@ def migration_pages(data: dict, rows: list[dict], urls: dict) -> dict[Path, str]
         body += "\n## Pun-only rules\n\n" + "\n".join(f"- {rule_link(r)}" for r in pun_only)
         out[CONTENT / f"migrate/from/{tool}.mdx"] = page(f"Coming from {tool}", body)
     out[GENERATED / "migrations.json"] = json.dumps({"_generated": MARKER, "tools": tables}, ensure_ascii=False, indent=2) + "\n"
-    out[CONTENT / "migrate/meta.ts"] = meta("Migration mappings", ["from"])
+    out[CONTENT / "migrate/meta.ts"] = meta("Migration mappings", ["from", "merged-rules"])
     out[CONTENT / "migrate/from/meta.ts"] = meta("Coming from", list(TOOLS))
     body = "Upstream rule names, option translations, and unsupported items. Planned rules have a mapping but are not implemented.\n\n"
     body += "\n".join(f"- [{tool}](/docs/migrate/from/{tool})" for tool in TOOLS)
     body += "\n\n[Run the migration](/docs/commands/migrate)."
     out[CONTENT / "migrate/from/index.mdx"] = page("Coming from another tool", body)
-    out[CONTENT / "migrate/index.mdx"] = page("Migration mappings", "[Choose your upstream tool](/docs/migrate/from).")
+    out[CONTENT / "migrate/index.mdx"] = page("Migration mappings", "[Choose your upstream tool](/docs/migrate/from). "
+                                              "A pun.toml written before rules were merged: see [merged rules](/docs/migrate/merged-rules).")
+    merged = [(old, f"lint/{key}", rule) for key, rule in data["rules"]["lint"].items() for old in rule.get("replaces", [])]
+    body = ("Some upstream tools have the same rule under different names: PHP-CS-Fixer's `logical_operators` and Rector's "
+            "`LogicalToBooleanRector` both turn `and` into `&&`. Pun used to keep one rule per upstream rule, so the same "
+            "fix existed twice. Each such pair is now one rule.\n\n"
+            "- `pun migrate` maps every upstream name to the merged rule, from any tool, so enabling both upstream rules "
+            "writes the rule once.\n"
+            "- A pun.toml, `-A`/`-W`/`-D` flag or override that names an old ID stops with an error naming the new one: "
+            "rename the key.\n"
+            "- `pun explain <old ID>` prints the merged rule.\n"
+            "- Where several upstream implementations exist, PHP-CS-Fixer's runs, so `pun check --fix` still writes Pint's "
+            "bytes. Where they are all Rector or Mago ports, they all run under the one ID and a span is reported once.\n\n"
+            "| Old ID | Now | Upstream names |\n| --- | --- | --- |\n")
+    for old, new, rule in sorted(merged):
+        names = ", ".join(f"`{n}`" for n in sorted(by_rule[new]))
+        body += f"| `{old}` | {rule_link(new)} | {names} |\n"
+    out[CONTENT / "migrate/merged-rules.mdx"] = page("Merged rules", body)
     return out
 
 

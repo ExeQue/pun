@@ -18,6 +18,9 @@ pub fn explain(name: &str) -> Result<String> {
     if let Some((id, _)) = exact {
         return Ok(text(id));
     }
+    if let Some(id) = crate::merged_into(name) {
+        return Ok(format!("`{name}` was merged into `{id}`.\n\n{}", text(id)));
+    }
     // An upstream key as written (every entry has `pun`, `drop` or `unsupported`), then the loose match pun.toml's
     // errors use for other spellings and the old Pun names.
     let id = match entries().into_iter().find(|(_, k, _)| k == name) {

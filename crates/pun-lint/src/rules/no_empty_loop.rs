@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-empty-loop`, ported from Rector 2.8.4's `RemoveDeadLoopRector` (rules/DeadCode/Rector/For_).
+//! `lint/dead-code/no-empty-block`, ported from Rector 2.8.4's `RemoveDeadLoopRector` (rules/DeadCode/Rector/For_).
 //!
 //! A `do`, `for`, `foreach` or `while` loop with no statements goes, unless one of its expressions (the right side,
 //! for a plain assignment) has a side effect.
@@ -18,7 +18,7 @@ pub struct NoEmptyLoop;
 
 impl Rule for NoEmptyLoop {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-empty-loop"
+        "lint/dead-code/no-empty-block"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

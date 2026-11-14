@@ -1,4 +1,4 @@
-//! `lint/complexity/prefer-empty-array-identical`, ported from Rector 2.8.4's `SimplifyEmptyCheckOnEmptyArrayRector`
+//! `lint/complexity/prefer-empty-array-compare`, ported from Rector 2.8.4's `SimplifyEmptyCheckOnEmptyArrayRector`
 //! (rules/CodeQuality/Rector/Empty_), as it runs on PHPStan 2.3.5.
 //!
 //! `empty($array)` is `$array === []` and `!empty($array)` is `$array !== []` when `$array` is an array: a variable
@@ -17,7 +17,7 @@ pub struct PreferEmptyArrayIdentical;
 
 impl Rule for PreferEmptyArrayIdentical {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-empty-array-identical"
+        "lint/complexity/prefer-empty-array-compare"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

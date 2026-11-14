@@ -12,6 +12,7 @@ mod add_relation_generics;
 mod add_relation_query_closure_type;
 mod add_tap_closure_type;
 mod conditional_helpers;
+mod document_string;
 mod names;
 mod no_app_array_access;
 mod no_collection_aliases;
@@ -44,7 +45,6 @@ mod prefer_facade_over_app;
 mod prefer_latest_oldest;
 mod prefer_nullsafe;
 mod prefer_protected_model_methods;
-mod prefer_query_builder_call;
 mod prefer_report_if;
 mod prefer_request_facade;
 mod prefer_request_server;
@@ -53,7 +53,6 @@ mod prefer_resolve_helper;
 mod prefer_scope_attribute;
 mod prefer_session_facade;
 mod prefer_sleep_facade;
-mod prefer_status_assertion_method;
 mod prefer_str_starts_with;
 mod prefer_table_attribute;
 mod prefer_throw_if;
@@ -61,7 +60,6 @@ mod prefer_to_route_helper;
 mod prefer_today;
 mod prefer_travel_to;
 mod prefer_typed_assert_closure;
-mod prefer_validation_rule_array;
 mod prefer_view_array;
 mod print;
 pub(crate) mod property_attribute;
@@ -104,7 +102,6 @@ pub use prefer_facade_over_app::PreferFacadeOverApp;
 pub use prefer_latest_oldest::PreferLatestOldest;
 pub use prefer_nullsafe::PreferNullsafe;
 pub use prefer_protected_model_methods::PreferProtectedModelMethods;
-pub use prefer_query_builder_call::PreferQueryBuilderCall;
 pub use prefer_report_if::PreferReportIf;
 pub use prefer_request_facade::PreferRequestFacade;
 pub use prefer_request_server::PreferRequestServer;
@@ -113,7 +110,6 @@ pub use prefer_resolve_helper::PreferResolveHelper;
 pub use prefer_scope_attribute::PreferScopeAttribute;
 pub use prefer_session_facade::PreferSessionFacade;
 pub use prefer_sleep_facade::PreferSleepFacade;
-pub use prefer_status_assertion_method::PreferStatusAssertionMethod;
 pub use prefer_str_starts_with::PreferStrStartsWith;
 pub use prefer_table_attribute::PreferTableAttribute;
 pub use prefer_throw_if::PreferThrowIf;
@@ -121,7 +117,6 @@ pub use prefer_to_route_helper::PreferToRouteHelper;
 pub use prefer_today::PreferToday;
 pub use prefer_travel_to::PreferTravelTo;
 pub use prefer_typed_assert_closure::PreferTypedAssertClosure;
-pub use prefer_validation_rule_array::PreferValidationRuleArray;
 pub use prefer_view_array::PreferViewArray;
 pub use property_rules::{
     PreferAliasesAttribute, PreferAppendsAttribute, PreferBackoffAttribute,
@@ -210,13 +205,11 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
         Box::new(NoNegatedContains),
         Box::new(NoNegatedFilter),
         Box::new(NoNegatedWhen),
-        Box::new(PreferStatusAssertionMethod),
         Box::new(PreferEnvironmentCheck),
         Box::new(PreferTypedAssertClosure),
         Box::new(NoUselessValueCall),
         Box::new(NoUselessWithCall),
         Box::new(PreferDispatchHelper),
-        Box::new(PreferValidationRuleArray),
         Box::new(NoControllerMiddleware),
         Box::new(PreferViewArray),
         Box::new(AddQueryClosureType),
@@ -227,7 +220,6 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
         Box::new(PreferCollectionAll),
         Box::new(PreferClosureOnlyBind),
         Box::new(AddHasFactoryTrait::default()),
-        Box::new(PreferQueryBuilderCall::default()),
         Box::new(PreferClassContainerKey::default()),
         Box::new(AddFactoryExtendsPhpdoc),
         Box::new(AddRelationGenerics),

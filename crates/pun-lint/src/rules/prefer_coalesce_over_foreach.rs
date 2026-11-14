@@ -1,4 +1,4 @@
-//! `lint/complexity/prefer-coalesce-over-foreach`, ported from Rector 2.8.4's `SimplifyForeachToCoalescingRector`
+//! `lint/complexity/prefer-null-coalesce`, ported from Rector 2.8.4's `SimplifyForeachToCoalescingRector`
 //! (rules/CodeQuality/Rector/Foreach_).
 //!
 //! A `foreach ($array as $key => $value)` over an array whose only statement is `if ($key === $x)` with one
@@ -29,7 +29,7 @@ enum Inner<'a> {
 
 impl Rule for PreferCoalesceOverForeach {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-coalesce-over-foreach"
+        "lint/complexity/prefer-null-coalesce"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

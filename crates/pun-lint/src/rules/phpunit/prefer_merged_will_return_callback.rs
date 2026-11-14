@@ -1,4 +1,4 @@
-//! `lint/phpunit/prefer-merged-will-return-callback`, ported from rector-phpunit's
+//! `lint/phpunit/prefer-will-return-callback`, ported from rector-phpunit's
 //! `MergeWithCallableAndWillReturnRector` (rules/CodeQuality/Rector/MethodCall).
 //!
 //! In a test class, `->with($this->callback(function (...) { ...; return true; }))->willReturn($value)` becomes
@@ -22,7 +22,7 @@ pub struct PreferMergedWillReturnCallback;
 
 impl Rule for PreferMergedWillReturnCallback {
     fn id(&self) -> &'static str {
-        "lint/phpunit/prefer-merged-will-return-callback"
+        "lint/phpunit/prefer-will-return-callback"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

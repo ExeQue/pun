@@ -1,4 +1,4 @@
-//! `lint/complexity/prefer-in-array-over-search`, ported from Rector 2.8.4's `SimplifyArraySearchRector`
+//! `lint/complexity/prefer-in-array`, ported from Rector 2.8.4's `SimplifyArraySearchRector`
 //! (rules/CodeQuality/Rector/Identical) with `BinaryOpManipulator::matchFirstAndSecondConditionNode`.
 //!
 //! `array_search($a, $b) !== false` becomes `in_array($a, $b)` and `array_search($a, $b) === false` becomes
@@ -16,7 +16,7 @@ pub struct PreferInArrayOverSearch;
 
 impl Rule for PreferInArrayOverSearch {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-in-array-over-search"
+        "lint/complexity/prefer-in-array"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

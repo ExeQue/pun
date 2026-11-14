@@ -1,4 +1,4 @@
-//! `lint/style/prefer-class-name-constant`, ported from Rector 2.8.4's `StringClassNameToClassConstantRector`
+//! `lint/style/prefer-class-constant`, ported from Rector 2.8.4's `StringClassNameToClassConstantRector`
 //! (rules/Php55/Rector/String_).
 //!
 //! A string whose value (without leading `\`) names a known class, interface, trait or enum with a namespace, and
@@ -99,7 +99,7 @@ fn is_a_argument(ancestors: &[Node<'_, '_>], span: pun_problem::Span) -> bool {
 
 impl Rule for PreferClassNameConstant {
     fn id(&self) -> &'static str {
-        "lint/style/prefer-class-name-constant"
+        "lint/style/prefer-class-constant"
     }
 
     /// `PhpVersionFeature::CLASSNAME_CONSTANT`.

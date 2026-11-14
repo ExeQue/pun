@@ -7,7 +7,7 @@ pagination: false
 
 String literals, heredoc and nowdoc.
 
-Across commands: format: 9, lint: 7, analyse: 2.
+Across commands: format: 9, lint: 5, analyse: 2.
 
 <CardGroup cols={2}>
 <Card title="lint/strings/no-non-printable-character">
@@ -19,15 +19,6 @@ Remove Zero-width space (ZWSP), Non-breaking space (NBSP) and other invisible un
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Intent: suspicious.
 
 </Card>
-<Card title="lint/strings/no-single-argument-sprintf">
-
-[`lint/strings/no-single-argument-sprintf`](/docs/rules/lint/strings/no-single-argument-sprintf)
-
-Use the format itself instead of `sprintf()` with no values.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
-
-</Card>
 <Card title="lint/strings/no-trailing-whitespace-in-string">
 
 [`lint/strings/no-trailing-whitespace-in-string`](/docs/rules/lint/strings/no-trailing-whitespace-in-string)
@@ -35,15 +26,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 There must be no trailing whitespace at the end of lines in strings.
 
 Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Intent: suspicious.
-
-</Card>
-<Card title="lint/strings/prefer-empty-string-identical">
-
-[`lint/strings/prefer-empty-string-identical`](/docs/rules/lint/strings/prefer-empty-string-identical)
-
-Changes strlen comparison to 0 to direct empty string compare
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
 
 </Card>
 <Card title="lint/strings/prefer-mb-functions">

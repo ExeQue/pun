@@ -1,4 +1,4 @@
-//! `lint/pest/no-expect-exception`, ported from pest-plugin-rector's `ConvertExpectExceptionToThrowRector`:
+//! `lint/pest/prefer-to-throw`, ported from pest-plugin-rector's `ConvertExpectExceptionToThrowRector`:
 //! `$this->expectException(E::class);` (with `expectExceptionMessage()`, or `expectExceptionObject()`) and the
 //! statement after it become `expect(fn() => action())->toThrow(E::class, 'message');`, unless that statement is an
 //! assignment.
@@ -39,7 +39,7 @@ struct Conversion<'a> {
 
 impl Rule for NoExpectException {
     fn id(&self) -> &'static str {
-        "lint/pest/no-expect-exception"
+        "lint/pest/prefer-to-throw"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

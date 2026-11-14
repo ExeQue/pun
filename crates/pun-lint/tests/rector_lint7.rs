@@ -335,13 +335,6 @@ fn mago_prefer_anonymous_migration() {
 }
 
 #[test]
-fn simplify_useless_variable() {
-    let linter = only(NoUselessVariable);
-    run(&linter, "SimplifyUselessVariableRector/Fixture");
-    run(&linter, "SimplifyUselessVariableRector/Oracle");
-}
-
-#[test]
 fn remove_null_arg_on_null_default_param() {
     run_with_sources(
         &only(NoNullDefaultArgument),
@@ -528,10 +521,6 @@ fn rules_ignore_nodes_outside_their_targets() {
         (
             || Box::new(PreferAnonymousMigration),
             &["lint7_report/laravel/prefer-anonymous-migration"],
-        ),
-        (
-            || Box::new(NoUselessVariable),
-            &["rector/SimplifyUselessVariableRector"],
         ),
         (
             || Box::new(NoNullDefaultArgument),

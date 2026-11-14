@@ -13,7 +13,6 @@ mod lint_b_helpers;
 mod lint_b_names;
 mod lint_b_privatize;
 mod lint_b_security;
-mod lint_b_serialize;
 mod mago_calls;
 mod mago_comments;
 mod mago_const_value;
@@ -89,7 +88,6 @@ mod no_iterator_to_array_in_foreach;
 mod no_literal_password;
 mod no_loop_variable_overwrite;
 mod no_loose_equality;
-mod no_mirror_assignment;
 mod no_missing_format_argument;
 mod no_mixed_overruled_by_native;
 mod no_multi_assign;
@@ -103,7 +101,6 @@ mod no_nested_ternary;
 mod no_null_array_key;
 mod no_null_debug_info;
 mod no_null_default_argument;
-mod no_null_property_init;
 mod no_null_tag_value;
 mod no_out_of_range_chr;
 mod no_overridden_assign_before_if;
@@ -122,7 +119,6 @@ mod no_redundant_null_check;
 mod no_redundant_nullable_check;
 mod no_redundant_promoted_assign;
 pub(crate) mod no_redundant_property_default;
-mod no_redundant_readonly_property;
 mod no_redundant_type_check;
 mod no_redundant_write_visibility;
 mod no_request_variable;
@@ -130,7 +126,6 @@ mod no_required_after_optional;
 mod no_return_in_constructor;
 mod no_short_ternary;
 mod no_side_effects_with_declarations;
-mod no_single_argument_sprintf;
 mod no_single_case_switch;
 mod no_single_item_in_array;
 mod no_sole_value_sprintf;
@@ -144,7 +139,6 @@ mod no_unreachable_code;
 mod no_unreachable_loop;
 mod no_unsafe_finally;
 mod no_unused_assignment;
-mod no_unused_closure_variable;
 mod no_unused_constructor_param;
 mod no_unused_expression;
 mod no_unused_foreach_key;
@@ -173,7 +167,6 @@ mod no_useless_readonly;
 mod no_useless_return_tag;
 mod no_useless_ternary;
 mod no_useless_var_tag;
-mod no_useless_variable;
 mod no_variable_variable;
 mod no_void_on_magic_method;
 mod no_void_reference_return;
@@ -186,12 +179,10 @@ mod phpunit;
 mod prefer_absolute_include;
 mod prefer_array_all;
 mod prefer_array_any;
-mod prefer_array_append;
 mod prefer_array_find;
 mod prefer_array_find_key;
 mod prefer_array_first_last;
 mod prefer_array_literal;
-mod prefer_boolean_and_or;
 mod prefer_catch_name_from_type;
 mod prefer_clamp;
 mod prefer_class_constant;
@@ -200,13 +191,11 @@ mod prefer_class_name_constant;
 mod prefer_coalesce_chain;
 mod prefer_coalesce_over_empty_ternary;
 mod prefer_coalesce_over_foreach;
-mod prefer_compound_assignment;
 mod prefer_early_continue;
 mod prefer_early_return;
 mod prefer_early_return_over_prepared_value;
 mod prefer_empty_array_compare;
 mod prefer_empty_array_identical;
-mod prefer_empty_string_identical;
 mod prefer_explicit_array_comparison;
 mod prefer_func_num_args;
 mod prefer_if_statement;
@@ -226,13 +215,9 @@ mod prefer_php_version_id;
 mod prefer_property_default;
 mod prefer_property_exists;
 mod prefer_property_over_local_getter;
-mod prefer_returned_condition;
 mod prefer_round_mode_enum;
-mod prefer_self_over_static;
-mod prefer_serialize_method;
 mod prefer_simple_condition;
 mod prefer_spread;
-mod prefer_unserialize_method;
 mod prefer_variadic_param;
 mod rector_batch5;
 mod rector_code_quality;
@@ -346,7 +331,6 @@ pub use no_iterator_to_array_in_foreach::NoIteratorToArrayInForeach;
 pub use no_literal_password::NoLiteralPassword;
 pub use no_loop_variable_overwrite::NoLoopVariableOverwrite;
 pub use no_loose_equality::NoLooseEquality;
-pub use no_mirror_assignment::NoMirrorAssignment;
 pub use no_missing_format_argument::NoMissingFormatArgument;
 pub use no_mixed_overruled_by_native::NoMixedOverruledByNative;
 pub use no_multi_assign::NoMultiAssign;
@@ -360,7 +344,6 @@ pub use no_nested_ternary::NoNestedTernary;
 pub use no_null_array_key::NoNullArrayKey;
 pub use no_null_debug_info::NoNullDebugInfo;
 pub use no_null_default_argument::{NoNullDefaultArgument, NoNullDefaultNamedArgument};
-pub use no_null_property_init::NoNullPropertyInit;
 pub use no_null_tag_value::NoNullTagValue;
 pub use no_out_of_range_chr::NoOutOfRangeChr;
 pub use no_overridden_assign_before_if::NoOverriddenAssignBeforeIf;
@@ -379,7 +362,6 @@ pub use no_redundant_null_check::NoRedundantNullCheck;
 pub use no_redundant_nullable_check::NoRedundantNullableCheck;
 pub use no_redundant_promoted_assign::NoRedundantPromotedAssign;
 pub use no_redundant_property_default::NoRedundantPropertyDefault;
-pub use no_redundant_readonly_property::NoRedundantReadonlyProperty;
 pub use no_redundant_type_check::NoRedundantTypeCheck;
 pub use no_redundant_write_visibility::NoRedundantWriteVisibility;
 pub use no_request_variable::NoRequestVariable;
@@ -387,7 +369,6 @@ pub use no_required_after_optional::NoRequiredAfterOptional;
 pub use no_return_in_constructor::NoReturnInConstructor;
 pub use no_short_ternary::NoShortTernary;
 pub use no_side_effects_with_declarations::NoSideEffectsWithDeclarations;
-pub use no_single_argument_sprintf::NoSingleArgumentSprintf;
 pub use no_single_case_switch::NoSingleCaseSwitch;
 pub use no_single_item_in_array::NoSingleItemInArray;
 pub use no_sole_value_sprintf::NoSoleValueSprintf;
@@ -401,7 +382,6 @@ pub use no_unreachable_code::NoUnreachableCode;
 pub use no_unreachable_loop::NoUnreachableLoop;
 pub use no_unsafe_finally::NoUnsafeFinally;
 pub use no_unused_assignment::NoUnusedAssignment;
-pub use no_unused_closure_variable::NoUnusedClosureVariable;
 pub use no_unused_constructor_param::NoUnusedConstructorParam;
 pub use no_unused_expression::NoUnusedExpression;
 pub use no_unused_foreach_key::NoUnusedForeachKey;
@@ -430,7 +410,6 @@ pub use no_useless_readonly::NoUselessReadonly;
 pub use no_useless_return_tag::NoUselessReturnTag;
 pub use no_useless_ternary::NoUselessTernary;
 pub use no_useless_var_tag::NoUselessVarTag;
-pub use no_useless_variable::NoUselessVariable;
 pub use no_variable_variable::NoVariableVariable;
 pub use no_void_on_magic_method::NoVoidOnMagicMethod;
 pub use no_void_reference_return::NoVoidReferenceReturn;
@@ -439,12 +418,10 @@ pub use phpunit::*;
 pub use prefer_absolute_include::PreferAbsoluteInclude;
 pub use prefer_array_all::PreferArrayAll;
 pub use prefer_array_any::PreferArrayAny;
-pub use prefer_array_append::PreferArrayAppend;
 pub use prefer_array_find::PreferArrayFind;
 pub use prefer_array_find_key::PreferArrayFindKey;
 pub use prefer_array_first_last::PreferArrayFirstLast;
 pub use prefer_array_literal::PreferArrayLiteral;
-pub use prefer_boolean_and_or::PreferBooleanAndOr;
 pub use prefer_catch_name_from_type::PreferCatchNameFromType;
 pub use prefer_clamp::PreferClamp;
 pub use prefer_class_constant::PreferClassConstant;
@@ -453,13 +430,11 @@ pub use prefer_class_name_constant::PreferClassNameConstant;
 pub use prefer_coalesce_chain::PreferCoalesceChain;
 pub use prefer_coalesce_over_empty_ternary::PreferCoalesceOverEmptyTernary;
 pub use prefer_coalesce_over_foreach::PreferCoalesceOverForeach;
-pub use prefer_compound_assignment::PreferCompoundAssignment;
 pub use prefer_early_continue::PreferEarlyContinue;
 pub use prefer_early_return::PreferEarlyReturn;
 pub use prefer_early_return_over_prepared_value::PreferEarlyReturnOverPreparedValue;
 pub use prefer_empty_array_compare::PreferEmptyArrayCompare;
 pub use prefer_empty_array_identical::PreferEmptyArrayIdentical;
-pub use prefer_empty_string_identical::PreferEmptyStringIdentical;
 pub use prefer_explicit_array_comparison::PreferExplicitArrayComparison;
 pub use prefer_func_num_args::PreferFuncNumArgs;
 pub use prefer_if_statement::PreferIfStatement;
@@ -479,13 +454,9 @@ pub use prefer_php_version_id::PreferPhpVersionId;
 pub use prefer_property_default::PreferPropertyDefault;
 pub use prefer_property_exists::PreferPropertyExists;
 pub use prefer_property_over_local_getter::PreferPropertyOverLocalGetter;
-pub use prefer_returned_condition::PreferReturnedCondition;
 pub use prefer_round_mode_enum::PreferRoundModeEnum;
-pub use prefer_self_over_static::PreferSelfOverStatic;
-pub use prefer_serialize_method::PreferSerializeMethod;
 pub use prefer_simple_condition::PreferSimpleCondition;
 pub use prefer_spread::PreferSpread;
-pub use prefer_unserialize_method::PreferUnserializeMethod;
 pub use prefer_variadic_param::PreferVariadicParam;
 pub use refactor::*;
 pub use require_array_filter_callback::RequireArrayFilterCallback;
@@ -522,10 +493,8 @@ pub fn all() -> Vec<Box<dyn Rule>> {
 /// The rules outside the group modules.
 fn ungrouped() -> Vec<Box<dyn Rule>> {
     vec![
-        Box::new(PreferCompoundAssignment),
         Box::new(NoAndAssignment),
         Box::new(PreferNullCoalesce),
-        Box::new(PreferArrayAppend),
         Box::new(NoNegatedAnd),
         Box::new(NoConcatAssignNewItem),
         Box::new(NoNegatedBooleanLiteral),
@@ -539,7 +508,6 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(NoUselessArrayValues),
         Box::new(NoTautologyTernary),
         Box::new(NoSingleItemInArray),
-        Box::new(NoSingleArgumentSprintf),
         Box::new(NoAndTrue),
         Box::new(NoCastInConcat),
         Box::new(NoUselessContinue),
@@ -548,12 +516,9 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(NoDoubleSelfAssignment),
         Box::new(NoDuplicateArrayKey),
         Box::new(NoRedundantFinalConst),
-        Box::new(NoNullPropertyInit),
-        Box::new(NoUnusedClosureVariable),
         Box::new(NoUnusedForeachKey),
         Box::new(NoReturnInConstructor),
         Box::new(NoUnreachableCode),
-        Box::new(NoMirrorAssignment),
         Box::new(NoRedundantPromotedAssign),
         Box::new(NoDuplicateCaseBody),
         Box::new(NoIdenticalBranches),
@@ -570,9 +535,7 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(NoImplodeTernary),
         Box::new(PreferNewSelf),
         Box::new(PreferArrayLiteral),
-        Box::new(NoRedundantReadonlyProperty),
         Box::new(PreferAbsoluteInclude),
-        Box::new(PreferBooleanAndOr),
         Box::new(NoFuturePhpVersionCheck),
         Box::new(NoDeadPhpVersionCheck),
         Box::new(NoUnusedPublicMethodParam),
@@ -648,7 +611,6 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(NoProtectedConstantInFinal),
         Box::new(NoProtectedMethodInFinal),
         Box::new(NoProtectedPropertyInFinal),
-        Box::new(PreferSelfOverStatic),
         Box::new(RequireStrictArraySearch),
         Box::new(NoEscapedQuotes),
         Box::new(NoMultiAssign),
@@ -658,12 +620,9 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(NoBoolTernary),
         Box::new(NoUselessTernary),
         Box::new(NoFalseTernary),
-        Box::new(PreferEmptyStringIdentical),
         Box::new(NoBooleanLiteralCompare),
         Box::new(PreferEmptyArrayIdentical),
         Box::new(PreferMinMax),
-        Box::new(PreferSerializeMethod),
-        Box::new(PreferUnserializeMethod),
         Box::new(NoVoidOnMagicMethod),
         Box::new(NoUselessReadonly),
         Box::new(NoCallUserFuncMethod),
@@ -685,7 +644,6 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(RequireStrictFunctionCall),
         Box::new(PreferCatchNameFromType),
         Box::new(NoParentCallWithoutParent),
-        Box::new(NoUselessVariable),
         Box::new(NoNullDefaultArgument),
         Box::new(NoNullDefaultNamedArgument),
         Box::new(NoUnusedConstructorParam),
@@ -760,7 +718,6 @@ fn ungrouped() -> Vec<Box<dyn Rule>> {
         Box::new(RequireConsistentReturn),
         Box::new(NoPhpdocClassCaseMismatch),
         Box::new(PreferPropertyExists),
-        Box::new(PreferReturnedCondition),
         Box::new(NoInvalidVarTag),
         Box::new(PreferInlineArrayReturn),
         Box::new(NoUselessVarTag),

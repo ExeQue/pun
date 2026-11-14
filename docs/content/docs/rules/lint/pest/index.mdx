@@ -7,7 +7,7 @@ pagination: false
 
 Pest (ecosystem: on when composer.lock has pestphp/pest).
 
-Across commands: format: 0, lint: 62, analyse: 0.
+Across commands: format: 0, lint: 58, analyse: 0.
 
 <CardGroup cols={2}>
 <Card title="lint/pest/no-before-all-in-describe">
@@ -17,24 +17,6 @@ Across commands: format: 0, lint: 62, analyse: 0.
 Replaces invalid beforeAll() and afterAll() hooks inside describe() with beforeEach() and afterEach()
 
 Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
-
-</Card>
-<Card title="lint/pest/no-expect-exception">
-
-[`lint/pest/no-expect-exception`](/docs/rules/lint/pest/no-expect-exception)
-
-Converts expectException() and expectExceptionMessage() patterns to expect()->toThrow()
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
-
-</Card>
-<Card title="lint/pest/no-focused-test">
-
-[`lint/pest/no-focused-test`](/docs/rules/lint/pest/no-focused-test)
-
-Removes only() from all tests
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Runs when pest is installed.
 
 </Card>
 <Card title="lint/pest/no-invalid-repeat">
@@ -96,15 +78,6 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 [`lint/pest/prefer-chained-expect`](/docs/rules/lint/pest/prefer-chained-expect)
 
 Chains consecutive expect() calls into a single chained expectation, combining calls on the same value and joining different values with ->and() (configurable)
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
-
-</Card>
-<Card title="lint/pest/prefer-comparison-matchers">
-
-[`lint/pest/prefer-comparison-matchers`](/docs/rules/lint/pest/prefer-comparison-matchers)
-
-Converts expect($x > 10)->toBeTrue() to expect($x)->toBeGreaterThan(10)
 
 Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
 
@@ -332,15 +305,6 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 Converts is_nan() checks to toBeNan() matcher
 
 Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Runs when pest is installed.
-
-</Card>
-<Card title="lint/pest/prefer-to-be-true-false">
-
-[`lint/pest/prefer-to-be-true-false`](/docs/rules/lint/pest/prefer-to-be-true-false)
-
-Simplifies expect($x)->toBe(true) to expect($x)->toBeTrue() and similar patterns
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
 
 </Card>
 <Card title="lint/pest/prefer-to-be-truthy-falsy">

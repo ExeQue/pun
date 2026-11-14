@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-null-default-argument` and `lint/dead-code/no-null-default-named-argument`, ported from Rector
+//! `lint/dead-code/no-redundant-default-argument` and `lint/dead-code/no-redundant-default-argument`, ported from Rector
 //! 2.8.4's `RemoveNullArgOnNullDefaultParamRector` and `RemoveNullNamedArgOnNullDefaultParamRector`
 //! (rules/DeadCode/Rector/MethodCall) with their `CallLikeParamDefaultResolver` (rules/DeadCode/NodeAnalyzer).
 //!
@@ -30,7 +30,7 @@ pub struct NoNullDefaultArgument;
 
 impl Rule for NoNullDefaultArgument {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-null-default-argument"
+        "lint/dead-code/no-redundant-default-argument"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -76,7 +76,7 @@ pub struct NoNullDefaultNamedArgument;
 
 impl Rule for NoNullDefaultNamedArgument {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-null-default-named-argument"
+        "lint/dead-code/no-redundant-default-argument"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

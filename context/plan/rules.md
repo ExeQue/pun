@@ -128,12 +128,17 @@ The ID shape (`<command>/<group>/<name>`), the group list and "no aliases" are i
 
 `unnecessary` is not used (Larastan's `noUnnecessaryCollectionCall` is `redundant-collection-call`).
 
-**One to one** (2026-10-18, §7). Each lint rule maps to exactly one in-scope upstream rule (a Rector rule, a risky
-PHP-CS-Fixer fixer, or a strict-rules class), and each analyse rule to exactly one PHPStan `Rule` class. Mago's
-rules are the exception: a Mago-derived rule (`origin = "mago"`) keeps its Mago mapping and has no other source, and a
-Mago rule may also map onto a rule that has a primary source. Format rules may still carry several sources. The old
-`merged` field is gone: its 109 lint merges were split (Rector's return-type strategies, the rector-laravel
-`*PropertyTo*Attribute` rules, ...), and PHPStan's identifiers are `variant`s of the rule of the class that emits
+**Merged duplicates** (2026-11-15, replaces the lint half of the 2026-10-18 one-to-one rule). One lint rule may map to
+several upstream rules that do the same thing (PHP-CS-Fixer's `logical_operators` and Rector's `LogicalToBoolean`):
+46 duplicate lint rules were merged into 21 keepers. A keeper lists its primary sources in `merged` (required when it
+has two or more) and the old Pun IDs in `replaces`. Where a group had a PHP-CS-Fixer or `Pun/*` token fixer, that
+fixer wins and the Rector ports were deleted (Pint parity); where every implementation is native, they keep running
+under the keeper's ID and the linter reports a span once, preferring the report with a fix. Behaviour a deleted port
+had that the keeper lacks is in the keeper's `note`. An old ID in pun.toml, `-A`/`-W`/`-D` or `pun explain` names the
+keeper. Families whose rules take different strategies stay separate (strict flags, loose comparison, nullsafe,
+protected in final, void return, PHPUnit attributes and dedicated asserts, PHPDoc cleanup, useless else,
+call_user_func). Analyse rules stay one to one with PHPStan `Rule` classes, Mago-derived rules keep their Mago mapping,
+and format rules may carry several sources. PHPStan's identifiers are `variant`s of the rule of the class that emits
 them (§5).
 
 ## 4. Ignore comments
@@ -231,7 +236,7 @@ so every new rule needs a decision.
 Ported today: 125 of 168 format rules and 50 of 703 lint rules (`ported = true`). In scope: 493 Rector rules (482 →
 lint, 11 → format) and 397 PHPStan classes (378 → analyse, 17 → lint, 2 → format).
 
-## 7. The one-to-one mapping (2026-10-18)
+## 7. The one-to-one mapping (2026-10-18; lint duplicates merged 2026-11-15, §3)
 
 **In scope.** A Rector rule is in scope when a planned set registers it (the inventories' `in_scope`): Rector's prepared
 sets (`dead-code`, `code-quality`, `coding-style`, `type-declaration` and its docblocks set, `early-return`,

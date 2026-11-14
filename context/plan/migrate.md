@@ -39,6 +39,9 @@ It moves everything Pun supports, and names everything it doesn't. The proof is 
 - **phpstan.neon:** the level expands into the exact rules it ran, parameters into rule options, `ignoreErrors` into
   Pun ignores, and every extension that isn't built in is named. Larastan, Pest's plugin, phpstan-phpunit,
   strict-rules and deprecation-rules need no config, because they are built in. `stubFiles` carry over.
+- **Merged rules** (2026-11-15): upstream names that do the same thing (pint's `array_push` and Rector's
+  `ChangeArrayPushToArrayAssignRector`) map to one Pun rule, written once even when both tools enabled it. Old Pun IDs
+  in a pun.toml stop with an error naming the new rule. docs/content/docs/migrate/merged-rules.mdx lists every merge.
 - **Baselines are never copied.** Migrate tells the user to run `pun analyse --generate-baseline`.
 - **Ignore comments:** `@php-cs-fixer-ignore` and `@phpstan-ignore*` are rewritten to Pun's ignore comments with Pun IDs.
 - **Interactive extra:** after writing exact rules, migrate offers the closest preset, with a count of the new problems

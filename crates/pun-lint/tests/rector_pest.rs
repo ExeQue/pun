@@ -224,21 +224,8 @@ fn to_be_true_not_false() {
 }
 
 #[test]
-fn simplify_to_literal_boolean() {
-    check(PreferToBeTrueFalse, "SimplifyToLiteralBooleanRector");
-}
-
-#[test]
 fn simplify_expect_not() {
     check(PreferNotModifier, "SimplifyExpectNotRector");
-}
-
-#[test]
-fn simplify_comparison_expectations() {
-    check(
-        PreferComparisonMatchers,
-        "SimplifyComparisonExpectationsRector",
-    );
 }
 
 #[test]
@@ -270,11 +257,6 @@ fn use_to_contain_only_instances_of() {
 #[test]
 fn to_have_method_on_class() {
     check(PreferToHaveMethodOnClass, "ToHaveMethodOnClassRector");
-}
-
-#[test]
-fn remove_only() {
-    check(NoFocusedTest, "RemoveOnlyRector");
 }
 
 #[test]
@@ -694,7 +676,7 @@ fn pest_rules_ignore_nodes_outside_their_targets() {
             .into_iter()
             .filter(|r| r.id().starts_with("lint/pest/"))
     };
-    assert_eq!(pest().count(), 58);
+    assert_eq!(pest().count(), 55);
     let targeted = Linter::new(pest().collect(), 80400);
     let everywhere = Linter::new(
         pest()

@@ -532,6 +532,12 @@ pub(crate) fn rule_id(path: &Path, command: &str, name: &str) -> Result<String> 
     } else {
         "format"
     };
+    if let Some(id) = crate::merged_into(name) {
+        bail!(
+            "{}: `{name}` was merged into `{id}`: use `{id}` in pun.toml",
+            path.display()
+        );
+    }
     let found = (fixer_of(other, name).and_then(crate::rule_of)).or_else(|| renamed(name));
     match found {
         Some(id) => bail!("{}: `{name}` is `{id}` in pun.toml", path.display()),

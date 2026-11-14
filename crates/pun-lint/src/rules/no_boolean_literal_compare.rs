@@ -1,4 +1,4 @@
-//! `lint/complexity/no-boolean-literal-compare`, ported from Rector 2.8.4's `SimplifyBoolIdenticalTrueRector`
+//! `lint/complexity/prefer-simple-condition`, ported from Rector 2.8.4's `SimplifyBoolIdenticalTrueRector`
 //! (rules/CodeQuality/Rector/Identical).
 //!
 //! `$bool === true` is `$bool`, `$bool !== false` is `$bool`, `$bool !== true` is `!$bool` and `!$x === false` is
@@ -15,7 +15,7 @@ pub struct NoBooleanLiteralCompare;
 
 impl Rule for NoBooleanLiteralCompare {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-boolean-literal-compare"
+        "lint/complexity/prefer-simple-condition"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

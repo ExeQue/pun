@@ -9,14 +9,12 @@
 
 mod no_before_all_in_describe;
 mod no_expect_exception;
-mod no_focused_test;
 mod no_invalid_repeat;
 mod no_negated_boolean_matcher;
 mod no_redundant_type_expectation;
 mod no_redundant_uses;
 mod no_static_test_closure;
 mod prefer_chained_expect;
-mod prefer_comparison_matchers;
 mod prefer_defer;
 mod prefer_each_modifier;
 mod prefer_expect;
@@ -39,7 +37,6 @@ mod prefer_to_be_json;
 mod prefer_to_be_list;
 mod prefer_to_be_lowercase;
 mod prefer_to_be_nan;
-mod prefer_to_be_true_false;
 mod prefer_to_be_truthy_falsy;
 mod prefer_to_be_uppercase;
 mod prefer_to_be_url;
@@ -68,14 +65,12 @@ mod require_type_matcher_first;
 
 pub use no_before_all_in_describe::NoBeforeAllInDescribe;
 pub use no_expect_exception::NoExpectException;
-pub use no_focused_test::NoFocusedTest;
 pub use no_invalid_repeat::NoInvalidRepeat;
 pub use no_negated_boolean_matcher::NoNegatedBooleanMatcher;
 pub use no_redundant_type_expectation::NoRedundantTypeExpectation;
 pub use no_redundant_uses::NoRedundantUses;
 pub use no_static_test_closure::NoStaticTestClosure;
 pub use prefer_chained_expect::PreferChainedExpect;
-pub use prefer_comparison_matchers::PreferComparisonMatchers;
 pub use prefer_defer::PreferDefer;
 pub use prefer_each_modifier::PreferEachModifier;
 pub use prefer_expect::PreferExpect;
@@ -98,7 +93,6 @@ pub use prefer_to_be_json::PreferToBeJson;
 pub use prefer_to_be_list::PreferToBeList;
 pub use prefer_to_be_lowercase::PreferToBeLowercase;
 pub use prefer_to_be_nan::PreferToBeNan;
-pub use prefer_to_be_true_false::PreferToBeTrueFalse;
 pub use prefer_to_be_truthy_falsy::PreferToBeTruthyFalsy;
 pub use prefer_to_be_uppercase::PreferToBeUppercase;
 pub use prefer_to_be_url::PreferToBeUrl;
@@ -148,13 +142,11 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
     vec![
         Box::new(NoBeforeAllInDescribe),
         Box::new(NoExpectException),
-        Box::new(NoFocusedTest),
         Box::new(NoInvalidRepeat),
         Box::new(NoNegatedBooleanMatcher),
         Box::new(NoRedundantTypeExpectation),
         Box::new(NoRedundantUses),
         Box::new(NoStaticTestClosure),
-        Box::new(PreferComparisonMatchers),
         Box::new(PreferDefer),
         Box::new(PreferEachModifier),
         Box::new(PreferExpect),
@@ -177,7 +169,6 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
         Box::new(PreferToBeList),
         Box::new(PreferToBeLowercase),
         Box::new(PreferToBeNan),
-        Box::new(PreferToBeTrueFalse),
         Box::new(PreferToBeTruthyFalsy),
         Box::new(PreferToBeUppercase),
         Box::new(PreferToBeUrl),

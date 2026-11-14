@@ -1,4 +1,4 @@
-//! `lint/php-8.4/prefer-array-any`, ported from Rector 2.8.4's `ForeachToArrayAnyRector` (rules/Php84/Rector/Foreach_); the shared code and what Pun does
+//! `lint/php-8.4/prefer-array-find`, ported from Rector 2.8.4's `ForeachToArrayAnyRector` (rules/Php84/Rector/Foreach_); the shared code and what Pun does
 //! differently are in `lint_b_foreach`.
 
 use mago_syntax::cst::{Node, NodeKind, Statement};
@@ -12,7 +12,7 @@ pub struct PreferArrayAny;
 
 impl Rule for PreferArrayAny {
     fn id(&self) -> &'static str {
-        "lint/php-8.4/prefer-array-any"
+        "lint/php-8.4/prefer-array-find"
     }
 
     fn min_php_version(&self) -> u32 {

@@ -1,4 +1,4 @@
-//! `lint/style/prefer-class-keyword`, ported from Rector 2.8.4's `UseClassKeywordForClassNameResolutionRector`
+//! `lint/style/prefer-class-constant`, ported from Rector 2.8.4's `UseClassKeywordForClassNameResolutionRector`
 //! (rules/CodingStyle/Rector/String_).
 //!
 //! A string that names a known class before `::` (`'App\Models\User::find()'`) is split around each occurrence of
@@ -19,7 +19,7 @@ pub struct PreferClassKeyword;
 
 impl Rule for PreferClassKeyword {
     fn id(&self) -> &'static str {
-        "lint/style/prefer-class-keyword"
+        "lint/style/prefer-class-constant"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

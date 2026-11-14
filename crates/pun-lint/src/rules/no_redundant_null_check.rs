@@ -17,7 +17,7 @@
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 
-use super::no_redundant_readonly_property::print_modifiers;
+use super::class_dependency::print_modifiers;
 use super::php_parser::{Token, enclosing, previous_token_end, tokens};
 use super::rector_code_quality::is_constant;
 use super::rector_conditions::{

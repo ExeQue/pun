@@ -15,13 +15,11 @@ use pun_lint::rules::NoDirnameDirConcat;
 use pun_lint::rules::NoDuplicateCaseBody;
 use pun_lint::rules::NoElseAfterReturn;
 use pun_lint::rules::NoIdenticalBranches;
-use pun_lint::rules::NoMirrorAssignment;
 use pun_lint::rules::NoNegatedInstanceofTernary;
 use pun_lint::rules::NoOverriddenAssignBeforeIf;
 use pun_lint::rules::NoRedundantPromotedAssign;
 use pun_lint::rules::NoRedundantTypeCheck;
 use pun_lint::rules::NoUnreachableCode;
-use pun_lint::rules::PreferCompoundAssignment;
 use pun_lint::rules::PreferEarlyReturn;
 use pun_lint::rules::PreferEarlyReturnOverPreparedValue;
 use pun_lint::rules::PreferExplicitArrayComparison;
@@ -30,8 +28,8 @@ use pun_lint::rules::PreferInArray;
 use pun_lint::rules::PreferNotInArray;
 use pun_lint::rules::{
     NoAndAssignment, NoConcatAssignNewItem, NoNegatedAnd, NoNegatedBooleanLiteral, NoNegatedGroup,
-    NoSingleArgumentSprintf, NoSingleItemInArray, NoTautologyTernary, NoUselessArrayValues,
-    PreferArrayAppend, PreferEmptyArrayCompare, PreferFuncNumArgs, PreferNullCoalesce,
+    NoSingleItemInArray, NoTautologyTernary, NoUselessArrayValues, PreferEmptyArrayCompare,
+    PreferFuncNumArgs, PreferNullCoalesce,
 };
 
 fn fixtures(dir: &str) -> Vec<(PathBuf, String, String)> {
@@ -102,15 +100,6 @@ fn run(linter: &Linter, dir: &str) {
 }
 
 #[test]
-fn combined_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    run(
-        &Linter::new(vec![Box::new(PreferCompoundAssignment)], 80400),
-        "CombinedAssignRector/Fixture",
-    );
-}
-
-#[test]
 fn and_assigns_to_separate_lines() {
     // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = Linter::new(vec![Box::new(NoAndAssignment)], 80400);
@@ -134,17 +123,6 @@ fn array_key_exists_ternary_then_value_to_coalescing() {
         &linter,
         "ArrayKeyExistsTernaryThenValueToCoalescingRector/Oracle",
     );
-}
-
-#[test]
-fn change_array_push_to_array_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    let linter = Linter::new(vec![Box::new(PreferArrayAppend)], 80400);
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Pun");
 }
 
 #[test]
@@ -234,17 +212,6 @@ fn single_in_array_to_compare() {
     run(&linter, "SingleInArrayToCompareRector/Oracle");
     // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
     run(&linter, "SingleInArrayToCompareRector/Pun");
-}
-
-#[test]
-fn unwrap_sprintf_one_argument() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    let linter = Linter::new(vec![Box::new(NoSingleArgumentSprintf)], 80400);
-    run(&linter, "UnwrapSprintfOneArgumentRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "UnwrapSprintfOneArgumentRector/Oracle");
-    // Where Rector drops parentheses the meaning needs, or cannot run; the expected code is derived by hand.
-    run(&linter, "UnwrapSprintfOneArgumentRector/Pun");
 }
 
 #[test]
@@ -360,34 +327,6 @@ fn remove_final_from_const() {
 }
 
 #[test]
-fn remove_null_property_initialization() {
-    run(
-        &only(rules::NoNullPropertyInit, 80400),
-        "RemoveNullPropertyInitializationRector/Fixture",
-    );
-}
-
-#[test]
-fn remove_null_property_initialization_skips_typed_properties() {
-    // config/typed_properties.php: phpVersion(PhpVersionFeature::TYPED_PROPERTIES).
-    run(
-        &only(rules::NoNullPropertyInit, 70400),
-        "RemoveNullPropertyInitializationRector/FixtureTypedProperties",
-    );
-}
-
-#[test]
-fn remove_unused_closure_variable_use() {
-    // The laravel preset's `lambda_not_used_import` makes the same change, so `run`'s check that format alone does
-    // not is left out.
-    run_with_whitespace_exceptions(
-        &only(rules::NoUnusedClosureVariable, 80400),
-        "RemoveUnusedClosureVariableUseRector/Fixture",
-        &[],
-    );
-}
-
-#[test]
 fn remove_unused_foreach_key() {
     run(
         &only(rules::NoUnusedForeachKey, 80400),
@@ -412,15 +351,6 @@ fn remove_unreachable_statement() {
     run(&linter, "RemoveUnreachableStatementRector/Oracle");
     // Where Rector reprints the whole file; the expected code is derived by hand.
     run(&linter, "RemoveUnreachableStatementRector/Pun");
-}
-
-#[test]
-fn simplify_mirror_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    let linter = Linter::new(vec![Box::new(NoMirrorAssignment)], 80400);
-    run(&linter, "SimplifyMirrorAssignRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "SimplifyMirrorAssignRector/Oracle");
 }
 
 #[test]
@@ -595,20 +525,6 @@ fn array_merge_of_non_arrays_to_simple_array() {
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Oracle");
     // Where Rector cannot run, stops with an error or escapes bytes; the expected code is derived by hand.
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Pun");
-}
-
-#[test]
-fn remove_readonly_property_visibility_on_readonly_class() {
-    let linter = only(rules::NoRedundantReadonlyProperty, 80400);
-    run(
-        &linter,
-        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector/Fixture",
-    );
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(
-        &linter,
-        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector/Oracle",
-    );
 }
 
 #[test]

@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-bool-ternary`, ported from Rector 2.8.4's `UnnecessaryTernaryExpressionRector`
+//! `lint/dead-code/no-useless-ternary`, ported from Rector 2.8.4's `UnnecessaryTernaryExpressionRector`
 //! (rules/CodeQuality/Rector/Ternary).
 //!
 //! `cond ? true : false` is `cond` (or `(bool) cond` when it may not be a `bool`); `cond ? false : true` is its
@@ -18,7 +18,7 @@ pub struct NoBoolTernary;
 
 impl Rule for NoBoolTernary {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-bool-ternary"
+        "lint/dead-code/no-useless-ternary"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

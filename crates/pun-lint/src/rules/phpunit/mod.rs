@@ -70,7 +70,6 @@ mod prefer_narrow_will_return_callback;
 mod prefer_narrow_with_consecutive;
 mod prefer_property_assertions;
 mod prefer_requires_attribute;
-mod prefer_same_for_scalars;
 mod prefer_simple_callback_assert;
 mod prefer_simple_mock_expectation;
 mod prefer_simple_with_matcher;
@@ -158,7 +157,6 @@ pub use prefer_narrow_will_return_callback::PreferNarrowWillReturnCallback;
 pub use prefer_narrow_with_consecutive::PreferNarrowWithConsecutive;
 pub use prefer_property_assertions::PreferPropertyAssertions;
 pub use prefer_requires_attribute::PreferRequiresAttribute;
-pub use prefer_same_for_scalars::PreferSameForScalars;
 pub use prefer_simple_callback_assert::PreferSimpleCallbackAssert;
 pub use prefer_simple_mock_expectation::PreferSimpleMockExpectation;
 pub use prefer_simple_with_matcher::PreferSimpleWithMatcher;
@@ -218,7 +216,6 @@ pub(crate) fn all() -> Vec<Box<dyn Rule>> {
         Box::new(RequireStringAssertArgument),
         Box::new(PreferAssertInstancesOf),
         Box::new(NoAssertSameTypeMismatch),
-        Box::new(PreferSameForScalars),
         Box::new(PreferAssertCount),
         Box::new(NoExpectsAny),
         Box::new(PreferSimpleWithMatcher),

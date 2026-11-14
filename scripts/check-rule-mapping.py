@@ -47,7 +47,8 @@ PHPSTAN_FAMILY = ("phpstan", "phpstan-strict-rules", "phpstan-deprecation-rules"
 SWITCH = re.compile(r"\[analyse\] [a-z-]+ = true")
 INVENTORY = DEFAULT.parent / "upstream"
 RECTOR_TOOLS = ("rector", "rector-laravel", "pest-plugin-rector", "rector-phpunit", "rector-symfony")
-# A lint or analyse rule has exactly one primary source from these sections (the one-to-one rule, PLAN.md §2).
+# A lint or analyse rule has one primary source from these sections, or lists all of them in `merged` when it
+# merged duplicate upstream rules (PLAN.md §2, 2026-11-15).
 PRIMARY = ("php-cs-fixer", "pint", "phpstan-classes") + RECTOR_TOOLS
 # Mago-derived rules (`origin = "mago"`) have only these.
 MAGO = ("pun", "mago-linter", "mago-analyzer")
@@ -302,7 +303,7 @@ def check_upstream(data, inv):
         if len(by_class[cls]) != 1:
             err(f"{cls}: needs exactly one [upstream.phpstan-classes] entry, has {len(by_class[cls])}")
 
-    # One primary source per lint and analyse rule.
+    # One primary source per lint and analyse rule, or several listed in `merged`.
     # A PHPStan class mapped to a lint rule is a report its fix replaces (analyse keeps only what lint and format
     # cannot fix); it is the lint rule's primary source only when the rule has no other.
     primary, mago, reported = defaultdict(list), defaultdict(list), defaultdict(list)
@@ -322,13 +323,18 @@ def check_upstream(data, inv):
     for c in ("lint", "analyse"):
         for key, r in data["rules"].get(c, {}).items():
             rid = f"{c}/{key}"
-            if "merged" in r:
-                err(f"{rid}: `merged` is gone (one upstream rule per Pun rule)")
             if r.get("origin") == "mago":
                 if primary[rid] or not mago[rid]:
                     err(f"{rid}: origin = \"mago\" needs Mago sources and no primary source, has {primary[rid]}")
-            elif not r.get("pun_only") and len(primary[rid]) != 1:
-                err(f"{rid}: needs exactly one primary upstream rule, has {sorted(primary[rid]) or 'none'}")
+            elif not r.get("pun_only") and not primary[rid]:
+                err(f"{rid}: needs a primary upstream rule, has none")
+            elif len(primary[rid]) > 1 and sorted(r.get("merged", [])) != sorted(primary[rid]):
+                err(f"{rid}: several primary upstream rules need merged = {sorted(primary[rid])}")
+            elif r.get("merged") and len(primary[rid]) < 2:
+                err(f"{rid}: merged on a rule with one primary upstream rule")
+            for old in r.get("replaces", []):
+                if old.removeprefix(c + "/") in data["rules"].get(c, {}):
+                    err(f"{rid}: replaces {old!r}, which is still a rule")
             g = key.split("/")[0]
             if BELOW_FLOOR.fullmatch(g) and any(s.split(":")[0] in RECTOR_TOOLS for s in primary[rid]):
                 err(f"{rid}: group {g} is an upgrade below the floor (PHP 8.4, Laravel 12)")
@@ -522,10 +528,11 @@ def selftest_upstream():
     bad(lambda d: d["upstream"]["phpstan-classes"].pop("BarRule"), "needs exactly one [upstream.phpstan-classes]")
     bad(lambda d: d["upstream"]["phpstan-classes"]["BarRule"].update(identifiers=["bar.x"]), "identifiers differ")
     bad(lambda d: d["upstream"]["php-cs-fixer"] if False else d["upstream"].update(
-        **{"php-cs-fixer": {"foo": {"pun": "lint/style/no-foo"}}}), "needs exactly one primary upstream rule")
+        **{"php-cs-fixer": {"foo": {"pun": "lint/style/no-foo"}}}), "several primary upstream rules need merged")
     bad(lambda d: d["rules"]["lint"].update({"style/no-bare": {}}), "has none")
     bad(lambda d: d["rules"]["lint"]["style/no-foo"].update(origin="mago"), "origin = \"mago\" needs")
-    bad(lambda d: d["rules"]["lint"]["style/no-foo"].update(merged=["a", "b"]), "`merged` is gone")
+    bad(lambda d: d["rules"]["lint"]["style/no-foo"].update(merged=["a", "b"]), "merged on a rule with one primary")
+    bad(lambda d: d["rules"]["lint"]["style/no-foo"].update(replaces=["lint/style/no-mago"]), "which is still a rule")
     bad(lambda d: d["upstream"]["phpstan"].update({"bar.x": {"pun": "analyse/types/other"}}), "which no class")
     bad(lambda d: d["upstream"]["phpstan"].pop("bar.%s"), "identifier bar.y")
 

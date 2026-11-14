@@ -12,7 +12,18 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize), [`coding-style`](/docs
 ## Replaces
 
 - [`class_keyword`](https://cs.symfony.com/doc/rules/language_construct/class_keyword.html) (php-cs-fixer, risky).
+- [`StringClassNameToClassConstant`](https://getrector.com/rule-detail/string-class-name-to-class-constant-rector) (rector).
+- [`UseClassKeywordForClassNameResolution`](https://getrector.com/rule-detail/use-class-keyword-for-class-name-resolution-rector) (rector).
 - [`no-literal-namespace-string`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-literal-namespace-string) (mago-linter).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/style/prefer-class-keyword`
+- `lint/style/prefer-class-name-constant`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

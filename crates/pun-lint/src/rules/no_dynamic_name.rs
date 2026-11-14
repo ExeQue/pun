@@ -1,4 +1,4 @@
-//! `lint/style/no-dynamic-name`, ported from Mago 1.57.0's linter rule `no-variable-variable`
+//! `lint/style/no-variable-variable`, ported from Mago 1.57.0's linter rule `no-variable-variable`
 //! (rule/clarity/no_variable_variable.rs).
 //!
 //! A variable variable (`$$name`) is reported; `${expr}` is not (Mago looks at nested variables only).
@@ -12,7 +12,7 @@ pub struct NoDynamicName;
 
 impl Rule for NoDynamicName {
     fn id(&self) -> &'static str {
-        "lint/style/no-dynamic-name"
+        "lint/style/no-variable-variable"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

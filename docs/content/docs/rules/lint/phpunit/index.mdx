@@ -7,7 +7,7 @@ pagination: false
 
 PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit).
 
-Across commands: format: 1, lint: 113, analyse: 0.
+Across commands: format: 1, lint: 111, analyse: 0.
 
 <CardGroup cols={2}>
 <Card title="lint/phpunit/add-allow-mock-objects-attribute">
@@ -631,15 +631,6 @@ Turn property used only in setUp() to variable
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
 
 </Card>
-<Card title="lint/phpunit/prefer-merged-will-return-callback">
-
-[`lint/phpunit/prefer-merged-will-return-callback`](/docs/rules/lint/phpunit/prefer-merged-will-return-callback)
-
-Merge split mocking method ->with($this->callback(...)) and ->willReturn(expr) to single ->willReturnCallback() call
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
-
-</Card>
 <Card title="lint/phpunit/prefer-mock-intersection-return">
 
 [`lint/phpunit/prefer-mock-intersection-return`](/docs/rules/lint/phpunit/prefer-mock-intersection-return)
@@ -710,15 +701,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 Change Requires annotations with values to attributes
 
 Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when phpunit is installed.
-
-</Card>
-<Card title="lint/phpunit/prefer-same-for-scalars">
-
-[`lint/phpunit/prefer-same-for-scalars`](/docs/rules/lint/phpunit/prefer-same-for-scalars)
-
-Turns `assertEquals()` into stricter `assertSame()` for scalar values in PHPUnit TestCase
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
 
 </Card>
 <Card title="lint/phpunit/prefer-short-will-return">

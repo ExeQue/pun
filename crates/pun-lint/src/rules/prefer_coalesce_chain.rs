@@ -1,4 +1,4 @@
-//! `lint/complexity/prefer-coalesce-chain`, ported from Rector 2.8.4's
+//! `lint/complexity/prefer-null-coalesce`, ported from Rector 2.8.4's
 //! `ConsecutiveNullCompareReturnsToNullCoalesceQueueRector` (rules/CodeQuality/Rector/If_), with
 //! `IfManipulator::matchIfNotNullReturnValue`.
 //!
@@ -24,7 +24,7 @@ pub struct PreferCoalesceChain;
 
 impl Rule for PreferCoalesceChain {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-coalesce-chain"
+        "lint/complexity/prefer-null-coalesce"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

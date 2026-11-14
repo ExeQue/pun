@@ -115,26 +115,6 @@ fn only(rule: impl pun_lint::Rule + 'static, php_version: u32) -> Linter {
 }
 
 #[test]
-fn logical_to_boolean() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Fixture",
-    );
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Oracle",
-    );
-    // Where Rector keeps an operand's own parentheses inside the ones it adds, or drops those a ternary or `xor` operand
-    // needs (changing the meaning); the expected code is derived by hand.
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Pun",
-    );
-}
-
-#[test]
 fn unwrap_future_compatible_if_php_version() {
     // Rector's tests run with PhpVersionProvider::provide() at 100000 (PHP 10.0).
     run(
@@ -442,17 +422,6 @@ fn ternary_to_boolean_or_false_to_boolean_and() {
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Oracle");
     // Where Rector drops the parentheses an assignment or arrow function needs; the expected code is derived by hand.
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Pun");
-}
-
-#[test]
-fn strlen_zero_to_identical_empty_string() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    let linter = only(rules::PreferEmptyStringIdentical, 80400);
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Fixture");
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Oracle");
-    // Where Rector unpacks `...$s`, crashes on `strlen()` or drops the parentheses a `?:` or assignment needs under the
-    // cast; the expected code is derived by hand.
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Pun");
 }
 
 #[test]

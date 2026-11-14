@@ -1,4 +1,4 @@
-//! `lint/complexity/no-redundant-nullable-check`, ported from Rector 2.8.4's `SimplifyIfNullableReturnRector`
+//! `lint/complexity/no-redundant-null-check`, ported from Rector 2.8.4's `SimplifyIfNullableReturnRector`
 //! (rules/CodeQuality/Rector/If_) with `VarTagRemover::removeVarPhpTagValueNodeIfNotComment()`.
 //!
 //! ```php
@@ -38,7 +38,7 @@ pub struct NoRedundantNullableCheck;
 
 impl Rule for NoRedundantNullableCheck {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-redundant-nullable-check"
+        "lint/complexity/no-redundant-null-check"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

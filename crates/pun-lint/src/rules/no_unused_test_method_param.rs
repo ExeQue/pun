@@ -1,4 +1,4 @@
-//! `lint/dead-code/no-unused-test-method-param`, ported from Rector 2.8.4's
+//! `lint/dead-code/no-unused-private-method-param`, ported from Rector 2.8.4's
 //! `RemoveTestsOverriddenPrivateMethodParameterRector` (rules/DeadCode/Rector/ClassMethod), with
 //! `OverriddenParameterResolver` (rules/DeadCode/NodeCollector) and `PrivateMethodParamRemover`
 //! (rules/DeadCode/NodeManipulator).
@@ -31,7 +31,7 @@ pub struct NoUnusedTestMethodParam;
 
 impl Rule for NoUnusedTestMethodParam {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-unused-test-method-param"
+        "lint/dead-code/no-unused-private-method-param"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
