@@ -152,8 +152,7 @@ impl Fixer for PhpUnitDedicateAssertFixer {
 impl PhpUnitDedicateAssertFixer {
     fn fix_assert_true_false(&self, tokens: &mut Tokens, assert_call: &AssertCall) {
         let mut test_default_namespace_token_index = None;
-        let mut test_index = tokens
-            .next_meaningful(assert_call.open_brace_index);
+        let mut test_index = tokens.next_meaningful(assert_call.open_brace_index);
         if !tokens[test_index].is_given_kind(&[T_EMPTY, T_STRING]) {
             if fix_assert_true_false_instanceof(tokens, assert_call, test_index) {
                 return;
@@ -299,8 +298,7 @@ fn fix_assert_true_false_instanceof(
 }
 
 fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
-    let expected_index = tokens
-        .next_meaningful(assert_call.open_brace_index);
+    let expected_index = tokens.next_meaningful(assert_call.open_brace_index);
     if tokens[expected_index].is_kind(T_VARIABLE) {
         let next = tokens.next_meaningful(expected_index);
         if !tokens[next].equals(",", true) {
@@ -334,8 +332,7 @@ fn fix_assert_same_equals(tokens: &mut Tokens, assert_call: &AssertCall) {
     }
     let count_call_close_brace_index =
         tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, count_call_open_brace_index);
-    let after = tokens
-        .next_meaningful(count_call_close_brace_index);
+    let after = tokens.next_meaningful(count_call_close_brace_index);
     if !tokens[after].equals_any(&[")".into(), ",".into()], true) {
         return;
     }

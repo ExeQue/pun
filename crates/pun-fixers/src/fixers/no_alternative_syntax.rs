@@ -41,8 +41,7 @@ impl Fixer for NoAlternativeSyntaxFixer {
 }
 
 fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
-    let next_index = tokens
-        .next_meaningful(structure_token_index);
+    let next_index = tokens.next_meaningful(structure_token_index);
     tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, next_index)
 }
 
@@ -109,8 +108,7 @@ fn fix_elseif(index: usize, kind: Option<Kind>, tokens: &mut Tokens) {
         return;
     }
     let parenthesis_end_index = find_parenthesis_end(tokens, index);
-    let token_after_parenthesis_index = tokens
-        .next_meaningful(parenthesis_end_index);
+    let token_after_parenthesis_index = tokens.next_meaningful(parenthesis_end_index);
     if !tokens[token_after_parenthesis_index].equals(":", true) {
         return;
     }

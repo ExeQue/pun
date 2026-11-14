@@ -194,11 +194,9 @@ impl BinaryOperatorSpacesFixer {
     fn is_equal_part_of_declare_statement(tokens: &Tokens, index: usize) -> Option<usize> {
         let mut prev_meaningful_index = tokens.prev_meaningful(index);
         if tokens[prev_meaningful_index].is_kind(T_STRING) {
-            prev_meaningful_index = tokens
-                .prev_meaningful(prev_meaningful_index);
+            prev_meaningful_index = tokens.prev_meaningful(prev_meaningful_index);
             if tokens[prev_meaningful_index].equals("(", true) {
-                prev_meaningful_index = tokens
-                    .prev_meaningful(prev_meaningful_index);
+                prev_meaningful_index = tokens.prev_meaningful(prev_meaningful_index);
                 return tokens[prev_meaningful_index]
                     .is_kind(T_DECLARE)
                     .then_some(prev_meaningful_index);

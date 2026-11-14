@@ -78,8 +78,7 @@ fn get_argument_indices(tokens: &Tokens, function_name_index: usize) -> Vec<(usi
     for (start_index_candidate, end_index) in
         ArgumentsAnalyzer.get_arguments(tokens, open_parenthesis, close_parenthesis)
     {
-        let start = tokens
-            .next_meaningful(start_index_candidate - 1);
+        let start = tokens.next_meaningful(start_index_candidate - 1);
         let end = tokens.prev_meaningful(end_index + 1);
         indices.push((start, end));
     }

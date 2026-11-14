@@ -49,8 +49,7 @@ fn remove_settype_call(
     close_parenthesis_index: usize,
 ) {
     tokens.clear_token_and_merge_surrounding_whitespace(close_parenthesis_index);
-    let prev_index = tokens
-        .prev_meaningful(close_parenthesis_index);
+    let prev_index = tokens.prev_meaningful(close_parenthesis_index);
     if tokens[prev_index].equals(",", true) {
         tokens.clear_token_and_merge_surrounding_whitespace(prev_index);
     }
@@ -85,8 +84,7 @@ impl Fixer for SetTypeToCastFixer {
             if arguments.len() != 2 {
                 continue;
             }
-            let prev = tokens
-                .prev_meaningful(function_name_index);
+            let prev = tokens.prev_meaningful(function_name_index);
             if !tokens[prev].equals_any(
                 &[";".into(), "{".into(), "}".into(), T_OPEN_TAG.into()],
                 true,
@@ -97,14 +95,12 @@ impl Fixer for SetTypeToCastFixer {
             if tokens[first_argument_start].is_comment()
                 || tokens[first_argument_start].is_whitespace(None)
             {
-                first_argument_start = tokens
-                    .next_meaningful(first_argument_start);
+                first_argument_start = tokens.next_meaningful(first_argument_start);
             }
             if !tokens[first_argument_start].is_kind(T_VARIABLE) {
                 continue;
             }
-            let comma_index = tokens
-                .next_meaningful(first_argument_start);
+            let comma_index = tokens.next_meaningful(first_argument_start);
             if !tokens[comma_index].equals(",", true) {
                 continue;
             }
@@ -112,8 +108,7 @@ impl Fixer for SetTypeToCastFixer {
             if tokens[second_argument_start].is_comment()
                 || tokens[second_argument_start].is_whitespace(None)
             {
-                second_argument_start = tokens
-                    .next_meaningful(second_argument_start);
+                second_argument_start = tokens.next_meaningful(second_argument_start);
             }
             if !tokens[second_argument_start].is_kind(T_CONSTANT_ENCAPSED_STRING)
                 || tokens

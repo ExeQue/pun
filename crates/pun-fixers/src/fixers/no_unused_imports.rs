@@ -213,10 +213,8 @@ fn remove_uses_in_same_namespace(
 }
 
 fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnalysis) {
-    let before = tokens
-        .prev_meaningful(u.chunk_start_index.unwrap());
-    let after = tokens
-        .next_meaningful(u.chunk_end_index.unwrap());
+    let before = tokens.prev_meaningful(u.chunk_start_index.unwrap());
+    let after = tokens.next_meaningful(u.chunk_end_index.unwrap());
     let has_before = scan_for_non_empty_tokens_until_new_line_found(tokens, after, -1);
     let has_after = scan_for_non_empty_tokens_until_new_line_found(tokens, after, 1);
     let safe = has_before.1 || has_after.1;

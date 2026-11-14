@@ -57,8 +57,7 @@ fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
     };
     let function_start_index =
         tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, function_end_index);
-    let return_type_index = tokens
-        .prev_meaningful(function_start_index);
+    let return_type_index = tokens.prev_meaningful(function_start_index);
     if !tokens[return_type_index].is_kind(T_STRING) {
         return false;
     }

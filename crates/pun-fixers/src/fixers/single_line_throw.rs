@@ -56,11 +56,9 @@ impl Fixer for SingleLineThrowFixer {
                     }
                     end_candidate_index = tokens.find_block_end(block_type, end_candidate_index);
                 }
-                end_candidate_index = tokens
-                    .next_meaningful(end_candidate_index);
+                end_candidate_index = tokens.next_meaningful(end_candidate_index);
             }
-            let end = tokens
-                .prev_meaningful(end_candidate_index);
+            let end = tokens.prev_meaningful(end_candidate_index);
             trim_new_lines(tokens, index, end);
         }
     }

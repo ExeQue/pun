@@ -51,8 +51,7 @@ impl Fixer for CombineConsecutiveIssetsFixer {
             let isset_info = get_isset_info(tokens, index);
             let mut isset_close_brace_index = isset_info[isset_info.len() - 1];
             let mut insert_location = isset_info[isset_info.len() - 2] + 1;
-            let mut boolean_and_index = tokens
-                .next_meaningful(isset_close_brace_index);
+            let mut boolean_and_index = tokens.next_meaningful(isset_close_brace_index);
 
             while tokens[boolean_and_index].is_kind(T_BOOLEAN_AND) {
                 let isset_index = tokens.next_meaningful(boolean_and_index);
@@ -85,8 +84,7 @@ impl Fixer for CombineConsecutiveIssetsFixer {
                 token_count += inserted;
                 isset_close_brace_index += inserted;
                 insert_location += inserted;
-                boolean_and_index = tokens
-                    .next_meaningful(isset_close_brace_index);
+                boolean_and_index = tokens.next_meaningful(isset_close_brace_index);
             }
             index += 1;
         }

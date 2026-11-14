@@ -85,8 +85,7 @@ fn keep_parentheses(
     open_parenthesis_index: usize,
     close_parenthesis_index: usize,
 ) -> bool {
-    let mut i = tokens
-        .next_meaningful(open_parenthesis_index);
+    let mut i = tokens.next_meaningful(open_parenthesis_index);
     if tokens[i].is_cast() {
         i = tokens.next_meaningful(i);
     }
@@ -151,10 +150,8 @@ impl Fixer for StringLengthToEmptyFixer {
             {
                 continue;
             }
-            let next_index = tokens
-                .next_meaningful(close_parenthesis_index);
-            let mut previous_index = tokens
-                .prev_meaningful(function_name_index);
+            let next_index = tokens.next_meaningful(close_parenthesis_index);
+            let mut previous_index = tokens.prev_meaningful(function_name_index);
             let mut namespace_separator_index = None;
             if tokens[previous_index].is_kind(T_NS_SEPARATOR) {
                 namespace_separator_index = Some(previous_index);

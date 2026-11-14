@@ -35,8 +35,7 @@ impl Fixer for DirConstantFixer {
             let mut trailing_comma_index = None;
             if tokens[file_candidate_right_index].equals(",", true) {
                 trailing_comma_index = Some(file_candidate_right_index);
-                file_candidate_right_index = tokens
-                    .prev_meaningful(file_candidate_right_index);
+                file_candidate_right_index = tokens.prev_meaningful(file_candidate_right_index);
             }
             if !tokens[file_candidate_right_index].is_kind(T_FILE) {
                 continue;
@@ -46,8 +45,7 @@ impl Fixer for DirConstantFixer {
             if !tokens[file_candidate_left_index].is_kind(T_FILE) {
                 continue;
             }
-            let namespace_candidate_index = tokens
-                .prev_meaningful(function_name_index);
+            let namespace_candidate_index = tokens.prev_meaningful(function_name_index);
             if tokens[namespace_candidate_index].is_kind(T_NS_SEPARATOR) {
                 tokens.remove_trailing_whitespace(namespace_candidate_index, None);
                 tokens.clear_at(namespace_candidate_index);

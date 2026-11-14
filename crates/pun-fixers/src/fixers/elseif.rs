@@ -37,8 +37,7 @@ fn fix_else(tokens: &mut Tokens, index: usize) {
     };
     let open = tokens.next_meaningful(if_token_index);
     let condition_end_brace_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
-    let after_condition_index = tokens
-        .next_meaningful(condition_end_brace_index);
+    let after_condition_index = tokens.next_meaningful(condition_end_brace_index);
     if tokens[after_condition_index].equals(":", true) {
         return;
     }

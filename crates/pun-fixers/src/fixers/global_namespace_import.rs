@@ -91,8 +91,7 @@ impl GlobalNamespaceImportFixer {
                 }
                 continue;
             }
-            let prev_index = tokens
-                .prev_meaningful(ns_separator_index);
+            let prev_index = tokens.prev_meaningful(ns_separator_index);
             if tokens[prev_index].is_given_kind(&[CT_NAMESPACE_OPERATOR, T_STRING]) {
                 continue;
             }

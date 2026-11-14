@@ -85,8 +85,7 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
         },
         false => return Some(first_parameter_index),
     };
-    let comma_index = tokens
-        .next_meaningful(first_parameter_index);
+    let comma_index = tokens.next_meaningful(first_parameter_index);
     if !tokens[comma_index].equals(",", true) {
         return Some(comma_index);
     }

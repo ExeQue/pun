@@ -103,8 +103,7 @@ fn is_strict_or_nullable_return_type_function(tokens: &Tokens, return_index: usi
             break opening;
         }
     };
-    let possible_void_index = tokens
-        .prev_meaningful(opening_curly_brace_index);
+    let possible_void_index = tokens.prev_meaningful(opening_curly_brace_index);
     let is_strict_return_type = tokens[possible_void_index]
         .is_given_kind(&[T_STRING, CT_ARRAY_TYPEHINT])
         && tokens[possible_void_index].get_content() != b"void";

@@ -56,8 +56,7 @@ impl Fixer for SimplifiedIfReturnFixer {
                 .unwrap();
             let end_parenthesis_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, start_parenthesis_index);
-            let first_candidate_index = tokens
-                .next_meaningful(end_parenthesis_index);
+            let first_candidate_index = tokens.next_meaningful(end_parenthesis_index);
             for &(is_negative, sequence) in SEQUENCES {
                 let Some(mut indices_to_clear) =
                     tokens.find_sequence(sequence, first_candidate_index, next_if_index, |_| true)

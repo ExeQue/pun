@@ -36,8 +36,7 @@ impl ControlStructureBracesFixer {
         if tokens[structure_token_index].is_given_kind(&[T_DO, T_ELSE, T_FINALLY, T_TRY]) {
             return structure_token_index;
         }
-        let next_index = tokens
-            .next_meaningful(structure_token_index);
+        let next_index = tokens.next_meaningful(structure_token_index);
         if !tokens[next_index].equals("(", true) {
             return structure_token_index;
         }
@@ -45,8 +44,7 @@ impl ControlStructureBracesFixer {
     }
 
     fn find_statement_end(tokens: &Tokens, parenthesis_end_index: usize) -> usize {
-        let next_index = tokens
-            .next_meaningful(parenthesis_end_index);
+        let next_index = tokens.next_meaningful(parenthesis_end_index);
         let next_token = &tokens[next_index];
         if next_token.equals("{", true) {
             return tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, next_index);
@@ -115,8 +113,7 @@ impl Fixer for ControlStructureBracesFixer {
                 continue;
             }
             let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
-            let next_after_parenthesis_end_index = tokens
-                .next_meaningful(parenthesis_end_index);
+            let next_after_parenthesis_end_index = tokens.next_meaningful(parenthesis_end_index);
             let token_after_parenthesis = &tokens[next_after_parenthesis_end_index];
             if token_after_parenthesis.equals_any(
                 &[";".into(), "{".into(), ":".into(), T_CLOSE_TAG.into()],

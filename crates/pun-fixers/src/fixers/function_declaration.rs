@@ -60,8 +60,7 @@ impl Fixer for FunctionDeclarationFixer {
             if !self.trailing_comma_single_line
                 && !tokens.is_partial_code_multiline(index, end_parenthesis_index)
             {
-                let comma_index = tokens
-                    .prev_meaningful(end_parenthesis_index);
+                let comma_index = tokens.prev_meaningful(end_parenthesis_index);
                 if tokens[comma_index].equals(",", true) {
                     tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                 }
@@ -93,8 +92,7 @@ impl Fixer for FunctionDeclarationFixer {
                 if !self.trailing_comma_single_line
                     && !tokens.is_partial_code_multiline(index, use_end_parenthesis_index)
                 {
-                    let comma_index = tokens
-                        .prev_meaningful(use_end_parenthesis_index);
+                    let comma_index = tokens.prev_meaningful(use_end_parenthesis_index);
                     if tokens[comma_index].equals(",", true) {
                         tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                     }

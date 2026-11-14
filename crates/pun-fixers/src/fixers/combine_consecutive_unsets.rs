@@ -54,8 +54,7 @@ impl Fixer for CombineConsecutiveUnsetsFixer {
                 );
                 tokens_add_count += 1;
             }
-            let before_brace_end = tokens
-                .prev_meaningful(previous_unset_brace_end);
+            let before_brace_end = tokens.prev_meaningful(previous_unset_brace_end);
             if !tokens[before_brace_end].equals(",", true) {
                 tokens.insert_at(previous_unset_brace_end, vec![Token::char(",")]);
                 tokens_add_count += 1;

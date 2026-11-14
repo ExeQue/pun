@@ -129,8 +129,7 @@ impl PhpUnitExpectationFixer {
                 if replacement == "expectExceptionMessage" {
                     let param_indicator_index =
                         tokens.next_meaningful(arg_before);
-                    let after_param_indicator_index = tokens
-                        .next_meaningful(param_indicator_index);
+                    let after_param_indicator_index = tokens.next_meaningful(param_indicator_index);
                     if tokens[param_indicator_index].equals((T_STRING, "null"), false)
                         && tokens[after_param_indicator_index].equals(")", true)
                     {

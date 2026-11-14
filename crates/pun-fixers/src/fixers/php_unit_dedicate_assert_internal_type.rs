@@ -115,8 +115,7 @@ fn fix_at(tokens: &mut Tokens, index: usize) {
     else {
         return;
     };
-    let comma = tokens
-        .next_meaningful(expected_type_index);
+    let comma = tokens.next_meaningful(expected_type_index);
     if !tokens[comma].equals(",", true) {
         return;
     }

@@ -42,8 +42,7 @@ impl Fixer for DateTimeCreateFromFormatCallFixer {
                 if !tokens[function_name_index].equals((T_STRING, "createFromFormat"), false) {
                     continue;
                 }
-                let next = tokens
-                    .next_meaningful(function_name_index);
+                let next = tokens.next_meaningful(function_name_index);
                 if !tokens[next].equals("(", true) {
                     continue;
                 }
@@ -60,8 +59,7 @@ impl Fixer for DateTimeCreateFromFormatCallFixer {
                 let pre_class_name_index =
                     tokens.prev_meaningful(class_name_index);
                 if tokens[pre_class_name_index].is_kind(T_NS_SEPARATOR) {
-                    let before = tokens
-                        .prev_meaningful(pre_class_name_index);
+                    let before = tokens.prev_meaningful(pre_class_name_index);
                     if tokens[before].is_kind(T_STRING) {
                         continue;
                     }

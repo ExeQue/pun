@@ -103,8 +103,7 @@ fn fix_pow_to_exponentiation(
         .unwrap();
     tokens.set(comma, Token::new(T_POW, "**"));
     tokens.clear_at(close_parenthesis_index);
-    let previous_index = tokens
-        .prev_meaningful(close_parenthesis_index);
+    let previous_index = tokens.prev_meaningful(close_parenthesis_index);
     if tokens[previous_index].equals(",", true) {
         tokens.clear_at(previous_index);
     }
@@ -118,8 +117,7 @@ fn fix_pow_to_exponentiation(
     }
     tokens.clear_at(open_parenthesis_index);
     tokens.clear_token_and_merge_surrounding_whitespace(function_name_index);
-    let prev_meaningful_token_index = tokens
-        .prev_meaningful(function_name_index);
+    let prev_meaningful_token_index = tokens.prev_meaningful(function_name_index);
     if tokens[prev_meaningful_token_index].is_kind(T_NS_SEPARATOR) {
         tokens.clear_at(prev_meaningful_token_index);
     }

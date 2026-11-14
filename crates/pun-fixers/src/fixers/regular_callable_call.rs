@@ -56,8 +56,7 @@ impl Fixer for RegularCallableCallFixer {
 }
 
 fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, usize>) {
-    let first_arg_index = tokens
-        .next_meaningful(tokens.get_next_meaningful_token(index).unwrap());
+    let first_arg_index = tokens.next_meaningful(tokens.get_next_meaningful_token(index).unwrap());
     let first_arg_token = tokens[first_arg_index].clone();
     if first_arg_token.is_kind(T_CONSTANT_ENCAPSED_STRING) {
         let after_first_arg_index = tokens.next_meaningful(first_arg_index);
@@ -165,13 +164,11 @@ fn replace_call_user_func_with_callback(
     first_arg_end_index: usize,
 ) {
     tokens.clear_range(first_arg_start_index, first_arg_end_index);
-    let after_first_arg_index = tokens
-        .next_meaningful(first_arg_end_index);
+    let after_first_arg_index = tokens.next_meaningful(first_arg_end_index);
     if tokens[after_first_arg_index].equals(",", true) {
         let use_ellipsis = tokens[call_index].equals((T_STRING, "call_user_func_array"), false);
         if use_ellipsis {
-            let second_arg_index = tokens
-                .next_meaningful(after_first_arg_index);
+            let second_arg_index = tokens.next_meaningful(after_first_arg_index);
             tokens.insert_at(second_arg_index, vec![Token::new(T_ELLIPSIS, "...")]);
         }
         tokens.clear_at(after_first_arg_index);

@@ -16,8 +16,7 @@ impl NoEmptyStatementFixer {
     ) {
         let curly_opening_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, curly_close_index);
-        let before_curly_opening_index = tokens
-            .prev_meaningful(curly_opening_index);
+        let before_curly_opening_index = tokens.prev_meaningful(curly_opening_index);
         if tokens[before_curly_opening_index].is_given_kind(&[
             T_ELSE,
             T_FINALLY,
@@ -30,8 +29,7 @@ impl NoEmptyStatementFixer {
             return;
         }
         if tokens[before_curly_opening_index].is_kind(T_STRING) {
-            let mut classy_test_index = tokens
-                .prev_meaningful(before_curly_opening_index);
+            let mut classy_test_index = tokens.prev_meaningful(before_curly_opening_index);
             while tokens[classy_test_index].equals(",", true)
                 || tokens[classy_test_index].is_given_kind(&[
                     T_STRING,
@@ -55,8 +53,7 @@ impl NoEmptyStatementFixer {
         }
         let opening_brace_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, before_curly_opening_index);
-        let before_opening_brace_index = tokens
-            .prev_meaningful(opening_brace_index);
+        let before_opening_brace_index = tokens.prev_meaningful(opening_brace_index);
         if tokens[before_opening_brace_index].is_given_kind(&[
             T_IF, T_ELSEIF, T_FOR, T_FOREACH, T_WHILE, T_SWITCH, T_CATCH, T_DECLARE,
         ]) {
@@ -64,8 +61,7 @@ impl NoEmptyStatementFixer {
             return;
         }
         if tokens[before_opening_brace_index].is_kind(T_STRING) {
-            let before_string_index = tokens
-                .prev_meaningful(before_opening_brace_index);
+            let before_string_index = tokens.prev_meaningful(before_opening_brace_index);
             if tokens[before_string_index].is_kind(T_FUNCTION) {
                 tokens.clear_token_and_merge_surrounding_whitespace(index);
             }
@@ -130,8 +126,7 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            let pre_previous_meaningful_index = tokens
-                .prev_meaningful(previous_meaningful_index);
+            let pre_previous_meaningful_index = tokens.prev_meaningful(previous_meaningful_index);
             if tokens[pre_previous_meaningful_index].equals_any(
                 &[";".into(), "{".into(), "}".into(), T_OPEN_TAG.into()],
                 true,

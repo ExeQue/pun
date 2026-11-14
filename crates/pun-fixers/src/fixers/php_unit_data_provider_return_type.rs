@@ -52,8 +52,7 @@ impl Fixer for PhpUnitDataProviderReturnTypeFixer {
                 if r#type.name == b"iterable" {
                     continue;
                 }
-                let type_start = tokens
-                    .next_meaningful(r#type.get_start_index() - 1);
+                let type_start = tokens.next_meaningful(r#type.get_start_index() - 1);
                 let type_end = r#type.get_end_index();
                 if tokens.generate_partial_code(type_start, type_end) != r#type.name {
                     continue;

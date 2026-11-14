@@ -67,14 +67,12 @@ impl Fixer for ArrayPushFixer {
             }
 
             let first_argument_stop = get_first_argument_end(tokens, open_brace_index);
-            let first_argument_stop = tokens
-                .next_meaningful(first_argument_stop);
+            let first_argument_stop = tokens.next_meaningful(first_argument_stop);
             if !tokens[first_argument_stop].equals(",", true) {
                 continue;
             }
 
-            let second_argument_start = tokens
-                .next_meaningful(first_argument_stop);
+            let second_argument_start = tokens.next_meaningful(first_argument_stop);
             if get_second_argument_end(tokens, second_argument_start, close_brace_index).is_none() {
                 continue;
             }

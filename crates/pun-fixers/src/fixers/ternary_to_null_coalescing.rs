@@ -56,8 +56,7 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
     if isset_code != code(&first_operand) {
         return;
     }
-    let ternary_first_operand_index = tokens
-        .next_meaningful(ternary_question_mark_index);
+    let ternary_first_operand_index = tokens.next_meaningful(ternary_question_mark_index);
     let mut comments = Vec::new();
     let mut comment_started = false;
     for loop_index in index..ternary_first_operand_index {

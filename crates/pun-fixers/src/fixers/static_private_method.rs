@@ -54,8 +54,7 @@ fn fix_class(tokens: &mut Tokens, class_open: usize, class_close: usize) -> bool
         if skip_method(tokens, function_keyword_index, method_open, method_close) {
             continue;
         }
-        let method_name_index = tokens
-            .next_meaningful(function_keyword_index);
+        let method_name_index = tokens.next_meaningful(function_keyword_index);
         fixed_methods.insert(tokens[method_name_index].get_content().to_vec());
         tokens.insert_slices(BTreeMap::from([(
             function_keyword_index,
@@ -162,8 +161,7 @@ fn fix_references_in_function(
             continue;
         }
         let object_operator_index = tokens.next_meaningful(index);
-        let method_name_index = tokens
-            .next_meaningful(object_operator_index);
+        let method_name_index = tokens.next_meaningful(object_operator_index);
         let arguments_brace_index = tokens.next_meaningful(method_name_index);
         if tokens[object_operator_index].is_kind(T_OBJECT_OPERATOR)
             && tokens[arguments_brace_index].equals("(", true)

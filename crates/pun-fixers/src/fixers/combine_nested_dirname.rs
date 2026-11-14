@@ -37,8 +37,7 @@ impl Fixer for CombineNestedDirnameFixer {
                 index -= 1;
                 continue;
             };
-            let mut prev = tokens
-                .prev_meaningful(dirname_info.indices[0]);
+            let mut prev = tokens.prev_meaningful(dirname_info.indices[0]);
             if !tokens[prev].equals("(", true) {
                 index -= 1;
                 continue;
@@ -52,8 +51,7 @@ impl Fixer for CombineNestedDirnameFixer {
                     break;
                 };
                 dirname_info = next;
-                prev = tokens
-                    .prev_meaningful(dirname_info.indices[0]);
+                prev = tokens.prev_meaningful(dirname_info.indices[0]);
                 if !tokens[prev].equals("(", true) {
                     dirname_info_array.push(dirname_info);
                     break;
@@ -89,8 +87,7 @@ fn get_dirname_info(
     let mut next = tokens.next_meaningful(index);
     indices.push(next);
     if let Some(first_argument_end_index) = first_argument_end_index {
-        next = tokens
-            .next_meaningful(first_argument_end_index);
+        next = tokens.next_meaningful(first_argument_end_index);
     } else {
         next = tokens.next_meaningful(next);
         if tokens[next].equals(")", true) {
@@ -161,8 +158,7 @@ fn combine_dirnames(tokens: &mut Tokens, mut dirname_info_array: Vec<DirnameInfo
     if let Some(second_argument) = outer_dirname_info.second_argument {
         tokens.set(second_argument, levels_token);
     } else {
-        let prev = tokens
-            .prev_meaningful(outer_dirname_info.end);
+        let prev = tokens.prev_meaningful(outer_dirname_info.end);
         let mut items = vec![];
         if !tokens[prev].equals(",", true) {
             items = vec![Token::char(","), Token::new(T_WHITESPACE, " ")];

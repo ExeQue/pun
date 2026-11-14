@@ -43,8 +43,7 @@ impl Fixer for NoUselessPrintfFixer {
             let open_parenthesis_index = tokens
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
-            let first = tokens
-                .next_meaningful(open_parenthesis_index);
+            let first = tokens.next_meaningful(open_parenthesis_index);
             if tokens[first].is_given_kind(&[T_ELLIPSIS, CT_FIRST_CLASS_CALLABLE]) {
                 continue;
             }
@@ -59,8 +58,7 @@ impl Fixer for NoUselessPrintfFixer {
                 continue;
             }
             tokens.clear_token_and_merge_surrounding_whitespace(close_parenthesis_index);
-            let prev = tokens
-                .prev_meaningful(close_parenthesis_index);
+            let prev = tokens.prev_meaningful(close_parenthesis_index);
             if tokens[prev].equals(",", true) {
                 tokens.clear_token_and_merge_surrounding_whitespace(prev);
             }

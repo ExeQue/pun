@@ -322,8 +322,7 @@ impl NoSuperfluousPhpdocTagsFixer {
                     true,
                 )
                 .unwrap();
-            let type_index = tokens
-                .next_meaningful(before_argument_index);
+            let type_index = tokens.next_meaningful(before_argument_index);
             let mut info = if type_index != index {
                 parse_type_hint(tokens, type_index)
             } else {
@@ -397,8 +396,7 @@ impl NoSuperfluousPhpdocTagsFixer {
 }
 
 fn get_return_type_info(tokens: &Tokens, closing_parenthesis_index: usize) -> TypeInfo {
-    let colon_index = tokens
-        .next_meaningful(closing_parenthesis_index);
+    let colon_index = tokens.next_meaningful(closing_parenthesis_index);
     if tokens[colon_index].is_kind(CT_TYPE_COLON) {
         parse_type_hint(
             tokens,
