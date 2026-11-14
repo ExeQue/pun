@@ -2,7 +2,6 @@
 //! `scripts/export-phpstan-symbols.php`). Types are kept as the strings PHPStan's `toPhpDocNode()` printed, in
 //! the syntax [`crate::resolve`] reads back.
 
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock};
@@ -12,6 +11,8 @@ use std::marker::PhantomData;
 
 use serde::Deserialize;
 use serde::de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
+
+use crate::scoped::{Family, Scoped};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhpVersion {
@@ -458,75 +459,49 @@ impl Deref for ClassRef {
     }
 }
 
-type Provider = dyn Fn(&str) -> Option<Arc<Class>>;
+struct Provider;
+impl Family for Provider {
+    type Of<'a> = dyn Fn(&str) -> Option<Arc<Class>> + 'a;
+}
 
 thread_local! {
-    static PROVIDER: Cell<Option<*const Provider>> = const { Cell::new(None) };
+    static PROVIDER: Scoped<Provider> = const { Scoped::new() };
 }
 
 pub fn with_classes<R>(provider: &dyn Fn(&str) -> Option<Arc<Class>>, f: impl FnOnce() -> R) -> R {
-    struct Restore(Option<*const Provider>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            PROVIDER.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str) -> Option<Arc<Class>> + '_) = provider;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: only the lifetime is erased. `lookup()` dereferences the pointer while `f` runs, within the borrow of
-    // `provider`; `Restore` puts the previous provider back before this function returns, also on unwinding.
-    let ptr: *const Provider = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(PROVIDER.with(|p| p.replace(Some(ptr))));
-    f()
+    PROVIDER.with(|p| p.set(provider, f))
 }
 
 pub fn lookup(name: &str) -> Option<ClassRef> {
     if let Some(c) = class(name) {
         return Some(ClassRef::Builtin(c));
     }
-    let provider = PROVIDER.with(Cell::get)?;
-    // SAFETY: set by `with_classes()`, whose borrow outlives every call made while it is set.
-    let provider = unsafe { &*provider };
-    provider(name.trim_start_matches('\\')).map(ClassRef::User)
+    PROVIDER
+        .with(|p| p.get(|provider| provider(name.trim_start_matches('\\'))))
+        .flatten()
+        .map(ClassRef::User)
 }
 
-type FunctionProvider = dyn Fn(&str) -> bool;
+struct FunctionProvider;
+impl Family for FunctionProvider {
+    type Of<'a> = dyn Fn(&str) -> bool + 'a;
+}
 
 thread_local! {
-    static FUNCTIONS: Cell<Option<*const FunctionProvider>> = const { Cell::new(None) };
+    static FUNCTIONS: Scoped<FunctionProvider> = const { Scoped::new() };
 }
 
 pub fn with_functions<R>(provider: &dyn Fn(&str) -> bool, f: impl FnOnce() -> R) -> R {
-    struct Restore(Option<*const FunctionProvider>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            FUNCTIONS.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str) -> bool + '_) = provider;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: as in `with_classes()`.
-    let ptr: *const FunctionProvider = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(FUNCTIONS.with(|p| p.replace(Some(ptr))));
-    f()
+    FUNCTIONS.with(|p| p.set(provider, f))
 }
 
 pub fn has_function(name: &str) -> bool {
     if function(name).is_some() {
         return true;
     }
-    let Some(provider) = FUNCTIONS.with(Cell::get) else {
-        return false;
-    };
-    // SAFETY: set by `with_functions()`, whose borrow outlives every call made while it is set.
-    let provider = unsafe { &*provider };
-    provider(name.trim_start_matches('\\'))
+    FUNCTIONS
+        .with(|p| p.get(|provider| provider(name.trim_start_matches('\\'))))
+        .unwrap_or(false)
 }
 
 pub fn function(name: &str) -> Option<&'static Function> {

@@ -9,6 +9,7 @@ pub mod phpdoc;
 pub mod phpfile;
 pub mod resolve;
 pub mod schema;
+mod scoped;
 pub mod symbols;
 pub mod types;
 pub mod value;

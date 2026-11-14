@@ -1,6 +1,5 @@
-use std::cell::Cell;
-
 use super::{Accessory, StrictMixed, Tri, Type, accepts_with, is_super_type_of};
+use crate::scoped::{Family, Scoped};
 
 pub enum StringQuery<'a> {
     Property(&'a Type, &'a str),
@@ -8,41 +7,26 @@ pub enum StringQuery<'a> {
     View(&'a str),
 }
 
-type Answer = dyn Fn(StringQuery<'_>) -> Tri;
+struct Answer;
+impl Family for Answer {
+    type Of<'a> = dyn Fn(StringQuery<'_>) -> Tri + 'a;
+}
 
 thread_local! {
-    static ANSWER: Cell<Option<*const Answer>> = const { Cell::new(None) };
+    static ANSWER: Scoped<Answer> = const { Scoped::new() };
 }
 
 pub fn with_larastan_strings<R>(
     answer: &dyn Fn(StringQuery<'_>) -> Tri,
     f: impl FnOnce() -> R,
 ) -> R {
-    struct Restore(Option<*const Answer>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            ANSWER.with(|a| a.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(StringQuery<'_>) -> Tri + '_) = answer;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: as in `symbols::with_classes()`: only the lifetime is erased, and `Restore` puts the previous answer
-    // back before this function returns, also on unwinding.
-    let ptr: *const Answer = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(ANSWER.with(|a| a.replace(Some(ptr))));
-    f()
+    ANSWER.with(|a| a.set(answer, f))
 }
 
 fn ask(query: StringQuery<'_>) -> Tri {
-    let Some(answer) = ANSWER.with(Cell::get) else {
-        return Tri::Yes;
-    };
-    // SAFETY: set by `with_larastan_strings()`, whose borrow outlives every call made while it is set.
-    let answer = unsafe { &*answer };
-    answer(query)
+    ANSWER
+        .with(|a| a.get(|answer| answer(query)))
+        .unwrap_or(Tri::Yes)
 }
 
 fn model_property(t: &Type) -> Option<&Type> {

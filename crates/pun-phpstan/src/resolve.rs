@@ -4,6 +4,7 @@
 //! `*NEVER*` (PHPStan's own `__benevolent<…>` is handled the way PHPStan does).
 
 use crate::phpdoc::{self, ConstExpr, Node, ShapeKey};
+use crate::scoped::{Family, Scoped};
 use crate::symbols;
 use crate::types::{
     Accessory, Conditional, NeverKind, Param, ShapeBuilder, Signature, Subject, Template, Type,
@@ -22,39 +23,26 @@ pub fn with_type_aliases<R>(aliases: &[(String, String)], f: impl FnOnce() -> R)
     out
 }
 
-type TypeNodes = dyn Fn(&str, &[Type]) -> Option<Type>;
+struct TypeNodes;
+impl Family for TypeNodes {
+    type Of<'a> = dyn Fn(&str, &[Type]) -> Option<Type> + 'a;
+}
 
 thread_local! {
-    static TYPE_NODES: std::cell::Cell<Option<*const TypeNodes>> = const { std::cell::Cell::new(None) };
+    static TYPE_NODES: Scoped<TypeNodes> = const { Scoped::new() };
 }
 
 pub fn with_type_nodes<R>(
     extensions: &dyn Fn(&str, &[Type]) -> Option<Type>,
     f: impl FnOnce() -> R,
 ) -> R {
-    struct Restore(Option<*const TypeNodes>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            TYPE_NODES.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str, &[Type]) -> Option<Type> + '_) = extensions;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: as in `symbols::with_classes()`: only the lifetime is erased, and `Restore` puts the previous
-    // extensions back before this function returns, also on unwinding.
-    let ptr: *const TypeNodes = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(TYPE_NODES.with(|p| p.replace(Some(ptr))));
-    f()
+    TYPE_NODES.with(|t| t.set(extensions, f))
 }
 
 pub(crate) fn type_node(name: &str, args: &[Type]) -> Option<Type> {
-    let extensions = TYPE_NODES.with(std::cell::Cell::get)?;
-    // SAFETY: set by `with_type_nodes()`, whose borrow outlives every call made while it is set.
-    let extensions = unsafe { &*extensions };
-    extensions(name, args)
+    TYPE_NODES
+        .with(|t| t.get(|extensions| extensions(name, args)))
+        .flatten()
 }
 
 pub fn has_global_alias(name: &str) -> bool {
