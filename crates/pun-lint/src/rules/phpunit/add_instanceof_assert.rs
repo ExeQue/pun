@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -113,6 +115,9 @@ fn run(
         return;
     }
     let mut collection = collect(ctx, &list);
+    if collection.is_empty() {
+        return;
+    }
     let mut dynamic: Vec<Vec<String>> = Vec::new();
     let mut widened: Vec<String> = Vec::new();
     for statement in &list.stmts {
@@ -203,7 +208,7 @@ fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
     {
         return Vec::new();
     }
-    let facts = facts(ctx);
+    let used = used_names(list);
     let mut out = Vec::new();
     for statement in &list.stmts {
         let Some(assignment) = expression(statement).and_then(assign) else {
@@ -219,6 +224,10 @@ fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
         else {
             continue;
         };
+        if !used.contains(&variable.name[1..]) {
+            continue;
+        }
+        let facts = facts(ctx);
         let rest: Vec<&TAtomic> = (facts.full_type(node_span(assignment)).iter())
             .flat_map(|t| t.types.iter())
             .filter(|a| !matches!(a, TAtomic::Null))
@@ -235,6 +244,30 @@ fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
         out.push((variable.name[1..].to_vec(), class));
     }
     out
+}
+
+/// The direct variables the list names anywhere but as the target of one of its own assignments. Only these can be
+/// matched later, so only their assignments need a type, which costs analysing the file.
+fn used_names<'a>(list: &List<'a>) -> HashSet<&'a [u8]> {
+    let targets: HashSet<u32> = (list.stmts.iter())
+        .filter_map(|s| expression(s).and_then(assign))
+        .filter_map(|a| match unparenthesize(a.lhs) {
+            Expression::Variable(Variable::Direct(v)) => Some(v.span.start.offset),
+            _ => None,
+        })
+        .collect();
+    let mut used = HashSet::new();
+    for statement in &list.stmts {
+        traverse(statement, &mut |node| {
+            if let Node::DirectVariable(v) = node
+                && !targets.contains(&v.span.start.offset)
+            {
+                used.insert(&v.name[1..]);
+            }
+            false
+        });
+    }
+    used
 }
 
 fn is_nullable(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
@@ -274,14 +307,13 @@ fn matched_receivers(
         let Expression::Variable(Variable::Direct(direct)) = call.object else {
             return false;
         };
-        if !is_nullable(ctx, call.object) {
-            return false;
-        }
         let name = &direct.name[1..];
         if names.contains(&name) {
             return false;
         }
-        if let Some(index) = match_by_name(collection, name) {
+        if let Some(index) = match_by_name(collection, name)
+            && is_nullable(ctx, call.object)
+        {
             names.push(name);
             out.push(index);
         }
