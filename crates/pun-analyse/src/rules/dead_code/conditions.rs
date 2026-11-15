@@ -493,7 +493,8 @@ impl Checker<'_, '_> {
     }
 
     fn asserted(&self, f: &FunctionLikeMetadata, args: &ArgumentList) -> Option<bool> {
-        self.asserted_with(f, args, CheckTypes::Full).flatten()
+        self.asserted_with(f, args, CheckTypes::Full)
+            .and_then(Verdict::always)
     }
 
     fn asserted_with(
@@ -501,7 +502,7 @@ impl Checker<'_, '_> {
         f: &FunctionLikeMetadata,
         args: &ArgumentList,
         types: CheckTypes,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let void = f
             .return_type_metadata
             .as_ref()
@@ -570,7 +571,7 @@ impl Checker<'_, '_> {
                 };
             }
         }
-        Some(all)
+        Some(all.into())
     }
 
     fn asserting(&self, on: &Expression, method: &ClassLikeMemberSelector) -> bool {
@@ -979,8 +980,11 @@ pub(in super::super) fn function_check(c: &mut Checker, call: &FunctionCall) {
     }
     let name = c.written(call.function.span());
     let subject = format!("function {}", name.trim_start_matches('\\'));
-    let value = c.function_decision(call, CheckTypes::Full).flatten();
-    let phpdoc = value.is_some() && c.function_decision(call, CheckTypes::Native) == Some(None);
+    let value = c
+        .function_decision(call, CheckTypes::Full)
+        .and_then(Verdict::always);
+    let phpdoc = value.is_some()
+        && c.function_decision(call, CheckTypes::Native) == Some(Verdict::Undecided);
     impossible_check(
         c,
         call.span(),
@@ -1257,12 +1261,34 @@ fn extreme(results: impl IntoIterator<Item = Tri>) -> Tri {
         .unwrap_or(Tri::Maybe)
 }
 
+/// What a check that applies to a condition decides about it. A check that does not apply returns `None` instead.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Verdict {
+    Undecided,
+    Always(bool),
+}
+
+impl Verdict {
+    fn always(self) -> Option<bool> {
+        match self {
+            Verdict::Undecided => None,
+            Verdict::Always(value) => Some(value),
+        }
+    }
+}
+
+impl From<Option<bool>> for Verdict {
+    fn from(value: Option<bool>) -> Verdict {
+        value.map_or(Verdict::Undecided, Verdict::Always)
+    }
+}
+
 fn decided(t: Tri) -> Option<bool> {
     (!t.maybe()).then(|| t.yes())
 }
 
 impl Checker<'_, '_> {
-    fn function_decision(&self, call: &FunctionCall, types: CheckTypes) -> Option<Option<bool>> {
+    fn function_decision(&self, call: &FunctionCall, types: CheckTypes) -> Option<Verdict> {
         let args = &call.argument_list;
         if self
             .written(call.function.span())
@@ -1274,18 +1300,22 @@ impl Checker<'_, '_> {
                 .get(&args.arguments.first()?.value().span())
                 .filter(|ty| !ty.types.is_empty() && !ty.is_never())?;
             return Some(if ty.is_always_truthy() {
-                Some(true)
+                Verdict::Always(true)
             } else if ty.is_always_falsy() {
-                Some(false)
+                Verdict::Always(false)
             } else {
-                None
+                Verdict::Undecided
             });
         }
         match function_of(self, call.function)? {
             noop::Function::User(function) => {
                 let asserted = self.asserted_with(function, args, types);
                 match types {
-                    CheckTypes::Full => Some(self.exact(call.span()).or(asserted.flatten())),
+                    CheckTypes::Full => Some(
+                        self.exact(call.span())
+                            .or(asserted.and_then(Verdict::always))
+                            .into(),
+                    ),
                     CheckTypes::Native => asserted,
                 }
             }
@@ -1304,13 +1334,13 @@ impl Checker<'_, '_> {
         args: &ArgumentList,
         types: CheckTypes,
         call: Span,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let arg = |i: usize| {
             args.arguments
                 .get(i)
                 .and_then(|a| types.argument(self, a.value()))
         };
-        Some(match name {
+        Some(Verdict::from(match name {
             "in_array" => {
                 let needle = arg(0)?;
                 let haystack = arg(1)?;
@@ -1357,7 +1387,7 @@ impl Checker<'_, '_> {
                     "is_iterable" => Type::Iterable(mixed(), mixed()),
                     _ => {
                         return match types {
-                            CheckTypes::Full => Some(self.exact(call)),
+                            CheckTypes::Full => Some(self.exact(call).into()),
                             CheckTypes::Native => None,
                         };
                     }
@@ -1367,7 +1397,7 @@ impl Checker<'_, '_> {
                     decided(is_super_type_of(&sure, &argument))
                 })
             }
-        })
+        }))
     }
 
     fn in_array(
@@ -1377,9 +1407,9 @@ impl Checker<'_, '_> {
         needle: Type,
         haystack: Type,
         strict: Option<Type>,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         if !haystack.is_array().yes() {
-            return Some(None);
+            return Some(Verdict::Undecided);
         }
         let value = haystack.iterable_value_type();
         let is_enum = |t: &Type| {
@@ -1387,7 +1417,7 @@ impl Checker<'_, '_> {
             !values.is_empty() && values.iter().all(|t| matches!(t, Type::EnumCase(..)))
         };
         if strict != Some(Type::ConstBool(true)) && !is_enum(&needle) && !is_enum(&value) {
-            return Some(None);
+            return Some(Verdict::Undecided);
         }
         let needles = finite(self, &needle);
         let values = finite(self, &value);
@@ -1397,11 +1427,12 @@ impl Checker<'_, '_> {
                 return Some(
                     (needles.len() == 1 && values.len() == 1)
                         .then(|| decided(needle_super))
-                        .flatten(),
+                        .flatten()
+                        .into(),
                 );
             }
             if !needle_super.no() {
-                return Some(None);
+                return Some(Verdict::Undecided);
             }
         }
         if !matches!(&haystack, Type::ConstArray(a) if a.values.is_empty()) {
@@ -1410,15 +1441,15 @@ impl Checker<'_, '_> {
                 t => vec![t.clone()],
             };
             if arrays.len() == 1 && matches!(value, Type::Never(_)) {
-                return Some(None);
+                return Some(Verdict::Undecided);
             }
             if !needle_super.no() {
                 if needles.is_empty() {
-                    return Some(None);
+                    return Some(Verdict::Undecided);
                 }
                 for array in &arrays {
                     let Type::ConstArray(a) = array else {
-                        return Some(None);
+                        return Some(Verdict::Undecided);
                     };
                     let guaranteed: Vec<Type> = a
                         .values
@@ -1432,7 +1463,7 @@ impl Checker<'_, '_> {
                         .iter()
                         .all(|n| guaranteed.iter().any(|g| is_super_type_of(g, n).yes()))
                     {
-                        return Some(None);
+                        return Some(Verdict::Undecided);
                     }
                 }
             }
@@ -1446,7 +1477,7 @@ impl Checker<'_, '_> {
         types: CheckTypes,
         needle: &Type,
         haystack: &Type,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let left = unparen(args.arguments.first()?.value());
         let right = unparen(args.arguments.get(1)?.value());
         let elements = match right {
@@ -1457,21 +1488,26 @@ impl Checker<'_, '_> {
         let Some(elements) = elements.filter(|es| {
             !es.is_empty() && !es.iter().any(|e| matches!(e, ArrayElement::Variadic(_)))
         }) else {
-            return Some(decided(
-                is_super_type_of(&haystack.iterable_value_type(), needle)
-                    .and(haystack.is_iterable_at_least_once()),
-            ));
+            return Some(
+                decided(
+                    is_super_type_of(&haystack.iterable_value_type(), needle)
+                        .and(haystack.is_iterable_at_least_once()),
+                )
+                .into(),
+            );
         };
         let mut merged: Option<HashMap<String, (Type, Option<Type>, Tri)>> = None;
         for element in elements {
             let item = unparen(element.get_value()?);
             let value = types.argument(self, item)?;
             if elements.len() == 1 {
-                return Some(if finite(self, needle).len() == 1 && *needle == value {
-                    Some(true)
-                } else {
-                    is_super_type_of(needle, &value).no().then_some(false)
-                });
+                return Some(Verdict::from(
+                    if finite(self, needle).len() == 1 && *needle == value {
+                        Some(true)
+                    } else {
+                        is_super_type_of(needle, &value).no().then_some(false)
+                    },
+                ));
             }
             let mut pins = HashMap::new();
             let constant = |e: &Expression| {
@@ -1535,7 +1571,8 @@ impl Checker<'_, '_> {
                     })
                 })
                 .reduce(Tri::and)
-                .and_then(decided),
+                .and_then(decided)
+                .into(),
         )
     }
 
@@ -1704,10 +1741,10 @@ pub(in super::super) fn switch_statement(c: &mut Checker, s: &Switch) {
                 remaining = match (
                     remaining,
                     base.as_ref()
-                        .and_then(|b| unequal(c, b, value.as_ref(), cond)),
+                        .map_or(Unequal::Unknown, |b| unequal(c, b, value.as_ref(), cond)),
                 ) {
-                    (Some(t), Some(Some(v))) => Some(c.remove(t, &v)),
-                    (t, Some(None)) => t,
+                    (Some(t), Unequal::Removes(v)) => Some(c.remove(t, &v)),
+                    (t, Unequal::KeepsAll) => t,
                     _ => None,
                 };
             }
@@ -1784,18 +1821,22 @@ fn equal(c: &Checker, subject: &Type, value: &Type) -> Option<bool> {
     decided(loose(subject, value))
 }
 
-fn unequal(
-    c: &Checker,
-    subject: &Type,
-    value: Option<&Type>,
-    cond: &Expression,
-) -> Option<Option<Type>> {
+/// What a switch case that did not match tells about the subject in the cases after it.
+enum Unequal {
+    Unknown,
+    KeepsAll,
+    Removes(Type),
+}
+
+fn unequal(c: &Checker, subject: &Type, value: Option<&Type>, cond: &Expression) -> Unequal {
     if matches!(subject, Type::Mixed { .. }) {
-        return Some(None);
+        return Unequal::KeepsAll;
     }
-    let value = value?;
+    let Some(value) = value else {
+        return Unequal::Unknown;
+    };
     if subject.is_boolean().yes() {
-        return Some(truthy(value).map(Type::ConstBool));
+        return truthy(value).map_or(Unequal::KeepsAll, |b| Unequal::Removes(Type::ConstBool(b)));
     }
     if scalar(subject)
         && !matches!(
@@ -1804,19 +1845,23 @@ fn unequal(
                 | Expression::ConstantAccess(_)
         )
     {
-        return Some(None);
+        return Unequal::KeepsAll;
     }
     match value {
-        Type::Null | Type::ConstBool(_) => return None,
-        Type::ConstInt(0) if !is_int(subject) => return None,
-        Type::ConstString(s) if s.is_empty() => return None,
+        Type::Null | Type::ConstBool(_) => return Unequal::Unknown,
+        Type::ConstInt(0) if !is_int(subject) => return Unequal::Unknown,
+        Type::ConstString(s) if s.is_empty() => return Unequal::Unknown,
         _ => {}
     }
     let same = subject.is_string().yes() && value.is_string().yes()
         || is_int(subject) && is_int(value)
         || subject.is_float().yes() && value.is_float().yes()
         || c.is_enum(subject) && c.is_enum(value);
-    Some((same && single(value) && c.subtractable(subject)).then(|| value.clone()))
+    if same && single(value) && c.subtractable(subject) {
+        Unequal::Removes(value.clone())
+    } else {
+        Unequal::KeepsAll
+    }
 }
 
 fn truthy(t: &Type) -> Option<bool> {
