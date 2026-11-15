@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use foldhash::HashSet;
 use mago_analyzer::plugin::HookResult;
@@ -231,6 +231,9 @@ pub(super) fn is_benevolent(t: &TUnion) -> bool {
 }
 
 static META: ProviderMeta = ProviderMeta::new("pun", "pun", "PHPStan's dynamic return types");
+
+static DIGITS: LazyLock<pcre2::bytes::Regex> =
+    LazyLock::new(|| pcre2::bytes::Regex::new("^[0-9]+$").unwrap());
 
 #[derive(Clone, Default)]
 struct BuiltinFunctions(Arc<Mutex<HashSet<Span>>>);
@@ -915,14 +918,9 @@ impl StrRepeat {
             && positive
             && Self::property(input, 0, |string| string.is_numeric)
             && strings.as_ref().is_none_or(|strings| {
-                strings.iter().all(|string| {
-                    static DIGITS: std::sync::OnceLock<pcre2::bytes::Regex> =
-                        std::sync::OnceLock::new();
-                    DIGITS
-                        .get_or_init(|| pcre2::bytes::Regex::new("^[0-9]+$").unwrap())
-                        .is_match(string.as_bytes())
-                        .unwrap()
-                })
+                strings
+                    .iter()
+                    .all(|string| DIGITS.is_match(string.as_bytes()).unwrap())
             });
         let lower = Self::property(input, 0, TString::is_lowercase);
         let upper = Self::property(input, 0, TString::is_uppercase);

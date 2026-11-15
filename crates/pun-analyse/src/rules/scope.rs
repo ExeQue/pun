@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::LazyLock;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -340,15 +341,16 @@ fn expression_key(
     })
 }
 
+static IDENTIFIER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$")
+        .expect("identifier regexp")
+});
+
 fn object_property_key(
     e: &Expression,
     resolve: &dyn Fn(&Identifier) -> String,
     function: &dyn Fn(&Identifier) -> String,
 ) -> Option<String> {
-    static IDENTIFIER: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {
-        pcre2::bytes::Regex::new(r"^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$")
-            .expect("identifier regexp")
-    });
     Some(match super::types::flow::unparen(e) {
         Expression::Literal(Literal::String(s))
             if IDENTIFIER.is_match(s.value?).expect("byte regexp") =>

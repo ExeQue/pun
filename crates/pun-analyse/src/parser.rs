@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use mago_database::file::File;
 use mago_php_version::PHPVersion;
@@ -164,12 +165,12 @@ struct EscapeLines<'a> {
     skipped: Vec<Span>,
 }
 
+static UNICODE: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\(?:\\|u\{([0-9a-fA-F]*)(\})?)").expect("Unicode lexer pattern")
+});
+
 impl EscapeLines<'_> {
     fn string(&mut self, at: Span) {
-        static UNICODE: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {
-            pcre2::bytes::Regex::new(r"\\(?:\\|u\{([0-9a-fA-F]*)(\})?)")
-                .expect("Unicode lexer pattern")
-        });
         let source = &self.file.contents[at.start.offset as usize..at.end.offset as usize];
         for matches in UNICODE.captures_iter(source) {
             let matches = matches.expect("Unicode lexer match");
@@ -306,16 +307,30 @@ fn namespace_statements<'ast, 'arena>(
     result
 }
 
+static HASHBANG: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\A#!.*\r?\n\z").expect("upstream hashbang pattern")
+});
+
+static ESCAPES: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\([\\$nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})")
+        .expect("upstream escape pattern")
+});
+
+static INDENTATION: LazyLock<[[pcre2::bytes::Regex; 2]; 2]> = LazyLock::new(|| {
+    [r"(?<=\n)", r"(?:(?<=\n)|\A)"].map(|start| {
+        [r"(?=[\r\n])", r"(?:(?=[\r\n])|\z)"].map(|end| {
+            pcre2::bytes::Regex::new(&format!("{start}([ \\t]*)({end})?"))
+                .expect("upstream indentation pattern")
+        })
+    })
+});
+
 impl Reserved<'_> {
     fn namespacing_style(
         &mut self,
         statements: &[(&Statement<'_>, Span)],
         source: &[u8],
     ) -> Option<bool> {
-        static HASHBANG: std::sync::LazyLock<pcre2::bytes::Regex> =
-            std::sync::LazyLock::new(|| {
-                pcre2::bytes::Regex::new(r"\A#!.*\r?\n\z").expect("upstream hashbang pattern")
-            });
         let mut style = None;
         let mut forbidden = false;
         for (index, (statement, at)) in statements.iter().enumerate() {
@@ -566,12 +581,6 @@ impl Reserved<'_> {
     }
 
     fn escapes(&mut self, string: &[u8], at: Span) -> bool {
-        static ESCAPES: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {
-            pcre2::bytes::Regex::new(
-                r"\\([\\$nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})",
-            )
-            .expect("upstream escape pattern")
-        });
         for matches in ESCAPES.captures_iter(string) {
             let matches = matches.expect("upstream escape match");
             if let Some(digits) = matches.get(2)
@@ -613,15 +622,6 @@ impl Reserved<'_> {
         if indent_len == 0 {
             return;
         }
-        static INDENTATION: std::sync::LazyLock<[[pcre2::bytes::Regex; 2]; 2]> =
-            std::sync::LazyLock::new(|| {
-                [r"(?<=\n)", r"(?:(?<=\n)|\A)"].map(|start| {
-                    [r"(?=[\r\n])", r"(?:(?=[\r\n])|\z)"].map(|end| {
-                        pcre2::bytes::Regex::new(&format!("{start}([ \\t]*)({end})?"))
-                            .expect("upstream indentation pattern")
-                    })
-                })
-            });
         for matches in INDENTATION[usize::from(newline_at_start)][usize::from(newline_at_end)]
             .captures_iter(string)
         {

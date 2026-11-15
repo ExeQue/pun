@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use mago_allocator::LocalArena;
 use mago_database::file::FileType;
@@ -92,19 +92,17 @@ fn inline_html(path: &Path) -> Vec<(String, u32)> {
     found
 }
 
-pub(crate) fn views_used_in_views(directories: &[PathBuf]) -> Vec<String> {
-    static VIEW: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = VIEW.get_or_init(|| {
-        preg_compile(
-            r#"/@(extends|include(If|Unless|When|First)?)(\(.*?(['"])(.*?)(['"])([),]))/m"#,
-        )
+static VIEW: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    preg_compile(r#"/@(extends|include(If|Unless|When|First)?)(\(.*?(['"])(.*?)(['"])([),]))/m"#)
         .expect("a valid pattern")
-    });
+});
+
+pub(crate) fn views_used_in_views(directories: &[PathBuf]) -> Vec<String> {
     let mut used = Vec::new();
     for file in directories.iter().flat_map(|d| files(d, true)) {
         for (html, _) in inline_html(&file) {
             used.extend(
-                re.captures_iter(html.as_bytes())
+                VIEW.captures_iter(html.as_bytes())
                     .flatten()
                     .map(|c| String::from_utf8_lossy(&c[5]).into_owned()),
             );
@@ -113,11 +111,9 @@ pub(crate) fn views_used_in_views(directories: &[PathBuf]) -> Vec<String> {
     used
 }
 
-pub(crate) fn translations_in_views(finder: &Finder) -> Vec<(PathBuf, Vec<(String, u32)>)> {
-    static TRANSLATION: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = TRANSLATION.get_or_init(|| {
-        preg_compile(
-            r#"/
+static TRANSLATION: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    preg_compile(
+        r#"/
     (
         (
             (?<!\w)
@@ -132,16 +128,18 @@ pub(crate) fn translations_in_views(finder: &Finder) -> Vec<(PathBuf, Vec<(Strin
     (?P=quote)
     [),]
 /mix"#,
-        )
-        .expect("a valid pattern")
-    });
+    )
+    .expect("a valid pattern")
+});
+
+pub(crate) fn translations_in_views(finder: &Finder) -> Vec<(PathBuf, Vec<(String, u32)>)> {
     finder
         .root_view_files()
         .into_iter()
         .map(|file| {
             let mut found = Vec::new();
             for (html, line) in inline_html(&file) {
-                for c in re.captures_iter(html.as_bytes()).flatten() {
+                for c in TRANSLATION.captures_iter(html.as_bytes()).flatten() {
                     let quote = &c["quote"];
                     let string = String::from_utf8_lossy(&c["string"]).into_owned();
                     let start = c.get(0).map_or(0, |m| m.start());

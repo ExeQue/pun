@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use mago_allocator::LocalArena;
 use mago_codex::metadata::CodebaseMetadata;
@@ -396,23 +396,27 @@ type Signature = (
     Vec<(String, Option<String>, u32, Value)>,
 );
 
+fn pattern(pattern: &str) -> pcre2::bytes::Regex {
+    preg_compile(pattern).expect("a valid pattern")
+}
+
+static NAME: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/[^\s]+/"));
+static PARAMETER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/\{\s*(.*?)\s*\}/"));
+static OPTION: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/^-{2,}(.*)/"));
+static ARRAY_DEFAULT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/(.+)\=\*(.+)/"));
+static DEFAULT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/(.+)\=(.+)/"));
+static COMMA: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/,\s?/"));
+static SHORTCUT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/\s*\|\s*/"));
+static DESCRIPTION: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| pattern(r"/\s+:\s+/"));
+
 fn parse(expression: &str) -> Option<Signature> {
-    static NAME: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    static PARAMETER: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    static OPTION: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = |cell: &'static OnceLock<pcre2::bytes::Regex>, pattern: &str| {
-        cell.get_or_init(|| preg_compile(pattern).expect("a valid pattern"))
-    };
     let bytes = expression.as_bytes();
-    let name = re(&NAME, r"/[^\s]+/").find(bytes).ok()??;
+    let name = NAME.find(bytes).ok()??;
     let mut arguments = Vec::new();
     let mut options = Vec::new();
-    for m in re(&PARAMETER, r"/\{\s*(.*?)\s*\}/").captures_iter(bytes) {
+    for m in PARAMETER.captures_iter(bytes) {
         let token = text(&m.ok()?[1]);
-        match re(&OPTION, r"/^-{2,}(.*)/")
-            .captures(token.as_bytes())
-            .ok()?
-        {
+        match OPTION.captures(token.as_bytes()).ok()? {
             Some(o) => options.push(parse_option(&text(&o[1]))),
             None => arguments.push(parse_argument(&token)),
         }
@@ -428,16 +432,11 @@ fn trim<'a>(s: &'a str, chars: &str) -> &'a str {
     .unwrap_or_default()
 }
 
-static ARRAY_DEFAULT: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-static DEFAULT: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-
 fn split_list(s: &str) -> Value {
-    static COMMA: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
-    let re = COMMA.get_or_init(|| preg_compile(r"/,\s?/").expect("a valid pattern"));
     let bytes = s.as_bytes();
     let mut values = Vec::new();
     let mut start = 0;
-    for m in re.find_iter(bytes).flatten() {
+    for m in COMMA.find_iter(bytes).flatten() {
         values.push(text(&bytes[start..m.start()]));
         start = m.end();
     }
@@ -452,17 +451,16 @@ fn split_list(s: &str) -> Value {
 }
 
 fn with_default(token: &str) -> Option<(String, Value, bool)> {
-    let captures = |cell: &'static OnceLock<pcre2::bytes::Regex>, pattern: &str| {
-        let re = cell.get_or_init(|| preg_compile(pattern).expect("a valid pattern"));
+    let captures = |re: &pcre2::bytes::Regex| {
         re.captures(token.as_bytes())
             .ok()
             .flatten()
             .map(|c| (text(&c[1]), text(&c[2])))
     };
-    if let Some((name, default)) = captures(&ARRAY_DEFAULT, r"/(.+)\=\*(.+)/") {
+    if let Some((name, default)) = captures(&ARRAY_DEFAULT) {
         return Some((name, split_list(&default), true));
     }
-    captures(&DEFAULT, r"/(.+)\=(.+)/").map(|(name, default)| (name, Value::String(default), false))
+    captures(&DEFAULT).map(|(name, default)| (name, Value::String(default), false))
 }
 
 fn parse_argument(token: &str) -> InputArgument {
@@ -492,9 +490,8 @@ fn parse_argument(token: &str) -> InputArgument {
 }
 
 fn parse_option(token: &str) -> (String, Option<String>, u32, Value) {
-    static SHORTCUT: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let token = extract_description(token);
-    let (shortcut, token) = match split(&SHORTCUT, r"/\s*\|\s*/", &token) {
+    let (shortcut, token) = match split(&SHORTCUT, &token) {
         Some((shortcut, token)) => (Some(shortcut), token),
         None => (None, token),
     };
@@ -517,12 +514,7 @@ fn parse_option(token: &str) -> (String, Option<String>, u32, Value) {
     (name, shortcut, mode, default)
 }
 
-fn split(
-    cell: &'static OnceLock<pcre2::bytes::Regex>,
-    pattern: &str,
-    s: &str,
-) -> Option<(String, String)> {
-    let re = cell.get_or_init(|| preg_compile(pattern).expect("a valid pattern"));
+fn split(re: &pcre2::bytes::Regex, s: &str) -> Option<(String, String)> {
     let m = re.find(s.as_bytes()).ok()??;
     Some((
         text(&s.as_bytes()[..m.start()]),
@@ -531,9 +523,8 @@ fn split(
 }
 
 fn extract_description(token: &str) -> String {
-    static DESCRIPTION: OnceLock<pcre2::bytes::Regex> = OnceLock::new();
     let trimmed = text(pun_tokens::php_compat::trim(token.as_bytes()));
-    match split(&DESCRIPTION, r"/\s+:\s+/", &trimmed) {
+    match split(&DESCRIPTION, &trimmed) {
         Some((token, _)) => token,
         None => token.to_string(),
     }

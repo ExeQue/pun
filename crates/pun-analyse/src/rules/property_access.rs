@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -314,6 +315,11 @@ fn static_key(p: &StaticPropertyAccess, resolve: &dyn Fn(&Identifier) -> String)
     )))
 }
 
+static IDENTIFIER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$")
+        .expect("identifier regexp")
+});
+
 fn static_selector_key(v: &Variable) -> Option<String> {
     match v {
         Variable::Direct(v) => Some(String::from_utf8_lossy(v.name).into_owned()),
@@ -321,11 +327,6 @@ fn static_selector_key(v: &Variable) -> Option<String> {
         Variable::Indirect(v) => match unparen(v.expression) {
             Expression::Variable(v) => Some(format!("${{{}}}", static_selector_key(v)?)),
             Expression::Literal(Literal::String(s)) => {
-                static IDENTIFIER: std::sync::LazyLock<pcre2::bytes::Regex> =
-                    std::sync::LazyLock::new(|| {
-                        pcre2::bytes::Regex::new(r"^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$")
-                            .expect("identifier regexp")
-                    });
                 let value = s.value?;
                 Some(if IDENTIFIER.is_match(value).unwrap_or(false) {
                     format!("${}", String::from_utf8_lossy(value))

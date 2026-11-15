@@ -171,12 +171,13 @@ fn scan(
     (scanned, facts)
 }
 
+static FIRST: AtomicBool = AtomicBool::new(true);
+static PHP84: LazyLock<(CodebaseMetadata, SymbolReferences)> =
+    LazyLock::new(|| build_prelude(80400));
+static PHP85: LazyLock<(CodebaseMetadata, SymbolReferences)> =
+    LazyLock::new(|| build_prelude(80500));
+
 fn prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
-    static FIRST: AtomicBool = AtomicBool::new(true);
-    static PHP84: LazyLock<(CodebaseMetadata, SymbolReferences)> =
-        LazyLock::new(|| build_prelude(80400));
-    static PHP85: LazyLock<(CodebaseMetadata, SymbolReferences)> =
-        LazyLock::new(|| build_prelude(80500));
     if FIRST.swap(false, Ordering::Relaxed) {
         build_prelude(php_version)
     } else if php_version >= 80500 {

@@ -312,6 +312,10 @@ pub(super) fn parse_groups(regex: &str, capture_only_named_supported: bool) -> O
     Some(walk)
 }
 
+static COMMENT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"(?<!\\)(?<!\(\?)#.*").expect("upstream comment pattern")
+});
+
 fn parse_ast(regex: &str, modifiers: &str) -> Option<Node> {
     pun_phpstan::php::preg(regex).ok()?;
     if modifiers.contains(NOT_SUPPORTED_MODIFIERS) {
@@ -319,9 +323,6 @@ fn parse_ast(regex: &str, modifiers: &str) -> Option<Node> {
     }
     let stripped;
     let regex = if modifiers.contains('x') {
-        static COMMENT: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
-            pcre2::bytes::Regex::new(r"(?<!\\)(?<!\(\?)#.*").expect("upstream comment pattern")
-        });
         let mut out = Vec::new();
         let mut last = 0;
         for m in COMMENT.find_iter(regex.as_bytes()).filter_map(Result::ok) {

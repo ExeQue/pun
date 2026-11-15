@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use mago_codex::ttype::union::TUnion;
 use mago_database::file::File;
@@ -470,12 +471,12 @@ fn tar_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
     Some(found && (!executable || signed))
 }
 
+static SCHEME: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new("(?i)^([a-z0-9+\\-.]+)://").expect("upstream wrapper pattern")
+});
+
 fn candidates(c: &Checker, path: &str) -> Vec<PathBuf> {
-    static SCHEME: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
-    let scheme = SCHEME.get_or_init(|| {
-        pcre2::bytes::Regex::new("(?i)^([a-z0-9+\\-.]+)://").expect("upstream wrapper pattern")
-    });
-    let path = if scheme.is_match(path.as_bytes()).expect("wrapper match") {
+    let path = if SCHEME.is_match(path.as_bytes()).expect("wrapper match") {
         let (scheme, rest) = path.split_once("://").expect("matched separator");
         if !scheme.eq_ignore_ascii_case("file") {
             return Vec::new();

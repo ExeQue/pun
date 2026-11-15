@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
 use mago_syntax::cst::*;
 use regex_automata::dfa::{Automaton, StartKind, dense};
@@ -778,28 +778,25 @@ fn rules() -> Vec<(Rule, String)> {
     ]
 }
 
-fn scanner() -> &'static (Vec<Rule>, dense::DFA<Vec<u32>>) {
-    static SCANNER: OnceLock<(Vec<Rule>, dense::DFA<Vec<u32>>)> = OnceLock::new();
-    SCANNER.get_or_init(|| {
-        let (kinds, patterns): (Vec<Rule>, Vec<String>) = rules().into_iter().unzip();
-        let dfa = dense::Builder::new()
-            .configure(
-                dense::Config::new()
-                    .match_kind(MatchKind::All)
-                    .start_kind(StartKind::Anchored)
-                    .dfa_size_limit(None)
-                    .determinize_size_limit(None),
-            )
-            .syntax(syntax::Config::new().unicode(false).utf8(false))
-            .thompson(thompson::Config::new().utf8(false))
-            .build_many(&patterns)
-            .expect("timelib's scanner rules compile");
-        (kinds, dfa)
-    })
-}
+static SCANNER: LazyLock<(Vec<Rule>, dense::DFA<Vec<u32>>)> = LazyLock::new(|| {
+    let (kinds, patterns): (Vec<Rule>, Vec<String>) = rules().into_iter().unzip();
+    let dfa = dense::Builder::new()
+        .configure(
+            dense::Config::new()
+                .match_kind(MatchKind::All)
+                .start_kind(StartKind::Anchored)
+                .dfa_size_limit(None)
+                .determinize_size_limit(None),
+        )
+        .syntax(syntax::Config::new().unicode(false).utf8(false))
+        .thompson(thompson::Config::new().utf8(false))
+        .build_many(&patterns)
+        .expect("timelib's scanner rules compile");
+    (kinds, dfa)
+});
 
 fn longest(buffer: &[u8], at: usize) -> (Rule, usize) {
-    let (kinds, dfa) = scanner();
+    let (kinds, dfa) = &*SCANNER;
     let mut state = dfa
         .start_state(&start::Config::new().anchored(Anchored::Yes))
         .expect("an anchored start state");
