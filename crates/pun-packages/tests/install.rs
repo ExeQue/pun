@@ -513,13 +513,9 @@ fn composer_plugins_run_on_composers_classes() {
             &|_| None,
         );
         d.dispatch("post-install-cmd").unwrap();
-        std::fs::read_to_string(tmp.join("events.log")).map_or_else(
-            |_| String::new(),
-            |log| {
-                std::fs::remove_file(tmp.join("events.log")).unwrap();
-                log
-            },
-        )
+        let log = std::fs::read_to_string(tmp.join("events.log")).unwrap_or_default();
+        let _ = std::fs::remove_file(tmp.join("events.log"));
+        log
     };
     let started = "activate acme/app\ninit plugin 0 \n";
     assert_eq!(
