@@ -341,6 +341,11 @@ impl<'a, 'arena> Checker<'a, 'arena> {
             .unwrap_or_default()
     }
 
+    /// In a trait's context, a declaration outside that trait reports nothing, so its walk is skipped.
+    fn outside_target_trait(&self) -> bool {
+        self.trait_context.is_some() && !self.walk.contains(Walk::IN_TARGET)
+    }
+
     fn in_trait(&self) -> Option<&str> {
         self.trait_context
             .as_ref()

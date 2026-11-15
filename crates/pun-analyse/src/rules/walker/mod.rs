@@ -11,6 +11,26 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         mago_syntax::walker::walk_expression_mut(self, e, context);
         assign::exit_expression(self, e);
     }
+    fn walk_class(&mut self, class: &'ast Class<'arena>, c: &mut ()) {
+        if !self.outside_target_trait() {
+            mago_syntax::walker::walk_class_mut(self, class, c);
+        }
+    }
+    fn walk_interface(&mut self, i: &'ast Interface<'arena>, c: &mut ()) {
+        if !self.outside_target_trait() {
+            mago_syntax::walker::walk_interface_mut(self, i, c);
+        }
+    }
+    fn walk_enum(&mut self, e: &'ast Enum<'arena>, c: &mut ()) {
+        if !self.outside_target_trait() {
+            mago_syntax::walker::walk_enum_mut(self, e, c);
+        }
+    }
+    fn walk_function(&mut self, f: &'ast Function<'arena>, c: &mut ()) {
+        if !self.outside_target_trait() {
+            mago_syntax::walker::walk_function_mut(self, f, c);
+        }
+    }
     fn walk_in_class(&mut self, class: &'ast Class<'arena>, (): &mut ()) {
         self.visit_in_class(class);
     }
