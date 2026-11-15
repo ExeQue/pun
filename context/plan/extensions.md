@@ -126,6 +126,26 @@ No step changes output. Every step must keep these green: the parity tests, `pun
 
    At the end, `pun analyse` JSON on pinkary, larastan, pest and laravel-framework must be byte-identical to the
    base commit.
+
+   Done (2026-11-15): 5.1 and 5.2. `pun_analyse::AnalyseExtension` has `stub_files`, `bundled_stub`, `class_aliases`,
+   `prepare_codebase`, `load`, `register` (Mago's `PluginRegistry`, per file), `settings`, `typed_expressions` and
+   `type_node`. Larastan implements it in place. `Project::extensions()` still yields `project.larastan` until 5.6;
+   `load` takes `&mut self`, so 5.6 needs owned extensions. The bundled Larastan stubs are now read only while
+   Larastan is on.
+
+   5.3, from the spike on `types/receivers.rs`:
+   - Each Larastan branch in `extended_method` forwards the lookup to another type, says the method exists, or says
+     it doesn't: `fn has_method(&self, r, receiver, class, name) -> Option<MethodAnswer>`, with
+     `MethodAnswer::{Forward(Type), Exists, Missing}` and `None` for "not mine". The core keeps the cycle guard.
+   - `has_property(&self, r, class, name) -> bool` replaces `larastan::has_model_property` in `types/access.rs`.
+   - Three gaps:
+     - PHPStan asks extensions after the native lookup and before `@method` and `@mixin`, but Pun asks Larastan's
+       model-to-builder forward before mixins and the rest after require-extends. Either `has_method` gets a phase,
+       or the reorder is first proven byte-identical on the corpora.
+     - The hooks need reflection queries that live on the crate-private `Checker`, so they need a small public
+       reflection facade, or a crate-private trait until the extension moves to its own crate.
+     - The `increment`/`decrement` visibility bypass (PHPStan's `getMethod($name, $scope)` fallback) and static
+       calls forwarded from a model to its builder need more than a yes or no.
 6. **mapping.toml.** The ecosystem rows move into per-extension fragments.
    Folded into step 7 (2026-11-15): the Rust section loader and eight scripts read the one file, and
    `gen-phpstan-parameters.py` rewrites it in place, so the fragments move once each extension has a crate to hold
