@@ -335,6 +335,7 @@ impl Files {
 pub(crate) struct Gates<'a> {
     pub php: PhpVersion,
     pub composer: &'a Composer,
+    pub switches: BTreeMap<&'static str, extensions::Switch>,
 }
 
 impl Gates<'_> {
@@ -342,10 +343,21 @@ impl Gates<'_> {
         self.composer.locked(e.packages.first()?)
     }
 
-    pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<&'static ExtensionMeta> {
+    /// The extensions `[extensions]` and the lock turn on.
+    pub(crate) fn extensions(&self) -> Vec<&'static ExtensionMeta> {
         (extensions::ALL.into_iter())
-            .filter(|e| self.locked(e).is_some() && !off(e.id))
+            .filter(|e| match self.switches.get(e.id) {
+                Some(extensions::Switch::On) => true,
+                Some(extensions::Switch::Off) => false,
+                Some(extensions::Switch::Auto) | None => self.locked(e).is_some(),
+            })
             .collect()
+    }
+
+    pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<&'static ExtensionMeta> {
+        let mut on = self.extensions();
+        on.retain(|e| !off(e.id));
+        on
     }
 
     pub(crate) fn allows(&self, group: &str, on: &[&ExtensionMeta]) -> bool {

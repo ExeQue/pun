@@ -69,6 +69,8 @@ pub struct Config {
     pub files: Files,
     pub lint: Lint,
     pub analyse: Analyse,
+    /// The extensions that are on, in `extensions::ALL`'s order.
+    pub extensions: Vec<&'static extensions::ExtensionMeta>,
     pub sources: Vec<PathBuf>,
 }
 
@@ -95,6 +97,8 @@ struct PunToml {
     lint: schema::LintToml,
     #[serde(default)]
     analyse: schema::AnalyseToml,
+    #[serde(default)]
+    extensions: toml::Table,
     preset: Option<toml::Value>,
 }
 
@@ -209,6 +213,7 @@ fn parse(
         format: f,
         lint,
         analyse,
+        extensions,
         preset: tier,
     } = toml;
     let at = path.display();
@@ -251,7 +256,11 @@ fn parse(
             bail!("{at}: [files] paths: \"{p}\" is outside the project");
         }
     }
-    let gates = schema::Gates { php, composer };
+    let gates = schema::Gates {
+        php,
+        composer,
+        switches: extensions::switches(&at.to_string(), extensions)?,
+    };
     let lint = schema::lint(path, lint, &files, &gates)?;
     let analyse = schema::analyse(path, analyse, &files, &gates)?;
     let escapes = |b: &&str| {
@@ -302,6 +311,7 @@ fn parse(
         files,
         lint,
         analyse,
+        extensions: gates.extensions(),
         sources,
     })
 }
@@ -516,6 +526,12 @@ impl Config {
                 version: self.php.to_string(),
             },
             files: &self.files,
+            extensions: (extensions::ALL.iter())
+                .map(|e| {
+                    let on = self.extensions.contains(e);
+                    (e.id.to_string(), Value::from(if on { "on" } else { "off" }))
+                })
+                .collect(),
             format: ShownFormat {
                 preset: &self.preset,
                 exclude: &f.exclude,
@@ -551,6 +567,7 @@ impl Config {
 struct Shown<'a> {
     php: ShownPhp,
     files: &'a Files,
+    extensions: Map<String, Value>,
     format: ShownFormat<'a>,
     lint: ShownLint<'a>,
     analyse: ShownAnalyse<'a>,

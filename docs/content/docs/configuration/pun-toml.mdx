@@ -15,6 +15,9 @@ version = "8.4"
 paths = ["app", "tests"]
 exclude = ["build", "storage"]
 
+[extensions]
+pest = "off"
+
 [format]
 preset = "laravel"
 exclude = ["app/Generated"]
@@ -65,6 +68,25 @@ Other entries are plain paths. Lint and analyse skip that path, relative to the 
 
 [`pun list-files --command <command>`](/docs/commands/list-files) shows the files each command selects.
 
+## [extensions]
+
+Extensions add the rules and analysis for a framework or test tool. Pun builds them in:
+
+| Extension | Turns on for the locked package | Rule groups |
+| --- | --- | --- |
+| `laravel` | `laravel/framework` | `laravel`, `laravel-*`, and Larastan's analysis |
+| `pest` | `pestphp/pest` | `pest` |
+| `phpunit` | `phpunit/phpunit` | `phpunit` |
+| `doctrine` | none | `doctrine` |
+
+Each key takes one of these values:
+
+- `"auto"` (the default): on when `pun.lock` (or `composer.lock` before `pun migrate`) locks one of the extension's packages.
+- `"on"`: on without the lock.
+- `"off"`: off for every command, as if each of its groups were `"off"`.
+
+A rule or group you name in `[lint.groups]`, `[lint.rules]` or `[analyse.rules]` still applies. A key that names no extension is a config error.
+
 ## [format]
 
 | Key | Meaning |
@@ -98,7 +120,7 @@ Selection applies in this order, with later settings taking precedence:
 
 A table without `level` defaults to `"error"`. Warnings do not fail unless a warning limit is set. `--fix` applies available fixes except rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit set rules depend on the packages locked in `pun.lock` (or `composer.lock` before `pun migrate`). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
+Laravel, Pest, and PHPUnit set rules depend on [`[extensions]`](#extensions). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
 
 ## [analyse]
 

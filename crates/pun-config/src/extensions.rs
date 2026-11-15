@@ -1,4 +1,6 @@
+use anyhow::{Result, bail};
 use serde::{Serialize, Serializer};
+use std::collections::BTreeMap;
 
 /// What Pun knows about an extension before it runs: its name, the rule groups it owns and the locked packages that
 /// turn it on.
@@ -69,4 +71,36 @@ pub(crate) fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>
 /// Every package some extension turns on for.
 pub(crate) fn packages() -> impl Iterator<Item = &'static str> {
     ALL.into_iter().flat_map(|e| e.packages.iter().copied())
+}
+
+/// An `[extensions]` value: `auto`, the default, turns an extension on when the lock has one of its packages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Switch {
+    Auto,
+    On,
+    Off,
+}
+
+/// The `[extensions]` table, keyed by extension ID.
+pub(crate) fn switches(at: &str, t: toml::Table) -> Result<BTreeMap<&'static str, Switch>> {
+    (t.into_iter())
+        .map(|(name, v)| {
+            let Some(e) = ALL.into_iter().find(|e| e.id == name) else {
+                let ids: Vec<String> = ALL.iter().map(|e| format!("`{}`", e.id)).collect();
+                bail!(
+                    "{at}: [extensions] `{name}` is not an extension: expected {}",
+                    ids.join(", ")
+                );
+            };
+            let s = match v.as_str() {
+                Some("auto") => Switch::Auto,
+                Some("on") => Switch::On,
+                Some("off") => Switch::Off,
+                _ => {
+                    bail!("{at}: [extensions] `{name}` = {v}: expected \"auto\", \"on\" or \"off\"")
+                }
+            };
+            Ok((e.id, s))
+        })
+        .collect()
 }

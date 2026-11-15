@@ -832,6 +832,12 @@ version = "8.5"
 paths = ["app", "tests"]
 exclude = ["storage/**"]
 
+[extensions]
+laravel = "off"
+pest = "off"
+phpunit = "off"
+doctrine = "off"
+
 [format]
 preset = "empty"
 exclude = ["storage/**", "app/Generated/**"]

@@ -9,7 +9,7 @@ pun config --format json
 pun config --preset psr12
 ```
 
-Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[format]`, `[lint]`, and `[analyse]`.
+Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
 
 ## Resolved values
 
@@ -18,7 +18,8 @@ Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[format]`, `[l
 | Command `rules` tables | Enabled rules after preset, set, group, and rule settings, with levels and options |
 | `[[lint.overrides]]` | Path overrides as configured, not applied to a particular file |
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
-| `ecosystems` | Dependencies detected from `composer.lock` |
+| `[extensions]` | Each extension as `"on"` or `"off"`, after `"auto"` reads the lock |
+| `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
 | `[analyse] switches` | Preset type switches resolved by config; not yet applied by the analysis CLI |
 | `[php] version` | Explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
 

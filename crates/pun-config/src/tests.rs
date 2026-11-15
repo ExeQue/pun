@@ -440,6 +440,7 @@ fn upgrade_gates() {
         let g = schema::Gates {
             php: crate::PhpVersion::FLOOR,
             composer,
+            switches: std::collections::BTreeMap::new(),
         };
         g.allows(group, &g.ecosystems(|_| false))
     };
@@ -598,6 +599,42 @@ laravel = "on"
         (150 + 106 + 75 - 11, 0)
     );
 }
+#[test]
+fn extensions() {
+    let load_ = |files: &[(&str, &str)]| load(&dir(files), &Options::default());
+    let types = "[lint]\nsets = [\"types\"]\n";
+    let with = |switch: &str| format!("{types}[extensions]\nlaravel = \"{switch}\"\n");
+    let c = load_(&[("pun.toml", &with("off")), ("composer.lock", LARAVEL_LOCK)]).unwrap();
+    assert_eq!((c.lint.rules.len(), c.lint.ecosystems.len()), (73, 0));
+    assert!(c.extensions.is_empty() && c.analyse.ecosystems.is_empty() && !c.analyse.larastan);
+    assert_eq!(c.show()["extensions"]["laravel"], "off");
+    let c = load_(&[("pun.toml", &with("on"))]).unwrap();
+    assert_eq!(
+        (c.lint.rules.len(), &c.extensions),
+        (77, &vec![&crate::extensions::LARAVEL])
+    );
+    assert!(c.analyse.larastan && c.analyse.ecosystems == [&crate::extensions::LARAVEL]);
+    let shown = c.show();
+    assert_eq!(
+        shown["extensions"],
+        json!({"laravel": "on", "pest": "off", "phpunit": "off", "doctrine": "off"})
+    );
+    let c = load_(&[("pun.toml", &with("auto")), ("composer.lock", LARAVEL_LOCK)]).unwrap();
+    assert_eq!(c.lint.rules.len(), 77);
+    let pest = "[extensions]\npest = \"off\"\n[lint.groups]\npest = \"error\"\n";
+    let c = load_(&[("pun.toml", pest)]).unwrap();
+    assert!(c.lint.rules.iter().any(|r| r.id.starts_with("lint/pest/")));
+    let e = |toml: &str| format!("{:#}", load_(&[("pun.toml", toml)]).unwrap_err());
+    assert!(
+        e("[extensions]\nsymfony = \"on\"\n").ends_with(
+            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`, `doctrine`"
+        )
+    );
+    assert!(e("[extensions]\nlaravel = true\n").ends_with(
+        "pun.toml: [extensions] `laravel` = true: expected \"auto\", \"on\" or \"off\""
+    ));
+}
+
 #[test]
 fn composer_gate() {
     let d = dir(&[("composer.json", r#"{"require":{"php":"^8.2"}}"#)]);
