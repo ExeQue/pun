@@ -59,10 +59,10 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
             Settings::new(version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        let analysed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let analysed = contained("analyser", &file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
-        }));
-        let Ok(Ok(artifacts)) = analysed else {
+        });
+        let Some(Ok(artifacts)) = analysed else {
             continue;
         };
         let name = display(path);
@@ -96,6 +96,29 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
     Ok(out)
 }
 
+/// Runs one of Mago's passes over `file`. Mago panics on some inputs; that should cost what the pass would have told
+/// about the file, not the whole run, so the panic stops here, and is named on stderr because the checks that need the
+/// pass then go quiet on the file.
+pub(crate) fn contained<T>(pass: &str, file: &File, run: impl FnOnce() -> T) -> Option<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(run))
+        .map_err(|panic| {
+            let message = (panic.downcast_ref::<&str>().map(ToString::to_string))
+                .or_else(|| panic.downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            #[expect(
+                clippy::print_stderr,
+                reason = "a contained panic has no other channel to the user"
+            )]
+            {
+                eprintln!(
+                    "pun: Mago's {pass} panicked on {}: {message}",
+                    String::from_utf8_lossy(&file.name)
+                );
+            }
+        })
+        .ok()
+}
+
 fn line(file: &File, span: Span) -> u32 {
     file.line_number(span.start.offset) + 1
 }
@@ -116,5 +139,25 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for DumpTypeCalls<'_, 'arena> {
         {
             self.args.push(a.value.span());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use mago_database::file::File;
+
+    #[test]
+    fn a_panicking_pass_yields_nothing() {
+        let file = File::ephemeral(b"a.php".as_slice().into(), b"<?php".as_slice().into());
+        assert_eq!(super::contained("scanner", &file, || 1), Some(1));
+        assert_eq!(
+            super::contained("scanner", &file, || -> i32 { panic!("boom") }),
+            None
+        );
+        let pass = "scanner";
+        assert_eq!(
+            super::contained(pass, &file, || -> i32 { panic!("{pass} failed") }),
+            None
+        );
     }
 }

@@ -262,11 +262,11 @@ fn observe_template_arguments<'arena>(
     settings.track_native_types = false;
     let analyzer = Analyzer::new(arena, file, names, codebase, &registry, settings);
     let mut result = AnalysisResult::new(SymbolReferences::new());
-    let observed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let observed = crate::mago::contained("analyser's template argument pass", file, || {
         analyzer.analyze_with_artifacts(program, &mut result)
-    }));
+    });
     match observed {
-        Ok(Ok(artifacts)) => artifacts.template_arguments.solve(codebase),
+        Some(Ok(artifacts)) => artifacts.template_arguments.solve(codebase),
         _ => Resolutions::default(),
     }
 }
@@ -403,10 +403,10 @@ fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
     }
     let analyzer = Analyzer::new(arena, file, names, codebase, &registry, settings);
     let mut result = AnalysisResult::new(SymbolReferences::new());
-    let analysed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+    let analysed = crate::mago::contained("analyser", file, || {
         analyzer.analyze_with_artifacts(program, &mut result)
-    }));
-    let Ok(Ok(artifacts)) = analysed else {
+    });
+    let Some(Ok(artifacts)) = analysed else {
         return Inferred::default();
     };
     let mut keep_void_types: HashMap<Span, TUnion> = wanted

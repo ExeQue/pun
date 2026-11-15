@@ -147,9 +147,9 @@ fn scan(
             if let Some((index, wanted, declarations)) = reachable {
                 index.wanted(&file.contents, program, &names, wanted, declarations);
             }
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            crate::mago::contained("scanner", file, || {
                 scan_program(arena, file, program, &names, version)
-            }))
+            })
             .unwrap_or_default()
         };
         (scanned, facts)
@@ -1845,10 +1845,9 @@ impl InitializerInference<'_> {
             Settings::new(self.version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        crate::mago::contained("analyser of a constant initializer", file, || {
             analyzer.analyze_with_artifacts(isolated, &mut result)
-        }))
-        .ok()?
+        })?
         .ok()
     }
 }
