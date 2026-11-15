@@ -167,6 +167,19 @@ Write each commit message as a Conventional Commit: `type(scope): subject`. Use 
 
 The only author is Pushpak Chhajed <pushpak1300@gmail.com>. Do not add `Co-authored-by` trailers.
 
+## Releases
+
+Release only when Pushpak asks. Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml` (cargo-dist), which builds the four archives, attests them, and publishes the GitHub release that `pun self-update`, `docs/public/install` and `composer/bin/pun` download. Packagist reads the same tag as the Composer package's version. A suffix such as `-beta.1` makes it a pre-release.
+
+1. Check that CI passed on the commit you release.
+2. Set the version in two places: `version` under `[workspace.package]` in `Cargo.toml`, and `PUN_VERSION` in `composer/bin/pun` (`tests/composer.rs` checks that they match). Run `cargo build -p punphp` so `Cargo.lock` follows, and check `target/debug/pun --version`.
+3. Commit the three files as `chore(release): version X.Y.Z` and push it to `origin/main`.
+4. Tag that commit with a lightweight tag, `git tag vX.Y.Z`, and push only the tag: `git push origin vX.Y.Z`.
+5. Watch the Release workflow (`gh run watch`). When it finishes, `gh release view vX.Y.Z` lists the four `punphp-<target>.tar.gz` archives, their `.sha256` files, `sha256.sum` and `dist-manifest.json`.
+6. Check the installed binary: `curl -fsSL https://pun.laravel.cloud/install | sh -s -- vX.Y.Z`, then `pun --version`.
+
+Never move or delete a published tag. If a release is broken, fix it on main and release the next patch version.
+
 ## Docs site
 
 `docs/` is also the public docs site, built with [Blume](https://useblume.dev). To run it, use `bun install && bun run dev` inside `docs/`.
