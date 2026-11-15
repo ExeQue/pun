@@ -2,7 +2,6 @@ use crate::error::{Context, Result, bail};
 use crate::version::is_platform;
 use pcre2::bytes::Regex;
 use pun_tokens::php_compat::strnatcmp;
-use serde::Serialize;
 use serde_json::{Map, Value};
 use std::cmp::Ordering;
 use std::fmt::Write as _;
@@ -33,17 +32,86 @@ fn parse_json(text: &str) -> Result<Map<String, Value>> {
     }
 }
 
-/// `JsonFile::encode` with Composer's flags, then a newline: what Composer writes when it can't edit in place.
-fn write_json(m: &Map<String, Value>) -> String {
-    let mut out = vec![];
-    let mut ser = serde_json::Serializer::with_formatter(
-        &mut out,
-        serde_json::ser::PrettyFormatter::with_indent(b"    "),
-    );
-    m.serialize(&mut ser).expect("a JSON object serializes");
-    let mut text = String::from_utf8(out).expect("serde_json writes UTF-8");
-    text.push('\n');
-    text
+/// Whether PHP decodes the object into a list, which `json_encode` writes as an array.
+fn is_list(m: &Map<String, Value>) -> bool {
+    m.keys().enumerate().all(|(i, k)| *k == i.to_string())
+}
+
+/// `JsonConfigSource::restoreEmptyObjects`: the empty values Composer writes as `{}`, not `[]`.
+fn restored(path: &[String]) -> bool {
+    const ROOT: [&str; 13] = [
+        "require",
+        "require-dev",
+        "conflict",
+        "provide",
+        "replace",
+        "suggest",
+        "config",
+        "autoload",
+        "autoload-dev",
+        "scripts",
+        "scripts-descriptions",
+        "scripts-aliases",
+        "support",
+    ];
+    const CONFIG: [&str; 10] = [
+        "policy",
+        "platform",
+        "http-basic",
+        "bearer",
+        "gitlab-token",
+        "gitlab-oauth",
+        "github-oauth",
+        "custom-headers",
+        "forgejo-token",
+        "preferred-install",
+    ];
+    let path: Vec<&str> = path.iter().map(String::as_str).collect();
+    match path[..] {
+        [key] => ROOT.contains(&key),
+        ["config", key] => CONFIG.contains(&key),
+        ["config", "policy", _] | ["autoload" | "autoload-dev", "psr-0" | "psr-4"] => true,
+        _ => false,
+    }
+}
+
+/// What Composer writes when it can't edit in place: the file as `JsonFile::read` decodes it (objects become PHP
+/// arrays), after `restoreEmptyObjects`, through `JsonFile::write` with the file's indent, then a newline.
+fn write_json(m: Map<String, Value>, indent: &str) -> String {
+    fn put(out: &mut String, v: &Value, path: &mut Vec<String>, indent: &str) {
+        let items: Vec<(Option<&String>, &Value)> = match v {
+            Value::Array(items) => items.iter().map(|v| (None, v)).collect(),
+            Value::Object(m) if is_list(m) => m.values().map(|v| (None, v)).collect(),
+            Value::Object(m) => m.iter().map(|(k, v)| (Some(k), v)).collect(),
+            scalar => return out.push_str(&crate::php::json_pretty(scalar)),
+        };
+        let object = matches!(v, Value::Object(m) if !is_list(m));
+        if items.is_empty() {
+            out.push_str(if restored(path) { "{}" } else { "[]" });
+            return;
+        }
+        out.push(if object { '{' } else { '[' });
+        for (i, (key, item)) in items.into_iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push('\n');
+            out.push_str(&indent.repeat(path.len() + 1));
+            if let Some(key) = key {
+                let _ = write!(out, "{}: ", encode(key));
+            }
+            path.push(key.map_or_else(|| i.to_string(), String::clone));
+            put(out, item, path, indent);
+            path.pop();
+        }
+        out.push('\n');
+        out.push_str(&indent.repeat(path.len()));
+        out.push(if object { '}' } else { ']' });
+    }
+    let mut out = String::new();
+    put(&mut out, &Value::Object(m), &mut vec![], indent);
+    out.push('\n');
+    out
 }
 
 /// The JSON grammar Composer's `JsonManipulator` matches values with.
@@ -109,19 +177,17 @@ struct Manipulator {
 }
 
 impl Manipulator {
-    fn new(text: &str) -> Option<Manipulator> {
+    /// For text that parses as an object, so it is `{...}` once trimmed, as Composer's constructor requires.
+    fn new(text: &str) -> Manipulator {
         let contents = text.trim();
         let contents = if contents.is_empty() { "{}" } else { contents };
-        if !(contents.starts_with('{') && contents.ends_with('}')) {
-            return None;
-        }
         let newline = if contents.contains("\r\n") {
             "\r\n"
         } else {
             "\n"
         };
         let indent = Regex::new(r#"(?m)^([ \t]+)""#)
-            .ok()?
+            .expect("valid pattern")
             .captures(contents.as_bytes())
             .ok()
             .flatten()
@@ -133,11 +199,11 @@ impl Manipulator {
         } else {
             contents.to_string()
         };
-        Some(Manipulator {
+        Manipulator {
             contents,
             newline,
             indent,
-        })
+        }
     }
 
     fn decoded(&self) -> Map<String, Value> {
@@ -150,15 +216,12 @@ impl Manipulator {
 
     /// `format`: an array or object laid out at `depth`, the way Composer writes a node it adds.
     fn format(&self, v: &Value, depth: usize) -> String {
-        let list = |m: &Map<String, Value>| m.keys().enumerate().all(|(i, k)| *k == i.to_string());
         match v {
-            Value::Array(items) if items.is_empty() => "[]".into(),
-            Value::Object(m) if m.is_empty() => "[]".into(),
             Value::Array(items) => {
                 let items: Vec<String> = items.iter().map(|i| self.format(i, depth + 1)).collect();
                 format!("[{}]", items.join(", "))
             }
-            Value::Object(m) if list(m) => {
+            Value::Object(m) if is_list(m) => {
                 let items: Vec<String> = m.values().map(|i| self.format(i, depth + 1)).collect();
                 format!("[{}]", items.join(", "))
             }
@@ -182,7 +245,7 @@ impl Manipulator {
 
     /// `addLink`.
     fn add_link(&mut self, kind: &str, package: &str, constraint: &str, sort: bool) -> bool {
-        if !self.decoded().contains_key(kind) {
+        if self.decoded().get(kind).is_none_or(Value::is_null) {
             let mut content = Map::new();
             content.insert(package.into(), constraint.into());
             return self.add_main_key(kind, &Value::Object(content));
@@ -245,12 +308,17 @@ impl Manipulator {
             };
         }
         if sort {
-            let Ok(Value::Object(m)) = serde_json::from_str::<Value>(&links) else {
-                return false;
+            // Composer fails with a TypeError where the links no longer decode, as when the constraint holds a `"`.
+            let requirements = match serde_json::from_str::<Value>(&links) {
+                Ok(Value::Object(m)) => {
+                    let mut entries: Vec<(String, Value)> = m.into_iter().collect();
+                    entries.sort_by(|a, b| sort_cmp(&a.0, &b.0));
+                    Value::Object(entries.into_iter().collect())
+                }
+                Ok(list) => list,
+                Err(_) => return false,
             };
-            let mut entries: Vec<(String, Value)> = m.into_iter().collect();
-            entries.sort_by(|a, b| sort_cmp(&a.0, &b.0));
-            links = self.format(&Value::Object(entries.into_iter().collect()), 0);
+            links = self.format(&requirements, 0);
         }
         self.contents = format!("{start}{property}{links}{end}");
         true
@@ -259,20 +327,27 @@ impl Manipulator {
     /// `removeLink`: the entry, then the section when it is left empty.
     fn remove_link(&mut self, kind: &str, package: &str) -> bool {
         let before = self.contents.clone();
-        self.remove_sub_node(kind, package)
-            && (before == self.contents || self.remove_main_key_if_empty(kind))
+        if !self.remove_sub_node(kind, package) {
+            return false;
+        }
+        if before != self.contents {
+            self.remove_main_key_if_empty(kind);
+        }
+        true
     }
 
     /// `removeSubNode` for a link section.
     fn remove_sub_node(&mut self, main: &str, name: &str) -> bool {
         let decoded = self.decoded();
         let node = decoded.get(main);
+        // PHP's `empty()`.
         let empty = match node {
-            None | Some(Value::Null | Value::Bool(false)) => true,
-            Some(Value::Object(o)) => o.is_empty(),
-            Some(Value::Array(a)) => a.is_empty(),
+            None | Some(Value::Null) => true,
+            Some(Value::Bool(b)) => !b,
+            Some(Value::Number(n)) => n.as_f64() == Some(0.0),
             Some(Value::String(s)) => s.is_empty() || s == "0",
-            Some(_) => false,
+            Some(Value::Array(a)) => a.is_empty(),
+            Some(Value::Object(o)) => o.is_empty(),
         };
         if empty {
             return true;
@@ -379,19 +454,15 @@ impl Manipulator {
         true
     }
 
-    /// `removeMainKeyIfEmpty`.
-    fn remove_main_key_if_empty(&mut self, key: &str) -> bool {
-        let empty = match self.decoded().get(key) {
-            None => return true,
-            Some(Value::Object(o)) => o.is_empty(),
-            Some(Value::Array(a)) => a.is_empty(),
-            Some(_) => false,
-        };
-        !empty || self.remove_main_key(key)
+    /// `removeMainKeyIfEmpty`, called only after `removeSubNode` edited the key, so its value is an object.
+    fn remove_main_key_if_empty(&mut self, key: &str) {
+        if matches!(self.decoded().get(key), Some(Value::Object(o)) if o.is_empty()) {
+            self.remove_main_key(key);
+        }
     }
 
-    /// `removeMainKey`.
-    fn remove_main_key(&mut self, key: &str) -> bool {
+    /// `removeMainKey` for a key `removeSubNode` just matched with a stricter pattern, so this one matches too.
+    fn remove_main_key(&mut self, key: &str) {
         let re = pattern(
             &format!(
                 r"^(?P<start>{BEFORE})(?P<removal>{}\s*:\s*(?&json))\s*,?\s*(?P<end>.*)",
@@ -400,9 +471,8 @@ impl Manipulator {
             true,
             false,
         );
-        let Ok(Some(m)) = re.captures(self.contents.as_bytes()) else {
-            return false;
-        };
+        let m = (re.captures(self.contents.as_bytes()).ok().flatten())
+            .expect("removeSubNode matched the key");
         let (mut start, end) = (group(&m, "start").to_string(), group(&m, "end"));
         if is_match(r",\s*$", &start) && end == "}" {
             let comma = start.rfind(',').expect("a comma");
@@ -414,7 +484,6 @@ impl Manipulator {
         if is_match(r"^\{\s*\}\s*$", &self.contents) {
             self.contents = "{\n}".into();
         }
-        true
     }
 }
 
@@ -430,10 +499,8 @@ pub fn json_set(
     sort: bool,
 ) -> Result<String> {
     let mut m = parse_json(text)?;
-    if let Some(mut edit) = Manipulator::new(text)
-        && edit.add_link(section, name, constraint, sort)
-        && edit.remove_link(other, name)
-    {
+    let mut edit = Manipulator::new(text);
+    if edit.add_link(section, name, constraint, sort) && edit.remove_link(other, name) {
         return Ok(edit.text());
     }
     let links = m
@@ -449,17 +516,15 @@ pub fn json_set(
             m.shift_remove(other);
         }
     }
-    Ok(write_json(&m))
+    Ok(write_json(m, &edit.indent))
 }
 
 /// composer.json's text without `name` in `section` (and without `section` when that empties it), as
 /// `composer remove` edits it.
 pub fn json_remove(text: &str, section: &str, name: &str) -> Result<String> {
     let mut m = parse_json(text)?;
-    if let Some(mut edit) = Manipulator::new(text)
-        && edit.remove_sub_node(section, name)
-        && edit.remove_main_key_if_empty(section)
-    {
+    let mut edit = Manipulator::new(text);
+    if edit.remove_link(section, name) {
         return Ok(edit.text());
     }
     if let Some(Value::Object(o)) = m.get_mut(section) {
@@ -468,7 +533,7 @@ pub fn json_remove(text: &str, section: &str, name: &str) -> Result<String> {
             m.shift_remove(section);
         }
     }
-    Ok(write_json(&m))
+    Ok(write_json(m, &edit.indent))
 }
 
 pub fn name_version_pairs(args: &[String]) -> Vec<(String, Option<String>)> {
@@ -570,8 +635,114 @@ mod tests {
         );
     }
 
+    /// `JsonManipulator` cases: `linkProvider`, `providerAddLinkAndSortPackages` and `provideRemoveLink` from
+    /// Composer 2.11.2's `JsonManipulatorTest`, then what Composer 2.11.2's manipulator returns for the rest.
+    #[test]
+    fn manipulates_as_composer() {
+        type Edit = fn(&mut Manipulator) -> bool;
+        let unsorted = "{\n    \"require\": {\n        \"vendor/baz\": \"qux\"\n    }\n}";
+        let cases: [(&str, Edit, bool, &str); 11] = [
+            (
+                "{\n    \"require\": {\n    }\n}",
+                |m| m.add_link("require", "vendor/baz", "qux", false),
+                true,
+                "{\n    \"require\": {\n        \"vendor/baz\": \"qux\"\n    }\n}\n",
+            ),
+            (
+                unsorted,
+                |m| m.add_link("require", "foo", "bar", true),
+                true,
+                "{\n    \"require\": {\n        \"foo\": \"bar\",\n        \"vendor/baz\": \"qux\"\n    }\n}\n",
+            ),
+            (
+                unsorted,
+                |m| m.add_link("require", "foo", "bar", false),
+                true,
+                "{\n    \"require\": {\n        \"vendor/baz\": \"qux\",\n        \"foo\": \"bar\"\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require\": {\n        \"foo\": \"baz\",\n        \"ext-10gd\": \"*\",\n        \"ext-2mcrypt\": \"*\",\n        \"lib-foo\": \"*\",\n        \"hhvm\": \"*\",\n        \"php\": \">=5.5\"\n    }\n}",
+                |m| m.add_link("require", "igorw/retry", "*", true),
+                true,
+                "{\n    \"require\": {\n        \"php\": \">=5.5\",\n        \"hhvm\": \"*\",\n        \"ext-2mcrypt\": \"*\",\n        \"ext-10gd\": \"*\",\n        \"lib-foo\": \"*\",\n        \"foo\": \"baz\",\n        \"igorw/retry\": \"*\"\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require\": {\n        \"foo/bar\": \"^1\"\n    },\n    \"require-dev\": {\n        \"baz/qux\": \"^1\"\n    }\n}",
+                |m| m.remove_link("require-dev", "baz/qux"),
+                true,
+                "{\n    \"require\": {\n        \"foo/bar\": \"^1\"\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require-dev\": {\n        \"baz/qux\": \"^1\",\n        \"foo/bar\": \"^1\"\n    }\n}",
+                |m| m.remove_link("require-dev", "baz/qux"),
+                true,
+                "{\n    \"require-dev\": {\n        \"foo/bar\": \"^1\"\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require\": {\n        \"foo/bar\": \"^1\"\n    },\n    \"require-dev\": {\n    }\n}",
+                |m| m.remove_link("require-dev", "baz/qux"),
+                true,
+                "{\n    \"require\": {\n        \"foo/bar\": \"^1\"\n    },\n    \"require-dev\": {\n    }\n}\n",
+            ),
+            // A null section is `isset`-absent, so Composer sets it as a new key, in its own layout.
+            (
+                "{\n    \"name\": \"foo/bar\",\n    \"require\" :  null\n}",
+                |m| m.add_link("require", "foo/baz", "^1", true),
+                true,
+                "{\n    \"name\": \"foo/bar\",\n    \"require\": {\n        \"foo/baz\": \"^1\"\n    }\n}\n",
+            ),
+            // Sorting re-lays the links out with `format`, which writes every decoded array inline.
+            (
+                "{\n    \"require\": {\n        \"b/b\": [],\n        \"a/a\": [1, {\"0\": 2}, {\"k\": [3]}],\n        \"c/c\": {\"x\": {}}\n    }\n}",
+                |m| m.add_link("require", "php", "^8.4", true),
+                true,
+                "{\n    \"require\": {\n        \"php\": \"^8.4\",\n        \"a/a\": [1, [2], {\n                \"k\": [3]\n            }],\n        \"b/b\": [],\n        \"c/c\": {\n            \"x\": []\n        }\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require\": [{\"a/b\": \"1\"}]\n}",
+                |m| m.add_link("require", "a/b", "2", true),
+                true,
+                "{\n    \"require\": [{\n            \"a/b\": \"2\"\n        }]\n}\n",
+            ),
+            // The constraint goes in unescaped, so the links no longer decode: Composer throws a TypeError.
+            (
+                "{\n    \"require\": {\n        \"a/b\": \"1\"\n    }\n}",
+                |m| m.add_link("require", "a/b", "2\"", true),
+                false,
+                "",
+            ),
+        ];
+        for (text, edit, ok, expected) in cases {
+            let mut m = Manipulator::new(text);
+            assert_eq!(edit(&mut m), ok, "{text}");
+            if ok {
+                assert_eq!(m.text(), expected, "{text}");
+            }
+        }
+        // `removeSubNode` on a section PHP's `empty()` holds empty leaves the file as it is and succeeds;
+        // any other value that isn't an object can't be matched.
+        for (value, ok) in [
+            ("[]", true),
+            ("\"0\"", true),
+            ("\"\"", true),
+            ("0", true),
+            ("0.0", true),
+            ("false", true),
+            ("null", true),
+            ("[1]", false),
+            ("\"x\"", false),
+            ("true", false),
+            ("1", false),
+        ] {
+            let text = format!("{{\n    \"require-dev\": {value}\n}}");
+            let mut m = Manipulator::new(&text);
+            assert_eq!(m.remove_sub_node("require-dev", "a/b"), ok, "{value}");
+            assert_eq!(m.text(), format!("{text}\n"));
+        }
+    }
+
     /// The text Composer 2.11.2's `require -n --no-update` and `remove -n --no-update` write for the same
-    /// composer.json, in Composer's four-space layout.
+    /// composer.json.
     #[test]
     fn edits_composer_json() {
         let text = "{\n    \"name\": \"acme/app\",\n    \"require\": {\n        \"php\": \"^8.4\",\n        \"acme/b\": \"1.0\"\n    },\n    \"require-dev\": {\n        \"acme/c\": \"^2.0\"\n    },\n    \"extra\": {}\n}\n";
@@ -602,5 +773,97 @@ mod tests {
         );
         assert!(json_set("[]", "require", "require-dev", "a/b", "*", false).is_err());
         assert!(json_remove("{", "require", "a/b").is_err());
+        // Composer rejects both values against its schema; the rewrite can't put a link into a string.
+        let strings = "{\"require\": \"x\", \"require-dev\": \"y\"}";
+        assert!(json_set(strings, "require", "require-dev", "a/b", "*", false).is_err());
+    }
+
+    /// `composer require [--dev] name:constraint` and `composer remove [--dev] name`, run with Composer 2.11.2.
+    #[test]
+    fn edits_other_layouts_as_composer() {
+        // From the fourth case on, most can't be edited in place: a key written with an escape, or a section
+        // given twice, which Composer decodes to the last one. Composer rewrites those files with their indent,
+        // PHP's empty arrays, lists and floats, and `{}` only where `restoreEmptyObjects` puts it back.
+        let dups = "{\n\t\"name\": \"acme/app\",\n\t\"require\": {\n\t\t\"acme/b\": \"1.0\"\n\t},\n\t\"require-dev\": {\n\t\t\"acme/c\": \"^2.0\"\n\t},\n\t\"require-dev\": {\n\t\t\"acme/d\": \"^3.0\"\n\t},\n\t\"extra\": {\"a\": {}, \"b\": {\"0\": \"x\"}, \"c\": 1.0, \"d\": \"\\u00e9\\/\"},\n\t\"autoload\": {\"psr-4\": {}},\n\t\"config\": {\"platform\": {}, \"policy\": {\"advisories\": {}}},\n\t\"support\": {}\n}\n";
+        let rewritten = "{\n\t\"name\": \"acme/app\",\n\t\"require\": {\n\t\t\"acme/b\": \"1.0\",\n\t\t\"acme/d\": \"^3.1\"\n\t},\n\t\"extra\": {\n\t\t\"a\": [],\n\t\t\"b\": [\n\t\t\t\"x\"\n\t\t],\n\t\t\"c\": 1,\n\t\t\"d\": \"é/\"\n\t},\n\t\"autoload\": {\n\t\t\"psr-4\": {}\n\t},\n\t\"config\": {\n\t\t\"platform\": {},\n\t\t\"policy\": {\n\t\t\t\"advisories\": {}\n\t\t}\n\t},\n\t\"support\": {}\n}\n";
+        let removed = rewritten.replace(",\n\t\t\"acme/d\": \"^3.1\"", "");
+        let cases: [(&str, &str, &str, Option<&str>, &str); 10] = [
+            (
+                "{\r\n    \"name\": \"acme/app\",\r\n    \"require\": {\r\n        \"acme/b\": \"1.0\"\r\n    }\r\n}\r\n",
+                "require",
+                "acme/c",
+                Some("^2.0"),
+                "{\r\n    \"name\": \"acme/app\",\r\n    \"require\": {\r\n        \"acme/b\": \"1.0\",\r\n        \"acme/c\": \"^2.0\"\r\n    }\r\n}\r\n",
+            ),
+            (
+                "{\n    \"name\": \"acme/app\"\n}\n",
+                "require",
+                "acme/b",
+                Some("^1.0"),
+                "{\n    \"name\": \"acme/app\",\n    \"require\": {\n        \"acme/b\": \"^1.0\"\n    }\n}\n",
+            ),
+            (
+                "{\n    \"require\": {\n        \"acme/b\": \"^1.0\"\n    }\n}\n",
+                "require",
+                "acme/b",
+                None,
+                "{\n}\n",
+            ),
+            (
+                "{\n  \"name\": \"acme/app\",\n  \"requir\\u0065\": {\n    \"acme/b\": \"1.0\"\n  },\n  \"extra\": {\"a\": {}, \"b\": {\"0\": \"x\"}, \"c\": 1.0},\n  \"autoload\": {\"psr-4\": {}}\n}\n",
+                "require",
+                "acme/c",
+                Some("^2.1"),
+                "{\n  \"name\": \"acme/app\",\n  \"require\": {\n    \"acme/b\": \"1.0\",\n    \"acme/c\": \"^2.1\"\n  },\n  \"extra\": {\n    \"a\": [],\n    \"b\": [\n      \"x\"\n    ],\n    \"c\": 1\n  },\n  \"autoload\": {\n    \"psr-4\": {}\n  }\n}\n",
+            ),
+            (
+                "{\n    \"name\": \"acme/app\",\n    \"require-d\\u0065v\": {\n        \"acme/c\": \"^2.0\",\n        \"acme/d\": \"^3.0\"\n    }\n}\n",
+                "require-dev",
+                "acme/c",
+                None,
+                "{\n    \"name\": \"acme/app\",\n    \"require-dev\": {\n        \"acme/d\": \"^3.0\"\n    }\n}\n",
+            ),
+            (dups, "require", "acme/d", Some("^3.1"), rewritten),
+            (dups, "require-dev", "acme/d", None, &removed),
+            // `--dev`: the first `require` holds the name, so Composer edits it in place, and keeps it as the
+            // section Composer decodes is the second, still not empty.
+            (
+                "{\n    \"keywords\": [\"a\"],\n    \"require\": {\n        \"acme/d\": \"^3.0\"\n    },\n    \"require\": {\n        \"acme/d\": \"^3.0\",\n        \"acme/e\": \"^1.0\"\n    }\n}\n",
+                "require-dev",
+                "acme/d",
+                Some("^3.1"),
+                "{\n    \"keywords\": [\"a\"],\n    \"require\": {\n    },\n    \"require\": {\n        \"acme/d\": \"^3.0\",\n        \"acme/e\": \"^1.0\"\n    },\n    \"require-dev\": {\n        \"acme/d\": \"^3.1\"\n    }\n}\n",
+            ),
+            // It doesn't, so Composer rewrites the file.
+            (
+                "{\n    \"keywords\": [\"a\", \"b\"],\n    \"require\": {\n        \"acme/c\": \"^2.0\"\n    },\n    \"require\": {\n        \"acme/d\": \"^3.0\",\n        \"acme/e\": \"^1.0\"\n    }\n}\n",
+                "require-dev",
+                "acme/d",
+                Some("^3.1"),
+                "{\n    \"keywords\": [\n        \"a\",\n        \"b\"\n    ],\n    \"require\": {\n        \"acme/e\": \"^1.0\"\n    },\n    \"require-dev\": {\n        \"acme/d\": \"^3.1\"\n    }\n}\n",
+            ),
+            // Composer's schema rejects this file on load; `JsonConfigSource::removeLink`, run on it, rewrites it.
+            (
+                "{\n  \"require\": [1, {\"x\": {}}]\n}\n",
+                "require",
+                "a/b",
+                None,
+                "{\n  \"require\": [\n    1,\n    {\n      \"x\": []\n    }\n  ]\n}\n",
+            ),
+        ];
+        for (text, section, name, constraint, expected) in cases {
+            let edited = match constraint {
+                Some(c) => {
+                    let other = if section == "require" {
+                        "require-dev"
+                    } else {
+                        "require"
+                    };
+                    json_set(text, section, other, name, c, false)
+                }
+                None => json_remove(text, section, name),
+            };
+            assert_eq!(edited.unwrap(), expected, "{text}");
+        }
     }
 }
