@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocSeparationFixer`.
 use crate::analyzers::docblock::{Annotation, DocBlock};
 use pun_tokens::php_compat::str_replace;
 use crate::analyzers::fixer_configuration_resolver::{php_array, resolve};
@@ -45,7 +44,7 @@ impl Fixer for PhpdocSeparationFixer {
         let groups: Vec<Vec<String>> = match r.get("groups") {
             None => OPTION_GROUPS_DEFAULT
                 .iter()
-                .map(|g| g.iter().map(|s| s.to_string()).collect())
+                .map(|g| g.iter().map(std::string::ToString::to_string).collect())
                 .collect(),
             Some(v) => php_array(v)
                 .into_iter()

@@ -1,18 +1,21 @@
-//! `pun install`: installs pun.lock into `vendor/`. The dependencies come from pun.toml's dependency sections only;
-//! `pun migrate` moves a project's composer.json and composer.lock into pun.toml and pun.lock. Without a pun.lock,
-//! install resolves one first, as `pun update` does.
-
+use crate::Exit;
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
+use pun_packages::autoload::{Apcu, Scan};
 use pun_packages::fetch::{Auth, Fetcher, composer_dirs};
-use pun_packages::install::{Options, dirs, install};
+use pun_packages::install::{Options, install};
 use pun_packages::lock::Lock;
-use pun_packages::scripts::Runner;
+use pun_packages::plugin_host::Dispatcher;
+use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 #[derive(clap::Args, Clone, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct InstallArgs {
     /// Leave out the dev dependencies (`require-dev`).
     #[arg(long)]
@@ -35,7 +38,7 @@ pub(crate) struct InstallArgs {
     /// Skip the root package's scripts.
     #[arg(long)]
     pub(crate) no_scripts: bool,
-    /// Skip the Composer plugins Pun supports.
+    /// Skip the Composer plugins.
     #[arg(long)]
     pub(crate) no_plugins: bool,
     /// Leave this platform requirement out of the platform check (`php`, `ext-*`, globs with `*`); repeatable.
@@ -47,16 +50,9 @@ pub(crate) struct InstallArgs {
     /// Run in this directory instead of the current one.
     #[arg(short = 'd', long, value_name = "DIR")]
     pub(crate) working_dir: Option<PathBuf>,
-    /// Accepted for Composer's CI flags; Pun never asks and always installs from dists.
-    #[arg(short = 'n', long, hide = true)]
-    pub(crate) no_interaction: bool,
-    #[arg(long, hide = true)]
-    pub(crate) prefer_dist: bool,
-    #[arg(long, hide = true)]
-    pub(crate) no_progress: bool,
 }
 
-/// A project's dependencies: pun.toml's dependency sections in composer.json's shape, and pun.lock when it exists.
+/// A project's dependencies: its composer.json, and composer.lock when it exists.
 pub(crate) struct Project {
     pub(crate) root: PathBuf,
     pub(crate) manifest: Map<String, Value>,
@@ -65,11 +61,28 @@ pub(crate) struct Project {
     pub(crate) workspace: Option<crate::workspace::Workspace>,
     /// The directory the command started in: the root, or a directory below it.
     pub(crate) here: PathBuf,
+    /// The command's events, with the plugin host they start; made at the first event.
+    events: std::cell::RefCell<Option<Dispatcher>>,
 }
 
-/// What a project not migrated yet is told.
-pub(crate) const MIGRATE: &str =
-    "run `pun migrate` to move composer.json and composer.lock into pun.toml and pun.lock";
+impl Project {
+    /// Dispatches `event` to the plugins and the scripts, as `a` allows them.
+    pub(crate) fn dispatch(&self, a: &InstallArgs, event: &str) -> pun_packages::error::Result<()> {
+        let mut events = self.events.borrow_mut();
+        let events = events.get_or_insert_with(|| {
+            Dispatcher::new(
+                &self.root,
+                &self.manifest,
+                !a.no_dev,
+                !a.no_scripts,
+                !a.no_plugins,
+                composer_dirs().map(|(_, cache)| cache).as_deref(),
+                &|k| std::env::var(k).ok(),
+            )
+        });
+        events.dispatch(event)
+    }
+}
 
 /// The downloader for a project: Composer's cache, the project's and the global auth.json, and `secure-http`.
 pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
@@ -84,7 +97,7 @@ pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
 }
 
 /// The project in `working_dir` (or the current directory). With `create`, a directory without dependencies is a
-/// new project whose dependencies go in pun.toml. In a workspace member, the project is the workspace's root.
+/// new project whose dependencies go in a new composer.json. In a workspace member, the project is the workspace's root.
 pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Project> {
     let here = match working_dir {
         Some(d) => d
@@ -98,20 +111,13 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         .map_or_else(|| here.clone(), |w| w.root.clone());
     let manifest = match pun_config::manifest::read(&root)? {
         Some(m) => m.json,
-        // A workspace's root may require nothing itself.
-        None if workspace.is_some() => Map::new(),
-        None if root.join("composer.json").is_file() => {
-            bail!("the dependencies are still in composer.json: {MIGRATE}")
-        }
-        None if create => Map::new(),
+        None if workspace.is_some() || create => Map::new(),
         None => bail!(
-            "no dependencies here: pun.toml has no [require]; add one with `pun require <package>`"
+            "no composer.json in {}: add a dependency with `pun require <package>`",
+            root.display()
         ),
     };
     let lock = Lock::read(&root)?;
-    if lock.is_none() && root.join("composer.lock").is_file() {
-        bail!("there is a composer.lock but no pun.lock: {MIGRATE}");
-    }
     let manifest = match &workspace {
         Some(w) => w.manifest(manifest),
         None => manifest,
@@ -122,23 +128,24 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         lock,
         workspace,
         here,
+        events: std::cell::RefCell::new(None),
     })
 }
 
-pub(crate) fn run(a: InstallArgs) -> Result<u8> {
+pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.working_dir.as_ref(), false)?;
     if project.lock.is_none() {
-        eprintln!("No pun.lock yet: resolving the dependencies to their latest versions");
+        eprintln!("No composer.lock yet: resolving the dependencies to their latest versions");
         return crate::update::update_and_install(
             &mut project,
-            crate::update::Plan::default(),
-            &a,
+            &crate::update::Plan::default(),
+            a,
             started,
         );
     }
     let lock = project.lock.take().expect("a lock");
-    install_locked(&project, &lock, &a, started, false)
+    install_locked(&project, &lock, a, started, false)
 }
 
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
@@ -149,7 +156,7 @@ pub(crate) fn install_locked(
     a: &InstallArgs,
     started: Instant,
     update: bool,
-) -> Result<u8> {
+) -> Result<Exit> {
     let (root, manifest) = (&project.root, &project.manifest);
     let look = Look::stderr(ColorChoice::Auto);
     let (pre, post) = if update {
@@ -157,46 +164,45 @@ pub(crate) fn install_locked(
     } else {
         ("pre-install-cmd", "post-install-cmd")
     };
+    let scan = if a.classmap_authoritative {
+        Scan::Authoritative
+    } else if a.optimize_autoloader {
+        Scan::Optimized
+    } else {
+        Scan::Classmap
+    };
+    let apcu = match &a.apcu_autoloader_prefix {
+        Some(prefix) => Apcu::Prefix(prefix.clone()),
+        None if a.apcu_autoloader => Apcu::RandomPrefix,
+        None => Apcu::Off,
+    };
     let options = Options {
         no_dev: a.no_dev,
-        optimize: a.optimize_autoloader,
-        authoritative: a.classmap_authoritative,
-        apcu: a.apcu_autoloader,
-        apcu_prefix: a.apcu_autoloader_prefix.clone(),
+        scan,
+        apcu,
         no_autoloader: a.no_autoloader,
         no_plugins: a.no_plugins,
-        ignore_platform: a.ignore_platform_req.clone(),
-        ignore_all_platform: a.ignore_platform_reqs,
+        ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
     let fetcher = fetcher(root, manifest);
-    let (vendor, bin_dir) = dirs(&root.to_string_lossy(), manifest);
-    let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev);
+    let env = |k: &str| std::env::var(k).ok();
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };
     eprintln!(
-        "Installing {} from pun.lock",
+        "Installing {} from composer.lock",
         crate::agent::count(total, "package")
     );
-    if !a.no_scripts && !update {
-        scripts.dispatch(pre, &[])?;
+    if !update {
+        project.dispatch(a, pre)?;
     }
-    let mut events = |event: &str| {
-        if a.no_scripts {
-            Ok(())
-        } else {
-            scripts.dispatch(event, &[])
-        }
-    };
-    let report = install(root, manifest, lock, &fetcher, &options, &mut events)?;
-    drop(events);
-    if !a.no_scripts {
-        scripts.dispatch(post, &[])?;
-    }
+    let mut events = |event: &str| project.dispatch(a, event);
+    let report = install(root, manifest, lock, &fetcher, &options, &env, &mut events)?;
+    project.dispatch(a, post)?;
 
     let ok = look.paint(Role::Ok, look.glyph("✔", "+"));
     let warn = look.paint(Role::Warning, look.glyph("⚠", "!"));
     if report.stale_lock {
         eprintln!(
-            " {warn} pun.lock is out of date with the dependencies it locks: they changed since it was written, so run `pun update` to refresh it"
+            " {warn} composer.lock is out of date with composer.json: the dependencies changed since it was written, so run `pun update` to refresh it"
         );
     }
     let mut changes = vec![];
@@ -241,5 +247,5 @@ pub(crate) fn install_locked(
         "{}",
         look.paint(Role::Summary, &format!("Installed in {secs:.1}s"))
     );
-    Ok(0)
+    Ok(Exit::Success)
 }

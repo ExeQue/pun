@@ -1,8 +1,6 @@
-//! `vendor/bin`: one proxy per package binary, as Composer 2 writes them. A PHP binary gets a PHP proxy that includes
-//! it (so `php vendor/bin/x` works with any PHP), anything else a shell proxy that `exec`s it.
-
 use crate::paths::{shortest, shortest_code};
 use pcre2::bytes::Regex;
+use std::fmt::Write as _;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -11,21 +9,16 @@ fn re(pattern: &str) -> Regex {
     Regex::new(pattern).expect("valid pattern")
 }
 
-/// Characters no legitimate bin path holds; they only make a proxy unsafe to generate.
 static UNSAFE: LazyLock<Regex> = LazyLock::new(|| re(r#"[*$`"&^|<>()%!;\x00-\x1f\x7f]"#));
 
-/// A proxy to write: its name in the bin dir and its text.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Proxy {
-    /// The package's `bin` entry.
     pub bin: String,
     pub name: String,
     pub text: String,
-    /// The package file the proxy runs, made executable along with it.
     pub target: String,
 }
 
-/// The proxies for one package's `bin` entries, with a warning for each one skipped.
 pub fn proxies(
     package: &str,
     install: &str,
@@ -64,9 +57,7 @@ pub fn proxies(
         }
         let name = bin.rsplit('/').next().unwrap_or(bin).to_string();
         let link = format!("{bin_dir}/{name}");
-        let head = std::fs::read(file)
-            .map(|b| b[..b.len().min(500)].to_vec())
-            .unwrap_or_default();
+        let head = std::fs::read(file).map_or_default(|b| b[..b.len().min(500)].to_vec());
         out.push(Proxy {
             bin: bin.clone(),
             text: proxy(&path, &link, &head, vendor),
@@ -81,7 +72,6 @@ fn quote_sh(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
-/// The proxy text for the binary `bin` linked at `link`, given the binary's first 500 bytes.
 fn proxy(bin: &str, link: &str, head: &[u8], vendor: &str) -> String {
     static PHP_START: LazyLock<Regex> = LazyLock::new(|| re(r"^(#!.*\r?\n)?[\r\n\t ]*<\?php"));
     let relative = shortest(link, bin, false);
@@ -102,16 +92,18 @@ fn proxy(bin: &str, link: &str, head: &[u8], vendor: &str) -> String {
     let mut globals = "$GLOBALS['_composer_bin_dir'] = __DIR__;\n".to_string();
     let autoload = std::fs::canonicalize(vendor)
         .map_or_else(|_| vendor.to_string(), |p| p.to_string_lossy().into_owned());
-    globals.push_str(&format!(
-        "$GLOBALS['_composer_autoload_path'] = {};\n",
+    let _ = writeln!(
+        globals,
+        "$GLOBALS['_composer_autoload_path'] = {};",
         shortest_code(link, &format!("{autoload}/autoload.php"), false, true)
-    ));
+    );
     let phpunit = crate::paths::normalize(bin)
         == crate::paths::normalize(&format!("{vendor}/phpunit/phpunit/phpunit"));
     if phpunit {
-        globals.push_str(&format!(
-            "$GLOBALS['__PHPUNIT_ISOLATION_EXCLUDE_LIST'] = $GLOBALS['__PHPUNIT_ISOLATION_BLACKLIST'] = array(realpath({exported}));\n"
-        ));
+        let _ = writeln!(
+            globals,
+            "$GLOBALS['__PHPUNIT_ISOLATION_EXCLUDE_LIST'] = $GLOBALS['__PHPUNIT_ISOLATION_BLACKLIST'] = array(realpath({exported}));"
+        );
     }
     let (mut hint, mut wrapper) = (String::new(), String::new());
     if String::from_utf8_lossy(found.get(0).map_or(&[][..], |m| m.as_bytes())).trim() != "<?php" {
@@ -135,7 +127,6 @@ fn proxy(bin: &str, link: &str, head: &[u8], vendor: &str) -> String {
     )
 }
 
-/// The command a shebang runs, with its arguments, when it is safe to carry over; `env` itself is looked through.
 fn shebang_caller(shebang: &str) -> Option<String> {
     static SHEBANG: LazyLock<Regex> = LazyLock::new(|| {
         re(r"^#!(?:/[a-zA-Z0-9_.+-]+)*/([a-zA-Z0-9_.+][a-zA-Z0-9_.+-]*(?:[ \t].*)?)$")
@@ -210,7 +201,6 @@ exec "${{dir}}/"{file} "$@"
     )
 }
 
-/// Writes the proxy and makes it and its target executable (`0777 & ~umask`, as 0755 under the usual umask).
 pub fn write(proxy: &Proxy, bin_dir: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(bin_dir)?;
     let link = bin_dir.join(&proxy.name);

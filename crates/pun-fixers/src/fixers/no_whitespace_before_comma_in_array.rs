@@ -1,5 +1,5 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\NoWhitespaceBeforeCommaInArrayFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
+use crate::analyzers::helpers::skip_non_array_elements;
 use anyhow::Result;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Tokens};
@@ -27,7 +27,6 @@ impl Fixer for NoWhitespaceBeforeCommaInArrayFixer {
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let o = resolve(self.name(), options, &["after_heredoc"])?;
-        // Future::getV4OrV3(true, false)
         self.after_heredoc = o.bool("after_heredoc", false)?;
         Ok(())
     }
@@ -65,33 +64,6 @@ impl NoWhitespaceBeforeCommaInArrayFixer {
                 tokens.remove_leading_whitespace(i, None);
             }
             i -= 1;
-        }
-    }
-}
-
-fn skip_non_array_elements(mut index: usize, tokens: &Tokens) -> usize {
-    if tokens[index].equals("}", true) {
-        return tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, index);
-    }
-    if tokens[index].equals(")", true) {
-        let start_index = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, index);
-        let start_index = tokens.get_prev_meaningful_token(start_index).unwrap();
-        if !tokens[start_index].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
-            return start_index;
-        }
-    }
-    if tokens[index].equals(",", true) && comma_is_part_of_implements_list(index, tokens) {
-        index -= 1;
-    }
-    index
-}
-
-fn comma_is_part_of_implements_list(mut index: usize, tokens: &Tokens) -> bool {
-    loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
-        let current = &tokens[index];
-        if !(current.is_kind(T_STRING) || current.equals(",", true)) {
-            return current.is_kind(T_IMPLEMENTS);
         }
     }
 }

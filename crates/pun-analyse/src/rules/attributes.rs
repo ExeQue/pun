@@ -1,8 +1,3 @@
-//! AttributesCheck and the level-0 rules that call it (ClassAttributesRule, ClassConstantAttributesRule,
-//! EnumCaseAttributesRule, FunctionAttributesRule, ClosureAttributesRule, ArrowFunctionAttributesRule,
-//! ParamAttributesRule, MethodAttributesRule, PropertyAttributesRule, PropertyHookAttributesRule,
-//! ConstantAttributesRule, TraitAttributesRule), with NonClassAttributeClassRule and TraitAttributeClassRule.
-
 use mago_codex::metadata::attribute::AttributeArgumentMetadata;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
@@ -24,7 +19,6 @@ pub(super) const TARGET_CONSTANT: i64 = 64;
 const TARGET_ALL: i64 = 127;
 const IS_REPEATABLE: i64 = 128;
 
-/// `$attribute->name->toString()` after php-parser's NameResolver: resolved, except `self`, `parent` and `static`.
 fn name<'arena>(c: &Checker<'_, 'arena>, a: &Attribute<'arena>) -> String {
     let written = c.written(a.name.span());
     if ["self", "parent", "static"]
@@ -36,7 +30,6 @@ fn name<'arena>(c: &Checker<'_, 'arena>, a: &Attribute<'arena>) -> String {
     c.resolved(&a.name)
 }
 
-/// The attribute names written on a node.
 fn names<'arena>(c: &Checker<'_, 'arena>, lists: &[AttributeList<'arena>]) -> Vec<String> {
     lists
         .iter()
@@ -45,12 +38,10 @@ fn names<'arena>(c: &Checker<'_, 'arena>, lists: &[AttributeList<'arena>]) -> Ve
         .collect()
 }
 
-/// `getNativeReflection()->getAttributes($name)` is not empty: the name is matched as written (case-sensitively).
 fn has_native(c: &Checker, lists: &[AttributeList], name: &str) -> bool {
     names(c, lists).iter().any(|n| n == name)
 }
 
-/// AttributesCheck::check().
 pub(super) fn check<'arena>(
     c: &mut Checker<'_, 'arena>,
     lists: &[AttributeList<'arena>],
@@ -73,7 +64,6 @@ pub(super) fn check<'arena>(
             Known::User(k) => Some(k),
             Known::Builtin(b) => c.codebase.get_class_like(b.name.as_bytes()),
         };
-        // a built-in class Mago's prelude lacks is no attribute class (PHP's attribute classes are all core)
         let (Some(class), Some(flags)) = (class, class.and_then(|k| attribute_flags(c, k))) else {
             c.report(
                 attribute,
@@ -117,7 +107,6 @@ pub(super) fn check<'arena>(
             }
             present.push(lower);
         }
-        // `deprecationRulesInstalled`
         if c.on(crate::rules::Switches::DEPRECATIONS)
             && let Some(deprecation) = c.class_deprecation(class)
         {
@@ -172,8 +161,6 @@ pub(super) fn check<'arena>(
     }
 }
 
-/// `findAttributeFlags()`: the flags of the class's one `#[Attribute]` (the constructor's first argument after
-/// ArgumentsNormalizer, else its default `Attribute::TARGET_ALL`), `None` when it is not an attribute class.
 fn attribute_flags(c: &Checker, class: &ClassLikeMetadata) -> Option<i64> {
     if class.kind != SymbolKind::Class {
         return None;
@@ -189,7 +176,6 @@ fn attribute_flags(c: &Checker, class: &ClassLikeMetadata) -> Option<i64> {
     if attribute.arguments.is_empty() {
         return Some(TARGET_ALL);
     }
-    // BetterReflection::getArgumentsExpressions() is keyed by name: the last value keeps the first position.
     let mut arguments: Vec<&AttributeArgumentMetadata> = Vec::new();
     for argument in &attribute.arguments {
         if let Some(name) = argument.name
@@ -200,7 +186,6 @@ fn attribute_flags(c: &Checker, class: &ClassLikeMetadata) -> Option<i64> {
             arguments.push(argument);
         }
     }
-    // ArgumentsNormalizer::reorderArgs() for Attribute's one optional, non-variadic $flags parameter.
     let mut reordered = std::collections::BTreeMap::new();
     let mut appended = Vec::new();
     for (i, argument) in arguments.into_iter().enumerate() {
@@ -226,14 +211,11 @@ fn attribute_flags(c: &Checker, class: &ClassLikeMetadata) -> Option<i64> {
         };
         *argument
     };
-    // the flags must be a ConstantIntegerType: Mago's scan type, with class and global constants resolved
     let mut t = argument.value_type.clone()?;
     expand_union(c.codebase, &mut t, &TypeExpansionOptions::default());
     t.get_single_literal_int_value()
 }
 
-/// The InClassNode rules for a class, interface or enum: NonClassAttributeClassRule, then ClassAttributesRule.
-/// `at` is the declaration.
 pub(super) fn class_like<'arena>(
     c: &mut Checker<'_, 'arena>,
     at: Span,
@@ -273,7 +255,6 @@ pub(super) fn class_like<'arena>(
     }
 }
 
-/// NonClassAttributeClassRule.
 fn non_class_attribute_class<'arena>(
     c: &mut Checker<'_, 'arena>,
     at: Span,
@@ -323,7 +304,6 @@ fn non_class_attribute_class<'arena>(
     }
 }
 
-/// TraitAttributeClassRule (on the trait's declaration, outside any class's context).
 pub(super) fn trait_declaration<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'arena>) {
     if names(c, t.attribute_lists.as_slice())
         .iter()
@@ -338,7 +318,6 @@ pub(super) fn trait_declaration<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'
     }
 }
 
-/// TraitAttributesRule (InTraitNode: the trait analysed in a using class's context).
 pub(super) fn trait_in_context<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'arena>) {
     let lists = t.attribute_lists.as_slice();
     if !c.surely_at_least(80500) && has_native(c, lists, "Deprecated") {
@@ -362,8 +341,6 @@ pub(super) fn trait_in_context<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'a
     }
 }
 
-/// PropertyAttributesRule for one ClassPropertyNode at `at` (a declared property's variable, or a promoted
-/// parameter).
 pub(super) fn property<'arena>(
     c: &mut Checker<'_, 'arena>,
     at: Span,
@@ -385,7 +362,6 @@ pub(super) fn property<'arena>(
     }
 }
 
-/// ParamAttributesRule.
 pub(super) fn parameter<'arena>(c: &mut Checker<'_, 'arena>, p: &FunctionLikeParameter<'arena>) {
     let (required, target) = if p.modifiers.is_empty() {
         (TARGET_PARAMETER, "parameter")
@@ -395,7 +371,6 @@ pub(super) fn parameter<'arena>(c: &mut Checker<'_, 'arena>, p: &FunctionLikePar
     check(c, p.attribute_lists.as_slice(), required, target);
 }
 
-/// PropertyHookAttributesRule.
 pub(super) fn property_hook<'arena>(c: &mut Checker<'_, 'arena>, h: &PropertyHook<'arena>) {
     let lists = h.attribute_lists.as_slice();
     check(c, lists, TARGET_METHOD, "method");
@@ -416,8 +391,6 @@ pub(super) fn property_hook<'arena>(c: &mut Checker<'_, 'arena>, h: &PropertyHoo
     }
 }
 
-/// ConstantAttributesRule (Pun runs as PHPStan does on a PHP 8.5 runtime, so constant.attributesRuleCannotRun
-/// never applies).
 pub(super) fn constant<'arena>(c: &mut Checker<'_, 'arena>, k: &Constant<'arena>) {
     let Some(first) = k.attribute_lists.first() else {
         return;

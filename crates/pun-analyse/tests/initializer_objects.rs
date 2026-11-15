@@ -1,5 +1,3 @@
-//! Raw initializer objects and ordinary constructor inference follow different PHPStan contracts.
-
 use std::path::Path;
 
 use pun_analyse::analyse;

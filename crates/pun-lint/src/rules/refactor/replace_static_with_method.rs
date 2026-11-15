@@ -1,22 +1,13 @@
-//! `lint/refactor/replace-static-with-method`, ported from Rector 2.8.4's `StaticCallToMethodCallRector`
-//! (rules/Transform/Rector/StaticCall): `items = [{ static-class = "Nette\Utils\FileSystem", static-method = "write",
-//! class-type = "App\SmartFileSystem", method-name = "dumpFile" }]`, `*` for any method (the call's own name).
-//!
-//! In each method of a class, a static call whose class resolves to `static-class` (as written after the imports,
-//! with case) and whose method is `static-method` (with case) becomes a call of `method-name` on an object of
-//! `class-type`: in a static method `(new \ClassType())->method(...)`, elsewhere on what the shared injection
-//! ([`crate::rules::class_dependency`]) gives, the call left alone where it gives nothing. A first-class callable
-//! (`Foo::bar(...)`) stays one.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Expression, Method, Modifier, Node, NodeKind};
 
 use super::{assert_class, assert_method, items, object, string};
-use crate::rules::class_dependency::{Outcome, call_args, inject, is_first_class, placeholder};
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::class_dependency::{
+    Outcome, call_args, inject, is_first_class, placeholder,
+};
+use crate::rules::support::names::resolve_class_name;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-/// One `StaticCallToMethodCall`.
 pub struct StaticToMethod {
     pub static_class: String,
     pub static_method: String,
@@ -40,7 +31,7 @@ impl Rule for ReplaceStaticWithMethod {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut out = Vec::new();
         for item in items(options)? {
             let map = object(item, &KEYS, &KEYS)?;
@@ -128,7 +119,6 @@ impl Rule for ReplaceStaticWithMethod {
     }
 }
 
-/// `ClassMethod::isStatic()`.
 fn is_static(method: &Method<'_>) -> bool {
     method
         .modifiers

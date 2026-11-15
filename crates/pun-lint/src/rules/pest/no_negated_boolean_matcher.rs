@@ -1,7 +1,3 @@
-//! `lint/pest/no-negated-boolean-matcher`, ported from pest-plugin-rector's `ToBeTrueNotFalseRector`:
-//! `expect($bool)->not->toBeFalse()` becomes `expect($bool)->toBeTrue()`, and `->not->toBeTrue()` becomes
-//! `->toBeFalse()`, when the checked value is always a bool.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -49,7 +45,6 @@ impl Rule for NoNegatedBooleanMatcher {
             format!("Use `{opposite}()` instead of a negated boolean matcher."),
             Safety::Safe,
             vec![
-                // `$methodCall->var = $notProperty->var`.
                 Edit::new(
                     Span::new(
                         node_span(unparenthesize(not.object)).end,

@@ -4,7 +4,6 @@
 
 use pun_tokens::{LexError, ParseLexer};
 
-/// Messages raised by Zend/zend_language_scanner.l rather than the grammar.
 fn is_scanner_error(m: &str) -> bool {
     [
         "Invalid ",
@@ -34,7 +33,7 @@ fn scanner_errors_match_php() {
     for case in &cases {
         let code = case["code"].as_str().unwrap();
         if code.to_ascii_lowercase().contains("__halt_compiler") {
-            continue; // the parser decides where lexing stops
+            continue;
         }
         match case["error"]
             .as_str()
@@ -50,7 +49,6 @@ fn scanner_errors_match_php() {
                 );
                 checked += 1;
             }
-            // Accepted, or a grammar error: the scanner itself never throws.
             _ => {
                 assert!(drain(code).is_ok(), "{code:?}: {:?}", drain(code));
             }
@@ -61,7 +59,6 @@ fn scanner_errors_match_php() {
 
 #[test]
 fn halt_compiler_stops_lexing() {
-    // `zend_stop_lexing()`: nothing after the halt is lexed, so the unclosed `(` is never seen.
     let mut lx = ParseLexer::new(b"<?php __halt_compiler(); (");
     for _ in 0..4 {
         lx.next_token().unwrap().unwrap();
@@ -79,8 +76,6 @@ fn halt_compiler_stops_lexing() {
 
 #[test]
 fn tokens_the_parser_rejects_still_lex() {
-    // PHP: `syntax error, unexpected string content "x"` on line 2: an unterminated single-quoted string is one
-    // T_ENCAPSED_AND_WHITESPACE whose newlines the scanner does not count.
     let mut lx = ParseLexer::new(b"<?php\n$a = 'x\ny");
     assert_eq!(
         lx.next_token().unwrap().unwrap().kind,
@@ -92,8 +87,6 @@ fn tokens_the_parser_rejects_still_lex() {
         (s.kind, s.start, s.end, lx.lineno()),
         (Some(pun_tokens::Kind::T_ENCAPSED_AND_WHITESPACE), 11, 15, 2)
     );
-    // PHP: `syntax error, unexpected string content "", expecting ...` on line 2: ST_VAR_OFFSET hands the parser
-    // an empty T_ENCAPSED_AND_WHITESPACE before the space.
     let kinds: Vec<_> = std::iter::from_fn({
         let mut lx = ParseLexer::new(b"<?php\n\"$a[ 1]\";");
         move || lx.next_token().unwrap()

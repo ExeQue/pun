@@ -1,18 +1,11 @@
-//! `lint/phpunit/add-data-provider-iterator-return-type`, ported from Rector 2.8.4's
-//! `ReturnIteratorInDataProviderRector` (rules/CodeQuality/Rector/Class_) and its `DataProviderMethodsFinder`.
-//!
-//! In a test class, a data provider (a method of the class named by a generic `@dataProvider` tag or by the first
-//! argument, a string, of a `#[DataProvider]` attribute) without a return type that yields (`yield`, not only
-//! `yield from`) gets `: \Iterator`.
-
 use mago_syntax::cst::{
     ClassLikeMember, Expression, Literal, Method, MethodBody, Node, NodeKind, Yield,
 };
 
 use super::annotations::{TagValue, named_tags};
 use super::{class_body, is_in_test_class};
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::resolve_class_name;
 use crate::rules::types::{add_return_type, any_scoped};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
@@ -53,7 +46,6 @@ impl Rule for AddDataProviderIteratorReturnType {
                 _ => None,
             })
             .collect();
-        // `Class_::getMethod()`: the name without case.
         let get_method = |name: &str| {
             methods
                 .iter()
@@ -82,7 +74,6 @@ impl Rule for AddDataProviderIteratorReturnType {
                     {
                         continue;
                     }
-                    // `$attribute->args[0]`, whose absence Rector does not survive
                     let Some(argument) = attribute
                         .argument_list
                         .as_ref()
@@ -128,7 +119,6 @@ impl Rule for AddDataProviderIteratorReturnType {
     }
 }
 
-/// `DataProviderNodes::matchMethodName()`: the word characters (`\w`, ASCII) the value starts with.
 fn match_method_name(content: &str) -> Option<&str> {
     let end = content
         .bytes()

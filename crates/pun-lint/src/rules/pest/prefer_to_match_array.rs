@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-match-array`, ported from pest-plugin-rector's `UseToMatchArrayRector`: consecutive
-//! `expect($array['name'])->toBe('Nuno');` statements on the same array become
-//! `expect($array)->toMatchArray(['name' => 'Nuno', ...]);`.
-
 use mago_syntax::cst::{Expression, MethodCall, Node, NodeKind};
 use pun_problem::{Safety, Span};
 
@@ -15,7 +11,6 @@ use crate::{Context, Report, Rule};
 
 pub struct PreferToMatchArray;
 
-/// One expectation of a group: the key, and the expected value (none when the matcher has not one argument).
 type Expectation<'a> = (&'a Expression<'a>, Option<&'a Expression<'a>>);
 
 impl Rule for PreferToMatchArray {
@@ -81,7 +76,6 @@ impl Rule for PreferToMatchArray {
                 i += 1;
                 continue;
             }
-            // `chain` keeps only chains on `expect()`.
             let expect = expect_call(first).unwrap();
             let comments: Vec<Span> = stmts[i..j]
                 .iter()
@@ -89,8 +83,6 @@ impl Rule for PreferToMatchArray {
                 .collect();
             let expect_span = node_span(expect);
             let arguments = expect.argument_list.arguments.as_slice();
-            // `$expectCall->args = [new Arg($firstArray)]`: one argument is replaced where it stands, more are
-            // printed again with the call.
             let single = (arguments.len() == 1).then(|| node_span(&arguments[0]));
             let name = node_span(expect.function);
             items.push(Item::New {
@@ -135,7 +127,6 @@ impl Rule for PreferToMatchArray {
     }
 }
 
-/// `getArrayFromExpect` and `getArrayKey`: the array and the key of `expect($array[key])`.
 fn array_from_expect<'a>(
     call: &'a MethodCall<'a>,
 ) -> Option<(&'a Expression<'a>, &'a Expression<'a>)> {
@@ -145,12 +136,10 @@ fn array_from_expect<'a>(
     }
 }
 
-/// `getAssertionMethod` is `toBe` or `toEqual`, not after `->not`.
 fn assertion(call: &MethodCall<'_>) -> bool {
     (is_name(&call.method, "toBe") || is_name(&call.method, "toEqual")) && !has_not(call)
 }
 
-/// `getExpectedValue`: the only argument's value.
 fn expected_value<'a>(call: &'a MethodCall<'a>) -> Option<&'a Expression<'a>> {
     match call.argument_list.arguments.as_slice() {
         [argument] => Some(argument.value()),

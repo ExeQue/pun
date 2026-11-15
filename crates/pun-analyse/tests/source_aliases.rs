@@ -1,6 +1,3 @@
-//! Source locators do not execute class_alias(). Expected use-site diagnostics are the retained PHPStan 2.3.1
-//! CLI captures from the source-alias investigation, not the scanner's current aliases or bootstrap behaviour.
-
 use std::path::Path;
 
 use pun_analyse::analyse;
@@ -16,8 +13,6 @@ fn check(mode: &str, capture: &str, uses: &[&str]) {
     })
     .unwrap();
     let prefix = format!("{dir}/");
-    // Declaration-call argument checks are a separate contract. Compare every diagnostic at the shared lookup
-    // consumers, including instantiation, static methods/constants, signatures and native attribute names.
     let mut got: Vec<_> = analyse(&root, &config)
         .unwrap()
         .into_iter()

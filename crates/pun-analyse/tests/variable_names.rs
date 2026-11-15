@@ -1,6 +1,3 @@
-//! Constant-name extraction through the public analyser, from PHPStan 2.3.1's actual level-0 diagnostics.
-//! PHP 8.4, with checkMaybeUndefinedVariables off and on; source cb3b7e99489b2e3789ee2eec10501cb7a72580ea.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -64,8 +61,6 @@ fn late_types_and_nonconstant_unions_do_not_invent_names() {
 
 #[test]
 fn template_union_source_keeps_each_distinct_constant_type() {
-    // A constant template and an ordinary literal occupy separate runtime-class union buckets,
-    // regardless of template strategy. Compact must observe both surviving constant-string members.
     check("template-union-source");
 }
 
@@ -76,7 +71,6 @@ fn template_scalar_unions_keep_container_annotation_and_narrowed_names() {
 
 #[test]
 fn compact_uses_name_resolver_names_and_pre_argument_scope() {
-    // Fresh PHPStan 2.3.1 analyse captures at PHP 8.4, level 0, with both maybe-undefined settings.
     check("compact-names");
 }
 

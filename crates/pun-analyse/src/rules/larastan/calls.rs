@@ -1,6 +1,3 @@
-//! NoUselessWithFunctionCallsRule, NoUselessValueFunctionCallsRule, NoEnvCallsOutsideOfConfigRule, NoModelMakeRule,
-//! NoAuthFacadeInRequestScopeRule and NoAuthHelperInRequestScopeRule.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::scalar::TScalar;
@@ -15,8 +12,6 @@ use super::{MODEL, REQUEST, is_a, is_object_of, octane};
 
 const AUTH_FACADE: &[u8] = b"illuminate\\support\\facades\\auth";
 
-/// `$node->name->toString()` after php-parser's NameResolver: an unqualified function name as written (it falls back
-/// to the global function), else the resolved name.
 pub(super) fn written_name(names: &ResolvedNames, id: &Identifier) -> String {
     let text = match id {
         Identifier::Local(l) if !names.is_imported(&l.span) => l.value,
@@ -58,7 +53,6 @@ pub(crate) fn function_call<'arena>(c: &mut Checker<'_, 'arena>, call: &Function
     }
 }
 
-/// NoUselessWithFunctionCallsRule.
 fn useless_with<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &FunctionCall<'arena>,
@@ -89,7 +83,6 @@ fn useless_with<'arena>(
     );
 }
 
-/// NoUselessValueFunctionCallsRule.
 fn useless_value<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &FunctionCall<'arena>,
@@ -111,7 +104,6 @@ fn useless_value<'arena>(
     );
 }
 
-/// `$type->isCallable()->no()`.
 fn not_callable(c: &Checker, ty: &TUnion) -> bool {
     !ty.types.is_empty()
         && ty.types.iter().all(|t| match t {
@@ -129,21 +121,17 @@ fn not_callable(c: &Checker, ty: &TUnion) -> bool {
         })
 }
 
-/// ObjectType::isCallable()->no(): a known final class without `__invoke`.
 fn object_not_callable(c: &Checker, name: &[u8]) -> bool {
     c.codebase.get_class_like(name).is_some_and(|k| {
         k.flags.is_final() && super::super::members::method(c, k, b"__invoke").is_none()
     })
 }
 
-/// ConstantStringType::isCallable() on PHP 8: `Some(true)` for a function or a static `Class::method`, `None`
-/// (maybe) for a `Class::method` of an unknown class or a missing method of a class that is not final.
 fn string_callable(c: &Checker, value: &[u8]) -> Option<bool> {
     let value = value.strip_prefix(b"\\").unwrap_or(value);
     if !value.is_empty() && c.function(value).is_some() {
         return Some(true);
     }
-    // '#^([a-zA-Z_\x7f-\xff\\][a-zA-Z0-9_\x7f-\xff\\]*)::([a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*)\z#'
     let Some((class, method)) = value
         .windows(2)
         .position(|w| w == b"::")
@@ -152,23 +140,19 @@ fn string_callable(c: &Checker, value: &[u8]) -> Option<bool> {
     else {
         return Some(false);
     };
-    // an unknown class: maybe
     let k = c.codebase.get_class_like(class)?;
     match super::super::members::method(c, k, method) {
-        // callable instance methods are PHP 7 only
         Some(method) => Some(method.is_static()),
         None if k.flags.is_final() => Some(false),
         None => None,
     }
 }
 
-/// A PHP label (`[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*`), `extra` also allowed anywhere.
 fn label(s: &[u8], extra: u8) -> bool {
     let word = |b: &u8| b.is_ascii_alphabetic() || *b == b'_' || *b >= 0x7f || *b == extra;
     s.first().is_some_and(word) && s.iter().all(|b| word(b) || b.is_ascii_digit())
 }
 
-/// `$type->isSuperTypeOf(new ClosureType())->no()`.
 fn cannot_be_closure(ty: &TUnion) -> bool {
     !ty.types.is_empty()
         && ty.types.iter().all(|t| match t {
@@ -182,7 +166,6 @@ fn cannot_be_closure(ty: &TUnion) -> bool {
         })
 }
 
-/// `isCalledOutsideOfConfig()`'s negation: the file is below one of the config directories.
 fn in_config_directory(c: &Checker, larastan: &super::Larastan) -> bool {
     let file = std::path::absolute(c.file_name()).unwrap_or_default();
     larastan
@@ -192,8 +175,6 @@ fn in_config_directory(c: &Checker, larastan: &super::Larastan) -> bool {
         .any(|d| std::path::Path::new(&d).is_dir() && file.to_string_lossy().starts_with(&d))
 }
 
-/// PHP's `glob()` without flags on an absolute pattern: `*`, `?` and `[...]` within one path segment, the
-/// matches sorted.
 fn glob(pattern: &str) -> Vec<String> {
     let mut found = vec![String::new()];
     for segment in pattern.split('/').filter(|s| !s.is_empty()) {
@@ -277,11 +258,9 @@ pub(crate) fn static_method_call<'arena>(
     }
 }
 
-/// NoModelMakeRule::isCalledOnModel().
 fn called_on_model<'arena>(c: &Checker<'_, 'arena>, class: &Expression<'arena>) -> bool {
     match class {
         Expression::Identifier(id) => is_a(c, c.names.get(&id.span()), MODEL),
-        // `self`, `static` and `parent`: Scope::resolveName()
         Expression::Self_(_) | Expression::Static(_) => c
             .class_scope()
             .is_some_and(|k| is_a(c, k.name.as_bytes(), MODEL)),
@@ -290,7 +269,6 @@ fn called_on_model<'arena>(c: &Checker<'_, 'arena>, class: &Expression<'arena>) 
             .and_then(|k| k.direct_parent_class)
             .is_some_and(|p| is_a(c, p.as_bytes(), MODEL)),
         e => c.type_of(e).is_some_and(|t| match t.types.as_ref() {
-            // a constant string is a class-string when it names a class
             [
                 TAtomic::Scalar(TScalar::ClassLikeString(TClassLikeString::Literal { value })),
                 ..,
@@ -303,7 +281,6 @@ fn called_on_model<'arena>(c: &Checker<'_, 'arena>, class: &Expression<'arena>) 
     }
 }
 
-/// Reports `message` (with `%s` as `this` or `request`) in a Request subclass or where `$request` is a Request.
 fn request_scope(c: &mut Checker, at: &impl HasSpan, message: &str, identifier: &str) {
     let variable = if c
         .class_scope()
@@ -364,7 +341,6 @@ pub(crate) fn method_call<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall
         }
         _ => return,
     };
-    // auth() without arguments is the AuthManager (Larastan's AuthExtension)
     let Expression::Call(Call::Function(f)) = call.object else {
         return;
     };

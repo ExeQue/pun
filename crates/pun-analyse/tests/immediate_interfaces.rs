@@ -1,5 +1,3 @@
-//! Complete public PHPStan 2.3.1 expectations for ClassReflection::getImmediateInterfaces and
-//! MethodPrototypeFinder, including named-argument producer keys and constructor signature prototypes.
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -9,7 +7,7 @@ fn check(case: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/immediate-interfaces");
     let mut project = Project::new(vec![root.join(format!("{case}.php"))], Vec::new());
     project.level = 5;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

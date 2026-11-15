@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\TypesSpacesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;

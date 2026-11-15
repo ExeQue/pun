@@ -1,5 +1,3 @@
-//! Function, method and static calls.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 
@@ -12,7 +10,6 @@ use super::params;
 use super::reflection::Lookup;
 use super::{Checker, DISCOVERING_SYMBOLS_TIP};
 
-/// CallToNonExistentFunctionRule (level 0: no name-case check), then CallToFunctionParametersRule.
 pub(super) fn function_call<'arena>(c: &mut Checker<'_, 'arena>, call: &FunctionCall<'arena>) {
     if let Expression::Identifier(id) = call.function {
         let first_level = c.is_top_level(call.span());
@@ -26,7 +23,6 @@ pub(super) fn function_call<'arena>(c: &mut Checker<'_, 'arena>, call: &Function
     }
 }
 
-/// `$x |> f(...)`: PHPStan analyses it as `f($x)`.
 pub(super) fn pipe<'arena>(c: &mut Checker<'_, 'arena>, pipe: &Pipe<'arena>) {
     if let Expression::PartialApplication(PartialApplication::Function(f)) = pipe.callable
         && let Expression::Identifier(id) = f.function
@@ -103,7 +99,6 @@ fn named_call<'arena>(
     );
 }
 
-/// class_exists(), interface_exists(), trait_exists() or enum_exists() (`isInClassExists()` holds in its arguments).
 pub(super) fn is_class_exists_family(c: &Checker, call: &FunctionCall) -> bool {
     let Expression::Identifier(id) = call.function else {
         return false;
@@ -115,12 +110,10 @@ pub(super) fn is_class_exists_family(c: &Checker, call: &FunctionCall) -> bool {
     )
 }
 
-/// CallMethodsRule with level 0's `checkThisOnly`: calls on `$this` only.
 pub(super) fn method_call<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'arena>) {
     check_this_method(c, call.object, &call.method, Some(call));
 }
 
-/// MethodCallCheck shared with MethodCallableRule. A virtual callable supplies no argument check.
 pub(super) fn check_this_method<'arena>(
     c: &mut Checker<'_, 'arena>,
     object: &Expression<'arena>,
@@ -139,12 +132,9 @@ pub(super) fn check_this_method<'arena>(
     let Some(class) = c.class_scope() else {
         return;
     };
-    // a call on `never` reports nothing
     if c.this_is_never(class) {
         return;
     }
-    // MethodExistsTypeSpecifyingExtension retains an accessory when neither lookup knows the method.
-    // A final class cannot acquire that method in a subclass, so its successful branch is `never` instead.
     let refined = c.guards.iter().any(|guard| {
         let super::scope::Guard::Method(key) = guard else {
             return false;
@@ -168,26 +158,27 @@ pub(super) fn check_this_method<'arena>(
         members::reflected_method(c, class, name.value)
     };
     let Some(method) = method else {
-        // reportMagicMethods is off at level 0: a native __call() answers every name. ponytail: with Larastan,
-        // whose method extensions are not all ported, a class with __call stays unchecked
         let key = format!("$this::{method_name}");
         if c.has_method_guard(&key)
-            || (c.level == 0 || call.is_some() && c.larastan.is_some()) && members::method(c, class, b"__call").is_some()
+            || (c.level == 0 || call.is_some() && c.larastan.is_some())
+                && members::method(c, class, b"__call").is_some()
             || class
                 .pseudo_methods
                 .iter()
                 .any(|m| m.as_bytes().eq_ignore_ascii_case(name.value))
-            // the class reflection extensions: a mixin's or a required class's method
-            || call.is_some() && !matches!(c.method_of(&String::from_utf8_lossy(class.name.as_bytes()), name.value), Ok(None))
-            // `$this instanceof Foo` makes `$this` an intersection with Foo, which has Foo's methods
-            || c.guards.iter().any(|g| matches!(g, super::scope::Guard::ThisInstanceOf(n)
-                if !matches!(c.method_of(n, name.value), Ok(None))))
+            || call.is_some()
+                && !matches!(
+                    c.method_of(&String::from_utf8_lossy(class.name.as_bytes()), name.value),
+                    Ok(None)
+                )
+            || c.guards.iter().any(|g| {
+                matches!(g, super::scope::Guard::ThisInstanceOf(n)
+                if !matches!(c.method_of(n, name.value), Ok(None)))
+            })
         {
             return;
         }
-        // ThisType's description keeps the class's template types
         let display = c.describe_object(class);
-        // MethodCallCheck unwraps a top-level ThisType, not the ThisType inside an accessory intersection.
         let display = if refined {
             format!("$this({display})")
         } else {
@@ -207,7 +198,6 @@ pub(super) fn check_this_method<'arena>(
         let v = super::restricted(visibility);
         c.report(
             name,
-            // `$this` is an instance of the scope class, so only a parent's private method is out of reach
             "method.private",
             format!(
                 "Call to {v} method {}() of class {declaring}.",
@@ -223,7 +213,6 @@ pub(super) fn check_this_method<'arena>(
     }
 }
 
-/// MethodCallCheck/StaticMethodCallCheck's independent `checkFunctionNameCase` switch.
 pub(super) fn method_name_case(
     c: &mut Checker,
     name: &LocalIdentifier,
@@ -256,7 +245,6 @@ pub(super) fn method_name_case(
     }
 }
 
-/// CallMethodsRule's FunctionCallParametersCheck.
 fn arguments<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &MethodCall<'arena>,
@@ -284,9 +272,6 @@ fn arguments<'arena>(
     );
 }
 
-/// The declaring class's template names and their arguments on a call through the scope class (`$this->`, `self::`,
-/// `static::`, `parent::`): the scope's ClassReflection carries its own templates as TemplateTypeArgumentStrategy
-/// arguments (TemplateTypeHelper::toArgument()), resolved through the ancestors (`@extends C<int, T>`).
 fn scope_arguments(
     c: &Checker,
     method: &members::Method,
@@ -328,7 +313,6 @@ fn scope_arguments(
     Some((format!("class {class}"), names, args))
 }
 
-/// The variants' parameter types with [`scope_arguments()`] substituted.
 fn with_scope_arguments(c: &Checker, method: &members::Method, variants: &mut params::Variants) {
     let Some((scope, names, args)) = scope_arguments(c, method) else {
         return;
@@ -339,7 +323,6 @@ fn with_scope_arguments(c: &Checker, method: &members::Method, variants: &mut pa
                 let Some(declared) = super::types::declared_type(c, v, i) else {
                     continue;
                 };
-                // Template equality ignores the argument strategy, so look for the scope's templates instead
                 fn mentions(t: &pun_phpstan::types::Type, scope: &str) -> bool {
                     let found = std::cell::Cell::new(
                         matches!(t, pun_phpstan::types::Type::Template(tt) if tt.scope == scope),
@@ -360,8 +343,6 @@ fn with_scope_arguments(c: &Checker, method: &members::Method, variants: &mut pa
     });
 }
 
-/// `ClassReflection::getDisplayName()` retains the declaring class's templates within its own scope, and a call
-/// through the scope class (`through_scope`) the declaring ancestor's [`scope_arguments()`].
 fn declaring_display(c: &Checker, method: &members::Method, through_scope: bool) -> String {
     if through_scope && let Some((_, _, args)) = scope_arguments(c, method) {
         let args: Vec<String> = super::declared::with_classes(c, || {
@@ -391,7 +372,6 @@ fn declaring_display(c: &Checker, method: &members::Method, through_scope: bool)
     method.declaring_display(c)
 }
 
-/// CallStaticMethodsRule (StaticMethodCallCheck, then the parameters check).
 pub(super) fn static_method_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &StaticMethodCall<'arena>,
@@ -399,7 +379,6 @@ pub(super) fn static_method_call<'arena>(
     check_static_method(c, call.class, &call.method, Some(call));
 }
 
-/// StaticMethodCallCheck shared with StaticMethodCallableRule, without synthetic empty arguments.
 pub(super) fn check_static_method<'arena>(
     c: &mut Checker<'_, 'arena>,
     class_expr: &Expression<'arena>,
@@ -412,7 +391,6 @@ pub(super) fn check_static_method<'arena>(
     let method_name = String::from_utf8_lossy(name.value).into_owned();
     let scope_class = c.class_scope();
     let is_static_keyword = matches!(class_expr, Expression::Static(_));
-    // ClassNameCheck's errors on a written class, dropped where PHPStan returns none (`__callStatic()`)
     let mut pair = None;
     let class = match (class_expr, scope_class) {
         (Expression::Self_(_) | Expression::Static(_) | Expression::Parent(_), None) => {
@@ -468,7 +446,6 @@ pub(super) fn check_static_method<'arena>(
         _ => return,
     };
     let display = c.display(class);
-    // a macro is a static method unless its definition names an instance method (or a callable string)
     if let Some(found) = super::larastan::macro_method(c, class, name.value) {
         let in_instance_method = c
             .functions
@@ -502,8 +479,6 @@ pub(super) fn check_static_method<'arena>(
         members::reflected_method(c, class, name.value)
     };
     let Some(method) = method else {
-        // FacadesMethodsExtension leaves a facade's method to MixinMethodsClassReflectionExtension: the `@mixin`
-        // class's method as a StaticMethodReflection, whose arguments and result are checked
         if let Some(call) = call
             && c.larastan.is_some()
             && let Some(mixin) = super::larastan::facade_mixin_method(c, class, name.value, 0)
@@ -542,7 +517,6 @@ pub(super) fn check_static_method<'arena>(
         {
             return;
         }
-        // reportMagicMethods is off at level 0; ponytail: with Larastan a class with __callStatic stays unchecked
         if !known
             && (c.level == 0 || call.is_some() && c.larastan.is_some())
             && members::method(c, class, b"__callStatic").is_some()
@@ -571,8 +545,6 @@ pub(super) fn check_static_method<'arena>(
         );
         return;
     };
-    // ModelForwardsCallsExtension answers a model's non-public `#[Scope]` method the scope cannot call with a static
-    // builder method. ponytail: its arguments (the scope's, the builder shifted off) are not checked
     if c.larastan.is_some() && super::larastan::is_hidden_scope(c, class, name.value, scope_class) {
         return;
     }
@@ -583,7 +555,6 @@ pub(super) fn check_static_method<'arena>(
     let declaring = method.declaring_display(c);
     let declared = method.name();
     let is_static = method.is_static();
-    // after "Static call to instance method", PHPStan checks only the arguments
     let mut checked = false;
     if !is_static {
         let in_instance_method = c
@@ -625,7 +596,6 @@ pub(super) fn check_static_method<'arena>(
         );
     }
     if !checked && method.is_abstract() && !is_static_keyword {
-        // StaticMethodCallCheck replaces earlier class-name/visibility errors with its abstract-call error.
         if call.is_none() {
             c.errors.truncate(errors_before);
         }
@@ -663,8 +633,6 @@ pub(super) fn check_static_method<'arena>(
     if through_scope {
         with_scope_arguments(c, &method, &mut variants);
     }
-    // CalledOnTypeUnresolvedMethodPrototypeReflection: a call on a class name resolves the parameters' `static` and
-    // `$this` to that class
     if matches!(call.class, Expression::Identifier(_))
         && matches!(method, members::Method::User { .. })
     {
@@ -684,7 +652,6 @@ pub(super) fn check_static_method<'arena>(
             }
         });
     }
-    // ClosureBindArgVisitor: `Closure::bind($var, ...)`
     if let Expression::Identifier(id) = call.class
         && c.written(id.span())
             .trim_start_matches('\\')
@@ -712,7 +679,6 @@ pub(super) fn check_static_method<'arena>(
     );
 }
 
-/// `$scope->canCallMethod()`: public anywhere, private from the declaring class, protected from its hierarchy.
 pub(super) fn can_call(
     c: &Checker,
     scope: Option<&ClassLikeMetadata>,

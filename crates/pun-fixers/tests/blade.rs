@@ -1,16 +1,7 @@
-//! Pint's own Blade golden files (tests/blade, copied from Pint's tests/Fixtures/blade-formatting): every input
-//! formats to its `.expected`, and every `.expected` stays as is (Pint's Blade tests: `pint --blade`, preset laravel).
-//! The ignorables are left untouched by the fixer itself. Needs `bun install` in crates/pun-fixers (prettier and
-//! its plugins at the versions in package.json): the worker resolves them from the working directory, like Pint.
-//! A git worktree without its own install uses the main checkout's (see `node_modules`).
-//! The preset's other fixers run too, so a PUN_FIXERS_ONLY build must include them.
 extern crate punphp_fixers as pun_fixers;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// The node_modules holding prettier: crates/pun-fixers/node_modules of this checkout, or, in a git worktree that
-/// has none, that of the main checkout (the parent of `git rev-parse --git-common-dir`), as pun-cli's
-/// tests/common/prettier.rs resolves it. `None` when neither checkout has one.
 fn node_modules(crate_dir: &Path) -> Option<PathBuf> {
     let main = Command::new("git")
         .args(["rev-parse", "--path-format=absolute", "--git-common-dir"])
@@ -27,7 +18,6 @@ fn node_modules(crate_dir: &Path) -> Option<PathBuf> {
         .map(|m| m.canonicalize().unwrap())
 }
 
-/// `pint --blade` with preset laravel: the preset's rules plus Pint/laravel_blade, sorted like the runner.
 fn pipeline() -> pun_format::Pipeline {
     let (_, json) = pun_config::PRESETS
         .iter()
@@ -66,7 +56,6 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Runner::fixFile (`Pipeline::run`). Like the Runner (and Pint's tests), only the resulting code counts.
 fn run(pipeline: &pun_format::Pipeline, file: &Path, code: &[u8]) -> Vec<u8> {
     match pipeline.run(file, code) {
         Ok(fixed) => fixed.map_or_else(|| code.to_vec(), |f| f.code),
@@ -80,7 +69,7 @@ fn oracle_blade_fixtures() {
         .iter()
         .any(|f| f.name() == "Pint/laravel_blade")
     {
-        return; // PUN_FIXERS_ONLY build without this fixer
+        return;
     }
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let modules = node_modules(root).unwrap_or_else(|| {
@@ -89,19 +78,13 @@ fn oracle_blade_fixtures() {
             root.display()
         )
     });
-    // The worker resolves prettier from the working directory, so the fixtures run from a project dir whose
-    // node_modules is the resolved install (as the pun-cli Blade tests link it).
     let project = std::env::temp_dir().join(format!("pun-blade-project-{}", std::process::id()));
     std::fs::create_dir_all(&project).unwrap();
     let link = project.join("node_modules");
     let _ = std::fs::remove_file(&link);
     std::os::unix::fs::symlink(&modules, &link).unwrap();
     let pipeline = pipeline();
-    // Prettier would re-indent this; untouched means the fixer bailed out.
     let html: &[u8] = b"<div>\n<p>x</p></div>\n";
-    // Without prettier installed the worker dies: the fixer fails the file with the worker's error output (a panic,
-    // the runner's per-file exception, as Pint throws PrettierException), leaves it untouched, and the next file
-    // starts a fresh worker.
     let bare = std::env::temp_dir().join(format!("pun-blade-test-{}", std::process::id()));
     std::fs::create_dir_all(&bare).unwrap();
     std::env::set_current_dir(&bare).unwrap();
@@ -121,7 +104,6 @@ fn oracle_blade_fixtures() {
     );
     assert_eq!(tokens.generate_code(), html);
     std::env::set_current_dir(&project).unwrap();
-    // Pinned package.json versions, plus the version probe's two distinct unresolved/unnamed results.
     assert_eq!(
         pun_fixers::prettier::probe(&[
             "prettier",
@@ -138,7 +120,6 @@ fn oracle_blade_fixtures() {
             Some(String::new()),
         ])
     );
-    // Not a Blade file.
     assert_eq!(run(&pipeline, Path::new("a.php"), html), html);
     let mut all = Vec::new();
     files(&root.join("tests/blade"), &mut all);
@@ -165,8 +146,6 @@ fn oracle_blade_fixtures() {
             ));
         }
     }
-    // The run's preset formats the embedded PHP (Pint 1.29.3 `--blade` with pint.json `{"preset": ...}`): psr12 keeps
-    // `array()`, laravel shortens it.
     let mut blade_only = pun_format::Pipeline::new(
         &[pun_config::Rule {
             name: "Pint/laravel_blade".into(),
@@ -227,8 +206,6 @@ fn failed_preload_rejects_the_probe() {
             format!("require('fs').writeFileSync('started', 'yes'); {script}"),
         )
         .unwrap();
-        // Child processes isolate NODE_OPTIONS from the formatting fixtures and exercise the public API's real
-        // timeout, EOF and stderr paths without changing the parent's environment or injecting a worker.
         let result = Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "failed_preload_rejects_the_probe"])
             .env("PUN_BLADE_PROBE_CHILD", "1")

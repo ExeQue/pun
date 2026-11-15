@@ -1,8 +1,3 @@
-//! `lint/types/add-magic-method-return-type`, ported from Rector 2.8.4's `KnownMagicClassMethodTypeRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): the parameters of `__call`, `__callStatic`, `__get`, `__set`, `__isset`
-//! and `__unset` get their known types (`string` for the name, `array` for `__call`'s arguments, `mixed` for
-//! `__set`'s value), and `__get` returns `mixed`, in a class whose parents do not declare the method.
-
 use mago_syntax::cst::{FunctionLikeParameter, Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -14,7 +9,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddMagicMethodTypes;
 
-/// `PhpVersionFeature::MIXED_TYPE`.
 const MIXED_TYPE: u32 = 80000;
 
 impl Rule for AddMagicMethodTypes {
@@ -22,8 +16,8 @@ impl Rule for AddMagicMethodTypes {
         "lint/types/add-magic-method-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        super::SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(super::SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -40,7 +34,6 @@ impl Rule for AddMagicMethodTypes {
         let Node::Method(method) = node else {
             return;
         };
-        // Rector visits classes, anonymous ones too, not traits, interfaces or enums.
         let in_class = ancestors.iter().rev().find_map(|a| match a {
             Node::Class(_) | Node::AnonymousClass(_) => Some(true),
             Node::Interface(_) | Node::Trait(_) | Node::Enum(_) => Some(false),
@@ -54,7 +47,7 @@ impl Rule for AddMagicMethodTypes {
             b"__call" | b"__callstatic" => (Some("string"), Some("array")),
             b"__set" => (
                 Some("string"),
-                (ctx.php_version >= MIXED_TYPE).then_some("mixed"),
+                (ctx.php_version.id() >= MIXED_TYPE).then_some("mixed"),
             ),
             b"__get" | b"__isset" | b"__unset" => (Some("string"), None),
             _ => return,
@@ -85,7 +78,10 @@ impl Rule for AddMagicMethodTypes {
                 edits.push(Edit::new(Span::new(at, at), format!("{type} ")));
             }
         }
-        if name == b"__get" && ctx.php_version >= MIXED_TYPE && method.return_type_hint.is_none() {
+        if name == b"__get"
+            && ctx.php_version.id() >= MIXED_TYPE
+            && method.return_type_hint.is_none()
+        {
             let at = node_span(&method.parameter_list).end;
             edits.push(Edit::new(Span::new(at, at), ": mixed".to_string()));
         }

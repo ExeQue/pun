@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\FunctionToConstantFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -8,7 +7,6 @@ use pun_tokens::{Token, Tokens};
 use serde_json::Value;
 use std::path::Path;
 
-/// `$availableFunctions`' keys, in upstream's order.
 const AVAILABLE: &[&str] = &[
     "get_called_class",
     "get_class",
@@ -26,7 +24,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(FunctionToConstantFixer { functions: vec![] })
 }
 
-/// `$availableFunctions[$name]`: the tokens that replace the call.
 fn replacement(name: &str) -> Vec<Token> {
     let class = |first: Token| {
         vec![
@@ -68,9 +65,8 @@ impl FunctionToConstantFixer {
         if !analyzer.is_global_function_call(tokens, index) {
             return None;
         }
-        // test if function call without parameters
-        let brace_open_index = tokens.get_next_meaningful_token(index).unwrap();
-        let brace_close_index = tokens.get_next_meaningful_token(brace_open_index).unwrap();
+        let brace_open_index = tokens.next_meaningful(index);
+        let brace_close_index = tokens.next_meaningful(brace_open_index);
         if !tokens[brace_close_index].equals(")", true) {
             return None;
         }
@@ -89,11 +85,10 @@ impl FunctionToConstantFixer {
         if !analyzer.is_global_function_call(tokens, index) {
             return None;
         }
-        let brace_open_index = tokens.get_next_meaningful_token(index).unwrap();
+        let brace_open_index = tokens.next_meaningful(index);
         let brace_close_index =
             tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, brace_open_index);
         if Some(brace_close_index) == tokens.get_next_meaningful_token(brace_open_index) {
-            // no arguments passed
             if self.has("get_class") {
                 return Some((
                     brace_open_index,
@@ -151,11 +146,10 @@ fn fix_function_call_to_constant(
         }
         tokens.clear_token_and_merge_surrounding_whitespace(i);
     }
-    // `$replacements[0]` is never `T_CLASS_C`, so upstream's check comes down to `static` and `self`.
     if replacements[0].is_kind(T_STATIC)
         || (replacements[0].is_kind(T_STRING) && replacements[0].get_content() == b"self")
     {
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
             tokens.clear_at(prev_index);
         }

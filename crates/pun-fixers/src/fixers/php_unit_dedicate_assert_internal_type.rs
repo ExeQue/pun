@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDedicateAssertInternalTypeFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
@@ -92,11 +91,11 @@ fn fix_at(tokens: &mut Tokens, index: usize) {
         b"assertnotinternaltype" => true,
         _ => return,
     };
-    let bracket = tokens.get_next_meaningful_token(index).unwrap();
+    let bracket = tokens.next_meaningful(index);
     if !tokens[bracket].equals("(", true) {
         return;
     }
-    let expected_type_index = tokens.get_next_meaningful_token(bracket).unwrap();
+    let expected_type_index = tokens.next_meaningful(bracket);
     if !tokens[expected_type_index].is_kind(T_CONSTANT_ENCAPSED_STRING) {
         return;
     }
@@ -116,9 +115,7 @@ fn fix_at(tokens: &mut Tokens, index: usize) {
     else {
         return;
     };
-    let comma = tokens
-        .get_next_meaningful_token(expected_type_index)
-        .unwrap();
+    let comma = tokens.next_meaningful(expected_type_index);
     if !tokens[comma].equals(",", true) {
         return;
     }
@@ -128,7 +125,7 @@ fn fix_at(tokens: &mut Tokens, index: usize) {
             .replace("Is", "IsNot")
             .replace("Null", "NotNull");
     }
-    let next = tokens.get_next_meaningful_token(comma).unwrap();
+    let next = tokens.next_meaningful(comma);
     tokens.override_range(
         index,
         next - 1,

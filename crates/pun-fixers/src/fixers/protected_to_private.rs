@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ProtectedToPrivateFixer`.
 use pun_format::Fixer;
 use pun_tokens::tokens_analyzer::ClassyElementType as T;
 use pun_tokens::{Kind, Token, Tokens, TokensAnalyzer};
@@ -68,7 +67,7 @@ impl Fixer for ProtectedToPrivateFixer {
                 mut is_final,
             ) = (None, None, None, false);
             loop {
-                previous_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+                previous_index = tokens.prev_meaningful(previous_index);
                 let t = &tokens[previous_index];
                 if t.is_kind(Kind::T_PROTECTED) {
                     protected_index = Some(previous_index);
@@ -116,8 +115,8 @@ fn is_class_candidate(tokens: &Tokens, class_index: usize) -> bool {
     if analyzer.get_classy_modifiers(class_index).final_.is_none() {
         return false;
     }
-    let class_name_index = tokens.get_next_meaningful_token(class_index).unwrap();
-    let class_extends_index = tokens.get_next_meaningful_token(class_name_index).unwrap();
+    let class_name_index = tokens.next_meaningful(class_index);
+    let class_extends_index = tokens.next_meaningful(class_name_index);
     if tokens[class_extends_index].is_kind(Kind::T_EXTENDS) {
         return false;
     }

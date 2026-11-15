@@ -32,9 +32,7 @@
 //! `Countable&iterable` and Rector 2.8.4 writes `: \Countable` (`NativePhpTypeNodeHelper::intersection()` drops the
 //! `iterable`); Mago narrows it to `never`, so Pun leaves the closure alone.
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_stubs, run_oracle_class};
+use crate::common::{run_class, run_class_at, run_class_stubs, run_oracle_class};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddArrayReturn, AddArrowFunctionReturn, AddBoolReturn, AddBoolReturnFromConst,
@@ -270,16 +268,12 @@ fn return_type_from_strict_native_call() {
     );
 }
 
-/// ReturnTypeFromStrictTypedCallRectorPhp80/Pun/redundant_object: a function returning a class's call or an
-/// `object` one; Rector 2.8.4 joins the two declarations into `\Item|object`, which PHP rejects (a class beside
-/// `object` is redundant), and Pun leaves the function alone (lint.md: meaning over bytes).
 #[test]
 fn return_type_from_strict_typed_call() {
     for (dir, version) in [
         ("ReturnTypeFromStrictTypedCallRector", 70400),
         ("ReturnTypeFromStrictTypedCallRectorPhp80", 80000),
     ] {
-        // rector-src runs these with PHPUnit installed (Fixture/return_in_test_method.php.inc)
         run_class_stubs(
             vec![Box::new(AddReturnTypeFromTypedCall)],
             dir,
@@ -291,13 +285,14 @@ fn return_type_from_strict_typed_call() {
 
 #[test]
 fn return_type_from_strict_typed_call_never_is_not_propagated() {
-    // Rector 2.8.4's NeverTypeMapper returns no declaration, even at PHP versions that support `never`.
-    // Fresh captures at 7.4, 8.0, 8.1 and 8.4 are identical: only the int-returning control changes.
     let fixture =
         include_str!("rector/ReturnTypeFromStrictTypedCallRector/Oracle/contract_never.php.inc");
     let (input, expected) = fixture.split_once("-----\n").unwrap();
     for version in [80100, 80400] {
-        let linter = pun_lint::Linter::new(vec![Box::new(AddReturnTypeFromTypedCall)], version);
+        let linter = pun_lint::Linter::new(
+            vec![Box::new(AddReturnTypeFromTypedCall)],
+            pun_lint::PhpVersion::from_id(version),
+        );
         let path = std::path::Path::new("contract_never.php");
         let problems = linter.check(path, input).unwrap();
         assert_eq!(problems.len(), 1, "PHP {version}: {problems:?}");
@@ -359,7 +354,10 @@ fn closure_return_type_intersection_below_dnf() {
     .unwrap();
     let input = input.split_once("-----\n").unwrap().0;
     for version in [80000, 80100] {
-        let linter = pun_lint::Linter::new(vec![Box::new(AddClosureReturn)], version);
+        let linter = pun_lint::Linter::new(
+            vec![Box::new(AddClosureReturn)],
+            pun_lint::PhpVersion::from_id(version),
+        );
         let fixed = linter
             .fix(std::path::Path::new("closure_dnf.php"), input)
             .unwrap();
@@ -389,7 +387,7 @@ fn left_alone_at_other_versions() {
         ),
     ];
     for (rule, version, input) in cases {
-        let linter = pun_lint::Linter::new(vec![rule], version);
+        let linter = pun_lint::Linter::new(vec![rule], pun_lint::PhpVersion::from_id(version));
         let fixed = linter.fix(std::path::Path::new("f.php"), input).unwrap();
         assert_eq!(fixed.source, input, "PHP {version}");
     }
@@ -415,7 +413,6 @@ fn cleanup_unneeded_nullsafe_operator() {
 
 #[test]
 fn typed_property_from_strict_constructor() {
-    // INTERSECTION_TYPES, as the fixtures' config sets
     run_class_stubs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
@@ -426,7 +423,6 @@ fn typed_property_from_strict_constructor() {
 
 #[test]
 fn typed_property_from_assigns() {
-    // config/configured_rule.php: TYPED_PROPERTIES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
@@ -439,7 +435,8 @@ fn typed_property_from_assigns() {
 fn typed_property_from_assigns_native_options() {
     let mut rule = AddPropertyTypeAssigns::default();
     assert_eq!(
-        rule.configure(&serde_json::json!({"inline_public": true})),
+        rule.configure(&serde_json::json!({"inline_public": true}))
+            .map_err(|e| e.to_string()),
         Err("unknown option `inline_public` or a value of the wrong type".to_string()),
     );
     assert_eq!(
@@ -455,7 +452,6 @@ fn typed_property_from_assigns_native_options() {
 
 #[test]
 fn typed_property_from_assigns_complex_types() {
-    // config/complex_types.php: INTERSECTION_TYPES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRectorComplexTypes",
@@ -466,7 +462,6 @@ fn typed_property_from_assigns_complex_types() {
 
 #[test]
 fn typed_property_from_assigns_php82() {
-    // config/configured_rule_php82.php: NULL_FALSE_TRUE_STANDALONE_TYPE
     run_class_at(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRectorPhp82",
@@ -476,7 +471,6 @@ fn typed_property_from_assigns_php82() {
 
 #[test]
 fn typed_property_from_assigns_inline_public() {
-    // config/inline_public_configured_rule.php: inline_public, INTERSECTION_TYPES
     let mut rule = AddPropertyTypeAssigns::default();
     rule.configure(&serde_json::json!({"inline-public": true}))
         .unwrap();
@@ -489,7 +483,6 @@ fn typed_property_from_assigns_inline_public() {
 
 #[test]
 fn property_type_from_strict_setter_getter() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version
     run_class(
         vec![Box::new(AddPropertyTypeSetterGetter)],
         "PropertyTypeFromStrictSetterGetterRector",
@@ -498,7 +491,6 @@ fn property_type_from_strict_setter_getter() {
 
 #[test]
 fn scalar_typed_property_from_jms_serializer_attribute_type() {
-    // config/configured_rule.php: ATTRIBUTES
     run_class_at(
         vec![Box::new(AddPropertyTypeJmsScalar)],
         "ScalarTypedPropertyFromJMSSerializerAttributeTypeRector",
@@ -508,7 +500,6 @@ fn scalar_typed_property_from_jms_serializer_attribute_type() {
 
 #[test]
 fn object_typed_property_from_jms_serializer_attribute_type() {
-    // config/configured_rule.php: ATTRIBUTES
     run_class_at(
         vec![Box::new(AddPropertyTypeJmsObject)],
         "ObjectTypedPropertyFromJMSSerializerAttributeTypeRector",
@@ -518,7 +509,6 @@ fn object_typed_property_from_jms_serializer_attribute_type() {
 
 #[test]
 fn typed_static_property_in_behat_context() {
-    // No upstream fixtures: Oracle/ only, Rector run at PHP 8.0 with Source/ autoloaded.
     run_oracle_class(
         vec![Box::new(AddPropertyTypeBehatContext)],
         "TypedStaticPropertyInBehatContextRector",
@@ -528,7 +518,6 @@ fn typed_static_property_in_behat_context() {
 
 #[test]
 fn typed_property_from_get_repository_set_up() {
-    // config/configured_rule.php: TYPED_PROPERTIES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeGetRepository)],
         "TypedPropertyFromGetRepositorySetUpRector",
@@ -539,7 +528,6 @@ fn typed_property_from_get_repository_set_up() {
 
 #[test]
 fn typed_property_from_container_get_set_up() {
-    // config/configured_rule.php: TYPED_PROPERTIES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeContainerGet)],
         "TypedPropertyFromContainerGetSetUpRector",
@@ -550,7 +538,6 @@ fn typed_property_from_container_get_set_up() {
 
 #[test]
 fn typed_property_from_create_mock_assign() {
-    // config/rule_config.php: TYPED_PROPERTIES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeCreateMock)],
         "TypedPropertyFromCreateMockAssignRector",
@@ -561,7 +548,6 @@ fn typed_property_from_create_mock_assign() {
 
 #[test]
 fn typed_property_from_strict_set_up() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version
     run_class_stubs(
         vec![Box::new(AddPropertyTypeSetup)],
         "TypedPropertyFromStrictSetUpRector",
@@ -572,7 +558,6 @@ fn typed_property_from_strict_set_up() {
 
 #[test]
 fn typed_property_from_docblock_set_up_defined() {
-    // config/rule_config.php: TYPED_PROPERTIES
     run_class_stubs(
         vec![Box::new(AddPropertyTypeSetupDocblock)],
         "TypedPropertyFromDocblockSetUpDefinedRector",
@@ -583,7 +568,6 @@ fn typed_property_from_docblock_set_up_defined() {
 
 #[test]
 fn child_doctrine_repository_class_type() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version
     run_class_stubs(
         vec![Box::new(AddDoctrineRepositoryReturnType)],
         "ChildDoctrineRepositoryClassTypeRector",
@@ -594,7 +578,7 @@ fn child_doctrine_repository_class_type() {
 
 #[test]
 fn property_contracts_assignment_flows() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_assignment_flows"],
@@ -605,7 +589,7 @@ fn property_contracts_assignment_flows() {
 
 #[test]
 fn property_contracts_trait_writes() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_trait_writes"],
@@ -616,7 +600,7 @@ fn property_contracts_trait_writes() {
 
 #[test]
 fn property_contracts_doc_narrowing() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_doc_narrowing"],
@@ -627,7 +611,7 @@ fn property_contracts_doc_narrowing() {
 
 #[test]
 fn property_contracts_doc_unions() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRector",
         &["Oracle/property_contracts_doc_unions"],
@@ -638,7 +622,7 @@ fn property_contracts_doc_unions() {
 
 #[test]
 fn property_contracts_known_url_components() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeAssigns::default())],
         "TypedPropertyFromAssignsRectorPhp82",
         &["Oracle/property_contracts_known_url_components"],
@@ -649,7 +633,7 @@ fn property_contracts_known_url_components() {
 
 #[test]
 fn property_contracts_documented_constructor_types() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_documented_constructor_types"],
@@ -660,7 +644,7 @@ fn property_contracts_documented_constructor_types() {
 
 #[test]
 fn property_contracts_partial_defaults() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_partial_defaults"],
@@ -671,7 +655,7 @@ fn property_contracts_partial_defaults() {
 
 #[test]
 fn property_contracts_parent_roundtrip() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_parent_roundtrip"],
@@ -682,7 +666,7 @@ fn property_contracts_parent_roundtrip() {
 
 #[test]
 fn property_contracts_getter_dnf() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeSetterGetter)],
         "PropertyTypeFromStrictSetterGetterRector",
         &["Oracle/property_contracts_getter_dnf"],
@@ -693,7 +677,7 @@ fn property_contracts_getter_dnf() {
 
 #[test]
 fn property_contracts_constructor_dnf_boundaries() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_constructor_dnf_boundaries"],
@@ -704,7 +688,7 @@ fn property_contracts_constructor_dnf_boundaries() {
 
 #[test]
 fn property_contracts_getter_union_boundaries() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeSetterGetter)],
         "PropertyTypeFromStrictSetterGetterRector",
         &["Oracle/property_contracts_getter_union_boundaries"],
@@ -715,7 +699,7 @@ fn property_contracts_getter_union_boundaries() {
 
 #[test]
 fn property_contracts_scalar_hint_comparisons() {
-    lint_c::run_dirs(
+    crate::common::run_dirs(
         vec![Box::new(AddPropertyTypeConstructor)],
         "TypedPropertyFromStrictConstructorRector",
         &["Oracle/property_contracts_scalar_hint_comparisons"],

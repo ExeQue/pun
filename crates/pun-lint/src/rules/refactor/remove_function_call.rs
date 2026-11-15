@@ -1,16 +1,10 @@
-//! `lint/refactor/remove-function-call`, ported from Rector 2.8.4's `RemoveFuncCallRector`
-//! (rules/Removing/Rector/FuncCall).
-//!
-//! Options: `items = ["var_dump"]`. A statement that is only a call to one of the functions is removed. The call's name
-//! is compared without case as `NodeNameResolver::getName()` reads it, which for `$name()` is the variable's name.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::Safety;
 
 use super::{Kind, called, is_name, items, name_of};
-use crate::rules::rector_stmts::{enclosing, remove};
+use crate::rules::support::statement_edits::{enclosing, remove};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RemoveFunctionCall {
@@ -22,7 +16,7 @@ impl Rule for RemoveFunctionCall {
         "lint/refactor/remove-function-call"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.functions = items(options)?
             .into_iter()
             .map(|v| {

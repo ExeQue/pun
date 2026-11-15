@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\SpaceAfterSemicolonFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -38,7 +37,7 @@ impl Fixer for SpaceAfterSemicolonFixer {
         while index < max {
             if self.remove_in_empty_for_expressions {
                 if tokens[index].is_kind(T_FOR) {
-                    index = tokens.get_next_meaningful_token(index).unwrap();
+                    index = tokens.next_meaningful(index);
                     inside_for_parentheses_until =
                         Some(tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index));
                     index += 1;

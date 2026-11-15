@@ -1,13 +1,9 @@
-//! `lint/laravel/no-negated-blank-filled`, ported from rector-laravel 2.7.3's
-//! `NotFilledBlankFuncCallToBlankFilledFuncCallRector` (src/Rector/FuncCall).
-//!
-//! `!filled($x)` becomes `blank($x)`, and `!blank($x)` becomes `filled($x)`.
+use mago_syntax::cst::{Call, Expression, Node, NodeKind, UnaryPrefixOperator};
 
 use super::{argument_texts, call, replace};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
-use mago_syntax::cst::{Call, Expression, Node, NodeKind, UnaryPrefixOperator};
 
 pub struct NoNegatedBlankFilled;
 

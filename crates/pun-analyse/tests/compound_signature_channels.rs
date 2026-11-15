@@ -1,5 +1,3 @@
-//! Source-owned ExtendedParametersAcceptor channels, captured directly from PHPStan 2.3.5.
-
 use pun_phpstan::symbols::{PhpVersion, symbols};
 use pun_phpstan::types::Level;
 use serde_json::Value;
@@ -12,9 +10,9 @@ fn builtin_return_channels_and_template_maps_match_the_original_reflection() {
     .unwrap();
     for row in rows.as_array().unwrap() {
         let version = if row["version"] == 80400 {
-            PhpVersion::Php84
+            PhpVersion::new(8, 4)
         } else {
-            PhpVersion::Php85
+            PhpVersion::new(8, 5)
         };
         let class = row["class"].as_str().unwrap();
         let reflection = &symbols(version).classes[&class.to_ascii_lowercase()].methods

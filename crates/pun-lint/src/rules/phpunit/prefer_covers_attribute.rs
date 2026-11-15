@@ -1,19 +1,9 @@
-//! `lint/phpunit/prefer-covers-attribute`, ported from rector-phpunit's
-//! `CoversAnnotationWithValueToAttributeRector` (rules/AnnotationsToAttributes/Rector/Class_).
-//!
-//! A test class gets `#[\PHPUnit\Framework\Attributes\Covers*(...)]` groups after its attributes for its
-//! `@coversDefaultClass` tags, its `@covers` tags that start with `\` (or `::` without a default class), and the
-//! `@covers` tags of its methods that start with `\` or `::` (a `::method` one of the default class's), one per
-//! value; those class tags leave its doc. Each test method's doc loses every generic `@covers` tag. Rector runs it
-//! only for PHPUnit 10 and later, and only when the four attribute classes exist; Pun leaves the first to the rule's
-//! group.
-
 use mago_syntax::cst::{ClassLikeMember, Method, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::annotations::{Annotated, TagValue, is_class_constant_item, map_item, named_tags};
 use super::{class_body, is_in_test_class};
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
@@ -52,7 +42,6 @@ impl Rule for PreferCoversAttribute {
                 is_in_test_class(ctx, &scope, None)
             }
         };
-        // avoid partial apply that may cause error
         let codebase = &facts(ctx).codebase;
         if !in_test_class
             || [COVERS_FUNCTION, COVERS_CLASS, COVERS_TRAIT, COVERS_METHOD]
@@ -69,7 +58,6 @@ impl Rule for PreferCoversAttribute {
             }
             return;
         }
-        // The class's own part declines for a doc Pun does not read; the method's tags then stay too.
         if let Some(at) = ancestors
             .iter()
             .rposition(|a| matches!(a, Node::Class(_) | Node::AnonymousClass(_)))
@@ -84,7 +72,6 @@ impl Rule for PreferCoversAttribute {
         let Some(tags) = named_tags(ctx, ancestors, doc, "covers") else {
             return;
         };
-        // removeMethodCoversAnnotations()
         let mut removed = vec![false; doc.len()];
         for (i, value) in tags {
             if let TagValue::Generic(_) = value {
@@ -107,8 +94,6 @@ impl Rule for PreferCoversAttribute {
     }
 }
 
-/// `resolveClassAttributes()` for the class `node` (the last of `scope`): the report that moves its covers to
-/// attribute groups, `Ok(None)` when there are none, `Err` when a doc of it is one Pun does not read.
 fn class_attributes(
     ctx: &Context<'_>,
     node: Node<'_, '_>,
@@ -118,7 +103,6 @@ fn class_attributes(
     let annotated = Annotated::of(ctx, node, &scope[..scope.len() - 1]);
     let doc = annotated.as_ref().and_then(|a| a.doc.as_ref());
     let mut default_groups: Vec<String> = Vec::new();
-    // The groups keyed by their tag's value: a later one with the same key takes the first one's place.
     let mut keyed: Vec<(String, String)> = Vec::new();
     let add = |keyed: &mut Vec<(String, String)>, key: String, group: String| match keyed
         .iter_mut()
@@ -131,7 +115,6 @@ fn class_attributes(
     let mut doc_edit = None;
     if let Some(doc) = doc {
         let mut removed = vec![false; doc.len()];
-        // handleCoversDefaultClass()
         let defaults = named_tags(ctx, scope, doc, "coversDefaultClass").ok_or(())?;
         for (i, value) in defaults {
             let TagValue::Generic(value) = value else {
@@ -139,14 +122,12 @@ fn class_attributes(
             };
             let (group, first) = create_attribute_group(ctx, &value);
             if default_groups.is_empty() {
-                // If there is a ::coversDefaultClass, @covers ::function will refer to class methods
                 default_class = is_class_constant_item(&first).then_some(first);
             }
             default_groups.push(group);
             removed[i] = true;
         }
         let has_covers_default = !default_groups.is_empty();
-        // handleCovers()
         for (i, value) in named_tags(ctx, scope, doc, "covers").ok_or(())? {
             let TagValue::Generic(covers) = value else {
                 continue;
@@ -182,7 +163,6 @@ fn class_attributes(
     let message = "Use the `#[Covers*]` attributes instead of the `@covers` annotations.";
     let edits = match (node, &annotated) {
         (Node::AnonymousClass(class), _) => {
-            // `new #[...] class`: php-parser prints each group with a space after it.
             if !class.attribute_lists.is_empty() || !class.modifiers.is_empty() {
                 return Err(());
             }
@@ -190,7 +170,6 @@ fn class_attributes(
             let text: String = groups.iter().map(|g| format!("{g} ")).collect();
             vec![Edit::new(Span::new(at, at), text)]
         }
-        // a class
         (_, annotated) => annotated
             .as_ref()
             .unwrap()
@@ -207,8 +186,6 @@ fn class_attributes(
     Ok(Some(Report::fixed(span, message, Safety::Safe, edits)))
 }
 
-/// `resolveMethodAttributes()`: the groups of a method's `@covers` tags that start with `\` or `::`, keyed by the
-/// tag's value (a `::method` one after the default class's name).
 fn method_attributes(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -238,7 +215,6 @@ fn method_attributes(
     Ok(groups)
 }
 
-/// `createAttributeGroup()`: the group for a covers value, printed, and its first item before mapping.
 fn create_attribute_group(ctx: &Context<'_>, value: &str) -> (String, String) {
     let (class, items) = if value.starts_with("::") {
         (
@@ -264,7 +240,6 @@ fn create_attribute_group(ctx: &Context<'_>, value: &str) -> (String, String) {
     (format!("#[\\{class}({})]", printed.join(", ")), first)
 }
 
-/// `Strings::replace($value, '/::.*$/')`: the value up to its first `::` whose rest of the value holds no line break.
 fn get_class(value: &str) -> String {
     let mut from = 0;
     while let Some(at) = value[from..].find("::") {
@@ -277,7 +252,6 @@ fn get_class(value: &str) -> String {
     value.to_string()
 }
 
-/// `Strings::replace($value, '/^.*::/')`: the value after the last `::` of its first line.
 fn get_method(value: &str) -> String {
     let line = value.split('\n').next().unwrap_or_default();
     match line.rfind("::") {

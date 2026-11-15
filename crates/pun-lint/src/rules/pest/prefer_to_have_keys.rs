@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-keys`, ported from pest-plugin-rector's `UseToHaveKeysRector`: a run of
-//! `->toHaveKey('a')->toHaveKey('b')` with literal strings becomes `->toHaveKeys(['a', 'b'])`, when the checked value
-//! is known to be an array.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 

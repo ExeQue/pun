@@ -1,4 +1,3 @@
-//! `php_compat` against real PHP functions and pinned upstream PCRE fixtures.
 #![allow(
     clippy::unicode_not_nfc,
     reason = "the inputs test non-NFC bytes on purpose"
@@ -63,7 +62,6 @@ const INPUTS: &[&str] = &[
     "12345678901234567891",
 ];
 
-/// Every pair, compared against `php`.
 #[test]
 fn matches_php() {
     let script = r#"
@@ -160,7 +158,6 @@ fn float_to_string_matches_php() {
     assert_eq!(got, want);
 }
 
-/// `php` run on `script` with `input` on stdin; one JSON value per output line.
 fn php_lines(script: &str, input: &serde_json::Value) -> Vec<serde_json::Value> {
     let mut child = common::php()
         .args(["-r", script])
@@ -176,7 +173,6 @@ fn php_lines(script: &str, input: &serde_json::Value) -> Vec<serde_json::Value> 
         .collect()
 }
 
-/// `false` or the offset, as PHP's search functions return it.
 fn pos(p: Option<usize>) -> serde_json::Value {
     p.map_or(serde_json::Value::Bool(false), std::convert::Into::into)
 }
@@ -185,7 +181,6 @@ fn utf8(b: &[u8]) -> String {
     String::from_utf8(b.to_vec()).unwrap()
 }
 
-/// strpos, stripos, strrpos, substr, substr_count, explode and preg_quote on every haystack and needle.
 #[test]
 fn search_split_and_quote_match_php() {
     let haystacks = [
@@ -260,7 +255,6 @@ fn explode_refuses_an_empty_separator() {
     explode(b"", b"a");
 }
 
-/// fnmatch() with no flags, against the same C library PHP calls.
 #[test]
 fn fnmatch_matches_php() {
     let cases = [
@@ -290,11 +284,9 @@ fn fnmatch_matches_php() {
         .map(|(p, s)| fnmatch(p.as_bytes(), s.as_bytes()).into())
         .collect();
     assert_eq!(got, want);
-    // PHP throws a ValueError for a NUL byte; nothing matches here.
     assert!(!fnmatch(b"a\0", b"a\0"));
 }
 
-/// preg_match() of each pattern: whether it matched, or PHP's warning.
 #[test]
 fn preg_compile_matches_php() {
     let cases = [
@@ -378,8 +370,6 @@ fn preg_compile_matches_php() {
             Err(e) => e.into(),
         })
         .collect();
-    // `r` needs PCRE2 10.43. When this PHP's engine and Pun's disagree on it, PHP is no oracle for the `r` cases;
-    // preg_caseless_restrict_matches_upstream checks them against upstream's own expectations.
     let r = cases.iter().position(|c| *c == ("/a/r", "a")).unwrap();
     let same_engine = got[r] == want[r];
     for ((g, w), c) in got.iter().zip(&want).zip(&cases) {
@@ -387,18 +377,12 @@ fn preg_compile_matches_php() {
             assert_eq!(g, w, "{c:?}");
         }
     }
-    // PHP accepts `D` (PCRE2_DOLLAR_ENDONLY); the pcre2 crate can't set it, so only the parse is checked.
     assert!(preg_parse(b"/a$/D").unwrap().1.dollar_end_only);
 }
 
 #[test]
 fn preg_caseless_restrict_matches_upstream() {
-    // Probe raw PCRE independently of preg_parse/preg_compile: PHP and Rust can link different engines.
     let supports_r = pcre2::bytes::Regex::new("(?r)").is_ok();
-    // PHP php-8.5.12 at 136e049ac10b032c83018e65b63b6df858943750:
-    // ext/pcre/tests/preg_match_caseless_restrict.phpt, including its EXPECT values.
-    // Exact matched substrings: PCRE2 10.43 at 3864abdb713f78831dd12d898ab31bbb0fa630b6,
-    // testdata/testoutput5:5042-5107 and 5210-5215.
     let cases = [
         ("/AskZ/iur", "AskZ", Some("AskZ")),
         ("/AskZ/iur", "aSKz", Some("aSKz")),
@@ -412,8 +396,6 @@ fn preg_caseless_restrict_matches_upstream() {
         ("/[^s]+/iur", "AſZ", Some("AſZ")),
         ("/k(?^i)k/iur", "K\u{212A}", Some("K\u{212A}")),
         ("/k(?^i)k/iur", "\u{212A}\u{212A}", None),
-        // Anchored, inline and ordinary-case controls follow the same ASCII/non-ASCII boundary contract:
-        // PCRE2 10.43, doc/pcre2api.3:2005-2014; (?r) does not enable caseless matching itself.
         ("/^k$/iur", "\u{212A}", None),
         ("/^\\x{212A}$/iur", "k", None),
         ("/^s$/iur", "ſ", None),
@@ -454,7 +436,6 @@ fn preg_caseless_restrict_matches_upstream() {
             );
         }
     }
-    // The PHP fixture's inline enable/disable/scoped controls: lines 55-57 and EXPECT lines 102-104.
     for (subject, want) in [("ſSſSſ", Some("ſSſSſ")), ("ſſſSſ", None), ("ſSſſſ", None)]
     {
         let re = preg_compile("/s(?r)s(?-r)s(?r:s)s/iu");
@@ -465,14 +446,12 @@ fn preg_caseless_restrict_matches_upstream() {
                 want.map(str::as_bytes)
             );
         } else {
-            // PHP 8.5.12 / PCRE2 10.42: the unknown inline option is a compile error, not a modifier error.
             assert_eq!(
                 re.unwrap_err(),
                 "Compilation failed: unrecognized character after (? or (?- at offset 3"
             );
         }
     }
-    // PHP 8.5.12 / PCRE2 10.42 supplied these body errors without `r`; adding a supported `r` preserves them.
     for (pattern, error) in [
         (
             "/a(/r",
@@ -498,7 +477,6 @@ fn preg_caseless_restrict_matches_upstream() {
     assert_eq!(preg_compile("/a(/Zr").unwrap_err(), "Unknown modifier 'Z'");
 }
 
-/// INF, -INF and NAN, which JSON cannot carry to PHP: `(string) INF` etc. on PHP 8.5.
 #[test]
 fn float_to_string_of_specials() {
     assert_eq!(float_to_string(f64::INFINITY), "INF");

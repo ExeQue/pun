@@ -14,8 +14,10 @@ curl -fsSL https://pun.laravel.cloud/install | sh
 To install a specific version, pass it to the script:
 
 ```bash
-curl -fsSL https://pun.laravel.cloud/install | sh -s -- v0.1.0
+curl -fsSL https://pun.laravel.cloud/install | sh -s -- v0.1.2
 ```
+
+Pun ships binaries for Linux and macOS, on x86_64 and arm64. The Linux binaries are static musl builds, so they run on glibc distributions and on Alpine. On Apple silicon, the installer picks the arm64 binary even in a shell that runs under Rosetta. Windows is not supported.
 
 The installer also puts `punx` beside `pun`. It is the same binary, and `punx` runs [`pun x`](/docs/commands/x).
 
@@ -36,7 +38,9 @@ composer require --dev punphp/pun
 vendor/bin/pun --version
 ```
 
-The package is a small PHP script. On first run, it downloads the release binary for its version and platform (Linux or macOS, x86_64 or arm64) from GitHub Releases, checks its SHA-256 checksum, and keeps it in `vendor/bin`. Later runs start that binary directly. Windows is not supported.
+The package is a small PHP script, and it requires PHP 8.4 or later to run. On first run, it downloads the release binary for its version and platform (Linux or macOS, x86_64 or arm64) from GitHub Releases, checks its SHA-256 checksum, and keeps it in `vendor/bin`. Later runs start that binary directly. Windows is not supported. If the download or the checksum fails, the script exits 2.
+
+To update a Composer install, run `composer update punphp/pun`. `pun self-update` does not replace a Composer install.
 
 These docs write commands as `pun`. In a project, run them as `vendor/bin/pun`, for example `vendor/bin/pun check`, or from a Composer script, where `vendor/bin` is on the `PATH`:
 
@@ -48,7 +52,7 @@ These docs write commands as `pun`. In a project, run them as `vendor/bin/pun`, 
 
 ## Runtime requirements
 
-- Projects must target PHP 8.4 or later. Pun reads the target from `composer.json` unless `[php] version` overrides it.
+- Projects must target PHP 8.4 or later. Pun reads the target from `require.php` in `composer.json`. `[php] version` overrides it. A `require.php` that allows PHP below 8.4 stops every check with exit code 2.
 - PHP checks need no PHP or Node runtime.
 - Blade formatting requires Node.js and these project dependencies. In a project with a `bun.lock` or `bun.lockb` file, Pun runs Prettier with Bun instead of Node.js. Prettier and its plugins are loaded from the project's `node_modules`, so Blade formatting runs project code.
 

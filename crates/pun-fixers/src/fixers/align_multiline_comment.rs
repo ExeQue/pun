@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\AlignMultilineCommentFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;

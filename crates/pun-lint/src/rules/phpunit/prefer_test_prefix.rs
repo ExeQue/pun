@@ -1,16 +1,11 @@
-//! `lint/phpunit/prefer-test-prefix`, ported from rector-phpunit's `ReplaceTestAnnotationWithPrefixedFunctionRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! A method of a test class not named `test*` whose doc comment has a line that is exactly `*@test` or `* @test`
-//! (trimmed) loses its `@test` tags (`PhpDocTagRemover::removeByName`, the doc going when nothing is left) and is
-//! renamed `test` followed by its name with the first letter upper-cased (`ucfirst`).
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_body, is_in_test_class};
-use crate::rules::rector_batch5::{doc_comment, doc_without_tags, member_from, merge};
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::class_members::member_from;
+use crate::rules::support::docblocks::{doc_comment, doc_without_tags};
+use crate::rules::support::rewrites::merge;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -39,7 +34,6 @@ impl Rule for PreferTestPrefix {
         }
         let source = ctx.source;
         let span = node_span(method);
-        // php-parser reprints the doc and the signature at its own indentation, in spaces
         if line_indent(source, span.start).contains('\t') {
             return;
         }
@@ -82,8 +76,6 @@ impl Rule for PreferTestPrefix {
     }
 }
 
-/// The doc comment, which has a `* @test` line, without its `@test` tags, as Rector's phpdoc printer removes tag
-/// nodes ([`doc_without_tags`]); `""` when nothing is left.
 fn without_test_tags(doc: &str) -> String {
     doc_without_tags(doc, |tag| {
         tag.split(char::is_whitespace).next() == Some("@test")

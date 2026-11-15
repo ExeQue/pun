@@ -1,10 +1,3 @@
-//! `lint/types/add-param-type-iterable-method-call`, ported from Rector 2.8.4's
-//! `AddClosureParamTypeFromIterableMethodCallRector` (rules/TypeDeclaration/Rector/FunctionLike) with
-//! `TypeUnwrapper`: a closure passed to a method of an iterable object whose docblock gives it key and value types
-//! (`Collection<int, string>` of a class that declares no templates, PHPStan's `Collection&iterable<int, string>`)
-//! gets them on the parameters that the method's callable parameter names `TKey` and `TValue` (classes of the
-//! object's namespace, as PHPStan reads names no template declares).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::callable::{TCallable, TCallableSignature};
 use mago_codex::ttype::atomic::object::TObject;
@@ -18,11 +11,10 @@ use pun_problem::{Edit, Safety};
 use super::facts::{Facts, facts};
 use super::names::resolve_class_name;
 use super::param::{add_hint, param_declaration};
-use crate::rules::class_method::type_of;
+use crate::rules::support::class_members::type_of;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::MIXED_TYPE`.
 const MIXED_TYPE: u32 = 80000;
 
 pub struct AddParamTypeIterableMethodCall;
@@ -65,7 +57,6 @@ impl Rule for AddParamTypeIterableMethodCall {
                     .and_then(|t| first_callable(&t.type_union))
             })
             .collect();
-        // methodSignatureUsesCallableWithIteratorTypes
         if !callables.iter().flatten().any(|c| {
             c.parameters.iter().any(|p| {
                 p.get_type_signature()
@@ -80,7 +71,6 @@ impl Rule for AddParamTypeIterableMethodCall {
             .iter()
             .map(Argument::value)
             .collect();
-        // callUsesClosures
         if !args
             .iter()
             .any(|v| matches!(unparenthesize(v), Expression::Closure(_)))
@@ -88,7 +78,6 @@ impl Rule for AddParamTypeIterableMethodCall {
             return;
         }
         let mut edits: Vec<Edit> = Vec::new();
-        // `getArgs()` is a list, so a named argument too takes the parameter at its position (checked with Rector 2.8.4)
         for (index, arg) in args.iter().enumerate() {
             let Expression::Closure(closure) = unparenthesize(arg) else {
                 continue;
@@ -114,7 +103,7 @@ impl Rule for AddParamTypeIterableMethodCall {
                     ancestors,
                     param,
                     new,
-                    ctx.php_version,
+                    ctx.php_version.id(),
                 ));
             }
         }
@@ -130,9 +119,6 @@ impl Rule for AddParamTypeIterableMethodCall {
     }
 }
 
-/// The iterable object of `t`: PHPStan's intersection of a class that declares no templates and is `Traversable` with
-/// `iterable<key, value>` from the docblock's type arguments (`X<value>` or `X<key, value>`); its class, key and
-/// value types (no key type for `X<value>`, whose key is an explicit `mixed`).
 fn iterable_object(facts: &Facts, t: &TUnion) -> Option<(String, Option<TUnion>, TUnion)> {
     let [TAtomic::Object(TObject::Named(object))] = t.types.as_ref() else {
         return None;
@@ -159,7 +145,6 @@ fn iterable_object(facts: &Facts, t: &TUnion) -> Option<(String, Option<TUnion>,
     ))
 }
 
-/// `TypeUnwrapper::unwrapFirstCallableTypeFromUnionType`: the first callable of a union.
 fn first_callable(t: &TUnion) -> Option<&TCallableSignature> {
     t.types.iter().find_map(|a| match a {
         TAtomic::Callable(TCallable::Signature(signature)) => Some(signature),
@@ -172,13 +157,10 @@ enum Part {
     Value,
 }
 
-/// `TypeUnwrapper::isIterableTypeValue` and `isIterableTypeKey`: the type is a class of `class`'s namespace named
-/// `TValue` or `TKey`.
 fn iterable_part(class: &str, t: &TUnion) -> Option<Part> {
     let [atomic] = t.types.as_ref() else {
         return None;
     };
-    // a name no class has (`TValue`) is a reference to a symbol
     let TAtomic::Reference(TReference::Symbol { name, .. }) = atomic else {
         return None;
     };
@@ -200,8 +182,6 @@ fn iterable_part(class: &str, t: &TUnion) -> Option<Part> {
     }
 }
 
-/// `refactorParameter()`: the type (`None` for an explicit `mixed`) for the parameter, unless it has that type already (a different one is
-/// replaced) or none maps.
 fn refactor_parameter(
     facts: &Facts,
     source: &str,
@@ -212,7 +192,6 @@ fn refactor_parameter(
 ) -> Option<Edit> {
     let declaration = match t {
         Some(t) => param_declaration(t, &facts.codebase, php_version)?,
-        // `MixedTypeMapper`: an explicit `mixed` from PHP 8.0
         None if php_version >= MIXED_TYPE => "mixed".to_string(),
         None => return None,
     };
@@ -225,7 +204,6 @@ fn refactor_parameter(
     Some(Edit::new(node_span(hint), declaration))
 }
 
-/// Whether the hint names the type `declaration` writes: the same words, class names resolved.
 fn same_type(source: &str, ancestors: &[Node<'_, '_>], hint: &Hint<'_>, declaration: &str) -> bool {
     let written = match hint {
         Hint::Identifier(id) => format!("\\{}", resolve_class_name(ancestors, id)),

@@ -1,6 +1,3 @@
-//! Pun/* run order. context/reference/mago-extras.md: the Mago ports run at priority 0; the pipeline orders by priority
-//! (desc), then name (strcmp). array_syntax (37) and no_unused_imports (-10) are PHP-CS-Fixer's priorities
-//! (tests/metadata.json), so every Pun/* rule lands between them, alphabetically.
 extern crate punphp_fixers as pun_fixers;
 use pun_config::Rule;
 use pun_format::Pipeline;
@@ -31,12 +28,14 @@ fn pun_rules_run_at_priority_zero() {
         .chain(["no_unused_imports"])
         .collect();
     assert_eq!(
-        pipeline.fixers().map(|f| f.name()).collect::<Vec<_>>(),
+        pipeline
+            .fixers()
+            .map(pun_format::Fixer::name)
+            .collect::<Vec<_>>(),
         want
     );
 }
 
-/// context/reference/mago-extras.md (the `pun.toml` example) marks exactly these Pun/* rules risky.
 #[test]
 fn pun_risky_rules() {
     let mut risky: Vec<&str> = pun_fixers::all()

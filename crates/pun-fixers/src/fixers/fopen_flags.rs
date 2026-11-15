@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\FopenFlagsFixer`.
 use crate::analyzers::abstract_fopen_flag_fixer::{
     self as base, flag_index, is_valid_mode_string, split_literal,
 };

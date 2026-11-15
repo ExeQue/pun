@@ -1,7 +1,3 @@
-//! PHPStan-family identifiers (`method.notFound`, `larastan.configCollection`) and their rules/mapping.toml entries:
-//! `[upstream.phpstan]`, `larastan`, `phpstan-strict-rules` and `phpstan-deprecation-rules`, keyed by identifier, where
-//! `%s` in a key (`pattern = true`) stands for a run of identifier characters, as in PHPStan's own identifier list.
-
 use crate::mapping;
 
 const SECTIONS: [&str; 4] = [
@@ -11,7 +7,6 @@ const SECTIONS: [&str; 4] = [
     "phpstan-deprecation-rules",
 ];
 
-/// The mapping entry of an identifier: its own row in one of the sections, else the first `%s` row that matches it.
 pub(crate) fn entry(identifier: &str) -> Option<&'static toml::Value> {
     let sections = SECTIONS.map(|s| mapping::section(&["upstream", s]).table());
     if let Some(e) = sections.iter().find_map(|t| t.get(identifier)) {
@@ -25,12 +20,10 @@ pub(crate) fn entry(identifier: &str) -> Option<&'static toml::Value> {
     })
 }
 
-/// The Pun rule (`analyse/undefined/method`, or a lint or format rule) of an identifier.
 pub fn rule_of_identifier(identifier: &str) -> Option<&'static str> {
     entry(identifier)?.get("pun")?.as_str()
 }
 
-/// Whether `s` is `parts` joined by non-empty runs of identifier characters.
 fn glob(parts: &[&str], s: &str) -> bool {
     let Some(rest) = s.strip_prefix(parts[0]) else {
         return false;

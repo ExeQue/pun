@@ -1,5 +1,3 @@
-//! Source variants of builtin first-class callables, through both public Project constructors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -17,7 +15,7 @@ fn source_variants_retain_required_parameters_and_configured_version() {
     for version in [80400, 80500] {
         for level in [4, 9] {
             let mut direct = Project::new(vec![root.join("callbacks.php")], Vec::new());
-            direct.php_version = version;
+            direct.php_version = pun_analyse::PhpVersion::from_id(version);
             direct.level = level;
             let mut parameters = pun_phpstan::Array::new();
             parameters.set(

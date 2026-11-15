@@ -1,11 +1,5 @@
-//! Ports of `PhpCsFixer\Tokenizer\Analyzer\Analysis\*`: plain data, public fields named after
-//! upstream's getters (`get_full_name()` -> `.full_name`); computed getters are methods.
-//! Strings are bytes (PHP strings). Upstream `?int` is `Option<usize>`.
-//! Case/Default/Switch/Match/Enum analyses live with their analyzer in control_case_structures_analyzer.rs.
-
 use pun_tokens::php_compat::{strtolower, trim};
 
-/// `NamespaceUseAnalysis::TYPE_*`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum NamespaceUseType {
     Class = 1,
@@ -14,7 +8,6 @@ pub(crate) enum NamespaceUseType {
 }
 
 impl NamespaceUseType {
-    /// The import type's name in configuration and in `use function` / `use const`: `class`, `function`, `const`.
     pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Class => "class",
@@ -24,7 +17,6 @@ impl NamespaceUseType {
     }
 }
 
-/// `NamespaceUseAnalysis`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct NamespaceUseAnalysis {
     pub type_: NamespaceUseType,
@@ -72,7 +64,6 @@ const RESERVED_TYPES: &[&[u8]] = &[
     b"void",
 ];
 
-/// `TypeAnalysis`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct TypeAnalysis {
     pub name: Vec<u8>,
@@ -82,7 +73,6 @@ pub(crate) struct TypeAnalysis {
 }
 
 impl TypeAnalysis {
-    /// `new TypeAnalysis($name, $startIndex, $endIndex)` (PHP >= 8.0 branch).
     pub(crate) fn new(name: &[u8], start_index: Option<usize>, end_index: Option<usize>) -> Self {
         let (name, nullable) = if let Some(rest) = name.strip_prefix(b"?") {
             (rest.to_vec(), true)
@@ -114,7 +104,6 @@ impl TypeAnalysis {
     }
 }
 
-/// `ArgumentAnalysis`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ArgumentAnalysis {
     pub name: Option<Vec<u8>>,
@@ -123,7 +112,6 @@ pub(crate) struct ArgumentAnalysis {
     pub type_analysis: Option<TypeAnalysis>,
 }
 
-/// One entry of `AttributeAnalysis::getAttributes()`: `array{start: int, end: int, name: string}`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Attribute {
     pub start: usize,
@@ -131,7 +119,6 @@ pub(crate) struct Attribute {
     pub name: Vec<u8>,
 }
 
-/// `AttributeAnalysis`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct AttributeAnalysis {
     pub start_index: usize,

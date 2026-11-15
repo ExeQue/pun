@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-comparison-assertion`, ported from rector-phpunit's `AssertComparisonToSpecificMethodRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertTrue($a === $b)` becomes `assertSame($b, $a)`, and likewise for `!==`, `==`, `!=`, `<`, `<=`, `>` and `>=`
-//! and for `assertFalse`. The expected value goes first: the left operand when its type is a constant (for the
-//! equality operators), else the right one.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

@@ -1,11 +1,3 @@
-//! `lint/phpunit/require-exact-test-argument-type`, ported from rector-phpunit's `ScalarArgumentToExpectedParamTypeRector`
-//! (rules/CodeQuality/Rector/MethodCall), with `MethodParametersAndReturnTypesResolver`.
-//!
-//! In a test class or a Behat `Context`, a method call, static call or `new` whose method has native parameter types
-//! gets each literal argument cast to its parameter's type (positional, or the parameter of a named argument's name):
-//! an integer or a float for a `string` (or `?string`) parameter becomes the string PHP casts it to, and a string for
-//! an `int` parameter the integer PHP casts it to.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -19,7 +11,6 @@ use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `BehatClassName::CONTEXT`.
 const CONTEXT: &str = "Behat\\Behat\\Context\\Context";
 
 pub struct RequireExactTestArgumentType;
@@ -51,7 +42,6 @@ impl Rule for RequireExactTestArgumentType {
             },
             _ => AnyCall::of(node).unwrap().args,
         };
-        // shouldSkipCall
         if !is_in_test_or_context(ctx, ancestors)
             || !args.arguments.iter().any(|a| {
                 matches!(
@@ -85,7 +75,6 @@ impl Rule for RequireExactTestArgumentType {
             let Some(native) = parameter.and_then(|p| p.type_declaration_metadata.as_ref()) else {
                 continue;
             };
-            // remove null
             let kept: Vec<&TAtomic> = native
                 .type_union
                 .types
@@ -103,7 +92,6 @@ impl Rule for RequireExactTestArgumentType {
                     Some(format!("'{}'", sprintf_g(*f.value, 14)))
                 }
                 (TAtomic::Scalar(TScalar::Integer(_)), Literal::String(s)) => {
-                    // `pScalar_Int()`: `PHP_INT_MIN` has no literal
                     s.value.map(|v| match intval(&String::from_utf8_lossy(v)) {
                         i64::MIN => "(-9223372036854775807-1)".to_string(),
                         i => i.to_string(),
@@ -127,7 +115,6 @@ impl Rule for RequireExactTestArgumentType {
     }
 }
 
-/// `isInTestClass()`: the call is in a Behat `Context` or a test class.
 fn is_in_test_or_context(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     let class_like = ancestors.iter().rposition(|a| {
         matches!(
@@ -143,8 +130,6 @@ fn is_in_test_or_context(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool 
         || is_in_test_class(ctx, ancestors, None)
 }
 
-/// The method `resolveCallParameterTypes()` reads: a `new`'s constructor, or the method of a call on an object of a
-/// single class (`$this` and `self` and `static` the current one).
 fn called_method(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -158,7 +143,6 @@ fn called_method(
             };
             (resolve(ancestors, id), b"__construct")
         }
-        // a method or a static method call
         _ => {
             let call = AnyCall::of(node).unwrap();
             let name = call.name()?;
@@ -189,7 +173,6 @@ fn called_method(
         .cloned()
 }
 
-/// The class of an `ObjectType`: a single named object, not an intersection.
 fn object_type_class(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<String> {
     let facts = facts(ctx);
     match facts.full_type(node_span(expr))?.types.as_ref() {

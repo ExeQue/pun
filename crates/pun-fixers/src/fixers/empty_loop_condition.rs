@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\EmptyLoopConditionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -80,8 +79,8 @@ fn fix_loop_while(tokens: &mut Tokens, index: usize, open_index: usize, end_inde
     } else if is_while_loop_with_empty_condition(tokens, index, open_index, end_index)
         && let Some(do_index) = get_do_index(tokens, index)
     {
-        let semicolon = tokens.get_next_meaningful_token(end_index).unwrap();
-        clear_not_comments_in_range(tokens, index, semicolon); // clear including `;`
+        let semicolon = tokens.next_meaningful(end_index);
+        clear_not_comments_in_range(tokens, index, semicolon);
         tokens.clear_at(do_index);
         tokens.insert_at(do_index, while_replacement());
     }
@@ -97,8 +96,8 @@ fn fix_loop_for(tokens: &mut Tokens, index: usize, open_index: usize, end_index:
             tokens.insert_at(index, for_replacement());
         }
         Some(do_index) => {
-            let semicolon = tokens.get_next_meaningful_token(end_index).unwrap();
-            clear_not_comments_in_range(tokens, index, semicolon); // clear including `;`
+            let semicolon = tokens.next_meaningful(end_index);
+            clear_not_comments_in_range(tokens, index, semicolon);
             tokens.clear_at(do_index);
             tokens.insert_at(do_index, for_replacement());
         }
@@ -114,7 +113,7 @@ fn clear_not_comments_in_range(tokens: &mut Tokens, index_start: usize, index_en
 }
 
 fn get_do_index(tokens: &Tokens, index: usize) -> Option<usize> {
-    let end_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let end_index = tokens.prev_meaningful(index);
     if !tokens[end_index].equals("}", true) {
         return None;
     }
@@ -132,11 +131,11 @@ fn is_for_loop_with_empty_condition(
     if !tokens[index].is_kind(T_FOR) {
         return false;
     }
-    let index = tokens.get_next_meaningful_token(open_index).unwrap();
+    let index = tokens.next_meaningful(open_index);
     if !tokens[index].equals(";", true) {
         return false;
     }
-    let index = tokens.get_next_meaningful_token(index).unwrap();
+    let index = tokens.next_meaningful(index);
     tokens[index].equals(";", true) && Some(end_index) == tokens.get_next_meaningful_token(index)
 }
 
@@ -149,7 +148,7 @@ fn is_while_loop_with_empty_condition(
     if !tokens[index].is_kind(T_WHILE) {
         return false;
     }
-    let index = tokens.get_next_meaningful_token(open_index).unwrap();
+    let index = tokens.next_meaningful(open_index);
     tokens[index].equals((T_STRING, "true"), true)
         && Some(end_index) == tokens.get_next_meaningful_token(index)
 }

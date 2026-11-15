@@ -1,16 +1,9 @@
-//! `lint/phpunit/no-assert-contains-only`, ported from rector-phpunit's `AssertContainsOnlyMethodCallRector`
-//! (rules/PHPUnit110/Rector/CallLike).
-//!
-//! `assertContainsOnly('int', $a)` becomes `assertContainsOnlyInt($a)`, and likewise for each type name, unless the
-//! `$isNativeType` argument may be `false`. Rector runs it only for PHPUnit 11.5 and later; Pun leaves that to the
-//! rule's group.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_test_case_call, new_call, string_value};
 use crate::rules::laravel::get_arg;
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::{Context, Report, Rule};
 
 const TYPE_VALUE_TO_METHOD: &[(&str, &str)] = &[

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\OctalNotationFixer`. Pun runs as PHP 8.5, so `PHP_VERSION_ID >= 8_01_00` holds.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;

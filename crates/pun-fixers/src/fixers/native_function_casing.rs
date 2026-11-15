@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Casing\NativeFunctionCasingFixer`. The native function list is the
-//! oracle PHP's `get_defined_functions()['internal']` (all lowercase on PHP 8.5).
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use crate::analyzers::php_functions::is_internal_function;
 use pun_format::Fixer;

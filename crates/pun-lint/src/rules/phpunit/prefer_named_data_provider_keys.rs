@@ -1,17 +1,3 @@
-//! `lint/phpunit/prefer-named-data-provider-keys`, ported from rector-phpunit's `NamedArgumentForDataProviderRector`
-//! (rules/PHPUnit110/Rector/Class_).
-//!
-//! For each public test method of a test class with parameters and `#[DataProvider('name')]` attributes, the data
-//! sets of each named provider method of the class (`extractDataProviderArrayItem`: arrays its top-level `yield`s
-//! give, the arrays of its top-level `return [...]`, and the arrays in a variable such a `return` lists that a
-//! top-level `$x = [...]` gives) get string keys named after the test's parameters, by position: a string key is
-//! renamed, and where any string key is there a key is added to a value without one (`String_::fromString`, written
-//! double-quoted). A data set that already has every parameter name among its string keys, or whose string keys are
-//! all parameter names (optional parameters left out), is left alone. Rector
-//! changes the tree as it goes, so a provider shared by several tests sees the keys the tests before gave it. Tests
-//! that disagree on a shared provider's names make Rector rename the keys back and forth on every run; Pun's fix loop
-//! then stops without converging, as Rector never settles either.
-
 use std::collections::HashMap;
 
 use mago_syntax::cst::{
@@ -21,7 +7,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::{is_in_test_class, is_public, resolve};
-use crate::rules::rector_stmts::assign;
+use crate::rules::support::statement_edits::assign;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -29,14 +15,10 @@ const DATA_PROVIDER: &str = "PHPUnit\\Framework\\Attributes\\DataProvider";
 
 pub struct PreferNamedDataProviderKeys;
 
-/// A key of a data set as Rector's tree has it after the changes so far.
 #[derive(Clone)]
 enum Key {
-    /// A string literal key, with its value.
     Str(String),
-    /// No key.
     None,
-    /// Any other key.
     Other,
 }
 
@@ -70,7 +52,6 @@ impl Rule for PreferNamedDataProviderKeys {
                 _ => None,
             })
             .collect();
-        // the key of each data set item, by the item's start, once Rector changed it
         let mut keys: HashMap<usize, Key> = HashMap::new();
         let mut changed: HashMap<usize, (Span, String)> = HashMap::new();
         for method in &methods {
@@ -108,7 +89,6 @@ impl Rule for PreferNamedDataProviderKeys {
                     if names.iter().all(|n| string_keys.contains(&n)) {
                         continue;
                     }
-                    // Skip already named arguments - optional parameters can be left out
                     if !string_keys.is_empty() && string_keys.iter().all(|k| names.contains(k)) {
                         continue;
                     }
@@ -158,7 +138,6 @@ impl Rule for PreferNamedDataProviderKeys {
     }
 }
 
-/// The key of a data set item as written.
 fn key_of(element: &ArrayElement<'_>) -> Key {
     match element {
         ArrayElement::KeyValue(kv) => match kv.key {
@@ -172,7 +151,6 @@ fn key_of(element: &ArrayElement<'_>) -> Key {
     }
 }
 
-/// `getDataProviderMethodNames`: the string arguments of the method's `#[DataProvider]` attributes.
 fn provider_names(ancestors: &[Node<'_, '_>], method: &Method<'_>) -> Vec<String> {
     let mut names = Vec::new();
     for list in &method.attribute_lists {
@@ -211,7 +189,6 @@ fn element_value<'a>(element: &'a ArrayElement<'a>) -> Option<&'a Expression<'a>
     }
 }
 
-/// `extractDataProviderArrayItem`: the items of each data set array of a provider method.
 fn data_sets<'a>(method: &'a Method<'a>) -> Vec<Vec<&'a ArrayElement<'a>>> {
     let MethodBody::Concrete(block) = &method.body else {
         return Vec::new();

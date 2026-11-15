@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Strict\DeclareStrictTypesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::{Result, bail};
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -19,7 +18,6 @@ struct DeclareStrictTypesFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `configure` sets the strategy.
     crate::configured(DeclareStrictTypesFixer {
         strategy: Strategy::Remove,
         whitespaces_config: Default::default(),
@@ -30,7 +28,6 @@ struct Declaration {
     declare_index: usize,
     open_parenthesis: usize,
     close_parenthesis: usize,
-    /// index => token at the time of the lookup
     sequence: Vec<(usize, Token)>,
 }
 
@@ -100,7 +97,7 @@ impl Fixer for DeclareStrictTypesFixer {
 
 fn get_strict_types_declaration(tokens: &Tokens) -> Option<Declaration> {
     for index in tokens.find_given_kind(T_DECLARE, 0, None) {
-        let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
+        let open_parenthesis = tokens.next_meaningful(index);
         let close_parenthesis =
             tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis);
         let Some(seq) = tokens.find_sequence(
@@ -144,7 +141,6 @@ fn remove_strict_types_declaration(tokens: &mut Tokens, declaration: &Declaratio
         return;
     }
 
-    // Backwards, clearing a token only ever merges away whitespace after it, so nothing ahead is empty yet.
     for index in (sequence_start..=sequence_end).rev() {
         tokens.clear_token_and_merge_surrounding_whitespace(index);
     }
@@ -160,10 +156,9 @@ fn remove_strict_types_declaration(tokens: &mut Tokens, declaration: &Declaratio
         return;
     }
 
-    // Another option follows, so the next meaningful token is its `,` and something comes after it.
-    let next_meaningful = tokens.get_next_meaningful_token(sequence_end).unwrap();
+    let next_meaningful = tokens.next_meaningful(sequence_end);
     tokens.clear_token_and_merge_surrounding_whitespace(next_meaningful);
-    let after_comma = tokens.get_next_meaningful_token(next_meaningful).unwrap();
+    let after_comma = tokens.next_meaningful(next_meaningful);
     tokens.remove_leading_whitespace(after_comma, Some(b" \t"));
 }
 
@@ -184,8 +179,7 @@ fn has_other_declare_options(
 }
 
 fn remove_declare_statement(tokens: &mut Tokens, declare_index: usize, close_parenthesis: usize) {
-    // upstream returns when there is none, which parsed code rules out (`;` or `?>` ends the statement)
-    let semicolon_index = tokens.get_next_meaningful_token(close_parenthesis).unwrap();
+    let semicolon_index = tokens.next_meaningful(close_parenthesis);
     for index in (declare_index..=semicolon_index).rev() {
         tokens.clear_token_and_merge_surrounding_whitespace(index);
     }
@@ -231,7 +225,7 @@ impl DeclareStrictTypesFixer {
         }
 
         if tokens.count() == next_index {
-            return; // no more tokens after sequence, single_blank_line_at_eof might add a line
+            return;
         }
 
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();

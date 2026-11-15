@@ -1,14 +1,7 @@
-//! `lint/laravel/prefer-exception-class-string`, ported from rector-laravel 2.7.3's
-//! `ThrowIfAndThrowUnlessExceptionsToUseClassStringRector` (src/Rector/FuncCall).
-//!
-//! `throw_if($condition, new SomeException($a, $b))` becomes `throw_if($condition, SomeException::class, $a, $b)`, and
-//! the same for `throw_unless()`. A first argument passed by name is left alone (Rector writes a positional argument
-//! after it, which PHP rejects).
-
 use mago_syntax::cst::{Argument, Expression, Node, NodeKind};
 
 use super::{argument_texts, replace};
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::expressions::{named, text};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

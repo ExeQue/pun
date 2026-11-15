@@ -1,16 +1,6 @@
-//! `lint/phpunit/no-bare-mock-assign`, ported from rector-phpunit's `BareCreateMockAssignToDirectUseRector`
-//! (rules/CodeQuality/Rector/ClassMethod), with `AssignedMocksCollector`, `VariableFinder` and
-//! `AssertMethodAnalyzer::detectTestCaseCall`.
-//!
-//! In a test class, a method or `foreach` whose statements (two or more) assign `$x = $any->createMock(X::class)` of
-//! an existing, non-abstract class, where `$x` is used once at most and only as a direct argument of a method call,
-//! static call or `new`, loses the assignment and passes the `createMock()` call there instead. A variable that is
-//! the receiver of a method call, used in a closure's `use`, or passed to a `TestCase`'s assertion stays.
-//! Variable names compare ASCII case-insensitively, as Rector's `isName` does.
-
 use mago_codex::symbol::SymbolKind;
 use mago_syntax::cst::{
-    Argument, Call, Expression, ForeachBody, MethodBody, Node, NodeKind, PartialArgument, Variable,
+    Argument, Call, Expression, ForeachBody, MethodBody, Node, NodeKind, PartialArgument,
 };
 use pun_problem::{Edit, Safety};
 
@@ -19,8 +9,10 @@ use super::{
     ASSERT, AnyCall, TEST_CASE, class_string, expr_name, is_in_test_class, own_class_reflection,
     receiver_is, text,
 };
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{List, assign, block_list, body_list, expression, holder_list};
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{
+    List, assign, block_list, body_list, expression, holder_list, variable_name,
+};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -54,7 +46,6 @@ impl Rule for NoBareMockAssign {
                 let Node::Foreach(each) = node else { return };
                 match &each.body {
                     ForeachBody::Statement(statement) => (body_list(ctx.source, statement), None),
-                    // a property hook's body aside, a holder has a list
                     ForeachBody::ColonDelimited(body) => {
                         let holder = Node::ForeachColonDelimitedBody(body);
                         (holder_list(ctx.source, holder, ancestors).unwrap(), None)
@@ -65,7 +56,6 @@ impl Rule for NoBareMockAssign {
         if !is_in_test_class(ctx, ancestors, method) || list.len() < 2 {
             return;
         }
-        // The nodes `findInstancesOfScoped([$node])` walks: a method's statements, or the `foreach` itself.
         let roots: Vec<Node<'_, '_>> = match node {
             Node::Method(_) => list.stmts.iter().map(|s| Node::Statement(s)).collect(),
             _ => vec![node],
@@ -83,7 +73,6 @@ impl Rule for NoBareMockAssign {
             {
                 continue;
             }
-            // 1. remove initial assign
             let mut mock: Option<&str> = None;
             for (at, statement) in list.stmts.iter().enumerate() {
                 if let Some(assign) = expression(statement).and_then(assign)
@@ -94,11 +83,9 @@ impl Rule for NoBareMockAssign {
                     mock = Some(text(ctx, assign.rhs));
                     continue;
                 }
-                // nothing to process yet
                 let Some(mock) = mock else {
                     continue;
                 };
-                // 2. replace variable with call-like args of new instance
                 for value in call_like_args(&[Node::Statement(statement)]) {
                     if is_variable(value, &name) {
                         edits.push(Edit::new(node_span(value), mock));
@@ -120,8 +107,6 @@ impl Rule for NoBareMockAssign {
     }
 }
 
-/// `AssignedMocksCollector::collect`: the names of the variables assigned a mock of an existing, non-abstract class,
-/// in the order of their first assignment.
 fn collect(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], list: &List<'_>) -> Vec<String> {
     let facts = facts(ctx);
     let mut names: Vec<String> = Vec::new();
@@ -140,7 +125,6 @@ fn collect(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], list: &List<'_>) -> Ve
         let Some(metadata) = facts.codebase.get_class_like(class.as_bytes()) else {
             continue;
         };
-        // these cannot be instantiated (BetterReflection's `isAbstract`: an `abstract` class, not an interface)
         if metadata.kind == SymbolKind::Class && metadata.flags.is_abstract() {
             continue;
         }
@@ -152,8 +136,6 @@ fn collect(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], list: &List<'_>) -> Ve
     names
 }
 
-/// `matchCreateMockArgAssignedToVariable` without the variable check: the first argument of a `createMock()` method
-/// call.
 fn create_mock_arg<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
     let Expression::Call(Call::Method(call)) = unparenthesize(expr) else {
         return None;
@@ -165,21 +147,10 @@ fn create_mock_arg<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
     Some(call.args().into_iter().next()?.value())
 }
 
-/// A plain variable's name, without the `$`.
-pub(super) fn variable_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
-    match unparenthesize(expr) {
-        Expression::Variable(Variable::Direct(v)) => Some(&v.name[1..]),
-        _ => None,
-    }
-}
-
-/// `$expr instanceof Variable && isName($expr, $name)`.
 fn is_variable(expr: &Expression<'_>, name: &str) -> bool {
     variable_name(expr).is_some_and(|n| n.eq_ignore_ascii_case(name.as_bytes()))
 }
 
-/// `BetterNodeFinder::findInstancesOfScoped`: each node under `roots` (the roots included), not entering a class, a
-/// closure or a function (an arrow function is entered; an anonymous class's arguments are too).
 pub(super) fn scoped<'a>(roots: &[Node<'a, 'a>], found: &mut dyn FnMut(Node<'a, 'a>)) {
     let mut stack: Vec<Node<'a, 'a>> = roots.iter().rev().copied().collect();
     while let Some(node) = stack.pop() {
@@ -201,7 +172,6 @@ pub(super) fn scoped<'a>(roots: &[Node<'a, 'a>], found: &mut dyn FnMut(Node<'a, 
     }
 }
 
-/// `isVariableUsedAsPartOfMethodCall`.
 fn is_variable_used_as_part_of_method_call(roots: &[Node<'_, '_>], name: &str) -> bool {
     let mut used = false;
     scoped(roots, &mut |node| {
@@ -214,8 +184,6 @@ fn is_variable_used_as_part_of_method_call(roots: &[Node<'_, '_>], name: &str) -
     used
 }
 
-/// `findCallLikes`, as the values of their arguments: the method calls, static calls and `new`s (first-class
-/// callables are not calls in Mago).
 fn call_like_args<'a>(roots: &[Node<'a, 'a>]) -> Vec<&'a Expression<'a>> {
     let mut values = Vec::new();
     scoped(roots, &mut |node| match node {
@@ -242,7 +210,6 @@ fn call_like_args<'a>(roots: &[Node<'a, 'a>]) -> Vec<&'a Expression<'a>> {
     values
 }
 
-/// `isUsedMoreOftenThanInCallLikeArgs`, with `VariableFinder::find`.
 fn is_used_more_often_than_in_call_like_args(roots: &[Node<'_, '_>], name: &str) -> bool {
     let mut found_variables = 0;
     scoped(roots, &mut |node| {
@@ -259,7 +226,6 @@ fn is_used_more_often_than_in_call_like_args(roots: &[Node<'_, '_>], name: &str)
     call_like_variable_use_count > 1 || found_variables - 1 > call_like_variable_use_count
 }
 
-/// `isUsedInClosure`: any closure's `use` of the variable, however deep.
 fn is_used_in_closure(node: Node<'_, '_>, name: &str) -> bool {
     let mut stack = vec![node];
     while let Some(node) = stack.pop() {
@@ -273,7 +239,6 @@ fn is_used_in_closure(node: Node<'_, '_>, name: &str) -> bool {
     false
 }
 
-/// `isUsedInAssertCall`: the variable is a direct argument of a call `detectTestCaseCall` accepts.
 fn is_used_in_assert_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -295,9 +260,6 @@ fn is_used_in_assert_call(
     used
 }
 
-/// `AssertMethodAnalyzer::detectTestCaseCall`: the receiver is a `TestCase`, the method an assertion (or one of
-/// `NonAssertNonStaticMethods`) that the scope's class has from `TestCase` or `Assert`, and a static call's class is
-/// `self` or `static`.
 fn detect_test_case_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

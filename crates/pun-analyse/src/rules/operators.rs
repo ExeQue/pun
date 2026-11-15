@@ -1,10 +1,3 @@
-//! phpstan-strict-rules' operand rules: BooleanInBooleanAndRule, BooleanInBooleanOrRule and BooleanInBooleanNotRule
-//! (`strictRules.booleansInConditions`, over BooleanRuleHelper) with the condition rules over the same helper
-//! (BooleanInIf/ElseIf/TernaryOperatorRule, and BooleanInWhile/DoWhileConditionRule of
-//! `strictRules.booleansInLoopConditions`), and the OperandsInArithmetic*Rule /
-//! OperandInArithmetic*Rule of `strictRules.numericOperandsInArithmeticOperators` (over OperatorRuleHelper; unary
-//! `-` and `+` only with bleeding edge).
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -49,7 +42,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "unaryPlus.nonNumeric",
 ];
 
-/// The expressions whose types the rules read: the operands of the operators the switches check.
 pub(super) fn typed_expressions(strict: crate::StrictRules, program: &Program) -> Vec<Span> {
     let mut t = Typed {
         booleans: strict.contains(crate::StrictRules::BOOLEANS_IN_CONDITIONS),
@@ -119,7 +111,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Typed {
     }
 }
 
-/// The `elseif` clauses of an `if`, each with its condition (`else if` is an `if` of its own).
 pub(super) fn else_if_conditions<'a, 'arena>(
     i: &'a If<'arena>,
 ) -> impl Iterator<Item = (Span, &'a Expression<'arena>)> {
@@ -139,7 +130,6 @@ pub(super) fn else_if_conditions<'a, 'arena>(
         .chain(colon.into_iter().flatten())
 }
 
-/// The Boolean*ConditionRule of a statement or ternary whose condition is `cond`: `place` is its message's.
 pub(super) fn condition(
     c: &mut Checker,
     at: Span,
@@ -159,7 +149,6 @@ pub(super) fn condition(
     }
 }
 
-/// `&&`, `||`, `and`, `or`: the identifier prefix and `getOperatorSigil()`.
 fn logical(op: &BinaryOperator) -> Option<(&'static str, &'static str)> {
     Some(match op {
         BinaryOperator::And(_) => ("booleanAnd", "&&"),
@@ -201,7 +190,6 @@ enum Unary {
     Number,
 }
 
-/// The prefix operators the rules check: the identifier, the operation in messages and its helper.
 fn prefix(op: &UnaryPrefixOperator) -> Option<(&'static str, &'static str, Unary)> {
     Some(match op {
         UnaryPrefixOperator::PreIncrement(_) => {
@@ -220,7 +208,6 @@ fn describe(c: &Checker, t: &Type) -> String {
     declared::with_classes(c, || t.describe(Level::TypeOnly))
 }
 
-/// `findTypeToCheck()`, which levels 0 and 1 (`checkThisOnly`) answer with an ErrorType but for `$this`.
 fn type_to_check(c: &Checker, e: &Expression, criteria: &dyn Fn(&Type) -> bool) -> Option<Type> {
     let this = matches!(e, Expression::Variable(Variable::Direct(v)) if v.name == b"$this");
     if c.level < 2 && !this {
@@ -229,7 +216,6 @@ fn type_to_check(c: &Checker, e: &Expression, criteria: &dyn Fn(&Type) -> bool) 
     c.find_type_to_check(e, criteria).ty
 }
 
-/// `$type instanceof MixedType` (a template bound by `mixed` is a TemplateMixedType, an explicit one).
 fn as_mixed(t: &Type) -> Option<bool> {
     match t {
         Type::Mixed { explicit } => Some(*explicit),
@@ -238,7 +224,6 @@ fn as_mixed(t: &Type) -> Option<bool> {
     }
 }
 
-/// BooleanRuleHelper::passesAsBoolean().
 fn passes_as_boolean(c: &Checker, e: &Expression, t: &Type) -> bool {
     if let Some(explicit) = as_mixed(t) {
         return !explicit;
@@ -248,8 +233,6 @@ fn passes_as_boolean(c: &Checker, e: &Expression, t: &Type) -> bool {
     })
 }
 
-/// `$expr + 1` (or `++$expr`) of an object is not an ErrorType: GmpOperatorTypeSpecifyingExtension and
-/// BcMathNumberOperatorTypeSpecifyingExtension.
 fn object_operand(t: &Type) -> bool {
     let objects = Type::Union(vec![
         Type::Object("GMP".into(), vec![], false),
@@ -258,7 +241,6 @@ fn object_operand(t: &Type) -> bool {
     is_super_type_of(&objects, t).yes()
 }
 
-/// OperatorRuleHelper::isSubtypeOfNumber().
 fn is_subtype_of_number(c: &Checker, e: &Expression) -> bool {
     let accepted = union(vec![
         Type::Int,
@@ -279,13 +261,11 @@ fn is_subtype_of_number(c: &Checker, e: &Expression) -> bool {
     }
 }
 
-/// OperatorRuleHelper::isValidForArithmeticOperation(), isValidForIncrement() and isValidForDecrement().
 fn valid(c: &Checker, e: &Expression, t: &Type, op: Unary) -> bool {
     if as_mixed(t).is_some() {
         return true;
     }
     declared::with_classes(c, || {
-        // (already reported by PHPStan core)
         if op == Unary::Number && cast_is_error(t, Cast::Number, StrictMixed::default()) {
             return true;
         }
@@ -296,7 +276,6 @@ fn valid(c: &Checker, e: &Expression, t: &Type, op: Unary) -> bool {
     })
 }
 
-/// `getArrays()` is not empty.
 fn has_arrays(t: &Type) -> bool {
     match t {
         Type::Array(..) | Type::ConstArray(_) => true,

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpTag\FullOpeningTagFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::{explode, strtolower, substr}};
@@ -15,7 +14,6 @@ impl Fixer for FullOpeningTagFixer {
         "full_opening_tag"
     }
     fn priority(&self) -> i32 {
-        // must run before all Token-based fixers
         98
     }
     fn is_candidate(&self, _tokens: &Tokens) -> bool {
@@ -23,7 +21,6 @@ impl Fixer for FullOpeningTagFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let content = tokens.generate_code();
-        // replace all <? with <?php to replace all short open tags even without short_open_tag option enabled
         let (new_content, count) = Preg::replace_limit(
             "/<\\?(?:phP|pHp|pHP|Php|PhP|PHp|PHP)?(\\s|$)/",
             "<?php$1",
@@ -33,8 +30,6 @@ impl Fixer for FullOpeningTagFixer {
         if count == 0 {
             return;
         }
-        // the following code is magic to revert previous replacements which should NOT be replaced, for
-        // example incorrectly replacing `echo '<? ';` with `echo '<?php ';`
         let mut new_tokens = Tokens::from_code(&new_content);
         let mut tokens_old_content_length = 0;
         for index in 0..new_tokens.count() {

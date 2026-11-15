@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoBreakCommentFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::{Preg, preg_quote};
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
@@ -15,7 +14,6 @@ const STRUCTURE_KINDS: &[Kind] = &[
 #[derive(Default)]
 struct NoBreakCommentFixer {
     comment_text: String,
-    /// isNoBreakComment's pattern for `comment_text`, built once per configuration.
     comment_pattern: String,
     whitespaces_config: WhitespacesFixerConfig,
 }
@@ -37,7 +35,6 @@ impl Fixer for NoBreakCommentFixer {
     fn name(&self) -> &'static str {
         "no_break_comment"
     }
-    /// Must run after NoUselessElseFixer.
     fn priority(&self) -> i32 {
         0
     }
@@ -64,9 +61,9 @@ impl Fixer for NoBreakCommentFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in (0..tokens.len()).rev() {
             if tokens[index].is_kind(T_DEFAULT) {
-                if tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(T_DOUBLE_ARROW)
+                if tokens[tokens.next_meaningful(index)].is_kind(T_DOUBLE_ARROW)
                 {
-                    continue; // this is "default" from "match"
+                    continue;
                 }
             } else if !tokens[index].is_kind(T_CASE)
                 || TokensAnalyzer::new(tokens).is_enum_case(index)
@@ -81,7 +78,6 @@ impl Fixer for NoBreakCommentFixer {
     }
 }
 
-/// PHP `str_ireplace($text, $text, $subject)`: every ASCII-case-insensitive occurrence becomes `text`.
 fn str_ireplace_same(text: &[u8], subject: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(subject.len());
     let mut i = 0;
@@ -119,7 +115,7 @@ impl NoBreakCommentFixer {
                 continue;
             }
             if tokens[i].is_kind(T_THROW) {
-                let previous_index = tokens.get_prev_meaningful_token(i).unwrap();
+                let previous_index = tokens.prev_meaningful(i);
                 if previous_index == case_position
                     || tokens[previous_index].equals_any(
                         &["{".into(), ";".into(), "}".into(), T_OPEN_TAG.into()],
@@ -224,7 +220,6 @@ impl NoBreakCommentFixer {
         self.ensure_new_line_at(tokens, newline_position);
     }
 
-    /// Returns the newline token position.
     fn ensure_new_line_at(&self, tokens: &mut Tokens, position: usize) -> usize {
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();
         let mut content = [
@@ -287,7 +282,7 @@ fn get_structure_end(tokens: &Tokens, mut position: usize) -> usize {
             .unwrap();
         position = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
     } else if initial_token.is_kind(T_CLASS) {
-        let open_parenthesis_position = tokens.get_next_meaningful_token(position).unwrap();
+        let open_parenthesis_position = tokens.next_meaningful(position);
         if tokens[open_parenthesis_position].get_content() == b"(" {
             position =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis_position);
@@ -299,7 +294,7 @@ fn get_structure_end(tokens: &Tokens, mut position: usize) -> usize {
             .get_next_token_of_kind(position, &["{".into()], true)
             .unwrap()
     } else {
-        tokens.get_next_meaningful_token(position).unwrap()
+        tokens.next_meaningful(position)
     };
 
     if tokens[position].get_content() != b"{" {
@@ -327,7 +322,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    // NoBreakCommentFixerTest::provideInvalidConfigurationCases (PHP-CS-Fixer 3.95).
     #[test]
     fn configure_validation() {
         let err = |c: Value| fixer().configure(&c).unwrap_err().to_string();

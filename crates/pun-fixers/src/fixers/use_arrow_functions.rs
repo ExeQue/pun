@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\UseArrowFunctionsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::tokens_analyzer::TokensAnalyzer;
@@ -44,29 +43,28 @@ impl Fixer for UseArrowFunctionsFixer {
 }
 
 fn fix_lambda(tokens: &mut Tokens, index: usize) {
-    let mut parameters_start = tokens.get_next_meaningful_token(index).unwrap();
+    let mut parameters_start = tokens.next_meaningful(index);
     if tokens[parameters_start].is_kind(CT_RETURN_REF) {
-        parameters_start = tokens.get_next_meaningful_token(parameters_start).unwrap();
+        parameters_start = tokens.next_meaningful(parameters_start);
     }
     let parameters_end = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, parameters_start);
 
-    let mut next = tokens.get_next_meaningful_token(parameters_end).unwrap();
+    let mut next = tokens.next_meaningful(parameters_end);
     let mut use_range = None;
     if tokens[next].is_kind(CT_USE_LAMBDA) {
         let mut use_start = next;
         if tokens[use_start - 1].is_kind(T_WHITESPACE) {
             use_start -= 1;
         }
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
         while !tokens[next].equals(")", true) {
             if tokens[next].equals("&", true) {
-                // variables used by reference are not supported by arrow functions
                 return;
             }
-            next = tokens.get_next_meaningful_token(next).unwrap();
+            next = tokens.next_meaningful(next);
         }
         use_range = Some((use_start, next));
-        next = tokens.get_next_meaningful_token(next).unwrap();
+        next = tokens.next_meaningful(next);
     }
 
     let brace_open = if tokens[next].equals("{", true) {
@@ -99,7 +97,6 @@ fn fix_lambda(tokens: &mut Tokens, index: usize) {
         return;
     }
 
-    // Abort if closure has `use()` clause and return statement includes external files.
     if use_range.is_some()
         && (ret..semicolon).any(|i| {
             tokens[i].is_given_kind(&[T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE])
@@ -108,7 +105,6 @@ fn fix_lambda(tokens: &mut Tokens, index: usize) {
         return;
     }
 
-    // transform
     let mut tokens_to_insert = vec![Token::new(T_DOUBLE_ARROW, "=>")];
     if tokens.get_next_meaningful_token(ret) == Some(semicolon) {
         tokens_to_insert.push(Token::new(T_WHITESPACE, " "));

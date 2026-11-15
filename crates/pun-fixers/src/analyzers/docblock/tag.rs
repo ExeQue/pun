@@ -1,5 +1,3 @@
-//! `PhpCsFixer\DocBlock\Tag`.
-
 use super::line::LineRef;
 use crate::analyzers::preg::Preg;
 use pun_tokens::php_compat::isspace;
@@ -33,7 +31,6 @@ impl Tag {
         })
     }
 
-    /// `valid()`: the name is one of `PSR_STANDARD_TAGS`.
     pub(crate) fn valid(&self) -> bool {
         PSR_STANDARD_TAGS
             .iter()
@@ -69,8 +66,6 @@ pub(super) const PSR_STANDARD_TAGS: [&str; 25] = [
     "version",
 ];
 
-/// The first `/@[a-zA-Z0-9_-]+(?=\s|$)/` match for ASCII content: the `+` must stop at its longest run (a shorter one
-/// is followed by another name byte, never `\s`), so the first `@` whose full run ends at whitespace or the end wins.
 pub(super) fn tag_name_ascii(content: &[u8]) -> Option<Vec<u8>> {
     if !content.is_ascii() {
         return None;

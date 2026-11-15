@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoAlternativeSyntaxFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -24,7 +23,6 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
         let c = resolve(self.name(), options, &["fix_non_monolithic_code"])?;
-        // Future::getV4OrV3(false, true): v3 default.
         self.fix_non_monolithic_code = c.bool("fix_non_monolithic_code", true)?;
         Ok(())
     }
@@ -34,7 +32,6 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in (0..tokens.count()).rev() {
-            // The kind before any of the three edits, like upstream's `$token`.
             let kind = tokens[index].get_id();
             fix_elseif(index, kind, tokens);
             fix_else(index, kind, tokens);
@@ -43,11 +40,8 @@ impl Fixer for NoAlternativeSyntaxFixer {
     }
 }
 
-/// Upstream returns the structure index when no `(` follows; only `elseif` calls this, and it always has one.
 fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
-    let next_index = tokens
-        .get_next_meaningful_token(structure_token_index)
-        .unwrap();
+    let next_index = tokens.next_meaningful(structure_token_index);
     tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, next_index)
 }
 
@@ -57,7 +51,7 @@ fn fix_open_close_controls(index: usize, kind: Option<Kind>, tokens: &mut Tokens
             .get_next_token_of_kind(index, &["(".into()], true)
             .unwrap();
         let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
-        let after_parenthesis_index = tokens.get_next_meaningful_token(close_index).unwrap();
+        let after_parenthesis_index = tokens.next_meaningful(close_index);
         if !tokens[after_parenthesis_index].equals(":", true) {
             return;
         }
@@ -85,7 +79,7 @@ fn fix_open_close_controls(index: usize, kind: Option<Kind>, tokens: &mut Tokens
     }) {
         return;
     }
-    let next_token_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_token_index = tokens.next_meaningful(index);
     let next_is_semicolon = tokens[next_token_index].equals(";", true);
     tokens.set(index, Token::char("}"));
     if next_is_semicolon {
@@ -97,7 +91,7 @@ fn fix_else(index: usize, kind: Option<Kind>, tokens: &mut Tokens) {
     if kind != Some(T_ELSE) {
         return;
     }
-    let token_after_else_index = tokens.get_next_meaningful_token(index).unwrap();
+    let token_after_else_index = tokens.next_meaningful(index);
     if !tokens[token_after_else_index].equals(":", true) {
         return;
     }
@@ -114,9 +108,7 @@ fn fix_elseif(index: usize, kind: Option<Kind>, tokens: &mut Tokens) {
         return;
     }
     let parenthesis_end_index = find_parenthesis_end(tokens, index);
-    let token_after_parenthesis_index = tokens
-        .get_next_meaningful_token(parenthesis_end_index)
-        .unwrap();
+    let token_after_parenthesis_index = tokens.next_meaningful(parenthesis_end_index);
     if !tokens[token_after_parenthesis_index].equals(":", true) {
         return;
     }
@@ -133,7 +125,6 @@ fn add_braces(tokens: &mut Tokens, token: Token, index: usize, mut colon_index: 
     if !tokens[index + 1].is_whitespace(None) {
         items.push(Token::new(T_WHITESPACE, " "));
     }
-    // increment the position of the colon by number of items inserted
     colon_index += items.len();
     tokens.clear_at(index);
     tokens.insert_at(index, items);

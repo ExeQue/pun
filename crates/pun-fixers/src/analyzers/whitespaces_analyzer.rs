@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\WhitespacesAnalyzer`.
 use pun_tokens::{Kind::*, Tokens};
 
 pub(crate) struct WhitespacesAnalyzer;

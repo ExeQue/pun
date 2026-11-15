@@ -1,12 +1,3 @@
-//! The `pest` group: rules ported from pestphp/pest-plugin-rector at 8c1b780 (src/Rules/...), each in its own file,
-//! and what they share: `AbstractRector`'s chain helpers, the `ExpectChainValidation` trait, `PestFunctionDetector`
-//! and `PestChainAnalyzer`.
-//!
-//! The plugin's rules build new nodes and php-parser's format-preserving printer writes them: a new method call is
-//! pretty-printed (`$var->name(arg, arg)`), and the nodes kept from the old code keep their own text. When a rule only
-//! changes a node it keeps (a new name, a new first argument), the printer rewrites that part alone. The rules here
-//! write the same text with edits on those parts.
-
 mod no_before_all_in_describe;
 mod no_expect_exception;
 mod no_invalid_repeat;
@@ -63,62 +54,6 @@ mod prefer_to_throw;
 mod prefer_type_matchers;
 mod require_type_matcher_first;
 
-pub use no_before_all_in_describe::NoBeforeAllInDescribe;
-pub use no_expect_exception::NoExpectException;
-pub use no_invalid_repeat::NoInvalidRepeat;
-pub use no_negated_boolean_matcher::NoNegatedBooleanMatcher;
-pub use no_redundant_type_expectation::NoRedundantTypeExpectation;
-pub use no_redundant_uses::NoRedundantUses;
-pub use no_static_test_closure::NoStaticTestClosure;
-pub use prefer_chained_expect::PreferChainedExpect;
-pub use prefer_defer::PreferDefer;
-pub use prefer_each_modifier::PreferEachModifier;
-pub use prefer_expect::PreferExpect;
-pub use prefer_extend::PreferExtend;
-pub use prefer_filesystem_matchers::PreferFilesystemMatchers;
-pub use prefer_not_modifier::PreferNotModifier;
-pub use prefer_sequence::PreferSequence;
-pub use prefer_strict_equality_matchers::PreferStrictEqualityMatchers;
-pub use prefer_to_be_alpha::PreferToBeAlpha;
-pub use prefer_to_be_alpha_numeric::PreferToBeAlphaNumeric;
-pub use prefer_to_be_between::PreferToBeBetween;
-pub use prefer_to_be_digits::PreferToBeDigits;
-pub use prefer_to_be_directory::PreferToBeDirectory;
-pub use prefer_to_be_empty::PreferToBeEmpty;
-pub use prefer_to_be_file::PreferToBeFile;
-pub use prefer_to_be_in::PreferToBeIn;
-pub use prefer_to_be_infinite::PreferToBeInfinite;
-pub use prefer_to_be_instance_of::PreferToBeInstanceOf;
-pub use prefer_to_be_json::PreferToBeJson;
-pub use prefer_to_be_list::PreferToBeList;
-pub use prefer_to_be_lowercase::PreferToBeLowercase;
-pub use prefer_to_be_nan::PreferToBeNan;
-pub use prefer_to_be_truthy_falsy::PreferToBeTruthyFalsy;
-pub use prefer_to_be_uppercase::PreferToBeUppercase;
-pub use prefer_to_be_url::PreferToBeUrl;
-pub use prefer_to_be_uuid::PreferToBeUuid;
-pub use prefer_to_contain::PreferToContain;
-pub use prefer_to_contain_equal::PreferToContainEqual;
-pub use prefer_to_contain_only_instances_of::PreferToContainOnlyInstancesOf;
-pub use prefer_to_end_with::PreferToEndWith;
-pub use prefer_to_equal_canonicalizing::PreferToEqualCanonicalizing;
-pub use prefer_to_equal_with_delta::PreferToEqualWithDelta;
-pub use prefer_to_have_count::PreferToHaveCount;
-pub use prefer_to_have_key::PreferToHaveKey;
-pub use prefer_to_have_keys::PreferToHaveKeys;
-pub use prefer_to_have_length::PreferToHaveLength;
-pub use prefer_to_have_method_on_class::PreferToHaveMethodOnClass;
-pub use prefer_to_have_properties::PreferToHaveProperties;
-pub use prefer_to_have_property::PreferToHaveProperty;
-pub use prefer_to_have_same_size::PreferToHaveSameSize;
-pub use prefer_to_match::PreferToMatch;
-pub use prefer_to_match_array::PreferToMatchArray;
-pub use prefer_to_match_object::PreferToMatchObject;
-pub use prefer_to_start_with::PreferToStartWith;
-pub use prefer_to_throw::PreferToThrow;
-pub use prefer_type_matchers::PreferTypeMatchers;
-pub use require_type_matcher_first::RequireTypeMatcherFirst;
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::ttype::atomic::TAtomic;
@@ -130,77 +65,74 @@ use mago_syntax::cst::{
     Statement,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
-use super::rector_code_quality::text;
 use super::types::facts::facts;
 use crate::rules::phpunit::expr_text;
+use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, Report};
 
-/// The group's rules, in a fixed order.
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoBeforeAllInDescribe),
-        Box::new(NoExpectException),
-        Box::new(NoInvalidRepeat),
-        Box::new(NoNegatedBooleanMatcher),
-        Box::new(NoRedundantTypeExpectation),
-        Box::new(NoRedundantUses),
-        Box::new(NoStaticTestClosure),
-        Box::new(PreferDefer),
-        Box::new(PreferEachModifier),
-        Box::new(PreferExpect),
-        Box::new(PreferExtend),
-        Box::new(PreferFilesystemMatchers),
-        Box::new(PreferNotModifier),
-        Box::new(PreferSequence),
-        Box::new(PreferStrictEqualityMatchers),
-        Box::new(PreferToBeAlpha),
-        Box::new(PreferToBeAlphaNumeric),
-        Box::new(PreferToBeBetween),
-        Box::new(PreferToBeDigits),
-        Box::new(PreferToBeDirectory),
-        Box::new(PreferToBeEmpty),
-        Box::new(PreferToBeFile),
-        Box::new(PreferToBeIn),
-        Box::new(PreferToBeInfinite),
-        Box::new(PreferToBeInstanceOf),
-        Box::new(PreferToBeJson),
-        Box::new(PreferToBeList),
-        Box::new(PreferToBeLowercase),
-        Box::new(PreferToBeNan),
-        Box::new(PreferToBeTruthyFalsy),
-        Box::new(PreferToBeUppercase),
-        Box::new(PreferToBeUrl),
-        Box::new(PreferToBeUuid),
-        Box::new(PreferToContain),
-        Box::new(PreferToContainEqual),
-        Box::new(PreferToContainOnlyInstancesOf),
-        Box::new(PreferToEndWith),
-        Box::new(PreferToEqualCanonicalizing),
-        Box::new(PreferToEqualWithDelta),
-        Box::new(PreferToHaveCount),
-        Box::new(PreferToHaveKey),
-        Box::new(PreferToHaveKeys),
-        Box::new(PreferToHaveLength),
-        Box::new(PreferToHaveMethodOnClass),
-        Box::new(PreferToHaveProperties),
-        Box::new(PreferToHaveProperty),
-        Box::new(PreferToHaveSameSize),
-        Box::new(PreferToMatch),
-        Box::new(PreferToMatchArray),
-        Box::new(PreferToMatchObject),
-        Box::new(PreferToStartWith),
-        Box::new(PreferToThrow),
-        Box::new(PreferTypeMatchers),
-        // as in the plugin's coding-style set, the chaining comes after the matchers, so that where a matcher and the
-        // chaining both rewrite a statement the matcher's fix applies first, then the chaining of its result
-        Box::new(PreferChainedExpect::default()),
-        Box::new(RequireTypeMatcherFirst),
-    ]
+rules! {
+    pub(super) fn all {
+        no_before_all_in_describe => NoBeforeAllInDescribe,
+        no_expect_exception => NoExpectException,
+        no_invalid_repeat => NoInvalidRepeat,
+        no_negated_boolean_matcher => NoNegatedBooleanMatcher,
+        no_redundant_type_expectation => NoRedundantTypeExpectation,
+        no_redundant_uses => NoRedundantUses,
+        no_static_test_closure => NoStaticTestClosure,
+        prefer_defer => PreferDefer,
+        prefer_each_modifier => PreferEachModifier,
+        prefer_expect => PreferExpect,
+        prefer_extend => PreferExtend,
+        prefer_filesystem_matchers => PreferFilesystemMatchers,
+        prefer_not_modifier => PreferNotModifier,
+        prefer_sequence => PreferSequence,
+        prefer_strict_equality_matchers => PreferStrictEqualityMatchers,
+        prefer_to_be_alpha => PreferToBeAlpha,
+        prefer_to_be_alpha_numeric => PreferToBeAlphaNumeric,
+        prefer_to_be_between => PreferToBeBetween,
+        prefer_to_be_digits => PreferToBeDigits,
+        prefer_to_be_directory => PreferToBeDirectory,
+        prefer_to_be_empty => PreferToBeEmpty,
+        prefer_to_be_file => PreferToBeFile,
+        prefer_to_be_in => PreferToBeIn,
+        prefer_to_be_infinite => PreferToBeInfinite,
+        prefer_to_be_instance_of => PreferToBeInstanceOf,
+        prefer_to_be_json => PreferToBeJson,
+        prefer_to_be_list => PreferToBeList,
+        prefer_to_be_lowercase => PreferToBeLowercase,
+        prefer_to_be_nan => PreferToBeNan,
+        prefer_to_be_truthy_falsy => PreferToBeTruthyFalsy,
+        prefer_to_be_uppercase => PreferToBeUppercase,
+        prefer_to_be_url => PreferToBeUrl,
+        prefer_to_be_uuid => PreferToBeUuid,
+        prefer_to_contain => PreferToContain,
+        prefer_to_contain_equal => PreferToContainEqual,
+        prefer_to_contain_only_instances_of => PreferToContainOnlyInstancesOf,
+        prefer_to_end_with => PreferToEndWith,
+        prefer_to_equal_canonicalizing => PreferToEqualCanonicalizing,
+        prefer_to_equal_with_delta => PreferToEqualWithDelta,
+        prefer_to_have_count => PreferToHaveCount,
+        prefer_to_have_key => PreferToHaveKey,
+        prefer_to_have_keys => PreferToHaveKeys,
+        prefer_to_have_length => PreferToHaveLength,
+        prefer_to_have_method_on_class => PreferToHaveMethodOnClass,
+        prefer_to_have_properties => PreferToHaveProperties,
+        prefer_to_have_property => PreferToHaveProperty,
+        prefer_to_have_same_size => PreferToHaveSameSize,
+        prefer_to_match => PreferToMatch,
+        prefer_to_match_array => PreferToMatchArray,
+        prefer_to_match_object => PreferToMatchObject,
+        prefer_to_start_with => PreferToStartWith,
+        prefer_to_throw => PreferToThrow,
+        prefer_type_matchers => PreferTypeMatchers,
+        prefer_chained_expect => PreferChainedExpect::default(),
+        require_type_matcher_first => RequireTypeMatcherFirst,
+    }
 }
 
-/// The method call `expr` is, without its parentheses (php-parser keeps none).
 pub(crate) fn method_call<'a>(expr: &'a Expression<'a>) -> Option<&'a MethodCall<'a>> {
     match unparenthesize(expr) {
         Expression::Call(Call::Method(call)) => Some(call),
@@ -208,7 +140,6 @@ pub(crate) fn method_call<'a>(expr: &'a Expression<'a>) -> Option<&'a MethodCall
     }
 }
 
-/// The property fetch `expr` is, without its parentheses.
 pub(crate) fn property_fetch<'a>(expr: &'a Expression<'a>) -> Option<&'a PropertyAccess<'a>> {
     match unparenthesize(expr) {
         Expression::Access(Access::Property(fetch)) => Some(fetch),
@@ -216,7 +147,6 @@ pub(crate) fn property_fetch<'a>(expr: &'a Expression<'a>) -> Option<&'a Propert
     }
 }
 
-/// The function call `expr` is, without its parentheses.
 pub(crate) fn func_call<'a>(expr: &'a Expression<'a>) -> Option<&'a FunctionCall<'a>> {
     match unparenthesize(expr) {
         Expression::Call(Call::Function(call)) => Some(call),
@@ -224,7 +154,6 @@ pub(crate) fn func_call<'a>(expr: &'a Expression<'a>) -> Option<&'a FunctionCall
     }
 }
 
-/// `$node->name instanceof Identifier ? $node->name->name : null`: a name written as a plain identifier.
 pub(crate) fn identifier<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&'a [u8]> {
     match selector {
         ClassLikeMemberSelector::Identifier(id) => Some(id.value),
@@ -232,13 +161,10 @@ pub(crate) fn identifier<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&
     }
 }
 
-/// `NodeNameResolver::isName` on a method or property name: a plain identifier, ignoring ASCII case.
 pub(crate) fn is_name(selector: &ClassLikeMemberSelector<'_>, name: &str) -> bool {
     identifier(selector).is_some_and(|n| n.eq_ignore_ascii_case(name.as_bytes()))
 }
 
-/// `Name::toString()` of a called function written as a name: the name without a leading `\`. Rector's name resolver
-/// leaves an unqualified function name as written.
 pub(crate) fn function_name<'a>(call: &FunctionCall<'a>) -> Option<&'a [u8]> {
     match call.function {
         Expression::Identifier(Identifier::FullyQualified(id)) => Some(&id.value[1..]),
@@ -247,8 +173,6 @@ pub(crate) fn function_name<'a>(call: &FunctionCall<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `getExpectChainRoot` when the root is a function call: the call under the method calls and property fetches of
-/// `call`'s object.
 pub(crate) fn chain_root<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCall<'a>> {
     let mut current = call.object;
     loop {
@@ -261,17 +185,14 @@ pub(crate) fn chain_root<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCal
     }
 }
 
-/// `getExpectFuncCall`: the chain's root when it is a call of `expect()`.
 pub(crate) fn expect_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCall<'a>> {
-    chain_root(call).filter(|root| super::rector_code_quality::named(root, "expect"))
+    chain_root(call).filter(|root| crate::rules::support::expressions::named(root, "expect"))
 }
 
-/// `isExpectChain`: the chain's root is a call of `expect()`.
 pub(crate) fn is_expect_chain(call: &MethodCall<'_>) -> bool {
     expect_call(call).is_some()
 }
 
-/// `getExpectArgument`: the value of the first argument of the chain's `expect()`.
 pub(crate) fn expect_argument<'a>(call: &'a MethodCall<'a>) -> Option<&'a Expression<'a>> {
     expect_call(call).and_then(|e| first_value(&e.argument_list))
 }
@@ -280,15 +201,11 @@ pub(crate) fn first_value<'a>(list: &'a ArgumentList<'a>) -> Option<&'a Expressi
     list.arguments.first().map(Argument::value)
 }
 
-/// What `getMatcherSubjectHolder` finds: the `expect()` call or the `->and()` call whose first argument a matcher
-/// checks.
 #[derive(Clone, Copy)]
 pub(crate) struct Holder<'a> {
     pub span: Span,
     pub arguments: &'a ArgumentList<'a>,
-    /// The object of `->and()`, and its name; none for `expect()`.
     method: Option<(&'a Expression<'a>, &'a [u8])>,
-    /// The end of the function's name, for `expect()`.
     name_end: usize,
 }
 
@@ -311,8 +228,6 @@ impl<'a> Holder<'a> {
         }
     }
 
-    /// `$holder->args = [new Arg($value)]`: the arguments become `value` alone. One argument is replaced where it
-    /// stands; when arguments go, php-parser prints the whole call again (`expect(value)`, `$var->and(value)`).
     pub(crate) fn set_arguments(&self, ctx: &Context<'_>, value: &Expression<'_>) -> Vec<Edit> {
         let value = expr_text(ctx, value);
         match (self.arguments.arguments.as_slice(), self.method) {
@@ -330,8 +245,6 @@ impl<'a> Holder<'a> {
     }
 }
 
-/// `isExpectChain` and `getMatcherSubjectHolder`: for a chain on `expect()`, the first `->and()` call down the chain
-/// from `call`'s object, or the `expect()` call at its root.
 pub(crate) fn subject_holder<'a>(call: &'a MethodCall<'a>) -> Option<Holder<'a>> {
     let root = expect_call(call)?;
     let mut current = call.object;
@@ -347,12 +260,10 @@ pub(crate) fn subject_holder<'a>(call: &'a MethodCall<'a>) -> Option<Holder<'a>>
     }
 }
 
-/// `getMatcherSubject`: the value of the holder's first argument.
 pub(crate) fn matcher_subject<'a>(call: &'a MethodCall<'a>) -> Option<&'a Expression<'a>> {
     subject_holder(call).and_then(|h| first_value(h.arguments))
 }
 
-/// `isMatcherAppliedDirectly`: `call` is called on its holder `holder`, or on the holder's `->not`.
 pub(crate) fn applied_directly(call: &MethodCall<'_>, holder: &Holder<'_>) -> bool {
     let mut var = unparenthesize(call.object);
     if let Some(not) = property_fetch(var).filter(|p| is_name(&p.property, "not")) {
@@ -361,13 +272,10 @@ pub(crate) fn applied_directly(call: &MethodCall<'_>, holder: &Holder<'_>) -> bo
     node_span(var) == holder.span
 }
 
-/// `hasNotModifier`: `call` is called on a `->not`.
 pub(crate) fn has_not(call: &MethodCall<'_>) -> bool {
     property_fetch(call.object).is_some_and(|p| is_name(&p.property, "not"))
 }
 
-/// `$holder->args[0] = new Arg($value)`: the first argument (its name or `...` too) becomes `value`. Every caller
-/// takes `value` from that argument, so the list is never empty there.
 pub(crate) fn set_first_argument(
     ctx: &Context<'_>,
     list: &ArgumentList<'_>,
@@ -378,9 +286,6 @@ pub(crate) fn set_first_argument(
         .collect()
 }
 
-/// `$node->args = [new Arg(...), ...]` on a method call, with its name `name` (new or not) and `values` the printed
-/// arguments: an argument replaced by one is replaced where it stands, arguments put in an empty list go after its
-/// `(`, and any other change makes php-parser print the call again from its object on (`$var->name(args)`).
 pub(crate) fn set_call_arguments(
     call: &MethodCall<'_>,
     name: &str,
@@ -408,7 +313,6 @@ pub(crate) fn set_call_arguments(
     )
 }
 
-/// The printed `new Arg($value)` of each value: its source.
 pub(crate) fn texts(ctx: &Context<'_>, values: &[&Expression<'_>]) -> Vec<String> {
     values
         .iter()
@@ -416,8 +320,6 @@ pub(crate) fn texts(ctx: &Context<'_>, values: &[&Expression<'_>]) -> Vec<String
         .collect()
 }
 
-/// php-parser's printer writing a method call again: its object as it was (without parentheses, which an object of a
-/// chain never needs) and then `rest` up to `end`.
 pub(crate) fn reprint_from_object(object: &Expression<'_>, end: usize, rest: String) -> Vec<Edit> {
     let outer = node_span(object);
     let inner = node_span(unparenthesize(object));
@@ -428,7 +330,6 @@ pub(crate) fn reprint_from_object(object: &Expression<'_>, end: usize, rest: Str
     edits
 }
 
-/// `new Arg($value)` printed: the value's source, joined by `, ` as php-parser prints a list of arguments.
 pub(crate) fn arguments_text(ctx: &Context<'_>, values: &[&Expression<'_>]) -> String {
     values
         .iter()
@@ -437,22 +338,16 @@ pub(crate) fn arguments_text(ctx: &Context<'_>, values: &[&Expression<'_>]) -> S
         .join(", ")
 }
 
-/// The edit that renames the method of `call` (`$node->name = new Identifier($name)`).
 pub(crate) fn rename(call: &MethodCall<'_>, name: &str) -> Edit {
     Edit::new(node_span(&call.method), name)
 }
 
-/// What `extractFunctionFromExpect` returns: the holder, the function call that is its first argument, and the
-/// matcher's name.
 pub(crate) struct Extracted<'a> {
     pub holder: Holder<'a>,
     pub function: &'a FunctionCall<'a>,
     pub method: &'a [u8],
 }
 
-/// `ExpectChainValidation::extractFunctionFromExpect`: `call` is a matcher of `valid_methods` (matched exactly)
-/// called directly on its holder, whose first argument is a call of one of `functions` (by its name as written,
-/// exactly).
 pub(crate) fn extract_function<'a>(
     call: &'a MethodCall<'a>,
     functions: &[&str],
@@ -478,14 +373,10 @@ pub(crate) fn extract_function<'a>(
     })
 }
 
-/// `ExpectChainValidation::calculateNeedsNot`: the new matcher needs `->not` when the old one was `toBeFalse`, or
-/// was `toBeTrue` after a `->not`.
 pub(crate) fn needs_not(method: &[u8], call: &MethodCall<'_>) -> bool {
     (method == b"toBeFalse") != has_not(call)
 }
 
-/// `ExpectChainValidation::buildMatcherCall`: the holder's first argument becomes `value`, and `call` becomes
-/// `$holder->matcher(args)` (through `->not` if `not`).
 pub(crate) fn build_matcher_call(
     ctx: &Context<'_>,
     call: &MethodCall<'_>,
@@ -504,9 +395,6 @@ pub(crate) fn build_matcher_call(
     edits
 }
 
-/// The rules of the `extractFunctionFromExpect` family: `expect(function(args))->toBeTrue()` (or `toBeFalse()`, or
-/// after `->not`) becomes `expect(subject)->matcher(rest)`. `shape` picks the subject and the matcher's arguments
-/// from the call's arguments, or refuses them.
 pub(crate) fn function_matcher<'a>(
     ctx: &Context<'_>,
     call: &'a MethodCall<'a>,
@@ -534,7 +422,6 @@ pub(crate) fn function_matcher<'a>(
     ));
 }
 
-/// A PHPStan `TrinaryLogic` answer.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Trinary {
     Yes,
@@ -542,7 +429,6 @@ pub(crate) enum Trinary {
     No,
 }
 
-/// The type questions the rules ask of `$this->getType($expr)`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Is {
     String,
@@ -554,9 +440,6 @@ pub(crate) enum Is {
     Boolean,
 }
 
-/// `$this->getType($expr)->is<kind>()`: the answer for each type of the union, combined as PHPStan's
-/// `TrinaryLogic::extremeIdentity` (yes or no when all agree, maybe otherwise). An expression the analyser did not
-/// type is `mixed`, which may be anything.
 pub(crate) fn type_is(ctx: &Context<'_>, expr: &Expression<'_>, kind: Is) -> Trinary {
     let facts = facts(ctx);
     let Some(union) = facts.full_type(node_span(unparenthesize(expr))) else {
@@ -588,7 +471,6 @@ fn atomic_is(codebase: &CodebaseMetadata, atomic: &TAtomic, kind: Is) -> Trinary
         (TAtomic::Iterable(_), Is::Iterable) => Yes,
         (TAtomic::Iterable(_), Is::Array | Is::Object) => Maybe,
         (TAtomic::Object(_), Is::Object) => Yes,
-        // ObjectType::isIterable(): `isInstanceOf(Traversable::class)`, maybe for an unknown class or an interface
         (TAtomic::Object(TObject::Named(named)), Is::Iterable) => {
             match codebase.get_class_like(named.name.as_bytes()) {
                 None => Maybe,
@@ -616,7 +498,6 @@ fn atomic_is(codebase: &CodebaseMetadata, atomic: &TAtomic, kind: Is) -> Trinary
     }
 }
 
-/// `PestFunctionDetector::CLOSURE_FUNCTIONS`: the Pest functions that take a callback, and its argument's index.
 const CLOSURE_FUNCTIONS: [(&str, usize); 7] = [
     ("it", 1),
     ("test", 1),
@@ -627,7 +508,6 @@ const CLOSURE_FUNCTIONS: [(&str, usize); 7] = [
     ("afterAll", 0),
 ];
 
-/// A Pest callback: a closure or an arrow function.
 #[derive(Clone, Copy)]
 pub(crate) enum Callback<'a> {
     Closure(&'a Closure<'a>),
@@ -643,8 +523,6 @@ impl<'a> Callback<'a> {
     }
 }
 
-/// `PestFunctionDetector::extractClosure`: the callback a Pest function (named exactly, as written) gets at its
-/// callback's index, with its `function` or `fn` keyword and its `static` keyword.
 pub(crate) fn pest_callback<'a>(
     call: &'a FunctionCall<'a>,
 ) -> Option<(Callback<'a>, Keyword<'a>, Option<Keyword<'a>>)> {
@@ -660,9 +538,6 @@ pub(crate) fn pest_callback<'a>(
     }
 }
 
-/// `PestFunctionDetector::closureRequiresInstanceBinding`: a part of the callback uses `$this`, outside a nested
-/// static closure (a nested arrow function counts, static or not) and outside the callbacks that nested Pest calls
-/// get.
 pub(crate) fn requires_instance_binding(callback: Callback<'_>) -> bool {
     let mut found = false;
     callback
@@ -671,12 +546,10 @@ pub(crate) fn requires_instance_binding(callback: Callback<'_>) -> bool {
     found
 }
 
-/// `subNodeUsesThis`.
 fn uses_this(node: Node<'_, '_>) -> bool {
     match node {
         Node::DirectVariable(v) => v.name == b"$this",
         Node::FunctionCall(call) => {
-            // `funcCallUsesThis`: the arguments, without the call's own Pest callback; the name is not looked at.
             let callback = pest_callback(call).map(|(c, ..)| node_span(&c.node()));
             call.argument_list.arguments.iter().any(|a| {
                 let value = a.value();
@@ -694,17 +567,14 @@ fn uses_this(node: Node<'_, '_>) -> bool {
     }
 }
 
-/// php-parser's `getComments()` of a node that starts at `start`, when no node around it starts there too (php-parser
-/// gives a comment to the outermost node only): a comment right before it, with only whitespace between.
 pub(crate) fn has_comments(ctx: &Context<'_>, start: usize) -> bool {
-    super::php_parser::tokens(ctx)
+    crate::rules::support::statements::tokens(ctx)
         .iter()
         .rev()
         .find(|t| t.end <= start && t.kind != mago_syntax::token::TokenKind::Whitespace)
         .is_some_and(|t| t.kind.is_comment())
 }
 
-/// `PestChainAnalyzer::getRootFuncCall`: the call under the chain's method calls, and then its property fetches.
 pub(crate) fn root_func_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a FunctionCall<'a>> {
     let mut current: &Expression<'_> = call.object;
     while let Some(m) = method_call(current) {
@@ -716,8 +586,6 @@ pub(crate) fn root_func_call<'a>(call: &'a MethodCall<'a>) -> Option<&'a Functio
     func_call(current)
 }
 
-/// `source[span]` as `TokenStream::getTokenCode` gives it with an indent adjustment of `delta`: in every token but a
-/// string's, each newline gains `delta` spaces, or loses exactly `-delta` spaces that follow it.
 pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
     let text = &ctx.source[span.start..span.end];
     if delta == 0 || !text.contains('\n') {
@@ -736,14 +604,14 @@ pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
     };
     let mut out = String::with_capacity(text.len());
     let mut at = span.start;
-    for &t in super::php_parser::tokens(ctx) {
+    for &t in crate::rules::support::statements::tokens(ctx) {
+        use mago_syntax::token::TokenKind as K;
         if t.end <= span.start || t.start >= span.end {
             continue;
         }
         let end = t.end.min(span.end);
         let token = &ctx.source[at..end];
         at = end;
-        use mago_syntax::token::TokenKind as K;
         if matches!(
             t.kind,
             K::LiteralString | K::PartialLiteralString | K::StringPart
@@ -756,13 +624,10 @@ pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
     out
 }
 
-/// The indent of the line that holds `pos`, in columns as php-parser counts them (a tab is one).
 pub(crate) fn indent_at(ctx: &Context<'_>, pos: usize) -> usize {
-    super::php_parser::line_indent(ctx.source, pos).len()
+    crate::rules::support::statements::line_indent(ctx.source, pos).len()
 }
 
-/// A node kept from the old code, printed where the printer stands at `indent`: its text moved from the indent of
-/// its line.
 pub(crate) fn kept_text(ctx: &Context<'_>, span: Span, indent: usize) -> String {
     shift(
         ctx,
@@ -771,10 +636,8 @@ pub(crate) fn kept_text(ctx: &Context<'_>, span: Span, indent: usize) -> String 
     )
 }
 
-/// The comments php-parser gives a node that starts at `start` (when it is the outermost node there): every comment
-/// after the token before it.
 pub(crate) fn comment_spans(ctx: &Context<'_>, start: usize) -> Vec<Span> {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let before = tokens
         .iter()
         .rev()
@@ -787,7 +650,6 @@ pub(crate) fn comment_spans(ctx: &Context<'_>, start: usize) -> Vec<Span> {
         .collect()
 }
 
-/// `Comment::getReformattedText`.
 fn reformat_comment(text: &str) -> String {
     let text = text.replace("\r\n", "\n");
     let text = text.trim_end_matches('\n');
@@ -795,7 +657,6 @@ fn reformat_comment(text: &str) -> String {
     if lines.len() == 1 {
         return text.to_string();
     }
-    // Every line after the first starts with blanks and a `*`: those blanks become one space.
     if lines[1..].iter().all(|l| {
         let t = l.trim_start();
         t.starts_with('*') && t.len() < l.len()
@@ -805,7 +666,6 @@ fn reformat_comment(text: &str) -> String {
             .collect::<Vec<_>>()
             .join("\n");
     }
-    // `/*` alone on its line and `*/` after blanks on the last: those blanks come off every line.
     let last = lines[lines.len() - 1];
     if (lines[0].trim_end() == "/*" || lines[0].trim_end() == "/**") && last.trim_start() == "*/" {
         let blanks = &last[..last.len() - last.trim_start().len()];
@@ -815,9 +675,7 @@ fn reformat_comment(text: &str) -> String {
             .collect::<Vec<_>>()
             .join("\n");
     }
-    // `/*` and text on the first line: the other lines lose their shortest indent, less the width of `/* `.
     let ws = |c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0b' | '\x0c');
-    // A comment of more than one line is a `/*` one: `//` and `#` comments end at the newline.
     let rest = &text[if text.starts_with("/**") { 3 } else { 2 }..];
     let opener = text.len() - rest.trim_start_matches(ws).len();
     let shortest = (lines[1..].iter())
@@ -833,7 +691,6 @@ fn reformat_comment(text: &str) -> String {
     }
 }
 
-/// `pComments`: `comments` reformatted and joined by newlines at `indent`.
 pub(crate) fn p_comments(ctx: &Context<'_>, comments: &[Span], indent: usize) -> String {
     let nl = format!("\n{}", " ".repeat(indent));
     comments
@@ -843,15 +700,11 @@ pub(crate) fn p_comments(ctx: &Context<'_>, comments: &[Span], indent: usize) ->
         .join(&nl)
 }
 
-/// `pMaybeMultiline($args)` for kept arguments printed at `indent`: joined by `, `, or, when one of them owns a
-/// comment, one a line with its comments, one level deeper, and the `)` on a line of its own.
 pub(crate) fn print_args(ctx: &Context<'_>, list: &ArgumentList<'_>, indent: usize) -> String {
     let spans: Vec<Span> = list.arguments.iter().map(node_span).collect();
     print_nodes(ctx, &spans, false, indent)
 }
 
-/// `pMaybeMultiline($nodes, $trailingComma)` for the kept nodes at `spans`: [`print_args`], and a `,` after the last
-/// node too on lines of their own when `trailing_comma` (array items).
 pub(crate) fn print_nodes(
     ctx: &Context<'_>,
     spans: &[Span],
@@ -884,7 +737,6 @@ pub(crate) fn print_nodes(
     out
 }
 
-/// `pObjectProperty`: a method or property name as the printer writes it, `{expr}` for anything but an identifier.
 pub(crate) fn print_member(
     ctx: &Context<'_>,
     selector: &ClassLikeMemberSelector<'_>,
@@ -899,15 +751,12 @@ pub(crate) fn print_member(
     }
 }
 
-/// One link of `collectChainMethods`: a method call or a property fetch of an expect chain.
 #[derive(Clone, Copy)]
 pub(crate) enum Link<'a> {
     Method(&'a MethodCall<'a>),
     Property(&'a PropertyAccess<'a>),
 }
 
-/// `collectChainMethods`: the method calls and property fetches of `call`'s chain, innermost first, down to (not
-/// into) the function call at its root.
 pub(crate) fn chain_links<'a>(call: &'a MethodCall<'a>) -> Vec<Link<'a>> {
     let mut links = vec![Link::Method(call)];
     let mut next = call.object;
@@ -928,8 +777,6 @@ pub(crate) fn chain_links<'a>(call: &'a MethodCall<'a>) -> Vec<Link<'a>> {
     links
 }
 
-/// `rebuildMethodChain` printed: `links` written again after `base`, each `->name` or `->name(args)`, on one line
-/// at `indent`.
 pub(crate) fn print_links(ctx: &Context<'_>, links: &[Link<'_>], indent: usize) -> String {
     links
         .iter()
@@ -944,9 +791,8 @@ pub(crate) fn print_links(ctx: &Context<'_>, links: &[Link<'_>], indent: usize) 
         .collect()
 }
 
-/// php-parser's comments of a statement starting at `start`: from the first comment after the token before it.
 pub(crate) fn comments_start(ctx: &Context<'_>, start: usize) -> usize {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let before = tokens
         .iter()
         .rev()
@@ -958,13 +804,9 @@ pub(crate) fn comments_start(ctx: &Context<'_>, start: usize) -> usize {
         .map_or(start, |t| t.start)
 }
 
-/// One statement of a list a rule rewrites (php-parser's new `stmts`).
 pub(crate) enum Item<'a> {
-    /// The old statement at this index, as it was.
     Old(usize),
-    /// The old statement at this index (the same node), whose inside changed: its text at its old place.
     Changed(usize, String),
-    /// A new statement: `print` gives its text at an indent, and it carries the comments `comments`.
     New {
         print: Box<dyn Fn(usize) -> String + 'a>,
         comments: Vec<Span>,
@@ -988,7 +830,6 @@ enum Diff {
     Replace(usize, usize),
 }
 
-/// `Differ::diffWithReplacements` on the old statements `0..n` and `new`, a statement being equal only to itself.
 fn diff(n: usize, new: &[Item<'_>]) -> Vec<Diff> {
     let m = new.len();
     let equal = |x: usize, y: usize| new[y].old() == Some(x);
@@ -1048,7 +889,6 @@ fn diff(n: usize, new: &[Item<'_>]) -> Vec<Diff> {
         }
     }
     result.reverse();
-    // coalesceReplacements: a run of removals followed by as many additions is a run of replacements.
     let mut out = Vec::new();
     let mut i = 0;
     while i < result.len() {
@@ -1079,20 +919,17 @@ fn diff(n: usize, new: &[Item<'_>]) -> Vec<Diff> {
     out
 }
 
-/// An old statement of a list as the printer sees it: where its comments start, where it starts and ends.
 #[derive(Clone, Copy)]
 pub(crate) struct OldStmt {
     pub comments: usize,
     pub start: usize,
     pub end: usize,
-    /// php-parser's `Nop` for the comments after the last statement.
     pub nop: bool,
 }
 
-/// The statements of `list` (the trailing comments' `Nop` included) with their comments.
 pub(crate) fn old_statements(
     ctx: &Context<'_>,
-    list: &super::php_parser::List<'_, '_>,
+    list: &crate::rules::support::statements::List<'_, '_>,
 ) -> Vec<OldStmt> {
     let mut olds: Vec<OldStmt> = list
         .stmts
@@ -1109,7 +946,7 @@ pub(crate) fn old_statements(
         .collect();
     if list.nop {
         let after = olds.last().map_or(list.inner.start, |s| s.end);
-        let tokens = super::php_parser::tokens(ctx);
+        let tokens = crate::rules::support::statements::tokens(ctx);
         let comments: Vec<_> = tokens
             .iter()
             .filter(|t| t.start >= after && t.end <= list.inner.end && t.kind.is_comment())
@@ -1125,19 +962,15 @@ pub(crate) fn old_statements(
     olds
 }
 
-/// The comments of an old statement (all of a `Nop`).
 fn old_comments(ctx: &Context<'_>, old: &OldStmt) -> Vec<Span> {
     let end = if old.nop { old.end } else { old.start };
-    super::php_parser::tokens(ctx)
+    crate::rules::support::statements::tokens(ctx)
         .iter()
         .filter(|t| t.start >= old.comments && t.end <= end && t.kind.is_comment())
         .map(|t| Span::new(t.start, t.end))
         .collect()
 }
 
-/// php-parser's `pArray` on a statement list whose old statements are `olds` and new ones `items`, printed from `pos`
-/// on: the text that replaces `pos..end`, and `end`; none where the printer gives up and prints the list's parent
-/// again.
 pub(crate) fn print_list(
     ctx: &Context<'_>,
     olds: &[OldStmt],
@@ -1145,7 +978,7 @@ pub(crate) fn print_list(
     mut pos: usize,
     items: &[Item<'_>],
 ) -> Option<(String, usize)> {
-    let tokens = super::php_parser::tokens(ctx);
+    let tokens = crate::rules::support::statements::tokens(ctx);
     let tag_in = |from: usize, to: usize| {
         use mago_syntax::token::TokenKind as K;
         tokens.iter().any(|t| {
@@ -1165,7 +998,6 @@ pub(crate) fn print_list(
     let mut skip_removed = false;
     let mut delayed: Vec<&Item<'_>> = Vec::new();
     let mut last_indent = 0;
-    // p() of a statement: an old one moved to `indent` (php-parser's indent adjustment), a new one printed there.
     let print_new = |item: &Item<'_>, indent: usize| match item {
         Item::Old(i) => kept_text(ctx, Span::new(olds[*i].start, olds[*i].end), indent),
         Item::Changed(i, text) => shift_text(
@@ -1188,8 +1020,6 @@ pub(crate) fn print_list(
                 before_first_keep = false;
                 let old = olds[o];
                 last_indent = indent_at(ctx, old.start);
-                // php-parser starts at the node itself when its comments begin before `pos` (a comment given to two
-                // nodes); a statement's comments here begin after the token before it, which is never before `pos`.
                 let comment_start = old.comments;
                 if skip_removed {
                     if tag_in(pos, old.start) {
@@ -1207,7 +1037,6 @@ pub(crate) fn print_list(
                     result.push_str(&print_new(item, last_indent));
                     result.push_str(&nl);
                 }
-                // A node with the comments of the old one keeps their text; other comments are printed again.
                 if matches!(d, Diff::Keep(..))
                     || (comments_of(&items[n]).is_empty() && old.comments == old.start)
                 {
@@ -1248,7 +1077,6 @@ pub(crate) fn print_list(
     if skip_removed || !delayed.is_empty() {
         return None;
     }
-    // Rector's `pArray`: with a `Nop` in the list, lines of blanks lose them.
     if items.iter().any(|i| i.old().is_some_and(|o| olds[o].nop)) {
         result = result
             .split('\n')
@@ -1265,8 +1093,6 @@ pub(crate) fn print_list(
     Some((result, pos))
 }
 
-/// `pStmts`: each statement on a line of its own at `indent`, after its comments; the old ones keep their text, moved
-/// to `indent`.
 pub(crate) fn p_stmts(
     ctx: &Context<'_>,
     olds: &[OldStmt],
@@ -1295,7 +1121,6 @@ pub(crate) fn p_stmts(
                 ));
             }
             Item::Changed(i, text) => {
-                // The changed text stands at the old statement's indent; the printer moves it as a whole.
                 let delta = indent as isize - indent_at(ctx, olds[*i].start) as isize;
                 out.push_str(&nl);
                 out.push_str(&shift_text(text, delta));
@@ -1309,7 +1134,6 @@ pub(crate) fn p_stmts(
     out
 }
 
-/// [`shift`] on text that is no longer in the file: every newline moved by `delta`.
 fn shift_text(text: &str, delta: isize) -> String {
     match delta {
         0 => text.to_string(),
@@ -1318,19 +1142,16 @@ fn shift_text(text: &str, delta: isize) -> String {
     }
 }
 
-/// Rector's rewrite of the statement list `list` of `holder` (under `ancestors`) into `items`: the list printed
-/// again in place, or, where php-parser's printer gives up on the list, its parent printed again. Only a closure, a
-/// function, a method and a file without a namespace are printed again; elsewhere the rewrite is refused.
 pub(crate) fn rewrite_list(
     ctx: &Context<'_>,
     holder: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
-    list: &super::php_parser::List<'_, '_>,
+    list: &crate::rules::support::statements::List<'_, '_>,
     items: &[Item<'_>],
 ) -> Option<Vec<Edit>> {
+    use crate::rules::support::statements::Frame;
     let parent = ancestors.last().copied();
     let grandparent = ancestors.len().checked_sub(2).map(|i| ancestors[i]);
-    use super::php_parser::Frame;
     let olds = old_statements(ctx, list);
     let braces = matches!(list.frame, Frame::Braces { .. });
     let program = matches!(holder, Node::Program(_));
@@ -1341,7 +1162,6 @@ pub(crate) fn rewrite_list(
                 .filter(|i| i.old().is_none_or(|o| !olds[o].nop))
                 .count();
     if let Some((mut text, mut end)) = print_list(ctx, &olds, braces, list.inner.start, items) {
-        // A file whose statement count changed gains a final newline (one edit, up to the end of the file).
         if count_changed && !ctx.source.ends_with('\n') {
             text.push_str(&ctx.source[end..]);
             text.push('\n');
@@ -1374,7 +1194,7 @@ pub(crate) fn rewrite_list(
             out.push(')');
             if let Some(uses) = &closure.use_clause {
                 let vars: Vec<&str> = uses.variables.iter().map(|v| text(ctx, v)).collect();
-                out.push_str(&format!(" use ({})", vars.join(", ")));
+                let _ = write!(out, " use ({})", vars.join(", "));
             }
             if let Some(hint) = &closure.return_type_hint {
                 out.push_str(": ");
@@ -1411,9 +1231,9 @@ pub(crate) fn rewrite_list(
             Some(vec![Edit::new(span, out)])
         }
         (Node::Block(_), Some(Node::Method(method))) => {
+            use mago_syntax::cst::Modifier as M;
             let span = node_span(method);
             let indent = indent_at(ctx, span.start);
-            use mago_syntax::cst::Modifier as M;
             let has = |f: fn(&M<'_>) -> bool| method.modifiers.iter().any(f);
             let mut head = String::new();
             for (present, word) in [
@@ -1445,9 +1265,8 @@ pub(crate) fn rewrite_list(
             Some(vec![Edit::new(span, out)])
         }
         (Node::Program(_), _) => {
-            // The whole file, from `<?php` on; a file with HTML or a closing tag before its end is left alone.
-            let tokens = super::php_parser::tokens(ctx);
             use mago_syntax::token::TokenKind as K;
+            let tokens = crate::rules::support::statements::tokens(ctx);
             tokens
                 .first()
                 .filter(|t| t.kind == K::OpenTag && t.start == 0)?;
@@ -1469,8 +1288,6 @@ pub(crate) fn rewrite_list(
     }
 }
 
-/// `pParams` of a function-like printed again: its parameters' text, joined by `, `, or a line each when one owns a
-/// comment.
 fn print_params(
     ctx: &Context<'_>,
     list: &mago_syntax::cst::FunctionLikeParameterList<'_>,
@@ -1503,8 +1320,6 @@ fn print_params(
     out
 }
 
-/// The nodes that hold a statement list (`NodeGroup::STMTS_AWARE`), as Mago has them: a single statement under a
-/// control structure is left out, as no rule here changes a list of one.
 pub(crate) const STATEMENT_LISTS: &[NodeKind] = &[
     NodeKind::Program,
     NodeKind::Block,
@@ -1520,17 +1335,15 @@ pub(crate) const STATEMENT_LISTS: &[NodeKind] = &[
     NodeKind::DeclareColonDelimitedBody,
 ];
 
-/// The list `node` holds, as php-parser's `stmts`, when it is one of [`STATEMENT_LISTS`]. PHP's `?>` takes the
-/// newline after it, which Mago keeps as inline HTML.
 pub(crate) fn statement_list<'ast, 'arena>(
     ctx: &Context<'_>,
     node: Node<'ast, 'arena>,
-) -> Option<super::php_parser::List<'ast, 'arena>> {
+) -> Option<crate::rules::support::statements::List<'ast, 'arena>> {
     if !STATEMENT_LISTS.contains(&node.kind()) {
         return None;
     }
-    let tokens = super::php_parser::tokens(ctx);
-    let mut list = super::php_parser::holder_list(ctx.source, tokens, node);
+    let tokens = crate::rules::support::statements::tokens(ctx);
+    let mut list = crate::rules::support::statements::holder_list(ctx.source, tokens, node);
     list.stmts.retain(|s| match s {
         Statement::Inline(inline) => {
             !(matches!(inline.value, b"\n" | b"\r\n")
@@ -1541,7 +1354,6 @@ pub(crate) fn statement_list<'ast, 'arena>(
     Some(list)
 }
 
-/// `$stmt->expr` of an expression statement.
 pub(crate) fn statement_expression<'a>(statement: &'a Statement<'a>) -> Option<&'a Expression<'a>> {
     match statement {
         Statement::Expression(s) => Some(s.expression),
@@ -1549,8 +1361,6 @@ pub(crate) fn statement_expression<'a>(statement: &'a Statement<'a>) -> Option<&
     }
 }
 
-/// `pStmt_Function` / `pStmt_ClassMethod` printed again at `indent`: the attributes a line each, `head` (modifiers,
-/// `function` and the name), the parameters, the return type, and the body with its `{` on a line of its own.
 fn print_function(
     ctx: &Context<'_>,
     olds: &[OldStmt],

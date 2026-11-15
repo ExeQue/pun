@@ -1,17 +1,8 @@
-//! PHP's own parser, for linting: bison's LALR(1) driver (`yyparse` from yacc.c) over the tables generated from
-//! php-src's zend_language_parser.y (php_grammar.rs), fed by pun-tokens' parser-mode scanner. Accepts exactly
-//! what `token_get_all($code, TOKEN_PARSE)` accepts, and fails with the same `ParseError`/`CompileError`
-//! message and line: bison's verbose syntax error rendered by `zend_yytnamerr`, the scanner's errors, and the
-//! errors grammar actions throw (modifier checks, `__halt_compiler` scope, `declare(encoding=...)`). The
-//! actions' `zend_lex_tstring` failure (`<?=` as an identifier) cannot happen: `<?=` always follows `?>`, a `';'`. The AST is not built: each stack entry only records the tokens it covers.
-
 use crate::php_grammar::*;
 use pun_tokens::{Kind, ParseLexer, ParseToken};
 
-/// `CompileError` when `fatal` (PHP-CS-Fixer reports it as "Fatal error"), else `ParseError`.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct SyntaxError {
-    /// Bytes: the unexpected token's text is copied from the source as PHP copies it, valid UTF-8 or not.
     pub message: Vec<u8>,
     pub line: u32,
     pub fatal: bool,
@@ -54,7 +45,6 @@ fn modifier_name(k: Kind) -> &'static str {
     }
 }
 
-/// `zend_modifier_token_to_flag`.
 fn modifier_flag(target: Target, k: Kind) -> Result<u32, String> {
     use Target::*;
     let flag = match k {
@@ -69,7 +59,6 @@ fn modifier_flag(target: Target, k: Kind) -> Result<u32, String> {
         Kind::T_PROTECTED_SET if matches!(target, Property | Cpp) => PROTECTED_SET,
         Kind::T_PRIVATE_SET if matches!(target, Property | Cpp) => PRIVATE_SET,
         _ => {
-            // Properties accept every modifier.
             let member = match target {
                 Method => "method",
                 Constant => "class constant",
@@ -85,18 +74,15 @@ fn modifier_flag(target: Target, k: Kind) -> Result<u32, String> {
     Ok(flag)
 }
 
-/// `zend_modifier_list_to_flags` (with `zend_add_member_modifier`).
 fn member_modifiers(target: Target, list: &[Kind]) -> Result<(), String> {
     let mut flags = 0;
     for &k in list {
         let new = modifier_flag(target, k)?;
         let duplicate = flags & new != 0;
-        // Set-visibility flags only pass modifier_flag for properties and promoted parameters.
         if (flags & PPP != 0 && new & PPP != 0) || (flags & PPP_SET != 0 && new & PPP_SET != 0) {
             return Err("Multiple access type modifiers are not allowed".into());
         }
         flags |= new;
-        // Only methods and properties accept `abstract`.
         if flags & ABSTRACT != 0 && flags & FINAL != 0 {
             let member = if target == Target::Method {
                 "method"
@@ -125,7 +111,6 @@ fn class_flag(k: Kind) -> u32 {
     }
 }
 
-/// `zend_add_class_modifier` over the whole list.
 fn class_modifiers(list: &[Kind]) -> Result<(), String> {
     let mut flags = 0;
     for &k in list {
@@ -144,7 +129,6 @@ fn class_modifiers(list: &[Kind]) -> Result<(), String> {
     Ok(())
 }
 
-/// `zend_add_anonymous_class_modifier` over the whole list.
 fn anonymous_class_modifiers(list: &[Kind]) -> Result<(), String> {
     let mut flags = 0;
     for &k in list {
@@ -166,7 +150,6 @@ fn anonymous_class_modifiers(list: &[Kind]) -> Result<(), String> {
 struct Parser<'a> {
     src: &'a [u8],
     lx: ParseLexer<'a>,
-    /// Shifted tokens; stack entries cover ranges of it.
     toks: Vec<ParseToken>,
 }
 
@@ -179,9 +162,7 @@ impl Parser<'_> {
         &self.src[t.start..t.end]
     }
 
-    /// Is the expression a `ZEND_AST_ZVAL` once parsed: a literal, a heredoc without interpolation, a parenthesized
-    /// one, or a `.` chain of them (zend_ast_create_concat_op folds)?
-    fn is_zval(&self, toks: &[ParseToken]) -> bool {
+    fn is_zval(toks: &[ParseToken]) -> bool {
         let is = |t: &ParseToken, c: u8| t.kind.is_none() && t.ch == c;
         let mut depth = 0;
         let mut parts = vec![0];
@@ -197,7 +178,7 @@ impl Parser<'_> {
             parts.push(toks.len() + 1);
             return parts
                 .windows(2)
-                .all(|w| self.is_zval(&toks[w[0]..w[1] - 1]));
+                .all(|w| Self::is_zval(&toks[w[0]..w[1] - 1]));
         }
         match toks {
             [t] => matches!(
@@ -209,12 +190,11 @@ impl Parser<'_> {
             {
                 toks.len() <= 3
             }
-            [o, inner @ .., c] if is(o, b'(') && is(c, b')') => self.is_zval(inner),
+            [o, inner @ .., c] if is(o, b'(') && is(c, b')') => Self::is_zval(inner),
             _ => false,
         }
     }
 
-    /// `zend_handle_encoding_declaration` on a `const_list` (`name = expr, ...`).
     fn encoding_declaration(&self, (a, b): (usize, usize)) -> Result<(), String> {
         let toks = &self.toks[a..b];
         let mut depth = 0;
@@ -234,14 +214,13 @@ impl Parser<'_> {
         elems.push(&toks[start..]);
         if elems
             .iter()
-            .any(|e| self.text(&e[0]).eq_ignore_ascii_case(b"encoding") && !self.is_zval(&e[2..]))
+            .any(|e| self.text(&e[0]).eq_ignore_ascii_case(b"encoding") && !Self::is_zval(&e[2..]))
         {
             return Err("Encoding must be a literal".into());
         }
         Ok(())
     }
 
-    /// The semantic checks of grammar actions, run when `rule` reduces `rhs` (ranges of its right-hand side).
     fn action(
         &mut self,
         rule: usize,
@@ -291,7 +270,6 @@ impl Parser<'_> {
         })
     }
 
-    /// `zend_yytnamerr` for the unexpected token.
     fn unexpected(&self, symbol: i32, tok: Option<&ParseToken>) -> Vec<u8> {
         let Some(tok) = tok else {
             return b"end of file".to_vec();
@@ -330,7 +308,6 @@ impl Parser<'_> {
         if content.last().is_some_and(|&c| c == b'\'' || c == b'"') {
             content = &content[..content.len() - 1];
         }
-        // `%.*s` cuts at byte 30, inside a multibyte character or not.
         let (content, ellipsis): (&[u8], &[u8]) = if content.len() > 33 {
             (&content[..30], b"...")
         } else {
@@ -339,7 +316,6 @@ impl Parser<'_> {
         [toktype.as_bytes(), b" \"", content, ellipsis, b"\""].concat()
     }
 
-    /// `yysyntax_error` + `zenderror`.
     fn syntax_error(&self, state: i32, symbol: i32, tok: Option<&ParseToken>) -> SyntaxError {
         let line = self.lx.lineno();
         let mut msg = [
@@ -348,7 +324,6 @@ impl Parser<'_> {
         ]
         .concat();
         let mut expected = Vec::new();
-        // The state read a lookahead, so its yypact entry is not the default.
         let yyn = i32::from(YYPACT[state as usize]);
         for x in yyn.max(0) - yyn..(YYLAST - yyn + 1).min(YYNTOKENS) {
             if i32::from(YYCHECK[(x + yyn) as usize]) == x
@@ -396,7 +371,6 @@ impl Parser<'_> {
         };
         let mut states: Vec<i32> = vec![0];
         let mut values: Vec<(usize, usize)> = vec![(0, 0)];
-        // Lookahead: (symbol, token or None at the end of file).
         let mut la: Option<(i32, Option<ParseToken>)> = None;
         'parse: loop {
             let state = *states.last().unwrap();
@@ -436,7 +410,6 @@ impl Parser<'_> {
                 continue 'parse;
             };
             if rule == 0 {
-                // PHP's tables have no error-by-default state without a lookahead.
                 let (symbol, tok) = la.unwrap();
                 return Err(self.syntax_error(state, symbol, tok.as_ref()));
             }
@@ -467,7 +440,6 @@ impl Parser<'_> {
     }
 }
 
-/// Parse like `token_get_all($code, TOKEN_PARSE)`.
 pub(crate) fn parse(src: &[u8]) -> Result<(), SyntaxError> {
     Parser {
         src,

@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-be-instance-of`, ported from pest-plugin-rector's `UseInstanceOfMatcherRector`: `expect($x
-//! instanceof User)->toBeTrue()` becomes `expect($x)->toBeInstanceOf(User::class)`.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -40,7 +37,6 @@ impl Rule for PreferToBeInstanceOf {
         else {
             return;
         };
-        // The class must be a name: php-parser reads `self`, `static` and `parent` as names too.
         if !matches!(check.operator, BinaryOperator::Instanceof(_))
             || !matches!(
                 check.rhs,

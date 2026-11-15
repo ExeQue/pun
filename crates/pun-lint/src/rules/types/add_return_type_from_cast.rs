@@ -1,10 +1,3 @@
-//! `lint/types/add-return-type-from-cast`, ported from Rector 2.8.4's `ReturnTypeFromReturnCastRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) and its `AddReturnTypeFromCast`: a function or method whose every
-//! `return` returns a cast to the same type, and whose end cannot be reached, gets that return type.
-//!
-//! Pun leaves a function alone when a cast is of a scalar literal (`(int) '5'`): PHPStan types that as the constant,
-//! and Rector's result then depends on how the constants combine.
-
 use mago_syntax::cst::{Block, Expression, Node, NodeKind, UnaryPrefixOperator};
 
 use super::facts::facts;
@@ -19,8 +12,8 @@ impl Rule for AddReturnTypeFromCast {
         "lint/types/add-return-type-from-cast"
     }
 
-    fn min_php_version(&self) -> u32 {
-        super::SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(super::SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -54,7 +47,6 @@ impl Rule for AddReturnTypeFromCast {
     }
 }
 
-/// The one type every `return` of the body casts to, if each returns a cast and there is one.
 fn cast_type(body: &Block<'_>) -> Option<&'static str> {
     let mut types = Vec::new();
     let mut other = false;
@@ -77,7 +69,6 @@ fn cast_type(body: &Block<'_>) -> Option<&'static str> {
     types.iter().all(|t| *t == first).then_some(first)
 }
 
-/// The type a cast expression has, when Pun can tell it as PHPStan would.
 fn cast_of(expr: &Expression<'_>) -> Option<&'static str> {
     let expr = match expr {
         Expression::Parenthesized(p) => p.expression,

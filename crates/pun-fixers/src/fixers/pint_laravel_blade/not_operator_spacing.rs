@@ -1,5 +1,3 @@
-//! Port of `App\PrettierFormatters\NotOperatorSpacing`: enforces Pint's "! $value" spacing inside
-//! JS/Alpine/PHP attribute values.
 use super::php::{ctype_alnum, ctype_alpha, stripos, strpos, substr};
 
 const JS_ATTRIBUTE_PREFIXES: &[&[u8]] = &[b"x-", b"@", b":"];
@@ -76,7 +74,6 @@ fn handle_tag(content: &[u8], length: usize, offset: usize, inserts: &mut Vec<us
             cursor = strpos(content, b"}}", cursor + 2).map_or(length, |e| e + 2);
             continue;
         }
-        // A directive's "(...)" may contain ">", so consume it as a balanced group.
         if c == b'@' {
             cursor = handle_in_tag_directive(content, length, cursor, inserts);
             continue;
@@ -89,7 +86,6 @@ fn handle_tag(content: &[u8], length: usize, offset: usize, inserts: &mut Vec<us
     }
 
     if !is_closing && RAW_TEXT_ELEMENTS.contains(&&name.to_ascii_lowercase()[..]) {
-        // Guard the offset: a malformed tag can leave the cursor past the content end.
         let needle = [&b"</"[..], name].concat();
         let close = if cursor < length {
             stripos(content, &needle, cursor)
@@ -126,8 +122,6 @@ fn handle_attribute(
         return cursor;
     }
     let quote = content[cursor];
-    // Only double-quoted values are scanned: prettier emits JS attributes
-    // double-quoted and escapes any inner '"', so the value holds no raw '"'.
     if quote != b'"' {
         if quote == b'\'' {
             return strpos(content, b"'", cursor + 1).map_or(length, |e| e + 1);
@@ -193,7 +187,6 @@ fn scan_value(content: &[u8], start: usize, end: usize, inserts: &mut Vec<usize>
     let mut offset = start;
     while offset < end {
         let c = content[offset];
-        // A "!" inside a JS string literal is text, not an operator.
         if c == b'\'' || c == b'`' {
             offset = skip_string(content, end, offset, c).min(end);
             continue;
@@ -210,7 +203,6 @@ fn scan_value(content: &[u8], start: usize, end: usize, inserts: &mut Vec<usize>
             continue;
         }
         let next = (offset + 1 < end).then(|| content[offset + 1]);
-        // "!=" is a comparison, "!!" double negation, and a space is already correct.
         match next {
             None => offset += 1,
             Some(b'!') => offset += 2,

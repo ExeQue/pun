@@ -1,6 +1,3 @@
-//! Rector 2.8.4's `SilentVoidResolver::hasSilentVoid` (rules/TypeDeclaration/TypeInferer): whether the end of a
-//! function-like's body can be reached, so that it returns nothing there.
-
 use mago_syntax::cst::{
     Construct, DoWhile, Expression, IfBody, Literal, Node, Statement, SwitchBody, SwitchCase,
     While, WhileBody,
@@ -10,14 +7,12 @@ use super::ClassScope;
 use super::facts::Facts;
 use super::never::is_native_never;
 
-/// What the statements are looked at with: the codebase, and where they are.
 pub(crate) struct Place<'a, 'ast, 'arena> {
     pub facts: &'a Facts,
     pub ancestors: &'a [Node<'ast, 'arena>],
     pub scope: Option<&'a ClassScope>,
 }
 
-/// `hasSilentVoid` for a body's statements.
 pub(crate) fn has_silent_void<'s>(
     place: &Place<'_, '_, '_>,
     statements: impl IntoIterator<Item = &'s Statement<'s>>,
@@ -25,7 +20,6 @@ pub(crate) fn has_silent_void<'s>(
     !always_returns_or_exits(place, false, statements)
 }
 
-/// `hasSilentVoid($functionLike, false)`: the `never` of a statement read with docblocks (`getType()`).
 pub(crate) fn has_silent_void_documented<'s>(
     place: &Place<'_, '_, '_>,
     statements: impl IntoIterator<Item = &'s Statement<'s>>,
@@ -33,7 +27,6 @@ pub(crate) fn has_silent_void_documented<'s>(
     !always_returns_or_exits(place, true, statements)
 }
 
-/// The statements a statement body holds, as php-parser lists them: a block's statements, or the statement alone.
 fn body<'s>(statement: &'s Statement<'s>) -> Vec<&'s Statement<'s>> {
     match statement {
         Statement::Block(block) => block.statements.iter().collect(),
@@ -41,7 +34,6 @@ fn body<'s>(statement: &'s Statement<'s>) -> Vec<&'s Statement<'s>> {
     }
 }
 
-/// `hasStmtsAlwaysReturnOrExit`.
 fn always_returns_or_exits<'s>(
     place: &Place<'_, '_, '_>,
     documented: bool,
@@ -81,7 +73,6 @@ fn always_returns_or_exits<'s>(
     })
 }
 
-/// `isIfReturn`: every branch, with an `else`, always returns or exits.
 fn if_always_returns(place: &Place<'_, '_, '_>, documented: bool, body: &IfBody<'_>) -> bool {
     match body {
         IfBody::Statement(b) => {
@@ -105,8 +96,6 @@ fn if_always_returns(place: &Place<'_, '_, '_>, documented: bool, body: &IfBody<
     }
 }
 
-/// `isSwitchWithAlwaysReturnOrExit`: a `default` with statements, and every case with statements always returns or
-/// exits.
 fn switch_always_returns(
     place: &Place<'_, '_, '_>,
     documented: bool,
@@ -142,12 +131,10 @@ fn switch_always_returns(
     filled == returning
 }
 
-/// `ValueResolver::isTrue` for a loop condition.
 fn is_true(condition: &Expression<'_>) -> bool {
     matches!(condition, Expression::Literal(Literal::True(_)))
 }
 
-/// `isDoOrWhileWithAlwaysReturnOrExit` for a `while`: an endless one without `break`, `continue` or `goto`.
 fn while_always_returns(r#while: &While<'_>) -> bool {
     let statements: Vec<&Statement<'_>> = match &r#while.body {
         WhileBody::Statement(s) => body(s),
@@ -156,7 +143,6 @@ fn while_always_returns(r#while: &While<'_>) -> bool {
     is_true(r#while.condition) && !has_loop_control(&statements)
 }
 
-/// `isDoOrWhileWithAlwaysReturnOrExit` for a `do`-`while`.
 fn do_always_returns(place: &Place<'_, '_, '_>, documented: bool, r#do: &DoWhile<'_>) -> bool {
     let statements = body(r#do.statement);
     if !is_true(r#do.condition)
@@ -167,7 +153,6 @@ fn do_always_returns(place: &Place<'_, '_, '_>, documented: bool, r#do: &DoWhile
     !has_loop_control(&statements)
 }
 
-/// `isFoundLoopControl`: a `break`, `continue` or `goto` outside nested classes, functions and closures.
 fn has_loop_control(statements: &[&Statement<'_>]) -> bool {
     fn walk(node: Node<'_, '_>) -> bool {
         match node {

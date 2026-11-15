@@ -1,5 +1,3 @@
-//! PHPParser/token_get_all captures distinguish permissive analysis tokenization from native lint admission.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -129,10 +127,8 @@ fn owned_and_borrowed_csts_keep_php_prefix_values_and_complete_raw_spans() {
             assert_eq!(program.source_text, source);
             let mut numbers = Numbers::default();
             numbers.walk_program(program, &mut ());
-            // PHP 5's permitted invalid octals expose the prefix values, not parseLNumber's PHP 7 dummy.
             let mut captured = expected["literals"]["50600"][name].clone();
             for number in captured.as_array_mut().unwrap() {
-                // json_encode serializes integral PHP floats without a fractional part.
                 if number["kind"] == "Scalar_Float" {
                     number["value"] = json!(number["value"].as_f64().unwrap());
                 }
@@ -152,7 +148,7 @@ fn owned_and_borrowed_csts_keep_php_prefix_values_and_complete_raw_spans() {
 
 #[test]
 fn strict_lexer_linter_and_formatter_still_reject_native_invalid_octals() {
-    let linter = pun_lint::Linter::new(Vec::new(), 80500);
+    let linter = pun_lint::Linter::new(Vec::new(), pun_lint::PhpVersion::from_id(80500));
     let expected: Value =
         serde_json::from_str(include_str!("fixtures/numeric-admission.json")).unwrap();
     for literal in ["08", "078", "0_8", "07_9", "010000000000000000000008"] {

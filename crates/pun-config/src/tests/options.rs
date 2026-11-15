@@ -1,27 +1,28 @@
 //! Format rule options under Pun names: mapping.toml's `[options]` against the pinned PHP-CS-Fixer's option
-//! definitions (tests/fixer_options.json, from scripts/export-fixer-options.php), and each kind of option translated
+//! definitions (`tests/fixer_options.json`, from scripts/export-fixer-options.php), and each kind of option translated
 //! both ways with expectations derived by hand from those definitions.
 
 use super::*;
 use crate::options::{Kind, rule_options, to_fixer, to_pun};
 
-/// tests/fixer_options.json: fixer => its options as PHP-CS-Fixer defines them.
 fn upstream() -> Map<String, Value> {
     serde_json::from_str(include_str!("../../tests/fixer_options.json")).unwrap()
 }
 
-/// `[format.rules]` text for one rule, loaded: the options the fixer gets, or the error.
 fn read(rule: &str, value: &str) -> Result<Value, String> {
     let v: toml::Table = toml::from_str(&format!("x = {value}")).unwrap();
     let id = format!("format/{rule}");
     to_fixer(rule, &id, v["x"].clone()).map_err(|e| e.to_string())
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "a test helper called with temporaries"
+)]
 fn write(fixer: &str, options: Value) -> Result<Value, String> {
     to_pun(fixer, rule_of(fixer).unwrap(), &options).map_err(|e| e.to_string())
 }
 
-/// Every option of every fixer behind a format or lint rule has a Pun name and type, and nothing else is listed.
 #[test]
 fn every_option_is_mapped() {
     let up = upstream();
@@ -50,7 +51,6 @@ fn every_option_is_mapped() {
                 "{id} {}: not kebab-case",
                 o.name
             );
-            // A closed list upstream is a closed list here, value for value.
             let mut want: Vec<&str> = (d["values"].as_array().into_iter().flatten())
                 .filter_map(Value::as_str)
                 .collect();
@@ -60,8 +60,6 @@ fn every_option_is_mapped() {
                 got.sort_unstable();
                 assert_eq!(got, want, "{id} {}", o.name);
             }
-            // Upstream's null has a spelling or is the option left out, exactly when upstream takes it, and the
-            // spelling is not also a value.
             let mut types = d["types"].as_array().into_iter().flatten();
             let mut values = d["values"].as_array().into_iter().flatten();
             let takes_null = types.any(|t| t == "null")
@@ -77,7 +75,6 @@ fn every_option_is_mapped() {
             seen += 1;
         }
     }
-    // Every format or lint rule with options is backed by a fixer above (none are Pun's own).
     let fixers: Vec<&str> = up.keys().map(String::as_str).collect();
     for (fixer, e) in fixer_entries() {
         let id = e.get("pun").and_then(toml::Value::as_str).unwrap_or("");
@@ -87,11 +84,9 @@ fn every_option_is_mapped() {
             "{fixer}"
         );
     }
-    // Hand count from the export: 82 fixers behind format rules with 156 options, 45 behind lint rules with 81.
     assert_eq!(seen, 156 + 81);
 }
 
-/// Every option value of every upstream preset, and every value of every closed list, survives pun.toml and back.
 #[test]
 fn upstream_values_round_trip() {
     let mut checked = 0;
@@ -103,7 +98,6 @@ fn upstream_values_round_trip() {
             let pun = to_pun(&r.name, id, &r.options).unwrap();
             let toml = serde_json::from_value::<toml::Value>(pun).unwrap();
             let back = to_fixer(id, id, toml).unwrap();
-            // `null` with no Pun spelling is the option left out.
             let mut want = match &r.options {
                 Value::Null => Value::Bool(true),
                 o => o.clone(),
@@ -145,11 +139,13 @@ fn upstream_values_round_trip() {
     }
 }
 
-/// One rule per kind of option, derived by hand from PHP-CS-Fixer's option definitions and mapping.toml.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn each_kind_translates() {
     let cases: &[(&str, &str, &str, Value)] = &[
-        // bool and int: the name kebab-cased, the value as it is.
         (
             "blank_lines_before_namespace",
             "imports/blank-lines-before-namespace",
@@ -162,14 +158,12 @@ fn each_kind_translates() {
             "{ single-line = true }",
             json!({"single_line": true}),
         ),
-        // string, as the bare value of the rule's only option
         (
             "no_break_comment",
             "control-flow/no-break-comment",
             "\"fall through\"",
             json!({"comment_text": "fall through"}),
         ),
-        // enum: renamed option and values.
         (
             "ordered_imports",
             "imports/ordered",
@@ -188,7 +182,6 @@ fn each_kind_translates() {
             "{ sort = \"length\", direction = \"descending\" }",
             json!({"order": "length", "direction": "descend"}),
         ),
-        // enum: snake_case values kebab-cased.
         (
             "method_argument_space",
             "functions/argument-spacing",
@@ -201,7 +194,6 @@ fn each_kind_translates() {
             "{ header = \"h\", comment-type = \"phpdoc\" }",
             json!({"header": "h", "comment_type": "PHPDoc"}),
         ),
-        // list of a closed list: values kebab-cased, PHP keywords kept.
         (
             "no_extra_blank_lines",
             "whitespace/no-extra-blank-lines",
@@ -214,42 +206,36 @@ fn each_kind_translates() {
             "[\"require_once\", \"yield-from\"]",
             json!({"statements": ["require_once", "yield_from"]}),
         ),
-        // list of any strings
         (
             "phpdoc_align",
             "phpdoc/align",
             "{ tags = [\"param\", \"phpstan-param\"] }",
             json!({"tags": ["param", "phpstan-param"]}),
         ),
-        // list of lists
         (
             "phpdoc_separation",
             "phpdoc/separation",
             "{ groups = [[\"param\", \"return\"], [\"throws\"]] }",
             json!({"groups": [["param", "return"], ["throws"]]}),
         ),
-        // map with closed keys and values
         (
             "class_attributes_separation",
             "classes/member-separation",
             "{ elements = { trait-import = \"only-if-meta\", method = \"one\" } }",
             json!({"elements": {"trait_import": "only_if_meta", "method": "one"}}),
         ),
-        // map with any keys, closed values, and null spelled "ignore"
         (
             "binary_operator_spaces",
             "operators/binary-spacing",
             "{ default = \"ignore\", operators = { \"=>\" = \"align-single-space-minimal\", \"|\" = \"ignore\" } }",
             json!({"default": null, "operators": {"=>": "align_single_space_minimal", "|": null}}),
         ),
-        // map of any strings
         (
             "phpdoc_no_alias_tag",
             "phpdoc/no-alias-tag",
             "{ replacements = { link = \"see\" } }",
             json!({"replacements": {"link": "see"}}),
         ),
-        // int or map
         (
             "phpdoc_align",
             "phpdoc/align",
@@ -262,21 +248,18 @@ fn each_kind_translates() {
             "{ spacing = { param = 2 } }",
             json!({"spacing": {"param": 2}}),
         ),
-        // a bool that also takes null
         (
             "yoda_style",
             "control-flow/yoda",
             "{ equal = false, less-and-greater = \"ignore\" }",
             json!({"equal": false, "less_and_greater": null}),
         ),
-        // null that means "the same as `space`"
         (
             "types_spaces",
             "types/union-spacing",
             "{ space = \"single\", space-multiple-catch = \"same-as-space\" }",
             json!({"space": "single", "space_multiple_catch": null}),
         ),
-        // the bare value of a rule's only option
         (
             "array_syntax",
             "arrays/syntax",
@@ -296,7 +279,6 @@ fn each_kind_translates() {
         let toml: toml::Table = toml::from_str(&format!("x = {pun}")).unwrap();
         assert_eq!(back, serde_json::to_value(&toml["x"]).unwrap(), "{rule}");
     }
-    // A null that pun.toml writes by leaving the option out.
     assert_eq!(
         write(
             "ordered_imports",
@@ -305,14 +287,12 @@ fn each_kind_translates() {
         Ok(json!({"sort": "length"}))
     );
     assert_eq!(read("imports/ordered", "{}"), Ok(json!({})));
-    // PHP's `[]` for a table-valued option (laravel-framework's binary_operator_spaces in the e2e cases).
     assert_eq!(
         write("binary_operator_spaces", json!({"operators": []})),
         Ok(json!({"operators": {}}))
     );
     assert_eq!(write("array_syntax", Value::Null), Ok(json!(true)));
     assert_eq!(read("arrays/syntax", "false"), Ok(json!(false)));
-    // A one-option rule is written as a table when that option is a bool or a table.
     assert_eq!(
         write(
             "single_quote",
@@ -329,8 +309,11 @@ fn each_kind_translates() {
     );
 }
 
-/// pun.toml mistakes: each message names what to write instead (Pun's own words).
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pun_toml_errors() {
     let cases = [
         (
@@ -437,7 +420,6 @@ fn pun_toml_errors() {
     for (rule, value, msg) in cases {
         assert_eq!(read(rule, value), Err(msg.to_string()), "{rule} {value}");
     }
-    // Through load: the message is prefixed with the file.
     let d = dir(&[(
         "pun.toml",
         "[format.rules]\n\"arrays/syntax\" = \"medium\"\n",
@@ -451,23 +433,23 @@ fn pun_toml_errors() {
     );
 }
 
-/// What PHP-CS-Fixer rejects can't be migrated; the message is its own (InvalidFixerConfigurationException).
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn migrate_errors() {
     let cases = [
-        // The oracle's words: crates/pun-fixers/tests/cases/blank_lines_before_namespace.json.
         (
             "blank_lines_before_namespace",
             json!({"pun_nope": 1}),
             "[blank_lines_before_namespace] Invalid configuration: The option \"pun_nope\" does not exist. Defined options are: \"max_line_breaks\", \"min_line_breaks\".",
         ),
-        // crates/pun-fixers/tests/cases/align_multiline_comment.json
         (
             "align_multiline_comment",
             json!({"comment_type": "nope"}),
             "[align_multiline_comment] Invalid configuration: The option \"comment_type\" with value \"nope\" is invalid. Accepted values are: \"phpdocs_only\", \"phpdocs_like\", \"all_multiline\".",
         ),
-        // crates/pun-fixers/tests/cases/increment_style.json
         (
             "increment_style",
             json!({"style": true}),
@@ -478,7 +460,6 @@ fn migrate_errors() {
             json!({"x": 1}),
             "[array_indentation] Is not configurable.",
         ),
-        // The rest: the pinned PHP-CS-Fixer's `configure()`, run on each input.
         (
             "header_comment",
             json!({"header": null}),
@@ -583,7 +564,6 @@ fn migrate_errors() {
     for (fixer, options, msg) in cases {
         assert_eq!(write(fixer, options), Err(msg.to_string()), "{fixer}");
     }
-    // `pun migrate` stops on it, as Pint does.
     let e = crate::migrate::from_pint(
         &dir(&[(
             "pint.json",
@@ -599,9 +579,11 @@ fn migrate_errors() {
     );
 }
 
-/// A list or table entry of the wrong type stops at Symfony's OptionsResolver type check, before the fixer's own
-/// check of the entries: every expectation is Pint's output on a pint.json holding that rule.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn migrate_entry_types() {
     let elements = |of: &str, types: &str, got: &str| {
         format!(
@@ -697,7 +679,6 @@ fn migrate_entry_types() {
             "{fixer}"
         );
     }
-    // The fixer's own check passes over a good entry to the bad one after it.
     assert_eq!(
         write(
             "class_attributes_separation",
@@ -705,12 +686,10 @@ fn migrate_entry_types() {
         ),
         Err("[class_attributes_separation] Invalid configuration: Unexpected spacing for element type \"nope\", expected any of \"none\", \"one\" and \"only_if_meta\", got \"string#nope\".".to_string())
     );
-    // binary_operator_spaces' `operators` is an `array`, so a `null` entry reaches the fixer's own key check.
     assert_eq!(
         write("binary_operator_spaces", json!({"operators": {"nope": null}})),
         Err("[binary_operator_spaces] Invalid configuration: Unexpected \"operators\" key, expected any of \"=\", \"*\", \"/\", \"%\", \"<\", \">\", \"|\", \"^\", \"+\", \"-\", \"&\", \"&=\", \"&&\", \"||\", \".=\", \"/=\", \"=>\", \"==\", \">=\", \"===\", \"!=\", \"<>\", \"!==\", \"<=\", \"and\", \"or\", \"xor\", \"-=\", \"%=\", \"*=\", \"|=\", \"+=\", \"<<\", \"<<=\", \">>\", \">>=\", \"^=\", \"**\", \"**=\", \"<=>\", \"??\" and \"??=\", got \"string#nope\".".to_string())
     );
-    // Through `pun migrate`, which panicked on it.
     let e = crate::migrate::from_pint(
         &dir(&[(
             "pint.json",
@@ -729,9 +708,6 @@ fn migrate_entry_types() {
     );
 }
 
-/// A lint rule a fixer runs takes its options under Pun names too: the fixer gets PHP-CS-Fixer's names and values,
-/// `pun config` shows pun.toml's, and PHP-CS-Fixer's spelling is an error naming the Pun one (php_unit_method_casing's
-/// `case` is `camel_case` or `snake_case`; no_superfluous_phpdoc_tags has `allow_mixed`).
 #[test]
 fn lint_rule_options() {
     let d = dir(&[(

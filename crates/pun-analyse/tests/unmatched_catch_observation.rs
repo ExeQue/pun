@@ -1,5 +1,3 @@
-//! Rector's catch decoration is an observation, never a new reachable catch edge.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -122,7 +120,6 @@ fn analyze(dead: bool, native: bool, docs: bool) -> (AnalysisArtifacts, Analysis
     (artifacts, result, returns)
 }
 
-// Display adaptation only: retain every union member and literal value.
 fn canonical(value: &str) -> String {
     let mut members: Vec<_> = value
         .split('|')
@@ -203,7 +200,6 @@ fn catch_observations_match_pinned_rector_without_changing_live_flow_or_native_a
                 } else {
                     assert!(off.get_expression_type(&span).is_none(), "ordinary {name}");
                 }
-                // Try is unsupported in the partial native-expression lane. Never backfill it from full types.
                 if name != "channels-before" {
                     assert!(
                         on.get_native_expression_type(&span).is_none(),
@@ -215,13 +211,9 @@ fn catch_observations_match_pinned_rector_without_changing_live_flow_or_native_a
                 format!("{:?}", result.issues),
                 format!("{:?}", off_result.issues)
             );
-            // Preserve every live boundary and the one additional, genuinely walked
-            // nested try. Its private artifacts have no returns or yields.
             let source = std::str::from_utf8(INPUT).unwrap();
             let nested = source.find("try {\n            $value = 5;").unwrap();
             let outer = source.find("try {\n        $value = 4;").unwrap();
-            // PHPStan 2.3.3+ (the ordinary run) also walks a catch no throw point reaches, whose boundaries, returns
-            // and yields Rector's pinned PHPStan 2.2.7 never sees: the observed flow is the ordinary one without them.
             let mut flow = flow;
             let position = flow
                 .iter()
@@ -276,7 +268,7 @@ fn default_analyse_keeps_complete_phpstan_2_3_5_records() {
         ],
         Vec::new(),
     );
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = 0;
     let analysis = pun_analyse::analyse_project(&project).unwrap();
     let actual: Vec<_> = analysis

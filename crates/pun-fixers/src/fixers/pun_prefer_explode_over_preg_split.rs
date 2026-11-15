@@ -1,11 +1,3 @@
-//! Port of Mago's `prefer-explode-over-preg-split`: `preg_split('/, /', $s)` → `explode(', ', $s)` when the
-//! pattern is a plain string (common delimiter, no modifiers, no regex meta-characters).
-//! Opt-in only (`Pun/prefer_explode_over_preg_split`). Deviations from Mago, which would change results:
-//! - a `-1`/`0`/`null` limit is dropped (no limit) instead of kept: `explode()` reads a negative limit as
-//!   "all but the last N" and `0` as `1`. Non-literal limits are skipped.
-//! - an empty pattern (`'//'`, split into characters) is skipped: `explode('')` throws.
-//! - the call keeps its own qualification (`preg_split` → `explode`, `\preg_split` → `\explode`) and the
-//!   separator keeps its quote style.
 use crate::analyzers::helpers::split_list;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -40,7 +32,7 @@ impl Fixer for PreferExplodeOverPregSplit {
             {
                 continue;
             }
-            let open = tokens.get_next_meaningful_token(i).unwrap();
+            let open = tokens.next_meaningful(i);
             let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
             let args = split_list(tokens, open, close);
             if !(2..=4).contains(&args.len())
@@ -58,7 +50,6 @@ impl Fixer for PreferExplodeOverPregSplit {
             let Some(separator) = plain_separator(tokens[ps].get_content()) else {
                 continue;
             };
-            // Remove limit and flags (`drop_from` = first argument to remove), or keep a positive literal limit.
             let drop_from = match args.get(2).map(|&(s, e)| {
                 (s..=e)
                     .filter(|&k| !tokens[k].is_whitespace(None))
@@ -105,8 +96,6 @@ impl Fixer for PreferExplodeOverPregSplit {
     }
 }
 
-/// For a pattern literal like `'/, /'` or `"/\n/"`, the separator literal (`', '`, `"\n"`), when the pattern
-/// has a plain delimiter, no modifiers, a non-empty body and no regex meta-characters.
 fn plain_separator(raw: &[u8]) -> Option<Vec<u8>> {
     let quote = raw[0];
     let src = &raw[1..raw.len() - 1];
@@ -115,7 +104,6 @@ fn plain_separator(raw: &[u8]) -> Option<Vec<u8>> {
     while k < src.len() {
         let c = src[k];
         if c == b'\\' {
-            // Single-quoted `\\` / `\'`, and double-quoted escapes other than control bytes, are not plain.
             if quote != b'"' {
                 return None;
             }
@@ -177,7 +165,6 @@ fn plain_separator(raw: &[u8]) -> Option<Vec<u8>> {
     {
         return None;
     }
-    // The delimiters are plain characters in the source too, so the separator is the source minus them.
     Some([&[quote], &src[1..src.len() - 1], &[quote]].concat())
 }
 
@@ -198,7 +185,6 @@ mod tests {
                 "$parts = preg_split('/, /', $s, 3);",
                 "$parts = explode(', ', $s, 3);",
             ),
-            // fix_drops_zero_flags: Mago keeps the -1, which explode() reads as "drop the last piece".
             (
                 "$parts = preg_split('/, /', $s, -1, 0);",
                 "$parts = explode(', ', $s);",
@@ -207,7 +193,6 @@ mod tests {
                 "$parts = preg_split('#abc#', $s);",
                 "$parts = explode('abc', $s);",
             ),
-            // fix_hash_delimited_pattern_in_namespace: Mago writes `\explode`, Pun keeps the call's qualification.
             (
                 "namespace App;\n$parts = preg_split('#abc#', $s);",
                 "namespace App;\n$parts = explode('abc', $s);",

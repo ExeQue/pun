@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 source metadata must not replace inferred array values or borrow unrelated callable members.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

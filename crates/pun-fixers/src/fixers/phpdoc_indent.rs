@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocIndentFixer`.
 use crate::analyzers::preg::Preg;
 use crate::analyzers::utils::Utils;
 use pun_format::Fixer;
@@ -28,7 +27,6 @@ impl Fixer for PhpdocIndentFixer {
             }
             let token = tokens[index].clone();
             let next_index = tokens.get_next_meaningful_token(index);
-            // skip if there is no next token or if next token is block end `}`
             let Some(next_index) = next_index.filter(|&n| !tokens[n].equals("}", true)) else {
                 continue;
             };
@@ -75,7 +73,6 @@ impl Fixer for PhpdocIndentFixer {
 
 fn fix_doc_block(content: &[u8], indent: &[u8]) -> Vec<u8> {
     let replacement = [indent, b" *"].concat();
-    // indent is whitespace only, so it needs no escaping as a preg_replace replacement
     let replaced = Preg::replace("/^\\h*\\*/m", replacement, content);
     php_compat::ltrim_chars(&replaced, php_compat::TRIM_CHARS).to_vec()
 }

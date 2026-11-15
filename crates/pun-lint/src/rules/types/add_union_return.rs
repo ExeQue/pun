@@ -1,8 +1,3 @@
-//! `lint/types/add-nullable-return-type` and `lint/types/add-union-return-type`, ported from Rector 2.8.4's
-//! `ReturnNullableTypeRector` and `ReturnUnionTypeRector` (rules/TypeDeclaration/Rector/ClassMethod, with
-//! `AddUnionReturnType`): a function or method whose returns' native types make a union gets it, as `?T` from the
-//! nullable rule (PHP 7.1) and as anything else from the union rule (PHP 8.0).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Node, NodeKind};
 
@@ -17,9 +12,7 @@ pub struct AddNullableReturn;
 
 pub struct AddUnionReturn;
 
-/// `PhpVersionFeature::NULLABLE_TYPE`.
 const NULLABLE_TYPE: u32 = 70100;
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
 
 impl Rule for AddNullableReturn {
@@ -27,8 +20,8 @@ impl Rule for AddNullableReturn {
         "lint/types/add-nullable-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NULLABLE_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NULLABLE_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -55,8 +48,8 @@ impl Rule for AddUnionReturn {
         "lint/types/add-union-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        UNION_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(UNION_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -78,8 +71,6 @@ impl Rule for AddUnionReturn {
     }
 }
 
-/// The untyped function or method and the declaration of its inferred return type, when that type is a union
-/// (`ReturnTypeInferer::inferFunctionLike`) that `UnionTypeMapper` can write.
 fn union_return<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -100,6 +91,6 @@ fn union_return<'ast, 'arena>(
         return None;
     };
     let types: Vec<&TAtomic> = types.iter().collect();
-    let r#type = union_declaration(&types, &facts.codebase, ctx.php_version)?;
+    let r#type = union_declaration(&types, &facts.codebase, ctx.php_version.id())?;
     Some((f, r#type))
 }

@@ -1,23 +1,3 @@
-//! `lint/phpunit/add-instanceof-assert` and `lint/phpunit/add-instanceof-assert-for-argument`, ported from
-//! rector-phpunit's `AddInstanceofAssertForNullableInstanceRector` and `AddInstanceofAssertForNullableArgumentRector`
-//! (rules/CodeQuality/Rector/ClassMethod), with `NullableObjectAssignCollector`, `MethodCallParameterTypeResolver` and
-//! `AssertMethodCallFactory::createAssertInstanceOf()`.
-//!
-//! In a test class, a method's (or a `foreach`'s) statement list of two or more statements, all of them expression
-//! statements, collects each `$x = $any->call()` whose type without `null` is one class (an `ObjectType`). Before the
-//! first statement that uses such an `$x` whose type there is `X|null` (exactly two types), as the receiver of a
-//! method call (`add-instanceof-assert`, every such variable of the statement) or as an argument of a method call
-//! whose parameter there is a class (`add-instanceof-assert-for-argument`, the first such call, assert calls aside),
-//! goes `$this->assertInstanceOf(\X::class, $x);`, once for each collected assignment; a statement that already
-//! asserts a variable that way drops it. After a `$$name = ...`, every variable but `$this` takes the value's classes
-//! too (`assignDynamicVariable`).
-//!
-//! Mago does not type a call that returns a class no file declares as that class, as PHPStan does, so Pun collects
-//! no such assignment (tests/rector/AddInstanceofAssertForNullableInstanceRector/Pun/unknown_class).
-//!
-//! Rector prints the new statement after the one before it, on a line of its own at that statement's indent (in
-//! spaces, a tab counting as 4), or before the list's first statement and its comments.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
@@ -28,7 +8,7 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
-use crate::rules::rector_stmts::{
+use crate::rules::support::statement_edits::{
     List, assign, block_list, body_list, expression, first_comment, holder_list, line_indent,
 };
 use crate::rules::types::facts::facts;
@@ -94,11 +74,8 @@ impl Rule for AddInstanceofAssertForArgument {
     }
 }
 
-/// A collected assignment: the variable's name and its class (`VariableNameToType`).
 type Collected = (Vec<u8>, String);
 
-/// `refactor()`: `matched` gives the indices in the collection of the variables a statement asserts; `static_calls`
-/// lets `self::assertInstanceOf()` count as an assert already there.
 fn run(
     node: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -117,7 +94,6 @@ fn run(
             }
             block_list(ctx.source, block)
         }
-        // a `foreach`, the other node kind of `targets()`
         _ => {
             let Node::Foreach(foreach) = node else { return };
             if !is_in_test_class(ctx, ancestors, None) {
@@ -137,8 +113,6 @@ fn run(
         return;
     }
     let mut collection = collect(ctx, &list);
-    // `dynamic`: the class names a `$$name = ...` before the statement adds to every variable (PHPStan's
-    // `assignDynamicVariable`).
     let mut dynamic: Vec<Vec<String>> = Vec::new();
     let mut widened: Vec<String> = Vec::new();
     for statement in &list.stmts {
@@ -147,7 +121,6 @@ fn run(
     }
     let mut edits = Vec::new();
     for (i, statement) in list.stmts.iter().enumerate() {
-        // already asserted, e.g. in trait, where $this is not known as TestCase so the type is not narrowed
         if let Some(name) = asserted_variable(statement, static_calls) {
             if let Some(index) = match_by_name(&collection, name) {
                 collection.remove(index);
@@ -160,7 +133,6 @@ fn run(
         }
         let asserts: Vec<&Collected> = found.iter().map(|&index| &collection[index]).collect();
         edits.push(insert_before(ctx, &list, i, &asserts));
-        // from now on, the variable is not nullable, remove to avoid double asserts
         found.sort_unstable();
         for index in found.into_iter().rev() {
             collection.remove(index);
@@ -172,8 +144,6 @@ fn run(
     out.push(Report::fixed(first, MESSAGE, Safety::Safe, edits));
 }
 
-/// `matchAssertInstanceOfVariableName()`: the variable a statement `$x->assertInstanceOf($class, $variable)` (or,
-/// with `static_calls`, `X::assertInstanceOf(...)`) asserts.
 fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Option<&'a [u8]> {
     let Statement::Expression(e) = statement else {
         return None;
@@ -201,7 +171,6 @@ fn asserted_variable<'a>(statement: &'a Statement<'a>, static_calls: bool) -> Op
     }
 }
 
-/// The class names of the value of a `$$name = ...` statement whose name is not a literal string, added to `out`.
 fn dynamic_assign_classes(ctx: &Context<'_>, statement: &Statement<'_>, out: &mut Vec<String>) {
     let Some(assignment) = expression(statement).and_then(assign) else {
         return;
@@ -225,8 +194,6 @@ fn dynamic_assign_classes(ctx: &Context<'_>, statement: &Statement<'_>, out: &mu
     }
 }
 
-/// `NullableObjectAssignCollector::collect()`: nothing when a statement is not an expression statement (php-parser's
-/// trailing `Nop` of comments included).
 fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
     if list.nop
         || list
@@ -252,7 +219,6 @@ fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
         else {
             continue;
         };
-        // TypeCombinator::removeNull(), an ObjectType
         let rest: Vec<&TAtomic> = (facts.full_type(node_span(assignment)).iter())
             .flat_map(|t| t.types.iter())
             .filter(|a| !matches!(a, TAtomic::Null))
@@ -271,7 +237,6 @@ fn collect(ctx: &Context<'_>, list: &List<'_>) -> Vec<Collected> {
     out
 }
 
-/// `SimpleTypeAnalyzer::isNullableType()` for the type of `expr`: two types, one of them `null`.
 fn is_nullable(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     facts
@@ -279,12 +244,10 @@ fn is_nullable(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
         .is_some_and(|t| t.types.len() == 2 && t.types.iter().any(|a| matches!(a, TAtomic::Null)))
 }
 
-/// `VariableNameToTypeCollection::matchByVariableName()`: the first collected assignment of the name.
 fn match_by_name(collection: &[Collected], name: &[u8]) -> Option<usize> {
     collection.iter().position(|(n, _)| n == name)
 }
 
-/// The nodes of `statement` in php-parser's traversal order (the node, then its children), until `visit` says stop.
 fn traverse<'a>(statement: &'a Statement<'a>, visit: &mut dyn FnMut(Node<'a, 'a>) -> bool) {
     let mut stack = vec![Node::Statement(statement)];
     while let Some(node) = stack.pop() {
@@ -297,8 +260,6 @@ fn traverse<'a>(statement: &'a Statement<'a>, visit: &mut dyn FnMut(Node<'a, 'a>
     }
 }
 
-/// `matchNullableVariableNameToTypes()`: the variables, by their collection index, that are the nullable receiver of
-/// a method call in `statement`, each once.
 fn matched_receivers(
     ctx: &Context<'_>,
     statement: &Statement<'_>,
@@ -310,7 +271,6 @@ fn matched_receivers(
         let Node::MethodCall(call) = node else {
             return false;
         };
-        // a variable without a name: Rector reads its name after its type, and returns alike
         let Expression::Variable(Variable::Direct(direct)) = call.object else {
             return false;
         };
@@ -318,7 +278,6 @@ fn matched_receivers(
             return false;
         }
         let name = &direct.name[1..];
-        // avoid duplicated assert for the same variable used multiple times in one statement
         if names.contains(&name) {
             return false;
         }
@@ -331,8 +290,6 @@ fn matched_receivers(
     out
 }
 
-/// `matchedNullableArgumentNameToType()`: the collection index of the variable the first fitting method call passes,
-/// nullable, where a class is expected.
 fn matched_argument(
     ctx: &Context<'_>,
     statement: &Statement<'_>,
@@ -344,7 +301,6 @@ fn matched_argument(
         let Node::MethodCall(call) = node else {
             return false;
         };
-        // avoid double null on assert
         if is_assert_method_call(&call.method) {
             return false;
         }
@@ -354,20 +310,17 @@ fn matched_argument(
             let Expression::Variable(variable) = value else {
                 continue;
             };
-            // a variable without a name: Rector reads its name after its type, and returns alike
             let Variable::Direct(direct) = variable else {
                 return false;
             };
             if !is_nullable(ctx, value) {
                 return false;
             }
-            // should not happen
             let Some(parameter_type) = parameter_types.as_ref().and_then(|t| t.get(position))
             else {
                 return false;
             };
             matched = match_by_name(collection, &direct.name[1..]);
-            // is object type required?
             return parameter_type.as_ref().is_some_and(is_object_type);
         }
         false
@@ -375,7 +328,6 @@ fn matched_argument(
     matched
 }
 
-/// `AssertCallAnalyzer::isAssertMethodCall()`: the name starts with an assert prefix, case-sensitively.
 fn is_assert_method_call(method: &ClassLikeMemberSelector<'_>) -> bool {
     const PREFIXES: [&[u8]; 6] = [
         b"expectNotToPerformAssertions",
@@ -388,9 +340,6 @@ fn is_assert_method_call(method: &ClassLikeMemberSelector<'_>) -> bool {
     matches!(method, ClassLikeMemberSelector::Identifier(id) if PREFIXES.iter().any(|p| id.value.starts_with(p)))
 }
 
-/// `MethodCallParameterTypeResolver::resolve()`: the type of each parameter of the called method, docblocks read
-/// (`None` for one without a type); `None` without arguments or a method found as `ReflectionResolver` finds it: on
-/// the one class of the receiver's type.
 fn parameter_types(
     ctx: &Context<'_>,
     call: &mago_syntax::cst::MethodCall<'_>,
@@ -407,7 +356,6 @@ fn parameter_types(
     for atomic in facts.full_type(node_span(call.object))?.types.iter() {
         object_class_names(atomic, &mut classes);
     }
-    // a variable other than `$this` takes the type of a `$$name = ...` before
     if matches!(call.object, Expression::Variable(Variable::Direct(v)) if v.name != b"$this") {
         for class in dynamic {
             if !classes.contains(class) {
@@ -430,7 +378,6 @@ fn parameter_types(
     )
 }
 
-/// `Type::getObjectClassNames()` of an atomic type, added to `out` once each.
 fn object_class_names(atomic: &TAtomic, out: &mut Vec<String>) {
     let mut add = |name: String| {
         if !out.contains(&name) {
@@ -456,7 +403,6 @@ fn object_class_names(atomic: &TAtomic, out: &mut Vec<String>) {
     }
 }
 
-/// `$type instanceof ObjectType`: one class, a template bound by one class included.
 fn is_object_type(t: &TUnion) -> bool {
     match t.types.as_ref() {
         [TAtomic::Object(TObject::Named(named))] => {
@@ -468,9 +414,6 @@ fn is_object_type(t: &TUnion) -> bool {
     }
 }
 
-/// The edit that puts the asserts before the statement at `i` of `list`, as php-parser's format-preserving printer
-/// inserts statements: each on a line of its own after the statement before, at that statement's indent, or before
-/// the first statement and its comments, each followed by a line break to its indent.
 fn insert_before(
     ctx: &crate::Context<'_>,
     list: &List<'_>,

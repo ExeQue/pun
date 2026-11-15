@@ -1,5 +1,3 @@
-//! TypeCombinator's runtime-class scalar buckets, captured from pinned PHPStan 2.3.1.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{Level, Template, Type, sort_types, union};
 use serde_json::Value;

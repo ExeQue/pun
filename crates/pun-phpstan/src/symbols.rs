@@ -2,10 +2,9 @@
 //! `scripts/export-phpstan-symbols.php`). Types are kept as the strings PHPStan's `toPhpDocNode()` printed, in
 //! the syntax [`crate::resolve`] reads back.
 
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, LazyLock};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -13,11 +12,11 @@ use std::marker::PhantomData;
 use serde::Deserialize;
 use serde::de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PhpVersion {
-    Php84,
-    Php85,
-}
+use crate::scoped::{Family, Scoped};
+
+pub use pun_tokens::PhpVersion;
+
+const PHP85: PhpVersion = PhpVersion::new(8, 5);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ByRef {
@@ -37,7 +36,6 @@ pub struct Param {
     pub allowed_constants: Option<ParameterAllowedConstants>,
 }
 
-/// PHPStan's `ParameterAllowedConstants`. Equality includes the order of names and exclusive groups.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct ParameterAllowedConstants {
     pub bitmask: bool,
@@ -46,7 +44,6 @@ pub struct ParameterAllowedConstants {
     pub exclusive_groups: Vec<Vec<String>>,
 }
 
-/// A syntactically referenced constant, with its reflection's identity and built-in status.
 pub struct ConstantReflection {
     pub name: String,
     pub builtin: bool,
@@ -59,14 +56,12 @@ pub struct AllowedConstantsResult<'a> {
 }
 
 impl AllowedConstantsResult<'_> {
-    /// `ParameterAllowedConstantsCheckResult::isOk()`
     pub fn is_ok(&self) -> bool {
         self.disallowed.is_empty() && self.violated_groups.is_empty() && !self.bitmask_not_allowed
     }
 }
 
 impl ParameterAllowedConstants {
-    /// `ParameterAllowedConstants::check()`: user aliases are deliberately not compared by value.
     pub fn check<'a>(&self, constants: &'a [ConstantReflection]) -> AllowedConstantsResult<'a> {
         let names: Vec<_> = constants
             .iter()
@@ -102,7 +97,6 @@ impl ParameterAllowedConstants {
 pub struct Variant {
     pub params: Vec<Param>,
     pub ret: String,
-    /// ExtendedParametersAcceptor's independent return channels and template maps.
     pub signature: Option<Signature>,
 }
 
@@ -118,18 +112,14 @@ pub struct Signature {
 #[derive(Debug, PartialEq)]
 pub struct Function {
     pub name: String,
-    /// `hasSideEffects()`: `Yes`, `No` or `Maybe`
     pub side_effects: String,
     pub deprecated: bool,
     pub variants: Vec<Variant>,
-    /// `getNamedArgumentsVariants()`, when it differs from the positional ones
     pub named: Option<Vec<Variant>>,
     pub is_static: bool,
-    /// A method's resolved PHPDoc (`getResolvedPhpDoc()`), which an overriding user method inherits.
     pub doc: Option<MethodDoc>,
 }
 
-/// The `@param` types (by parameter position) and `@return` type of a built-in method's PHPDoc.
 #[derive(Debug, PartialEq, Default)]
 pub struct MethodDoc {
     pub params: HashMap<usize, String>,
@@ -141,7 +131,6 @@ pub struct Template {
     pub name: String,
     pub bound: String,
     pub default: Option<String>,
-    /// `TemplateTypeVariance::describe()`
     pub variance: &'static str,
 }
 
@@ -151,25 +140,17 @@ pub struct Class {
     pub ancestors: Vec<String>,
     pub templates: Vec<Template>,
     pub cases: Vec<String>,
-    /// a backed enum's case values (case name, type string)
     pub case_values: Vec<(String, String)>,
     pub is_interface: bool,
     pub is_trait: bool,
     pub is_enum: bool,
-    /// `isFinalByKeyword()`
     pub is_final: bool,
-    /// public instance properties, declared or inherited
     pub properties: Vec<String>,
-    /// `ClassReflection::allowsDynamicProperties()`: a missing property of a final class is maybe, not no
     pub allows_dynamic_properties: bool,
     pub constants: Vec<(String, String)>,
-    /// by lowercase name
     pub methods: HashMap<String, Function>,
-    /// a `Traversable`'s iterable key and value types, over its own templates
     pub iterable: Option<(String, String)>,
-    /// generic ancestors' type arguments over the class's own templates
     pub generics: HashMap<String, Vec<String>>,
-    /// the `@var` type of each declared, non-private property with one
     pub property_docs: HashMap<String, String>,
 }
 
@@ -179,7 +160,6 @@ pub struct Symbols {
     pub constants: HashMap<String, String>,
 }
 
-/// A JSON object read in order; PHP writes an empty map as `[]`.
 struct Entries<T>(Vec<(String, T)>);
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Entries<T> {
@@ -198,7 +178,6 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Entries<T> {
                 Ok(Entries(out))
             }
             fn visit_seq<A: SeqAccess<'de>>(self, mut s: A) -> Result<Entries<T>, A::Error> {
-                // as `Value::as_object()` read it: a list is no map
                 while s.next_element::<IgnoredAny>()?.is_some() {}
                 Ok(Entries(Vec::new()))
             }
@@ -268,7 +247,6 @@ struct RawClass {
     name: String,
     ancestors: Vec<String>,
     templates: Entries<(String, Option<String>)>,
-    /// the non-invariant templates' variance
     variances: Option<Entries<String>>,
     cases: Vec<String>,
     interface: bool,
@@ -283,7 +261,6 @@ struct RawClass {
     property_docs: Option<Entries<String>>,
 }
 
-/// `null`: gone in 8.5.
 #[derive(Deserialize)]
 struct RawPhp85 {
     functions: Entries<Option<RawFunction>>,
@@ -351,7 +328,7 @@ fn read_function(v: RawFunction) -> Function {
 }
 
 fn read_class(v: RawClass) -> Class {
-    let variances = v.variances.map(|e| e.0).unwrap_or_default();
+    let variances = v.variances.map_or_default(|e| e.0);
     Class {
         name: v.name,
         ancestors: v.ancestors,
@@ -360,7 +337,6 @@ fn read_class(v: RawClass) -> Class {
             .0
             .into_iter()
             .map(|(name, (bound, default))| Template {
-                // (a template is declared invariant, covariant or contravariant)
                 variance: variances.iter().find(|(n, _)| *n == name).map_or(
                     "invariant",
                     |(_, v)| {
@@ -389,10 +365,9 @@ fn read_class(v: RawClass) -> Class {
             .methods
             .0
             .into_iter()
-            // the exporter's php-parser prefixes a reserved word (`Generator::throw()`)
             .map(|(k, m)| {
-                let mut f = read_function(m);
                 const PREFIX: &str = "ps_unreserve_prefix_";
+                let mut f = read_function(m);
                 if f.name.to_ascii_lowercase().starts_with(PREFIX) {
                     f.name = f.name[PREFIX.len()..].to_string();
                 }
@@ -404,14 +379,10 @@ fn read_class(v: RawClass) -> Class {
             })
             .collect(),
         iterable: v.iterable,
-        generics: v
-            .generics
-            .map(|g| g.0.into_iter().collect())
-            .unwrap_or_default(),
+        generics: v.generics.map_or_default(|g| g.0.into_iter().collect()),
         property_docs: v
             .property_docs
-            .map(|g| g.0.into_iter().collect())
-            .unwrap_or_default(),
+            .map_or_default(|g| g.0.into_iter().collect()),
     }
 }
 
@@ -433,7 +404,7 @@ fn load(version: PhpVersion) -> Symbols {
             .collect(),
         constants: data.constants.0.into_iter().collect(),
     };
-    if version == PhpVersion::Php85 {
+    if version >= PHP85 {
         for (name, f) in data.php85.functions.0 {
             symbols.functions.remove(&name);
             if let Some(f) = f {
@@ -450,25 +421,24 @@ fn load(version: PhpVersion) -> Symbols {
     symbols
 }
 
-static PHP84: OnceLock<Symbols> = OnceLock::new();
-static PHP85: OnceLock<Symbols> = OnceLock::new();
+static PHP84_SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::new(8, 4)));
+static PHP85_SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| load(PHP85));
 
+/// PHPStan's built-in symbols for `version`: 8.5's from 8.5 on, 8.4's below it.
 pub fn symbols(version: PhpVersion) -> &'static Symbols {
-    match version {
-        PhpVersion::Php84 => PHP84.get_or_init(|| load(version)),
-        PhpVersion::Php85 => PHP85.get_or_init(|| load(version)),
+    if version >= PHP85 {
+        &PHP85_SYMBOLS
+    } else {
+        &PHP84_SYMBOLS
     }
 }
 
-/// A built-in class by any-case name (a leading `\` is ignored). Class facts the type system needs (canonical
-/// name, ancestors) do not differ between 8.4 and 8.5.
 pub fn class(name: &str) -> Option<&'static Class> {
-    symbols(PhpVersion::Php84)
+    symbols(PhpVersion::new(8, 4))
         .classes
         .get(&name.trim_start_matches('\\').to_ascii_lowercase())
 }
 
-/// A class [`lookup()`] found: a built-in one, or one the [`with_classes()`] provider gave.
 #[derive(Clone)]
 pub enum ClassRef {
     Builtin(&'static Class),
@@ -485,84 +455,53 @@ impl Deref for ClassRef {
     }
 }
 
-type Provider = dyn Fn(&str) -> Option<Arc<Class>>;
+struct Provider;
+impl Family for Provider {
+    type Of<'a> = dyn Fn(&str) -> Option<Arc<Class>> + 'a;
+}
 
 thread_local! {
-    static PROVIDER: Cell<Option<*const Provider>> = const { Cell::new(None) };
+    static PROVIDER: Scoped<Provider> = Scoped::new();
 }
 
-/// Runs `f` with `provider` answering [`lookup()`] for the classes PHP does not define (the analysed project's and
-/// its dependencies'), as PHPStan's ReflectionProvider knows them, on this thread.
 pub fn with_classes<R>(provider: &dyn Fn(&str) -> Option<Arc<Class>>, f: impl FnOnce() -> R) -> R {
-    struct Restore(Option<*const Provider>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            PROVIDER.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str) -> Option<Arc<Class>> + '_) = provider;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: only the lifetime is erased. `lookup()` dereferences the pointer while `f` runs, within the borrow of
-    // `provider`; `Restore` puts the previous provider back before this function returns, also on unwinding.
-    let ptr: *const Provider = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(PROVIDER.with(|p| p.replace(Some(ptr))));
-    f()
+    PROVIDER.with(|p| p.set(provider, f))
 }
 
-/// `ReflectionProvider::getClass()`: a built-in class, else one of the [`with_classes()`] provider.
 pub fn lookup(name: &str) -> Option<ClassRef> {
     if let Some(c) = class(name) {
         return Some(ClassRef::Builtin(c));
     }
-    let provider = PROVIDER.with(Cell::get)?;
-    // SAFETY: set by `with_classes()`, whose borrow outlives every call made while it is set.
-    let provider = unsafe { &*provider };
-    provider(name.trim_start_matches('\\')).map(ClassRef::User)
+    PROVIDER
+        .with(|p| p.get(|provider| provider(name.trim_start_matches('\\'))))
+        .flatten()
+        .map(ClassRef::User)
 }
 
-type FunctionProvider = dyn Fn(&str) -> bool;
+struct FunctionProvider;
+impl Family for FunctionProvider {
+    type Of<'a> = dyn Fn(&str) -> bool + 'a;
+}
 
 thread_local! {
-    static FUNCTIONS: Cell<Option<*const FunctionProvider>> = const { Cell::new(None) };
+    static FUNCTIONS: Scoped<FunctionProvider> = Scoped::new();
 }
 
-/// Runs `f` with `provider` answering [`has_function()`] for the functions PHP does not define, on this thread.
 pub fn with_functions<R>(provider: &dyn Fn(&str) -> bool, f: impl FnOnce() -> R) -> R {
-    struct Restore(Option<*const FunctionProvider>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            FUNCTIONS.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str) -> bool + '_) = provider;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: as in `with_classes()`.
-    let ptr: *const FunctionProvider = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(FUNCTIONS.with(|p| p.replace(Some(ptr))));
-    f()
+    FUNCTIONS.with(|p| p.set(provider, f))
 }
 
-/// `ReflectionProvider::hasFunction()`: a built-in function, else one the [`with_functions()`] provider knows.
 pub fn has_function(name: &str) -> bool {
     if function(name).is_some() {
         return true;
     }
-    let Some(provider) = FUNCTIONS.with(Cell::get) else {
-        return false;
-    };
-    // SAFETY: set by `with_functions()`, whose borrow outlives every call made while it is set.
-    let provider = unsafe { &*provider };
-    provider(name.trim_start_matches('\\'))
+    FUNCTIONS
+        .with(|p| p.get(|provider| provider(name.trim_start_matches('\\'))))
+        .unwrap_or(false)
 }
 
 pub fn function(name: &str) -> Option<&'static Function> {
-    symbols(PhpVersion::Php84)
+    symbols(PhpVersion::new(8, 4))
         .functions
         .get(&name.trim_start_matches('\\').to_ascii_lowercase())
 }

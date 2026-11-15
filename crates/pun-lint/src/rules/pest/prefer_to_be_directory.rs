@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-be-directory`, ported from pest-plugin-rector's `UseToBeDirectoryRector`: `expect(is_dir($value))->toBeTrue()` becomes `expect($value)->toBeDirectory()`, and `toBeFalse()` or a
-//! `->not` before the matcher becomes `->not->toBeDirectory()`. The checked value's type must be a string.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

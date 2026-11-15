@@ -1,7 +1,3 @@
-//! PHPStan 2.3.5's ArrayFlipFunctionReturnTypeExtension and ArrayIntersectKeyFunctionReturnTypeExtension, with
-//! `Type::flipArray()` and `Type::intersectKeyArray()` of the array types they ask. Mago's prelude generalizes a
-//! flipped shape and keeps none of the other arrays' keys in an intersection.
-
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -62,7 +58,6 @@ impl FunctionReturnTypeProvider for FlipIntersect {
                 .all(|t| matches!(t, TAtomic::Array(a) if a.is_non_empty()));
             return each(array, codebase, |a| flip(a, non_empty, codebase));
         }
-        // `...$arrays` unpacked into the call: their value types, which this does not follow
         let arguments: Vec<TUnion> = (0..invocation.argument_count())
             .map(|i| {
                 invocation
@@ -92,7 +87,6 @@ impl FunctionReturnTypeProvider for FlipIntersect {
     }
 }
 
-/// The result for each array member of `t` (`UnionType::flipArray()` & co.), or `None` for any other member.
 fn each(
     t: &TUnion,
     codebase: &CodebaseMetadata,
@@ -116,7 +110,6 @@ fn union(a: &TUnion, b: &TUnion, codebase: &CodebaseMetadata) -> TUnion {
     combine_union_types(a, b, codebase, CombinerOptions::default())
 }
 
-/// The items of a constant array (ConstantArrayType), in order: none for a general one.
 fn constant_items(array: &TArray) -> Option<Vec<(ArrayKey, bool, TUnion)>> {
     match array {
         TArray::Keyed(keyed) if keyed.parameters.is_none() => Some(
@@ -140,13 +133,11 @@ fn constant_items(array: &TArray) -> Option<Vec<(ArrayKey, bool, TUnion)>> {
     }
 }
 
-/// `Type::toArrayKey()`.
 fn to_array_key(t: &TUnion) -> TUnion {
     let mut out = Vec::new();
     for atomic in t.types.iter() {
         match atomic {
             TAtomic::Scalar(TScalar::Integer(_)) => out.push(atomic.clone()),
-            // a decimal integer string is that integer as a key
             TAtomic::Scalar(s @ TScalar::String(_)) => match s.get_known_literal_string_value() {
                 Some(value) => out.push(ArrayKey::from_string(mago_word::word(value)).to_atomic()),
                 None => out.push(atomic.clone()),
@@ -178,7 +169,6 @@ fn literal_key(atomic: &TAtomic) -> Option<ArrayKey> {
     }
 }
 
-/// ConstantArrayTypeBuilder::getArray(): `array{...}` as a list when its keys are 0, 1, ... in order.
 fn shape(items: Vec<(ArrayKey, bool, TUnion)>) -> TUnion {
     if items.is_empty() {
         return get_empty_keyed_array();
@@ -209,7 +199,6 @@ fn shape(items: Vec<(ArrayKey, bool, TUnion)>) -> TUnion {
     )))
 }
 
-/// ConstantArrayTypeBuilder::setOffsetValueType() of a literal key: a later required key replaces the value.
 fn set(
     items: &mut Vec<(ArrayKey, bool, TUnion)>,
     key: ArrayKey,
@@ -235,7 +224,6 @@ fn general(key: TUnion, value: TUnion, non_empty: bool) -> TUnion {
     )))
 }
 
-/// `flipArray()`, intersected with NonEmptyArrayType when the whole argument is non-empty.
 fn flip(array: &TArray, non_empty: bool, codebase: &CodebaseMetadata) -> TUnion {
     if let Some(items) = constant_items(array) {
         let mut flipped = Vec::new();
@@ -268,7 +256,6 @@ fn flip(array: &TArray, non_empty: bool, codebase: &CodebaseMetadata) -> TUnion 
             }
         }
         return match degraded {
-            // a non-literal key degrades the builder to a general array of every item
             Some((mut keys, mut values)) => {
                 for (key, _, value) in flipped {
                     keys = union(&keys, &key.to_union(), codebase);
@@ -302,7 +289,6 @@ fn contained(codebase: &CodebaseMetadata, inner: &TUnion, outer: &TUnion) -> boo
     )
 }
 
-/// `hasOffsetValueType()` of the other arrays.
 fn has_offset(others: &[&TArray], key: &ArrayKey, codebase: &CodebaseMetadata) -> Has {
     let mut all_yes = true;
     let mut any = false;
@@ -332,7 +318,6 @@ fn has_offset(others: &[&TArray], key: &ArrayKey, codebase: &CodebaseMetadata) -
     }
 }
 
-/// `intersectKeyArray()`.
 fn intersect_key(array: &TArray, others: &[&TArray], codebase: &CodebaseMetadata) -> TUnion {
     if let Some(items) = constant_items(array) {
         let mut kept = Vec::new();
@@ -350,7 +335,6 @@ fn intersect_key(array: &TArray, others: &[&TArray], codebase: &CodebaseMetadata
         .reduce(|all, key| union(&all, &key, codebase))
         .unwrap_or_else(get_arraykey);
     let (key, value) = get_array_parameters(array, codebase);
-    // ArrayType::intersectKeyArray() keeps the array; NonEmptyArrayType's is mixed, so the result may be empty
     if contained(codebase, &key, &other_key) {
         let mut array = array.clone();
         match &mut array {
@@ -364,7 +348,6 @@ fn intersect_key(array: &TArray, others: &[&TArray], codebase: &CodebaseMetadata
     ) {
         return get_empty_keyed_array();
     }
-    // ArrayType::withTypes(), a list only when every other array is one (AccessoryArrayListType)
     if matches!(array, TArray::List(_)) && others.iter().all(|o| matches!(o, TArray::List(_))) {
         return TUnion::from_atomic(TAtomic::Array(TArray::List(TList::new(Arc::new(value)))));
     }

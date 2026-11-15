@@ -1,15 +1,7 @@
-//! `lex_scan()` in parser mode, the way `token_get_all($code, TOKEN_PARSE)` drives it: whitespace,
-//! comments and open tags are skipped, `?>` is `';'`, `<?=` is `T_ECHO`, and the scanner's own
-//! errors (Zend/zend_language_scanner.l `zend_throw_exception(zend_ce_parse_error, ...)`) are raised
-//! when the offending token is lexed. Tokens are produced on demand, so an error after the point where
-//! the parser fails (or after `__halt_compiler();`) is never reached, as in PHP.
-//!
-//! `lineno()` is `CG(zend_lineno)`, the line PHP reports errors on.
-
 use crate::kind::Kind::{self, *};
 use crate::lexer::{Lexer, State};
+use std::fmt::Write as _;
 
-/// A token for the parser. `kind == None` is the single-character token `ch` (`';'` for `?>`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParseToken {
     pub kind: Option<Kind>,
@@ -18,7 +10,6 @@ pub struct ParseToken {
     pub end: usize,
 }
 
-/// A `ParseError` thrown by the scanner.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LexError {
     pub message: String,
@@ -30,14 +21,10 @@ pub struct ParseLexer<'a> {
     lx: Lexer<'a>,
     lineno: u32,
     increment_lineno: bool,
-    /// zend_nest_location stack: opening char and its line.
     nesting: Vec<(u8, u32)>,
-    /// Per open heredoc/nowdoc: indentation and "uses spaces" of its closing label, as body stripping sees it.
     docs: Vec<(usize, bool)>,
     stopped: bool,
-    /// Running as the heredoc scan-ahead (`SCNG(heredoc_scan_ahead)`, not parser mode).
     scan_ahead: bool,
-    /// `SCNG(heredoc_indentation)`/`heredoc_indentation_uses_spaces`, set by closing labels during the scan-ahead.
     ahead_indentation: (usize, bool),
 }
 
@@ -55,15 +42,12 @@ fn body_indentation_error(indentation: usize) -> String {
     )
 }
 
-/// Indentation characters: (mixed tabs and spaces, spaces only).
 fn spacing(s: &[u8]) -> (bool, bool) {
     let tabs = s.contains(&b'\t');
     let spaces = s.contains(&b' ');
     (tabs && spaces, spaces && !tabs)
 }
 
-/// `zend_scan_escape_string`'s errors (`\u{...}` empty, not hex, unterminated, or above U+10FFFF), with the
-/// number of newlines before the bad escape.
 fn escape_error(s: &[u8]) -> Option<(&'static str, u32)> {
     let mut i = 0;
     while i < s.len() {
@@ -113,7 +97,6 @@ fn next_newline(s: &[u8], from: usize) -> Option<(usize, usize)> {
         })
 }
 
-/// `strip_multiline_string_indentation`'s errors, with the number of newlines before the bad line.
 fn strip_error(
     s: &[u8],
     indentation: usize,
@@ -178,12 +161,10 @@ impl<'a> ParseLexer<'a> {
         }
     }
 
-    /// `CG(zend_lineno)`.
     pub fn lineno(&self) -> u32 {
         self.lineno
     }
 
-    /// `zend_stop_lexing()` (after `__halt_compiler();`): every later token is the end of file.
     pub fn stop(&mut self) {
         self.stopped = true;
     }
@@ -198,10 +179,10 @@ impl<'a> ParseLexer<'a> {
     fn bad_nesting(&self, opening: u8, line: u32, closing: Option<u8>) -> LexError {
         let mut m = format!("Unclosed '{}'", opening as char);
         if line != self.lineno {
-            m += &format!(" on line {line}");
+            let _ = write!(m, " on line {line}");
         }
         if let Some(c) = closing {
-            m += &format!(" does not match '{}'", c as char);
+            let _ = write!(m, " does not match '{}'", c as char);
         }
         LexError {
             message: m,
@@ -209,7 +190,6 @@ impl<'a> ParseLexer<'a> {
         }
     }
 
-    /// The next token, `Ok(None)` at the end of file. Mirrors `zendlex()` + `lex_scan()`.
     pub fn next_token(&mut self) -> Result<Option<ParseToken>, LexError> {
         if self.increment_lineno && !self.scan_ahead {
             self.lineno += 1;
@@ -287,7 +267,6 @@ impl<'a> ParseLexer<'a> {
                             return self.err(m, self.lineno + at);
                         }
                     }
-                    // Unterminated single-quoted string: the scanner counts no newlines.
                     State::Scripting => return Ok(Some(tok)),
                     State::Heredoc | State::Nowdoc => return self.doc_body(tok, state),
                     _ => {}
@@ -336,8 +315,6 @@ impl<'a> ParseLexer<'a> {
             self.docs.push((0, false));
             return Ok(Some(tok));
         }
-        // Scan ahead (not in parser mode, fresh nesting stack) to the matching T_END_HEREDOC for the
-        // closing label's indentation; a scanner exception or the end of file stops the scan.
         let mut ahead = ParseLexer {
             lx: self.lx.clone(),
             lineno: self.lineno,
@@ -375,7 +352,6 @@ impl<'a> ParseLexer<'a> {
         if closed {
             let indent = self.lx.labels.last().unwrap().indentation;
             let (mixed, spaces) = spacing(&self.src[tok.end..tok.end + indent]);
-            // The heredoc rule records the label for the scan-ahead even when it throws on mixed indentation.
             if state == State::Heredoc && self.scan_ahead {
                 self.ahead_indentation = (indent, spaces);
             }
@@ -388,7 +364,6 @@ impl<'a> ParseLexer<'a> {
             body = &text[..text.len() - if text.ends_with(b"\r\n") { 2 } else { 1 }];
             self.increment_lineno = true;
         }
-        // The heredoc rule returns early (no stripping) at the end of file after a newline and indentation.
         let eof_after_newline = !closed
             && tok.end == self.src.len()
             && text

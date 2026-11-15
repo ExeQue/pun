@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\IndentationTrait` (used by braces_position, no_multiple_statements_per_line,
-//! array_indentation, statement_indentation, attribute_block_no_spaces).
 use super::preg::Preg;
 use pun_tokens::{Kind::*, Tokens};
 
@@ -13,11 +11,8 @@ pub(crate) fn get_line_indentation(tokens: &Tokens, index: usize) -> Vec<u8> {
 pub(crate) fn extract_indent(content: &[u8]) -> Vec<u8> {
     if !content.is_ascii() {
         return Preg::match_groups("/\\R(\\h*)[^\\r\\n]*$/D", content)
-            .map(|m| m.str(1).to_vec())
-            .unwrap_or_default();
+            .map_or_default(|m| m.str(1).to_vec());
     }
-    // ASCII: the leftmost (atomic) `\R` with no CR/LF after it is the one covering the last CR/LF (a CRLF pair counts
-    // from its CR), else the first VT/FF; group 1 is the run of spaces and tabs after it.
     let after = match content.iter().rposition(|b| matches!(b, b'\r' | b'\n')) {
         Some(l) => l + 1,
         None => match content.iter().position(|b| matches!(b, 0x0b | 0x0c)) {
@@ -78,7 +73,6 @@ pub(crate) fn is_new_line_token(tokens: &Tokens, index: usize) -> bool {
 mod tests {
     #[test]
     fn extract_indent_matches_php() {
-        // PhpCsFixer\Preg::match('/\R(\h*)[^\r\n]*$/D', $s, $m) ? $m[1] : '' on PHP 8.5.
         let cases: &[(&str, &str)] = &[
             ("", ""),
             ("abc", ""),

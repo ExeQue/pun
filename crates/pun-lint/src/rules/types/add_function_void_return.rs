@@ -1,8 +1,3 @@
-//! `lint/types/add-function-void-return`, ported from Rector 2.8.4's `AddFunctionVoidReturnTypeWhereNoReturnRector`
-//! (rules/TypeDeclaration/Rector/Function_).
-//!
-//! A function without a return type that returns no value and does not yield gets `: void`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{VOID_TYPE, add_return_type, has_exclusive_void};
@@ -16,8 +11,8 @@ impl Rule for AddFunctionVoidReturn {
         "lint/types/add-function-void-return"
     }
 
-    fn min_php_version(&self) -> u32 {
-        VOID_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(VOID_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

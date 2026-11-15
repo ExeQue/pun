@@ -1,4 +1,3 @@
-//! Port of Pint's `App\Fixers\TypeAnnotationsOnlyFixer` (`Pint/phpdoc_type_annotations_only`).
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::php_compat::{TRIM_CHARS, ltrim_chars, substr_count, trim};
@@ -104,7 +103,6 @@ fn clear_and_clean_whitespace(tokens: &mut Tokens, index: usize) {
     let (Some(prev), Some(next)) = (prev, next) else {
         return;
     };
-    // Pint's loop always finds one: at worst the cleared token itself, which is empty and so whitespace.
     let i = (prev + 1..next)
         .find(|&i| tokens[i].is_whitespace(None))
         .unwrap();
@@ -121,7 +119,6 @@ fn clear_and_clean_whitespace(tokens: &mut Tokens, index: usize) {
     }
 }
 
-/// First `/^(\s+)\*/` match's group, else a single space.
 fn detect_indent<'a>(lines: &[&'a [u8]]) -> &'a [u8] {
     for line in lines {
         let n = line

@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-each-modifier`, ported from pest-plugin-rector's `UseEachModifierRector`: a `foreach` whose
-//! only statement is `expect($item)->...` on its value becomes `expect($items)->each->...`.
-
 use mago_syntax::cst::{
     Expression, ForeachBody, ForeachTarget, Node, NodeKind, Statement, UnaryPrefixOperator,
     Variable,
@@ -11,7 +8,7 @@ use super::{
     Link, chain_links, comments_start, expect_call, first_value, indent_at, kept_text, method_call,
     print_links, shift,
 };
-use crate::rules::php_parser::{block_list, open_list, tokens};
+use crate::rules::support::statements::{block_list, open_list, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -40,7 +37,7 @@ impl Rule for PreferEachModifier {
         let list = match &foreach.body {
             ForeachBody::Statement(Statement::Block(block)) => block_list(tokens, block),
             ForeachBody::Statement(statement) => {
-                super::super::php_parser::body_list(tokens, statement)
+                crate::rules::support::statements::body_list(tokens, statement)
             }
             ForeachBody::ColonDelimited(body) => open_list(
                 tokens,
@@ -101,7 +98,6 @@ impl Rule for PreferEachModifier {
         {
             return;
         }
-        // The new statement takes the loop's place, at its indent, and the loop's comments go with it.
         let span = node_span(foreach);
         let indent = indent_at(ctx, span.start);
         let argument = node_span(&expect.argument_list.arguments.as_slice()[0]);
@@ -126,7 +122,6 @@ impl Rule for PreferEachModifier {
     }
 }
 
-/// `NodeFinder::findInstanceOf($node, Variable::class)` holds a variable named `name`.
 fn uses_variable(node: Node<'_, '_>, name: &[u8]) -> bool {
     if let Node::DirectVariable(v) = node
         && v.name == name

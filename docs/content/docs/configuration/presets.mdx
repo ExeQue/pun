@@ -35,7 +35,7 @@ Sets select groups of lint rules. A rule can belong to several sets. Selected ru
 sets = ["dead-code", "modernize"]
 ```
 
-Ecosystem rules depend on packages detected in `composer.lock`. PHP upgrade rules depend on the target PHP version. Rules outside sets can be enabled by name or group.
+Laravel, Pest, and PHPUnit rules depend on [`[extensions]`](/docs/configuration/pun-toml#extensions), which by default reads the locked packages. PHP upgrade rules depend on the target PHP version. Rules outside sets can be enabled by name or group.
 
 See [lint configuration](/docs/configuration/pun-toml#lint) for precedence and path overrides.
 
@@ -56,7 +56,7 @@ Analyse presets map PHPStan levels into five groups. Each includes the lower pre
 preset = "strict"
 ```
 
-The mapping does not imply complete PHPStan-level support. Some rules remain Planned, and preset type switches are not yet applied by the analysis CLI. See [analysis limitations](/docs/commands/analyse#configuration).
+The mapping does not imply complete PHPStan-level support. Some rules remain Planned. The preset's type switches and the enabled rules set the PHPStan level `pun analyse` runs at. See [analysis limitations](/docs/commands/analyse#configuration).
 
 ## Coming from PHPStan levels
 

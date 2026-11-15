@@ -1,8 +1,3 @@
-//! The level-2 rules on a class-like's `@phpstan-require-extends`, `@phpstan-require-implements` and
-//! `@phpstan-sealed` tags: RequireExtendsDefinitionClassRule, RequireExtendsDefinitionTraitRule (both through
-//! RequireExtendsCheck), RequireImplementsDefinitionClassRule, RequireImplementsDefinitionTraitRule and
-//! SealedDefinitionClassRule.
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -36,14 +31,12 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "sealed.nonObject",
 ];
 
-/// The resolved types of a class-like's tags named `names` (PhpDocNodeResolver: the tags of the first name first).
 pub(super) fn tag_types(c: &Checker, k: &ClassLikeMetadata, names: [&str; 2]) -> Vec<Type> {
     let Some((_, entry)) = c.class_doc(k) else {
         return Vec::new();
     };
     let tags = &entry.phpdoc;
     let scope = super::declared::class_scope(c, k.span, k);
-    // (the project's classes known, for `self&\stdClass` in a trait to be `never`)
     super::declared::with_classes(c, || {
         names
             .iter()
@@ -60,8 +53,6 @@ pub(super) const EXTENDS: [&str; 2] = ["@psalm-require-extends", "@phpstan-requi
 const IMPLEMENTS: [&str; 2] = ["@psalm-require-implements", "@phpstan-require-implements"];
 const SEALED: [&str; 2] = ["@psalm-inheritors", "@phpstan-sealed"];
 
-/// RequireExtendsPropertiesClassReflectionExtension: own tags, then nominal parent interfaces in source order.
-/// Keep whole Types: a successful annotation/union/intersection reflection must stop lookup too.
 pub(super) fn property_requirements(c: &Checker, k: &ClassLikeMetadata) -> Vec<Type> {
     if k.kind != SymbolKind::Interface {
         return Vec::new();
@@ -82,7 +73,6 @@ pub(super) fn property_requirements(c: &Checker, k: &ClassLikeMetadata) -> Vec<T
     types
 }
 
-/// The rules on InClassNode: a class, an interface or an enum declared at `at`.
 pub(super) fn class_like(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     if c.level < 2 {
         return;
@@ -164,7 +154,6 @@ fn unknown(c: &mut Checker, at: Span, tag: &str, class: &str) {
     );
 }
 
-/// The rules on a trait declared at `at` (Stmt\Trait_).
 pub(super) fn trait_(c: &mut Checker, at: Span, name: &str) {
     if c.level < 2 {
         return;
@@ -217,7 +206,6 @@ pub(super) fn trait_(c: &mut Checker, at: Span, name: &str) {
     }
 }
 
-/// RequireExtendsCheck::checkExtendsTags()
 fn extends_check(c: &mut Checker, at: Span, tags: &[Type]) {
     if tags.len() > 1 {
         c.report(

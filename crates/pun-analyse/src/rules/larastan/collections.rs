@@ -1,6 +1,3 @@
-//! NoUnnecessaryEnumerableToArrayCallsRule: `->toArray()` on an Enumerable whose values are never Arrayable; and
-//! NoUnnecessaryCollectionCallRule: a collection method called on the result of a query that the query could do.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::get_specialized_template_type;
@@ -15,7 +12,6 @@ use super::{is_a, is_object_of};
 const ENUMERABLE: &[u8] = b"illuminate\\support\\enumerable";
 const ARRAYABLE: &[u8] = b"illuminate\\contracts\\support\\arrayable";
 
-/// The `->toArray()` calls whose object the rule reads.
 pub(super) fn to_array<'a, 'arena>(
     call: &'a MethodCall<'arena>,
 ) -> Option<&'a ClassLikeMemberSelector<'arena>> {
@@ -41,12 +37,10 @@ pub(super) fn check<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'aren
     );
 }
 
-/// `getTemplateType(Enumerable::class, 'TValue')`: each part's TValue.
 fn value_type(c: &Checker, ty: &TUnion) -> Option<TUnion> {
     template(c, ty, ENUMERABLE)
 }
 
-/// Each part's `TValue` of the ancestor `class`, for a type whose parts are named objects.
 fn template(c: &Checker, ty: &TUnion, class: &[u8]) -> Option<TUnion> {
     let mut types = Vec::new();
     for n in super::named_objects(ty)? {
@@ -60,7 +54,6 @@ fn template(c: &Checker, ty: &TUnion, class: &[u8]) -> Option<TUnion> {
     Some(TUnion::from_vec(types))
 }
 
-/// `(new ObjectType(Arrayable::class))->isSuperTypeOf($type)->no()`.
 fn not_arrayable(c: &Checker, ty: &TUnion) -> bool {
     !ty.types.is_empty()
         && ty.types.iter().all(|t| match t {
@@ -85,7 +78,6 @@ const QUERY_BUILDER: &[u8] = b"illuminate\\database\\query\\builder";
 const ELOQUENT_BUILDER: &[u8] = b"illuminate\\database\\eloquent\\builder";
 const RELATION: &[u8] = b"illuminate\\database\\eloquent\\relations\\relation";
 
-/// The methods that can be applied on a Collection, but should be applied on a Builder.
 const RISKY_METHODS: &[&str] = &[
     "count",
     "isempty",
@@ -102,7 +94,6 @@ const RISKY_METHODS: &[&str] = &[
     "only",
 ];
 
-/// The methods that should in some cases be applied on a builder, depending on their parameter.
 const RISKY_PARAM_METHODS: &[&str] = &[
     "average",
     "avg",
@@ -115,8 +106,6 @@ const RISKY_PARAM_METHODS: &[&str] = &[
     "wherestrict",
 ];
 
-/// NoUnnecessaryCollectionCallRule's `$shouldHandle`: `noUnnecessaryCollectionCallOnly`, else every method, without
-/// `noUnnecessaryCollectionCallExcept`.
 pub(super) fn should_handle(only: &[String], except: &[String]) -> Vec<String> {
     let handled: Vec<String> = if only.is_empty() {
         RISKY_METHODS
@@ -135,7 +124,6 @@ pub(super) fn should_handle(only: &[String], except: &[String]) -> Vec<String> {
         .collect()
 }
 
-/// The expressions NoUnnecessaryCollectionCallRule reads the types of: the call's object, and the previous call's.
 pub(super) fn unnecessary_typed(call: &MethodCall) -> Vec<mago_span::Span> {
     let mut spans = vec![call.object.span()];
     if let Expression::Call(Call::Method(previous)) = call.object {
@@ -147,7 +135,6 @@ pub(super) fn unnecessary_typed(call: &MethodCall) -> Vec<mago_span::Span> {
     spans
 }
 
-/// NoUnnecessaryCollectionCallRule.
 pub(super) fn unnecessary<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &MethodCall<'arena>,
@@ -203,7 +190,6 @@ pub(super) fn unnecessary<'arena>(
             first_arg_is_column(c, &call.argument_list, On::Object(call.object))
         }
     } else {
-        // contains and containsStrict
         (args.len() == 1
             && !matches!(
                 args[0].value(),
@@ -230,13 +216,11 @@ fn is_builder(c: &Checker, ty: &TUnion) -> bool {
         .any(|class| is_object_of(c, ty, class))
 }
 
-/// What a call is made on: a class name or an object.
 enum On<'a, 'arena> {
     Class(String),
     Object(&'a Expression<'arena>),
 }
 
-/// `firstArgIsDatabaseColumn()`: the call's first argument is a string literal naming a column of the model.
 fn first_arg_is_column(c: &Checker, args: &ArgumentList, on: On) -> bool {
     let Some(Expression::Literal(Literal::String(LiteralString {
         value: Some(column),
@@ -254,7 +238,6 @@ fn first_arg_is_column(c: &Checker, args: &ArgumentList, on: On) -> bool {
                 .and_then(|t| iterable_value(c, t))
                 .unwrap_or_else(|| TUnion::from_vec(Vec::new()));
             if is_object_of(c, &values, b"stdclass") {
-                // DB::table(..)->get()->max('id')
                 return matches!(object, Expression::Call(Call::Method(p))
                     if c.type_of(p.object).is_some_and(|t| is_object_of(c, t, QUERY_BUILDER)));
             }
@@ -272,7 +255,6 @@ fn first_arg_is_column(c: &Checker, args: &ArgumentList, on: On) -> bool {
     model.is_some_and(|model| super::has_database_property(c, &model, &column))
 }
 
-/// `getIterableValueType()` of a collection type.
 fn iterable_value(c: &Checker, ty: &TUnion) -> Option<TUnion> {
     template(c, ty, COLLECTION)
 }

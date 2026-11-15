@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\NamespaceUsesAnalyzer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use pun_tokens::Kind::*;
 use pun_tokens::NamespaceAnalysis;
@@ -91,8 +90,7 @@ impl NamespaceUsesAnalyzer {
                 let group_end =
                     tokens.find_block_end(Tokens::BLOCK_TYPE_GROUP_IMPORT_BRACE, group_start);
                 while group_index < group_end {
-                    let chunk_start = tokens.get_next_meaningful_token(group_index).unwrap();
-                    // Finish parsing on trailing comma (no more chunks there)
+                    let chunk_start = tokens.next_meaningful(group_index);
                     if tokens[chunk_start].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                         break;
                     }
@@ -117,7 +115,7 @@ impl NamespaceUsesAnalyzer {
                 }
                 i = group_index;
             } else if token.equals_any(&[",".into(), ";".into(), T_CLOSE_TAG.into()], true) {
-                let previous_token = tokens.get_prev_meaningful_token(after).unwrap();
+                let previous_token = tokens.prev_meaningful(after);
                 if !tokens[previous_token].is_kind(CT_GROUP_IMPORT_BRACE_CLOSE) {
                     imports.push(NamespaceUseAnalysis {
                         type_,
@@ -139,7 +137,7 @@ impl NamespaceUsesAnalyzer {
     }
 
     fn determine_import_type(&self, tokens: &Tokens, start_index: usize) -> NamespaceUseType {
-        let potential_type = &tokens[tokens.get_next_meaningful_token(start_index).unwrap()];
+        let potential_type = &tokens[tokens.next_meaningful(start_index)];
         if potential_type.is_kind(CT_FUNCTION_IMPORT) {
             return NamespaceUseType::Function;
         }
@@ -152,7 +150,6 @@ impl NamespaceUsesAnalyzer {
     fn get_nearest_qualified_name(&self, tokens: &Tokens, index: usize) -> QualifiedName {
         let (mut full_name, mut short_name) = (Vec::new(), Vec::new());
         let mut aliased = false;
-        // Upstream breaks out of the loop on these; testing them first is equivalent (none is a T_STRING/`\`/`as`).
         let ends: [Proto; 5] = [
             ",".into(),
             ";".into(),

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\AttributeAnalyzer`.
 use crate::analyzers::analysis::{Attribute, AttributeAnalysis};
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
 use crate::analyzers::preg::Preg;
@@ -24,7 +23,6 @@ const TOKEN_KINDS_NOT_ALLOWED_IN_ATTRIBUTE: &[Proto<'static>] = &[
 ];
 
 impl AttributeAnalyzer {
-    /// `AttributeAnalyzer::determineAttributeFullyQualifiedName`.
     pub(crate) fn determine_attribute_fully_qualified_name(
         tokens: &Tokens,
         name: &[u8],
@@ -38,12 +36,11 @@ impl AttributeAnalyzer {
                 .get_next_token_of_kind(index, &[T_STRING.into(), T_NS_SEPARATOR.into()], true)
                 .unwrap();
         }
-        // `NamespacesAnalyzer::collectNamespaceAnalysis`: the namespace at `index` and its class imports by short name.
         let namespace_analysis = NamespacesAnalyzer.get_namespace_at(tokens, index);
         let uses: HashMap<Vec<u8>, Vec<u8>> = NamespaceUsesAnalyzer
             .get_declarations_in_namespace(tokens, &namespace_analysis, false)
             .into_iter()
-            .filter(|u| u.is_class())
+            .filter(super::analysis::NamespaceUseAnalysis::is_class)
             .map(|u| (u.short_name, u.full_name))
             .collect();
         let mut namespace = namespace_analysis.full_name;
@@ -54,7 +51,6 @@ impl AttributeAnalyzer {
             if name == first_token_of_name {
                 return namespace;
             }
-            // `substr((string) strstr($name, '\\'), 1)`: empty when there is no `\`.
             let after = name
                 .iter()
                 .position(|&b| b == b'\\')
@@ -68,14 +64,12 @@ impl AttributeAnalyzer {
         if !tokens[index].is_kind(T_STRING) || !tokens.is_any_token_kinds_found(&[T_ATTRIBUTE]) {
             return false;
         }
-        // T_OPEN_TAG is in the list, so a T_STRING always finds one.
         let attribute_start_index = tokens
             .get_prev_token_of_kind(index, TOKEN_KINDS_NOT_ALLOWED_IN_ATTRIBUTE, true)
             .unwrap();
         if !tokens[attribute_start_index].is_kind(T_ATTRIBUTE) {
             return false;
         }
-        // now, between attribute start and the attribute candidate index cannot be more "(" than ")"
         let mut count = 0i32;
         for i in attribute_start_index + 1..index {
             if tokens[i].equals("(", true) {
@@ -93,7 +87,7 @@ impl AttributeAnalyzer {
             "Given index must point to an attribute."
         );
         loop {
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if !tokens[prev_index].is_kind(CT_ATTRIBUTE_CLOSE) {
                 break;
             }
@@ -103,7 +97,7 @@ impl AttributeAnalyzer {
         let mut opening_index = index;
         loop {
             let element = Self::collect_one(tokens, opening_index);
-            opening_index = tokens.get_next_meaningful_token(element.end_index).unwrap();
+            opening_index = tokens.next_meaningful(element.end_index);
             elements.push(element);
             if !tokens[opening_index].is_kind(T_ATTRIBUTE) {
                 break;
@@ -118,7 +112,7 @@ impl AttributeAnalyzer {
             "Given index must point to an attribute."
         );
         let mut start_index = index;
-        let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev_index = tokens.prev_meaningful(index);
         if tokens[prev_index].is_kind(CT_ATTRIBUTE_CLOSE) {
             start_index = tokens.get_next_non_whitespace(prev_index, None).unwrap();
         }
@@ -151,11 +145,8 @@ impl AttributeAnalyzer {
                     true,
                 )
                 .unwrap();
-            let attribute_name = tokens.generate_partial_code(
-                name_start_index,
-                tokens.get_prev_meaningful_token(index).unwrap(),
-            );
-            // Find closing parentheses, we need to do this in case there's a comma inside the parentheses
+            let attribute_name =
+                tokens.generate_partial_code(name_start_index, tokens.prev_meaningful(index));
             if tokens[index].equals("(", true) {
                 index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, index);
                 index = tokens
@@ -168,15 +159,13 @@ impl AttributeAnalyzer {
                 name: attribute_name,
             });
             let mut next_index = index;
-            // In case there's a comma right before T_ATTRIBUTE_CLOSE
             if next_index < closing_index {
-                next_index = tokens.get_next_meaningful_token(index).unwrap();
+                next_index = tokens.next_meaningful(index);
             }
             if next_index >= closing_index {
                 break;
             }
         }
-        // End last element at newline if it exists and there's no trailing comma
         index -= 1;
         while tokens[index].is_whitespace(None) {
             if Preg::r#match("/\\R/", tokens[index].get_content()) {
@@ -193,8 +182,6 @@ impl AttributeAnalyzer {
 mod tests {
     use super::*;
 
-    /// Expected values: PhpCsFixer\Tokenizer\Analyzer\AttributeAnalyzer::collect($tokens, 1) on the same code
-    /// (the trailing ` ]` without a newline, and a last element ended at the line break).
     #[test]
     fn collect_matches_oracle() {
         let tokens = Tokens::from_code(b"<?php\n#[A, B(1, 2) ]\n#[C,\n  D\n]\nclass X {}");
@@ -231,7 +218,6 @@ mod tests {
         );
     }
 
-    /// Expected values: AttributeAnalyzer::isAttribute on each T_STRING of the same code.
     #[test]
     fn is_attribute_matches_oracle() {
         let tokens = Tokens::from_code(b"<?php #[A(B), C(D)] class X {}");

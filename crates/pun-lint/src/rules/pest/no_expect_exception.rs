@@ -1,8 +1,3 @@
-//! `lint/pest/prefer-to-throw`, ported from pest-plugin-rector's `ConvertExpectExceptionToThrowRector`:
-//! `$this->expectException(E::class);` (with `expectExceptionMessage()`, or `expectExceptionObject()`) and the
-//! statement after it become `expect(fn() => action())->toThrow(E::class, 'message');`, unless that statement is an
-//! assignment.
-
 use mago_syntax::cst::{Expression, MethodCall, Node, NodeKind, Statement, Variable};
 use pun_problem::{Safety, Span};
 
@@ -29,7 +24,6 @@ const ALL_EXPECT_EXCEPTION_METHODS: [&[u8]; 5] = [
     b"expectExceptionMessageMatches",
 ];
 
-/// What `collectConversion` finds: the exception, the message and the action, and how many statements they take.
 struct Conversion<'a> {
     exception: &'a Expression<'a>,
     message: Option<&'a Expression<'a>>,
@@ -66,7 +60,6 @@ impl Rule for NoExpectException {
                 i += 1;
                 continue;
             };
-            // copyComments: the comments of every statement the conversion takes.
             let comments: Vec<Span> = stmts[i..i + c.consumed]
                 .iter()
                 .flat_map(|s| comment_spans(ctx, node_span(*s).start))
@@ -88,7 +81,6 @@ impl Rule for NoExpectException {
             i += c.consumed;
             changed = true;
         }
-        // The rest of the list keeps the Nop of its trailing comments.
         if list.nop {
             items.push(Item::Old(stmts.len()));
         }
@@ -106,7 +98,6 @@ impl Rule for NoExpectException {
     }
 }
 
-/// `collectConversion` from the statement at `start`.
 fn collect_conversion<'a>(stmts: &[&'a Statement<'a>], start: usize) -> Option<Conversion<'a>> {
     let mut exception = None;
     let mut exception_method: Option<&[u8]> = None;
@@ -145,7 +136,6 @@ fn collect_conversion<'a>(stmts: &[&'a Statement<'a>], start: usize) -> Option<C
     {
         return None;
     }
-    // `Assign`, `AssignRef` and `AssignOp` are all one `Assignment` here.
     if matches!(unparenthesize(action), Expression::Assignment(_)) {
         return None;
     }
@@ -157,7 +147,6 @@ fn collect_conversion<'a>(stmts: &[&'a Statement<'a>], start: usize) -> Option<C
     })
 }
 
-/// `getExpectationMethodName`: the name of a `$this->method()` call among `methods`.
 fn expectation_method<'a>(call: &MethodCall<'a>, methods: &[&[u8]]) -> Option<&'a [u8]> {
     let Expression::Variable(Variable::Direct(var)) = unparenthesize(call.object) else {
         return None;

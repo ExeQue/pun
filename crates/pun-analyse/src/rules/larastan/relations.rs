@@ -1,6 +1,3 @@
-//! RelationExistenceRule: the relation names given to `has()`, `with()`, `whereHas()` & co. are relation methods of
-//! the model the builder, relation or model is of (ModelRuleHelper).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -31,7 +28,6 @@ const METHODS: &[&[u8]] = &[
     b"whereRelation",
 ];
 
-/// The first argument of a call the rule reads, and what it is called on (`None` for a class name).
 pub(super) fn relation_call<'a, 'arena>(
     method: &ClassLikeMemberSelector<'arena>,
     arguments: &'a ArgumentList<'arena>,
@@ -45,7 +41,6 @@ pub(super) fn relation_call<'a, 'arena>(
     Some(arguments.arguments.first()?.value())
 }
 
-/// The type a call is made on.
 enum CalledOn {
     Class(String),
     Type(TUnion),
@@ -71,7 +66,6 @@ pub(super) fn static_method_call<'arena>(
     }
 }
 
-/// The relation names in the argument: a constant array's string keys and values, else its constant strings.
 fn relations(ty: &TUnion) -> Vec<String> {
     let strings = |t: &TUnion| -> Vec<String> {
         t.types
@@ -139,7 +133,6 @@ fn check<'arena>(
             errors.extend(missing(c, &on, name));
             continue;
         }
-        // nested relations: the first missing one is the call's only error, else it has none
         errors.clear();
         let mut on = on;
         for part in name.split('.') {
@@ -159,7 +152,6 @@ fn check<'arena>(
     }
 }
 
-/// The error when the model `on` is of has no relation `name`.
 fn missing(c: &Checker, on: &CalledOn, name: &str) -> Option<String> {
     let k = model(c, on)?;
     relation_type(c, k, name).is_none().then(|| {
@@ -170,9 +162,7 @@ fn missing(c: &Checker, on: &CalledOn, name: &str) -> Option<String> {
     })
 }
 
-/// The return type of the model's method `name` when it is a relation.
 fn relation_type(c: &Checker, k: &ClassLikeMetadata, name: &str) -> Option<TUnion> {
-    // a model's methods are the user's (PHP's own classes declare none of them)
     let f = match members::method(c, k, name.as_bytes())? {
         members::Method::User { f, .. } => Some(f),
         members::Method::Builtin { .. } => None,
@@ -181,7 +171,6 @@ fn relation_type(c: &Checker, k: &ClassLikeMetadata, name: &str) -> Option<TUnio
     is_object_of(c, ty, RELATION).then(|| ty.clone())
 }
 
-/// ModelRuleHelper::findModelReflectionFromType().
 fn model<'a>(c: &Checker<'a, '_>, on: &CalledOn) -> Option<&'a ClassLikeMetadata> {
     let model = match on {
         CalledOn::Class(name) => {
@@ -202,7 +191,6 @@ fn model<'a>(c: &Checker<'a, '_>, on: &CalledOn) -> Option<&'a ClassLikeMetadata
             };
             match n.type_parameters.as_deref() {
                 Some([first, ..]) => {
-                    // removeNull() and getObjectClassReflections()
                     let names: Vec<_> = first
                         .types
                         .iter()

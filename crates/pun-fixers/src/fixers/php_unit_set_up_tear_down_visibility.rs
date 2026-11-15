@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitSetUpTearDownVisibilityFixer`.
 use crate::analyzers::abstract_php_unit_fixer as base;
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
@@ -46,7 +45,7 @@ fn apply_php_unit_class_fix(tokens: &mut Tokens, start_index: usize, end_index: 
             index += 1;
             continue;
         }
-        let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+        let function_name_index = tokens.next_meaningful(index);
         let function_name = strtolower(tokens[function_name_index].get_content());
         if function_name != b"setup" && function_name != b"teardown" {
             index += 1;

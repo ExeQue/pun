@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitMethodCasingFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{
     apply_fix, get_doc_block_index, is_candidate, is_test_attribute_present,
 };
@@ -57,7 +56,7 @@ impl PhpUnitMethodCasingFixer {
             if !is_method(tokens, index) {
                 continue;
             }
-            let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+            let function_name_index = tokens.next_meaningful(index);
             existing_function_names_lowercase
                 .insert(tokens[function_name_index].get_content().to_ascii_lowercase());
         }
@@ -65,7 +64,7 @@ impl PhpUnitMethodCasingFixer {
             if !self.is_test_method(tokens, index) {
                 continue;
             }
-            let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+            let function_name_index = tokens.next_meaningful(index);
             let function_name = tokens[function_name_index].get_content().to_vec();
             let function_name_lowercase = function_name.to_ascii_lowercase();
             let new_function_name = self.update_method_casing(&function_name);
@@ -90,7 +89,6 @@ impl PhpUnitMethodCasingFixer {
         let mut parts: Vec<&[u8]> = explode(b"::", function_name);
         let function_name_part = parts.pop().unwrap();
         let new_part = if self.camel_case {
-            // ucwords($s, '_'), str_replace('_', ''), lcfirst
             let mut out = Vec::with_capacity(function_name_part.len());
             let mut upper_next = true;
             for &c in function_name_part {
@@ -118,7 +116,7 @@ impl PhpUnitMethodCasingFixer {
         if !is_method(tokens, index) {
             return false;
         }
-        let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+        let function_name_index = tokens.next_meaningful(index);
         if tokens[function_name_index].get_content().starts_with(b"test") {
             return true;
         }

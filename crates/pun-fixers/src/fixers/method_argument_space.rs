@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\MethodArgumentSpaceFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -46,7 +45,6 @@ fn is_newline(token: &Token) -> bool {
 }
 
 impl MethodArgumentSpaceFixer {
-    /// Fix arguments spacing for given function; returns whether the function is multiline.
     fn fix_function(&self, tokens: &mut Tokens, start_function_index: usize) -> bool {
         let mut is_multiline = false;
         let end_function_index =
@@ -121,7 +119,6 @@ impl MethodArgumentSpaceFixer {
         None
     }
 
-    /// Whether newlines were removed from the whitespace token.
     fn ensure_single_line(tokens: &mut Tokens, index: usize) -> bool {
         let previous_token = &tokens[index - 1];
         if previous_token.is_comment() && !previous_token.get_content().starts_with(b"/*") {
@@ -154,7 +151,6 @@ impl MethodArgumentSpaceFixer {
             None => Vec::new(),
             Some(p) if !tokens[p].is_kind(T_WHITESPACE) => return,
             Some(p) => {
-                // the search loop only stops on a token containing "\n" (upstream's `false === strrpos` arm is dead)
                 let c = tokens[p].get_content();
                 c[c.iter().rposition(|&b| b == b'\n').unwrap() + 1..].to_vec()
             }
@@ -197,7 +193,7 @@ impl MethodArgumentSpaceFixer {
                 index -= 1;
                 continue;
             }
-            if tokens[tokens.get_next_meaningful_token(index).unwrap()].equals(")", true) {
+            if tokens[tokens.next_meaningful(index)].equals(")", true) {
                 index -= 1;
                 continue;
             }
@@ -230,7 +226,7 @@ impl MethodArgumentSpaceFixer {
         ]
         .concat();
         if tokens[index + 2].is_comment() {
-            let next_meaningful_token_index = tokens.get_next_meaningful_token(index + 2).unwrap();
+            let next_meaningful_token_index = tokens.next_meaningful(index + 2);
             if !is_newline(&tokens[next_meaningful_token_index - 1]) {
                 if tokens[next_meaningful_token_index - 1].is_whitespace(None) {
                     tokens.clear_at(next_meaningful_token_index - 1);
@@ -239,8 +235,6 @@ impl MethodArgumentSpaceFixer {
             }
             return;
         }
-        // (upstream returns here when the next meaningful token is `)`; never true: commas before `)` are skipped by
-        // the caller, an attribute is followed by its parameter, and `(` only with at least one argument)
         tokens.ensure_whitespace_at_index(index + 1, 0, &ws);
     }
 
@@ -256,9 +250,6 @@ impl MethodArgumentSpaceFixer {
         }
         let next_index = index + 1;
         let next_token = &tokens[next_index];
-        // Two cases for fix space after comma (exclude multiline comments)
-        //  1) multiple spaces after comma
-        //  2) no space after comma
         if next_token.is_whitespace(None) {
             let mut new_content = next_token.get_content().to_vec();
             if self.on_multiline == OnMultiline::EnsureSingleLine {
@@ -344,8 +335,6 @@ impl MethodArgumentSpaceFixer {
             } else if tokens[index].equals("}", true) {
                 index = tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, index);
             } else if tokens[index].is_whitespace(None) {
-                // Upstream skips whitespace after a `//` comment here, but any top-level comment already made
-                // argument_content_is_multiline return early, so that check never fires.
                 let content = Preg::replace("/\\R\\h*/", "", tokens[index].get_content());
                 tokens.ensure_whitespace_at_index(index, 0, &content);
             }
@@ -359,9 +348,6 @@ impl Fixer for MethodArgumentSpaceFixer {
         "method_argument_space"
     }
     fn priority(&self) -> i32 {
-        // Must run before ArrayIndentationFixer, NoTrailingCommaInSinglelineFixer, StatementIndentationFixer.
-        // Must run after CombineNestedDirnameFixer, FunctionDeclarationFixer, ImplodeCallFixer, LambdaNotUsedImportFixer,
-        // NoMultilineWhitespaceAroundDoubleArrowFixer, NoUselessSprintfFixer, PowToExponentiationFixer, StrictParamFixer.
         30
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -390,7 +376,6 @@ impl Fixer for MethodArgumentSpaceFixer {
                 ),
             ],
         )?;
-        // Future::getV4OrV3(true, false)
         self.after_heredoc = r.bool("after_heredoc", false)?;
         self.attribute_placement = r.choice(
             "attribute_placement",
@@ -418,7 +403,7 @@ impl Fixer for MethodArgumentSpaceFixer {
                 continue;
             }
             let meaningful_token_before_parenthesis =
-                &tokens[tokens.get_prev_meaningful_token(index).unwrap()];
+                &tokens[tokens.prev_meaningful(index)];
             if meaningful_token_before_parenthesis.is_keyword()
                 && !meaningful_token_before_parenthesis.is_given_kind(&expected_tokens)
             {

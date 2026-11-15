@@ -1,9 +1,3 @@
-//! Level 2's ValueAssignedToClassConstantRule (`classConstant.value`, `classConstant.phpDocType`): a class constant's
-//! value its native type or `@var` tag does not take. (The constants of `dynamicConstantNames` are bleeding edge.)
-//! With `featureToggles.checkDynamicConstantNameValues`, ValueAssignedToGlobalConstantRule (`constant.value`) and
-//! ValueAssignedToDefineRule (`constant.defineValue`): a global constant's value its `dynamicConstantNames` type does
-//! not accept.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{
@@ -19,17 +13,14 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "constant.defineValue",
 ];
 
-/// The values, whose types the rule reads.
 pub(super) fn typed(k: &ClassLikeConstant, spans: &mut Vec<Span>) {
     spans.extend(k.items.iter().map(|i| i.value.span()));
 }
 
-/// The values of a `const` statement, whose types ValueAssignedToGlobalConstantRule reads.
 pub(super) fn typed_global(k: &Constant, spans: &mut Vec<Span>) {
     spans.extend(k.items.iter().map(|i| i.value.span()));
 }
 
-/// ValueAssignedToGlobalConstantRule: each constant of a `const` statement, by its namespaced name.
 pub(in super::super) fn global_constant(c: &mut Checker, k: &Constant) {
     if c.toggled.constant_types.is_none() {
         return;
@@ -51,7 +42,6 @@ pub(in super::super) fn global_constant(c: &mut Checker, k: &Constant) {
     }
 }
 
-/// ValueAssignedToDefineRule: `define()` with the constant strings of its first argument as the names.
 pub(in super::super) fn define_value(c: &mut Checker, call: &FunctionCall) {
     if c.toggled.constant_types.is_none() {
         return;
@@ -85,7 +75,6 @@ pub(in super::super) fn define_value(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// `ConstantResolver::getConfiguredGlobalConstantType()` against the value: `accepts($valueType, true)`.
 fn configured_value(c: &mut Checker, at: Span, identifier: &str, name: &str, value: &Type) {
     let Some(types) = &c.toggled.constant_types else {
         return;
@@ -103,7 +92,6 @@ fn configured_value(c: &mut Checker, at: Span, identifier: &str, name: &str, val
             configured.describe(Level::Value),
             value.describe(recommended_level(&configured, Some(value)))
         );
-        // acceptsReasonsTip(): one reason as is, more as a bullet list
         let tip = match accepts_reasons(&configured, value, true, StrictMixed::default()).as_slice()
         {
             [] => None,

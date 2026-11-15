@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's ArrayFillFunctionReturnTypeExtension as a Mago return type provider: `array_fill()` of a constant
-//! start index and a constant count of at most 100 is a constant array, else a list or array of the value type.
-
 use std::sync::Arc;
 
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
@@ -43,7 +40,6 @@ impl FunctionReturnTypeProvider for ArrayFill {
         context: &ProviderContext<'_, '_, '_>,
         invocation: &InvocationInfo<'_, '_, '_>,
     ) -> Option<TUnion> {
-        // the extension declines, and PHPStan's signature map returns `array` where Mago's prelude infers a list
         if invocation.argument_count() < 3 {
             return Some(TUnion::from_atomic(TAtomic::Array(TArray::Keyed(
                 TKeyedArray::new_with_parameters(Arc::new(get_arraykey()), Arc::new(get_mixed())),
@@ -56,7 +52,6 @@ impl FunctionReturnTypeProvider for ArrayFill {
     }
 }
 
-/// `getTypeFromFunctionCall()` on PHP 8, where a negative count throws a ValueError (no `false`).
 fn return_type(start: &TUnion, count: &TUnion, value: &TUnion) -> TUnion {
     let valid = non_negative(count);
     if valid == Tri::No {
@@ -75,7 +70,6 @@ fn return_type(start: &TUnion, count: &TUnion, value: &TUnion) -> TUnion {
             if next < 0 {
                 next = 0;
             } else if next == i64::MAX {
-                // PHP throws "Cannot add element to the array as the next element is already occupied"
                 overflows = i + 1 < n;
                 break;
             } else {
@@ -105,12 +99,10 @@ fn return_type(start: &TUnion, count: &TUnion, value: &TUnion) -> TUnion {
     TUnion::from_atomic(TAtomic::Array(array))
 }
 
-/// `IntegerRangeType::fromInterval(0, null)->isSuperTypeOf($count)`.
 fn non_negative(count: &TUnion) -> Tri {
     Tri::extreme_identity(count.types.iter().map(|t| int_from(t, 0)))
 }
 
-/// `IntegerRangeType::fromInterval($min, null)->isSuperTypeOf()` of one member.
 fn int_from(t: &TAtomic, min: i64) -> Tri {
     match t {
         TAtomic::Scalar(TScalar::Integer(_)) => {
@@ -122,7 +114,6 @@ fn int_from(t: &TAtomic, min: i64) -> Tri {
                 Tri::Maybe
             }
         }
-        // an integer template is only maybe within a range, whatever its bound (TemplateIntegerType)
         TAtomic::GenericParameter(_)
         | TAtomic::Mixed(_)
         | TAtomic::Scalar(TScalar::Generic | TScalar::ArrayKey | TScalar::Numeric) => Tri::Maybe,

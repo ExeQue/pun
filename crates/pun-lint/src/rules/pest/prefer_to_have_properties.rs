@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-properties`, ported from pest-plugin-rector's `UseToHavePropertiesRector`: a run of
-//! `->toHaveProperty('a')->toHaveProperty('b')` with literal strings becomes `->toHaveProperties(['a', 'b'])`, when
-//! the checked value is known to be an object.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 

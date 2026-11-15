@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\NullableTypeDeclarationForDefaultNullValueFixer`.
 use crate::analyzers::analysis::{ArgumentAnalysis, TypeAnalysis};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -74,8 +73,7 @@ impl NullableTypeDeclarationForDefaultNullValueFixer {
             }
             if !self.use_nullable_type_declaration {
                 let visibility = &tokens[tokens
-                    .get_prev_meaningful_token(argument_type_info.get_start_index())
-                    .unwrap()];
+                    .prev_meaningful(argument_type_info.get_start_index())];
                 if visibility.is_given_kind(CONSTRUCTOR_PROPERTY_MODIFIERS) {
                     continue;
                 }
@@ -143,7 +141,7 @@ impl NullableTypeDeclarationForDefaultNullValueFixer {
             if index == start_index {
                 tokens.remove_trailing_whitespace(index, None);
                 tokens.clear_token_and_merge_surrounding_whitespace(index);
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
                 if tokens[index].equals((CT_TYPE_ALTERNATION, "|"), true) {
                     tokens.remove_trailing_whitespace(index, None);
                     tokens.clear_token_and_merge_surrounding_whitespace(index);
@@ -151,7 +149,7 @@ impl NullableTypeDeclarationForDefaultNullValueFixer {
             } else {
                 tokens.remove_leading_whitespace(index, None);
                 tokens.clear_token_and_merge_surrounding_whitespace(index);
-                index = tokens.get_prev_meaningful_token(index).unwrap();
+                index = tokens.prev_meaningful(index);
                 if tokens[index].equals((CT_TYPE_ALTERNATION, "|"), true) {
                     tokens.remove_leading_whitespace(index, None);
                     tokens.clear_token_and_merge_surrounding_whitespace(index);

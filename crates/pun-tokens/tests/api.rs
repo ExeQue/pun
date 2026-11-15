@@ -88,7 +88,6 @@ fn op(t: &mut Tokens, o: &[Value]) -> Value {
                 t.find_block_start(bt, u(0))
             }
         })),
-        // Upstream throws on an unknown type (0, 16); `BlockType::ALL` has none, so `[..]` panics there.
         "blockEnd" => json!(t.find_block_end(BlockType::ALL[u(0).wrapping_sub(1)], u(1))),
         "blockStart" => json!(t.find_block_start(BlockType::ALL[u(0).wrapping_sub(1)], u(1))),
         "givenKind" => {
@@ -211,7 +210,6 @@ fn op(t: &mut Tokens, o: &[Value]) -> Value {
         "doWhile" => json!(a.is_while_part_of_do_while(u(0))),
         "enumCase" => json!(a.is_enum_case(u(0))),
         "superGlobal" => json!(a.is_super_global(u(0))),
-        // mutations
         _ => {
             match name {
                 "clearChanged" => t.clear_changed(),
@@ -252,7 +250,6 @@ fn guarded(t: &mut Tokens, o: &[Value]) -> Value {
     catch_unwind(AssertUnwindSafe(|| op(t, o))).unwrap_or_else(|_| json!({"throws": true}))
 }
 
-/// The case's ops plus the implicit `["code"]`, `["changed"]` (unless `"noTail": true`).
 fn ops_of(case: &Value) -> Vec<Value> {
     let mut ops = case["ops"].as_array().unwrap().clone();
     if case.get("noTail").is_none() {

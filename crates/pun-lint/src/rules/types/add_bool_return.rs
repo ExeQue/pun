@@ -1,9 +1,3 @@
-//! `lint/types/add-bool-return-type`, ported from Rector 2.8.4's `BoolReturnTypeFromBooleanStrictReturnsRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a function or method whose every `return` returns a boolean
-//! expression (`!`, `empty()`, `isset()`, `instanceof`, a `(bool)` cast, a comparison, `&&`, `||`, `and`, `or`,
-//! `xor`) or a call of a built-in function declared to return `bool`, and whose end cannot be reached, returns
-//! `bool`. Only `true` and `false` is left to `lint/types/add-bool-return-type-from-const`.
-
 use mago_syntax::cst::{
     BinaryOperator, Call, Construct, Expression, Identifier, Literal, Node, NodeKind,
     UnaryPrefixOperator,
@@ -24,8 +18,8 @@ impl Rule for AddBoolReturn {
         "lint/types/add-bool-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -73,7 +67,6 @@ impl Rule for AddBoolReturn {
     }
 }
 
-/// `ExprAnalyzer::isBoolExpr`.
 fn is_bool_expr(expr: &Expression<'_>) -> bool {
     match expr {
         Expression::UnaryPrefix(p) => matches!(
@@ -105,7 +98,6 @@ fn is_bool_expr(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `isNativeBooleanReturnTypeFuncCall`: a call of a built-in function whose native return type is `bool`.
 fn is_native_bool_function_call(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -127,7 +119,6 @@ fn is_native_bool_function_call(
     })
 }
 
-/// The function a call of `name` reaches: the namespaced one when the codebase has it, else the global one.
 pub(crate) fn function_name(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],

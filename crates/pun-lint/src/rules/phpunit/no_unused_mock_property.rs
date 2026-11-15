@@ -1,14 +1,3 @@
-//! `lint/phpunit/no-unused-mock-property`, ported from rector-phpunit's `RemoveNeverUsedMockPropertyRector`
-//! (rules/CodeQuality/Rector/Class_), with `MockObjectPropertyDetector::collectFromClassMethod` and
-//! `PropertyFetchFinder::findLocalPropertyFetchesByName`.
-//!
-//! In a test class whose name does not end in `TestCase`, a property that `setUp()` assigns `createMock()` to, and
-//! that every other fetch of only calls methods on, goes: the property, its assignment in `setUp()`, and each
-//! statement of a method that is a call chain on it.
-//!
-//! Rector also keeps a property that a used trait fetches, which it reads from the trait's file. Pun reads the traits
-//! of the same file; a trait from another file keeps every property (tests/rector/RemoveNeverUsedMockPropertyRector/Pun).
-
 use mago_syntax::cst::{
     Access, Call, ClassLikeMember, ClassLikeMemberSelector, Expression, MethodBody, Node, NodeKind,
     Property, Statement, Variable,
@@ -19,8 +8,8 @@ use super::no_bare_mock_assign::scoped;
 use super::{
     AnyCall, class_body, is_in_test_class, object_class, own_class, remove_class_members, resolve,
 };
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -49,7 +38,6 @@ impl Rule for NoUnusedMockProperty {
         if !is_in_test_class(ctx, &scope, None) {
             return;
         }
-        // skip abstract test case classes, as most likely extended and mock used in child classes
         let class = own_class(&scope);
         if class.as_deref().is_some_and(|c| c.ends_with("TestCase")) {
             return;
@@ -86,7 +74,6 @@ impl Rule for NoUnusedMockProperty {
                         calls += 1;
                     }
                 });
-                // -1 for the assign in setUp() method
                 all.saturating_sub(1) == calls
                     && all > 0
                     && !is_property_used_in_trait(ctx, &scope, members.iter(), name)
@@ -95,7 +82,6 @@ impl Rule for NoUnusedMockProperty {
         if to_remove.is_empty() {
             return;
         }
-        // 1. remove property
         let removed_members: Vec<bool> = members
             .iter()
             .map(|m| {
@@ -126,7 +112,6 @@ impl Rule for NoUnusedMockProperty {
             let mut removed = vec![false; list.stmts.len()];
             let is_set_up = std::ptr::eq(*method, *set_up);
             for name in &to_remove {
-                // 2. remove assign from setUp()
                 if is_set_up
                     && let Some(at) = list.stmts.iter().enumerate().position(|(at, s)| {
                         !removed[at]
@@ -138,7 +123,6 @@ impl Rule for NoUnusedMockProperty {
                 {
                     removed[at] = true;
                 }
-                // 3. remove expression method calls on this property
                 for (at, statement) in list.stmts.iter().enumerate() {
                     if let Some(Expression::Call(Call::Method(call))) = expression(statement) {
                         let mut current = call;
@@ -166,8 +150,6 @@ impl Rule for NoUnusedMockProperty {
     }
 }
 
-/// `MockObjectPropertyDetector::collectFromClassMethod`: the names of the properties `setUp()` assigns a
-/// `createMock()` call to (on any object, by a method or a static call), in the order of their first assignment.
 fn collect_from_class_method<'a>(stmts: &[&'a Statement<'a>]) -> Vec<&'a [u8]> {
     let mut names: Vec<&[u8]> = Vec::new();
     for statement in stmts {
@@ -192,7 +174,6 @@ fn collect_from_class_method<'a>(stmts: &[&'a Statement<'a>]) -> Vec<&'a [u8]> {
     names
 }
 
-/// The name of a `PropertyFetch` (`$any->name`, not `?->`) with an identifier name.
 pub(super) fn property_fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     match unparenthesize(expr) {
         Expression::Access(Access::Property(a)) => match &a.property {
@@ -203,8 +184,6 @@ pub(super) fn property_fetch_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u
     }
 }
 
-/// The number of `findLocalPropertyFetchesByName($class, $name)`: in the hooked properties and the methods, every
-/// property fetch (`->`, `?->` or `::$`) of `name` whose object is `$this`, or has the class's own type.
 pub(super) fn local_property_fetches<'a>(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -259,8 +238,6 @@ pub(super) fn local_property_fetches<'a>(
     count
 }
 
-/// `isPropertyUsedInTrait`: a trait the class uses fetches the property (`->name` on anything). A trait declared in
-/// another file counts as fetching it, as Pun does not read it; a name that is no trait does not.
 fn is_property_used_in_trait<'a>(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -284,8 +261,6 @@ fn is_property_used_in_trait<'a>(
     })
 }
 
-/// The declarations of the traits the class uses (`use A, B;` among `members`, names that are no trait left out),
-/// which must all be in this file: `None` when one is not, as Pun does not read other files.
 pub(super) fn traits_in_file<'n, 'a>(
     ctx: &Context<'_>,
     scope: &[Node<'n, 'n>],
@@ -307,7 +282,6 @@ pub(super) fn traits_in_file<'n, 'a>(
                 continue;
             };
             facts.text(metadata.span)?;
-            // the file's root, whose descendants are its traits
             let mut stack: Vec<Node<'n, 'n>> = scope.first().copied().into_iter().collect();
             let mut declared = None;
             while let Some(node) = stack.pop() {

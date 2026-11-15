@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocAnnotationWithoutDotFixer`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::preg::{Preg, preg_quote};
 use pun_format::Fixer;
@@ -28,8 +27,6 @@ impl Fixer for PhpdocAnnotationWithoutDotFixer {
         "phpdoc_annotation_without_dot"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocToCommentFixer.
         17
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -50,7 +47,6 @@ impl Fixer for PhpdocAnnotationWithoutDotFixer {
                 if !tag.valid() || !TAGS.iter().any(|t| t.as_bytes() == tag.get_name()) {
                     continue;
                 }
-                // malformed PHPDoc, missing asterisk !
                 let malformed = doc.get_line(annotation.get_end() + 1).is_some_and(|line| {
                     let line = line.borrow();
                     let trimmed = ltrim_chars(line.get_content(), TRIM_CHARS);

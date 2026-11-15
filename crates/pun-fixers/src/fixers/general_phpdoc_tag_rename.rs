@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\GeneralPhpdocTagRenameFixer` (its code is in analyzers/general_phpdoc_tag_rename.rs).
 use crate::analyzers::general_phpdoc_tag_rename::GeneralPhpdocTagRenameFixer;
 use pun_format::Fixer;
 
@@ -12,7 +11,6 @@ mod tests {
     use serde_json::Value;
     use serde_json::json;
 
-    // Accept/reject and messages from the real fixer's configure() (PHP-CS-Fixer 3.95).
     #[test]
     fn configure_validation() {
         let err = |c: Value| fixer().configure(&c).unwrap_err().to_string();
@@ -50,7 +48,6 @@ mod tests {
         }
     }
 
-    // Pint 1.29.3 with `{"a|b": "c"}` on `/** @a @b @c */`: the file errors with this message.
     #[test]
     #[should_panic(expected = "assert(isset($replacements[$matches['tag']]))")]
     fn unquoted_key_errors_like_upstream() {

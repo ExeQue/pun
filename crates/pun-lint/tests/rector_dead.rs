@@ -6,9 +6,7 @@
 //! `format(pun lint --fix) == format(expected)` with format being the laravel preset, and the text edits must give the
 //! expected bytes before format too.
 
-mod lint_c;
-
-use lint_c::run_class;
+use crate::common::run_class;
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoEmptyMethod, NoRedundantDefaultArgument, NoUnusedPrivateMethod, NoUselessOverride,
@@ -48,8 +46,6 @@ final class FacadeFixRounds
     private function unused(): void {}
 }
 ";
-    // Rector 2.8.4, PHP 8.4: RemoveUnusedPrivateMethodRector alone, then with
-    // HelperFuncCallToFacadeClassRector. Nested helpers force another fix round.
     let expected = "<?php
 
 final class FacadeFixRounds
@@ -64,9 +60,12 @@ final class FacadeFixRounds
 }
 ";
     let path = Path::new("facade-fix-rounds.php");
-    let alone = Linter::new(vec![Box::new(NoUnusedPrivateMethod)], 80400)
-        .fix(path, input)
-        .unwrap();
+    let alone = Linter::new(
+        vec![Box::new(NoUnusedPrivateMethod)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(path, input)
+    .unwrap();
     assert_eq!(alone.source, expected);
 
     let combined = Linter::new(
@@ -74,7 +73,7 @@ final class FacadeFixRounds
             Box::new(NoUnusedPrivateMethod),
             Box::new(PreferFacadeOverApp),
         ],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )
     .fix(path, input)
     .unwrap();

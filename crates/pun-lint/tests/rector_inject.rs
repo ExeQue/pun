@@ -37,11 +37,9 @@
 //! - ArgumentFuncCallToMethodCallRector/Pun/parent_private_method: the parent's private method called.
 //! - ArgumentFuncCallToMethodCallRector/Pun/static_property: a static property read as `$this->s`.
 
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::{run_class, run_class_at, run_dirs};
+use crate::common::{run_class, run_class_at, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::rules::{PreferConstructorInjection, ReplaceStaticWithMethod};
 use pun_lint::{Linter, Rule};
@@ -52,7 +50,6 @@ fn configured<R: Rule + 'static>(mut rule: R, options: &Value) -> Box<dyn Rule> 
     Box::new(rule)
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -71,12 +68,13 @@ impl Rule for Everywhere {
     }
 }
 
-/// On each input of tests/rector/<class>: called on every node, the rule `make` gives reports what it reports when
-/// called on its targets (`targets()` only spares the engine work), and unconfigured it reports nothing.
 fn everywhere(make: impl Fn() -> Box<dyn Rule>, unconfigured: Box<dyn Rule>, class: &str) {
-    let targeted = Linter::new(vec![make()], 80400);
-    let everywhere = Linter::new(vec![Box::new(Everywhere(make()))], 80400);
-    let unconfigured = Linter::new(vec![unconfigured], 80400);
+    let targeted = Linter::new(vec![make()], pun_lint::PhpVersion::from_id(80400));
+    let everywhere = Linter::new(
+        vec![Box::new(Everywhere(make()))],
+        pun_lint::PhpVersion::from_id(80400),
+    );
+    let unconfigured = Linter::new(vec![unconfigured], pun_lint::PhpVersion::from_id(80400));
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(class);
@@ -107,12 +105,14 @@ fn everywhere(make: impl Fn() -> Box<dyn Rule>, unconfigured: Box<dyn Rule>, cla
     }
 }
 
-/// `configure` rejects each of `bad` with the message `error`.
 fn rejects(mut rule: impl Rule, bad: &[(Value, &str)]) {
     for (options, error) in bad {
-        assert_eq!(rule.configure(options).unwrap_err(), *error, "{options}");
+        assert_eq!(
+            rule.configure(options).unwrap_err().to_string(),
+            *error,
+            "{options}"
+        );
     }
-    // No options: the rule does nothing.
     rule.configure(&Value::Null).unwrap();
 }
 
@@ -150,9 +150,10 @@ fn static_call_to_method_call() {
         70400,
         &[],
     );
-    // The laravel preset's format fails on `- -1` and `+ +1` (pun-format's own bug), so these Oracle cases are
-    // compared on the rule's fix alone.
-    let linter = Linter::new(vec![static_rule(&options)], 80000);
+    let linter = Linter::new(
+        vec![static_rule(&options)],
+        pun_lint::PhpVersion::from_id(80000),
+    );
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(STATIC)
@@ -254,7 +255,6 @@ fn argument_func_call_to_method_call() {
     );
 }
 
-/// Both rules are among every rule.
 #[test]
 fn registered() {
     let ids: Vec<&str> = pun_lint::rules::all().iter().map(|r| r.id()).collect();

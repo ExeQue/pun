@@ -1,16 +1,3 @@
-//! What Larastan's extensions ask the booted Laravel app (`HasContainer::resolve()`, the `config` repository,
-//! `now()`), read from the installed framework and the app's sources instead (Pun never runs PHP).
-//!
-//! - The container: `Application::registerCoreContainerAliases()`, each alias resolving to its key's first class.
-//!   A key whose classes are all interfaces resolves to what the framework's provider binds by default:
-//!   `auth.driver` to the default guard's driver (GuardDynamicStaticMethodReturnTypeExtension's
-//!   `findTypeFromGuardDriver()`), `filesystem.disk` and `filesystem.cloud` to a `FilesystemAdapter`. Bindings that
-//!   service providers add are not seen.
-//! - The `auth` config: LoadConfiguration's framework `config/auth.php` merged with the app's (`guards`,
-//!   `providers` and `passwords` merged again), or `bootstrap/cache/config.php`; `env()` reads `.env`.
-//! - `get_class(now())`: `Illuminate\Support\Carbon`, unless a service provider in `app/Providers` calls
-//!   `Date::use(X::class)` (DateFactory::use()).
-
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -23,7 +10,6 @@ use mago_syntax::walker::MutWalker;
 
 use crate::codebase::{parse, read};
 
-/// A config value as far as a literal reader can tell.
 #[derive(Clone, Debug, PartialEq)]
 enum Value {
     Array(Vec<(String, Value)>),
@@ -47,12 +33,10 @@ impl Value {
         }
     }
 
-    /// PHP's truthiness of a string (`! $provider`): neither empty nor `'0'`.
     fn truthy_str(&self) -> Option<&str> {
         self.as_str().filter(|s| !s.is_empty() && *s != "0")
     }
 
-    /// `array_merge()` of two string-keyed arrays.
     fn merge(&self, other: &Value) -> Value {
         match (self, other) {
             (Value::Array(a), Value::Array(b)) => {
@@ -70,16 +54,11 @@ impl Value {
     }
 }
 
-/// The app as Larastan's extensions see it.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct App {
-    /// Lowercase alias or class name to the class the container makes for it.
     container: HashMap<String, String>,
-    /// The `auth` config.
     auth: Option<Value>,
-    /// `get_class(now())`.
     pub(crate) date_class: String,
-    /// `version_compare(LARAVEL_VERSION, '12.0.0', '>=')`.
     pub(crate) laravel_12: bool,
 }
 
@@ -114,16 +93,12 @@ impl App {
         app
     }
 
-    /// `HasContainer::resolve()`: the class of what the container makes for `abstract`, `None` when it can't.
-    /// The caller checks that the class exists.
     pub(crate) fn resolve(&self, abstract_: &str) -> Option<&str> {
         self.container
             .get(&abstract_.trim_start_matches('\\').to_ascii_lowercase())
             .map(String::as_str)
     }
 
-    /// ContractsMethodsExtension: an `Illuminate\Contracts` interface has the methods of the class the container makes
-    /// for it, which Mago's method resolution reaches as a mixin of that class (one Mago has loaded).
     pub(crate) fn contract_mixins(&self, metadata: &mut mago_codex::metadata::CodebaseMetadata) {
         use mago_codex::metadata::ttype::TypeMetadata;
         use mago_codex::ttype::atomic::TAtomic;
@@ -154,7 +129,6 @@ impl App {
         }
     }
 
-    /// LoadsAuthModel::getAuthModels(): the models of the guard's provider, or of every guard's.
     pub(crate) fn auth_models(&self, guard: Option<&str>) -> Vec<String> {
         let Some(auth) = &self.auth else {
             return Vec::new();
@@ -189,8 +163,6 @@ impl App {
         models
     }
 
-    /// GuardDynamicStaticMethodReturnTypeExtension::findTypeFromGuardDriver() of the guard's driver (the default
-    /// guard's for `None`).
     pub(crate) fn guard_class(&self, guard: Option<&str>) -> Option<&'static str> {
         let auth = self.auth.as_ref()?;
         let guard = match guard {
@@ -201,7 +173,6 @@ impl App {
     }
 }
 
-/// GuardDynamicStaticMethodReturnTypeExtension::findTypeFromGuardDriver().
 pub(crate) fn driver_class(driver: &str) -> Option<&'static str> {
     match driver {
         "session" => Some("Illuminate\\Auth\\SessionGuard"),
@@ -211,7 +182,6 @@ pub(crate) fn driver_class(driver: &str) -> Option<&'static str> {
     }
 }
 
-/// `registerCoreContainerAliases()`'s keys and their classes.
 fn core_aliases(path: &Path) -> Vec<(String, Vec<String>)> {
     let Some(file) = read(path, FileType::Vendored).ok().flatten() else {
         return Vec::new();
@@ -272,7 +242,6 @@ fn core_aliases(path: &Path) -> Vec<(String, Vec<String>)> {
     find.found
 }
 
-/// The class of `X::class` (`self::class` is the Application).
 fn class_constant(names: &ResolvedNames, e: &Expression) -> Option<String> {
     let Expression::Access(Access::ClassConstant(c)) = e else {
         return None;
@@ -292,7 +261,6 @@ fn class_constant(names: &ResolvedNames, e: &Expression) -> Option<String> {
     }
 }
 
-/// The `.env` file's variables (Dotenv's simple `KEY=value` lines, quotes removed).
 fn dot_env(root: &Path) -> HashMap<String, String> {
     let Ok(text) = std::fs::read_to_string(root.join(".env")) else {
         return HashMap::new();
@@ -318,7 +286,6 @@ fn dot_env(root: &Path) -> HashMap<String, String> {
         .collect()
 }
 
-/// The `auth` config LoadConfiguration builds.
 fn auth_config(root: &Path, framework: &Path, env: &HashMap<String, String>) -> Option<Value> {
     let cached = root.join("bootstrap/cache/config.php");
     if cached.is_file() {
@@ -350,7 +317,6 @@ fn auth_config(root: &Path, framework: &Path, env: &HashMap<String, String>) -> 
     }
 }
 
-/// A config file's top-level `return`.
 fn returned(path: &Path, env: &HashMap<String, String>) -> Option<Value> {
     let file = read(path, FileType::Vendored).ok()??;
     let arena = LocalArena::new();
@@ -390,7 +356,6 @@ fn value(e: &Expression, names: &ResolvedNames, env: &HashMap<String, String>) -
                 return Value::Unknown;
             };
             match env.get(&key) {
-                // Env::get(): the `true`, `false`, `null` and `empty` strings (parenthesized too) are converted
                 Some(v) => match v
                     .to_ascii_lowercase()
                     .trim_matches(|c| c == '(' || c == ')')
@@ -435,7 +400,6 @@ fn array(
     Value::Array(items)
 }
 
-/// The class a service provider passes to `Date::use()`, the last one found.
 fn date_class(root: &Path) -> Option<String> {
     let mut found = None;
     let mut files: Vec<_> = std::fs::read_dir(root.join("app/Providers"))

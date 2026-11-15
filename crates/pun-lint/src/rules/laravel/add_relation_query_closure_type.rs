@@ -1,10 +1,3 @@
-//! `lint/laravel/add-relation-query-closure-type`, ported from rector-laravel 2.7.3's
-//! `EloquentWhereRelationTypeHintingParameterRector` (src/Rector/MethodCall).
-//!
-//! A query builder's `whereHas()`, `orWhereHas()`, `whereDoesntHave()` or `orWhereDoesntHave()` whose second argument
-//! is a closure or arrow function, or one of their `...Morph` forms whose third is, gets that function's first
-//! parameter typed `\Illuminate\Contracts\Database\Query\Builder`. A parameter already typed with a class name stays.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::is_name;
@@ -43,7 +36,6 @@ impl Rule for AddRelationQueryClosureType {
         let Some(call) = call_parts(&node) else {
             return;
         };
-        // `getPosition`: the morph methods take the closure third, the others second
         let position = if METHODS[4..].iter().any(|m| is_name(call.name, m)) {
             2
         } else {

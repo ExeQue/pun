@@ -1,8 +1,3 @@
-//! `lint/types/add-param-type-data-provider`, ported from Rector 2.8.4's `AddParamTypeBasedOnPHPUnitDataProviderRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with `ParameterTypeFromDataProviderResolver`: in a PHPUnit test class,
-//! an untyped parameter of a public test method gets the type of the values its data providers give at its position,
-//! read from the provider's first returned array literal or from its yielded arrays.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::object::TObject;
@@ -24,7 +19,7 @@ use super::never::is_test_class;
 use super::param::{
     Flow, add_hint, own_static, param_declaration_unsorted, phpstan_union, traverse,
 };
-use crate::rules::class_method::{class_info, method_data_providers, type_of};
+use crate::rules::support::class_members::{class_info, method_data_providers, type_of};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -56,8 +51,6 @@ impl Rule for AddParamTypeDataProvider {
         let Some(class) = class_info(node, ancestors, &facts) else {
             return;
         };
-        // A `@dataProvider` tag whose name an import makes a class (`use ...\Attributes\DataProvider;`) is a Doctrine
-        // annotation to Rector's docblock parser, which `DataProviderNodes` does not read.
         let doc_tags = facts
             .codebase
             .get_class_like(resolve_written_class_name(ancestors, "dataProvider").as_bytes())
@@ -106,7 +99,7 @@ impl Rule for AddParamTypeDataProvider {
                     .map(|t| own_static(t, own.as_deref()))
                     .collect();
                 if let Some(declaration) =
-                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version)
+                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version.id())
                 {
                     edits.push(add_hint(param, &declaration));
                 }
@@ -124,8 +117,6 @@ impl Rule for AddParamTypeDataProvider {
     }
 }
 
-/// `resolveParameterTypeFromDataProvider()` with `createMixedPassedOrUnionType()`: the types (literal values made
-/// general) the provider gives at `position`, in the order met; `None` for `mixed`.
 fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Option<Vec<TAtomic>> {
     let MethodBody::Concrete(body) = &provider.body else {
         return None;
@@ -146,7 +137,6 @@ fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Optio
     });
     let mut types: Vec<TUnion> = Vec::new();
     if let Some(returned) = first_return {
-        // resolveReturnStaticArrayTypeByParameterPosition
         let elements = match returned.map(unparenthesize) {
             Some(Expression::Array(a)) => &a.elements,
             Some(Expression::LegacyArray(a)) => &a.elements,
@@ -161,12 +151,10 @@ fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Optio
             let Some(item) = items.iter().nth(position).and_then(ArrayElement::get_value) else {
                 continue;
             };
-            // `new static()` is PHPStan's `StaticType`, which no parameter type declares
             if matches!(unparenthesize(item), Expression::Instantiation(i) if matches!(i.class, Expression::Static(_)))
             {
                 return None;
             }
-            // PHPStan's `toObject()` of an array is `stdClass` (Mago's cast gives an object shape)
             if let Expression::UnaryPrefix(cast) = unparenthesize(item)
                 && matches!(cast.operator, UnaryPrefixOperator::ObjectCast(..))
                 && matches!(
@@ -180,9 +168,6 @@ fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Optio
                 ))]));
                 continue;
             }
-            // Rector's `getType()` of an enum case read in the array literal is the enum's `ObjectType`, not the case
-            // (a yielded array's values keep the case), so `TypeCombinator::union` leaves it in place; the object of
-            // an enum with one case is that case, which goes after the other types
             let t = type_of(facts, item)?;
             let one_case = |e: &TEnum| {
                 facts
@@ -206,14 +191,10 @@ fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Optio
             ));
         }
     } else {
-        // "yield from" data sets are not resolved here
         if yield_from {
             return None;
         }
-        // resolveYieldStaticArrayTypeByParameterPosition
         for value in yields {
-            // (PHPStan 2.3 types a yielded array's items in order: `[$c = collect(), $c]` has `$c` defined in the
-            // second)
             let t = type_of(facts, value?)?;
             for atomic in t.types.iter() {
                 let values = constant_array_values(atomic)?;
@@ -235,7 +216,6 @@ fn provider_type(facts: &Facts, provider: &Method<'_>, position: usize) -> Optio
     (!out.is_empty()).then_some(out)
 }
 
-/// `ConstantArrayType::getValueTypes()` of a constant array (an array shape), in order; `None` for other types.
 fn constant_array_values(atomic: &TAtomic) -> Option<Vec<TUnion>> {
     match atomic {
         TAtomic::Array(TArray::List(l)) if l.element_type.is_never() => Some(
@@ -252,8 +232,6 @@ fn constant_array_values(atomic: &TAtomic) -> Option<Vec<TUnion>> {
     }
 }
 
-/// `TypeFactory::uniquateTypes` without constants: a literal value is its general type (`true` and `false` are
-/// `bool`).
 fn general(atomic: &TAtomic) -> TAtomic {
     match atomic {
         TAtomic::Scalar(s) if s.is_int() => TAtomic::Scalar(TScalar::int()),

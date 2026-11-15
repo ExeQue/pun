@@ -1,7 +1,3 @@
-//! Assignment checks: InvalidAssignVarRule with NullsafeCheck, InvalidVariableAssignRule (the VariableAssignNodes
-//! AssignHandler::processAssignVar() emits) and OffsetAccessWithoutDimForReadingRule (with the expressions
-//! `$scope->isInExpressionAssign()` holds for), and PropertyAssignRefRule.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
@@ -16,14 +12,10 @@ use super::types::flow::unparen;
 use super::{Checker, members};
 use crate::bitset::BitSet;
 
-/// What these checks remember during a walk.
 #[derive(Default)]
 pub(super) struct State {
-    /// `[]` fetches PHPStan visits inside `enterExpressionAssign()` for them.
     assigned: HashSet<Span>,
-    /// Subtrees PHPStan only assigns virtually (VirtualAssignNodeCallback: no rule sees their nodes).
     virtual_targets: Vec<Span>,
-    /// MutatingScope's currentlyAssignedExpressions, keyed by expression identity, not source occurrence.
     pub(super) expressions: HashSet<String>,
     saved: Vec<HashSet<String>>,
     enter: HashMap<Span, String>,
@@ -40,7 +32,6 @@ impl State {
     }
 }
 
-/// Enter/exitExpressionAssign creates a scope with a replaced entry; exit removes it, not an outer count.
 pub(super) fn enter_expression(c: &mut Checker, e: &Expression) {
     if let Some(key) = c.assign.enter.get(&e.span()) {
         c.assign.expressions.insert(key.clone());
@@ -60,8 +51,6 @@ fn expression_scope(c: &mut Checker, e: &Expression) {
     }
 }
 
-/// PHPParser converts a root short-array target, then recursively converts both Array_ kinds in its values.
-/// Explicit list() is already a List_, but its children are not passed through fixupArrayDestructuring.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ListRole {
     Read,
@@ -69,7 +58,6 @@ enum ListRole {
     ArrayItem,
 }
 
-/// A List_ item's key, value (without ArrayItem::$byRef), and the parser role of its value.
 type Item<'e, 'arena> = (
     Option<&'e Expression<'arena>>,
     &'e Expression<'arena>,
@@ -98,8 +86,6 @@ fn list_items<'e, 'arena>(
                     | ArrayElement::Variadic(VariadicArrayElement { value, .. }) => (None, *value),
                     ArrayElement::Missing(_) => return None,
                 };
-                // php.y's ampersand variable array_pair stores byRef on ArrayItem, not on its value.
-                // Do not unwrap references in arbitrary expressions or unwrap parentheses around one.
                 let value = match value {
                     Expression::UnaryPrefix(reference) if reference.operator.is_reference() => {
                         reference.operand
@@ -112,12 +98,10 @@ fn list_items<'e, 'arena>(
     )
 }
 
-/// NullsafeCheck::containsNullSafe() on an expression read (a returned or referenced expression).
 pub(super) fn contains_nullsafe(e: &Expression) -> bool {
     nullsafe(e, ListRole::Read)
 }
 
-/// NullsafeCheck::containsNullSafe() on the PHPParser expression projected by [`list_items()`].
 fn nullsafe(e: &Expression, role: ListRole) -> bool {
     let e = unparen(e);
     match e {
@@ -141,7 +125,6 @@ fn nullsafe(e: &Expression, role: ListRole) -> bool {
     }
 }
 
-/// `$expr->class instanceof Expr`: not a name (php-parser has `self`, `static` and `parent` as names).
 fn is_expr_class(class: &Expression) -> bool {
     !matches!(
         class,
@@ -152,7 +135,6 @@ fn is_expr_class(class: &Expression) -> bool {
     )
 }
 
-/// InvalidAssignVarRule's containsNonAssignableExpression().
 fn non_assignable(e: &Expression, role: ListRole) -> bool {
     let e = unparen(e);
     match e {
@@ -168,7 +150,6 @@ fn non_assignable(e: &Expression, role: ListRole) -> bool {
     }
 }
 
-/// InvalidAssignVarRule on `var = expr` (`by_ref`: `=&`, with `expr` the referenced expression).
 fn invalid_assign_var(c: &mut Checker, at: Span, var: &Expression, expr: Option<&Expression>) {
     if nullsafe(var, ListRole::Target) {
         c.report_non_ignorable(
@@ -194,7 +175,6 @@ fn invalid_assign_var(c: &mut Checker, at: Span, var: &Expression, expr: Option<
     }
 }
 
-/// An `Assign`, `AssignOp` or `AssignRef`.
 pub(super) fn assignment(c: &mut Checker, a: &Assignment) {
     let referenced = match (&a.operator, unparen(a.rhs)) {
         (AssignmentOperator::Assign(_), Expression::UnaryPrefix(u))
@@ -222,13 +202,10 @@ pub(super) fn is_list_target(e: &Expression) -> bool {
     list_items(unparen(e), ListRole::Target).is_some()
 }
 
-/// processAssignVar() with `$enterExpressionAssign`: the `[]` fetches of the target's dim-fetch chains.
 fn mark_assigned(c: &mut Checker, var: &Expression, role: ListRole) {
     let mut var = unparen(var);
     if let Some(items) = list_items(var, role) {
         for (key, value, role) in items {
-            // applyWrite(KIND_LIST) enters the value on itemScope. Only a written key's ExpressionResult
-            // transfers that scope into the running result; an unkeyed item keeps the original scope.
             if let Some(key) = key
                 && let Some(identity) = c.assignment_key(value)
             {
@@ -245,8 +222,6 @@ fn mark_assigned(c: &mut Checker, var: &Expression, role: ListRole) {
                 var = unparen(a.array);
             }
             Expression::ArrayAccess(a) => {
-                // prepareTarget exits each written dimension after its result. The attempted enter there
-                // does not replace the running scope, unlike the root's enter/exit pair.
                 if let Some(key) = c.assignment_key(a.index) {
                     c.assign.exit.insert(a.index.span(), key);
                 }
@@ -260,8 +235,6 @@ fn mark_assigned(c: &mut Checker, var: &Expression, role: ListRole) {
     }
 }
 
-/// The VariableAssignNodes processAssignVar() emits for `var`: a variable, the variable a dim-fetch chain starts
-/// at, and those of a list's items.
 fn assign_var(c: &mut Checker, var: &Expression, role: ListRole) {
     let mut var = unparen(var);
     if let Some(items) = list_items(var, role) {
@@ -280,7 +253,6 @@ fn assign_var(c: &mut Checker, var: &Expression, role: ListRole) {
     }
 }
 
-/// InvalidVariableAssignRule.
 pub(super) fn variable_assign(c: &mut Checker, v: &DirectVariable) {
     super::by_ref_foreach::variable_assign(c, v);
     if v.name != b"$this" {
@@ -303,7 +275,6 @@ pub(super) fn variable_assign(c: &mut Checker, v: &DirectVariable) {
     );
 }
 
-/// `foreach`: a variable key or value is a VariableAssignNode; any other target is assigned virtually.
 pub(super) fn foreach(c: &mut Checker, f: &Foreach) {
     let (key, value) = match &f.target {
         ForeachTarget::Value(t) => (None, t.value),
@@ -322,19 +293,16 @@ pub(super) fn foreach(c: &mut Checker, f: &Foreach) {
     }
 }
 
-/// `catch (E $var)`.
 pub(super) fn catch(c: &mut Checker, clause: &TryCatchClause) {
     if let Some(v) = &clause.variable {
         variable_assign(c, v);
     }
 }
 
-/// `++`/`--` assign their operand virtually.
 pub(super) fn increment(c: &mut Checker, operand: &Expression) {
     assign_var(c, operand, ListRole::Read);
 }
 
-/// `unset($a[$k])` assigns its dim-fetch chain virtually.
 pub(super) fn unset(c: &mut Checker, u: &Unset) {
     for value in &u.values {
         if let Expression::ArrayAccess(_) = unparen(value) {
@@ -343,7 +311,6 @@ pub(super) fn unset(c: &mut Checker, u: &Unset) {
     }
 }
 
-/// OffsetAccessWithoutDimForReadingRule.
 pub(super) fn array_append(c: &mut Checker, a: &ArrayAppend) {
     let span = a.span();
     if c.assign.assigned.contains(&span)
@@ -364,10 +331,8 @@ pub(super) fn array_append(c: &mut Checker, a: &ArrayAppend) {
     );
 }
 
-/// A parameter as far as passing by reference goes.
 struct Param {
     name: Vec<u8>,
-    /// `passedByReference()->createsNewVariable()`
     by_ref: bool,
     variadic: bool,
 }
@@ -392,7 +357,6 @@ fn of_builtin(variants: &[pun_phpstan::symbols::Variant], n: usize) -> Option<Ve
             <= n
             && (v.params.iter().any(|p| p.variadic) || n <= v.params.len())
     };
-    // ponytail: PHPStan tells several accepting variants apart by the arguments' types; the first wins here
     let v = variants.iter().find(accepts).or(variants.first())?;
     Some(
         v.params
@@ -425,7 +389,6 @@ fn of_syntax(params: &FunctionLikeParameterList) -> Vec<Param> {
         .collect()
 }
 
-/// A call whose arguments [`arguments()`] reads.
 pub(super) enum Callee<'e, 'arena> {
     Function(&'e FunctionCall<'arena>),
     Method(&'e MethodCall<'arena>),
@@ -433,7 +396,6 @@ pub(super) enum Callee<'e, 'arena> {
     New(&'e Instantiation<'arena>),
 }
 
-/// The callee's parameters (`$parametersAcceptor->getParameters()`), when PHPStan knows it here.
 fn callee_params(c: &Checker, call: &Callee, n: usize) -> Option<Vec<Param>> {
     match call {
         Callee::Function(f) => match unparen(f.function) {
@@ -462,7 +424,6 @@ fn callee_params(c: &Checker, call: &Callee, n: usize) -> Option<Vec<Param>> {
                     })
             }
             _ => {
-                // FuncCallHandler consumes the evaluated callee's callable acceptors at every reporting level.
                 let ty = c.phpstan_type(f.function)?;
                 let all = super::types::callables::acceptors(c, &ty, f.function.span(), &mut None)?;
                 let counts = super::params::count(&f.argument_list);
@@ -512,7 +473,6 @@ fn callee_params(c: &Checker, call: &Callee, n: usize) -> Option<Vec<Param>> {
     }
 }
 
-/// The class of an object expression's type, as Mago infers it, when it is one named object.
 fn object_class<'a>(
     c: &Checker<'a, '_>,
     object: &Expression,
@@ -540,7 +500,6 @@ fn named_class<'a>(
     }
 }
 
-/// `$normalizedExpr->getArgs()[i]->value`: the argument at position `i`, or the one named for that parameter.
 fn normalized_arg<'e, 'arena>(
     args: &'e ArgumentList<'arena>,
     i: usize,
@@ -556,16 +515,12 @@ fn normalized_arg<'e, 'arena>(
         })
 }
 
-/// FuncCallHandler's processVirtualAssign() of a built-in's array argument after processArgs() (array_walk with a
-/// by-reference closure, array_pop, sort and the rest).
 pub(super) fn function_virtual_assign(c: &mut Checker, call: &FunctionCall) {
     if let Some(array) = virtual_assigned(c, call) {
-        // A mutated argument keeps its expression kind; PHPParser does not convert its arrays to List_.
         assign_var(c, array, ListRole::Read);
     }
 }
 
-/// The argument [`function_virtual_assign()`] assigns.
 pub(super) fn virtual_assigned<'e, 'arena>(
     c: &Checker,
     call: &'e FunctionCall<'arena>,
@@ -604,8 +559,6 @@ pub(super) fn virtual_assigned<'e, 'arena>(
     normalized_arg(args, 0, b"array")
 }
 
-/// processArgs() for arguments passed by reference to a parameter that creates a new variable: a `[]` argument is
-/// visited inside `enterExpressionAssign()`, and any argument but `$this` is assigned virtually.
 pub(super) fn arguments(c: &mut Checker, call: Callee) {
     let args = match &call {
         Callee::Function(f) => &f.argument_list,
@@ -616,7 +569,6 @@ pub(super) fn arguments(c: &mut Checker, call: Callee) {
             None => return,
         },
     };
-    // AssignToByRefExprFromForeachRule reads the VariableAssignNode of every variable passed by reference
     let variables = !c.by_ref_foreach.is_empty()
         && args.arguments.iter().any(|a| {
             matches!(
@@ -651,7 +603,6 @@ pub(super) fn arguments(c: &mut Checker, call: Callee) {
     }
 }
 
-/// Whether each of function call `f`'s arguments is passed by reference (empty when the function is unknown).
 pub(super) fn by_ref_arguments(c: &Checker, f: &FunctionCall) -> BitSet {
     let args = &f.argument_list.arguments;
     let Some(params) = callee_params(c, &Callee::Function(f), args.len()) else {
@@ -671,7 +622,6 @@ pub(super) fn by_ref_arguments(c: &Checker, f: &FunctionCall) -> BitSet {
         .collect()
 }
 
-/// Whether each argument of a method or static call, or of `new`, is passed by reference (empty when unknown).
 pub(super) fn by_ref_call_arguments(c: &Checker, call: Callee, args: &ArgumentList) -> BitSet {
     let Some(params) = callee_params(c, &call, args.arguments.len()) else {
         return BitSet::default();
@@ -691,7 +641,6 @@ pub(super) fn by_ref_call_arguments(c: &Checker, call: Callee, args: &ArgumentLi
         .collect()
 }
 
-/// An argument whose parameter decides an error: a `[]` fetch or a dim-fetch chain on `$this`.
 fn by_ref_candidate(value: &Expression) -> bool {
     let value = unparen(value);
     if let Expression::ArrayAppend(_) = value {
@@ -707,7 +656,6 @@ fn by_ref_candidate(value: &Expression) -> bool {
         && matches!(var, Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
 }
 
-/// The method-call object or static-call class expression whose type [`callee_params()`] reads.
 pub(super) fn typed_object<'e, 'arena>(
     object: &'e Expression<'arena>,
     args: &ArgumentList<'arena>,
@@ -717,7 +665,6 @@ pub(super) fn typed_object<'e, 'arena>(
     (!named && args.arguments.iter().any(|a| by_ref_candidate(a.value()))).then_some(object)
 }
 
-/// The property fetch `=&` references, whose holder's type PropertyAssignRefRule reads (`$this` aside).
 pub(super) fn referenced_property<'e, 'arena>(
     a: &'e Assignment<'arena>,
 ) -> Option<&'e PropertyAccess<'arena>> {
@@ -731,16 +678,13 @@ pub(super) fn referenced_property<'e, 'arena>(
     }
 }
 
-/// PropertyAssignRefRule.
 pub(super) fn property_assign_ref(c: &mut Checker, a: &Assignment) {
-    // PhpVersion::supportsAsymmetricVisibility()
     if c.php_version < 80400 {
         return;
     }
     let Some(fetch) = referenced_property(a) else {
         return;
     };
-    // ponytail: a dynamic name (`$o->$name`) needs its constant strings
     let ClassLikeMemberSelector::Identifier(name) = &fetch.property else {
         return;
     };
@@ -768,8 +712,6 @@ pub(super) fn property_assign_ref(c: &mut Checker, a: &Assignment) {
         return;
     }
     let declaring_name = String::from_utf8_lossy(declaring.name.as_bytes()).into_owned();
-    // `isPrivateSet()` / `isProtectedSet()`: a set visibility narrower than the read one (readonly is
-    // protected(set) when public)
     let rank = |v: Visibility| match v {
         Visibility::Private => 0,
         Visibility::Protected => 1,
@@ -781,8 +723,6 @@ pub(super) fn property_assign_ref(c: &mut Checker, a: &Assignment) {
     } else {
         p.read_visibility
     };
-    // `$scope->canWriteProperty()`
-    // ponytail: a closure bound with Closure::bind() & co. keeps no class scope here
     if super::calls::can_call(c, scope, &declaring_name, visibility) {
         return;
     }

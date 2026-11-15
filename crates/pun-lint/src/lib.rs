@@ -1,13 +1,3 @@
-//! Pun's lint engine (lint.md §6, Build 1): rules on Mago's syntax tree that report problems and fix them with text
-//! edits.
-//!
-//! A [`Rule`] is called once for every node of the tree (or of the kinds it targets), parents before children, and
-//! returns [`Report`]s: a byte span, a message, an optional help line and an optional [`Fix`] made of text edits on
-//! byte ranges. [`Linter::check`] parses a file once and runs every rule over that one tree. [`Linter::fix`] applies
-//! the fixes, with [`pun_problem::apply_fixes`], in rounds: a fix that overlaps one applied before it waits for the
-//! next round, and the rounds stop when no rule has a fix left. There is no printer: an edit inserts the text the rule
-//! wrote, and the format pass that runs after lint (`pun check --fix`) tidies the layout.
-
 use std::borrow::Cow;
 use std::cell::OnceCell;
 use std::fmt;
@@ -24,22 +14,21 @@ use pun_problem::{Edit, Fix, Level, Problem, Safety, Span, apply_fixes};
 
 pub mod rules;
 pub mod syntax;
+
+pub use pun_tokens::PhpVersion;
 mod walk;
 
-/// What a rule sees besides the node: the file's source, its path and the PHP version the project targets, and the
-/// file's tables that rules share, each built the first time a rule reads it and dropped with the file.
 pub struct Context<'a> {
     pub source: &'a str,
     pub path: &'a Path,
-    /// `PHP_VERSION_ID` style: 80400 for PHP 8.4.
-    pub php_version: u32,
-    tokens: OnceCell<Vec<rules::php_parser::Token>>,
+    pub php_version: PhpVersion,
+    tokens: OnceCell<Vec<rules::support::statements::Token>>,
     facts: OnceCell<Rc<rules::types::facts::Facts>>,
     dead_code_facts: OnceCell<Rc<rules::types::facts::Facts>>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(source: &'a str, path: &'a Path, php_version: u32) -> Self {
+    pub fn new(source: &'a str, path: &'a Path, php_version: PhpVersion) -> Self {
         Context {
             source,
             path,
@@ -50,14 +39,12 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Every token of the file, read from its start (inline HTML first, as PHP does).
-    pub(crate) fn tokens(&self) -> &[rules::php_parser::Token] {
+    pub(crate) fn tokens(&self) -> &[rules::support::statements::Token] {
         self.tokens
-            .get_or_init(|| rules::php_parser::lex(self.source))
+            .get_or_init(|| rules::support::statements::lex(self.source))
     }
 }
 
-/// One finding of a rule, before the engine adds the rule ID, the path and the level.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Report {
     pub span: Span,
@@ -67,7 +54,6 @@ pub struct Report {
 }
 
 impl Report {
-    /// A report on `span` with no help line and a fix made of `edits`.
     pub fn fixed(span: Span, message: impl Into<String>, safety: Safety, edits: Vec<Edit>) -> Self {
         Report {
             span,
@@ -78,36 +64,38 @@ impl Report {
     }
 }
 
-/// A lint rule. `visit` is called for every node of the rule's [`Rule::targets`]; `ancestors` lists the node's
-/// parents, outermost first, so its last element is the direct parent.
-pub trait Rule: Send + Sync {
-    /// The full rule ID, `lint/<group>/<name>`.
-    fn id(&self) -> &'static str;
+/// The rules an extension adds, kept in the order they were added.
+#[derive(Default)]
+pub struct RuleRegistry {
+    rules: Vec<Box<dyn Rule>>,
+}
 
-    /// The lowest PHP version (as `PHP_VERSION_ID`) the rule's fix is valid for, like Rector's
-    /// `MinPhpVersionInterface`. Below it the rule does not run.
-    fn min_php_version(&self) -> u32 {
-        0
+impl RuleRegistry {
+    pub fn add(&mut self, rules: impl IntoIterator<Item = Box<dyn Rule>>) {
+        self.rules.extend(rules);
     }
 
-    /// The node kinds `visit` can report on, like Mago's `LintRule::targets`; `None` means every node. The engine
-    /// calls `visit` for these kinds only, so a rule that names its kinds costs nothing on the other nodes.
+    pub fn into_rules(self) -> Vec<Box<dyn Rule>> {
+        self.rules
+    }
+}
+
+pub trait Rule: Send + Sync {
+    fn id(&self) -> &'static str;
+
+    fn min_php_version(&self) -> PhpVersion {
+        PhpVersion::from_id(0)
+    }
+
     fn targets(&self) -> Option<&'static [NodeKind]> {
         None
     }
 
-    /// Whether the rule's fix may match again on the code it wrote (removing the argument at a position, renames that
-    /// can chain). Rector 2.8.4 reruns its rules until the file stops changing, but on the same AST, where such a fix
-    /// does not match again (a removed argument leaves its position empty); the fix rounds of [`Linter::fix`] parse
-    /// the new source, so they stop running such a rule on a file once one of its fixes applied there.
     fn once(&self) -> bool {
         false
     }
 
-    /// Takes the rule's options from pun.toml (`options` of its `[lint.rules]` entry, keyed as the upstream rule's
-    /// configuration), before any file is linted. The error says what is wrong with them. A rule without options
-    /// rejects any.
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         match options {
             serde_json::Value::Null => Ok(()),
             _ => Err("takes no options".into()),
@@ -123,22 +111,47 @@ pub trait Rule: Send + Sync {
     );
 }
 
-/// Why a file could not be linted or fixed.
+/// Why a rule rejected the options it was configured with.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OptionsError(String);
+
+impl fmt::Display for OptionsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for OptionsError {}
+
+impl From<String> for OptionsError {
+    fn from(message: String) -> Self {
+        OptionsError(message)
+    }
+}
+
+impl From<&str> for OptionsError {
+    fn from(message: &str) -> Self {
+        OptionsError(message.to_string())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LintError {
-    /// The file does not parse. Format reports syntax errors, so lint only refuses the file.
-    Syntax { span: Span, message: String },
-    /// The fixes of these rules, applied together in one round, produced code that does not parse. The file is left
-    /// as it was.
+    Syntax {
+        span: Span,
+        message: String,
+    },
     FixBrokeSyntax {
         rules: Vec<String>,
         span: Span,
         message: String,
     },
-    /// The rules still had fixes after [`MAX_ROUNDS`] rounds; these rules had a fix in the last one.
-    NoConvergence { rules: Vec<String> },
-    /// A rule panicked on this file. Only this file fails; the panic hook has already printed where.
-    Panicked { message: String },
+    NoConvergence {
+        rules: Vec<String>,
+    },
+    Panicked {
+        message: String,
+    },
 }
 
 impl fmt::Display for LintError {
@@ -162,42 +175,32 @@ impl fmt::Display for LintError {
 
 impl std::error::Error for LintError {}
 
-/// The most fix rounds per file, as in Ruff. Each round is one parse.
 pub const MAX_ROUNDS: usize = 100;
 
-/// What [`Linter::fix`] did to one file.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fixed {
     pub source: String,
-    /// The problems whose fix was applied, in the order applied. Each span refers to the source of its own round.
     pub applied: Vec<Problem>,
-    /// The problems left in the fixed source: rules without a fix, and fixes that cannot apply.
     pub remaining: Vec<Problem>,
-    /// The number of rounds that changed the source.
     pub rounds: usize,
 }
 
-/// The reports of one walk, in the order the rules made them, and the ID of the rule behind each. Every rule writes
-/// into the one `reports` list, so a node costs no list of its own.
 #[derive(Default)]
 struct Found {
     reports: Vec<Report>,
     rules: Vec<&'static str>,
 }
 
-/// A set of rules for one PHP version.
 pub struct Linter {
     rules: Vec<Box<dyn Rule>>,
-    /// For each [`NodeKind`] (as `u8`), the rules to call on it with their IDs, in rule order.
     by_kind: Vec<Vec<(&'static str, usize)>>,
     /// IDs shared by several rules: a rule merged from several upstream rules runs each implementation.
     shared: std::collections::HashSet<&'static str>,
-    php_version: u32,
+    php_version: PhpVersion,
 }
 
 impl Linter {
-    /// Rules whose `min_php_version` is above `php_version` are dropped.
-    pub fn new(rules: Vec<Box<dyn Rule>>, php_version: u32) -> Self {
+    pub fn new(rules: Vec<Box<dyn Rule>>, php_version: PhpVersion) -> Self {
         let rules: Vec<Box<dyn Rule>> = rules
             .into_iter()
             .filter(|r| r.min_php_version() <= php_version)
@@ -225,13 +228,10 @@ impl Linter {
         }
     }
 
-    /// The IDs of the rules that run, in order.
     pub fn rule_ids(&self) -> Vec<&'static str> {
         self.rules.iter().map(|r| r.id()).collect()
     }
 
-    /// Parse `source` once and run every rule over the tree. Problems are sorted by start offset; at the same offset
-    /// an outer node comes before an inner one, and rules keep their order.
     pub fn check(&self, path: &Path, source: &str) -> Result<Vec<Problem>, LintError> {
         // SAFETY: `file` and the tree parsed from it borrow `source` and are dropped before this function returns;
         // nothing built from them outlives `source`. Mago's `File` only takes a `'static` borrow.
@@ -263,7 +263,6 @@ impl Linter {
             ancestors: Vec::new(),
             found: Found::default(),
         };
-        // A rule's bug must fail this file, not the whole run with the files before it already written.
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             walk::Walk { linter: self }.walk_program(program, &mut state);
         }))
@@ -296,16 +295,10 @@ impl Linter {
             .collect())
     }
 
-    /// Apply every fix, round after round, until no rule has a fix that applies. Each round parses the new source
-    /// once. Fixes apply in problem order; one that overlaps an earlier one waits for the next round.
     pub fn fix(&self, path: &Path, source: &str) -> Result<Fixed, LintError> {
         self.fix_with(path, source, |_, _| {})
     }
 
-    /// [`Linter::fix`], with `filter` called on each round's problems (and the source they refer to) before any
-    /// fix applies: it may drop problems (an ignore comment, a rule that is off for this file), take a fix away
-    /// (`fix = "off"`), set levels or add problems of its own. `Fixed::remaining` holds what it left in the last
-    /// round.
     pub fn fix_with(
         &self,
         path: &Path,
@@ -315,7 +308,6 @@ impl Linter {
         let mut current = source.to_string();
         let mut applied = Vec::new();
         let mut last_rules = Vec::new();
-        // The rules that run once (`Rule::once`) and whose fixes applied in an earlier round.
         let mut done: Vec<String> = Vec::new();
         let mut round = 0;
         loop {
@@ -356,7 +348,6 @@ impl Linter {
     }
 }
 
-/// The distinct rule IDs of `problems`, in first-seen order.
 fn rule_ids<'a>(problems: impl Iterator<Item = &'a Problem>) -> Vec<String> {
     let mut ids: Vec<String> = Vec::new();
     for p in problems {

@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\FinalInternalClassFixer`. The logic lives in
-//! `analyzers::final_internal_class`, which `final_class` proxies to as well.
 use crate::analyzers::final_internal_class::FinalInternalClassFixer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;

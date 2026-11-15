@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\TokensAnalyzer::isConstantInvocation` (lives here, not in pun-tokens,
-//! because it needs AttributeAnalyzer and GotoLabelAnalyzer).
 use super::attribute_analyzer::AttributeAnalyzer;
 use super::goto_label_analyzer::GotoLabelAnalyzer;
 use pun_tokens::{Kind::*, Tokens, token::CLASSY_KINDS};
@@ -10,8 +8,8 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
         "No T_STRING at given index {index}, got \"{}\".",
         tokens[index].get_name().unwrap_or_default()
     );
-    let prev = |i: usize| tokens.get_prev_meaningful_token(i).unwrap();
-    let next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let prev = |i: usize| tokens.prev_meaningful(i);
+    let next_index = tokens.next_meaningful(index);
     if tokens[next_index].equals_any(&["(".into(), "{".into()], true)
         || tokens[next_index].is_given_kind(&[
             T_DOUBLE_COLON,
@@ -25,7 +23,6 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
     {
         return false;
     }
-    // handle foreach( FOO as $_ ) {}
     if tokens[next_index].is_kind(T_AS) && !tokens[prev(index)].equals("(", true) {
         return false;
     }
@@ -83,9 +80,8 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
     ]) {
         return false;
     }
-    // `FOO & $bar` could be a function reference parameter or a bit operator
     if tokens[next_index].equals("&", true)
-        && tokens[tokens.get_next_meaningful_token(next_index).unwrap()].is_kind(T_VARIABLE)
+        && tokens[tokens.next_meaningful(next_index)].is_kind(T_VARIABLE)
     {
         let check_index = tokens
             .get_prev_token_of_kind(
@@ -105,7 +101,6 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
             return false;
         }
     }
-    // check for `extends`/`implements`/`use` list
     if tokens[prev_index].equals(",", true) {
         let mut check_index = prev_index;
         while tokens[check_index].equals_any(
@@ -130,9 +125,8 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
             return false;
         }
     }
-    // check for array in double quoted string: `"..$foo[bar].."`
     if tokens[prev_index].equals("[", true) && tokens[next_index].equals("]", true) {
-        let check_token = &tokens[tokens.get_next_meaningful_token(next_index).unwrap()];
+        let check_token = &tokens[tokens.next_meaningful(next_index)];
         if check_token.equals("\"", true)
             || check_token.is_given_kind(&[
                 T_CURLY_OPEN,
@@ -152,8 +146,6 @@ pub(crate) fn is_constant_invocation(tokens: &Tokens, index: usize) -> bool {
     {
         return false;
     }
-    // check for non-capturing catches (upstream re-skips name tokens and `|` here first; that loop never
-    // runs: the loop above already skipped names, and a `|` before them returned false above)
     if tokens[prev_index].equals("(", true) {
         let prev_prev_index = prev(prev_index);
         if tokens[prev_prev_index].is_kind(T_CATCH) {
@@ -194,7 +186,6 @@ class Z { use T3, T4; }
 use X1, X2;
 "#;
 
-    // Expected: the real TokensAnalyzer::isConstantInvocation on every T_STRING of CODE.
     #[test]
     fn matches_php() {
         let tokens = Tokens::from_code(CODE.as_bytes());
@@ -291,7 +282,6 @@ use X1, X2;
         assert_eq!(got, expected);
     }
 
-    // PHP: LogicException 'No T_STRING at given index 4, got "".' (a token without an id has a null name).
     #[test]
     #[should_panic(expected = "No T_STRING at given index 4, got \"\".")]
     fn rejects_non_string() {

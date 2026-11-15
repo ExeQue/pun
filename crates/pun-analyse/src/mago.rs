@@ -1,6 +1,3 @@
-//! Mago's own analyser over a project (analyse.md Build 0, the engine spike): the issues it reports, by code, and the
-//! types it infers for the arguments of `\PHPStan\dumpType()`, optionally with Pun's Laravel plugin.
-
 use mago_allocator::LocalArena;
 use mago_analyzer::Analyzer;
 use mago_analyzer::analysis_result::AnalysisResult;
@@ -18,7 +15,6 @@ use crate::codebase::{self, CouldNotReadFile, read};
 use crate::laravel::{self, Laravel};
 use crate::{Project, display};
 
-/// One issue as Mago reports it.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MagoIssue {
     pub file: String,
@@ -27,7 +23,6 @@ pub struct MagoIssue {
     pub message: String,
 }
 
-/// The type Mago infers for the argument of a `\PHPStan\dumpType()` call, in Mago's own notation.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Dumped {
     pub file: String,
@@ -41,11 +36,9 @@ pub struct MagoRun {
     pub dumped: Vec<Dumped>,
 }
 
-/// Runs Mago's analyser over `project.analysed` with Mago's default plugins, plus Pun's Laravel plugin for the given
-/// Laravel app (its migrations and models).
 pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, CouldNotReadFile> {
     let (codebase, _) = codebase::build(project, laravel.as_ref().map(|app| app.root))?;
-    let version = codebase::php_version(project.php_version);
+    let version = project.php_version.to_mago();
     let mut registry = create_registry_with_plugins(&[], false);
     if let Some(app) = laravel {
         laravel::register(&mut registry, app, project, &codebase);
@@ -66,16 +59,14 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
             Settings::new(version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        // ponytail: Mago's analyzer trips debug assertions on some code (as in rules::infer); the file is skipped
-        let analysed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let analysed = contained("analyser", &file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
-        }));
-        let Ok(Ok(artifacts)) = analysed else {
+        });
+        let Some(Ok(artifacts)) = analysed else {
             continue;
         };
         let name = display(path);
         for issue in result.issues {
-            // an issue without a primary span (none of Mago's issues so far) has no line, as in PHPStan's JSON
             let primary = issue.annotations.iter().find(|a| a.kind.is_primary());
             out.issues.push(MagoIssue {
                 file: name.clone(),
@@ -105,11 +96,33 @@ pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, 
     Ok(out)
 }
 
+/// Runs one of Mago's passes over `file`. Mago panics on some inputs; that should cost what the pass would have told
+/// about the file, not the whole run, so the panic stops here, and is named on stderr because the checks that need the
+/// pass then go quiet on the file.
+pub(crate) fn contained<T>(pass: &str, file: &File, run: impl FnOnce() -> T) -> Option<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(run))
+        .map_err(|panic| {
+            let message = (panic.downcast_ref::<&str>().map(ToString::to_string))
+                .or_else(|| panic.downcast_ref::<String>().cloned())
+                .unwrap_or_default();
+            #[expect(
+                clippy::print_stderr,
+                reason = "a contained panic has no other channel to the user"
+            )]
+            {
+                eprintln!(
+                    "pun: Mago's {pass} panicked on {}: {message}",
+                    String::from_utf8_lossy(&file.name)
+                );
+            }
+        })
+        .ok()
+}
+
 fn line(file: &File, span: Span) -> u32 {
     file.line_number(span.start.offset) + 1
 }
 
-/// The first argument of every `\PHPStan\dumpType()` call.
 struct DumpTypeCalls<'n, 'arena> {
     names: &'n ResolvedNames<'arena>,
     args: Vec<Span>,
@@ -126,5 +139,25 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for DumpTypeCalls<'_, 'arena> {
         {
             self.args.push(a.value.span());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use mago_database::file::File;
+
+    #[test]
+    fn a_panicking_pass_yields_nothing() {
+        let file = File::ephemeral(b"a.php".as_slice().into(), b"<?php".as_slice().into());
+        assert_eq!(super::contained("scanner", &file, || 1), Some(1));
+        assert_eq!(
+            super::contained("scanner", &file, || -> i32 { panic!("boom") }),
+            None
+        );
+        let pass = "scanner";
+        assert_eq!(
+            super::contained(pass, &file, || -> i32 { panic!("{pass} failed") }),
+            None
+        );
     }
 }

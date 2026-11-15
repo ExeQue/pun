@@ -10,143 +10,97 @@ mago-syntax = { path = "third_party/mago-syntax" }
 mago-phpdoc-syntax = { path = "third_party/mago-phpdoc-syntax" }
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.2"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/punphp/pun"
-homepage = "https://github.com/punphp/pun"
-keywords = ["php", "formatter", "linter", "static-analysis", "laravel"]
-categories = ["development-tools"]
+repository = "https://github.com/shipfastlabs/pun"
 # Pun ships only as the punphp/pun Composer package (composer/), never to crates.io.
 publish = false
 # The Mago crates need rustc 1.99.
 rust-version = "1.99"
 
 [workspace.dependencies]
-pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
+pun-analyse = { path = "crates/pun-analyse", package = "punphp-analyse" }
+pun-config = { path = "crates/pun-config", package = "punphp-config" }
+pun-extension = { path = "crates/pun-extension", package = "punphp-extension" }
 pun-fixers = { path = "crates/pun-fixers", package = "punphp-fixers" }
 pun-format = { path = "crates/pun-format", package = "punphp-format" }
-pun-config = { path = "crates/pun-config", package = "punphp-config" }
-pun-workspace = { path = "crates/pun-workspace", package = "punphp-workspace" }
-mago-syntax = "=1.57.0"
-mago-database = "=1.57.0"
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
-toml = { version = "0.9", features = ["preserve_order"] }
-clap = { version = "4", features = ["derive"] }
-rayon = "1"
-bitflags = "2"
-anyhow = "1"
-similar = "2"
-pcre2 = "0.2"
-regex = "1"
-regex-automata = "0.4"
-walkdir = "2"
-mago-allocator = "=1.57.0"
-mago-span = "=1.57.0"
-mago-names = "=1.57.0"
-mago-phpdoc-syntax = "=1.57.0"
-mago-reporting = "=1.57.0"
-notify = "8"
+pun-lint = { path = "crates/pun-lint", package = "punphp-lint" }
+pun-packages = { path = "crates/pun-packages", package = "punphp-packages" }
 pun-phpstan = { path = "crates/pun-phpstan", package = "punphp-phpstan" }
-indexmap = "2"
-libc = "0.2"
-mago-codex = "=1.57.0"
-mago-analyzer = "=1.57.0"
-mago-prelude = { version = "=1.57.0", features = ["build"] }
-mago-php-version = "=1.57.0"
-mago-word = "=1.57.0"
-pun-analyse = { path = "crates/pun-analyse", package = "punphp-analyse" }
-# `pun migrate`'s checklist; no editor/password/fuzzy features.
-dialoguer = { version = "0.12", default-features = false }
+pun-problem = { path = "crates/pun-problem", package = "punphp-problem" }
+pun-tokens = { path = "crates/pun-tokens", package = "punphp-tokens" }
+pun-workspace = { path = "crates/pun-workspace", package = "punphp-workspace" }
+
 # Env-only: the default `process-tree` feature (sysinfo) adds ~12 ms per start and finds agents up the process tree.
 agent-detector = { version = "=0.2.1", default-features = false }
-pun-problem = { path = "crates/pun-problem", package = "punphp-problem" }
-mago-syntax-core = "=1.57.0"
-pun-lint = { path = "crates/pun-lint", package = "punphp-lint" }
+anyhow = "1"
+bitflags = "2"
+clap = { version = "4", features = ["derive"] }
+# `pun migrate`'s checklist; no editor/password/fuzzy features.
+dialoguer = { version = "0.12", default-features = false }
+flate2 = "1"
 # pun-analyse: the on-demand autoload index
 foldhash = "0.2"
-pcre2-sys = "0.2"
-# pun-cli's global allocator on musl. Without transparent huge pages a resolve peaks at 227 MB rather than 411 MB.
-mimalloc = { version = "0.1", default-features = false, features = ["no_thp"] }
-# pun-cli's `pprof` feature: an in-process sampling profiler.
-pprof = { version = "0.15", default-features = false }
-# `pun analyse --format=gitlab`: PHPStan's sha256 fingerprints.
-sha2 = "0.11"
+indexmap = "2"
+libc = "0.2"
+mago-allocator = "=1.57.0"
+mago-analyzer = "=1.57.0"
+mago-codex = "=1.57.0"
+mago-database = "=1.57.0"
+mago-names = "=1.57.0"
+mago-php-version = "=1.57.0"
+mago-phpdoc-syntax = "=1.57.0"
+mago-prelude = { version = "=1.57.0", features = ["build"] }
+mago-reporting = "=1.57.0"
+mago-span = "=1.57.0"
+mago-syntax = "=1.57.0"
+mago-syntax-core = "=1.57.0"
+mago-word = "=1.57.0"
 # `pun format --format=gitlab`: PHP-CS-Fixer's md5 fingerprints.
 md-5 = "0.11"
-# Local phar:// member stat: archive indexes, gzip containers and PHAR signatures only.
-zip = { version = "9.1.1", default-features = false }
-tar = { version = "0.4.46", default-features = false }
-flate2 = "1"
+# pun-cli's global allocator on musl. Without transparent huge pages a resolve peaks at 227 MB rather than 411 MB.
+mimalloc = { version = "0.1", default-features = false, features = ["no_thp"] }
+notify = "8"
+pcre2 = "0.2"
+pcre2-sys = "0.2"
+# pun-cli's `pprof` feature: an in-process sampling profiler.
+pprof = { version = "0.15", default-features = false }
+rayon = "1"
+regex = "1"
+regex-automata = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "raw_value"] }
 sha1 = "0.11"
+# `pun analyse --format=gitlab`: PHPStan's sha256 fingerprints.
+sha2 = "0.11"
+similar = "2"
+tar = { version = "0.4.46", default-features = false }
+toml = { version = "0.9", features = ["preserve_order"] }
 # `pun install`: Packagist metadata and dist downloads over HTTPS (rustls with the Mozilla roots, gzip).
 ureq = "3.5"
-pun-packages = { path = "crates/pun-packages", package = "punphp-packages" }
+walkdir = "2"
+# Local phar:// member stat: archive indexes, gzip containers and PHAR signatures only.
+zip = { version = "9.1.1", default-features = false }
 
-# The shared lint policy; every crate opts in with `[lints] workspace = true`. Lints that fight the
-# function-by-function upstream ports are allowed; the rest warn, and CI denies warnings.
+# Pun's lint policy: all of pedantic. A crate opts in with `[lints] workspace = true`, and CI runs clippy with
+# `-D warnings`. The crates that port upstream PHP function by function (pun-tokens, pun-format, pun-fixers,
+# pun-lint, pun-phpstan, pun-analyse) carry their own `[lints]` table instead: this policy plus the allows the
+# port shape needs. Cargo cannot extend an inherited table, so a change here goes into those six tables too.
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 unreachable_pub = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
-# Conventions: upstream ports keep PHP's names, index loops and casts.
-module_name_repetitions = "allow"
+# Every crate is internal (`publish = false`), so no API attributes or doc sections for outside callers.
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
-doc_markdown = "allow"
-too_many_lines = "allow"
-many_single_char_names = "allow"
-cast_possible_wrap = "allow"
-cast_sign_loss = "allow"
-cast_possible_truncation = "allow"
-cast_precision_loss = "allow"
+# Pairs such as `requires` and `required`, or `pre` and `post`, are the right names.
 similar_names = "allow"
-unused_self = "allow"
-enum_glob_use = "allow"
-# Port shape: rules mirror upstream PHP function by function (switches, flags, argument lists, early returns).
-wildcard_imports = "allow"
-items_after_statements = "allow"
-match_same_arms = "allow"
-single_match_else = "allow"
-match_bool = "allow"
-if_not_else = "allow"
-option_option = "allow"
-needless_pass_by_value = "allow"
-format_push_string = "allow"
-format_collect = "allow"
-struct_excessive_bools = "allow"
-fn_params_excessive_bools = "allow"
-struct_field_names = "allow"
-type_complexity = "allow"
-too_many_arguments = "allow"
-unreadable_literal = "allow"
-match_wildcard_for_single_variants = "allow"
-large_enum_variant = "allow"
-# Style only: `Default::default()` reads fine, and method-path closures need the full `Type::method` spelling.
-default_trait_access = "allow"
-redundant_closure_for_method_calls = "allow"
-# Port shape, continued: conditions, signatures and control flow copy upstream's.
-nonminimal_bool = "allow"
-needless_continue = "allow"
-unnecessary_wraps = "allow"
-manual_let_else = "allow"
-trivially_copy_pass_by_ref = "allow"
-ref_option = "allow"
-self_only_used_in_recursion = "allow"
-map_unwrap_or = "allow"
-float_cmp = "allow"
-return_self_not_must_use = "allow"
-# PHP compares extensions byte for byte, and token kinds are PHP's decimal constants.
-case_sensitive_file_extension_comparisons = "allow"
-decimal_bitwise_operands = "allow"
 # `assert_eq!(x, [])` prints the unexpected items; `assert!(x.is_empty())` does not.
 assert_is_empty = "allow"
-# Counting bytes with a filter is fine without the bytecount crate.
-naive_bytecount = "allow"
 # Restriction lints worth having:
 undocumented_unsafe_blocks = "warn"
 allow_attributes_without_reason = "warn"
@@ -157,7 +111,7 @@ redundant_clone = "warn"
 needless_collect = "warn"
 
 # Tests and debug builds run Mago and the other dependencies optimized (about 1.8x on the analyse fixture suites),
-# with line tables only, so the 170 analyse test binaries stay small; Pun's own crates stay unoptimized so they
+# with line tables only, so the test binaries stay small; Pun's own crates stay unoptimized so they
 # rebuild fast.
 [profile.dev.package."*"]
 opt-level = 2

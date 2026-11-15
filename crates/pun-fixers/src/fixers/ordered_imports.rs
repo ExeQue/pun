@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\OrderedImportsFixer`.
 use crate::analyzers::analysis::NamespaceUseType;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
@@ -29,7 +28,6 @@ struct OrderedImportsFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `configure` sets the options.
     crate::configured(OrderedImportsFixer {
         sort_algorithm: Sort::None,
         imports_order: None,
@@ -164,12 +162,10 @@ impl OrderedImportsFixer {
         }
     }
 
-    /// sortAlphabetically's operand: the prepared namespace with `\\` as a space and `{` dropped.
     fn alphabetical_key(item: &Item) -> Vec<u8> {
         str_replace(b"{", b"", &str_replace(b"\\", b" ", &prepare_namespace(&item.namespace)))
     }
 
-    /// sortByLength's operand: the import type (but `class`), a space, and the prepared namespace.
     fn length_key(item: &Item) -> Vec<u8> {
         let p = if item.import_type == NamespaceUseType::Class {
             vec![]
@@ -183,7 +179,6 @@ impl OrderedImportsFixer {
         a.len().cmp(&b.len()).then_with(|| self.cmp_str(a, b))
     }
 
-    /// usort with the algorithm's comparison; each item's operand is computed once instead of per comparison.
     fn sort_by_algorithm(&self, indices: &mut [Item]) {
         let key = match self.sort_algorithm {
             Sort::Alpha => Self::alphabetical_key,
@@ -204,7 +199,6 @@ impl OrderedImportsFixer {
         indices.clone_from_slice(&sorted);
     }
 
-    /// Returns `(original start index, item)` pairs in upstream's `$usesOrder` order.
     fn get_new_order(&self, uses: &[usize], tokens: &Tokens) -> Vec<(usize, Item)> {
         let mut indices: Vec<Item> = vec![];
         let mut original_indices: Vec<usize> = vec![];
@@ -216,7 +210,7 @@ impl OrderedImportsFixer {
             let end_index = tokens
                 .get_next_token_of_kind(start_index, &[";".into(), Kind::T_CLOSE_TAG.into()], true)
                 .unwrap();
-            let previous = tokens.get_prev_meaningful_token(end_index).unwrap();
+            let previous = tokens.prev_meaningful(end_index);
             let group = tokens[previous].is_kind(Kind::CT_GROUP_IMPORT_BRACE_CLOSE);
             let (ty, mut index) = if tokens[start_index].is_kind(Kind::CT_CONST_IMPORT) {
                 (
@@ -399,7 +393,7 @@ impl OrderedImportsFixer {
             .concat();
             let mut n = 3;
             if u.import_type != NamespaceUseType::Class
-                && tokens[tokens.get_prev_meaningful_token(index).unwrap()].equals(",", true)
+                && tokens[tokens.prev_meaningful(index)].equals(",", true)
             {
                 n = 5;
             }
@@ -415,7 +409,7 @@ impl OrderedImportsFixer {
                 .1;
             tokens.override_range(index, end, decl.as_slice().to_vec());
             if u.group {
-                let prev = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev = tokens.prev_meaningful(index);
                 fix_comma_to_use(tokens, prev);
                 let close = tokens
                     .get_next_token_of_kind(
@@ -424,7 +418,7 @@ impl OrderedImportsFixer {
                         true,
                     )
                     .unwrap();
-                let next = tokens.get_next_meaningful_token(close).unwrap();
+                let next = tokens.next_meaningful(close);
                 fix_comma_to_use(tokens, next);
             }
         }

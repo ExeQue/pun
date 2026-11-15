@@ -1,4 +1,3 @@
-//! Public inference observations, independently of Pun's rule/type converter.
 use mago_allocator::LocalArena;
 use mago_analyzer::{
     Analyzer, analysis_result::AnalysisResult, artifacts::AnalysisArtifacts,
@@ -37,8 +36,6 @@ use std::sync::{Arc, Mutex};
 const CODE: &[u8] = include_bytes!("fixtures/call-scope-observations/matrix.php");
 const ORACLE: &str = include_str!("fixtures/call-scope-observations/expected.json");
 
-// Type unions are sets. PHPStan's presentation order differs from Mago's; keep
-// every member, shape key and literal while canonicalizing only union order.
 fn canonical(s: &str) -> String {
     if let Some((key, value)) = s.split_once(": ")
         && key
@@ -207,7 +204,6 @@ fn analyze_with_settings(
                     Position::new(e["end"].as_u64().unwrap() as u32),
                 )
             })
-            // A requested span not evaluated by the real walk must stay absent.
             .chain(std::iter::once(Span::new(
                 file.id,
                 Position::new(code.len() as u32),
@@ -784,8 +780,6 @@ fn nullsafe_receiver_skipped_without_a_type_does_not_gain_an_answer() {
         registry.register_expression_hook(UntypedReceiver);
         let (file, artifacts, result) = analyze(CODE, ORACLE, observe, &registry);
         let receiver = Span::new(file.id, Position::new(start), Position::new(end));
-        // Skip is deliberately different from PHPStan's declared return above:
-        // this semantic provider supplies no result, not a mixed result.
         assert!(artifacts.get_expression_result(&receiver).is_none());
         let events = events.0.lock().unwrap();
         assert_eq!(events.get(&("expression-before", start, end)), Some(&1));
@@ -842,7 +836,6 @@ fn prepared_property_array_receivers_and_rhs_calls_are_evaluated_once() {
         let receiver = Span::new(file.id, Position::new(start), Position::new(start + 19));
         let result = artifacts.get_expression_result(&receiver).unwrap();
         let codebase = display_codebase(&file);
-        // The declared call result stays lazy after the property writer consumes it.
         assert!(!result.is_eager());
         assert!(!result.has_value_override());
         assert_eq!(
@@ -1218,8 +1211,6 @@ fn check_nullsafe_scopes(code: &'static [u8], oracle: &str) {
                 .sum();
             assert_eq!(actual as u64, count.as_u64().unwrap());
         }
-        // PHPStan publishes the nullsafe plain twin as a MethodCall; Mago's
-        // matching public hook is nullsafe-before, not a second method hook.
         for (position, count) in expected["method_events"].as_object().into_iter().flatten() {
             let start = position.parse::<u32>().unwrap();
             let actual: usize = events
@@ -1781,8 +1772,6 @@ fn historical_dependencies_keep_own_positions_and_identifier_asking_scope() {
     let baseline_events = Events::default();
     let (_, baseline, baseline_result) = analyze(CODE, ORACLE, false, &providers(&baseline_events));
     let observed_events = Events::default();
-    // Request a real but not-yet-evaluated argument too. The original strict
-    // oracle must still match: an AST index is not permission to invent answers.
     let mut requests: Value = serde_json::from_str(ORACLE).unwrap();
     let calls = requests["calls"].as_object_mut().unwrap();
     let later = calls.values().max_by_key(|c| c["line"].as_u64()).unwrap();

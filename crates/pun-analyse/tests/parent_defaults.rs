@@ -1,5 +1,3 @@
-//! Parent-relative template defaults, through PHPStan's public diagnostics and Mago's public type API.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

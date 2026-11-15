@@ -1,11 +1,3 @@
-//! Rector 2.8.4's `StaticTypeMapper` (src/StaticTypeMapper): `mapPhpParserNodePHPStanType()` of a native type
-//! declaration (`PhpParserNodeMapper` with its `FullyQualifiedNodeMapper`, `NameNodeMapper`, `IdentifierNodeMapper`,
-//! `NullableTypeNodeMapper`, `UnionTypeNodeMapper` and `IntersectionTypeNodeMapper`), and
-//! `mapPHPStanPhpDocTypeNodeToPHPStanType()` of a PHPDoc type (`PhpDocTypeMapper` with the identifier, intersection,
-//! nullable and union mappers, `ObjectTypeSpecifier` for class names, and PHPStan's `TypeNodeResolver` for the rest),
-//! both resolved at one place of a file ([`TypeScope`]). Also Mago's types as PHPStan's ([`from_mago`]), for what the
-//! scope says of an expression.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
@@ -28,15 +20,12 @@ use super::{ClassInfo, Object, RType, create_union};
 use crate::rules::types::facts::Facts;
 use crate::rules::types::names::{class_imports, resolve_class_name, resolve_written};
 
-/// A `use` import of the file (`UseImportsResolver::resolve()`): the group's prefix with its `\` (`''` outside a
-/// group), the name and the alias.
 struct Use {
     prefix: String,
     name: String,
     alias: Option<String>,
 }
 
-/// Where a type is mapped: the namespace, the file's imports and the class reflection of the node it belongs to.
 pub(crate) struct TypeScope<'s, 'a, 'ast, 'arena> {
     ancestors: &'a [Node<'ast, 'arena>],
     namespace: Option<String>,
@@ -47,8 +36,6 @@ pub(crate) struct TypeScope<'s, 'a, 'ast, 'arena> {
 }
 
 impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
-    /// The scope at the node whose ancestors are `ancestors`, the project's classes in `codebase` (with their PHPDocs
-    /// read, for class templates).
     pub(crate) fn new(ancestors: &'a [Node<'ast, 'arena>], codebase: &'s CodebaseMetadata) -> Self {
         let namespace = class_imports(ancestors).0;
         let mut class = None;
@@ -94,8 +81,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         }
     }
 
-    /// The class reflection of the node, when it is in a class-like.
-    /// The ancestors of the node the scope is at.
     pub(crate) fn ancestors(&self) -> &'a [Node<'ast, 'arena>] {
         self.ancestors
     }
@@ -104,7 +89,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         self.class_info
     }
 
-    /// Whether the node is in a trait (`Scope::isInTrait()`).
     pub(crate) fn in_trait(&self) -> bool {
         self.ancestors.iter().rev().find_map(|n| match n {
             Node::Trait(_) => Some(true),
@@ -130,7 +114,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         ))
     }
 
-    /// `mapPhpParserNodePHPStanType()` of a native type declaration.
     pub(crate) fn map_hint(&self, hint: &Hint<'_>) -> RType {
         match hint {
             Hint::Parenthesized(p) => self.map_hint(p.hint),
@@ -140,9 +123,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
             Hint::Union(_) => {
                 let mut members = Vec::new();
                 flatten(hint, true, &mut members);
-                // Rector 2.8.4: a `self`, `static` or `parent` name inside a union has no scope, so
-                // `NameNodeMapper::createClassReferenceType()` finds no class and maps it to `mixed`, which makes the
-                // union `mixed` (checked on the oracle: `?self` still maps, `\stdClass|self` does not)
                 if members
                     .iter()
                     .any(|h| matches!(h, Hint::Self_(_) | Hint::Static(_) | Hint::Parent(_)))
@@ -160,7 +140,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                 RType::Intersection(members.into_iter().map(|h| self.map_hint(h)).collect())
             }
             Hint::Identifier(id) => {
-                // `FullyQualifiedNodeMapper` on the name PHPStan's `NameResolver` resolved, its original kept
                 let written = String::from_utf8_lossy(id.value());
                 let original = written.trim_start_matches('\\');
                 let full = resolve_written(self.ancestors, &written).0;
@@ -176,7 +155,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                     RType::Object(Object::FullyQualified(full))
                 }
             }
-            // `NameNodeMapper::createClassReferenceType()`
             Hint::Static(_) => match &self.class {
                 Some(class) => RType::T(Type::Static(class.clone(), vec![])),
                 None => RType::mixed(),
@@ -207,7 +185,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         }
     }
 
-    /// `mapPHPStanPhpDocTypeNodeToPHPStanType()`.
     pub(crate) fn map_doc(&self, node: &DocNode) -> RType {
         match node {
             DocNode::Ident(name) => self.map_identifier(name),
@@ -232,14 +209,12 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                         _ => self.resolve(m),
                     })
                     .collect();
-                // to prevent missing class error, e.g. in tests
                 create_union(types, true)
             }
             _ => self.resolve(node),
         }
     }
 
-    /// `IntersectionPhpDocTypeMapper`: identifiers only, else `mixed`.
     fn map_intersection(&self, members: &[DocNode]) -> RType {
         let mut types = Vec::new();
         for m in members {
@@ -251,12 +226,10 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         RType::Intersection(types)
     }
 
-    /// PHPStan's `TypeNodeResolver::resolve()` in the node's `NameScope` (without template types).
     fn resolve(&self, node: &DocNode) -> RType {
         RType::T(resolve_in(node, self))
     }
 
-    /// `IdentifierPhpDocTypeMapper::mapIdentifierTypeNode()`.
     fn map_identifier(&self, name: &str) -> RType {
         let t = scalar_string_to_type(name);
         if !t.is_implicit_mixed() {
@@ -291,7 +264,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
             return self.narrow(stripped, true);
         }
         if name == "scalar" {
-            // pseudo type, see https://www.php.net/manual/en/language.types.intro.php
             return RType::Union(vec![
                 RType::T(Type::Bool),
                 RType::T(Type::String),
@@ -306,7 +278,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         self.narrow(name, false)
     }
 
-    /// `ObjectTypeSpecifier::narrowToFullyQualifiedOrAliasedObjectType()`.
     fn narrow(&self, class_name: &str, with_preslash: bool) -> RType {
         if !with_preslash {
             if let Some(aliased) = self.match_aliased(class_name) {
@@ -316,7 +287,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                 return shortened;
             }
         }
-        // a class in the current namespace wins over a global class with the same short name
         let unqualified = !with_preslash && !class_name.contains('\\');
         if let Some(ns) = &self.namespace
             && unqualified
@@ -329,7 +299,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         if self.has_class(class_name) {
             return RType::Object(Object::FullyQualified(class_name.to_string()));
         }
-        // probably in same namespace
         if let Some(ns) = &self.namespace
             && !unqualified
         {
@@ -354,7 +323,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                 argument: false,
             })));
         }
-        // invalid type
         RType::Object(Object::NonExisting(match &self.namespace {
             Some(ns) if !with_preslash && !class_name.contains('\\') => {
                 format!("{ns}\\{class_name}")
@@ -363,7 +331,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         }))
     }
 
-    /// `matchAliasedObjectType()`.
     fn match_aliased(&self, class_name: &str) -> Option<RType> {
         for u in &self.uses {
             let Some(alias) = &u.alias else { continue };
@@ -384,7 +351,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
         None
     }
 
-    /// `matchShortenedObjectType()`, with `matchPartialNamespaceObjectType()`.
     fn match_shortened(&self, class_name: &str) -> Option<RType> {
         for u in self.uses.iter().filter(|u| u.alias.is_none()) {
             let last = u.name.rsplit('\\').next().unwrap_or(&u.name);
@@ -394,7 +360,6 @@ impl<'s, 'a, 'ast, 'arena> TypeScope<'s, 'a, 'ast, 'arena> {
                     full: format!("{}{}", u.prefix, u.name),
                 }));
             }
-            // partial namespace
             if let Some((_, after)) = class_name.split_once('\\')
                 && class_name.starts_with(&format!("{last}\\"))
             {
@@ -420,7 +385,6 @@ impl Scope for TypeScope<'_, '_, '_, '_> {
         self.parent_class()
     }
 
-    /// `NameScope::resolveStringName()`, its uses keyed by the lowercased alias.
     fn resolve_name(&self, name: &str) -> String {
         if let Some(stripped) = name.strip_prefix('\\') {
             return stripped.to_string();
@@ -451,7 +415,6 @@ impl Scope for TypeScope<'_, '_, '_, '_> {
 }
 
 impl TypeScope<'_, '_, '_, '_> {
-    /// `NameScopeFactory::resolveUseNamesByAlias()`: the last import whose alias is `alias`, in any case.
     fn use_by_alias(&self, alias: &str) -> Option<String> {
         let lower = alias.to_ascii_lowercase();
         self.uses
@@ -468,12 +431,10 @@ impl TypeScope<'_, '_, '_, '_> {
     }
 }
 
-/// PHP's `ltrim($string, $characters)`.
 fn php_ltrim<'a>(s: &'a str, characters: &str) -> &'a str {
     s.trim_start_matches(|c| characters.contains(c))
 }
 
-/// The members of a union (`union`) or intersection, nested ones flattened as php-parser keeps them.
 pub(crate) fn flatten<'h, 'arena>(
     hint: &'h Hint<'arena>,
     union: bool,
@@ -492,7 +453,6 @@ pub(crate) fn flatten<'h, 'arena>(
     }
 }
 
-/// `FileNode::getUsesAndGroupUses()`: the imports of the file's first namespace, or of the file.
 fn file_uses(ancestors: &[Node<'_, '_>]) -> Vec<Use> {
     let Some(Node::Program(program)) = ancestors.first() else {
         return Vec::new();
@@ -541,7 +501,6 @@ fn file_uses(ancestors: &[Node<'_, '_>]) -> Vec<Use> {
     uses
 }
 
-/// `ScalarStringToTypeMapper::mapScalarStringToType()`.
 pub(crate) fn scalar_string_to_type(name: &str) -> Type {
     use Accessory as A;
     let accessory = |accessories: &[Accessory]| {
@@ -594,9 +553,6 @@ pub(crate) fn scalar_string_to_type(name: &str) -> Type {
     }
 }
 
-/// The type PHPStan's scope gives `expr`, whose ancestors are `ancestors` (`getNativeType()` when `native`, else
-/// `getType()`), from Mago's analysis; mixed when Mago has none. PHPStan's `NewHandler` types `new Name()` as that
-/// class's object even when no such class exists, where Mago infers `never`.
 pub(crate) fn expr_type(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -625,7 +581,6 @@ pub(crate) fn expr_type(
     t
 }
 
-/// A Mago type (what its analyser gives an expression) as PHPStan's.
 pub(crate) fn from_mago(t: &TUnion) -> Type {
     if t.types.is_empty() {
         return Type::Never(NeverKind::Implicit);

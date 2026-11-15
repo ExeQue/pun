@@ -1,6 +1,3 @@
-//! Complete PHPStan 2.3.1 records for tagged array-shape union reduction and offset filtering.
-//! Reproduce with fixtures/shape-discrimination/capture.php and the pinned PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Error, Project, run};
@@ -11,7 +8,7 @@ fn shape_discrimination_preserves_correlations_without_preventing_upstream_merge
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/shape-discrimination");
     let mut project = Project::new(vec![root.join("matrix.php")], vec![]);
     project.level = 5;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got = run(&project).unwrap();
     for error in &mut got {
         error.file = error.file.replace(root.to_str().unwrap(), "$ROOT");

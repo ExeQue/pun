@@ -1,5 +1,3 @@
-//! Shared reflected constructor/method contracts, captured from PHPStan 2.3.1 rather than Pun.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -9,7 +7,7 @@ fn check(level: u8) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/attribute-reflection");
     let mut project = Project::new(vec![root.join("calls.php")], Vec::new());
     project.level = level;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let expected: Value = serde_json::from_slice(
         &std::fs::read(root.join(format!("expected-level{level}.json"))).unwrap(),
     )

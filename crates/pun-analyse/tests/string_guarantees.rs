@@ -1,5 +1,3 @@
-//! Source-owned ASCII casing lattice; expectations follow PHP's byte case maps.
-
 use std::collections::{BTreeSet, HashSet};
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -37,7 +35,6 @@ fn intersections_and_joins_have_independent_guarantees() {
             assert_eq!(result.get_single_string().unwrap().casing, meets[i][j]);
             let result =
                 combine_union_types(&union(a), &union(b), &codebase, CombinerOptions::default());
-            // Exact unions retain incomparable alternatives, unlike shared casing guarantees.
             let expected = if matches!((left, right), (L, U) | (U, L)) {
                 TUnion::from_vec(vec![
                     TAtomic::Scalar(TScalar::String(general(L))),
@@ -47,7 +44,6 @@ fn intersections_and_joins_have_independent_guarantees() {
                 union(general(joins[i][j]))
             };
             assert_eq!(result, expected, "{left:?} union {right:?}");
-            // A value fits a container iff it has every guarantee the container requires.
             assert_eq!(
                 union_comparator::is_contained_by(
                     &codebase,
@@ -75,7 +71,6 @@ fn scalar_containers_absorb_every_incomparable_string_alternative() {
     for container in [TScalar::Generic, TScalar::ArrayKey] {
         let container = TUnion::from_atomic(TAtomic::Scalar(container));
         for (left, right) in [(&strings, &container), (&container, &strings)] {
-            // PHPStan's scalar and array-key contain every string, not just the general string bucket.
             assert_eq!(
                 combine_union_types(left, right, &codebase, CombinerOptions::default()),
                 container,
@@ -122,12 +117,10 @@ fn literal_absorption_and_intersection_use_ascii_not_alphabetic_bytes() {
             }
         }
     }
-    // Numeric syntax alone cannot promise either casing: exponent letters differ.
     assert!(!TString::numeric().is_lowercase());
     assert!(!TString::numeric().is_uppercase());
     assert_eq!(TString::known_literal(word("1e2")).casing, C::Lowercase);
     assert_eq!(TString::known_literal(word("1E2")).casing, C::Uppercase);
-    // A legacy single guarantee must not hide the known literal's other guarantee.
     for casing in [C::Unspecified, C::Lowercase, C::Uppercase, C::Both] {
         let literal = TString {
             casing,
@@ -263,7 +256,6 @@ fn constructors_ids_equality_hash_order_and_serde_preserve_both() {
         C::Unspecified
     );
 
-    // PHPStan accepts both as nonempty, but keeps their independent accessories distinct.
     let bare = TString::numeric();
     let explicit = TString::general_with_props(true, false, true, false, C::Unspecified);
     assert!(bare.is_non_empty());

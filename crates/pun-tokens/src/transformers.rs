@@ -1,11 +1,3 @@
-//! Ports of `PhpCsFixer\Tokenizer\Transformer\*` (php-cs-fixer v3.95.25), run in the order
-//! `Transformers::createSingleton()` yields on PHP 8.5 (priority desc, ties in discovery
-//! order). Each runs `process($tokens, $token, $index)` for every index of the live,
-//! possibly growing collection, like upstream's `foreach` over the SplFixedArray.
-//!
-//! Upstream throws (TypeError on a null index, UnexpectedValueException on unbalanced
-//! braces) for code it cannot handle; these ports panic at the same points.
-
 use crate::kind::Kind::{self, *};
 use crate::token::{Proto, Token, c, idx, k};
 use crate::tokens::Tokens;
@@ -73,7 +65,6 @@ fn attribute(tokens: &mut Tokens, mut index: usize) {
     set(tokens, index, CT_ATTRIBUTE_CLOSE, b"]");
 }
 
-/// `ImportProcessor::tokenizeName`.
 pub fn tokenize_name(name: &[u8]) -> Vec<Token> {
     let mut parts: Vec<&[u8]> = name.split(|&b| b == b'\\').collect();
     let mut out = Vec::new();
@@ -169,15 +160,12 @@ fn whitespacy_comment(tokens: &mut Tokens, index: usize) {
     }
 }
 
-// Port of BraceTransformer.
-
 fn brace(tokens: &mut Tokens, index: usize) {
     transform_into_curly_close_brace(tokens, index);
     transform_into_dollar_close_brace(tokens, index);
     transform_into_dynamic_prop_braces(tokens, index);
     transform_into_dynamic_var_braces(tokens, index);
     transform_into_property_hook_braces(tokens, index);
-    // transformIntoCurlyIndexBraces: no-op on PHP >= 8.4
     transform_into_group_use_braces(tokens, index);
     transform_into_dynamic_class_constant_fetch_braces(tokens, index);
 }
@@ -365,8 +353,6 @@ fn constructor_promotion(tokens: &mut Tokens, index: usize) {
     }
 }
 
-// Port of SquareBraceTransformer.
-
 fn square_brace(tokens: &mut Tokens, index: usize) {
     if is_array_destructing(tokens, index) {
         transform_into_destructuring_square_brace(tokens, index);
@@ -431,7 +417,6 @@ fn is_array_destructing(tokens: &mut Tokens, index: usize) -> bool {
         return false;
     }
     let p = prev(tokens, index);
-    // Same list as is_short_array minus '}'.
     if tokens[p].equals_any(&NOT_ARRAY_PREV[..2], true)
         || tokens[p].equals_any(&NOT_ARRAY_PREV[3..], true)
     {
@@ -530,7 +515,6 @@ fn use_(tokens: &mut Tokens, index: usize) {
         set(tokens, index, CT_USE_LAMBDA, &content);
         return;
     }
-    // Upstream also skips `::class` here, but class_constant has already made that CT_CLASS_CONSTANT.
     if !tokens[index].is_given_kind(&[T_CLASS, T_TRAIT, T_ENUM]) {
         return;
     }
@@ -572,8 +556,6 @@ fn type_colon(tokens: &mut Tokens, index: usize) {
         set(tokens, index, CT_TYPE_COLON, b":");
     }
 }
-
-// Port of AbstractTypeTransformer.
 
 const TYPE_END_TOKENS: &[Proto<'static>] = &[
     c(")"),

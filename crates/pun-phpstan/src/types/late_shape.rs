@@ -1,5 +1,3 @@
-//! `LateResolvableArrayShapeType`: preserve template keys until substitution, including their ErrorType reasons.
-
 use super::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,8 +83,6 @@ impl LateArrayShape {
             }
         }
         let array = builder.get();
-        // Non-constant template bounds degrade the builder to a general array, without widening its values.
-        // Keep this late-shape operation here; ordinary literal-key ShapeBuilder users are unchanged.
         let array = match array {
             Type::ConstArray(a)
                 if a.keys
@@ -137,8 +133,6 @@ impl LateArrayShape {
     }
 
     pub(super) fn print(&self, ast: bool) -> Vec<u8> {
-        // Printer and the AST's __toString() differ in union/intersection spacing and parentheses.
-        // Template nodes print their names, not describe(precise)'s scope and inference strategy.
         fn node(t: &Type, ast: bool) -> Vec<u8> {
             let (types, separator) = match t {
                 Type::Template(t) => return t.name.as_bytes().to_vec(),

@@ -1,4 +1,3 @@
-//! The PHP string functions Pint's Blade formatters use, byte-oriented like PHP.
 
 pub(super) use pun_tokens::php_compat::{
     isspace as ctype_space, ltrim_chars, rtrim, stripos, strpos, strrpos, substr, trim,
@@ -14,7 +13,6 @@ pub(super) fn trim_chars<'a>(s: &'a [u8], chars: &[u8]) -> &'a [u8] {
     pun_tokens::php_compat::ltrim_chars(pun_tokens::php_compat::rtrim_chars(s, chars), chars)
 }
 
-/// `explode("\n", $s)`.
 pub(super) fn lines(s: &[u8]) -> Vec<Vec<u8>> {
     pun_tokens::php_compat::explode(b"\n", s)
         .into_iter()
@@ -22,7 +20,6 @@ pub(super) fn lines(s: &[u8]) -> Vec<Vec<u8>> {
         .collect()
 }
 
-/// `implode("\n", $lines)`.
 pub(super) fn join_lines(lines: &[Vec<u8>]) -> Vec<u8> {
     lines.join(&b'\n')
 }

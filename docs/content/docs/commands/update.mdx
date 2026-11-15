@@ -10,19 +10,19 @@ pun update 'symfony/*' --with-dependencies
 pun update --dry-run
 ```
 
-`pun update` resolves the project's requirements to the newest versions they allow, writes the lock, and installs it into `vendor/` as [`pun install`](/docs/commands/install) does. `pun.lock` holds exactly what `composer update` would lock for the same requirements and repositories.
+`pun update` resolves the project's requirements to the newest versions they allow, writes the lock, and installs it into `vendor/` as [`pun install`](/docs/commands/install) does. The `composer.lock` it writes is the one `composer update` writes for the same requirements and repositories, byte for byte.
 
 Without package names, every package is resolved again. With names, only those packages may change, and every other package keeps its locked version. A name can be a `vendor/*` pattern.
 
 ## Files
 
-`pun update` reads the dependency sections of `pun.toml` and writes `pun.lock`. In a project that still keeps its dependencies in `composer.json`, it exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate).
+`pun update` reads `composer.json` and writes `composer.lock`, the files `composer update` reads and writes. Without a `composer.json`, it exits 2, as [`pun install`](/docs/commands/install#where-the-dependencies-come-from) does. `pun remove` checks the same; [`pun require`](/docs/commands/require) creates the file.
 
 ## What gets resolved
 
-Pun reads packages from Packagist and from the `repositories` in the manifest and in Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other repository type stops the update with an error that names it.
+Pun reads packages from Packagist and from the `repositories` in `composer.json` and in Composer's global `config.json`. It supports `composer`, `package`, and `path` repositories. Any other repository type stops the update with an error that names it.
 
-The platform comes from the PHP on `PATH`: its version, its extensions, and the libraries they link, as `composer show --platform` lists them. `[config.platform]` in `pun.toml` overrides it.
+The platform comes from the PHP on `PATH`: its version, its extensions, and the libraries they link, as `composer show --platform` lists them. `config.platform` in `composer.json` overrides it.
 
 `minimum-stability`, `prefer-stable`, stability flags such as `@dev`, inline aliases (`dev-main as 1.0.x-dev`), `replace`, `provide`, and `conflict` work as in Composer.
 
@@ -44,7 +44,7 @@ Pun prints each problem as a list of the requirements that clash, with the versi
 
 `pun update` also takes every [`pun install`](/docs/commands/install#options) option, such as `--no-dev`, `--no-scripts`, and `--ignore-platform-req`. A platform requirement that `--ignore-platform-req` names is left out of the resolve too.
 
-Pun runs the root package's `pre-update-cmd` and `post-update-cmd` scripts in place of the install ones.
+Pun runs the root package's `pre-update-cmd` and `post-update-cmd` scripts in place of the install ones, and sends the same events to the [Composer plugins](/docs/commands/install#scripts-and-plugins).
 
 ## Exit codes
 

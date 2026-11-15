@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\CastNotation\LowercaseCastFixer`.
 use pun_format::Fixer;
 use pun_tokens::token::CAST_KINDS;
 use pun_tokens::{Token, Tokens};

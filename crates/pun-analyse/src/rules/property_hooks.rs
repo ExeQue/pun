@@ -1,7 +1,3 @@
-//! GetNonVirtualPropertyHookReadRule (ClassPropertiesNode) and SetNonVirtualPropertyHookAssignRule
-//! (PropertyHookReturnStatementsNode), both level 3: a hook with a body of a non-virtual property that never reads
-//! (`get`) or does not always assign (`set`) the property's backing value.
-
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 use pun_phpstan::types::Tri;
@@ -9,7 +5,6 @@ use pun_phpstan::types::Tri;
 use super::Checker;
 use super::properties::{PropertyNode, is_virtual};
 
-/// Both rules on a property node of the class-like being walked.
 pub(super) fn check(c: &mut Checker, node: &PropertyNode) {
     if c.level < 3 || is_virtual(c, node) {
         return;
@@ -38,7 +33,6 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode) {
                 );
                 report(c, hook, "propertyGetHook.noRead", message);
             }
-            // only the first `get` hook
             break;
         }
     }
@@ -47,7 +41,6 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode) {
         .iter()
         .filter(|h| h.name.value.eq_ignore_ascii_case(b"set"))
     {
-        // a short `set => expr` body assigns its value
         let PropertyHookBody::Concrete(PropertyHookConcreteBody::Block(b)) = &hook.body else {
             continue;
         };
@@ -62,8 +55,6 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode) {
             };
             let returns = flow.ends.len();
             end = flow.statement(s, before);
-            // a statement that ends the hook counts with its scope, unless it is a `throw` or `exit` itself
-            // ponytail: the scope before it, not where inside it the hook ends
             if end.is_none() && flow.ends.len() == returns && !terminates(s) {
                 flow.ends.push(before);
             }
@@ -81,8 +72,6 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode) {
     }
 }
 
-/// ClassPropertiesNode and PropertyHookReturnStatementsNode are the class's: a trait's property reports in the
-/// using class's file.
 fn report(c: &mut Checker, hook: &PropertyHook, identifier: &str, message: String) {
     c.report(hook, identifier, message, None);
     if let Some(t) = &c.trait_context
@@ -92,12 +81,10 @@ fn report(c: &mut Checker, hook: &PropertyHook, identifier: &str, message: Strin
     }
 }
 
-/// A `throw` or `exit` statement.
 fn terminates(s: &Statement) -> bool {
     matches!(s, Statement::Expression(e) if matches!(e.expression, Expression::Throw(_) | Expression::Construct(Construct::Exit(_) | Construct::Die(_))))
 }
 
-/// A `$this->name` read: any fetch but the target of a plain assignment.
 struct Reads<'n> {
     name: &'n [u8],
     found: bool,
@@ -126,21 +113,16 @@ fn is_this_fetch(a: &PropertyAccess, name: &[u8]) -> bool {
     )
 }
 
-/// MutatingScope::mergeWith() of PropertyInitializationExpr's certainty.
 fn merge(a: Tri, b: Tri) -> Tri {
     if a == b { a } else { Tri::Maybe }
 }
 
-/// Whether `$this->name` is assigned at each way out of a set hook's body: its `return` statements and its end.
-/// ponytail: branches and loops (zero or more runs) merge; only `throw` and `exit` terminate a path, not calls to
-/// `never` functions; `try` and `switch` count an assignment anywhere inside as certain.
 struct Flow<'n> {
     name: &'n [u8],
     ends: Vec<Tri>,
 }
 
 impl Flow<'_> {
-    /// The state after `statements` from `state` (`None`: unreachable).
     fn statements(&mut self, statements: &[Statement], mut state: Option<Tri>) -> Option<Tri> {
         for s in statements {
             state = self.statement(s, state?);
@@ -155,7 +137,6 @@ impl Flow<'_> {
     fn statement(&mut self, s: &Statement, state: Tri) -> Option<Tri> {
         match s {
             Statement::Return(_) => {
-                // ReturnStatement's scope is before its expression, the execution end's after it
                 self.ends.push(state);
                 if self.assigns(s) {
                     self.ends.push(Tri::Yes);
@@ -201,7 +182,6 @@ impl Flow<'_> {
                 }
                 branches.into_iter().flatten().reduce(merge)
             }
-            // a loop body runs zero or more times, a `do`-`while` body at least once
             Statement::While(w) => {
                 let after = match &w.body {
                     WhileBody::Statement(b) => self.body(b, state),
@@ -253,7 +233,6 @@ impl Flow<'_> {
     }
 }
 
-/// An assignment to `$this->name`.
 struct Assigns<'n> {
     name: &'n [u8],
     found: bool,

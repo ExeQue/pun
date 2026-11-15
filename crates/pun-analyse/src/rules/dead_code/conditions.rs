@@ -1,16 +1,7 @@
-//! The constant condition rules: If, ElseIf, TernaryOperator, WhileLoopAlwaysFalse, WhileLoopAlwaysTrue, DoWhileLoop,
-//! BooleanNot, BooleanAnd, BooleanOr and LogicalXor ConstantConditionRule.
-//!
-//! A call's condition reports through FunctionCallConstantConditionRule's collector, unless an ImpossibleCheckType rule
-//! owns the call. Not ported: ConstantConditionInTraitRule (nothing reports in a trait) and the
-//! global `treatPhpDocTypesAsCertain` options and possibly impure tips. Default function-call certainty tips
-//! use the available native argument observations; unavailable transfers are not inconclusive decisions.
-
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use mago_allocator::LocalArena;
-use mago_codex::metadata::CodebaseMetadata;
 use mago_database::file::File;
 
 use mago_codex::assertion::Assertion;
@@ -56,15 +47,11 @@ impl CheckTypes {
     fn argument(self, c: &Checker, expression: &Expression) -> Option<Type> {
         match self {
             Self::Full => c.phpstan_type(expression),
-            // Selected conversion must not recover a dependency from the full expression map.
             Self::Native => c.phpstan_type_in(expression, &c.native_types),
         }
     }
 }
 
-/// The functions with a TypeSpecifier extension or a `($value is T ? true : false)` stub return. The stubs with
-/// `@phpstan-assert-if-true =T` (is_resource(), ctype_alpha(), file functions...) set the call as the root
-/// expression, so ImpossibleCheckTypeHelper never decides them.
 const TYPE_CHECKS: &[&str] = &[
     "array_is_list",
     "array_key_exists",
@@ -125,19 +112,13 @@ const NEVER: &[&str] = &[
     "noreturn",
 ];
 
-/// LastConditionVisitor's `isLastCondition` attribute, by the condition's span, and the `while` loops in a function
-/// (or else closure) that never returns.
 #[derive(Default)]
 pub(in super::super) struct Facts {
     last: HashMap<Span, bool>,
     never_loops: HashSet<Span>,
-    /// LastConditionVisitor's `isMatch`: a match arm's last condition.
     match_arms: HashSet<Span>,
-    /// TryCatchTypeVisitor's `tryCatchTypes` of a match: the class names its enclosing `try` statements catch.
     caught: HashMap<Span, Vec<Span>>,
-    /// The matches in a function whose `@throws` tag covers UnhandledMatchError.
     throws: HashSet<Span>,
-    /// The variables holding only `new` objects of named classes, whose classes NewHandler makes final.
     pub(in super::super) exact: HashSet<Span>,
 }
 
@@ -159,14 +140,11 @@ pub(in super::super) fn facts(c: &Checker, program: &Program) -> Facts {
 struct Pass<'c> {
     contents: &'c [u8],
     comments: &'c super::super::Comments,
-    /// (named, returns never, `@throws` an UnhandledMatchError) of the enclosing function-likes.
     functions: Vec<(bool, bool, bool)>,
-    /// TryCatchTypeVisitor: the enclosing `try` statements' depth in `functions` and caught class names.
     tries: Vec<(usize, Vec<Span>)>,
     facts: Facts,
 }
 
-/// A body's statements, as PHP-Parser's `stmts` (without the braces' block).
 fn body<'s, 'arena>(s: &'s [Statement<'arena>]) -> &'s [Statement<'arena>] {
     match s {
         [Statement::Block(b)] => b.statements.as_slice(),
@@ -179,7 +157,6 @@ fn is_throw(s: &Statement) -> bool {
 }
 
 impl Pass<'_> {
-    /// A list ending with `if (...) {...} throw ...;`: the `if`'s last condition is the last.
     fn list(&mut self, statements: &[Statement]) {
         if let [.., Statement::If(i), last] = statements
             && is_throw(last)
@@ -212,7 +189,6 @@ impl Pass<'_> {
                         .is_some_and(|t| NEVER.contains(&t.to_ascii_lowercase().as_str()))
                 })
             });
-        // hasUnhandledMatchErrorThrowsTag(); ponytail: the tag's class names by their last segment
         let throws = self
             .comments
             .php_doc_comment(self.contents, start.start.offset as usize)
@@ -369,7 +345,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Pass<'_> {
     }
     fn walk_in_while(&mut self, w: &'ast While<'arena>, (): &mut ()) {
         self.list(body(w.body.statements()));
-        // `$scope->getFunction() ?? $scope->getAnonymousFunctionReflection()`
         let function = self
             .functions
             .iter()
@@ -382,7 +357,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Pass<'_> {
     }
 }
 
-/// The condition expressions whose types the rules read.
 pub(super) fn typed(program: &Program) -> Vec<Span> {
     struct Wanted {
         spans: Vec<Span>,
@@ -431,7 +405,6 @@ pub(super) fn typed(program: &Program) -> Vec<Span> {
     wanted.spans
 }
 
-/// The identifier prefix and sigil of `&&`, `||`, `and`, `or` and `xor`.
 fn logical(op: &BinaryOperator) -> Option<(&'static str, &'static str)> {
     match op {
         BinaryOperator::And(_) => Some(("booleanAnd", "&&")),
@@ -443,7 +416,6 @@ fn logical(op: &BinaryOperator) -> Option<(&'static str, &'static str)> {
     }
 }
 
-/// ConstantConditionRuleHelper::shouldSkip(): the conditions other rules report.
 fn skipped(e: &Expression) -> bool {
     match e {
         Expression::Binary(b) => matches!(
@@ -469,7 +441,6 @@ fn skipped(e: &Expression) -> bool {
 }
 
 impl Checker<'_, '_> {
-    /// `getBooleanType()` when it's a constant: the condition is always true or always false.
     fn constant(&self, e: &Expression) -> Option<bool> {
         if skipped(unparen(e)) {
             return None;
@@ -477,12 +448,10 @@ impl Checker<'_, '_> {
         self.truthiness(e)
     }
 
-    /// The rules run at level 4.
     fn conditions_checked(&self) -> bool {
         self.level >= 4
     }
 
-    /// The error goes through FunctionCallConstantConditionRule's collector: a call an ImpossibleCheckType rule owns.
     fn deferred(&self, e: &Expression) -> bool {
         match unparen(e) {
             Expression::Call(Call::Function(f)) => self.owned_function(f),
@@ -502,7 +471,6 @@ impl Checker<'_, '_> {
         })
     }
 
-    /// A type that is exactly `true` or `false`.
     fn exact(&self, span: Span) -> Option<bool> {
         self.types.get(&span).and_then(|t| {
             if t.is_true() {
@@ -513,7 +481,6 @@ impl Checker<'_, '_> {
         })
     }
 
-    /// `toBoolean()` as a constant: the expression is always truthy or always falsy.
     fn truthiness(&self, e: &Expression) -> Option<bool> {
         let t = self
             .type_of(e)
@@ -525,20 +492,17 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// The sure types against the arguments: true when every argument already is the type, false when one can't be.
-    /// determineContext() asks a void function for its `@phpstan-assert` tags, anything else in a truthy context
-    /// for its `@phpstan-assert-if-true` tags. An unresolved template makes the call the root expression.
     fn asserted(&self, f: &FunctionLikeMetadata, args: &ArgumentList) -> Option<bool> {
-        self.asserted_with(f, args, CheckTypes::Full).flatten()
+        self.asserted_with(f, args, CheckTypes::Full)
+            .and_then(Verdict::always)
     }
 
-    /// Outer None is an unsupported assertion or unavailable input, not a maybe comparison.
     fn asserted_with(
         &self,
         f: &FunctionLikeMetadata,
         args: &ArgumentList,
         types: CheckTypes,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let void = f
             .return_type_metadata
             .as_ref()
@@ -607,7 +571,7 @@ impl Checker<'_, '_> {
                 };
             }
         }
-        Some(all)
+        Some(all.into())
     }
 
     fn asserting(&self, on: &Expression, method: &ClassLikeMemberSelector) -> bool {
@@ -792,8 +756,6 @@ pub(in super::super) fn boolean_not(c: &mut Checker, u: &UnaryPrefix) {
     }
 }
 
-/// The identifier prefix, sigil and rule kind of a comparison: StrictComparisonOfDifferentTypesRule,
-/// ConstantLooseComparisonRule or NumberComparisonOperatorsConstantConditionRule.
 fn comparison(op: &BinaryOperator) -> Option<(&'static str, &'static str, &'static str)> {
     Some(match op {
         BinaryOperator::Identical(_) => ("identical", "===", "Strict"),
@@ -824,7 +786,6 @@ fn compare(c: &mut Checker, b: &Binary) {
                 | Expression::Parent(_)
         )
     {
-        // ImpossibleInstanceOfRule: a class expression that is neither a string nor an object
         let allowed = Type::Union(vec![Type::String, Type::ObjectWithoutClass]);
         let found = c.find_type_to_check(b.rhs, &|t| !is_super_type_of(&allowed, t).yes());
         if found
@@ -850,7 +811,6 @@ fn compare(c: &mut Checker, b: &Binary) {
     }
     let value = c.exact(b.span());
     let right = match (kind, b.rhs) {
-        // ImpossibleInstanceOfRule: a class name, as ObjectType
         ("Instanceof", Expression::Identifier(id)) => {
             Some(Type::Object(c.resolved(id), vec![], false))
         }
@@ -887,7 +847,6 @@ fn compare(c: &mut Checker, b: &Binary) {
     } else if kind.is_empty() {
         format!("Comparison operation \"{sigil}\" between {l} and {r} is always {text}.")
     } else {
-        // the always-true one is left to the last condition
         if value && last == Some(true) {
             return;
         }
@@ -896,8 +855,6 @@ fn compare(c: &mut Checker, b: &Binary) {
         )
     };
     let mut tips = Vec::new();
-    // CountFunctionReturnTypeExtension refines PHPStan's PHPDoc return, not its native
-    // int return. A comparison depending on that exact size needs the certainty tip.
     if kind == "Strict"
         && [(b.lhs, &right), (b.rhs, &left)].iter().any(|(expression, other)| {
             let Expression::Call(Call::Function(call)) = unparen(expression) else { return false };
@@ -974,7 +931,6 @@ pub(in super::super) fn binary(c: &mut Checker, b: &Binary) {
         true
     };
     let left = side(c, b.lhs, "left");
-    // the right side of a short-circuited operator is never evaluated: its type is never
     let skipped = c
         .types
         .get(&b.lhs.span())
@@ -1018,18 +974,17 @@ pub(in super::super) fn binary(c: &mut Checker, b: &Binary) {
     );
 }
 
-/// ImpossibleCheckType{Function,Method,StaticMethod}CallRule: a type-checking call (one FunctionCallConstantCondition-
-/// Rule leaves to these rules) whose result is constant.
 pub(in super::super) fn function_check(c: &mut Checker, call: &FunctionCall) {
     if !c.conditions_checked() || !c.owned_function(call) {
         return;
     }
     let name = c.written(call.function.span());
     let subject = format!("function {}", name.trim_start_matches('\\'));
-    let value = c.function_decision(call, CheckTypes::Full).flatten();
-    // ImpossibleCheckTypeFunctionCallRule reruns the same helper without PHPDoc certainty.
-    // Either native polarity suppresses the tip. Only an available but undecided answer adds it.
-    let phpdoc = value.is_some() && c.function_decision(call, CheckTypes::Native) == Some(None);
+    let value = c
+        .function_decision(call, CheckTypes::Full)
+        .and_then(Verdict::always);
+    let phpdoc = value.is_some()
+        && c.function_decision(call, CheckTypes::Native) == Some(Verdict::Undecided);
     impossible_check(
         c,
         call.span(),
@@ -1111,7 +1066,6 @@ fn impossible_check(
     let mut described: Vec<String> = super::super::declared::with_classes(c, || {
         types.iter().map(|t| t.describe(Level::Value)).collect()
     });
-    // getArgumentsDescription(): nothing without arguments
     let with = match described.len() {
         0..=2 => described
             .first()
@@ -1127,7 +1081,6 @@ fn impossible_check(
     } else {
         ("false", "impossibleType")
     };
-    // RuleErrorBuilder::tip replaces the certainty tip with the remaining-cases tip.
     let tip = if value && last == Some(false) {
         Some(REMOVE_TIP)
     } else {
@@ -1144,7 +1097,6 @@ fn impossible_check(
     );
 }
 
-/// `hasYield()` of a loop body's result: a `yield` outside nested closures and anonymous classes.
 fn has_yield(statements: &[Statement]) -> bool {
     struct Finder(bool);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Finder {
@@ -1162,12 +1114,10 @@ fn has_yield(statements: &[Statement]) -> bool {
     finder.0
 }
 
-/// A void call's value is null.
 fn void_null(t: Type) -> Type {
     if t == Type::Void { Type::Null } else { t }
 }
 
-/// A type of one value: what a match arm condition removes from the subject.
 fn single(t: &Type) -> bool {
     matches!(
         t,
@@ -1179,7 +1129,6 @@ fn single(t: &Type) -> bool {
     )
 }
 
-/// `$subject === $arm` as a constant: the same single value, or types without a common value.
 fn identical(subject: &Type, arm: &Type) -> Option<bool> {
     if single(subject) && subject == arm {
         return Some(true);
@@ -1188,7 +1137,6 @@ fn identical(subject: &Type, arm: &Type) -> Option<bool> {
 }
 
 impl Checker<'_, '_> {
-    /// An enum's cases, or None when the class isn't an enum.
     fn enum_cases(&self, class: &str) -> Option<Vec<Type>> {
         let k = self.codebase.get_class_like(class.as_bytes())?;
         (k.kind == SymbolKind::Enum).then(|| {
@@ -1204,7 +1152,6 @@ impl Checker<'_, '_> {
         })
     }
 
-    /// A type `remove()` takes values from: scalars, null, enums and their cases.
     fn subtractable(&self, t: &Type) -> bool {
         match t {
             Type::Union(ts) => ts.iter().all(|t| self.subtractable(t)),
@@ -1224,7 +1171,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// `getEnumCases()` spelled out: an enum object becomes the union of its cases.
     fn expand_enums(&self, t: Type) -> Type {
         match t {
             Type::Union(ts) => union(ts.into_iter().map(|t| self.expand_enums(t)).collect()),
@@ -1236,7 +1182,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// The subject's type after an arm of one value didn't match (TypeCombinator::remove()).
     fn remove(&self, t: Type, value: &Type) -> Type {
         match t {
             Type::Union(ts) => union(ts.into_iter().map(|t| self.remove(t, value)).collect()),
@@ -1269,7 +1214,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// `getFiniteTypes()`: the values a type has, none when it has infinitely many.
 pub(super) fn finite(c: &Checker, t: &Type) -> Vec<Type> {
     match c.expand_enums(t.clone()) {
         Type::Union(ts) => {
@@ -1286,7 +1230,6 @@ pub(super) fn finite(c: &Checker, t: &Type) -> Vec<Type> {
     }
 }
 
-/// `getConstantStrings()`
 fn constant_strings(t: &Type) -> Vec<String> {
     match t {
         Type::ConstString(s) => vec![String::from_utf8_lossy(s).into_owned()],
@@ -1304,7 +1247,6 @@ fn constant_strings(t: &Type) -> Vec<String> {
     }
 }
 
-/// `isConstantArray()` is not no: a constant array is among the type's arrays.
 fn has_constant_array(t: &Type) -> bool {
     match t {
         Type::Union(ts) | Type::Intersection(ts) => ts.iter().any(has_constant_array),
@@ -1312,7 +1254,6 @@ fn has_constant_array(t: &Type) -> bool {
     }
 }
 
-/// `TrinaryLogic::extremeIdentity()`: yes or no when all agree, else maybe.
 fn extreme(results: impl IntoIterator<Item = Tri>) -> Tri {
     results
         .into_iter()
@@ -1320,15 +1261,34 @@ fn extreme(results: impl IntoIterator<Item = Tri>) -> Tri {
         .unwrap_or(Tri::Maybe)
 }
 
-/// The constant result: true for yes, false for no.
+/// What a check that applies to a condition decides about it. A check that does not apply returns `None` instead.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Verdict {
+    Undecided,
+    Always(bool),
+}
+
+impl Verdict {
+    fn always(self) -> Option<bool> {
+        match self {
+            Verdict::Undecided => None,
+            Verdict::Always(value) => Some(value),
+        }
+    }
+}
+
+impl From<Option<bool>> for Verdict {
+    fn from(value: Option<bool>) -> Verdict {
+        value.map_or(Verdict::Undecided, Verdict::Always)
+    }
+}
+
 fn decided(t: Tri) -> Option<bool> {
     (!t.maybe()).then(|| t.yes())
 }
 
 impl Checker<'_, '_> {
-    /// The bounded ImpossibleCheckTypeHelper decision, with identical expression positions in both lanes.
-    /// None is unavailable/unported. Some(None) means the supported helper genuinely cannot decide.
-    fn function_decision(&self, call: &FunctionCall, types: CheckTypes) -> Option<Option<bool>> {
+    fn function_decision(&self, call: &FunctionCall, types: CheckTypes) -> Option<Verdict> {
         let args = &call.argument_list;
         if self
             .written(call.function.span())
@@ -1340,18 +1300,22 @@ impl Checker<'_, '_> {
                 .get(&args.arguments.first()?.value().span())
                 .filter(|ty| !ty.types.is_empty() && !ty.is_never())?;
             return Some(if ty.is_always_truthy() {
-                Some(true)
+                Verdict::Always(true)
             } else if ty.is_always_falsy() {
-                Some(false)
+                Verdict::Always(false)
             } else {
-                None
+                Verdict::Undecided
             });
         }
         match function_of(self, call.function)? {
             noop::Function::User(function) => {
                 let asserted = self.asserted_with(function, args, types);
                 match types {
-                    CheckTypes::Full => Some(self.exact(call.span()).or(asserted.flatten())),
+                    CheckTypes::Full => Some(
+                        self.exact(call.span())
+                            .or(asserted.and_then(Verdict::always))
+                            .into(),
+                    ),
                     CheckTypes::Native => asserted,
                 }
             }
@@ -1364,22 +1328,19 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// ImpossibleCheckTypeHelper's own answers for in_array(), method_exists(), property_exists() and the
-    /// class_exists() family, plus the sure-type entries of ordinary type predicates.
     fn special(
         &self,
         name: &str,
         args: &ArgumentList,
         types: CheckTypes,
         call: Span,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let arg = |i: usize| {
             args.arguments
                 .get(i)
                 .and_then(|a| types.argument(self, a.value()))
         };
-        Some(match name {
-            // getArgumentType(..., phpDocFlavour: true) retains the full strict flag in either lane.
+        Some(Verdict::from(match name {
             "in_array" => {
                 let needle = arg(0)?;
                 let haystack = arg(1)?;
@@ -1397,7 +1358,6 @@ impl Checker<'_, '_> {
             }
             "method_exists" => self.method_exists(arg(0)?, arg(1)?),
             "property_exists" => self.property_exists(arg(0)?, arg(1)?),
-            // the always true result is suppressed: autoloading can fail
             "class_exists" | "interface_exists" | "trait_exists" | "enum_exists" => {
                 let strings = constant_strings(&arg(0)?);
                 let wrong_kind = |s: &String| {
@@ -1415,8 +1375,6 @@ impl Checker<'_, '_> {
                 (!strings.is_empty() && strings.iter().all(wrong_kind)).then_some(false)
             }
             _ => {
-                // The Is*FunctionTypeSpecifyingExtension sure type, then `$resultType->isSuperTypeOf($argumentType)`:
-                // a benevolent `(int|string)` is maybe an int, though its isInteger() is yes.
                 let mixed = || Box::new(pun_phpstan::types::mixed());
                 let sure = match name {
                     "is_int" | "is_integer" | "is_long" => Type::Int,
@@ -1429,7 +1387,7 @@ impl Checker<'_, '_> {
                     "is_iterable" => Type::Iterable(mixed(), mixed()),
                     _ => {
                         return match types {
-                            CheckTypes::Full => Some(self.exact(call)),
+                            CheckTypes::Full => Some(self.exact(call).into()),
                             CheckTypes::Native => None,
                         };
                     }
@@ -1439,7 +1397,7 @@ impl Checker<'_, '_> {
                     decided(is_super_type_of(&sure, &argument))
                 })
             }
-        })
+        }))
     }
 
     fn in_array(
@@ -1449,9 +1407,9 @@ impl Checker<'_, '_> {
         needle: Type,
         haystack: Type,
         strict: Option<Type>,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         if !haystack.is_array().yes() {
-            return Some(None);
+            return Some(Verdict::Undecided);
         }
         let value = haystack.iterable_value_type();
         let is_enum = |t: &Type| {
@@ -1459,7 +1417,7 @@ impl Checker<'_, '_> {
             !values.is_empty() && values.iter().all(|t| matches!(t, Type::EnumCase(..)))
         };
         if strict != Some(Type::ConstBool(true)) && !is_enum(&needle) && !is_enum(&value) {
-            return Some(None);
+            return Some(Verdict::Undecided);
         }
         let needles = finite(self, &needle);
         let values = finite(self, &value);
@@ -1469,12 +1427,12 @@ impl Checker<'_, '_> {
                 return Some(
                     (needles.len() == 1 && values.len() == 1)
                         .then(|| decided(needle_super))
-                        .flatten(),
+                        .flatten()
+                        .into(),
                 );
             }
             if !needle_super.no() {
-                // the array might be empty
-                return Some(None);
+                return Some(Verdict::Undecided);
             }
         }
         if !matches!(&haystack, Type::ConstArray(a) if a.values.is_empty()) {
@@ -1483,16 +1441,15 @@ impl Checker<'_, '_> {
                 t => vec![t.clone()],
             };
             if arrays.len() == 1 && matches!(value, Type::Never(_)) {
-                return Some(None);
+                return Some(Verdict::Undecided);
             }
             if !needle_super.no() {
                 if needles.is_empty() {
-                    return Some(None);
+                    return Some(Verdict::Undecided);
                 }
                 for array in &arrays {
-                    // a general array cannot guarantee any specific value is present
                     let Type::ConstArray(a) = array else {
-                        return Some(None);
+                        return Some(Verdict::Undecided);
                     };
                     let guaranteed: Vec<Type> = a
                         .values
@@ -1506,25 +1463,21 @@ impl Checker<'_, '_> {
                         .iter()
                         .all(|n| guaranteed.iter().any(|g| is_super_type_of(g, n).yes()))
                     {
-                        return Some(None);
+                        return Some(Verdict::Undecided);
                     }
                 }
             }
-            // (a needle that is a supertype of the values has finite types, so the values have them too)
         }
-        // The specialized checks fall through to the TypeSpecifier, not the call's runtime value.
         self.in_array_narrowing(args, types, &needle, &haystack)
     }
 
-    /// InArrayFunctionTypeSpecifyingExtension in truthy context, then ImpossibleCheckTypeHelper's sure entries.
-    /// None pins are SpecifiedTypes' deferred alternatives: the helper does not inspect those entries.
     fn in_array_narrowing(
         &self,
         args: &ArgumentList,
         types: CheckTypes,
         needle: &Type,
         haystack: &Type,
-    ) -> Option<Option<bool>> {
+    ) -> Option<Verdict> {
         let left = unparen(args.arguments.first()?.value());
         let right = unparen(args.arguments.get(1)?.value());
         let elements = match right {
@@ -1535,26 +1488,28 @@ impl Checker<'_, '_> {
         let Some(elements) = elements.filter(|es| {
             !es.is_empty() && !es.iter().any(|e| matches!(e, ArrayElement::Variadic(_)))
         }) else {
-            // Nonliteral arrays and unpacking use create(needle, value) plus the non-empty array entry.
-            return Some(decided(
-                is_super_type_of(&haystack.iterable_value_type(), needle)
-                    .and(haystack.is_iterable_at_least_once()),
-            ));
+            return Some(
+                decided(
+                    is_super_type_of(&haystack.iterable_value_type(), needle)
+                        .and(haystack.is_iterable_at_least_once()),
+                )
+                .into(),
+            );
         };
         let mut merged: Option<HashMap<String, (Type, Option<Type>, Tri)>> = None;
         for element in elements {
             let item = unparen(element.get_value()?);
             let value = types.argument(self, item)?;
             if elements.len() == 1 {
-                // A single comparison retains its root expression; multiple comparisons clear it.
-                return Some(if finite(self, needle).len() == 1 && *needle == value {
-                    Some(true)
-                } else {
-                    is_super_type_of(needle, &value).no().then_some(false)
-                });
+                return Some(Verdict::from(
+                    if finite(self, needle).len() == 1 && *needle == value {
+                        Some(true)
+                    } else {
+                        is_super_type_of(needle, &value).no().then_some(false)
+                    },
+                ));
             }
             let mut pins = HashMap::new();
-            // IdenticalNarrowingHelper: literal null/bool sides first, then constant-bool types.
             let constant = |e: &Expression| {
                 matches!(
                     e,
@@ -1588,7 +1543,6 @@ impl Checker<'_, '_> {
                     self.in_array_pin(&mut pins, left, needle, &value, false)?;
                 }
             }
-            // SpecifiedTypes::intersectWith(): only subjects constrained by every alternative survive.
             if let Some(merged) = &mut merged {
                 merged.retain(|key, (_, pin, _)| {
                     let Some((_, other, _)) = pins.get(key) else {
@@ -1617,11 +1571,11 @@ impl Checker<'_, '_> {
                     })
                 })
                 .reduce(Tri::and)
-                .and_then(decided),
+                .and_then(decided)
+                .into(),
         )
     }
 
-    /// createSubjectTypes(), including assignment fan-out and the subject's own boolean narrowing.
     fn in_array_pin(
         &self,
         pins: &mut HashMap<String, (Type, Option<Type>, Tri)>,
@@ -1649,7 +1603,6 @@ impl Checker<'_, '_> {
             Expression::Literal(Literal::True(_) | Literal::False(_) | Literal::Null(_))
             | Expression::ConstantAccess(_) => (true, Tri::Yes),
             Expression::Literal(_) => (false, Tri::Yes),
-            // Other handlers can narrow dependencies or decline impure values; no substitute scope is available.
             _ => return None,
         };
         let pin = (!(boolean && own_boolean)).then(|| pin.clone());
@@ -1664,7 +1617,6 @@ impl Checker<'_, '_> {
         Some(())
     }
 
-    /// `ObjectType::hasMethod()`, with whether the class declares the method natively.
     fn object_has_method(&self, class: &str, method: &str) -> (Tri, bool) {
         let Some(k) = self.codebase.get_class_like(class.as_bytes()) else {
             return (Tri::Maybe, false);
@@ -1702,8 +1654,6 @@ impl Checker<'_, '_> {
             ),
             t => t,
         };
-        // ponytail: a generic class-string's object (`class-string<T>&literal-string`) is not decided, Mago's
-        // class-string types lose it
         let found: Vec<_> = object
             .object_class_names()
             .iter()
@@ -1716,8 +1666,6 @@ impl Checker<'_, '_> {
         }
     }
 
-    /// PropertyExistsTypeSpecifyingExtension: the object narrowed to `object&hasProperty(name)`; a property that
-    /// isn't native (an object shape's, an `@property` tag's) narrows the call instead.
     fn property_exists(&self, object: Type, property: Type) -> Option<bool> {
         let Type::ConstString(property) = property else {
             return None;
@@ -1762,21 +1710,17 @@ impl Checker<'_, '_> {
     }
 }
 
-/// SwitchConditionRule: a case duplicating an earlier one under `==`, and cases always false or always true against
-/// the subject narrowed by the cases above that leave the switch.
 pub(in super::super) fn switch_statement(c: &mut Checker, s: &Switch) {
     if !c.conditions_checked() || !c.on(crate::rules::Switches::SWITCH_CONDITION) {
         return;
     }
     let mut remaining = c.phpstan_type(s.expression).map(void_null);
-    // an enum of one case is that case
     if let Some(expanded @ Type::EnumCase(..)) = remaining.clone().map(|t| c.expand_enums(t)) {
         remaining = Some(expanded);
     }
     let cases: Vec<&SwitchCase> = s.body.cases().iter().collect();
     let last = cases.iter().rposition(|case| case.expression().is_some());
     let mut seen: Vec<(Type, String, i64)> = Vec::new();
-    // the conditions since the last case that left the switch (SwitchHandler's `$fullCondExpr`)
     let mut group: Vec<(Option<Type>, &Expression)> = Vec::new();
     let mut dead = false;
     for (i, case) in cases.iter().enumerate() {
@@ -1792,16 +1736,15 @@ pub(in super::super) fn switch_statement(c: &mut Checker, s: &Switch) {
             .iter()
             .any(|s| finally::always_terminates(c, s))
         {
-            // the cases' `||` is false: each narrows the subject the group started with
             let base = remaining.clone();
             for (value, cond) in group.drain(..) {
                 remaining = match (
                     remaining,
                     base.as_ref()
-                        .and_then(|b| unequal(c, b, value.as_ref(), cond)),
+                        .map_or(Unequal::Unknown, |b| unequal(c, b, value.as_ref(), cond)),
                 ) {
-                    (Some(t), Some(Some(v))) => Some(c.remove(t, &v)),
-                    (t, Some(None)) => t,
+                    (Some(t), Unequal::Removes(v)) => Some(c.remove(t, &v)),
+                    (t, Unequal::KeepsAll) => t,
                     _ => None,
                 };
             }
@@ -1856,7 +1799,6 @@ pub(in super::super) fn switch_statement(c: &mut Checker, s: &Switch) {
 }
 
 impl Checker<'_, '_> {
-    /// `isEnum()->yes()`.
     pub(super) fn is_enum(&self, t: &Type) -> bool {
         match t {
             Type::Union(ts) => ts.iter().all(|t| self.is_enum(t)),
@@ -1867,7 +1809,6 @@ impl Checker<'_, '_> {
     }
 }
 
-/// resolveEqualType() of `$subject == $case` as a constant.
 fn equal(c: &Checker, subject: &Type, value: &Type) -> Option<bool> {
     if matches!(subject, Type::Never(_)) || matches!(value, Type::Never(_)) {
         return Some(false);
@@ -1880,24 +1821,23 @@ fn equal(c: &Checker, subject: &Type, value: &Type) -> Option<bool> {
     decided(loose(subject, value))
 }
 
-/// The value `$subject == $case` being false removes from the subject (IdenticalNarrowingHelper::specifyEqual() in
-/// the falsey context): None when the narrowing isn't ported, Some(None) when it removes nothing.
-// ponytail: the narrowings of null, a bool, 0, '' and an empty array are not ported
-fn unequal(
-    c: &Checker,
-    subject: &Type,
-    value: Option<&Type>,
-    cond: &Expression,
-) -> Option<Option<Type>> {
+/// What a switch case that did not match tells about the subject in the cases after it.
+enum Unequal {
+    Unknown,
+    KeepsAll,
+    Removes(Type),
+}
+
+fn unequal(c: &Checker, subject: &Type, value: Option<&Type>, cond: &Expression) -> Unequal {
     if matches!(subject, Type::Mixed { .. }) {
-        return Some(None);
+        return Unequal::KeepsAll;
     }
-    let value = value?;
-    // a bool subject compares with the case's truthiness
+    let Some(value) = value else {
+        return Unequal::Unknown;
+    };
     if subject.is_boolean().yes() {
-        return Some(truthy(value).map(Type::ConstBool));
+        return truthy(value).map_or(Unequal::KeepsAll, |b| Unequal::Removes(Type::ConstBool(b)));
     }
-    // a constant subject narrows the case
     if scalar(subject)
         && !matches!(
             unparen(cond),
@@ -1905,23 +1845,25 @@ fn unequal(
                 | Expression::ConstantAccess(_)
         )
     {
-        return Some(None);
+        return Unequal::KeepsAll;
     }
     match value {
-        Type::Null | Type::ConstBool(_) => return None,
-        Type::ConstInt(0) if !is_int(subject) => return None,
-        Type::ConstString(s) if s.is_empty() => return None,
+        Type::Null | Type::ConstBool(_) => return Unequal::Unknown,
+        Type::ConstInt(0) if !is_int(subject) => return Unequal::Unknown,
+        Type::ConstString(s) if s.is_empty() => return Unequal::Unknown,
         _ => {}
     }
     let same = subject.is_string().yes() && value.is_string().yes()
         || is_int(subject) && is_int(value)
         || subject.is_float().yes() && value.is_float().yes()
         || c.is_enum(subject) && c.is_enum(value);
-    Some((same && single(value) && c.subtractable(subject)).then(|| value.clone()))
+    if same && single(value) && c.subtractable(subject) {
+        Unequal::Removes(value.clone())
+    } else {
+        Unequal::KeepsAll
+    }
 }
 
-/// `toBoolean()` as a constant, of the types a case value has.
-// ponytail: an array case is left unknown (no narrowing)
 fn truthy(t: &Type) -> Option<bool> {
     match t {
         t if scalar(t) => Some(loose_scalars(t, &Type::ConstBool(true))),
@@ -1930,7 +1872,6 @@ fn truthy(t: &Type) -> Option<bool> {
     }
 }
 
-/// A constant scalar type (ConstantScalarType).
 pub(super) fn scalar(t: &Type) -> bool {
     matches!(
         t,
@@ -1942,7 +1883,6 @@ pub(super) fn scalar(t: &Type) -> bool {
     )
 }
 
-/// `is_numeric()` of a string (PHP 8: leading and trailing whitespace allowed).
 fn numeric(s: &str) -> bool {
     let s = s.trim_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c']);
     let s = s.strip_prefix(['+', '-']).unwrap_or(s);
@@ -1962,7 +1902,6 @@ fn numeric(s: &str) -> bool {
     mantissa_ok && exponent_ok
 }
 
-/// `isString()->yes() && isNumericString()->no()`.
 fn non_numeric_string(t: &Type) -> bool {
     match t {
         Type::ConstString(s) => !std::str::from_utf8(s).is_ok_and(numeric),
@@ -1971,7 +1910,6 @@ fn non_numeric_string(t: &Type) -> bool {
     }
 }
 
-/// PHP 8's `==` of two constant scalars (LooseComparisonHelper::compareConstantScalars()).
 fn loose_scalars(a: &Type, b: &Type) -> bool {
     let truthy = |t: &Type| match t {
         Type::ConstInt(i) => *i != 0,
@@ -2013,7 +1951,6 @@ fn loose_scalars(a: &Type, b: &Type) -> bool {
     }
 }
 
-/// `Type::looseCompare()` (PHP 8) as a Tri.
 pub(super) fn loose(a: &Type, b: &Type) -> Tri {
     let compound = |t: &Type| {
         matches!(
@@ -2146,7 +2083,6 @@ pub(super) fn loose(a: &Type, b: &Type) -> Tri {
     }
 }
 
-/// IntegerType::looseCompare().
 fn int_loose(b: &Type) -> Tri {
     if b.is_array().yes() || non_numeric_string(b) {
         Tri::No
@@ -2155,7 +2091,6 @@ fn int_loose(b: &Type) -> Tri {
     }
 }
 
-/// `isInteger()->yes()`.
 fn is_int(t: &Type) -> bool {
     match t {
         Type::Union(ts) => ts.iter().all(is_int),
@@ -2163,13 +2098,10 @@ fn is_int(t: &Type) -> bool {
     }
 }
 
-/// MatchExpressionRule: arms always true or false against the subject narrowed by the arms above, and the values no
-/// arm handles.
 pub(in super::super) fn match_expression(c: &mut Checker, m: &Match) {
     if !c.conditions_checked() {
         return;
     }
-    // ponytail: subjects of the types `remove()` handles; arrays, class strings, templates... wait for TypeCombinator
     let Some(mut remaining) = c
         .phpstan_type(m.expression)
         .map(void_null)
@@ -2177,7 +2109,6 @@ pub(in super::super) fn match_expression(c: &mut Checker, m: &Match) {
     else {
         return;
     };
-    // an enum of one case is that case
     if let expanded @ Type::EnumCase(..) = c.expand_enums(remaining.clone()) {
         remaining = expanded;
     }
@@ -2216,7 +2147,6 @@ pub(in super::super) fn match_expression(c: &mut Checker, m: &Match) {
             let (mut s, v) = super::super::declared::with_classes(c, || {
                 (subject.describe(Level::Value), value.describe(Level::Value))
             });
-            // `$this` narrowed to a case of its enum
             if let (Expression::Variable(Variable::Direct(this)), Type::EnumCase(class, _)) =
                 (unparen(m.expression), &subject)
                 && this.name == b"$this"
@@ -2247,7 +2177,6 @@ pub(in super::super) fn match_expression(c: &mut Checker, m: &Match) {
         return;
     }
     let remaining = c.expand_enums(remaining);
-    // isUnhandledMatchErrorCaught()
     let caught = c.conditions.caught.get(&m.span()).is_some_and(|names| {
         names.iter().any(|n| {
             let name = c.names.get(n);
@@ -2273,12 +2202,9 @@ pub(in super::super) fn match_expression(c: &mut Checker, m: &Match) {
     );
 }
 
-/// The message prefix of a ConstantConditionInTraitCollector entry: `rule`, trait, expression, value (`-` for no
-/// error), then the message.
 const IN_TRAIT: &str = "\u{1e}in-trait\u{1f}";
 
 impl Checker<'_, '_> {
-    /// A constant-condition error, collected per class context in a trait (ConstantConditionInTraitHelper::emitError()).
     pub(super) fn condition_error(
         &mut self,
         key: Span,
@@ -2299,7 +2225,6 @@ impl Checker<'_, '_> {
         self.report_at_line(line, identifier, message, tip);
     }
 
-    /// emitNoError(): the rule found nothing at `key` in this class context.
     pub(super) fn no_condition(&mut self, key: Span, identifier: &str) {
         if let Some(t) = self.in_trait() {
             let message = format!(
@@ -2313,18 +2238,14 @@ impl Checker<'_, '_> {
     }
 }
 
-/// The rule of an identifier: its first segment.
 fn rule(identifier: &str) -> &str {
     identifier.split('.').next().unwrap_or_default()
 }
 
-/// ConstantConditionInTraitRule: a trait's condition reports when every class context agrees on it, once without the
-/// context when they report the same message.
 pub(crate) fn conditions_in_traits(errors: Vec<Error>) -> Vec<Error> {
     let (collected, mut errors): (Vec<Error>, Vec<Error>) = errors
         .into_iter()
         .partition(|e| e.message.starts_with(IN_TRAIT));
-    // rule, trait, expression -> class context -> the errors, or none
     let mut groups: BTreeMap<(String, String, String), BTreeMap<String, Vec<(String, Error)>>> =
         BTreeMap::new();
     for mut e in collected {
@@ -2359,7 +2280,6 @@ pub(crate) fn conditions_in_traits(errors: Vec<Error>) -> Vec<Error> {
             }
         }
         if let [one] = unique.as_mut_slice() {
-            // removeTraitContext()
             let file = one.trait_file_path.take().unwrap_or_default();
             one.file = file.clone();
             one.file_path = file;
@@ -2369,20 +2289,10 @@ pub(crate) fn conditions_in_traits(errors: Vec<Error>) -> Vec<Error> {
     errors
 }
 
-/// The match subjects' types before any arm. Mago analyses a subject again in each arm's scope, so the type it keeps
-/// is the last arm's: these come from a copy of the file whose matches have only a `default` arm, at the same offsets.
-/// Also the subjects whose arms are too short for that: their types are unknown.
 pub(in super::super) fn match_subject_types(
-    file: &File,
-    program: &Program,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    functions: &[(Span, mago_codex::symbol::SymbolIdentifier)],
+    run: &super::super::infer::Run<'_, '_>,
 ) -> (HashMap<Span, TUnion>, Vec<Span>) {
-    /// The matches with arms: subject, the start and end between their braces, nesting depth.
+    let (file, program) = (run.file, run.program);
     struct Matches(Vec<(Span, usize, usize, usize)>, usize);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Matches {
         fn walk_in_match(&mut self, m: &'ast Match<'arena>, (): &mut ()) {
@@ -2406,7 +2316,6 @@ pub(in super::super) fn match_subject_types(
     if matches.0.is_empty() {
         return (types, unknown);
     }
-    // a nested match is gone from a copy without its outer match's arms: one copy per depth
     let deepest = matches.0.iter().map(|m| m.3).max().unwrap_or_default();
     for depth in 0..=deepest {
         let mut contents = file.contents.to_vec();
@@ -2416,7 +2325,6 @@ pub(in super::super) fn match_subject_types(
                 .iter()
                 .map(|b| if *b == b'\n' { b'\n' } else { b' ' })
                 .collect::<Vec<_>>();
-            // `default=>1`, its tokens between the arms' line breaks; ponytail: shorter arms keep Mago's type
             let mut at = 0;
             let placed = [b"default".as_slice(), b"=>", b"1"].iter().all(|token| {
                 while at + token.len() <= arms.len() && arms[at..at + token.len()].contains(&b'\n')
@@ -2445,26 +2353,19 @@ pub(in super::super) fn match_subject_types(
         );
         let arena = LocalArena::new();
         let (program, names) = parse(&arena, &copy);
-        // (the copy's own comments: its arms are rewritten)
         let comments = super::super::Comments::of(&copy.contents, true);
-        types.extend(
-            super::super::infer::analyse(
-                &arena,
-                &copy,
-                program,
-                &names,
-                codebase,
-                php_version,
-                pollute_scope_with_loop_initial_assignments,
-                pollute_scope_with_always_iterable_foreach,
-                pollute_scope_with_block,
-                subjects,
-                Vec::new(),
-                &comments,
-                functions,
-            )
-            .0,
-        );
+        let copy_run = super::super::infer::Run {
+            arena: &arena,
+            file: &copy,
+            program,
+            names: &names,
+            codebase: run.codebase,
+            php_version: run.php_version,
+            switches: run.switches,
+            comments: &comments,
+            functions: run.functions,
+        };
+        types.extend(super::super::infer::analyse(&copy_run, subjects, Vec::new()).types);
     }
     (types, unknown)
 }
@@ -2473,8 +2374,6 @@ pub(in super::super) fn match_subject_types(
 mod tests {
     use super::{Accessory, Tri, Type, loose};
 
-    /// SwitchConditionRule on PHPStan 2.3.5: `numeric-string` and `decimal-int-string` subjects are never `==` to
-    /// `'abc'` or null (Mago types neither parameter as PHPStan does).
     #[test]
     fn numeric_strings() {
         for accessory in [
@@ -2488,7 +2387,6 @@ mod tests {
         }
     }
 
-    /// `int == ('a'|'b')` is false on PHP 8 (IntegerType::looseCompare(): a non-numeric string).
     #[test]
     fn int_and_non_numeric_strings() {
         let strings = Type::Union(vec![

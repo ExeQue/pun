@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocTagTypeFixer`.
 use crate::analyzers::fixer_configuration_resolver::{PhpKey, php_array, resolve};
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, Preg, preg_quote};
 use anyhow::{Result, bail};
@@ -43,7 +42,6 @@ const DEFAULT_TAGS: &[&str] = &[
 
 #[derive(Default)]
 struct PhpdocTagTypeFixer {
-    /// lowercased tag => is_inline, in configuration order
     tags: Vec<(String, bool)>,
 }
 
@@ -78,7 +76,6 @@ impl Fixer for PhpdocTagTypeFixer {
         };
         o.check_types("tags", &["string[]"])?;
         let entries = php_array(v);
-        // setAllowedValues runs before the normalizer
         for (_, ty) in &entries {
             if !matches!(ty.as_str(), Some("annotation" | "inline")) {
                 bail!(
@@ -90,11 +87,9 @@ impl Fixer for PhpdocTagTypeFixer {
         let mut tags: Vec<(String, bool)> = Vec::new();
         for (tag, ty) in entries {
             let PhpKey::Str(tag) = tag else {
-                // the normalizer strtolower()s every key: a TypeError on an int key under strict_types
                 bail!("strtolower(): Argument #1 ($string) must be of type string, int given");
             };
             let inline = ty == "inline";
-            // normalizer: strtolower keys, later duplicates overwrite earlier ones in place
             let key = tag.to_ascii_lowercase();
             match tags.iter_mut().find(|(k, _)| *k == key) {
                 Some(slot) => slot.1 = inline,

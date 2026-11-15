@@ -1,6 +1,3 @@
-//! rector-laravel's `QueryBuilderAnalyzer` (src/NodeAnalyzer/QueryBuilderAnalyzer.php) on Mago's types, and what the
-//! rules that type a query closure's parameter share.
-
 use mago_syntax::cst::{Expression, FunctionLikeParameter, Hint, Node};
 use pun_problem::Safety;
 
@@ -13,7 +10,6 @@ use crate::{Context, Report};
 
 const MODEL: &str = "Illuminate\\Database\\Eloquent\\Model";
 
-/// A method or static call: its object or class, whether it is static, its name and its arguments.
 pub(crate) struct CallParts<'a> {
     pub on: &'a Expression<'a>,
     pub is_static: bool,
@@ -21,7 +17,6 @@ pub(crate) struct CallParts<'a> {
     pub arguments: Vec<&'a Expression<'a>>,
 }
 
-/// The parts of a `MethodCall` or `StaticMethodCall` node whose method is written as a name.
 pub(crate) fn call_parts<'a>(n: &Node<'a, 'a>) -> Option<CallParts<'a>> {
     let (on, is_static, method, list) = match n {
         Node::StaticMethodCall(s) => (s.class, true, &s.method, &s.argument_list),
@@ -42,8 +37,6 @@ pub(crate) fn call_parts<'a>(n: &Node<'a, 'a>) -> Option<CallParts<'a>> {
     })
 }
 
-/// `isMatchingCall($node, $method)`: the call is named `method` and is on a query builder
-/// (`Illuminate\Contracts\Database\Query\Builder`), or is a static call a model forwards to its query builder.
 pub(crate) fn is_matching_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -64,8 +57,6 @@ pub(crate) fn is_matching_call(
     )
 }
 
-/// `isProxyCall`: a static call on a model class that has no native method of that name (it goes through
-/// `__callStatic` to the query builder). The class is the one written, or the one of the object the expression holds.
 fn is_proxy_call(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], call: &CallParts<'_>) -> bool {
     let facts = facts(ctx);
     let class = match unparenthesize(call.on) {
@@ -86,7 +77,6 @@ fn is_proxy_call(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], call: &CallParts
     })
 }
 
-/// The first parameter of the closure or arrow function `expr`, when it is one.
 pub(crate) fn closure_first_param<'a>(
     expr: &'a Expression<'a>,
 ) -> Option<Option<&'a FunctionLikeParameter<'a>>> {
@@ -97,8 +87,6 @@ pub(crate) fn closure_first_param<'a>(
     }
 }
 
-/// `$param->type instanceof Name`: a class name, `self` or `parent` (php-parser's `Identifier` holds the built-in
-/// types and `static`).
 fn is_name_type(param: &FunctionLikeParameter<'_>) -> bool {
     matches!(
         param.hint,
@@ -106,7 +94,6 @@ fn is_name_type(param: &FunctionLikeParameter<'_>) -> bool {
     )
 }
 
-/// The report that gives `param` the type `\class`, unless its type is already a name.
 pub(crate) fn type_param(
     node: &Node<'_, '_>,
     param: &FunctionLikeParameter<'_>,

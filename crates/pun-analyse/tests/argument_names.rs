@@ -1,5 +1,3 @@
-//! FunctionCallParametersCheck::describeParameter(), compared with PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -11,7 +9,7 @@ fn check(file: &str) {
         serde_json::from_slice(&std::fs::read(root.join("expected.json")).unwrap()).unwrap();
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = 7;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -56,8 +54,6 @@ fn positional_named_and_pipe_reference_errors_only_append_nonempty_parameter_nam
     check("references.php");
 }
 
-/// PHPStan 2.3.1, phpstan-no-named.neon with --level=N. The shared checker returns before the named-argument
-/// policy check at levels 0–4, and skips unknown/unbound arguments even when type/reference checks are enabled.
 #[test]
 fn no_named_arguments_is_a_shared_level_five_parameter_contract() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/argument-names");
@@ -68,7 +64,7 @@ fn no_named_arguments_is_a_shared_level_five_parameter_contract() {
         .unwrap();
         let mut project = Project::new(vec![root.join("no-named.php")], Vec::new());
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()

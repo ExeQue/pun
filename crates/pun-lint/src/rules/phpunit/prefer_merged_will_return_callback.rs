@@ -1,18 +1,9 @@
-//! `lint/phpunit/prefer-will-return-callback`, ported from rector-phpunit's
-//! `MergeWithCallableAndWillReturnRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `->with($this->callback(function (...) { ...; return true; }))->willReturn($value)` becomes
-//! `->willReturnCallback(function (...) use (...) { ...; return $value; })`: the closure's last `return true;` returns
-//! the value, the variables the value uses that the closure lacks are added to its `use`, and its return type is the
-//! value's type as Rector declares it (`mapPHPStanTypeToPhpParserNode` of the scope's type, `true` and `false` kept).
-//! Arguments of `with()` after the callback go.
-
 use mago_syntax::cst::{Argument, Call, Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, NewArg, expr_text, is_in_test_class, rewrite_args};
-use crate::rules::rector_code_quality::is_constant;
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::statement_edits::block_list;
 use crate::rules::types::declare::{expression_order, return_declaration};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
@@ -83,10 +74,9 @@ impl Rule for PreferMergedWillReturnCallback {
         else {
             return;
         };
-        let declared = return_declaration(types, &facts.codebase, ctx.php_version, &[], true);
+        let declared = return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true);
 
         let mut edits = vec![Edit::new(node_span(old_value), expr_text(ctx, returned))];
-        // `resolveExternalUses`
         let params: Vec<&[u8]> = closure
             .parameter_list
             .parameters
@@ -174,7 +164,6 @@ impl Rule for PreferMergedWillReturnCallback {
     }
 }
 
-/// `source[span]` with `edits` (inside it, not overlapping) applied.
 fn applied(source: &str, span: Span, mut edits: Vec<Edit>) -> String {
     edits.sort_by_key(|e| (e.span.start, e.span.end));
     let mut out = String::new();

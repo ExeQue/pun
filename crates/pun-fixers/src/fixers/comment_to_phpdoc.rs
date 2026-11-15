@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\CommentToPhpdocFixer`.
 use crate::analyzers::comments_analyzer::{
     get_comment_block_indices, is_before_structural_element, is_header_comment,
 };
@@ -26,7 +25,6 @@ impl Fixer for CommentToPhpdocFixer {
         "comment_to_phpdoc"
     }
     fn priority(&self) -> i32 {
-        // Should be run before all other PHPDoc fixers
         26
     }
     fn is_risky(&self) -> bool {

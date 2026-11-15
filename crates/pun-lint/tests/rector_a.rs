@@ -55,8 +55,6 @@ fn run(linter: &Linter, dir: &str) {
     run_formatter_too(linter, dir, &[]);
 }
 
-/// Like `run`, but the fixtures in `formatter_too` are ones the formatter alone also fixes (Pint drops a bare
-/// `null;`), so only the rule's own output is checked for them.
 fn run_formatter_too(linter: &Linter, dir: &str, formatter_too: &[&str]) {
     let pipeline = laravel();
     for (path, input, expected) in fixtures(dir) {
@@ -69,7 +67,6 @@ fn run_formatter_too(linter: &Linter, dir: &str, formatter_too: &[&str]) {
             "{name}: format(lint --fix)"
         );
         if input != expected && !formatter_too.contains(&name.as_ref()) {
-            // The rule did the work, not the formatter.
             assert_ne!(
                 format(&pipeline, &input),
                 format(&pipeline, &expected),
@@ -82,9 +79,6 @@ fn run_formatter_too(linter: &Linter, dir: &str, formatter_too: &[&str]) {
     }
 }
 
-/// Like `run`, but for the fixtures named in `whitespace_only`, where Rector's printer writes different blanks than
-/// Pun's text edits (each entry says why): there the raw output must equal the expected one once whitespace is
-/// ignored, and format must make them equal.
 fn run_with_whitespace_exceptions(linter: &Linter, dir: &str, whitespace_only: &[&str]) {
     let pipeline = laravel();
     let squeeze = |s: &str| s.split_whitespace().collect::<String>();
@@ -111,12 +105,14 @@ fn run_with_whitespace_exceptions(linter: &Linter, dir: &str, whitespace_only: &
 }
 
 fn only(rule: impl pun_lint::Rule + 'static, php_version: u32) -> Linter {
-    Linter::new(vec![Box::new(rule)], php_version)
+    Linter::new(
+        vec![Box::new(rule)],
+        pun_lint::PhpVersion::from_id(php_version),
+    )
 }
 
 #[test]
 fn unwrap_future_compatible_if_php_version() {
-    // Rector's tests run with PhpVersionProvider::provide() at 100000 (PHP 10.0).
     run(
         &only(rules::NoFuturePhpVersionCheck, 100000),
         "UnwrapFutureCompatibleIfPhpVersionRector/Fixture",
@@ -126,8 +122,6 @@ fn unwrap_future_compatible_if_php_version() {
         &only(rules::NoFuturePhpVersionCheck, 80400),
         "UnwrapFutureCompatibleIfPhpVersionRector/Oracle",
     );
-    // Where Rector crashes on an unknown sign, or decides a check on a call's value, an unknown sign or a negated
-    // string (which Pun does not evaluate); the expected code (left alone) is derived by hand.
     run(
         &only(rules::NoFuturePhpVersionCheck, 80400),
         "UnwrapFutureCompatibleIfPhpVersionRector/Pun",
@@ -136,12 +130,10 @@ fn unwrap_future_compatible_if_php_version() {
 
 #[test]
 fn remove_php_version_id_check() {
-    // config/configured_rule.php: PhpVersion::PHP_80.
     run(
         &only(rules::NoDeadPhpVersionCheck, 80000),
         "RemovePhpVersionIdCheckRector/Fixture",
     );
-    // Pun's own cases where Pun keeps the meaning Rector loses (the module docs say how); expected derived by hand.
     run(
         &only(rules::NoDeadPhpVersionCheck, 80400),
         "RemovePhpVersionIdCheckRector/Pun",
@@ -155,7 +147,6 @@ fn remove_php_version_id_check() {
 
 #[test]
 fn remove_unused_public_method_parameter() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::NoUnusedPublicMethodParam, 80400),
         "RemoveUnusedPublicMethodParameterRector/Fixture",
@@ -169,7 +160,6 @@ fn remove_unused_public_method_parameter() {
 
 #[test]
 fn remove_unused_private_method_parameter() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::NoUnusedPrivateMethodParam, 80400),
         "RemoveUnusedPrivateMethodParameterRector/Fixture",
@@ -179,10 +169,6 @@ fn remove_unused_private_method_parameter() {
         &only(rules::NoUnusedPrivateMethodParam, 80400),
         "RemoveUnusedPrivateMethodParameterRector/Oracle",
     );
-    // A dynamic call on `$this` may reach the method, so Pun keeps a parameter whose removal would shift the others,
-    // and a call on another receiver names a parameter that would go; Rector ignores both calls. A method whose every
-    // parameter goes while it calls itself is printed anew around that call, so Pun leaves it. The expected code is
-    // derived by hand.
     run(
         &only(rules::NoUnusedPrivateMethodParam, 80400),
         "RemoveUnusedPrivateMethodParameterRector/Pun",
@@ -191,8 +177,6 @@ fn remove_unused_private_method_parameter() {
 
 #[test]
 fn remove_unused_private_property() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
-    // on_arg's expected half lacks the input's final newline, which Rector's test runner trims away.
     run_with_whitespace_exceptions(
         &only(rules::NoUnusedPrivateProperty, 80400),
         "RemoveUnusedPrivatePropertyRector/Fixture",
@@ -203,7 +187,6 @@ fn remove_unused_private_property() {
         &only(rules::NoUnusedPrivateProperty, 80400),
         "RemoveUnusedPrivatePropertyRector/Oracle",
     );
-    // Pun's own cases where Pun keeps the meaning Rector loses (the module docs say how); expected derived by hand.
     run(
         &only(rules::NoUnusedPrivateProperty, 80400),
         "RemoveUnusedPrivatePropertyRector/Pun",
@@ -212,7 +195,6 @@ fn remove_unused_private_property() {
 
 #[test]
 fn remove_default_value_from_assigned_property() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::NoRedundantPropertyDefault, 80400),
         "RemoveDefaultValueFromAssignedPropertyRector/Fixture",
@@ -226,8 +208,6 @@ fn remove_default_value_from_assigned_property() {
 
 #[test]
 fn inline_constructor_default_to_property() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version. The fixtures' parent classes are in
-    // Source/, which Rector's test autoloads.
     let source = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector/InlineConstructorDefaultToPropertyRector/Source");
     let sources = ["AbstractParentWithFilledProperty.php", "ValidatedBase.php"].map(|f| {
@@ -250,7 +230,6 @@ fn inline_constructor_default_to_property() {
 
 #[test]
 fn foreach_to_in_array() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::PreferInArrayOverForeach, 80400),
         "ForeachToInArrayRector/Fixture",
@@ -260,9 +239,6 @@ fn foreach_to_in_array() {
         &only(rules::PreferInArrayOverForeach, 80400),
         "ForeachToInArrayRector/Oracle",
     );
-    // Derived by hand: Rector drops an `else` the `if` has, and Pun leaves a list whose first statements would go
-    // ahead of kept ones (php-parser's reprint there is not ported), a file-level variable, and a local whose other
-    // writes (`+=`, a list, a reference, a `foreach` target, a by-reference `use`) PHPStan still types as an array.
     run(
         &only(rules::PreferInArrayOverForeach, 80400),
         "ForeachToInArrayRector/Pun",
@@ -271,7 +247,6 @@ fn foreach_to_in_array() {
 
 #[test]
 fn consecutive_null_compare_returns_to_null_coalesce_queue() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::PreferCoalesceChain, 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Fixture",
@@ -281,8 +256,6 @@ fn consecutive_null_compare_returns_to_null_coalesce_queue() {
         &only(rules::PreferCoalesceChain, 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Oracle",
     );
-    // Pun's own cases where Pun keeps the meaning Rector loses (the module docs say how), or leaves a file's top-level
-    // statements whose reprint by php-parser it does not know; expected derived by hand.
     run(
         &only(rules::PreferCoalesceChain, 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Pun",
@@ -291,7 +264,6 @@ fn consecutive_null_compare_returns_to_null_coalesce_queue() {
 
 #[test]
 fn simplify_foreach_to_coalescing() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::PreferCoalesceOverForeach, 80400),
         "SimplifyForeachToCoalescingRector/Fixture",
@@ -305,7 +277,6 @@ fn simplify_foreach_to_coalescing() {
 
 #[test]
 fn remove_dead_condition_above_return() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoUselessCondition, 80400);
     run(&linter, "RemoveDeadConditionAboveReturnRector/Fixture");
     run(&linter, "RemoveDeadConditionAboveReturnRector/Oracle");
@@ -313,7 +284,6 @@ fn remove_dead_condition_above_return() {
 
 #[test]
 fn remove_condition_exact_return() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoConditionExactReturn, 80400);
     run(&linter, "RemoveConditionExactReturnRector/Fixture");
     run(&linter, "RemoveConditionExactReturnRector/Oracle");
@@ -321,7 +291,6 @@ fn remove_condition_exact_return() {
 
 #[test]
 fn remove_double_assign() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoOverwrittenAssignment, 80400);
     run(&linter, "RemoveDoubleAssignRector/Fixture");
     run(&linter, "RemoveDoubleAssignRector/Oracle");
@@ -329,7 +298,6 @@ fn remove_double_assign() {
 
 #[test]
 fn remove_next_same_value_condition() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoRedundantCondition, 80400);
     run(&linter, "RemoveNextSameValueConditionRector/Fixture");
     run(&linter, "RemoveNextSameValueConditionRector/Oracle");
@@ -337,11 +305,8 @@ fn remove_next_same_value_condition() {
 
 #[test]
 fn remove_dead_loop() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoEmptyLoop, 80400);
     run(&linter, "RemoveDeadLoopRector/Fixture");
-    // The empty block that replaces a loop that was a braceless body: php-parser prints it on the `if` line, Pun's edit
-    // keeps it on the loop's own line.
     run_with_whitespace_exceptions(
         &linter,
         "RemoveDeadLoopRector/Oracle",
@@ -351,9 +316,6 @@ fn remove_dead_loop() {
 
 #[test]
 fn remove_dead_stmt() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version. Pun/ keeps the kept parts in source
-    // order where Rector writes the first part last, and keeps `$v[...]` where `$v` may be an `ArrayAccess` that Rector
-    // drops the `offsetGet()` of (a nullable, union, `object`, `mixed` or `iterable` type).
     let linter = only(rules::NoUnusedExpression, 80400);
     run_formatter_too(
         &linter,
@@ -367,7 +329,6 @@ fn remove_dead_stmt() {
 
 #[test]
 fn remove_sole_value_sprintf() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoSoleValueSprintf, 80400);
     run(&linter, "RemoveSoleValueSprintfRector/Fixture");
     run(&linter, "RemoveSoleValueSprintfRector/Oracle");
@@ -375,7 +336,6 @@ fn remove_sole_value_sprintf() {
 
 #[test]
 fn compact_to_variables() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoCompact, 80400);
     run(&linter, "CompactToVariablesRector/Fixture");
     run(&linter, "CompactToVariablesRector/Oracle");
@@ -383,7 +343,6 @@ fn compact_to_variables() {
 
 #[test]
 fn is_a_with_string_with_third_argument() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     run(
         &only(rules::RequireIsAAllowString, 80400),
         "IsAWithStringWithThirdArgumentRector/Fixture",
@@ -397,9 +356,6 @@ fn is_a_with_string_with_third_argument() {
 
 #[test]
 fn unnecessary_ternary_expression() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version. Pun/: Rector's run on a variadic `bool`
-    // parameter, which is an array, and the parentheses php-parser leaves out around an assignment, arrow function,
-    // `print` or `include` under the new cast.
     let linter = only(rules::NoBoolTernary, 80400);
     run(&linter, "UnnecessaryTernaryExpressionRector/Fixture");
     run(&linter, "UnnecessaryTernaryExpressionRector/Oracle");
@@ -408,7 +364,6 @@ fn unnecessary_ternary_expression() {
 
 #[test]
 fn remove_useless_ternary() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoUselessTernary, 80400);
     run(&linter, "RemoveUselessTernaryRector/Fixture");
     run(&linter, "RemoveUselessTernaryRector/Oracle");
@@ -416,17 +371,14 @@ fn remove_useless_ternary() {
 
 #[test]
 fn ternary_to_boolean_or_false_to_boolean_and() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::NoFalseTernary, 80400);
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Fixture");
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Oracle");
-    // Where Rector drops the parentheses an assignment or arrow function needs; the expected code is derived by hand.
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Pun");
 }
 
 #[test]
 fn simplify_bool_identical_true() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version. Pun/: Rector's run on `@call()`.
     let linter = only(rules::NoBooleanLiteralCompare, 80400);
     run(&linter, "SimplifyBoolIdenticalTrueRector/Fixture");
     run(&linter, "SimplifyBoolIdenticalTrueRector/Oracle");
@@ -435,8 +387,6 @@ fn simplify_bool_identical_true() {
 
 #[test]
 fn simplify_empty_check_on_empty_array() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version. Pun/: a property of a class in another
-    // file (the fixture's `Source/OtherClass`), which this test does not give Pun.
     let linter = only(rules::PreferEmptyArrayIdentical, 80400);
     run(&linter, "SimplifyEmptyCheckOnEmptyArrayRector/Fixture");
     run(&linter, "SimplifyEmptyCheckOnEmptyArrayRector/Oracle");
@@ -445,7 +395,6 @@ fn simplify_empty_check_on_empty_array() {
 
 #[test]
 fn number_compare_to_max_func_call() {
-    // config/configured_rule.php: the rule alone, Rector's default PHP version.
     let linter = only(rules::PreferMinMax, 80400);
     run(&linter, "NumberCompareToMaxFuncCallRector/Fixture");
     run(&linter, "NumberCompareToMaxFuncCallRector/Oracle");

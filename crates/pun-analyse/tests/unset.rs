@@ -1,5 +1,3 @@
-//! UnsetRule against actual PHPStan 2.3.1 oracle output. tests/rules.rs runs the upstream UnsetRuleTest fixtures.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -31,7 +29,8 @@ fn check(project: Project, expected: &Value) -> Result<(), String> {
     } else {
         Err(format!(
             "{:?}; PHP {}\nactual: {got:?}\nexpected: {want:?}",
-            project.analysed, project.php_version
+            project.analysed,
+            project.php_version.id()
         ))
     }
 }
@@ -51,7 +50,7 @@ fn readonly_array_access_offset_keeps_constructor_arguments() {
         .unwrap();
     let file = root.join("data").join(case["files"][0].as_str().unwrap());
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &case["errors"]).unwrap();
 }
 
@@ -71,7 +70,7 @@ fn oracle_at_level(name: &str, expected_name: &str, php_version: u32, level: u8)
         .unwrap()["messages"]
         .clone();
     let mut project = Project::new(vec![root.join(name)], Vec::new());
-    project.php_version = php_version;
+    project.php_version = pun_analyse::PhpVersion::from_id(php_version);
     project.level = level;
     check(project, &messages).unwrap();
 }
@@ -196,8 +195,6 @@ fn native_writable_overlays_resolve_inherited_and_generic_types() {
     );
 }
 
-// These CLI captures were independently checked against PHPStan's public Analyser. Keep trait-context file
-// suffixes as well as every diagnostic; a trait checked in an invalid consumer must not borrow required members.
 fn required_native_oracle(name: &str, scanned: &[&str]) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/unset");
     let expected: Value =
@@ -225,7 +222,7 @@ fn required_native_oracle(name: &str, scanned: &[&str]) {
         vec![file.clone()],
         scanned.iter().map(|name| root.join(name)).collect(),
     );
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

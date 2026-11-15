@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\AbstractShortOperatorFixer`: the shared `applyFix` of the fixers that turn
-//! `$a = $a <op> $b` into `$a <op>= $b`.
 use super::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use super::range_analyzer::{Range, range_equals_range};
 use pun_tokens::{BlockType, Kind::*, Proto, Token, Tokens};
@@ -17,20 +15,13 @@ pub(crate) fn apply_fix(fixer: &impl ShortOperator, tokens: &mut Tokens) {
         if !fixer.is_operator_token_candidate(tokens, index) {
             continue;
         }
-        // get what is before the operator
         let before_range = get_before_operator_range(tokens, index);
-        let equals_index = tokens
-            .get_prev_meaningful_token(before_range.start)
-            .unwrap();
-        // make sure that before that is '='
+        let equals_index = tokens.prev_meaningful(before_range.start);
         if !tokens[equals_index].equals("=", true) {
             continue;
         }
-        // get and check what is before '='
         let assign_range = get_before_operator_range(tokens, equals_index);
-        let before_assignment_index = tokens
-            .get_prev_meaningful_token(assign_range.start)
-            .unwrap();
+        let before_assignment_index = tokens.prev_meaningful(assign_range.start);
         if tokens[before_assignment_index].equals(":", true) {
             if !belongs_to_switch_or_alternative_syntax(
                 &alternative_syntax_analyzer,
@@ -54,7 +45,6 @@ pub(crate) fn apply_fix(fixer: &impl ShortOperator, tokens: &mut Tokens) {
         ) {
             continue;
         }
-        // check if "assign" and "before" the operator are (functionally) the same
         if range_equals_range(tokens, assign_range, before_range) {
             shorten_operation(
                 fixer,
@@ -70,7 +60,6 @@ pub(crate) fn apply_fix(fixer: &impl ShortOperator, tokens: &mut Tokens) {
             continue;
         }
         let after_range = get_after_operator_range(tokens, index);
-        // check if "assign" and "after" the operator are (functionally) the same
         if !range_equals_range(tokens, assign_range, after_range) {
             continue;
         }
@@ -108,11 +97,10 @@ fn shorten_operation(
 }
 
 fn get_after_operator_range(tokens: &Tokens, index: usize) -> Range {
-    let mut index = tokens.get_next_meaningful_token(index).unwrap();
+    let mut index = tokens.next_meaningful(index);
     let start = index;
     loop {
-        // `is_operator_token_candidate` found the statement's end, so a next token exists (upstream also stops at null).
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         if tokens[next_index].equals_any(&[";".into(), ",".into(), T_CLOSE_TAG.into()], true) {
             break;
         }
@@ -126,13 +114,12 @@ fn get_after_operator_range(tokens: &Tokens, index: usize) -> Range {
 }
 
 fn get_before_operator_range(tokens: &Tokens, index: usize) -> Range {
-    // `','` is not a true "block type", but speeds up things
     let block_open_types: Vec<Proto<'static>> = std::iter::once(Proto::Char(b","))
         .chain(BlockType::ALL.iter().map(|&t| Tokens::block_edges(t).0))
         .collect();
     let control_structure_without_braces_types =
         [T_IF, T_ELSE, T_ELSEIF, T_FOR, T_FOREACH, T_WHILE];
-    let mut previous_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let mut previous_index = tokens.prev_meaningful(index);
     if tokens[previous_index].equals_any(&block_open_types, true) {
         return Range {
             start: index,
@@ -158,26 +145,25 @@ fn get_before_operator_range(tokens: &Tokens, index: usize) -> Range {
         if let Some((block_type, _)) = Tokens::detect_block_type(&tokens[previous_index]) {
             let block_start = tokens.find_block_start(block_type, previous_index);
             if tokens[previous_index].equals(")", true)
-                && tokens[tokens.get_prev_meaningful_token(block_start).unwrap()]
+                && tokens[tokens.prev_meaningful(block_start)]
                     .is_given_kind(&control_structure_without_braces_types)
             {
-                break; // we went too far back
+                break;
             }
             previous_index = block_start;
         }
         index = previous_index;
-        previous_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+        previous_index = tokens.prev_meaningful(previous_index);
     }
     if tokens[previous_index].is_kind(T_OBJECT_OPERATOR) {
         index = get_before_operator_range(tokens, previous_index).start;
     } else if tokens[previous_index].is_kind(T_DOUBLE_COLON) {
-        let prev = tokens.get_prev_meaningful_token(previous_index).unwrap();
+        let prev = tokens.prev_meaningful(previous_index);
         index = get_before_operator_range(tokens, prev).start;
     }
     Range { start: index, end }
 }
 
-/// `$range['end']` must be meaningful!
 fn clear_meaningful_from_range(tokens: &mut Tokens, range: Range) {
     let mut i = Some(range.end);
     while let Some(index) = i.filter(|&i| i >= range.start) {
@@ -187,7 +173,6 @@ fn clear_meaningful_from_range(tokens: &mut Tokens, range: Range) {
 }
 
 fn is_operator_commutative(operator_token: &Token) -> bool {
-    // `??` is not commutative; note that for arrays in PHP `+` is not commutative
     let commutative = !operator_token.is_kind(T_COALESCE)
         && operator_token.equals_any(&["*".into(), "|".into(), "&".into(), "^".into()], true);
     assert!(
@@ -208,11 +193,11 @@ fn belongs_to_switch_or_alternative_syntax(
     index: usize,
 ) -> bool {
     let candidate = index;
-    let index = tokens.get_prev_meaningful_token(candidate).unwrap();
+    let index = tokens.prev_meaningful(candidate);
     if tokens[index].is_kind(T_DEFAULT) {
         return true;
     }
-    let index = tokens.get_prev_meaningful_token(index).unwrap();
+    let index = tokens.prev_meaningful(index);
     if tokens[index].is_kind(T_CASE) {
         return true;
     }

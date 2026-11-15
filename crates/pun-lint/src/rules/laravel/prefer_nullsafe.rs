@@ -1,14 +1,12 @@
-//! `OptionalToNullsafeOperatorRector` from rector-laravel 2.7.3.
-
 use mago_syntax::cst::{
     Access, ClassLikeMemberSelector, CompositeString, Expression, Node, NodeKind,
 };
 use pun_problem::{Edit, Span};
 
 use super::{is_name, is_written, member_name, replace};
-use crate::rules::rector_code_quality::{Prec, call_to, is_constant, prec, text};
+use crate::rules::support::expressions::{Prec, call_to, is_constant, prec, text};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct PreferNullsafe {
@@ -20,13 +18,11 @@ impl Rule for PreferNullsafe {
         "lint/laravel/prefer-nullsafe"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80000
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80000)
     }
 
-    /// `configure`: `exclude-methods` (rector-laravel's `exclude_methods`), the method names a call to keeps
-    /// `optional()`.
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         match options {
             serde_json::Value::Null => Ok(()),
             serde_json::Value::Object(map) => {
@@ -44,7 +40,8 @@ impl Rule for PreferNullsafe {
                         None => {
                             return Err(format!(
                                 "unknown option `{key}` or a value of the wrong type"
-                            ));
+                            )
+                            .into());
                         }
                     }
                 }
@@ -88,7 +85,6 @@ impl Rule for PreferNullsafe {
         if args.get(1).is_some_and(|a| !is_constant(a.value(), "null")) {
             return;
         }
-        // Unlike a call, a nullsafe property is legal inside isset(). Still reject an assignment within it.
         let ancestors = ancestors
             .iter()
             .rposition(|n| matches!(n, Node::IssetConstruct(_)))

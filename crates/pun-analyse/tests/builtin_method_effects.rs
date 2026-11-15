@@ -1,5 +1,3 @@
-//! Canonical builtin effects remain separate from source PHPDoc and unknown user effects.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -22,7 +20,7 @@ fn builtin_method_effects_match_complete_phpstan_records() {
     ))
     .unwrap();
     let mut project = Project::new(vec![root.join("input.php")], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = 4;
     let analysis = analyse_project(&project).unwrap();
     let mut actual: Vec<_> = analysis

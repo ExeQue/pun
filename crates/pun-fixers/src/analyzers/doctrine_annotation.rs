@@ -1,5 +1,3 @@
-//! Ports of `PhpCsFixer\Doctrine\Annotation\{DocLexer, Token, Tokens}` and `PhpCsFixer\AbstractDoctrineAnnotationFixer`,
-//! shared by the four doctrine_annotation_* fixers.
 use crate::analyzers::fixer_configuration_resolver::Resolved;
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, PREG_SPLIT_NO_EMPTY, Preg};
 use anyhow::Result;
@@ -24,7 +22,6 @@ pub(crate) const T_OPEN_PARENTHESIS: u8 = 109;
 pub(crate) const T_COLON: u8 = 112;
 pub(crate) const T_MINUS: u8 = 113;
 
-/// `Doctrine\Annotation\Token`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct DocToken {
     pub kind: u8,
@@ -68,10 +65,8 @@ const REGEX: &str = concat!(
     r"|\s+|\*+|(.)/iu",
 );
 
-/// `DocLexer::getType`, which also unquotes a string's value.
 fn get_type(value: &mut Vec<u8>) -> u8 {
     if value[0] == b'"' {
-        // `substr($value, 1, strlen($value) - 2)`: a lone `"` (matched by `(.)`) gives an empty string.
         let inner = value.get(1..value.len() - 1).unwrap_or_default();
         *value = pun_tokens::php_compat::str_replace(b"\"\"", b"\"", inner);
         return T_STRING;
@@ -82,7 +77,6 @@ fn get_type(value: &mut Vec<u8>) -> u8 {
     if value[0] == b'_' || value[0] == b'\\' || value[0].is_ascii_alphabetic() {
         return T_IDENTIFIER;
     }
-    // `is_numeric`: the number pattern without a second `.` part.
     if Preg::r#match(
         r"/^[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/D",
         &value[..],
@@ -96,7 +90,6 @@ fn get_type(value: &mut Vec<u8>) -> u8 {
     T_NONE
 }
 
-/// `DocLexer::setInput` + `scan`: every token of `input`, whitespace and `*` runs dropped.
 fn scan(input: &[u8]) -> Vec<DocToken> {
     Preg::split(
         REGEX,
@@ -117,12 +110,10 @@ fn scan(input: &[u8]) -> Vec<DocToken> {
     .collect()
 }
 
-/// `Doctrine\Annotation\Tokens`.
 #[derive(Debug, Default)]
 pub(crate) struct DocTokens(pub Vec<DocToken>);
 
 impl DocTokens {
-    /// `Tokens::createFromDocComment`.
     pub(crate) fn from_doc_comment(content: &[u8], ignored_tags: &[String]) -> Self {
         let mut tokens = vec![];
         let mut ignored_text_position = 0;
@@ -136,7 +127,6 @@ impl DocTokens {
             let mut scanned: Vec<&DocToken> = vec![];
             let mut use_count = 0;
             let mut scopes = 0;
-            // The scan starts at the `@`, so its first token is always T_AT (upstream checks it).
             for (index, token) in scanned_all.iter().enumerate() {
                 if index == 1 {
                     if token.kind != T_IDENTIFIER
@@ -220,10 +210,6 @@ impl DocTokens {
         }
     }
 
-    /// `getAnnotationEnd`: the index of the `)` closing the annotation at `index`, or the tag's name.
-    ///
-    /// Upstream returns null when the parentheses never close; `from_doc_comment` keeps only balanced annotations and
-    /// the docblock's closing `*/` always follows the last one, so the end always exists here.
     pub(crate) fn get_annotation_end(&self, index: usize) -> usize {
         let t = &self.0;
         let token = &t[index + 2];
@@ -276,9 +262,7 @@ impl std::ops::IndexMut<usize> for DocTokens {
     }
 }
 
-/// `AbstractDoctrineAnnotationFixer`'s `ignored_tags` default.
 const IGNORED_TAGS: &[&str] = &[
-    // PHPDocumentor 1
     "abstract",
     "access",
     "code",
@@ -298,7 +282,6 @@ const IGNORED_TAGS: &[&str] = &[
     "staticvar",
     "staticVar",
     "throw",
-    // PHPDocumentor 2
     "api",
     "author",
     "category",
@@ -329,7 +312,6 @@ const IGNORED_TAGS: &[&str] = &[
     "uses",
     "var",
     "version",
-    // PHPUnit
     "after",
     "afterClass",
     "backupGlobals",
@@ -360,28 +342,20 @@ const IGNORED_TAGS: &[&str] = &[
     "testdox",
     "ticket",
     "uses",
-    // PHPCheckStyle
     "SuppressWarnings",
-    // PHPStorm
     "noinspection",
-    // PEAR
     "package_version",
-    // PlantUML
     "enduml",
     "startuml",
-    // Psalm
     "psalm",
-    // PHPStan
     "phpstan",
     "template",
-    // other
     "fix",
     "FIXME",
     "fixme",
     "override",
 ];
 
-/// The `ignored_tags` option every doctrine fixer shares.
 pub(crate) fn ignored_tags(o: &Resolved) -> Result<Vec<String>> {
     o.strings("ignored_tags", IGNORED_TAGS, &[])
 }
@@ -402,14 +376,11 @@ const MODIFIER_KINDS: &[Kind] = &[
     T_PUBLIC_SET,
 ];
 
-/// `AbstractDoctrineAnnotationFixer::applyFix`: `fix_annotations` on the annotations of every docblock in front of a
-/// class or a class member.
 pub(crate) fn apply_fix(
     tokens: &mut Tokens,
     ignored_tags: &[String],
     fix_annotations: impl Fn(&mut DocTokens),
 ) {
-    // fetch indices one time, this is safe as we never add or remove a token during fixing
     let elements = TokensAnalyzer::new(tokens).get_classy_elements();
     for index in tokens.find_given_kind(T_DOC_COMMENT, 0, None) {
         if !next_element_accepts_doctrine_annotations(tokens, index, &elements) {
@@ -439,9 +410,8 @@ fn next_element_accepts_doctrine_annotations(
         return true;
     }
     while tokens[index].is_given_kind(MODIFIER_KINDS) {
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
-    // interface, enums and traits cannot have doctrine annotations
     elements
         .get(&index)
         .is_some_and(|e| tokens[e.class_index].is_kind(T_CLASS))

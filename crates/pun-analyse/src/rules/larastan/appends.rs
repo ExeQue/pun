@@ -1,13 +1,9 @@
-//! ModelAppendsRule: each string in a model's `$appends` must be a computed property, an accessor that is not a
-//! database column.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 
 use super::super::Checker;
 use super::{MODEL, class_is};
 
-/// ModelAppendsRule on a property declaration.
 pub(crate) fn property<'arena>(c: &mut Checker<'_, 'arena>, p: &Property<'arena>) {
     let Some(larastan) = c.larastan.filter(|l| {
         l.switches
@@ -62,7 +58,6 @@ pub(crate) fn property<'arena>(c: &mut Checker<'_, 'arena>, p: &Property<'arena>
     }
 }
 
-/// `ReflectionHelper::hasPropertyTag()`: a `@property` tag of the class or an ancestor.
 pub(super) fn property_tag(
     k: &mago_codex::metadata::class_like::ClassLikeMetadata,
     name: &str,

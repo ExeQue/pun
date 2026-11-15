@@ -1,7 +1,3 @@
-//! Level 5's function rules on argument values: ParameterCastableToStringRule, ImplodeParameterCastableToStringRule
-//! and SortParameterCastableToStringRule over ParameterCastableToStringCheck, RandomIntParametersRule (all
-//! `argument.type`), ArrayFilterRule (`arrayFilter.*`) and ArrayValuesRule (`arrayValues.*`).
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_phpstan::types::{
@@ -20,7 +16,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
 use super::super::params::{self, Acceptor};
 use super::super::{Checker, declared};
 
-/// The arguments as written: (name, value, unpacked).
 fn written<'a, 'arena>(
     call: &'a FunctionCall<'arena>,
 ) -> Vec<(Option<&'a [u8]>, &'a Expression<'arena>, bool)> {
@@ -34,8 +29,6 @@ fn written<'a, 'arena>(
         .collect()
 }
 
-/// `ArgumentsNormalizer::reorderFuncArguments()`'s argument for parameter `k`: (value, passed by name, unpacked).
-// ponytail: an unpacked argument ends the positional ones
 fn normalized<'a, 'arena>(
     args: &[(Option<&'a [u8]>, &'a Expression<'arena>, bool)],
     acceptor: &Acceptor,
@@ -52,7 +45,6 @@ fn normalized<'a, 'arena>(
     positional.get(k).map(|(_, v, unpack)| (*v, false, *unpack))
 }
 
-/// `getParameterName()`.
 fn parameter_name(acceptor: &Acceptor, idx: usize, named: bool) -> String {
     match acceptor.names.get(idx) {
         None => format!("#{}", idx + 1),
@@ -61,7 +53,6 @@ fn parameter_name(acceptor: &Acceptor, idx: usize, named: bool) -> String {
     }
 }
 
-/// ParameterCastableToStringCheck::checkParameter(): the array argument's type when a value of it fails `cast`.
 fn check_parameter(
     c: &Checker,
     value: &Expression,
@@ -186,7 +177,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
             };
             let (mut string, mut float) = (constants.is_empty(), constants.is_empty());
             for f in constants {
-                // SORT_NUMERIC; SORT_STRING, SORT_LOCALE_STRING, SORT_NATURAL (with or without SORT_FLAG_CASE)
                 if f == 1 {
                     float = true;
                 } else if [2, 5, 6].contains(&(f & !8)) {
@@ -214,7 +204,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
                 ));
             }
         }
-        // ParameterCastableToNumberRule: only a call with exactly one argument
         "array_sum" | "array_product"
             if c.toggled
                 .on
@@ -222,7 +211,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
                 && args.len() == 1 =>
         {
             let (n, v, unpack) = args[0];
-            // PhpVersion::supportsObjectsInArraySumProduct(): before PHP 8.3 any possible object fails
             let objects = c.php_version >= 80300;
             let to_number = |t: &Type| {
                 (!objects && t.mixed_explicitness().is_none() && !t.is_object().no())
@@ -271,8 +259,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// ArrayFilterRule (without a callback) and ArrayValuesRule, with treatPhpDocTypesAsCertain.
-// ponytail: the treatPhpDocTypesAsCertain tip needs the native type, which Mago does not tell apart
 fn array_function(c: &Checker, value: &Expression, filter: bool) -> Option<(&'static str, String)> {
     let t = c.phpstan_type(value)?;
     declared::with_classes(c, || {
@@ -299,7 +285,6 @@ fn array_function(c: &Checker, value: &Expression, filter: bool) -> Option<(&'st
                 ("arrayValues.list", message)
             });
         }
-        // StaticTypeFactory::falsey()
         let falsey = union(vec![
             Type::Null,
             Type::ConstBool(false),
@@ -325,8 +310,6 @@ fn array_function(c: &Checker, value: &Expression, filter: bool) -> Option<(&'st
     })
 }
 
-/// PrintfParameterTypeRule: each value a placeholder of a single constant format consumes must suit the
-/// placeholder's specifier (`strict`: `checkStrictPrintfPlaceholderTypes`).
 fn printf_types(
     c: &Checker,
     args: &[(Option<&[u8]>, &Expression, bool)],
@@ -344,12 +327,10 @@ fn printf_types(
     let [format] = formats.as_slice() else {
         return Vec::new();
     };
-    // (an invalid format is PrintfParametersRule's error)
     let Some(uses) = super::super::printf_helper::printf_uses(format, c.surely_at_least(80000))
     else {
         return Vec::new();
     };
-    // getPlaceholders(): argument index => (label, placeholder number, accepting type)
     let starred: Vec<usize> = uses
         .iter()
         .filter(|u| u.kind != "value")
@@ -380,7 +361,6 @@ fn printf_types(
     }
     let sm = StrictMixed::default();
     let string_and = |a: Accessory| intersect(vec![Type::String, Type::Accessory(a)]);
-    // PrintfPlaceholder::doesArgumentTypeMatchPlaceholder()
     let matches = |accepting: &str, t: &Type| match accepting {
         "strict-int" => accepts(&Type::Int, t, true).yes(),
         "int" if strict => accepts(
@@ -414,7 +394,6 @@ fn printf_types(
                 .yes()
         }
     };
-    // what CallToFunctionParametersRule already enforces
     let allowed = union(vec![
         Type::StringAcceptingStringable,
         Type::Int,
@@ -451,13 +430,10 @@ fn printf_types(
     errors
 }
 
-/// The `$flags` default of the sort functions (`getDefaultValue()`): SORT_STRING for `array_unique()`.
 fn default_of(function: &str) -> i64 {
     if function == "array_unique" { 2 } else { 0 }
 }
 
-/// RandomIntParametersRule: `$max` certainly (or, with reportMaybes, possibly) below `$min`.
-// ponytail: only integer constants and ranges, not `toInteger()` of other constants
 fn random_int(c: &Checker, min: &Expression, max: &Expression) -> Option<String> {
     let bounds = |t: &Type| match t {
         Type::ConstInt(v) => Some((Some(*v), Some(*v))),
@@ -466,7 +442,6 @@ fn random_int(c: &Checker, min: &Expression, max: &Expression) -> Option<String>
     };
     let (min_t, max_t) = (c.phpstan_type(min)?, c.phpstan_type(max)?);
     let ((min_lo, min_hi), (max_lo, max_hi)) = (bounds(&min_t)?, bounds(&max_t)?);
-    // `$maxType->isSmallerThan($minType)`
     let yes = matches!((max_hi, min_lo), (Some(a), Some(b)) if a < b);
     let no = matches!((max_lo, min_hi), (Some(a), Some(b)) if a >= b);
     let report_maybes = c.level >= 7;

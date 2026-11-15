@@ -1,7 +1,3 @@
-//! `lint/types/add-param-phpdoc-from-dim-fetch`, ported from Rector 2.8.4's `AddParamArrayDocblockFromDimFetchAccessRector`
-//! (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a parameter declared `array` that is read only with string
-//! (or only with integer) keys gets `@param array<string, mixed>` (or `array<int, mixed>`).
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_phpstan::types::Type;
 
@@ -9,8 +5,8 @@ use super::class_scope;
 use super::docblock::{FunctionLike, doc_report, find_scoped, is_array_hint, variable_name};
 use super::facts::facts;
 use super::never::has_parent_class_method;
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
-use crate::rules::phpdoc_writer::{TypeNode, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::{TypeNode, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddParamPhpdocFromDimFetch;
@@ -44,11 +40,9 @@ impl Rule for AddParamPhpdocFromDimFetch {
                 continue;
             }
             let name = String::from_utf8_lossy(&param.variable.name[1..]).into_owned();
-            // already defined, lets skip it
             if is_useful_array_tag(info.param_tag(&name).map(|t| &t.ty)) {
                 continue;
             }
-            // `ArrayDimFetchFinder::findByVariableName()`: the dims of `$name[...]` reads
             let mut dims: Vec<Option<&Expression<'_>>> = Vec::new();
             find_scoped(node, &mut |n| match n {
                 Node::ArrayAccess(a) if variable_name(a.array) == Some(name.as_str()) => {
@@ -62,7 +56,6 @@ impl Rule for AddParamPhpdocFromDimFetch {
             if dims.is_empty() {
                 continue;
             }
-            // skip for now, not to create more error on incompatible parent @param doc override
             if f.method.is_some() && !f.is_private() {
                 let facts = facts(ctx);
                 if class_scope(ancestors)
@@ -76,7 +69,6 @@ impl Rule for AddParamPhpdocFromDimFetch {
                 .flatten()
                 .map(|d| expr_type(ctx, &scope, d))
                 .collect();
-            // most likely not being read
             if keys.is_empty() {
                 continue;
             }

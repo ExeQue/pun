@@ -11,9 +11,7 @@
 //! the `IS_BYREF_VAR` attribute set when the file was parsed; Pun's next fix round parses the new source, finds no
 //! reference and removes the assignment.
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_with};
+use crate::common::{run_class, run_class_with};
 use pun_lint::Rule;
 use pun_lint::rules::{
     NoInvalidReturnTag, NoRedundantNullableCheck, NoUnusedAssignment, NoUselessParamTag,
@@ -26,7 +24,6 @@ fn check(rule: impl Rule + 'static, class: &str) {
 
 #[test]
 fn remove_useless_var_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessVarTag)],
         "RemoveUselessVarTagRector",
@@ -40,7 +37,6 @@ fn remove_useless_var_tag() {
 
 #[test]
 fn remove_useless_param_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessParamTag)],
         "RemoveUselessParamTagRector",
@@ -66,7 +62,6 @@ fn remove_useless_param_tag() {
 
 #[test]
 fn remove_useless_return_tag() {
-    // the laravel preset's `no_superfluous_phpdoc_tags` and `phpdoc_trim` remove the same tags in these fixtures
     run_class_with(
         vec![Box::new(NoUselessReturnTag)],
         "RemoveUselessReturnTagRector",
@@ -100,8 +95,6 @@ fn remove_return_tag_incompatible_with_native_type() {
 
 #[test]
 fn remove_useless_union_return_docblock() {
-    // the fixtures' config sets `phpVersion(PhpVersionFeature::UNION_TYPES)`
-    // the laravel preset's `no_superfluous_phpdoc_tags` removes the same tags in these
     run_class_with(
         vec![Box::new(NoUselessPhpdocType)],
         "RemoveUselessUnionReturnDocblockRector",

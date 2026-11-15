@@ -1,8 +1,3 @@
-//! The rest of FunctionDefinitionCheck (checkParametersAcceptor, checkAnonymousFunction,
-//! checkRequiredParameterAfterOptional, checkImplicitlyNullableType and checkClassMethod's `@phpstan-self-out`), the
-//! unresolvable-type part of ExistingClassesInPropertiesRule (UnresolvableTypeHelper on the native type) and
-//! ExistingClassesInArrowFunctionTypehintsRule's `never` check. The class-existence part is names.rs `typehints()`.
-
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 
@@ -19,7 +14,6 @@ use super::class_names::{self, Pair};
 use super::names::FunctionKind;
 use super::reflection::{Known, known};
 
-/// The names PHPDoc types resolve against: the namespace and its `use` imports (php-parser's NameScope).
 pub(super) struct State {
     scope: NamespaceScope,
 }
@@ -45,8 +39,6 @@ pub(super) fn use_statement(c: &mut Checker, u: &Use) {
 }
 
 impl FunctionKind<'_> {
-    /// What PHPStan's messages call the function-like after "of": `function f()`, `method C::m()`,
-    /// `anonymous function`, `set hook for property C::$p`.
     pub(super) fn named(&self) -> String {
         match self {
             FunctionKind::Function(f) => format!("function {f}()"),
@@ -56,7 +48,6 @@ impl FunctionKind<'_> {
         }
     }
 
-    /// The same, starting a sentence (`ucfirst()`).
     pub(super) fn subject(&self) -> String {
         let named = self.named();
         let mut chars = named.chars();
@@ -65,7 +56,6 @@ impl FunctionKind<'_> {
     }
 }
 
-/// php-parser's `ConstFetch` of `null` as a default value.
 fn null_default(p: &FunctionLikeParameter) -> bool {
     match p.default_value.as_ref().map(|d| d.value) {
         Some(Expression::Literal(Literal::Null(_))) => true,
@@ -79,7 +69,6 @@ fn null_default(p: &FunctionLikeParameter) -> bool {
     }
 }
 
-/// The members of a union (php-parser's flat `UnionType::$types`).
 fn union_members<'h, 'arena>(hint: &'h Hint<'arena>, out: &mut Vec<&'h Hint<'arena>>) {
     match hint {
         Hint::Union(u) => {
@@ -101,7 +90,6 @@ fn intersection_members<'h, 'arena>(hint: &'h Hint<'arena>, out: &mut Vec<&'h Hi
     }
 }
 
-/// `NodeTypePrinter::printType()`: names as NameResolver left them, keywords as written.
 fn print_type(c: &Checker, hint: &Hint) -> String {
     let joined = |members: Vec<&Hint>, glue: &str| {
         members
@@ -123,13 +111,10 @@ fn print_type(c: &Checker, hint: &Hint) -> String {
         }
         Hint::Identifier(id) => c.resolved(id),
         Hint::Self_(_) | Hint::Static(_) | Hint::Parent(_) => c.written(hint.span()),
-        // php-parser lowercases built-in type names
         h => c.written(h.span()).to_ascii_lowercase(),
     }
 }
 
-/// What ParserNodeTypeToPHPStanType makes of a native type, as far as UnresolvableTypeHelper needs: whether it is an
-/// implicit `never` (an intersection that cannot be inhabited), and an object type's class.
 enum Native {
     Never,
     Class(String),
@@ -140,7 +125,6 @@ enum Native {
 fn native(c: &Checker, hint: &Hint) -> Native {
     match hint {
         Hint::Identifier(id) => Native::Class(c.resolved(id)),
-        // outside a class, an unknown class
         Hint::Self_(_) | Hint::Static(_) => Native::Class(
             c.class_scope()
                 .map(|k| String::from_utf8_lossy(k.name.as_bytes()).into_owned())
@@ -174,11 +158,9 @@ fn native(c: &Checker, hint: &Hint) -> Native {
                 match native(c, m) {
                     Native::Class(k) => classes.push(k),
                     Native::Object => {}
-                    // `!$innerType->isObject()->yes()`
                     _ => return Native::Never,
                 }
             }
-            // TypeCombinator::intersect(): two object types neither of which can be the other
             for (i, a) in classes.iter().enumerate() {
                 for b in &classes[i + 1..] {
                     if disjoint(c, a, b) {
@@ -192,13 +174,10 @@ fn native(c: &Checker, hint: &Hint) -> Native {
     }
 }
 
-/// UnresolvableTypeHelper on a native type: an implicit `never` (it references no classes either).
 pub(super) fn unresolvable(c: &Checker, hint: &Hint) -> bool {
     matches!(native(c, hint), Native::Never)
 }
 
-/// ObjectType::isSuperTypeOf() is no between two classes: a trait, or two classes neither extending the other where
-/// neither is an interface a non-final other could implement. Unknown classes are maybe.
 fn disjoint(c: &Checker, a: &str, b: &str) -> bool {
     let (Some(x), Some(y)) = (known(c, a), known(c, b)) else {
         return false;
@@ -226,7 +205,6 @@ fn disjoint(c: &Checker, a: &str, b: &str) -> bool {
     !(interface(&x) && !final_(&y) || interface(&y) && !final_(&x))
 }
 
-/// `isSubclassOf()` (or the class itself).
 fn instance_of(c: &Checker, k: &Known, parent: &str) -> bool {
     match k {
         Known::User(u) => c
@@ -239,24 +217,20 @@ fn instance_of(c: &Checker, k: &Known, parent: &str) -> bool {
     }
 }
 
-/// The class has a parent PHPStan's reflection knows (`getParentClass() !== null`).
 fn has_parent(c: &Checker) -> bool {
     c.class_scope()
         .and_then(|k| k.direct_parent_class)
         .is_some_and(|p| known(c, &String::from_utf8_lossy(p.as_bytes())).is_some())
 }
 
-/// The PHPDoc tags FunctionDefinitionCheck reads, as phpdoc-parser splits them.
 #[derive(Default)]
 struct Doc {
-    /// `@template` names with their bound and default
     templates: Vec<(String, Option<Node>, Option<Node>)>,
     params: HashMap<String, Node>,
     ret: Option<Node>,
     self_out: Option<Node>,
 }
 
-/// Each tag and its text up to the next tag (continuation lines joined with a space).
 fn tag_values(doc: &[u8]) -> Vec<(String, Vec<u8>)> {
     let body = doc.strip_prefix(b"/**").unwrap_or(doc);
     let body = body.strip_suffix(b"*/").unwrap_or(body);
@@ -283,8 +257,6 @@ fn tag_values(doc: &[u8]) -> Vec<(String, Vec<u8>)> {
     tags
 }
 
-/// The longest leading part of `text` ending before whitespace (or at its end) that is one type, and what follows
-/// (phpdoc-parser parses the type, then the rest of the tag).
 fn leading_type(text: &[u8]) -> Option<(Node, &[u8])> {
     let ends = text
         .iter()
@@ -307,7 +279,6 @@ fn read_doc(c: &Checker, at: Span) -> Doc {
         return doc;
     };
     let tags = tag_values(comment);
-    // later prefixes win (`resolveParamTags()`, `resolveReturnTag()`)
     let rank = |tag: &str, order: &[&str]| order.iter().position(|t| *t == tag);
     let mut params: Vec<(usize, String, Node)> = Vec::new();
     let mut ret: Option<(usize, Node)> = None;
@@ -388,13 +359,10 @@ fn read_doc(c: &Checker, at: Span) -> Doc {
                 "@psalm-this-out",
                 "@psalm-self-out",
             ],
-        ) {
-            // the first tag of the first name found (`resolveSelfOutTypeTag()`)
-            if self_out.as_ref().is_none_or(|(old, _)| r < *old)
-                && let Some((node, _)) = leading_type(text)
-            {
-                self_out = Some((r, node));
-            }
+        ) && self_out.as_ref().is_none_or(|(old, _)| r < *old)
+            && let Some((node, _)) = leading_type(text)
+        {
+            self_out = Some((r, node));
         }
     }
     doc.self_out = self_out.map(|(_, node)| node);
@@ -406,7 +374,6 @@ fn read_doc(c: &Checker, at: Span) -> Doc {
     doc
 }
 
-/// `TypeTraverser::map()` looking for template types: each template referenced, and its bound and default with it.
 fn reference(node: &Node, doc: &Doc, seen: &mut HashSet<String>) {
     let mut go = |n: &Node| reference(n, doc, seen);
     match node {
@@ -449,7 +416,6 @@ fn reference(node: &Node, doc: &Doc, seen: &mut HashSet<String>) {
             for i in items {
                 go(&i.value);
             }
-            // PHPStan 2.3 traverses the unsealed key type too
             if let Some((key, value)) = unsealed {
                 if let Some(key) = key {
                     go(key);
@@ -464,7 +430,6 @@ fn reference(node: &Node, doc: &Doc, seen: &mut HashSet<String>) {
     }
 }
 
-/// A name PHPDoc resolves to a class (not a keyword type, a template or `self`/`static`/`parent`).
 fn class_name(c: &Checker, name: &str, templates: &[String]) -> Option<String> {
     if templates.iter().any(|t| t == name)
         || ["self", "static", "parent"]
@@ -484,7 +449,6 @@ fn class_name(c: &Checker, name: &str, templates: &[String]) -> Option<String> {
     })
 }
 
-/// The classes a PHPDoc type references (`getReferencedClasses()`).
 fn referenced(c: &Checker, node: &Node, templates: &[String], out: &mut Vec<String>) {
     match node {
         Node::Ident(name) => out.extend(class_name(c, name, templates)),
@@ -546,8 +510,6 @@ fn referenced(c: &Checker, node: &Node, templates: &[String], out: &mut Vec<Stri
     }
 }
 
-/// The PHPDoc type with its class names resolved and its templates replaced by their bounds
-/// (`TemplateTypeHelper::resolveToBounds()`), for comparing it with the native type.
 fn to_bounds(c: &Checker, node: &Node, doc: &Doc, depth: usize) -> Node {
     let names: Vec<String> = doc.templates.iter().map(|(t, ..)| t.clone()).collect();
     let go = |n: &Node| to_bounds(c, n, doc, depth + 1);
@@ -579,7 +541,6 @@ fn to_bounds(c: &Checker, node: &Node, doc: &Doc, depth: usize) -> Node {
     }
 }
 
-/// A native type as a PHPDoc type (resolved names; `self` and `static` the class).
 fn hint_node(c: &Checker, hint: &Hint) -> Node {
     match hint {
         Hint::Identifier(id) => Node::Ident(c.resolved(id)),
@@ -619,8 +580,6 @@ fn without_null(node: Node) -> Node {
     }
 }
 
-/// TypehintHelper::decideType(): the PHPDoc type is the parameter's (or return) type when the native type is a
-/// supertype of it with its templates at their bounds; else the native type is.
 fn phpdoc_applies(
     c: &Checker,
     native: Option<&Hint>,
@@ -647,9 +606,6 @@ fn phpdoc_applies(
     match is_super_type_of(&native_type, &phpdoc_type) {
         Tri::Yes => true,
         Tri::No => false,
-        // the classes pun-phpstan's symbols don't know: ObjectType::isSuperTypeOf() on Mago's codebase
-        // each member a supertype, or a class pun-phpstan's symbols don't know that is a subclass of a native one
-        // (ObjectType::isSuperTypeOf() on Mago's codebase)
         Tri::Maybe => {
             let members = |t: &Type| match t {
                 Type::Union(members) => members.clone(),
@@ -668,7 +624,6 @@ fn phpdoc_applies(
     }
 }
 
-/// `isCallable()->yes()` of a PHPDoc type: callable types, and classes with `__invoke()`.
 fn callable(c: &Checker, node: &Node) -> bool {
     let class = |name: &str| {
         let Some(name) = class_name(c, name, &[]) else {
@@ -706,8 +661,6 @@ fn accepts_null(t: &Type) -> bool {
     }
 }
 
-/// FunctionDefinitionCheck for one function-like, after the class-existence checks: `at` is the function-like node,
-/// the line of its template and self-out errors.
 pub(super) fn check<'arena>(
     c: &mut Checker<'_, 'arena>,
     kind: FunctionKind,
@@ -720,7 +673,6 @@ pub(super) fn check<'arena>(
     let subject = kind.subject();
     let params: Vec<&FunctionLikeParameter> = parameters.parameters.iter().collect();
     if !c.surely_at_least(80000) {
-        // (a hook's message starts lowercase, but PHPStan's parser rejects hooks before PHP 8.4)
         let message = format!(
             "{subject} uses native union types but they're supported only on PHP 8.0 and later."
         );
@@ -742,8 +694,6 @@ pub(super) fn check<'arena>(
     let pure_intersections = c.php_version >= 80100;
     for p in &params {
         let name = String::from_utf8_lossy(p.variable.name).into_owned();
-        // PHPStan 2.3 reads a function's or method's parameter with a `null` default as nullable, and `never|null` is
-        // `null` (oracle-checked; not for a closure's or a promoted property's)
         if let Some(hint) = &p.hint
             && pure_intersections
             && (anonymous || p.is_promoted_property() || !null_default(p))
@@ -762,7 +712,6 @@ pub(super) fn check<'arena>(
         }
         let parent = match &p.hint {
             Some(hint) => matches!(hint, Hint::Parent(_)) && !null_default(p),
-            // outside a class, PHPDoc's `parent` is a class name
             None => {
                 c.class_scope().is_some()
                     && doc.params.get(&name[1..]).is_some_and(
@@ -814,8 +763,6 @@ pub(super) fn check<'arena>(
     }
 }
 
-/// TypeTraverser on resolved PHPDoc: only real TemplateTypes count, with their original bounds and defaults.
-/// In particular, an inherited template must not be rebound to a same-named template in the child's scope.
 fn reference_type(ty: &Type, seen: &RefCell<HashSet<String>>) {
     if let Type::Template(t) = ty {
         seen.borrow_mut().insert(t.name.clone());
@@ -826,7 +773,6 @@ fn reference_type(ty: &Type, seen: &RefCell<HashSet<String>>) {
     });
 }
 
-/// The template types no parameter's type (or a non-negated conditional return type) references.
 fn templates(
     c: &mut Checker,
     at: Span,
@@ -852,8 +798,6 @@ fn templates(
     {
         reference(node, doc, &mut seen);
     }
-    // getParameters()->getType() includes inherited tags, renamed by position and filled only where a local tag
-    // is absent. Reuse the reflection resolver rather than interpreting the parent's text in the child's scope.
     if let FunctionKind::Method(_, method) = kind
         && let Some(class) = c.class_scope()
         && let Some(method) = c
@@ -905,8 +849,6 @@ fn templates(
     }
 }
 
-/// FunctionDefinitionCheck's classes of the PHPDoc parameter and return types once `checkThisOnly` is off (level 2;
-/// the native ones are names.rs's).
 pub(super) fn phpdoc_classes(
     c: &mut Checker,
     kind: FunctionKind,
@@ -934,7 +876,6 @@ pub(super) fn phpdoc_classes(
     );
 }
 
-/// [`phpdoc_classes()`] of parameters (name without `$`, node) and a return type at `ret_at`.
 fn phpdoc_classes_at(
     c: &mut Checker,
     kind: FunctionKind,
@@ -943,14 +884,12 @@ fn phpdoc_classes_at(
     types: &super::declared::PhpDocTypes,
 ) {
     let (of, subject) = (kind.named(), kind.subject());
-    // then ClassCaseSensitivityCheck on the same classes, at the parameter or the return type
     let report = |c: &mut Checker,
                   at: Span,
                   types: &[Type],
                   trait_id: &str,
                   message: &dyn Fn(&str) -> String,
                   location: Option<super::class_names::Location>| {
-        // (no class name has a `-`: a keyword type the resolver leaves, such as an unresolved `value-of`)
         let classes: Vec<String> = types
             .iter()
             .flat_map(super::generics::referenced_classes)
@@ -1000,9 +939,6 @@ fn phpdoc_classes_at(
     );
 }
 
-/// [`phpdoc_classes()`] of property `name`'s hooks (ExistingClassesInPropertyHookTypehintsRule): a get hook returns
-/// the property's PHPDoc type, a set hook's parameter has its own `@param` type, else the property's. `decl` is
-/// where the property's PHPDoc is read from.
 pub(super) fn hook_phpdoc_classes(
     c: &mut Checker,
     name: &[u8],
@@ -1055,7 +991,6 @@ pub(super) fn hook_phpdoc_classes(
     }
 }
 
-/// checkClassMethod()'s `@phpstan-self-out` classes.
 fn self_out(c: &mut Checker, at: Span, subject: &str, doc: &Doc) {
     let Some(node) = &doc.self_out else {
         return;
@@ -1095,7 +1030,6 @@ fn self_out(c: &mut Checker, at: Span, subject: &str, doc: &Doc) {
     class_names::check(c, &pairs, case);
 }
 
-/// checkImplicitlyNullableType() and checkRequiredParameterAfterOptional().
 fn parameter_defaults(c: &mut Checker, parameters: &FunctionLikeParameterList) {
     let params: Vec<&FunctionLikeParameter> = parameters.parameters.iter().collect();
     for (i, p) in params.iter().enumerate() {
@@ -1106,7 +1040,6 @@ fn parameter_defaults(c: &mut Checker, parameters: &FunctionLikeParameterList) {
     }
 }
 
-/// checkImplicitlyNullableType().
 fn implicitly_nullable(c: &mut Checker, p: &FunctionLikeParameter, order: usize) {
     let Some(hint) = &p.hint else {
         return;
@@ -1137,7 +1070,6 @@ fn implicitly_nullable(c: &mut Checker, p: &FunctionLikeParameter, order: usize)
     );
 }
 
-/// checkRequiredParameterAfterOptional().
 fn required_after_optional(c: &mut Checker, params: &[&FunctionLikeParameter]) {
     let mut optional: Option<String> = None;
     let mut target: Option<&str> = None;
@@ -1191,7 +1123,6 @@ fn required_after_optional(c: &mut Checker, params: &[&FunctionLikeParameter]) {
     }
 }
 
-/// ExistingClassesInArrowFunctionTypehintsRule: a `never` return type before PHP 8.2.
 pub(super) fn arrow_never(c: &mut Checker, f: &ArrowFunction) {
     if !c.surely_at_least(80200)
         && matches!(
@@ -1209,7 +1140,6 @@ pub(super) fn arrow_never(c: &mut Checker, f: &ArrowFunction) {
     }
 }
 
-/// ExistingClassesInPropertiesRule's unresolvable native type, for one property declaration or promoted parameter.
 pub(super) fn property<'arena>(
     c: &mut Checker<'_, 'arena>,
     at: Span,
@@ -1235,13 +1165,11 @@ pub(super) fn property<'arena>(
     }
 }
 
-/// ExistingClassesInPropertyHookTypehintsRule: FunctionDefinitionCheck on each hook of property `name`.
 pub(super) fn hooks<'arena>(
     c: &mut Checker<'_, 'arena>,
     name: &[u8],
     list: &PropertyHookList<'arena>,
 ) {
-    // properties are walked inside their class-like (trait bodies only in a class's context)
     let class = c
         .class_scope()
         .expect("a property hook is walked inside its class-like");

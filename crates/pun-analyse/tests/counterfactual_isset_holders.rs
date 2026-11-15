@@ -1,5 +1,3 @@
-//! Non-true isset invalidates a holder, rather than asserting that it is absent.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -35,7 +33,7 @@ fn non_true_isset_matches_complete_phpstan_records() {
     for (file, _) in SOURCES {
         for level in [1, 4] {
             let mut project = Project::new(vec![root.join(file)], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

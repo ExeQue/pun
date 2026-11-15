@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-create-stub-in-coalesce`, ported from rector-phpunit's `CreateStubInCoalesceArgRector`
-//! (rules/PHPUnit120/Rector/CallLike).
-//!
-//! In a test class, a `createMock()` call on the right of a `??` that is an argument of a call or a `new` (not a
-//! function call), or an array item's value, is renamed `createStub()`: nothing can expect calls on it. Rector runs
-//! it only for PHPUnit 11 and later; Pun leaves that to the rule's group.
-
 use mago_syntax::cst::{
     Argument, ArgumentList, ArrayElement, BinaryOperator, Call, Expression, Node, NodeKind,
     PartialArgument,
@@ -44,8 +37,7 @@ impl Rule for PreferCreateStubInCoalesce {
             Node::ArrayElement(ArrayElement::Value(v)) => vec![v.value],
             Node::ArrayElement(ArrayElement::Variadic(v)) => vec![v.value],
             Node::MethodCall(_) | Node::StaticMethodCall(_) => AnyCall::of(node)
-                .map(|c| c.args().into_iter().map(Argument::value).collect())
-                .unwrap_or_default(),
+                .map_or_default(|c| c.args().into_iter().map(Argument::value).collect()),
             Node::Instantiation(new) => args(new.argument_list.as_ref()),
             Node::AnonymousClass(new) => new
                 .argument_list

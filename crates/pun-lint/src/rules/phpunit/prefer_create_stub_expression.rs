@@ -1,15 +1,3 @@
-//! `lint/phpunit/prefer-create-stub-expression`, ported from rector-phpunit's
-//! `ExpressionCreateMockToCreateStubRector` (rules/PHPUnit120/Rector/ClassMethod), with
-//! `AssignedMocksCollector::matchCreateMockArgAssignedToVariable` and `MockObjectExprDetector::isUsedForMocking`.
-//!
-//! In a test method (`TestsNodeAnalyzer::isTestClassMethod()`) of two or more statements, a statement
-//! `$x = $any->createMock(...)` becomes `createStub()` unless `$x` is the receiver of a method call in the method, or
-//! is passed to a method whose parameter at that position (or of that name) is a `MockObject`. Rector runs it only for
-//! PHPUnit 11 and later; Pun leaves that to the rule's group.
-//!
-//! Rector reads a parameter's `@param` type too. Pun sees native declarations only, so a parameter without one counts
-//! as a `MockObject` and the mock stays (tests/rector/ExpressionCreateMockToCreateStubRector/Pun).
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -22,14 +10,13 @@ use pun_problem::{Edit, Safety};
 use super::annotations::named_tags;
 use super::no_bare_mock_assign::scoped;
 use super::{AnyCall, is_public, object_class, own_class};
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::has_attribute;
-use crate::rules::rector_stmts::{assign, expression};
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::has_attribute;
+use crate::rules::support::statement_edits::{assign, expression};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 pub struct PreferCreateStubExpression;
@@ -55,7 +42,6 @@ impl Rule for PreferCreateStubExpression {
             return;
         };
         let is_test = is_test_class_method(ctx, ancestors, method);
-        // Mago keeps a `;` alone as a statement, php-parser drops it
         let statements: Vec<&Statement<'_>> = block
             .statements
             .iter()
@@ -69,7 +55,6 @@ impl Rule for PreferCreateStubExpression {
             let Some(assign) = expression(statement).and_then(assign) else {
                 continue;
             };
-            // matchCreateMockArgAssignedToVariable
             let Expression::Variable(Variable::Direct(variable)) = unparenthesize(assign.lhs)
             else {
                 continue;
@@ -94,7 +79,6 @@ impl Rule for PreferCreateStubExpression {
     }
 }
 
-/// `TestsNodeAnalyzer::isTestClassMethod()`: public, and named `test…`, or with a `#[Test]` attribute or a `@test` tag.
 pub(super) fn is_test_class_method(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -112,8 +96,6 @@ pub(super) fn is_test_class_method(
             }))
 }
 
-/// `MockObjectExprDetector::isUsedForMocking` for the variable `name` of the method whose statements are `roots`;
-/// `documented` reads a parameter's type with its docblock, as PHPStan does, instead of its native declaration alone.
 pub(super) fn is_used_for_mocking(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -129,7 +111,6 @@ pub(super) fn is_used_for_mocking(
         Node::MethodCall(call) => method_calls.push(call),
         _ => {}
     });
-    // only self variable found, nothing to mock
     if related_variables == 1 {
         return false;
     }
@@ -138,10 +119,8 @@ pub(super) fn is_used_for_mocking(
             continue;
         }
         if is_name(call.object) {
-            // variable is being called on, most like mocking, lets skip
             return true;
         }
-        // check if variable is passed as arg to a method that declares MockObject type parameter
         for (index, arg) in call.argument_list.arguments.iter().enumerate() {
             let value = arg.value();
             if !is_name(value) {
@@ -155,8 +134,6 @@ pub(super) fn is_used_for_mocking(
     false
 }
 
-/// Whether the parameter of the called method that `arg` (at `index`) fills is a `MockObject`: by the argument's name,
-/// or by its position.
 fn passes_mock_object(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -165,7 +142,6 @@ fn passes_mock_object(
     arg: &Argument<'_>,
     documented: bool,
 ) -> bool {
-    // resolveMethodReflectionFromMethodCall
     let class = match unparenthesize(call.object) {
         Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => own_class(ancestors),
         other => object_class(ctx, other),
@@ -192,8 +168,6 @@ fn passes_mock_object(
                     .as_ref()
                     .is_some_and(|t| is_super_type_of_mock_object(codebase, &t.type_union));
             }
-            // Pun reads native declarations only: a parameter without one may have a `@param MockObject`, so it
-            // counts as one
             parameter
                 .type_declaration_metadata
                 .as_ref()
@@ -210,12 +184,10 @@ fn passes_mock_object(
     metadata.parameters.get(index).is_some_and(mock_object)
 }
 
-/// `(new ObjectType(MockObject))->isSuperTypeOf($type)->yes()`.
 pub(super) fn is_super_type_of_mock_object(codebase: &CodebaseMetadata, t: &TUnion) -> bool {
     !t.types.is_empty() && t.types.iter().all(|a| is_mock_object(codebase, a))
 }
 
-/// A named object that is a `MockObject`, or an intersection with one.
 pub(super) fn is_mock_object(codebase: &CodebaseMetadata, atomic: &TAtomic) -> bool {
     let TAtomic::Object(TObject::Named(named)) = atomic else {
         return false;

@@ -1,12 +1,9 @@
-//! `pun install` on a project whose two dependencies come from a path repository, against what Composer 2.11.2 wrote
-//! for it: `composer update --no-scripts` in a copy of `fixtures/project` gave its composer.lock and every file in
-//! `fixtures/project-expected` (vendor/autoload.php, vendor/composer/*, vendor/bin/*). `fixtures/edge` and
-//! `edge-expected` are the same for the autoloader's and bin installer's corner cases, from
-//! `composer update --no-scripts --ignore-platform-req=php --ignore-platform-req=ext-sodium-x`.
-
+use pun_packages::autoload::Apcu;
 use pun_packages::fetch::{Auth, Fetcher};
-use pun_packages::install::{Options, Report, install};
+use pun_packages::install::{Added, Options, Report, Updated, install};
 use pun_packages::lock::Lock;
+use pun_packages::lock::LockedPackage;
+use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -29,15 +26,23 @@ fn copy(from: &Path, to: &Path) {
     }
 }
 
-fn try_run(dir: &Path, lock: &Lock, o: &Options) -> anyhow::Result<Report> {
+fn try_run(dir: &Path, lock: &Lock, o: &Options) -> pun_packages::error::Result<Report> {
     let manifest: Map<String, Value> =
         serde_json::from_str(&std::fs::read_to_string(dir.join("composer.json")).unwrap()).unwrap();
     let fetcher = Fetcher::new(Some(dir.join("cache")), Auth::default(), true);
     let mut events = vec![];
-    let report = install(dir, &manifest, lock, &fetcher, o, &mut |e: &str| {
-        events.push(e.to_string());
-        Ok(())
-    })?;
+    let report = install(
+        dir,
+        &manifest,
+        lock,
+        &fetcher,
+        o,
+        &|_| None,
+        &mut |e: &str| {
+            events.push(e.to_string());
+            Ok(())
+        },
+    )?;
     let expected: &[&str] = if o.no_autoloader {
         &[]
     } else {
@@ -47,11 +52,29 @@ fn try_run(dir: &Path, lock: &Lock, o: &Options) -> anyhow::Result<Report> {
     Ok(report)
 }
 
+fn added(name: &str, version: &str) -> Added {
+    Added {
+        name: name.into(),
+        version: version.into(),
+    }
+}
+
 fn run(dir: &Path, lock: &Lock, o: &Options) -> Report {
     try_run(dir, lock, o).unwrap()
 }
 
-/// Every file in `fixtures/<expected>` matches the one pun wrote under `dir/vendor`, and nothing else is in `vendor/bin`.
+/// Composer's classmap walks directories in read order, so the ambiguous-class warnings and the alternatives after
+/// the first file come in whatever order the filesystem returns them.
+fn unordered(warning: &str) -> String {
+    let Some((head, rest)) = warning.split_once("\" and ") else {
+        return warning.to_string();
+    };
+    let (others, tail) = rest.split_once(", the first").unwrap();
+    let mut others: Vec<&str> = others.split(", ").collect();
+    others.sort_unstable();
+    format!("{head}\" and {}, the first{tail}", others.join(", "))
+}
+
 fn same_as_composer(dir: &Path, expected: &str) {
     let expected = Path::new(FIXTURES).join(expected);
     let mut files = vec![("autoload.php".to_string(), expected.join("autoload.php"))];
@@ -64,7 +87,6 @@ fn same_as_composer(dir: &Path, expected: &str) {
             ));
         }
     }
-    // Without --apcu-autoloader-prefix each dump picks a random one: 20 hex digits.
     let apcu = |text: String| {
         let Some(at) = text.find("setApcuPrefix('") else {
             return text;
@@ -102,10 +124,7 @@ fn install_matches_composer() {
     assert!(!report.stale_lock);
     assert_eq!(
         report.installed,
-        [
-            ("acme/lib".to_string(), "1.2.0".to_string()),
-            ("acme/tools".to_string(), "0.3.1".to_string())
-        ]
+        [added("acme/lib", "1.2.0"), added("acme/tools", "0.3.1")]
     );
     same_as_composer(&tmp, "project-expected");
     assert_eq!(
@@ -128,11 +147,9 @@ fn install_matches_composer() {
         );
     }
 
-    // Again: nothing to fetch.
     let again = run(&tmp, &lock, &Options::default());
     assert_eq!((again.kept, again.installed.len()), (2, 0));
 
-    // Without dev packages, acme/tools and its bin go; the path package it linked to stays.
     let no_dev = run(
         &tmp,
         &lock,
@@ -164,21 +181,30 @@ fn autoloader_and_bin_corner_cases_match_composer() {
         Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
             .unwrap();
     let o = Options {
-        ignore_platform: vec!["php".into(), "ext-sodium-*".into()],
+        ignore_platform: IgnorePlatform::Listed(vec!["php".into(), "ext-sodium-*".into()]),
         ..Options::default()
     };
     let report = run(&tmp, &lock, &o);
     same_as_composer(&tmp, "edge-expected");
-    // Composer's warnings, in its order; its paths are /tmp/edge.
+    let prefixed = Options {
+        apcu: Apcu::Prefix("mine".into()),
+        ..o.clone()
+    };
+    run(&tmp, &lock, &prefixed);
+    let real = std::fs::read_to_string(tmp.join("vendor/composer/autoload_real.php")).unwrap();
+    assert!(
+        real.contains("        $loader->setApcuPrefix('mine');\n"),
+        "{real}"
+    );
+    run(&tmp, &lock, &o);
     let at = tmp.to_string_lossy();
-    let warnings: Vec<String> = report
+    let mut warnings: Vec<String> = report
         .warnings
         .iter()
-        .map(|w| w.replace(&*at, "/tmp/edge"))
+        .map(|w| unordered(&w.replace(&*at, "/tmp/edge")))
         .collect();
-    assert_eq!(
-        warnings,
-        [
+    warnings.sort();
+    let mut want = [
             "Skipped installation of bin bin/nofile for package acme/legacy: file not found in package",
             "Skipped installation of bin bin/ for package acme/legacy: found a directory at that path",
             "Skipped installation of bin bin/escape for package acme/legacy: the bin resolves to a path outside of the package directory",
@@ -187,9 +213,10 @@ fn autoloader_and_bin_corner_cases_match_composer() {
             "Ambiguous class resolution, \"Dup\\Thing\" was found 3x: in \"/tmp/edge/classes/Thing.php\" and \"/tmp/edge/dup/Thing.php\", \"/tmp/edge/dup/Thing2.php\", the first will be used.",
             "Ambiguous class resolution, \"Dup\\Pair\" was found in both \"/tmp/edge/classes/Pair.php\" and \"/tmp/edge/dup/Pair.php\", the first will be used.",
         ]
-    );
+        .map(unordered);
+    want.sort();
+    assert_eq!(warnings, want);
 
-    // Composer stops at a file it can't read and at a classmap path that isn't there (`composer dump-autoload`).
     let pair = tmp.join("classes/Pair.php");
     std::fs::set_permissions(&pair, std::fs::Permissions::from_mode(0o000)).unwrap();
     let error = try_run(&tmp, &lock, &o).unwrap_err().to_string();
@@ -205,7 +232,7 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     let legacy = (missing.packages.iter_mut())
         .find(|p| p["name"] == "acme/legacy")
         .unwrap();
-    legacy["autoload"]["classmap"] = serde_json::json!(["code/", "gone/"]);
+    legacy.0["autoload"]["classmap"] = serde_json::json!(["code/", "gone/"]);
     assert_eq!(
         try_run(&tmp, &missing, &o).unwrap_err().to_string(),
         format!(
@@ -217,6 +244,10 @@ fn autoloader_and_bin_corner_cases_match_composer() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn lock_changes_plugins_and_failures() {
     let tmp = std::env::temp_dir().join(format!("pun-install-changes-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);
@@ -225,23 +256,25 @@ fn lock_changes_plugins_and_failures() {
         Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
             .unwrap();
     run(&tmp, &lock, &Options::default());
-    let package = |v: Value| v.as_object().unwrap().clone();
+    let package = |v: Value| LockedPackage(v.as_object().unwrap().clone());
 
-    // A new version of a locked package is an update; a metapackage installs no files.
     let mut changed = lock.clone();
-    changed.packages[0]["version"] = "1.2.1".into();
+    changed.packages[0].0["version"] = "1.2.1".into();
     changed.packages.push(package(
         serde_json::json!({"name": "acme/meta", "version": "1.0.0", "type": "metapackage"}),
     ));
     let report = run(&tmp, &changed, &Options::default());
     assert_eq!(
         report.updated,
-        [("acme/lib".into(), "1.2.0".into(), "1.2.1".into())]
+        [Updated {
+            name: "acme/lib".into(),
+            from: "1.2.0".into(),
+            to: "1.2.1".into()
+        }]
     );
-    assert_eq!(report.installed, [("acme/meta".into(), "1.0.0".into())]);
+    assert_eq!(report.installed, [added("acme/meta", "1.0.0")]);
     assert!(!tmp.join("vendor/acme/meta").exists());
 
-    // A zip dist comes from the cache when its checksum matches (Composer's cache layout: the URL's sha1).
     let zip = {
         use std::io::Write;
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
@@ -267,7 +300,6 @@ fn lock_changes_plugins_and_failures() {
     assert_eq!(report.cached, 1);
     assert!(tmp.join("vendor/acme/zipped/src/Z.php").exists());
 
-    // Every package that can't be placed is reported, in lock order.
     let mut failing = lock.clone();
     failing.packages.push(package(serde_json::json!({"name": "acme/zip", "version": "1.0.0", "dist": {"type": "zip", "url": "http://example.com/zip.zip"}})));
     failing.packages.push(package(serde_json::json!({"name": "acme/src", "version": "1.0.0", "source": {"type": "git", "url": "https://example.com/src.git", "reference": "abc"}})));
@@ -279,16 +311,14 @@ fn lock_changes_plugins_and_failures() {
          installing acme/src: it has no dist archive, and installing from git sources is not supported yet"
     );
     let mut bad = lock.clone();
-    bad.packages[0]["name"] = "Acme/Not Valid".into();
+    bad.packages[0].0["name"] = "Acme/Not Valid".into();
     assert_eq!(
         try_run(&tmp, &bad, &Options::default())
             .unwrap_err()
             .to_string(),
-        "pun.lock has a package named `acme/not valid`, which is not a valid package name"
+        "composer.lock has a package named `acme/not valid`, which is not a valid package name"
     );
 
-    // PSR violations are reported only outside vendor/, and an absolute `files` path stays absolute (Composer's
-    // `composer install` on the same changes).
     std::fs::write(
         tmp.join("packages/tools/lib/Acme/Tools/Bad.php"),
         "<?php class Nope {}\n",
@@ -320,10 +350,8 @@ fn lock_changes_plugins_and_failures() {
     std::fs::remove_file(tmp.join("packages/tools/lib/Acme/Tools/Bad.php")).unwrap();
     std::fs::remove_file(tmp.join("src/Wrong.php")).unwrap();
 
-    // With `php` ignored nothing is left to check, so there is no platform_check.php (Composer's
-    // `--ignore-platform-req=php` on the same project).
     let ignore_php = Options {
-        ignore_platform: vec!["php".into()],
+        ignore_platform: IgnorePlatform::Listed(vec!["php".into()]),
         ..Options::default()
     };
     run(&tmp, &lock, &ignore_php);
@@ -334,7 +362,6 @@ fn lock_changes_plugins_and_failures() {
             .contains("platform_check")
     );
 
-    // A removed package whose installed.json path leaves vendor/ is dropped from the list but its files stay.
     let installed = tmp.join("vendor/composer/installed.json");
     let mut json: Value =
         serde_json::from_str(&std::fs::read_to_string(&installed).unwrap()).unwrap();
@@ -344,7 +371,6 @@ fn lock_changes_plugins_and_failures() {
     assert_eq!(report.removed, ["evil/escape"]);
     assert!(tmp.join("packages/lib/composer.json").exists());
 
-    // Without `files` autoloads there is no autoload_files.php; `--no-autoloader` leaves the autoloader alone.
     let mut no_files = lock.clone();
     no_files.packages.clear();
     run(&tmp, &no_files, &Options::default());
@@ -361,8 +387,6 @@ fn lock_changes_plugins_and_failures() {
     run(&tmp, &lock, &no_autoloader);
     assert!(!tmp.join("vendor/composer/autoload_files.php").exists());
 
-    // `platform-check: false` drops platform_check.php; allowed plugins run when ported and are reported when not;
-    // without `optimize-autoloader` only the classmap directories are scanned.
     let mut manifest: Value =
         serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
     manifest["config"]["platform-check"] = false.into();
@@ -377,10 +401,9 @@ fn lock_changes_plugins_and_failures() {
     for name in ["acme/plugin", "pestphp/pest-plugin"] {
         plugins.packages.push(package(serde_json::json!({"name": name, "version": "1.0.0", "type": "composer-plugin", "dist": {"type": "path", "url": "packages/lib", "reference": "x"}})));
     }
-    let report = run(&tmp, &plugins, &Options::default());
+    run(&tmp, &plugins, &Options::default());
     assert!(!tmp.join("vendor/composer/platform_check.php").exists());
     assert!(tmp.join("vendor/pest-plugins.json").exists());
-    assert!(report.warnings.contains(&"pun does not run the Composer plugin acme/plugin yet, so the files it writes on install are missing".to_string()));
     let classmap =
         std::fs::read_to_string(tmp.join("vendor/composer/autoload_classmap.php")).unwrap();
     assert!(
@@ -394,5 +417,144 @@ fn lock_changes_plugins_and_failures() {
     };
     let report = run(&tmp, &plugins, &no_plugins);
     assert!(!tmp.join("vendor/pest-plugins.json").exists() && report.warnings.is_empty());
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// pest-plugins.json lists the plugins in the order Composer 2.11.2's local repository holds the packages: on a
+/// fresh install the operation order (acme/zeta before acme/alpha, which requires it), after an update the kept
+/// packages then the updated one, and with nothing to do installed.json's name order.
+#[test]
+fn pest_plugins_follow_composers_repository_order() {
+    let tmp = std::env::temp_dir().join(format!("pun-pest-order-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("pest-order"), &tmp);
+    let mut lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let plugins = |lock: &Lock| {
+        run(&tmp, lock, &Options::default());
+        std::fs::read_to_string(tmp.join("vendor/pest-plugins.json")).unwrap()
+    };
+    let list = |names: [&str; 4]| {
+        let items: Vec<String> = names
+            .iter()
+            .map(|n| format!("    \"Acme\\\\{n}\""))
+            .collect();
+        format!("[\n{}\n]", items.join(",\n"))
+    };
+    assert_eq!(plugins(&lock), list(["Zeta", "Alpha", "Mid", "Root"]));
+    let mid = (lock.packages.iter_mut())
+        .find(|p| p.name() == "acme/mid")
+        .unwrap();
+    mid.0.insert("version".into(), "1.1.0".into());
+    mid.0["dist"]["reference"] = "cf5881339893fa536b9c4d9194d36162dd9e76f3".into();
+    assert_eq!(plugins(&lock), list(["Alpha", "Zeta", "Mid", "Root"]));
+    assert_eq!(plugins(&lock), list(["Alpha", "Mid", "Zeta", "Root"]));
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// The recorder plugin logs each event it hears with its listener priority, beside the root package's scripts. The
+/// expected logs are Composer 2.11.2's on the same fixture: a plugin installed by the command activates mid-command
+/// and never hears `init`, and an upgraded one is re-activated before the autoload dump.
+#[test]
+fn composer_plugins_run_on_composers_classes() {
+    use pun_packages::plugin_host::Dispatcher;
+    let tmp = std::env::temp_dir().join(format!("pun-plugin-host-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("plugins"), &tmp);
+    let manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    let mut lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let cache = tmp.join("cache");
+    std::fs::create_dir_all(cache.join("pun")).unwrap();
+    std::fs::write(cache.join("pun/composer-2.11.2.phar"), "not composer").unwrap();
+    let fetcher = Fetcher::new(Some(cache.clone()), Auth::default(), true);
+    let events = |lock: &Lock, command: &str| {
+        let mut d = Dispatcher::new(&tmp, &manifest, true, true, true, Some(&cache), &|_| None);
+        d.dispatch(&format!("pre-{command}-cmd")).unwrap();
+        let o = Options::default();
+        install(&tmp, &manifest, lock, &fetcher, &o, &|_| None, &mut |e| {
+            d.dispatch(e)
+        })
+        .unwrap();
+        d.dispatch(&format!("post-{command}-cmd")).unwrap();
+        let log = std::fs::read_to_string(tmp.join("events.log")).unwrap();
+        std::fs::remove_file(tmp.join("events.log")).unwrap();
+        log
+    };
+    let dumped = "pre-autoload-dump plugin 0 1\npost-autoload-dump plugin 10 1\npost-autoload-dump plugin 0 1\npost-autoload-dump script 1\npost-autoload-dump plugin -10 1\n";
+    assert_eq!(
+        events(&lock, "install"),
+        format!(
+            "activate acme/app\n{dumped}post-install-cmd plugin 0 1\npost-install-cmd script 1\n"
+        )
+    );
+    let recorder = (lock.packages.iter_mut())
+        .find(|p| p.name() == "acme/recorder")
+        .unwrap();
+    recorder.0.insert("version".into(), "1.1.0".into());
+    assert_eq!(
+        events(&lock, "update"),
+        format!(
+            "activate acme/app\ninit plugin 0 \npre-update-cmd plugin 0 1\nactivate acme/app\n{dumped}post-update-cmd plugin 0 1\n"
+        )
+    );
+
+    let post_install = |manifest: &Map<String, Value>, scripts, plugins| {
+        let mut d = Dispatcher::new(
+            &tmp,
+            manifest,
+            true,
+            scripts,
+            plugins,
+            Some(&cache),
+            &|_| None,
+        );
+        d.dispatch("post-install-cmd").unwrap();
+        let log = std::fs::read_to_string(tmp.join("events.log")).unwrap_or_default();
+        let _ = std::fs::remove_file(tmp.join("events.log"));
+        log
+    };
+    let started = "activate acme/app\ninit plugin 0 \n";
+    assert_eq!(
+        post_install(&manifest, false, true),
+        format!("{started}post-install-cmd plugin 0 1\n")
+    );
+    assert_eq!(
+        post_install(&manifest, true, false),
+        "post-install-cmd script 1\n"
+    );
+    let mut denied = manifest.clone();
+    denied["config"]["allow-plugins"]["acme/recorder"] = false.into();
+    assert_eq!(post_install(&denied, false, true), "");
+
+    let failure = |fail: &str, php: Option<&str>| {
+        std::fs::write(tmp.join("fail"), fail).unwrap();
+        let env = |k: &str| (k == "PHP_BINARY").then(|| php.map(String::from)).flatten();
+        let mut d = Dispatcher::new(&tmp, &manifest, false, true, true, Some(&cache), &env);
+        d.dispatch("post-install-cmd").map_err(|e| format!("{e:#}"))
+    };
+    assert_eq!(failure("post-install-cmd echo", None), Ok(()));
+    assert_eq!(
+        failure("post-install-cmd throw", None).unwrap_err(),
+        "a Composer plugin failed on the post-install-cmd event: the recorder failed"
+    );
+    assert_eq!(
+        failure("post-install-cmd exit", None).unwrap_err(),
+        "a Composer plugin failed on the post-install-cmd event: the Composer plugin host stopped"
+    );
+    let missing = tmp.join("no-php");
+    assert!(
+        failure("", missing.to_str())
+            .unwrap_err()
+            .starts_with(&format!(
+                "can't run {} for the Composer plugins: ",
+                missing.display()
+            ))
+    );
+    let script = format!("pun-plugin-host-{}.php", std::process::id());
+    assert!(!std::env::temp_dir().join(script).exists());
     std::fs::remove_dir_all(&tmp).unwrap();
 }

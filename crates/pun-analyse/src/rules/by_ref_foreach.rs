@@ -1,12 +1,3 @@
-//! AssignToByRefExprFromForeachRule (level 1, `featureToggles.assignToByRefForeachExpr`): a VariableAssignNode of a
-//! variable a `foreach (... as &$var)` left bound to the array's last element.
-//!
-//! ForeachHandler assigns the virtual `ForeachValueByRefExpr($valueVar)` after the loop, UnsetHandler invalidates it
-//! and nothing else does (assigning the variable keeps it: the virtual node has no sub-nodes). The rule reports when
-//! the scope may have it. Loop bodies are analysed with it only from their entry (the convergence passes run in a
-//! deep context, which assigns nothing), so it only flows forward: [`entries()`] gives each statement the variables
-//! that may hold it when the statement starts.
-
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
@@ -21,7 +12,6 @@ pub(super) const IDENTIFIERS: &[&str] = &["assign.byRefForeachExpr"];
 
 type Set = BTreeSet<Vec<u8>>;
 
-/// Each statement's span with the variables that may be bound by reference at its start.
 pub(super) type Entries = Vec<(Span, Arc<Set>)>;
 
 pub(super) fn entries(program: &Program) -> Entries {
@@ -32,7 +22,6 @@ pub(super) fn entries(program: &Program) -> Entries {
     flow.entries
 }
 
-/// The variable assignment `v` (a VariableAssignNode).
 pub(super) fn variable_assign(c: &mut Checker, v: &DirectVariable) {
     let span = v.span();
     let Some((_, set)) = c
@@ -58,7 +47,6 @@ pub(super) fn variable_assign(c: &mut Checker, v: &DirectVariable) {
     );
 }
 
-/// Every function-like body starts without the virtual expression.
 struct Bodies<'f>(&'f mut Flow);
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Bodies<'_> {
@@ -83,7 +71,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Bodies<'_> {
 #[derive(Default)]
 struct Flow {
     entries: Entries,
-    /// The scopes of the break and continue exit points of each enclosing loop or switch.
     exits: Vec<Set>,
 }
 
@@ -98,13 +85,11 @@ fn union(a: Option<Set>, b: Option<Set>) -> Option<Set> {
 }
 
 impl Flow {
-    /// The statements from `flags`; `None` when their end is unreachable.
     fn statements(&mut self, stmts: &[Statement], flags: Set) -> Option<Set> {
         let mut flags = Some(flags);
         for s in stmts {
             match flags {
                 Some(f) => flags = self.statement(s, f),
-                // processStmtNodes() skips the statements after an always terminating one
                 None => self.entries.push((s.span(), Arc::new(Set::new()))),
             }
         }
@@ -115,7 +100,6 @@ impl Flow {
         self.statements(std::slice::from_ref(s), flags)
     }
 
-    /// A loop body: its end with its continue and break exit points.
     fn loop_body(
         &mut self,
         run: impl FnOnce(&mut Flow) -> Option<Set>,

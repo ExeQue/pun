@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\ArrayIndentationFixer`.
 use crate::analyzers::indentation_trait::{
     compute_new_line_content, extract_indent, is_new_line_token,
 };
@@ -49,8 +48,7 @@ impl ArrayIndentationFixer {
         }
         end_index.unwrap_or_else(|| {
             tokens
-                .get_prev_meaningful_token(parent_scope_end_index)
-                .unwrap()
+                .prev_meaningful(parent_scope_end_index)
         })
     }
 }
@@ -60,8 +58,6 @@ impl Fixer for ArrayIndentationFixer {
         "array_indentation"
     }
     fn priority(&self) -> i32 {
-        // Must run before AlignMultilineCommentFixer, BinaryOperatorSpacesFixer.
-        // Must run after MethodArgumentSpaceFixer.
         29
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -90,7 +86,7 @@ impl Fixer for ArrayIndentationFixer {
             }
             if token.is_given_kind(&[CT_ARRAY_BRACKET_OPEN, CT_DESTRUCTURING_BRACKET_OPEN])
                 || (token.equals("(", true)
-                    && tokens[tokens.get_prev_meaningful_token(i).unwrap()]
+                    && tokens[tokens.prev_meaningful(i)]
                         .is_given_kind(&[T_ARRAY, T_LIST]))
             {
                 let (block_type, _) = Tokens::detect_block_type(token).unwrap();

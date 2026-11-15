@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\ArrayPushFixer`.
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -35,11 +34,11 @@ impl Fixer for ArrayPushFixer {
                 continue;
             }
             let call_index = i;
-            let mut i = tokens.get_prev_meaningful_token(i).unwrap();
+            let mut i = tokens.prev_meaningful(i);
             let mut namespace_separator_index = None;
             if tokens[i].is_kind(T_NS_SEPARATOR) {
                 namespace_separator_index = Some(i);
-                i = tokens.get_prev_meaningful_token(i).unwrap();
+                i = tokens.prev_meaningful(i);
             }
             index = i as isize - 1;
             if !tokens[i].equals_any(
@@ -55,7 +54,7 @@ impl Fixer for ArrayPushFixer {
                 continue;
             }
 
-            let open_brace_index = tokens.get_next_meaningful_token(call_index).unwrap();
+            let open_brace_index = tokens.next_meaningful(call_index);
             let close_brace_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_brace_index);
             if tokens
@@ -67,22 +66,13 @@ impl Fixer for ArrayPushFixer {
                 continue;
             }
 
-            // first argument must be a variable (with possibly array indexing etc.),
-            // after that nothing meaningful should be there till the next `,` or `)`
-            // if `)` than we cannot fix it (it is a single argument call)
             let first_argument_stop = get_first_argument_end(tokens, open_brace_index);
-            let first_argument_stop = tokens
-                .get_next_meaningful_token(first_argument_stop)
-                .unwrap();
+            let first_argument_stop = tokens.next_meaningful(first_argument_stop);
             if !tokens[first_argument_stop].equals(",", true) {
                 continue;
             }
 
-            // second argument can be about anything but ellipsis, we must make sure there is not
-            // a third argument (or more) passed to `array_push`
-            let second_argument_start = tokens
-                .get_next_meaningful_token(first_argument_stop)
-                .unwrap();
+            let second_argument_start = tokens.next_meaningful(first_argument_stop);
             if get_second_argument_end(tokens, second_argument_start, close_brace_index).is_none() {
                 continue;
             }
@@ -108,7 +98,7 @@ impl Fixer for ArrayPushFixer {
 }
 
 fn get_first_argument_end(tokens: &Tokens, mut index: usize) -> usize {
-    let mut next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let mut next_index = tokens.next_meaningful(index);
     loop {
         let next_token = &tokens[next_index];
         if !next_token.equals_any(
@@ -133,7 +123,7 @@ fn get_first_argument_end(tokens: &Tokens, mut index: usize) -> usize {
             next_index = tokens.find_block_end(block_type, next_index);
         }
         index = next_index;
-        next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        next_index = tokens.next_meaningful(next_index);
     }
     let next_token = &tokens[next_index];
     if next_token.is_kind(T_OBJECT_OPERATOR) {
@@ -142,7 +132,7 @@ fn get_first_argument_end(tokens: &Tokens, mut index: usize) -> usize {
     if next_token.is_kind(T_DOUBLE_COLON) {
         return get_first_argument_end(
             tokens,
-            tokens.get_next_meaningful_token(next_index).unwrap(),
+            tokens.next_meaningful(next_index),
         );
     }
     index
@@ -156,7 +146,7 @@ fn get_second_argument_end(tokens: &Tokens, mut index: usize, end_index: usize) 
         let mut block_type = Tokens::detect_block_type(&tokens[index]);
         while let Some((t, true)) = block_type {
             index = tokens.find_block_end(t, index);
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             block_type = Tokens::detect_block_type(&tokens[index]);
         }
         if tokens[index].equals(",", true)

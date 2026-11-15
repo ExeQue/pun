@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\TernaryToNullCoalescingFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -29,7 +28,7 @@ impl Fixer for TernaryToNullCoalescingFixer {
 }
 
 fn fix_isset(tokens: &mut Tokens, index: usize) {
-    let prev_token_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_token_index = tokens.prev_meaningful(index);
     if is_higher_precedence_associativity_operator(&tokens[prev_token_index]) {
         return;
     }
@@ -37,8 +36,7 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
         .get_next_token_of_kind(index, &["(".into()], true)
         .unwrap();
     let end_brace_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, start_brace_index);
-    // A `?>` or `;` always follows an `isset(...)` statement.
-    let ternary_question_mark_index = tokens.get_next_meaningful_token(end_brace_index).unwrap();
+    let ternary_question_mark_index = tokens.next_meaningful(end_brace_index);
     if !tokens[ternary_question_mark_index].equals("?", true) {
         return;
     }
@@ -58,10 +56,7 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
     if isset_code != code(&first_operand) {
         return;
     }
-    let ternary_first_operand_index = tokens
-        .get_next_meaningful_token(ternary_question_mark_index)
-        .unwrap();
-    // preserve comments and spaces
+    let ternary_first_operand_index = tokens.next_meaningful(ternary_question_mark_index);
     let mut comments = Vec::new();
     let mut comment_started = false;
     for loop_index in index..ternary_first_operand_index {
@@ -79,7 +74,6 @@ fn fix_isset(tokens: &mut Tokens, index: usize) {
     tokens.override_range(index, ternary_first_operand_index - 1, comments);
 }
 
-/// `getMeaningfulSequence`: the meaningful tokens strictly between `start` and `end`.
 fn meaningful_sequence(tokens: &Tokens, start: usize, end: usize) -> Vec<Token> {
     let mut sequence = Vec::new();
     let mut index = start;
@@ -96,7 +90,7 @@ fn meaningful_sequence(tokens: &Tokens, start: usize, end: usize) -> Vec<Token> 
 fn code(tokens: &[Token]) -> Vec<u8> {
     tokens
         .iter()
-        .flat_map(|t| t.content.iter().copied())
+        .flat_map(|t| t.get_content().iter().copied())
         .collect()
 }
 
@@ -143,7 +137,6 @@ fn is_higher_precedence_associativity_operator(token: &Token) -> bool {
     )
 }
 
-/// `hasChangingContent`: the `isset()` content may change if evaluated twice.
 fn has_changing_content(tokens: &[Token]) -> bool {
     tokens
         .iter()

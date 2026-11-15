@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ModifierKeywordsFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -85,7 +84,7 @@ impl Fixer for ModifierKeywordsFixer {
                 mut type_index,
                 mut read_only_index,
             ) = (None, None, None, None, None, None);
-            let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let mut prev_index = tokens.prev_meaningful(index);
             let is_property = matches!(element.kind, T::Property | T::PromotedProperty);
             let expected = |t: &Token| {
                 t.is_given_kind(EXPECTED_KINDS_GENERIC)
@@ -110,7 +109,7 @@ impl Fixer for ModifierKeywordsFixer {
                 } else if !t.equals("&", true) {
                     visibility_index = Some(prev_index);
                 }
-                prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+                prev_index = tokens.prev_meaningful(prev_index);
             }
             if let Some(t) = type_index {
                 index = t;

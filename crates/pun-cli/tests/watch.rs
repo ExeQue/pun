@@ -12,8 +12,6 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// Pint's stdout on `files` (on top of `before`, all fresh in a scratch copy; the whole project unless `explicit`),
-/// and the resulting `files`' contents.
 fn pint(before: &[(&str, &str)], files: &[(&str, &str)], explicit: bool) -> (String, Vec<String>) {
     let dir = scratch("watch", "oracle");
     write_files(&dir, before);
@@ -36,7 +34,6 @@ fn pint(before: &[(&str, &str)], files: &[(&str, &str)], explicit: bool) -> (Str
     (String::from_utf8(out.stdout).unwrap(), after)
 }
 
-/// Kills (and reaps) the watcher however the test ends, so a failed assertion can't leave it running.
 struct Reap(std::process::Child);
 
 impl Drop for Reap {
@@ -71,11 +68,15 @@ fn wait_for(what: &str, buf: &Mutex<String>, cond: impl Fn(&str) -> bool) {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn watch_reformats_like_pint() {
+    const CFG: &str = r#"{"preset":"laravel","notName":["Skip.php"]}"#;
     if oracle().is_none() {
         return;
     }
-    const CFG: &str = r#"{"preset":"laravel","notName":["Skip.php"]}"#;
     let start = [
         ("pint.json", CFG),
         ("app/A.php", "<?php\n$a = array(1,2);\n"),
@@ -111,7 +112,6 @@ fn watch_reformats_like_pint() {
     let out = collect(Box::new(child_out));
     let err = collect(Box::new(child_err));
 
-    // The first run is a normal run. Each run ends with Pun's summary line, the only line ending in its time.
     let runs = |o: &str| -> Vec<String> {
         let mut runs = vec![String::new()];
         for line in o.split_inclusive('\n') {
@@ -136,7 +136,6 @@ fn watch_reformats_like_pint() {
     assert_eq!(got, want);
     std::thread::sleep(Duration::from_millis(500));
 
-    // A new file and an edited one are re-run together; excluded files (notName, vendor) are not touched.
     let fixed = [
         ("pint.json", CFG),
         ("app/A.php", "<?php\n\n$a = [1, 2];\n"),
@@ -168,15 +167,12 @@ fn watch_reformats_like_pint() {
     for (f, c) in excluded {
         assert_eq!(std::fs::read_to_string(dir.join(f)).unwrap(), c, "{f}");
     }
-    // Pun's own writes are not changes: nothing more runs.
     std::thread::sleep(Duration::from_millis(1500));
     let printed = out.lock().unwrap().len();
     assert_eq!(runs(&out.lock().unwrap()).len(), 2);
 
-    // A broken pun.toml, then an unreadable file: reported on stderr, and the watch goes on.
     let toml = std::fs::read_to_string(dir.join("pun.toml")).unwrap();
     write_files(&dir, &[("pun.toml", "[format")]);
-    // With its cause, as the first run prints it (the toml crate's message).
     wait_for("the config error", &err, |e| {
         e.contains(&format!(
             "invalid {}/pun.toml: TOML parse error at line 1, column 8",
@@ -189,7 +185,6 @@ fn watch_reformats_like_pint() {
         std::os::unix::fs::PermissionsExt::from_mode(0o000),
     )
     .unwrap();
-    // Root reads a mode-000 file: there no read error comes.
     if std::fs::read(dir.join("app/U.php")).is_err() {
         wait_for("the read error", &err, |e| {
             e.contains(&format!(
@@ -200,12 +195,10 @@ fn watch_reformats_like_pint() {
         assert_eq!(out.lock().unwrap().len(), printed);
     }
 
-    // Removing the project ends the watch.
     std::fs::remove_dir_all(&dir).unwrap();
     assert_eq!(child.0.wait().unwrap().code(), Some(0));
 }
 
-/// The watch ends when the process that started it does (here a shell that exits right after starting it).
 #[test]
 fn watch_ends_with_its_parent() {
     let dir = scratch("watch", "orphan");
@@ -219,7 +212,6 @@ fn watch_ends_with_its_parent() {
         .map(|a| format!("'{}'", a.to_str().unwrap()))
         .collect();
     let mut sh = Command::new("sh");
-    // The shell exits once the first run has printed, so the watcher has seen its parent.
     let log = home.join("out");
     let script = format!(
         "'{program}' {} >'{}' 2>&1 </dev/null & echo $!; while [ ! -s '{}' ]; do sleep 0.05; done",

@@ -1,6 +1,3 @@
-//! The class a rebound closure's body is checked in (StaticCallHandler's `Closure::bind()` scope factory,
-//! MethodCallHandler's `->call()`, MutatingScope::enterClosureBind()/enterClosureCall()): the bound `$this`'s class.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_syntax::cst::*;
@@ -9,8 +6,6 @@ use pun_phpstan::types::Type;
 use super::types::flow::unparen;
 use super::{Checker, declared, members, params};
 
-/// A PHPDoc binding assigns `$this` as well as a visibility scope. Explicit `Closure::bind()` keeps the existing
-/// scope-only approximation below: its third argument does not establish that `$this` exists.
 pub(super) struct Binding {
     pub class: Option<String>,
     pub defines_this: bool,
@@ -26,8 +21,6 @@ pub(super) fn has_inline_closure(args: &ArgumentList) -> bool {
 }
 
 impl<'arena> Checker<'_, 'arena> {
-    /// ArgumentsHandler::processArgs()/resolveClosureThisType(): named function calls, with NameResolver's
-    /// namespaced-to-global fallback (but never falling back through a `use function` import).
     pub(super) fn bind_function_arguments(&mut self, call: &FunctionCall<'arena>) {
         if !has_inline_closure(&call.argument_list) {
             return;
@@ -45,10 +38,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// CalledOnTypeUnresolvedMethodPrototypeReflection::transformStaticType(): `static`/`$this` tags use the
-    /// receiver, not the method's declaring parent or trait; `self` tags remain their resolved declared class.
-    /// Other receiver expressions use their single inferred object class, ignoring nullability, independently of
-    /// the level-2 call checks. Multiple classes are not collapsed to an arbitrary binding scope.
     pub(super) fn bind_method_arguments(
         &mut self,
         receiver: &Expression<'arena>,
@@ -85,7 +74,6 @@ impl<'arena> Checker<'_, 'arena> {
                     self.class_like(name).found()
                 }),
         };
-        // MixinMethodsClassReflectionExtension: a method a `@mixin` class has, whose `static` is that class
         let class = class.and_then(|class| match members::method(self, class, name.value) {
             Some(method) => Some((class, method)),
             None => {
@@ -103,14 +91,11 @@ impl<'arena> Checker<'_, 'arena> {
             }
         });
         if let Some((class, members::Method::User { f, declaring, .. })) = class {
-            // Mago's populated `used_traits` includes inherited traits. Their `self` is the class that first
-            // imports the method, whereas `static` below is still the receiver at this call site.
             let declaring = class
                 .appearing_method_ids
                 .get(&mago_word::word(name.value.to_ascii_lowercase()))
                 .and_then(|id| self.codebase.get_class_like(id.get_class_name().as_bytes()))
                 .unwrap_or(declaring);
-            // `parent::` looks up the parent method, but forwards the calling class for late static binding.
             let class = if is_static && matches!(receiver, Expression::Parent(_)) {
                 self.class_scope().unwrap_or(class)
             } else {
@@ -121,8 +106,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// ArgumentsHandler's parameter matching, then its non-static inline Closure/ArrowFunction branches. An
-    /// unpack makes later positional indexes unknown, so it ends this direct-argument binding slice.
     fn bind_arguments(
         &mut self,
         args: &ArgumentList<'arena>,
@@ -132,9 +115,6 @@ impl<'arena> Checker<'_, 'arena> {
     ) {
         let tags = declared::with_classes(self, || {
             let mut tags = declared::codex_closure_this(self, f, declaring);
-            // A concrete trait method is reflected as declared by its using class (members::method()), but the
-            // codex only stores the method under the trait. Resolve its own tags at the trait's source location,
-            // with the using class as `self`/`parent`, retaining inherited tags for other parameters.
             if let Some(class) = declaring
                 && !(f.span.file_id == class.span.file_id
                     && class.span.start.offset <= f.span.start.offset
@@ -173,8 +153,6 @@ impl<'arena> Checker<'_, 'arena> {
             let class = match tag {
                 Type::Object(n, _, _) => Some(n.as_str()),
                 Type::Static(_, _) | Type::This(_) => called,
-                // Templates, conditionals, unions and intersections need full closure `$this` type propagation,
-                // not a guessed single visibility class.
                 _ => None,
             };
             let Some(class) = class else { continue };
@@ -187,10 +165,6 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// The class of `Closure::bind($closure, $newThis, $newScope)`'s `$this`: `$newScope`'s class when it is given,
-    /// else `$newThis`'s.
-    // ponytail: classes read from the written expressions (`X::class`, `'X'`, `new X`, `$this`), not their types; the
-    // bound scope classes are not kept apart from `$this`'s class
     pub(super) fn bind_class(&self, args: &ArgumentList<'arena>) -> Option<String> {
         let arg = |i: usize| args.arguments.get(i).map(|a| a.value());
         match arg(2) {
@@ -199,11 +173,9 @@ impl<'arena> Checker<'_, 'arena> {
         }
     }
 
-    /// The class of `->call($newThis)`'s `$this`.
     pub(super) fn call_class(&self, args: &ArgumentList<'arena>) -> Option<String> {
         let new_this = args.arguments.first()?.value();
         self.bound_class_of(new_this, false).or_else(|| {
-            // enterClosureCall() scopes the closure to `$thisType->getObjectClassNames()`
             match self.type_of(new_this)?.types.as_ref() {
                 [
                     mago_codex::ttype::atomic::TAtomic::Object(
@@ -215,7 +187,6 @@ impl<'arena> Checker<'_, 'arena> {
         })
     }
 
-    /// The class an object expression is an instance of, or (`class_string`) the class a class string names.
     fn bound_class_of(&self, e: &Expression<'arena>, class_string: bool) -> Option<String> {
         let current = || {
             self.class_scope()

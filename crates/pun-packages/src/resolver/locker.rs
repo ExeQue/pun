@@ -1,25 +1,20 @@
-//! The lock an update writes, holding what Composer's `Locker::setLockData` writes to composer.lock: each package
-//! dumped by `ArrayDumper` from what `ArrayLoader` kept of its metadata, sorted by name and version, then the root's
-//! aliases, stability settings and platform requirements.
-
 use super::package::Package;
 use super::platform::PLUGIN_API;
 use super::{Options, Resolution};
-use crate::lock::{Lock, content_hash};
+use crate::error::Result;
+use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::version::is_platform;
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
 use std::cmp::Ordering;
 use std::sync::LazyLock;
 
-/// The lock for a resolution of `manifest` (composer.json's shape), with composer.lock's content.
 pub fn lock(resolution: &Resolution, manifest: &Map<String, Value>, options: &Options) -> Lock {
-    let dump_all = |list: &[usize]| -> Vec<Map<String, Value>> {
-        let mut out: Vec<Map<String, Value>> =
-            list.iter().map(|&p| dump(&resolution.arena[p])).collect();
-        let s = |m: &Map<String, Value>, k: &str| m[k].as_str().unwrap_or_default().to_string();
-        // A resolution has one version of each name.
-        out.sort_by_key(|a| s(a, "name"));
+    let dump_all = |list: &[usize]| -> Vec<LockedPackage> {
+        let mut out: Vec<LockedPackage> = (list.iter())
+            .map(|&p| LockedPackage(dump(&resolution.arena[p])))
+            .collect();
+        out.sort_by_key(|a| a.pretty_name().to_string());
         out
     };
     let aliases: Vec<Value> = (resolution.aliases.iter())
@@ -81,8 +76,10 @@ pub fn lock(resolution: &Resolution, manifest: &Map<String, Value>, options: &Op
     }
 }
 
-/// `ArrayDumper::dump` of the package `ArrayLoader` makes from `package.data`, as `Locker::lockPackages` keeps it:
-/// without `version_normalized` and `installation-source`, `time` and `published-time` last.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn dump(package: &Package) -> Map<String, Value> {
     let data = &package.data();
     let get = |k: &str| data.get(k).filter(|v| !v.is_null());
@@ -138,7 +135,6 @@ pub fn dump(package: &Package) -> Map<String, Value> {
         if links.is_empty() {
             continue;
         }
-        // Later duplicates (by lowercase name) win, at the first one's place.
         let mut unique: Vec<(String, Value)> = vec![];
         for (t, c) in links.drain(..) {
             match unique.iter_mut().find(|(u, _)| *u == t) {
@@ -286,7 +282,6 @@ pub fn dump(package: &Package) -> Map<String, Value> {
     out
 }
 
-/// A scalar as PHP's `(string)` gives it.
 fn stringify(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
@@ -296,7 +291,6 @@ fn stringify(v: &Value) -> String {
     }
 }
 
-/// PHP 8's `<=>` on two array keys or strings: numerically when both are numeric strings, else byte by byte.
 fn php_cmp(a: &str, b: &str) -> Ordering {
     match (numeric(a), numeric(b)) {
         (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(Ordering::Equal),
@@ -316,10 +310,13 @@ fn numeric(s: &str) -> Option<f64> {
         .flatten()
 }
 
-/// `(new DateTime($time, UTC))->format(DATE_RFC3339)` for the forms package metadata uses: a Unix timestamp,
-/// `Y-m-d`, and `Y-m-d H:i:s` or `Y-m-d\TH:i:s` with optional fractions and a `Z`, `UTC` or `±hh[:]mm` zone. Other
-/// text is dropped, as Composer drops a time `DateTime` can't parse.
 fn rfc3339(v: &Value) -> Option<String> {
+    static DATE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)? *(Z|UTC|GMT|[+-]\d{2}:?\d{2})?$",
+        )
+        .expect("valid pattern")
+    });
     let raw = match v {
         Value::Number(n) => n.to_string(),
         Value::String(s) => s.clone(),
@@ -329,12 +326,6 @@ fn rfc3339(v: &Value) -> Option<String> {
         let secs: i64 = raw.parse().ok()?;
         return Some(from_unix(secs));
     }
-    static DATE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(
-            r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)? *(Z|UTC|GMT|[+-]\d{2}:?\d{2})?$",
-        )
-        .expect("valid pattern")
-    });
     let c = DATE.captures(raw.as_bytes()).ok()??;
     let g = |i: usize| {
         c.get(i)
@@ -359,7 +350,6 @@ fn rfc3339(v: &Value) -> Option<String> {
     ))
 }
 
-/// A Unix timestamp as an RFC 3339 UTC time (days to a civil date by Howard Hinnant's algorithm).
 fn from_unix(secs: i64) -> String {
     let (days, rem) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
     let z = days + 719_468;
@@ -379,13 +369,11 @@ fn from_unix(secs: i64) -> String {
     )
 }
 
-/// `Locker::updateHash` after `require` picked constraints for packages named without one: the lock's
-/// `content-hash` for the manifest as written, and the stability flags those constraints ask for.
 pub fn update_hash(
     lock: &mut Lock,
     manifest: &Map<String, Value>,
     picked: &[(String, String)],
-) -> anyhow::Result<()> {
+) -> Result<()> {
     lock.content_hash = content_hash(manifest);
     let minimum = super::package::stability_value(
         manifest
@@ -417,10 +405,6 @@ pub fn update_hash(
     Ok(())
 }
 
-/// `VersionSelector::findRecommendedRequireVersion` for the package `name` resolved to, as `composer require`
-/// asks it after the update (`updateRequirementsAfterResolution`): `^major.minor` (`^0.minor.patch` below 1.0)
-/// with `@stability` for an unstable release, the branch alias's `^x.y@dev` for a branch, its version as is
-/// otherwise. `None` for a name the lock does not hold, such as a platform package, which keeps its `*`.
 pub fn recommended(resolution: &Resolution, name: &str) -> Option<String> {
     let arena = &resolution.arena;
     let package = (resolution.packages.iter().chain(&resolution.packages_dev))
@@ -468,16 +452,14 @@ mod tests {
     use serde_json::json;
 
     fn object(v: Value) -> Map<String, Value> {
-        v.as_object().unwrap().clone()
+        serde_json::from_value(v).unwrap()
     }
 
-    /// Expected lines from Composer 2.11.2 in PHP 8.5: `ArrayLoader::load` (keeping options, as a `package`
-    /// repository does), `ArrayDumper::dump`, then what `Locker::lockPackages` removes and moves.
     #[test]
     fn dumps_as_composer() {
         for (data, want) in [
             (
-                json!({"name": "acme/empties", "version": "1.0.0", "time": false, "license": [], "authors": {}, "description": "0", "homepage": "", "keywords": "solo", "bin": [], "funding": [], "notification-url": "", "scripts": {"x": null}, "extra": [], "support": {}, "autoload": {}, "php-ext": {"extension-name": "acme"}, "transport-options": {"symlink": false}, "dist": {"type": "zip", "url": "https://d.test/e.zip", "reference": 123}, "source": {"type": "svn", "url": "https://s.test/e", "reference": false, "mirrors": null}, "published-time": 1700000000}),
+                json!({"name": "acme/empties", "version": "1.0.0", "time": false, "license": [], "authors": {}, "description": "0", "homepage": "", "keywords": "solo", "bin": [], "funding": [], "notification-url": "", "scripts": {"x": null}, "extra": [], "support": {}, "autoload": {}, "php-ext": {"extension-name": "acme"}, "transport-options": {"symlink": false}, "dist": {"type": "zip", "url": "https://d.test/e.zip", "reference": 123}, "source": {"type": "svn", "url": "https://s.test/e", "reference": false, "mirrors": null}, "published-time": 1_700_000_000}),
                 r#"{"name":"acme/empties","version":"1.0.0","source":{"type":"svn","url":"https://s.test/e","reference":""},"dist":{"type":"zip","url":"https://d.test/e.zip","reference":"123"},"type":"library","php-ext":{"extension-name":"acme"},"scripts":{"x":[]},"transport-options":{"symlink":false},"published-time":"2023-11-14T22:13:20+00:00"}"#,
             ),
             (
@@ -485,7 +467,7 @@ mod tests {
                 r#"{"name":"acme/zero","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/z.zip","reference":"1"},"type":"library","keywords":["a","b"],"published-time":"2024-01-02T03:04:05+00:00"}"#,
             ),
             (
-                json!({"name": "acme/stamp", "version": "1.0.0", "time": 1709210710, "published-time": "", "dist": {"type": "zip", "url": "https://d.test/s.zip"}}),
+                json!({"name": "acme/stamp", "version": "1.0.0", "time": 1_709_210_710, "published-time": "", "dist": {"type": "zip", "url": "https://d.test/s.zip"}}),
                 r#"{"name":"acme/stamp","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/s.zip"},"type":"library","time":"2024-02-29T12:45:10+00:00"}"#,
             ),
             (
@@ -511,7 +493,6 @@ mod tests {
         }
     }
 
-    /// The packages of `acme/app`, the project `composer require` ran in below.
     fn repository() -> Value {
         json!([
             {"name": "acme/stable", "version": "1.2.3"},
@@ -527,8 +508,6 @@ mod tests {
         ])
     }
 
-    /// Composer 2.11.2's `composer require` of each name without a version, at minimum-stability dev, printed these
-    /// `Using version` lines; for ext-json it printed none and kept `*`.
     #[test]
     fn recommends_as_composer_require() {
         let names = [
@@ -557,7 +536,8 @@ mod tests {
             object(json!({"name": "ext-json", "version": "8.5.12"})),
         ];
         let options = Options::default();
-        let resolved = super::super::resolve(&manifest, platform, vec![repo], None, &options);
+        let resolved =
+            super::super::resolve(&manifest, platform, vec![repo], None, &options, &|_| None);
         let resolution = resolved.unwrap().unwrap_or_else(|_| panic!("no solution"));
         for (name, want) in names {
             assert_eq!(
@@ -569,9 +549,6 @@ mod tests {
         assert_eq!(recommended(&resolution, "ext-json"), None);
     }
 
-    /// After Composer 2.11.2's `composer require acme/branch acme/beta acme/dated acme/stable` in a project that
-    /// already required `acme/zero: 0.3.4@dev`, the lock held this content-hash and these stability flags; the
-    /// `acme/beta` flag a lock had before is replaced, as `RequireCommand` sets each flag.
     #[test]
     fn updates_the_hash_as_composer_require() {
         let manifest = object(json!({

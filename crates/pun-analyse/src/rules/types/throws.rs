@@ -1,8 +1,3 @@
-//! The rules on a function-like's throw points ([`super::throw_points`]): MissingCheckedExceptionIn*ThrowsRule
-//! (`missingType.checkedException`, with `exceptions.check.missingCheckedExceptionInThrows`), TooWide*ThrowTypeRule
-//! (`throws.unusedType`, level 4, `exceptions.check.tooWideThrowType`) and CatchWithUnthrownExceptionRule's
-//! `catch.neverThrown` (level 4), with DefaultExceptionTypeResolver's checked exceptions.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::visibility::Visibility;
 use mago_span::{HasSpan, Span};
@@ -16,7 +11,6 @@ use super::throw_points::{Point, Points, flatten, throwable};
 
 pub(super) const IDENTIFIERS: &[&str] = &["throws.unusedType", "catch.neverThrown"];
 
-/// DefaultExceptionTypeResolver::isCheckedException().
 pub(in super::super) fn is_checked_exception(c: &Checker, name: &str) -> bool {
     let e = c.exceptions;
     let matches = |regexes: &[String]| {
@@ -40,7 +34,6 @@ pub(in super::super) fn is_checked_exception(c: &Checker, name: &str) -> bool {
     {
         return false;
     }
-    // isCheckedExceptionInternal()
     if matches(&e.checked_exception_regexes)
         || e.checked_exception_classes.iter().any(|k| k == name)
     {
@@ -56,7 +49,6 @@ pub(in super::super) fn is_checked_exception(c: &Checker, name: &str) -> bool {
     e.checked_exception_regexes.is_empty() && e.checked_exception_classes.is_empty()
 }
 
-/// MissingCheckedExceptionInThrowsCheck::check(): the explicit points' checked exceptions `declared` lacks.
 fn missing_checked(c: &mut Checker, declared: Option<&Type>, points: &[Point], of: &str) {
     let mut errors = Vec::new();
     declared::with_classes(c, || {
@@ -89,7 +81,6 @@ fn missing_checked(c: &mut Checker, declared: Option<&Type>, points: &[Point], o
     }
 }
 
-/// TooWideThrowTypeCheck::check(): the `@throws` types no throw point may throw.
 fn unused(c: &Checker, declared: &Type, points: &[Point]) -> Vec<String> {
     if declared.is_void().yes() {
         return Vec::new();
@@ -189,8 +180,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     let Some(declared) = declared.filter(|_| too_wide_on(c)) else {
         return;
     };
-    // TooWideMethodThrowTypeRule: private or final methods (or of a final class) unless
-    // checkTooWideThrowTypesInProtectedAndPublicMethods, which still skips a method's first declaration
     let private = meta
         .method_metadata
         .as_ref()
@@ -248,7 +237,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     }
 }
 
-/// `$method->getPrototype()->getDeclaringClass() === $method->getDeclaringClass()`: no ancestor declares it.
 fn first_declaration(c: &Checker, class: &ClassLikeMetadata, name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     let declared_in = |k: &[u8]| c.codebase.get_method(k, lower.as_bytes()).is_some();
@@ -332,7 +320,6 @@ pub(in super::super) fn hooks(c: &mut Checker, name: &[u8], list: &PropertyHookL
     }
 }
 
-/// The property whose hook body holds `at` (the class's or, walked in a class's context, the trait's).
 fn hooked_property(c: &Checker, at: Span) -> Option<Vec<u8>> {
     let context = c.class_scope()?;
     let owner = c
@@ -351,7 +338,6 @@ fn hooked_property(c: &Checker, at: Span) -> Option<Vec<u8>> {
     })
 }
 
-/// CatchWithUnthrownExceptionRule's `catch.neverThrown`: a catch type no throw point of the try block matches.
 pub(in super::super) fn dead_catches(c: &mut Checker, t: &Try) {
     if c.level < 4 {
         return;
@@ -390,8 +376,6 @@ pub(in super::super) fn dead_catches(c: &mut Checker, t: &Try) {
     }
 }
 
-/// MethodThrowTypeCovarianceRule (`exceptions.check.throwTypeCovariance`): a method's `@throws` against the ones of
-/// the methods it overrides (ParentMethodHelper::collectParentMethods()).
 pub(in super::super) fn covariance(c: &mut Checker, m: &Method) {
     let Some(context) = c.class_scope() else {
         return;
@@ -427,7 +411,6 @@ pub(in super::super) fn covariance(c: &mut Checker, m: &Method) {
     if throws.is_void().yes() {
         return;
     }
-    // (declaring class-like, method) of each parent method
     let mut parents: Vec<&ClassLikeMetadata> = Vec::new();
     let declaring = |k: &ClassLikeMetadata| {
         c.codebase

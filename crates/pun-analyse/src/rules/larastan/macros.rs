@@ -1,8 +1,3 @@
-//! MacroMethodsClassReflectionExtension's methods, as a Mago return type provider: a method a class lacks is a macro
-//! registered on it ([`crate::larastan::macros`]). Models and relations reach their builder's and the query builder's
-//! macros, as ModelForwardsCallsExtension, RelationForwardsCallsExtension and
-//! EloquentBuilderForwardsCallsExtension forward the calls.
-
 use std::sync::Arc;
 
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
@@ -59,8 +54,6 @@ impl MethodReturnTypeProvider for Macros {
     }
 }
 
-/// MacroMethodsClassReflectionExtension: the macro of a method the class declares no native method
-/// for (a `@method` tag does not hide one).
 pub(crate) fn macro_method(
     c: &super::super::Checker,
     class: &mago_codex::metadata::class_like::ClassLikeMetadata,

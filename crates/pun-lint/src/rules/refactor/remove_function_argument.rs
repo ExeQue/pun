@@ -1,22 +1,13 @@
-//! `lint/refactor/remove-function-argument`, ported from Rector 2.8.4's `RemoveFuncCallArgRector`
-//! (rules/Removing/Rector/FuncCall).
-//!
-//! Options: `items = [{ function = "ldap_first_attribute", argument-position = 2 }]` (`RemoveFuncCallArg`). A call to
-//! the function (its `Name` as written or resolved, compared without case) loses the argument at that position,
-//! counted from 0 over every argument, named ones included. A first-class callable `f(...)` has one argument, its
-//! `...`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{Kind, assert_function, called, int, is_name, items, name_of, object, string};
-use crate::rules::rector_batch5::list_removal;
+use crate::rules::support::rewrites::list_removal;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 #[derive(Default)]
 pub struct RemoveFunctionArgument {
-    /// (function, argument position)
     pub removals: Vec<(String, i64)>,
 }
 
@@ -25,12 +16,11 @@ impl Rule for RemoveFunctionArgument {
         "lint/refactor/remove-function-argument"
     }
 
-    /// Rector runs the rule once per file; its fix could match again on what it wrote.
     fn once(&self) -> bool {
         true
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let mut removals = Vec::new();
         for item in items(options)? {
             let map = object(
@@ -64,7 +54,6 @@ impl Rule for RemoveFunctionArgument {
             return;
         }
         let resolved = name_of(ancestors, name, Kind::Function);
-        // The argument list is the call's last child: its arguments, and the span inside its parentheses.
         let list = node.children().pop().unwrap_or(node);
         let args: Vec<Span> = list.children().iter().map(node_span).collect();
         let outer = node_span(&list);
@@ -81,7 +70,6 @@ impl Rule for RemoveFunctionArgument {
         if !removed.contains(&true) {
             return;
         }
-        // With every argument gone, php-parser prints the call anew, with nothing between its parentheses.
         let edits = list_removal(&args, &removed).unwrap_or_else(|| vec![Edit::new(inner, "")]);
         let positions: Vec<String> = (removed.iter().enumerate())
             .filter(|(_, r)| **r)

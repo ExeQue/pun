@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\SemicolonAfterInstructionFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Proto, Token, Tokens};
@@ -15,7 +14,6 @@ impl Fixer for SemicolonAfterInstructionFixer {
         "semicolon_after_instruction"
     }
     fn priority(&self) -> i32 {
-        // Must run before SimplifiedIfReturnFixer.
         2
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -26,7 +24,7 @@ impl Fixer for SemicolonAfterInstructionFixer {
             if !tokens[index].is_kind(T_CLOSE_TAG) {
                 continue;
             }
-            let prev = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev = tokens.prev_meaningful(index);
             if tokens[prev].equals_any(
                 &[
                     Proto::Char(b";"),

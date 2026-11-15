@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpTag\EchoTagSyntaxFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
@@ -9,9 +8,7 @@ use std::path::Path;
 
 #[derive(Default)]
 struct EchoTagSyntaxFixer {
-    /// `format`: `short` (true) or `long`.
     short: bool,
-    /// `long_function`: `print` (true) or `echo`.
     print: bool,
     shorten_simple_statements_only: bool,
 }
@@ -25,8 +22,6 @@ impl Fixer for EchoTagSyntaxFixer {
         "echo_tag_syntax"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoMixedEchoPrintFixer.
-        // Must run after NoUselessPrintfFixer.
         0
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
@@ -88,7 +83,6 @@ impl EchoTagSyntaxFixer {
         } else {
             Token::new(T_ECHO, "echo")
         };
-        // `$index = -1; getNextTokenOfKind($index, ...)`: the first search starts at index 0.
         let mut index = None;
         loop {
             let found = match index {
@@ -113,8 +107,6 @@ impl EchoTagSyntaxFixer {
     }
 }
 
-/// Check if `tokens`, starting at `index`, contains "complex code", that is, the content of the echo tag contains
-/// more than a simple "echo something": non-whitespace tokens after a semicolon.
 fn is_complex_code(tokens: &Tokens, mut index: usize) -> bool {
     let mut semicolon_found = false;
     let count = tokens.count();

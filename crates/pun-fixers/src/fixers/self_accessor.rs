@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\SelfAccessorFixer`.
 use pun_tokens::NamespacesAnalyzer;
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, PREG_SPLIT_NO_EMPTY, Preg};
 use pun_format::Fixer;
@@ -78,7 +77,7 @@ fn replace_name_occurrences(
         }
         if token.is_kind(Kind::T_FN) {
             i = TokensAnalyzer::new(tokens).get_last_token_index_of_arrow_function(i);
-            i = tokens.get_next_meaningful_token(i).unwrap() + 1;
+            i = tokens.next_meaningful(i) + 1;
             continue;
         }
         if token.is_kind(Kind::T_FUNCTION) {
@@ -101,13 +100,13 @@ fn replace_name_occurrences(
             i += 1;
             continue;
         }
-        let next_token = &tokens[tokens.get_next_meaningful_token(i).unwrap()];
+        let next_token = &tokens[tokens.next_meaningful(i)];
         if next_token.is_kind(Kind::T_NS_SEPARATOR) {
             i += 1;
             continue;
         }
         let mut class_start_index = i;
-        let mut prev_token = &tokens[tokens.get_prev_meaningful_token(i).unwrap()];
+        let mut prev_token = &tokens[tokens.prev_meaningful(i)];
         if prev_token.is_kind(Kind::T_NS_SEPARATOR) {
             match get_class_start(tokens, i, namespace) {
                 None => {
@@ -116,7 +115,7 @@ fn replace_name_occurrences(
                 }
                 Some(s) => {
                     class_start_index = s;
-                    prev_token = &tokens[tokens.get_prev_meaningful_token(s).unwrap()];
+                    prev_token = &tokens[tokens.prev_meaningful(s)];
                 }
             }
         }

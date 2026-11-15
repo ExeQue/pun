@@ -3,7 +3,7 @@
 ## Report a vulnerability
 
 Do not open a public issue for a security problem. Use **Report a vulnerability** on the repository's
-[Security tab](https://github.com/punphp/pun/security/advisories/new). You get a reply within seven days.
+[Security tab](https://github.com/shipfastlabs/pun/security/advisories/new). You get a reply within seven days.
 
 Only the latest release receives security fixes.
 
@@ -29,6 +29,6 @@ SHA-256 checksum, which is published in the same release. The checksum detects a
 
 `https://pun.laravel.cloud/install` downloads the archive and its SHA-256 checksum from the GitHub release over HTTPS.
 Pun's release workflow attests every archive with GitHub artifact attestations (Sigstore build provenance). With a
-signed-in GitHub CLI, the installer checks the archive's attestation against `punphp/pun`'s `release.yml` and the
+signed-in GitHub CLI, the installer checks the archive's attestation against `shipfastlabs/pun`'s `release.yml` and the
 release tag, so a replaced archive fails even when its checksum was replaced too. `PUN_REQUIRE_ATTESTATION=1` makes
 that check required.

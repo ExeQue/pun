@@ -1,5 +1,3 @@
-//! PipeOperatorRule through the public analyser, using PHPStan 2.3.1 oracle diagnostics.
-
 use std::path::Path;
 
 use pun_analyse::{IDENTIFIERS, Project, run};
@@ -13,7 +11,7 @@ fn check(file: &str, level: u8) {
     .unwrap();
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = level;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

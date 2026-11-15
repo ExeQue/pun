@@ -1,23 +1,11 @@
-//! `lint/laravel/no-app-array-access`, ported from rector-laravel 2.7.3's `CallOnAppArrayAccessToStandaloneAssignRector`
-//! (src/Rector/Assign).
-//!
-//! `$x = $app['validator']->method(...);`, where `$app` is an `Illuminate\Contracts\Foundation\Application` and the
-//! key's value (`ValueResolver::getValue`) is `validator`, gets the service in a typed variable first:
-//! `/** @var \Illuminate\Validation\Factory $validationFactory */ $validationFactory = $app['validator'];`, and the call
-//! goes on `$validationFactory`. Only an expression statement that is a plain assignment of a method call counts.
-//!
-//! php-parser prints the new statements (a `Nop`, then the assignment with its doc) right after the token before the
-//! statement, each on a new line at the statement's indentation; what stood between that token and the statement
-//! (its comments, or the rest of a line) follows them.
-
 use mago_syntax::cst::{AssignmentOperator, Expression, ExpressionStatement, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::object_type::is_object_type;
 use super::prefer_latest_oldest::{Got, get_value};
 use super::print::kept_nodes;
-use crate::rules::rector_conditions::indentation;
-use crate::rules::rector_stmts::previous_token_end;
+use crate::rules::support::conditions::indentation;
+use crate::rules::support::statement_edits::previous_token_end;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

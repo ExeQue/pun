@@ -1,6 +1,3 @@
-//! PHPStan's reading of PHPDocs: a doc comment's tags (phpdoc-parser's PhpDocParser, for the tag values PHPStan
-//! resolves), the `NameScope` a PHPDoc is resolved in (FileTypeMapper) and the resolved tags (PhpDocNodeResolver).
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -12,8 +9,6 @@ use pun_phpstan::phpdoc::{self, Node};
 use pun_phpstan::resolve::{Scope, resolve_in};
 use pun_phpstan::types::Type;
 
-/// Each tag of a doc comment and its value: the rest of its line and the lines after it up to the next tag, joined
-/// with a space. A tag starts a line (after the leading `*`).
 pub(super) fn tags(doc: &[u8]) -> Vec<(String, Vec<u8>)> {
     let body = doc.strip_prefix(b"/**").unwrap_or(doc);
     let body = body.strip_suffix(b"*/").unwrap_or(body);
@@ -42,8 +37,6 @@ pub(super) fn tags(doc: &[u8]) -> Vec<(String, Vec<u8>)> {
     tags
 }
 
-/// A `@param` value: the type, `...`, and the parameter's name without `$` (`parseParamTagValue()`; a typeless one
-/// is not a ParamTagValueNode).
 fn param_value(value: &[u8]) -> Option<(Node, bool, String)> {
     if matches!(value.first(), Some(b'$' | b'&')) || value.starts_with(b"...") {
         return None;
@@ -70,23 +63,19 @@ fn param_value(value: &[u8]) -> Option<(Node, bool, String)> {
     ))
 }
 
-/// A type-first tag value (`@return`, `@var`, `@throws`, `@extends`, ...): the type and the rest.
 fn type_value(value: &[u8]) -> Option<(Node, &[u8])> {
     let (node, offset) = phpdoc::parse_prefix(value).ok()?;
     Some((node, value[offset..].trim_ascii_start()))
 }
 
-/// A `@method` tag as written (`parseMethodTagValue()`).
 #[derive(Clone)]
 pub(crate) struct MethodTag {
     pub name: String,
     pub ret: Option<Node>,
-    /// (name without `$`, type, whether the default is `null`)
     pub params: Vec<(String, Option<Node>, bool)>,
     pub templates: Vec<TemplateTag>,
 }
 
-/// Splits `s` at the commas outside brackets and quotes.
 fn split_top(s: &[u8]) -> Vec<&[u8]> {
     let mut out = Vec::new();
     let (mut depth, mut quote, mut start) = (0i32, None, 0);
@@ -114,7 +103,6 @@ fn split_top(s: &[u8]) -> Vec<&[u8]> {
     out
 }
 
-/// The leading identifier of `s` (a method or class name).
 fn identifier(s: &[u8]) -> &[u8] {
     let len = s
         .iter()
@@ -138,7 +126,6 @@ fn method_value(value: &[u8]) -> Option<MethodTag> {
     let after_first = rest[first.len()..].trim_ascii_start();
     let (ret, name, after) =
         if !first.is_empty() && (after_first.starts_with(b"(") || after_first.starts_with(b"<")) {
-            // no return type: `static` alone was the return type
             let ret = if is_static {
                 Some(phpdoc::parse_prefix("static").ok()?.0)
             } else {
@@ -207,7 +194,6 @@ fn method_value(value: &[u8]) -> Option<MethodTag> {
     })
 }
 
-/// `@template` (with its variants) as written.
 #[derive(Clone)]
 pub(crate) struct TemplateTag {
     pub name: String,
@@ -241,7 +227,6 @@ const PROPERTY_TAGS: [&str; 2] = ["@property", "@phpstan-property"];
 const PROPERTY_READ_TAGS: [&str; 2] = ["@property-read", "@phpstan-property-read"];
 const PROPERTY_WRITE_TAGS: [&str; 2] = ["@property-write", "@phpstan-property-write"];
 
-/// `resolveExtendsTags()` and `resolveImplementsTags()`
 const ANCESTOR_TAGS: [&str; 8] = [
     "@extends",
     "@phan-extends",
@@ -263,40 +248,24 @@ const TEMPLATE_TAGS: [&str; 4] = [
     "@phpstan-template",
 ];
 
-/// The tags of one doc comment that PHPStan resolves to types, in PhpDocNodeResolver's order (a later tag of the
-/// same kind wins, except a `@psalm-` one whose type is unresolvable).
 #[derive(Clone, Default)]
 pub(crate) struct Doc {
-    /// (tag, parameter name, type, variadic)
     pub params: Vec<(String, String, Node, bool)>,
-    /// (tag, type)
     pub returns: Vec<(String, Node)>,
-    /// (tag, variable name or empty, type)
     pub vars: Vec<(String, String, Node)>,
-    /// `@param-out` and `@param-closure-this`: (tag, parameter name, type)
     pub outs: Vec<(String, String, Node)>,
     pub closure_this: Vec<(String, String, Node)>,
-    /// `resolveSelfOutTypeTag()`: the first tag of the first kind that has one
     pub self_out: Option<Node>,
-    /// `@extends` and `@implements` types, in tag order (a later one for the same class wins)
     pub ancestors: Vec<Node>,
-    /// `resolveMethodTags()`: by name in first-seen order, a later tag replacing an earlier one
     pub methods: Vec<MethodTag>,
-    /// `resolvePropertyTags()`: (name, readable type, writable type)
     pub properties: Vec<(String, Option<Node>, Option<Node>)>,
-    /// `@mixin` types
     pub mixins: Vec<Node>,
-    /// `resolveUsesTags()`: `@use` types, in tag-kind order (a later one for the same trait wins)
     pub uses: Vec<Node>,
-    /// `resolveExtendsTags()` and `resolveImplementsTags()` apart, in tag-kind order
     pub extends: Vec<Node>,
     pub implements: Vec<Node>,
     pub templates: Vec<TemplateTag>,
-    /// each template's variance (`invariant`, `covariant` or `contravariant`, from the tag name)
     pub template_variances: Vec<&'static str>,
-    /// `resolveTypeAliasTags()`: the names of `@phpstan-type` & co.
     pub type_aliases: Vec<String>,
-    /// `resolveTypeAliasImportTags()`: (imported alias, class as written, `as` name)
     pub alias_imports: Vec<(String, String, Option<String>)>,
 }
 
@@ -373,8 +342,6 @@ impl Doc {
                     closure_this.push((rank, (tag.clone(), name, node)));
                 }
             } else if let Some(rank) = order(&RETURN_TAGS, tag) {
-                // PhpDocParser expects whitespace or the end after the type: `@return Foo(` is invalid
-                // ponytail: for `@return` only; the other tags still take the type prefix
                 if let Ok((node, offset)) = phpdoc::parse_prefix(value)
                     && value.get(offset).is_none_or(u8::is_ascii_whitespace)
                 {
@@ -413,7 +380,6 @@ impl Doc {
                 }
             }
         }
-        // stable: the tag order within one prefix stays
         params.sort_by_key(|(rank, _)| *rank);
         returns.sort_by_key(|(rank, _)| *rank);
         vars.sort_by_key(|(rank, _)| *rank);
@@ -464,7 +430,6 @@ impl Doc {
         out
     }
 
-    /// `resolveParamTags()`: each parameter's type, by name.
     pub(crate) fn param_types(&self, scope: &NameScope) -> HashMap<String, (Type, bool)> {
         let mut out = HashMap::new();
         for (tag, name, node, variadic) in &self.params {
@@ -477,7 +442,6 @@ impl Doc {
         out
     }
 
-    /// `resolveParamOutTags()` or `resolveParamClosureThisTags()` of `tags` ([`Doc::outs`], [`Doc::closure_this`]).
     pub(crate) fn named_types(
         tags: &[(String, String, Node)],
         scope: &NameScope,
@@ -493,7 +457,6 @@ impl Doc {
         out
     }
 
-    /// `resolveReturnTag()`.
     pub(crate) fn return_type(&self, scope: &NameScope) -> Option<Type> {
         let mut out = None;
         for (tag, node) in &self.returns {
@@ -506,8 +469,6 @@ impl Doc {
         out
     }
 
-    /// `resolveVarTags()`: the named ones by name, else the unnamed ones of the last tag kind that has some (under
-    /// the empty name).
     pub(crate) fn var_types(&self, scope: &NameScope) -> Vec<(String, Type)> {
         let mut named: Vec<(String, Type)> = Vec::new();
         let mut unnamed: Vec<(usize, Type)> = Vec::new();
@@ -536,7 +497,6 @@ impl Doc {
     }
 }
 
-/// `shouldSkipType()`: a `@psalm-` tag whose type PHPStan cannot resolve.
 fn skip(tag: &str, ty: &Type) -> bool {
     tag.starts_with("@psalm-") && contains_error(ty)
 }
@@ -556,7 +516,6 @@ fn contains_error(ty: &Type) -> bool {
     found.get()
 }
 
-/// `parseTypeAliasImportTagValue()`: `Alias from Class` with an optional `as Name`.
 fn alias_import(value: &[u8]) -> Option<(String, String, Option<String>)> {
     let alias = identifier(value);
     let rest = value[alias.len()..]
@@ -585,7 +544,6 @@ fn alias_import(value: &[u8]) -> Option<(String, String, Option<String>)> {
     Some((String::from_utf8_lossy(alias).into_owned(), from, alias_as))
 }
 
-/// `parseTemplateTagValue()`: `T`, `T of Bound`, `T as Bound`, `T = Default`.
 fn template_value(value: &[u8]) -> Option<TemplateTag> {
     let len = value
         .iter()
@@ -618,8 +576,6 @@ fn template_value(value: &[u8]) -> Option<TemplateTag> {
     })
 }
 
-/// PHPStan's `NameScope`: the namespace and `use` imports of the place a PHPDoc is, the class `self` means, and the
-/// template types in scope.
 #[derive(Clone, Default)]
 pub(crate) struct NameScope {
     pub names: Arc<NamespaceScope>,
@@ -667,12 +623,9 @@ impl Scope for NameScope {
     }
 }
 
-/// The namespaces of a file with their imports (FileTypeMapper's walk), by byte range.
 pub(crate) struct FileScopes {
     namespaces: Vec<(u32, u32, Arc<NamespaceScope>)>,
-    /// The empty scope of an offset outside every namespace.
     outside: Arc<NamespaceScope>,
-    /// each `use Trait, ...;` in a class body: its offset and the trait names as written
     pub(super) trait_uses: Vec<(u32, Vec<String>)>,
 }
 
@@ -709,7 +662,6 @@ impl FileScopes {
         }
     }
 
-    /// The `use` statements of traits between `start` and `end`: offset and written names.
     pub(crate) fn trait_uses(
         &self,
         start: u32,
@@ -720,7 +672,6 @@ impl FileScopes {
             .filter(move |(at, _)| start <= *at && *at <= end)
     }
 
-    /// The namespace scope at `offset`.
     pub(crate) fn at(&self, offset: u32) -> &Arc<NamespaceScope> {
         self.namespaces
             .iter()

@@ -15,7 +15,6 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// A committed repo on `main`: fixable files (`bad`), a clean one, a vendor file, a corpus file when available.
 const BASE: &str = r#"
 g() { git -c user.email=t@t -c user.name=t -c commit.gpgsign=false "$@"; }
 bad() { mkdir -p "$(dirname "$1")"; printf '<?php\n$a = array(1,2);   \n' > "$1"; }
@@ -28,8 +27,6 @@ printf '<?php\n\n$a = [1];\n' > app/Clean.php
 g add -A; g commit -qm init
 "#;
 
-/// On a feature branch: modified, deleted, renamed (`R`), renamed + modified (`RM`), staged + modified, a quoted
-/// (spaced) name, untracked files and an untracked directory, a modified vendor file.
 const DIRTY: &str = r#"
 g checkout -qb feature
 more app/Mod.php; rm app/Del.php
@@ -40,7 +37,6 @@ more "app/With Space.php"; more vendor/V.php; more sub/T.php
 bad app/New.php; bad "app/New Space.php"; bad sub/inner/U.php; bad newdir/deep/X.php
 "#;
 
-/// `main` moves on after `feature` branched off; `feature` has a commit plus staged, unstaged and untracked changes.
 const DIVERGED: &str = r#"
 g checkout -qb feature
 more app/Mod.php; g commit -qam feat
@@ -62,7 +58,6 @@ struct Run {
     files: BTreeMap<String, Vec<u8>>,
 }
 
-/// Builds `BASE + script` in a fresh dir and runs `program` from `sub` with an isolated HOME/TMPDIR, after `pun migrate <migrate>` there when given. Repo paths in the output become `ROOT`.
 fn run(
     program: &[&str],
     script: &str,
@@ -71,7 +66,6 @@ fn run(
     stdin: &[u8],
     migrate: Option<&[&str]>,
 ) -> Run {
-    // One path per test thread, so a path wrapped in an error box is the same for both tools.
     thread_local! { static REPO: PathBuf = scratch("flags", "repo"); }
     let dir = REPO.with(PathBuf::clone);
     std::fs::remove_dir_all(&dir).unwrap();
@@ -146,8 +140,7 @@ impl Cx {
     fn pint(&self, script: &str, sub: &str, args: &[&str], stdin: &[u8]) -> Run {
         run(&["php", &self.oracle], script, sub, args, stdin, None)
     }
-    /// `pun migrate` with Pint's config flags (`--config`, `--preset`), then `pun format` with the rest. `--no-config`
-    /// needs no pun.toml, so it skips the migration and keeps the flags.
+    #[expect(clippy::unused_self, reason = "called like `pint`, its counterpart")]
     fn ours(&self, script: &str, sub: &str, args: &[&str], stdin: &[u8]) -> Run {
         let config = |a: &&str| a.starts_with("--config=") || a.starts_with("--preset=");
         let pun = [env!("CARGO_BIN_EXE_pun"), "format"];
@@ -162,7 +155,6 @@ impl Cx {
         let (migrate, rest): (Vec<&str>, Vec<&str>) = args.into_iter().partition(config);
         run(&pun, script, sub, &rest, stdin, Some(&migrate))
     }
-    /// Same output, exit code and files; `pint_args` for Pun-only spellings.
     fn same_as(
         &self,
         script: &str,
@@ -188,9 +180,6 @@ impl Cx {
     fn same(&self, script: &str, sub: &str, args: &[&str]) -> Run {
         self.same_as(script, sub, args, args, b"")
     }
-    /// Pint aborts (exit 1) with its error box carrying `message`; Pun exits 2 (output.md §2). A `--format` or `-q`
-    /// run prints the same box; a human run prints `pun` (Pun's run error, ASCII without a UTF-8 locale) on stderr
-    /// instead, after its usual output. The files are the same.
     fn same_error(&self, script: &str, args: &[&str], message: &str, pun: &str) {
         let mut want = self.pint(script, "", args, b"");
         let mut got = self.ours(script, "", args, b"");
@@ -210,7 +199,6 @@ impl Cx {
                 got.files.keys(),
             );
             assert_eq!(common::strip_ansi(&got.stderr), pun, "{args:?}");
-            // Without a summary (an abort before any file), Pint's stdout is the box alone.
             if !want.stdout.starts_with("named: ") {
                 want.stdout = String::new();
             }
@@ -221,7 +209,6 @@ impl Cx {
     }
 }
 
-/// The `--format=txt` file list, sorted (Pint lists in readdir order).
 fn listed(r: &Run) -> Vec<&str> {
     let mut v: Vec<&str> = r
         .stdout
@@ -237,9 +224,6 @@ fn listed(r: &Run) -> Vec<&str> {
     v
 }
 
-/// `--dirty` = `git status --short -- **.php` in the cwd, minus exact "D", "R" mapped to the new name; quoted
-/// names (spaces) and "RM" entries match nothing; the finder still drops vendor. From a subdirectory git's paths
-/// and the finder are both relative to the cwd.
 #[test]
 fn dirty_matches_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -260,7 +244,6 @@ fn dirty_matches_pint() {
     cx.same(DIRTY, "", &["--dirty", "app/Clean.php"]);
     let r = cx.same(DIRTY, "sub", &["--dirty", "--test", "--format=txt"]);
     assert_eq!(listed(&r), ["T.php", "inner/U.php"]);
-    // A clean tree ("No dirty files found."): an empty, successful run. No repository at all: Pint 1.32 aborts.
     cx.same("", "", &["--dirty"]);
     let message = "The [--dirty] option is only available when using Git.";
     cx.same_error("rm -rf .git", &["--dirty", "--format=json"], message, "");
@@ -272,9 +255,6 @@ fn dirty_matches_pint() {
     );
 }
 
-/// `--diff=<branch>` = committed since the merge-base (`branch...HEAD`, so main's own later commits don't count),
-/// staged, unstaged and untracked; deletions are filtered out. `git diff` prints repo-root paths, so from a
-/// subdirectory only the untracked files (cwd-relative) survive. An unknown branch aborts the run.
 #[test]
 fn diff_matches_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -295,7 +275,6 @@ fn diff_matches_pint() {
     assert_eq!(listed(&r), ["Un tr.php", "Untr.php"]);
     let message = "The [--diff] option is only available when using Git.";
     cx.same_error(DIVERGED, &["--diff=nope", "--format=json"], message, "");
-    // --dirty wins over --diff.
     cx.same(
         DIVERGED,
         "",
@@ -303,8 +282,6 @@ fn diff_matches_pint() {
     );
 }
 
-/// Git-selected files go through the resolver like path arguments: a symlink is fixed as its target (and shows as
-/// that file), a dangling one aborts the run.
 #[test]
 fn git_selection_resolves_symlinks_like_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -312,11 +289,9 @@ fn git_selection_resolves_symlinks_like_pint() {
     let r = cx.same(link, "", &["--dirty"]);
     assert_eq!(r.files["app/Mod.php"], b"<?php\n\n$a = [1, 2];\n");
     cx.same(link, "", &["--diff=main", "--test", "--format=json"]);
-    // A dangling symlink is not a file to Symfony's Finder (7.4.17), so it is never selected.
     cx.same("ln -s Missing.php app/Dangling.php", "", &["--dirty"]);
 }
 
-/// `--repair` fixes and fails when anything changed, `--bail` stops at the first fixable file without writing.
 #[test]
 fn repair_and_bail_match_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -336,50 +311,18 @@ fn repair_and_bail_match_pint() {
     }
 }
 
-/// `--parallel`/`-p` only changes scheduling; `--max-processes` takes anything (intval), with or without -p.
 #[test]
-fn parallel_matches_pint() {
+fn max_processes_matches_pint() {
     let Some(cx) = Cx::new() else { return };
     for args in [
-        &["--parallel"][..],
-        &["-p", "--test"],
-        &["--parallel", "--max-processes=1", "--test"],
-        &["--parallel", "--max-processes=abc", "--test"],
+        &["--max-processes=1", "--test"][..],
+        &["--max-processes=abc", "--test"],
         &["--max-processes=3", "--test"],
     ] {
         cx.same("", "", args);
     }
 }
 
-/// Pint's `--cache-file` (its presets never cache, so nothing is written) and Pun's old `--no-cache` are accepted
-/// and change nothing.
-#[test]
-fn cache_flags_are_ignored_like_pint() {
-    let Some(cx) = Cx::new() else { return };
-    // Pint 1.32 writes PHP-CS-Fixer's cache there (keyed by the PHP runtime's version); Pun has no cache, so the
-    // file is the only difference.
-    for args in [
-        &["--cache-file=c/pint.cache", "--test"][..],
-        &["--cache-file", "c/pint.cache"],
-    ] {
-        let mut want = cx.pint("", "", args, b"");
-        assert!(want.files.remove("c/pint.cache").is_some(), "{args:?}");
-        let mut got = cx.ours("", "", args, b"");
-        if common::human(args) {
-            (want.stdout, got.stdout) = common::human_pair(
-                &want.stdout,
-                &got.stdout,
-                want.files.keys(),
-                got.files.keys(),
-            );
-        }
-        assert_eq!(got, want, "{args:?}");
-    }
-    cx.same_as("", "", &["--no-cache", "--test"], &["--test"], b"");
-}
-
-/// `--config` (relative to the cwd, from a subdirectory too), `--no-config` (beats `--config` and the cwd's
-/// pint.json), and a subdirectory's own pint.json is not looked up from its parent.
 #[test]
 fn config_flags_match_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -393,12 +336,10 @@ printf '{"preset":"empty","rules":{"array_syntax":true},"notName":["Keep.php"]}'
         ("", &["--no-config", "--preset=psr12", "--test"]),
         ("sub", &["--config=../cfg/other.json", "--test"]),
         ("sub", &["--test"]),
-        // A missing --config file is silently ignored: laravel preset.
         ("", &["--config=missing.json"]),
     ] {
         cx.same(cfg, sub, args);
     }
-    // A broken pint.json: Pint's error box; `pun migrate` stops with the same message (with the absolute path).
     let bad = &format!("{cfg}\nprintf 'not json' > bad.json");
     let r = cx.pint(bad, "", &["--config=bad.json"], b"");
     assert_eq!(r.code, Some(1));
@@ -425,8 +366,6 @@ printf '{"preset":"empty","rules":{"array_syntax":true},"notName":["Keep.php"]}'
     );
 }
 
-/// `--output-to-file` writes only with `--output-format` or `--format`; an unwritable target is PHP's
-/// file_put_contents warning as an uncaught exception, after the normal output.
 #[test]
 fn output_to_file_matches_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -452,7 +391,6 @@ fn output_to_file_matches_pint() {
     ] {
         cx.same("bad app/New.php", "", args);
     }
-    // Run errors: exit 2 for Pun (output.md §2), Pint's box kept for -q and --format runs.
     let formats = "use json, txt, agent, checkstyle, junit, xml, gitlab or github";
     for (args, message, pun) in [
         (
@@ -500,8 +438,6 @@ fn output_to_file_matches_pint() {
     }
 }
 
-/// Stdin (`-`, `--stdin-filename` alone, or Pun's `--stdin`): fixed code on stdout; excluded names, invalid code and
-/// dry runs (`--test`/`--bail`, which leave Pint's temp file alone) echo the input; always exit 0.
 #[test]
 fn stdin_matches_pint() {
     let Some(cx) = Cx::new() else { return };
@@ -536,8 +472,6 @@ fn stdin_matches_pint() {
             cx.same_as(cfg, "", args, pint_args, input);
         }
     }
-    // A fixer exception (a panic in Pun) echoes the input too. combine_consecutive_unsets is a lint rule in Pun, so
-    // `pun format` leaves it out and `pun check --fix` is the run that throws.
     let cfg =
         r#"printf '{"preset":"empty","rules":{"combine_consecutive_unsets":true}}' > pint.json"#;
     let input = b"<?php unset($a ); unset( $b );\nunset($x, ); unset( $y);";
@@ -550,16 +484,12 @@ fn stdin_matches_pint() {
     assert_eq!(run(&pun, cfg, "", &["-"], input, Some(&[])), r);
 }
 
-/// Pun's `--staged` (`git diff --cached`) and `--since=<ref>` (`git diff <ref>` against the worktree, no merge-base,
-/// plus untracked) select exactly what Pint processes when given that file list.
 #[test]
 fn staged_and_since_match_pint_on_the_same_files() {
     let Some(cx) = Cx::new() else { return };
     let txt = ["--test", "--format=txt"];
-    // Our list is in finder order, Pint's in argument order.
     for (flag, files) in [
         ("--staged", &["app/Renamed.php", "sub/T.php"][..]),
-        // main's own commits count too (Keep.php); MainOnly.php is absent from the worktree.
         (
             "--since=main",
             &[
@@ -582,7 +512,6 @@ fn staged_and_since_match_pint_on_the_same_files() {
         );
         assert_eq!(listed(&got).len(), files.len(), "{flag}");
     }
-    // An unknown ref aborts like Pint's `--diff=nope`, naming `--since`.
     let got = cx.ours(DIVERGED, "", &["--since=nope"], b"");
     assert_eq!(
         (common::strip_ansi(&got.stderr), got.code),

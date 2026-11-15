@@ -1,13 +1,3 @@
-//! `lint/phpunit/no-flipped-assertion`, ported from rector-phpunit's `FlipAssertRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertSame($result, 'expected')` becomes `assertSame('expected', $result)`: when only the second argument is an
-//! expected value (a scalar, a constant or a class constant, negated or not, an enum case's `->value` or `->name`, a
-//! `new` or a concatenation of such values, or an array of them), or the second is an array of such values or
-//! variables and the first is a call, a property or an item read, the first two arguments swap. Named arguments
-//! stay. Likewise for `assertNotSame`, `assertEquals`, `assertNotEquals`, `assertStringContainsString`, and the
-//! `Canonicalizing`, `IgnoringCase` and `WithDelta` forms of `assertEquals` and `assertNotEquals`.
-
 use mago_syntax::cst::{
     Access, Argument, ArrayElement, BinaryOperator, Call, ClassLikeConstantSelector,
     ClassLikeMemberSelector, CompositeString, Expression, Node, NodeKind, TokenSeparatedSequence,
@@ -59,7 +49,6 @@ impl Rule for NoFlippedAssertion {
         let (Some(first), Some(second)) = (args.first().copied(), args.get(1).copied()) else {
             return;
         };
-        // named args keep their meaning regardless of position
         if matches!(first, Argument::Named(_)) || matches!(second, Argument::Named(_)) {
             return;
         }
@@ -83,22 +72,17 @@ impl Rule for NoFlippedAssertion {
     }
 }
 
-/// `isFlipNeeded`.
 fn is_flip_needed(first: &Expression<'_>, second: &Expression<'_>) -> bool {
-    // correct location
     if is_expected_value(first, false) {
         return false;
     }
     if is_expected_value(second, false) {
         return true;
     }
-    // e.g. assertSame($obj->getValues(), [$a, $b])
     array_elements(second).is_some_and(|items| is_literal_array(items, true))
         && is_computed_expr(first)
 }
 
-/// `isExpectedValue`: with `allow_variables`, a variable too (as an array's key or value, not inside a concatenation
-/// or a `new`).
 fn is_expected_value(expr: &Expression<'_>, allow_variables: bool) -> bool {
     let expr = unparenthesize(expr);
     if is_scalar_value(expr) || is_enum_case_value(expr) {
@@ -106,7 +90,6 @@ fn is_expected_value(expr: &Expression<'_>, allow_variables: bool) -> bool {
     }
     match expr {
         Expression::Variable(_) => allow_variables,
-        // `isNewWithLiteralArgs`: a written class name, its arguments expected values, none named or unpacked
         Expression::Instantiation(new) => {
             matches!(
                 new.class,
@@ -130,7 +113,6 @@ fn is_expected_value(expr: &Expression<'_>, allow_variables: bool) -> bool {
     }
 }
 
-/// The items of a php-parser `Array_` (`[...]` or `array(...)`).
 fn array_elements<'a>(
     expr: &'a Expression<'a>,
 ) -> Option<&'a TokenSeparatedSequence<'a, ArrayElement<'a>>> {
@@ -141,7 +123,6 @@ fn array_elements<'a>(
     }
 }
 
-/// `isLiteralArray`: no item unpacked, each key and value an expected value.
 fn is_literal_array(
     items: &TokenSeparatedSequence<'_, ArrayElement<'_>>,
     allow_variables: bool,
@@ -156,7 +137,6 @@ fn is_literal_array(
     })
 }
 
-/// `isComputedExpr`: a call, a property fetch (nullsafe or static) or an array item read.
 fn is_computed_expr(expr: &Expression<'_>) -> bool {
     matches!(
         unparenthesize(expr),
@@ -168,8 +148,6 @@ fn is_computed_expr(expr: &Expression<'_>) -> bool {
     )
 }
 
-/// `isEnumCaseValue`: `Status::Active->value` or `->name` (the names in any letter case), on a class constant other
-/// than `::class`.
 fn is_enum_case_value(expr: &Expression<'_>) -> bool {
     let Expression::Access(Access::Property(fetch)) = expr else {
         return false;
@@ -188,8 +166,6 @@ fn is_enum_case_value(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `isScalarValue`: a php-parser `Scalar` (a literal, a magic constant, an interpolated string), a constant or a
-/// class constant, optionally negated (`-1`, `-self::LIMIT`).
 fn is_scalar_value(expr: &Expression<'_>) -> bool {
     match unparenthesize(expr) {
         Expression::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Negation(_)) => {

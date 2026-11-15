@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\NamespaceNotation\BlankLinesBeforeNamespaceFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::{Result, bail};
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -18,7 +17,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 impl BlankLinesBeforeNamespaceFixer {
-    /// Make sure # of line breaks prefixing namespace is within given range.
     fn fix_lines_before_namespace(
         &self,
         tokens: &mut Tokens,
@@ -26,12 +24,10 @@ impl BlankLinesBeforeNamespaceFixer {
         expected_min: usize,
         expected_max: usize,
     ) {
-        // Let's determine the total numbers of new lines before the namespace and the opening token
         let mut opening_token_index = None;
         let mut preceding_newlines = 0;
         let mut newline_in_opening = false;
         let mut opening_token: Option<Token> = None;
-        // `index - i` never underflows: a T_NAMESPACE at index 1 is preceded by the T_OPEN_TAG, which breaks at i = 1.
         for i in 1..=2 {
             let token = &tokens[index - i];
             if token.is_kind(T_OPEN_TAG) {
@@ -118,7 +114,6 @@ impl Fixer for BlankLinesBeforeNamespaceFixer {
         "blank_lines_before_namespace"
     }
     fn priority(&self) -> i32 {
-        // Must run after BlankLineAfterOpeningTagFixer, HeaderCommentFixer.
         -31
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -177,7 +172,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    // Messages from the real fixer's configure() (PHP-CS-Fixer 3.95).
     #[test]
     fn configure_validation() {
         let err = |c: Value| fixer().configure(&c).unwrap_err().to_string();

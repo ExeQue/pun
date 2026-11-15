@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\BracesPositionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::indentation_trait::get_line_indentation;
 use crate::analyzers::preg::Preg;
@@ -24,7 +23,6 @@ enum Position {
     SameLine,
 }
 
-/// Which `*_opening_brace` option applies to a brace.
 #[derive(Clone, Copy)]
 enum Brace {
     ControlStructures,
@@ -64,9 +62,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 
 impl BracesPositionFixer {
     fn find_parenthesis_end(tokens: &Tokens, structure_token_index: usize) -> usize {
-        let next_index = tokens
-            .get_next_meaningful_token(structure_token_index)
-            .unwrap();
+        let next_index = tokens.next_meaningful(structure_token_index);
         if !tokens[next_index].equals("(", true) {
             return structure_token_index;
         }
@@ -110,8 +106,6 @@ impl Fixer for BracesPositionFixer {
         "braces_position"
     }
     fn priority(&self) -> i32 {
-        // Must run before SingleLineEmptyBodyFixer, StatementIndentationFixer.
-        // Must run after ControlStructureBracesFixer, MultilinePromotedPropertiesFixer, NoMultipleStatementsPerLineFixer.
         -2
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -146,7 +140,6 @@ impl Fixer for BracesPositionFixer {
             r.choice("anonymous_classes_opening_brace", SAME_LINE, POSITIONS)?;
         self.allow_single_line_empty_anonymous_classes =
             r.bool("allow_single_line_empty_anonymous_classes", true)?;
-        // Future::getV4OrV3(false, true)
         self.allow_single_line_anonymous_functions =
             r.bool("allow_single_line_anonymous_functions", true)?;
         Ok(())
@@ -199,29 +192,22 @@ impl Fixer for BracesPositionFixer {
                 }
             } else if is(CONTROL_STRUCTURE_TOKENS) {
                 let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
-                open_brace_index = tokens
-                    .get_next_meaningful_token(parenthesis_end_index)
-                    .unwrap();
+                open_brace_index = tokens.next_meaningful(parenthesis_end_index);
                 if !tokens[open_brace_index].equals("{", true) {
                     continue;
                 }
                 position_option = Brace::ControlStructures;
             } else if kind == Some(T_VARIABLE) {
-                // handle default value - explicitly skip array as default value
-                let mut next_meaningful_index = tokens.get_next_meaningful_token(index).unwrap();
+                let mut next_meaningful_index = tokens.next_meaningful(index);
                 if tokens[next_meaningful_index].equals("=", true) {
-                    next_meaningful_index = tokens
-                        .get_next_meaningful_token(next_meaningful_index)
-                        .unwrap();
+                    next_meaningful_index = tokens.next_meaningful(next_meaningful_index);
                     if tokens[next_meaningful_index].is_kind(CT_ARRAY_BRACKET_OPEN) {
                         index = tokens.find_block_end(
                             Tokens::BLOCK_TYPE_ARRAY_BRACKET,
                             next_meaningful_index,
                         );
                     } else if tokens[next_meaningful_index].is_kind(T_ARRAY) {
-                        next_meaningful_index = tokens
-                            .get_next_meaningful_token(next_meaningful_index)
-                            .unwrap();
+                        next_meaningful_index = tokens.next_meaningful(next_meaningful_index);
                         if tokens[next_meaningful_index].equals("(", true) {
                             index = tokens.find_block_end(
                                 Tokens::BLOCK_TYPE_PARENTHESIS,
@@ -254,13 +240,11 @@ impl Fixer for BracesPositionFixer {
                 position_option = Brace::ControlStructures;
             } else if kind == Some(T_STRING) {
                 let parenthesis_end_index = Self::find_parenthesis_end(tokens, index);
-                open_brace_index = tokens
-                    .get_next_meaningful_token(parenthesis_end_index)
-                    .unwrap();
+                open_brace_index = tokens.next_meaningful(parenthesis_end_index);
                 if !tokens[open_brace_index].equals("{", true) {
                     continue;
                 }
-                let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev_index = tokens.prev_meaningful(index);
                 if !tokens[prev_index].equals_any(
                     &[
                         "}".into(),
@@ -281,7 +265,6 @@ impl Fixer for BracesPositionFixer {
             let mut close_brace_index =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, open_brace_index);
             let mut add_newlines_inside_braces = true;
-            // `$index < null` is always false in PHP
             if allow_single_line
                 || allow_single_line_if_empty
                 || allow_single_line_until.is_some_and(|u| index < u)
@@ -307,7 +290,7 @@ impl Fixer for BracesPositionFixer {
             if add_newlines_inside_braces
                 && !Self::is_followed_by_new_line(tokens, open_brace_index)
                 && !Self::has_comment_on_same_line(tokens, open_brace_index)
-                && !tokens[tokens.get_next_meaningful_token(open_brace_index).unwrap()]
+                && !tokens[tokens.next_meaningful(open_brace_index)]
                     .is_kind(T_CLOSE_TAG)
             {
                 let whitespace =
@@ -322,9 +305,7 @@ impl Fixer for BracesPositionFixer {
                 whitespace = [line_ending, &get_line_indentation(tokens, index)].concat();
                 let mut previous_token_index = open_brace_index;
                 loop {
-                    previous_token_index = tokens
-                        .get_prev_meaningful_token(previous_token_index)
-                        .unwrap();
+                    previous_token_index = tokens.prev_meaningful(previous_token_index);
                     if !tokens[previous_token_index].is_given_kind(&[
                         CT_TYPE_COLON,
                         CT_NULLABLE_TYPE,
@@ -357,7 +338,7 @@ impl Fixer for BracesPositionFixer {
             let mut move_brace_to_index: Option<usize> = None;
             if whitespace == b" " {
                 let previous_meaningful_index =
-                    tokens.get_prev_meaningful_token(open_brace_index).unwrap();
+                    tokens.prev_meaningful(open_brace_index);
                 let mut index_before_open_brace = open_brace_index - 1;
                 while index_before_open_brace > previous_meaningful_index {
                     if !tokens[index_before_open_brace].is_comment() {
@@ -371,7 +352,7 @@ impl Fixer for BracesPositionFixer {
                     } else if index_before_open_brace == previous_meaningful_index {
                         move_brace_to_index = Some(previous_meaningful_index + 1);
                     }
-                    index_before_open_brace -= 1; // >= previous_meaningful_index >= 1: no underflow
+                    index_before_open_brace -= 1;
                 }
             } else if !tokens[open_brace_index - 1].is_whitespace(None)
                 || !Preg::r#match("/\\R/", tokens[open_brace_index - 1].get_content())
@@ -440,7 +421,7 @@ impl Fixer for BracesPositionFixer {
             }
 
             if !add_newlines_inside_braces
-                || tokens[tokens.get_prev_meaningful_token(close_brace_index).unwrap()]
+                || tokens[tokens.prev_meaningful(close_brace_index)]
                     .is_kind(T_OPEN_TAG)
             {
                 continue;
@@ -465,7 +446,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    // Both rejected by the real fixer's configure() (undefined option / value not allowed).
     #[test]
     fn configure_rejects_invalid_options() {
         assert!(fixer().configure(&json!({"foo": true})).is_err());

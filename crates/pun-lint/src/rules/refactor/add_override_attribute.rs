@@ -1,23 +1,10 @@
-//! `lint/refactor/add-override-attribute`, ported from Rector 2.8.4's
-//! `AddOverrideAttributeToOverriddenPropertiesRector` (rules/Php85/Rector/Property), from PHP 8.5.
-//!
-//! In a named class the codebase knows, a property statement that is not `private` and has no attribute naming
-//! `Override` (resolved as written, without regard to case) gets `#[\Override]` when one of its properties overrides
-//! one of a parent class: the nearest parent class that has a native property of that name (declared there, in a
-//! trait it uses, promoted in its constructor, or inherited) has it non-private. Interfaces are not parents.
-//! Promoted constructor properties of the class itself are not property statements and are left alone.
-//!
-//! The attribute is printed as php-parser's format-preserving printer adds an attribute group: after the last
-//! attribute list on a line of its own, or before the modifiers with a line break after it, the new line indented as
-//! wide as the property's line, a tab counting four spaces (`TokenStream::getIndent`).
-
 use mago_syntax::cst::{ClassLikeMember, Modifier, Node, NodeKind, Property};
 use pun_problem::{Edit, Safety, Span};
 
-use super::super::class_method::qualified;
-use super::super::rector_batch5::resolve_class_name;
-use super::super::rector_stmts::line_indent;
 use super::super::types::facts::facts;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::names::resolve_class_name;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -28,8 +15,8 @@ impl Rule for AddOverrideAttribute {
         "lint/refactor/add-override-attribute"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80500
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80500)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -45,7 +32,6 @@ impl Rule for AddOverrideAttribute {
     ) {
         let Node::Class(class) = node else { return };
         let codebase = &facts(ctx).codebase;
-        // `getParents()`: the parent class, its parent, and so on, as far as the codebase knows them.
         let mut parents = Vec::new();
         let mut next = codebase
             .get_class_like(qualified(ancestors, class.name.value).as_bytes())
@@ -57,7 +43,6 @@ impl Rule for AddOverrideAttribute {
             parents.push(parent);
             next = parent.direct_parent_class;
         }
-        // `isPropertyOverridden()`: the first parent with a native property of that name decides.
         let overridden = |name: &[u8]| {
             parents.iter().find_map(|parent| {
                 let (_, declaring) = parent

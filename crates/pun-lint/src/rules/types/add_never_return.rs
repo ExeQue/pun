@@ -1,7 +1,3 @@
-//! `lint/types/add-never-return-type`, ported from Rector 2.8.4's `ReturnNeverTypeRector` (rules/TypeDeclaration/
-//! Rector/ClassMethod): a function or method that never returns gets the `never` return type (see [`super::never`]).
-//! A public method of a PHPUnit test class that already has a return type is left alone.
-
 use mago_syntax::cst::{MethodBody, Modifier, Node, NodeKind};
 
 use super::class_scope;
@@ -17,8 +13,8 @@ impl Rule for AddNeverReturn {
         "lint/types/add-never-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NEVER_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NEVER_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -44,7 +40,6 @@ impl Rule for AddNeverReturn {
                 let MethodBody::Concrete(body) = &method.body else {
                     return;
                 };
-                // isTestClassMethodWithFilledReturnType: public is no visibility modifier or `public`
                 let public = !method
                     .modifiers
                     .iter()

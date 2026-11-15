@@ -1,13 +1,7 @@
-//! `lint/laravel/prefer-date-facade`, ported from rector-laravel 2.7.3's `CarbonToDateFacadeRector`
-//! (src/Rector/StaticCall).
-//!
-//! A static call on `Carbon\Carbon` or `Illuminate\Support\Carbon` (or a class the codebase knows extends one) becomes
-//! the same call on `\Illuminate\Support\Facades\Date`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{argument_texts, call, class_name, is_a, replace};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

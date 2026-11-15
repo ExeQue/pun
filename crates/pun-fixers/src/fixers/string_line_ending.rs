@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\StringLineEndingFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::Kind::*;

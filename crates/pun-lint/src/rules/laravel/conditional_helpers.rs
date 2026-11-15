@@ -1,12 +1,10 @@
-//! The matching and safety checks shared by rector-laravel's AbortIf, ReportIf and ThrowIf rectors.
-
 use mago_syntax::cst::{Access, BinaryOperator, Expression, Node, Variable};
 
 use super::{argument_texts, member_name, replace};
-use crate::rules::php_parser::{line_indent, tokens};
-use crate::rules::rector_code_quality::{call_to, operand, text};
-use crate::rules::rector_conditions::{comments_between, print_comments};
-use crate::rules::rector_stmts::{expression, if_view};
+use crate::rules::support::conditions::{comments_between, print_comments};
+use crate::rules::support::expressions::{call_to, operand, text};
+use crate::rules::support::statement_edits::{expression, if_view};
+use crate::rules::support::statements::{line_indent, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report};
 
@@ -51,7 +49,6 @@ pub(super) fn visit(node: Node<'_, '_>, ctx: &Context<'_>, helper: &str, out: &m
         Expression::UnaryPrefix(u) if u.operator.is_not() => (u.operand, "unless"),
         other => (other, "if"),
     };
-    // An assignment or an `and`/`or` condition becomes an argument, not a top-level expression.
     let mut args_text = vec![operand(ctx, condition, 200, None)];
     args_text.extend(args.into_iter().map(str::to_string));
     let span = node_span(if_);

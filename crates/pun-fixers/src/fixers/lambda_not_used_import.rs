@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\LambdaNotUsedImportFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -8,10 +7,8 @@ use indexmap::IndexMap;
 use std::collections::BTreeMap;
 use std::path::Path;
 
-/// Insertion-ordered `array<string, int>`.
 type Imports = IndexMap<Vec<u8>, usize>;
 
-/// `unset($imports[$key])`, true when it was set.
 fn unset(imports: &mut Imports, key: &[u8]) -> bool {
     imports.shift_remove(key).is_some()
 }
@@ -106,7 +103,7 @@ fn find_not_used_lambda_imports(
             return Imports::new();
         }
         if token.equals("$", true)
-            && tokens[tokens.get_next_meaningful_token(index).unwrap()].is_kind(Kind::T_VARIABLE)
+            && tokens[tokens.next_meaningful(index)].is_kind(Kind::T_VARIABLE)
         {
             return Imports::new();
         }
@@ -187,12 +184,12 @@ fn get_lambda_use_index(tokens: &Tokens, index: usize) -> Option<usize> {
     if !tokens[index].is_kind(Kind::T_FUNCTION) || !TokensAnalyzer::new(tokens).is_lambda(index) {
         return None;
     }
-    let mut i = tokens.get_next_meaningful_token(index).unwrap();
+    let mut i = tokens.next_meaningful(index);
     if tokens[i].is_kind(Kind::CT_RETURN_REF) {
-        i = tokens.get_next_meaningful_token(i).unwrap();
+        i = tokens.next_meaningful(i);
     }
     i = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, i);
-    i = tokens.get_next_meaningful_token(i).unwrap();
+    i = tokens.next_meaningful(i);
     tokens[i].is_kind(Kind::CT_USE_LAMBDA).then_some(i)
 }
 
@@ -202,14 +199,13 @@ fn filter_arguments(tokens: &Tokens, arguments: &BTreeMap<usize, usize>) -> Impo
     for (&start, &end) in arguments {
         let info = ArgumentsAnalyzer.get_argument_info(tokens, start, end);
         let argument = info.name_index.unwrap();
-        if tokens[tokens.get_prev_meaningful_token(argument).unwrap()].equals("&", true) {
+        if tokens[tokens.prev_meaningful(argument)].equals("&", true) {
             continue;
         }
         let content = tokens[argument].get_content();
         if content == b"$this" || a.is_super_global(argument) {
             continue;
         }
-        // PHP array assignment keeps the first key's position
         imports.insert(content.to_vec(), argument);
     }
     imports
@@ -218,11 +214,11 @@ fn filter_arguments(tokens: &Tokens, arguments: &BTreeMap<usize, usize>) -> Impo
 fn clear_imports(tokens: &mut Tokens, imports: impl Iterator<Item = usize>) {
     for remove_index in imports {
         tokens.clear_token_and_merge_surrounding_whitespace(remove_index);
-        let prev = tokens.get_prev_meaningful_token(remove_index).unwrap();
+        let prev = tokens.prev_meaningful(remove_index);
         if tokens[prev].equals(",", true) {
             tokens.clear_token_and_merge_surrounding_whitespace(prev);
         } else if tokens[prev].equals("(", true) {
-            let next = tokens.get_next_meaningful_token(remove_index).unwrap();
+            let next = tokens.next_meaningful(remove_index);
             tokens.clear_token_and_merge_surrounding_whitespace(next);
         }
     }

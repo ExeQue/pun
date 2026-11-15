@@ -1,9 +1,7 @@
-//! `SessionVariableToSessionFacadeRector` from rector-laravel 2.7.3.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Variable};
 
 use super::{call, in_string, is_by_ref_argument, is_written, replace};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -37,7 +35,6 @@ impl Rule for PreferSessionFacade {
                 let Some(key) = session_key(a.lhs) else {
                     return;
                 };
-                // PhpParser has a separate AssignRef node; it is not an ordinary assignment.
                 if a.rhs.is_reference() {
                     return;
                 }
@@ -53,7 +50,6 @@ impl Rule for PreferSessionFacade {
                 ("get", vec![text(ctx, a.index)])
             }
             Node::FunctionCall(f) => {
-                // The upstream replacement table compares getName() case-sensitively.
                 let method = match text(ctx, f.function).trim_start_matches('\\') {
                     "session_regenerate_id" => "regenerate",
                     "session_unset" => "flush",

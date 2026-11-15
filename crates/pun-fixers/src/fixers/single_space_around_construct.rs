@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\SingleSpaceAroundConstructFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -209,7 +208,7 @@ impl Fixer for SingleSpaceAroundConstructFixer {
                 continue;
             }
             if token.is_kind(T_STATIC)
-                && !tokens[tokens.get_next_meaningful_token(index).unwrap()].is_given_kind(&[
+                && !tokens[tokens.next_meaningful(index)].is_given_kind(&[
                     T_FN,
                     T_FUNCTION,
                     T_NS_SEPARATOR,
@@ -232,7 +231,7 @@ impl Fixer for SingleSpaceAroundConstructFixer {
                 continue;
             }
             if token.is_kind(T_CLASS)
-                && tokens[tokens.get_next_meaningful_token(index).unwrap()].equals("(", true)
+                && tokens[tokens.next_meaningful(index)].equals("(", true)
             {
                 continue;
             }

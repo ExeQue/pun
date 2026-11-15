@@ -1,7 +1,3 @@
-//! `lint/types/add-return-phpdoc-json-array`, ported from Rector 2.8.4's `AddReturnDocblockForJsonArrayRector`
-//! (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a function or method whose one `return` returns
-//! `json_decode($json, true)` (or Nette's `Json::decode($json, true)`) gets `@return array<string, mixed>`.
-
 use mago_syntax::cst::{
     Argument, ArgumentList, Call, ClassLikeMemberSelector, Expression, Literal, Node, NodeKind,
 };
@@ -12,8 +8,8 @@ use super::docblock::{FunctionLike, doc_report};
 use super::facts::facts;
 use super::names::resolve_class_name;
 use super::silent_void::Place;
-use crate::rules::phpdoc_writer::change_return_type;
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::change_return_type;
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
 use crate::{Context, Report, Rule};
 
 pub struct AddReturnPhpdocJsonArray;
@@ -37,7 +33,6 @@ impl Rule for AddReturnPhpdocJsonArray {
         let Some(f) = FunctionLike::of(node) else {
             return;
         };
-        // definitely not an array return
         if f.has_non_array_return_type() {
             return;
         }
@@ -72,14 +67,12 @@ impl Rule for AddReturnPhpdocJsonArray {
     }
 }
 
-/// `isJsonDecodeToArray()`.
 fn is_json_decode_to_array(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> bool {
     match expr {
         Expression::Call(Call::Function(call)) => {
             let Expression::Identifier(id) = call.function else {
                 return false;
             };
-            // `isName()` of a function name: the name as resolved or as written in the global namespace
             let written = String::from_utf8_lossy(id.value());
             let name = written.trim_start_matches('\\');
             let short = name.rsplit('\\').next().unwrap_or(name);
@@ -107,7 +100,6 @@ fn is_json_decode_to_array(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) ->
     }
 }
 
-/// `CallLike::getArg($name, $position)` is `true` (`ValueResolver::isTrue()`).
 fn is_true_arg(list: &ArgumentList<'_>, name: &str, position: usize) -> bool {
     let arg = list
         .arguments

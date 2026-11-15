@@ -1,6 +1,3 @@
-//! Finite dynamic ClassConstantRule selections. Expectations are PHPStan 2.3.1's public analyse output,
-//! including the upstream dynamic-access regression, without a gap exemption.
-
 use std::path::Path;
 
 use pun_analyse::{IDENTIFIERS, Project, analyse, run};
@@ -43,7 +40,6 @@ fn expected(errors: &Value) -> Vec<Key> {
             )
         })
         .collect();
-    // Public analyse output is ordered by file, line and message, independently of the rule walk order.
     want.sort_by(|a, b| (&a.0, a.1, &a.3).cmp(&(&b.0, b.1, &b.3)));
     want
 }
@@ -167,14 +163,11 @@ fn named_call_expression_guards_respect_purity_and_mutation() {
 #[test]
 fn dynamic_method_selector_identities_preserve_syntax_and_invalidation() {
     expression_guards("dynamic-method-guards", &[0, 1, 2, 7, 8, 9, 10]);
-    // Mago recovers missing method selectors, unlike PHPStan's parse failure. They must not acquire keys.
     expression_guards("dynamic-method-recovered", &[2]);
 }
 
 #[test]
 fn recovered_selectors_do_not_invent_a_constant_fetch() {
-    // PHPStan rejects the incomplete selector before running ClassConstantRule. Mago recovers the CST;
-    // the rule must still leave it without a fabricated constant name or receiver error.
     expression_guards("recovered-selector", &[2]);
 }
 

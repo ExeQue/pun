@@ -1,12 +1,9 @@
-//! Invalid literal-array targets still evaluate their children in PHPStan's running list-item scope.
-
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 
-// The capture stays complete. Purity collectors and other unrelated rules have separate owners.
 const CONTRACT: &[&str] = &[
     "variable.undefined",
     "variable.nameNotString",
@@ -68,7 +65,7 @@ fn check(level: u8, boundary_reads: bool) {
         })
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = level;
     project.options.set(
         pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -136,8 +133,6 @@ fn literal_array_targets_observe_reads_after_rhs_and_prior_list_items() {
 
 #[test]
 fn unreachable_and_dynamic_targets_keep_their_own_read_observations() {
-    // The full captures retain independent gaps: unreachable syntax-rule callbacks and
-    // dynamic-variable writes. This boundary checks only the reads, not those other owners.
     for level in [0, 1, 2, 7, 8, 9, 10] {
         check(level, true);
     }

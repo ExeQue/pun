@@ -1,6 +1,3 @@
-//! Whether a type's conversion is an `ErrorType`: `toString()`, `toNumber()`, `toInteger()`, `toFloat()` and
-//! `toBitwiseNotType()` (the casts and unary operators PHP rejects, e.g. an array to string). `toBoolean()` never is.
-
 use super::{Accessory, StrictMixed, Type, has_method, is_super_type_of, symbols};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -13,7 +10,6 @@ pub enum Cast {
     BitwiseNot,
 }
 
-/// `$t->toX() instanceof ErrorType`, with `sm` saying which `mixed` is a StrictMixedType (whose casts all fail).
 pub fn cast_is_error(t: &Type, cast: Cast, sm: StrictMixed) -> bool {
     use Cast as C;
     use Type as T;
@@ -51,7 +47,6 @@ pub fn cast_is_error(t: &Type, cast: Cast, sm: StrictMixed) -> bool {
         | T::Callable(_)
         | T::Iterable(..) => true,
         T::Object(..) | T::EnumCase(..) => object(t, cast),
-        // StaticType: only its string cast goes through the class
         T::Static(..) | T::This(_) => cast != C::String || object(t, cast),
         T::Array(..)
         | T::ConstArray(_)
@@ -69,7 +64,6 @@ pub fn cast_is_error(t: &Type, cast: Cast, sm: StrictMixed) -> bool {
                 )
         }
         T::Union(ts) => ts.iter().any(rec),
-        // BenevolentUnionType::unionTypes() drops the members whose cast is an error
         T::Benevolent(ts) => ts.iter().all(rec),
         T::Intersection(ts) => ts.iter().all(rec),
         T::Template(t) => rec(&t.bound),
@@ -77,8 +71,6 @@ pub fn cast_is_error(t: &Type, cast: Cast, sm: StrictMixed) -> bool {
     }
 }
 
-/// ObjectType's casts: numbers only of `SimpleXMLElement` and `GMP` (and an int of a curl handle), a string of a
-/// class with `__toString()` (or `BcMath\Number`, `GMP`).
 fn object(t: &Type, cast: Cast) -> bool {
     let is = |class: &str| is_super_type_of(&Type::Object(class.into(), vec![], false), t).yes();
     let numeric = is("SimpleXMLElement") || is("GMP");
@@ -94,7 +86,6 @@ fn object(t: &Type, cast: Cast) -> bool {
         }
         Cast::Integer => !(numeric || is("CurlHandle") || is("CurlMultiHandle")),
         Cast::Number | Cast::Float => !numeric,
-        // (a boolean cast never reaches here)
         Cast::BitwiseNot | Cast::Boolean => true,
     }
 }

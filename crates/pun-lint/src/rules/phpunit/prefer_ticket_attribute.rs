@@ -1,16 +1,9 @@
-//! `lint/phpunit/prefer-ticket-attribute`, ported from rector-phpunit's `TicketAnnotationToAttributeRector`
-//! (rules/AnnotationsToAttributes/Rector/Class_).
-//!
-//! A test class or test method's generic `@ticket` tags become `#[\PHPUnit\Framework\Attributes\Ticket('...')]`
-//! groups after its attributes, when that attribute class exists. Rector runs it only for PHPUnit 10 and later; Pun
-//! leaves that to the rule's group.
-
 use mago_syntax::cst::{LiteralStringKind, Node, NodeKind};
 use pun_problem::Safety;
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::is_in_test_class;
-use crate::rules::prefer_absolute_include::print_string;
+use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 
@@ -49,7 +42,6 @@ impl Rule for PreferTicketAttribute {
                 is_in_test_class(ctx, &scope, None)
             }
         };
-        // make sure the attribute class exists
         if !in_test_class
             || facts(ctx)
                 .codebase

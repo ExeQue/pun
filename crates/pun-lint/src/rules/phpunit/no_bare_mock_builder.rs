@@ -1,16 +1,9 @@
-//! `lint/phpunit/no-bare-mock-builder`, ported from rector-phpunit's `GetMockBuilderGetMockToCreateMockRector`
-//! (rules/PHPUnit60/Rector/MethodCall).
-//!
-//! `$this->getMockBuilder(X)->getMock()`, with any of `disableOriginalConstructor()`, `disableOriginalClone()`,
-//! `disableArgumentCloning()` and `disallowMockingUnknownTypes()` between, becomes `$this->createMock(X)` where `$this`
-//! is a `TestCase`. php-parser prints the new call with `getMockBuilder()`'s arguments.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{AnyCall, TEST_CASE, maybe_multiline, receiver_is};
 use crate::rules::laravel::is_variable;
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

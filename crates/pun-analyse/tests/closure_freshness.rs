@@ -1,6 +1,3 @@
-//! Current-file metadata must replace successful stale hits, not merely missing entries.
-//! Scalar expectations below follow the PHP declarations, independently of the scanner.
-
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
@@ -292,8 +289,6 @@ fn moved_nested_closures_keep_captures_defaults_references_and_variadics() {
         found.parameter_flags[0],
         [(true, false, false), (false, true, false)]
     );
-    // By-reference invocation can revisit the body. Each nested visit must use the
-    // same current signature, rather than asserting an analyzer replay count.
     assert!(found.parameters.len() >= 2);
     assert!(
         found.parameters[1..]
@@ -458,8 +453,6 @@ fn replacement_masks_deleted_keys_shares_project_backing_and_detaches_only_on_mu
             .unwrap()
     ));
 
-    // The existing prelude persistence API must serialize the effective table, not
-    // its shared hidden base or an implementation-specific overlay representation.
     let prelude = mago_prelude::Prelude {
         metadata: snapshot.clone(),
         ..Default::default()
@@ -469,7 +462,6 @@ fn replacement_masks_deleted_keys_shares_project_backing_and_detaches_only_on_mu
     assert!(!decoded.metadata.function_likes.contains_key(&old_key));
     assert_ne!(decoded.metadata, base);
 
-    // A later replacement cannot resurrect either the original or the preceding overlay.
     let empty = file("<?php // all anonymous functions removed\n");
     let deleted = snapshot.with_file_closures(empty.id, fresh_scan(&empty));
     assert_eq!(deleted.function_likes.len(), 2);
@@ -482,7 +474,6 @@ fn replacement_masks_deleted_keys_shares_project_backing_and_detaches_only_on_mu
     let all_deleted = deleted.with_file_closures(other.id, CodebaseMetadata::new());
     assert_eq!(all_deleted.function_likes.len(), 1);
 
-    // Mutable collection APIs materialize the effective view, never the hidden base.
     let mut detached = snapshot.clone();
     let key = (empty_word(), word("kept"));
     detached
@@ -875,7 +866,6 @@ fn moved_named_scopes_are_owned_but_real_duplicates_still_report() {
         }
     }
 
-    // A same-file duplicate must not be accepted merely because its FileId matches.
     for declaration in [
         "class Duplicate {} class Duplicate {}",
         "function duplicate() {} function duplicate() {}",
@@ -896,11 +886,8 @@ fn moved_named_scopes_are_owned_but_real_duplicates_still_report() {
     let before = "<?php class Methods { public function run() { $f = fn (int $value) => $value; } public function run() { $f = fn (string $value) => $value; } } $later = 29; $later;";
     let after = before.replace("<?php ", "<?php\n\n");
     let (found, _) = analyze(before, &after);
-    // The scanner selects the first method (entry.or_insert). A FileId-only
-    // shortcut would also publish the duplicate body's distinct string signature.
     assert_eq!(found.parameters, [vec!["int"]]);
 
-    // A declaration selected from a different project file keeps its ownership.
     let other = File::new(
         Cow::Borrowed(b"owner.php"),
         FileType::Host,

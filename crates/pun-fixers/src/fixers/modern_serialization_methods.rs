@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\ModernSerializationMethodsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::tokens_analyzer::{ClassyElementType, TokensAnalyzer};
@@ -26,13 +25,12 @@ impl Fixer for ModernSerializationMethodsFixer {
         tokens.is_any_token_kinds_found(&[T_CLASS, T_FUNCTION])
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // class index => method name (case-sensitive, as upstream's array keys) => name index
         let mut methods_by_class: BTreeMap<usize, HashMap<Vec<u8>, usize>> = BTreeMap::new();
         for (index, element) in TokensAnalyzer::new(tokens).get_classy_elements() {
             if element.kind != ClassyElementType::Method {
                 continue;
             }
-            let function_name_index = tokens.get_next_meaningful_token(index).unwrap();
+            let function_name_index = tokens.next_meaningful(index);
             methods_by_class
                 .entry(element.class_index)
                 .or_default()

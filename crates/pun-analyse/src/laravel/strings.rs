@@ -1,12 +1,7 @@
-//! The parts of Laravel's `Illuminate\Support\Str` that model and column names go through.
-
-/// `class_basename()`: the class name without its namespace.
 pub(super) fn class_basename(class: &str) -> &str {
     class.rsplit('\\').next().unwrap_or(class)
 }
 
-/// `Str::snake($value)` on a class name (no whitespace, so `ucwords` and the whitespace removal change nothing): `_`
-/// before every capital that follows a character, lowercase.
 pub(crate) fn snake(value: &str) -> String {
     let mut out = String::new();
     for c in value.chars() {
@@ -18,7 +13,6 @@ pub(crate) fn snake(value: &str) -> String {
     out
 }
 
-/// `Str::studly($value)`: words split on `-`, `_` and spaces, each capitalised, joined.
 pub(super) fn studly(value: &str) -> String {
     value
         .split(['-', '_', ' '])
@@ -31,7 +25,6 @@ pub(super) fn studly(value: &str) -> String {
         .collect()
 }
 
-/// `Str::camel($value)`: `studly` with the first letter lowercase.
 pub(crate) fn camel(value: &str) -> String {
     let s = studly(value);
     let mut c = s.chars();
@@ -40,7 +33,6 @@ pub(crate) fn camel(value: &str) -> String {
     })
 }
 
-/// `Str::pluralStudly($value)`: the last studly word made plural.
 pub(super) fn plural_studly(value: &str) -> String {
     let split = value
         .char_indices()
@@ -51,9 +43,6 @@ pub(super) fn plural_studly(value: &str) -> String {
     format!("{}{}", &value[..split], plural(&value[split..]))
 }
 
-/// `Str::plural($value)` for regular English nouns.
-// ponytail: Doctrine's English inflector also has irregular and uncountable words (person, child, data, ...) and
-// more suffix rules; these are its most common regular ones
 fn plural(word: &str) -> String {
     let lower = word.to_ascii_lowercase();
     let bytes = lower.as_bytes();
@@ -69,8 +58,6 @@ fn plural(word: &str) -> String {
     }
 }
 
-/// `Str::singular($value)` for regular English nouns.
-// ponytail: Doctrine's English inflector's irregular and uncountable words and its other suffix rules are not read
 pub(super) fn singular(word: &str) -> String {
     let lower = word.to_ascii_lowercase();
     if lower.ends_with("ies") && word.len() > 3 {

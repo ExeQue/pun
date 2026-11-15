@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-specific-will-method`, ported from rector-phpunit's `UseSpecificWillMethodRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `->will($this->returnValue($a))` becomes `->willReturn($a)`, and likewise for `returnArgument`,
-//! `returnCallback`, `returnSelf`, `returnValueMap`, `onConsecutiveCalls` and `throwException`;
-//! `->will(new ReturnValueMap($map))` becomes `->willReturnMap($map)`.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

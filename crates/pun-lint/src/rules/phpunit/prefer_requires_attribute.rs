@@ -1,11 +1,3 @@
-//! `lint/phpunit/prefer-requires-attribute`, ported from rector-phpunit's
-//! `RequiresAnnotationWithValueToAttributeRector` (rules/AnnotationsToAttributes/Rector/Class_) and its
-//! `RequiresAttributeFactory`.
-//!
-//! A test class or test method's generic `@requires <type> <value>` tags become `#[\PHPUnit\Framework\Attributes\
-//! Requires*(...)]` groups after its attributes, one per distinct tag value; a tag of another type stays. Rector runs
-//! it only for PHPUnit 10 and later; Pun leaves that to the rule's group.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 
@@ -52,7 +44,6 @@ impl Rule for PreferRequiresAttribute {
         let Some(tags) = named_tags(ctx, ancestors, doc, "requires") else {
             return;
         };
-        // `handleRequires()`: the groups keyed by the tag's value, in the order of their first tag.
         let mut removed = vec![false; doc.len()];
         let mut keyed: Vec<(String, String)> = Vec::new();
         for (i, value) in tags {
@@ -84,14 +75,12 @@ impl Rule for PreferRequiresAttribute {
     }
 }
 
-/// `RequiresAttributeFactory::create()`: the group for a `@requires` value, printed; `None` for an unknown type.
 fn create(annotation_value: &str) -> Option<String> {
     let (kind, value) = match annotation_value.split_once(' ') {
         Some((kind, value)) => (kind, Some(value)),
         None => (annotation_value, None),
     };
     let at_least = |value: Option<&str>| -> Option<String> {
-        // only version is used, we need to prefix with >=
         value.map(|v| match v.as_bytes().first() {
             Some(c) if c.is_ascii_digit() => format!(">= {v}"),
             _ => v.to_string(),

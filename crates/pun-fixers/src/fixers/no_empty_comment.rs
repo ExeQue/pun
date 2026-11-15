@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\NoEmptyCommentFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -23,9 +22,6 @@ impl Fixer for NoEmptyCommentFixer {
         "no_empty_comment"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoExtraBlankLinesFixer, NoTrailingWhitespaceFixer, NoWhitespaceInBlankLineFixer,
-        // NoWhitespaceInEmptyArrayFixer.
-        // Must run after PhpdocToCommentFixer.
         2
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -49,7 +45,6 @@ impl Fixer for NoEmptyCommentFixer {
     }
 }
 
-/// `[blockStart, blockEnd, isEmpty]`.
 fn get_comment_block(tokens: &Tokens, mut index: usize) -> (usize, usize, bool) {
     let comment_type = get_comment_type(tokens[index].get_content());
     let mut empty = is_empty_comment(tokens[index].get_content());
@@ -64,7 +59,6 @@ fn get_comment_block(tokens: &Tokens, mut index: usize) -> (usize, usize, bool) 
             if comment_type != get_comment_type(tokens[index].get_content()) {
                 break;
             }
-            // don't retest if already known the block not being empty
             if empty {
                 empty = is_empty_comment(tokens[index].get_content());
             }
@@ -99,11 +93,8 @@ fn get_line_break_count(tokens: &Tokens, white_start: usize, white_end: usize) -
 fn is_empty_comment(content: &[u8]) -> bool {
     Preg::r#match(
         match get_comment_type(content) {
-            // single line comment starting with '#'
             CommentType::Hash => r"|^#\s*$|",
-            // comment starting with '/*' and ending with '*/' (but not a PHPDoc)
             CommentType::SlashAsterisk => r"|^/\*[\s\*]*\*+/$|",
-            // single line comment starting with '//'
             CommentType::DoubleSlash => r"|^//\s*$|",
         },
         content,

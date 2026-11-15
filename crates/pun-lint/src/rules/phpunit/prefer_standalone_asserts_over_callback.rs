@@ -1,27 +1,12 @@
-//! `lint/phpunit/prefer-standalone-asserts-over-callback`, ported from rector-phpunit's
-//! `WithCallbackIdenticalToStandaloneAssertsRector` (rules/CodeQuality/Rector/MethodCall), with
-//! `FromBinaryAndAssertExpressionsFactory` and `ClosureUsesResolver::resolveFromArrowFunction`.
-//!
-//! In a test class, a `->with(..., $any->callback(fn), ...)` argument whose closure or arrow function returns a
-//! comparison (`===`, `==`, `instanceof`, `isset($a[k])`, `array_key_exists()`, or a `&&` chain of those and method
-//! calls) gets a `void` closure that asserts each part (`assertSame`, `assertEquals`, `assertCount`,
-//! `assertInstanceOf`, `assertArrayHasKey`, `assertTrue`) and ends with `return;`. A static closure calls
-//! `self::`; others call `$this->`.
-//!
-//! Printing follows php-parser. A closure that keeps statements besides its `return`s keeps its text: the `return`s go
-//! (with the comments before them), the assertions follow the last kept statement at the first statement's
-//! indentation, and the return type becomes `void`. A closure of `return`s only, and an arrow function (which becomes a
-//! closure that `use`s its outer variables, never static), is printed anew: parameters as `pMaybeMultiline` writes
-//! them, the body one level below the line the function starts on. Each moved expression keeps its text, reindented.
-
 use mago_syntax::cst::{
     Argument, ArrowFunction, Binary, BinaryOperator, Call, Closure, Construct, Expression, Node,
     NodeKind, Statement,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::{AnyCall, is_in_test_class, maybe_multiline, resolve};
-use crate::rules::rector_stmts::{List, block_list, line_indent, reindent};
+use crate::rules::support::statement_edits::{List, block_list, line_indent, reindent};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -84,7 +69,6 @@ enum FunctionLike<'a> {
     Arrow(&'a ArrowFunction<'a>),
 }
 
-/// An assertion to write: the method and its arguments, each an original expression or a new name.
 struct Assert<'a> {
     method: &'static str,
     args: Vec<AssertArg<'a>>,
@@ -95,7 +79,6 @@ enum AssertArg<'a> {
     New(String),
 }
 
-/// `matchCallbackArgAndFunctionLike`: `$any->callback(<closure or arrow function>, ...)`.
 fn match_callback_function_like<'a>(value: &'a Expression<'a>) -> Option<FunctionLike<'a>> {
     let Expression::Call(Call::Method(call)) = unparenthesize(value) else {
         return None;
@@ -111,7 +94,6 @@ fn match_callback_function_like<'a>(value: &'a Expression<'a>) -> Option<Functio
     }
 }
 
-/// `matchInnerSoleExpr`: a closure's first top-level `return`'s value, or an arrow function's expression.
 fn match_inner_sole_expr<'a>(function: &FunctionLike<'a>) -> Option<&'a Expression<'a>> {
     match function {
         FunctionLike::Closure(closure) => closure.body.statements.iter().find_map(|s| match s {
@@ -122,7 +104,6 @@ fn match_inner_sole_expr<'a>(function: &FunctionLike<'a>) -> Option<&'a Expressi
     }
 }
 
-/// `resolveInnerReturnJoinedExprs`; `None` for upstream's `[]`.
 fn resolve_inner_return_joined_exprs<'a>(
     function: &FunctionLike<'a>,
 ) -> Option<Vec<&'a Expression<'a>>> {
@@ -143,13 +124,11 @@ fn resolve_inner_return_joined_exprs<'a>(
     accepted.then(|| vec![inner])
 }
 
-/// `extractJoinedExprs`: the operands of a chain of `&&`, right to left; `None` when a right operand is `||`.
 fn extract_joined_exprs<'a>(binary: &'a Binary<'a>) -> Option<Vec<&'a Expression<'a>>> {
     let mut joined_exprs = Vec::new();
     let mut current = binary;
     loop {
         let right = unparenthesize(current.rhs);
-        // is binary op, but not "&&"
         if matches!(right, Expression::Binary(b) if matches!(b.operator, BinaryOperator::Or(_))) {
             return None;
         }
@@ -165,7 +144,6 @@ fn extract_joined_exprs<'a>(binary: &'a Binary<'a>) -> Option<Vec<&'a Expression
     }
 }
 
-/// A function call named `name` (`isName`: ASCII case-insensitive, a leading `\` aside), with its arguments' values.
 fn function_call_named<'a>(
     expr: &'a Expression<'a>,
     name: &str,
@@ -187,12 +165,10 @@ fn function_call_named<'a>(
     })
 }
 
-/// `FromBinaryAndAssertExpressionsFactory::create`, without the call: the assertions in the order of the operands.
 fn create<'a>(ancestors: &[Node<'_, '_>], exprs: &[&'a Expression<'a>]) -> Option<Vec<Assert<'a>>> {
     let mut assert_method_calls = Vec::new();
     let assert = |method, args| Assert { method, args };
     for &expr in exprs {
-        // implicit bool compare
         if let Expression::Call(Call::Method(_)) = expr {
             assert_method_calls.push(assert("assertTrue", vec![AssertArg::Expr(expr)]));
             continue;
@@ -208,7 +184,6 @@ fn create<'a>(ancestors: &[Node<'_, '_>], exprs: &[&'a Expression<'a>]) -> Optio
         if let Expression::Construct(Construct::Isset(isset)) = expr {
             for value in &isset.values {
                 let Expression::ArrayAccess(access) = unparenthesize(value) else {
-                    // not supported yet
                     return None;
                 };
                 assert_method_calls.push(assert(
@@ -219,7 +194,6 @@ fn create<'a>(ancestors: &[Node<'_, '_>], exprs: &[&'a Expression<'a>]) -> Optio
             continue;
         }
         let Expression::Binary(binary) = expr else {
-            // not supported expr
             return None;
         };
         match binary.operator {
@@ -241,8 +215,6 @@ fn create<'a>(ancestors: &[Node<'_, '_>], exprs: &[&'a Expression<'a>]) -> Optio
             BinaryOperator::Identical(_) | BinaryOperator::Equal(_) => {
                 let (left, right) = (unparenthesize(binary.lhs), unparenthesize(binary.rhs));
                 if let Some(args) = function_call_named(left, "count") {
-                    // create assertCount() for an integer (php-parser's `Int_`: not one above `PHP_INT_MAX`), else
-                    // no change
                     if !matches!(
                         right,
                         Expression::Literal(mago_syntax::cst::Literal::Integer(i))
@@ -266,16 +238,13 @@ fn create<'a>(ancestors: &[Node<'_, '_>], exprs: &[&'a Expression<'a>]) -> Optio
                     vec![AssertArg::Expr(right), AssertArg::Expr(left)],
                 ));
             }
-            // not supported expr
             _ => return None,
         }
     }
-    // to keep order from binary
     assert_method_calls.reverse();
     Some(assert_method_calls)
 }
 
-/// The assertion statements and the final `return;`, each on a line of its own at `indent` (none for the first).
 fn statements(source: &str, asserts: &[Assert<'_>], is_static: bool, indent: &str) -> Vec<String> {
     let receiver = if is_static { "self::" } else { "$this->" };
     let mut lines: Vec<String> = asserts
@@ -299,7 +268,6 @@ fn statements(source: &str, asserts: &[Assert<'_>], is_static: bool, indent: &st
     lines
 }
 
-/// The new body `{ ... }` of a function printed anew at `indent`.
 fn body_anew(lines: &[String], indent: &str) -> String {
     let inner = format!("{indent}    ");
     format!(
@@ -322,7 +290,6 @@ fn params(
     )
 }
 
-/// The edit of a closure: kept and changed when it has statements besides its `return`s, else printed anew.
 fn closure_edit(ctx: &crate::Context<'_>, closure: &Closure<'_>, asserts: &[Assert<'_>]) -> Edit {
     let source = ctx.source;
     let span = node_span(closure);
@@ -356,7 +323,7 @@ fn closure_edit(ctx: &crate::Context<'_>, closure: &Closure<'_>, asserts: &[Asse
                     )
                 })
                 .collect();
-            text.push_str(&format!(" use ({})", uses.join(", ")));
+            let _ = write!(text, " use ({})", uses.join(", "));
         }
         text.push_str(": void ");
         text.push_str(&body_anew(
@@ -368,9 +335,6 @@ fn closure_edit(ctx: &crate::Context<'_>, closure: &Closure<'_>, asserts: &[Asse
     kept_closure_edit(ctx, closure, &list, &kept, asserts)
 }
 
-/// php-parser's format-preserving print of a closure whose statements lose their `return`s and gain the assertions:
-/// the head with a `void` return type, each kept statement with what stood before it, the assertions after the last
-/// kept one at its indentation, then what followed the last statement.
 fn kept_closure_edit(
     ctx: &crate::Context<'_>,
     closure: &Closure<'_>,
@@ -425,7 +389,6 @@ fn kept_closure_edit(
     Edit::new(span, text)
 }
 
-/// An arrow function becomes a closure, printed anew.
 fn arrow_edit(ctx: &crate::Context<'_>, arrow: &ArrowFunction<'_>, asserts: &[Assert<'_>]) -> Edit {
     let source = ctx.source;
     let span = node_span(arrow);
@@ -436,7 +399,7 @@ fn arrow_edit(ctx: &crate::Context<'_>, arrow: &ArrowFunction<'_>, asserts: &[As
     let uses = resolve_from_arrow_function(arrow);
     if !uses.is_empty() {
         let uses: Vec<String> = uses.iter().map(|u| format!("${u}")).collect();
-        text.push_str(&format!(" use ({})", uses.join(", ")));
+        let _ = write!(text, " use ({})", uses.join(", "));
     }
     text.push_str(": void ");
     text.push_str(&body_anew(
@@ -446,9 +409,6 @@ fn arrow_edit(ctx: &crate::Context<'_>, arrow: &ArrowFunction<'_>, asserts: &[As
     Edit::new(span, text)
 }
 
-/// `ClosureUsesResolver::resolveFromArrowFunction`: the names of the variables of the arrow function's expression
-/// (`findInstancesOfScoped`: not in a closure, a function or a class), its parameters' (ASCII case-insensitively) and
-/// `this` aside, each once, in the order found.
 fn resolve_from_arrow_function(arrow: &ArrowFunction<'_>) -> Vec<String> {
     let param_names: Vec<&[u8]> = arrow
         .parameter_list

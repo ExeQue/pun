@@ -1,6 +1,3 @@
-//! getConstantStrings/getConstantArrays from actual PHPStan 2.3.1, including raw union/intersection inputs.
-//! Expected values are fresh oracle operations, not descriptions of Pun's current extraction.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{Accessory, Level, Template, Type};
 use serde_json::{Value, json};

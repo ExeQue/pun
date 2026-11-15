@@ -1,6 +1,4 @@
-//! NEON, ported from nette/neon v3.3.4 (the version bundled in PHPStan 2.3.5): `Lexer`, `TokenStream`, `Parser`, the
-//! node `toValue()`s and `Encoder`. Error messages and positions are nette/neon's.
-
+use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 use pcre2::bytes::{Regex, RegexBuilder};
@@ -9,7 +7,6 @@ use crate::value::{Array, Entity, Key, Value, base_dec, float_json, numeric};
 
 pub const CHAIN: &str = "!!chain";
 
-/// nette/neon's `Exception` message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Error(String);
 
@@ -40,24 +37,15 @@ const COMMENT: &str = r"\#.*+";
 const NEWLINE: &str = r"\n++";
 const WHITESPACE: &str = r"[\t\ ]++";
 
-fn build(pattern: &str, caseless: bool, multi_line: bool, extended: bool, utf: bool) -> Regex {
-    RegexBuilder::new()
-        .caseless(caseless)
-        .multi_line(multi_line)
-        .extended(extended)
-        .utf(utf)
-        .ucp(utf)
-        .build(pattern)
-        .expect("static regex")
-}
-
-/// `~(String)|(Literal)|(Char)|(Comment)|(Newline)|(Whitespace)~Amixu`, anchored with `\G`. Matched on bytes, without
-/// `u`: every character the patterns name is ASCII, so a multi-byte character's bytes fall in the same negated
-/// classes and the tokens are the same, while PCRE2's UTF mode would re-validate the whole input at each token.
 static TOKENS: LazyLock<Regex> = LazyLock::new(|| {
-    let p =
-        format!(r"\G(?:({STRING})|({LITERAL})|({CHAR})|({COMMENT})|({NEWLINE})|({WHITESPACE}))");
-    build(&p, true, true, true, false)
+    RegexBuilder::new()
+        .caseless(true)
+        .multi_line(true)
+        .extended(true)
+        .build(&format!(
+            r"\G(?:({STRING})|({LITERAL})|({CHAR})|({COMMENT})|({NEWLINE})|({WHITESPACE}))"
+        ))
+        .unwrap()
 });
 static REQUIRES_DELIMITERS: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new()
@@ -65,8 +53,12 @@ static REQUIRES_DELIMITERS: LazyLock<Regex> = LazyLock::new(|| {
         .build(r"[\x00-\x1F]|^[+-.]?\d|^(true|false|yes|no|on|off|null)$(?!\n)")
         .unwrap()
 });
-static LITERAL_ONLY: LazyLock<Regex> =
-    LazyLock::new(|| build(&format!(r"^{LITERAL}$(?!\n)"), false, false, true, false));
+static LITERAL_ONLY: LazyLock<Regex> = LazyLock::new(|| {
+    RegexBuilder::new()
+        .extended(true)
+        .build(&format!(r"^{LITERAL}$(?!\n)"))
+        .unwrap()
+});
 static DATETIME: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"\G\d\d\d\d-\d\d?-\d\d?(?:(?:[Tt]| ++)\d\d?:\d\d:\d\d(?:\.\d*+)? *+(?:Z|[-+]\d\d?(?::?\d\d)?)?)?$(?!\n)",
@@ -163,7 +155,6 @@ impl Stream {
     }
 }
 
-/// `substr($s, 0, $n)` on a UTF-8 string (cut at a byte boundary, lossily if mid-character).
 fn substr_bytes(s: &str, n: usize) -> String {
     String::from_utf8_lossy(&s.as_bytes()[..s.len().min(n)]).into_owned()
 }
@@ -213,7 +204,6 @@ enum Node {
 struct Item {
     key: Option<Node>,
     value: Node,
-    /// `startTokenPos`
     start: usize,
 }
 
@@ -395,7 +385,6 @@ impl Parser {
         }
     }
 
-    /// `pos` is `$key->startTokenPos` (the stream position is never on whitespace or a comment).
     fn check_key(&mut self, key: &Node, pos: usize, keys: &mut Vec<String>) -> Result<(), Error> {
         let k = match key {
             Node::Str(s) => s.clone(),
@@ -410,13 +399,11 @@ impl Parser {
     }
 }
 
-/// `strncmp($next, $indent, min(strlen($next), strlen($indent))) === 0`.
 fn prefix_compatible(a: &str, b: &str) -> bool {
     let n = a.len().min(b.len());
     a.as_bytes()[..n] == b.as_bytes()[..n]
 }
 
-/// `LiteralNode::parse()`.
 fn parse_literal(value: &str, is_key: bool) -> Value {
     if !is_key {
         match value {
@@ -451,7 +438,6 @@ fn parse_literal(value: &str, is_key: bool) -> Value {
     Value::Str(value.to_string())
 }
 
-/// `StringNode::parse()`; `Err` carries the message (positioned by the caller).
 fn parse_string(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
     let multiline = b.len() > 3 && b[3] == b'\n';
@@ -485,7 +471,6 @@ fn parse_string(s: &str) -> Result<String, String> {
     unescape(&res)
 }
 
-/// `preg_replace_callback('#\\(?:ud[89ab][0-9a-f]{2}\\ud[c-f][0-9a-f]{2}|u[0-9a-f]{4}|x[0-9a-f]{2}|.)#i', ...)`.
 fn unescape(s: &str) -> Result<String, String> {
     let b = s.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(b.len());
@@ -519,7 +504,7 @@ fn unescape(s: &str) -> Result<String, String> {
         {
             4
         } else {
-            2 // one byte, as PCRE without /u: the message may show half a character
+            2
         };
         let sq = String::from_utf8_lossy(&s.as_bytes()[i..i + len]);
         let c = sq.as_bytes()[1];
@@ -549,7 +534,6 @@ fn unescape(s: &str) -> Result<String, String> {
         }
         i += len;
     }
-    // ponytail: PHP strings are bytes; a deprecated `\xHH` >= 0x80 is replaced by U+FFFD here.
     Ok(String::from_utf8(out)
         .unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
 }
@@ -585,7 +569,6 @@ fn to_value(node: Node) -> Value {
     }
 }
 
-/// `Neon::decode()`.
 pub fn decode(input: &str) -> Result<Value, Error> {
     let mut parser = Parser {
         s: tokenize(input)?,
@@ -593,14 +576,11 @@ pub fn decode(input: &str) -> Result<Value, Error> {
     Ok(to_value(parser.parse()?))
 }
 
-/// IgnoreErrorsConfigFixer::findNeonEntries(): each item of the `parameters: ignoreErrors:` list as decoded, with its
-/// `startLine`. None when the file does not decode or the list is not an array.
 pub fn ignore_errors_items(input: &[u8]) -> Option<Vec<(Value, usize)>> {
     let mut parser = Parser {
         s: tokenize(std::str::from_utf8(input).ok()?).ok()?,
     };
     let root = parser.parse().ok()?;
-    // Parser::initLines()
     let mut lines = Vec::with_capacity(parser.s.tokens.len() + 1);
     let mut line = 1;
     for token in &parser.s.tokens {
@@ -608,7 +588,6 @@ pub fn ignore_errors_items(input: &[u8]) -> Option<Vec<(Value, usize)>> {
         line += token.value.matches('\n').count();
     }
     lines.push(line);
-    // findNeonItem(): the first item with the key
     let find = |node: Node, key: &str| match node {
         Node::Array(items) => items.into_iter().find(|i| {
             i.key.as_ref().is_some_and(|k| match k {
@@ -631,19 +610,16 @@ pub fn ignore_errors_items(input: &[u8]) -> Option<Vec<(Value, usize)>> {
     )
 }
 
-/// `Neon::decode()` on bytes: nette/neon's lexer (`/u`) rejects invalid UTF-8 up front.
 pub fn decode_bytes(input: &[u8]) -> Result<Value, Error> {
     let s = std::str::from_utf8(input).map_err(|_| Error("Invalid UTF-8 sequence.".into()))?;
     decode(s)
 }
 
-/// `Lexer::requiresDelimiters()`.
 fn requires_delimiters(s: &str) -> bool {
     REQUIRES_DELIMITERS.is_match(s.as_bytes()).expect("regex")
         || !LITERAL_ONLY.is_match(s.as_bytes()).expect("regex")
 }
 
-/// `Neon::encode($value, $blockMode, $indentation)`.
 pub fn encode(value: &Value, block: bool, indentation: &str) -> String {
     Encoder { indentation }.node(value, block).to_string()
 }
@@ -652,7 +628,6 @@ struct Encoder<'a> {
     indentation: &'a str,
 }
 
-/// The encoder's node tree (`toString()` side of nette/neon's nodes).
 enum Out {
     Text(String),
     Block(String, Vec<(Option<Out>, Out)>),
@@ -734,10 +709,12 @@ impl std::fmt::Display for Out {
                 let mut res = String::new();
                 for (k, v) in items {
                     let s = v.to_string();
-                    res.push_str(&match k {
-                        Some(k) => format!("{k}:"),
-                        None => "-".into(),
-                    });
+                    match k {
+                        Some(k) => {
+                            let _ = write!(res, "{k}:");
+                        }
+                        None => res.push('-'),
+                    }
                     if matches!(v, Out::Block(_, items) if !items.is_empty()) {
                         res.push('\n');
                         res.push_str(&s);
@@ -756,7 +733,6 @@ impl std::fmt::Display for Out {
     }
 }
 
-/// `preg_replace('#^(?=.)#m', $indentation, $s)`: indent every non-empty line.
 fn indent_lines(s: &str, indentation: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for (i, line) in s.split('\n').enumerate() {
@@ -786,7 +762,6 @@ fn literal_to_string(v: &Value) -> String {
     }
 }
 
-/// `StringNode::toString()`.
 fn string_to_string(s: &str) -> String {
     let control = |c: char| matches!(c, '\x00'..='\x08' | '\x0B'..='\x1F');
     if !s.contains('\n') {
@@ -826,7 +801,6 @@ fn string_to_string(s: &str) -> String {
     format!("{delim}\n{}\n{delim}", indent_lines(&body, "\t"))
 }
 
-/// `\n[\t ]+'''`
 fn has_indented_triple_quote(s: &str) -> bool {
     s.split('\n').skip(1).any(|line| {
         let t = line.trim_start_matches(['\t', ' ']);
@@ -834,7 +808,6 @@ fn has_indented_triple_quote(s: &str) -> bool {
     })
 }
 
-/// `json_encode($s, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)`.
 pub fn json_string(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {
@@ -846,7 +819,9 @@ pub fn json_string(s: &str) -> String {
             '\t' => out.push_str("\\t"),
             '\x08' => out.push_str("\\b"),
             '\x0C' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
             '\u{2028}' => out.push_str("\\u2028"),
             '\u{2029}' => out.push_str("\\u2029"),
             c => out.push(c),

@@ -5,12 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
-description = "The problem, span and edit types shared by pun lint and the renderer, and @pun-ignore comments"
-repository.workspace = true
-homepage.workspace = true
+autotests = false
 
 [lib]
 name = "pun_problem"
+
+[[test]]
+name = "problem"
+path = "tests/main.rs"
 
 [dependencies]
 pun-tokens.workspace = true

@@ -1,9 +1,3 @@
-//! `lint/pest/no-redundant-uses`, ported from pest-plugin-rector's `RemoveRedundantPestUsesRector`: a test file's
-//! `uses(X::class)`, `pest()->use(X::class)` or `pest()->uses(X::class)` loses the classes that `tests/Pest.php`
-//! already applies to its directory with `->in('Feature')`, and goes when none is left.
-//!
-//! Like the plugin, the rule reads `tests/Pest.php` from the disk, next to the file it checks.
-
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -20,8 +14,8 @@ use super::{
     Item, func_call, function_name, identifier, method_call, old_statements, p_stmts, rewrite_list,
     statement_expression, statement_list,
 };
-use crate::rules::lint_b_names::resolve_class;
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
+use crate::rules::support::names::resolve_class;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -50,7 +44,6 @@ impl Rule for NoRedundantUses {
         if global.is_empty() {
             return;
         }
-        // refactorStatements: the file's statements and those of its namespaces.
         let mut edits = Vec::new();
         let mut lists = vec![(node, vec![node])];
         for statement in &program.statements {
@@ -80,8 +73,6 @@ impl Rule for NoRedundantUses {
     }
 }
 
-/// The statements of one list with their redundant uses gone, printed; none when nothing changes (or the printer
-/// would print the list's parent again, which only a file's list allows).
 fn refactor_list(
     ctx: &Context<'_>,
     holder: Node<'_, '_>,
@@ -97,7 +88,6 @@ fn refactor_list(
             items.push(Item::Old(index));
             continue;
         };
-        // refactorLocalUseStatement: the arguments whose class is applied globally go.
         let args = arguments.arguments.as_slice();
         let kept: Vec<usize> = (0..args.len())
             .filter(|&i| {
@@ -112,8 +102,6 @@ fn refactor_list(
         if kept.is_empty() {
             continue;
         }
-        // `$localUse->args = $remainingArgs`, printed by `pArray`: what is before the first argument, then each
-        // kept one with the text that was right before it, and what is after the last argument.
         let span = node_span(*statement);
         let open = arguments.left_parenthesis.end.offset as usize;
         let close = arguments.right_parenthesis.start.offset as usize;
@@ -138,16 +126,12 @@ fn refactor_list(
     if let Some(edits) = rewrite_list(ctx, holder, &[], &list, &items) {
         return Some(edits);
     }
-    // php-parser gives up on the list of a namespace and prints it again (`pStmt_Namespace`): `namespace X;`, a
-    // newline, and each statement on a line of its own. php-parser uses that `;` form for a braced namespace too
-    // unless the file has a namespace without a name; such a namespace itself is left alone here.
     let Some(Node::Namespace(ns)) = scope.last() else {
         return None;
     };
     let name = text(ctx, ns.name.as_ref()?);
     let olds = old_statements(ctx, &list);
     let start = node_span(*ns).start;
-    // A braced namespace is printed again whole, its `}` too.
     let end = match (&ns.body, olds.last()) {
         (NamespaceBody::Implicit(_), Some(last)) => last.end,
         _ => node_span(*ns).end,
@@ -156,7 +140,6 @@ fn refactor_list(
     Some(vec![Edit::new(Span::new(start, end), printed)])
 }
 
-/// `matchLocalUse`: the arguments of `uses(...)`, or of `pest()->use(...)` / `pest()->uses(...)`.
 fn match_local_use<'a>(expr: &'a Expression<'a>) -> Option<&'a ArgumentList<'a>> {
     if let Some(call) = func_call(expr) {
         return function_name(call)
@@ -174,7 +157,6 @@ fn match_local_use<'a>(expr: &'a Expression<'a>) -> Option<&'a ArgumentList<'a>>
         .then_some(&call.argument_list)
 }
 
-/// `resolveLocalClassName`: the fully qualified class of `Name::class`.
 fn local_class_name(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Vec<u8>> {
     let Expression::Access(Access::ClassConstant(fetch)) = unparenthesize(expr) else {
         return None;
@@ -188,7 +170,6 @@ fn local_class_name(scope: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<Vec
     class_name(scope, fetch.class)
 }
 
-/// `resolveClassName` of a class written as a name (`static`, `self` and `parent` stay as they are).
 fn class_name(scope: &[Node<'_, '_>], class: &Expression<'_>) -> Option<Vec<u8>> {
     match class {
         Expression::Identifier(id) => Some(resolve_class(scope, id)),
@@ -199,7 +180,6 @@ fn class_name(scope: &[Node<'_, '_>], class: &Expression<'_>) -> Option<Vec<u8>>
     }
 }
 
-/// `resolveGloballyAppliedClasses`: the classes tests/Pest.php applies to the directory of `path`.
 fn globally_applied_classes(path: &Path) -> HashSet<Vec<u8>> {
     let mut classes = HashSet::new();
     let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
@@ -210,7 +190,6 @@ fn globally_applied_classes(path: &Path) -> HashSet<Vec<u8>> {
     if !pest_file.is_file() || pest_file == path {
         return classes;
     }
-    // `tests` is a directory above `path`; a Pest.php that cannot be read applies nothing.
     let relative = path.strip_prefix(&tests).unwrap_or(&path);
     let relative = relative.to_string_lossy().replace('\\', "/");
     let code = std::fs::read_to_string(&pest_file).unwrap_or_default();
@@ -222,7 +201,6 @@ fn globally_applied_classes(path: &Path) -> HashSet<Vec<u8>> {
     classes
 }
 
-/// `findTestDirectory`: the nearest directory above `path` named `tests` (in any case).
 fn test_directory(path: &Path) -> Option<PathBuf> {
     path.parent()?
         .ancestors()
@@ -233,14 +211,11 @@ fn test_directory(path: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// `pathCoversFile`.
 fn covers(configured: &str, relative: &str) -> bool {
     configured == relative
         || relative.starts_with(&format!("{}/", configured.trim_end_matches('/')))
 }
 
-/// `parseGlobalUses`: for each top-level `->in(...)` statement of tests/Pest.php, the classes it applies and the
-/// paths it applies them to. A file php-parser cannot parse, or whose imports its name resolver rejects, gives none.
 fn global_uses(code: &str) -> Vec<(Vec<Vec<u8>>, Vec<String>)> {
     let arena = LocalArena::new();
     let file = File::new(
@@ -261,8 +236,6 @@ fn global_uses(code: &str) -> Vec<(Vec<Vec<u8>>, Vec<String>)> {
         .collect()
 }
 
-/// php-parser's `NameResolver` throws on an alias imported twice in one scope (class and function names ignoring
-/// case, constants not). Only the file's own imports matter: a file with a namespace has no global uses to read.
 fn duplicate_import<'a>(statements: impl Iterator<Item = &'a Statement<'a>>) -> bool {
     let kind = |function: bool| if function { "function" } else { "const" };
     let mut seen = HashSet::new();
@@ -304,8 +277,6 @@ fn duplicate_import<'a>(statements: impl Iterator<Item = &'a Statement<'a>>) -> 
     false
 }
 
-/// `matchGlobalUse`: `uses(...)->in(...)`, or a `pest()` chain whose `->use()` / `->uses()` calls name classes, ended
-/// by `->in(...)`.
 fn match_global_use(
     scope: &[Node<'_, '_>],
     outer: &MethodCall<'_>,
@@ -327,7 +298,6 @@ fn match_global_use(
     let mut current = outer.object;
     while let Some(call) = method_call(current) {
         let name = String::from_utf8_lossy(identifier(&call.method)?).to_lowercase();
-        // Of `GLOBAL_CHAIN_TOLERATED_METHODS` (`extend`, `use`, `uses`), the last two name the classes.
         if name == "use" || name == "uses" {
             let configured = static_class_names(scope, &call.argument_list);
             if configured.is_empty() {
@@ -348,7 +318,6 @@ fn match_global_use(
     Some((names, paths))
 }
 
-/// `resolveStaticClassNames`: the classes of a list of `Name::class` arguments only.
 fn static_class_names(scope: &[Node<'_, '_>], list: &ArgumentList<'_>) -> Vec<Vec<u8>> {
     list.arguments
         .iter()
@@ -357,7 +326,6 @@ fn static_class_names(scope: &[Node<'_, '_>], list: &ArgumentList<'_>) -> Vec<Ve
         .unwrap_or_default()
 }
 
-/// `resolveStaticPaths`: the paths of a list of plain string arguments, relative, without `..` or a glob.
 fn static_paths(list: &ArgumentList<'_>) -> Vec<String> {
     let mut paths = Vec::new();
     for argument in &list.arguments {
@@ -382,8 +350,6 @@ fn static_paths(list: &ArgumentList<'_>) -> Vec<String> {
     paths
 }
 
-/// The value of an argument that php-parser reads as a `String_`: a quoted string, or a heredoc without
-/// interpolation. An unpacked argument has the same value.
 fn string_value(argument: &Argument<'_>) -> Option<Vec<u8>> {
     match unparenthesize(argument.value()) {
         Expression::Literal(Literal::String(s)) => s.value.map(<[u8]>::to_vec),

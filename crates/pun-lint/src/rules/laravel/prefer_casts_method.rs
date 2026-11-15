@@ -1,9 +1,3 @@
-//! `lint/laravel/prefer-casts-method`, ported from Mago 1.57.0's `prefer-casts-method` (mago-linter
-//! src/rule/best_practices/prefer_casts_method.rs).
-//!
-//! A property `$casts` (the name is case-sensitive) declared without `static` and with an array default, in any
-//! class-like, is reported: Laravel 11 reads casts from a `casts()` method. Hooked properties are not looked at.
-
 use mago_syntax::cst::{Expression, Modifier, Node, NodeKind, Property, PropertyItem};
 
 use crate::syntax::node_span;

@@ -1,6 +1,3 @@
-//! The `analyse/types/*` rules: PHPStan's type-checking rules of levels 0 to 9, and what they share (statement
-//! results in [`flow`]).
-
 mod access;
 mod arguments;
 mod binary_op;
@@ -94,7 +91,6 @@ pub(super) use values::{array, array_access, clone, foreach, throw};
 pub(super) use void_match::void_match;
 pub(super) use yields::program as yields_outside;
 
-/// The identifiers of the rules above level 0 (level-0 ones are in [`super::IDENTIFIERS`]).
 pub(super) const IDENTIFIERS: &[&[&str]] = &[
     callables::IDENTIFIERS,
     regex::IDENTIFIERS,
@@ -124,9 +120,6 @@ pub(super) const IDENTIFIERS: &[&[&str]] = &[
     param_out::IDENTIFIERS,
 ];
 
-/// The expressions whose type the statement results read, in the function-likes whose missing return could be
-/// reported: those with a non-void return type whose body, by syntax alone, does not always terminate (types only
-/// ever make a body terminate: a `never` call, a condition always true, a non-empty array iterated).
 pub(super) fn typed_expressions(
     program: &Program,
     contents: &[u8],
@@ -202,7 +195,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted<'_> {
         if self.level >= 2 {
             properties::typed(e, &mut self.spans);
             binary_op::typed(e, &mut self.spans);
-            // InstantiationRule's `new.nonObject` (checkThisOnly below level 2)
             if let Expression::Instantiation(new) = e
                 && !matches!(
                     new.class,
@@ -242,7 +234,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted<'_> {
     }
     fn walk_in_function_call(&mut self, call: &'ast FunctionCall<'arena>, (): &mut ()) {
         regex::typed(call, &mut self.spans);
-        // Reference argument scopes need the actual dynamic callee even below CallCallablesRule's level.
         callables::typed(call, &mut self.spans);
     }
     fn walk_in_method_call(&mut self, call: &'ast MethodCall<'arena>, (): &mut ()) {
@@ -289,7 +280,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted<'_> {
     }
     fn walk_in_argument_list(&mut self, l: &'ast ArgumentList<'arena>, (): &mut ()) {
         for a in &l.arguments {
-            // Overload selection reads operands even when argument diagnostics are disabled.
             self.spans.push(a.value().span());
             if self.check_arguments {
                 match a.value() {
@@ -425,7 +415,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted<'_> {
     }
 }
 
-/// Calls and matches (a `never` type ends the execution), conditions and iterated expressions.
 struct Collect(Vec<Span>);
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Collect {

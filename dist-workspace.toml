@@ -1,32 +1,24 @@
 [workspace]
 members = ["cargo:."]
 
-# Config for 'dist'
 [dist]
-# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
 cargo-dist-version = "0.33.0"
-# Ship third-party redistribution terms alongside the auto-included MIT license.
-include = ["THIRD_PARTY_NOTICES.md", "THIRD_PARTY_LICENSES.md"]
-# CI backends to support
+include = ["licenses/THIRD_PARTY_NOTICES.md", "licenses/THIRD_PARTY_LICENSES.md"]
 ci = "github"
-# No dist installers or registries. Pun ships as the punphp/pun Composer package (composer/bin/pun) and through
-# https://pun.laravel.cloud/install (docs/public/install); both download these archives.
 installers = []
-# Sigstore build provenance for the archives, made where the release is created and checked by the installer with
-# `gh attestation verify`.
 github-attestations = true
 github-attestations-phase = "host"
 github-attestations-filters = ["*.tar.gz"]
-# Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-musl", "x86_64-apple-darwin", "x86_64-unknown-linux-musl"]
-# .tar.gz rather than .tar.xz: the Composer shim extracts with plain `tar xzf` (xz is missing on slim images)
 unix-archive = ".tar.gz"
-# No source tarball: .gitattributes keeps the Rust source out of `git archive` (it is the Composer package's archive)
 source-tarball = false
-# Steps run before each build: the toolchain the workspace needs (the macOS image ships an older one) and a static
-# PCRE2 on every target (pcre2-sys links Homebrew's dynamically when pkg-config finds it).
 github-build-setup = "../build-setup.yml"
 
-# GitHub's default arm64 macOS label for dist 0.33 is no longer offered.
+[dist.github-action-commits]
+"actions/checkout" = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+"actions/upload-artifact" = "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+"actions/download-artifact" = "9000827ccba6bdab643e8b6fd33ac0654aef8333"
+"actions/attest" = "1e69f48acb82d1966a394da916b4c1698aa569d6"
+
 [dist.github-custom-runners]
 aarch64-apple-darwin = "macos-15"

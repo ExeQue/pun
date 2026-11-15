@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\ModernizeStrposFixer` (v3 default: `modernize_stripos` false).
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -19,7 +18,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `REPLACEMENTS`: operator, operand, replacement function, negate.
 const REPLACEMENTS: &[(
     (pun_tokens::Kind, &str),
     (pun_tokens::Kind, &str),
@@ -52,7 +50,6 @@ const REPLACEMENTS: &[(
     ),
 ];
 
-/// `getCompareTokens`' result.
 struct CompareTokens {
     operator_index: usize,
     operand_index: usize,
@@ -92,7 +89,7 @@ impl Fixer for ModernizeStrposFixer {
                 index -= 1;
                 continue;
             }
-            let open_index = tokens.get_next_meaningful_token(index).unwrap();
+            let open_index = tokens.next_meaningful(index);
             let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
             let arguments = arguments_analyzer.get_arguments(tokens, open_index, close_index);
             if arguments.len() != 2 {
@@ -100,8 +97,8 @@ impl Fixer for ModernizeStrposFixer {
                 continue;
             }
             let compare_tokens =
-                get_compare_tokens(tokens, index, -1) // look behind
-                    .or_else(|| get_compare_tokens(tokens, close_index, 1)); // look ahead
+                get_compare_tokens(tokens, index, -1)
+                    .or_else(|| get_compare_tokens(tokens, close_index, 1));
             if let Some(compare_tokens) = compare_tokens {
                 let is_case_insensitive = tokens[index].equals((T_STRING, "stripos"), false);
                 fix_call(tokens, index, &compare_tokens, is_case_insensitive);
@@ -129,7 +126,7 @@ fn fix_call(
         tokens.clear_token_and_merge_surrounding_whitespace(function_index);
         if negate {
             let mut negate_insert_index = function_index;
-            let prev_function_index = tokens.get_prev_meaningful_token(function_index).unwrap();
+            let prev_function_index = tokens.prev_meaningful(function_index);
             if tokens[prev_function_index].is_kind(T_NS_SEPARATOR) {
                 negate_insert_index = prev_function_index;
             }
@@ -147,7 +144,7 @@ fn fix_call(
 fn wrap_arguments_with_str_to_lower(tokens: &mut Tokens, function_index: usize) {
     let should_add_namespace = tokens[function_index - 1].is_kind(T_NS_SEPARATOR);
     let ns = usize::from(should_add_namespace);
-    let open_index = tokens.get_next_meaningful_token(function_index).unwrap();
+    let open_index = tokens.next_meaningful(function_index);
     let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
     let arguments = ArgumentsAnalyzer.get_arguments(tokens, open_index, close_index);
     let (&first_start, &first_end) = arguments.first_key_value().unwrap();
@@ -156,7 +153,7 @@ fn wrap_arguments_with_str_to_lower(tokens: &mut Tokens, function_index: usize) 
     let first_argument_index_end = first_end + 3 + ns;
     let is_second_argument_token_white_space = tokens[last_start].is_kind(T_WHITESPACE);
     let mut second_argument_index_start = if is_second_argument_token_white_space {
-        tokens.get_next_meaningful_token(last_start).unwrap()
+        tokens.next_meaningful(last_start)
     } else {
         last_start
     };

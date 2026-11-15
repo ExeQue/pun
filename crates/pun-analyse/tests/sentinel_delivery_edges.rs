@@ -1,5 +1,3 @@
-//! Source-owned array metadata and selected call dependencies, captured with PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -13,7 +11,7 @@ fn public_values_keep_initializer_order_and_selected_scope_dependencies() {
     for level in [0, 4, 5] {
         let mut project = Project::new(vec![root.join("values.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()

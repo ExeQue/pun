@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\NativeFunctionInvocationFixer`. `@internal` is PHP's
-//! `get_defined_functions()['internal']` as the oracle sees it (analyzers/php_functions.rs).
 use crate::analyzers::fixer_configuration_resolver::{Resolved, resolve};
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use crate::analyzers::php_functions::is_internal_function;
@@ -14,9 +12,7 @@ const SET_ALL: &str = "@all";
 const SET_INTERNAL: &str = "@internal";
 const SET_COMPILER_OPTIMIZED: &str = "@compiler_optimized";
 
-/// `getAllCompilerOptimizedFunctionsNormalized`.
 const COMPILER_OPTIMIZED: &[&str] = &[
-    // @see https://github.com/php/php-src/blob/PHP-7.4/Zend/zend_compile.c "zend_try_compile_special_func"
     "array_key_exists",
     "array_slice",
     "assert",
@@ -53,9 +49,6 @@ const COMPILER_OPTIMIZED: &[&str] = &[
     "sprintf",
     "strlen",
     "strval",
-    // @see https://github.com/php/php-src/blob/php-7.2.6/ext/opcache/Optimizer/pass1_5.c
-    // @see https://github.com/php/php-src/blob/PHP-8.1.2/Zend/Optimizer/block_pass.c
-    // @see https://github.com/php/php-src/blob/php-8.1.3/Zend/Optimizer/zend_optimizer.c
     "constant",
     "define",
     "dirname",
@@ -65,7 +58,6 @@ const COMPILER_OPTIMIZED: &[&str] = &[
     "ini_get",
 ];
 
-/// The resolved `include` base set (`getFunctionFilter`).
 #[derive(Default)]
 enum Base {
     All,
@@ -88,7 +80,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(NativeFunctionInvocationFixer::default())
 }
 
-/// The allowed-values closure shared by `exclude` and `include`.
 fn trimmed_names(
     c: &Resolved,
     fixer: &str,
@@ -107,7 +98,6 @@ fn trimmed_names(
 }
 
 impl NativeFunctionInvocationFixer {
-    /// The `getFunctionFilter` closure.
     fn function_filter(&self, function_name: &[u8]) -> bool {
         let name = strtolower(function_name);
         let included = match self.base {
@@ -132,7 +122,7 @@ impl NativeFunctionInvocationFixer {
             if !functions_analyzer.is_global_function_call(tokens, index) {
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if !self.function_filter(tokens[index].get_content()) || try_to_remove {
                 if self.strict && tokens[prev_index].is_kind(T_NS_SEPARATOR) {
                     tokens.clear_token_and_merge_surrounding_whitespace(prev_index);
@@ -140,7 +130,7 @@ impl NativeFunctionInvocationFixer {
                 continue;
             }
             if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
-                continue; // do not bother if previous token is already namespace separator
+                continue;
             }
             tokens_to_insert.insert(index, vec![Token::new(T_NS_SEPARATOR, "\\")]);
         }
@@ -201,7 +191,6 @@ impl Fixer for NativeFunctionInvocationFixer {
             self.fix_function_calls(tokens, 0, end, false);
             return;
         }
-        // 'scope' is 'namespaced' here
         let namespaces = tokens.namespace_declarations();
         for namespace in namespaces.iter().rev() {
             self.fix_function_calls(

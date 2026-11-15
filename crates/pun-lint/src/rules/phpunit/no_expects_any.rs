@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-expects-any`, ported from rector-phpunit's `RemoveExpectAnyFromMockRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `$mock->expects($this->any())` becomes `$mock`. Rector runs it only for PHPUnit 11 and later; Pun
-//! leaves that to the rule's group.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

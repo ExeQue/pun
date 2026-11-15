@@ -1,9 +1,7 @@
 //! `@phpstan-ignore*` comment parsing and `ignoreErrors` matching against PHPStan 2.3.5's own classes
 //! (tests/fixtures/comments.json and ignore.json, exported by scripts/export-ignore-fixtures.php).
 
-mod common;
-
-use common::{fixture, placeholders, tagged, untagged};
+use crate::common::{fixture, placeholders, tagged, untagged};
 use pun_phpstan::comments::{self, LinesToIgnore};
 use pun_phpstan::ignore::{Error, IgnoredErrors};
 use pun_phpstan::{Array, Key, Value};
@@ -140,7 +138,7 @@ fn ignored_error_helper() {
 fn phpstan_analyse_local_ignores() {
     let dir = format!("{}/tests/fixtures/local", env!("CARGO_MANIFEST_DIR"));
     let key = |j: &J| {
-        let s = |k: &str| j.get(k).map(J::to_string).unwrap_or_default();
+        let s = |k: &str| j.get(k).map_or_default(J::to_string);
         (
             j["line"].as_i64(),
             j["message"].as_str().unwrap().to_string(),
@@ -251,9 +249,6 @@ fn local_ignores_processor() {
     }
 }
 
-/// Pun's `rule` key (`[[analyse.ignore]] rule`, derived by hand from rules.md §4): an entry ignores the errors whose
-/// identifier is its rule's, is reported unmatched under the rule's name as an identifier-only entry is, and entries
-/// with the same path and rule add up their counts as PHPStan's do.
 #[test]
 fn rule_entries() {
     fn rule_of(id: &str) -> Option<&'static str> {
@@ -293,13 +288,10 @@ fn rule_entries() {
         p.string_errors,
         ["Ignored error pattern analyse/x/b was not matched in reported errors."]
     );
-    // Without the rule mapping nothing matches.
     let p = IgnoredErrors::new(&entries, true).process(vec![e("a.one")], false, &[], false);
     assert_eq!(p.errors.len(), 1);
 }
 
-/// `ignoreErrors` built outside a neon file goes through PHPStan's checks, with its messages
-/// (ContainerFactory::validateParameters, ValidateIgnoredErrorsExtension); a `rule` names what to ignore.
 #[test]
 fn validate_ignore_errors() {
     use pun_phpstan::config::validate_ignore_errors;
@@ -323,16 +315,16 @@ fn validate_ignore_errors() {
         validate_ignore_errors(&params(&[
             ("rule", Value::str("analyse/x/a")),
             ("count", Value::Int(2))
-        ])),
+        ]))
+        .map_err(|e| e.to_string()),
         Err("Invalid configuration:\nAn ignoreErrors entry with count field must also contain path field.".into())
     );
-    let e = validate_ignore_errors(&params(&[("message", Value::str("#(#"))])).unwrap_err();
+    let e = validate_ignore_errors(&params(&[("message", Value::str("#(#"))]))
+        .unwrap_err()
+        .to_string();
     assert!(e.starts_with("Invalid entry in ignoreErrors:\n"), "{e}");
 }
 
-/// PHPStan 2.3.5 reports an unmatched entry without a file of its own in the config file and line of the entry
-/// (IgnoreErrorsConfigFixer::findEntryLocation()), but not one in the files of an installed Composer package (a
-/// package from a path repository is the project's own code). Lines and messages derived from that class by hand.
 #[test]
 fn unmatched_entries_are_reported_in_their_config_file() {
     let dir = std::env::temp_dir().join(format!("pun-ignore-location-{}", std::process::id()));

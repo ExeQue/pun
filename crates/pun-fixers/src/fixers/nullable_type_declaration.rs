@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\NullableTypeDeclarationFixer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -68,7 +67,6 @@ impl Fixer for NullableTypeDeclarationFixer {
     }
 }
 
-/// index => true for 'property', false for 'function'.
 fn get_elements(tokens: &Tokens) -> BTreeMap<usize, bool> {
     let mut elements: BTreeMap<usize, bool> = TokensAnalyzer::new(tokens)
         .get_classy_elements()
@@ -93,7 +91,7 @@ fn collect_type_analysis(
     end_index: usize,
 ) -> Option<TypeAnalysis> {
     let mut type_ = Vec::new();
-    let type_start_index = tokens.get_next_meaningful_token(start_index).unwrap();
+    let type_start_index = tokens.next_meaningful(start_index);
     let mut type_end_index = type_start_index;
     for i in type_start_index..end_index {
         if tokens[i].is_whitespace(None) || tokens[i].is_comment() {
@@ -112,7 +110,7 @@ fn is_type_normalizable(type_analysis: &TypeAnalysis) -> bool {
         return false;
     }
     if type_.contains(&b'&') {
-        return false; // skip DNF types
+        return false;
     }
     if !type_.contains(&b'|') {
         return true;
@@ -125,7 +123,7 @@ impl NullableTypeDeclarationFixer {
     fn normalize_property_type(&self, tokens: &mut Tokens, mut index: usize) {
         let property_end_index = index;
         loop {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
             if tokens[index].is_given_kind(PROPERTY_MODIFIERS) {
                 break;
             }

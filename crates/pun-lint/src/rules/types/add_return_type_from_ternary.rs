@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-ternary`, ported from Rector 2.8.4's `ReturnTypeFromStrictTernaryRector`
-//! (rules/TypeDeclaration/Rector/Class_): a function or method whose one `return` returns a ternary with a known
-//! native type, and whose returns (`null` aside) make one type, gets the ternary's type. Rector writes the ternary's
-//! docblock-aware type; Pun, reading native types only, writes the native one.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Expression, Node, NodeKind};
 
@@ -23,8 +18,8 @@ impl Rule for AddReturnTypeFromTernary {
         "lint/types/add-return-type-from-ternary"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -49,7 +44,6 @@ impl Rule for AddReturnTypeFromTernary {
             scope: scope.as_ref(),
         };
         let returns = returns_scoped(f.body);
-        // shouldSkip: the inferred return type without `null` is a union
         if is_union_without_null(&infer_returns(&place, f.body, &returns)) {
             return;
         }
@@ -71,7 +65,7 @@ impl Rule for AddReturnTypeFromTernary {
         if let Some(r#type) = return_declaration(
             without_covered_objects(union_order(t.types.as_ref()), &facts.codebase),
             &facts.codebase,
-            ctx.php_version,
+            ctx.php_version.id(),
             &[],
             true,
         ) {

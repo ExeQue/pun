@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocParamOrderFixer`.
 use crate::analyzers::docblock::type_expression::REGEX_TYPES;
 use crate::analyzers::docblock::{Annotation, DocBlock};
 use crate::analyzers::preg::Preg;
@@ -35,7 +34,6 @@ impl Fixer for PhpdocParamOrderFixer {
             {
                 return;
             }
-            // Find start index of param block (opening parenthesis); a function always has one.
             let param_block_start = tokens
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
@@ -62,10 +60,8 @@ fn get_function_param_names(tokens: &Tokens, param_block_start: usize) -> Vec<Ve
     names
 }
 
-/// Overwrite the param annotations in order.
 fn rewrite_doc_block(doc: &DocBlock, param_names: &[Vec<u8>], params: &[&Annotation]) {
     let mut ordered = sort_param_annotations(param_names, params);
-    // Append annotations found between param ones
     let params_start = params[0].get_start();
     let params_end = params[params.len() - 1].get_end();
     let between = || {
@@ -78,7 +74,6 @@ fn rewrite_doc_block(doc: &DocBlock, param_names: &[Vec<u8>], params: &[&Annotat
             .filter(|a| a.get_tag().get_name() != b"param")
             .map(Annotation::get_content),
     );
-    // Overwrite all annotations between first and last @param tag in order
     for (annotation, content) in between().zip(ordered) {
         annotation.remove();
         doc.get_line(annotation.get_start())
@@ -88,9 +83,7 @@ fn rewrite_doc_block(doc: &DocBlock, param_names: &[Vec<u8>], params: &[&Annotat
     }
 }
 
-/// Sort the param annotations according to the function parameters.
 fn sort_param_annotations(names: &[Vec<u8>], params: &[&Annotation]) -> Vec<Vec<u8>> {
-    // `$validParams[$index] = ...`: a later write to a known index keeps its first position.
     let mut valid: Vec<(usize, Vec<u8>)> = vec![];
     for name in names {
         for index in find_param_annotation_by_identifier(params, name) {
@@ -110,7 +103,6 @@ fn sort_param_annotations(names: &[Vec<u8>], params: &[&Annotation]) -> Vec<Vec<
     ordered
 }
 
-/// The indices of the annotations of one parameter: a top-level match, or the lines of a nested block.
 fn find_param_annotation_by_identifier(params: &[&Annotation], identifier: &[u8]) -> Vec<usize> {
     let mut block_level: isize = 0;
     let mut block_match = false;
@@ -129,9 +121,9 @@ fn find_param_annotation_by_identifier(params: &[&Annotation], identifier: &[u8]
         let block_end_matches = Preg::match_all(r"/}[\*\s\n]*/", &content).len() as isize;
         if block_level == 0 && Preg::match_groups_uncached(&param_regex, &content).is_some() {
             if !block_start {
-                return vec![i]; // Top level match
+                return vec![i];
             }
-            block_match = true; // Start of a nested block
+            block_match = true;
         }
         if block_start {
             block_level += 1;

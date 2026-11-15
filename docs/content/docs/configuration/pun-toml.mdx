@@ -5,6 +5,8 @@ description: Paths, exclusions, presets, rule levels, and options.
 
 Pun reads `pun.toml`. [`pun init`](/docs/commands/init) creates it; [`pun migrate`](/docs/commands/migrate) converts existing tool configs. Every section is optional.
 
+`pun.toml` holds only Pun's own settings: `[workspace]` and the tool sections `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`. The dependencies stay in `composer.json` and `composer.lock` (see [Dependencies](#dependencies)).
+
 This example shows the main settings:
 
 ```toml pun.toml
@@ -14,6 +16,9 @@ version = "8.4"
 [files]
 paths = ["app", "tests"]
 exclude = ["build", "storage"]
+
+[extensions]
+pest = "off"
 
 [format]
 preset = "laravel"
@@ -53,7 +58,7 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` (in `[require]`, or `composer.json` before `pun migrate`), otherwise 8.4. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
+| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` in [`composer.json`](#dependencies), otherwise 8.4. A `require.php` that allows PHP below 8.4 is a config error. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
 | `[files] paths` | Default paths when no command-line paths are given. Each must be inside the project; a path that leaves it, directly or through a symlink, is a config error |
 | `[files] exclude` | Shared exclusions, combined with command-specific exclusions |
 
@@ -65,6 +70,27 @@ Other entries are plain paths. Lint and analyse skip that path, relative to the 
 
 [`pun list-files --command <command>`](/docs/commands/list-files) shows the files each command selects.
 
+## [extensions]
+
+Extensions add the rules and analysis for a framework or test tool. Pun builds them in:
+
+| Extension | Turns on for the locked package | Rule groups |
+| --- | --- | --- |
+| `laravel` | `laravel/framework` | `laravel`, `laravel-*`, and Larastan's analysis |
+| `pest` | `pestphp/pest` | `pest` |
+| `phpunit` | `phpunit/phpunit` | `phpunit` |
+| `doctrine` | none | `doctrine` |
+
+Each key takes one of these values:
+
+- `"auto"` (the default): on when the project's [`composer.lock`](#dependencies) locks one of the extension's packages.
+- `"on"`: on without the lock.
+- `"off"`: off for every command, as if each of its groups were `"off"`.
+
+A rule or group you name in `[lint.groups]`, `[lint.rules]` or `[analyse.rules]` still applies. Format rules don't depend on extensions: `[format]` alone turns them on. A key that names no extension is a config error.
+
+[`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
+
 ## [format]
 
 | Key | Meaning |
@@ -74,7 +100,7 @@ Other entries are plain paths. Lint and analyse skip that path, relative to the 
 | `not-name`, `not-path` | File names and paths format skips, as in Pint's finder |
 | `rules` | `true`, `false`, a table of options, or the value of a rule's only option |
 
-Format rules change layout, casing, and spelling. Risky and code-deleting fixers are [lint rules](/docs/commands/lint). Migration expands Pint's `per` and `symfony` presets into explicit rules over `empty`.
+Format rules change layout, casing, and spelling. Pun indents with four spaces and writes `\n` line endings, as Pint does; there is no setting for either, so PHP-CS-Fixer's `setIndent()` and `setLineEnding()` have no equivalent. Risky and code-deleting fixers are [lint rules](/docs/commands/lint). Migration expands Pint's `per` and `symfony` presets into explicit rules over `empty`.
 
 `not-name` and `not-path` accept Pint-style patterns, including PHP regular expressions. An invalid regex is a run error.
 
@@ -98,7 +124,7 @@ Selection applies in this order, with later settings taking precedence:
 
 A table without `level` defaults to `"error"`. Warnings do not fail unless a warning limit is set. `--fix` applies available fixes except rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit set rules depend on the packages locked in `pun.lock` (or `composer.lock` before `pun migrate`). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
+Laravel, Pest, and PHPUnit set rules depend on [`[extensions]`](#extensions). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` require explicit selection.
 
 ## [analyse]
 
@@ -124,45 +150,27 @@ message = "#^Call to an undefined method App\\\\Models\\\\User::#"
 paths = ["app/Http/*"]
 ```
 
-## Dependencies
+## [workspace]
 
-The dependency sections hold what `composer.json` holds, under the same names. [`pun migrate`](/docs/commands/migrate#composer) writes them, and [`pun install`](/docs/commands/install) reads them.
+`members` lists the directories of a workspace's packages, or globs that match them. It is the section's only key. Each member keeps its dependencies in its own `composer.json`. See [workspaces](/docs/guides/workspaces).
 
 ```toml pun.toml
-[package]
-name = "acme/app"
-type = "project"
-minimum-stability = "stable"
-
-[require]
-php = "^8.4"
-"laravel/framework" = "^13.0"
-
-[require-dev]
-"pestphp/pest" = "^5.0"
-
-[autoload]
-psr-4 = { 'App\' = "app/" }
-
-[scripts]
-post-autoload-dump = ["@php artisan package:discover --ansi"]
-
-[config]
-optimize-autoloader = true
-
-[[repositories]]
-type = "path"
-url = "packages/*"
+[workspace]
+members = ["packages/*"]
 ```
 
-| Section | composer.json key |
-| --- | --- |
-| `[package]` | Root fields: `name`, `description`, `version`, `type`, `keywords`, `homepage`, `license`, `authors`, `minimum-stability`, `prefer-stable`, `bin`, and the rest |
-| `[require]`, `[require-dev]`, `[conflict]`, `[replace]`, `[provide]`, `[suggest]` | The same key. Each value is a string. |
-| `[autoload]`, `[autoload-dev]`, `[scripts]`, `[scripts-descriptions]`, `[scripts-aliases]`, `[config]`, `[extra]` | The same key |
-| `[[repositories]]` | `repositories`, as a list |
+## Dependencies
 
-`pun.lock` records the exact packages `pun install` installs. Pun writes it. Do not edit it by hand.
+The project's dependencies live in `composer.json` and `composer.lock`, as Composer keeps them. `pun.toml` holds only Pun's own settings.
+
+- [`pun install`](/docs/commands/install), [`update`](/docs/commands/update), [`require`](/docs/commands/require), and [`remove`](/docs/commands/remove) read `composer.json` and write the `composer.lock` Composer writes. `require` and `remove` edit `composer.json` in place. [`pun vet`](/docs/commands/vet) checks the packages in `composer.lock`. Composer works on the same files, so a team can use both tools on one project.
+- The commands that load the configuration, such as `format`, `lint`, `analyse`, `check`, `config`, and `extension list`, read the PHP constraint (`require.php`), `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from the `composer.json` and `composer.lock` in the project root.
+
+A composer.json section in `pun.toml` is a config error (exit 2). The sections are `[package]`, `[require]`, `[require-dev]`, `[conflict]`, `[provide]`, `[replace]`, `[suggest]`, `[autoload]`, `[autoload-dev]`, `[scripts]`, `[scripts-descriptions]`, `[scripts-aliases]`, `[config]`, `[[repositories]]`, and `[extra]`:
+
+```text
+pun.toml: [require] belongs in composer.json: Pun reads the dependencies from composer.json and composer.lock, and pun.toml holds only Pun's own settings
+```
 
 ## Rule names
 
@@ -240,6 +248,7 @@ Each of these is an error that names what to write instead:
 | `"info"`, or `severity` in a rule table | `"warn"`, and `level` |
 | `true` / `false` for a lint rule | `"error"` / `"off"` |
 | `[analyse] level = 5` | `[analyse] preset = "recommended"` |
+| `[require]`, `[package]`, or another [composer.json section](#dependencies) (exit 2) | the same key in `composer.json`; `[package]`'s keys go at its root |
 
 ## Without pun.toml
 
@@ -263,5 +272,10 @@ Pun reads these besides `pun.toml`:
 | `GITHUB_ACTIONS=true` | Human output is followed by GitHub annotations |
 | `PUN_AGENT`, `PAO_FORCE`, `PAO_DISABLE` | Turn [agent output](/docs/guides/coding-agents) on or off |
 | `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS` | PHP-CS-Fixer's switch: an ignore comment that names a rule the run does not use is accepted instead of being an error |
-| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `composer.json` allows PHP below 8.4. Unsupported: Pun's results on older syntax are not checked against Pint |
+| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: Pun's results on older syntax are not checked against Pint |
 | `PUN_PROFILE` | Prints per-stage timings on stderr after the run |
+| `PUN_CACHE_DIR` | The cache for [`pun x`](/docs/commands/x#manage-installs) installs and [`pun vet inspect`](/docs/commands/vet) |
+| `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |
+| `COMPOSER_HOME`, `COMPOSER_CACHE_DIR` | Composer's home and download cache, shared by the [package commands](/docs/commands/install) |
+| `COMPOSER_AUTH`, `COMPOSER_MAX_PARALLEL_HTTP` | Download credentials and the parallel download limit of [`pun install`](/docs/commands/install#what-an-install-does) |
+| `COMPOSER_ROOT_VERSION` | The root package's version, as in Composer |

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\ImplodeCallFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -70,7 +69,6 @@ impl Fixer for ImplodeCallFixer {
     }
 }
 
-/// First meaningful token => last meaningful token of each argument, in order.
 fn get_argument_indices(tokens: &Tokens, function_name_index: usize) -> Vec<(usize, usize)> {
     let open_parenthesis = tokens
         .get_next_token_of_kind(function_name_index, &["(".into()], true)
@@ -80,10 +78,8 @@ fn get_argument_indices(tokens: &Tokens, function_name_index: usize) -> Vec<(usi
     for (start_index_candidate, end_index) in
         ArgumentsAnalyzer.get_arguments(tokens, open_parenthesis, close_parenthesis)
     {
-        let start = tokens
-            .get_next_meaningful_token(start_index_candidate - 1)
-            .unwrap();
-        let end = tokens.get_prev_meaningful_token(end_index + 1).unwrap();
+        let start = tokens.next_meaningful(start_index_candidate - 1);
+        let end = tokens.prev_meaningful(end_index + 1);
         indices.push((start, end));
     }
     indices

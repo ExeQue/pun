@@ -1,11 +1,3 @@
-//! `pun migrate`, format part: pint.json (read like Pint: `extend`, preset, RuleSet checks) or the rules of a
-//! `.php-cs-fixer.php` become a pun.toml under Pun rule IDs. Risky fixers go to `[lint.rules]` at `"error"`, so
-//! `pun check --fix` applies them as the project's old tool did; the rest is written as a delta to the preset, with
-//! options under their Pun names (`options::to_pun`). Rule sets, and the `per` and `symfony` presets pun.toml doesn't
-//! take, expand into explicit rules. The Finder's `in` becomes `[files] paths`; its other keys stay format-only under
-//! `[format]`. What pun.toml can't hold is named in `Migration::unsupported` and skipped (context/plan/migrate.md §3).
-
-pub mod composer;
 pub mod phpstan;
 mod rector;
 
@@ -17,26 +9,19 @@ use serde_json::{Map, Value};
 use std::fmt::Write;
 use std::path::Path;
 
-/// The sections of a migrated pun.toml, each as the lines under its header; [`Parts::render`] joins the non-empty
-/// ones in pun.toml's order.
 #[derive(Debug, Clone, Default)]
 pub struct Parts {
     pub files: String,
     pub format: String,
     pub format_rules: String,
     pub lint: String,
-    /// `[lint.rules]` as (`<group>/<name>`, value).
     pub lint_rules: Vec<(String, String)>,
-    /// `[[lint.overrides]]` tables, each with its header.
     pub overrides: String,
     pub analyse: String,
     pub analyse_rules: Vec<(String, String)>,
-    /// `[[analyse.ignore]]` tables, each with its header.
     pub analyse_ignores: String,
 }
 
-/// `id` (a lint rule ID) set to `value` (`"error"` or a table of options) in `[lint.rules]`, replacing a line already
-/// there; false, and nothing written, when Pun hasn't ported it (pun.toml rejects a rule without a native port).
 pub(super) fn require_lint(parts: &mut Parts, id: &str, value: &str) -> bool {
     let ported = rector::ported(id);
     let name = &id[5..];
@@ -48,10 +33,10 @@ pub(super) fn require_lint(parts: &mut Parts, id: &str, value: &str) -> bool {
 impl Parts {
     pub fn render(&self) -> String {
         let pairs = |rules: &[(String, String)]| -> String {
-            rules
-                .iter()
-                .map(|(k, v)| format!("\"{k}\" = {v}\n"))
-                .collect()
+            rules.iter().fold(String::new(), |mut out, (k, v)| {
+                let _ = writeln!(out, "\"{k}\" = {v}");
+                out
+            })
         };
         let sections = [
             ("[files]\n", self.files.clone()),
@@ -73,34 +58,25 @@ impl Parts {
 }
 
 pub struct Migration {
-    /// [`Parts::render`] of `parts`.
     pub toml: String,
     pub parts: Parts,
-    /// What pun.toml can't hold, as `name: reason`: rules Pun can't run and Finder settings without a pun.toml key.
-    /// They are left out of `toml` (a preset rule Pun can't run is written as `false`); the rest still migrates.
     pub unsupported: Vec<String>,
-    /// `[format] preset`.
     pub preset: &'static str,
-    /// Lines under `[format.rules]` (what differs from the preset) and under `[lint.rules]`.
     pub format_rules: usize,
     pub lint_rules: usize,
 }
 
-/// Whether Pun has a fixer for an upstream rule name (pun-cli asks `pun_fixers::all`).
 pub type Runs<'a> = &'a dyn Fn(&str) -> bool;
 
-/// pint.json at `path` (a missing file is an empty config, as in Pint), with `--preset` winning over its preset.
 pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migration> {
     let pint = read_pint_json(path)?;
     let preset = preset
         .or_else(|| pint.get("preset").and_then(Value::as_str))
         .unwrap_or("laravel");
     let mut rules = preset_rules(preset).context("Preset not found.")?;
-    // Pint: array_merge($preset, $pintJson['rules']), overrides keep the preset's position.
     if let Some(r) = pint.get("rules").and_then(Value::as_object) {
         rules.extend(r.clone());
     }
-    // RuleSet::__construct: only true, false or an options array.
     for (name, v) in &rules {
         if !matches!(v, Value::Bool(_) | Value::Array(_) | Value::Object(_)) {
             let (what, kind) = if name.starts_with('@') {
@@ -123,8 +99,6 @@ pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migrat
     write(preset, rule_set(rules)?, &paths, &finder, vec![], runs)
 }
 
-/// A `.php-cs-fixer.php`'s rules as its ConfigurationResolver resolves them, over preset `empty`, and its Finder in
-/// pint.json's keys (`in`, `exclude`, `notName`, `notPath`) plus `unsupported`, the settings pun.toml has no key for.
 pub fn from_rules(
     rules: Map<String, Value>,
     finder_of: &Map<String, Value>,
@@ -149,9 +123,6 @@ pub fn from_rules(
     )
 }
 
-/// The Finder keys as pun.toml lines: `in` and `exclude` for `[files]` (Pint skips an excluded folder for every rule,
-/// so the rules migrated to lint skip it too), `notName` and `notPath` for `[format]`. A key holds one string or a
-/// list, as in pint.json; an empty list is left out.
 fn finder(config: &Map<String, Value>) -> (String, String) {
     let (mut paths, mut finder) = (String::new(), String::new());
     for (json, key) in [
@@ -175,7 +146,6 @@ fn finder(config: &Map<String, Value>) -> (String, String) {
     (paths, finder)
 }
 
-/// Pint's ConfigurationJsonRepository::get(): a missing file means "no config"; `extend` is one level deep.
 fn read_pint_json(path: &Path) -> Result<Map<String, Value>> {
     if !path.exists() {
         return Ok(Map::new());
@@ -190,10 +160,8 @@ fn read_pint_json(path: &Path) -> Result<Map<String, Value>> {
     let mut v: Value = serde_json::from_slice(&raw).with_context(invalid)?;
     if let Some(ext) = v.get("extend").and_then(Value::as_str) {
         let ext_path = path.parent().unwrap().join(ext);
-        // file_get_contents(realpath(...)): a missing file is realpath's `false`.
         let raw =
             std::fs::read(&ext_path).map_err(|_| anyhow::anyhow!("Path must not be empty"))?;
-        // json_decode then array_replace_recursive($base, ...): anything but an array is a TypeError.
         let base: Value = serde_json::from_slice(&raw).unwrap_or(Value::Null);
         let given = match &base {
             Value::Object(_) | Value::Array(_) => None,
@@ -218,13 +186,11 @@ fn read_pint_json(path: &Path) -> Result<Map<String, Value>> {
     }
     match v {
         Value::Object(m) => Ok(m),
-        // json_decode(..., true) makes a list a PHP array with only int keys, so no setting is found.
         Value::Array(_) => Ok(Map::new()),
         _ => bail!(invalid()),
     }
 }
 
-/// PHP's array_replace_recursive on JSON values (lists merge by index).
 fn replace_recursive(base: &mut Value, over: Value) {
     match (base, over) {
         (Value::Object(b), Value::Object(o)) => {
@@ -249,10 +215,6 @@ fn replace_recursive(base: &mut Value, over: Value) {
     }
 }
 
-/// pun.toml for `rules` (what the old config ran, resolved) over `preset`: `[format.rules]` holds what differs from
-/// the preset, `[lint.rules]` every risky or code-deleting fixer. A preset pun.toml doesn't take (`per`, `symfony`) is
-/// written as `empty` plus every rule it ran. A rule Pun can't run is named in `unsupported` and left out; one the
-/// preset brings is switched off, so the pun.toml runs.
 fn write(
     preset: &str,
     mut rules: Vec<Rule>,
@@ -262,8 +224,6 @@ fn write(
     runs: Runs,
 ) -> Result<Migration> {
     let preset = crate::FormatPreset::parse(preset).map_or("empty", crate::FormatPreset::name);
-    // Pun runs the deprecated visibility_required as modifier_keywords (as upstream's proxy does). Both on: one
-    // modifier_keywords for the union of their `elements` (no options = all elements).
     if let Some(i) = rules.iter().position(|r| r.name == "visibility_required") {
         let vr = rules.remove(i).options;
         match rules.iter_mut().find(|r| r.name == "modifier_keywords") {
@@ -310,7 +270,6 @@ fn write(
             unsupported.push(format!("{}: {why}", r.name));
             continue;
         };
-        // The preset brings it.
         if !lint
             && base
                 .iter()
@@ -356,7 +315,6 @@ fn write(
     })
 }
 
-/// `v` as an inline TOML value; `None` when it holds a null.
 fn toml_value(v: &Value) -> Option<String> {
     serde_json::from_value::<toml::Value>(v.clone())
         .ok()

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitDataProviderReturnTypeFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::data_provider_analyzer::get_data_providers;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -53,9 +52,7 @@ impl Fixer for PhpUnitDataProviderReturnTypeFixer {
                 if r#type.name == b"iterable" {
                     continue;
                 }
-                let type_start = tokens
-                    .get_next_meaningful_token(r#type.get_start_index() - 1)
-                    .unwrap();
+                let type_start = tokens.next_meaningful(r#type.get_start_index() - 1);
                 let type_end = r#type.get_end_index();
                 if tokens.generate_partial_code(type_start, type_end) != r#type.name {
                     continue;

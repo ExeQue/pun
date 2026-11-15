@@ -1,15 +1,9 @@
-//! `lint/phpunit/no-unused-mock`, ported from rector-phpunit's `RemoveStandaloneCreateMockRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! In a method of a test class, a statement that is only a method call chain starting with a `createMock()` call
-//! (`resolveTopmostCall`) is removed: the mock it makes is never used.
-
 use mago_syntax::cst::{Call, Expression, MethodBody, Node, NodeKind, Statement};
 use pun_problem::Safety;
 
 use super::{AnyCall, is_in_test_class};
-use crate::rules::rector_batch5::remove_statements;
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::rewrites::remove_statements;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

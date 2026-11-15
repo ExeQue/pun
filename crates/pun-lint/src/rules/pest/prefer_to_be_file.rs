@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-be-file`, ported from pest-plugin-rector's `UseToBeFileRector`: `expect(is_file($value))->toBeTrue()` becomes `expect($value)->toBeFile()`, and `toBeFalse()` or a
-//! `->not` before the matcher becomes `->not->toBeFile()`. The checked value's type must be a string.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};

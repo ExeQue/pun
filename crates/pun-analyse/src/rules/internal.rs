@@ -1,9 +1,3 @@
-//! The restricted-usage rules on members (config.level2.neon, under `featureToggles.internalTag`, and with
-//! phpstan-deprecation-rules): RestrictedMethodUsageRule, RestrictedStaticMethodUsageRule, RestrictedPropertyUsageRule,
-//! RestrictedStaticPropertyUsageRule and RestrictedUsageOfDeprecatedStringCastRule, with the internal extensions (an
-//! `@internal` member, or a member of an `@internal` class-like, used from outside the root namespace that declares
-//! it) and the deprecated ones (deprecations.rs).
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -19,9 +13,6 @@ use mago_syntax::walker::MutWalker;
 use super::Checker;
 use super::members::Method;
 
-/// The lowercase names of the methods and properties the restricted-usage extensions can report: `@internal` (with
-/// `internal`) or deprecated (with `deprecated`) ones and those of such class-likes. A member access whose name is not
-/// among them needs no type.
 pub(super) struct Names {
     methods: HashSet<Vec<u8>>,
     properties: HashSet<Vec<u8>>,
@@ -87,7 +78,6 @@ impl Names {
     }
 }
 
-/// The calls whose object or class expression the rules type.
 struct Typed<'n> {
     names: &'n Names,
     spans: Vec<Span>,
@@ -197,7 +187,6 @@ impl Typed<'_> {
     }
 }
 
-/// The expressions whose types the rules read.
 pub(super) fn typed_expressions(names: Option<&Names>, program: &Program) -> Vec<Span> {
     let Some(names) = names else {
         return Vec::new();
@@ -210,7 +199,6 @@ pub(super) fn typed_expressions(names: Option<&Names>, program: &Program) -> Vec
     typed.spans
 }
 
-/// The classes of an expression's object types (`getObjectClassNames()`), as Mago infers them.
 pub(super) fn object_classes<'a>(
     c: &Checker<'a, '_>,
     e: &Expression,
@@ -226,7 +214,6 @@ pub(super) fn object_classes<'a>(
         .collect()
 }
 
-/// `$obj->name()` and `$obj?->name()` (`call` spans the whole call: the error is on its first line).
 pub(super) fn method_call(
     c: &mut Checker,
     call: Span,
@@ -255,29 +242,24 @@ pub(super) fn method_call(
 type MethodExtension =
     fn(&Checker, &Method, Option<&ClassLikeMetadata>) -> Option<(String, String)>;
 
-/// The RestrictedMethodUsageExtension services, in registration order.
 const METHOD_EXTENSIONS: [MethodExtension; 2] = [restricted, super::deprecations::method];
 
-/// `Name::name()`, `self::`/`static::`/`parent::name()` and `$expr::name()`.
 pub(super) fn static_method_call(c: &mut Checker, call: &StaticMethodCall) {
     static_method(c, call.span(), call.class, &call.method);
 }
 
-/// `$obj->name(...)` (RestrictedMethodCallableUsageRule).
 pub(super) fn method_callable(c: &mut Checker, m: &MethodPartialApplication) {
     if is_callable(&m.argument_list) {
         method_call(c, m.span(), m.object, &m.method);
     }
 }
 
-/// `Name::name(...)` (RestrictedStaticMethodCallableUsageRule).
 pub(super) fn static_method_callable(c: &mut Checker, m: &StaticMethodPartialApplication) {
     if is_callable(&m.argument_list) {
         static_method(c, m.span(), m.class, &m.method);
     }
 }
 
-/// A first-class callable's `(...)`.
 pub(super) fn is_callable(args: &PartialArgumentList) -> bool {
     matches!(
         args.arguments.iter().collect::<Vec<_>>().as_slice(),
@@ -320,7 +302,6 @@ fn static_method(
             let Some((message, identifier)) = ext(c, &m, None) else {
                 continue;
             };
-            // RewrittenDeclaringClassMethodReflection: the call must stay restricted with the class it names declaring it
             if !k
                 .name
                 .as_bytes()
@@ -334,8 +315,6 @@ fn static_method(
     }
 }
 
-/// RestrictedInternalMethodUsageExtension::isRestrictedMethodUsage(): the message and identifier, with `declaring`
-/// standing in for the method's declaring class when given.
 fn restricted(
     c: &Checker,
     m: &Method,
@@ -392,13 +371,11 @@ fn restricted(
     })
 }
 
-/// The first segment of a name's namespace (`array_slice(explode('\\', $name), 0, -1)[0]`).
 pub(super) fn root_namespace(name: &str) -> Option<&str> {
     let (namespace, _) = name.rsplit_once('\\')?;
     namespace.split('\\').next()
 }
 
-/// RestrictedInternalUsageHelper::shouldBeReported().
 pub(super) fn should_be_reported(c: &Checker, name: &str) -> bool {
     match c.namespaces.last().cloned().flatten() {
         None => match c.class_scope() {
@@ -413,8 +390,6 @@ pub(super) fn should_be_reported(c: &Checker, name: &str) -> bool {
     }
 }
 
-/// RestrictedInternalPropertyUsageExtension::isRestrictedPropertyUsage(): property `$name` that `declaring`
-/// declares (`owner` standing in for it when given).
 fn internal_property(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -459,15 +434,12 @@ fn internal_property(
     })
 }
 
-/// A property for the restricted-usage extensions: its declaring class, whether `@internal`, its deprecation.
 struct PropertyFacts<'a> {
     declaring: &'a ClassLikeMetadata,
     internal: bool,
     deprecation: Option<super::deprecations::Deprecation>,
 }
 
-/// `getInstanceProperty()` / `getStaticProperty()` of `k`: a native property (static as `is_static` asks), else for an
-/// instance property an `@property` tag (neither internal nor deprecated itself).
 fn property_facts<'a>(
     c: &Checker<'a, '_>,
     k: &'a ClassLikeMetadata,
@@ -479,7 +451,6 @@ fn property_facts<'a>(
         if p.flags.is_static() != is_static {
             return None;
         }
-        // a trait's property is declared by the class using the trait
         let declaring = if declaring.kind == SymbolKind::Trait {
             using_class(c, k, declaring)
         } else {
@@ -506,7 +477,6 @@ fn property_facts<'a>(
     })
 }
 
-/// The nearest of `k` and its ancestors that uses trait `t`, else `k`.
 fn using_class<'a>(
     c: &Checker<'a, '_>,
     k: &'a ClassLikeMetadata,
@@ -530,7 +500,6 @@ fn using_class<'a>(
     k
 }
 
-/// RestrictedPropertyUsageRule: `$expr->name` (not a nullsafe fetch).
 pub(super) fn property_fetch(c: &mut Checker, p: &PropertyAccess) {
     let ClassLikeMemberSelector::Identifier(id) = &p.property else {
         return;
@@ -560,7 +529,6 @@ pub(super) fn property_fetch(c: &mut Checker, p: &PropertyAccess) {
     }
 }
 
-/// RestrictedStaticPropertyUsageRule: `Name::$name`, `self::`/`static::`/`parent::$name` and `$expr::$name`.
 pub(super) fn static_property_fetch(c: &mut Checker, p: &StaticPropertyAccess) {
     let Variable::Direct(v) = &p.property else {
         return;
@@ -582,7 +550,6 @@ pub(super) fn static_property_fetch(c: &mut Checker, p: &StaticPropertyAccess) {
             .and_then(|parent| c.codebase.get_class_like(parent.as_bytes()))
             .into_iter()
             .collect(),
-        // RuleLevelHelper::findTypeToCheck(): `$this` only below level 2
         Expression::Variable(Variable::Direct(v)) if c.level < 2 && v.name == b"$this" => {
             c.class_scope().into_iter().collect()
         }
@@ -627,7 +594,6 @@ pub(super) fn static_property_fetch(c: &mut Checker, p: &StaticPropertyAccess) {
     }
 }
 
-/// RestrictedUsageOfDeprecatedStringCastRule: `(string) $expr` of an object whose `__toString()` is restricted.
 pub(super) fn string_cast(c: &mut Checker, u: &UnaryPrefix) {
     if !matches!(
         u.operator,
@@ -637,7 +603,6 @@ pub(super) fn string_cast(c: &mut Checker, u: &UnaryPrefix) {
         return;
     }
     for k in object_classes(c, u.operand) {
-        // `hasNativeMethod('__toString')`
         let Some(m) = super::members::method(c, k, b"__toString") else {
             continue;
         };
@@ -651,7 +616,6 @@ pub(super) fn string_cast(c: &mut Checker, u: &UnaryPrefix) {
     }
 }
 
-/// The static property a STATIC_PROPERTY_ACCESS location names (`hasStaticProperty()`), for the class-name extensions.
 pub(super) fn static_property_member(
     c: &Checker,
     k: &ClassLikeMetadata,
@@ -666,7 +630,6 @@ pub(super) fn static_property_member(
     })
 }
 
-/// The method a STATIC_METHOD_CALL location names (`hasMethod()` and `getMethod()`), for the class-name extensions.
 pub(super) fn method_member(c: &Checker, m: &Method) -> super::class_names::Member {
     let (internal, declaring_deprecated) = match m {
         Method::User { declaring, f, .. } => (

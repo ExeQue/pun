@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Utils` (the parts fixers use; `sortFixers` lives in pun_format::Pipeline).
 use super::preg::Preg;
 pub(crate) use pun_config::options::natural_language_join;
 use pun_tokens::Token;
@@ -15,7 +14,6 @@ impl Utils {
         ))
     }
 
-    /// Everything after the final newline of a whitespace token.
     pub(crate) fn calculate_trailing_whitespace_indent(token: &Token) -> Vec<u8> {
         assert!(
             token.is_whitespace(None),
@@ -34,8 +32,6 @@ impl Utils {
     }
 }
 
-/// `mb_strwidth($s)` (UTF-8): East Asian Wide/Fullwidth characters count 2, everything else
-/// (including each maximal invalid UTF-8 subpart) counts 1. Table generated from PHP 8.5 mbstring.
 pub(crate) fn mb_strwidth(s: &[u8]) -> usize {
     String::from_utf8_lossy(s)
         .chars()
@@ -58,7 +54,6 @@ mod tests {
     use super::*;
     use pun_tokens::Kind::{T_STRING, T_WHITESPACE};
 
-    // Expected values from PHP 8.5: Utils::camelCaseToUnderscore, Utils::calculateTrailingWhitespaceIndent, mb_strwidth.
     #[test]
     fn php_values() {
         for (i, o) in [
@@ -68,7 +63,6 @@ mod tests {
             (b"HTMLParser", b"html_parser"),
             ("ÉcoleÜber".as_bytes(), "école_über".as_bytes()),
             (b"a", b"a"),
-            // Not UTF-8: Preg drops `u` (0xC9 is Latin-1 `É`, an uppercase letter), then mb_strtolower writes `?`.
             (b"test\xc9cole", b"test_?cole"),
             (b"test\xc9Cole", b"test_?_cole"),
             (b"testFoo\xffBar", b"test_foo?_bar"),
@@ -100,7 +94,6 @@ mod tests {
         }
     }
 
-    // PHP: InvalidArgumentException "The given token must be whitespace, got "T_STRING"."
     #[test]
     #[should_panic(expected = "The given token must be whitespace, got \"T_STRING\".")]
     fn trailing_indent_rejects_non_whitespace() {

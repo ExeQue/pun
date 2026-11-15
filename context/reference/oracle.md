@@ -8,7 +8,7 @@ by `scripts/oracle.sh`; corpus checkouts into `corpus/` by `scripts/corpus.sh`.
 | component | version | ref |
 |---|---|---|
 | PHP | 8.5.12 (system, NTS) | |
-| Composer | 2.10.3 | |
+| Composer | 2.11.2 (system; also the package manager's oracle, plan/packages.md) | |
 | laravel/pint | v1.32.1 (the latest release; it ships the Blade formatter and `Pint/phpdoc_type_annotations_only`) | `006bd7825eb01daf92959d060b89cd9514fe4253` |
 | friendsofphp/php-cs-fixer | v3.95.25 (bundled in Pint's PHAR and its composer.lock) | `2cdfc1f3daf173d83a1ebb6177949b58c95de6ff` |
 | rector/rector | 2.8.4 (the latest release; Pinkary's composer.lock still pins 2.6.1; the released build in `.oracle/rector-bin`, locked by `scripts/oracle-rector/composer.lock`) | |
@@ -44,7 +44,7 @@ by `scripts/oracle.sh`; corpus checkouts into `corpus/` by `scripts/corpus.sh`.
 | `scripts/export-fixtures.php <effective.json> <outdir>` | upstream data-provider test cases to JSON |
 | `scripts/cli-parity.sh [--project DIR] [--tty [--cols N]] [--env K=V] "ARGS"...` | byte-compare Pint and `pun migrate` + `pun format` (stdout, stderr, exit code, files) per argument set, same directory |
 | `scripts/export-phpunit-stub.php` | PHPUnit's declarations for `crates/pun-lint/tests/phpunit-stubs` |
-| `scripts/gen-third-party-licenses.sh [--check]` | `THIRD_PARTY_LICENSES.md` from cargo-about |
+| `scripts/gen-third-party-licenses.sh [--check]` | `licenses/THIRD_PARTY_LICENSES.md` from cargo-about |
 | `scripts/perturb.php <dir>` | make a deliberately unformatted copy (anti-laravel config + token noise, `php -l` checked) |
 
 ## Rector
@@ -129,8 +129,9 @@ used, e.g. whitespace config), and every case `{provider, key, args}`. Objects a
 `--output-to-file`), colours (`--ansi`, `--no-ansi`, TTY via `script`, NO_COLOR/FORCE_COLOR, Collision's TTY-only
 highlighting), terminal width (COLUMNS or `stty -a`), abort boxes and the prettier pre-flight check.
 
-Syntax-error messages are PHP's own: for a file that fails to lint Pun runs the local `php` once
-(`token_get_all(..., TOKEN_PARSE)`); without `php` it falls back to its parser's wording (same layout).
+Syntax-error messages are PHP's own without running PHP: pun-format's port of PHP's grammar
+(`crates/pun-format/src/php_parser.rs` on `php_grammar.rs`, which `scripts/gen-php-grammar.py` generates) fails
+with the messages `token_get_all(..., TOKEN_PARSE)` gives.
 The gitlab reporter's fixer descriptions/docs paths are generated: `php scripts/fixer-metadata.php --gitlab >
 crates/pun-cli/src/gitlab_fixers.json`.
 

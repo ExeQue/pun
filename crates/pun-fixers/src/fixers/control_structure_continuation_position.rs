@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\ControlStructureContinuationPositionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use anyhow::Result;
@@ -48,10 +47,9 @@ impl Fixer for ControlStructureContinuationPositionFixer {
                 if tokens[prev_index].equals("}", true)
                     && (!is_while
                         || tokens[tokens
-                            .get_prev_meaningful_token(
+                            .prev_meaningful(
                                 tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, prev_index),
-                            )
-                            .unwrap()]
+                            )]
                         .is_kind(T_DO))
                 {
                     let ws = if self.next_line {

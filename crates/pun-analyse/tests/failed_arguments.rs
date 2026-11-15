@@ -1,5 +1,3 @@
-//! ErrorType arguments do not cause a second type diagnostic in the public maintained analyzer.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run, run_mago};
@@ -16,7 +14,7 @@ fn failed_reads_keep_argument_diagnostics_evaluation_and_reference_outputs() {
         .as_array()
         .unwrap();
     let mut project = Project::new(vec![root.join("arguments.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project.level = 9;
     let raw = run_mago(&project, None).unwrap();
     let mut got: Vec<_> = raw
@@ -61,7 +59,6 @@ fn failed_reads_keep_argument_diagnostics_evaluation_and_reference_outputs() {
         .dumped
         .iter()
         .map(|dump| {
-            // Adapt only the tools' literal-integer display syntax, not their inferred values.
             let value = dump
                 .type_id
                 .strip_prefix("int(")
@@ -82,7 +79,6 @@ fn failed_reads_keep_argument_diagnostics_evaluation_and_reference_outputs() {
         .collect();
     assert_eq!(got, want);
 
-    // Binding and reference checks are separate from the engine's argument type verification.
     let binding = |id: &str| {
         matches!(
             id,

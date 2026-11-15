@@ -1,6 +1,3 @@
-//! PHPStan 2.3.5's UnsetRule. Property checks precede the recursive offset/variable check; each argument
-//! produces at most one error. Variable certainty is the statement's entry scope, not a syntactic read.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_analyzer::plugin::HookContext;
@@ -15,7 +12,6 @@ use pun_phpstan::types::{Accessory, ConstArray, Level, Tri, Type, is_super_type_
 use super::types::flow::unparen;
 use super::{Checker, declared, types};
 
-/// Types of unset chains/indexes and target/root observations. The first target supplies statement-entry scope.
 pub(super) fn expressions(
     program: &Program,
 ) -> (
@@ -69,7 +65,6 @@ pub(super) fn expressions(
     (wanted.typed, wanted.scopes, wanted.roots)
 }
 
-/// A memoized property fetch need not visit its receiver. Retain its actual live root value too.
 pub(super) fn observe(
     e: &Expression,
     context: &HookContext<'_, '_>,
@@ -156,10 +151,8 @@ pub(super) fn check(c: &mut Checker, u: &Unset) {
     }
 }
 
-/// PhpPropertyReflection::isFinal(): the keyword, private(set), or its own @final tag.
 fn property_final(c: &Checker, p: &PropertyMetadata) -> bool {
     p.flags.is_final()
-        // Private read visibility implies private writes, not PHPStan's asymmetric `private(set)` finality.
         || (p.write_visibility == Visibility::Private && p.read_visibility != Visibility::Private)
         || c.declaration(p)
             .and_then(|(span, _)| declared::doc_at(c, span))
@@ -206,12 +199,8 @@ fn can_be_unset(c: &mut Checker, node: &Expression, entry: Option<Span>) {
     }
 }
 
-/// Scope::getType() uses the unset statement's entry scope, while its index expressions have already run.
-/// Definitely absent variables are ErrorType, not Mago's synthetic null.
 fn scope_type(c: &Checker, e: &Expression) -> Option<Type> {
     if let Expression::UnaryPostfix(u) = unparen(e) {
-        // A postfix result is its input value, even on a counterfactual entry scope.
-        // Its real increment was already applied by the authoritative walk.
         return scope_type(c, u.operand);
     }
     if let Expression::Variable(Variable::Direct(v)) = unparen(e) {
@@ -223,8 +212,6 @@ fn scope_type(c: &Checker, e: &Expression) -> Option<Type> {
         let entry = c.variables.unset_entries.get(&e.span())?;
         let entry = c.phpstan_type_from(e, entry);
         let actual = c.phpstan_type(e)?;
-        // NodeCallbackScope keeps stored reads that are narrower than the asking
-        // entry scope. An incompatible virtual mutation must be priced on entry.
         return Some(
             if declared::with_classes(c, || is_super_type_of(&entry, &actual).yes()) {
                 actual
@@ -252,8 +239,6 @@ fn scope_type(c: &Checker, e: &Expression) -> Option<Type> {
     c.phpstan_type(e)
 }
 
-/// The result queried by LateResolvableTypeTrait. Resolve the receiver, not templates stored in its values.
-/// Resolving the whole offset to bounds would erase TemplateMixedType and TemplateTypeTrait::toArrayKey.
 pub(super) fn late_offset(on: &Type, index: &Type) -> Option<Type> {
     let result = match on {
         Type::Template(t) => {
@@ -342,7 +327,6 @@ pub(super) fn late_offset(on: &Type, index: &Type) -> Option<Type> {
     Some(result)
 }
 
-/// `hasOffsetValueType()`: no RuleLevelHelper filtering (in particular, no union member is discarded).
 pub(super) fn has_offset(c: &Checker, ty: &Type, offset: &Type) -> Tri {
     match ty {
         Type::Union(ts) => Tri::extreme_identity(ts.iter().map(|t| has_offset(c, t, offset))),
@@ -378,7 +362,6 @@ pub(super) fn has_offset(c: &Checker, ty: &Type, offset: &Type) -> Tri {
         Type::Template(t) => match &t.bound {
             Type::SubtractedMixed { .. } => Tri::Maybe,
             Type::ConstArray(array) => {
-                // TemplateConstantArrayType displays its bound, but its parent constructor is sealed.
                 let mut parent = array.clone();
                 parent.unsealed = None;
                 shape_offset(&parent, &array_key(offset))
@@ -425,7 +408,6 @@ pub(super) fn has_offset(c: &Checker, ty: &Type, offset: &Type) -> Tri {
     }
 }
 
-/// `ConstantArrayType::recursiveHasOffsetValueType()` after key conversion.
 fn shape_offset(array: &ConstArray, offset: &Type) -> Tri {
     if let Type::Union(ts) | Type::Benevolent(ts) = offset {
         return Tri::extreme_identity(ts.iter().map(|t| shape_offset(array, t)));
@@ -466,12 +448,9 @@ fn constant(t: &Type) -> bool {
     matches!(t, Type::ConstInt(_) | Type::ConstString(_))
 }
 
-/// `toArrayKey()` for offsets: the original offset type is still used in the diagnostic.
 fn array_key(t: &Type) -> Type {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => union(ts.iter().map(array_key).collect()),
-        // MixedType::toArrayKey ignores exclusions: floats, booleans and null also cast to keys.
-        // TemplateTypeTrait deliberately retains the template itself instead.
         Type::Mixed { .. } | Type::SubtractedMixed { .. } | Type::Error => {
             Type::Benevolent(vec![Type::Int, Type::String])
         }
@@ -497,7 +476,6 @@ fn array_key(t: &Type) -> Type {
         Type::Bool => union(vec![Type::ConstInt(0), Type::ConstInt(1)]),
         Type::Float => Type::Int,
         Type::ConstFloat(f) => {
-            // PHP's float-to-int conversion truncates modulo 2^64, unlike Rust's saturating cast.
             let word = 18446744073709551616.0;
             let mut value = if f.is_finite() { f.trunc() % word } else { 0.0 };
             if value >= -(i64::MIN as f64) {
@@ -527,8 +505,6 @@ mod tests {
     use super::{Checker, array_key, declared, has_offset, types};
     use crate::rules::{include_file, reflection};
 
-    /// These late and fully excluded values cannot all be expressed by the current PHPDoc/flow producer.
-    /// Query the exact PHPStan type objects, without broadening the public source-type restoration layer.
     #[test]
     fn offset_type_queries_match_pinned_phpstan() {
         let arena = LocalArena::new();
@@ -551,20 +527,20 @@ mod tests {
         let facts = super::super::Facts::of(&file.contents, program, true);
         let function_likes = std::collections::HashMap::new();
         let natives = super::super::driver::Natives::load(80400);
-        let (_, include_state) = include_file::prepare(
-            &arena,
-            &file,
+        let run = super::super::infer::Run {
+            arena: &arena,
+            file: &file,
             program,
-            &names,
-            &codebase,
-            80400,
-            true,
-            true,
-            true,
-            &settings,
-            &facts.comments,
-            &[],
-        );
+            names: &names,
+            codebase: &codebase,
+            php_version: 80400,
+            switches: super::super::Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS
+                | super::super::Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH
+                | super::super::Switches::POLLUTE_SCOPE_WITH_BLOCK,
+            comments: &facts.comments,
+            functions: &[],
+        };
+        let (_, include_state) = include_file::prepare(&run, &settings);
         let exceptions = crate::Exceptions::default();
         let c = Checker {
             file: &file,

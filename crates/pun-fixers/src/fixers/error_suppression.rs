@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\ErrorSuppressionFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -31,9 +30,9 @@ impl ErrorSuppressionFixer {
             .get_next_token_of_kind(index, &[T_STRING.into(), "(".into()], true)
             .unwrap();
         let end_brace_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
-        let mut prev_index = tokens.get_prev_meaningful_token(end_brace_index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(end_brace_index);
         if tokens[prev_index].equals(",", true) {
-            prev_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+            prev_index = tokens.prev_meaningful(prev_index);
         }
         tokens[prev_index].equals((T_STRING, "E_USER_DEPRECATED"), true)
     }
@@ -88,12 +87,11 @@ impl Fixer for ErrorSuppressionFixer {
             }
             let function_index = i;
             let mut start_index = i;
-            let mut prev_index = tokens.get_prev_meaningful_token(i).unwrap();
+            let mut prev_index = tokens.prev_meaningful(i);
             if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
                 start_index = prev_index;
-                prev_index = tokens.get_prev_meaningful_token(start_index).unwrap();
+                prev_index = tokens.prev_meaningful(start_index);
             }
-            // `$index = $prevIndex;` then the loop's `--$index`.
             index = prev_index as isize - 1;
             if Self::is_deprecation_error_call(tokens, function_index) {
                 if !self.mute_deprecation_error || tokens[prev_index].equals("@", true) {

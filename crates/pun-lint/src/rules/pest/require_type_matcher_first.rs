@@ -1,7 +1,3 @@
-//! `lint/pest/require-type-matcher-first`, ported from pest-plugin-rector's `EnsureTypeChecksFirstRector`: in an
-//! `expect()` chain, type matchers (`toBeInt()`, `toBeInstanceOf()`, ...) move before value matchers, and an
-//! `expect()` with value matchers only swaps with the next one on the same value when that one checks a type.
-
 use mago_syntax::cst::{ClassLikeMemberSelector, Node, NodeKind, Variable};
 use pun_problem::Safety;
 
@@ -52,7 +48,6 @@ impl Rule for RequireTypeMatcherFirst {
         };
         let stmts = &list.stmts;
         let call_of = |i: usize| statement_expression(stmts[i]).and_then(method_call);
-        // `$stmts` as refactor() changes it (old indexes), while its foreach walks the list as it was.
         let mut live: Vec<usize> = (0..stmts.len()).collect();
         let mut texts: Vec<Option<String>> = vec![None; stmts.len()];
         let mut changed = false;
@@ -67,7 +62,6 @@ impl Rule for RequireTypeMatcherFirst {
                 .zip(&methods)
                 .any(|(a, b)| !same_link(a, b))
             {
-                // `$stmt->expr = $this->rebuildMethodChain($root, $newMethods)`: printed again on one line.
                 let span = node_span(stmts[key]);
                 let expr = node_span(call);
                 let indent = super::indent_at(ctx, span.start);
@@ -138,7 +132,6 @@ impl Rule for RequireTypeMatcherFirst {
     }
 }
 
-/// The same link of the old chain: what PHP's `!==` on the method lists compares.
 fn same_link(a: &Link<'_>, b: &Link<'_>) -> bool {
     let span = |l: &Link<'_>| match l {
         Link::Method(m) => node_span(*m),
@@ -147,7 +140,6 @@ fn same_link(a: &Link<'_>, b: &Link<'_>) -> bool {
     span(a) == span(b)
 }
 
-/// `resolveMethodName`: the name as written, a variable's name for `->$name`, none otherwise.
 fn name<'a>(link: &Link<'a>) -> Option<&'a [u8]> {
     let selector = match link {
         Link::Method(m) => &m.method,
@@ -164,7 +156,6 @@ fn is_type_matcher(name: &[u8]) -> bool {
     TYPE_MATCHERS.contains(&name)
 }
 
-/// `isSafeNonTypeMatcher`: a matcher or modifier Pest documents, which moving a type check across leaves right.
 fn is_safe_non_type(name: &[u8]) -> bool {
     const PREFIXES: [&[u8]; 8] = [
         b"toBe",
@@ -193,7 +184,6 @@ fn is_safe_non_type(name: &[u8]) -> bool {
     PREFIXES.iter().any(|p| name.starts_with(p)) || NAMES.contains(&name)
 }
 
-/// `partitionTypeAndNonType`.
 fn partition<'a>(methods: &[Link<'a>]) -> (Vec<Link<'a>>, Vec<Link<'a>>) {
     methods
         .iter()
@@ -201,9 +191,6 @@ fn partition<'a>(methods: &[Link<'a>]) -> (Vec<Link<'a>>, Vec<Link<'a>>) {
         .partition(|m| name(m).is_some_and(is_type_matcher))
 }
 
-/// `reorderWithinAndSegments`: between `->and()` calls, the units (a matcher with the `not` before it) that check a
-/// type move before the others, when all of them are known matchers and the types come after a value check without
-/// a value check after a type one.
 fn reorder<'a>(methods: &[Link<'a>]) -> Vec<Link<'a>> {
     let mut result = Vec::new();
     let mut segment: Vec<Link<'a>> = Vec::new();
@@ -225,7 +212,6 @@ fn flush<'a>(segment: &mut Vec<Link<'a>>, result: &mut Vec<Link<'a>>) {
         Some(n) => !is_type_matcher(n) && !is_safe_non_type(n),
         None => false,
     });
-    // groupIntoUnits: each `not` stays with the matcher after it.
     let mut units: Vec<Vec<Link<'a>>> = Vec::new();
     let mut pending = Vec::new();
     for m in segment.iter() {
@@ -252,7 +238,6 @@ fn flush<'a>(segment: &mut Vec<Link<'a>>, result: &mut Vec<Link<'a>>) {
         }
     }
     if needs {
-        // A value check after a type check after a value check: interleaved, left alone.
         let mut found_type = false;
         let mut other_after_type = false;
         for unit in &units {

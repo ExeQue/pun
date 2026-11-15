@@ -1,9 +1,3 @@
-//! Level 2's PHPDoc type checks: IncompatiblePhpDocTypeRule (functions, methods) and
-//! IncompatiblePropertyHookPhpDocTypeRule over IncompatiblePhpDocTypeCheck, IncompatiblePropertyPhpDocTypeRule and
-//! IncompatibleClassConstantPhpDocTypeRule: a PHPDoc type must resolve, fit its native type and name generic
-//! classes correctly; `@param` tags must name a parameter, `@param-out` a by-reference one.
-//! GenericCallableRuleHelper checks the templates of the PHPDoc types' callables.
-
 use std::collections::HashMap;
 
 use mago_span::{HasSpan, Span};
@@ -38,7 +32,6 @@ fn report(c: &mut Checker, at: Span, errors: Errors) {
     }
 }
 
-/// `UnresolvableTypeHelper::getUnresolvableType() !== null`.
 fn unresolvable(t: &Type) -> bool {
     let mut found = false;
     super::type_aliases::each(t, &mut |t| {
@@ -47,7 +40,6 @@ fn unresolvable(t: &Type) -> bool {
     found
 }
 
-/// GenericObjectTypeCheck with the messages of `what` (e.g. `PHPDoc tag @return`).
 fn generic(t: &Type, what: &str, errors: &mut Errors) {
     let s = generics::escape(what);
     let messages = generics::GenericMessages::at(&s);
@@ -61,7 +53,6 @@ fn generic(t: &Type, what: &str, errors: &mut Errors) {
     );
 }
 
-/// The `is incompatible with` / `is not subtype of` error of a PHPDoc type against its native type.
 fn native_check(
     identifier: &'static str,
     what: &str,
@@ -70,7 +61,6 @@ fn native_check(
     tip: bool,
     errors: &mut Errors,
 ) {
-    // (a late-resolvable type compares as what it resolves to, and describes as itself)
     let is = is_super_type_of(native, &resolve_late(phpdoc));
     let (described, native_described) = (
         phpdoc.describe(Level::TypeOnly),
@@ -102,15 +92,12 @@ fn native_check(
     }
 }
 
-/// A function-like's native parameters (name, type, by reference) and native return type, and where it is for
-/// GenericCallableRuleHelper.
 struct Native {
     params: Vec<(String, Type, bool)>,
     ret: Type,
     cx: generics::CallableContext,
 }
 
-/// GenericCallableRuleHelper::check() at `location`.
 fn callables(t: &Type, location: &str, cx: &generics::CallableContext, errors: &mut Errors) {
     let mut found = generics::Found::default();
     generics::generic_callables(t, location, cx, &mut found);
@@ -122,7 +109,6 @@ fn callables(t: &Type, location: &str, cx: &generics::CallableContext, errors: &
     );
 }
 
-/// The class part of a [`generics::CallableContext`]: name, parent, display name and `@template` names.
 fn class_context(
     c: &Checker,
     k: &mago_codex::metadata::class_like::ClassLikeMetadata,
@@ -140,9 +126,6 @@ fn class_context(
     )
 }
 
-/// A late-resolvable type Pun keeps unresolved: a `key-of` / `value-of` of a template (kept as a class name) or an
-/// OffsetAccessType [`resolve_late()`] leaves.
-// ponytail: PHPStan checks these too (e.g. a `T['k']` against the native type); Pun skips the PHPDoc type
 fn late(t: &Type) -> bool {
     let found = std::cell::Cell::new(
         matches!(t, Type::Object(n, _, _) if n == "key-of" || n == "value-of")
@@ -155,7 +138,6 @@ fn late(t: &Type) -> bool {
     found.get()
 }
 
-/// IncompatiblePhpDocTypeCheck::check() on the PHPDoc `doc` resolved in `scope`.
 fn check(entry: &DocEntry, scope: &NameScope, native: &Native) -> Errors {
     let doc = &entry.doc;
     let mut errors = Errors::new();
@@ -186,7 +168,6 @@ fn check(entry: &DocEntry, scope: &NameScope, native: &Native) -> Errors {
             ));
             continue;
         };
-        // (the tag's type is intersected with `object`, so a non-object one is never)
         let non_object =
             tag == "@param-closure-this" && is_super_type_of(&Type::ObjectWithoutClass, &ty).no();
         if non_object || unresolvable(&ty) {
@@ -244,8 +225,6 @@ fn check(entry: &DocEntry, scope: &NameScope, native: &Native) -> Errors {
             }
         }
     }
-    // (a `@return` whose value does not parse is an InvalidTagValueNode, no return tag)
-    // ponytail: Doc::parse's approximate reader still reads it
     let invalid_return = entry.phpdoc.iter().any(|t| {
         t.name.ends_with("return") && matches!(t.value, pun_phpstan::phpdoc::TagValue::Invalid(..))
     });
@@ -275,7 +254,6 @@ fn check(entry: &DocEntry, scope: &NameScope, native: &Native) -> Errors {
     errors
 }
 
-/// `getFunctionType($param->type, isParameterValueNullable($param), false)` of each parameter.
 fn native_params(
     c: &Checker,
     list: &FunctionLikeParameterList,
@@ -372,8 +350,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
     report(c, m.span(), errors);
 }
 
-/// IncompatiblePropertyHookPhpDocTypeRule: a hook's parameters are never by reference; a `get` hook returns the
-/// property's native type, a `set` hook `void`.
 pub(super) fn hook(c: &mut Checker, h: &PropertyHook, hooked: &[u8], hint: Option<&Hint>) {
     if c.level < 2 {
         return;
@@ -428,8 +404,6 @@ pub(super) fn hook(c: &mut Checker, h: &PropertyHook, hooked: &[u8], hint: Optio
     report(c, h.span(), errors);
 }
 
-/// IncompatiblePropertyPhpDocTypeRule (`ClassPropertyNode`) of a declared property: the declaration's single
-/// unnamed `@var`, else the one naming the property.
 pub(super) fn property(c: &mut Checker, p: &Property) {
     if c.level < 2 {
         return;
@@ -471,7 +445,6 @@ pub(super) fn property(c: &mut Checker, p: &Property) {
     }
 }
 
-/// A promoted constructor parameter's property: its own `@var`, else the constructor's `@param` for it.
 pub(super) fn promoted(c: &mut Checker, m: &Method) {
     if c.level < 2 || !m.name.value.eq_ignore_ascii_case(b"__construct") {
         return;
@@ -551,7 +524,6 @@ fn property_check(
     errors
 }
 
-/// IncompatibleClassConstantPhpDocTypeRule (`ClassConst`).
 pub(super) fn class_constant(c: &mut Checker, k: &ClassLikeConstant) {
     if c.level < 2 {
         return;
@@ -566,7 +538,6 @@ pub(super) fn class_constant(c: &mut Checker, k: &ClassLikeConstant) {
                 .hint
                 .as_ref()
                 .map(|h| declared::native(c, h, Some(context)));
-            // resolveConstantVarPhpDocType(): an inherited `@var` the native type does not certainly accept is dropped
             let own = c.doc_before(c.file.id, k.span().start.offset).is_some();
             if !own
                 && native

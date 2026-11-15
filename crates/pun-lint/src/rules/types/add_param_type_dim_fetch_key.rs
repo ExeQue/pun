@@ -1,15 +1,3 @@
-//! `lint/types/add-param-type-dim-fetch-key`, ported from Rector 2.8.4's `AddParamFromDimFetchKeyUseRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with `ArrayDimFetchFinder::findByDimName` and `ParamTypeAddGuard`: an
-//! untyped parameter of a class's method that the method uses as an array key (`$items[$key]`) gets the key type of
-//! the array, when every such array is a general or constant array.
-//!
-//! Known difference on laravel-framework: Rector writes `mixed $name` on `Optional::__isset()`, from the explicit
-//! `mixed` key that `is_array()` gives the array, where Pun's facts have no explicit `mixed`.
-//!
-//! Not ported (Rector adds the key type, Pun skips): an offset written on a local array (`$map[$key] = 2`, PHPStan
-//! reads the type before the write), a class constant's array (`self::MAP[$key]`), and a shape whose `int` and
-//! `string` key order only a docblock gives (`$map = $this->pairs()`).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -28,11 +16,10 @@ use super::facts::{Facts, facts};
 use super::has_parent_class_method;
 use super::names::resolve_class_name;
 use super::param::{Flow, add_hint, param_declaration, traverse};
-use crate::rules::class_method::type_of;
+use crate::rules::support::class_members::type_of;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::UNION_TYPES`.
 const UNION_TYPES: u32 = 80000;
 
 pub struct AddParamTypeDimFetchKey;
@@ -54,7 +41,6 @@ impl Rule for AddParamTypeDimFetchKey {
         out: &mut Vec<Report>,
     ) {
         let Node::Method(method) = node else { return };
-        // a method of a class (`Class_`, anonymous ones included)
         let in_class = ancestors.iter().rev().find(|a| {
             matches!(
                 a,
@@ -106,10 +92,9 @@ impl Rule for AddParamTypeDimFetchKey {
             else {
                 continue;
             };
-            // a constant array's `int` and `string` keys keep their order (PHPStan's union of them is not sorted)
             let declaration = match order {
-                Some(names) if ctx.php_version >= UNION_TYPES => Some(names.join("|")),
-                _ => param_declaration(&key, &facts.codebase, ctx.php_version),
+                Some(names) if ctx.php_version.id() >= UNION_TYPES => Some(names.join("|")),
+                _ => param_declaration(&key, &facts.codebase, ctx.php_version.id()),
             };
             if let Some(declaration) = declaration {
                 edits.push(add_hint(param, &declaration));
@@ -127,9 +112,6 @@ impl Rule for AddParamTypeDimFetchKey {
     }
 }
 
-/// The key type of the last fetch's array, when every fetched array is an `ArrayType` or a `ConstantArrayType` and
-/// no key variable's type is a union; `None` for `mixed` (Mago's `array-key` of an `array` without a docblock). With
-/// it, the order of a constant array's `int` and `string` keys when it has both.
 fn last_key_type(
     facts: &Facts,
     class: Option<&str>,
@@ -139,7 +121,6 @@ fn last_key_type(
 ) -> Option<(TUnion, Option<Vec<&'static str>>)> {
     let mut key = None;
     for fetch in fetches {
-        // the target of an assignment: Mago's type is the one after it, PHPStan's the property's declared one
         let t = if is_assigned(body, fetch) {
             class
                 .and_then(|class| declared_property_type(facts, class, ancestors, fetch.array))
@@ -150,7 +131,6 @@ fn last_key_type(
         let [TAtomic::Array(array)] = t.types.as_ref() else {
             return None;
         };
-        // after `isset($items[...])`, PHPStan's type of `$items` is an intersection with `hasOffset`
         if after_isset(body, fetch) {
             return None;
         }
@@ -160,7 +140,6 @@ fn last_key_type(
             _ => None,
         };
         key = Some(fetched.map(|t| (t, order)));
-        // the index is the parameter, `mixed` or its narrowed type
         if type_of(facts, fetch.index).is_some_and(|t| t.types.len() > 1) {
             return None;
         }
@@ -168,7 +147,6 @@ fn last_key_type(
     key.flatten()
 }
 
-/// Whether an `isset()` of an offset of the variable `fetch` reads ends before it.
 fn after_isset(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> bool {
     let Expression::Variable(Variable::Direct(variable)) = unparenthesize(fetch.array) else {
         return false;
@@ -190,14 +168,12 @@ fn after_isset(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> bool {
     found
 }
 
-/// Whether `fetch` is the target of an assignment (`$this->items[$key] = $value`).
 fn is_assigned(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> bool {
     let mut found = false;
     traverse(body, &mut |node| {
         let Node::Assignment(a) = node else {
             return Flow::Continue;
         };
-        // the target itself, or the array of a nested target (`$this->items[$key][] = $value`)
         let mut target = unparenthesize(a.lhs);
         loop {
             if node_span(target) == node_span(fetch) {
@@ -214,8 +190,6 @@ fn is_assigned(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> bool {
     found
 }
 
-/// The declared type (its docblock's, else the native one) of `$object->name` (an object of a class), `self::$name`,
-/// `static::$name`, `Name::$name` or `$object::$name`: the type PHPStan gives the property as the target of an assignment.
 fn declared_property_type<'f>(
     facts: &'f Facts,
     class: &str,
@@ -230,14 +204,12 @@ fn declared_property_type<'f>(
         Some(String::from_utf8_lossy(owner.name.as_bytes()).into_owned())
     };
     let (class, name) = match unparenthesize(expr) {
-        // `$this->items`, or the property of another object of a class
         Expression::Access(Access::Property(fetch)) => {
             let ClassLikeMemberSelector::Identifier(name) = &fetch.property else {
                 return None;
             };
             (class_of(fetch.object)?, [b"$", name.value].concat())
         }
-        // `static::$items`, `self::$items`, `Other::$items`, `$object::$items`
         Expression::Access(Access::StaticProperty(fetch)) => {
             let Variable::Direct(v) = &fetch.property else {
                 return None;
@@ -257,9 +229,6 @@ fn declared_property_type<'f>(
     property.type_metadata.as_ref().map(|t| &t.type_union)
 }
 
-/// `getKeyType()` of an `ArrayType` (`Some(None)` when it is `mixed`) or a `ConstantArrayType` (its keys' types in
-/// order, ints and strings), a list's `int`; `None` for a non-empty general array (an `IntersectionType`) and other
-/// arrays.
 fn key_type(array: &TArray) -> Option<Option<TUnion>> {
     match array {
         TArray::Keyed(keyed) => match (&keyed.known_items, &keyed.parameters) {
@@ -293,9 +262,6 @@ fn key_type(array: &TArray) -> Option<Option<TUnion>> {
     }
 }
 
-/// The key types of a constant array with `int` and `string` keys, in the order PHPStan keeps them (its keys'
-/// order): that of the literal keys of the array literal last assigned to the fetched variable before the fetch, then
-/// the kind they leave out (Mago sorts the keys).
 fn literal_key_order(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> Option<Vec<&'static str>> {
     let Expression::Variable(Variable::Direct(variable)) = unparenthesize(fetch.array) else {
         return None;
@@ -320,7 +286,6 @@ fn literal_key_order(body: Node<'_, '_>, fetch: &ArrayAccess<'_>) -> Option<Vec<
             ArrayElement::KeyValue(pair) => match unparenthesize(pair.key) {
                 Expression::Literal(Literal::String(_)) => "string",
                 Expression::Literal(Literal::Integer(_)) => "int",
-                // a constant's value: the key kind the literal keys leave out comes last
                 _ => continue,
             },
             _ => "int",

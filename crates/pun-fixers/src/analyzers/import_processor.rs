@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Processor\ImportProcessor`.
 use crate::analyzers::analysis::NamespaceUseType;
 use pun_format::WhitespacesFixerConfig;
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -12,7 +11,6 @@ impl ImportProcessor {
         ImportProcessor { whitespaces_config }
     }
 
-    /// `imports`: `[type => names]` in PHP array order (each type's names are sorted here, like upstream).
     pub(crate) fn insert_imports(
         &self,
         tokens: &mut Tokens,
@@ -33,7 +31,6 @@ impl ImportProcessor {
         }
         for (ty, type_imports) in imports {
             let mut type_imports = type_imports.clone();
-            // ponytail: PHP sort() compares numeric strings numerically; import names never are numeric.
             type_imports.sort();
             let mut items = Vec::new();
             for name in &type_imports {
@@ -63,7 +60,6 @@ impl ImportProcessor {
 mod tests {
     use super::*;
 
-    // Expected: the real ImportProcessor (WhitespacesFixerConfig('    ', "\r\n")) on the same input.
     #[test]
     fn matches_php() {
         let imports: &[(NamespaceUseType, Vec<Vec<u8>>)] = &[

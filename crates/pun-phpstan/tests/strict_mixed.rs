@@ -1,5 +1,3 @@
-//! Checked mixed contracts from PHPStan 2.3.1, not scope/declaration widening.
-
 use pun_phpstan::types::{
     Cast, Level, StrictMixed, Template, Tri, Type, accepts, cast_is_error, intersect,
     is_super_type_of, to_phpdoc, union,
@@ -129,7 +127,6 @@ fn checked_mixed_queries_rendering_identity_and_acceptance() {
             "{row}"
         );
         assert_eq!(to_phpdoc(&t), row["phpdoc"].as_str().unwrap(), "{row}");
-        // These oracle inputs have one object leaf (`object`); every other concrete leaf is non-object.
         let member = t.query_members(&|t| Tri::from(matches!(t, Type::ObjectWithoutClass)));
         assert_eq!(
             format!("{member:?}"),

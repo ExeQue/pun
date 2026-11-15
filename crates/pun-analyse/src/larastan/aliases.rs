@@ -1,13 +1,3 @@
-//! RegisterFacades' alias identities, without booting PHP. The installed Facade::defaultAliases(), app config
-//! (a replacement array or the standard defaults/merge/toArray chain), config cache, and PackageManifest are the
-//! sources of truth. Package aliases override app aliases. An unreadable/dynamic value contributes no aliases.
-//!
-//! This does not resolve facade accessors or forward methods to container services. Programmatic AliasLoader
-//! changes, custom bootstrap/config/cache/vendor paths and real-time `Facades\...` generation need more than this
-//! literal reader; never guess their aliases. The normal codex scanner/populator owns class_alias identity.
-//! Its real declarations win, matching an already-loaded native class. Runtime load order (including an alias
-//! beating an unloaded real class, or differently cased aliases to different targets) is not simulated here.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -56,7 +46,6 @@ impl Value {
     }
 }
 
-/// Alias spelling is retained: AliasLoader's cold autoload lookup is case-sensitive, unlike PHP's loaded classes.
 pub(crate) fn load(root: &Path) -> Vec<(String, String)> {
     let installed = json(&root.join("vendor/composer/installed.json"));
     let packages = installed.get("packages").unwrap_or(&installed).as_array();
@@ -119,8 +108,6 @@ pub(crate) fn load(root: &Path) -> Vec<(String, String)> {
         let composer = json(&root.join("composer.json"));
         let mut ignored = strings(&composer["extra"]["laravel"]["dont-discover"]);
         let ignore_all = ignored.iter().any(|p| p == "*");
-        // PackageManifest collects every package's exclusions before rejecting any package.
-        // Its wildcard switch is computed from the root package only, before those additions.
         for package in packages.into_iter().flatten() {
             ignored.extend(strings(&package["extra"]["laravel"]["dont-discover"]));
         }
@@ -200,7 +187,6 @@ fn returned(path: &Path, defaults: &[(String, Value)], method: bool) -> Option<V
         found.walk_program(program, &mut ());
         found.value
     } else {
-        // Only a top-level return: do not take a closure's return or a branch of dynamic bootstrap code.
         program.statements.iter().find_map(|s| match s {
             Statement::Return(r) => r.value.map(|e| value(e, &names, defaults)),
             _ => None,

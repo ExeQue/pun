@@ -1,16 +1,3 @@
-//! `lint/laravel/add-factory-extends-phpdoc`, ported from rector-laravel 2.7.3's `AddExtendsAnnotationToModelFactoriesRector`
-//! (src/Rector/Class_).
-//!
-//! A class that is an `Illuminate\Database\Eloquent\Factories\Factory` and whose first `$model` property (the name
-//! compared ignoring ASCII case) has a default `Foo::class` or a string gets
-//! `@extends \Illuminate\Database\Eloquent\Factories\Factory<\Foo>` in its doc comment, unless the doc has an
-//! `@extends` tag already (the name compared exactly). The model is the class's resolved name as written (`self`
-//! stays `self`) or the string's value, printed after one `\`. A class expression PHP rejects in a property's default
-//! (`$x::class`) leaves the class alone.
-//!
-//! Without a doc comment, a new one goes before the class (its attributes included); an existing one gets the tag as
-//! a new last line (`PhpDocInfoPrinter`, see [`Doc::print_appending`]).
-
 use mago_syntax::cst::{
     Access, ClassLikeMember, CompositeString, Expression, Literal, Node, NodeKind, Property,
     PropertyItem,
@@ -20,9 +7,9 @@ use pun_problem::{Edit, Safety, Span};
 use super::document_string::document_value;
 use super::is_a;
 use super::names::resolve_class_name;
-use crate::rules::class_method::qualified;
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_conditions::indentation;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::conditions::indentation;
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -51,7 +38,6 @@ impl Rule for AddFactoryExtendsPhpdoc {
         if !is_a(ctx, &name, &[FACTORY]) {
             return;
         }
-        // the first property named `model` (php-parser's name of a property is its first item's)
         let Some(item) = class.members.iter().find_map(|m| {
             let first = match m {
                 ClassLikeMember::Property(Property::Plain(p)) => p.items.first(),
@@ -102,7 +88,6 @@ impl Rule for AddFactoryExtendsPhpdoc {
     }
 }
 
-/// The variable name of a property item, with its `$`.
 fn item_name<'a>(item: &PropertyItem<'a>) -> &'a [u8] {
     match item {
         PropertyItem::Abstract(a) => a.variable.name,
@@ -110,7 +95,6 @@ fn item_name<'a>(item: &PropertyItem<'a>) -> &'a [u8] {
     }
 }
 
-/// `getModelName`: the class name of `X::class` (any constant of a class written as a name), or a string's value.
 fn model_name(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -118,7 +102,6 @@ fn model_name(
 ) -> Option<String> {
     let bytes = match unparenthesize(value) {
         Expression::Access(Access::ClassConstant(c)) => {
-            // PHP rejects any other class expression in a property's default
             return match c.class {
                 Expression::Identifier(id) => Some(resolve_class_name(ancestors, id)),
                 e => matches!(
@@ -135,7 +118,6 @@ fn model_name(
     String::from_utf8(bytes).ok()
 }
 
-/// phpdoc-parser's tag name at the start of a word: `@` and the name characters after it.
 pub(crate) fn tag_name(word: &str) -> &str {
     let end = word
         .char_indices()

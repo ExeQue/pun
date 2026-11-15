@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\NoMultipleStatementsPerLineFixer`.
 use crate::analyzers::indentation_trait::get_line_indentation;
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -19,8 +18,6 @@ impl Fixer for NoMultipleStatementsPerLineFixer {
         "no_multiple_statements_per_line"
     }
     fn priority(&self) -> i32 {
-        // Must run before BracesPositionFixer, CurlyBracesPositionFixer.
-        // Must run after ControlStructureBracesFixer, NoEmptyStatementFixer, YieldFromArrayToYieldsFixer.
         -1
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

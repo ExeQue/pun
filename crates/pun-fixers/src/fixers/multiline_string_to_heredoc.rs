@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\MultilineStringToHeredocFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -19,7 +18,6 @@ impl Fixer for MultilineStringToHeredocFixer {
         "multiline_string_to_heredoc"
     }
     fn priority(&self) -> i32 {
-        // Must run before EscapeImplicitBackslashesFixer, HeredocIndentationFixer, StringImplicitBackslashesFixer.
         16
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -27,7 +25,6 @@ impl Fixer for MultilineStringToHeredocFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let mut complex_string_start_index = None;
-        // `foreach ($tokens ...)` reads the live size, so tokens inserted on the way are visited too.
         let mut index = 0;
         while index < tokens.count() {
             match complex_string_start_index {

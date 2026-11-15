@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\NoSinglelineWhitespaceBeforeSemicolonsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Tokens;
 use std::path::Path;
@@ -14,8 +13,6 @@ impl Fixer for NoSinglelineWhitespaceBeforeSemicolonsFixer {
         "no_singleline_whitespace_before_semicolons"
     }
     fn priority(&self) -> i32 {
-        // Must run after CombineConsecutiveIssetsFixer, FunctionToConstantFixer, LongToShorthandOperatorFixer,
-        // NoEmptyStatementFixer, NoUnneededImportAliasFixer, SimplifiedIfReturnFixer, SingleImportPerStatementFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -29,7 +26,6 @@ impl Fixer for NoSinglelineWhitespaceBeforeSemicolonsFixer {
                 continue;
             }
             if tokens[index - 2].equals(";", true) {
-                // do not remove all whitespace before the semicolon because it is also whitespace after another semicolon
                 tokens.ensure_whitespace_at_index(index - 1, 0, b" ");
             } else if !tokens[index - 2].is_comment() {
                 tokens.clear_at(index - 1);

@@ -1,4 +1,4 @@
-//! Rector's own fixtures for the dead-code, phpdoc, complexity and control-flow rules of the quality batch, copied
+//! Rector's own fixtures for the dead-code, phpdoc, complexity and control-flow rules tested here, copied
 //! verbatim from rector-src 2.8.4 (`.oracle/rector`, rules-tests/...) into tests/rector/<Rector class>/Fixture, with
 //! the classes they use in Source/. Oracle/ holds extra inputs with what Rector 2.8.4 (`.oracle/rector-ecosystem`, the
 //! rule alone, `phpVersion(80400)`) wrote for them; Pun/ holds the cases where Pun differs from Rector on purpose, its
@@ -48,11 +48,9 @@
 //! InlineArrayReturnAssignRector/Fixture/with_first_class_callable: `new SomeAssignedObject(...)` is not PHP, and
 //! Mago's parser rejects the file.
 
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::run_class;
+use crate::common::run_class;
 use mago_syntax::cst::Node;
 use pun_lint::rules::{
     AddPropertyTypeAssigns, AddPropertyTypeConstructor, NoAlwaysFalseCondition, NoAlwaysTrueIf,
@@ -187,7 +185,6 @@ fn fix_class_case_sensitivity_var_docblock() {
     );
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -216,7 +213,7 @@ fn remove_default_value_from_assigned_property_on_every_node() {
 
 #[test]
 fn typed_property_from_assigns_on_every_node() {
-    lint_c::run_class_stubs(
+    crate::common::run_class_stubs(
         vec![Box::new(Everywhere(Box::new(
             AddPropertyTypeAssigns::default(),
         )))],
@@ -228,7 +225,7 @@ fn typed_property_from_assigns_on_every_node() {
 
 #[test]
 fn typed_property_from_strict_constructor_on_every_node() {
-    lint_c::run_class_stubs(
+    crate::common::run_class_stubs(
         vec![Box::new(Everywhere(Box::new(AddPropertyTypeConstructor)))],
         "TypedPropertyFromStrictConstructorRector",
         80100,
@@ -238,7 +235,6 @@ fn typed_property_from_strict_constructor_on_every_node() {
 
 #[test]
 fn rules_ignore_nodes_outside_their_targets() {
-    // `targets()` only spares the engine work: called on every node, each rule reports what it reports on its own.
     let cases: Vec<(fn() -> Box<dyn Rule>, &str)> = vec![
         (|| Box::new(NoConstantCondition), "RemoveDeadIfBlockRector"),
         (
@@ -312,8 +308,11 @@ fn rules_ignore_nodes_outside_their_targets() {
         ),
     ];
     for (rule, class) in cases {
-        let targeted = Linter::new(vec![rule()], 80400);
-        let everywhere = Linter::new(vec![Box::new(Everywhere(rule()))], 80400);
+        let targeted = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400));
+        let everywhere = Linter::new(
+            vec![Box::new(Everywhere(rule()))],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/rector")
             .join(class);

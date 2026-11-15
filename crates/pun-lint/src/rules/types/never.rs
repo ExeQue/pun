@@ -1,11 +1,3 @@
-//! Rector 2.8.4's `AddNeverReturnType` (rules/TypeDeclaration/NodeManipulator), shared by `ReturnNeverTypeRector` and
-//! `AddClosureNeverReturnTypeRector`, with the `ClassMethodReturnTypeOverrideGuard` it asks about methods.
-//!
-//! A function-like gets `: never` (or its `: void` becomes `never`) when its body throws in a statement of its own or
-//! one of its top-level statements has the native type `never` (`exit`, `die`, a call to a function or a `$this`,
-//! `self`, `static`, `parent` or named-class method declared `: never`), and nothing in it returns, yields or runs
-//! only on a condition.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_syntax::cst::{
     Block, Call, ClassLikeMemberSelector, Construct, Expression, FunctionLikeReturnTypeHint, Hint,
@@ -19,21 +11,16 @@ use crate::rules::types::names::resolve_class_name;
 use crate::syntax::node_span;
 use crate::{Context, Report};
 
-/// `PhpVersionFeature::NEVER_TYPE`.
 pub(crate) const NEVER_TYPE: u32 = 80100;
 
-/// The function-like `AddNeverReturnType::add` looks at.
 pub(crate) struct FunctionLike<'a, 'arena> {
-    /// Where the report points.
     pub span: Span,
-    /// Where a new return type goes: after the `)` of the parameters or of a closure's `use`.
     pub at: usize,
     pub return_type: Option<&'a FunctionLikeReturnTypeHint<'arena>>,
     pub body: &'a Block<'arena>,
     pub method: Option<&'a Method<'arena>>,
 }
 
-/// The report `AddNeverReturnType::add` makes for `f`, if any.
 pub(crate) fn add_never(
     f: FunctionLike<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -80,8 +67,6 @@ pub(crate) fn add_never(
     ))
 }
 
-/// `hasReturnOrYields`: a `return`, a `yield`, or a node that runs only on a condition
-/// (`ControlStructure::CONDITIONAL_NODE_SCOPE_TYPES`).
 fn has_return_or_yields(body: &Block<'_>) -> bool {
     super::any_scoped(Node::Block(body), &mut |n| {
         matches!(
@@ -99,13 +84,11 @@ fn has_return_or_yields(body: &Block<'_>) -> bool {
     })
 }
 
-/// Whether a declared function-like's native return type is `never`.
 fn returns_never(f: Option<&FunctionLikeMetadata>) -> bool {
     f.and_then(|f| f.return_type_declaration_metadata.as_ref())
         .is_some_and(|t| t.type_union.is_never())
 }
 
-/// `NeverFuncCallAnalyzer::isWithNeverTypeExpr` with the native type.
 pub(crate) fn is_native_never(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -153,7 +136,6 @@ fn node_text_is_this(variable: &mago_syntax::cst::Variable<'_>) -> bool {
     matches!(variable, mago_syntax::cst::Variable::Direct(d) if d.name == b"$this")
 }
 
-/// The functions a call to `name` may reach, in the order PHP tries them: the namespaced name, then the global one.
 fn function_names(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> Vec<String> {
     let written = String::from_utf8_lossy(name.value()).into_owned();
     if let Some(fq) = written.strip_prefix('\\') {
@@ -166,7 +148,6 @@ fn function_names(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> Vec<Stri
     }
 }
 
-/// `ClassMethodReturnTypeOverrideGuard::shouldSkipClassMethod` (no type-guarded classes are configured).
 pub(crate) fn should_skip_class_method(
     facts: &Facts,
     scope: Option<&ClassScope>,
@@ -199,9 +180,6 @@ pub(crate) fn should_skip_class_method(
     !is_return_type_change_allowed(facts, scope, &name)
 }
 
-/// `isReturnTypeChangeAllowed`: the parent method found by `ParentClassMethodTypeOverrideGuard` declares no native
-/// return type (or `mixed`), is not PHP's own, and is in vendor/ exactly when the class is. A parent Pun cannot load
-/// counts as one that has the method.
 fn is_return_type_change_allowed(facts: &Facts, scope: &ClassScope, method: &[u8]) -> bool {
     let Ok(parent) = parent_method(facts, scope, method) else {
         return false;
@@ -223,8 +201,6 @@ fn is_return_type_change_allowed(facts: &Facts, scope: &ClassScope, method: &[u8
     scope.name.as_deref().is_some_and(vendor) == vendor(&class)
 }
 
-/// `ParentClassMethodTypeOverrideGuard::resolveParentClassMethod` for a method that is not private: the method in the
-/// nearest parent class, else in an interface, else an abstract one in a trait. `Err` when a parent is not known.
 fn parent_method<'f>(
     facts: &'f Facts,
     scope: &ClassScope,
@@ -243,7 +219,6 @@ fn parent_method<'f>(
         let Some(parent_class) = codebase.get_class_like(name.as_bytes()) else {
             return Err(());
         };
-        // `hasNativeMethod`: declared in the class, a trait it uses, or a class or interface above it
         let declaring = parent_class
             .declaring_method_ids
             .iter()
@@ -291,7 +266,6 @@ fn parent_method<'f>(
     Ok(None)
 }
 
-/// `TestsNodeAnalyzer::isInTestClass` for a class (Rector's trait check is left out).
 pub(crate) fn is_test_class(facts: &Facts, scope: &ClassScope) -> bool {
     super::ancestor_names(facts, scope).iter().any(|a| {
         a.eq_ignore_ascii_case("PHPUnit\\Framework\\TestCase")
@@ -303,8 +277,6 @@ fn text(word: &impl AsRef<[u8]>) -> String {
     String::from_utf8_lossy(word.as_ref()).into_owned()
 }
 
-/// `ParentClassMethodTypeOverrideGuard::hasParentClassMethod` for a method that is not private: a parent class,
-/// interface or trait declares it (abstractly, for a trait), or a parent is not known.
 pub(crate) fn has_parent_class_method(facts: &Facts, scope: &ClassScope, method: &[u8]) -> bool {
     parent_method(facts, scope, method).map_or(true, |m| m.is_some())
 }

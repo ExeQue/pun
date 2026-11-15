@@ -1,5 +1,3 @@
-//! Port of `App\PrettierFormatters\EmbeddedBladeMasker`: masks Blade constructs inside
-//! `<style>`/`<script>` before prettier, restores them after.
 use pun_tokens::php_compat::{str_replace, substr_count};
 use super::php::{contains, ctype_alnum, stripos, strpos};
 use crate::analyzers::preg::RawPreg;
@@ -27,16 +25,13 @@ enum Context {
     Statement,
 }
 
-/// `App\Exceptions\UnrestorableContentException`.
 #[derive(Debug)]
 pub(super) struct Unrestorable;
 
 #[derive(Default)]
 pub(super) struct EmbeddedBladeMasker {
     map: Vec<(Vec<u8>, Vec<u8>)>,
-    /// `$escapedTokens`: the escaped-"@@" placeholder for the bare and the quoted position.
     escaped_tokens: [Option<Vec<u8>>; 2],
-    /// `$escapedCounts`: how many "@@" each of those placeholders stands in for, in insertion order.
     escaped_counts: Vec<(Vec<u8>, usize)>,
     original: Vec<u8>,
     counter: usize,
@@ -47,8 +42,6 @@ fn is_word(c: u8) -> bool {
 }
 
 impl EmbeddedBladeMasker {
-    /// `Err` where Pint's `preg_replace_callback` returns `null` (e.g. the backtrack limit on an unclosed
-    /// `<script>` with quoted attributes): Pint casts it to `""` and empties the file; Pun reports the file instead.
     pub(super) fn pre_format(&mut self, content: &[u8]) -> Result<Vec<u8>, String> {
         self.map = Vec::new();
         self.escaped_tokens = [None, None];
@@ -73,19 +66,15 @@ impl EmbeddedBladeMasker {
         result.map_err(|e| format!("preg_replace_callback(): {e}"))
     }
 
-    /// `Err(Unrestorable)` where Pint throws `UnrestorableContentException` (a placeholder prettier lost or
-    /// duplicated): `BladeFormatter::format` then hands back the untouched file.
     pub(super) fn post_format(&self, content: &[u8]) -> Result<Vec<u8>, Unrestorable> {
         if self.map.is_empty() && self.escaped_counts.is_empty() {
             return Ok(content.to_vec());
         }
-        // Every token must appear exactly once.
         for (token, _) in &self.map {
             if substr_count(content, token) != 1 {
                 return Err(Unrestorable);
             }
         }
-        // An escaped-"@@" placeholder is shared by every occurrence it masked, so it must come back with that count.
         for (token, count) in &self.escaped_counts {
             if substr_count(content, token) != *count {
                 return Err(Unrestorable);
@@ -107,8 +96,6 @@ impl EmbeddedBladeMasker {
         let mut result = Vec::with_capacity(length);
         while offset < length {
             let c = region[offset];
-            // An escaped "@@" is not a directive, but prettier's blade plugin re-indents the raw-text block
-            // around it on every pass: mask it.
             if c == b'@' && offset + 1 < length && region[offset + 1] == b'@' {
                 let token = self.escaped_at_token(false, 1);
                 result.extend_from_slice(&token);
@@ -152,7 +139,6 @@ impl EmbeddedBladeMasker {
         result
     }
 
-    /// `maskEscapedAt`: mask every escaped "@@" in a string literal that carries no Blade echo.
     fn mask_escaped_at(&mut self, literal: &[u8]) -> Vec<u8> {
         let count = substr_count(literal, b"@@");
         if count == 0 {
@@ -162,12 +148,10 @@ impl EmbeddedBladeMasker {
         str_replace(b"@@", &token, literal)
     }
 
-    /// `escapedAtToken`: the shared placeholder for the position, counting the occurrences it stands in for.
     fn escaped_at_token(&mut self, quoted: bool, count: usize) -> Vec<u8> {
         let original = &self.original;
         let token = self.escaped_tokens[usize::from(quoted)]
             .get_or_insert_with(|| {
-                // `buildEscapedAtToken`: widen until the source no longer contains it.
                 let mut token = if quoted { b"0z".to_vec() } else { b"zz".to_vec() };
                 while contains(original, &token) {
                     token.push(b'z');
@@ -184,7 +168,6 @@ impl EmbeddedBladeMasker {
 
     fn mask(&mut self, original: &[u8], context: Context) -> Vec<u8> {
         let token = self.make_token(context);
-        // `$this->map[$token] = $original`: tokens are unique, so this always appends.
         self.map.push((token.clone(), original.to_vec()));
         token
     }
@@ -214,23 +197,19 @@ impl EmbeddedBladeMasker {
 
 fn match_construct(content: &[u8], offset: usize, length: usize) -> Option<usize> {
     let c = content[offset];
-    // Raw PHP open tags ("<?php" / short echo "<?=") through their close tag.
     if c == b'<' && offset + 1 < length && content[offset + 1] == b'?' {
         let end = strpos(content, b"?>", offset + 2).map_or(length, |e| e + 2);
         return Some(end - offset);
     }
-    // Blade echoes outside string literals.
     if let Some(echo) = echo_span(content, offset) {
         return Some(echo);
     }
     if c != b'@' {
         return None;
     }
-    // Escaped "@@" is a literal "@", not a directive.
     if offset + 1 < length && content[offset + 1] == b'@' {
         return None;
     }
-    // "@" preceded by a word character (e.g. an email) is not a directive.
     if offset > 0 && is_word(content[offset - 1]) {
         return None;
     }
@@ -278,7 +257,6 @@ fn scan_block(content: &[u8], start: usize, length: usize) -> Option<usize> {
         if is_block_opener(content, &lower, after_name, length) {
             depth += 1;
         }
-        // Skip any "(...)" argument list so its contents are never re-scanned.
         offset = skip_optional_parens(content, after_name, length);
     }
     None

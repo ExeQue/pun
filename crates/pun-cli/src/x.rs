@@ -1,13 +1,8 @@
-//! `pun x` (and `punx`, the same binary under that name): run a command from a Composer package without adding it
-//! to the project. Each package and constraint installs into a directory of its own in Pun's cache, as a small
-//! project with a pun.toml and a pun.lock, so tools never share dependencies with each other or with the project.
-//! Later runs reuse the install; a run more than a day after the last resolve resolves again, to pick up a new
-//! release, and falls back to the install it has when that fails.
-
+use crate::Exit;
 use crate::install::{InstallArgs, project};
 use crate::update::{Plan, update_and_install};
 use anyhow::{Context, Result, bail};
-use serde_json::Value;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -45,9 +40,8 @@ const ALIASES: [(&str, &str, &str); 12] = [
 /// How long a resolve stays current before a run looks for a newer release.
 const FRESH: Duration = Duration::from_hours(24);
 
-pub(crate) fn run(a: XArgs) -> Result<u8> {
+pub(crate) fn run(a: &XArgs) -> Result<Exit> {
     let (spec, rest) = a.args.split_first().expect("clap requires the package");
-    // Neither name can be a package: a package has a slash, and no alias is either.
     match spec.as_str() {
         "list" => return list(),
         "clean" => return clean(rest),
@@ -56,7 +50,6 @@ pub(crate) fn run(a: XArgs) -> Result<u8> {
     let (name, constraint, alias_command) = package(spec)?;
     let dir = tool_dir(&name, &constraint)?;
     std::fs::create_dir_all(&dir).with_context(|| format!("can't create {}", dir.display()))?;
-    // Two runs of one tool at once would install into the same vendor/; the second waits for the first.
     let guard = std::fs::File::create(dir.join(".lock"))
         .with_context(|| format!("can't write in {}", dir.display()))?;
     guard.lock().context("can't lock the tool's directory")?;
@@ -106,13 +99,13 @@ pub(crate) fn cache_dir() -> Result<PathBuf> {
         return Ok(dir);
     }
     let home = env("HOME").context("HOME is not set; set PUN_CACHE_DIR")?;
-    Ok(if cfg!(target_os = "macos") {
-        home.join("Library/Caches/pun")
-    } else {
-        env("XDG_CACHE_HOME")
-            .unwrap_or_else(|| home.join(".cache"))
-            .join("pun")
-    })
+    #[cfg(target_os = "macos")]
+    let dir = home.join("Library/Caches/pun");
+    #[cfg(not(target_os = "macos"))]
+    let dir = env("XDG_CACHE_HOME")
+        .unwrap_or_else(|| home.join(".cache"))
+        .join("pun");
+    Ok(dir)
 }
 
 /// The directory a package installs into for one constraint, which is percent-encoded into the name.
@@ -128,7 +121,7 @@ fn tool_dir(name: &str, constraint: &str) -> Result<PathBuf> {
         if b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_') {
             version.push(char::from(b));
         } else {
-            version.push_str(&format!("%{b:02X}"));
+            let _ = write!(version, "%{b:02X}");
         }
     }
     Ok(cache_dir()?.join("x").join(name).join(version))
@@ -178,7 +171,7 @@ fn installs() -> Result<Vec<(String, String, PathBuf)>> {
 
 /// `punx list`: each install, as the spec that runs it, with the version it has. A directory a run is still
 /// installing into has no version yet and isn't listed.
-fn list() -> Result<u8> {
+fn list() -> Result<Exit> {
     let rows: Vec<_> = (installs()?.into_iter())
         .filter_map(|(name, constraint, dir)| {
             let version = installed_version(&dir, &name)?;
@@ -190,28 +183,46 @@ fn list() -> Result<u8> {
         .collect();
     if rows.is_empty() {
         println!("No packages are installed.");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let width = rows.iter().map(|(s, _)| s.len()).max().unwrap_or(0);
     for (spec, version) in rows {
         println!("{spec:width$}  {version}");
     }
-    Ok(0)
+    Ok(Exit::Success)
+}
+
+/// vendor/composer/installed.json, as far as `punx` reads it.
+#[derive(serde::Deserialize)]
+struct Installed {
+    #[serde(default)]
+    packages: Vec<InstalledPackage>,
+}
+
+#[derive(serde::Deserialize)]
+struct InstalledPackage {
+    name: String,
+    version: Option<String>,
+    #[serde(default)]
+    bin: Vec<String>,
+}
+
+impl Installed {
+    fn into_package(self, name: &str) -> Option<InstalledPackage> {
+        self.packages.into_iter().find(|p| p.name == name)
+    }
 }
 
 /// The version of `name` that `dir` has installed.
 fn installed_version(dir: &Path, name: &str) -> Option<String> {
     let text = std::fs::read_to_string(dir.join("vendor/composer/installed.json")).ok()?;
-    let installed: Value = serde_json::from_str(&text).ok()?;
-    let package = (installed.get("packages")?.as_array()?)
-        .iter()
-        .find(|p| p.get("name").and_then(Value::as_str) == Some(name))?;
-    package.get("version")?.as_str().map(str::to_owned)
+    let installed: Installed = serde_json::from_str(&text).ok()?;
+    installed.into_package(name)?.version
 }
 
 /// `punx clean`: removes every install, or those of the packages named. A package named without a constraint
 /// loses all its installs; with one, only that constraint's.
-fn clean(specs: &[String]) -> Result<u8> {
+fn clean(specs: &[String]) -> Result<Exit> {
     let wanted = (specs.iter())
         .map(|spec| {
             let (name, constraint, _) = package(spec)?;
@@ -227,12 +238,10 @@ fn clean(specs: &[String]) -> Result<u8> {
         if !wanted.is_empty() && !wanted.iter().any(matches) {
             continue;
         }
-        // Wait for a run that is installing into this directory.
         if let Ok(guard) = std::fs::File::open(dir.join(".lock")) {
             let _ = guard.lock();
         }
         std::fs::remove_dir_all(&dir).with_context(|| format!("can't remove {}", dir.display()))?;
-        // Drop the package's and vendor's directories once they are empty.
         let package_dir = dir.parent();
         let _ = package_dir.map(std::fs::remove_dir);
         let _ = package_dir.and_then(Path::parent).map(std::fs::remove_dir);
@@ -242,17 +251,16 @@ fn clean(specs: &[String]) -> Result<u8> {
         "Removed {removed} install{}.",
         if removed == 1 { "" } else { "s" }
     );
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// Installs the package into `dir` unless its install there is less than a day old.
 fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     let manifest = format!(
-        "[require]\n{} = {}\n",
-        toml::Value::String(name.into()),
-        toml::Value::String(constraint.into())
+        "{}\n",
+        serde_json::json!({ "require": { name: constraint } })
     );
-    let lock = dir.join("pun.lock");
+    let lock = dir.join("composer.lock");
     let installed = dir.join("vendor/composer/installed.json").is_file();
     let age = (std::fs::metadata(&lock).and_then(|m| m.modified()))
         .ok()
@@ -260,7 +268,7 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     if installed && age.is_some_and(|a| a < FRESH) {
         return Ok(());
     }
-    std::fs::write(dir.join("pun.toml"), manifest)
+    std::fs::write(dir.join("composer.json"), manifest)
         .with_context(|| format!("can't write {}", dir.display()))?;
     if !installed {
         eprintln!("Installing {name} into {}", dir.display());
@@ -272,10 +280,9 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
         ..InstallArgs::default()
     };
     let result = project(args.working_dir.as_ref(), false)
-        .and_then(|mut p| update_and_install(&mut p, Plan::default(), &args, Instant::now()));
+        .and_then(|mut p| update_and_install(&mut p, &Plan::default(), &args, Instant::now()));
     match result {
-        Ok(0) => {
-            // Count the day from this resolve even when it changed nothing.
+        Ok(Exit::Success) => {
             let _ = std::fs::File::options()
                 .append(true)
                 .open(&lock)
@@ -287,11 +294,10 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
             Ok(())
         }
         result => {
-            // Nothing was installed, so leave no directory behind.
             let _ = std::fs::remove_dir_all(dir);
             let _ = dir.parent().map(std::fs::remove_dir);
             match result {
-                Ok(code) => bail!("{name} didn't install (exit {code})"),
+                Ok(code) => bail!("{name} didn't install (exit {})", code as u8),
                 Err(e) => Err(e),
             }
         }
@@ -303,16 +309,10 @@ fn commands(dir: &Path, name: &str) -> Result<Vec<String>> {
     let path = dir.join("vendor/composer/installed.json");
     let text =
         std::fs::read_to_string(&path).with_context(|| format!("can't read {}", path.display()))?;
-    let installed: Value = serde_json::from_str(&text).context("invalid installed.json")?;
-    let package = (installed.get("packages").and_then(Value::as_array))
-        .into_iter()
-        .flatten()
-        .find(|p| p.get("name").and_then(Value::as_str) == Some(name))
+    let installed: Installed = serde_json::from_str(&text).context("invalid installed.json")?;
+    let package = (installed.into_package(name))
         .with_context(|| format!("{name} is not in {}", path.display()))?;
-    Ok((package.get("bin").and_then(Value::as_array))
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
+    Ok((package.bin.iter())
         .filter_map(|b| Path::new(b).file_name())
         .map(|b| b.to_string_lossy().into_owned())
         .collect())
@@ -351,7 +351,7 @@ fn pick<'a>(
 }
 
 /// Runs the command in the current directory with the terminal, and exits with its status.
-fn exec(command: &Path, args: &[String]) -> Result<u8> {
+fn exec(command: &Path, args: &[String]) -> Result<Exit> {
     let mut cmd = std::process::Command::new(command);
     cmd.args(args);
     #[cfg(unix)]
@@ -365,6 +365,10 @@ fn exec(command: &Path, args: &[String]) -> Result<u8> {
         let status = cmd
             .status()
             .with_context(|| format!("can't run {}", command.display()))?;
-        Ok(status.code().map_or(1, |c| u8::try_from(c).unwrap_or(1)))
+        std::process::exit(
+            status
+                .code()
+                .map_or(1, |c| u8::try_from(c).map_or(1, i32::from)),
+        )
     }
 }

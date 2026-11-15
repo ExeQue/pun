@@ -1,7 +1,3 @@
-//! `@phpstan-ignore`, `@phpstan-ignore-line` and `@phpstan-ignore-next-line` comments: PHPStan 2.3.5's
-//! `RichParser::getLinesToIgnore()` and `IgnoreLexer`, over the file's tokens as nikic/php-parser's lexer produces
-//! them (token_get_all plus its sentinel token).
-
 use indexmap::IndexMap;
 use pcre2::bytes::Regex;
 use pun_tokens::Kind;
@@ -11,14 +7,11 @@ use std::sync::LazyLock;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Identifier {
     pub name: String,
-    /// The text in parentheses after the identifier.
     pub comment: Option<String>,
 }
 
-/// Line => identifiers to ignore there (`None`: every error on the line), in PHPStan's key order.
 pub type LinesToIgnore = IndexMap<i64, Option<Vec<Identifier>>>;
 
-/// Line => `@phpstan-ignore` parse errors (reported as "Parse error in @phpstan-ignore: ...").
 pub type ParseErrors = IndexMap<i64, Vec<String>>;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,7 +28,6 @@ pub(crate) enum T {
 
 impl T {
     fn label(self) -> &'static str {
-        // IgnoreLexer::LABELS, in TYPES order (whitespace is always allowed, so never named in a message)
         [
             "T_WHITESPACE",
             "end",
@@ -71,7 +63,6 @@ static PHPDOC_TAG: LazyLock<Regex> = LazyLock::new(|| {
         .expect("PHPDoc tag pattern")
 });
 
-/// `IgnoreLexer::tokenize()`: each token's byte range and type, without the `end` token it appends.
 pub(crate) fn token_spans(input: &[u8]) -> Vec<(std::ops::Range<usize>, T)> {
     let mut tokens = Vec::new();
     let mut at = 0;
@@ -89,7 +80,6 @@ pub(crate) fn token_spans(input: &[u8]) -> Vec<(std::ops::Range<usize>, T)> {
     tokens
 }
 
-/// `IgnoreLexer::tokenize()`
 fn tokenize(input: &[u8]) -> Vec<(String, T, i64)> {
     let mut tokens = Vec::new();
     let mut line = 1;
@@ -105,7 +95,6 @@ fn tokenize(input: &[u8]) -> Vec<(String, T, i64)> {
     tokens
 }
 
-/// `RichParser::parseIdentifiers()`: `Err((message, line within the comment))`.
 fn parse_identifiers(text: &[u8], ignore_pos: usize) -> Result<Vec<Identifier>, (String, i64)> {
     let tokens = tokenize(&text[ignore_pos + "@phpstan-ignore".len()..]);
     let mut identifiers: Vec<Identifier> = Vec::new();
@@ -177,7 +166,6 @@ fn parse_identifiers(text: &[u8], ignore_pos: usize) -> Result<Vec<Identifier>, 
             token_line,
         ));
     }
-    // (PHPStan's "Missing identifier" cannot happen: the first token must already be an identifier.)
     Ok(identifiers)
 }
 
@@ -185,7 +173,6 @@ fn newlines(s: &[u8]) -> i64 {
     substr_count(s, b"\n") as i64
 }
 
-/// `$lines += [$line => null]`
 fn add_null(lines: &mut LinesToIgnore, line: i64) {
     lines.entry(line).or_insert(None);
 }
@@ -198,7 +185,6 @@ fn add_identifiers(lines: &mut LinesToIgnore, line: i64, ids: Vec<Identifier>) {
         .extend(ids);
 }
 
-/// `getLinesToIgnoreForTokenByIgnoreComment()`, added with `+=`.
 fn by_ignore_comment(
     lines: &mut LinesToIgnore,
     text: &[u8],
@@ -213,9 +199,7 @@ fn by_ignore_comment(
     }
 }
 
-/// The ignore comments of a PHP file that parsed (PHPStan only reads them from a successful parse).
 pub fn lines_to_ignore(code: &[u8]) -> (LinesToIgnore, ParseErrors) {
-    // every line and error below comes from an `@phpstan-ignore` in a comment; most files have none and skip the lexer
     if strpos(code, b"@phpstan-ignore", 0).is_none() {
         return (LinesToIgnore::new(), ParseErrors::new());
     }
@@ -223,7 +207,6 @@ pub fn lines_to_ignore(code: &[u8]) -> (LinesToIgnore, ParseErrors) {
         .into_iter()
         .map(|t| (t.kind, t.text, i64::from(t.line)))
         .collect();
-    // php-parser's sentinel token, on the last token's end line.
     let end_line = tokens
         .last()
         .map_or(1, |&(_, text, line)| line + newlines(text));
@@ -232,7 +215,6 @@ pub fn lines_to_ignore(code: &[u8]) -> (LinesToIgnore, ParseErrors) {
     let mut lines = LinesToIgnore::new();
     let mut errors: Vec<(i64, String)> = Vec::new();
     let mut previous_line: Option<i64> = None;
-    // (comment text, ignore position, line of the tag, line the comment ends on)
     let mut pending: Option<(&[u8], usize, i64, i64)> = None;
     for (kind, text, token_line) in tokens {
         let mut line = token_line;
@@ -265,7 +247,6 @@ pub fn lines_to_ignore(code: &[u8]) -> (LinesToIgnore, ParseErrors) {
                 if let Some(last) = PHPDOC_TAG.find_iter(text).filter_map(Result::ok).last()
                     && last.as_bytes() == b"@phpstan-ignore-next-line"
                 {
-                    // Ignores the line after the PHPDoc, and cuts the PHPDoc before the tag.
                     lines.insert(line + 1 + newlines(text), None);
                     text = &text[..last.start()];
                 }

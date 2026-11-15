@@ -1,14 +1,3 @@
-//! Types a method call binds to its receiver, and closure parameters the called method's callable types: complete
-//! PHPStan 2.3.1 diagnostics at level max for tests/fixtures/called-on-types/calls.php.
-//!
-//! - CalledOnTypeUnresolvedMethodPrototypeReflection: `static` and `$this` in a parameter's PHPDoc (also nested, and
-//!   a trait method's) are the object a method is called on, and stay late on `$this`.
-//! - A closure parameter declared with a generic class without type arguments is that plain class.
-//! - MutatingScope::enterAnonymousFunctionWithoutReflection(): a declared closure parameter takes the callable's
-//!   narrower parameter type (`intersectButNotNever()`).
-//!
-//! Expected: tests/fixtures/called-on-types/expected-phpstan.json, `phpstan analyse --level max` of calls.php.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

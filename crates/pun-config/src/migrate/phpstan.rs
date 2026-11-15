@@ -1,10 +1,3 @@
-//! `pun migrate`, analyse part: a phpstan.neon becomes `[analyse]` (context/plan/migrate.md §3 and Build 5). The config
-//! is resolved the way `phpstan analyse` resolves it (pun-phpstan), except that baseline files read as empty: baselines
-//! are never copied. The level becomes the analyse preset that holds it, plus `"off"` lines for the preset's rules above
-//! the level; the built-in extensions (Larastan, strict-rules, deprecation-rules) count only when the config includes
-//! them; `paths` and `excludePaths` carry over, and `ignoreErrors` become `[[analyse.ignore]]` tables under Pun rule IDs.
-//! Every other include and every parameter set by hand is named and skipped.
-
 use super::Parts;
 use super::rector::resolve;
 use crate::{AnalysePreset, mapping, rules};
@@ -16,36 +9,22 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::Path;
 
-/// What a phpstan.neon becomes.
 #[derive(Debug, Default)]
 pub struct Phpstan {
-    /// PHPStan's level, 0 to 10 (`max` is 10).
     pub level: u8,
-    /// Neither a level nor `customRulesetUsed`: PHPStan stops with "No rules detected", so every analyse rule is off.
     pub no_rules: bool,
-    /// `paths` and `excludePaths`, relative to the project.
     pub paths: Vec<String>,
     pub exclude: Vec<String>,
-    /// `stubFiles`, relative to the project.
     pub stubs: Vec<String>,
-    /// `[[analyse.ignore]]` tables, each with its header.
     pub ignores: Vec<String>,
-    /// The baseline files the config includes (not copied).
     pub baselines: Vec<String>,
-    /// What Pun can't take: (name, why).
     pub unsupported: Vec<(String, String)>,
-    /// The built-in extensions the config includes, by package (`larastan/larastan`).
     pub extensions: BTreeSet<String>,
-    /// The config includes PHPStan's `bleedingEdge.neon`.
     pub bleeding_edge: bool,
-    /// The resolved parameters, for the rules a parameter turns on (`gated_by`).
     pub parameters: Array,
-    /// Parameters the project changed from PHPStan's value at its level that rules read as options: (dotted name,
-    /// value), for [`compose`] to write on those rules.
     pub changed: Vec<(String, Value)>,
 }
 
-/// The extensions Pun has built in, by package, and the mapping's `package` of their rule classes.
 const BUILT_IN: [(&str, Option<&str>); 6] = [
     ("larastan/larastan", Some("larastan")),
     ("phpstan/phpstan-strict-rules", Some("phpstan-strict-rules")),
@@ -58,7 +37,6 @@ const BUILT_IN: [(&str, Option<&str>); 6] = [
     ("phpstan/extension-installer", None),
 ];
 
-/// Parameters migrate reads, or that only steer PHPStan's own run (cache, parallelism, output).
 const HANDLED: [&str; 19] = [
     "level",
     "stubFiles",
@@ -81,8 +59,6 @@ const HANDLED: [&str; 19] = [
     "resultCacheChecksProjectExtensionFilesDependencies",
 ];
 
-/// Files as PHPStan reads them, with every baseline file empty; the baselines met are recorded. `virtual_file` is a
-/// config only migrate writes (PHPStan's defaults for the project's level and packages).
 struct WithoutBaselines {
     files: ProjectFiles,
     seen: std::cell::RefCell<BTreeSet<String>>,
@@ -131,8 +107,10 @@ fn strings(v: Option<&Value>) -> Vec<String> {
     }
 }
 
-/// `config` (a phpstan.neon in `root`) as pun.toml's `[analyse]`. PHPStan's own config errors stop the migration with
-/// PHPStan's message.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     let cwd = root.display().to_string();
     let mut o = Options::for_project(&cwd);
@@ -142,8 +120,8 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     o.phar.clone_from(&phar);
     let files = WithoutBaselines {
         files: ProjectFiles::new(&phar),
-        seen: Default::default(),
-        virtual_file: Default::default(),
+        seen: std::cell::RefCell::default(),
+        virtual_file: std::cell::RefCell::default(),
     };
     let resolved = resolve_with(&o, &files).map_err(|e| anyhow::anyhow!(e))?;
     let p = &resolved.parameters;
@@ -153,7 +131,6 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
             .collect(),
         ..Phpstan::default()
     };
-    // PHPStan itself rejects any other level (no `config.level<n>.neon`).
     out.level = match p.get_str("level").and_then(Value::to_php_string).as_deref() {
         Some("max") => 10,
         l => l.and_then(|l| l.parse().ok()).unwrap_or(0),
@@ -201,8 +178,6 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
                 .push((pkg, "a PHPStan extension Pun doesn't have built in".into()));
         }
     }
-    // What PHPStan resolves for the project's level and packages alone: a parameter the project sets to that value
-    // changes nothing.
     let packages: Vec<&String> = (includes.iter())
         .filter(|i| package(&relative(root, i)).is_some())
         .collect();
@@ -262,23 +237,18 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     Ok(out)
 }
 
-/// Every file `config` includes, depth first, as absolute paths; `%rootDir%`-relative PHPStan files included. PHPStan
-/// rejects a file included twice, so each appears once.
 fn includes(root: &Path, config: &Path) -> Vec<String> {
     let mut out = vec![];
     let mut todo = vec![config.display().to_string()];
     while let Some(file) = todo.pop() {
         let dir = Path::new(&file).parent().unwrap_or(root).to_path_buf();
         for inc in strings(neon(&file).get_str("includes")) {
-            // As PHPStan normalizes it (`../vendor/...` from a subdirectory is a package's); an absolute include
-            // replaces `dir`, and so does a `phar://` one (phpstan.phar's own `conf/`).
             let path = if inc.starts_with("phar://") {
                 inc
             } else {
                 pun_phpstan::php::normalize_path(&dir.join(inc).display().to_string())
             };
             out.push(path.clone());
-            // A package's own includes belong to it.
             if package(&relative(root, &path)).is_none() {
                 todo.push(path);
             }
@@ -287,7 +257,6 @@ fn includes(root: &Path, config: &Path) -> Vec<String> {
     out
 }
 
-/// A neon file PHPStan has already read (so it exists and parses) as its top-level array.
 fn neon(file: &str) -> Array {
     (std::fs::read(file).ok())
         .and_then(|b| pun_phpstan::neon::decode_bytes(&b).ok())
@@ -295,7 +264,6 @@ fn neon(file: &str) -> Array {
         .unwrap_or_default()
 }
 
-/// `vendor/<vendor>/<package>/...` as `<vendor>/<package>`; `phar://phpstan.phar/...` is phpstan/phpstan's.
 fn package(rel: &str) -> Option<String> {
     if rel.starts_with("phar://phpstan.phar/") {
         return Some("phpstan/phpstan".into());
@@ -305,7 +273,6 @@ fn package(rel: &str) -> Option<String> {
     Some(format!("{}/{}", parts.next()?, parts.next()?))
 }
 
-/// The packages phpstan/extension-installer includes by itself (its GeneratedConfig::EXTENSIONS keys).
 fn installer_extensions(root: &Path) -> Vec<String> {
     let path = root.join("vendor/phpstan/extension-installer/src/GeneratedConfig.php");
     let Ok(text) = std::fs::read_to_string(path) else {
@@ -330,7 +297,6 @@ fn installer_extensions(root: &Path) -> Vec<String> {
     out
 }
 
-/// The parameters the project's own files set (not PHPStan's, a package's or a baseline's).
 fn own_parameters(root: &Path, config: &Path, includes: &[String]) -> BTreeSet<String> {
     let own = std::iter::once(config.display().to_string()).chain(
         (includes.iter())
@@ -338,19 +304,15 @@ fn own_parameters(root: &Path, config: &Path, includes: &[String]) -> BTreeSet<S
             .cloned(),
     );
     own.flat_map(|file| {
-        (neon(&file).get_str("parameters").and_then(Value::as_array))
-            .map(|p| {
-                p.keys()
-                    .map(pun_phpstan::Key::as_string)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
+        (neon(&file).get_str("parameters").and_then(Value::as_array)).map_or_default(|p| {
+            p.keys()
+                .map(pun_phpstan::Key::as_string)
+                .collect::<Vec<_>>()
+        })
     })
     .collect()
 }
 
-/// The parameters a `gated_by` condition of `[upstream.phpstan-classes]` reads: their effect is the rules [`compose`]
-/// turns on and off.
 fn gate_parameters() -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     for e in mapping::section(&["upstream", "phpstan-classes"])
@@ -372,8 +334,6 @@ fn gate_parameters() -> BTreeSet<String> {
     out
 }
 
-/// The leaves under `name` where the project's value `a` differs from PHPStan's `b`, by dotted name: string-keyed
-/// tables are compared key by key, anything else as a whole.
 fn differences(name: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<(String, Value)>) {
     let table = |v: Option<&Value>| {
         v.and_then(Value::as_array)
@@ -396,9 +356,7 @@ fn differences(name: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<(
     }
 }
 
-/// One `ignoreErrors` entry as `[[analyse.ignore]]` tables: one per message and identifier it lists.
 fn ignore_entry(root: &Path, e: &Value, out: &mut Phpstan) {
-    // PHPStan's schema allows a string (a message) or an array.
     let empty = Array::new();
     let a = e.as_array().unwrap_or(&empty);
     let mut messages: Vec<(&str, String)> = vec![];
@@ -489,9 +447,6 @@ fn ignore_entry(root: &Path, e: &Value, out: &mut Phpstan) {
     }
 }
 
-/// Whether a `gated_by` condition of `[upstream.phpstan-classes]` holds for the resolved `parameters`: each part
-/// (joined by ` + `) is a parameter path that must be true, `bleedingEdge` (its `featureToggles.<x>` when named), or a
-/// Larastan parameter with its default in parentheses.
 fn gate(condition: &str, parameters: &Array) -> bool {
     condition.split(" + ").all(|part| {
         let (name, note) = match part.split_once(" (") {
@@ -514,9 +469,6 @@ fn gate(condition: &str, parameters: &Array) -> bool {
     })
 }
 
-/// The Pun rule of every PHPStan rule class `phpstan` runs: its level is at most the config's, its package is
-/// PHPStan's or an included extension's, and its `gated_by` parameter is on. Also the IDs of every rule some class
-/// maps to, run or not.
 fn wanted(phpstan: &Phpstan) -> (BTreeSet<String>, BTreeSet<String>) {
     let (mut run, mut mapped) = (BTreeSet::new(), BTreeSet::new());
     for e in mapping::section(&["upstream", "phpstan-classes"])
@@ -543,24 +495,16 @@ fn wanted(phpstan: &Phpstan) -> (BTreeSet<String>, BTreeSet<String>) {
     (run, mapped)
 }
 
-/// What [`compose`] wrote for the analyse rules.
 #[derive(Debug, PartialEq)]
 pub struct Analysed {
     pub preset: AnalysePreset,
     pub on: usize,
     pub off: usize,
-    /// strict-rules checks that are lint rules in Pun, turned on in `[lint.rules]`.
     pub lint: usize,
-    /// Changed parameters written as rule options.
     pub options: usize,
-    /// PHPStan checks Pun runs elsewhere or not yet: (rule, why).
     pub unsupported: Vec<(String, String)>,
 }
 
-/// `parts` with `phpstan`'s `[analyse]`: the preset holding its level, then `"on"` and `"off"` lines so that the
-/// rules that run are exactly the ones PHPStan ran at that level with those extensions and parameters (resolved
-/// against the project's composer.json and composer.lock, as the Laravel rules turn on with Laravel). A check that is
-/// a lint rule in Pun (strict-rules' `empty()` ban) is turned on in `[lint.rules]`.
 pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Analysed> {
     let preset = AnalysePreset::of_level(phpstan.level as usize);
     writeln!(parts.analyse, "preset = \"{preset}\"").unwrap();
@@ -599,9 +543,11 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         parts.analyse_ignores = phpstan.ignores.join("\n");
         return Ok(done);
     }
-    // Larastan's rules are the `laravel` group: off as a group when the config doesn't include Larastan.
     let larastan = phpstan.extensions.contains("larastan/larastan");
-    let laravel = cfg.analyse.ecosystems.contains(&crate::Ecosystem::Laravel);
+    let laravel = cfg
+        .analyse
+        .ecosystems
+        .contains(&&crate::extensions::LARAVEL);
     if !larastan && laravel {
         parts
             .analyse_rules
@@ -628,7 +574,6 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
             _ => {}
         }
     }
-    // A format rule the format config already runs (PHPStan's BOM check is `encoding`) needs nothing.
     let formats = |id: &str| {
         cfg.rules
             .iter()
@@ -641,11 +586,10 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         let lint = id.starts_with("lint/");
         let turned_on = lint && super::require_lint(parts, id, "\"error\"");
         done.lint += usize::from(turned_on);
-        let why = match lint {
-            true => "a PHPStan check that is this lint rule in Pun, not supported yet",
-            false => {
-                "a PHPStan check that is this format rule in Pun; turn it on in [format.rules]"
-            }
+        let why = if lint {
+            "a PHPStan check that is this lint rule in Pun, not supported yet"
+        } else {
+            "a PHPStan check that is this format rule in Pun; turn it on in [format.rules]"
         };
         done.unsupported
             .extend((!turned_on).then(|| (id.clone(), why.to_string())));
@@ -655,8 +599,6 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
     Ok(done)
 }
 
-/// Each changed parameter as an option (`[phpstan-parameters]` of mapping.toml names it) of every rule that reads it
-/// and runs: the rule's line becomes a table of its options.
 fn options(root: &Path, parts: &mut Parts, phpstan: &Phpstan, done: &mut Analysed) -> Result<()> {
     let cfg = resolve(root, &parts.render())?;
     let running: BTreeSet<&str> = cfg.analyse.rules.iter().map(|r| &r.id[8..]).collect();
@@ -673,13 +615,10 @@ fn options(root: &Path, parts: &mut Parts, phpstan: &Phpstan, done: &mut Analyse
             .filter_map(toml::Value::as_str);
         let mut applied = false;
         for rule in rules.map(|r| &r[8..]).filter(|r| running.contains(r)) {
-            let at = match by_rule.iter().position(|(r, _)| r == rule) {
-                Some(at) => at,
-                None => {
-                    by_rule.push((rule.to_string(), toml::Table::new()));
-                    by_rule.len() - 1
-                }
-            };
+            let at = (by_rule.iter().position(|(r, _)| r == rule)).unwrap_or_else(|| {
+                by_rule.push((rule.to_string(), toml::Table::new()));
+                by_rule.len() - 1
+            });
             by_rule[at].1.insert(option.to_string(), value.clone());
             applied = true;
         }
@@ -693,9 +632,6 @@ fn options(root: &Path, parts: &mut Parts, phpstan: &Phpstan, done: &mut Analyse
     Ok(())
 }
 
-/// A parameter value as TOML. PHPStan's and Larastan's schemas (conf/parametersSchema.neon, extension.neon) declare
-/// every parameter of `[phpstan-parameters]` that isn't the level's as `bool()` or `listOf(string())`, and `resolve`
-/// has checked the value against them.
 fn toml_value(v: &Value) -> toml::Value {
     match v {
         Value::Bool(b) => toml::Value::Boolean(*b),

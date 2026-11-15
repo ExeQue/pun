@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\MultilinePromotedPropertiesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use anyhow::Result;
@@ -34,7 +33,6 @@ impl Fixer for MultilinePromotedPropertiesFixer {
         "multiline_promoted_properties"
     }
     fn priority(&self) -> i32 {
-        // Must run before BracesPositionFixer, TrailingCommaInMultilineFixer.
         1
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -57,7 +55,6 @@ impl Fixer for MultilinePromotedPropertiesFixer {
         self.whitespaces_config = config.clone();
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // Upstream iterates the elements found before any edit, so later indices go stale the same way.
         let elements = TokensAnalyzer::new(tokens).get_classy_elements();
         for (&index, element) in &elements {
             if element.kind != ClassyElementType::Method {
@@ -113,12 +110,12 @@ impl MultilinePromotedPropertiesFixer {
         let indent = WhitespacesAnalyzer::detect_indent(tokens, open);
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();
         tokens.ensure_whitespace_at_index(close - 1, 1, &[line_ending, &indent].concat());
-        let mut index = tokens.get_prev_meaningful_token(close).unwrap();
+        let mut index = tokens.prev_meaningful(close);
         if !tokens[index].equals(",", true) {
             index = close;
         }
         while index > open {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
             if let Some((block_type, false)) = Tokens::detect_block_type(&tokens[index]) {
                 index = tokens.find_block_start(block_type, index);
                 continue;

@@ -1,10 +1,3 @@
-//! `lint/phpunit/no-assert-same-type-mismatch`, ported from rector-phpunit's `MatchAssertSameExpectedTypeRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In `assertSame('123', $a)` (or `assertEquals`) where `$a` is natively an integer, the expected string becomes the
-//! integer PHP's `(int)` makes of it; in `assertSame(123, $a)` where `$a` is natively a string, the integer becomes a
-//! string.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\NoSpacesAroundOffsetFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -52,8 +51,6 @@ impl Fixer for NoSpacesAroundOffsetFixer {
                 continue;
             }
             if inside {
-                // Upstream's index-brace branch (`$a{0}`) can't run: PHP 8 rejects that syntax, and no transformer
-                // makes CT_ARRAY_INDEX_BRACE_OPEN.
                 let end_index = tokens.find_block_end(Tokens::BLOCK_TYPE_INDEX_BRACKET, index);
                 if tokens[index + 1].is_whitespace(Some(b" \t")) {
                     tokens.clear_at(index + 1);

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocTypesOrderFixer`.
 use crate::analyzers::docblock::type_expression::{REGEX_TYPES, php_spaceship};
 use crate::analyzers::docblock::{DocBlock, TAGS_WITH_TYPES, TypeExpression};
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -50,7 +49,6 @@ impl Fixer for PhpdocTypesOrderFixer {
             &["sort_algorithm", "null_adjustment", "case_sensitive"],
         )?;
         self.alpha = c.string("sort_algorithm", "alpha", &["alpha", "none"])? == "alpha";
-        // `Future::getV4OrV3('always_last', 'always_first')`: Pint runs without future mode.
         self.null_adjustment = c.choice(
             "null_adjustment",
             "always_first",
@@ -77,11 +75,9 @@ impl Fixer for PhpdocTypesOrderFixer {
                 continue;
             }
             for annotation in annotations {
-                // fix main types
                 if let Some(type_expression) = annotation.get_type_expression() {
                     annotation.set_types(&self.sort_types(&type_expression));
                 }
-                // fix @method parameters types
                 let line = doc.get_line(annotation.get_start()).unwrap();
                 let content = Preg::replace_callback(
                     &*METHOD_CALLABLE,

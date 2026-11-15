@@ -1,21 +1,3 @@
-//! `lint/laravel/add-relation-generics`, ported from rector-laravel 2.7.3's `AddGenericReturnTypeToRelationsRector`
-//! (src/Rector/ClassMethod).
-//!
-//! A method with a body, in a subclass of `Illuminate\Database\Eloquent\Model` or in a trait, whose return type is a
-//! class name of an `Illuminate\Database\Eloquent\Relations\Relation`, and whose first `return` (outside nested
-//! functions and classes) holds a relation call (`$x->hasMany(Foo::class)`, the first method call in it followed down
-//! its chain), gets `@return \Relation<\Foo, ...>`: the related model, the intermediate model of a `*Through()` relation, `$this`,
-//! and `\Illuminate\Database\Eloquent\Relations\Pivot` for a `BelongsToMany`. Since 2.6 the rule writes these
-//! generics always; Rector runs it only with laravel/framework 12.3 or later installed, which Pun leaves to the rule's
-//! set. The older generic forms are `AddLegacyGenericReturnTypeToRelationsRector`'s and
-//! `AddNewGenericReturnTypeToRelationsRector`'s. An existing `@return` stays
-//! when its type is not the return type (generics aside), or already has the generics the rule would write.
-//!
-//! A `@return` type without generics resolves as Rector's `ObjectTypeSpecifier` does it ([`resolve_doc_class_name`]);
-//! a generic type and its arguments go to PHPStan's `TypeNodeResolver` ([`resolve_doc_string_name`]). Pun leaves the
-//! method alone where it does not read the `@return` tag as phpdoc-parser does: a value over several lines, or a type
-//! that is not a name, maybe with generics that are names or `$this`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::reference::TReference;
@@ -28,9 +10,9 @@ use super::add_factory_extends_phpdoc::tag_name;
 use super::names::{resolve_class_name, resolve_doc_class_name, resolve_doc_string_name};
 use super::object_type::class_string_class;
 use super::{is_a, member_name};
-use crate::rules::class_method::qualified;
-use crate::rules::lint_b_doc::Doc;
 use crate::rules::phpunit::annotations::Annotated;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::docblocks::Doc;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
@@ -41,7 +23,6 @@ const BELONGS_TO_MANY: &str = "Illuminate\\Database\\Eloquent\\Relations\\Belong
 const MORPH_TO_MANY: &str = "Illuminate\\Database\\Eloquent\\Relations\\MorphToMany";
 const PIVOT: &str = "Illuminate\\Database\\Eloquent\\Relations\\Pivot";
 
-/// `RELATION_METHODS`.
 const RELATION_METHODS: &[&str] = &[
     "hasOne",
     "hasOneThrough",
@@ -56,7 +37,6 @@ const RELATION_METHODS: &[&str] = &[
     "morphedByMany",
 ];
 
-/// `RELATION_WITH_INTERMEDIATE_METHODS`.
 const INTERMEDIATE_METHODS: &[&str] = &["hasManyThrough", "hasOneThrough"];
 
 pub struct AddRelationGenerics;
@@ -81,7 +61,6 @@ impl Rule for AddRelationGenerics {
         let MethodBody::Concrete(body) = &method.body else {
             return;
         };
-        // `shouldSkipNode`: a trait, or a class (not anonymous) that is a subclass of `Model`
         let class_like = ancestors.iter().rev().find(|a| {
             matches!(
                 a,
@@ -114,8 +93,6 @@ impl Rule for AddRelationGenerics {
         };
         let facts = facts(ctx);
         let exists = |name: &str| facts.codebase.get_class_like(name.as_bytes()).is_some();
-        // `IdentifierPhpDocTypeMapper`: `self`, `static` and `parent` are the class's and its parent's types, which
-        // compare by their class's name, as `$this` does
         let parent = || {
             let class = facts.codebase.get_class_like(own.as_bytes())?;
             let parent = facts
@@ -134,7 +111,6 @@ impl Rule for AddRelationGenerics {
             _ if generic => DocType::Class(resolve_doc_string_name(ancestors, written)),
             _ => DocType::Class(resolve_doc_class_name(ancestors, written, exists)),
         };
-        // `areNativeTypeAndPhpDocReturnTypeEqual`
         if tag.as_ref().is_some_and(
             |t| !matches!(doc_type(t.base, t.args.is_some()), DocType::Class(c) if c == native),
         ) {
@@ -143,9 +119,7 @@ impl Rule for AddRelationGenerics {
         let Some(call) = relation_call(body) else {
             return;
         };
-        let method_name = member_name(&call.method)
-            .map(String::from_utf8_lossy)
-            .unwrap_or_default();
+        let method_name = member_name(&call.method).map_or_default(String::from_utf8_lossy);
         let args: Vec<&Expression<'_>> = (call.argument_list.arguments.iter())
             .map(Argument::value)
             .collect();
@@ -157,16 +131,13 @@ impl Rule for AddRelationGenerics {
         let Some(related) = class_of(args[0]) else {
             return;
         };
-        // `shouldUseNewGenerics()` and `shouldUsePivotGeneric()` are true
         let intermediate = INTERMEDIATE_METHODS
             .contains(&&*method_name)
             .then(|| args.get(1).and_then(|a| class_of(a)))
             .flatten();
-        // `areGenericTypesEqual`
         if let Some(types) = tag.as_ref().and_then(|t| t.args.as_ref()) {
             let pivots = is_a(ctx, &native, &[BELONGS_TO_MANY, MORPH_TO_MANY]);
             let mut types: Vec<DocType> = types.iter().map(|t| doc_type(t, true)).collect();
-            // `TypeNodeResolver::resolveGenericTypeNode`: a generic class's missing template types take their defaults
             let given = types.len();
             let templates = (facts.documented().get_class_like(native.as_bytes()))
                 .into_iter()
@@ -214,7 +185,6 @@ impl Rule for AddRelationGenerics {
 }
 
 impl AddRelationGenerics {
-    /// The fix: the `@return` tag with `getGenericTypes()`'s generics, in place of the tag's type or added.
     fn report(
         &self,
         ctx: &Context<'_>,
@@ -252,8 +222,6 @@ impl AddRelationGenerics {
             }
             (None, _) => format!("/**\n * @return {ty}\n */"),
         };
-        // The tag printed as it is: nothing changes (a `BelongsToMany` from 11.15.0 to 12.3.0 gets generics the rule
-        // does not count as done).
         if annotated
             .doc
             .as_ref()
@@ -273,8 +241,6 @@ impl AddRelationGenerics {
     }
 }
 
-/// A template's default as a [`DocType`]: one object is its class (a class the codebase lacks stays a reference to
-/// its name, which PHPStan compares as that class), anything else is not compared.
 fn default_type(
     facts: &crate::rules::types::facts::Facts,
     t: &mago_codex::ttype::union::TUnion,
@@ -289,18 +255,12 @@ fn default_type(
     }
 }
 
-/// A type in the doc, as far as the rule compares it.
 enum DocType {
-    /// A class's type (`ObjectType`, `SelfObjectType`, `StaticType`, `ParentStaticType`), by the name it compares by.
     Class(String),
-    /// `$this` (`ThisType`) in the class it names.
     This(String),
-    /// `parent` in a class without one (`MixedType`).
     Other,
 }
 
-/// The first `@return` tag of a doc comment as far as Pun reads it: its index among the doc's children, its type's
-/// name and generic arguments as written, and its description.
 struct ReturnTag<'s> {
     index: usize,
     base: &'s str,
@@ -308,11 +268,8 @@ struct ReturnTag<'s> {
     description: &'s str,
 }
 
-/// `PhpDocInfo::getReturnTagValue()`: the first `@return` tag of `doc`. `Err(())` where Pun does not read it as
-/// phpdoc-parser does.
 fn return_tag<'s>(doc: Option<&Doc<'s>>) -> Result<Option<ReturnTag<'s>>, ()> {
     let Some(doc) = doc else { return Ok(None) };
-    // a tag without a value is invalid (`InvalidTagValueNode`), and does not count
     let Some(index) = (0..doc.len()).find(|&i| {
         let words = doc.words(i);
         words.len() > 1 && tag_name(words[0]) == "@return"
@@ -369,8 +326,6 @@ fn return_tag<'s>(doc: Option<&Doc<'s>>) -> Result<Option<ReturnTag<'s>>, ()> {
     }))
 }
 
-/// `getRelationMethodCall`: in the first `return` of the method (outside nested functions and classes), the first
-/// method call, followed down the method calls it is called on; a relation method with an argument.
 fn relation_call<'a>(
     body: &'a mago_syntax::cst::Block<'a>,
 ) -> Option<&'a mago_syntax::cst::MethodCall<'a>> {
@@ -399,8 +354,6 @@ fn relation_call<'a>(
         });
         found
     }
-    /// The first method call in pre-order; `Err` at a first-class callable method call, which php-parser reads as
-    /// a method call that Pun does not follow.
     fn first_call<'a>(
         node: Node<'a, 'a>,
     ) -> Result<Option<&'a mago_syntax::cst::MethodCall<'a>>, ()> {

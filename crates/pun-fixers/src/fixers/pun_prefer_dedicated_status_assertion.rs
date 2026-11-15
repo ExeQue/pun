@@ -1,5 +1,3 @@
-//! Port of Mago's `prefer-dedicated-status-assertion` (Laravel): `->assertStatus(404)` → `->assertNotFound()`.
-//! Opt-in only (`Pun/prefer_dedicated_status_assertion`); not part of any Pint preset.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -48,9 +46,9 @@ impl Fixer for PreferDedicatedStatusAssertion {
             else {
                 continue;
             };
-            let mut close = tokens.get_next_meaningful_token(num).unwrap();
+            let mut close = tokens.next_meaningful(num);
             if tokens[close].equals(",", true) {
-                close = tokens.get_next_meaningful_token(close).unwrap();
+                close = tokens.next_meaningful(close);
             }
             if !tokens[close].equals(")", true) || (i..close).any(|k| tokens[k].is_comment()) {
                 continue;
@@ -73,8 +71,6 @@ impl Fixer for PreferDedicatedStatusAssertion {
     }
 }
 
-/// The value of a `T_LNUMBER` literal, as PHP reads it: `_` separators, `0x`/`0b`/`0o` prefixes in either case, and a
-/// leading `0` for octal. `None` when it does not fit a `u64`.
 fn int_literal_value(literal: &[u8]) -> Option<u64> {
     let digits: String = literal
         .iter()
@@ -91,7 +87,6 @@ fn int_literal_value(literal: &[u8]) -> Option<u64> {
     u64::from_str_radix(digits, radix).ok()
 }
 
-/// Mirrors `Illuminate\Testing\Concerns\AssertsStatusCodes` (same table as Mago).
 fn dedicated_status_method(status_code: u64) -> Option<&'static str> {
     Some(match status_code {
         200 => "assertOk",
@@ -131,7 +126,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // fix_assert_status_to_not_found, assert_status_ok, assert_status_not_found
         assert_eq!(
             fix("<?php\n\n$response->assertStatus(404);\n"),
             "<?php\n\n$response->assertNotFound();\n"
@@ -144,7 +138,6 @@ mod tests {
             fix("<?php\n\n$this->get('/missing')->assertStatus(404);\n"),
             "<?php\n\n$this->get('/missing')->assertNotFound();\n"
         );
-        // dedicated_method_used, unknown_status_code, non_literal_status_code
         for same in [
             "<?php\n\n$response->assertOk();\n",
             "<?php\n\n$response->assertStatus(599);\n",
@@ -154,9 +147,6 @@ mod tests {
         }
     }
 
-    /// Every `assertX() { return $this->assertStatus(N); }` in laravel/framework's
-    /// src/Illuminate/Testing/Concerns/AssertsStatusCodes.php (corpus/laravel-framework), plus Mago's
-    /// 204 → assertNoContent (whose Laravel body also checks the content is empty).
     #[test]
     fn laravel_status_methods() {
         let laravel = [
@@ -192,13 +182,10 @@ mod tests {
                 format!("<?php $r->{method}();")
             );
         }
-        // Underscore separators are part of the literal's value.
         assert_eq!(
             fix("<?php $r->assertStatus(4_04);"),
             "<?php $r->assertNotFound();"
         );
-        // Other bases decode like PHP (`php -r 'var_dump(0624, 0o624, 0x194, 0b110010100);'` gives 404 each);
-        // `0404` is octal 260, which has no dedicated method.
         for literal in [
             "0624",
             "0o624",

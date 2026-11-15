@@ -1,11 +1,3 @@
-//! `lint/laravel/prefer-travel-to`, ported from rector-laravel 2.7.3's `CarbonSetTestNowToTravelToRector`
-//! (src/Rector/StaticCall).
-//!
-//! Where `$this` is an `Illuminate\Foundation\Testing\TestCase` (a method of the class or a subclass, or a closure
-//! passed to a parameter with that `@param-closure-this` type, as a Pest test), `Carbon::setTestNow($date)` (on
-//! `Carbon\Carbon`, `Carbon\CarbonImmutable` or `Illuminate\Support\Carbon`) becomes `$this->travelTo($date)`, and
-//! `Carbon::setTestNow()` becomes `$this->travelTo(null)`. A static method or a static closure has no `$this`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::reference::TReference;
@@ -65,10 +57,6 @@ impl Rule for PreferTravelTo {
     }
 }
 
-/// `isInLaravelTestCaseScope`: `$this` is defined here (not in a static method or a static closure, not in a function
-/// or outside any), and it is Laravel's `TestCase` or a subclass: the class around the call (by its name, its
-/// `extends` name or the classes the codebase knows), or outside a class the `@param-closure-this` type of the
-/// parameter the closure is passed to (a Pest test).
 fn in_test_case_scope(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     let mut closure = None;
     for (index, ancestor) in ancestors.iter().enumerate().rev() {
@@ -83,12 +71,9 @@ fn in_test_case_scope(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
             _ => {}
         }
     }
-    // `$scope->getType(new Variable('this'))` outside a class: the outermost closure's bound `$this`.
     closure.is_some_and(|index| closure_this_is_test_case(ctx, ancestors, index))
 }
 
-/// `$scope->getClassReflection()->is(TestCase)`: the nearest class is Laravel's `TestCase` or extends it, by its
-/// `extends` name or through the classes the codebase knows.
 fn class_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     let Some(class) = ancestors.iter().rev().find_map(|a| match a {
         Node::Class(c) => Some(c),
@@ -97,7 +82,7 @@ fn class_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
         return false;
     };
     let own = String::from_utf8_lossy(class.name.value);
-    let own = match crate::rules::rector_batch5::scope_statements(ancestors).0 {
+    let own = match crate::rules::support::names::scope_statements(ancestors).0 {
         Some(ns) => format!("{ns}\\{own}"),
         None => own.into_owned(),
     };
@@ -115,8 +100,6 @@ fn class_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>]) -> bool {
             })
 }
 
-/// Whether the closure at `ancestors[index]` is a positional argument of a call to a known function whose parameter
-/// there has a `@param-closure-this` type that is Laravel's `TestCase` or a subclass in each of its parts.
 fn closure_this_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], index: usize) -> bool {
     let span = node_span(&ancestors[index]);
     let Some(call) = ancestors[..index].iter().rev().find_map(|a| match a {
@@ -130,7 +113,7 @@ fn closure_this_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], inde
     }) else {
         return false;
     };
-    let Some(name) = crate::rules::rector_batch5::called_function_name(ancestors, call.function)
+    let Some(name) = crate::rules::support::names::called_function_name(ancestors, call.function)
     else {
         return false;
     };
@@ -155,7 +138,6 @@ fn closure_this_is_test_case(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], inde
                 &String::from_utf8_lossy(n.name.as_bytes()),
                 &[TEST_CASE],
             ),
-            // the codebase keeps a docblock class name unexpanded
             TAtomic::Reference(TReference::Symbol { name, .. }) => {
                 is_a(ctx, &String::from_utf8_lossy(name.as_bytes()), &[TEST_CASE])
             }

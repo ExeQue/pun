@@ -1,7 +1,3 @@
-//! The level-2 `static::` rules on private members of a class that is not final: AccessPrivatePropertyThroughStaticRule,
-//! CallPrivateMethodThroughStaticRule and AccessPrivateConstantThroughStaticRule (a subclass reaching the member
-//! through `static::` would fail).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_span::HasSpan;
@@ -10,8 +6,6 @@ use mago_word::word;
 
 use super::Checker;
 
-/// The class `static::` names, when the rule applies: level 2, inside a class that is not final (`isFinal()`: the
-/// keyword or `@final`; an anonymous class is final).
 fn static_class<'a>(c: &Checker<'a, '_>, class: &Expression) -> Option<&'a ClassLikeMetadata> {
     if c.level < 2 || !matches!(class, Expression::Static(_)) {
         return None;
@@ -22,7 +16,6 @@ fn static_class<'a>(c: &Checker<'a, '_>, class: &Expression) -> Option<&'a Class
     (!is_final).then_some(k)
 }
 
-/// The display name of a member's declaring class: a trait's member belongs to the class using it.
 fn declaring_display(c: &Checker, k: &ClassLikeMetadata, declaring: &[u8]) -> String {
     match c.codebase.get_class_like(declaring) {
         Some(d) if d.kind != SymbolKind::Trait => c.display(d),
@@ -30,7 +23,6 @@ fn declaring_display(c: &Checker, k: &ClassLikeMetadata, declaring: &[u8]) -> St
     }
 }
 
-/// AccessPrivatePropertyThroughStaticRule on `static::$name`.
 pub(super) fn property(c: &mut Checker, p: &StaticPropertyAccess) {
     let Variable::Direct(v) = &p.property else {
         return;
@@ -38,7 +30,6 @@ pub(super) fn property(c: &mut Checker, p: &StaticPropertyAccess) {
     let Some(k) = static_class(c, p.class) else {
         return;
     };
-    // the declaring class names the property, so both are there or neither is
     let (Some(declaring), Some(property)) = (
         c.codebase
             .get_declaring_property_class(k.name.as_bytes(), v.name),
@@ -47,7 +38,6 @@ pub(super) fn property(c: &mut Checker, p: &StaticPropertyAccess) {
         return;
     };
     let declaring_class = c.codebase.get_class_like(declaring.as_bytes());
-    // `hasStaticProperty()`: a parent's private property is not the class's
     let own = declaring.as_bytes().eq_ignore_ascii_case(k.name.as_bytes())
         || declaring_class.is_some_and(|d| d.kind == SymbolKind::Trait);
     if !own || !property.flags.is_static() || !property.read_visibility.is_private() {
@@ -63,7 +53,6 @@ pub(super) fn property(c: &mut Checker, p: &StaticPropertyAccess) {
     );
 }
 
-/// CallPrivateMethodThroughStaticRule on `static::name()`.
 pub(super) fn method(c: &mut Checker, call: &StaticMethodCall) {
     let ClassLikeMemberSelector::Identifier(id) = &call.method else {
         return;
@@ -71,7 +60,6 @@ pub(super) fn method(c: &mut Checker, call: &StaticMethodCall) {
     let Some(k) = static_class(c, call.class) else {
         return;
     };
-    // `getMethod()` finds a parent's private method too
     let Some(m) = super::members::method(c, k, id.value) else {
         return;
     };
@@ -88,7 +76,6 @@ pub(super) fn method(c: &mut Checker, call: &StaticMethodCall) {
     );
 }
 
-/// AccessPrivateConstantThroughStaticRule on `static::NAME`.
 pub(super) fn constant(c: &mut Checker, a: &ClassConstantAccess) {
     let ClassLikeConstantSelector::Identifier(id) = &a.constant else {
         return;
@@ -96,7 +83,6 @@ pub(super) fn constant(c: &mut Checker, a: &ClassConstantAccess) {
     let Some(k) = static_class(c, a.class) else {
         return;
     };
-    // the class's own constants, its traits' among them (a parent's private constant is not the class's)
     let constant = k.constants.get(&word(id.value));
     if !constant.is_some_and(|x| x.visibility.is_private()) {
         return;

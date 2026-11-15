@@ -1,30 +1,19 @@
-//! `lint/laravel/add-has-factory-trait`, ported from rector-laravel 2.7.3's `AddHasFactoryToModelsRector`
-//! (src/Rector/Class_).
-//!
-//! A class (named or anonymous) that is an Eloquent model gets `use \Illuminate\Database\Eloquent\Factories\HasFactory;`
-//! as its first statement, unless it, a trait it uses or a parent already uses the trait. With `items` (Rector's
-//! configuration, a list of class names), only those classes change: a name matches ignoring ASCII case, written
-//! without a leading `\`; an anonymous class has no name. Rector fails on a name with `*`; Pun rejects it.
-//!
-//! php-parser prints the new statement before the class's first statement (or comment), followed by a new line at
-//! that line's indentation. A class without statements is printed anew (`pStmt_Class`): each attribute group on its
-//! own line, the modifiers in php-parser's order, the names as written, `{` on the next line.
-
 use mago_syntax::cst::{
     AttributeList, ClassLikeMember, Extends, Implements, Modifier, Node, NodeKind, Sequence,
 };
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
+use std::fmt::Write as _;
 
 use super::is_a;
 use super::names::resolve_class_name;
 use super::print::kept_nodes;
-use crate::rules::class_method::qualified;
-use crate::rules::rector_batch5::modifiers_text;
-use crate::rules::rector_conditions::indentation;
+use crate::rules::support::class_members::modifiers_text;
+use crate::rules::support::class_members::qualified;
+use crate::rules::support::conditions::indentation;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const TRAIT: &str = "Illuminate\\Database\\Eloquent\\Factories\\HasFactory";
 const USE: &str = "use \\Illuminate\\Database\\Eloquent\\Factories\\HasFactory;";
@@ -34,11 +23,9 @@ pub struct AddHasFactoryTrait {
     pub items: Vec<String>,
 }
 
-/// The parts of a class `pStmt_Class` and `pExpr_New` print.
 struct Parts<'a> {
     attributes: &'a Sequence<'a, AttributeList<'a>>,
     modifiers: &'a Sequence<'a, Modifier<'a>>,
-    /// What follows `class`: ` Name`, or an anonymous class's arguments.
     named: String,
     extends: Option<&'a Extends<'a>>,
     implements: Option<&'a Implements<'a>>,
@@ -51,15 +38,14 @@ impl Rule for AddHasFactoryTrait {
         "lint/laravel/add-has-factory-trait"
     }
 
-    /// `configure`: `items`, the class names to change (Rector's configuration list).
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         let map = match options {
             Value::Null => return Ok(()),
             Value::Object(map) => map,
             _ => return Err("options must be a table".into()),
         };
         if let Some(key) = map.keys().find(|k| *k != "items") {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let items = (map.get("items").and_then(Value::as_array)).and_then(|a| {
             a.iter()
@@ -128,7 +114,6 @@ impl Rule for AddHasFactoryTrait {
         {
             return;
         }
-        // The project's codebase is the files as they were; the class's own `use` is read from the syntax too.
         let own = members.iter().any(|m| match m {
             ClassLikeMember::TraitUse(u) => (u.trait_names.iter())
                 .any(|t| resolve_class_name(ancestors, t).eq_ignore_ascii_case(TRAIT)),
@@ -163,7 +148,6 @@ impl Rule for AddHasFactoryTrait {
     }
 }
 
-/// The class printed anew with the trait as its only statement.
 fn header(ctx: &Context<'_>, node: Node<'_, '_>, parts: &Parts<'_>, start: usize) -> String {
     let source = ctx.source;
     let text = |s: Span| &source[s.start..s.end];
@@ -185,8 +169,8 @@ fn header(ctx: &Context<'_>, node: Node<'_, '_>, parts: &Parts<'_>, start: usize
     ];
     for (keyword, types) in lists.into_iter().filter_map(|(k, t)| Some((k, t?))) {
         let names: Vec<&str> = types.iter().map(|t| text(node_span(t))).collect();
-        out.push_str(&format!("{keyword} {}", names.join(", ")));
+        let _ = write!(out, "{keyword} {}", names.join(", "));
     }
-    out.push_str(&format!("{nl}{{{nl}    {USE}{nl}}}"));
+    let _ = write!(out, "{nl}{{{nl}    {USE}{nl}}}");
     out
 }

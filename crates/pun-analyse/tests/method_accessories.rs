@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1's MethodExistsTypeSpecifyingExtension and HasMethodType (cb3b7e99).
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

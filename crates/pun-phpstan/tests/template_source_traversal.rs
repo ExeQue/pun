@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 cb3b7e99: equal replacements are not retained source nodes.
-
 use pun_phpstan::types::{Level, Template, Traversal, Type};
 use serde_json::Value;
 

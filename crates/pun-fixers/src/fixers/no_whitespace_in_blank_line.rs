@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\NoWhitespaceInBlankLineFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Tokens, php_compat::substr_count};
@@ -27,7 +26,6 @@ impl Fixer for NoWhitespaceInBlankLineFixer {
         self.whitespaces_config = config.clone();
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // skip first as it cannot be a white space token
         let count = tokens.count();
         for i in 1..count {
             if tokens[i].is_whitespace(None) && self.may_change(tokens, i) {
@@ -38,9 +36,6 @@ impl Fixer for NoWhitespaceInBlankLineFixer {
 }
 
 impl NoWhitespaceInBlankLineFixer {
-    /// Whether fix_whitespace_token can change the token, mirroring its line selection without allocating: only a
-    /// "\r" (a "\r\n" is rejoined with "\n") or a selected line made only of spaces and tabs (`^\h+$`). Otherwise
-    /// the lines rejoin to the same content, and setting an identical token is a no-op.
     fn may_change(&self, tokens: &Tokens, index: usize) -> bool {
         let c = tokens[index].get_content();
         if self.whitespaces_config.get_line_ending() != "\n" || c.contains(&b'\r') {
@@ -66,8 +61,6 @@ impl NoWhitespaceInBlankLineFixer {
         let line_count = lines.len();
         let has_next = index + 1 < tokens.count();
 
-        // fix T_WHITESPACES with at least 3 lines (eg `\n   \n`)
-        // and T_WHITESPACES with at least 2 lines at the end of file or after open tag with linebreak
         if line_count > 2
             || (line_count > 0 && (!has_next || tokens[index - 1].is_kind(T_OPEN_TAG)))
         {

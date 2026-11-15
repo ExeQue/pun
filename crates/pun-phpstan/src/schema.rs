@@ -1,9 +1,44 @@
-//! nette/schema 1.2.5 as PHPStan builds it from `parametersSchema` statements (`ContainerFactory::processSchema`):
-//! `Expect::structure/anyOf/arrayOf/listOf/<type>()` plus `nullable/min/max/pattern/default/...`, then
-//! `Processor::process()` with its exact messages.
+use std::fmt;
 
 use crate::value::{Array, Key, Value};
 use pun_tokens::php_compat::float_to_string;
+
+/// Why `parametersSchema` could not be built: what Nette's schema `Expect` (or PHP itself) throws.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    Internal,
+    SchemaArgumentNotStatement,
+    SchemaWithoutArguments,
+    ExpectedSchema,
+    StructureNotArray,
+    StructureItemNotSchema,
+    ArrayOfWithoutType,
+    TooFewArguments,
+    UndefinedMethod { class: &'static str, method: String },
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Error::Internal => "Internal error.",
+            Error::SchemaArgumentNotStatement => "schema() should contain another statement().",
+            Error::SchemaWithoutArguments => "schema() should have at least one argument.",
+            Error::ExpectedSchema => "expected a schema",
+            Error::StructureNotArray => "structure() expects an array",
+            Error::StructureItemNotSchema => "Structure items must be schemas (PHP's TypeError)",
+            Error::ArrayOfWithoutType => "arrayOf() expects a type",
+            Error::TooFewArguments => "Too few arguments",
+            Error::UndefinedMethod { class, method } => {
+                return write!(
+                    f,
+                    "Call to undefined method _PHPStan_95d9e8b05\\Nette\\Schema\\Elements\\{class}::{method}()."
+                );
+            }
+        })
+    }
+}
+
+impl std::error::Error for Error {}
 
 #[derive(Clone, Debug)]
 enum Kind {
@@ -56,18 +91,16 @@ fn type_schema(ty: &str) -> Schema {
     s
 }
 
-/// A non-string entity (a chain or `null()`) throws ShouldNotHappenException before `Expect::{$entity}()`.
-fn entity_name(v: &Value) -> Result<&str, String> {
-    v.as_str().ok_or_else(|| "Internal error.".to_string())
+fn entity_name(v: &Value) -> Result<&str, Error> {
+    v.as_str().ok_or(Error::Internal)
 }
 
-/// `ContainerFactory::processArgument()`.
-fn argument(arg: &Value, required: bool) -> Result<Arg, String> {
+fn argument(arg: &Value, required: bool) -> Result<Arg, Error> {
     match arg {
         Value::Entity(e) if e.value == Value::str("schema") => {
             let statements: Vec<&Value> = e.attributes.values().collect();
             if statements.iter().any(|s| !matches!(s, Value::Entity(_))) {
-                return Err("schema() should contain another statement().".into());
+                return Err(Error::SchemaArgumentNotStatement);
             }
             Ok(Arg::Schema(process_schema(&statements, required)?))
         }
@@ -95,11 +128,11 @@ enum Arg {
 }
 
 impl Arg {
-    fn schema(self) -> Result<Schema, String> {
+    fn schema(self) -> Result<Schema, Error> {
         match self {
             Arg::Schema(s) => Ok(s),
             Arg::Value(Value::Str(t)) => Ok(type_schema(&t)),
-            _ => Err("expected a schema".into()),
+            _ => Err(Error::ExpectedSchema),
         }
     }
 
@@ -111,7 +144,6 @@ impl Arg {
         }
     }
 
-    /// The argument as a PHP value (a nested schema stays an object no value equals: null here).
     fn value(self) -> Value {
         match self {
             Arg::Value(v) => v,
@@ -127,8 +159,7 @@ impl Arg {
     }
 }
 
-/// `ContainerFactory::processSchema()`: `Expect::{first}(...)`, then `->{next}(...)` for each further statement.
-fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, String> {
+fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, Error> {
     let mut schema: Option<Schema> = None;
     for st in statements {
         let Value::Entity(e) = st else { unreachable!() };
@@ -142,14 +173,14 @@ fn process_schema(statements: &[&Value], required: bool) -> Result<Schema, Strin
             Some(s) => call(s, name, args)?,
         });
     }
-    let mut schema = schema.ok_or("schema() should have at least one argument.")?;
+    let mut schema = schema.ok_or(Error::SchemaWithoutArguments)?;
     if required {
         schema.required = true;
     }
     Ok(schema)
 }
 
-fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
+fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, Error> {
     Ok(match name {
         "anyOf" => new(Kind::AnyOf(
             args.into_iter()
@@ -161,22 +192,22 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
         )),
         "structure" => {
             let Some(Arg::Map(items)) = args.into_iter().next() else {
-                return Err("structure() expects an array".into());
+                return Err(Error::StructureNotArray);
             };
             let items = items
                 .into_iter()
                 .map(|(k, a)| match a {
                     Arg::Schema(s) => Ok((k, s)),
-                    _ => Err("Structure items must be schemas (PHP's TypeError)".to_string()),
+                    _ => Err(Error::StructureItemNotSchema),
                 })
-                .collect::<Result<_, String>>()?;
+                .collect::<Result<_, Error>>()?;
             let mut s = new(Kind::Structure { items, other: None });
             s.required = true;
             s
         }
         "arrayOf" | "listOf" => {
             let mut it = args.into_iter();
-            let value = it.next().ok_or("arrayOf() expects a type")?.schema()?;
+            let value = it.next().ok_or(Error::ArrayOfWithoutType)?.schema()?;
             let key = it.next().map(Arg::schema).transpose()?;
             let mut s = type_schema(if name == "listOf" { "list" } else { "array" });
             if let Kind::Type { items, .. } = &mut s.kind {
@@ -188,7 +219,7 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
             &args
                 .into_iter()
                 .next()
-                .ok_or(TOO_FEW)?
+                .ok_or(Error::TooFewArguments)?
                 .value()
                 .to_php_string()
                 .unwrap_or_default(),
@@ -203,10 +234,7 @@ fn expect(name: &str, args: Vec<Arg>) -> Result<Schema, String> {
     })
 }
 
-/// PHP's ArgumentCountError (its text names the phar's path).
-const TOO_FEW: &str = "Too few arguments";
-
-fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
+fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, Error> {
     let first_number = args.first().and_then(Arg::number);
     match (name, &mut s.kind) {
         ("nullable", Kind::Type { ty, .. }) => *ty = format!("null|{ty}"),
@@ -239,14 +267,19 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
                     .map_or_else(|| Ok(type_schema("mixed")), Arg::schema)?,
             ));
         }
-        ("default", _) => s.default = args.into_iter().next().ok_or(TOO_FEW)?.value(),
+        ("default", _) => {
+            s.default = args
+                .into_iter()
+                .next()
+                .ok_or(Error::TooFewArguments)?
+                .value();
+        }
         ("required", _) => {
             s.required = args
                 .into_iter()
                 .next()
                 .is_none_or(|a| a.value() == Value::Bool(true));
         }
-        // Deprecations are warnings (E_USER_DEPRECATED), which PHPStan's Configurator swallows.
         ("deprecated", _) => {}
         (m, kind) => {
             let class = match kind {
@@ -254,16 +287,16 @@ fn call(mut s: Schema, name: &str, args: Vec<Arg>) -> Result<Schema, String> {
                 Kind::Structure { .. } => "Structure",
                 Kind::AnyOf(_) => "AnyOf",
             };
-            return Err(format!(
-                "Call to undefined method _PHPStan_95d9e8b05\\Nette\\Schema\\Elements\\{class}::{m}()."
-            ));
+            return Err(Error::UndefinedMethod {
+                class,
+                method: m.to_string(),
+            });
         }
     }
     Ok(s)
 }
 
-/// `Expect::structure($parametersSchema)` from the merged `parametersSchema` section.
-pub fn parameters_schema(section: &Array) -> Result<Schema, String> {
+pub fn parameters_schema(section: &Array) -> Result<Schema, Error> {
     let mut items = Vec::new();
     for (k, v) in section.iter() {
         let ks = k.as_string();
@@ -288,7 +321,6 @@ struct Message {
 }
 
 impl Message {
-    /// `Message::toString()`: `preg_replace_callback('~( ?)%(\w+)%~', ...)`.
     fn render(&self) -> String {
         let t = &self.template;
         let mut out = String::new();
@@ -305,15 +337,13 @@ impl Message {
                 let name = &t[start + 1..start + 1 + n];
                 let val = match name {
                     "label" => (if self.is_key { "key of item" } else { "item" }).to_string(),
-                    // (the path always starts with `parameters`)
                     "path" => format!("'{}'", self.path.join("\u{a0}›\u{a0}")),
                     "value" => format_value(&self.value),
                     n => self
                         .vars
                         .iter()
                         .find(|(k, _)| *k == n)
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or_default(),
+                        .map_or_default(|(_, v)| v.clone()),
                 };
                 out.push_str(if space { " " } else { "" });
                 out.push_str(&val);
@@ -355,7 +385,6 @@ impl Context {
     }
 }
 
-/// `Nette\Schema\Helpers::formatValue()`.
 pub(crate) fn format_value(v: &Value) -> String {
     match v {
         Value::Entity(_) | Value::OptionalPath(_) | Value::DateTime(_) => {
@@ -368,7 +397,6 @@ pub(crate) fn format_value(v: &Value) -> String {
     }
 }
 
-/// (OptionalPath values are unwrapped before validation.)
 fn object_class(v: &Value) -> &'static str {
     match v {
         Value::DateTime(_) => "DateTimeImmutable",
@@ -376,7 +404,6 @@ fn object_class(v: &Value) -> &'static str {
     }
 }
 
-/// `Nette\Utils\Strings::truncate($s, $maxLen, $append)`.
 pub(crate) fn truncate(s: &str, max: usize, append: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     if chars.len() <= max {
@@ -394,7 +421,6 @@ pub(crate) fn truncate(s: &str, max: usize, append: &str) -> String {
     chars[..max].iter().collect::<String>() + append
 }
 
-/// `Nette\Utils\Validators::is($value, $expected)` for the types schemas use.
 fn is_type(v: &Value, expected: &str) -> bool {
     expected.split('|').any(|item| {
         let item = match item.strip_prefix('?') {
@@ -417,7 +443,6 @@ fn is_type(v: &Value, expected: &str) -> bool {
                 v,
                 Value::Entity(_) | Value::OptionalPath(_) | Value::DateTime(_)
             ),
-            // ponytail: `instanceof` of the exact class only (no parents/interfaces).
             class => {
                 matches!(
                     v,
@@ -439,7 +464,7 @@ fn strip_prevent(v: &mut Value) -> bool {
 }
 
 fn range_text(r: (Option<f64>, Option<f64>)) -> String {
-    let f = |x: Option<f64>| x.map(float_to_string).unwrap_or_default();
+    let f = |x: Option<f64>| x.map_or_default(float_to_string);
     format!("{}..{}", f(r.0), f(r.1))
 }
 
@@ -626,8 +651,7 @@ impl Schema {
                                         e.vars
                                             .iter()
                                             .find(|(k, _)| *k == "expected")
-                                            .map(|(_, v)| v.clone())
-                                            .unwrap_or_default(),
+                                            .map_or_default(|(_, v)| v.clone()),
                                     );
                                 }
                             }
@@ -687,8 +711,6 @@ impl Schema {
         self.default.clone()
     }
 
-    /// `(new Processor)->process($schema, $data)` with the context path PHPStan sets (`['parameters']`); the error
-    /// messages in order, empty when valid.
     pub fn validate(&self, data: &Value, path: &[&str]) -> Vec<String> {
         let mut ctx = Context {
             path: path.iter().map(std::string::ToString::to_string).collect(),
@@ -747,7 +769,6 @@ fn validate_range(v: &Value, range: (Option<f64>, Option<f64>), ctx: &mut Contex
     }
 }
 
-/// PHP `levenshtein($a, $b, $insert, $replace, $delete)`.
 pub(crate) fn levenshtein(a: &str, b: &str, ins: usize, rep: usize, del: usize) -> usize {
     let (a, b) = (a.as_bytes(), b.as_bytes());
     let mut p1: Vec<usize> = (0..=b.len()).map(|i| i * ins).collect();
@@ -765,7 +786,6 @@ pub(crate) fn levenshtein(a: &str, b: &str, ins: usize, rep: usize, del: usize) 
     p1[b.len()]
 }
 
-/// `Nette\Utils\ObjectHelpers::getSuggestion()`.
 pub(crate) fn suggestion(possibilities: &[String], value: &str) -> Option<String> {
     let prefix = |s: &str, with: &str| -> String {
         for p in ["get", "set", "has", "is", "add"] {
@@ -780,7 +800,6 @@ pub(crate) fn suggestion(possibilities: &[String], value: &str) -> Option<String
     let norm = prefix(value, "+");
     let mut best = None;
     let mut min = (value.len() as f64 / 4.0 + 1.0) * 10.0 + 0.1;
-    // (array_unique() and the `$item === $value` skip change nothing here: `value` is never a possibility)
     for item in possibilities {
         let len = levenshtein(item, value, 10, 11, 10);
         let len = if (len as f64) < min {

@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1's holder invalidation is not a definitely-absent refinement.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -13,7 +11,7 @@ fn unset_global_and_extract_fallbacks_match_complete_phpstan_diagnostics() {
     for file in ["global.php", "branches.php"] {
         for level in [1, 4] {
             let mut project = Project::new(vec![root.join(file)], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

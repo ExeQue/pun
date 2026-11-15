@@ -1,11 +1,3 @@
-//! `lint/types/add-return-type-from-new-array` and `lint/types/add-private-method-array-return-type`, ported from
-//! Rector 2.8.4's `ReturnTypeFromStrictNewArrayRector` and `PrivateMethodReturnTypeFromStrictNewArrayRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with the `StrictReturnNewArrayResolver` they share
-//! (rules/TypeDeclaration/NodeAnalyzer).
-//!
-//! A function or method without a return type that starts a variable as an array and returns it (or whose every
-//! `return` returns an array) gets `array`, and, without a `@return` tag, `@return` the array's item type.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::union::TUnion;
@@ -19,8 +11,8 @@ use super::facts::{Facts, facts};
 use super::silent_void::Place;
 use super::type_factory::{Created, infer_returns};
 use super::{SCALAR_TYPES, class_scope, has_only_return_with_expr, returns_scoped, untyped};
-use crate::rules::phpdoc_writer::type_mapper::is_mixed;
-use crate::rules::phpdoc_writer::{DocTarget, change_return_type, phpstan_type};
+use crate::rules::support::phpdoc_writer::type_mapper::is_mixed;
+use crate::rules::support::phpdoc_writer::{DocTarget, change_return_type, phpstan_type};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -33,8 +25,8 @@ impl Rule for AddReturnTypeFromNewArray {
         "lint/types/add-return-type-from-new-array"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -51,7 +43,6 @@ impl Rule for AddReturnTypeFromNewArray {
         let Some(f) = FunctionLike::of(node) else {
             return;
         };
-        // private methods are handled by PrivateMethodReturnTypeFromStrictNewArrayRector
         if f.is_private() || untyped(node, ancestors, ctx).is_none() {
             return;
         }
@@ -64,8 +55,8 @@ impl Rule for AddPrivateMethodArrayReturnType {
         "lint/types/add-private-method-array-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -89,12 +80,10 @@ impl Rule for AddPrivateMethodArrayReturnType {
     }
 }
 
-/// `$type->isArray()->yes()` of Mago's type.
 fn is_array(t: Option<&TUnion>) -> bool {
     t.is_some_and(|t| !t.types.is_empty() && t.types.iter().all(|a| matches!(a, TAtomic::Array(_))))
 }
 
-/// `StrictReturnNewArrayResolver::resolve()`.
 fn resolve(
     f: &FunctionLike<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -116,7 +105,6 @@ fn resolve(
     if !has_only_return_with_expr(&place, body, &returns) {
         return None;
     }
-    // matchVariableNotOverriddenByNonArray
     for a in assignments(Node::Block(body)) {
         let Some(name) = variable_name(a.lhs) else {
             continue;
@@ -134,7 +122,6 @@ fn resolve(
         return None;
     }
     let return_type = if returns.len() > 1 {
-        // ReturnTypeInferer::inferFunctionLike(): an interface's method has no body
         let types = match infer_returns(&place, body, &returns) {
             Created::Single(t) => vec![t],
             Created::Union(types) => types,
@@ -161,7 +148,6 @@ fn resolve(
         if !is_array(native) {
             return None;
         }
-        // the values appended to it, each ternary's members in PHPStan's order
         let mut order = Vec::new();
         for a in assignments(Node::Block(body)) {
             if let Expression::ArrayAppend(append) = a.lhs
@@ -176,13 +162,11 @@ fn resolve(
         }
         array_type(native?, &order)?
     };
-    // processAddArrayReturnType()
     let at = node_span(f.parameters).end;
     let mut edits = Vec::new();
     if should_add_return_array_doc_type(&return_type) {
         let target = f.target(ctx);
         let mut info = target.info(ctx.source);
-        // skip already filled type, on purpose
         let current = info.return_tag().map_or(mixed(), |tag| {
             DocTarget::doc_type(tag, ancestors, class_name(ancestors).as_deref())
         });
@@ -214,7 +198,6 @@ fn resolve(
     ))
 }
 
-/// `matchArrayAssignedVariable()`: the variables the body's own statements assign a native array.
 fn match_array_assigned_variables<'s, 'arena: 's>(
     facts: &Facts,
     statements: impl Iterator<Item = &'s Statement<'arena>>,
@@ -240,8 +223,6 @@ fn match_array_assigned_variables<'s, 'arena: 's>(
     variables
 }
 
-/// `shouldAddReturnArrayDocType()`: only plain list<> and generic array<> doc types are worth adding; array shapes
-/// (a constant array with keys that is no list, anywhere in the type) produce noisy, fragile doc types.
 fn should_add_return_array_doc_type(t: &Type) -> bool {
     fn visit(t: &Type, found: &std::cell::Cell<bool>) -> Type {
         if let Type::ConstArray(a) = t
@@ -257,10 +238,6 @@ fn should_add_return_array_doc_type(t: &Type) -> bool {
     !found.get()
 }
 
-/// PHPStan's type of a native array as the scope builds it: Mago's non-empty list a `list<T>`
-/// (`AccessoryArrayListType`), a non-empty array with `NonEmptyArrayType`, its items alike; anything else as
-/// [`phpstan_type`] maps it. A union's members come in the order of `order` (PHPStan's union of the values in the order
-/// they are added), the others after them.
 fn array_type(t: &TUnion, order: &[&TAtomic]) -> Option<Type> {
     let mut atomics: Vec<&TAtomic> = t.types.iter().collect();
     atomics.sort_by_key(|a| order.iter().position(|o| o == a).unwrap_or(order.len()));
@@ -276,8 +253,6 @@ fn array_type(t: &TUnion, order: &[&TAtomic]) -> Option<Type> {
 
 fn array_atomic(a: &TAtomic, order: &[&TAtomic]) -> Option<Type> {
     match a {
-        // a non-empty one is what straight-line appends build (PHPStan's constant list); one that may be empty comes
-        // from a loop, whose generalization PHPStan's scope keeps a plain `array<int<0, max>, T>`
         TAtomic::Array(TArray::List(l)) if l.known_elements.is_none() => {
             let array = Type::array(
                 Type::int_range(Some(0), None),

@@ -1,8 +1,6 @@
-//! PHP values as nette/neon and Nette DI produce them: ordered arrays with int|string keys (PHP's key coercion and
-//! next-index rules), entities/statements, and the scalar conversions PHP applies on the way.
-
 use indexmap::IndexMap;
 use pun_tokens::php_compat::float_to_string;
+use std::fmt::Write as _;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Key {
@@ -11,7 +9,6 @@ pub enum Key {
 }
 
 impl Key {
-    /// PHP array-key coercion of a string: canonical decimal integers become int keys.
     pub fn from_string(s: String) -> Key {
         match canonical_int(&s) {
             Some(i) => Key::Int(i),
@@ -33,7 +30,6 @@ impl From<&str> for Key {
     }
 }
 
-/// An array key as a value: PHP gives back numeric string keys as ints.
 impl From<Key> for Value {
     fn from(k: Key) -> Value {
         match k {
@@ -43,7 +39,6 @@ impl From<Key> for Value {
     }
 }
 
-/// A value used as an array key: ints stay, everything else goes through `(string)` and PHP's key coercion.
 impl From<Value> for Key {
     fn from(v: Value) -> Key {
         match v {
@@ -53,7 +48,6 @@ impl From<Value> for Key {
     }
 }
 
-/// `"123"`, `"-5"`, not `"0123"`, `"-0"`, `"+1"` or out of i64 range (zend_handle_numeric_str).
 fn canonical_int(s: &str) -> Option<i64> {
     let digits = s.strip_prefix('-').unwrap_or(s);
     if digits.is_empty()
@@ -68,7 +62,6 @@ fn canonical_int(s: &str) -> Option<i64> {
     s.parse().ok()
 }
 
-/// A PHP array: insertion-ordered, int|string keys, `[]` appends at the next free int index.
 #[derive(Clone, Debug, Default)]
 pub struct Array {
     map: IndexMap<Key, Value>,
@@ -76,7 +69,6 @@ pub struct Array {
 }
 
 impl PartialEq for Array {
-    /// Ordered comparison (PHP `===` on arrays also compares order).
     fn eq(&self, other: &Array) -> bool {
         self.map.iter().eq(&other.map)
     }
@@ -145,7 +137,6 @@ impl Array {
         self.map.keys()
     }
 
-    /// `array_is_list()`.
     pub fn is_list(&self) -> bool {
         self.map
             .keys()
@@ -170,7 +161,6 @@ impl IntoIterator for Array {
     }
 }
 
-/// A NEON entity `value(attributes)`, which Nette DI turns into a `Statement` with the same shape.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Entity {
     pub value: Value,
@@ -187,9 +177,7 @@ pub enum Value {
     Str(String),
     Array(Array),
     Entity(Box<Entity>),
-    /// A NEON date/time literal (`new \DateTimeImmutable($raw)`), kept as written.
     DateTime(String),
-    /// PHPStan's `OptionalPath` (an `excludePaths` entry written as `path (?)`).
     OptionalPath(String),
 }
 
@@ -212,7 +200,6 @@ impl Value {
         }
     }
 
-    /// PHP `gettype()`.
     pub fn gettype(&self) -> &'static str {
         match self {
             Value::Null => "NULL",
@@ -232,7 +219,6 @@ impl Value {
         )
     }
 
-    /// PHP `(string)` cast (`None` for objects, which PHP refuses).
     pub fn to_php_string(&self) -> Option<String> {
         Some(match self {
             Value::Null | Value::Bool(false) => String::new(),
@@ -240,12 +226,11 @@ impl Value {
             Value::Int(i) => i.to_string(),
             Value::Float(f) => float_to_string(*f),
             Value::Str(s) => s.clone(),
-            Value::Array(_) => "Array".into(), // (with PHP's "Array to string conversion" warning)
+            Value::Array(_) => "Array".into(),
             _ => return None,
         })
     }
 
-    /// PHP `var_export($v, true)` for scalars (no caller passes anything else).
     pub fn var_export(&self) -> String {
         match self {
             Value::Bool(b) => b.to_string(),
@@ -256,8 +241,6 @@ impl Value {
     }
 }
 
-/// zend_gcvt: `digits`/`decpt` from a correctly rounded decimal expansion, scientific when the exponent is below -4 or
-/// at least `precision`.
 fn gcvt(f: f64, digits: String, exp: i32, precision: i32, e: char) -> String {
     let sign = if f.is_sign_negative() { "-" } else { "" };
     let digits = digits.trim_end_matches('0');
@@ -290,19 +273,16 @@ fn split_exp(s: &str) -> (String, i32) {
     (m.replace('.', ""), e.parse().expect("exponent"))
 }
 
-/// INF/-INF (NEON's `1e999`); NAN cannot be written in NEON.
 fn special(f: f64) -> Option<String> {
     f.is_infinite()
         .then(|| if f > 0.0 { "INF" } else { "-INF" }.into())
 }
 
-/// Shortest round-trip digits (serialize_precision=-1), as `json_encode` prints them.
 pub fn float_json(f: f64) -> String {
     let (d, e) = split_exp(&format!("{f:e}"));
     gcvt(f, d, e, 17, 'e')
 }
 
-/// `var_export($float, true)`.
 pub fn float_var_export(f: f64) -> String {
     if let Some(s) = special(f) {
         return s;
@@ -312,8 +292,6 @@ pub fn float_var_export(f: f64) -> String {
     if s.contains(['.', 'E']) { s } else { s + ".0" }
 }
 
-/// PHP `is_numeric()` + `$value * 1`: leading/trailing whitespace, sign, digits, fraction, exponent; integers that
-/// fit stay int, everything else is float.
 pub fn numeric(s: &str) -> Option<Value> {
     let ws = |c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0B' | '\x0C');
     let t = s.trim_start_matches(ws).trim_end_matches(ws);
@@ -361,7 +339,6 @@ pub fn numeric(s: &str) -> Option<Value> {
     Some(Value::Float(t.parse().expect("validated float syntax")))
 }
 
-/// `hexdec()`/`octdec()`/`bindec()` on digits of that base: int while it fits, float after.
 pub fn base_dec(digits: &str, base: u32) -> Value {
     let mut i: i64 = 0;
     let mut f: f64 = 0.0;
@@ -390,9 +367,6 @@ pub fn base_dec(digits: &str, base: u32) -> Value {
     }
 }
 
-/// `(new \DateTimeImmutable($raw))->format($format)` for the NEON date/time literal forms (`Y-m-d`, optional
-/// `[Tt ]H:i:s[.frac]`, optional `Z`/`±H[H][[:]MM]`), with formats built from `Y m d H i s u O P`.
-/// ponytail: a literal without a zone is read as UTC (PHP uses php.ini's date.timezone).
 pub fn datetime_format(raw: &str, format: &str) -> String {
     let num = |s: &str| s.parse::<i64>().unwrap_or(0);
     let (date, rest) = raw.split_at(raw.find(['T', 't', ' ']).unwrap_or(raw.len()));
@@ -427,7 +401,6 @@ pub fn datetime_format(raw: &str, format: &str) -> String {
             sign * (num(hh) * 60 + num(mm))
         }
     };
-    // days_from_civil / civil_from_days (H. Hinnant) normalise overflowing days like PHP does.
     let days = {
         let (y, m) = if m <= 2 { (y - 1, m + 9) } else { (y, m - 3) };
         let era = y.div_euclid(400);
@@ -450,18 +423,21 @@ pub fn datetime_format(raw: &str, format: &str) -> String {
     let (oh, om) = (offset.abs() / 60, offset.abs() % 60);
     let mut out = String::new();
     for c in format.chars() {
-        match c {
-            'Y' => out.push_str(&format!("{yy:04}")),
-            'm' => out.push_str(&format!("{mm:02}")),
-            'd' => out.push_str(&format!("{dd:02}")),
-            'H' => out.push_str(&format!("{:02}", sod / 3600)),
-            'i' => out.push_str(&format!("{:02}", sod / 60 % 60)),
-            's' => out.push_str(&format!("{:02}", sod % 60)),
-            'u' => out.push_str(&format!("{micro:06}")),
-            'O' => out.push_str(&format!("{sign}{oh:02}{om:02}")),
-            'P' => out.push_str(&format!("{sign}{oh:02}:{om:02}")),
-            c => out.push(c),
-        }
+        let _ = match c {
+            'Y' => write!(out, "{yy:04}"),
+            'm' => write!(out, "{mm:02}"),
+            'd' => write!(out, "{dd:02}"),
+            'H' => write!(out, "{:02}", sod / 3600),
+            'i' => write!(out, "{:02}", sod / 60 % 60),
+            's' => write!(out, "{:02}", sod % 60),
+            'u' => write!(out, "{micro:06}"),
+            'O' => write!(out, "{sign}{oh:02}{om:02}"),
+            'P' => write!(out, "{sign}{oh:02}:{om:02}"),
+            c => {
+                out.push(c);
+                Ok(())
+            }
+        };
     }
     out
 }

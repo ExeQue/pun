@@ -1,9 +1,7 @@
 //! parametersSchema building and validation against PHPStan 2.3.1's ContainerFactory::validateParameters()
 //! (tests/fixtures/schema.json, scripts/export-schema-fixtures.php).
 
-mod common;
-
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::config::ProjectFiles;
 use pun_phpstan::{Value, di, schema};
 use serde_json::json;
@@ -31,10 +29,9 @@ fn container_factory_validate_parameters() {
             .unwrap();
         let got = match schema::parameters_schema(&section) {
             Ok(s) => json!({ "messages": s.validate(&Value::Array(params), &["parameters"]) }),
-            Err(e) => json!({ "exception": e }),
+            Err(e) => json!({ "exception": e.to_string() }),
         };
         let want = match case.get("exception").and_then(|e| e.as_str()) {
-            // PHP's own TypeError/ArgumentCountError (with the phar's path in it): only "fails" is comparable.
             Some(e) if e.contains(" called in ") || e.contains(" passed in ") => {
                 if got.get("exception").is_some() {
                     continue;

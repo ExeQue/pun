@@ -1,7 +1,3 @@
-//! Level 3's generators: YieldInGeneratorRule (`generator.outOfFunction`, `generator.returnType`), YieldTypeRule and
-//! YieldFromTypeRule (`generator.keyType`, `generator.valueType`, `generator.nonIterable`, `generator.sendType`,
-//! `generator.void`), for the yields of a function-like whose return type [`super::returns`] knows.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -20,7 +16,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "generator.void",
 ];
 
-/// The expressions whose type the rules read.
 pub(super) fn typed(y: &Yield, spans: &mut Vec<Span>) {
     match y {
         Yield::Value(v) => spans.extend(v.value.map(|e| e.span())),
@@ -29,7 +24,6 @@ pub(super) fn typed(y: &Yield, spans: &mut Vec<Span>) {
     }
 }
 
-/// The yields outside any function-like.
 #[derive(Default)]
 struct Outside(Vec<Span>);
 
@@ -60,7 +54,6 @@ pub(in super::super) fn program(c: &mut Checker, program: &Program) {
     }
 }
 
-/// `getTemplateType(Generator::class, 'TSend')`, `None` for ErrorType.
 fn generator_send(t: &Type) -> Option<Type> {
     match t {
         Type::Object(name, args, _) if name.eq_ignore_ascii_case("Generator") => {
@@ -71,7 +64,6 @@ fn generator_send(t: &Type) -> Option<Type> {
     }
 }
 
-/// One `Generator expects key|value type` check: `None` when accepted.
 fn expects(
     c: &Checker,
     what: &str,
@@ -96,7 +88,6 @@ fn expects(
     Some((identifier, message))
 }
 
-/// YieldFromTypeRule's checks of `yield from`, `None` for a non-iterable (reported).
 fn from(
     c: &mut Checker,
     f: &YieldFrom,
@@ -142,12 +133,9 @@ fn from(
             errors.push(("generator.sendType", message));
         }
     });
-    // `$scope->getType($yieldFrom)`: what the delegated generator returns
     Some((errors, generator_return(&t).unwrap_or_else(mixed)))
 }
 
-/// The yields of a function-like returning `ret`, with the spans of those that are statements (whose result is not
-/// used: `isInFirstLevelStatement()`).
 pub(super) fn check(
     c: &mut Checker,
     yields: &[&Yield],
@@ -204,7 +192,6 @@ pub(super) fn check(
         for (identifier, message) in errors {
             c.report(y, identifier, message, None);
         }
-        // `$scope->getType($yield)`: what the generator is sent
         if !statements.contains(&y.span()) && generator_send(ret).is_some_and(|s| s.is_void().yes())
         {
             c.report(

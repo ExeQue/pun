@@ -1,15 +1,11 @@
-//! `lint/types/add-var-phpdoc-from-dim-fetch`, ported from Rector 2.8.4's `AddVarArrayDocblockFromDimFetchAssignRector`
-//! (rules/TypeDeclarationDocblocks/Rector/Class_): a property declared `array` that the class's methods append to
-//! (`$this->items[] = ...`) gets the appended values' type as its `@var`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_phpstan::types::{Type, mixed};
 
 use super::docblock::{
     assignments, class_members, docs_report, is_array_hint, methods, properties, this_property,
 };
-use crate::rules::phpdoc_writer::type_mapper::{is_useful_array_tag, uniquate_types};
-use crate::rules::phpdoc_writer::{DocTarget, decorate_var, expr_type};
+use crate::rules::support::phpdoc_writer::type_mapper::{is_useful_array_tag, uniquate_types};
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_var, expr_type};
 use crate::{Context, Report, Rule};
 
 pub struct AddVarPhpdocFromDimFetch;
@@ -45,8 +41,6 @@ impl Rule for AddVarPhpdocFromDimFetch {
             if is_useful_array_tag(info.var_tag().map(|t| &t.ty)) {
                 continue;
             }
-            // `hasNonAppendAssignToPropertyName()`: a keyed dim assign (`$this->prop['x'] = ...`) or a direct assign
-            // carries a value type this rule does not read from bare appends; skip to avoid a too-narrow `@var`
             let non_append = methods(members).any(|m| {
                 assignments(Node::Method(m))
                     .into_iter()
@@ -60,7 +54,6 @@ impl Rule for AddVarPhpdocFromDimFetch {
             if non_append {
                 continue;
             }
-            // `ArrayDimFetchFinder::findDimFetchAssignToPropertyName()`: `$this->name[] = expr` in the methods
             let mut types: Vec<Option<Type>> = Vec::new();
             for m in methods(members) {
                 for a in assignments(Node::Method(m)) {
@@ -75,7 +68,6 @@ impl Rule for AddVarPhpdocFromDimFetch {
                     types.push(expr_type(ctx, &method_scope, a.rhs));
                 }
             }
-            // nothing to add (or a type Pun does not map)
             let Some(types) = types
                 .into_iter()
                 .collect::<Option<Vec<Type>>>()

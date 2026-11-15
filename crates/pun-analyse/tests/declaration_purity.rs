@@ -1,5 +1,3 @@
-//! Declaration effects and the builtin-parent purity override boundary, not complete Pure*Rule mappings.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 
@@ -15,12 +13,11 @@ fn generic_array_declaration_effects_match_complete_phpstan_records() {
     for (file, levels) in [
         ("arrays", [0, 4, 10].as_slice()),
         ("object-bounds", [0, 4, 10].as_slice()),
-        // Effect eligibility is independent of level 10's strict mixed-offset legality producer.
         ("mixed-bounds", [0, 4].as_slice()),
     ] {
         for &level in levels {
             let mut project = Project::new(vec![root.join(format!("{file}.php"))], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -77,7 +74,7 @@ fn unset_declaration_effects_match_complete_phpstan_records() {
     let mut failures = Vec::new();
     for level in [0, 1, 2, 4, 5, 8, 10] {
         let mut project = Project::new(vec![root.join("unset.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -131,7 +128,7 @@ fn declaration_effects_match_the_oracle_without_claiming_unknown_producers() {
                 .to_vec(),
             Vec::new(),
         );
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -162,8 +159,6 @@ fn declaration_effects_match_the_oracle_without_claiming_unknown_producers() {
                 .collect::<Vec<_>>()
         };
         let oracle = expected[level.to_string()].as_array().unwrap();
-        // Unsupported oracle positives may become supported as their real producers land. Reject
-        // false positives everywhere, but do not turn those known omissions into permanent negatives.
         for error in actual.iter().filter(|e| e["identifier"] == "void.pure") {
             assert!(oracle.contains(error), "level {level}: unexpected {error}");
         }
@@ -185,7 +180,7 @@ fn constructor_declaration_effects_match_independent_phpstan_records() {
     .unwrap();
     for level in [1, 2, 4, 10] {
         let mut project = Project::new(vec![root.join("constructors.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         let actual: Vec<_> = analyse_project(&project)
             .unwrap()
@@ -214,8 +209,6 @@ fn constructor_declaration_effects_match_independent_phpstan_records() {
                 "level {level}: unexpected {error}"
             );
         }
-        // Preserve the existing producer's unsupported-call boundary; the complete capture retains
-        // those positives, and the preceding assertion rejects false positives even there.
         let supported_lines = include_str!("fixtures/declaration-purity/constructors.php")
             .lines()
             .position(|line| line.starts_with("// Unsupported argument policies"))
@@ -244,7 +237,7 @@ fn builtin_purity_overrides_match_complete_phpstan_records_through_project() {
     .unwrap();
     for mode in ["enabled", "disabled", "no-overrides"] {
         let mut project = Project::new(vec![root.join("contracts.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = 3;
         project.options.set(
             pun_analyse::ProjectOptions::REPORT_METHOD_PURITY_OVERRIDE,

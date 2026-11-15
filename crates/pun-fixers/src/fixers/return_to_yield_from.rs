@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\ReturnToYieldFromFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::php_compat::strtolower;
@@ -32,8 +31,7 @@ impl Fixer for ReturnToYieldFromFixer {
 }
 
 fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
-    // A `return` is always followed by an expression or `;`.
-    let array_start_index = tokens.get_next_meaningful_token(return_index).unwrap();
+    let array_start_index = tokens.next_meaningful(return_index);
     if !tokens[array_start_index].is_given_kind(&[T_ARRAY, CT_ARRAY_BRACKET_OPEN]) {
         return false;
     }
@@ -49,7 +47,7 @@ fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
     loop {
         function_end_index = tokens.get_next_meaningful_token(function_end_index.unwrap());
         match function_end_index {
-            Some(i) if tokens[i].equals(";", true) => continue,
+            Some(i) if tokens[i].equals(";", true) => {},
             _ => break,
         }
     }
@@ -59,15 +57,13 @@ fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
     };
     let function_start_index =
         tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, function_end_index);
-    let return_type_index = tokens
-        .get_prev_meaningful_token(function_start_index)
-        .unwrap();
+    let return_type_index = tokens.prev_meaningful(function_start_index);
     if !tokens[return_type_index].is_kind(T_STRING) {
         return false;
     }
     if strtolower(tokens[return_type_index].get_content()) != b"iterable" {
         return false;
     }
-    let before_return_type_index = tokens.get_prev_meaningful_token(return_type_index).unwrap();
+    let before_return_type_index = tokens.prev_meaningful(return_type_index);
     tokens[before_return_type_index].is_kind(CT_TYPE_COLON)
 }

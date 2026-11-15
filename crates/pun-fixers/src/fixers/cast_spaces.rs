@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\CastNotation\CastSpacesFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -27,7 +26,6 @@ impl Fixer for CastSpacesFixer {
         "cast_spaces"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoShortBoolCastFixer.
         -10
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -50,7 +48,6 @@ impl Fixer for CastSpacesFixer {
                 index += 1;
                 continue;
             }
-            // strtr with INSIDE_CAST_SPACE_REPLACE_MAP
             let content: Vec<u8> = token
                 .get_content()
                 .iter()
@@ -60,12 +57,9 @@ impl Fixer for CastSpacesFixer {
             let t = Token::with_id(token.get_id(), content);
             tokens.set(index, t);
             if self.space == Space::Single {
-                // force single whitespace after cast token:
                 if tokens[index + 1].is_whitespace(Some(b" \t")) {
-                    // - if next token is whitespaces that contains only spaces and tabs - override next token with single space
                     tokens.set(index + 1, Token::new(T_WHITESPACE, " "));
                 } else if !tokens[index + 1].is_whitespace(None) {
-                    // - if next token is not whitespaces that contains spaces, tabs and new lines - append single space to current token
                     tokens.insert_at(index + 1, vec![Token::new(T_WHITESPACE, " ")]);
                 }
                 index += 1;

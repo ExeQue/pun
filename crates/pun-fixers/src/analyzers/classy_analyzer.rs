@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\ClassyAnalyzer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use pun_tokens::Kind::*;
@@ -17,7 +16,7 @@ impl ClassyAnalyzer {
         if TypeAnalysis::new(token.get_content(), None, None).is_reserved_type() {
             return false;
         }
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         let next_token = &tokens[next];
         if next_token.is_kind(T_NS_SEPARATOR) {
             return false;
@@ -31,9 +30,9 @@ impl ClassyAnalyzer {
         ]) {
             return true;
         }
-        let mut prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev = tokens.prev_meaningful(index);
         while tokens[prev].is_given_kind(&[CT_NAMESPACE_OPERATOR, T_NS_SEPARATOR, T_STRING]) {
-            prev = tokens.get_prev_meaningful_token(prev).unwrap();
+            prev = tokens.prev_meaningful(prev);
         }
         let prev_token = &tokens[prev];
         if prev_token.is_given_kind(&[
@@ -52,18 +51,14 @@ impl ClassyAnalyzer {
         }
         if next_token.equals(")", true)
             && prev_token.equals("(", true)
-            && tokens[tokens.get_prev_meaningful_token(prev).unwrap()].is_kind(T_CATCH)
+            && tokens[tokens.prev_meaningful(prev)].is_kind(T_CATCH)
         {
             return true;
         }
         if AttributeAnalyzer::is_attribute(tokens, index) {
             return true;
         }
-        // `Foo & $bar` could be:
-        //   - function reference parameter: function baz(Foo & $bar) {}
-        //   - bit operator: $x = Foo & $bar;
-        if next_token.equals("&", true)
-            && tokens[tokens.get_next_meaningful_token(next).unwrap()].is_kind(T_VARIABLE)
+        if next_token.equals("&", true) && tokens[tokens.next_meaningful(next)].is_kind(T_VARIABLE)
         {
             let check_index = tokens
                 .get_prev_token_of_kind(
@@ -85,7 +80,7 @@ impl ClassyAnalyzer {
             return false;
         }
         loop {
-            prev = tokens.get_prev_meaningful_token(prev).unwrap();
+            prev = tokens.prev_meaningful(prev);
             if !tokens[prev].equals_any(
                 &[
                     ",".into(),
@@ -106,7 +101,6 @@ impl ClassyAnalyzer {
 mod tests {
     use super::*;
 
-    /// Expected values: PhpCsFixer's ClassyAnalyzer::isClassyInvocation on each T_STRING of the same code.
     #[test]
     fn matches_oracle() {
         let tokens = Tokens::from_code(b"<?php new self; new Foo; function f(): int {}");
@@ -117,14 +111,12 @@ mod tests {
         assert_eq!(got, [(3, false), (8, true), (13, false), (18, false)]);
     }
 
-    /// Upstream throws `LogicException('No T_STRING at given index 0, got "T_OPEN_TAG".')`.
     #[test]
     #[should_panic(expected = "No T_STRING at given index 0, got \"T_OPEN_TAG\".")]
     fn rejects_non_string() {
         ClassyAnalyzer.is_classy_invocation(&Tokens::from_code(b"<?php new Foo;"), 0);
     }
 
-    /// A token without an id: upstream's `getName()` is null, printed as "".
     #[test]
     #[should_panic(expected = "No T_STRING at given index 4, got \"\".")]
     fn rejects_char_token() {

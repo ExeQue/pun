@@ -1,24 +1,19 @@
-//! Port of `PhpCsFixer\AbstractNoUselessElseFixer` (shared by no_useless_else and no_superfluous_elseif).
 use pun_tokens::{Kind::*, Tokens};
 
-/// `getPriority()`: should be run before NoWhitespaceInBlankLineFixer, NoExtraBlankLinesFixer,
-/// BracesFixer and after NoEmptyStatementFixer.
 pub(crate) const PRIORITY: i32 = 39;
 
 pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
     let mut previous_block_start = index;
     loop {
-        // Check if all 'if', 'else if ' and 'elseif' blocks above this 'else' always end,
-        // if so this 'else' is overcomplete.
         let (start, previous_block_end) = get_previous_block(tokens, previous_block_start);
         previous_block_start = start;
 
         let mut previous = previous_block_end;
         if tokens[previous].equals("}", true) {
-            previous = tokens.get_prev_meaningful_token(previous).unwrap();
+            previous = tokens.prev_meaningful(previous);
         }
         if !tokens[previous].equals(";", true)
-            || tokens[tokens.get_prev_meaningful_token(previous).unwrap()].equals("{", true)
+            || tokens[tokens.prev_meaningful(previous)].equals("{", true)
         {
             return false;
         }
@@ -45,7 +40,7 @@ pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
         };
 
         if tokens[candidate_index].is_kind(T_THROW) {
-            let previous_index = tokens.get_prev_meaningful_token(candidate_index).unwrap();
+            let previous_index = tokens.prev_meaningful(candidate_index);
             if !tokens[previous_index].equals_any(&[";".into(), "{".into()], true) {
                 return false;
             }
@@ -57,7 +52,6 @@ pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
             return false;
         }
 
-        // implicit continue, i.e. delete candidate
         if tokens[previous_block_start].is_kind(T_IF) {
             return true;
         }
@@ -65,7 +59,7 @@ pub(crate) fn is_superfluous_else(tokens: &Tokens, index: usize) -> bool {
 }
 
 fn get_previous_block(tokens: &Tokens, index: usize) -> (usize, usize) {
-    let close = tokens.get_prev_meaningful_token(index).unwrap();
+    let close = tokens.prev_meaningful(index);
     let mut previous = close;
     if tokens[close].equals("}", true) {
         previous = tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, close);
@@ -78,7 +72,7 @@ fn get_previous_block(tokens: &Tokens, index: usize) -> (usize, usize) {
         )
         .unwrap();
     if tokens[open].is_kind(T_IF) {
-        let else_candidate = tokens.get_prev_meaningful_token(open).unwrap();
+        let else_candidate = tokens.prev_meaningful(open);
         if tokens[else_candidate].is_kind(T_ELSE) {
             open = else_candidate;
         }
@@ -94,11 +88,8 @@ fn is_in_conditional(tokens: &Tokens, index: usize, lower_limit_index: usize) ->
         return true;
     }
     if !tokens[candidate_index].equals(")", true) {
-        return false; // token is ';' or close tag
+        return false;
     }
-    // token is always ')' here.
-    // If it is part of the condition the token is always in, return false.
-    // If it is not it is a nested condition so return true
     let open = tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, candidate_index);
     tokens
         .get_prev_meaningful_token(open)
@@ -112,7 +103,7 @@ fn is_in_condition_without_braces(
 ) -> bool {
     loop {
         if tokens[index].is_comment() || tokens[index].is_whitespace(None) {
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
         }
         let token = &tokens[index];
         if token.is_given_kind(&[T_IF, T_ELSEIF, T_ELSE]) {
@@ -122,14 +113,12 @@ fn is_in_condition_without_braces(
             return false;
         }
         if token.equals("{", true) {
-            // Upstream steps over a `{` owned by for/foreach/while/do, but walking back from the candidate meets
-            // no ")" (else isInConditional held), so this "{" opens the if/elseif/else block itself: not OK.
             return false;
         }
         if token.equals(")", true) {
             let (t, _) = Tokens::detect_block_type(token).unwrap();
             index = tokens.find_block_start(t, index);
-            index = tokens.get_prev_meaningful_token(index).unwrap();
+            index = tokens.prev_meaningful(index);
         } else {
             index -= 1;
         }

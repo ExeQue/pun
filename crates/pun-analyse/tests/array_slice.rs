@@ -1,5 +1,3 @@
-//! Expectations are PHPStan 2.3.1's actual JSON output (see fixtures/array-slice/phpstan.neon).
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

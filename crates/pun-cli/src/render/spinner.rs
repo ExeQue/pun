@@ -1,6 +1,3 @@
-//! The progress line (output.md §1): a spinner with a file counter, only on a terminal and only once a run passes
-//! one second. Dropping it stops the thread and clears the line.
-
 use super::Look;
 use std::io::Write;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -8,9 +5,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-/// How long a run goes before the spinner shows.
 const DELAY: Duration = Duration::from_secs(1);
-/// Time between two frames.
 const FRAME: Duration = Duration::from_millis(80);
 
 pub(crate) struct Spinner {
@@ -20,12 +15,10 @@ pub(crate) struct Spinner {
 }
 
 impl Spinner {
-    /// The spinner on stderr when it is a terminal (`tty`), else none.
-    pub(crate) fn stderr(total: usize, look: &Look, tty: bool) -> Option<Spinner> {
+    pub(crate) fn stderr(total: usize, look: Look, tty: bool) -> Option<Spinner> {
         tty.then(|| Spinner::start(Box::new(std::io::stderr()), total, look.unicode, DELAY))
     }
 
-    /// Draw `⠋ 3/412 files` on `out` every frame, starting after `delay`.
     pub(crate) fn start(
         mut out: Box<dyn Write + Send>,
         total: usize,
@@ -73,7 +66,6 @@ impl Spinner {
         }
     }
 
-    /// One more file done.
     pub(crate) fn tick(&self) {
         self.done.fetch_add(1, Ordering::Relaxed);
     }
@@ -84,8 +76,6 @@ impl Drop for Spinner {
         let (lock, cvar) = &*self.stop;
         *lock.lock().expect("spinner lock") = true;
         cvar.notify_all();
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
+        let _ = self.thread.take().map(JoinHandle::join);
     }
 }

@@ -1,12 +1,8 @@
-//! `lint/pest/prefer-to-be-uppercase`, ported from pest-plugin-rector's `UseToBeUppercaseRector`:
-//! `expect(strtoupper($value) === $value)->toBeTrue()` (either way round) becomes `expect($value)->toBeUppercase()`
-//! when `$value` is known to be a string.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 
 use super::{Is, Trinary, first_value, func_call, is_name, rename, subject_holder, type_is};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::same_expression;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -29,6 +25,11 @@ impl Rule for PreferToBeUppercase {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        fn case<'a>(e: &'a Expression<'a>) -> Option<Option<&'a Expression<'a>>> {
+            func_call(e)
+                .filter(|f| named(f, "strtoupper"))
+                .map(|f| first_value(&f.argument_list))
+        }
         let Node::MethodCall(call) = node else {
             return;
         };
@@ -44,11 +45,6 @@ impl Rule for PreferToBeUppercase {
         };
         if !matches!(identical.operator, BinaryOperator::Identical(_)) {
             return;
-        }
-        fn case<'a>(e: &'a Expression<'a>) -> Option<Option<&'a Expression<'a>>> {
-            func_call(e)
-                .filter(|f| named(f, "strtoupper"))
-                .map(|f| first_value(&f.argument_list))
         }
         let value = match (case(identical.lhs), case(identical.rhs)) {
             (Some(Some(inner)), _) if same_expression(ctx.source, inner, identical.rhs) => {

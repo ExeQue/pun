@@ -1,17 +1,11 @@
-//! PHPStan's `relativePathHelper` (FuzzyRelativePathHelper over ParentDirectoryRelativePathHelper): how the names
-//! of anonymous classes (`class@anonymous/<path>:<line>`) print a file.
-
 use std::path::Path;
 
-/// FuzzyRelativePathHelper: paths below the analysed paths' common directory are printed relative to it, others as
-/// ParentDirectoryRelativePathHelper prints them relative to the working directory.
 #[derive(Clone, Debug, Default)]
 pub struct RelativePath {
     cwd: String,
     trim: Option<String>,
 }
 
-/// `$trimBeginning`: the leading `/` and the rest.
 fn trim_beginning(path: &str) -> (&str, &str) {
     match path.strip_prefix('/') {
         Some(rest) => ("/", rest),
@@ -20,7 +14,6 @@ fn trim_beginning(path: &str) -> (&str, &str) {
 }
 
 impl RelativePath {
-    /// FuzzyRelativePathHelper::__construct() with `currentWorkingDirectory` and `analysedPaths`.
     pub fn new(cwd: &str, analysed_paths: &[String]) -> RelativePath {
         let mut beginning = "";
         let mut to_trim: Option<Vec<&str>> = None;
@@ -63,7 +56,6 @@ impl RelativePath {
         }
     }
 
-    /// The working directory and the analysed paths of a run.
     pub fn of(analysed_paths: &[String]) -> RelativePath {
         let cwd = std::env::current_dir()
             .map(|d| d.to_string_lossy().into_owned())
@@ -71,7 +63,6 @@ impl RelativePath {
         RelativePath::new(&cwd, analysed_paths)
     }
 
-    /// `getRelativePath()`.
     pub fn get(&self, filename: &str) -> String {
         if let Some(rest) = self.trim.as_deref().and_then(|t| filename.strip_prefix(t)) {
             return rest.trim_start_matches('/').to_string();
@@ -79,7 +70,6 @@ impl RelativePath {
         self.parent_directory(filename)
     }
 
-    /// ParentDirectoryRelativePathHelper::getRelativePath() from the working directory.
     fn parent_directory(&self, filename: &str) -> String {
         let filename = filename
             .find("://")
@@ -98,7 +88,6 @@ impl RelativePath {
         out.join("/")
     }
 
-    /// SimpleRelativePathHelper::getRelativePath(): `filename` below the working directory, else as it is.
     pub(crate) fn simple(&self, filename: &str) -> String {
         let rest = (!self.cwd.is_empty())
             .then(|| filename.strip_prefix(self.cwd.as_str()))
@@ -108,7 +97,6 @@ impl RelativePath {
     }
 }
 
-/// An absolute path as PHPStan's FileHelper prints it.
 pub(crate) fn absolute(path: &Path) -> String {
     std::path::absolute(path)
         .unwrap_or_else(|_| path.to_path_buf())

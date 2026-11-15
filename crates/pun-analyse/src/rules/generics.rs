@@ -1,11 +1,3 @@
-//! Level 2: PHPStan's Generics rules. TemplateTypeCheck (ClassTemplateTypeRule, InterfaceTemplateTypeRule,
-//! TraitTemplateTypeRule, FunctionTemplateTypeRule, MethodTemplateTypeRule, MethodTagTemplateTypeRule and
-//! MethodTagTemplateTypeTraitRule), EnumTemplateTypeRule, and GenericAncestorsCheck (ClassAncestorsRule,
-//! InterfaceAncestorsRule, EnumAncestorsRule, UsedTraitsRule), both through GenericObjectTypeCheck.
-//!
-//! ponytail: unresolvable ancestor types and CrossCheckInterfacesHelper are not
-//! ported yet.
-
 use std::cell::RefCell;
 
 use mago_names::kind::NameKind;
@@ -45,10 +37,8 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "generics.callSiteVarianceNotAllowed",
 ];
 
-/// What a check found: (identifier, message, tip); and the class names ClassNameCheck reads.
 #[derive(Default)]
 pub(super) struct Found {
-    /// (identifier, message, tip)
     pub(super) errors: Vec<(&'static str, String, Option<&'static str>)>,
     names: Vec<String>,
 }
@@ -62,8 +52,6 @@ impl Found {
     }
 }
 
-/// PHP's `sprintf()` with `%s`, `%d` and `%%`: GenericObjectTypeCheck's callers pass formats whose placeholders
-/// do not always line up with its arguments, and PHP's output is what PHPStan prints.
 fn sprintf(format: &str, args: &[String]) -> String {
     let mut out = String::new();
     let mut args = args.iter();
@@ -76,14 +64,12 @@ fn sprintf(format: &str, args: &[String]) -> String {
         match chars.next() {
             Some('s') => out.push_str(args.next().map_or("", String::as_str)),
             Some('d') => out.push_str(&intval(args.next().map_or("", String::as_str))),
-            // `%%` (the callers' formats have no other)
             other => out.extend(other),
         }
     }
     out
 }
 
-/// `(int) $s` for `%d`: the leading integer, else 0.
 fn intval(s: &str) -> String {
     let t = s.trim_start();
     let sign = usize::from(t.starts_with(['-', '+']));
@@ -94,12 +80,10 @@ fn intval(s: &str) -> String {
     t[..sign + digits].trim_start_matches('+').to_string()
 }
 
-/// `SprintfHelper::escapeFormatString()`
 pub(super) fn escape(s: &str) -> String {
     s.replace('%', "%%")
 }
 
-/// `strtolower(getClassTypeDescription())`
 fn kind_of(c: &Reflected) -> &'static str {
     if c.is_interface {
         "interface"
@@ -112,7 +96,6 @@ fn kind_of(c: &Reflected) -> &'static str {
     }
 }
 
-/// `getTemplateTypeMap()->getTypes()` of a class.
 fn class_templates(c: &Reflected) -> Vec<Type> {
     c.templates
         .iter()
@@ -128,11 +111,8 @@ fn class_templates(c: &Reflected) -> Vec<Type> {
         .collect()
 }
 
-/// `getReferencedClasses()`
 pub(super) fn referenced_classes(ty: &Type) -> Vec<String> {
     fn walk(t: &Type, out: &RefCell<Vec<String>>) {
-        // Template subclasses inherit getReferencedClasses() from the bound, not TemplateTypeTrait::traverse().
-        // Defaults participate in type traversal, but are not referenced classes of this type.
         if let Type::Template(t) = t {
             walk(&t.bound, out);
             return;
@@ -154,10 +134,8 @@ pub(super) fn referenced_classes(ty: &Type) -> Vec<String> {
     out.into_inner()
 }
 
-/// A `TemplateTypeMap`: (name, scope, type), the first entry of a template winning.
 type TemplateMap = Vec<(String, String, Type)>;
 
-/// `TemplateTypeHelper::resolveTemplateTypes()`: the map's templates replaced.
 fn apply(t: &Type, map: &TemplateMap) -> Type {
     if let Type::Template(tt) = t
         && let Some((_, _, with)) = map
@@ -169,7 +147,6 @@ fn apply(t: &Type, map: &TemplateMap) -> Type {
     t.traverse(&|inner| apply(inner, map))
 }
 
-/// `inferTemplateTypes()` of a template (or a generic object over templates) from the type it receives.
 fn infer(pattern: &Type, received: &Type, out: &mut TemplateMap) {
     match pattern {
         Type::Template(t) => {
@@ -197,19 +174,16 @@ fn infer(pattern: &Type, received: &Type, out: &mut TemplateMap) {
     }
 }
 
-/// GenericObjectTypeCheck's messages.
 pub(super) struct GenericMessages {
     pub(super) not_generic: String,
     pub(super) less: String,
     pub(super) more: String,
     pub(super) not_subtype: String,
-    /// a call-site variance in conflict with the template's, the same as the template's
     pub(super) conflict: String,
     pub(super) redundant: String,
 }
 
 impl GenericMessages {
-    /// The messages of a PHPDoc type at `s` (escaped, e.g. `PHPDoc tag @var`).
     pub(super) fn at(s: &str) -> GenericMessages {
         GenericMessages {
             not_generic: format!("{s} contains generic type %s but %s %s is not generic."),
@@ -232,8 +206,6 @@ impl GenericMessages {
     }
 }
 
-/// `getGenericTypes()`: each generic object or `static` type, resolved to its bounds, outermost first: the type,
-/// its class and its arguments.
 fn generic_types(ty: &Type) -> Vec<(Type, String, Vec<Type>)> {
     fn walk(t: &Type, out: &RefCell<Vec<(Type, String, Vec<Type>)>>) {
         if let Type::Object(name, args, _) | Type::Static(name, args) = t
@@ -253,7 +225,6 @@ fn generic_types(ty: &Type) -> Vec<(Type, String, Vec<Type>)> {
     out.into_inner()
 }
 
-/// GenericObjectTypeCheck::check()
 pub(super) fn generic_object_check(ty: &Type, m: &GenericMessages, out: &mut Found) {
     for (generic, name, args) in generic_types(ty) {
         let Some(class) = symbols::lookup(&name) else {
@@ -386,7 +357,6 @@ pub(super) fn generic_object_check(ty: &Type, m: &GenericMessages, out: &mut Fou
                 }
                 continue;
             }
-            // a bivariant `*` argument
             if matches!(arg, Type::Wildcard) {
                 continue;
             }
@@ -407,7 +377,6 @@ pub(super) fn generic_object_check(ty: &Type, m: &GenericMessages, out: &mut Fou
     }
 }
 
-/// The bound types TemplateTypeCheck supports (`get_class()` of the bound, or a union, intersection or template).
 fn supported_bound(t: &Type) -> bool {
     matches!(
         t,
@@ -432,7 +401,6 @@ fn supported_bound(t: &Type) -> bool {
     )
 }
 
-/// One `@template` tag (`TemplateTag`): its name as written, bound and default.
 #[derive(PartialEq)]
 struct TemplateInput {
     name: String,
@@ -440,8 +408,6 @@ struct TemplateInput {
     default: Option<Type>,
 }
 
-/// `resolveTemplateTags()` keyed by name: a later tag of the same name replaces an earlier one in its place. `scope`
-/// has the PHPDoc's templates unbounded; a bound naming another of them sees that one's bound.
 fn template_inputs(tags: &[TemplateTag], scope: &NameScope) -> Vec<TemplateInput> {
     let resolve_all = |scope: &NameScope| {
         let mut out: Vec<TemplateInput> = Vec::new();
@@ -463,7 +429,6 @@ fn template_inputs(tags: &[TemplateTag], scope: &NameScope) -> Vec<TemplateInput
     };
     let mut bounded = scope.clone();
     let mut resolved = resolve_all(scope);
-    // (each pass resolves one more level of bounds naming bounds)
     for _ in 0..tags.len() {
         for input in &resolved {
             if let Some(Type::Template(t)) = bounded.templates.get_mut(&input.name) {
@@ -480,16 +445,11 @@ fn template_inputs(tags: &[TemplateTag], scope: &NameScope) -> Vec<TemplateInput
     resolved
 }
 
-/// What a TemplateTypeCheck call says: `@template` or `@method template`, and the subject (`class Foo`,
-/// `method Foo::bar()`, `anonymous class`).
 struct TemplateSubject<'s> {
     subject: &'s str,
     method_tag: bool,
 }
 
-/// TemplateTypeCheck::check()'s message formats (`%s` placeholders): the name is an existing class, an existing
-/// type alias; the bound has an invalid class, is not supported; the default has an invalid class, is not in the
-/// bound; a required template follows an optional one.
 pub(super) struct TemplateMessages {
     pub(super) existing_class: String,
     pub(super) existing_alias: String,
@@ -533,8 +493,6 @@ impl TemplateSubject<'_> {
     }
 }
 
-/// TemplateTypeCheck::check(). `resolve_name` is `$scope->resolveName()`, `has_alias` `hasTypeAlias()` in the
-/// template type scope's class.
 fn template_check(
     tags: &[TemplateInput],
     m: &TemplateMessages,
@@ -618,7 +576,6 @@ fn template_check(
             }
         }
         out.names.extend(referenced);
-        // (these formats name the class kind where the class goes: PHP's sprintf() drops the extra argument)
         let default_messages = GenericMessages {
             not_generic: format!(
                 "PHPDoc tag @template {escaped} default contains generic type %s but class %s is not generic."
@@ -657,16 +614,12 @@ fn template_check(
     }
 }
 
-/// Where a PHPDoc type with callables is: the function-like (`function Foo\\bar` / `method Foo::bar`) and its
-/// `@template` names, and the class (name, parent, display name, `@template` names).
 #[derive(Default)]
 pub(super) struct CallableContext {
     pub(super) function: Option<(String, Vec<String>)>,
     pub(super) class: Option<(String, Option<String>, String, Vec<String>)>,
 }
 
-/// GenericCallableRuleHelper::check(): each callable's own templates in `ty` (at `location`, e.g. `@param for
-/// parameter $x`) through TemplateTypeCheck, and the ones shadowing the function's or the class's.
 pub(super) fn generic_callables(ty: &Type, location: &str, cx: &CallableContext, out: &mut Found) {
     let cell = RefCell::new(std::mem::take(out));
     walk_callables(ty, location, cx, &cell);
@@ -749,7 +702,6 @@ fn walk_callables(ty: &Type, location: &str, cx: &CallableContext, out: &RefCell
     });
 }
 
-/// `$scope->resolveName()` in a class: `self` and `static` are the class, `parent` its parent.
 fn class_resolve_name<'s>(class: &'s str, parent: Option<&'s str>) -> impl Fn(&str) -> String + 's {
     move |name: &str| match name.to_ascii_lowercase().as_str() {
         "self" | "static" => class.to_string(),
@@ -758,8 +710,6 @@ fn class_resolve_name<'s>(class: &'s str, parent: Option<&'s str>) -> impl Fn(&s
     }
 }
 
-/// `ClassReflection::getTypeAliases()`: a class-like's `@phpstan-type` names and the aliases it imports from classes
-/// that have them.
 fn type_aliases(c: &Checker, class: &str, depth: usize) -> Vec<String> {
     let Some(k) = c.codebase.get_class_like(class.as_bytes()) else {
         return Vec::new();
@@ -772,7 +722,6 @@ fn type_aliases(c: &Checker, class: &str, depth: usize) -> Vec<String> {
 
 fn aliases_of(c: &Checker, doc: &Doc, names: &NamespaceScope, depth: usize) -> Vec<String> {
     let mut out = doc.type_aliases.clone();
-    // (circular imports end here)
     if depth > 8 {
         return out;
     }
@@ -799,18 +748,12 @@ fn report(c: &mut Checker, at: Span, found: Found) {
     }
 }
 
-/// The class-like checks of InClassNode for a class, interface, enum or anonymous class: the TemplateTypeCheck of
-/// its own `@template` tags (`kind` and `display` name it; an enum has EnumTemplateTypeRule instead) and
-/// MethodTagTemplateTypeRule.
 struct ClassLike<'s> {
     at: Span,
-    /// the class's name (`getName()`) and display name
     name: &'s str,
     display: &'s str,
-    /// `class Foo`, `interface Foo`, `anonymous class`; `None` for an enum
     subject: Option<String>,
     doc: Option<&'s DocEntry>,
-    /// the namespace scope of the PHPDoc
     names: &'s std::sync::Arc<NamespaceScope>,
 }
 
@@ -885,7 +828,6 @@ fn class_like(c: &Checker, l: &ClassLike) -> Found {
     found
 }
 
-/// MethodTagTemplateTypeCheck: the `@template` tags of each `@method` tag of a class-like's PHPDoc.
 fn method_tags(
     parsed: &Doc,
     scope: &NameScope,
@@ -944,24 +886,18 @@ fn method_tags(
     }
 }
 
-/// GenericAncestorsCheck's messages for one tag kind (`@extends`, `@implements`, `@use`).
 struct AncestorMessages<'s> {
     tag: &'s str,
     incompatible: String,
     no_names: String,
-    /// `%s` the described class, `%s` the names
     no_related: String,
-    /// `checkMissingTypehints`: `%s` a generic name without a tag, `%s` its templates
     missing: Option<String>,
-    /// VarianceCheck's context: `%s` the ancestor type
     variance: String,
 }
 
-/// `resolveExtendsTags()` & co.: each tag's type keyed by its class name, a later tag replacing an earlier one.
 fn ancestor_types(nodes: &[pun_phpstan::phpdoc::Node], scope: &NameScope) -> Vec<Type> {
     let mut out: Vec<(String, Type)> = Vec::new();
     for node in nodes {
-        // phpdoc-parser's parseExtendsTagValue() reads an identifier and its generic arguments, nothing else
         let pun_phpstan::phpdoc::Node::Generic { base, .. } = node else {
             continue;
         };
@@ -975,8 +911,6 @@ fn ancestor_types(nodes: &[pun_phpstan::phpdoc::Node], scope: &NameScope) -> Vec
     out.into_iter().map(|(_, t)| t).collect()
 }
 
-/// GenericAncestorsCheck::check() without the `missingType.generics` of unused names
-/// (MissingTypehintCheck's rules report those).
 fn ancestors_check(names: &[String], types: &[Type], m: &AncestorMessages, out: &mut Found) {
     let tag = m.tag;
     let mut unused: Vec<&String> = names.iter().collect();
@@ -1013,7 +947,6 @@ fn ancestors_check(names: &[String], types: &[Type], m: &AncestorMessages, out: 
             not_subtype: format!(
                 "Type %s in generic type %s in PHPDoc tag {tag} is not subtype of template type %s of %s %s."
             ),
-            // (GenericAncestorsCheck passes empty ones)
             conflict: String::new(),
             redundant: String::new(),
         };
@@ -1057,7 +990,6 @@ fn ancestors_check(names: &[String], types: &[Type], m: &AncestorMessages, out: 
         let Some(k) = symbols::lookup(name) else {
             continue;
         };
-        // `featureToggles.skipCheckGenericClasses`
         if k.name == "DOMNamedNodeMap" || k.templates.is_empty() {
             continue;
         }
@@ -1089,7 +1021,6 @@ pub(super) fn resolved_names<'a>(
     ids.map(|id| c.resolved_span(id.span())).collect()
 }
 
-/// The PHPDoc before `offset` in the walked file and the namespace scope there.
 fn doc_and_names<'a>(
     c: &Checker<'a, '_>,
     span: Span,
@@ -1100,13 +1031,11 @@ fn doc_and_names<'a>(
     (doc, c.facts.scopes.at(span.start.offset))
 }
 
-/// The class-like's own `@extends` and `@implements` tag types (`getExtendsTags()`, `getImplementsTags()`).
 fn class_ancestor_tags(c: &Checker, l: &ClassLike) -> (Vec<Type>, Vec<Type>) {
     let Some(entry) = l.doc else {
         return (Vec::new(), Vec::new());
     };
     let parsed = &entry.doc;
-    // (a declared class-like is in the codebase)
     let scope = c
         .codebase
         .get_class_like(l.name.as_bytes())
@@ -1328,13 +1257,10 @@ pub(super) fn enum_(c: &mut Checker, e: &Enum) {
     report(c, e.span(), found);
 }
 
-/// ClassTemplateTypeRule and MethodTagTemplateTypeRule for an anonymous class (named `name`, displayed as
-/// `display`); ClassAncestorsRule skips anonymous classes.
 pub(super) fn anonymous(c: &mut Checker, a: &AnonymousClass, name: &str, display: &str) {
     if c.level < 2 {
         return;
     }
-    // php-parser's Class_ node starts at its attributes, modifiers or `class`, and the PHPDoc is before that
     let start = a
         .attribute_lists
         .first()
@@ -1355,7 +1281,6 @@ pub(super) fn anonymous(c: &mut Checker, a: &AnonymousClass, name: &str, display
     report(c, at, found);
 }
 
-/// TraitTemplateTypeRule and MethodTagTemplateTypeTraitRule (the trait's own node, outside any class).
 pub(super) fn trait_(c: &mut Checker, t: &Trait) {
     if c.level < 2 {
         return;
@@ -1370,7 +1295,6 @@ pub(super) fn trait_(c: &mut Checker, t: &Trait) {
     let scope = declared::class_scope(c, t.span(), k);
     let aliases = aliases_of(c, parsed, names, 0);
     let has_alias = |n: &str| has_global_alias(n) || aliases.iter().any(|a| a == n);
-    // not in a class: names resolve as written
     let resolve_name = |n: &str| n.to_string();
     let mut found = Found::default();
     let subject = format!("trait {}", escape(&name));
@@ -1400,7 +1324,6 @@ pub(super) fn trait_(c: &mut Checker, t: &Trait) {
     report(c, t.span(), found);
 }
 
-/// FunctionTemplateTypeRule
 pub(super) fn function(c: &mut Checker, f: &Function) {
     if c.level < 2 {
         return;
@@ -1431,7 +1354,6 @@ pub(super) fn function(c: &mut Checker, f: &Function) {
     report(c, f.span(), found);
 }
 
-/// The PHPDoc's own templates in `scope` (bounds are not needed to resolve the tags' types).
 fn add_templates(scope: &mut NameScope, tags: &[TemplateTag], describe: &str) {
     for t in tags {
         scope.templates.insert(
@@ -1447,7 +1369,6 @@ fn add_templates(scope: &mut NameScope, tags: &[TemplateTag], describe: &str) {
     }
 }
 
-/// MethodTemplateTypeRule (`method` is the name the method is analysed under).
 pub(super) fn method(c: &mut Checker, m: &Method, method: &str) {
     if c.level < 2 {
         return;
@@ -1508,9 +1429,7 @@ pub(super) fn method(c: &mut Checker, m: &Method, method: &str) {
     report(c, m.span(), found);
 }
 
-/// UsedTraitsRule
 pub(super) fn trait_use(c: &mut Checker, u: &TraitUse) {
-    // (a `use` of traits is in a class-like)
     let Some(k) = c.class_scope().filter(|_| c.level >= 2) else {
         return;
     };
@@ -1572,7 +1491,6 @@ pub(super) fn trait_use(c: &mut Checker, u: &TraitUse) {
 mod tests {
     use super::{intval, sprintf};
 
-    /// PHP: `sprintf('a %s b %d c %%', 'x', 'Foo\Bar')` is `a x b 0 c %`; `(int) '12ab'` is 12.
     #[test]
     fn php_sprintf() {
         assert_eq!(

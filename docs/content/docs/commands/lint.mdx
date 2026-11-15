@@ -47,7 +47,7 @@ pun lint --deny-warnings
 pun lint --max-warnings 10
 ```
 
-`-A` disables a rule or group, `-W` selects warnings, and `-D` selects errors. Flags apply after config and path overrides, in command-line order. The last matching flag wins.
+`-A` (`--allow`) disables a rule or group, `-W` (`--warn`) selects warnings, and `-D` (`--deny`) selects errors. Flags apply after config and path overrides, in command-line order. The last matching flag wins.
 
 Groups select implemented rules only. Naming an unimplemented rule directly is a configuration error.
 

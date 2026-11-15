@@ -9,13 +9,12 @@ how it works today, the decided design, and the build list (§7). Decisions with
 any project, `pun check --fix` writes the same bytes as `pint`; `pun format` alone runs only the safe subset (see
 "Risky rules" below).
 
-Measured (2-core box, profiling build, reports/scoreboard.md):
+Measured (8-core orb, profiling build, `--test`, reports/scoreboard.md; Pun has no cache, so every run is cold):
 
-| Run | Pint | Pun cold | Pun warm |
-| --- | --- | --- | --- |
-| laravel/framework, its own pint.json (3,027 files) | 190 s | 3.7 s | 0.07 s |
-| Pinkary, PHP only | | 0.33 s | 0.03 s |
-| Pinkary with Blade | 13.4 s | 4.2 s | 0.2 s |
+| Run | Pint | Pun |
+| --- | --- | --- |
+| laravel/framework, its own pint.json (3,158 files, 2026-11-09) | 294.7 s | 1.76 s |
+| Pinkary with Blade (Pint 2026-11-09, Pun 2026-11-10) | 21.9 s | 1.66 s |
 
 Parity: 0 differing files on all 7 corpus projects, with the laravel and psr12 presets, plus a mutation fuzzer
 (including CRLF and mixed line endings) at 0 differences.
@@ -38,13 +37,14 @@ For each file:
 Around that: file discovery copies Pint's finder rules (pun-workspace), and files run in parallel. There is no
 result cache: every run checks every file (Pushpak, 2026-11-05).
 
-**Delegate mode (today, being removed).** Today, if a config turns on a rule Pun hasn't ported, the whole run goes
-through real PHP-CS-Fixer in long-lived `php` workers. Decided: Pun runs no upstream PHP (config.md Build 6). An
-unported rule in pun.toml is a config error; `pun migrate` names it, skips it, and asks for a PR to punphp/pun.
+**Delegate mode (removed).** It ran a rule Pun hadn't ported through real PHP-CS-Fixer in long-lived `php`
+workers. Pun runs no upstream PHP (config.md Build 6). An unported rule in pun.toml is a config error; `pun migrate`
+names it, skips it, and asks for a PR to shipfastlabs/pun.
 
-**Blade.** With the `laravel-blade` rule on, `.blade.php` files go through Prettier and prettier-plugin-blade in Node,
-exactly as Pint does it (one long-lived Node worker per thread). It needs Node. Blade is about 2.9 s of Pinkary's 4.2 s
-cold run.
+**Blade.** With the `laravel-blade` rule on, `.blade.php` files go through Prettier and prettier-plugin-blade in Node
+(Bun in a project with a Bun lock file), exactly as Pint 1.32 does it. A few threads of their own format the
+templates, largest first, with one long-lived worker each (one per 32 templates, at most `--max-processes`), while
+the other threads format the PHP files. It needs Node or Bun. Prettier is most of Pinkary's 1.66 s run.
 
 The dependency probe starts a formatting worker and transfers it to the first formatting thread. Pun stops an
 unused probe worker on early exits, non-Blade stdin, and PHP-only selections.
@@ -76,22 +76,23 @@ PHP-CS-Fixer marks some fixers "risky": they can change behaviour (`final_class`
 ## 5. Rules: what exists
 
 208 format rules in total today (every safe PHP-CS-Fixer fixer plus Pint's two); 40 of them move to lint
-(commands.md §4), leaving 168. 165 are ported natively: 146 of the 168 format rules, 22 left.
+(commands.md §4), leaving 168. All 168 are ported natively.
 
 | Preset | Rules today | After the 40 move | Not ported |
 | --- | ---: | ---: | ---: |
 | laravel | 126 | 115 | 0 |
 | psr12 | 52 | 50 | 0 |
 
-The unported rules are in no preset: Doctrine annotations, PHPUnit fixers, heredoc and string rewrites, a few PHPDoc
-rules, and a few rules of PHP-CS-Fixer's own sets (every format rule of `per` and `symfony` is native). Until one is
-ported, `pun migrate` names it and skips it.
+A pint.json rule with no Pun port (a deprecated fixer, a custom fixer class) is named by `pun migrate` and
+skipped.
 
 ## 6. The CLI
 
-Today `pun format` takes every Pint flag (`--test`, `--bail`, `--repair`, `--dirty`, `--diff=<branch>`, `--config`,
-`--preset`, `--format`, `--output-to-file`, `--stdin-filename`, `--cache-file` (ignored), `-v`, `-q`, `--parallel`)
-plus `--staged`, `--since=<ref>`, `--watch`, `--stdin` and `--explain`, and ignores the old `--no-cache`. The flags stay. Decided changes:
+Today `pun format` takes Pint's flags that change what it does (`--test`, `--bail`, `--repair`, `--dirty`,
+`--diff=<branch>`, `--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`,
+`--stdin-filename`, `--max-processes`, `-v`, `-q`, and `--ansi`/`--no-ansi` as hidden spellings of `--color`) plus
+`--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain` and `--color`. The flags that only existed for
+compatibility and did nothing (`-p`/`--parallel`, `--cache-file`, `--no-cache`, `-n`/`--no-interaction`) are gone. Decided changes:
 `--native-only` goes with delegate mode, the human output becomes Pun's own (§9), and exit codes and the machine
 formats (`--format=json|txt|checkstyle|junit|xml|gitlab|github`) stay Pint-compatible. Under a coding agent it prints
 compact lines (output.md §3).
@@ -118,7 +119,7 @@ pint.json, harness and fuzzer. Speed and memory come first (decided). The steps 
 5. **8-core benchmark in CI:** laravel-framework under 1 s cold.
 6. **Pinkary's CI swap:** `vendor/bin/pint` replaced by Pun. *Done when* Pinkary's CI is green on Pun.
 7. **Port the rest of the 208 format rules** that aren't native yet, in usage order, each with upstream fixtures.
-   Until a rule is ported, migrate names it as unsupported.
+   Until a rule is ported, migrate names it as unsupported. Done: all 168 format rules are native.
    Batch 1 done (wf/format-2, 2026-10-18): the PER-CS rules `attributes/no-block-spaces`, `operators/linebreak`,
    `types/ordered` and the Symfony rules `functions/single-line-throw`, `control-flow/empty-loop-body`,
    `control-flow/empty-loop-condition`, `operators/standardize-increment`; a pint.json with `"preset": "per"` now
@@ -133,7 +134,7 @@ pint.json, harness and fuzzer. Speed and memory come first (decided). The steps 
    `php_unit_fqcn_annotation`, `simple_to_complex_string_variable` and the lint rules `no_null_property_initialization`,
    `no_useless_nullsafe_operator`, `phpdoc_to_comment` as unsupported. Assistant's calls: `phpdoc/no-alias-tag`'s
    default `replacements` is PHP-CS-Fixer 3's (no `const => var`; Pint runs without future mode); the
-   GeneralPhpdocTagRenameFixer code moved to analyzers/ so its proxy builds under `PUN_FIXERS_ONLY`; the
+   GeneralPhpdocTagRenameFixer code lives in analyzers/, shared by its proxies; the
    NoUselessConcatOperatorFixer port leaves out `operandsCanNotBeMerged`'s first check (the first operand is not a
    `"..."` with variables), which no caller can reach; tests/fixtures.rs gives a case that omits a trailing argument the
    parameter's default (NoUselessConcatOperatorFixerTest's `$configuration = ['juggle_simple_strings' => true]`).
@@ -500,10 +501,10 @@ Answered 2026-10-17 (Pushpak), over three rounds:
 - **No pun.toml: stop**, with "Run `pun migrate`, or `pun init` for a new project".
 - **Blade stays on Node + Prettier** for now; native Blade after 1.0.
 - **No PHP fallback for unported rules.** Pun never runs PHP-CS-Fixer or Pint. `pun migrate` names each unsupported
-  rule, skips it, and asks for a PR to punphp/pun:
+  rule, skips it, and asks for a PR to shipfastlabs/pun:
   ```
   ⚠ phpdoc_tag_casing  not supported by Pun yet; skipped
-    Want it? Send a PR to https://github.com/punphp/pun
+    Want it? Send a PR to https://github.com/shipfastlabs/pun
   ```
   Delegate mode (pun-delegate, `--native-only`, `--explain`'s delegated part) and embedded PHP (pun-php) are removed.
   Custom fixer classes in `.php-cs-fixer.php` are unsupported the same way.

@@ -1,23 +1,15 @@
-//! `lint/laravel/prefer-default-argument`, ported from rector-laravel 2.7.3's `ApplyDefaultInsteadOfNullCoalesceRector`
-//! (src/Rector/Coalesce) with its default list (`defaultLaravelMethods`): `config()`, `env()`, `data_get()` and
-//! `Illuminate\Support\Env::get()`.
-//!
-//! `config('a') ?? 'b'` becomes `config('a', 'b')` when the call has no default argument yet, and `config('a') ?? null`
-//! becomes `config('a')`. A `throw` on the right is left alone. As upstream, `config`, `env` and `data_get` match a
-//! method or static call of that name too.
-
 use mago_syntax::cst::{ArgumentList, BinaryOperator, Call, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_name, is_a, is_name, member_name};
-use crate::rules::lint_b_helpers::{Constant, append_argument, constant};
-use crate::rules::rector_code_quality::{named, text};
+use crate::rules::support::arguments::append_argument;
+use crate::rules::support::expressions::{named, text};
+use crate::rules::support::values::{Constant, constant};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
 pub struct PreferDefaultArgument;
 
-/// `(method name, the class it must be called on, the argument count that means no default yet)`.
 const METHODS: [(&str, Option<&str>, usize); 4] = [
     ("config", None, 1),
     ("env", None, 1),
@@ -50,7 +42,6 @@ impl Rule for PreferDefaultArgument {
         if matches!(unparenthesize(coalesce.rhs), Expression::Throw(_)) {
             return;
         }
-        // The call's name, its class (static calls) and its arguments.
         let (name, class, list): (&[u8], Option<String>, &ArgumentList<'_>) =
             match unparenthesize(coalesce.lhs) {
                 Expression::Call(Call::Function(f)) => {
@@ -89,7 +80,6 @@ impl Rule for PreferDefaultArgument {
         }
         let call = node_span(unparenthesize(coalesce.lhs));
         let whole = node_span(coalesce);
-        // Parentheses around the call go with the `??`.
         let mut edits = vec![Edit::new(Span::new(call.end, whole.end), "")];
         if whole.start < call.start {
             edits.push(Edit::new(Span::new(whole.start, call.start), ""));

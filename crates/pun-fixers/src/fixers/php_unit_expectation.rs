@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitExpectationFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -21,7 +20,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// `configurePostNormalisation`.
 fn method_map(target: &str) -> Vec<(&'static str, &'static str)> {
     let mut map = vec![("setExpectedException", "expectExceptionMessage")];
     if target_fulfills(target, "8.4") {
@@ -71,8 +69,6 @@ impl Fixer for PhpUnitExpectationFixer {
 }
 
 impl PhpUnitExpectationFixer {
-    /// `applyPhpUnitClassFixWithObjectOperator`: upstream's loop ends only when no `$this->name` follows, so the end
-    /// of the class does not bound it.
     fn apply_with_object_operator(
         &self,
         tokens: &mut Tokens,
@@ -105,7 +101,7 @@ impl PhpUnitExpectationFixer {
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
             let close_index = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_index);
-            let comma_index = tokens.get_prev_meaningful_token(close_index).unwrap();
+            let comma_index = tokens.prev_meaningful(close_index);
             if tokens[comma_index].equals(",", true) {
                 tokens.remove_trailing_whitespace(comma_index, None);
                 tokens.clear_at(comma_index);
@@ -128,15 +124,12 @@ impl PhpUnitExpectationFixer {
             let mut is_multiline_whitespace = false;
             for cnt in (1..arguments.len()).rev() {
                 let arg_start = arguments[cnt];
-                let arg_before = tokens.get_prev_meaningful_token(arg_start).unwrap();
-                // Upstream throws `Unexpected index %d to find replacement method.` for a fourth argument.
+                let arg_before = tokens.prev_meaningful(arg_start);
                 let replacement = arguments_replacements[cnt];
                 if replacement == "expectExceptionMessage" {
                     let param_indicator_index =
-                        tokens.get_next_meaningful_token(arg_before).unwrap();
-                    let after_param_indicator_index = tokens
-                        .get_next_meaningful_token(param_indicator_index)
-                        .unwrap();
+                        tokens.next_meaningful(arg_before);
+                    let after_param_indicator_index = tokens.next_meaningful(param_indicator_index);
                     if tokens[param_indicator_index].equals((T_STRING, "null"), false)
                         && tokens[after_param_indicator_index].equals(")", true)
                     {

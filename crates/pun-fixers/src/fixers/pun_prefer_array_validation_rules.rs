@@ -1,7 +1,3 @@
-//! Port of Mago's `prefer-array-validation-rules` (Laravel): inside a `rules()` method,
-//! `'name' => 'required|string|max:255'` → `'name' => ['required', 'string', 'max:255']`.
-//! Opt-in only (`Pun/prefer_array_validation_rules`). Same bail-outs as Mago (`regex:`, empty segments,
-//! quotes/backslashes); additionally only string-keyed elements whose value is the whole string literal.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::tokens_analyzer::ClassyElementType;
@@ -46,7 +42,6 @@ impl Fixer for PreferArrayValidationRules {
             let mut i = open + 1;
             while i < end {
                 if tokens[i].is_kind(T_FUNCTION) {
-                    // Nested closure: its own scope, as in Mago.
                     if let Some(o) = tokens.get_next_token_of_kind(i, &["{".into()], true) {
                         i = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, o);
                     }
@@ -125,7 +120,6 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // fix_pipe_string_to_array
         assert_eq!(
             fix(&class(
                 "StoreUserRequest",
@@ -138,7 +132,6 @@ mod tests {
                 "            'name' => ['required', 'string', 'max:255'],\n"
             )
         );
-        // pipe_delimited_rule_string (count = 2)
         assert_eq!(
             fix(&class(
                 "StoreUserRequest",
@@ -151,7 +144,6 @@ mod tests {
                 "            'name' => ['required', 'string', 'max:255'],\n            'email' => ['required', 'email'],\n"
             )
         );
-        // array_rules, single_rule_string, regex_rule_not_split, pipe_string_outside_rules_method
         for same in [
             class(
                 "StoreUserRequest",

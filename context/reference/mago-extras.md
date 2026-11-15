@@ -1,6 +1,6 @@
 # Mago extras: what Mago 1.57.0 has that PHP-CS-Fixer 3.95.17 / Pint don't
 
-Pun depends on Mago 1.57.0 (`mago-syntax`, `mago-linter`, ...). Mago also ships a linter (`mago-linter`,
+Pun depends on Mago 1.57.0 (`mago-syntax`, `mago-analyzer`, ...). Mago also ships a linter (`mago-linter`,
 ~185 rules, about 70 with auto-fixes), an analyzer, and a width-aware formatter. This file lists the Mago
 capabilities with **no equivalent** among PHP-CS-Fixer's fixers (`src/Fixer/**`) or Pint's custom fixers
 (`app/Fixers`: `Pint/laravel_*`, `Pint/phpdoc_type_annotations_only`), and says which ones Pun should adopt.
@@ -8,8 +8,8 @@ capabilities with **no equivalent** among PHP-CS-Fixer's fixers (`src/Fixer/**`)
 Sources: a checkout of Mago at tag 1.57.0 (`crates/linter/src/rule/**`, `crates/formatter/src/settings.rs`,
 `crates/analyzer/src/**`), `.oracle/php-cs-fixer/src/Fixer/**`, `.oracle/pint/app/Fixers`.
 
-Pun adds every extra as an **opt-in** `Pun/<name>` rule. None is in any preset, so default output stays
-byte-identical to Pint.
+Pun adds each adopted extra as a lint rule (`Pun/<name>` in a pint.json). None is a format rule, so `pun format`
+stays byte-identical to Pint.
 
 ## Already covered by PHP-CS-Fixer (not extras)
 
@@ -72,7 +72,7 @@ lines, M = needs scope or argument parsing, L = needs a CST or type information.
 
 | Group | Rules | Laravel relevance | Recommendation |
 |---|---|---|---|
-| Laravel | prefer-casts-method, prefer-anonymous-migration, prefer-view-array, no-request-all, middleware-in-routes | high | **`pun lint --mago`** (see below) |
+| Laravel | prefer-casts-method, prefer-anonymous-migration, prefer-view-array, no-request-all, middleware-in-routes | high | native lint rules (see below) |
 | Correctness | no-dead-store, no-unused-closure-capture, no-unused-global/static, no-assign-in-condition, no-missing-format-argument, identity-comparison, suspicious-explode-arguments, no-empty-catch-clause, loop-does-not-iterate | medium | lint path later |
 | Maintainability | cyclomatic-complexity, halstead, kan-defect, excessive-nesting, too-many-methods/properties, no-boolean-flag-parameter | low | out of scope for a formatter |
 | Safety / security | no-eval, no-global, no-debug-symbols (`dd`, `dump`, `ray`), no-literal-password, no-insecure-comparison, tainted-data-to-sink, disallowed-functions | medium (`no-debug-symbols` is high) | lint path later |
@@ -96,7 +96,7 @@ none of them fits a per-file token fixer. Effort L; skip. Users can run `mago an
 
 ## Implemented in Pun
 
-Seventeen opt-in auto-fixers live in `crates/pun-fixers/src/fixers/pun_*.rs`. They use the same `Fixer` trait and
+Seventeen lint auto-fixers live in `crates/pun-fixers/src/fixers/pun_*.rs`. They use the same `Fixer` trait and
 build.rs registration as the ports and run at priority 0. Each is a token-level port of the Mago rule (Mago's
 fixes are CST text edits, so its code can't be reused directly). Mago's own test cases are carried over as unit
 tests; where Pun deliberately differs from Mago, the test asserts Pun's output and says why.
@@ -121,7 +121,7 @@ tests; where Pun deliberately differs from Mago, the test asserts Pun's output a
 | `Pun/sensitive_parameter` | sensitive-parameter | adds `#[\SensitiveParameter]` to params named `*password`/`*token`/`*secret`/`*apikey`/`*api_key` unless boolean-typed or already marked | none (it is Mago's name heuristic, so lexer `$token`s get marked too; harmless). Attribute syntax needs PHP ≥ 8.0, the effect 8.2 |
 | `Pun/no_redundant_nullsafe` | no-redundant-nullsafe | `$user?->name ?? 'Guest'` / `isset($user?->profile)` → `->` | only when the property fetch is the whole left side of `??` (`'a' . $x?->b ?? 'c'` is `('a' . $x?->b) ?? 'c'`) |
 
-Tests: `PUN_FIXERS_ONLY=$(ls crates/pun-fixers/src/fixers/pun_*.rs | xargs -n1 basename | sed 's/.rs$//' | paste -sd,) cargo test -p punphp-fixers --lib pun_`
+Tests: `cargo test -p punphp-fixers --lib pun_`
 (34 tests: Mago's cases plus edge cases). All twelve new rules were also run together on copies of Pinkary,
 laravel-framework and Pest; every changed file still passes `php -l`.
 
@@ -129,48 +129,38 @@ Mago auto-fixes still not ported: constant-condition (see the table), plus the "
 
 ### Enabling
 
-None of these rules is in a preset, so default output is unchanged. They are lint rules: enable them under
-`[lint.rules]` in `pun.toml`, with `fix = "apply"` for `pun lint --fix` / `pun check --fix` to apply them (risky ones
-are marked):
+They are lint rules with Pun IDs; none is a format rule, so `pun format` output is unchanged. All but
+`laravel/require-final-controller` and `php-8.1/prefer-first-class-callable` are in a lint set; any of them can be
+turned on by name under `[lint.rules]` in `pun.toml`, and `pun lint --fix` / `pun check --fix` apply their fixes
+(the ones whose fix mapping.toml marks unsafe are marked):
 
 ```toml
 [lint.rules]
-prefer-dedicated-status-assertion = { fix = "apply" }
-prefer-fake-helper = { fix = "apply" }
-prefer-array-validation-rules = { fix = "apply" }
-no-implicit-model-query = { fix = "apply" }          # risky
-prefer-specific-expectations = { fix = "apply" }
-prefer-dedicated-expectation = { fix = "apply" }     # risky
-prefer-simpler-expectation = { fix = "apply" }
-no-only = { fix = "apply" }
-require-final-controller = { fix = "apply" }         # risky
-prefer-array-spread = { fix = "apply" }              # risky (PHP >= 8.1)
-prefer-explode-over-preg-split = { fix = "apply" }
-prefer-first-class-callable = { fix = "apply" }      # risky
-no-redundant-isset = { fix = "apply" }
-no-redundant-literal-return = { fix = "apply" }
-no-self-assignment = { fix = "apply" }
-add-sensitive-parameter = { fix = "apply" }
-no-redundant-nullsafe = { fix = "apply" }
+"laravel/prefer-dedicated-status-assertion" = "error"
+"laravel/prefer-fake-helper" = "error"                  # unsafe
+"laravel/prefer-array-validation-rules" = "error"
+"laravel/no-implicit-model-query" = "error"             # unsafe
+"pest/prefer-specific-expectations" = "error"
+"pest/prefer-dedicated-expectation" = "error"           # unsafe
+"pest/prefer-simpler-expectation" = "error"
+"pest/no-only" = "error"                                # unsafe
+"laravel/require-final-controller" = "error"            # unsafe
+"arrays/prefer-array-spread" = "error"                  # unsafe (PHP >= 8.1)
+"performance/prefer-explode-over-preg-split" = "error"
+"php-8.1/prefer-first-class-callable" = "error"         # unsafe
+"complexity/no-redundant-isset" = "error"
+"complexity/no-redundant-literal-return" = "error"
+"dead-code/no-self-assignment" = "error"
+"security/add-sensitive-parameter" = "error"
+"complexity/no-redundant-nullsafe" = "error"
 ```
 
-`pun migrate` turns a pint.json `"Pun/prefer_fake_helper": true` into `prefer-fake-helper = { fix = "apply" }`.
+`pun migrate` turns a pint.json `"Pun/prefer_fake_helper": true` into `"laravel/prefer-fake-helper" = "error"`.
 
 ## Lint path
 
-`pun lint --mago [paths...]` runs Mago 1.57's five lint-only Laravel rules (no-request-all, prefer-casts-method,
-prefer-anonymous-migration, prefer-view-array, middleware-in-routes) through the `mago-linter` crate, with the
-Laravel integration on. It only reports (`path:line:col: level [rule] message` plus Mago's help line), never
-edits, and exits 1 when it finds something. Files come from the same discovery as `pun format` (pint.json
-excludes apply; Blade files and files with syntax errors are skipped). The code is `crates/pun-cli/src/lint.rs`.
-
-It is behind the `mago-lint` cargo feature, off by default: `mago-linter` is ~65k lines (plus mago-names,
--collector, -extension, -casing, -phpdoc-syntax, -word, -bytes), about 2 minutes of extra single-core debug
-build, which every `pun-cli` build on the shared box would otherwise pay. Build it with
-`cargo build -p punphp --features mago-lint`; release builds that should ship the subcommand need the same
-flag. On Pinkary it reports nothing (484 files); a scratch controller using `$request->all()`,
-`view(...)->with(...)` and `protected $casts` gets all three reported.
-
-Other lint-only groups (correctness, security, `no-debug-symbols`) would only need their codes added to
-`RULES` in `lint.rs`. Until then, run `mago lint` itself with the `laravel`/`pest`/`phpunit` integrations enabled
-in `mago.toml`.
+Mago 1.57's five lint-only Laravel rules are native pun-lint rules (`crates/pun-lint/src/rules/laravel/`):
+`laravel/no-request-all`, `laravel/prefer-casts-method`, `laravel/prefer-anonymous-migration`,
+`laravel/prefer-view-array` and `laravel/no-controller-middleware` (Mago's middleware-in-routes). `pun lint --mago`,
+`crates/pun-cli/src/lint.rs`, the `mago-lint` cargo feature and the mago-linter dependency are gone. Mago's other
+lint rules map to lint rules in mapping.toml (`[upstream.mago-linter]`).

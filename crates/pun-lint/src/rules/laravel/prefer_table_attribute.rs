@@ -1,16 +1,7 @@
-//! `lint/laravel/prefer-table-attribute`, ported from rector-laravel 2.7.3's `TablePropertyToTableAttributeRector`
-//! (src/Rector/Class_) and `TableAttributeFactory` (src/NodeFactory).
-//!
-//! A model's `protected $table = '...'` (or, when the class has `#[Table]` already, that attribute's `name:`) becomes
-//! `#[\Illuminate\Database\Eloquent\Attributes\Table(name: ..., key: ..., keyType: ..., incrementing: ...)]`, with the
-//! defaults of the protected `$primaryKey` (unless `null`), `$keyType` and `$incrementing` properties (or the existing
-//! attribute's arguments of those names, and its `timestamps:` and `dateFormat:`, which the properties override). The properties it reads go; an existing `#[Table]`
-//! group is replaced in place, the other attributes of that group with it.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind, PartialArgument};
 
 use super::property_attribute::{ClassView, MODEL, is_string_node, moved_value, report, rewrite};
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::support::names::resolve_class_name;
 use crate::syntax::unparenthesize;
 use crate::{Context, Report, Rule};
 
@@ -41,7 +32,6 @@ impl Rule for PreferTableAttribute {
             return;
         }
         let has_existing = class.has_attribute(ancestors, TABLE);
-        // Resolve the table value: from $table property, or from existing attribute
         let table_property = class.property("table");
         let mut table_value = None;
         if let Some((_, property)) = &table_property {
@@ -62,7 +52,6 @@ impl Rule for PreferTableAttribute {
         let Some(table_value) = table_value else {
             return;
         };
-        // Seed options from existing attribute args (properties take precedence below)
         let mut options = Vec::new();
         if has_existing {
             for name in ["key", "keyType", "incrementing", "timestamps", "dateFormat"] {
@@ -81,7 +70,6 @@ impl Rule for PreferTableAttribute {
             if let Some((index, p)) = class.property(property)
                 && p.is_protected()
                 && let Some(value) = p.default()
-                // `ValueResolver::isNull`: a `null` primary key stays a property.
                 && !(property == "primaryKey"
                     && matches!(unparenthesize(value), Expression::Literal(Literal::Null(_))))
             {
@@ -90,7 +78,6 @@ impl Rule for PreferTableAttribute {
                 any_removed = true;
             }
         }
-        // If the attribute exists but there are no properties to remove, there is nothing to do
         if has_existing && !any_removed {
             return;
         }
@@ -125,7 +112,6 @@ impl Rule for PreferTableAttribute {
     }
 }
 
-/// `$options[$name] = $value`: a new name goes last, a known one keeps its place.
 fn set<T>(options: &mut Vec<(&'static str, T)>, name: &'static str, value: T) {
     match options.iter_mut().find(|(n, _)| *n == name) {
         Some(option) => option.1 = value,
@@ -133,7 +119,6 @@ fn set<T>(options: &mut Vec<(&'static str, T)>, name: &'static str, value: T) {
     }
 }
 
-/// `getExistingAttributeArg()`: the value of the first argument named `name` of a `#[Table]` attribute.
 fn existing_arg<'ast, 'arena>(
     class: &ClassView<'ast, 'arena>,
     ancestors: &[Node<'_, '_>],

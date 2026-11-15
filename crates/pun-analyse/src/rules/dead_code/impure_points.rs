@@ -1,9 +1,3 @@
-//! CallTo{Function,Method,StaticMethod,Constructor}StatementWithoutImpurePointsRule: a call statement to a user
-//! function, method or constructor whose body has no impure points (transitively through the calls it makes) and no
-//! explicit throw points. The collectors' data travels as encoded errors that [`resolve()`] turns into the reports
-//! once every file is analysed (PossiblyPureCallTransitivePurityResolver).
-//! ponytail: a trait's methods declare nothing; a method call is resolved on one class only.
-
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
@@ -15,7 +9,6 @@ use pun_phpstan::ignore::Error;
 use super::super::Checker;
 use super::super::types::flow::unparen;
 
-/// The prefix of an encoded entry: a declaration without impure points or a possibly pure call statement.
 const ENTRY: &str = "\u{1e}impure-points\u{1f}";
 
 pub(super) fn function_key(name: &str) -> String {
@@ -30,12 +23,10 @@ pub(super) fn method_key(class: &str, method: &str) -> String {
     )
 }
 
-/// The {Function,Method,Constructor}WithoutImpurePointsCollector conditions on a declaration's reflection.
 fn collectable(c: &Checker, f: &FunctionLikeMetadata) -> bool {
     super::noop::possibly_pure(c, f) && !f.parameters.iter().any(|p| p.flags.is_by_reference())
 }
 
-/// A declaration's entry: its kind (`f` function, `m` method, `c` constructor), key, display name and dependencies.
 fn declare(
     c: &mut Checker,
     at: Span,
@@ -104,13 +95,11 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     );
 }
 
-/// The Possibly Pure{FuncCall,MethodCall,StaticCall,New}Collector entry of an expression statement.
 pub(super) fn statement(c: &mut Checker, s: &ExpressionStatement) {
     if c.level < 4 {
         return;
     }
     let e = match unparen(s.expression) {
-        // a pipe into a first-class callable calls it, into an arrow function evaluates its body
         Expression::Pipe(p) => match unparen(p.callable) {
             Expression::ArrowFunction(f) => unparen(f.expression),
             Expression::Call(_) => return,
@@ -129,7 +118,6 @@ pub(super) fn statement(c: &mut Checker, s: &ExpressionStatement) {
     c.report(s, identifier, message, None);
 }
 
-/// getPureCallableKeys() over every declaration, then the call statements to pure ones.
 pub(crate) fn resolve(errors: Vec<Error>) -> Vec<Error> {
     let (entries, mut errors): (Vec<Error>, Vec<Error>) = errors
         .into_iter()
@@ -144,7 +132,6 @@ pub(crate) fn resolve(errors: Vec<Error>) -> Vec<Error> {
         let [kind, key, display, dependencies] =
             <[String; 4]>::try_from(fields).expect("an entry has four fields");
         if kind == "call" {
-            // (a call's identifier and keys)
             calls.push((
                 key,
                 display
@@ -206,7 +193,6 @@ pub(crate) fn resolve(errors: Vec<Error>) -> Vec<Error> {
     errors
 }
 
-/// The receivers the body's method calls are resolved on.
 pub(super) fn typed(program: &Program) -> Vec<Span> {
     struct Receivers(Vec<Span>);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Receivers {
@@ -226,10 +212,7 @@ pub(super) fn typed(program: &Program) -> Vec<Span> {
     r.0
 }
 
-/// NewHandler's `asFinal()`: the occurrences of a scope's local variables that are only ever assigned a `new` of a
-/// named class. A closure inherits the ones its `use` list copies.
 pub(super) fn exact_variables(program: &Program) -> HashSet<Span> {
-    /// One function-like body: arrow functions share it, other function-likes and classes have their own.
     #[derive(Default)]
     struct Scope<'ast, 'arena> {
         assigned: BTreeMap<&'arena [u8], bool>,
@@ -298,7 +281,6 @@ pub(super) fn exact_variables(program: &Program) -> HashSet<Span> {
             _ => {}
         }
     }
-    /// A scope's statements, with the parameters (never exact) and the variables it inherits as exact.
     fn scope<'ast, 'arena>(
         exact: &mut HashSet<Span>,
         parameters: Option<&'ast FunctionLikeParameterList<'arena>>,

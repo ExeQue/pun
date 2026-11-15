@@ -1,14 +1,3 @@
-//! `lint/phpunit/add-property-type-setup`, ported from Rector 2.8.4's `TypedPropertyFromStrictSetUpRector`
-//! (rules/TypeDeclaration/Rector/Property) with `TrustedClassMethodPropertyTypeInferer`: in a class with a `setUp()`
-//! method, an untyped private property gets the type of what `setUp()` assigns it, as
-//! `lint/types/add-property-type-constructor` infers it from the constructor.
-//!
-//! A property of several items gets the type of its first one. When the type is `MockObject` and the `@var` names
-//! another class, the `@var` becomes `\PHPUnit\Framework\MockObject\MockObject&\That\Class`.
-//!
-//! Unlike Rector, Pun leaves a property alone whose default is `null` when the type does not allow `null`: Rector
-//! writes `private int $a = null;`, which PHP rejects.
-
 use mago_syntax::cst::{ClassLikeMember, Node, NodeKind, Property};
 use pun_problem::{Edit, Safety, Span};
 
@@ -23,7 +12,6 @@ use crate::{Context, Report, Rule};
 
 pub struct AddPropertyTypeSetup;
 
-/// `ClassName::MOCK_OBJECT`.
 pub(crate) const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 impl Rule for AddPropertyTypeSetup {
@@ -31,8 +19,8 @@ impl Rule for AddPropertyTypeSetup {
         "lint/phpunit/add-property-type-setup"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -57,7 +45,6 @@ impl Rule for AddPropertyTypeSetup {
             if !prop.is_private() {
                 continue;
             }
-            // `getName($property)` is the name of the first item
             let prop = Prop {
                 property: prop.property,
                 item: match prop.property {
@@ -66,7 +53,7 @@ impl Rule for AddPropertyTypeSetup {
                 },
             };
             let t = infer(&facts, &view, &prop, set_up, ctx, test_case);
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };
@@ -101,8 +88,6 @@ impl Rule for AddPropertyTypeSetup {
     }
 }
 
-/// The class's untyped properties in order (`getProperties()` with no `$type`): [`ClassView::properties`] and the
-/// hooked ones, which Rector types too.
 pub(crate) fn untyped_properties<'ast, 'arena>(
     view: &ClassView<'ast, 'arena>,
 ) -> Vec<Prop<'ast, 'arena>> {

@@ -1,10 +1,7 @@
-//! Ports of Pint's line-based Prettier post-formatters: `StripSensitiveLeadingBlankLines`,
-//! `JoinDanglingCloseBracket`, `JoinDanglingOpenBracket`, `DedentHuggedTerminator`, `CollapseShortSlots`.
 #![allow(clippy::needless_range_loop, reason = "ports Pint's index loops over `$lines` as written")]
 use super::php::{join_lines, lines, ltrim, rtrim, strpos, trim};
 use crate::analyzers::preg::RawPreg;
 
-/// `StripSensitiveLeadingBlankLines`: drops the blank lines prettier injects after a wrapped `<pre>`/`<textarea>` tag.
 pub(super) mod strip_sensitive_leading_blank_lines {
     use super::*;
 
@@ -48,7 +45,6 @@ pub(super) mod strip_sensitive_leading_blank_lines {
             Some(end) if end == trimmed.len() - 1 && !(end > 0 && trimmed[end - 1] == b'/') => {}
             _ => return false,
         }
-        // A "@name" directive (not "@@" escaped, nor an "@" glued to a word).
         RawPreg::r#match("/(?<![\\w@])@[a-zA-Z]/", trimmed)
     }
 
@@ -63,8 +59,6 @@ pub(super) mod strip_sensitive_leading_blank_lines {
                 offset = close + 1;
                 continue;
             }
-            // A ">" inside a directive's argument list — most commonly the ">"
-            // of a "=>" inside "@class([...])" — is not the tag terminator.
             if c == b'(' || c == b'[' || c == b'{' {
                 depth += 1;
             } else if c == b')' || c == b']' || c == b'}' {
@@ -99,7 +93,6 @@ pub(super) mod strip_sensitive_leading_blank_lines {
     }
 }
 
-/// `JoinDanglingCloseBracket`: joins a closing tag's dangling ">" back onto the preceding line.
 pub(super) mod join_dangling_close_bracket {
     use super::*;
 
@@ -126,7 +119,6 @@ pub(super) mod join_dangling_close_bracket {
     }
 }
 
-/// `JoinDanglingOpenBracket`: pulls a hugged opening terminator back up onto its bare tag name line.
 pub(super) mod join_dangling_open_bracket {
     use super::*;
 
@@ -156,7 +148,6 @@ pub(super) mod join_dangling_open_bracket {
     }
 }
 
-/// `DedentHuggedTerminator`: re-indents a hugged opening terminator line to match its tag.
 pub(super) mod dedent_hugged_terminator {
     use super::*;
 
@@ -205,7 +196,6 @@ pub(super) mod dedent_hugged_terminator {
     }
 }
 
-/// `CollapseShortSlots`: collapses a short single-body `<x-slot>` back onto one line.
 pub(super) mod collapse_short_slots {
     use super::*;
 

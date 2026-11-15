@@ -1,5 +1,3 @@
-//! Continuation availability is independent of a call's native return contract.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};

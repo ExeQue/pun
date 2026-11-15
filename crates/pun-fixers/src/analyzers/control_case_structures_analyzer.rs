@@ -1,12 +1,7 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\ControlCaseStructuresAnalyzer` for `[T_SWITCH]`, the only type Pun's
-//! callers ask for, plus the analysis value objects it builds (`Analysis\{Switch,Case,Default}Analysis`).
-//! `match` and `enum` structures are still tracked (their braces and `case`/`default` must not leak into an
-//! enclosing switch) but never reported.
 use pun_tokens::{Kind, Kind::*, Tokens};
 
 const SUPPORTED_TYPES_WITH_CASE_OR_DEFAULT: &[Kind] = &[T_SWITCH, T_MATCH, T_ENUM];
 
-/// `CaseAnalysis`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct CaseAnalysis {
     index: usize,
@@ -19,7 +14,6 @@ impl CaseAnalysis {
     }
 }
 
-/// `DefaultAnalysis`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct DefaultAnalysis {
     index: usize,
@@ -35,7 +29,6 @@ impl DefaultAnalysis {
     }
 }
 
-/// `SwitchAnalysis`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ControlCaseStructuresAnalysis {
     open_index: usize,
@@ -67,9 +60,6 @@ struct Frame {
 pub(crate) struct ControlCaseStructuresAnalyzer;
 
 impl ControlCaseStructuresAnalyzer {
-    /// `findControlStructures($tokens, [T_SWITCH])`: analyses in the order upstream's generator yields them
-    /// (innermost structure first). Collected eagerly; callers that only clear or retag tokens see the
-    /// same results as with the lazy generator.
     pub(crate) fn find_switch_structures(tokens: &Tokens) -> Vec<ControlCaseStructuresAnalysis> {
         let mut out = Vec::new();
         if !tokens.is_token_kind_found(T_SWITCH) {
@@ -93,11 +83,10 @@ impl ControlCaseStructuresAnalyzer {
                     open: 0,
                 };
                 is_type_of_interest = kind == T_SWITCH;
-                // upstream reassigns the foreach variable `$index` here, which does not affect the iteration
                 if kind == T_SWITCH {
-                    let i = tokens.get_next_meaningful_token(index).unwrap();
+                    let i = tokens.next_meaningful(index);
                     let i = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, i);
-                    frame.open = tokens.get_next_meaningful_token(i).unwrap();
+                    frame.open = tokens.next_meaningful(i);
                     frame.alternative_syntax = tokens[frame.open].equals(":", true);
                 }
                 stack.push(frame);
@@ -143,7 +132,6 @@ impl ControlCaseStructuresAnalyzer {
                     top.brace_count == 0,
                     "Analysis count failure, unexpected \"T_ENDSWITCH\"."
                 );
-                // upstream reassigns `$index` (used below for `$tokens[$index]` lookups only via `$token`)
                 current = tokens
                     .get_next_token_of_kind(index, &[";".into(), T_CLOSE_TAG.into()], true)
                     .unwrap();
@@ -154,10 +142,9 @@ impl ControlCaseStructuresAnalyzer {
 
             if !is_type_of_interest {
                 index += 1;
-                continue; // don't bother to analyse stuff that caller is not interested in
+                continue;
             }
 
-            // `$token` is still the token at the original foreach index.
             let top = stack
                 .last_mut()
                 .expect("case outside of a control structure");
@@ -196,7 +183,6 @@ impl ControlCaseStructuresAnalyzer {
         }
     }
 
-    /// `findCaseOpen` for a switch: the `:`/`;` after the case value, skipping blocks and ternaries.
     fn find_case_open(tokens: &Tokens, mut index: usize) -> usize {
         let mut ternaries_count = 0;
         loop {

@@ -1,12 +1,3 @@
-//! `lint/phpunit/add-property-type-create-mock`, ported from Rector 2.8.4's `TypedPropertyFromCreateMockAssignRector`
-//! (rules/TypeDeclaration/Rector/Class_): in a PHPUnit test case, a property with one item whose assigned types
-//! (`AssignToPropertyTypeInferer`) declare as `MockObject`, or a class or interface that extends it, gets that
-//! declaration, replacing any other type it has. A property already typed `MockObject` (or a subtype) or with an
-//! intersection type is left alone.
-//!
-//! When the constructor (or `setUp()`) does not always assign the property, only a nullable declaration is written,
-//! and the property's default becomes `null`.
-
 use mago_syntax::cst::{ClassLikeMember, Hint, Node, NodeKind, Property, PropertyItem};
 use pun_problem::{Edit, Safety, Span};
 
@@ -17,7 +8,7 @@ use super::property_type::{
     Assigned, ClassView, Prop, TYPED_PROPERTIES, Ty, assigned_type, default_span, hint_ty,
     property_declaration, variable_span,
 };
-use crate::rules::no_redundant_property_default::is_property_assigned;
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -28,8 +19,8 @@ impl Rule for AddPropertyTypeCreateMock {
         "lint/phpunit/add-property-type-create-mock"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -61,7 +52,6 @@ impl Rule for AddPropertyTypeCreateMock {
                 }
                 Property::Hooked(p) => (p.hint.as_ref(), &p.item),
             };
-            // isAlreadyTypedWithMockObject
             if let Some(hint) = hint
                 && (matches!(hint, Hint::Intersection(_))
                     || is_mock_object(&facts, &hint_ty(hint, &view.path, &view)))
@@ -77,7 +67,7 @@ impl Rule for AddPropertyTypeCreateMock {
             let Assigned::Type(t) = assigned_type(&facts, &view, &prop, assigned) else {
                 continue;
             };
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };
@@ -114,8 +104,6 @@ impl Rule for AddPropertyTypeCreateMock {
     }
 }
 
-/// `isObjectType($type, new ObjectType(MockObject))`: without `null`, the type is `MockObject` or a class-like that
-/// extends it (Rector's `isObjectType()` of an intersection declaration is false).
 fn is_mock_object(facts: &Facts, t: &Ty) -> bool {
     let is_mock = |name: &str| {
         name.eq_ignore_ascii_case(MOCK_OBJECT)

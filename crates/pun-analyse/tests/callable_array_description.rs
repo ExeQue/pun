@@ -1,5 +1,3 @@
-//! Callable shape metadata must survive conversion without replacing narrowed or mutated values.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -45,7 +43,7 @@ fn callable_array_descriptions_match_complete_phpstan_records() {
             .collect();
         want.sort_by_cached_key(Value::to_string);
         for (constructor, mut project) in [("new", direct), ("from_config", configured)] {
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut got: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

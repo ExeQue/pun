@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocInlineTagNormalizerFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::{Preg, preg_quote};
 use anyhow::Result;
@@ -61,9 +60,6 @@ impl Fixer for PhpdocInlineTagNormalizerFixer {
             if !tokens[index].is_kind(T_DOC_COMMENT) {
                 continue;
             }
-            // Move `@` inside tag, for example @{tag} -> {@tag}, replace multiple curly brackets,
-            // remove spaces between '{' and '@', remove white space between end
-            // of text and closing bracket and between the tag and inline comment.
             let content = Preg::replace_callback(
                 &pattern,
                 |m| {

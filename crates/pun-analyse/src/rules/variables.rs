@@ -1,6 +1,3 @@
-//! PHPStan's DefinedVariableRule and CompactVariablesRule. Certainty comes from the running inference block,
-//! not the checker's syntax walk; a missing observation is unknown, never an undefined variable.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_analyzer::plugin::HookContext;
@@ -16,29 +13,17 @@ use pun_phpstan::types::{Level, Tri, Type};
 
 use super::{Checker, declared};
 
-/// Only genuinely observed reads occur here. The larger scope snapshots are needed for dynamic names and
-/// compact(), whose names come from the arguments' inferred types.
 #[derive(Default)]
 pub(super) struct Observations {
     pub reads: HashMap<Span, (String, Tri, bool)>,
     pub scopes: HashMap<Span, Certainty>,
     pub compact_scopes: HashMap<Span, Certainty>,
     pub unset_entries: HashMap<Span, TUnion>,
-    /// A dim fetch's direct-variable receiver (by span): its type in the scope before the fetch, which
-    /// NonexistentOffsetInArrayDimFetchRule reads. Mago analyses the dimension first, so the receiver's own type
-    /// already sees the dimension's assignments.
     pub dim_receivers: HashMap<Span, TUnion>,
     pub property_selectors: HashSet<Span>,
-    /// The by-reference parameters' types around their bodies' statements and writes.
     pub param_out: super::types::param_out::Observed,
-    /// A plain assignment's target (by span): its root variable's full and native types once the assigned value is
-    /// evaluated, when the variable is certainly defined (UnusedVariableRule's redundant assignments).
     pub assigned_roots: HashMap<Span, (TUnion, Option<TUnion>)>,
-    /// `isUndefinedExpressionAllowed()` as the inference saw it: the targets of `isset()`, `??` and the like, and
-    /// the arguments of by-reference parameters that create a variable.
     pub allowed: HashSet<Span>,
-    /// The allowed direct variables (by span) that are certainly undefined there: their ErrorType skips the
-    /// argument check of a by-reference parameter that creates the variable.
     pub undefined_allowed: HashSet<Span>,
 }
 
@@ -48,8 +33,6 @@ pub(super) struct Certainty {
     main: bool,
 }
 
-/// A reference read permits an undefined variable, but PHPStan does not define its source. Keep the source's
-/// running-block state across Mago's synthetic null assignment, without reconstructing assignment flow.
 pub(super) struct ReferenceSource {
     name: mago_word::Word,
     local: Option<TUnion>,
@@ -135,7 +118,6 @@ impl Certainty {
         }
     }
 
-    /// DefinedVariableRule filters each constant name's scope by `name-expression === name`.
     pub(super) fn for_name(guard: &Expression<'_>, context: &HookContext<'_, '_>) -> Self {
         let mut result = Self::of(context);
         let guard = super::types::flow::unparen(guard);
@@ -165,7 +147,6 @@ impl Certainty {
                         .block_context()
                         .variable_certainty(mago_word::word(&target))
                 {
-                    // A conditional holder only refines the merged Maybe to a definite Yes or No.
                     result
                         .variables
                         .insert(target, Tri::from(certainty.is_defined()));
@@ -186,7 +167,6 @@ impl Certainty {
     }
 
     pub(super) fn captured(&self, name: &str) -> Tri {
-        // An arrow's function scope does not inherit main's canAnyVariableExist().
         self.variables
             .get(&format!("${name}"))
             .copied()
@@ -194,8 +174,6 @@ impl Certainty {
     }
 }
 
-/// Only literal offsets of local arrays have stable identities without selector dependencies.
-/// Their observed types participate in Mago's existing branch merge and conditional-holder invalidation.
 #[derive(PartialEq, Eq, Hash)]
 pub(super) struct OffsetName {
     root: mago_word::Word,
@@ -232,7 +210,6 @@ impl OffsetName {
         }
     }
 
-    /// Materialize only selected name offsets after a real write, never by replaying statement syntax.
     pub(super) fn assigned(&self, assignment: &Assignment<'_>, context: &mut HookContext<'_, '_>) {
         let mut lhs = super::types::flow::unparen(assignment.lhs);
         while let Expression::ArrayAccess(access) = lhs {
@@ -242,8 +219,6 @@ impl OffsetName {
         {
             return;
         }
-        // Whole-root and unstable-offset writes invalidate the cached expression too. Do not create
-        // correlations from a whole array's fields: PHPStan records the actual assigned expression.
         let ty = Self::of(assignment.lhs)
             .filter(|name| name.id == self.id)
             .and_then(|_| context.get_expression_type(assignment).cloned());
@@ -271,9 +246,7 @@ pub(super) fn is_main(context: &HookContext<'_, '_>) -> bool {
     context.scope().get_function_like().is_none() && context.scope().get_class_like().is_none()
 }
 
-/// Scope::hasVariableType(). Mago registers argc/argv as superglobals even inside functions; PHPStan doesn't.
 pub(super) fn defined(context: &HookContext<'_, '_>, name: &str) -> Tri {
-    // ScopeOps checks the unconditional superglobal names before looking at expression holders, even after unset.
     if super::functions::SUPERGLOBALS.contains(&&name.as_bytes()[1..]) {
         return Tri::Yes;
     }
@@ -299,7 +272,6 @@ pub(super) fn defined(context: &HookContext<'_, '_>, name: &str) -> Tri {
     }
 }
 
-/// This walk only selects expressions for the inference run; it never guesses their control-flow state.
 pub(super) fn typed_expressions(
     program: &Program,
     names: &mago_names::ResolvedNames,
@@ -326,7 +298,6 @@ pub(super) fn typed_expressions(
             self.spans.push(c.span());
         }
         fn walk_in_function_call(&mut self, f: &'ast FunctionCall<'arena>, (): &mut ()) {
-            // FileAssertRule's assertVariableCertainty() reads the same scope before its arguments
             if is_compact(f, self.names) || super::debug::is_variable_certainty(f, self.names) {
                 self.compact_calls.insert(f.span());
                 self.spans.push(f.span());
@@ -345,7 +316,6 @@ pub(super) fn typed_expressions(
     (wanted.spans, wanted.compact_calls, wanted.offset_names)
 }
 
-/// NodeScopeResolver::lookForExpressionCallback() selects only the target chain, not name/index expressions.
 pub(super) fn allow_target(expr: &Expression, out: &mut HashSet<Span>) {
     out.insert(expr.span());
     match expr {
@@ -360,8 +330,6 @@ pub(super) fn allow_target(expr: &Expression, out: &mut HashSet<Span>) {
     }
 }
 
-/// MutatingScope::isUndefinedExpressionAllowed() compares node keys: while the target chain of `expr` (and of the
-/// earlier operands in `names`) is allowed, an equal variable elsewhere in `expr`, such as an offset, is too.
 fn allow_named<'arena>(
     expr: &Expression<'arena>,
     names: &mut Vec<&'arena [u8]>,
@@ -402,7 +370,6 @@ pub(super) fn allowed_expressions(program: &Program) -> HashSet<Span> {
         fn walk_in_expression(&mut self, e: &'ast Expression<'arena>, (): &mut ()) {
             match e {
                 Expression::Construct(Construct::Isset(i)) => {
-                    // IssetHandler unsets the allowed expressions only after its last operand.
                     let mut names = Vec::new();
                     for value in &i.values {
                         allow_target(value, &mut self.0);
@@ -454,9 +421,6 @@ pub(super) fn allowed_expressions(program: &Program) -> HashSet<Span> {
     allowed.0
 }
 
-/// ArgumentsHandler::processArgs(): output parameters allow undefined target chains. A named user parameter
-/// with a non-nullable native type and a built-in's read-reference parameter do not. Closure/callable
-/// parameters have no separate native reflection. The engine's reference flag cannot distinguish these cases.
 pub(super) fn allow_arguments(
     invocation: &InvocationInfo<'_, '_, '_>,
     builtins: &pun_phpstan::symbols::Symbols,
@@ -505,9 +469,6 @@ pub(super) fn allow_arguments(
                         .or_else(|| v.params.last().filter(|p| p.variadic)),
                 })
                 .is_some_and(|p| {
-                    // Some Mago builtin signatures use a reference where PHPStan reads a value.
-                    // Mark the real argument transfer, not a pre-call variable snapshot: later
-                    // arguments may assign that same input before the invocation completes.
                     if p.by_ref != pun_phpstan::symbols::ByRef::CreatesNewVariable {
                         allow_target(value, non_creating);
                     }
@@ -550,8 +511,6 @@ pub(super) fn allow_arguments(
     }
 }
 
-/// CompactVariablesRule reads php-parser's post-NameResolver name, not the runtime function reflection.
-/// Only an unimported local name stays written; imports and qualified/relative names are resolved.
 fn is_compact(call: &FunctionCall, names: &mago_names::ResolvedNames) -> bool {
     let Expression::Identifier(id) = call.function else {
         return false;
@@ -560,16 +519,13 @@ fn is_compact(call: &FunctionCall, names: &mago_names::ResolvedNames) -> bool {
         Identifier::Local(local) if !names.is_imported(&local.span) => local.value,
         _ => names.get(&id.span()),
     };
-    // Mago retains a leading separator for `namespace\compact` in an empty namespace.
     name.strip_prefix(b"\\")
         .unwrap_or(name)
         .eq_ignore_ascii_case(b"compact")
 }
 
-/// DefinedVariableRule::processNode(). Name castability is checked even in assignment/undefined-allowed contexts.
 pub(super) fn variable(c: &mut Checker, variable: &Variable) {
     let span = variable.span();
-    // A static-property selector shares this CST shape, but is not a variable expression.
     if c.variables.property_selectors.contains(&span) {
         return;
     }
@@ -618,7 +574,6 @@ pub(super) fn capture(c: &mut Checker, capture: &ClosureUseClauseVariable) {
     }
 }
 
-/// DefinedVariableRule::processSingleVariable(). Suppressed reads have no observation.
 fn single_variable(
     c: &mut Checker,
     variable: &impl HasSpan,
@@ -626,7 +581,6 @@ fn single_variable(
     certainty: Tri,
     main: bool,
 ) {
-    // Explicit Closure::bind() keeps PHPStan's inherited $this even when Mago removes its null-bound local.
     if name == "this" && c.this_defined() {
         return;
     }
@@ -646,10 +600,7 @@ fn single_variable(
     c.report(variable, "variable.undefined", message, None);
 }
 
-/// CompactVariablesRule::processNode(). Its scope precedes argument evaluation, even though argument types can
-/// describe assignments made by their evaluation.
 pub(super) fn compact(c: &mut Checker, call: &FunctionCall) {
-    // Only calls selected by the name-resolution pass can have a compact scope observation.
     if !is_compact(call, c.names) {
         return;
     }
@@ -682,7 +633,6 @@ pub(super) fn compact(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// CompactVariablesRule::findConstantStrings(): constant strings first, otherwise recurse through constant arrays.
 fn find_constant_strings(ty: &Type, out: &mut Vec<String>) {
     let strings = ty.constant_strings();
     if !strings.is_empty() {

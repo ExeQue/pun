@@ -1,4 +1,4 @@
-//! Runs the harness binary against a throwaway root (PUN_HARNESS_ROOT) that borrows the real
+//! Runs the harness binary against a throwaway root (`PUN_HARNESS_ROOT`) that borrows the real
 //! .oracle/ and scripts/ but has its own two-project corpus. Expected counts and diffs are
 //! hand-derived from the corpus below: Pint (laravel preset) turns `array(...)` into `[...]`.
 
@@ -24,13 +24,12 @@ fn script(path: &Path, body: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
-/// root/{.oracle,scripts} -> real ones; corpus a (pint.json with `exclude`, node_modules, a
+/// root/{.oracle,scripts} -> real ones; corpus a (pint.json with `exclude`, `node_modules`, a
 /// symlink) and b (no pint.json); a scoreboard with one foreign row and a stale row for `a`.
 fn root(name: &str) -> PathBuf {
     let r = std::env::temp_dir().join(format!("pun-harness-test-{}-{name}", std::process::id()));
     let _ = fs::remove_dir_all(&r);
     fs::create_dir_all(&r).unwrap();
-    // The harness canonicalizes its root (macOS's temp dir is a symlink into /private).
     let r = r.canonicalize().unwrap();
     symlink(repo().join(".oracle"), r.join(".oracle")).unwrap();
     symlink(repo().join("scripts"), r.join("scripts")).unwrap();
@@ -78,12 +77,9 @@ fn harness(root: &Path, pun: &Path, args: &[&str]) -> (String, String, Option<i3
 #[test]
 fn full_run_with_failing_pun() {
     let r = root("full");
-    // A "pun" that changes nothing, adds a file and fails.
     let pun = r.join("fake-pun");
     script(&pun, "echo new > new.txt; exit 3");
     let (out, err, code) = harness(&r, &pun, &["--diffs", "1"]);
-    // a: union = app.php, new.txt, ok.php, pint.json, readme.txt, skip/x.php (symlinks are not listed).
-    // Pint fixes app.php (array + trailing spaces); skip/ is excluded. pun only adds new.txt.
     let want = "a: 6 files, 4 identical, 2 differing (pint changed 1, pun changed 1)\n\
                 --- oracle/app.php\n+++ pun/app.php\n@@ -1,3 +1,3 @@\n <?php\n \n-$a = [1];\n+$a = array(1);   \n\
                 b: 2 files, 0 identical, 2 differing (pint changed 1, pun changed 1)\n\
@@ -106,7 +102,6 @@ fn full_run_with_failing_pun() {
 #[test]
 fn single_fixer_identical() {
     let r = root("fixer");
-    // A "pun" that writes exactly what array_syntax alone produces.
     let pun = r.join("fake-pun");
     script(
         &pun,
@@ -114,21 +109,17 @@ fn single_fixer_identical() {
     );
     let before = fs::read_to_string(r.join("context/reports/scoreboard.md")).unwrap();
     let (out, err, code) = harness(&r, &pun, &["--fixer", "array_syntax"]);
-    // Only array_syntax runs, so the trailing spaces survive and skip/ stays excluded (pint.json's `exclude` is kept).
-    // The extra single-fixer.json lives outside the copied tree.
     assert_eq!(
         out,
         "a: 5 files, 5 identical, 0 differing (pint changed 1, pun changed 1)\nb: 1 files, 1 identical, 0 differing (pint changed 1, pun changed 1)\n",
         "stderr: {err}"
     );
     assert_eq!(code, Some(0));
-    // --fixer runs leave the scoreboard alone.
     assert_eq!(
         fs::read_to_string(r.join("context/reports/scoreboard.md")).unwrap(),
         before
     );
 
-    // --corpus filter, a fixer the project doesn't configure (falls back to `true`), and no scoreboard yet.
     fs::remove_file(r.join("context/reports/scoreboard.md")).unwrap();
     let (out, err, code) = harness(
         &r,
@@ -148,8 +139,6 @@ fn single_fixer_identical() {
 #[test]
 fn preset_override() {
     let r = root("preset");
-    // A "pun" that, only when migrated with `--preset psr12`, writes what PSR-12 makes of app.php: trailing spaces go,
-    // `array()` stays (no array_syntax in psr12, unlike a's laravel preset).
     let pun = r.join("fake-pun");
     script(
         &pun,
@@ -172,7 +161,6 @@ fn preset_override() {
 #[test]
 fn projects_without_pint_json_migrate_pint_defaults() {
     let r = root("defaults");
-    // A "pun" that records how `pun migrate` was called and the config it was given.
     let pun = r.join("fake-pun");
     let log = r.join("migrate.log");
     script(
@@ -185,8 +173,6 @@ fn projects_without_pint_json_migrate_pint_defaults() {
     harness(&r, &pun, &[]);
     let got = fs::read_to_string(&log).unwrap();
     let lines: Vec<&str> = got.lines().collect();
-    // a has a pint.json: `pun migrate --from pint`. b has none: an explicit `{}` (what Pint runs without one),
-    // outside the copied tree, so migrate converts Pint's defaults instead of writing the starter's lint tier.
     assert_eq!(lines.len(), 3, "{got}");
     assert_eq!(lines[0], "migrate --from pint");
     let cfg = lines[1]
@@ -201,7 +187,6 @@ fn projects_without_pint_json_migrate_pint_defaults() {
 #[test]
 fn missing_pieces() {
     let r = root("missing");
-    // No pun binary: identity, with a note. Only b so the run is short; b then matches its source.
     let (out, err, code) = harness(&r, &r.join("no-such-pun"), &["--corpus", "b"]);
     assert_eq!(
         out,
@@ -216,7 +201,6 @@ fn missing_pieces() {
     );
     assert_eq!(code, Some(1));
 
-    // A pun that exists but can't be spawned. The run stops after copying the project twice; the copies still go.
     write(&r.join("not-exec"), "");
     let tmp = r.join("tmp");
     fs::create_dir(&tmp).unwrap();
@@ -236,7 +220,6 @@ fn missing_pieces() {
         .collect();
     assert!(left.is_empty(), "left in {tmp:?}: {left:?}");
 
-    // No php to run the oracle with.
     let out = Command::new(env!("CARGO_BIN_EXE_pun-harness"))
         .args(["format", "--corpus", "b"])
         .env("PUN_HARNESS_ROOT", &r)
@@ -248,7 +231,6 @@ fn missing_pieces() {
     assert!(err.contains("Error: spawning pint\n"), "{err}");
     assert_eq!(out.status.code(), Some(1));
 
-    // A corpus project that was never fetched.
     fs::remove_dir_all(r.join("corpus/b/.git")).unwrap();
     let (_, err, code) = harness(&r, &r.join("no-such-pun"), &["--corpus", "b"]);
     assert!(
@@ -260,7 +242,6 @@ fn missing_pieces() {
     );
     assert_eq!(code, Some(1));
 
-    // No oracle.
     fs::remove_file(r.join(".oracle")).unwrap();
     let (_, err, code) = harness(&r, &r.join("no-such-pun"), &[]);
     assert_eq!(

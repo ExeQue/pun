@@ -1,6 +1,3 @@
-//! Token boundaries follow PHP's INITIAL scanner (token_get_all), not executable-file shebang skipping.
-//! Expected boundaries are derived from the literal prefixes/openers; source-fidelity checks reject masking.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -18,8 +15,6 @@ use pun_lint::{Linter, rules};
 #[test]
 fn shebang_lexer_stops_at_enabled_openers_and_retains_original_bytes_and_spans() {
     use TokenKind::{EchoTag, InlineShebang, InlineText, OpenTag, ShortOpenTag};
-    // PHP token_get_all exposes these inline-prefix/opener boundaries. Mago keeps a genuine LF shebang as
-    // InlineShebang and separates opening-tag whitespace; neither convention may swallow an opening tag.
     for (source, short_tags, prefix, inline, opener, tag) in [
         ("#!php<?php 1;", true, "#!php", InlineText, "<?php", OpenTag),
         (
@@ -241,7 +236,10 @@ fn shebang_owned_and_borrowed_csts_restore_declarations_without_rewriting_source
 
 #[test]
 fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
-    let linter = Linter::new(vec![Box::new(rules::NoNegatedBooleanLiteral)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::NoNegatedBooleanLiteral)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     for prefix in [
         "#!php<?php ",
         "#!php<?php\n",
@@ -260,14 +258,16 @@ fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
 
 #[test]
 fn shebang_lint_native_facts_reparse_the_same_class_and_variable_return() {
-    let linter = Linter::new(vec![Box::new(rules::AddReturnTypeFromNew)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::AddReturnTypeFromNew)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     for prefix in [
         "#!php<?php ",
         "#!php\r<?php ",
         "#!php\n<?php ",
         "#!php\r\n<?php ",
     ] {
-        // ReturnTypeFromReturnNewRector's variable-return contract: this variable holds the declared class.
         let source = format!(
             "{prefix}class Restored {{}} function create() {{ $value = new Restored; return $value; }}"
         );

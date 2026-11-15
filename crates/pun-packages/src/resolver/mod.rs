@@ -1,6 +1,3 @@
-//! The resolver behind `pun update`: from the root manifest, the platform and the repositories, the set of package
-//! versions to lock, split into `packages` and `packages-dev` as Composer splits them.
-
 pub mod composer_repo;
 pub mod explain;
 pub mod filters;
@@ -13,10 +10,11 @@ pub mod pool;
 pub mod repos;
 pub mod solver;
 
-use crate::constraint::{self, Constraint};
+use crate::Env;
+use crate::constraint::{self, AND, Constraint, OR, split};
+use crate::error::{Result, bail};
 use crate::lock::Lock;
-use crate::version::{ALIAS, group, is_platform, normalize, stability_of};
-use anyhow::{Result, bail};
+use crate::version::{ALIAS, IgnorePlatform, group, is_platform, normalize, stability_of};
 use indexmap::IndexMap;
 use package::{Origin, Package, load, stability_value};
 use pcre2::bytes::Regex;
@@ -29,36 +27,26 @@ use solver::{Problem, Solver};
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
-/// What `pun update` was asked for.
 #[derive(Debug, Clone, Default)]
 pub struct Options {
-    /// Package names (or `*` patterns) to update; empty for a full update.
     pub allow_list: Vec<String>,
     pub transitive: Transitive,
     pub prefer_stable: bool,
     pub prefer_lowest: bool,
-    /// `--minimal-changes`: keep locked versions where the requirements allow.
     pub minimal_changes: bool,
-    /// Platform requirements to ignore (`*` patterns), and whether to ignore them all.
-    pub ignore_platform: Vec<String>,
-    pub ignore_all_platform: bool,
+    pub ignore_platform: IgnorePlatform,
 }
 
-/// The locked set: packages by arena index, sorted as the lock lists them.
 pub struct Resolution {
     pub arena: Vec<Package>,
     pub packages: Vec<usize>,
     pub packages_dev: Vec<usize>,
-    /// The root aliases the solution uses, as the lock's `aliases` lists them.
     pub aliases: Vec<Map<String, Value>>,
-    /// The root's stability flags (`foo/bar: dev-main` → `foo/bar` at `dev`), by lowercase name.
     pub flags: IndexMap<String, u8>,
 }
 
-/// A failed resolution: the problems, over the pool's packages.
 pub struct Failure {
     pub arena: Vec<Package>,
-    /// The arena indices of the packages the solver chose from.
     pub pool: Vec<usize>,
     pub problems: Vec<Problem>,
 }
@@ -73,23 +61,7 @@ static FLAGGED: LazyLock<Regex> = LazyLock::new(|| {
 static BARE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[^,\s@]+$").expect("valid pattern"));
 static REFERENCE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[^,\s@]+?#([a-f0-9]+)$").expect("valid pattern"));
-static OR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s*\|\|?\s*").expect("valid pattern"));
-static AND: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)").expect("valid pattern")
-});
 
-fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
-    let mut out = vec![];
-    let mut start = 0;
-    for m in re.find_iter(s.as_bytes()).flatten() {
-        out.push(&s[start..m.start()]);
-        start = m.end();
-    }
-    out.push(&s[start..]);
-    out
-}
-
-/// `x as y` in the root's requirements (`RootPackageLoader::extractAliases`).
 fn root_aliases(links: &[(String, String)]) -> Result<Vec<Map<String, Value>>> {
     let mut out = vec![];
     for (name, constraint) in links {
@@ -109,7 +81,6 @@ fn root_aliases(links: &[(String, String)]) -> Result<Vec<Map<String, Value>>> {
     Ok(out)
 }
 
-/// The stability each requirement asks for beyond `minimum-stability` (`extractStabilityFlags`).
 fn stability_flags(
     links: &[(String, String)],
     minimum: u8,
@@ -152,7 +123,6 @@ fn stability_flags(
     Ok(())
 }
 
-/// Requirements pinned to a commit (`dev-main#abc123`), by name (`extractReferences`).
 fn references(links: &[(String, String)]) -> Result<HashMap<String, String>> {
     let mut out = HashMap::new();
     for (name, constraint) in links {
@@ -179,27 +149,21 @@ fn links(manifest: &Map<String, Value>, kind: &str) -> Vec<(String, String)> {
     .collect()
 }
 
-/// Whether a platform requirement is ignored.
 fn ignored_by(options: &Options) -> impl Fn(&str) -> bool + '_ {
-    move |name: &str| {
-        is_platform(name)
-            && (options.ignore_all_platform
-                || options
-                    .ignore_platform
-                    .iter()
-                    .any(|p| crate::version::name_matches(p, name)))
-    }
+    move |name: &str| is_platform(name) && options.ignore_platform.ignores(name)
 }
 
-/// Resolves the root `manifest` (composer.json's shape) against `platform` (the platform packages as JSON) and
-/// `repositories` (in priority order), with the previous lock's packages (`packages` then `packages-dev`) and
-/// aliases for a partial or minimal update.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn resolve(
     manifest: &Map<String, Value>,
     platform: Vec<Map<String, Value>>,
     repositories: Vec<Box<dyn Repository + '_>>,
     locked: Option<&Lock>,
     options: &Options,
+    env: Env,
 ) -> Result<std::result::Result<Resolution, Failure>> {
     let mut arena: Vec<Package> = vec![];
     let mut root_data = manifest.clone();
@@ -228,11 +192,9 @@ pub fn resolve(
         stability_flags(l, minimum, &mut flags)?;
         refs.extend(references(l)?);
     }
-    // The root as the request fixes it: without its requirements, which the request carries instead.
     let mut fixed_root = root_data.clone();
     fixed_root.remove("require");
     fixed_root.remove("require-dev");
-    // With a branch alias the root is two packages, the alias first; both are fixed.
     let root_packages = load(fixed_root, Origin::Root, &mut arena)?;
     let root = *root_packages.last().expect("the root package");
     let root_flags = flags.clone();
@@ -272,7 +234,7 @@ pub fn resolve(
         let mut lock = vec![];
         let mut by_name: HashMap<String, usize> = HashMap::new();
         for data in locked.all() {
-            for p in load(data.clone(), Origin::Locked, &mut arena)? {
+            for p in load(data.0.clone(), Origin::Locked, &mut arena)? {
                 by_name.insert(arena[p].name.clone(), arena[p].alias_of.unwrap_or(p));
                 lock.push(p);
             }
@@ -325,7 +287,7 @@ pub fn resolve(
         prefer_stable: options.prefer_stable
             || manifest.get("prefer-stable") == Some(&Value::Bool(true)),
         prefer_lowest: options.prefer_lowest,
-        prefer_dev_over_prerelease: std::env::var_os("COMPOSER_PREFER_DEV_OVER_PRERELEASE")
+        prefer_dev_over_prerelease: env("COMPOSER_PREFER_DEV_OVER_PRERELEASE")
             .is_some_and(|v| !v.is_empty() && v != "0"),
         preferred_versions: None,
     };
@@ -351,10 +313,10 @@ pub fn resolve(
     repos.extend(repositories);
     let ignored_types = ["php-ext", "php-ext-zend"];
     let config = manifest.get("config").and_then(Value::as_object);
-    let filters = filters::Filters::from_config(config, &|k| std::env::var(k).ok())?;
+    let filters = filters::Filters::from_config(config, env)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs() as i64);
+        .map_or(0, |d| d.as_secs().cast_signed());
     let builder = PoolBuilder::new(
         &stabilities,
         &root_alias_map,
@@ -372,7 +334,6 @@ pub fn resolve(
     }
     let mut result = Solver::new(&pool, &policy).solve(&request, &ignored);
     if result.is_err() && optimized {
-        // Explain a failure from the whole pool, so its messages name every version the pool had.
         pool = pool.with_packages(all);
         result = Solver::new(&pool, &policy).solve(&request, &ignored);
     }
@@ -455,8 +416,6 @@ pub fn resolve(
     }))
 }
 
-/// The names of the packages the non-dev requirements alone need (`Installer::extractDevPackages`), from a pool of
-/// the solution's packages; `None` when they cannot be satisfied.
 fn non_dev_names(
     arena: &mut Vec<Package>,
     fixed: &[usize],
@@ -518,13 +477,20 @@ mod tests {
     use crate::fetch::{Auth, Fetcher};
     use serde_json::json;
 
-    /// An update of `manifest` (its `package` repositories, Packagist off) on PHP and ext-json 8.5.12: the locked
-    /// `[name, version]` of `packages` and `packages-dev` and the stability flags, `no solution`, or the error.
     fn update(manifest: Value, lock: Option<Value>, options: &Options) -> Result<Value, String> {
-        let manifest = manifest.as_object().unwrap().clone();
+        update_in(manifest, lock, options, &|_| None)
+    }
+
+    fn update_in(
+        manifest: Value,
+        lock: Option<Value>,
+        options: &Options,
+        env: Env,
+    ) -> Result<Value, String> {
+        let manifest = serde_json::from_value(manifest).unwrap();
         let fetcher = Fetcher::new(None, Auth::default(), false);
         let root = std::path::Path::new(".");
-        let repositories = repos::open(root, &manifest, None, &fetcher).unwrap();
+        let repositories = repos::open(root, &manifest, None, &fetcher, env).unwrap();
         let platform = ["php", "ext-json"].map(|n| {
             json!({"name": n, "version": "8.5.12"})
                 .as_object()
@@ -538,6 +504,7 @@ mod tests {
             repositories,
             lock.as_ref(),
             options,
+            env,
         );
         let r = resolved
             .map_err(|e| e.to_string())?
@@ -553,6 +520,10 @@ mod tests {
         Ok(json!([list(&r.packages), list(&r.packages_dev), flags]))
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn repositories(packages: Value) -> Value {
         json!([{"type": "package", "package": packages}, {"packagist.org": false}])
     }
@@ -566,8 +537,6 @@ mod tests {
         ]))
     }
 
-    /// The packages and stability flags Composer 2.11.2's `composer update --no-install` locked for the same
-    /// composer.json, and its messages.
     #[test]
     fn reads_the_root_as_composer() {
         let none = &Options::default();
@@ -576,7 +545,6 @@ mod tests {
             update(m, None, none).unwrap_err(),
             "Invalid alias definition in \"a/a\": \"1.0 as 2.0 3.0\". Aliases should be in the form \"exact-version as other-exact-version\"."
         );
-        // A weaker flag after a stronger one, or a bare version below minimum-stability, adds no flag.
         let m = json!({"minimum-stability": "beta", "require": {"a/a": "1.0.0-beta1@dev || 1.0.0-beta1@beta"}, "repositories": versions()});
         assert_eq!(
             update(m, None, none).unwrap(),
@@ -587,16 +555,14 @@ mod tests {
             update(m, None, none).unwrap(),
             json!([[["a/a", "1.0.0-beta1"]], [], {}])
         );
-        // The root provides the platform package b/b requires.
         let m = json!({"provide": {"ext-json": "8.5.12"}, "require": {"b/b": "*"}, "repositories": versions()});
         assert_eq!(
             update(m, None, none).unwrap(),
             json!([[["b/b", "1.0.0"]], [], {}])
         );
-        // An ignored platform requirement is left out of the non-dev resolution too.
         let m = json!({"require": {"ext-absent": "*", "a/a": "^1.0"}, "require-dev": {"b/b": "*"}, "repositories": versions()});
         let ignore = Options {
-            ignore_platform: vec!["ext-absent".into()],
+            ignore_platform: IgnorePlatform::Listed(vec!["ext-absent".into()]),
             ..Options::default()
         };
         assert_eq!(
@@ -605,8 +571,6 @@ mod tests {
         );
     }
 
-    /// Composer 2.11.2's `composer update b/b`: the lock's alias makes a/a match the root's `2.0.x-dev` (an alias for
-    /// a package the lock lacks is skipped), but the non-dev requirements alone don't see it.
     #[test]
     fn needs_the_non_dev_requirements_alone() {
         let m = json!({
@@ -638,8 +602,6 @@ mod tests {
         );
     }
 
-    /// Composer 2.11.2 with `--prefer-stable --prefer-lowest` locks dev-master with
-    /// `COMPOSER_PREFER_DEV_OVER_PRERELEASE=1`, 1.0.0-alpha1 with it at 0.
     #[test]
     fn prefers_dev_over_prerelease_as_composer() {
         let m = json!({"require": {"a/a": "*@dev"}, "repositories": repositories(json!([
@@ -652,18 +614,13 @@ mod tests {
             ..Options::default()
         };
         for (value, want) in [("1", "dev-master"), ("0", "1.0.0-alpha1")] {
-            // SAFETY: no other test in this binary reads this variable or sets prefer_lowest.
-            unsafe { std::env::set_var("COMPOSER_PREFER_DEV_OVER_PRERELEASE", value) };
-            let got = update(m.clone(), None, &options);
-            // SAFETY: as above.
-            unsafe { std::env::remove_var("COMPOSER_PREFER_DEV_OVER_PRERELEASE") };
+            let env =
+                |k: &str| (k == "COMPOSER_PREFER_DEV_OVER_PRERELEASE").then(|| value.to_string());
+            let got = update_in(m.clone(), None, &options, &env);
             assert_eq!(got.unwrap()[0], json!([["a/a", want]]), "{value}");
         }
     }
 
-    /// Composer 2.11.2 blocks an abandoned package only while it blocks advisories (then a/a 1.0.0 is locked), and
-    /// blocks a locked one too (`update b/b` fails) and the alias of one (both are "not loaded, because they are
-    /// abandoned").
     #[test]
     fn blocks_abandoned_packages_as_composer() {
         let none = &Options::default();
@@ -690,16 +647,20 @@ mod tests {
                 "extra": {"branch-alias": {"dev-main": "1.0.x-dev"}}}]))});
         let manifest = m.as_object().unwrap().clone();
         let fetcher = Fetcher::new(None, Auth::default(), false);
-        let repositories =
-            repos::open(std::path::Path::new("."), &manifest, None, &fetcher).unwrap();
-        let failure = (resolve(&manifest, vec![], repositories, None, none).unwrap())
+        let repositories = repos::open(
+            std::path::Path::new("."),
+            &manifest,
+            None,
+            &fetcher,
+            &|_| None,
+        )
+        .unwrap();
+        let failure = (resolve(&manifest, vec![], repositories, None, none, &|_| None).unwrap())
             .err()
             .expect("no solution");
         assert!(failure.pool.iter().all(|&p| failure.arena[p].name != "a/a"));
     }
 
-    /// A filter list that blocks a branch but not its alias leaves the alias without the package it installs, so it
-    /// can't be installed either. Derived by hand: Composer 2.11.2 fails here with "Undefined array key".
     #[test]
     fn needs_the_package_an_alias_installs() {
         let m = json!({"minimum-stability": "dev", "require": {"a/a": "1.0.x-dev"}, "repositories": [
@@ -713,8 +674,6 @@ mod tests {
         );
     }
 
-    /// Composer 2.11.2's lock for `dev-main#abc` and `dev-main#def`: the reference replaces the source's and a
-    /// non-empty dist one (whatever the host), and an empty dist reference stays empty.
     #[test]
     fn sets_root_references_as_composer() {
         let m = json!({"minimum-stability": "dev", "require": {"a/a": "dev-main#abc", "b/b": "dev-main#def"},
@@ -726,11 +685,25 @@ mod tests {
         ]))});
         let manifest = m.as_object().unwrap().clone();
         let fetcher = Fetcher::new(None, Auth::default(), false);
-        let repositories =
-            repos::open(std::path::Path::new("."), &manifest, None, &fetcher).unwrap();
-        let r = (resolve(&manifest, vec![], repositories, None, &Options::default()).unwrap())
-            .map_err(|_| "no solution")
-            .unwrap();
+        let repositories = repos::open(
+            std::path::Path::new("."),
+            &manifest,
+            None,
+            &fetcher,
+            &|_| None,
+        )
+        .unwrap();
+        let r = (resolve(
+            &manifest,
+            vec![],
+            repositories,
+            None,
+            &Options::default(),
+            &|_| None,
+        )
+        .unwrap())
+        .map_err(|_| "no solution")
+        .unwrap();
         let got: Vec<Value> = (r.packages.iter())
             .map(|&p| {
                 let d = r.arena[p].data();
@@ -747,8 +720,6 @@ mod tests {
         );
     }
 
-    /// Composer's schema rejects these repository filters before its FilterRepository sees them; Pun reports each
-    /// with FilterRepository's own message.
     #[test]
     fn rejects_bad_repository_filters() {
         for (filter, want) in [
@@ -778,13 +749,17 @@ mod tests {
                 json!({"require": {"a/a": "*"}, "repositories": [repo, {"packagist.org": false}]});
             let manifest = m.as_object().unwrap().clone();
             let fetcher = Fetcher::new(None, Auth::default(), false);
-            let got = repos::open(std::path::Path::new("."), &manifest, None, &fetcher);
+            let got = repos::open(
+                std::path::Path::new("."),
+                &manifest,
+                None,
+                &fetcher,
+                &|_| None,
+            );
             assert_eq!(got.err().map(|e| e.to_string()).as_deref(), Some(want));
         }
     }
 
-    /// Composer 2.11.2's `composer update`: a repository whose `only` leaves out a/a is not asked for it, so the
-    /// next one's 2.0.0 is locked; a `php-ext` package is not installable.
     #[test]
     fn filters_repositories_as_composer() {
         let m = json!({"require": {"a/a": "*"}, "repositories": [

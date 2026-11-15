@@ -1,9 +1,3 @@
-//! `lint/types/add-string-return-type-from-scalar` and `lint/types/add-numeric-return-type-from-scalar`, ported from
-//! Rector 2.8.4's `StringReturnTypeFromStrictScalarReturnsRector` and `NumericReturnTypeFromStrictScalarReturnsRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a function or method whose every `return` returns a string literal
-//! returns `string`; one whose every `return` returns an integer literal (or a float literal), maybe negated, returns
-//! `int` (or `float`). The end of the body must not be reachable.
-
 use mago_syntax::cst::{CompositeString, Expression, Literal, Node, NodeKind, UnaryPrefixOperator};
 
 use super::facts::facts;
@@ -17,8 +11,6 @@ pub struct AddStringReturnFromScalar;
 
 pub struct AddNumericReturnFromScalar;
 
-/// The returned expressions of an untyped function or method whose every `return` has one and whose end cannot be
-/// reached, with where its report and type go.
 pub(super) fn returned<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -44,8 +36,8 @@ impl Rule for AddStringReturnFromScalar {
         "lint/types/add-string-return-type-from-scalar"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -62,7 +54,6 @@ impl Rule for AddStringReturnFromScalar {
         let Some((f, values)) = returned(node, ancestors, ctx) else {
             return;
         };
-        // php-parser's `String_` and `InterpolatedString`: quoted strings, heredocs and nowdocs, not backticks
         let string = |e: &&Expression<'_>| {
             matches!(
                 e,
@@ -83,8 +74,8 @@ impl Rule for AddNumericReturnFromScalar {
         "lint/types/add-numeric-return-type-from-scalar"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -103,12 +94,14 @@ impl Rule for AddNumericReturnFromScalar {
         };
         let r#type = if values
             .iter()
+            .copied()
             .map(unnegated)
             .all(|e| matches!(e, Expression::Literal(Literal::Float(_))))
         {
             "float"
         } else if values
             .iter()
+            .copied()
             .map(unnegated)
             .all(|e| matches!(e, Expression::Literal(Literal::Integer(_))))
         {
@@ -120,8 +113,7 @@ impl Rule for AddNumericReturnFromScalar {
     }
 }
 
-/// The expression under a leading `-`.
-pub(super) fn unnegated<'a>(e: &&'a Expression<'a>) -> &'a Expression<'a> {
+pub(super) fn unnegated<'a>(e: &'a Expression<'a>) -> &'a Expression<'a> {
     match e {
         Expression::UnaryPrefix(p) if matches!(p.operator, UnaryPrefixOperator::Negation(_)) => {
             p.operand

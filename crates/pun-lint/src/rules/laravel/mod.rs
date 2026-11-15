@@ -1,10 +1,3 @@
-//! The `laravel` group: rules ported from rector-laravel 2.7.3 (driftingly/rector-laravel, src/Rector/...), each in
-//! its own file, and what they share.
-//!
-//! rector-laravel builds new nodes with Rector's `NodeFactory` and prints them with php-parser's printer: a new call is
-//! pretty-printed (`name(arg, arg)`), a class it names is fully qualified (`\Illuminate\Support\Env`), and the nodes it
-//! keeps from the old code keep their own text. The rules here write the same text.
-
 mod add_factory_extends_phpdoc;
 mod add_has_factory_trait;
 mod add_query_closure_type;
@@ -66,69 +59,8 @@ pub(crate) mod property_attribute;
 mod property_rules;
 mod query_builder;
 
-pub use add_factory_extends_phpdoc::AddFactoryExtendsPhpdoc;
-pub use add_has_factory_trait::AddHasFactoryTrait;
-pub use add_query_closure_type::AddQueryClosureType;
-pub use add_relation_generics::AddRelationGenerics;
-pub use add_relation_query_closure_type::AddRelationQueryClosureType;
-pub use add_tap_closure_type::AddTapClosureType;
-pub use no_app_array_access::NoAppArrayAccess;
-pub use no_collection_aliases::NoCollectionAliases;
-pub use no_controller_middleware::NoControllerMiddleware;
-pub use no_negated_blank_filled::NoNegatedBlankFilled;
-pub use no_negated_contains::NoNegatedContains;
-pub use no_negated_filter::NoNegatedFilter;
-pub use no_negated_when::NoNegatedWhen;
-pub use no_request_all::NoRequestAll;
-pub use no_useless_value_call::NoUselessValueCall;
-pub use no_useless_with_call::NoUselessWithCall;
-pub use prefer_abort_if::PreferAbortIf;
-pub use prefer_anonymous_migration::PreferAnonymousMigration;
-pub use prefer_back_helper::PreferBackHelper;
-pub use prefer_casts_method::PreferCastsMethod;
-pub use prefer_class_container_key::{ContainerService, PreferClassContainerKey};
-pub use prefer_closure_only_bind::PreferClosureOnlyBind;
-pub use prefer_collected_by_attribute::PreferCollectedByAttribute;
-pub use prefer_collection_all::PreferCollectionAll;
-pub use prefer_constructor_injection::{Injection, PreferConstructorInjection};
-pub use prefer_date_facade::PreferDateFacade;
-pub use prefer_default_argument::PreferDefaultArgument;
-pub use prefer_dispatch_helper::PreferDispatchHelper;
-pub use prefer_env_helper::PreferEnvHelper;
-pub use prefer_environment_check::PreferEnvironmentCheck;
-pub use prefer_exception_class_string::PreferExceptionClassString;
-pub use prefer_explicit_json_call::PreferExplicitJsonCall;
-pub use prefer_facade_over_app::PreferFacadeOverApp;
-pub use prefer_latest_oldest::PreferLatestOldest;
-pub use prefer_nullsafe::PreferNullsafe;
-pub use prefer_protected_model_methods::PreferProtectedModelMethods;
-pub use prefer_report_if::PreferReportIf;
-pub use prefer_request_facade::PreferRequestFacade;
-pub use prefer_request_server::PreferRequestServer;
-pub use prefer_request_validate::PreferRequestValidate;
-pub use prefer_resolve_helper::PreferResolveHelper;
-pub use prefer_scope_attribute::PreferScopeAttribute;
-pub use prefer_session_facade::PreferSessionFacade;
-pub use prefer_sleep_facade::PreferSleepFacade;
-pub use prefer_str_starts_with::PreferStrStartsWith;
-pub use prefer_table_attribute::PreferTableAttribute;
-pub use prefer_throw_if::PreferThrowIf;
-pub use prefer_to_route_helper::PreferToRouteHelper;
-pub use prefer_today::PreferToday;
-pub use prefer_travel_to::PreferTravelTo;
-pub use prefer_typed_assert_closure::PreferTypedAssertClosure;
-pub use prefer_view_array::PreferViewArray;
-pub use property_rules::{
-    PreferAliasesAttribute, PreferAppendsAttribute, PreferBackoffAttribute,
-    PreferCollectsAttribute, PreferCommandHiddenAttribute, PreferConnectionAttribute,
-    PreferDateFormatAttribute, PreferDelayAttribute, PreferDeleteWhenMissingModelsAttribute,
-    PreferDescriptionAttribute, PreferErrorBagAttribute, PreferFailOnTimeoutAttribute,
-    PreferFillableAttribute, PreferGuardedAttribute, PreferHelpAttribute, PreferHiddenAttribute,
-    PreferJobConnectionAttribute, PreferMaxExceptionsAttribute, PreferPreserveKeysAttribute,
-    PreferQueueAttribute, PreferSignatureAttribute, PreferStopOnFirstFailureAttribute,
-    PreferTimeoutAttribute, PreferTouchesAttribute, PreferTriesAttribute, PreferUniqueForAttribute,
-    PreferVisibleAttribute, PreferWithoutIncrementingAttribute, PreferWithoutTimestampsAttribute,
-};
+pub use prefer_class_container_key::ContainerService;
+pub use prefer_constructor_injection::Injection;
 
 use mago_syntax::cst::{
     Argument, ArgumentList, Assignment, AssignmentOperator, Call, ClassLikeMemberSelector,
@@ -137,104 +69,99 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety, Span};
 
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, Report};
 use names::resolve_class_name;
 
-/// The group's rules, in a fixed order.
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoNegatedBlankFilled),
-        Box::new(PreferBackHelper),
-        Box::new(PreferToRouteHelper),
-        Box::new(PreferEnvHelper),
-        Box::new(PreferExceptionClassString),
-        Box::new(PreferSleepFacade),
-        Box::new(PreferToday),
-        Box::new(PreferRequestServer),
-        Box::new(PreferStrStartsWith),
-        Box::new(PreferSessionFacade),
-        Box::new(PreferAbortIf),
-        Box::new(PreferReportIf),
-        Box::new(PreferThrowIf),
-        // Before PreferFacadeOverApp, which also rewrites the `resolve()` this writes: Rector's sorted rule list runs
-        // AppToResolveRector first, so both report `app(X)`.
-        Box::new(PreferResolveHelper),
-        Box::new(PreferFacadeOverApp),
-        Box::new(NoRequestAll),
-        Box::new(PreferCastsMethod),
-        Box::new(PreferAnonymousMigration),
-        Box::new(PreferNullsafe::default()),
-        Box::new(PreferDateFacade),
-        Box::new(PreferRequestFacade),
-        Box::new(PreferDefaultArgument),
-        Box::new(PreferExplicitJsonCall),
-        Box::new(PreferTravelTo),
-        Box::new(PreferAliasesAttribute),
-        Box::new(PreferAppendsAttribute),
-        Box::new(PreferBackoffAttribute),
-        Box::new(PreferCollectedByAttribute),
-        Box::new(PreferCollectsAttribute),
-        Box::new(PreferCommandHiddenAttribute),
-        Box::new(PreferConnectionAttribute),
-        Box::new(PreferDateFormatAttribute),
-        Box::new(PreferDelayAttribute),
-        Box::new(PreferDeleteWhenMissingModelsAttribute),
-        Box::new(PreferDescriptionAttribute),
-        Box::new(PreferErrorBagAttribute),
-        Box::new(PreferFailOnTimeoutAttribute),
-        Box::new(PreferFillableAttribute),
-        Box::new(PreferGuardedAttribute),
-        Box::new(PreferHelpAttribute),
-        Box::new(PreferHiddenAttribute),
-        Box::new(PreferJobConnectionAttribute),
-        Box::new(PreferMaxExceptionsAttribute),
-        Box::new(PreferPreserveKeysAttribute),
-        Box::new(PreferQueueAttribute),
-        Box::new(PreferSignatureAttribute),
-        Box::new(PreferStopOnFirstFailureAttribute),
-        Box::new(PreferTimeoutAttribute),
-        Box::new(PreferTableAttribute),
-        Box::new(PreferTouchesAttribute),
-        Box::new(PreferTriesAttribute),
-        Box::new(PreferUniqueForAttribute),
-        Box::new(PreferVisibleAttribute),
-        Box::new(PreferWithoutIncrementingAttribute),
-        Box::new(PreferWithoutTimestampsAttribute),
-        Box::new(PreferScopeAttribute),
-        Box::new(NoCollectionAliases),
-        Box::new(NoNegatedContains),
-        Box::new(NoNegatedFilter),
-        Box::new(NoNegatedWhen),
-        Box::new(PreferEnvironmentCheck),
-        Box::new(PreferTypedAssertClosure),
-        Box::new(NoUselessValueCall),
-        Box::new(NoUselessWithCall),
-        Box::new(PreferDispatchHelper),
-        Box::new(NoControllerMiddleware),
-        Box::new(PreferViewArray),
-        Box::new(AddQueryClosureType),
-        Box::new(AddRelationQueryClosureType),
-        Box::new(PreferProtectedModelMethods),
-        Box::new(PreferLatestOldest::default()),
-        Box::new(PreferRequestValidate),
-        Box::new(PreferCollectionAll),
-        Box::new(PreferClosureOnlyBind),
-        Box::new(AddHasFactoryTrait::default()),
-        Box::new(PreferClassContainerKey::default()),
-        Box::new(AddFactoryExtendsPhpdoc),
-        Box::new(AddRelationGenerics),
-        Box::new(AddTapClosureType),
-        Box::new(NoAppArrayAccess),
-        Box::new(PreferConstructorInjection::default()),
-    ]
+rules! {
+    pub(super) fn all {
+        no_negated_blank_filled => NoNegatedBlankFilled,
+        prefer_back_helper => PreferBackHelper,
+        prefer_to_route_helper => PreferToRouteHelper,
+        prefer_env_helper => PreferEnvHelper,
+        prefer_exception_class_string => PreferExceptionClassString,
+        prefer_sleep_facade => PreferSleepFacade,
+        prefer_today => PreferToday,
+        prefer_request_server => PreferRequestServer,
+        prefer_str_starts_with => PreferStrStartsWith,
+        prefer_session_facade => PreferSessionFacade,
+        prefer_abort_if => PreferAbortIf,
+        prefer_report_if => PreferReportIf,
+        prefer_throw_if => PreferThrowIf,
+        prefer_resolve_helper => PreferResolveHelper,
+        prefer_facade_over_app => PreferFacadeOverApp,
+        no_request_all => NoRequestAll,
+        prefer_casts_method => PreferCastsMethod,
+        prefer_anonymous_migration => PreferAnonymousMigration,
+        prefer_nullsafe => PreferNullsafe::default(),
+        prefer_date_facade => PreferDateFacade,
+        prefer_request_facade => PreferRequestFacade,
+        prefer_default_argument => PreferDefaultArgument,
+        prefer_explicit_json_call => PreferExplicitJsonCall,
+        prefer_travel_to => PreferTravelTo,
+        property_rules => PreferAliasesAttribute,
+        property_rules => PreferAppendsAttribute,
+        property_rules => PreferBackoffAttribute,
+        prefer_collected_by_attribute => PreferCollectedByAttribute,
+        property_rules => PreferCollectsAttribute,
+        property_rules => PreferCommandHiddenAttribute,
+        property_rules => PreferConnectionAttribute,
+        property_rules => PreferDateFormatAttribute,
+        property_rules => PreferDelayAttribute,
+        property_rules => PreferDeleteWhenMissingModelsAttribute,
+        property_rules => PreferDescriptionAttribute,
+        property_rules => PreferErrorBagAttribute,
+        property_rules => PreferFailOnTimeoutAttribute,
+        property_rules => PreferFillableAttribute,
+        property_rules => PreferGuardedAttribute,
+        property_rules => PreferHelpAttribute,
+        property_rules => PreferHiddenAttribute,
+        property_rules => PreferJobConnectionAttribute,
+        property_rules => PreferMaxExceptionsAttribute,
+        property_rules => PreferPreserveKeysAttribute,
+        property_rules => PreferQueueAttribute,
+        property_rules => PreferSignatureAttribute,
+        property_rules => PreferStopOnFirstFailureAttribute,
+        property_rules => PreferTimeoutAttribute,
+        prefer_table_attribute => PreferTableAttribute,
+        property_rules => PreferTouchesAttribute,
+        property_rules => PreferTriesAttribute,
+        property_rules => PreferUniqueForAttribute,
+        property_rules => PreferVisibleAttribute,
+        property_rules => PreferWithoutIncrementingAttribute,
+        property_rules => PreferWithoutTimestampsAttribute,
+        prefer_scope_attribute => PreferScopeAttribute,
+        no_collection_aliases => NoCollectionAliases,
+        no_negated_contains => NoNegatedContains,
+        no_negated_filter => NoNegatedFilter,
+        no_negated_when => NoNegatedWhen,
+        prefer_environment_check => PreferEnvironmentCheck,
+        prefer_typed_assert_closure => PreferTypedAssertClosure,
+        no_useless_value_call => NoUselessValueCall,
+        no_useless_with_call => NoUselessWithCall,
+        prefer_dispatch_helper => PreferDispatchHelper,
+        no_controller_middleware => NoControllerMiddleware,
+        prefer_view_array => PreferViewArray,
+        add_query_closure_type => AddQueryClosureType,
+        add_relation_query_closure_type => AddRelationQueryClosureType,
+        prefer_protected_model_methods => PreferProtectedModelMethods,
+        prefer_latest_oldest => PreferLatestOldest::default(),
+        prefer_request_validate => PreferRequestValidate,
+        prefer_collection_all => PreferCollectionAll,
+        prefer_closure_only_bind => PreferClosureOnlyBind,
+        add_has_factory_trait => AddHasFactoryTrait::default(),
+        prefer_class_container_key => PreferClassContainerKey::default(),
+        add_factory_extends_phpdoc => AddFactoryExtendsPhpdoc,
+        add_relation_generics => AddRelationGenerics,
+        add_tap_closure_type => AddTapClosureType,
+        no_app_array_access => NoAppArrayAccess,
+        prefer_constructor_injection => PreferConstructorInjection::default(),
+    }
 }
 
-/// `NodeNameResolver::isName` on an identifier (a method name): ASCII case-insensitive.
 pub(crate) fn is_name(name: &[u8], wanted: &str) -> bool {
     name.eq_ignore_ascii_case(wanted.as_bytes())
 }
 
-/// The name of a method call written as a plain identifier (`->name(...)`), not `->$name(...)` or `->{...}(...)`.
 pub(crate) fn member_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<&'a [u8]> {
     match selector {
         ClassLikeMemberSelector::Identifier(id) => Some(id.value),
@@ -242,8 +169,6 @@ pub(crate) fn member_name<'a>(selector: &ClassLikeMemberSelector<'a>) -> Option<
     }
 }
 
-/// The fully qualified class name (without the leading `\`) of a static call's or `new`'s class written as a name;
-/// `self`, `static`, `parent` and expressions have none.
 pub(crate) fn class_name(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> Option<String> {
     match expr {
         Expression::Identifier(id) => Some(resolve_class_name(ancestors, id)),
@@ -251,13 +176,10 @@ pub(crate) fn class_name(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> O
     }
 }
 
-/// Whether the expression is the variable `$name` (`name` without the `$`).
 pub(crate) fn is_variable(expr: &Expression<'_>, name: &str) -> bool {
     matches!(unparenthesize(expr), Expression::Variable(Variable::Direct(v)) if &v.name[1..] == name.as_bytes())
 }
 
-/// The text of each argument, as php-parser's printer keeps an argument node: the source from its name or `...` to the
-/// end of its value.
 pub(crate) fn argument_texts<'s>(ctx: &Context<'s>, list: &ArgumentList<'_>) -> Vec<&'s str> {
     list.arguments
         .iter()
@@ -268,8 +190,6 @@ pub(crate) fn argument_texts<'s>(ctx: &Context<'s>, list: &ArgumentList<'_>) -> 
         .collect()
 }
 
-/// `CallLike::getArg($name, $position)`: the argument named `name`, or the unnamed one at `position`; unpacked
-/// arguments are skipped.
 pub(crate) fn get_arg<'a>(
     list: &'a ArgumentList<'a>,
     name: &str,
@@ -285,13 +205,10 @@ pub(crate) fn get_arg<'a>(
         .map(|(_, a)| a)
 }
 
-/// `name(arg, arg)`: a call php-parser's printer writes for a new call node over kept arguments.
 pub(crate) fn call(name: &str, args: &[&str]) -> String {
     format!("{name}({})", args.join(", "))
 }
 
-/// The nearest ancestor that is a different node from the one at `span` (Mago wraps a node in `Expression`, `Call`,
-/// `Access` and the like, all with the same span).
 fn parent<'n, 'ast, 'arena>(
     span: Span,
     ancestors: &'n [Node<'ast, 'arena>],
@@ -303,9 +220,6 @@ fn parent<'n, 'ast, 'arena>(
         .find(|(_, a)| node_span(*a) != span && !matches!(a, Node::Parenthesized(_)))
 }
 
-/// Whether the expression at `span` is written to, so that a call put in its place would not parse: an assignment's
-/// target (also inside a destructuring list), a reference, `++`/`--`, `isset()`, `unset()` or a `foreach` target.
-/// Rector rewrites some of these into code PHP rejects; Pun leaves them.
 pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
     let mut at = span;
     let mut index = ancestors.len();
@@ -328,12 +242,10 @@ pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
                 let target = node_span(&foreach.target);
                 return target.start <= at.start && at.end <= target.end;
             }
-            // `$a['x']['y'] = ...` writes to `$a['x']` too.
             Node::ArrayAccess(access) if node_span(access.array) == at => {
                 at = node_span(node);
                 index = i;
             }
-            // An item of `[...] = ` or `list(...) =`: go on up to the assignment.
             Node::ArrayElement(_)
             | Node::KeyValueArrayElement(_)
             | Node::ValueArrayElement(_)
@@ -347,9 +259,6 @@ pub(crate) fn is_written(span: Span, ancestors: &[Node<'_, '_>]) -> bool {
     }
 }
 
-/// `ArrayDimFetchContextNodeVisitor::markByRefArgs`: the expression at `span` (or the item read from it, as in
-/// `$a['x']['y']`) is an argument of a call to a known function whose parameter takes it by reference (a named
-/// argument by its name, past the end the last parameter when it is variadic).
 pub(crate) fn is_by_ref_argument(
     ctx: &Context<'_>,
     span: Span,
@@ -375,11 +284,10 @@ pub(crate) fn is_by_ref_argument(
     else {
         return false;
     };
-    let Some(name) = crate::rules::rector_batch5::called_function_name(ancestors, call.function)
+    let Some(name) = crate::rules::support::names::called_function_name(ancestors, call.function)
     else {
         return false;
     };
-    // `ReflectionProvider::hasFunction()`: the namespaced name, then the global one.
     let facts = crate::rules::types::facts::facts(ctx);
     let local = matches!(
         call.function,
@@ -409,8 +317,6 @@ pub(crate) fn is_by_ref_argument(
     parameter.is_some_and(|p| p.flags.is_by_reference())
 }
 
-/// Whether the node at `span` lies in a string (`"{$a['x']}"`, a heredoc or a backtick command), as php-parser's
-/// `InterpolatedString` or `ShellExec` parts.
 pub(crate) fn in_string(ancestors: &[Node<'_, '_>]) -> bool {
     ancestors.iter().any(|a| {
         matches!(
@@ -424,9 +330,6 @@ pub(crate) fn in_string(ancestors: &[Node<'_, '_>]) -> bool {
     })
 }
 
-/// rector-laravel's `ArrayDimFetchContextNodeVisitor::IS_IN_SUPERGLOBAL_ASSIGN`: the node lies in an assignment to
-/// `$_SERVER`, `$_GET`, `$_POST`, `$_REQUEST` or `$_ENV` (or one of their items), in `isset()`, in `unset()` or in an
-/// interpolated string.
 pub(crate) fn in_superglobal_assign(ancestors: &[Node<'_, '_>]) -> bool {
     const SUPERGLOBALS: [&str; 5] = ["_SERVER", "_GET", "_POST", "_REQUEST", "_ENV"];
     ancestors.iter().any(|a| match a {
@@ -445,23 +348,18 @@ pub(crate) fn in_superglobal_assign(ancestors: &[Node<'_, '_>]) -> bool {
     })
 }
 
-/// The object of a method call when it is a call of the global function `name` with no arguments.
 pub(crate) fn is_bare_call(expr: &Expression<'_>, name: &str) -> bool {
     matches!(
         unparenthesize(expr),
         Expression::Call(Call::Function(f))
-            if super::rector_code_quality::named(f, name) && f.argument_list.arguments.is_empty()
+            if crate::rules::support::expressions::named(f, name) && f.argument_list.arguments.is_empty()
     )
 }
 
-/// A report on `span` whose fix writes `code` there.
 pub(crate) fn replace(span: Span, message: String, code: String) -> Report {
     Report::fixed(span, message, Safety::Unsafe, vec![Edit::new(span, code)])
 }
 
-/// `RedirectBackToBackHelperRector` and `RedirectRouteToToRouteHelperRector`: `redirect()->method(...)` (the helper
-/// called with no arguments) and `Redirect::method(...)` (the `Illuminate\Support\Facades\Redirect` facade) become
-/// `helper(...)`, with the method's arguments.
 pub(crate) fn redirect_helper(
     node: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -494,8 +392,6 @@ pub(crate) fn redirect_helper(
     ));
 }
 
-/// PHPStan's `ObjectType::isSuperTypeOf` on a class name: `class` is one of `targets` (ignoring ASCII case), or a
-/// class the codebase knows that extends, implements or uses (itself or through a parent) one of them.
 pub(crate) fn is_a(ctx: &Context<'_>, class: &str, targets: &[&str]) -> bool {
     let target = |name: &[u8]| {
         targets
@@ -519,8 +415,6 @@ pub(crate) fn is_a(ctx: &Context<'_>, class: &str, targets: &[&str]) -> bool {
     })
 }
 
-/// Whether the expression holds an object of `class` (or a subclass the codebase knows): `$this` in such a class, or
-/// what [`is_object_of`](crate::rules::lint_b_helpers::is_object_of) proves from the syntax.
 pub(crate) fn is_object(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -529,7 +423,6 @@ pub(crate) fn is_object(
 ) -> bool {
     match unparenthesize(expr) {
         Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => {
-            // The class-like `$this` stands for; none in a trait, which Rector leaves alone.
             let own = ancestors.iter().rev().find_map(|a| {
                 let name = match a {
                     Node::Class(c) => c.name.value,
@@ -550,6 +443,6 @@ pub(crate) fn is_object(
             });
             own.is_some_and(|own| is_a(ctx, &own, &[class]))
         }
-        e => crate::rules::lint_b_helpers::is_object_of(ancestors, e, class, node_span(e).start),
+        e => crate::rules::support::values::is_object_of(ancestors, e, class, node_span(e).start),
     }
 }

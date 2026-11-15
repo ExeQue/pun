@@ -1,14 +1,9 @@
-// Generated from PhpCsFixer\DocBlock\TypeExpression constants (v3.95.17) via reflection; do not hand-edit.
-// Crate-local macros (`#[macro_use] mod regex` in `docblock/mod.rs`), so `concat!` can splice them.
-
-/// `TypeExpression::REGEX_IDENTIFIER`.
 macro_rules! __regex_identifier {
     () => {
         r"(?:(?!(?<!\*)\d)[^\x00-\x2f\x3a-\x40\x5b-\x5e\x60\x7b-\x7f]++)"
     };
 }
 
-/// `TypeExpression::REGEX_TYPE` (private upstream).
 macro_rules! __regex_type { () => { r#"(?<type>(?x) # single type
             (?:co(?:ntra)?variant\h+)?
             (?<nullable>\??\h*)
@@ -180,7 +175,6 @@ macro_rules! __regex_type { () => { r#"(?<type>(?x) # single type
             |)
         )"# } }
 
-/// `TypeExpression::REGEX_TYPES`.
 macro_rules! __regex_types {
     () => {
         concat!(

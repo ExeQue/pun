@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpTag\BlankLineAfterOpeningTagFixer`.
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::rtrim};
 use std::path::Path;
@@ -17,8 +16,6 @@ impl Fixer for BlankLineAfterOpeningTagFixer {
         "blank_line_after_opening_tag"
     }
     fn priority(&self) -> i32 {
-        // Must run before BlankLinesBeforeNamespaceFixer, NoBlankLinesBeforeNamespaceFixer.
-        // Must run after DeclareStrictTypesFixer.
         1
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

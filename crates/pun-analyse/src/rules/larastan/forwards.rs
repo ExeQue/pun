@@ -1,9 +1,3 @@
-//! Larastan's call forwarding for the rules' inference. ModelForwardsCallsExtension: a method a model does not declare
-//! is its `Builder<static>`'s (`Model::__call()` and `__callStatic()` forward to a new query), with the builder's
-//! `TModel` the model and its `static` the builder. EloquentBuilderForwardsCallsExtension: a query builder method an
-//! Eloquent builder reaches through its `@mixin` returns the Eloquent builder, unless it is passed through.
-//! Mago resolves the mixin itself; these providers only replace the return types.
-
 use mago_analyzer::plugin::context::{InvocationInfo, ProviderContext};
 use mago_analyzer::plugin::provider::function::{
     CallbackInvocation, FunctionReturnTypeProvider, FunctionTarget,
@@ -34,8 +28,6 @@ const USE_ELOQUENT_BUILDER: &[u8] =
     b"Illuminate\\Database\\Eloquent\\Attributes\\UseEloquentBuilder";
 const SOFT_DELETES: &[u8] = b"Illuminate\\Database\\Eloquent\\SoftDeletes";
 
-/// `BuilderHelper::$passthru`: the query builder's results. Its constructor adds `getCountForPagination` from Laravel
-/// 12.15 only when LARAVEL_VERSION is defined by then; PHPStan's CLI run (even on Laravel 13) leaves the call a builder.
 const PASSTHRU: &[&str] = &[
     "average",
     "avg",
@@ -64,7 +56,6 @@ const PASSTHRU: &[&str] = &[
 static META: ProviderMeta =
     ProviderMeta::new("pun-larastan", "pun-larastan", "Larastan's call forwarding");
 
-/// Helpers\TapExtension: `tap($value)` is a `HigherOrderTapProxy` of the value, `tap($value, $callback)` the value.
 pub(crate) struct Tap;
 
 impl Provider for Tap {
@@ -90,7 +81,6 @@ impl FunctionReturnTypeProvider for Tap {
         };
         match invocation.argument_count() {
             1 => {
-                // a `$this` value is its static object
                 let value = TUnion::from_vec(
                     value()?
                         .types
@@ -121,7 +111,6 @@ impl FunctionReturnTypeProvider for Tap {
     }
 }
 
-/// The analysed file's contents locate a static call's class (`self`, `static` or a name).
 pub(crate) struct ModelForwards(pub(crate) Vec<u8>);
 
 impl Provider for ModelForwards {
@@ -132,12 +121,10 @@ impl Provider for ModelForwards {
 
 impl MethodReturnTypeProvider for ModelForwards {
     fn targets() -> &'static [MethodTarget] {
-        // the registry matches a class pattern by name alone, and the called class is any model
         static TARGETS: [MethodTarget; 1] = [MethodTarget::any_class(b"*")];
         &TARGETS
     }
 
-    /// The inline callbacks of a model's call forwarded to its builder ([`model_forward()`]).
     fn callback_invocations<'ast, 'arena>(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -160,7 +147,6 @@ impl MethodReturnTypeProvider for ModelForwards {
             && codebase.is_instance_of(receiver.name.as_bytes(), RELATION)
             && let Some(related) = relation_model(codebase, receiver)
         {
-            // RelationForwardsCallsExtension: the relation's related model's builder
             (builder_of(codebase, &related), receiver.clone())
         } else {
             return Vec::new();
@@ -182,8 +168,6 @@ impl MethodReturnTypeProvider for ModelForwards {
         invocation: &InvocationInfo<'_, '_, '_>,
     ) -> Option<TUnion> {
         let codebase = context.codebase();
-        // ModelForwardsCallsExtension is asked before the `@method` tags of the SoftDeletes trait, which declare
-        // the Eloquent builder where the model may have its own
         if class.eq_ignore_ascii_case(SOFT_DELETES)
             && [&b"withtrashed"[..], b"onlytrashed", b"withouttrashed"]
                 .iter()
@@ -196,14 +180,11 @@ impl MethodReturnTypeProvider for ModelForwards {
             };
             return model_forward(context, model.as_bytes(), method, invocation);
         }
-        // RedirectResponseMethodsClassReflectionExtension and ViewWithMethodsClassReflectionExtension: a `with*`
-        // method the class lacks returns the class
         if let Some(receiver) = with_method_class(codebase, class, method) {
             return Some(TUnion::from_atomic(TAtomic::Object(TObject::Named(
                 TNamedObject::new(receiver),
             ))));
         }
-        // (a query builder method its trait declares, `macro()`)
         if class.eq_ignore_ascii_case(QUERY_BUILDER)
             || codebase.class_uses_trait(QUERY_BUILDER, class)
         {
@@ -217,7 +198,6 @@ impl MethodReturnTypeProvider for ModelForwards {
                 }
                 _ => return None,
             };
-            // a passed-through method's own return type, whose `$this` PHPStan binds to the Eloquent builder
             if is_passthru(method) {
                 return method_type(
                     codebase,
@@ -229,14 +209,12 @@ impl MethodReturnTypeProvider for ModelForwards {
             }
             return Some(builder_result(codebase, receiver));
         }
-        // the proxy's `@mixin TValue` names the value's class as the method's
         let on_proxy = invocation.inner().target.get_method_context().is_some_and(|t| {
             matches!(&t.class_type, StaticClassType::Object(TObject::Named(n)) if n.name.as_bytes().eq_ignore_ascii_case(PROXY))
         });
         if class.eq_ignore_ascii_case(PROXY) || on_proxy {
             return higher_order_proxy(context, method, invocation);
         }
-        // HigherOrderTapProxyExtension: a method of `HigherOrderTapProxy<T>` returns the tapped object
         if let Some(target) = invocation.inner().target.get_method_context()
             && let StaticClassType::Object(TObject::Named(n)) = &target.class_type
             && n.name.as_bytes().eq_ignore_ascii_case(TAP_PROXY)
@@ -277,9 +255,6 @@ impl MethodReturnTypeProvider for ModelForwards {
 }
 
 impl ModelForwards {
-    /// ModelDynamicStaticMethodReturnTypeExtension on a static call of a model's native method that returns an
-    /// Eloquent builder (`query()`, `with()`), and NewModelQueryDynamicMethodReturnTypeExtension (`newQuery()` and
-    /// the like): the model's own builder of the model the call names.
     fn new_query(
         &self,
         context: &ProviderContext<'_, '_, '_>,
@@ -356,8 +331,6 @@ impl ModelForwards {
         if !references(returned, BUILDER) {
             return None;
         }
-        // `$scope->resolveTypeByName()` of the call's class: `static` keeps the late static binding, `self`, a name
-        // or an expression's object type is the class itself
         let is_static = static_class.is_some_and(|c| c.eq_ignore_ascii_case(b"static"));
         let types: Vec<TAtomic> = models()
             .map(|m| {
@@ -379,8 +352,6 @@ impl ModelForwards {
         (!types.is_empty()).then(|| TUnion::from_vec(types))
     }
 
-    /// A static call's class expression (`static`, `self`, a name or an expression), found in the source before
-    /// `::` and the method's name; `None` for an instance call.
     fn static_class(
         &self,
         invocation: &InvocationInfo<'_, '_, '_>,
@@ -406,7 +377,6 @@ impl ModelForwards {
     }
 }
 
-/// Whether the passthru list names the method (`BuilderHelper::$passthru`).
 fn is_passthru(method: &[u8]) -> bool {
     PASSTHRU.contains(
         &String::from_utf8_lossy(method)
@@ -415,7 +385,6 @@ fn is_passthru(method: &[u8]) -> bool {
     )
 }
 
-/// Whether a type names the class (`getReferencedClasses()`), in its type arguments too.
 fn references(ty: &TUnion, class: &[u8]) -> bool {
     ty.types.iter().any(|t| match t {
         TAtomic::Object(TObject::Named(n)) => {
@@ -429,8 +398,6 @@ fn references(ty: &TUnion, class: &[u8]) -> bool {
     })
 }
 
-/// A model's `#[Scope]` method that is not public, which a call outside the model's classes does not reach
-/// (ClassReflection::getMethod() asks the extensions when the scope cannot call the native method).
 fn hidden_scope(context: &ProviderContext<'_, '_, '_>, class: &[u8], method: &[u8]) -> bool {
     let codebase = context.codebase();
     let Some(m) = codebase.get_declaring_method(class, method) else {
@@ -449,8 +416,6 @@ fn hidden_scope(context: &ProviderContext<'_, '_, '_>, class: &[u8], method: &[u
             .is_some_and(|current| codebase.is_instance_of(current.as_bytes(), class))
 }
 
-/// BuilderHelper::determineBuilderName(): the class `#[UseEloquentBuilder]` names when the model does not declare
-/// `newEloquentBuilder()`, else the one it returns (the Eloquent builder when its type names that).
 pub(crate) fn builder_name(codebase: &CodebaseMetadata, model: &[u8]) -> mago_word::Word {
     use mago_codex::ttype::atomic::scalar::TScalar;
     use mago_codex::ttype::atomic::scalar::class_like_string::TClassLikeString;
@@ -494,15 +459,12 @@ pub(crate) fn builder_name(codebase: &CodebaseMetadata, model: &[u8]) -> mago_wo
     }
 }
 
-/// `new GenericObjectType($builderName, [$model])` of the model's own builder.
 fn builder_of(codebase: &CodebaseMetadata, model: &TNamedObject) -> TNamedObject {
     let name = builder_name(codebase, model.name.as_bytes());
     let model = TUnion::from_atomic(TAtomic::Object(TObject::Named(model.clone())));
     TNamedObject::new_with_type_parameters(name, Some(vec![model]))
 }
 
-/// The builder a forwarded call returns: the builder (`$this` and `static` dropped), its type arguments only when
-/// its class is generic.
 fn builder_result(codebase: &CodebaseMetadata, builder: &TNamedObject) -> TUnion {
     let mut builder = builder.clone();
     if codebase
@@ -514,7 +476,6 @@ fn builder_result(codebase: &CodebaseMetadata, builder: &TNamedObject) -> TUnion
     TUnion::from_atomic(plain(TAtomic::Object(TObject::Named(builder))))
 }
 
-/// The classes of an object type and its intersection's (`getObjectClassReflections()`).
 fn object_classes(ty: &TUnion) -> Vec<mago_word::Word> {
     let mut out = Vec::new();
     for t in ty.types.iter() {
@@ -531,8 +492,6 @@ fn object_classes(ty: &TUnion) -> Vec<mago_word::Word> {
     out
 }
 
-/// ModelForwardsCallsExtension: a model's call of a method of its own builder (`Builder<static>`), whose `static`
-/// and Eloquent builder are that builder of the model, or of one the builder forwards.
 fn model_forward(
     context: &ProviderContext<'_, '_, '_>,
     class: &[u8],
@@ -553,7 +512,6 @@ fn model_forward(
         method,
         Some((context, invocation)),
     )?;
-    // `TypeTraverser::map()`: each Eloquent builder is the model's builder
     let ty = TUnion::from_vec(
         ty.types
             .iter()
@@ -570,10 +528,6 @@ fn model_forward(
     Some(crate::laravel::replace_collections(codebase, &ty))
 }
 
-/// EloquentBuilderForwardsCallsExtension (BuilderHelper::searchOnEloquentBuilder()): a method an Eloquent builder
-/// reaches through its model's scopes, the query builder or a dynamic where returns the builder, unless the query
-/// builder's is passed through; the SoftDeletes methods of a model that uses the trait.
-// ponytail: macros are not seen
 fn builder_forward(
     context: &ProviderContext<'_, '_, '_>,
     builder: &TNamedObject,
@@ -582,7 +536,6 @@ fn builder_forward(
 ) -> Option<TUnion> {
     let codebase = context.codebase();
     let k = codebase.get_class_like(builder.name.as_bytes())?;
-    // the builder's own `TModel`, else its ancestors'
     let model = [k.name, codebase.get_class_like(BUILDER)?.name]
         .into_iter()
         .find_map(|defining| {
@@ -651,9 +604,6 @@ fn builder_forward(
     }
 }
 
-/// A method an Eloquent builder or a relation lacks (its stub's PHPDoc has no `@mixin`).
-/// EloquentBuilderForwardsCallsExtension on the builder; RelationForwardsCallsExtension: a method of the related
-/// model's builder, whose builder result is the relation itself.
 fn forward_builder_or_relation(
     context: &ProviderContext<'_, '_, '_>,
     method: &[u8],
@@ -677,8 +627,6 @@ fn forward_builder_or_relation(
     let builder = builder_of(codebase, &relation_model(codebase, receiver)?);
     let name = builder.name;
     let (ty, late) = if codebase.method_exists(name.as_bytes(), method) {
-        // `(new ObjectType(Builder::class))->isSuperTypeOf($returnType)->yes()` asks before the call resolves the
-        // method's templates and conditional types, so neither returns the relation
         let late = codebase
             .get_declaring_method(name.as_bytes(), method)
             .and_then(|f| f.return_type_metadata.as_ref())
@@ -715,13 +663,9 @@ fn forward_builder_or_relation(
             receiver.clone(),
         ))));
     }
-    // RelationCollectionExtension
     Some(crate::laravel::replace_collections(codebase, &ty))
 }
 
-/// The related models' own collections in what a builder's or relation's method returns, or a model's static method:
-/// EloquentBuilderExtension (and `collection-of<TModel>` for the `find` methods), RelationCollectionExtension and
-/// ModelDynamicStaticMethodReturnTypeExtension.
 fn own_collection(
     context: &ProviderContext<'_, '_, '_>,
     method: &[u8],
@@ -730,11 +674,9 @@ fn own_collection(
 ) -> Option<TUnion> {
     let codebase = context.codebase();
     let target = invocation.inner().target.get_method_context()?;
-    // a static call on a class name has the class, not an object
     let receiver = &match &target.class_type {
         StaticClassType::Object(TObject::Named(receiver)) => receiver.clone(),
         StaticClassType::Exact(name) | StaticClassType::Name(name) => TNamedObject::new(*name),
-        // a static call on a template (`class-string<TModel>`) has its bound's class (getObjectClassNames())
         StaticClassType::Generic(g) if static_call => match g.constraint.types.as_ref() {
             [TAtomic::Object(TObject::Named(bound))] => bound.clone(),
             _ => return None,
@@ -798,7 +740,6 @@ fn own_collection(
         return crate::laravel::references_collection(&ty)
             .then(|| crate::laravel::replace_collections(codebase, &ty));
     }
-    // ponytail: an instance call is not told from a static one (Mago keeps the invocation kind private)
     if is(MODEL)
         && codebase.method_exists(MODEL, method)
         && !name.starts_with("find")
@@ -808,7 +749,6 @@ fn own_collection(
         if !crate::laravel::references_collection(&ty) {
             return None;
         }
-        // ponytail: a Builder return (the model's custom builder) is left to the declared type
         if ty.types.iter().any(|t| matches!(t, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes().eq_ignore_ascii_case(BUILDER))) {
             return None;
         }
@@ -820,9 +760,6 @@ fn own_collection(
     None
 }
 
-/// HigherOrderCollectionProxyExtension and HigherOrderCollectionProxyHelper::determineReturnType(): a method of the
-/// proxy's `HigherOrderCollectionProxy<'name', TValue, TCollection>` is the value's, its result per the collection
-/// method proxied.
 fn higher_order_proxy(
     context: &ProviderContext<'_, '_, '_>,
     method: &[u8],
@@ -845,7 +782,6 @@ fn higher_order_proxy(
         return None;
     };
     let class = value_object.name.as_bytes();
-    // the value's native method, else a model's forwarded one (ModelForwardsCallsExtension)
     let forwarded = if codebase.method_exists(class, method) {
         None
     } else if codebase.is_instance_of(class, MODEL) {
@@ -864,12 +800,9 @@ fn higher_order_proxy(
             )
         })
     };
-    // ponytail: the ErrorType of `sum` and other methods is left to the declared return type
     crate::laravel::proxy_result(codebase, &name, value, returned, collection)
 }
 
-/// MixinMethodsClassReflectionExtension on a facade's static call: the method of a class its (stub's) `@mixin` tags
-/// name, or of one of their mixins.
 fn facade_mixin(
     context: &ProviderContext<'_, '_, '_>,
     class: &[u8],
@@ -905,8 +838,6 @@ fn facade_mixin(
                     depth + 1,
                 )
             };
-            // ClassReflection::getMethod(): a method the scope cannot call yields to a later extension's, here
-            // MixinMethodsClassReflectionExtension's (`Router`'s protected `prefix()` to `RouteRegistrar`'s tag)
             let found = match codebase.get_declaring_method(named.name.as_bytes(), method) {
                 Some(m)
                     if m.method_metadata
@@ -927,8 +858,6 @@ fn facade_mixin(
     None
 }
 
-/// [`facade_mixin`] for the rules: the method of a class a facade's `@mixin` tags name (or of their mixins), which
-/// MixinMethodsClassReflectionExtension answers for the facade's static call.
 pub(crate) fn facade_mixin_method<'a>(
     c: &super::super::Checker<'a, '_>,
     class: &'a mago_codex::metadata::class_like::ClassLikeMetadata,
@@ -952,7 +881,6 @@ pub(crate) fn facade_mixin_method<'a>(
                 super::super::members::annotation_method(c, k, method)
                     .or_else(|| facade_mixin_method(c, k, method, depth + 1))
             };
-            // as [`facade_mixin`]: a method the scope cannot call yields to a later extension's
             match own {
                 Some(m) if m.visibility() != mago_codex::visibility::Visibility::Public => {
                     deeper().or(Some(m))
@@ -963,9 +891,6 @@ pub(crate) fn facade_mixin_method<'a>(
         })
 }
 
-/// A call's conditional return types (`($id is array ? collection-of<TModel> : TModel)`) resolved on the type of the
-/// argument passed for the subject parameter, as Mago's invocation resolver does: the `then` branch when the argument
-/// is contained by the target, `otherwise` when the two can't be identical, both else.
 fn resolve_conditionals(
     codebase: &CodebaseMetadata,
     ty: &TUnion,
@@ -1041,8 +966,6 @@ fn resolve_conditionals(
     TUnion::from_vec(types)
 }
 
-/// The return type of `class`'s native `method` on `object` (`Builder<Model>`): the declaring class's (or trait's)
-/// templates as the object specializes them, and its `static` the object.
 pub(super) fn method_type(
     codebase: &CodebaseMetadata,
     class: &[u8],
@@ -1050,7 +973,6 @@ pub(super) fn method_type(
     method: &[u8],
     call: Option<(&ProviderContext<'_, '_, '_>, &InvocationInfo<'_, '_, '_>)>,
 ) -> Option<TUnion> {
-    // the declaring class's (or trait's) method: a trait's is not stored on the using class
     let function = codebase.get_declaring_method(class, method)?;
     let mut ty = function.return_type_metadata.as_ref()?.type_union.clone();
     let metadata = codebase.get_class_like(class)?;
@@ -1074,7 +996,6 @@ pub(super) fn method_type(
     ))
 }
 
-/// The templates of the class (or trait) declaring `class`'s `method`, as `object` specializes them.
 fn object_templates(
     codebase: &CodebaseMetadata,
     class: &[u8],
@@ -1087,7 +1008,6 @@ fn object_templates(
     let owner = codebase.get_class_like(declaring.as_bytes())?;
     for (name, template) in &owner.template_types {
         let parameters = object.type_parameters.as_deref();
-        // an object without arguments has its templates' defaults (`@template TAsync of bool = false`)
         let bound = match (parameters, &template.default) {
             (None, Some(default)) if owner.name == metadata.name => Some(default.clone()),
             _ => get_specialized_template_type(codebase, *name, owner.name, metadata, parameters),
@@ -1099,8 +1019,6 @@ fn object_templates(
     Some(templates)
 }
 
-/// The inline callbacks of a call of `function` with their parameters' types: each `callable(...)` parameter's
-/// types with the class's templates resolved (ArgumentsHandler types a closure argument against its parameter).
 fn callbacks<'ast, 'arena>(
     codebase: &CodebaseMetadata,
     function: &mago_codex::metadata::function_like::FunctionLikeMetadata,
@@ -1130,7 +1048,6 @@ fn callbacks<'ast, 'arena>(
                 .unwrap_or(name.as_bytes());
             invocation.get_argument(i, &[name])
         };
-    // a method template a literal string argument binds (`with('parent', fn ...)`'s `TRelation`)
     let mut templates = templates.clone();
     for (i, parameter) in function.parameters.iter().enumerate() {
         if let Some(literal) = argument_of(i, parameter).and_then(literal_string)
@@ -1142,8 +1059,6 @@ fn callbacks<'ast, 'arena>(
         }
     }
     let templates = &templates;
-    // the forwarded method's `$this`: the relation (RelationForwardsCallsExtension) or the model's builder
-    // (ModelForwardsCallsExtension), which `when()`'s and `orWhere()`'s callbacks get
     let this = this.map(|object| TypeExpansionOptions {
         self_class: Some(object.name),
         static_class_type: StaticClassType::Object(TObject::Named(object.clone())),
@@ -1185,8 +1100,6 @@ fn callbacks<'ast, 'arena>(
                     arguments: typed(signature, templates),
                 });
             }
-            // ArgumentsHandler passes an array literal its parameter's type: `array<TKey, Closure(...)>` types each
-            // closure item, with `TKey` the array's literal string keys
             Expression::Array(ArrayExpression { elements, .. })
             | Expression::LegacyArray(LegacyArray { elements, .. }) => {
                 let Some((key, value)) = declared.types.iter().find_map(|t| match t {
@@ -1246,9 +1159,6 @@ fn callbacks<'ast, 'arena>(
     out
 }
 
-/// `GenericParametersAcceptorResolver::resolve()` for the forwarded method's own templates, as far as the forwarded
-/// return types need it: a parameter typed `T` (or `?T`) takes the argument's type (an omitted one its default
-/// value's), a `callable(...): T` one the passed callable's return type.
 fn infer_method_templates(
     codebase: &CodebaseMetadata,
     function: &mago_codex::metadata::function_like::FunctionLikeMetadata,
@@ -1277,7 +1187,6 @@ fn infer_method_templates(
             .as_bytes()
             .strip_prefix(b"$")
             .unwrap_or(name.as_bytes());
-        // an omitted argument is its parameter's default value
         let argument = match invocation.get_argument(i, &[name]) {
             Some(a) => context.get_expression_type(a).cloned(),
             None => parameter.get_default_type().map(|d| d.type_union.clone()),
@@ -1303,7 +1212,6 @@ fn infer_method_templates(
             let Some(g) = signature.return_type.as_deref().and_then(single) else {
                 continue;
             };
-            // an inline callback typed again against the parameter (callbacks())
             let priced = invocation.get_argument(i, &[name]).and_then(|callback| {
                 let arguments = callbacks(codebase, function, templates, invocation, None)
                     .into_iter()
@@ -1341,7 +1249,6 @@ fn infer_method_templates(
     }
 }
 
-/// The type as a generic object type: neither `$this` nor `static`, which Mago would bind to the call site again.
 fn plain(t: TAtomic) -> TAtomic {
     match t {
         TAtomic::Object(TObject::Named(n)) => TAtomic::Object(TObject::Named(
@@ -1355,11 +1262,6 @@ fn plain(t: TAtomic) -> TAtomic {
     }
 }
 
-/// ModelForwardsCallsExtension on a static call of a model's non-public `#[Scope]` method from outside the model
-/// (`Activity::completed()`): PHPStan's ClassReflection::getMethod() asks the extensions when the scope cannot call
-/// the native method, and the scope returns the model's builder. Mago resolves the protected instance method and
-/// gives up, so the hook replaces the call's type.
-/// The file's resolved names, by their start offset.
 pub(crate) struct ScopeStaticCalls(pub(crate) std::collections::HashMap<u32, Vec<u8>>);
 
 impl Provider for ScopeStaticCalls {
@@ -1423,9 +1325,6 @@ impl mago_analyzer::plugin::ExpressionHook for ScopeStaticCalls {
     }
 }
 
-/// RedirectResponseMethodsClassReflectionExtension and ViewWithMethodsClassReflectionExtension: the class of a
-/// `with*` method of `Illuminate\Http\RedirectResponse`, `Illuminate\View\View` or `Illuminate\Contracts\View\View`
-/// that it does not declare.
 pub(crate) fn with_method_class(
     codebase: &CodebaseMetadata,
     class: &[u8],
@@ -1446,8 +1345,6 @@ pub(crate) fn with_method_class(
         .then_some(k.original_name)
 }
 
-/// BuilderOfType::getResult() and RelationOfType::getResult() for Mago's expander (`builder-of<TModel[, TRelation]>`
-/// and `relation-of<TModel, TRelation>` once their arguments have no template left).
 pub(crate) fn late_builder(
     codebase: &CodebaseMetadata,
     name: &[u8],
@@ -1499,7 +1396,6 @@ pub(crate) fn late_builder(
                         ),
                     )))
                 });
-            // eager loading creates the relation on a fresh model instance (`StaticType::getStaticObjectType()`)
             let mut relation =
                 TUnion::from_vec(relation.types.iter().cloned().map(plain).collect());
             relation.set_ignore_nullable_issues(true);
@@ -1510,7 +1406,6 @@ pub(crate) fn late_builder(
     }
 }
 
-/// A relation's `TRelatedModel`, `Model` when it has none, or `None` when it is not a model.
 fn relation_model(codebase: &CodebaseMetadata, receiver: &TNamedObject) -> Option<TNamedObject> {
     let metadata = codebase.get_class_like(receiver.name.as_bytes())?;
     let relation = codebase.get_class_like(RELATION)?;
@@ -1533,7 +1428,6 @@ fn is_model(codebase: &CodebaseMetadata, class: &[u8]) -> bool {
     class.eq_ignore_ascii_case(MODEL) || codebase.is_instance_of(class, MODEL)
 }
 
-/// `getTemplateType(Relation::class, 'TRelatedModel')` of a relation type.
 fn related_model(codebase: &CodebaseMetadata, relation: &TUnion) -> Option<TUnion> {
     let definer = codebase.get_class_like(RELATION)?.name;
     let models: Vec<TAtomic> = relation
@@ -1554,8 +1448,6 @@ fn related_model(codebase: &CodebaseMetadata, relation: &TUnion) -> Option<TUnio
     (!models.is_empty()).then(|| TUnion::from_vec(models))
 }
 
-/// RelationOfType::resolveRelations(): the union of each constant key's relation path, and whether a path failed
-/// on an unknown model.
 fn resolve_relations(
     codebase: &CodebaseMetadata,
     model: &TUnion,
@@ -1587,7 +1479,6 @@ fn resolve_relations(
     )
 }
 
-/// RelationOfType::followRelationPath().
 fn follow_relation_path(
     codebase: &CodebaseMetadata,
     model: &TUnion,
@@ -1631,7 +1522,6 @@ fn follow_relation_path(
     (relation, false)
 }
 
-/// RelationOfType::isUnknownModel(): no class, or an abstract one.
 fn is_unknown_model(codebase: &CodebaseMetadata, ty: &TUnion) -> bool {
     let classes: Vec<_> = ty
         .types

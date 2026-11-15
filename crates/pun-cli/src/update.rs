@@ -1,18 +1,13 @@
-//! `pun update`, `pun require` and `pun remove`: resolve the dependencies again (all of them, or the packages named,
-//! with Composer's partial-update rules), write pun.lock, then install it as `pun install` does. `require` and
-//! `remove` edit pun.toml in memory and write it only once the new requirements resolve; when the install after
-//! fails, both files are put back.
-
+use crate::Exit;
 use crate::install::{InstallArgs, Project, fetcher, install_locked, project};
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
-use pun_packages::fetch::composer_dirs;
+use pun_packages::fetch::{self, composer_dirs};
 use pun_packages::lock::Lock;
-use pun_packages::manifest_edit::{name_version_pairs, toml_remove, toml_set};
+use pun_packages::manifest_edit::{json_remove, json_set, name_version_pairs};
 use pun_packages::resolver::pool::Transitive;
 use pun_packages::resolver::{self, Options, Resolution, explain, locker, platform, repos};
-use pun_packages::scripts::Runner;
-use pun_packages::version::{compare, is_platform, name_matches, normalize};
+use pun_packages::version::{IgnorePlatform, compare, is_platform, name_matches, normalize};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -31,6 +26,10 @@ pub(crate) struct UpdateArgs {
 }
 
 #[derive(clap::Args, Clone, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct ResolveArgs {
     /// Also update the named packages' dependencies, except those the project requires itself.
     #[arg(short = 'w', long)]
@@ -82,9 +81,6 @@ pub(crate) struct RemoveArgs {
     /// Packages to remove (`vendor/*` patterns too), from require or require-dev, whichever holds them.
     #[arg(required = true)]
     packages: Vec<String>,
-    /// Accepted for Composer's flag: Pun removes a package from whichever section holds it.
-    #[arg(long, hide = true)]
-    dev: bool,
     /// Edit the manifest without resolving or installing.
     #[arg(long)]
     no_update: bool,
@@ -115,14 +111,12 @@ struct Edit {
     original: Option<String>,
 }
 
-pub(crate) fn run(a: UpdateArgs) -> Result<u8> {
+pub(crate) fn run(a: UpdateArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), false)?;
     if let Some(lock) = &project.lock {
         for name in a.packages.iter().filter(|n| !n.contains('*')) {
-            let locked = (lock.all())
-                .filter_map(|p| p.get("name").and_then(Value::as_str))
-                .any(|n| n.eq_ignore_ascii_case(name));
+            let locked = (lock.all()).any(|p| p.pretty_name().eq_ignore_ascii_case(name));
             if !locked {
                 eprintln!(" ! {name} is not in the lock, so there is nothing of it to update");
             }
@@ -134,45 +128,31 @@ pub(crate) fn run(a: UpdateArgs) -> Result<u8> {
         dry_run: a.dry_run,
         ..Plan::default()
     };
-    update_and_install(&mut project, plan, &a.install, started)
+    update_and_install(&mut project, &plan, &a.install, started)
 }
 
 /// Resolves the project, prints what changes, writes the lock and installs it.
 pub(crate) fn update_and_install(
     project: &mut Project,
-    plan: Plan,
+    plan: &Plan,
     a: &InstallArgs,
     started: Instant,
-) -> Result<u8> {
-    pre_update(project, a, &plan)?;
-    let (resolution, options) = match resolve(project, &plan, a)? {
+) -> Result<Exit> {
+    pre_update(project, a, plan)?;
+    let (resolution, options) = match resolve(project, plan, a)? {
         Ok(r) => r,
         Err(problems) => return Ok(print_problems(&problems)),
     };
     let lock = locker::lock(&resolution, &project.manifest, &options);
-    // The resolve read tens of thousands of versions; free them on another thread while this one installs.
     std::thread::spawn(move || drop(resolution));
-    finish(project, &plan, a, started, lock, None)
+    finish(project, plan, a, started, lock, None)
 }
 
 fn pre_update(project: &Project, a: &InstallArgs, plan: &Plan) -> Result<()> {
-    if a.no_scripts || plan.dry_run {
+    if plan.dry_run {
         return Ok(());
     }
-    dispatch(project, a, "pre-update-cmd")
-}
-
-fn dispatch(project: &Project, a: &InstallArgs, event: &str) -> Result<()> {
-    let (vendor, bin_dir) =
-        pun_packages::install::dirs(&project.root.to_string_lossy(), &project.manifest);
-    Runner::new(
-        &project.root,
-        &vendor,
-        &bin_dir,
-        &project.manifest,
-        !a.no_dev,
-    )
-    .dispatch(event, &[])
+    Ok(project.dispatch(a, "pre-update-cmd")?)
 }
 
 /// The global config.json's `repositories`.
@@ -183,12 +163,11 @@ fn global_repositories() -> Option<Value> {
     config.get("repositories").cloned()
 }
 
-/// The project resolved: the packages and the options they were resolved with, or the problems in sentences.
-fn resolve(
-    project: &Project,
-    plan: &Plan,
-    a: &InstallArgs,
-) -> Result<std::result::Result<(Resolution, Options), Vec<Vec<String>>>> {
+/// The packages and the options they were resolved with, or the problems in sentences.
+type Resolved = std::result::Result<(Resolution, Options), Vec<Vec<String>>>;
+
+/// The project resolved.
+fn resolve(project: &Project, plan: &Plan, a: &InstallArgs) -> Result<Resolved> {
     let r = &plan.resolve;
     let transitive = if r.with_all_dependencies {
         Transitive::All
@@ -203,8 +182,7 @@ fn resolve(
         prefer_stable: r.prefer_stable,
         prefer_lowest: r.prefer_lowest,
         minimal_changes: r.minimal_changes,
-        ignore_platform: a.ignore_platform_req.clone(),
-        ignore_all_platform: a.ignore_platform_reqs,
+        ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
     let php = std::env::var("PHP_BINARY")
         .ok()
@@ -216,13 +194,21 @@ fn resolve(
     let platform = platform::detect(&php, overrides)?;
     let fetcher = fetcher(&project.root, &project.manifest);
     let global = global_repositories();
-    let repositories = repos::open(&project.root, &project.manifest, global.as_ref(), &fetcher)?;
+    let env = |k: &str| std::env::var(k).ok();
+    let repositories = repos::open(
+        &project.root,
+        &project.manifest,
+        global.as_ref(),
+        &fetcher,
+        &env,
+    )?;
     let resolved = resolver::resolve(
         &project.manifest,
         platform,
         repositories,
         project.lock.as_ref(),
         &options,
+        &env,
     )?;
     Ok(match resolved {
         Ok(resolution) => Ok((resolution, options)),
@@ -231,7 +217,7 @@ fn resolve(
 }
 
 /// Prints why the requirements don't resolve; the exit code, 2 as Composer's.
-fn print_problems(problems: &[Vec<String>]) -> u8 {
+fn print_problems(problems: &[Vec<String>]) -> Exit {
     let look = Look::stderr(ColorChoice::Auto);
     let cross = look.paint(Role::Error, look.glyph("✖", "x"));
     eprintln!("{cross} The requirements can't be resolved:");
@@ -241,7 +227,7 @@ fn print_problems(problems: &[Vec<String>]) -> u8 {
             eprintln!("    - {l}");
         }
     }
-    2
+    Exit::RunError
 }
 
 /// Prints the changes, writes the manifest edit and the lock, then installs; a failed install after an edit puts
@@ -253,33 +239,31 @@ fn finish(
     started: Instant,
     lock: Lock,
     edit: Option<Edit>,
-) -> Result<u8> {
+) -> Result<Exit> {
     print_changes(project.lock.as_ref(), &lock);
     if plan.dry_run {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
-    let lock_file = "pun.lock";
+    let lock_file = "composer.lock";
     let lock_path = project.root.join(lock_file);
     let lock_backup = std::fs::read_to_string(&lock_path).ok();
     if let Some(e) = &edit {
         write(&e.path, &e.text)?;
     }
-    // pun.lock is TOML, which has no null: take it through composer.lock's reader, which drops them.
-    let text = Lock::from_composer_lock(&lock.to_composer_lock())?.to_toml();
-    write(&lock_path, &text)?;
+    write(&lock_path, &lock.to_composer_lock())?;
     let result = if plan.resolve.no_install {
-        (!a.no_scripts)
-            .then(|| dispatch(project, a, "post-update-cmd"))
-            .transpose()
-            .map(|_| {
-                eprintln!("Wrote {lock_file}; vendor/ is unchanged (--no-install)");
-                0
-            })
+        (project
+            .dispatch(a, "post-update-cmd")
+            .map_err(anyhow::Error::from))
+        .map(|()| {
+            eprintln!("Wrote {lock_file}; vendor/ is unchanged (--no-install)");
+            Exit::Success
+        })
     } else {
         install_locked(project, &lock, a, started, true)
     };
     if let Some(e) = edit
-        && !matches!(result, Ok(0))
+        && !matches!(result, Ok(Exit::Success))
     {
         restore(&e.path, e.original.as_deref())?;
         restore(&lock_path, lock_backup.as_deref())?;
@@ -302,29 +286,18 @@ fn write(path: &Path, text: &str) -> Result<()> {
 fn restore(path: &Path, original: Option<&str>) -> Result<()> {
     match original {
         Some(text) => write(path, text),
-        None => match std::fs::remove_file(path) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                Err(e).with_context(|| format!("can't remove {}", path.display()))
-            }
-            _ => Ok(()),
-        },
+        None => fetch::remove(path).with_context(|| format!("can't remove {}", path.display())),
     }
 }
 
 /// Each package's (lowercase name, version, short reference) in a lock, by name.
 fn versions(lock: &Lock) -> Vec<(String, String, String)> {
-    let s = |v: Option<&Value>| v.and_then(Value::as_str).unwrap_or_default().to_string();
     let mut out: Vec<(String, String, String)> = (lock.all())
         .map(|p| {
-            let dist = s(p.get("dist").and_then(|d| d.get("reference")));
-            let reference = if dist.is_empty() {
-                s(p.get("source").and_then(|d| d.get("reference")))
-            } else {
-                dist
-            };
+            let reference = p.reference().unwrap_or_default();
             (
-                s(p.get("name")).to_ascii_lowercase(),
-                s(p.get("version")),
+                p.name(),
+                p.version().to_string(),
                 reference.chars().take(7).collect(),
             )
         })
@@ -337,7 +310,7 @@ fn versions(lock: &Lock) -> Vec<(String, String, String)> {
 /// branch, `-` removed.
 fn print_changes(old: Option<&Lock>, new: &Lock) {
     let look = Look::stderr(ColorChoice::Auto);
-    let (old, new) = (old.map(versions).unwrap_or_default(), versions(new));
+    let (old, new) = (old.map_or_default(versions), versions(new));
     let arrow = look.glyph("→", "->");
     let mut lines = vec![];
     for (name, version, reference) in &new {
@@ -380,7 +353,7 @@ fn print_changes(old: Option<&Lock>, new: &Lock) {
     }
 }
 
-/// The pun.toml an edit changes: the project's own, or a workspace member's.
+/// The composer.json an edit changes: the project's own, or a workspace member's.
 struct Target {
     path: PathBuf,
     /// The file's text now; `None` when it doesn't exist yet.
@@ -397,11 +370,10 @@ impl Target {
     }
 
     fn parse(&self, text: &str) -> Result<Map<String, Value>> {
-        let table: toml::Table =
-            toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
-        Ok(pun_config::manifest::parse(&self.path, &table)?
-            .map(|m| m.json)
-            .unwrap_or_default())
+        if text.is_empty() {
+            return Ok(Map::new());
+        }
+        serde_json::from_str(text).with_context(|| format!("invalid {}", self.path.display()))
     }
 
     /// Makes the edit visible to the resolver: a member's file is written now, since the workspace's path
@@ -441,7 +413,7 @@ fn target(project: &Project, member: Option<&str>) -> Result<Target> {
         Some(m) => (m.dir.as_path(), Some(m.name.clone())),
         None => (project.root.as_path(), None),
     };
-    let path = dir.join("pun.toml");
+    let path = dir.join("composer.json");
     let original = std::fs::read_to_string(&path).ok();
     let mut target = Target {
         path,
@@ -459,7 +431,7 @@ fn resolve_edit(
     plan: &Plan,
     a: &InstallArgs,
     target: &Target,
-) -> Result<std::result::Result<(Resolution, Options), u8>> {
+) -> Result<std::result::Result<(Resolution, Options), Exit>> {
     match resolve(project, plan, a) {
         Ok(Ok(r)) => Ok(Ok(r)),
         Ok(Err(problems)) => {
@@ -489,7 +461,7 @@ fn required(manifest: &Map<String, Value>, section: &str, pattern: &str) -> Vec<
     .collect()
 }
 
-pub(crate) fn require(a: RequireArgs) -> Result<u8> {
+pub(crate) fn require(a: RequireArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), true)?;
     let target = target(&project, a.member.as_deref())?;
@@ -516,12 +488,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     }
     let sort = a.sort_packages || sort_packages(&target.manifest);
     let set = |text: &str, name: &str, constraint: &str| -> Result<String> {
-        let text = toml_set(text, section, name, constraint, sort)?;
-        if required(&target.manifest, other, name).is_empty() {
-            Ok(text)
-        } else {
-            toml_remove(&text, other, name)
-        }
+        Ok(json_set(text, section, other, name, constraint, sort)?)
     };
     let mut text = target.original.clone().unwrap_or_default();
     for (name, version) in &pairs {
@@ -534,10 +501,9 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     if a.no_update {
         write(&target.path, &text)?;
         eprintln!("Updated {file}");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let mut names: Vec<String> = pairs.iter().map(|(n, _)| n.to_ascii_lowercase()).collect();
-    // A member's requirements changed, so the member's own locked entry changes too.
     names.extend(target.member.clone());
     let plan = Plan {
         allow_list: if project.lock.is_some() {
@@ -555,8 +521,6 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
         Ok(r) => r,
         Err(code) => return Ok(code),
     };
-    // Composer resolves a package named without a version at `*`, then writes the constraint for what it found
-    // and updates the lock's hash and stability flags to match.
     let mut lock = locker::lock(&resolution, &project.manifest, &options);
     let mut picked = vec![];
     for (name, version) in &pairs {
@@ -579,7 +543,6 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     }
     if !picked.is_empty() {
         if target.member.is_some() {
-            // The member's locked entry holds its requirements, so resolve again with the constraints written.
             target.apply(&mut project, &text)?;
             let (resolution, options) = match resolve_edit(&project, &plan, &a.install, &target)? {
                 Ok(r) => r,
@@ -600,7 +563,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<u8> {
     finish(&mut project, &plan, &a.install, started, lock, Some(edit))
 }
 
-pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
+pub(crate) fn remove(a: RemoveArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), false)?;
     let target = target(&project, a.member.as_deref())?;
@@ -610,7 +573,7 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
         let mut found = false;
         for section in ["require", "require-dev"] {
             for name in required(&target.manifest, section, pattern) {
-                text = toml_remove(&text, section, &name)?;
+                text = json_remove(&text, section, &name)?;
                 removed.push(name.to_ascii_lowercase());
                 found = true;
             }
@@ -620,13 +583,13 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<u8> {
         }
     }
     if removed.is_empty() {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let file = target.file(&project);
     if a.no_update {
         write(&target.path, &text)?;
         eprintln!("Updated {file}");
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     removed.extend(target.member.clone());
     let plan = Plan {

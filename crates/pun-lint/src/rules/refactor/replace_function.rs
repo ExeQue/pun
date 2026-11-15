@@ -1,19 +1,3 @@
-//! The `refactor` codemods that put something else in place of a function call, ported from Rector 2.8.4
-//! (rules/Transform/Rector/FuncCall):
-//!
-//! - `lint/refactor/replace-function-with-constant` (`FuncCallToConstFetchRector`): `{ php_sapi_name = "PHP_SAPI" }`.
-//!   A call whose name (`FuncCallNameResolver`) is a key, compared with case as `array_key_exists` does, becomes the
-//!   constant as written.
-//! - `lint/refactor/replace-function-with-new` (`FuncCallToNewRector`): `{ collection = "Collection" }`. A call to a
-//!   key (without case) becomes `new \Collection(...)` with the call's arguments.
-//! - `lint/refactor/replace-function-with-static` (`FuncCallToStaticCallRector`): `items = [{ old-func-name = "view",
-//!   new-class-name = "View", new-method-name = "make" }]`. A call to the old function (without case) becomes
-//!   `\View::make(...)` with its arguments (`self`, `parent` and `static` stay unqualified).
-//!
-//! The new node is printed anew: its arguments keep their text, joined as `pMaybeMultiline` joins them. A first-class
-//! callable (`f(...)`) is left alone: Rector writes `M_PI` for `pi(...)`, which is no longer a callable, and
-//! `new \Collection(...)`, which PHP rejects, and stops with an error on `view(...)` for a static call.
-
 use mago_syntax::cst::{Expression, FunctionCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -22,11 +6,10 @@ use super::{
     string_map,
 };
 use crate::rules::phpunit::maybe_multiline;
-use crate::rules::rector_stmts::line_indent;
+use crate::rules::support::statement_edits::line_indent;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-/// The arguments of a call as `pMaybeMultiline` prints them.
 fn printed_args(ctx: &Context<'_>, call: &FunctionCall<'_>) -> String {
     let list = &call.argument_list;
     let spans: Vec<Span> = list.arguments.iter().map(node_span).collect();
@@ -39,7 +22,6 @@ fn printed_args(ctx: &Context<'_>, call: &FunctionCall<'_>) -> String {
     )
 }
 
-/// A call of a function by name (a first-class callable is no call) and that name resolved.
 fn resolved<'ast, 'arena>(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -54,8 +36,6 @@ fn resolved<'ast, 'arena>(
     Some((call, function_name(ctx, ancestors, name)))
 }
 
-/// `code` in parentheses where it becomes the object or class of a member access or a call (php-parser's
-/// `FIXUP_DEREF_LHS` for a `new`).
 fn dereferenced(span: Span, ancestors: &[Node<'_, '_>], code: String) -> String {
     let parent = ancestors.iter().rev().find(|a| node_span(*a) != span);
     let lhs = parent.is_some_and(|p| {
@@ -86,7 +66,7 @@ impl Rule for ReplaceFunctionWithConstant {
         "lint/refactor/replace-function-with-constant"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.replacements = string_map(options)?;
         Ok(())
     }
@@ -130,7 +110,7 @@ impl Rule for ReplaceFunctionWithNew {
         "lint/refactor/replace-function-with-new"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         self.replacements = string_map(options)?;
         Ok(())
     }
@@ -168,7 +148,6 @@ impl Rule for ReplaceFunctionWithNew {
     }
 }
 
-/// `FuncCallToStaticCall`: the function and the class and method that replace it.
 pub struct StaticReplacement {
     pub function: String,
     pub class: String,
@@ -185,7 +164,7 @@ impl Rule for ReplaceFunctionWithStatic {
         "lint/refactor/replace-function-with-static"
     }
 
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         const KEYS: &[&str] = &["old-func-name", "new-class-name", "new-method-name"];
         let mut replacements = Vec::new();
         for item in items(options)? {

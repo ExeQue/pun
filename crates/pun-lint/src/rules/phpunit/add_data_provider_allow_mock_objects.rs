@@ -1,11 +1,3 @@
-//! `lint/phpunit/add-data-provider-allow-mock-objects`, ported from rector-phpunit's
-//! `AllowMockObjectsForDataProviderRector` (rules/PHPUnit120/Rector/Class_), with
-//! `MockObjectExprDetector::hasMethodCallWithoutExpects()`.
-//!
-//! A test class with a test method that has a `#[DataProvider]` attribute and calls `->method()` (outside closures)
-//! on anything but a method call or a value that is only a stub (`createStub()`) gets `#[\PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations]`, when
-//! that attribute class exists and the class has no such attribute yet.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{ClassLikeMember, Expression, MethodBody, Node, NodeKind};
@@ -15,8 +7,8 @@ use super::annotations::named_tags;
 use super::no_bare_mock_assign::scoped;
 use super::{AnyCall, class_body, is_public};
 use crate::rules::laravel::is_a;
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::rector_batch5::has_attribute;
+use crate::rules::support::docblocks::Doc;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -28,8 +20,8 @@ impl Rule for AddDataProviderAllowMockObjects {
         "lint/phpunit/add-data-provider-allow-mock-objects"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ATTRIBUTES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ATTRIBUTES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -49,7 +41,6 @@ impl Rule for AddDataProviderAllowMockObjects {
         if !should_add(ctx, &scope, node) {
             return;
         }
-        // has a test method, that contains a ->method() call without expects() and has a data provider attribute?
         let found = members.iter().any(|m| {
             let ClassLikeMember::Method(method) = m else {
                 return false;
@@ -98,13 +89,9 @@ impl Rule for AddDataProviderAllowMockObjects {
     }
 }
 
-/// `PHPUnitClassName::STUB` and `PHPUnitClassName::MOCK_OBJECT`.
 const STUB: &str = "PHPUnit\\Framework\\MockObject\\Stub";
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
-/// `MockObjectExprDetector::isStubOnly`: the value is surely a `Stub` (a `createStub()` result) and not surely a
-/// `MockObject`; such a stub needs no expectations. Each type of a union must be one, through any part of an
-/// intersection.
 fn is_stub_only(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     let Some(t) = facts.full_type(node_span(unparenthesize(expr))) else {

@@ -1,8 +1,3 @@
-//! `[analyse]` as the PHPStan parameters pun-analyse reads: the level the enabled rules add up to, the parameters
-//! that gate a rule class (on when its rule is), the options `pun migrate` writes from changed parameters
-//! (mapping.toml `[phpstan-parameters]`), `stubFiles` and `ignoreErrors` from `stubs` and `[[analyse.ignore]]`, and
-//! Larastan when Laravel is locked at a version it supports.
-
 use crate::composer::Version;
 use crate::{Analyse, mapping};
 use pun_phpstan::php::normalize_path;
@@ -10,7 +5,6 @@ use pun_phpstan::{Array, Key, Value};
 use std::collections::HashSet;
 use std::path::Path;
 
-/// The PHPStan level each type switch stands for (mapping.toml `[upstream.phpstan-parameters]`).
 const SWITCH_LEVELS: [(&str, u8); 4] = [
     ("union-types", 7),
     ("nullables", 8),
@@ -18,8 +12,6 @@ const SWITCH_LEVELS: [(&str, u8); 4] = [
     ("implicit-mixed", 10),
 ];
 
-/// Whether Larastan (3.x, the version Pun ports) installs beside a locked Laravel: `^11.44.2 || ^12.4.1 || ^13`. A
-/// branch (`dev-main`) can't be told apart, so it counts.
 pub(crate) fn larastan_supports(laravel: Option<Version>) -> bool {
     laravel.is_none_or(|v| match v.major {
         11 => v.minor >= 44 && (v.minor > 44 || v.patch >= 2),
@@ -34,8 +26,6 @@ impl Analyse {
         self.rules.iter().map(|r| r.id.as_str()).collect()
     }
 
-    /// The PHPStan level of this config: the highest level of a core rule class (`[upstream.phpstan-classes]`) whose
-    /// rule is on, or of a type switch.
     pub fn level(&self) -> u8 {
         let on = self.on();
         let classes = mapping::section(&["upstream", "phpstan-classes"]).table();
@@ -48,17 +38,14 @@ impl Analyse {
         let switches = (SWITCH_LEVELS.iter())
             .filter(|(s, _)| self.switches.contains(s))
             .map(|(_, l)| i64::from(*l));
-        rules.chain(switches).max().unwrap_or(0) as u8
+        u8::try_from(rules.chain(switches).max().unwrap_or(0)).expect("PHPStan levels are 0 to 10")
     }
 
-    /// The PHPStan parameters pun-analyse's `Project::from_config` reads, besides paths and the PHP version.
     pub fn parameters(&self, root: &Path) -> Array {
         let on = self.on();
         let mut p = Array::new();
         let level = self.level();
         p.set(Key::from("level"), Value::Int(i64::from(level)));
-        // Independent upstream parameters: these are preset defaults, not an instruction to raise the level.
-        // Explicit Pun options still need a product mapping; migration rejects those overrides rather than losing them.
         for (name, value) in [
             ("checkFunctionArgumentTypes", level >= 5),
             ("checkArgumentsPassedByReference", level >= 5),
@@ -66,17 +53,14 @@ impl Analyse {
         ] {
             p.set(Key::from(name), Value::Bool(value));
         }
-        // Pun is a CLI binary, with Project::new's argc/argv registration; never read php.ini by running PHP.
         p.set(
             Key::from("cliArgumentsVariablesRegistered"),
             Value::Bool(true),
         );
-        // config.level1.neon turns it on; an explicit `maybe` option below overrides the level's default.
         p.set(
             Key::from("checkMaybeUndefinedVariables"),
             Value::Bool(level >= 1),
         );
-        // config.level2.neon turns it on
         p.set(
             Key::from("checkClassCaseSensitivity"),
             Value::Bool(level >= 2),
@@ -89,7 +73,6 @@ impl Analyse {
             Key::from("ignoreErrors"),
             Value::Array(Array::list(ignores)),
         );
-        // A parameter gating a rule class is on when one of the rules it gates is.
         let classes = mapping::section(&["upstream", "phpstan-classes"]).table();
         for e in classes.values() {
             let (Some(gate), Some(pun)) = (
@@ -116,7 +99,6 @@ impl Analyse {
                 }
             }
         }
-        // bleedingEdge.neon's toggles of the type inference itself, not of a rule
         if self.bleeding_edge {
             set(
                 &mut p,
@@ -124,7 +106,6 @@ impl Analyse {
                 Value::Bool(true),
             );
         }
-        // phpstan-deprecation-rules' rules.neon sets it: included when one of its rules is on.
         let deprecations = classes.values().any(|e| {
             e.get("package").and_then(toml::Value::as_str) == Some("phpstan-deprecation-rules")
                 && (e.get("pun").and_then(toml::Value::as_str)).is_some_and(|p| on.contains(p))
@@ -133,7 +114,6 @@ impl Analyse {
             Key::from("deprecationRulesInstalled"),
             Value::Bool(deprecations),
         );
-        // An option `pun migrate` wrote from a changed parameter, on a rule that runs.
         for (name, e) in mapping::section(&["phpstan-parameters"]).table() {
             let (Some(option), Some(rules)) = (
                 e.get("option").and_then(toml::Value::as_str),
@@ -152,16 +132,14 @@ impl Analyse {
     }
 }
 
-/// A path of pun.toml (relative to the project) as PHPStan resolves a config's relative path; a `*` pattern stays.
 fn absolute(root: &Path, path: &str) -> String {
-    match path.starts_with('*') {
-        true => path.to_string(),
-        false => normalize_path(&root.join(path).to_string_lossy()),
+    if path.starts_with('*') {
+        path.to_string()
+    } else {
+        normalize_path(&root.join(path).to_string_lossy())
     }
 }
 
-/// One `[[analyse.ignore]]` as an `ignoreErrors` entry: one path is `path` (a file entry, reported as one), several
-/// are `paths`; `rule` is Pun's own key.
 fn ignore(root: &Path, i: &crate::Ignore) -> Array {
     let mut e = Array::new();
     let mut put = |k: &str, v: Option<&String>| {
@@ -188,8 +166,6 @@ fn ignore(root: &Path, i: &crate::Ignore) -> Array {
     e
 }
 
-/// A rule option (JSON from pun.toml) as a parameter value.
-// ponytail: every [phpstan-parameters] option is a bool, a string or a list of strings; a number reads as null
 fn json(v: &serde_json::Value) -> Value {
     match v {
         serde_json::Value::String(s) => Value::str(s.as_str()),
@@ -207,7 +183,6 @@ fn get<'a>(p: &'a Array, dotted: &str) -> Option<&'a Value> {
     Some(v)
 }
 
-/// Sets `a.b.c`, making the tables on the way.
 fn set(p: &mut Array, dotted: &str, value: Value) {
     match dotted.split_once('.') {
         None => p.set(Key::from(dotted), value),

@@ -1,5 +1,3 @@
-//! Dynamic callable references retain level-zero argument scopes and once-only source reads.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -32,7 +30,7 @@ fn dynamic_callable_references_match_complete_phpstan_records() {
             vec![root.join("calls.php"), root.join("observations.php")],
             Vec::new(),
         );
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -67,7 +65,6 @@ fn dynamic_callable_references_match_complete_phpstan_records() {
     assert!(failures.is_empty(), "{failures:?}");
 }
 
-// These source observations are independent of Pun's PHPStan conversion and the argument-rule consumer.
 fn scalar(ty: &TUnion) -> String {
     assert!(!ty.is_error(), "an invalid read must not become mixed");
     if let Some(value) = ty.get_single_literal_int_value() {
@@ -205,7 +202,6 @@ fn dynamic_callable_source_reads_are_once_only_and_native_independent() {
             if !native {
                 assert!(native_type.is_none());
             } else if let Some(native_type) = native_type {
-                // The native lane is partial; a closure assignment currently invalidates it.
                 assert_eq!(native_type, row["native"].as_str().unwrap());
             }
         }

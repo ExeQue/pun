@@ -1,7 +1,3 @@
-//! Level 6: MissingTypehintCheck and the rules that report with it: MissingFunctionParameterTypehintRule,
-//! MissingFunctionReturnTypehintRule, MissingMethodParameterTypehintRule, MissingMethodReturnTypehintRule,
-//! MissingMethodSelfOutTypeRule, MissingPropertyTypehintRule and MissingClassConstantTypehintRule.
-
 use std::cell::RefCell;
 
 use mago_span::HasSpan;
@@ -22,25 +18,19 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "missingType.callable",
 ];
 
-/// `MissingTypehintCheck::MISSING_ITERABLE_VALUE_TYPE_TIP`
 pub(super) const TIP: &str =
     "See: https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-iterable-type";
 
-/// `featureToggles.skipCheckGenericClasses`
 const SKIP_GENERIC: [&str; 1] = ["DOMNamedNodeMap"];
 
-/// `MissingTypehintCheck::ITERABLE_GENERIC_CLASS_NAMES`
 const ITERABLE_GENERIC: [&str; 4] = ["Traversable", "Iterator", "IteratorAggregate", "Generator"];
 
-/// `getIterableTypesWithMissingValueTypehint()`: "iterable type X" for each iterable with an implicit `mixed`
-/// value type, each once.
 pub(super) fn iterables_without_value(ty: &Type) -> Vec<String> {
     let out = RefCell::new(Vec::new());
     iterable_walk(ty, &out);
     unique(out.into_inner())
 }
 
-/// PHPStan 2.3 keys the found descriptions by themselves: the first of equal ones stays, in its place.
 fn unique<T: PartialEq>(found: Vec<T>) -> Vec<T> {
     let mut out = Vec::new();
     for f in found {
@@ -100,7 +90,6 @@ fn iterable_walk(ty: &Type, out: &RefCell<Vec<String>>) {
     });
 }
 
-/// `isConstantArray()->yes()`
 fn is_constant_array(ty: &Type) -> bool {
     match ty {
         Type::ConstArray(_) => true,
@@ -110,7 +99,6 @@ fn is_constant_array(ty: &Type) -> bool {
     }
 }
 
-/// `ty` with each constant array's unsealed `...<K, V>` dropped (`dropUnsealedTypes()`).
 fn drop_unsealed(ty: &Type) -> Type {
     let ty = match ty {
         Type::ConstArray(a) if a.unsealed.is_some() => {
@@ -123,8 +111,6 @@ fn drop_unsealed(ty: &Type) -> Type {
     ty.traverse(&drop_unsealed)
 }
 
-/// `getNonGenericObjectTypesWithGenericClass()`: ("class Foo", "T, U") for each generic class used without its
-/// type arguments, each once.
 pub(super) fn generics_without_args(
     ty: &Type,
     check_iterable_classes: bool,
@@ -145,7 +131,6 @@ fn generic_walk(ty: &Type, iterables: bool, out: &RefCell<Vec<(String, String)>>
                 || (!iterables && ITERABLE_GENERIC.contains(&c.name.as_str()))
                 || SKIP_GENERIC.contains(&c.name.as_str())
                 || c.is_trait
-                // an enum's `@template` is ignored (enum.generic; oracle-checked)
                 || c.is_enum
                 || c.templates.is_empty()
             {
@@ -177,7 +162,6 @@ fn generic_walk(ty: &Type, iterables: bool, out: &RefCell<Vec<(String, String)>>
     });
 }
 
-/// MissingTypehintCheck's switches: `checkGenericIterableClasses` and `checkMissingCallableSignature`.
 #[derive(Clone, Copy)]
 struct Opts {
     iterables: bool,
@@ -193,11 +177,8 @@ impl Opts {
     }
 }
 
-/// `getCallablesWithMissingSignature()`: each `callable` or `Closure` without a signature (described), when
-/// `checkMissingCallableSignature` is on.
 pub(super) fn callables_without_signature(ty: &Type, on: bool) -> Vec<String> {
     fn walk(ty: &Type, out: &RefCell<Vec<String>>) {
-        // (a template's bound is not traversed)
         if matches!(ty, Type::Template(_)) {
             return;
         }
@@ -218,20 +199,15 @@ pub(super) fn callables_without_signature(ty: &Type, on: bool) -> Vec<String> {
     out.into_inner()
 }
 
-/// What one check found: (identifier, message, tip).
 type Found = Vec<(&'static str, String, Option<&'static str>)>;
 
-/// The messages of one checked type: `{subject} has {parameter} with ...` for a parameter, else
-/// `{subject}{owner} ...` (`Method C::m() return type ...`, `Property C::$p type ...`).
 struct Messages<'s> {
     subject: &'s str,
     parameter: Option<&'s str>,
     owner: &'s str,
-    /// the identifier and message for an implicit `mixed`
     missing: (&'static str, String),
 }
 
-/// The checks of one type (the type model must know the project's classes).
 fn check(ty: &Type, m: Messages, opts: Opts, out: &mut Found) {
     if ty.is_implicit_mixed() {
         out.push((m.missing.0, m.missing.1, None));
@@ -279,8 +255,6 @@ fn check(ty: &Type, m: Messages, opts: Opts, out: &mut Found) {
     }
 }
 
-/// The `checkMissingTypehints` checks of a type `{subject} has {parameter} with ...`: LocalTypeAliasesCheck's
-/// (`Class Foo has type alias X`) and SetPropertyHookParameterRule's (`... has parameter $v`), from level 6.
 pub(super) fn parameter(c: &Checker, ty: &Type, subject: &str, parameter: &str) -> Found {
     let mut out = Vec::new();
     if c.level >= 6 {
@@ -296,7 +270,6 @@ pub(super) fn parameter(c: &Checker, ty: &Type, subject: &str, parameter: &str) 
     out
 }
 
-/// The checks of a function-like's parameters and (unless `skip_return`) return type.
 fn signature(
     subject: &str,
     sig: &declared::Signature,
@@ -348,7 +321,6 @@ fn signature(
             iterables,
             &mut found,
         );
-        // (an implicit `mixed` self-out type is not reported)
         out.extend(found.into_iter().filter(|(id, _, _)| !id.is_empty()));
     }
     if !skip_return {
@@ -376,7 +348,6 @@ fn report(c: &mut Checker, at: mago_span::Span, found: Found) {
     }
 }
 
-/// MissingMethodParameterTypehintRule and MissingMethodReturnTypehintRule (`InClassMethodNode`).
 pub(super) fn method(c: &mut Checker, m: &Method) {
     if c.level < 6 {
         return;
@@ -394,7 +365,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
             |(_, n)| n.clone(),
         );
     let subject = format!("Method {display}::{name}()");
-    // a trait's constructor has no return type to check (`originalTraitMethodName`)
     let skip_return = declaring.kind == mago_codex::symbol::SymbolKind::Trait
         && m.name.value.eq_ignore_ascii_case(b"__construct");
     let iterables = Opts::of(c);
@@ -405,8 +375,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
     report(c, m.span(), found);
 }
 
-/// The class-like the method at `span` is declared in: the class being walked or one of its traits. None for a
-/// second declaration of a class name, whose metadata the codebase does not keep.
 pub(super) fn declaring<'a>(
     c: &Checker<'a, '_>,
     span: mago_span::Span,
@@ -427,7 +395,6 @@ pub(super) fn declaring<'a>(
         .find(inside)
 }
 
-/// MissingFunctionParameterTypehintRule and MissingFunctionReturnTypehintRule (`InFunctionNode`).
 pub(super) fn function(c: &mut Checker, f: &Function) {
     if c.level < 6 {
         return;
@@ -442,7 +409,6 @@ pub(super) fn function(c: &mut Checker, f: &Function) {
     report(c, f.span(), found);
 }
 
-/// MissingPropertyTypehintRule (`ClassPropertyNode`, not promoted).
 pub(super) fn property(c: &mut Checker, p: &Property) {
     if c.level < 6 {
         return;
@@ -472,12 +438,10 @@ pub(super) fn property(c: &mut Checker, p: &Property) {
             );
             out
         });
-        // PropertyHandler gives the ClassPropertyNode the property item's position, after any attributes
         report(c, v.span(), found);
     }
 }
 
-/// MissingClassConstantTypehintRule (`ClassConst`): the PHPDoc type of each constant.
 pub(super) fn class_constant(c: &mut Checker, k: &ClassLikeConstant) {
     if c.level < 6 {
         return;
@@ -509,9 +473,6 @@ pub(super) fn class_constant(c: &mut Checker, k: &ClassLikeConstant) {
     }
 }
 
-/// The class-level checks of InClassNode (or a trait's own node): MethodTagCheck, PropertyTagCheck and MixinCheck
-/// (`checkMissingTypehints`, in the trait definition context for a trait) and GenericAncestorsCheck's generic
-/// ancestors named without type arguments (ClassAncestorsRule, InterfaceAncestorsRule, EnumAncestorsRule).
 fn class_level(
     c: &mut Checker,
     span: mago_span::Span,
@@ -621,7 +582,6 @@ fn class_level(
             }
             for node in &parsed.mixins {
                 let ty = pun_phpstan::resolve::resolve_in(node, &scope);
-                // (a non-object mixin is mixin.nonObject instead)
                 if !matches!(
                     ty,
                     Type::Object(..)
@@ -655,7 +615,6 @@ fn class_level(
                 }
             }
         }
-        // GenericAncestorsCheck: the native ancestors no `@extends` / `@implements` describes
         for (native, message) in natives {
             if described.iter().any(|d| d == native) {
                 continue;
@@ -749,7 +708,6 @@ pub(super) fn enum_(c: &mut Checker, e: &Enum) {
     class_level(c, e.span(), &name, "Enum", &natives);
 }
 
-/// A trait's own node (MethodTagTraitRule, PropertyTagTraitRule, MixinTraitRule in the definition context).
 pub(super) fn trait_(c: &mut Checker, t: &Trait) {
     let name = c.resolved_span(t.name.span);
     class_level(c, t.span(), &name, "Trait", &[]);

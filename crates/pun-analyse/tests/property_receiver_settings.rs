@@ -1,6 +1,3 @@
-//! Complete PHPStan 2.3.1 diagnostics for independently configured property receiver eligibility.
-//! Reproduce with fixtures/property-receiver-settings/capture.php and the pinned PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -50,7 +47,7 @@ fn check(file: &str) {
             for (constructor, mut project) in
                 [("from_config", configured), ("new_then_level", direct)]
             {
-                project.php_version = 80500;
+                project.php_version = pun_analyse::PhpVersion::from_id(80500);
                 let mut got: Vec<_> = run(&project)
                     .unwrap()
                     .into_iter()

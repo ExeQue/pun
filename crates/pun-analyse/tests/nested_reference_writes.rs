@@ -1,4 +1,3 @@
-//! Nested reference writes are checked against PHPStan 2.3.1, not comparison workarounds.
 use std::{
     borrow::Cow,
     collections::BTreeMap,
@@ -35,7 +34,6 @@ use mago_syntax::{cst::Expression, parser::parse_file};
 use pun_analyse::{Project, run};
 use serde_json::Value;
 
-// Exercise the frontend's read-reference policy through the public hook API too.
 struct ReadInputReferences;
 impl ExpressionHook for ReadInputReferences {
     fn before_arguments(
@@ -100,8 +98,6 @@ fn original_bug3387_matches_the_complete_frozen_public_case() {
     assert_eq!(actual, expected);
 }
 
-// Only presentation differs: recursively retain every array key, optional flag,
-// generic bound and union member while sorting unordered type alternatives.
 fn canonical(text: &str) -> String {
     fn split(text: &str, separator: u8) -> Vec<&str> {
         let (mut start, mut depth, mut quoted) = (0, 0, false);
@@ -371,7 +367,6 @@ fn nested_reference_contract_preserves_values_results_and_observations() {
                     .iter()
                     .position(|byte| *byte == b'\n')
                     .map_or(source.len(), |offset| end + offset);
-                // The marker may sit inside the expression (`identity($copy /* probe-native */)`) or after it.
                 let native_available = native
                     && String::from_utf8_lossy(&source[span.start.offset as usize..line_end])
                         .contains("probe-native");

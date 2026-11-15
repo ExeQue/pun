@@ -1,22 +1,9 @@
-//! `lint/phpunit/require-strict-types-in-tests`, ported from rector-phpunit's `DeclareStrictTypesTestsRector`
-//! (rules/CodeQuality/Rector/StmtsAwareInterface).
-//!
-//! A file without a top-level `declare(strict_types=...)` (`DeclareStrictTypeFinder`, which compares the key's case)
-//! whose first named class (`BetterNodeFinder::findFirstNonAnonymousClass`, depth first) is a test class gets
-//! `declare(strict_types=1);` and an empty statement ahead of its statements. A file with inline HTML is left alone:
-//! rector-phpunit dropped its `HTMLAverseRectorInterface` guard, and Rector 2.8.4 then prints the declaration as text
-//! before the HTML, which is no longer PHP (the deleted upstream fixture skip_html_php_mix.php.inc, run by hand).
-//!
-//! php-parser's format-preserving printer writes the two statements at the first statement's comments, followed by
-//! a blank line. A file of one statement falls back to printing the file anew: `<?php`, a blank line, the
-//! declaration, a blank line, then the statement's comments and the statement, and nothing after it.
-
 use mago_syntax::cst::{Namespace, NamespaceBody, Node, NodeKind, Sequence, Statement};
 use pun_problem::{Edit, Safety, Span};
 
 use super::is_in_test_class;
-use crate::rules::lint_b_helpers::contains_html;
-use crate::rules::rector_stmts::{open_list, printed, tokens, trailing_comment};
+use crate::rules::support::statement_edits::contains_html;
+use crate::rules::support::statement_edits::{open_list, printed, tokens, trailing_comment};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -59,28 +46,23 @@ impl Rule for RequireStrictTypesInTests {
     }
 }
 
-/// `DeclareStrictTypeFinder::hasDeclareStrictTypes`: a top-level `declare` with a `strict_types` key (in that case).
 pub(crate) fn has_strict_types(statements: &Sequence<'_, Statement<'_>>) -> bool {
     statements.iter().any(|statement| {
         matches!(statement, Statement::Declare(d) if d.items.iter().any(|i| i.name.value == b"strict_types"))
     })
 }
 
-/// The edit of `$node->stmts = array_merge([$declaresStrictType, new Nop()], $node->stmts)` on a file whose top-level
-/// statements are `statements`, as php-parser's printer writes it, and where it is reported.
 pub(crate) fn declare_strict_types(
     ctx: &crate::Context<'_>,
     statements: &Sequence<'_, Statement<'_>>,
 ) -> Option<(Span, Edit)> {
     let source = ctx.source;
     let list = open_list(source, statements, 0, source.len());
-    // a file without statements (only the opening tag) has no first statement to put the declaration before
     if list.stmts.is_empty() {
         return None;
     }
     let first = list.with_comments(ctx, 0);
     let last_end = list.stmts.last().map_or(0, |s| node_span(*s).end);
-    // php-parser moves the statements after a namespace without braces into it, a trailing `Nop` too
     let in_namespace = matches!(
         list.stmts.last(),
         Some(Statement::Namespace(Namespace {
@@ -99,7 +81,6 @@ pub(crate) fn declare_strict_types(
             text.push('\n');
             text.push_str(&source[comment.start..comment.end]);
         }
-        // php-parser's namespace without braces ends with its last statement (a `?>` after it is not one)
         let end = match list.stmts[0] {
             Statement::Namespace(Namespace {
                 body: NamespaceBody::Implicit(body),
@@ -125,8 +106,6 @@ pub(crate) fn declare_strict_types(
     Some((Span::new(first.start, first.start), edit))
 }
 
-/// The end of a `?>` among `statements` after `after` with comments before it: php-parser reads the tag as `;`, and
-/// the comments make that an empty statement (`Nop`) ending with the tag.
 fn closing_nop(
     source: &str,
     statements: &Sequence<'_, Statement<'_>>,
@@ -142,8 +121,6 @@ fn closing_nop(
         .map(|tag| tag.end)
 }
 
-/// Whether the first class declaration (depth first, not an anonymous class) under `program` is a test class; one
-/// declared inside a function counts too (PHPStan 2.3 gives it a class reflection).
 fn first_class_is_test(ctx: &Context<'_>, program: Node<'_, '_>) -> bool {
     let mut stack = vec![(program, 0usize)];
     let mut path: Vec<Node> = Vec::new();

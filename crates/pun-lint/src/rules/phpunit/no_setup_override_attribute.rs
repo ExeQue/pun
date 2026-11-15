@@ -1,15 +1,9 @@
-//! `lint/phpunit/no-setup-override-attribute`, ported from rector-phpunit's `NoSetupWithParentCallOverrideRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! A test class's `setUp()` or `tearDown()` that calls its parent's (`ParentCallDetector::hasParentCall`) loses its
-//! `#[Override]` attributes: an attribute group left empty goes, and with no group left php-parser prints the method
-//! anew.
-
 use mago_syntax::cst::{Expression, MethodBody, Node, NodeKind, Statement};
 use pun_problem::{Edit, Safety};
 
 use super::{is_in_test_class, method_anew, resolve};
-use crate::rules::rector_batch5::{has_attribute, list_removal, merge};
+use crate::rules::support::names::has_attribute;
+use crate::rules::support::rewrites::{list_removal, merge};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

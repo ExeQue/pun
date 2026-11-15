@@ -1,6 +1,3 @@
-//! PrintfFormatParser edge cases through the public analyser. Expectations come from PHPStan 2.3.1 at level 0,
-//! with phpVersion 70400 and 80511: positional/star placeholders, scanf validation and array-size unions.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -24,7 +21,7 @@ fn printf_parameters_match_phpstan() {
                 .unwrap();
         for (php_version, mut want) in expected {
             let mut project = Project::new(vec![root.join(format!("{fixture}.php"))], Vec::new());
-            project.php_version = php_version;
+            project.php_version = pun_analyse::PhpVersion::from_id(php_version);
             let mut got: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

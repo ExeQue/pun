@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Naming\NoHomoglyphNamesFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(NoHomoglyphNamesFixer)
 }
 
-/// `REPLACEMENTS`, in upstream order (dumped from the pinned class).
 const REPLACEMENTS: &[(&str, u8)] = &[
     ("O", b'0'),
     ("０", b'0'),

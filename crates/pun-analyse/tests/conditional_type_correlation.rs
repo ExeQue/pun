@@ -1,5 +1,3 @@
-//! Conditional expression type holders, observed through the public runner.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

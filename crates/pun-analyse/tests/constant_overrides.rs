@@ -1,5 +1,3 @@
-//! OverridingConstantRule: PHPStan 2.3.1's diagnostics, including non-ignorable native errors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -34,7 +32,7 @@ fn check(level: u8) {
         vec![root.join("parents.php")],
     );
     project.level = level;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

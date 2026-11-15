@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitConstructFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -22,7 +21,7 @@ struct PhpUnitConstructFixer {
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(PhpUnitConstructFixer {
-        assertions: ASSERT_METHODS.iter().map(|m| m.to_string()).collect(),
+        assertions: ASSERT_METHODS.iter().map(std::string::ToString::to_string).collect(),
     })
 }
 
@@ -47,7 +46,6 @@ impl Fixer for PhpUnitConstructFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         apply_fix(tokens, |tokens, start_index, end_index| {
             for assertion_method in &self.assertions {
-                // `fixAssertPositive` or `fixAssertNegative`
                 let map: [&str; 3] =
                     if assertion_method == "assertSame" || assertion_method == "assertEquals" {
                         ["assertFalse", "assertNull", "assertTrue"]
@@ -66,7 +64,6 @@ impl Fixer for PhpUnitConstructFixer {
     }
 }
 
-/// `fixAssert`; `map` holds the replacements for `false`, `null` and `true`.
 fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -> Option<usize> {
     let sequence = tokens.find_sequence(
         &[(T_STRING, method).into(), "(".into()],
@@ -77,7 +74,7 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
     if !FunctionsAnalyzer::new().is_the_same_class_call(tokens, sequence[0]) {
         return None;
     }
-    let first_parameter_index = tokens.get_next_meaningful_token(sequence[1]).unwrap();
+    let first_parameter_index = tokens.next_meaningful(sequence[1]);
     let first_parameter = &tokens[first_parameter_index];
     let replacement = match first_parameter.is_kind(T_STRING) {
         true => match strtolower(first_parameter.get_content()).as_slice() {
@@ -88,10 +85,7 @@ fn fix_assert(map: [&str; 3], tokens: &mut Tokens, index: usize, method: &str) -
         },
         false => return Some(first_parameter_index),
     };
-    let comma_index = tokens
-        .get_next_meaningful_token(first_parameter_index)
-        .unwrap();
-    // return if first method argument is an expression, not value
+    let comma_index = tokens.next_meaningful(first_parameter_index);
     if !tokens[comma_index].equals(",", true) {
         return Some(comma_index);
     }

@@ -1,19 +1,3 @@
-//! `lint/types/add-property-type-get-repository`, `lint/phpunit/add-property-type-container-get` and
-//! `lint/types/add-doctrine-repository-return-type`, ported from Rector 2.8.4's
-//! `TypedPropertyFromGetRepositorySetUpRector`, `TypedPropertyFromContainerGetSetUpRector` and
-//! `ChildDoctrineRepositoryClassTypeRector` (rules/TypeDeclaration/Rector/Class_).
-//!
-//! In a PHPUnit test case with a `setUp()` method, an untyped private non-static property that `setUp()` assigns a
-//! `->getRepository(...)` call (or, for the container rule, a `->get(...)` call on `static::getContainer()`,
-//! `$this->getContainer()`, `$this->container` or `$this`) gets the class its `@var` names, when that class exists;
-//! the `@var` goes.
-//!
-//! In a class that extends `Doctrine\ORM\EntityRepository` and whose doc says `@extends EntityRepository<Entity>` (the
-//! entity one name that is no template of the class), each public non-static method without a return type gets
-//! `?Entity` when it calls `->getOneOrNullResult()` or `->findOneBy()`, and `array` with a new `@return Entity[]` when it
-//! calls `->findBy()`; the entity is written as the doc writes it.
-
-use crate::syntax::is_this;
 use mago_syntax::cst::{
     Call, ClassLikeMember, ClassLikeMemberSelector, Expression, Method, MethodBody, Modifier, Node,
     NodeKind, Variable,
@@ -25,7 +9,8 @@ use super::facts::facts;
 use super::property_type::{ClassView, TYPED_PROPERTIES, VarTag, variable_span};
 use crate::rules::phpunit::annotations::Annotated;
 use crate::rules::phpunit::phpdoc_type::{TagType, is_name};
-use crate::rules::rector_batch5::imported;
+use crate::rules::support::names::imported;
+use crate::syntax::is_this;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -40,8 +25,8 @@ impl Rule for AddPropertyTypeGetRepository {
         "lint/types/add-property-type-get-repository"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -71,8 +56,8 @@ impl Rule for AddPropertyTypeContainerGet {
         "lint/phpunit/add-property-type-container-get"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -97,8 +82,6 @@ impl Rule for AddPropertyTypeContainerGet {
     }
 }
 
-/// The shared `refactor()`: in a test case's `setUp()`, the untyped private non-static properties that `assigned`
-/// accepts get the existing class their `@var` names, and the `@var` goes.
 fn type_from_var<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -136,7 +119,6 @@ fn type_from_var<'ast, 'arena>(
             continue;
         };
         let class = doc_class(&view.path, written);
-        // must be an existing object type
         let Some(removed) = facts
             .codebase
             .get_class_like(class.as_bytes())
@@ -157,8 +139,6 @@ fn type_from_var<'ast, 'arena>(
     ));
 }
 
-/// The class a name written in a doc names, resolved against the file's namespace and imports (`path` ends at the
-/// class).
 pub(crate) fn doc_class(path: &[Node<'_, '_>], written: &str) -> String {
     match written.strip_prefix('\\') {
         Some(fq) => fq.to_string(),
@@ -169,8 +149,6 @@ pub(crate) fn doc_class(path: &[Node<'_, '_>], written: &str) -> String {
     }
 }
 
-/// The class a `@var` names, as `getVarType()` reads an `ObjectType` there: one name that is no keyword, or a generic
-/// of one. `self` is skipped (`Name('self')`, which `hasClass()` does not find).
 pub(crate) fn object_name<'s>(ty: &TagType<'s>) -> Option<&'s str> {
     let name = match *ty {
         TagType::Name(n) => n,
@@ -215,7 +193,6 @@ pub(crate) fn object_name<'s>(ty: &TagType<'s>) -> Option<&'s str> {
     (!keyword).then_some(name)
 }
 
-/// `isAssignedViaGetRepositoryInSetUp`: an assignment anywhere in `setUp()` of `$this->name = $x->getRepository(...)`.
 fn assigned_via_get_repository(set_up: &Method<'_>, name: &[u8]) -> bool {
     let mut stack = vec![Node::Method(set_up)];
     while let Some(node) = stack.pop() {
@@ -236,8 +213,6 @@ fn assigned_via_get_repository(set_up: &Method<'_>, name: &[u8]) -> bool {
     false
 }
 
-/// `isAssignedViaContainerGetInSetUp`: an assignment anywhere in `setUp()` of `$this->name = <container>->get(...)`,
-/// names compared as `isName` does, without letter case.
 fn assigned_via_container_get(set_up: &Method<'_>, name: &[u8]) -> bool {
     let mut stack = vec![Node::Method(set_up)];
     while let Some(node) = stack.pop() {
@@ -256,7 +231,6 @@ fn assigned_via_container_get(set_up: &Method<'_>, name: &[u8]) -> bool {
     false
 }
 
-/// `isContainerGetCall`: `->get(...)` on `X::getContainer()`, `$x->getContainer()`, `$x->container` or `$this`.
 fn is_container_get(expr: &Expression<'_>) -> bool {
     let Expression::Call(Call::Method(call)) = unparenthesize(expr) else {
         return false;
@@ -274,7 +248,6 @@ fn is_container_get(expr: &Expression<'_>) -> bool {
     }
 }
 
-/// `isName` on a member name written as an identifier.
 fn is_selector(selector: &ClassLikeMemberSelector<'_>, name: &[u8]) -> bool {
     matches!(selector, ClassLikeMemberSelector::Identifier(id) if id.value.eq_ignore_ascii_case(name))
 }
@@ -320,7 +293,6 @@ impl Rule for AddDoctrineRepositoryReturnType {
             let ClassLikeMember::Method(method) = member else {
                 continue;
             };
-            // shouldSkipClassMethod
             let public = !method
                 .modifiers
                 .iter()
@@ -364,8 +336,6 @@ impl Rule for AddDoctrineRepositoryReturnType {
     }
 }
 
-/// `resolveEntityClassnameFromPhpDoc`: the entity of the class doc's first `@extends EntityRepository<Entity, ...>`,
-/// when it is one name that no `@template` of the doc declares.
 fn entity_from_doc(
     ctx: &crate::Context<'_>,
     node: Node<'_, '_>,
@@ -395,7 +365,6 @@ fn entity_from_doc(
         .then(|| entity.to_string())
 }
 
-/// `containsMethodCallNamed`: a `->name(...)` call anywhere in the method's statements.
 fn calls(method: &Method<'_>, name: &[u8]) -> bool {
     let MethodBody::Concrete(body) = &method.body else {
         return false;

@@ -1,12 +1,8 @@
-//! `lint/pest/prefer-to-be-truthy-falsy`, ported from pest-plugin-rector's `SimplifyToBeTruthyFalsyRector`:
-//! `expect((bool) $x)->toBeTrue()` and `expect(boolval($x))->toBeTrue()` become `expect($x)->toBeTruthy()`, and
-//! `toBeFalse()` becomes `toBeFalsy()`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::Safety;
 
 use super::{func_call, is_name, matcher_subject, rename, subject_holder};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

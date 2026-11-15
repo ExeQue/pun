@@ -29,10 +29,8 @@ These flags retain Pint's behavior unless noted:
 | `--format=<fmt>` | Select `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
 | `--output-to-file=<path>` | Also write a report to a file. `--output-format=<fmt>` selects its format. |
 | `--stdin-filename=<path>` | Path context for code read from stdin (`-` as the path). |
-| `--cache-file=<path>` | Accepted and ignored, as is `--no-cache`. Pun has no cache and checks every file on every run. |
 | `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` suppresses successful output. |
-| `--parallel` | Accepted. Pun always runs in parallel, one thread per core. |
-| `--max-processes=N` | Cap threads and Prettier workers. Invalid or nonpositive values keep the default. |
+| `--max-processes=N` | Cap threads and Prettier workers. Pun runs one thread per core by default. Invalid or nonpositive values keep the default. |
 
 ## Pun's own flags
 

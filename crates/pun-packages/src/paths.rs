@@ -1,9 +1,5 @@
-//! Paths as the generated PHP files spell them: normalized with `/`, and written relative to the file that holds
-//! them (`../laravel/sail/bin`, `__DIR__ . '/..'`) so `vendor/` keeps working when the project moves.
-
 use crate::php::export_str;
 
-/// `path` with `\` as `/`, `.` and empty segments dropped, `..` applied where it can be, and no trailing `/`.
 pub fn normalize(path: &str) -> String {
     let path = path.replace('\\', "/");
     let (absolute, rest) = match path.strip_prefix('/') {
@@ -24,7 +20,6 @@ pub fn normalize(path: &str) -> String {
     format!("{absolute}{}", parts.join("/"))
 }
 
-/// The parent of an absolute path (Composer's `findShortestPath` takes only absolute ones).
 fn dirname(p: &str) -> &str {
     match p.rfind('/') {
         Some(i) if i > 0 => &p[..i],
@@ -36,7 +31,6 @@ fn basename(p: &str) -> &str {
     p.rsplit('/').next().unwrap_or(p)
 }
 
-/// The longest directory both paths share (`/` at least), with a trailing `/`.
 fn common(from: &str, to: &str) -> String {
     let mut common = to.to_string();
     while !format!("{from}/").starts_with(&format!("{common}/")) && common != "/" {
@@ -45,7 +39,6 @@ fn common(from: &str, to: &str) -> String {
     format!("{}/", common.trim_end_matches('/'))
 }
 
-/// `to` relative to `from` (both absolute): `from` is a file, or a directory when `directory`.
 pub fn shortest(from: &str, to: &str, directory: bool) -> String {
     let mut from = normalize(from);
     let to = normalize(to);
@@ -57,7 +50,6 @@ pub fn shortest(from: &str, to: &str, directory: bool) -> String {
     }
     let common = common(&from, &to);
     let depth = from[common.len()..].matches('/').count();
-    // Two top-level directories (`/foo` and `/bar`, common in containers) stay absolute.
     if common == "/" && depth > 1 {
         return to;
     }
@@ -73,8 +65,6 @@ pub fn shortest(from: &str, to: &str, directory: bool) -> String {
     }
 }
 
-/// PHP code for `to` seen from the file `from` (or the directory, when `directory`): `__DIR__ . '/..'.'/x'`, or with
-/// `dirname()` calls instead of `/..` when not `static_code`.
 pub fn shortest_code(from: &str, to: &str, directory: bool, static_code: bool) -> String {
     let from = normalize(from);
     let to = normalize(to);
@@ -106,8 +96,6 @@ pub fn shortest_code(from: &str, to: &str, directory: bool, static_code: bool) -
 mod tests {
     use super::*;
 
-    /// Expected values from Composer 2.11.2's `Filesystem` (`normalizePath`, `findShortestPath`,
-    /// `findShortestPathCode`) run in PHP 8.5.
     #[test]
     fn paths_match_composer() {
         assert_eq!(normalize("/a/./b//c/../d/"), "/a/b/d");

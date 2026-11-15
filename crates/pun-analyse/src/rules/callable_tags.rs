@@ -1,7 +1,3 @@
-//! IncompatibleParamImmediatelyInvokedCallableRule (level 2): a function's or method's
-//! `@param-immediately-invoked-callable` and `@param-later-invoked-callable` tags name a parameter whose native
-//! type may be callable.
-
 use mago_span::Span;
 use mago_syntax::cst::FunctionLikeParameterList;
 use pun_phpstan::phpdoc::TagValue;
@@ -15,7 +11,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "paramLaterInvokedCallable.nonCallable",
 ];
 
-/// The function or method declared at `at` with `params`.
 pub(super) fn function_like(c: &mut Checker, at: Span, params: &FunctionLikeParameterList) {
     if c.level < 2 {
         return;
@@ -24,7 +19,6 @@ pub(super) fn function_like(c: &mut Checker, at: Span, params: &FunctionLikePara
         return;
     };
     let tags = &entry.phpdoc;
-    // `resolveParamImmediatelyInvokedCallable()`: by name, a later tag keeping an earlier one's place
     let mut invoked: Vec<(String, bool)> = Vec::new();
     for (names, immediately) in [
         (
@@ -75,7 +69,6 @@ pub(super) fn function_like(c: &mut Checker, at: Span, params: &FunctionLikePara
             );
             continue;
         };
-        // `getFunctionType($type, isParameterValueNullable(), false)`
         let mut ty = p
             .hint
             .as_ref()

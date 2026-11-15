@@ -1,5 +1,3 @@
-//! PHPStan distinguishes a never-valued expression from evaluation that cannot continue.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -30,7 +28,7 @@ fn never_values_and_call_termination_match_phpstan() {
         })
         .collect();
     let mut project = Project::new(vec![root.join("cases.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project.level = 5;
     let got: Vec<_> = run(&project)
         .unwrap()

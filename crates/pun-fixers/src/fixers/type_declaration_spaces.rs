@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\TypeDeclarationSpacesFixer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
@@ -45,7 +44,6 @@ impl Fixer for TypeDeclarationSpacesFixer {
         let o = resolve(self.name(), options, &["elements"])?;
         self.elements = o.strings(
             "elements",
-            // Future::getV4OrV3(['function', 'property', 'constant'], ['function', 'property'])
             &["function", "property"],
             &["function", "property", "constant"],
         )?;
@@ -74,7 +72,6 @@ impl Fixer for TypeDeclarationSpacesFixer {
     }
 }
 
-/// In PHP array insertion order: classy elements by index, then other functions/arrow functions by index.
 fn get_elements(tokens: &Tokens) -> Vec<(usize, &'static str)> {
     let mut elements: Vec<(usize, &'static str)> = TokensAnalyzer::new(tokens)
         .get_classy_elements()
@@ -111,7 +108,7 @@ fn ensure_single_space_at_function_argument_typehint(
 fn ensure_single_space_at_property_typehint(tokens: &mut Tokens, mut index: usize) {
     let property_index = index;
     loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
         if tokens[index].is_given_kind(PROPERTY_MODIFIERS) {
             break;
         }
@@ -124,10 +121,8 @@ fn ensure_single_space_at_property_typehint(tokens: &mut Tokens, mut index: usiz
 
 fn ensure_single_space_at_constant_typehint(tokens: &mut Tokens, index: usize) {
     let const_index = index;
-    // upstream's null check: a class constant always has `=` in parsed code
     let equals_index = tokens.get_next_token_of_kind(const_index, &["=".into()], true).unwrap();
-    // upstream returns unless this is T_STRING; the tokenizer turns keyword-named constants into T_STRING too
-    let name_index = tokens.get_prev_meaningful_token(equals_index).unwrap();
+    let name_index = tokens.prev_meaningful(equals_index);
     let type_end_index = match tokens.get_prev_meaningful_token(name_index) {
         Some(i) if !tokens[i].is_kind(T_CONST) => i,
         _ => return,
@@ -141,7 +136,7 @@ fn collect_type_analysis(
     end_index: usize,
 ) -> Option<TypeAnalysis> {
     let mut ty = Vec::new();
-    let type_start_index = tokens.get_next_meaningful_token(start_index).unwrap();
+    let type_start_index = tokens.next_meaningful(start_index);
     let mut type_end_index = type_start_index;
     for i in type_start_index..end_index {
         if tokens[i].is_whitespace(None) || tokens[i].is_comment() {

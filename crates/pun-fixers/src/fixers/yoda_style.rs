@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\YodaStyleFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
@@ -6,7 +5,6 @@ use pun_tokens::{Proto, Token, Tokens, TokensAnalyzer};
 use serde_json::Value;
 use std::path::Path;
 
-/// A key of `$candidateTypes`: a token kind, or the content `'<'` / `'>'`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Candidate {
     Kind(Kind),
@@ -16,9 +14,7 @@ enum Candidate {
 #[derive(Default)]
 struct YodaStyleFixer {
     always_move_variable: bool,
-    /// `$candidateTypesConfiguration` (key => yoda), insertion order kept.
     candidate_types: Vec<(Candidate, bool)>,
-    /// `$candidatesMap`.
     candidates_map: Vec<(Candidate, Token)>,
 }
 
@@ -192,15 +188,14 @@ impl YodaStyleFixer {
             match Tokens::detect_block_type(token) {
                 None => {
                     index += 1;
-                    continue;
                 }
                 Some((_, false)) => break,
                 Some((block_type, true)) => index = tokens.find_block_end(block_type, index) + 1,
             }
         }
-        let prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev = tokens.prev_meaningful(index);
         if tokens[prev].is_kind(T_CLOSE_TAG) {
-            tokens.get_prev_meaningful_token(prev).unwrap()
+            tokens.prev_meaningful(prev)
         } else {
             prev
         }
@@ -225,10 +220,8 @@ impl YodaStyleFixer {
                 None => {
                     index -= 1;
                     non_block_found = true;
-                    continue;
                 }
                 Some((block_type, is_start)) => {
-                    // closing of structure not related to the comparison
                     if is_start || (non_block_found && block_type == Tokens::BLOCK_TYPE_BRACE) {
                         break;
                     }
@@ -236,8 +229,7 @@ impl YodaStyleFixer {
                 }
             }
         }
-        // The scan always stops at the file's T_OPEN_TAG(_WITH_ECHO) (lower precedence), so `index` never reaches -1.
-        tokens.get_next_meaningful_token(index as usize).unwrap()
+        tokens.next_meaningful(index as usize)
     }
 
     fn fix_tokens(&self, tokens: &mut Tokens) {
@@ -312,7 +304,7 @@ impl YodaStyleFixer {
         yoda: bool,
     ) -> Option<((usize, usize), (usize, usize))> {
         let right = (
-            tokens.get_next_meaningful_token(index).unwrap(),
+            tokens.next_meaningful(index),
             self.find_comparison_end(tokens, index),
         );
         if !yoda
@@ -324,20 +316,19 @@ impl YodaStyleFixer {
         }
         let left = (
             self.find_comparison_start(tokens, index),
-            tokens.get_prev_meaningful_token(index).unwrap(),
+            tokens.prev_meaningful(index),
         );
         if is_list_statement(tokens, left.0, left.1) || is_list_statement(tokens, right.0, right.1)
         {
-            return None; // do not fix lists assignment inside statements
+            return None;
         }
         let strict = self.always_move_variable;
         let mut left_side_is_variable = is_variable(tokens, left.0, left.1, strict);
         let mut right_side_is_variable = is_variable(tokens, right.0, right.1, strict);
         if left_side_is_variable == right_side_is_variable {
-            return None; // both are (not) variables, do not touch
+            return None;
         }
         if !strict {
-            // special handling for braces with not "always_move_variable"
             left_side_is_variable = left_side_is_variable && !tokens[left.0].equals("(", true);
             right_side_is_variable = right_side_is_variable && !tokens[right.0].equals("(", true);
         }
@@ -378,40 +369,32 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
             }
         }
     }
-    // Upstream's "handle multiple braces around statement" loop never runs: a `(` start already returned true above.
     let mut index = start;
     let mut expect_string = false;
     while index <= end {
-        // (Upstream skips comments/whitespace/empty tokens here; `index` only ever lands on meaningful tokens.)
         let current = &tokens[index];
         if index == end {
             return current.is_kind(if expect_string { T_STRING } else { T_VARIABLE });
         }
-        // (Upstream also rejects T_LIST/destructuring brackets here; isListStatement already did.)
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         let next = &tokens[next_index];
-        // self:: or ClassName::
         if current.is_kind(T_STRING) && next.is_kind(T_DOUBLE_COLON) {
-            index = tokens.get_next_meaningful_token(next_index).unwrap();
+            index = tokens.next_meaningful(next_index);
             continue;
         }
-        // \ClassName
         if current.is_kind(T_NS_SEPARATOR) && next.is_kind(T_STRING) {
             index = next_index;
             continue;
         }
-        // ClassName\
         if current.is_kind(T_STRING) && next.is_kind(T_NS_SEPARATOR) {
             index = next_index;
             continue;
         }
-        // $a-> or a-> (as in $b->a->c)
         if current.is_given_kind(&[T_STRING, T_VARIABLE]) && next.is_object_operator() {
-            index = tokens.get_next_meaningful_token(next_index).unwrap();
+            index = tokens.next_meaningful(next_index);
             expect_string = true;
             continue;
         }
-        // $a[...], a[...] (as in $c->a[$b]), $a{...} or a{...} (as in $c->a{$b})
         if current.is_kind(if expect_string { T_STRING } else { T_VARIABLE })
             && next.equals_any(&INDEX_OPEN, true)
         {
@@ -424,29 +407,27 @@ fn is_variable(tokens: &Tokens, start: usize, end: usize, strict: bool) -> bool 
             if index == end {
                 return true;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if !tokens[index].equals_any(&INDEX_OPEN, true) && !tokens[index].is_object_operator() {
                 return false;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             expect_string = true;
             continue;
         }
-        // $a(...) or $a->b(...)
         if strict && current.is_given_kind(&[T_STRING, T_VARIABLE]) && next.equals("(", true) {
             return false;
         }
-        // {...} (as in $a->{$b})
         if expect_string && current.is_kind(CT_DYNAMIC_PROP_BRACE_OPEN) {
             index = tokens.find_block_end(Tokens::BLOCK_TYPE_DYNAMIC_PROP_BRACE, index);
             if index == end {
                 return true;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if !tokens[index].is_object_operator() {
                 return false;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             expect_string = true;
             continue;
         }

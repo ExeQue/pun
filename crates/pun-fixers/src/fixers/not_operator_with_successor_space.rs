@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NotOperatorWithSuccessorSpaceFixer`.
 use pun_format::Fixer;
 use pun_tokens::Tokens;
 use std::path::Path;

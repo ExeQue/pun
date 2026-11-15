@@ -1,13 +1,8 @@
-//! Ports of `PhpCsFixer\Tokenizer\Analyzer\NamespacesAnalyzer` and `Analysis\NamespaceAnalysis`.
-//! `Tokens::namespace_declarations` caches the result per token-list version, like upstream's
-//! `Tokens::getNamespaceDeclarations()`.
-
 use crate::Tokens;
 use crate::kind::Kind::*;
 use crate::php_compat::trim;
 use std::sync::Arc;
 
-/// `NamespaceAnalysis`: public fields named after upstream's getters. Strings are bytes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamespaceAnalysis {
     pub full_name: Vec<u8>,
@@ -31,12 +26,10 @@ impl NamespacesAnalyzer {
         self.declarations(tokens).to_vec()
     }
 
-    /// `Tokens::getNamespaceDeclarations()`: computed once per token-list version.
     pub fn declarations(&self, tokens: &Tokens) -> Arc<Vec<NamespaceAnalysis>> {
         tokens.namespace_declarations()
     }
 
-    /// `getDeclarations`, uncached.
     pub(crate) fn compute(tokens: &Tokens) -> Vec<NamespaceAnalysis> {
         let mut namespaces = Vec::new();
         let count = tokens.count();
@@ -72,7 +65,6 @@ impl NamespacesAnalyzer {
                 scope_start_index: index,
                 scope_end_index,
             });
-            // Continue the analysis after the end of this namespace to find the next one
             index = scope_end_index + 1;
         }
         if namespaces.is_empty() && tokens.is_token_kind_found(T_OPEN_TAG) {
@@ -104,7 +96,6 @@ mod tests {
     use super::*;
 
     type Row = (String, String, usize, usize, usize, usize);
-    /// (full name, short name, start, end, scope start, scope end).
     type Expected = (&'static str, &'static str, usize, usize, usize, usize);
 
     fn row(n: &NamespaceAnalysis) -> Row {
@@ -125,8 +116,6 @@ mod tests {
             .collect()
     }
 
-    /// Expectations: PHP-CS-Fixer 3.95's `NamespacesAnalyzer::getDeclarations` on each input
-    /// (upstream's NamespacesAnalyzerTest cases plus two `;` namespaces).
     #[test]
     fn declarations_match_php_cs_fixer() {
         let cases: &[(&str, &[Expected])] = &[

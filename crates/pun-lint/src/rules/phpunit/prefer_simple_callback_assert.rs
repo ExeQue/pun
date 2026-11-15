@@ -1,16 +1,9 @@
-//! `lint/phpunit/prefer-simple-callback-assert`, ported from rector-phpunit's `CallbackSingleAssertToSimplerRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, an argument of a `with()` call that is `callback()` of a closure (capturing nothing by reference)
-//! doing only `assertSame($expected, $param)` (either way round, `$param` the closure's sole parameter), optionally
-//! followed by `return true;`, becomes `$this->equalTo($expected)`.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind, Statement, Variable};
 use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class};
-use crate::rules::rector_code_quality::is_constant;
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -55,7 +48,6 @@ impl Rule for PreferSimpleCallbackAssert {
     }
 }
 
-/// `matchCallbackSoleAssertSameExpected`.
 fn sole_assert_same_expected<'a>(
     ctx: &Context<'_>,
     expr: &'a Expression<'a>,

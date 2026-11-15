@@ -1,0 +1,67 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "1b7ca34401ec3415f657ba40365bf888",
+    "packages": [
+        {
+            "name": "acme/denied",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/denied",
+                "reference": "c72d71510cb20c896d7851de3324eac2e5a472f0"
+            },
+            "require": {
+                "composer-plugin-api": "^2.0"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Acme\\Denied\\Plugin"
+            },
+            "autoload": {
+                "psr-4": {
+                    "Acme\\Denied\\": "src/"
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "acme/recorder",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/recorder",
+                "reference": "522c026354c12cabec7a200ef9cb0c7fb0587989"
+            },
+            "require": {
+                "composer-plugin-api": "^2.0"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Acme\\Recorder\\Plugin"
+            },
+            "autoload": {
+                "psr-4": {
+                    "Acme\\Recorder\\": "src/"
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.11.0"
+}

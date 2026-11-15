@@ -1,5 +1,3 @@
-//! IssetCheck's virtual markers come from real incoming constructor/helper scopes.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -44,7 +42,7 @@ fn check_property_initialization_consumers(file: &str, capture: &str) {
         let (level, mode) = case.split_once('-').unwrap();
         let mut project = Project::new(vec![root.join(file)], Vec::new());
         project.level = level.parse().unwrap();
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         if mode != "default" {
             project.check_advanced_isset = Some(mode == "on");
         }

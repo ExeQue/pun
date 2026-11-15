@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\AttributeNotation\GeneralAttributeRemoveFixer`.
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
@@ -23,7 +22,6 @@ impl Fixer for GeneralAttributeRemoveFixer {
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
         let c = resolve(self.name(), options, &["attributes"])?;
-        // `class-string[]`, which upstream's resolver checks as `string[]`.
         self.attributes = c.strings("attributes", &[], &[])?;
         Ok(())
     }
@@ -52,7 +50,6 @@ impl Fixer for GeneralAttributeRemoveFixer {
                     tokens.clear_at(sibling_index);
                 }
             }
-            // Clear whole attribute if all are removed (multiline attribute case)
             if attribute_analysis.attributes.len() == removed_count {
                 tokens.clear_range(attribute_analysis.start_index, attribute_analysis.end_index);
             }

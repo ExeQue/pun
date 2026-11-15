@@ -1,6 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\CommentsAnalyzer` (`isHeaderComment`, `isBeforeStructuralElement`,
-//! `isBeforeReturn`, `getCommentBlockIndices`). Callers only pass comment indices, so upstream's
-//! `InvalidArgumentException` checks are left out.
 use crate::analyzers::helpers::contains;
 use crate::analyzers::preg::Preg;
 use pun_tokens::Kind::{self, *};
@@ -37,13 +34,13 @@ pub(crate) fn is_header_comment(tokens: &Tokens, index: usize) -> bool {
     }
     let mut prev_index = tokens.get_prev_non_whitespace(index, None).unwrap();
     if tokens[prev_index].equals(";", true) {
-        let brace_close_index = tokens.get_prev_meaningful_token(prev_index).unwrap();
+        let brace_close_index = tokens.prev_meaningful(prev_index);
         if !tokens[brace_close_index].equals(")", true) {
             return false;
         }
         let brace_open_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, brace_close_index);
-        let declare_index = tokens.get_prev_meaningful_token(brace_open_index).unwrap();
+        let declare_index = tokens.prev_meaningful(brace_open_index);
         if !tokens[declare_index].is_kind(T_DECLARE) {
             return false;
         }
@@ -90,7 +87,7 @@ fn is_structural_element(tokens: &Tokens, index: usize) -> bool {
         return tokens[enum_parent].is_kind(T_ENUM);
     }
     if token.is_kind(T_STATIC) {
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         return !tokens[next].is_kind(T_DOUBLE_COLON);
     }
     false
@@ -100,7 +97,7 @@ fn is_valid_control(tokens: &Tokens, docs_content: &[u8], control_index: usize) 
     if !tokens[control_index].is_given_kind(&[T_FOR, T_FOREACH, T_IF, T_SWITCH, T_WHILE]) {
         return false;
     }
-    let open_parenthesis_index = tokens.get_next_meaningful_token(control_index).unwrap();
+    let open_parenthesis_index = tokens.next_meaningful(control_index);
     let close_parenthesis_index =
         tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis_index);
     (open_parenthesis_index + 1..close_parenthesis_index)
@@ -137,7 +134,7 @@ fn is_valid_variable(tokens: &Tokens, index: usize) -> bool {
     if !tokens[index].is_kind(T_VARIABLE) {
         return false;
     }
-    let next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_index = tokens.next_meaningful(index);
     tokens[next_index].equals_any(
         &[
             "=".into(),
@@ -170,14 +167,12 @@ fn get_next_token_index(tokens: &Tokens, start_index: usize) -> Option<usize> {
             next_index = tokens.get_next_meaningful_token(end);
         }
         match next_index {
-            Some(i) if tokens[i].equals("(", true) => continue,
+            Some(i) if tokens[i].equals("(", true) => {}
             _ => return next_index,
         }
     }
 }
 
-/// `getCommentBlockIndices`: the comment at `index` and the comments of the same type on the following lines
-/// (no blank line between them). `/* */` comments stand alone.
 pub(crate) fn get_comment_block_indices(tokens: &Tokens, mut index: usize) -> Vec<usize> {
     let comment_type = get_comment_type(tokens[index].get_content());
     let mut indices = vec![index];

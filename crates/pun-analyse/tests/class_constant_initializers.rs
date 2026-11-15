@@ -1,5 +1,3 @@
-//! Canonical class initializer values and lexical scopes, from actual PHPStan 2.3.1 runs.
-
 use std::path::Path;
 
 use pun_analyse::{analyse, reports};
@@ -106,8 +104,6 @@ fn unsupported_scanner_inputs_retain_the_existing_bounds() {
     use mago_syntax::{cst::Statement, parser::parse_file};
     use std::collections::HashMap;
 
-    // Mago bounds invalid/unknown integer bitwise inputs by int. This preserves its existing
-    // scanner contract, not PHPStan's error reporting or additional initializer grammar.
     for (source, expected) in [
         ("missing() | 1", Some(get_int())),
         ("1 << -1", Some(get_int())),

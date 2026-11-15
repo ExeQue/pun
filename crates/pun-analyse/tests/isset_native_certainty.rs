@@ -1,5 +1,3 @@
-//! Independent IssetCheck certainty through the public Project API.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -107,7 +105,6 @@ fn compare(source: &str, captured: &str, unnecessary: bool) {
         let mut configured = Project::from_config(&root, &parameters);
         assert_eq!(configured.treat_php_doc_types_as_certain, certainty);
         configured.analysed = vec![file.clone()];
-        // Resolve defaults only at run time, including after the caller changes the level.
         configured.level = 0;
         let mut direct = Project::new(vec![file], Vec::new());
         assert_eq!(direct.treat_php_doc_types_as_certain, None);
@@ -117,7 +114,7 @@ fn compare(source: &str, captured: &str, unnecessary: bool) {
         let want = expected(captured);
         for (constructor, mut project) in projects {
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 true,
@@ -243,7 +240,6 @@ mod native_observations {
         (artifacts, observations, format!("{:?}", result.issues))
     }
 
-    // Display adaptation only. Raw Mago arrays have canonical map order, not PHP insertion order.
     fn canonical(s: &str) -> String {
         if s == "array<array-key, mixed>" {
             return "array".to_owned();

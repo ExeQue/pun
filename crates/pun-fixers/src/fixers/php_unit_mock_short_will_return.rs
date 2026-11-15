@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitMockShortWillReturnFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -45,17 +44,17 @@ fn apply_php_unit_class_fix(tokens: &mut Tokens, start_index: usize, end_index: 
         if !tokens[index].is_object_operator() {
             continue;
         }
-        let replace = tokens.get_next_meaningful_token(index).unwrap();
+        let replace = tokens.next_meaningful(index);
         if !tokens[replace].equals((T_STRING, "will"), false) {
             continue;
         }
-        let replace_open = tokens.get_next_meaningful_token(replace).unwrap();
+        let replace_open = tokens.next_meaningful(replace);
         if !tokens[replace_open].equals("(", true) {
             continue;
         }
-        let class_reference = tokens.get_next_meaningful_token(replace_open).unwrap();
-        let object_operator = tokens.get_next_meaningful_token(class_reference).unwrap();
-        let remove = tokens.get_next_meaningful_token(object_operator).unwrap();
+        let class_reference = tokens.next_meaningful(replace_open);
+        let object_operator = tokens.next_meaningful(class_reference);
+        let remove = tokens.next_meaningful(object_operator);
         if !functions.is_the_same_class_call(tokens, remove) {
             continue;
         }
@@ -66,8 +65,8 @@ fn apply_php_unit_class_fix(tokens: &mut Tokens, start_index: usize, end_index: 
         else {
             continue;
         };
-        let open = tokens.get_next_meaningful_token(remove).unwrap();
-        if tokens[tokens.get_next_meaningful_token(open).unwrap()].is_kind(CT_FIRST_CLASS_CALLABLE)
+        let open = tokens.next_meaningful(remove);
+        if tokens[tokens.next_meaningful(open)].is_kind(CT_FIRST_CLASS_CALLABLE)
         {
             continue;
         }
@@ -76,7 +75,7 @@ fn apply_php_unit_class_fix(tokens: &mut Tokens, start_index: usize, end_index: 
         for i in [class_reference, object_operator, remove, open, close] {
             tokens.clear_token_and_merge_surrounding_whitespace(i);
         }
-        let comma = tokens.get_next_meaningful_token(close).unwrap();
+        let comma = tokens.next_meaningful(close);
         if tokens[comma].equals(",", true) {
             tokens.clear_token_and_merge_surrounding_whitespace(comma);
         }

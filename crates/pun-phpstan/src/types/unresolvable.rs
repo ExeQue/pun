@@ -1,11 +1,8 @@
-//! ErrorType/NeverType explanations and the comparisons that produce them, not diagnostic-message inference.
-
 use std::cell::RefCell;
 
 use super::*;
 
 impl Type {
-    /// ErrorType and NeverType keep a reason without changing their identity or ordinary operations.
     pub fn with_unresolvable_reason(self, reason: String) -> Type {
         match self {
             Type::Error | Type::Never(_) => Type::Reasoned(Box::new(self), reason),
@@ -63,7 +60,6 @@ impl PartialEq for Type {
                     excluded: y,
                 },
             ) => a == b && x == y,
-            // ObjectType::equals() omits the final reflection override; union containment must still see it.
             (T::Object(a, x, _), T::Object(b, y, _)) | (T::Static(a, x), T::Static(b, y)) => {
                 a == b && x == y
             }
@@ -78,8 +74,6 @@ impl PartialEq for Type {
             | (T::Benevolent(a), T::Benevolent(b))
             | (T::Intersection(a), T::Intersection(b)) => {
                 a.len() == b.len() && {
-                    // UnionType/IntersectionType::equals(): match each alternative once, without sorting the
-                    // stored members. Their written order still selects the first reflected union method.
                     let mut remaining: Vec<_> = b.iter().collect();
                     a.iter().all(|inner| {
                         let Some(i) = remaining.iter().position(|other| inner == *other) else {
@@ -92,8 +86,6 @@ impl PartialEq for Type {
             }
             (T::Accessory(a), T::Accessory(b)) => a == b,
             (T::Conditional(a), T::Conditional(b)) => a == b,
-            // TemplateTypeTrait::equals() omits the strategy. StrictMixedType::equals() also accepts its
-            // template subclass (the reverse comparison still uses TemplateTypeTrait).
             (T::Template(a), T::Template(b)) if matches!(a.bound, T::StrictMixed) => {
                 a.name == b.name
                     && a.scope == b.scope
@@ -124,7 +116,6 @@ impl PartialEq for Type {
     }
 }
 
-/// The part of ExtendedPropertyReflection used by ObjectShapeType::isSuperTypeOf(). Static properties are absent.
 #[derive(Clone, Debug)]
 pub struct PropertyReflection {
     pub name: String,
@@ -139,7 +130,6 @@ thread_local! {
     static PROPERTIES: RefCell<Properties> = const { RefCell::new(Vec::new()) };
 }
 
-/// Reflection supplied by the argument resolver, scoped to the current call and thread.
 pub fn with_property_reflections<R>(
     properties: Vec<(String, Tri, Vec<PropertyReflection>)>,
     f: impl FnOnce() -> R,
@@ -156,10 +146,7 @@ pub fn with_property_reflections<R>(
     f()
 }
 
-/// IsSuperTypeOfResult, including reasons. Intersection uses this result at the source of an implicit never.
 pub(super) fn compare(a: &Type, b: &Type) -> (Tri, Vec<String>) {
-    // LateResolvableTypeTrait delegates the comparison, including its reasons, without erasing the wrapper
-    // before TypeCombinator's MixedType fast path. In particular int&T['value'] is not int&mixed~int.
     if matches!(a, Type::OffsetAccess(..)) {
         let resolved = crate::resolve::resolve_late(a);
         if resolved != *a {

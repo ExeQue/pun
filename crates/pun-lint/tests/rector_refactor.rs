@@ -1,4 +1,4 @@
-//! Rector 2.8.4's own fixtures for the ported `refactor` codemods and the other Rector rules of the batch, copied verbatim from rector-src (rules-tests/...)
+//! Rector 2.8.4's own fixtures for the ported `refactor` codemods and the other Rector rules tested here, copied verbatim from rector-src (rules-tests/...)
 //! into tests/rector/<Rector class>/Fixture, with the fixture's `Source/` classes. Each rule is configured through
 //! `Rule::configure` with the options `pun migrate` writes for the fixture's config/configured_rule.php. Oracle/ holds
 //! extra inputs with what Rector 2.8.4 (`.oracle/rector-ecosystem`, the rule alone with the same configuration,
@@ -21,9 +21,7 @@
 //! AnnotationToAttributeRector/Oracle/strings_more.php.inc and `C1` of values_edge.php.inc (an annotation with a
 //! single-quoted value stays, rector-src 9a6fdb061a).
 
-mod lint_c;
-
-use lint_c::{run_class, run_class_at, run_class_with, run_dirs};
+use crate::common::{run_class, run_class_at, run_class_with, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::rules::{
     AddOverrideAttribute, AnnotationToAttribute, NoExtraArguments, PreferClassNameConstant,
@@ -45,7 +43,6 @@ fn check<R: Rule + 'static>(make: fn() -> R, options: Value, class: &str) {
     everywhere(|| configured(make(), &options), class, 80400);
 }
 
-/// A rule called on every node, not only the kinds of its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -64,11 +61,12 @@ impl Rule for Everywhere {
     }
 }
 
-/// `targets()` only spares the engine work: called on every node, the rule reports on each input of `class` what it
-/// reports when called on its targets.
 fn everywhere(make: impl Fn() -> Box<dyn Rule>, class: &str, php_version: u32) {
-    let targeted = Linter::new(vec![make()], php_version);
-    let everywhere = Linter::new(vec![Box::new(Everywhere(make()))], php_version);
+    let targeted = Linter::new(vec![make()], pun_lint::PhpVersion::from_id(php_version));
+    let everywhere = Linter::new(
+        vec![Box::new(Everywhere(make()))],
+        pun_lint::PhpVersion::from_id(php_version),
+    );
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(class);
@@ -89,7 +87,6 @@ fn everywhere(make: impl Fn() -> Box<dyn Rule>, class: &str, php_version: u32) {
     }
 }
 
-/// The PHP files under `dir`, recursively: `(path, code)`.
 fn php_files(dir: &Path, out: &mut Vec<(String, String)>) {
     for path in std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()) {
         if path.is_dir() {
@@ -103,12 +100,14 @@ fn php_files(dir: &Path, out: &mut Vec<(String, String)>) {
     }
 }
 
-/// `configure` rejects each of `bad` with the message `error`.
 fn rejects(mut rule: impl Rule, bad: &[(Value, &str)]) {
     for (options, error) in bad {
-        assert_eq!(rule.configure(options).unwrap_err(), *error, "{options}");
+        assert_eq!(
+            rule.configure(options).unwrap_err().to_string(),
+            *error,
+            "{options}"
+        );
     }
-    // No options: the rule does nothing.
     rule.configure(&Value::Null).unwrap();
 }
 
@@ -166,7 +165,6 @@ fn remove_func_call() {
     );
 }
 
-/// The laravel preset's `short_scalar_cast` writes the same short casts.
 #[test]
 fn rename_cast() {
     let options = json!({"items": [
@@ -200,16 +198,17 @@ fn rename_cast() {
     );
 }
 
-/// What Rector 2.8.4 wrote with `RenameCast` `Bool_` 2 to 1, `Int_` 1 to 2, `String_` 2 to 1 and `Double` 2 to 1: the
-/// other kind of each spelling, `(int)` printed as it was.
 #[test]
 fn rename_cast_kinds() {
     let cast = |class: &str, from: i64, to: i64| json!({"from-cast-expr-class": format!("PhpParser\\Node\\Expr\\Cast\\{class}"), "from-cast-kind": from, "to-cast-kind": to});
     let options = json!({"items": [cast("Bool_", 2, 1), cast("Int_", 1, 2), cast("String_", 2, 1), cast("Double", 2, 1)]});
     let code = "<?php\n\n$a = (boolean) $x;\n$b = (bool) $x;\n$c = (int) $x;\n$d = (binary) $x;\n$e = (string) $x;\n$f = (float) $x;\n$g = (array) $x;\n$h = (object) $x;\n$i = (integer) $x;\n";
-    let fixed = Linter::new(vec![configured(RenameCast::default(), &options)], 80400)
-        .fix(Path::new("f.php"), code)
-        .unwrap();
+    let fixed = Linter::new(
+        vec![configured(RenameCast::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(Path::new("f.php"), code)
+    .unwrap();
     assert_eq!(
         fixed.source,
         "<?php\n\n$a = (bool) $x;\n$b = (bool) $x;\n$c = (int) $x;\n$d = (string) $x;\n$e = (string) $x;\n$f = (double) $x;\n$g = (array) $x;\n$h = (object) $x;\n$i = (integer) $x;\n"
@@ -235,7 +234,6 @@ fn rename_constant() {
     );
 }
 
-/// `in_for` renames `sizeof` to `count`, which the laravel preset's `no_alias_functions` does too.
 #[test]
 fn rename_function() {
     let options = json!({"view": "Laravel\\Templating\\render", "sprintf": "Safe\\sprintf", "abc2": "abc", "sizeof": "count"});
@@ -336,7 +334,6 @@ fn strict_in_array() {
     check(|| RequireStrictInArray, Value::Null, "StrictInArrayRector");
 }
 
-/// From PHP 8.5 (`OVERRIDE_ATTRIBUTE_ON_PROPERTIES`); Oracle/names at `phpVersion(80400)` was left as it is.
 #[test]
 fn add_override_attribute_to_overridden_properties() {
     run_class_at(
@@ -351,13 +348,15 @@ fn add_override_attribute_to_overridden_properties() {
     );
     let code =
         "<?php\n\nclass B\n{\n    public $a;\n}\n\nclass C extends B\n{\n    public $a;\n}\n";
-    let found = Linter::new(vec![Box::new(AddOverrideAttribute)], 80400)
-        .check(std::path::Path::new("f.php"), code)
-        .unwrap();
+    let found = Linter::new(
+        vec![Box::new(AddOverrideAttribute)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .check(std::path::Path::new("f.php"), code)
+    .unwrap();
     assert_eq!(found, [] as [pun_problem::Problem; 0]);
 }
 
-/// config/configured_rule.php.
 #[test]
 fn rename_method() {
     let source = "Rector\\Tests\\Renaming\\Rector\\MethodCall\\RenameMethodRector\\Source\\";
@@ -405,9 +404,6 @@ fn rename_method() {
     );
 }
 
-/// What Rector 2.8.4 wrote for this code with `MethodCallRename('App\\Child', 'old', 'new')` and
-/// `MethodCallRenameWithArrayKey('App\\K', 'a', 'b', 3)`: an interface keeps a method its rename class's parent
-/// interface declares, and an integer key is read as written.
 #[test]
 fn rename_method_parent_interface_and_integer_key() {
     let mut rule = RenameMethod::default();
@@ -420,7 +416,7 @@ fn rename_method_parent_interface_and_integer_key() {
     let code = format!(
         "{interfaces}class K\n{{\n    public function a() {{}}\n}}\n\nfunction f(K $k)\n{{\n    return $k->a();\n}}\n"
     );
-    let fixed = Linter::new(vec![Box::new(rule)], 80400)
+    let fixed = Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(std::path::Path::new("f.php"), &code)
         .unwrap();
     let expected = format!(
@@ -438,9 +434,6 @@ fn remove_extra_parameters() {
     );
 }
 
-/// What Rector 2.8.4 wrote with `RenameFunctionRector` `['strlen' => 'STRLEN']` and `RenameConstantRector`
-/// `['my_const' => 'MY_CONST']`: every spelling is renamed, and the one already written as the new name is left as it is
-/// (no report: the diff does not touch it).
 #[test]
 fn rename_to_another_case() {
     let rules = || -> Vec<Box<dyn Rule>> {
@@ -451,16 +444,19 @@ fn rename_to_another_case() {
     };
     let code = "<?php\n\nstrlen('a');\nSTRLEN('b');\nStrlen('c');\necho my_const;\necho MY_CONST;\necho My_Const;\n";
     let path = Path::new("f.php");
-    let found = Linter::new(rules(), 80400).check(path, code).unwrap();
+    let found = Linter::new(rules(), pun_lint::PhpVersion::from_id(80400))
+        .check(path, code)
+        .unwrap();
     assert_eq!(found.len(), 4);
-    let fixed = Linter::new(rules(), 80400).fix(path, code).unwrap();
+    let fixed = Linter::new(rules(), pun_lint::PhpVersion::from_id(80400))
+        .fix(path, code)
+        .unwrap();
     assert_eq!(
         fixed.source,
         "<?php\n\nSTRLEN('a');\nSTRLEN('b');\nSTRLEN('c');\necho MY_CONST;\necho MY_CONST;\necho MY_CONST;\n"
     );
 }
 
-/// A configurable rule without options (pun.toml turns it on with none) reports nothing.
 #[test]
 fn unconfigured_rules_do_nothing() {
     let cases: Vec<(Box<dyn Rule>, &str)> = vec![
@@ -495,7 +491,7 @@ fn unconfigured_rules_do_nothing() {
         ),
     ];
     for (rule, class) in cases {
-        let linter = Linter::new(vec![rule], 80400);
+        let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/rector")
             .join(class);
@@ -517,21 +513,18 @@ fn unconfigured_rules_do_nothing() {
     }
 }
 
-/// What Rector 2.8.4 wrote with `RemoveFuncCallArg('foo', 0)`: a first-class callable loses its `...`.
 #[test]
 fn remove_func_call_arg_of_first_class_callable() {
     let options = json!({"items": [{"function": "foo", "argument-position": 0}]});
     let fixed = Linter::new(
         vec![configured(RemoveFunctionArgument::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )
     .fix(Path::new("f.php"), "<?php\n\n$f = foo(...);\nfoo(1, 2);\n")
     .unwrap();
     assert_eq!(fixed.source, "<?php\n\n$f = foo();\nfoo(2);\n");
 }
 
-/// What Rector 2.8.4 wrote with `RenameClassConstFetch('App\\A', 'x', 'X')`: the constant written another way is
-/// renamed, the one already written as the new name and a dynamic `A::{$n}` stay (no report for them).
 #[test]
 fn rename_class_const_fetch_to_another_case() {
     let rule = || {
@@ -542,20 +535,18 @@ fn rename_class_const_fetch_to_another_case() {
     let code = "<?php\n\nnamespace App;\n\nclass A\n{\n    const X = 1;\n}\n\necho A::X;\necho A::x;\necho A::{$n};\n";
     let path = Path::new("f.php");
     assert_eq!(
-        Linter::new(vec![rule()], 80400)
+        Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400))
             .check(path, code)
             .unwrap()
             .len(),
         1
     );
-    let fixed = Linter::new(vec![rule()], 80400).fix(path, code).unwrap();
+    let fixed = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400))
+        .fix(path, code)
+        .unwrap();
     assert_eq!(fixed.source, code.replace("A::x", "A::X"));
 }
 
-/// RenameMethodRector/OracleConfigured/skips: what Rector 2.8.4 wrote with `MethodCallRename('App\\B', 'old', 'new')`,
-/// `('App\\Suit', 'oldCase', 'newCase')` and `('App\\Q', 'old', 'new')`. A call stays when the receiver's class
-/// declares the old method (privately too) and has the new one, its own or an interface's; an enum case is matched
-/// on an enum named as written, not on `$class::Case`.
 #[test]
 fn rename_method_skips() {
     let rename = |class: &str, old: &str, new: &str| json!({"class": class, "old-method": old, "new-method": new});
@@ -568,14 +559,15 @@ fn rename_method_skips() {
         .join("tests/rector/RenameMethodRector/OracleConfigured/skips.php.inc");
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(vec![configured(RenameMethod::default(), &options)], 80400)
-        .fix(&path, input)
-        .unwrap();
+    let fixed = Linter::new(
+        vec![configured(RenameMethod::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(&path, input)
+    .unwrap();
     assert_eq!(fixed.source, expected);
 }
 
-/// StringClassNameToClassConstantRector/OracleConfigured/patterns: what Rector 2.8.4 wrote with the skip patterns
-/// below, matched as `fnmatch` matches them (`[!...]`, `[^...]`, a leading `]`, ranges, `?`, an unclosed `[`).
 #[test]
 fn string_class_name_skip_patterns() {
     let options = json!({"items": [
@@ -589,23 +581,13 @@ fn string_class_name_skip_patterns() {
     let (input, expected) = content.split_once("-----\n").unwrap();
     let fixed = Linter::new(
         vec![configured(PreferClassNameConstant::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )
     .fix(&path, input)
     .unwrap();
     assert_eq!(fixed.source, expected);
 }
 
-/// RenameClassRector, each upstream config on its own directories: Fixture, Oracle and Pun with
-/// config/configured_rule.php, FixtureAutoImportNames, OracleAutoImportNames and PunAutoImportNames with config/auto_import_names.php,
-/// OracleNoShortClasses with that config and `importShortClasses(false)`,
-/// FixtureRenameClassAndMethod with config/complex_rename.php and its RenameMethodRector beside the rule.
-/// FixtureAutoImportNames/SomeShort.php, a class the fixtures name, is Stubs/SomeShort.php. FixtureSkipAfterDefined
-/// and FixtureSkipUsedTracking are left out: they test Rector's `skip()` paths, which pun.toml's own ignores replace.
-/// Fixture/skip_rename_docblock_imported_by_last_group_use and skip_rename_docblock_via_same_namespace_by_last_group_in_namespace
-/// are FixtureUnformattable/: Pint (and so the laravel format) fails on their `use \Company2\{ Bar };`, so they run
-/// without the format step. Fixture/class_annotations_serializer_type
-/// is Oracle/: Rector 2.8.4 keeps `array<OldClass>` in the JMS `Type`, its pattern wanting a `b` after the old name.
 #[test]
 fn rename_class() {
     let source = "Rector\\Tests\\Renaming\\Rector\\Name\\RenameClassRector\\Source\\";
@@ -685,7 +667,10 @@ fn rename_class() {
         "RenameClassRector",
         80400,
     );
-    let linter = Linter::new(vec![configured(RenameClass::default(), &options)], 80400);
+    let linter = Linter::new(
+        vec![configured(RenameClass::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector/RenameClassRector/FixtureUnformattable");
     for path in std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()) {
@@ -749,8 +734,6 @@ fn rename_class() {
         &[],
     );
 
-    // OracleCrlf*: files whose lines end in `\r\n`, read as written (the runner makes them `\n`), without the format
-    // step (the laravel format makes them `\n` too)
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector/RenameClassRector");
     let mut extra = Vec::new();
     for dir in ["Source", "Stubs"] {
@@ -760,7 +743,10 @@ fn rename_class() {
         ("OracleCrlf", &options),
         ("OracleCrlfAutoImportNames", &auto),
     ] {
-        let linter = Linter::new(vec![configured(RenameClass::default(), options)], 80400);
+        let linter = Linter::new(
+            vec![configured(RenameClass::default(), options)],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         for path in std::fs::read_dir(root.join(dir))
             .unwrap()
             .map(|e| e.unwrap().path())
@@ -787,14 +773,6 @@ fn rename_class() {
     );
 }
 
-/// AnnotationToAttributeRector, each upstream config on its own directories: Fixture, Oracle and Pun with
-/// config/configured_rule.php (OraclePhp80 with it at PHP 8.0) (Fixture/Behat/*, Fixture/Doctrine/* and Fixture/Symfony/* in their directories),
-/// FixtureMultipleCall with config/multiple_call_configured_rule.php at PHP 8.0, FixturePhp81 and OraclePhp81 with
-/// config/nested_attributes_php81.php at PHP 8.1. The classes Rector's test run autoloads from rector-src's stubs/
-/// are in Stubs/. Fixture/Doctrine/{doctrine_entity,handle_with_api_above,nullable_bool_value} are
-/// FixtureUnformattable/Doctrine_*: Pint (and so the laravel format) fails on their `\App\Some\Class::class`, so they run
-/// without the format step. FixturePhp81/{unique_constraints,new_line_after_open_parentheses} are OraclePhp81/, with what the
-/// rule writes alone: their change is NestedAnnotationToAttributeRector's, which the config runs beside it.
 #[test]
 fn annotation_to_attribute() {
     let source = "Rector\\Tests\\Php80\\Rector\\Class_\\AnnotationToAttributeRector\\Source\\";
@@ -849,7 +827,7 @@ fn annotation_to_attribute() {
     }
     let linter = Linter::new(
         vec![configured(AnnotationToAttribute::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     for path in std::fs::read_dir(root.join("FixtureUnformattable"))
         .unwrap()

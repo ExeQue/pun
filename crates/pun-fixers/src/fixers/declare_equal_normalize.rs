@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\DeclareEqualNormalizeFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -35,7 +34,7 @@ impl Fixer for DeclareEqualNormalizeFixer {
         let mut index = 0;
         while index + 6 < count {
             if tokens[index].is_kind(T_DECLARE) {
-                let open_parenthesis_index = tokens.get_next_meaningful_token(index).unwrap();
+                let open_parenthesis_index = tokens.next_meaningful(index);
                 let close_parenthesis_index =
                     tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis_index);
                 let mut i = close_parenthesis_index;

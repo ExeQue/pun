@@ -1,8 +1,3 @@
-//! Level 3's values PHP needs to be of a kind: ThrowExprTypeRule (`throw.notThrowable`), VariableCloningRule
-//! (`clone.nonObject`), IterableInForeachRule (`foreach.nonIterable`), UnpackIterableInArrayRule
-//! (`arrayUnpacking.nonIterable`), ArrayUnpackingRule (`arrayUnpacking.stringOffset`) and
-//! InvalidKeyInArrayDimFetchRule (`offsetAccess.invalidOffset`); level 4's DeadForeachRule (`foreach.emptyArray`).
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Level, Type, is_super_type_of, union};
@@ -19,7 +14,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "foreach.emptyArray",
 ];
 
-/// The expressions whose type the rules read.
 pub(super) fn typed(e: &Expression, level: u8, spans: &mut Vec<Span>) {
     if level < 3 {
         return;
@@ -48,8 +42,6 @@ pub(super) fn typed(e: &Expression, level: u8, spans: &mut Vec<Span>) {
     }
 }
 
-/// `findTypeToCheck()` of `e` and whether the type found is `ok` (`None`: nothing to report), reporting the unknown
-/// classes it names with `unknown` (`%s` the class) when there is one.
 fn invalid(
     c: &mut Checker,
     e: &Expression,
@@ -113,7 +105,6 @@ pub(in super::super) fn clone(c: &mut Checker, k: &Clone) {
     ) else {
         return;
     };
-    // php-parser drops the parentheses of `clone ($a)`
     let message = match super::flow::unparen(k.object) {
         Expression::Variable(Variable::Direct(v)) => format!(
             "Cannot clone non-object variable {} of type {described}.",
@@ -170,7 +161,6 @@ pub(in super::super) fn array(c: &mut Checker, elements: &[ArrayElement]) {
         if c.surely_at_least(80100) {
             continue;
         }
-        // ArrayUnpackingRule: before PHP 8.1, only int keys
         let Some(t) = c.phpstan_type(v.value) else {
             continue;
         };
@@ -197,7 +187,6 @@ pub(in super::super) fn array(c: &mut Checker, elements: &[ArrayElement]) {
     }
 }
 
-/// `AllowedArrayKeysTypes::getType()` (without `reportNonIntStringArrayKey`).
 pub(super) fn allowed_keys(php_version: u32) -> Type {
     let mut types = vec![Type::Int, Type::String, Type::Bool];
     if php_version < 80100 {

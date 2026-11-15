@@ -1,10 +1,5 @@
-//! php-parser's `NameResolver` for class names: a name as written, resolved through the `use` imports and the
-//! namespace of the place it is written.
-
 use mago_syntax::cst::{Identifier, NamespaceBody, Node, Statement, UseItem, UseItems};
 
-/// The namespace (`None` for the global one) and the statements of the scope `ancestors` lead to: the nearest
-/// `namespace` or the file.
 pub(crate) fn scope<'a>(ancestors: &[Node<'a, 'a>]) -> (Option<&'a [u8]>, &'a [Statement<'a>]) {
     for node in ancestors.iter().rev() {
         if let Node::Namespace(ns) = *node {
@@ -24,7 +19,6 @@ pub(crate) fn scope<'a>(ancestors: &[Node<'a, 'a>]) -> (Option<&'a [u8]>, &'a [S
     }
 }
 
-/// The class `use` items of a scope's statements, in order: each with the prefix of its group (`use A\{B, C}`).
 fn class_use_items<'a>(
     statements: &'a [Statement<'a>],
 ) -> impl Iterator<Item = (Option<&'a [u8]>, &'a UseItem<'a>)> {
@@ -49,13 +43,10 @@ fn class_use_items<'a>(
     })
 }
 
-/// The fully qualified class name (without the leading `\`) that `name`, written at the node `ancestors` lead to,
-/// stands for.
 pub(crate) fn resolve_class_name(ancestors: &[Node<'_, '_>], name: &Identifier<'_>) -> String {
     resolve_written(ancestors, &String::from_utf8_lossy(name.value())).0
 }
 
-/// [`resolve_class_name`] for a name `written` as text (a docblock's), and whether a `use` import resolved it.
 pub(crate) fn resolve_written(ancestors: &[Node<'_, '_>], written: &str) -> (String, bool) {
     if let Some(fq) = written.strip_prefix('\\') {
         return (fq.to_string(), false);
@@ -97,8 +88,6 @@ pub(crate) fn resolve_written(ancestors: &[Node<'_, '_>], written: &str) -> (Str
     (resolved, false)
 }
 
-/// The namespace of the place `ancestors` lead to and the class imports of its scope, in order: each imported name,
-/// fully qualified without the leading `\`, with its alias.
 pub(crate) fn class_imports(
     ancestors: &[Node<'_, '_>],
 ) -> (Option<String>, Vec<(String, Option<String>)>) {
@@ -120,7 +109,6 @@ pub(crate) fn class_imports(
     )
 }
 
-/// [`resolve_class_name`] of a name as written (in a doc comment too).
 pub(crate) fn resolve_written_class_name(ancestors: &[Node<'_, '_>], written: &str) -> String {
     resolve_written(ancestors, written).0
 }

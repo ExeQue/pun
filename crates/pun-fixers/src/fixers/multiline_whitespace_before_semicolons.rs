@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\MultilineWhitespaceBeforeSemicolonsFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;
 use anyhow::Result;
@@ -65,10 +64,9 @@ impl MultilineWhitespaceBeforeSemicolonsFixer {
         index
     }
 
-    /// Checks if the semicolon closes a multiline call and returns the whitespace of the first call at `index`.
     fn find_whitespace_before_first_call(mut index: usize, tokens: &Tokens) -> Option<Vec<u8>> {
         let mut is_multiline_call = false;
-        let mut prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+        let mut prev_index = tokens.prev_meaningful(index);
         while !tokens[prev_index].equals_any(
             &[
                 ";".into(),
@@ -82,13 +80,13 @@ impl MultilineWhitespaceBeforeSemicolonsFixer {
             true,
         ) {
             index = prev_index;
-            prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            prev_index = tokens.prev_meaningful(index);
             if let Some((block_type, false)) = Tokens::detect_block_type(&tokens[index]) {
                 prev_index = tokens.find_block_start(block_type, index);
                 continue;
             }
             if tokens[index].is_object_operator() || tokens[index].is_kind(T_DOUBLE_COLON) {
-                prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+                prev_index = tokens.prev_meaningful(index);
                 is_multiline_call =
                     is_multiline_call || tokens.is_partial_code_multiline(prev_index, index);
             }
@@ -102,9 +100,6 @@ impl Fixer for MultilineWhitespaceBeforeSemicolonsFixer {
         "multiline_whitespace_before_semicolons"
     }
     fn priority(&self) -> i32 {
-        // Must run before SpaceAfterSemicolonFixer.
-        // Must run after CombineConsecutiveIssetsFixer, GetClassToClassKeywordFixer, NoEmptyStatementFixer,
-        // SimplifiedIfReturnFixer, SingleImportPerStatementFixer.
         0
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
@@ -143,7 +138,6 @@ impl Fixer for MultilineWhitespaceBeforeSemicolonsFixer {
             }
             let previous_index = index - 1;
             let previous = &tokens[previous_index];
-            // The indent only matters (and is only computed) for chained calls; finding it reads the tokens only.
             if self.strategy == Strategy::NewLineForChainedCalls
                 && let Some(indent) = Self::find_whitespace_before_first_call(index, tokens)
             {
@@ -167,14 +161,12 @@ impl Fixer for MultilineWhitespaceBeforeSemicolonsFixer {
                 }
                 let content = previous.get_content();
                 if content.starts_with(line_ending) && tokens[index - 2].is_comment() {
-                    // if there is comment between closing parenthesis and semicolon
                     tokens.clear_at(previous_index);
                     tokens.clear_at(index);
                     let significant_token_index =
                         Self::get_previous_significant_token_index(index, tokens);
                     tokens.insert_at(significant_token_index + 1, vec![Token::char(";")]);
                 } else {
-                    // if there is whitespace between closing bracket and semicolon, just remove it
                     tokens.clear_at(previous_index);
                 }
             }

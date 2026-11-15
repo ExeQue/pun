@@ -1,13 +1,9 @@
-//! Declaration checks on function-likes: RedefinedParametersRule, VariadicParametersDeclarationRule,
-//! InvalidParameterNameRule, InvalidLexicalVariablesInClosureUseRule and InnerFunctionRule.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 
 use super::Checker;
 use crate::text;
 
-/// `Scope::SUPERGLOBAL_VARIABLES`.
 pub(super) const SUPERGLOBALS: [&[u8]; 9] = [
     b"GLOBALS",
     b"_SERVER",
@@ -20,13 +16,10 @@ pub(super) const SUPERGLOBALS: [&[u8]; 9] = [
     b"_ENV",
 ];
 
-/// `$param->var->name`: the parameter's name without its `$`.
 fn name<'arena>(v: &DirectVariable<'arena>) -> &'arena [u8] {
     &v.name[1..]
 }
 
-/// The rules registered for `Node\FunctionLike` (functions, methods, closures, arrow functions, property hooks),
-/// reported at `at`, the node's start.
 pub(super) fn function_like(
     c: &mut Checker,
     at: impl HasSpan + Copy,
@@ -36,7 +29,6 @@ pub(super) fn function_like(
     variadic_parameters_declaration(c, at, params);
 }
 
-/// RedefinedParametersRule.
 fn redefined_parameters(
     c: &mut Checker,
     at: impl HasSpan + Copy,
@@ -58,7 +50,6 @@ fn redefined_parameters(
     }
 }
 
-/// VariadicParametersDeclarationRule.
 fn variadic_parameters_declaration(
     c: &mut Checker,
     at: impl HasSpan + Copy,
@@ -78,7 +69,6 @@ fn variadic_parameters_declaration(
     }
 }
 
-/// InvalidParameterNameRule (`Node\Param`).
 pub(super) fn parameter(c: &mut Checker, p: &FunctionLikeParameter) {
     let var = name(&p.variable);
     if SUPERGLOBALS.contains(&var) {
@@ -101,7 +91,6 @@ pub(super) fn parameter(c: &mut Checker, p: &FunctionLikeParameter) {
     }
 }
 
-/// InvalidLexicalVariablesInClosureUseRule.
 pub(super) fn closure_use(c: &mut Checker, closure: &Closure) {
     let Some(clause) = &closure.use_clause else {
         return;
@@ -142,7 +131,6 @@ pub(super) fn closure_use(c: &mut Checker, closure: &Closure) {
     }
 }
 
-/// InnerFunctionRule: a named function declared inside another function-like's body.
 pub(super) fn inner_function(c: &mut Checker, f: &Function) {
     if !c.in_named_function() {
         return;

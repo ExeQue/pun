@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocNoDuplicateTypesFixer`.
 use crate::analyzers::docblock::type_expression::REGEX_TYPES;
 use crate::analyzers::docblock::{DocBlock, TAGS_WITH_TYPES, TypeExpression};
 use crate::analyzers::preg::Preg;
@@ -22,9 +21,6 @@ impl Fixer for PhpdocNoDuplicateTypesFixer {
         "phpdoc_no_duplicate_types"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocAlignFixer.
-        // Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocArrayTypeFixer, PhpdocIndentFixer,
-        // PhpdocListTypeFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -41,11 +37,9 @@ impl Fixer for PhpdocNoDuplicateTypesFixer {
                 continue;
             }
             for annotation in annotations {
-                // fix main types
                 if let Some(type_expression) = annotation.get_type_expression() {
                     annotation.set_types(&type_expression.remove_duplicate_types().get_types());
                 }
-                // fix @method parameters types
                 let line = doc.get_line(annotation.get_start()).unwrap();
                 let content = Preg::replace_callback(
                     &*METHOD_CALLABLE,

@@ -1,19 +1,3 @@
-//! `lint/laravel/prefer-latest-oldest`, ported from rector-laravel 2.7.3's `EloquentOrderByToLatestOrOldestRector`
-//! (src/Rector/MethodCall).
-//!
-//! On a query builder (`Illuminate\Contracts\Database\Query\Builder`), `orderBy($column)` and
-//! `orderBy($column, 'asc')` become `oldest($column)`, and `orderBy($column, <any other string>)` and
-//! `orderByDesc($column)` become `latest($column)`, for a column whose value matches one of the `allowed-patterns`
-//! (`fnmatch`, default `*_at`, `*_date` and `*_on`; an empty list allows every column), or a variable whose name
-//! does. The column `'created_at'` is dropped, since it is the default. Values are read as Rector's
-//! `ValueResolver::getValue` reads them: a literal, a constant's name, a class constant's value, a concatenation of
-//! such values, or the one value of the type of anything else.
-//!
-//! Rector reads a concatenated part it cannot resolve as `''`. Pun does too for the patterns, but drops the column
-//! only when every part is known to give `created_at`, and leaves a call whose direction it cannot fully resolve,
-//! where Rector would change what the query sorts by. Pun also leaves a call with an unpacked argument, which Rector
-//! drops.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{
@@ -21,6 +5,7 @@ use mago_syntax::cst::{
     Literal, Node, NodeKind, Variable,
 };
 use pun_problem::{Edit, Safety, Span};
+use pun_tokens::php_compat::float_to_string;
 use pun_tokens::php_compat::fnmatch;
 
 use super::object_type::{
@@ -28,11 +13,10 @@ use super::object_type::{
 };
 use super::print::reprinted_call;
 use super::{is_name, member_name};
-use crate::rules::rector_batch5::{Value, value};
+use crate::rules::support::values::{Value, value};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
-use pun_tokens::php_compat::float_to_string;
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct PreferLatestOldest {
     pub allowed_patterns: Vec<String>,
@@ -51,16 +35,14 @@ impl Rule for PreferLatestOldest {
         "lint/laravel/prefer-latest-oldest"
     }
 
-    /// `configure`: `allowed-patterns` (rector-laravel's `allowed_patterns`), the `fnmatch` patterns a column must
-    /// match. Options without it allow every column, as Rector's `configure` does.
-    fn configure(&mut self, options: &serde_json::Value) -> Result<(), String> {
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
         let map = match options {
             serde_json::Value::Null => return Ok(()),
             serde_json::Value::Object(map) => map,
             _ => return Err("options must be a table".into()),
         };
         if let Some(key) = map.keys().find(|k| *k != "allowed-patterns") {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let patterns = match map.get("allowed-patterns") {
             None => Some(Vec::new()),
@@ -127,7 +109,6 @@ impl Rule for PreferLatestOldest {
         };
         let edits = if matches!(get_value(ctx, ancestors, column), Got::Str(s, true) if s == "created_at")
         {
-            // The arguments go, so php-parser prints the call anew.
             reprinted_call(
                 ctx.source,
                 call.object,
@@ -164,7 +145,6 @@ impl Rule for PreferLatestOldest {
 }
 
 impl PreferLatestOldest {
-    /// `isAllowedPattern`.
     fn is_allowed(
         &self,
         ctx: &Context<'_>,
@@ -187,7 +167,6 @@ impl PreferLatestOldest {
     }
 }
 
-/// php-parser's `getArg($name, $position)`: the argument named `name`, or the positional one at `position`.
 fn arg_at(arguments: &[&Argument<'_>], name: &str, position: usize) -> Option<usize> {
     (arguments.iter().enumerate()).position(|(i, a)| match a {
         Argument::Named(n) => n.name.value == name.as_bytes(),
@@ -195,28 +174,23 @@ fn arg_at(arguments: &[&Argument<'_>], name: &str, position: usize) -> Option<us
     })
 }
 
-/// What `ValueResolver::getValue` gives: a string, and whether every part of it was known (a concatenated part
-/// Rector cannot resolve reads as `''`); another value; or nothing (`null`).
 pub(crate) enum Got {
     Str(String, bool),
     Other(Value),
     Unknown,
 }
 
-/// PHP's string of a value, as a concatenation makes it.
 fn to_string(got: Got) -> (String, bool) {
     match got {
         Got::Str(s, known) => (s, known),
         Got::Other(Value::Int(i)) => (i.to_string(), true),
         Got::Other(Value::Float(f)) => (float_to_string(f), true),
         Got::Other(Value::Bool(true)) => ("1".into(), true),
-        // `false` and `null`; strings are never `Other`
         Got::Other(_) => (String::new(), true),
         Got::Unknown => (String::new(), false),
     }
 }
 
-/// `ValueResolver::getValue`.
 pub(crate) fn get_value(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -243,8 +217,6 @@ pub(crate) fn get_value(
     }
 }
 
-/// `resolveClassConstFetch` on a class written as a name (else the type of the fetch): `X::class` is the class; a constant the codebase does not
-/// have, or one of an enum, is `X::NAME`; another is the value Mago infers for it.
 fn class_constant(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -277,10 +249,6 @@ fn class_constant(
     }
 }
 
-/// The type of a constant fetched on a class written as an expression (`ConstExprEvaluator` cannot evaluate it), as
-/// PHPStan's `getClassConstFetchTypeByReflection` gives it: through a literal class string, the constant's value;
-/// through an object, its value only when the class or the constant is final (else PHPStan gives `mixed`, or the
-/// constant's declared type, neither of them one value).
 fn expression_class_value(
     ctx: &Context<'_>,
     expr: &Expression<'_>,
@@ -310,7 +278,6 @@ fn expression_class_value(
     }
 }
 
-/// `resolveConstantType($nodeTypeResolver->getType($expr))`: the value of a constant scalar type.
 fn type_value(ctx: &Context<'_>, expr: &Expression<'_>) -> Got {
     facts(ctx)
         .full_type(node_span(expr))

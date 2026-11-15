@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Casing\LowercaseStaticReferenceFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -49,7 +48,7 @@ fn is_token_to_fix(tokens: &Tokens, index: usize) -> bool {
     if tokens[index].get_content() == tokens[index].get_content().to_ascii_lowercase() {
         return false;
     }
-    let next_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_index = tokens.next_meaningful(index);
     if tokens[next_index].is_kind(T_DOUBLE_COLON) {
         return true;
     }
@@ -58,7 +57,7 @@ fn is_token_to_fix(tokens: &Tokens, index: usize) -> bool {
     {
         return false;
     }
-    let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev_index = tokens.prev_meaningful(index);
     if tokens[prev_index].is_kind(T_INSTANCEOF) {
         return true;
     }

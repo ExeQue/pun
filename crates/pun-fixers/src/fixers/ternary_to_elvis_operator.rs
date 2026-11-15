@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\TernaryToElvisOperatorFixer`.
 use crate::analyzers::range_analyzer::{Range, range_equals_range};
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Proto, Tokens};
@@ -56,12 +55,12 @@ impl Fixer for TernaryToElvisOperatorFixer {
             if !tokens[i].equals("?", true) {
                 continue;
             }
-            let next_index = tokens.get_next_meaningful_token(i).unwrap();
+            let next_index = tokens.next_meaningful(i);
             if tokens[next_index].equals(":", true) {
-                continue; // Elvis is alive!
+                continue;
             }
             let Some(before_operator) = get_before_operator(tokens, i) else {
-                continue; // contains something we cannot fix because of priorities
+                continue;
             };
             let after_operator = get_after_operator(tokens, i);
             if range_equals_range(tokens, before_operator, after_operator) {
@@ -72,7 +71,7 @@ impl Fixer for TernaryToElvisOperatorFixer {
 }
 
 fn get_before_operator(tokens: &Tokens, index: usize) -> Option<Range> {
-    let prev = |i: usize| tokens.get_prev_meaningful_token(i).unwrap();
+    let prev = |i: usize| tokens.prev_meaningful(i);
     let mut index = prev(index);
     let end = index;
     let mut start = None;
@@ -109,14 +108,14 @@ fn get_before_operator(tokens: &Tokens, index: usize) -> Option<Range> {
 }
 
 fn get_after_operator(tokens: &Tokens, index: usize) -> Range {
-    let mut index = tokens.get_next_meaningful_token(index).unwrap();
+    let mut index = tokens.next_meaningful(index);
     let start = index;
     loop {
         if let Some((block_type, _)) = Tokens::detect_block_type(&tokens[index]) {
             index = tokens.find_block_end(block_type, index);
         }
         let end = index;
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
         if tokens[index].equals(":", true) {
             return Range { start, end };
         }
@@ -124,10 +123,9 @@ fn get_after_operator(tokens: &Tokens, index: usize) -> Range {
 }
 
 fn clear_meaningful_from_range(tokens: &mut Tokens, range: Range) {
-    // range.end must be meaningful!
     let mut i = range.end;
     while i >= range.start {
         tokens.clear_token_and_merge_surrounding_whitespace(i);
-        i = tokens.get_prev_meaningful_token(i).unwrap();
+        i = tokens.prev_meaningful(i);
     }
 }

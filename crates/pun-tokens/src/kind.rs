@@ -1,6 +1,3 @@
-//! Token kinds: PHP's `T_*` (named after `token_name()`, not numbered: PHP renumbers them
-//! between versions) followed by PHP-CS-Fixer's `CT::T_*` custom kinds (prefixed `CT_`).
-
 macro_rules! kinds {
     (php: [$($php:ident),* $(,)?] ct: [$($ct:ident = $ctname:literal),* $(,)?]) => {
         #[expect(non_camel_case_types, reason = "variants keep PHP's `T_*` names")]
@@ -11,7 +8,6 @@ macro_rules! kinds {
         impl Kind {
             pub const ALL: &'static [Kind] = &[$(Kind::$php,)* $(Kind::$ct,)*];
 
-            /// `token_name()` for PHP kinds, `CT::getName()` (`CT::T_...`) for custom kinds.
             pub fn name(self) -> &'static str {
                 match self {
                     $(Kind::$php => stringify!($php),)*
@@ -226,7 +222,6 @@ ct: [
 ]
 }
 
-/// Upstream alias `T_PAAMAYIM_NEKUDOTAYIM`.
 impl Kind {
     pub const T_PAAMAYIM_NEKUDOTAYIM: Kind = Kind::T_DOUBLE_COLON;
 }

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\SimpleToComplexStringVariableFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -15,14 +14,12 @@ impl Fixer for SimpleToComplexStringVariableFixer {
         "simple_to_complex_string_variable"
     }
     fn priority(&self) -> i32 {
-        // Must run after ExplicitStringVariableFixer.
         -10
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
         tokens.is_token_kind_found(T_DOLLAR_OPEN_CURLY_BRACES)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // `${` sits inside a string, so at least `"` comes before it and `}"` after it.
         let mut index = tokens.count() - 3;
         while index > 0 {
             if tokens[index].is_kind(T_DOLLAR_OPEN_CURLY_BRACES)

@@ -1,9 +1,3 @@
-//! PHPStan 2.3.1 MethodCallWithPossiblyRenamedNamedArgumentRule, including the actual emissions in
-//! FunctionCallParametersCheck and MethodParameterComparisonHelper (the Collector classes are placeholders).
-//! Oracle: from the repository cwd, strip agent-format environment variables and run
-//! `php <fixture>/oracle.php <oracle>/phpstan.phar`. The generator maps cases.json's analysed/scanned files to
-//! absolute paths/scanFiles and runs `analyse --debug --error-format=json --no-progress` at each case's level.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -31,7 +25,7 @@ fn check(mode: &str) {
     };
     let mut project = Project::new(files("analysed"), files("scanned"));
     project.level = case["level"].as_u64().unwrap() as u8;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.options.set(
         pun_analyse::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS,
         case["explainIgnores"].as_bool().unwrap_or(false),
@@ -157,13 +151,11 @@ fn redundant_offset_guards_preserve_absence_optionality_and_union_alternatives()
     check("template-offset-certainty");
 }
 
-/// Unlike the older collector-focused cases, these compare every public diagnostic, including named-argument
-/// policy and invalid final-class inheritance. Captured by fixtures/renamed-named-argument/capture-aliases.php.
 fn check_alias(mode: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/renamed-named-argument");
     let mut project = Project::new(vec![root.join(format!("{mode}.php"))], Vec::new());
     project.level = 5;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

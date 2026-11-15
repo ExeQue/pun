@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\StatementIndentationFixer`.
 use crate::analyzers::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::indentation_trait::{
@@ -76,7 +75,6 @@ pub(crate) struct StatementIndentationFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // Upstream's `bracesFixerCompatibility` mode is only used by the deprecated `braces` fixer, which Pun refuses.
     crate::configured(StatementIndentationFixer::default())
 }
 
@@ -112,7 +110,6 @@ impl StatementIndentationFixer {
     fn apply_fix(&self, tokens: &mut Tokens) {
         let alternative_syntax_analyzer = AlternativeSyntaxAnalyzer;
 
-        // PHP keeps `$endIndex` across loop iterations; some branches rely on its stale value.
         let mut end_index = tokens.count() - 1;
         if tokens[end_index].is_whitespace(None) {
             end_index -= 1;
@@ -165,7 +162,6 @@ impl StatementIndentationFixer {
             {
                 let mut end_index_inclusive = true;
 
-                // upstream first checks T_EXTENDS/T_IMPLEMENTS, which never start a block here
                 if token.is_kind(CT_USE_TRAIT) {
                     end_index = tokens
                         .get_next_token_of_kind(index, &[";".into()], true)
@@ -286,7 +282,6 @@ impl StatementIndentationFixer {
                         continue;
                     }
                     if end_token.equals(":", true) {
-                        // a ternary's colon, not a block start
                         if ternary_level > 0 {
                             ternary_level -= 1;
                             end_index += 1;
@@ -379,7 +374,6 @@ impl StatementIndentationFixer {
                     continue;
                 }
 
-                // Only used when it is a comment.
                 let next_token = tokens
                     .as_slice()
                     .get(index + 1)
@@ -418,22 +412,17 @@ impl StatementIndentationFixer {
                             let first = first_non_whitespace_token_index
                                 .expect("first non-whitespace token");
                             if
-                            // do we touch whitespace directly before comment...
                             tokens[first].is_kind(T_COMMENT)
-                                // ...and afterwards, there is only comment or `}`
-                                && tokens[tokens.get_next_meaningful_token(first).unwrap()].equals("}", true)
+                                && tokens[tokens.next_meaningful(first)].equals("}", true)
                             {
                                 if
-                                // ... and the comment was only content in docblock
-                                tokens[tokens.get_prev_meaningful_token(first).unwrap()]
+                                tokens[tokens.prev_meaningful(first)]
                                     .equals("{", true)
                                 {
                                     indent = true;
                                 } else {
-                                    // or it was dedicated comment for next control loop
-                                    // ^^ we need to check if there is a control group afterwards, and in that case don't make extra indent level
                                     let next_index =
-                                        tokens.get_next_meaningful_token(first).unwrap();
+                                        tokens.next_meaningful(first);
                                     let next_next_index =
                                         tokens.get_next_meaningful_token(next_index);
                                     if next_next_index.is_some_and(|n| {
@@ -453,7 +442,6 @@ impl StatementIndentationFixer {
 
                     previous_line_initial_indent = extract_indent(&content);
 
-                    // Only array statement scopes (never reaching here) and bracesFixerCompatibility blocks are `skip`.
                     let whitespaces = [
                         &current.initial_indent[..],
                         if indent {
@@ -496,7 +484,7 @@ impl StatementIndentationFixer {
                     tokens.clear_at(index);
                 }
 
-                if let Some(next_token) = next_token.filter(|t| t.is_comment()) {
+                if let Some(next_token) = next_token.filter(pun_tokens::Token::is_comment) {
                     let pattern = [
                         &b"/(\\R)"[..],
                         &preg_quote(&previous_line_initial_indent, Some(b'/')),
@@ -577,7 +565,7 @@ fn find_statement_end_index(tokens: &Tokens, index: usize, parent_scope_end_inde
     while search_end_index <= parent_scope_end_index {
         let mut search_end_token = &tokens[search_end_index];
         if search_end_token.is_kind(T_IF)
-            && !tokens[tokens.get_prev_meaningful_token(search_end_index).unwrap()].is_kind(T_ELSE)
+            && !tokens[tokens.prev_meaningful(search_end_index)].is_kind(T_ELSE)
         {
             if_level += 1;
             search_end_index += 1;
@@ -616,7 +604,7 @@ fn find_statement_end_index(tokens: &Tokens, index: usize, parent_scope_end_inde
                 .filter(|&c| tokens[c].is_given_kind(&[T_ELSE, T_ELSEIF]))
         {
             if tokens[c].is_kind(T_ELSE)
-                && !tokens[tokens.get_next_meaningful_token(c).unwrap()].is_kind(T_IF)
+                && !tokens[tokens.next_meaningful(c)].is_kind(T_IF)
             {
                 if_level -= 1;
             }
@@ -636,8 +624,7 @@ fn find_statement_end_index(tokens: &Tokens, index: usize, parent_scope_end_inde
     }
     end_index.unwrap_or_else(|| {
         tokens
-            .get_prev_meaningful_token(parent_scope_end_index)
-            .unwrap()
+            .prev_meaningful(parent_scope_end_index)
     })
 }
 
@@ -646,15 +633,13 @@ fn find_case_block_end(
     tokens: &Tokens,
     mut index: usize,
 ) -> (usize, bool) {
-    // A case block always ends at the next case/default or the switch's closing `}` / `endswitch`.
     loop {
         if tokens[index].is_kind(T_SWITCH) {
             let brace_index = tokens
-                .get_next_meaningful_token(tokens.find_block_end(
+                .next_meaningful(tokens.find_block_end(
                     Tokens::BLOCK_TYPE_PARENTHESIS,
                     tokens.get_next_meaningful_token(index).unwrap(),
-                ))
-                .unwrap();
+                ));
             if tokens[brace_index].equals(":", true) {
                 index =
                     alternative_syntax_analyzer.find_alternative_syntax_block_end(tokens, index);
@@ -694,7 +679,7 @@ fn is_property_start(tokens: &Tokens, mut index: usize) -> bool {
         if tokens[index].is_given_kind(&[T_VAR, T_PUBLIC, T_PROTECTED, T_PRIVATE]) {
             return true;
         }
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
     }
     false
 }

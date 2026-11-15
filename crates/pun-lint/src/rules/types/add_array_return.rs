@@ -1,7 +1,3 @@
-//! `lint/types/add-array-return-type`, ported from Rector 2.8.4's `ReturnTypeFromReturnDirectArrayRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a function or method with a top-level `return [...]` whose every
-//! `return` returns a value natively typed `array`, and whose end cannot be reached, returns `array`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, Statement};
 
 use super::facts::facts;
@@ -17,8 +13,8 @@ impl Rule for AddArrayReturn {
         "lint/types/add-array-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -35,7 +31,6 @@ impl Rule for AddArrayReturn {
         let Some(f) = untyped(node, ancestors, ctx) else {
             return;
         };
-        // hasReturnArray: a statement of the body returns an array literal
         let direct = f.body.statements.iter().any(|s| {
             matches!(
                 s,
@@ -45,8 +40,6 @@ impl Rule for AddArrayReturn {
         if !direct {
             return;
         }
-        // ReturnTypeInferer: the union of the returned values' native types, and void for a bare `return` or a
-        // reachable end, must be an array
         let returns = returns_scoped(f.body);
         let facts = facts(ctx);
         let scope = class_scope(ancestors);

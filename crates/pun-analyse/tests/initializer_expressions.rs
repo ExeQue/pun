@@ -1,5 +1,3 @@
-//! Initializer reflection is not ordinary expression flow (actual PHPStan 2.3.1 captures).
-
 use std::path::Path;
 
 use pun_analyse::{analyse, reports};

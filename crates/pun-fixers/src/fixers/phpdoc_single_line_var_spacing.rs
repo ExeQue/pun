@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocSingleLineVarSpacingFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat};

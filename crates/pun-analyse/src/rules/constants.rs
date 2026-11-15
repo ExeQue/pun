@@ -1,8 +1,3 @@
-//! Class-constant declaration rules: ClassAsClassConstantRule, ConstantsInTraitsRule, FinalConstantRule,
-//! NativeTypedClassConstantRule, ConflictingTraitConstantsRule and OverridingConstantRule (its native type and
-//! PHPDoc type checks need checkPhpDocMethodSignatures, on from level 3), plus ReadOnlyClassRule, which PHPStan
-//! reports under `classConstant.nativeTypeNotSupported`.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::class_like_constant::ClassLikeConstantMetadata;
 use mago_codex::visibility::Visibility;
@@ -14,7 +9,6 @@ use pun_phpstan::types::{Level, Type, decide_type, is_super_type_of};
 use super::{Checker, declared};
 use crate::text;
 
-/// The visibility a declaration's modifiers give (public without one).
 fn visibility(modifiers: &[Modifier]) -> Visibility {
     modifiers
         .iter()
@@ -27,10 +21,8 @@ fn visibility(modifiers: &[Modifier]) -> Visibility {
         .unwrap_or(Visibility::Public)
 }
 
-/// The rules registered for `Node\Stmt\ClassConst`.
 pub(super) fn class_constant<'arena>(c: &mut Checker<'_, 'arena>, k: &ClassLikeConstant<'arena>) {
     class_as_class_constant(c, k);
-    // ConstantsInTraitsRule (`$scope->isInTrait()`), PhpVersion::supportsConstantsInTraits()
     if !c.surely_at_least(80200) && c.walk.contains(super::Walk::IN_TARGET) {
         c.report_non_ignorable(
             k,
@@ -40,7 +32,6 @@ pub(super) fn class_constant<'arena>(c: &mut Checker<'_, 'arena>, k: &ClassLikeC
             None,
         );
     }
-    // FinalConstantRule, PhpVersion::supportsFinalConstants()
     if k.modifiers.contains_final() && !c.surely_at_least(80100) {
         c.report_non_ignorable(
             k,
@@ -49,7 +40,6 @@ pub(super) fn class_constant<'arena>(c: &mut Checker<'_, 'arena>, k: &ClassLikeC
             None,
         );
     }
-    // NativeTypedClassConstantRule, PhpVersion::supportsNativeTypesInClassConstants()
     if k.hint.is_some() && !c.surely_at_least(80300) {
         c.report_non_ignorable(
             k,
@@ -59,7 +49,6 @@ pub(super) fn class_constant<'arena>(c: &mut Checker<'_, 'arena>, k: &ClassLikeC
             None,
         );
     }
-    // class constants are walked inside their class-like (trait bodies only in a class's context)
     let class = c
         .class_scope()
         .expect("a class constant is walked inside its class-like");
@@ -67,7 +56,6 @@ pub(super) fn class_constant<'arena>(c: &mut Checker<'_, 'arena>, k: &ClassLikeC
     overriding_constant(c, class, k);
 }
 
-/// ClassAsClassConstantRule.
 fn class_as_class_constant(c: &mut Checker, k: &ClassLikeConstant) {
     for item in &k.items {
         if !item.name.value.eq_ignore_ascii_case(b"class") {
@@ -83,20 +71,16 @@ fn class_as_class_constant(c: &mut Checker, k: &ClassLikeConstant) {
     }
 }
 
-/// ReadOnlyClassRule (`InClassNode`): a `readonly` class declared at `at`.
 pub(super) fn read_only_class(c: &mut Checker, at: Span, modifiers: &[Modifier], anonymous: bool) {
-    // Below PHP 8.1 php-parser lexes `readonly` as a name: PHPStan reports a parse error and never reaches the rule.
     if c.php_version < 80100 || !modifiers.iter().any(Modifier::is_readonly) {
         return;
     }
     let message = if anonymous {
-        // PhpVersion::supportsReadOnlyAnonymousClasses()
         if c.surely_at_least(80300) {
             return;
         }
         "Anonymous readonly classes are supported only on PHP 8.3 and later."
     } else {
-        // PhpVersion::supportsReadOnlyClasses()
         if c.surely_at_least(80200) {
             return;
         }
@@ -115,8 +99,6 @@ impl<'a> Checker<'a, '_> {
         self.codebase.get_class_like(name.as_bytes())
     }
 
-    /// A native type written at `span` of the file `file`, as PHPStan describes it (`self` resolved in `class`).
-    // assistant's call: the hint's source text through pun-phpstan's type resolver (class names stay as written)
     fn native_type(
         &self,
         file: mago_database::file::FileId,
@@ -129,7 +111,6 @@ impl<'a> Checker<'a, '_> {
     }
 }
 
-/// ConflictingTraitConstantsRule.
 fn conflicting_trait_constants<'arena>(
     c: &mut Checker<'_, 'arena>,
     class: &ClassLikeMetadata,
@@ -137,7 +118,6 @@ fn conflicting_trait_constants<'arena>(
 ) {
     let display = c.display(class);
     let class_name = text(class.name.as_bytes());
-    // `getTraits(true)`: the class's traits, theirs, and those of its parents (the codex's `used_traits`)
     let recursive: Vec<&ClassLikeMetadata> = class
         .used_traits
         .iter()
@@ -160,8 +140,6 @@ fn conflicting_trait_constants<'arena>(
             let Some(theirs) = t.constants.get(&name) else {
                 continue;
             };
-            // Both expressions belong to the consuming context, including a trait expression hidden
-            // by an own declaration. Reflected Consumer::VALUE cannot stand in for that source.
             if let (Some(ours), Some(theirs)) = (
                 source_value(c, item.span(), class),
                 source_value(c, theirs.span, class),
@@ -184,8 +162,6 @@ fn conflicting_trait_constants<'arena>(
     }
 }
 
-/// UnionType::equals is unordered, including inside ordered ConstantArrayType values. Reflection's
-/// member order is observable during getConstant(), but is not a trait initializer inequality.
 fn initializer_values_equal(left: &Type, right: &Type) -> bool {
     match (left, right) {
         (Type::Union(left), Type::Union(right)) => {
@@ -238,7 +214,6 @@ fn source_value(c: &Checker, at: Span, class: &ClassLikeMetadata) -> Option<Type
     .map(|value| super::arrays::initializer_order(c, at, class, c.to_phpstan(&value)))
 }
 
-/// ConflictingTraitConstantsRule::processSingleConstant().
 fn single_trait_constant<'arena>(
     c: &mut Checker<'_, 'arena>,
     display: &str,
@@ -269,7 +244,6 @@ fn single_trait_constant<'arena>(
         );
     }
     let final_here = k.modifiers.contains_final();
-    // assistant's call: the codex's FINAL flag (also set by `@final`) stands in for ReflectionClassConstant::isFinal()
     if theirs.flags.is_final() {
         if !final_here {
             c.report_non_ignorable(
@@ -338,7 +312,6 @@ fn single_trait_constant<'arena>(
     }
 }
 
-/// OverridingConstantRule. checkPhpDocMethodSignatures enables the type checks from level 3.
 fn overriding_constant<'arena>(
     c: &mut Checker<'_, 'arena>,
     class: &ClassLikeMetadata,
@@ -353,7 +326,6 @@ fn overriding_constant<'arena>(
         let (current, context) =
             reflected_constant(c, class, key).expect("a class constant walked in its class");
         let name = text(current.name.as_bytes());
-        // an interface's constants are final before PHP 8.1 (BetterReflection's isFinal())
         let interface_final = ancestor.kind.is_interface() && c.php_version < 80100;
         let declaring = c.display(ancestor);
         if prototype.flags.is_final() || interface_final {
@@ -420,8 +392,6 @@ fn overriding_constant<'arena>(
                     _ => {}
                 }
             }
-            // RealClassClassConstantReflection::getValueType(): only compare when both constants have a
-            // PHPDoc type, but decide that PHPDoc against the native type before comparing their values.
             let theirs_doc = declared::constant(c, prototype.span, item.name.value, ancestor);
             let ours_doc = declared::constant(c, current.span, item.name.value, context);
             if let (Some(theirs_doc), Some(ours_doc)) = (theirs_doc, ours_doc) {
@@ -455,8 +425,6 @@ fn overriding_constant<'arena>(
     }
 }
 
-/// BetterReflection::getConstantsConsideringAlreadyVisitedClasses(): own declarations, inherited non-private
-/// constants, then traits and interfaces. Mago's populated map puts traits before inherited constants.
 fn reflected_constant<'a>(
     c: &Checker<'a, '_>,
     class: &'a ClassLikeMetadata,
@@ -487,8 +455,6 @@ fn reflected_constant<'a>(
     )
 }
 
-/// `ClassConstantReflection::getNativeType()`: the declaration or PHPStan's php-8-stubs metadata, never the
-/// inferred initializer type.
 fn constant_native(
     c: &Checker,
     constant: &ClassLikeConstantMetadata,
@@ -508,8 +474,6 @@ fn constant_native(
         .cloned()
 }
 
-/// OverridingConstantRule::findPrototype(): the constant of the first immediate interface that has it, else the
-/// parent's unless private; with the display name of the class declaring it.
 fn find_prototype<'a>(
     c: &Checker<'a, '_>,
     class: &'a ClassLikeMetadata,
@@ -522,7 +486,6 @@ fn find_prototype<'a>(
     )
     .take(64)
     .collect();
-    // getImmediateInterfaces(): the class's interfaces less those of its parents and those its interfaces extend
     let interfaces: Vec<&ClassLikeMetadata> = class
         .all_parent_interfaces
         .iter()
@@ -545,8 +508,6 @@ fn find_prototype<'a>(
     reflected_constant(c, parent, name).filter(|(k, _)| k.visibility != Visibility::Private)
 }
 
-/// `getDeclaringClass()` of a constant `k` has: the class-like whose declaration holds it, or the class using the
-/// trait that does.
 pub(super) fn declaring<'a>(
     c: &Checker<'a, '_>,
     k: &'a ClassLikeMetadata,
@@ -557,7 +518,6 @@ pub(super) fn declaring<'a>(
             && s.start.offset <= constant.span.start.offset
             && constant.span.end.offset <= s.end.offset
     };
-    // a trait's `used_traits` holds the traits it uses, recursively
     let in_traits = |k: &ClassLikeMetadata| {
         k.direct_trait_names()
             .filter_map(|t| c.class_named(&t))

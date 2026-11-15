@@ -1,8 +1,4 @@
-//! Package versions as Composer reads them: the normalized form `installed.json` and `installed.php` store
-//! (`v1.2` → `1.2.0.0`, `5.x-dev` → `5.9999999.9999999.9999999-dev`), branch aliases, stability, and PHP's
-//! `version_compare`.
-
-use anyhow::{Result, bail};
+use crate::error::{Result, bail};
 use pcre2::bytes::{Captures, Regex};
 use std::cmp::Ordering;
 use std::sync::LazyLock;
@@ -48,8 +44,6 @@ fn stability(s: &str) -> String {
     }
 }
 
-/// The normalized form of a version (`VersionParser::normalize`): four numeric parts and a stability suffix, a
-/// `dev-` branch kept as it is, aliases (`x as y`), stability flags (`@dev`) and build metadata (`+foo`) dropped.
 pub fn normalize(version: &str) -> Result<String> {
     let original = version.trim();
     let mut v = original.to_string();
@@ -116,18 +110,15 @@ pub fn normalize(version: &str) -> Result<String> {
 static STABILITY_SUFFIX: LazyLock<Regex> =
     LazyLock::new(|| re(&format!(r"(?i){MODIFIER}(?:\+.*)?$")));
 
-/// A version's stability (`VersionParser::parseStability`): `dev`, `alpha`, `beta`, `RC` or `stable`.
 pub fn stability_of(version: &str) -> &'static str {
     let version = version.split_once('#').map_or(version, |(v, _)| v);
     if version.starts_with("dev-") || version.ends_with("-dev") {
         return "dev";
     }
-    // Without a letter there is no modifier; most versions are plain tags.
     if version.bytes().all(|c| c.is_ascii_digit() || c == b'.') {
         return "stable";
     }
     let lower = version.to_ascii_lowercase();
-    // Every part of the suffix is optional, so it matches every version.
     let m = (STABILITY_SUFFIX.captures(lower.as_bytes()).ok().flatten())
         .expect("an empty suffix matches");
     if !group(&m, 3).is_empty() {
@@ -141,8 +132,6 @@ pub fn stability_of(version: &str) -> &'static str {
     }
 }
 
-/// A branch name as a version: a numeric branch (`5.x`, `2.1`) becomes `5.9999999.9999999.9999999-dev`, any other
-/// name `dev-<name>`.
 pub fn normalize_branch(name: &str) -> String {
     let name = name.trim();
     let Ok(Some(c)) = BRANCH.captures(name.as_bytes()) else {
@@ -158,8 +147,6 @@ pub fn normalize_branch(name: &str) -> String {
     format!("{}-dev", v.replace('x', "9999999"))
 }
 
-/// The alias Composer installs a dev version under, as (normalized, pretty): `extra.branch-alias` for the version
-/// (`dev-main` → `1.x-dev`), else `9999999-dev` for a non-numeric default branch.
 pub fn branch_alias(
     package: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<(String, String)> {
@@ -217,8 +204,37 @@ fn pretty_alias(normalized: String) -> (String, String) {
     (normalized, pretty)
 }
 
-/// `BasePackage::packageNameToRegexp`: whether `name` matches `pattern`, where `*` matches any run of characters
-/// (`/` included), case-insensitively. Composer's `allow-plugins` and `--ignore-platform-req` match names this way.
+/// The platform requirements `--ignore-platform-req` and `--ignore-platform-reqs` leave out.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IgnorePlatform {
+    /// The requirements matching one of these names or `*` globs.
+    Listed(Vec<String>),
+    All,
+}
+
+impl Default for IgnorePlatform {
+    fn default() -> IgnorePlatform {
+        IgnorePlatform::Listed(vec![])
+    }
+}
+
+impl IgnorePlatform {
+    pub fn new(listed: Vec<String>, all: bool) -> IgnorePlatform {
+        if all {
+            IgnorePlatform::All
+        } else {
+            IgnorePlatform::Listed(listed)
+        }
+    }
+
+    pub fn ignores(&self, name: &str) -> bool {
+        match self {
+            IgnorePlatform::All => true,
+            IgnorePlatform::Listed(patterns) => patterns.iter().any(|p| name_matches(p, name)),
+        }
+    }
+}
+
 pub fn name_matches(pattern: &str, name: &str) -> bool {
     let (pattern, name) = (pattern.to_ascii_lowercase(), name.to_ascii_lowercase());
     let mut parts = pattern.split('*');
@@ -239,7 +255,6 @@ pub fn name_matches(pattern: &str, name: &str) -> bool {
     rest.is_empty()
 }
 
-/// Whether a package name is the platform's (PHP, an extension, a library, Composer's APIs), not a package.
 pub fn is_platform(name: &str) -> bool {
     static PLATFORM: LazyLock<Regex> = LazyLock::new(|| {
         re(
@@ -249,7 +264,6 @@ pub fn is_platform(name: &str) -> bool {
     PLATFORM.is_match(name.as_bytes()).unwrap_or(false)
 }
 
-/// PHP's `version_compare($a, $b)`: -1, 0 or 1.
 pub fn compare(a: &str, b: &str) -> i32 {
     if a.is_empty() || b.is_empty() {
         return match (a.is_empty(), b.is_empty()) {
@@ -258,7 +272,6 @@ pub fn compare(a: &str, b: &str) -> i32 {
             _ => 1,
         };
     }
-    // Canonical forms are at most twice as long; most versions fit on the stack, so comparing allocates nothing.
     let (mut stack_a, mut stack_b) = ([0u8; 64], [0u8; 64]);
     let (mut heap_a, mut heap_b) = (vec![], vec![]);
     let a = canonical(a, &mut stack_a, &mut heap_a);
@@ -301,8 +314,6 @@ pub fn compare(a: &str, b: &str) -> i32 {
     result
 }
 
-/// One segment against another: numbers by value, words by their rank (`dev` < `alpha` < `beta` < `RC` < a number <
-/// `pl`), anything else below `dev`.
 fn segment(s1: &[u8], s2: &[u8]) -> i32 {
     let digit = |s: &[u8]| s.first().is_some_and(u8::is_ascii_digit);
     let number = |s: &[u8]| -> i64 {
@@ -339,8 +350,6 @@ fn rank(form: &[u8]) -> i32 {
         .map_or(-1, |f| f.1)
 }
 
-/// `php_canonicalize_version`: `-`, `_`, `+` and other punctuation become `.`, a `.` goes between a digit and a
-/// letter, and a trailing `.` goes. A version starting with `#` is left as it is.
 fn canonical<'b>(v: &'b str, stack: &'b mut [u8], heap: &'b mut Vec<u8>) -> &'b [u8] {
     let v = v.as_bytes();
     if v[0] == b'#' {
@@ -384,7 +393,6 @@ fn canonical<'b>(v: &'b str, stack: &'b mut [u8], heap: &'b mut Vec<u8>) -> &'b 
     &out[..len]
 }
 
-/// PHP's `version_compare` as an [`Ordering`].
 pub fn ordering(a: &str, b: &str) -> Ordering {
     compare(a, b).cmp(&0)
 }
@@ -394,7 +402,14 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// composer/semver 3.6.0's `VersionParserTest::successfulNormalizedVersions`, a selection covering every branch.
+    #[test]
+    fn ignored_platform_requirements() {
+        let listed = IgnorePlatform::new(vec!["ext-*".into()], false);
+        assert!(listed.ignores("ext-json") && !listed.ignores("php"));
+        assert!(IgnorePlatform::new(vec![], true).ignores("php"));
+        assert!(!IgnorePlatform::default().ignores("php"));
+    }
+
     #[test]
     fn normalize_matches_composer() {
         for (input, want) in [
@@ -443,7 +458,6 @@ mod tests {
         );
     }
 
-    /// Expected values from Composer 2.11.2's `ArrayLoader::getBranchAlias` on the same package arrays.
     #[test]
     fn branch_aliases_match_composer() {
         let alias = |v: serde_json::Value| branch_alias(v.as_object().expect("an object"));
@@ -466,7 +480,6 @@ mod tests {
             alias(json!({"version": "1.0.0", "extra": {"branch-alias": {"1.0.0": "1.x-dev"}}})),
             None
         );
-        // A numeric alias must extend its branch, and the target must be a -dev version.
         assert_eq!(
             alias(
                 json!({"version": "2.x-dev", "extra": {"branch-alias": {"2.x-dev": "3.0.x-dev"}}})
@@ -483,7 +496,6 @@ mod tests {
         );
     }
 
-    /// Expected values from PHP 8.5's `version_compare`.
     #[test]
     fn compare_matches_php() {
         for (a, b, want) in [
@@ -517,7 +529,6 @@ mod tests {
         assert_eq!(ordering("2", "10"), Ordering::Less);
     }
 
-    /// Expected values from composer/semver 3.6.0's `VersionParser::parseStability`.
     #[test]
     fn stability_matches_composer() {
         for (v, want) in [

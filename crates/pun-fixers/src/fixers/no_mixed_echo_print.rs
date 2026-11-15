@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\NoMixedEchoPrintFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
@@ -11,7 +10,6 @@ struct NoMixedEchoPrintFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `configure` sets the field.
     crate::configured(NoMixedEchoPrintFixer {
         candidate_token_type: T_PRINT,
     })
@@ -50,7 +48,7 @@ impl Fixer for NoMixedEchoPrintFixer {
 }
 
 fn fix_echo_to_print(tokens: &mut Tokens, index: usize) {
-    let next_token_index = tokens.get_next_meaningful_token(index).unwrap();
+    let next_token_index = tokens.next_meaningful(index);
     let end_token_index = tokens
         .get_next_token_of_kind(index, &[";".into(), T_CLOSE_TAG.into()], true)
         .unwrap();
@@ -69,7 +67,7 @@ fn fix_echo_to_print(tokens: &mut Tokens, index: usize) {
 }
 
 fn fix_print_to_echo(tokens: &mut Tokens, index: usize) {
-    let prev = tokens.get_prev_meaningful_token(index).unwrap();
+    let prev = tokens.prev_meaningful(index);
     if !tokens[prev].equals_any(
         &[
             ";".into(),

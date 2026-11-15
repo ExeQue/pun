@@ -1,4 +1,3 @@
-//! Requested method names are distinct from their unchanged trait storage IDs.
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
@@ -74,7 +73,6 @@ impl MethodReturnTypeProvider for Names {
         _: &[u8],
         call: &InvocationInfo<'_, '_, '_>,
     ) -> Option<TUnion> {
-        // Implicit __toString invocations price returns without analysing an argument list.
         self.collect(call);
         None
     }
@@ -104,7 +102,6 @@ fn lookup_names_survive_aliases_inheritance_dynamic_static_constructor_and_impli
     Analyzer::new(&arena, &file, &resolved, &codebase, &registry, settings)
         .analyze(program, &mut result)
         .unwrap();
-    // Derived by hand from each selector and the trait method declarations, not from storage lookup.
     let expected = [
         (20, "traitMutation", "traitmutation"),
         (21, "aliasMutation", "traitmutation"),

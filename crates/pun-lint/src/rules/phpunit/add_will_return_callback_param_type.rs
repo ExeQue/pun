@@ -1,18 +1,3 @@
-//! `lint/phpunit/add-will-return-callback-param-type`, ported from rector-phpunit's
-//! `TypeWillReturnCallableArrowFunctionRector` (rules/CodeQuality/Rector/Class_), with `SetUpAssignedMockTypesResolver`
-//! and `MethodParametersAndReturnTypesResolver::resolveFromReflection`.
-//!
-//! In the methods of a test class, the closure or arrow function of `$mock->method('name')->willReturnCallback(fn)` or
-//! `$mock->method('name')->with($this->callback(fn))` gets the native types of the mocked method: each untyped,
-//! non-variadic parameter the type of the method's parameter at its position, and, when it has no return type, the
-//! method's return type.
-//!
-//! The mocked class comes from the receiver's intersection type (`MockObject&SomeClass`), as
-//! `lint/phpunit/prefer-will-return-callback` reads it, with the same fallback to the classes `setUp()` mocks. A
-//! declared type that is one class other than the test class itself counts as `mixed` and is not written; neither is
-//! a parameter without a type, or a return type left implicit. A closure with exactly one `return` of a value keeps
-//! no return type unless that value's type takes in every value of the method's return type.
-
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::metadata::ttype::TypeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -72,8 +57,6 @@ impl Rule for AddWillReturnCallbackParamType {
         else {
             return;
         };
-        // each test class whose methods hold the call, as Rector visits them: the outermost first, whose changes the
-        // inner ones then find made
         for at in test_classes(ctx, ancestors) {
             let class = &ancestors[..=at];
             let edits = decorate(ctx, class, parent, method.as_bytes(), &inner);
@@ -90,7 +73,6 @@ impl Rule for AddWillReturnCallbackParamType {
     }
 }
 
-/// The closure or arrow function `refactor()` decorates.
 enum Inner<'a> {
     Closure(&'a mago_syntax::cst::Closure<'a>),
     Arrow(&'a mago_syntax::cst::ArrowFunction<'a>),
@@ -119,7 +101,6 @@ impl<'a> Inner<'a> {
         }
     }
 
-    /// Where `: type` goes: after the `use` clause, or the parameter list.
     fn return_type_at(&self) -> usize {
         match self {
             Inner::Closure(c) => match &c.use_clause {
@@ -138,7 +119,6 @@ impl<'a> Inner<'a> {
     }
 }
 
-/// `matchInnerClosure()`: the closure of `with($this->callback(fn))` or `willReturnCallback(fn)`.
 fn match_inner_closure<'a>(call: &'a MethodCall<'a>) -> Option<Inner<'a>> {
     let first = call.argument_list.arguments.first().map(Argument::value)?;
     if is_named(&call.method, "with")
@@ -159,7 +139,6 @@ fn match_inner_closure<'a>(call: &'a MethodCall<'a>) -> Option<Inner<'a>> {
     None
 }
 
-/// The edits for one call, read in the test class `class` ends in.
 fn decorate(
     ctx: &Context<'_>,
     class: &[Node<'_, '_>],
@@ -170,7 +149,6 @@ fn decorate(
     let Some(mocked) = setup_assigned_mock_types(ctx, class) else {
         return Vec::new();
     };
-    // we need mocks
     let Some(classes) = mocked_classes(ctx, parent, &mocked) else {
         return Vec::new();
     };
@@ -181,16 +159,14 @@ fn decorate(
     };
     let mut edits = Vec::new();
     for (key, param) in inner.parameters().parameters.iter().enumerate() {
-        // avoid typing variadic parameters; already filled, lets skip it
         if param.ellipsis.is_some() || param.hint.is_some() {
             continue;
         }
-        // we need specific non-mixed type
         let Some(Some(t)) = resolved.params.get(key) else {
             continue;
         };
         let Some(text) =
-            declaration(&facts, t, ctx.php_version).filter(|_| !t.type_union.is_mixed())
+            declaration(&facts, t, ctx.php_version.id()).filter(|_| !t.type_union.is_mixed())
         else {
             continue;
         };
@@ -204,7 +180,7 @@ fn decorate(
     if !inner.has_return_type()
         && let Some(t) = &resolved.return_type
         && !conflicts_with_returned(&facts, class, inner, t)
-        && let Some(text) = declaration(&facts, t, ctx.php_version)
+        && let Some(text) = declaration(&facts, t, ctx.php_version.id())
     {
         let at = inner.return_type_at();
         edits.push(Edit::new(Span::new(at, at), format!(": {text}")));
@@ -212,16 +188,11 @@ fn decorate(
     edits
 }
 
-/// The native types `resolveFromReflection()` gives: a parameter's or the return's type, `None` for `mixed` (none
-/// written, a class other than the test class, or no type).
 struct Resolved<'c> {
     params: Vec<Option<&'c TypeMetadata>>,
     return_type: Option<&'c TypeMetadata>,
 }
 
-/// `MethodParametersAndReturnTypesResolver::resolveFromReflection()` on the first of `classes` that has the method
-/// natively. Mago keeps an intersection's members in an order of its own, so where several have it and their types
-/// differ, `None`.
 fn resolve_from_reflection<'c>(
     facts: &'c Facts,
     classes: &[String],
@@ -253,8 +224,6 @@ fn resolve_from_reflection<'c>(
     found.map(|(_, r)| r)
 }
 
-/// `resolveObjectType()` and the check after it: a type that is one class (`Closure` included) other than the test
-/// class is `mixed`, and so is no type.
 fn resolve_type<'c>(t: Option<&'c TypeMetadata>, current: &str) -> Option<&'c TypeMetadata> {
     let t = t?;
     if let [TAtomic::Object(TObject::Named(n))] = t.type_union.types.as_ref()
@@ -268,7 +237,6 @@ fn resolve_type<'c>(t: Option<&'c TypeMetadata>, current: &str) -> Option<&'c Ty
     {
         return None;
     }
-    // `Closure` is a class to PHPStan (Mago reads it as a callable)
     if let [TAtomic::Callable(c)] = t.type_union.types.as_ref()
         && c.is_closure()
     {
@@ -277,8 +245,6 @@ fn resolve_type<'c>(t: Option<&'c TypeMetadata>, current: &str) -> Option<&'c Ty
     Some(t)
 }
 
-/// `StaticTypeMapper::mapPHPStanTypeToPhpParserNode()` of a declared type, in its written order; an explicit `mixed`
-/// is `mixed`.
 fn declaration(facts: &Facts, t: &TypeMetadata, php_version: u32) -> Option<String> {
     if t.type_union.is_mixed() {
         return Some("mixed".to_string());
@@ -299,8 +265,6 @@ fn declaration(facts: &Facts, t: &TypeMetadata, php_version: u32) -> Option<Stri
     )
 }
 
-/// `shouldSkipReturnForConflictWithReturnedNodeType()`: the function holds exactly one `return` of a value (nested
-/// functions' included), and that value's type does not take in every value of `t`.
 fn conflicts_with_returned(
     facts: &Facts,
     class: &[Node<'_, '_>],

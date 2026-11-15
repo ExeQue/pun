@@ -1,9 +1,3 @@
-//! `lint/laravel/no-negated-contains`, ported from rector-laravel 2.7.3's
-//! `AvoidNegatedCollectionContainsOrDoesntContainRector` (src/Rector/BooleanNot).
-//!
-//! `!$collection->contains(...)` becomes `$collection->doesntContain(...)`, and `!$collection->doesntContain(...)`
-//! becomes `$collection->contains(...)`, when the collection is an `Illuminate\Support\Enumerable`.
-
 use mago_syntax::cst::{Call, Expression, Node, NodeKind, UnaryPrefixOperator};
 
 use super::object_type::is_object_type;

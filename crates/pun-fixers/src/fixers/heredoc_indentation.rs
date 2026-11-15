@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\HeredocIndentationFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use crate::analyzers::whitespaces_analyzer::WhitespacesAnalyzer;

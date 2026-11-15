@@ -1,16 +1,9 @@
-//! `lint/laravel/no-negated-when`, ported from rector-laravel 2.7.3's `ReverseConditionableMethodCallRector`
-//! (src/Rector/MethodCall).
-//!
-//! On an object that uses `Illuminate\Support\Traits\Conditionable`, `when(!$x, ...)` becomes `unless($x, ...)` and
-//! `unless(!$x, ...)` becomes `when($x, ...)`. As in Rector, the new first argument has no name nor `...`, and a method name
-//! written other than `when` in lowercase (`When`, `UNLESS`) becomes `when`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
 use super::object_type::is_object_type;
 use super::{is_name, member_name};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

@@ -1,7 +1,3 @@
-//! Which of several candidate packages the solver tries first (Composer's `DefaultPolicy`): the newest version (the
-//! oldest with `--prefer-lowest`), stable before unstable with `prefer-stable`, the locked version with
-//! `--minimal-changes`, root aliases before remote ones, and a package before the ones that replace it.
-
 use super::package::Package;
 use super::pool::Pool;
 use crate::constraint::{Constraint, Op, match_specific_branches};
@@ -12,15 +8,10 @@ use std::collections::HashMap;
 pub struct Policy {
     pub prefer_stable: bool,
     pub prefer_lowest: bool,
-    /// `COMPOSER_PREFER_DEV_OVER_PRERELEASE`: with `prefer_lowest`, a dev version counts as stable against a
-    /// pre-release.
     pub prefer_dev_over_prerelease: bool,
-    /// With `--minimal-changes`, the locked version of each package that is not being updated.
     pub preferred_versions: Option<HashMap<String, String>>,
 }
 
-/// A stable insertion sort: PHP's `usort` result for any consistent comparator, without requiring the total order
-/// Rust's sorts check for.
 fn usort<T: Copy>(items: &mut [T], mut cmp: impl FnMut(T, T) -> Ordering) {
     for i in 1..items.len() {
         let mut j = i;
@@ -32,7 +23,6 @@ fn usort<T: Copy>(items: &mut [T], mut cmp: impl FnMut(T, T) -> Ordering) {
 }
 
 impl Policy {
-    /// Whether `a` compares to `b` by `op` (`>`, `<` or `==`), stability first when `prefer_stable`.
     pub fn version_compare(&self, a: &Package, b: &Package, op: Op) -> bool {
         if self.prefer_stable && a.stability != b.stability {
             let (mut sa, mut sb) = (a.stability, b.stability);
@@ -50,7 +40,6 @@ impl Policy {
         Constraint::Single(op, b.version.clone()).matches(&Constraint::exact(&a.version))
     }
 
-    /// The literals of `literals` worth trying, best first (`selectPreferredPackages`).
     pub fn select_preferred(
         &self,
         pool: &Pool,
@@ -79,6 +68,10 @@ impl Policy {
         selected
     }
 
+    #[expect(
+        clippy::unused_self,
+        reason = "ports Composer's DefaultPolicy::compareByPriority, an instance method"
+    )]
     fn compare_by_priority(
         &self,
         pool: &Pool,
@@ -144,7 +137,6 @@ impl Policy {
     }
 }
 
-/// Only the root aliases, when there are any among the candidates.
 fn prune_remote_aliases(pool: &Pool, literals: Vec<i32>) -> Vec<i32> {
     let root = |l: &i32| {
         let p = pool.package(*l);
@@ -163,10 +155,11 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Expected ids from Composer 2.11.2's `DefaultPolicy::selectPreferredPackages` on a `Pool` of the same
-    /// packages (ids from 1 in this order), in PHP 8.5, with `COMPOSER_PREFER_DEV_OVER_PRERELEASE` set where
-    /// `dev_over_prerelease` is.
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn selects_as_composer() {
         let mut arena = vec![];
         for data in [

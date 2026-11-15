@@ -1,12 +1,3 @@
-//! Composer's psr-4 and psr-0 files, found on demand: a file is scanned once an analysed or scanned file names the
-//! class its path holds, as PHPStan's PSR locators look a class up by name instead of reading every file.
-//!
-//! The names a file holds are over-approximated from its bytes, so that a file any rule or type could reach is
-//! scanned: every name-like token in code, comments and strings (`\\` as in a string literal included), as written,
-//! relative to each namespace the file declares, and through each import (`use`, `as`, group use, and any qualified
-//! name's last segment). Case is ignored for class files. Laravel's cold AliasLoader lookup is exact-case; a
-//! reachable exact alias activates its codex declaration, after which loaded alias identity is case-insensitive.
-
 use std::collections::{HashMap, HashSet};
 
 use foldhash::fast::FixedState;
@@ -18,7 +9,6 @@ use crate::project::Autoloaded;
 
 type Map<K, V> = HashMap<K, V, FixedState>;
 
-/// The autoloaded files by the class their path holds: index into the build's file list.
 pub(crate) struct Index {
     psr4: Map<Box<[u8]>, Vec<usize>>,
     psr0: Map<Box<[u8]>, Vec<usize>>,
@@ -30,10 +20,8 @@ struct Alias {
     files: Vec<usize>,
 }
 
-/// A token's bytes in the file: `\` or `\\` between segments, no leading `\`.
 type Range = (usize, usize);
 
-/// A name: a token, below a group use's prefix if it is in one.
 type Full = (Option<Range>, Range);
 
 impl Index {
@@ -96,7 +84,6 @@ impl Index {
         index
     }
 
-    /// Adds the files and alias declarations that a class `code` names can reach.
     pub(crate) fn wanted(
         &self,
         code: &[u8],
@@ -108,8 +95,6 @@ impl Index {
         if self.psr4.is_empty() && self.psr0.is_empty() && self.aliases.is_empty() {
             return;
         }
-        // Resolved spellings, not arbitrary strings/comments or an unqualified name in another namespace.
-        // In particular, scanning Facade::defaultAliases itself must not activate every alias in its array.
         let namespaces: Vec<_> = if self.aliases.is_empty() {
             Vec::new()
         } else {
@@ -134,7 +119,6 @@ impl Index {
             }
         }
         let names = Names::of(code);
-        // by the alias lowercased, as PHP resolves an alias whatever its case
         let mut aliases: Map<Vec<u8>, Vec<Full>> = Map::default();
         for &(alias, full) in &names.aliases {
             aliases
@@ -142,8 +126,6 @@ impl Index {
                 .or_default()
                 .push(full);
         }
-        // PHPDoc has no ResolvedNames entries. Use its actual namespace and the file's import expansions, as
-        // the byte index does for target files; an unqualified local type must not become a global alias.
         for doc in program
             .trivia
             .iter()
@@ -235,12 +217,10 @@ impl Index {
         self.look_files(name, out);
     }
 
-    /// The files that may hold class `name` (lowercased); `name` is used as scratch.
     fn look_files(&self, name: &mut [u8], out: &mut Vec<usize>) {
         if let Some(files) = self.psr4.get(&*name) {
             out.extend(files);
         }
-        // psr-0: `_` in the class's own name is a directory separator
         let last = name.iter().rposition(|&b| b == b'\\').map_or(0, |i| i + 1);
         for b in &mut name[last..] {
             if *b == b'_' {
@@ -253,7 +233,6 @@ impl Index {
     }
 }
 
-/// Appends `token`, collapsing doubled namespace separators in string literals.
 fn push_name(name: &mut Vec<u8>, token: &[u8]) {
     let mut previous = 0;
     for &b in token {
@@ -264,7 +243,6 @@ fn push_name(name: &mut Vec<u8>, token: &[u8]) {
     }
 }
 
-/// Appends `full`.
 fn push_full(name: &mut Vec<u8>, code: &[u8], (prefix, token): Full) {
     if let Some(p) = prefix {
         push_name(name, &code[p.0..p.1]);
@@ -273,18 +251,13 @@ fn push_full(name: &mut Vec<u8>, code: &[u8], (prefix, token): Full) {
     push_name(name, &code[token.0..token.1]);
 }
 
-/// A file's name-like tokens.
 struct Names {
-    /// Each token, and whether it is fully qualified.
     tokens: Vec<(Range, bool)>,
     namespaces: Vec<Range>,
-    /// An alias (a qualified name's last segment, or the name after `as`) and the name it may stand for.
     aliases: Vec<(Range, Full)>,
-    /// The names in a group use, below its prefix.
     grouped: Vec<(Range, Range)>,
 }
 
-/// Bytes that start a name: letters, `_` and non-ASCII.
 const START: [u64; 4] = {
     let mut t = [0; 4];
     let mut b = 0;
@@ -313,9 +286,7 @@ impl Names {
             aliases: Vec::new(),
             grouped: Vec::new(),
         };
-        // the group use the scan is in: its prefix and where it closes
         let mut group: Option<(Range, usize)> = None;
-        // the two names before this one
         let mut previous: [Option<Full>; 2] = [None, None];
         let mut i = 0;
         while i < code.len() {
@@ -357,7 +328,6 @@ impl Names {
                 group = None;
             }
             if trailing {
-                // `use A\{B, C as D}`: the names up to `}` are below `A\`
                 let open = code[i..]
                     .iter()
                     .position(|b| !b.is_ascii_whitespace())

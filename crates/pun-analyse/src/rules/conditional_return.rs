@@ -1,7 +1,3 @@
-//! FunctionConditionalReturnTypeRule and MethodConditionalReturnTypeRule (level 2, over
-//! ConditionalReturnTypeRuleHelper): a conditional type's subject must involve a template or name a parameter, and
-//! its condition must not be decided by the subject's type alone.
-
 use std::cell::RefCell;
 
 use mago_span::HasSpan;
@@ -45,8 +41,6 @@ pub(super) fn method(c: &mut Checker, m: &Method) {
     }
 }
 
-/// A callable's conditional return on its own parameter with boolean branches: a type predicate, whose return type
-/// is `bool` (`resolveCallableReturnTypeAssertions()`, CallableAssertionsHelper::createAssertionsFromConditional()).
 fn predicate(sig: &Signature) -> bool {
     let Type::Conditional(c) = &sig.ret else {
         return false;
@@ -76,7 +70,6 @@ fn predicate(sig: &Signature) -> bool {
     )
 }
 
-/// `TypeTraverser::map()` collecting the conditional types, outer ones first.
 fn conditionals(t: &Type, out: &RefCell<Vec<Conditional>>) {
     if let Type::Conditional(c) = t {
         out.borrow_mut().push((**c).clone());
@@ -107,7 +100,6 @@ fn has_template(t: &Type) -> bool {
     found.get()
 }
 
-/// ConditionalReturnTypeRuleHelper::check().
 fn check(sig: &declared::Signature) -> Vec<(&'static str, String)> {
     let found = RefCell::new(Vec::new());
     for (_, ty, out, closure_this) in &sig.params {
@@ -149,11 +141,9 @@ fn check(sig: &declared::Signature) -> Vec<(&'static str, String)> {
             }
         };
         let target = &conditional.target;
-        // (an OffsetAccessType subject of a template resolves as its bound's offset type)
         let resolved = match &subject {
             Type::OffsetAccess(..) => {
                 match pun_phpstan::resolve::resolve_late(&subject.resolve_to_bounds()) {
-                    // ponytail: an offset Pun's resolver leaves unresolved is not checked
                     Type::OffsetAccess(..) => continue,
                     t => t,
                 }

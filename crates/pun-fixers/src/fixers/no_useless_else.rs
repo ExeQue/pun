@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\NoUselessElseFixer`.
 use crate::analyzers::abstract_no_useless_else_fixer::{PRIORITY, is_superfluous_else};
 use pun_format::Fixer;
 use pun_tokens::{Kind, Tokens, TokensAnalyzer};
@@ -25,7 +24,7 @@ impl Fixer for NoUselessElseFixer {
             if !tokens[index].is_kind(Kind::T_ELSE) {
                 continue;
             }
-            if tokens[tokens.get_next_meaningful_token(index).unwrap()]
+            if tokens[tokens.next_meaningful(index)]
                 .equals_any(&[":".into(), Kind::T_IF.into()], true)
             {
                 continue;
@@ -44,7 +43,7 @@ impl Fixer for NoUselessElseFixer {
 }
 
 fn fix_empty_else(tokens: &mut Tokens, index: usize) {
-    let next = tokens.get_next_meaningful_token(index).unwrap();
+    let next = tokens.next_meaningful(index);
     if tokens[next].equals("{", true) {
         let close = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, next);
         if close - next == 1 || tokens.get_next_meaningful_token(next) == Some(close) {
@@ -60,7 +59,7 @@ fn fix_empty_else(tokens: &mut Tokens, index: usize) {
 
 fn clear_else(tokens: &mut Tokens, index: usize) {
     tokens.clear_token_and_merge_surrounding_whitespace(index);
-    let next = tokens.get_next_meaningful_token(index).unwrap();
+    let next = tokens.next_meaningful(index);
     if !tokens[next].equals("{", true) {
         return;
     }
@@ -70,7 +69,7 @@ fn clear_else(tokens: &mut Tokens, index: usize) {
 }
 
 fn contains_named_symbol_declaration(tokens: &Tokens, index: usize) -> bool {
-    let next = tokens.get_next_meaningful_token(index).unwrap();
+    let next = tokens.next_meaningful(index);
     if !tokens[next].equals("{", true) {
         return false;
     }

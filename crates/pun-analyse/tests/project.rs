@@ -241,26 +241,16 @@ fn php_version_range_and_ignore_flags() {
     check("phpstan-min");
 }
 
-/// Classes of Composer's psr-4 directories, which Pun scans once an analysed or scanned file names them: through
-/// another psr-4 file only, a namespace alias in another case, a group use, a name relative to an imported namespace or
-/// to the file's own namespace, a class string with `\\`, the second of two directories, and a file excludePaths
-/// names (PHPStan's PSR locators ignore it). A psr-4 directory that does not exist holds nothing.
 #[test]
 fn autoloaded_classes_found_on_demand() {
     check("phpstan-autoload");
 }
 
-/// A symlinked directory and a symlinked file under `paths` are walked and analysed, as PHPStan's finder follows
-/// links (expected: its run on tests/fixtures/symlinks).
 #[test]
 fn symlinks_are_followed() {
     check_in("symlinks", "phpstan");
 }
 
-/// The class-member declaration rules' PHP-version branches (hooks, final and interface properties, asymmetric
-/// visibility of static properties, promoted and final promoted properties), `PHP_VERSION_ID` narrowing in
-/// FinalPrivateMethodRule, PHPDoc tags and `@immutable` parents (in another analysed file, in a scanned one, missing),
-/// virtual properties overriding a parent's, and enum case values the codex does not type.
 #[test]
 fn declaration_rules_by_php_version() {
     check("phpstan-versions-70400");
@@ -268,15 +258,11 @@ fn declaration_rules_by_php_version() {
     check("phpstan-versions-80400");
 }
 
-/// The rules bleedingEdge turns on through `featureToggles` (NewStaticInAbstractClassStaticMethodRule's own test).
 #[test]
 fn feature_toggles() {
     check("phpstan-bleeding");
 }
 
-/// A file that exists but can't be read stops the run with its path, as it stops PHPStan's ("Could not read file:
-/// <path>" for a chmod 000 file); a directory stands in for one, since root reads any file. A file that is gone is
-/// skipped.
 #[test]
 fn unreadable_file_stops_the_run() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/project");
@@ -290,7 +276,6 @@ fn unreadable_file_stops_the_run() {
     assert_eq!(run(&Project::new(vec![gone], Vec::new())).unwrap(), []);
 }
 
-/// Without `level` (config.neon's null) the rules run at level 0, where PHPStan stops with "No rules detected".
 #[test]
 fn level_is_zero_when_unset() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/project");
@@ -306,25 +291,16 @@ fn level_is_zero_when_unset() {
     assert_eq!(Project::from_config(&dir, &config.parameters).level, 0);
 }
 
-/// `stubFiles` patch the symbols they name: a stub's `@method` is the class's (PHPStan's run on
-/// tests/fixtures/project with phpstan-stubs.neon), while a symbol only a stub declares stays unknown.
 #[test]
 fn stub_files() {
     check("phpstan-stubs");
 }
 
-/// A stub's PHPDoc resolves its names in the stub's namespace, wherever the declaration it patches sits in its own
-/// file: here `Box` starts past the end of the stub, whose `@template T of Base` is still `StubScope\Base`
-/// (PHPStan's run with phpstan-stub-scope.neon: `Box<Child>` is accepted, `Box<stdClass>` is not).
 #[test]
 fn stub_phpdoc_name_scope() {
     check("phpstan-stub-scope");
 }
 
-/// `Project::reported` drops the errors of identifiers the run doesn't report before any ignore sees them, as
-/// PHPStan never reports a rule it doesn't run: a trait's too, and the `@phpstan-ignore` naming one is unmatched.
-/// An `ignoreErrors` entry without a file path nothing matched is a not-file-specific error. Messages: PHPStan's
-/// (ClassNameCheck, LocalIgnoresProcessor, IgnoredErrorHelperResult).
 #[test]
 fn reported_identifiers_and_general_errors() {
     use pun_phpstan::{Array, Key, Value};

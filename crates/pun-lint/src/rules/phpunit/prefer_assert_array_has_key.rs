@@ -1,9 +1,3 @@
-//! `lint/phpunit/prefer-assert-array-has-key`, ported from rector-phpunit's `AssertIssetToSpecificMethodRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertTrue(isset($a['k']))` becomes `assertArrayHasKey('k', $a)`, and `assertFalse` becomes
-//! `assertArrayNotHasKey`, unless the array is a superglobal or an `ArrayAccess` object.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Construct, Expression, Node, NodeKind, Variable};
@@ -85,9 +79,6 @@ impl Rule for PreferAssertArrayHasKey {
     }
 }
 
-/// `isObjectType($expr, new ObjectType('ArrayAccess'))`: every type Mago gives the expression is an object of a class
-/// that implements `ArrayAccess`. Mago narrows a value an earlier `assertTrue(isset(...))` asserted on to `never`, where
-/// PHPStan keeps its class, so the native type (without PHPUnit's `@phpstan-assert`) counts too.
 fn is_array_access(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     let facts = facts(ctx);
     let span = node_span(expr);

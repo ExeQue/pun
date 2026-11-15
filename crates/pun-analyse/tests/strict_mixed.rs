@@ -1,5 +1,3 @@
-//! Public checked-copy controls from pinned PHPStan 2.3.1. No declaration or inference is made strict.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -38,7 +36,7 @@ fn checked_mixed_capabilities_templates_and_scope_metadata_match_phpstan() {
     for level in [2, 6, 7, 8, 9, 10] {
         let mut project = Project::new(vec![root.join("cases.php")], vec![]);
         project.level = level;
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_NON_STRINGABLE_DYNAMIC_ACCESS,
             true,

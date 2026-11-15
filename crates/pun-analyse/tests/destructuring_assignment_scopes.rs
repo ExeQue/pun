@@ -1,5 +1,3 @@
-//! Expression-assignment scope transfers use structural identities and real scope lifetimes.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -42,7 +40,7 @@ fn destructuring_assignment_scopes_match_complete_phpstan_records() {
         ("quiet", 1, false),
     ] {
         let mut project = Project::new(files.clone(), Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

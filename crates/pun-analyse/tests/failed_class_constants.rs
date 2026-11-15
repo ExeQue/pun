@@ -1,5 +1,3 @@
-//! Failed constants have continuing ErrorType values; dynamic names have genuine mixed values.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -165,7 +163,6 @@ fn native_case(name: &str, expected: &Value, native: bool, fail_selector: bool) 
     let names = NameResolver::new(&arena).resolve(program);
     let prelude = mago_prelude::Prelude::build();
     let mut codebase = prelude.metadata;
-    // Use Pun's real scanned PHPStan API, not an unknown-function fallback for dumpType().
     if source.windows(8).any(|part| part == b"PHPStan\\") {
         let api = File::new(
             Cow::Borrowed(b"phpstan-api.php"),
@@ -240,7 +237,6 @@ fn native_case(name: &str, expected: &Value, native: bool, fail_selector: bool) 
             value["assigned"] = assigned.clone();
         }
         wanted.insert(offset.clone(), value);
-        // The partial native API cannot type class constants yet. Do not fabricate a full-type fallback.
         if record["kind"] == "constant" || !native {
             assert_eq!(
                 observed.native.get(offset),
@@ -288,7 +284,6 @@ fn native_case(name: &str, expected: &Value, native: bool, fail_selector: bool) 
             "classConstant.nameType" => Some(IssueCode::InvalidConstantSelector),
             "classConstant.dynamicString" => Some(IssueCode::InvalidClassConstantOnString),
             "deadCode.unreachable" => Some(IssueCode::UnevaluatedCode),
-            // These are public PHPStan rules, not native resolver diagnostics.
             "classConstant.nonObject" => None,
             "phpstan.dumpType" => None,
             identifier => panic!("unclassified oracle diagnostic: {identifier}: {error}"),
@@ -297,7 +292,6 @@ fn native_case(name: &str, expected: &Value, native: bool, fail_selector: bool) 
             wanted.push((error[0].as_i64().unwrap(), code.as_str()));
         }
     }
-    // Native mixed warnings distinguish genuine mixed from ErrorType and exempt $_ variables.
     for record in expected["expressions"].as_object().unwrap().values() {
         if record["assigned"]["mixed"] == true
             && !record["expression"].as_str().unwrap().starts_with("$_")
@@ -369,7 +363,7 @@ fn complete_public_diagnostics_match_the_pinned_oracle() {
     for (name, record) in expected["files"].as_object().unwrap() {
         for level in [0, 8, 10] {
             let mut project = Project::new(vec![root.join(name)], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

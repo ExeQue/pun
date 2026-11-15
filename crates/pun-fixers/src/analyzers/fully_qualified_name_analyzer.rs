@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\FullyQualifiedNameAnalyzer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use crate::analyzers::namespace_uses_analyzer::NamespaceUsesAnalyzer;
 use pun_tokens::NamespaceAnalysis;
@@ -56,7 +55,6 @@ impl<'a> FullyQualifiedNameAnalyzer<'a> {
                     false,
                 )
             });
-        // $declarations[strtolower(shortName)] = fullName: later duplicates overwrite in place.
         let mut declarations: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
         for u in uses.iter() {
             if u.type_ != import_type {
@@ -100,8 +98,6 @@ impl<'a> FullyQualifiedNameAnalyzer<'a> {
 mod tests {
     use super::*;
 
-    /// Expected values: PhpCsFixer's FullyQualifiedNameAnalyzer::getFullyQualifiedName on the same code and index
-    /// (function imports ignored for classes, a repeated short name overwrites, `y\Q` resolves through `use C\Y`).
     #[test]
     fn matches_oracle() {
         let tokens = Tokens::from_code(

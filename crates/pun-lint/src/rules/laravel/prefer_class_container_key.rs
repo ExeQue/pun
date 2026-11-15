@@ -1,14 +1,3 @@
-//! `lint/laravel/prefer-class-container-key`, ported from rector-laravel 2.7.3's `ReplaceServiceContainerCallArgRector`
-//! (src/Rector/MethodCall).
-//!
-//! The first argument of `make()` or `get()` on an `Illuminate\Contracts\Container\Container`, of a static `make()` or
-//! `get()` on `Illuminate\Support\Facades\Application`, or of the `app()` or `resolve()` helper, is replaced when it
-//! is a configured old service: a string (any literal php-parser reads as a `String_`, compared exactly) or a class
-//! constant (`Foo::class` or `Foo::NAME`, compared by the class's resolved name alone). The replacements apply in
-//! their order, each to the argument the one before left. The configuration is `items`, a list of tables with
-//! `old-service` and `new-service`, each a string or a class constant as `pun migrate` writes php-parser's
-//! `ClassConstFetch` (`{ class = { name = "Foo" }, name = { name = "class" } }`). Without it the rule does nothing.
-
 use mago_syntax::cst::{
     Access, CompositeString, Expression, FunctionCall, Identifier, Literal, Node, NodeKind,
 };
@@ -19,13 +8,12 @@ use super::document_string::document_value;
 use super::names::resolve_class_name;
 use super::object_type::is_object_type;
 use super::{is_name, member_name};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::rules::types::facts::facts;
 use crate::rules::types::namespace_of;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-/// A service: a string, or a class constant (the class's name as php-parser's `Name::toString()`, and the constant).
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContainerService {
     Name(String),
@@ -42,15 +30,14 @@ impl Rule for PreferClassContainerKey {
         "lint/laravel/prefer-class-container-key"
     }
 
-    /// `configure`: `items`, the `ReplaceServiceContainerCallArg`s.
-    fn configure(&mut self, options: &Value) -> Result<(), String> {
+    fn configure(&mut self, options: &Value) -> Result<(), OptionsError> {
         let map = match options {
             Value::Null => return Ok(()),
             Value::Object(map) => map,
             _ => return Err("options must be a table".into()),
         };
         if let Some(key) = map.keys().find(|k| *k != "items") {
-            return Err(format!("unknown option `{key}`"));
+            return Err(format!("unknown option `{key}`").into());
         }
         let error = "`items` must be a list of tables with `old-service` and `new-service`";
         let items = map.get("items").and_then(Value::as_array).ok_or(error)?;
@@ -111,7 +98,6 @@ impl Rule for PreferClassContainerKey {
                 (is_helper(ctx, ancestors, f), &f.argument_list)
             }
         };
-        // `$node->args[0] instanceof Arg`: unpacked and named arguments count too
         let Some(first) = list.arguments.first().filter(|_| valid) else {
             return;
         };
@@ -149,7 +135,6 @@ impl Rule for PreferClassContainerKey {
     }
 }
 
-/// A configured service as `pun migrate` writes it.
 fn service(v: &Value) -> Option<ContainerService> {
     if let Some(s) = v.as_str() {
         return Some(ContainerService::Name(s.to_string()));
@@ -164,12 +149,10 @@ fn service(v: &Value) -> Option<ContainerService> {
     Some(ContainerService::Constant(name("class")?, name("name")?))
 }
 
-/// The method is `make` or `get`, in any case.
 fn is_container_method(method: &mago_syntax::cst::ClassLikeMemberSelector<'_>) -> bool {
     member_name(method).is_some_and(|n| is_name(n, "make") || is_name(n, "get"))
 }
 
-/// `isNames($node->name, ['app', 'resolve'])`: the global helper (a namespace's own function of that name is not it).
 fn is_helper(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], f: &FunctionCall<'_>) -> bool {
     ["app", "resolve"].iter().any(|name| {
         named(f, name)
@@ -182,8 +165,6 @@ fn is_helper(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], f: &FunctionCall<'_>
     })
 }
 
-/// The argument as a service, when it is a string php-parser reads as a `String_` or a class constant whose class is
-/// written as a name.
 fn written(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -203,7 +184,6 @@ fn written(
             };
             return Some(ContainerService::Constant(
                 class,
-                // `isMatchForChangeServiceContainerCallArgValue` compares the class alone
                 ctx.source[node_span(&c.constant).start..node_span(&c.constant).end].to_string(),
             ));
         }

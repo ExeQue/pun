@@ -1,12 +1,3 @@
-//! `lint/phpunit/prefer-data-provider-attribute`, ported from rector-phpunit's
-//! `DataProviderAnnotationToAttributeRector` (rules/AnnotationsToAttributes/Rector/ClassMethod).
-//!
-//! A test method's `@dataProvider` tags become `#[\PHPUnit\Framework\Attributes\DataProvider('method')]` groups, or
-//! `#[\PHPUnit\Framework\Attributes\DataProviderExternal(\Class::class, 'method')]` for a `Class::method` value,
-//! after its attributes, when the attribute class exists. A group the method has already (or got from an earlier
-//! tag) is not added again; the tag goes either way. Rector runs it only for PHPUnit 10 and later; Pun leaves that to
-//! the rule's group.
-
 use mago_syntax::cst::{
     Access, AttributeList, ClassLikeConstantSelector, Expression, Identifier, Literal, Node,
     NodeKind, PartialArgument,
@@ -15,8 +6,8 @@ use pun_problem::Safety;
 
 use super::annotations::{Annotated, TagValue, map_item, named_tags};
 use super::is_in_test_class;
-use crate::rules::prefer_absolute_include::print_string;
-use crate::rules::rector_batch5::resolve_class_name;
+use crate::rules::complexity::prefer_absolute_include::print_string;
+use crate::rules::support::names::resolve_class_name;
 use crate::rules::types::facts::facts;
 use crate::{Context, Report, Rule};
 
@@ -58,7 +49,6 @@ impl Rule for PreferDataProviderAttribute {
         let Some(tags) = named_tags(ctx, ancestors, doc, "dataProvider") else {
             return;
         };
-        // The groups the method has, as php-parser prints them with their names resolved (`NodeComparator`).
         let mut existing: Vec<Option<String>> = method
             .attribute_lists
             .iter()
@@ -105,10 +95,6 @@ impl Rule for PreferDataProviderAttribute {
     }
 }
 
-/// The start of the original content `DoctrineAnnotationDecorator::processDoctrine()` gives a Doctrine tag whose
-/// text after the name is `rest`: `(argument)` and the description, as far as its first line goes. `None` for what
-/// Pun does not rebuild: brackets that do not close on the first line, more than one argument, or an argument
-/// phpdoc-parser's printer may write otherwise.
 fn doctrine_content(rest: &str) -> Option<String> {
     let inner = rest.trim_start_matches([' ', '\t']).strip_prefix('(')?;
     let close = inner.find(')')?;
@@ -120,8 +106,6 @@ fn doctrine_content(rest: &str) -> Option<String> {
     if !simple {
         return None;
     }
-    // Rector 2.8.4's `DoctrineAnnotationDecorator`: `(` + the arguments + `)`, so no arguments give `()` (and
-    // `DataProvider('')`)
     if argument.is_empty() {
         return Some("()".to_string());
     }
@@ -133,7 +117,6 @@ fn doctrine_content(rest: &str) -> Option<String> {
     Some(format!("({argument}){description}"))
 }
 
-/// `createAttributeGroup()`: the group for the tag's first word, printed.
 fn create_attribute_group(value: &str) -> String {
     let method_name = value.trim_matches(['(', ')']);
     let (class_name, method_name) = match method_name.split_once("::") {
@@ -155,9 +138,6 @@ fn create_attribute_group(value: &str) -> String {
     )
 }
 
-/// An attribute group as php-parser's printer gives it once php-parser's `NameResolver` has replaced its names, when
-/// it has one attribute whose arguments are positional strings or class constants; `None` for any other group,
-/// which no new group equals.
 fn print_group(ancestors: &[Node<'_, '_>], list: &AttributeList<'_>) -> Option<String> {
     let [attribute] = list.attributes.as_slice() else {
         return None;
@@ -179,7 +159,6 @@ fn print_group(ancestors: &[Node<'_, '_>], list: &AttributeList<'_>) -> Option<S
     Some(format!("#[{name}({})]", printed.join(", ")))
 }
 
-/// A string literal or a `Class::CONSTANT` as php-parser prints it, its class name resolved.
 fn print_expression(ancestors: &[Node<'_, '_>], expression: &Expression<'_>) -> Option<String> {
     match expression {
         Expression::Literal(Literal::String(string)) => print_string(string.kind, string.value?),
@@ -196,8 +175,6 @@ fn print_expression(ancestors: &[Node<'_, '_>], expression: &Expression<'_>) -> 
     }
 }
 
-/// A class name as php-parser prints it after `NameResolver`: fully qualified (Mago parses `self`, `parent` and
-/// `static` as expressions of their own).
 fn print_class(ancestors: &[Node<'_, '_>], class: &Identifier<'_>) -> String {
     format!("\\{}", resolve_class_name(ancestors, class))
 }

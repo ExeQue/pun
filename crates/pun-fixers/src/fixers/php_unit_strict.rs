@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitStrictFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -57,7 +56,6 @@ impl Fixer for PhpUnitStrictFixer {
                     .unwrap();
                 let mut index = start_index;
                 while index < end_index {
-                    // Upstream's search is not bounded by the class end.
                     let Some(method_index) = tokens.get_next_token_of_kind(
                         index,
                         &[(T_STRING, method_before.as_str()).into()],
@@ -66,7 +64,7 @@ impl Fixer for PhpUnitStrictFixer {
                         break;
                     };
                     if FunctionsAnalyzer::new().is_the_same_class_call(tokens, method_index) {
-                        let open = tokens.get_next_meaningful_token(method_index).unwrap();
+                        let open = tokens.next_meaningful(method_index);
                         let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
                         if matches!(
                             ArgumentsAnalyzer.count_arguments(tokens, open, close),
@@ -78,8 +76,6 @@ impl Fixer for PhpUnitStrictFixer {
                             );
                         }
                     }
-                    // A call that is not the same class's makes upstream search again from each next index, which
-                    // finds the same call until it passes it.
                     index = method_index + 1;
                 }
             }

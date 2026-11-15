@@ -1,8 +1,3 @@
-//! `lint/pest/prefer-to-have-method-on-class`, ported from pest-plugin-rector's
-//! `Pest2ToPest3\\ToHaveMethodOnClassRector`: `expect($object)->toHaveMethod('name')` (or `toHaveMethods()`) becomes
-//! `expect($object::class)->toHaveMethod('name')`, as Pest 3 checks a class name; a string or a class constant is left
-//! alone.
-
 use mago_syntax::cst::{Access, Call, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -46,7 +41,6 @@ impl Rule for PreferToHaveMethodOnClass {
         {
             return;
         }
-        // php-parser's `pStaticDereferenceLhs`: the class of `::class` in parentheses unless it is one of these.
         let bare = matches!(
             value,
             Expression::Variable(_)

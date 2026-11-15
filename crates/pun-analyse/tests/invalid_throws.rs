@@ -1,5 +1,3 @@
-//! InvalidThrowsPhpDocValueRule, pinned PHPStan 2.3.1. Expectations are generated from phpstan.neon, not Pun.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -11,7 +9,7 @@ fn project(file: &str, level: u8) -> Project {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/invalid-throws");
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = level;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project
 }
 

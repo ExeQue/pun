@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\GlobalNamespaceImportFixer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use crate::analyzers::classy_analyzer::ClassyAnalyzer;
 use crate::analyzers::constant_invocation::is_constant_invocation;
@@ -33,11 +32,9 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(GlobalNamespaceImportFixer::default())
 }
 
-/// `array<string, string|true>`: `None` = `true` (not aliased), `Some(alias)`.
 type Global = BTreeMap<Vec<u8>, Option<Vec<u8>>>;
 type Other = BTreeSet<Vec<u8>>;
 
-/// Ordered `array<string, string>` with PHP assignment semantics (an existing key keeps its position).
 type Imports = IndexMap<Vec<u8>, Vec<u8>>;
 
 fn lower(s: &[u8], case_sensitive: bool) -> Vec<u8> {
@@ -54,7 +51,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_constant(), true);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_constant, true);
         let count = tokens.count();
         let mut index = 0;
         while index < count {
@@ -70,7 +67,7 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             other.insert(tokens[index].get_content().to_vec());
             index += 1;
         }
@@ -87,16 +84,14 @@ impl GlobalNamespaceImportFixer {
             if !is_constant_invocation(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
                 }
                 continue;
             }
-            let prev_index = tokens
-                .get_prev_meaningful_token(ns_separator_index)
-                .unwrap();
+            let prev_index = tokens.prev_meaningful(ns_separator_index);
             if tokens[prev_index].is_given_kind(&[CT_NAMESPACE_OPERATOR, T_STRING]) {
                 continue;
             }
@@ -110,7 +105,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_function(), false);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_function, false);
         let mut declared = Vec::new();
         Self::find_function_declarations(tokens, 0, tokens.count() - 1, &mut declared);
         for name in declared {
@@ -130,7 +125,7 @@ impl GlobalNamespaceImportFixer {
             if !analyzer.is_global_function_usage(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
@@ -147,7 +142,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_class(), false);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_class, false);
         let mut doc_blocks: Vec<(usize, DocBlock)> = Vec::new();
         let count = tokens.count();
         let mut index = 0;
@@ -171,7 +166,7 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_kind(T_STRING) {
                 other.insert(strtolower(tokens[index].get_content()));
             }
@@ -191,7 +186,7 @@ impl GlobalNamespaceImportFixer {
             if !analyzer.is_classy_invocation(tokens, index) {
                 continue;
             }
-            let ns_separator_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let ns_separator_index = tokens.prev_meaningful(index);
             if !tokens[ns_separator_index].is_kind(T_NS_SEPARATOR) {
                 if !global.contains_key(&name) {
                     other.insert(name);
@@ -199,8 +194,7 @@ impl GlobalNamespaceImportFixer {
                 continue;
             }
             if tokens[tokens
-                .get_prev_meaningful_token(ns_separator_index)
-                .unwrap()]
+                .prev_meaningful(ns_separator_index)]
             .is_given_kind(&[CT_NAMESPACE_OPERATOR, T_STRING])
             {
                 continue;
@@ -228,14 +222,12 @@ impl GlobalNamespaceImportFixer {
                 tokens.set(*index, Token::new(T_DOC_COMMENT, doc_block.get_content()));
             }
         }
-        // array_merge: a later value replaces an earlier one in its place
         imports.extend(Self::prepare_imports(
             tokens, &indices, &global, &other, false,
         ));
         imports.into_values().collect()
     }
 
-    /// Removes the leading slash at the given indices (when the name is not already used).
     fn prepare_imports(
         tokens: &mut Tokens,
         indices: &[usize],
@@ -257,7 +249,7 @@ impl GlobalNamespaceImportFixer {
                 Some(Some(alias)) => tokens.set(index, Token::new(T_STRING, alias.clone())),
                 Some(None) => {}
             }
-            let p = tokens.get_prev_meaningful_token(index).unwrap();
+            let p = tokens.prev_meaningful(index);
             tokens.clear_at(p);
         }
         imports
@@ -283,7 +275,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(token.get_content()) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !is_constant_invocation(tokens, index) {
@@ -314,7 +306,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(&strtolower(token.get_content())) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !analyzer.is_global_function_usage(tokens, index) {
@@ -358,7 +350,7 @@ impl GlobalNamespaceImportFixer {
             if !global.contains_key(&strtolower(token.get_content())) {
                 continue;
             }
-            if tokens[tokens.get_prev_meaningful_token(index).unwrap()].is_kind(T_NS_SEPARATOR) {
+            if tokens[tokens.prev_meaningful(index)].is_kind(T_NS_SEPARATOR) {
                 continue;
             }
             if !analyzer.is_classy_invocation(tokens, index) {
@@ -398,8 +390,6 @@ impl GlobalNamespaceImportFixer {
         (global, other)
     }
 
-    /// Generator `findFunctionDeclarations`, collecting into `out`. Upstream's inner class loop reuses
-    /// the outer `$index`, so the token right after a class body is skipped.
     fn find_function_declarations(
         tokens: &Tokens,
         start: usize,
@@ -438,9 +428,9 @@ impl GlobalNamespaceImportFixer {
                 index += 1;
                 continue;
             }
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             if tokens[index].is_kind(CT_RETURN_REF) {
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
             }
             if tokens[index].is_kind(T_STRING) {
                 out.push(tokens[index].get_content().to_vec());
@@ -494,8 +484,6 @@ impl Fixer for GlobalNamespaceImportFixer {
         "global_namespace_import"
     }
     fn priority(&self) -> i32 {
-        // Must run before NoUnusedImportsFixer, OrderedImportsFixer, StatementIndentationFixer.
-        // Must run after NativeConstantInvocationFixer, NativeFunctionInvocationFixer, StringableForToStringFixer.
         0
     }
     fn configure(&mut self, options: &Value) -> Result<()> {

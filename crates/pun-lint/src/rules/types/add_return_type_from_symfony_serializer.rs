@@ -1,7 +1,3 @@
-//! `lint/types/add-return-type-from-symfony-serializer`, ported from Rector 2.8.4's
-//! `ReturnTypeFromSymfonySerializerRector` (rules/TypeDeclaration/Rector/ClassMethod): a method whose only statement
-//! returns `$serializer->deserialize($data, Foo::class, $format)` on a Symfony `Serializer` returns a `Foo`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::atomic::reference::TReference;
@@ -54,19 +50,16 @@ impl Rule for AddReturnTypeFromSymfonySerializer {
         if !name.value.eq_ignore_ascii_case(b"deserialize") {
             return;
         }
-        // three arguments (an unpacked one too), none named
         let args: Vec<&Argument<'_>> = call.argument_list.arguments.iter().collect();
         let [_, Argument::Positional(class), Argument::Positional(_)] = args.as_slice() else {
             return;
         };
         let facts = facts(ctx);
-        // `isObjectType($var, Serializer)`
         let is_serializer = facts.full_type(node_span(call.object)).is_some_and(|t| {
             !t.types.is_empty()
                 && t.types.iter().all(|a| {
                     let name = match a {
                         TAtomic::Object(TObject::Named(n)) => n.name,
-                        // a class Mago does not know
                         TAtomic::Reference(TReference::Symbol { name, .. }) => *name,
                         _ => return false,
                     };
@@ -79,8 +72,6 @@ impl Rule for AddReturnTypeFromSymfonySerializer {
         if !is_serializer {
             return;
         }
-        // `ValueResolver::getValue`: a string, `Foo::class`, `self::class`, `static::class`, `parent::class`, or
-        // another expression with a constant string type (a class constant, a concatenation)
         let class_constant = match class.value {
             Expression::Access(Access::ClassConstant(c)) => match &c.constant {
                 ClassLikeConstantSelector::Identifier(k)
@@ -116,7 +107,6 @@ impl Rule for AddReturnTypeFromSymfonySerializer {
                 };
                 name
             }
-            // an object's class (`$holder::class`): PHPStan's type is a class string, not a value
             (_, Some(_)) => return,
             (other, _) => {
                 let Some(v) = facts.full_type(node_span(other)).and_then(|t| {

@@ -1473,7 +1473,7 @@ dependencies = [
 
 [[package]]
 name = "punphp"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "agent-detector",
  "anyhow",
@@ -1487,6 +1487,7 @@ dependencies = [
  "pprof",
  "punphp-analyse",
  "punphp-config",
+ "punphp-extension",
  "punphp-fixers",
  "punphp-format",
  "punphp-lint",
@@ -1506,7 +1507,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-analyse"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "bitflags 2.13.2",
  "flate2",
@@ -1540,18 +1541,29 @@ dependencies = [
 
 [[package]]
 name = "punphp-config"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "punphp-phpstan",
+ "punphp-tokens",
  "serde",
  "serde_json",
  "toml",
 ]
 
 [[package]]
+name = "punphp-extension"
+version = "0.1.2"
+dependencies = [
+ "punphp-config",
+ "punphp-fixers",
+ "punphp-format",
+ "punphp-lint",
+]
+
+[[package]]
 name = "punphp-fixers"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -1565,7 +1577,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-format"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "pcre2",
@@ -1576,7 +1588,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-harness"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1588,7 +1600,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-lint"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "mago-allocator",
  "mago-analyzer",
@@ -1616,29 +1628,27 @@ dependencies = [
 
 [[package]]
 name = "punphp-packages"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
- "anyhow",
  "flate2",
  "indexmap",
  "libc",
  "md-5",
  "pcre2",
- "punphp-config",
  "punphp-tokens",
  "rayon",
  "serde",
  "serde_json",
  "sha1",
+ "sha2",
  "tar",
- "toml",
  "ureq",
  "zip",
 ]
 
 [[package]]
 name = "punphp-phpstan"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "indexmap",
  "pcre2",
@@ -1649,23 +1659,24 @@ dependencies = [
 
 [[package]]
 name = "punphp-problem"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "punphp-tokens",
 ]
 
 [[package]]
 name = "punphp-tokens"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "libc",
+ "mago-php-version",
  "pcre2",
  "serde_json",
 ]
 
 [[package]]
 name = "punphp-workspace"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "mago-database",

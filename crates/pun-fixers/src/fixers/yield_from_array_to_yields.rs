@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\YieldFromArrayToYieldsFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -28,22 +27,21 @@ impl Fixer for YieldFromArrayToYieldsFixer {
         let yield_tokens = || vec![Token::new(T_YIELD, "yield"), Token::new(T_WHITESPACE, " ")];
         let mut inserts: BTreeMap<usize, Vec<Token>> = BTreeMap::new();
         let tokens_count = tokens.count();
-        // getYieldsFromToUnpack is a generator: each candidate is found on the tokens as fixed so far.
         for index in 1..tokens_count {
             let Some((start_index, end_index)) = yield_from_to_unpack(tokens, index) else {
                 continue;
             };
             tokens.clear_token_and_merge_surrounding_whitespace(index);
             if tokens[start_index].equals("(", true) {
-                let prev_start_index = tokens.get_prev_meaningful_token(start_index).unwrap();
+                let prev_start_index = tokens.prev_meaningful(start_index);
                 tokens.clear_token_and_merge_surrounding_whitespace(prev_start_index);
             }
             tokens.clear_token_and_merge_surrounding_whitespace(start_index);
             tokens.clear_token_and_merge_surrounding_whitespace(end_index);
             let mut array_has_trailing_comma = false;
-            let start_index = tokens.get_next_meaningful_token(start_index).unwrap();
+            let start_index = tokens.next_meaningful(start_index);
             inserts.insert(start_index, yield_tokens());
-            let last = tokens.get_prev_meaningful_token(end_index).unwrap();
+            let last = tokens.prev_meaningful(end_index);
             let mut i = start_index;
             while i <= last {
                 if let Some((block_type, true)) = Tokens::detect_block_type(&tokens[i]) {
@@ -51,7 +49,7 @@ impl Fixer for YieldFromArrayToYieldsFixer {
                     continue;
                 }
                 if tokens[i].equals(",", true) {
-                    let next_item_index = tokens.get_next_meaningful_token(i).unwrap();
+                    let next_item_index = tokens.next_meaningful(i);
                     if next_item_index < end_index {
                         inserts.insert(next_item_index, yield_tokens());
                     } else {
@@ -62,7 +60,7 @@ impl Fixer for YieldFromArrayToYieldsFixer {
                 i += 1;
             }
             if array_has_trailing_comma {
-                let next = tokens.get_next_meaningful_token(end_index).unwrap();
+                let next = tokens.next_meaningful(end_index);
                 tokens.clear_token_and_merge_surrounding_whitespace(next);
             }
         }

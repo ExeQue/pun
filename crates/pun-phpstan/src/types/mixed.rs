@@ -1,10 +1,6 @@
-//! MixedType's excluded set, distinct from ErrorType's subtract override.
-
 use super::{NeverKind, Tri, Type, intersect, is_super_type_of, union};
 
 impl Type {
-    /// `instanceof MixedType`, including ErrorType and nested TemplateMixedType bounds. A template is
-    /// explicitly mixed independently of the bound's explicitness (`TemplateMixedType::__construct()`).
     pub fn mixed_explicitness(&self) -> Option<bool> {
         match self {
             Type::Mixed { explicit } | Type::SubtractedMixed { explicit, .. } => Some(*explicit),
@@ -14,8 +10,6 @@ impl Type {
         }
     }
 
-    /// RuleLevelHelper's checked copy. TemplateMixedType::toStrictMixedType replaces the entire bound,
-    /// including a nested template or subtraction, but retains scope, name, strategy and the ordinary default.
     pub fn to_strict_mixed(&self) -> Type {
         if self.mixed_explicitness().is_none() {
             return self.clone();
@@ -30,7 +24,6 @@ impl Type {
         }
     }
 
-    /// MixedType::__construct(): a never exclusion is equivalent to no exclusion.
     pub fn mixed_subtracted(explicit: bool, excluded: Type) -> Type {
         if excluded.is_never() {
             Type::Mixed { explicit }
@@ -42,7 +35,6 @@ impl Type {
         }
     }
 
-    /// ObjectType::changeSubtractedType(), including its never constructor normalization.
     pub fn object_subtracted(object: Type, excluded: Type) -> Type {
         if excluded.is_never() {
             object
@@ -107,7 +99,6 @@ pub(super) fn join(explicit: bool, excluded: &Type, other: &Type) -> Type {
     Type::mixed_subtracted(explicit, remaining)
 }
 
-/// TypeCombinator::intersectWithSubtractedType() for a wider positive object identity.
 pub(super) fn join_object(object: &Type, excluded: &Type, other: &Type) -> Option<Type> {
     let positive = match other {
         Type::SubtractedObject { object, .. } => object.as_ref(),
@@ -128,8 +119,6 @@ pub(super) fn intersection(a: &Type, b: &Type) -> Option<Type> {
     let Type::SubtractedMixed { explicit, excluded } = a else {
         return None;
     };
-    // TypeCombinator::unionWithSubtractedType() checks a subtractable exclusion's
-    // positive identity before constructing the target's remaining negative constraint.
     let positive = match excluded.as_ref() {
         Type::Object(..) | Type::Static(..) | Type::This(_) => Some(excluded.as_ref()),
         Type::SubtractedObject { object, .. } => Some(object.as_ref()),
@@ -168,8 +157,6 @@ pub(super) fn intersection(a: &Type, b: &Type) -> Option<Type> {
     })
 }
 
-/// TypeCombinator::remove() for the value sets represented by mixed exclusions. IntegerRangeType's
-/// exact difference is representable; unsupported partial differences retain their original type.
 fn remove(from: &Type, excluded: &Type) -> Type {
     if let Type::Union(parts) | Type::Benevolent(parts) = excluded {
         return parts

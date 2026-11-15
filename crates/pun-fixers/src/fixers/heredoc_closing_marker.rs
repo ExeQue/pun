@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\HeredocClosingMarkerFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -54,7 +53,6 @@ impl Fixer for HeredocClosingMarkerFixer {
         Ok(())
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // `$reservedClosingMarkersMap[mb_strtoupper($v)] = $v`: a later duplicate key replaces the value.
         let mut reserved: Vec<(Vec<u8>, &[u8])> = vec![];
         for v in &self.reserved_closing_markers {
             let key = mb_strtoupper(v.as_bytes());
@@ -125,7 +123,7 @@ impl HeredocClosingMarkerFixer {
         let replacement = [quote, marker, quote].concat();
         (
             Token::new(
-                start.id.unwrap(),
+                start.get_id().unwrap(),
                 Preg::replace(
                     "/<<<\\h*\\K[\"']?[^\\s\"']+[\"']?/",
                     &replacement,
@@ -133,7 +131,7 @@ impl HeredocClosingMarkerFixer {
                 ),
             ),
             Token::new(
-                end.id.unwrap(),
+                end.get_id().unwrap(),
                 Preg::replace("/\\S+/", marker, end.get_content()),
             ),
         )

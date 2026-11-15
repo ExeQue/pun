@@ -1,12 +1,7 @@
-//! PHPStan 2.3.5's PrintfFormatParser (php_formatted_print() of PHP 8.0+); scanf's count is PHP 8.5
-//! ValidateFormat(format, 0).
-
 use std::collections::HashSet;
 
 const INT_MAX: u64 = 2147483647;
 
-/// `PrintfFormatParser::parse()` then `getRequiredArgumentsCount()`: how many arguments the format consumes, `None`
-/// when it throws ValueError. `h`/`H` are specifiers from PHP 8.0 (`supportsHhPrintfSpecifier()`).
 pub(super) fn printf_count(format: &[u8], hh: bool) -> Option<usize> {
     Some(
         printf_uses(format, hh)?
@@ -17,21 +12,14 @@ pub(super) fn printf_count(format: &[u8], hh: bool) -> Option<usize> {
     )
 }
 
-/// One argument use of `PrintfFormatParser::parse()`.
 pub(super) struct Use {
-    /// The zero-based argument after the format.
     pub(super) index: usize,
-    /// `value`, `width` (`*`) or `precision` (`.*`).
     pub(super) kind: &'static str,
     pub(super) specifier: u8,
-    /// The placeholder's text, from `%` to its specifier.
     pub(super) placeholder: Vec<u8>,
-    /// The placeholder's 1-based position in the format.
     pub(super) number: usize,
 }
 
-/// `PrintfFormatParser::parse()`: the argument uses in the order the format consumes them, `None` when it throws
-/// ValueError.
 pub(super) fn printf_uses(format: &[u8], hh: bool) -> Option<Vec<Use>> {
     let length = format.len();
     let (mut i, mut next, mut number) = (0, 0, 0);
@@ -109,7 +97,6 @@ pub(super) fn printf_uses(format: &[u8], hh: bool) -> Option<Vec<Use>> {
     Some(uses)
 }
 
-/// `parseArgumentNumber()`: `Some(None)` without an `n$`, the zero-based index after one, `None` out of range.
 fn argument_number(format: &[u8], i: &mut usize) -> Option<Option<usize>> {
     let end = *i
         + format[*i..]
@@ -124,7 +111,6 @@ fn argument_number(format: &[u8], i: &mut usize) -> Option<Option<usize>> {
     (value > 0 && value < INT_MAX).then(|| Some(value as usize - 1))
 }
 
-/// `parseNumber()`: the digits at `i`, INT_MAX past ten significant digits.
 fn number(format: &[u8], i: &mut usize) -> u64 {
     let start = *i;
     while format.get(*i).is_some_and(u8::is_ascii_digit) {
@@ -138,8 +124,6 @@ fn number(format: &[u8], i: &mut usize) -> u64 {
     digits.iter().fold(0, |n, d| n * 10 + u64::from(d - b'0'))
 }
 
-/// `count(sscanf('', '%*n' . $format))`: `%*n` prevents EOF from replacing the preallocated array with null.
-/// Port of PHP-8.5/ext/standard/scanf.c ValidateFormat with numVars=0; no input conversion is needed.
 pub(super) fn scanf_count(mut format: &[u8]) -> Option<usize> {
     const SCAN_MAX_ARGS: usize = 255;
     format = format.split(|b| *b == 0).next().unwrap();
@@ -169,7 +153,6 @@ pub(super) fn scanf_count(mut format: &[u8]) -> Option<usize> {
             let number = decimal(format, &mut end);
             if end >= offset && format.get(end) == Some(&b'$') {
                 positional = true;
-                // ZEND_STRTOUL's unsigned long narrows to C int before the index bounds check.
                 let value = number as i32;
                 if sequential || value < 1 || value as usize > SCAN_MAX_ARGS {
                     return None;

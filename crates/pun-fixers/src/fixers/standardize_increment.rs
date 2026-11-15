@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\StandardizeIncrementFixer`.
 use crate::analyzers::abstract_increment_operator_fixer::find_start;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -37,12 +36,12 @@ impl Fixer for StandardizeIncrementFixer {
             if !tokens[index].equals_any(&EXPRESSION_END_TOKENS, true) {
                 continue;
             }
-            let number_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let number_index = tokens.prev_meaningful(index);
             let number = &tokens[number_index];
             if !number.is_kind(T_LNUMBER) || number.get_content() != b"1" {
                 continue;
             }
-            let operator_index = tokens.get_prev_meaningful_token(number_index).unwrap();
+            let operator_index = tokens.prev_meaningful(number_index);
             let operator = &tokens[operator_index];
             if !operator.is_given_kind(&[T_PLUS_EQUAL, T_MINUS_EQUAL]) {
                 continue;
@@ -53,14 +52,13 @@ impl Fixer for StandardizeIncrementFixer {
                 Token::new(T_DEC, "--")
             };
             let start_index = find_start(tokens, operator_index);
-            let clear_from = tokens.get_prev_meaningful_token(operator_index).unwrap() + 1;
+            let clear_from = tokens.prev_meaningful(operator_index) + 1;
             clear_range_leave_comments(tokens, clear_from, number_index);
             tokens.insert_at(start_index, vec![token]);
         }
     }
 }
 
-/// Clear tokens in the given range unless they are comments.
 fn clear_range_leave_comments(tokens: &mut Tokens, index_start: usize, index_end: usize) {
     for i in index_start..=index_end {
         let token = &tokens[i];

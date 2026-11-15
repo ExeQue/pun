@@ -1,8 +1,3 @@
-//! NodeScopeResolver's throw points (ThrowPoint): what a statement list may throw, explicitly (a `throw`, a call to
-//! a function-like with a `@throws` tag) or implicitly (any other call, which may throw any Throwable), and
-//! TryCatchHandler's catch matching. A point Pun cannot tell (an untyped receiver, a dynamic throw type extension,
-//! a conditional `@throws`) is an implicit one that `implicitThrows: false` keeps: it only ever hides an error.
-
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -21,18 +16,13 @@ use super::super::members::{self, Method as Member};
 use super::super::{Checker, declared, invalid_throws, var_tags};
 use super::flow::unparen;
 
-/// A ThrowPoint.
 #[derive(Clone, Debug)]
 pub(in super::super) struct Point {
-    /// The node, whose start line the errors report.
     pub at: Span,
     pub ty: Type,
     pub explicit: bool,
-    /// `canContainAnyThrowable()`
     pub any: bool,
-    /// The node is a `throw` (TryCatchHandler's `$onlyExplicitIsThrow`).
     pub throw: bool,
-    /// Pun cannot tell what the node throws: an implicit point `implicitThrows: false` does not drop.
     pub unknown: bool,
 }
 
@@ -125,7 +115,6 @@ impl ThrowData {
     }
 }
 
-/// `getThrowType()` of a built-in method (`class` and `method` lowercase).
 pub(in super::super) fn builtin_method_throws(
     c: &Checker,
     class: &str,
@@ -139,24 +128,19 @@ pub(in super::super) fn builtin_method_throws(
         .map(|t| resolve_str(t, None))
 }
 
-/// What a callee is, for its throw point.
 enum Callee<'a> {
     User {
         f: &'a FunctionLikeMetadata,
-        /// The declaring class of a method.
         declaring: Option<&'a ClassLikeMetadata>,
         name: String,
     },
     Builtin {
-        /// `name` or `class::method`, lowercase
         key: String,
         f: &'static pun_phpstan::symbols::Function,
         class: Option<String>,
     },
 }
 
-/// Whether a ported Date* dynamic throw type extension gives a call `at` of the built-in method `key`
-/// (`class::method`, lowercase) an explicit throw point.
 pub(in super::super) fn date_explicit(
     c: &Checker,
     at: Span,
@@ -169,17 +153,12 @@ pub(in super::super) fn date_explicit(
         .is_some_and(|p| p.explicit)
 }
 
-/// The throw points of a body (not of the functions and classes declared in it).
 pub(in super::super) struct Points<'c, 'a, 'arena> {
     c: &'c Checker<'a, 'arena>,
     pub points: Vec<Point>,
-    /// Inside a `throw` expression (ExpressionContext::isInThrow()).
     in_throw: usize,
-    /// The hooked property whose hook is walked (`$this->name` reads it without a hook call).
     hooked: Option<Vec<u8>>,
-    /// Dead catches found in the try statements walked, with the caught type described.
     pub dead: Vec<(Span, Type)>,
-    /// The property accesses an assignment writes (no get hook).
     writing: HashSet<Span>,
 }
 
@@ -207,7 +186,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             .contains(crate::ExceptionChecks::IMPLICIT_THROWS)
     }
 
-    /// An implicit point, when `implicitThrows` is on.
     fn implicit(&mut self, at: Span) {
         if self.implicit_throws() {
             self.points.push(Point::implicit(at));
@@ -218,21 +196,17 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         declared::with_classes(self.c, f)
     }
 
-    /// The points of a nested body (a closure's), walked separately.
     fn nested(&self) -> Points<'c, 'a, 'arena> {
         Points::new(self.c)
     }
 
-    /// The PHPStan type of a typed expression.
     fn type_of(&self, e: &Expression) -> Option<Type> {
         self.c.phpstan_type(e)
     }
 
-    /// `getThrowType()` of a callee, `Err(())` when Pun cannot tell it.
     fn throw_type(&self, callee: &Callee) -> Result<Option<Type>, ()> {
         let ty = match callee {
             Callee::User { f, declaring, name } => {
-                // AnnotationMethodReflection: a `@method`'s throw type is its class's `__call` / `__callStatic`
                 if f.flags.is_magic_method() {
                     let Some(class) = declaring else {
                         return Err(());
@@ -268,7 +242,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                 }
             }
         };
-        // ConditionalTypeResolver::resolveForCall() needs the arguments' types
         if ty.as_ref().is_some_and(has_conditional) {
             return Err(());
         }
@@ -296,7 +269,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// The callee's return type (`getReturnType()` of its variant).
     fn return_type(&self, callee: &Callee) -> Type {
         self.with_classes(|| match callee {
             Callee::User { f, declaring, name } => {
@@ -309,8 +281,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         })
     }
 
-    /// FuncCallHandler::getFunctionThrowPoint() and MethodThrowPointHelper::getThrowPoint() (`function`: the zero
-    /// arguments exemption of a built-in function).
     fn call_point(&mut self, at: Span, callee: &Callee, function: bool, args: usize) {
         let ty = match self.throw_type(callee) {
             Ok(ty) => ty,
@@ -353,8 +323,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// The ported dynamic function throw type extensions (JsonThrowTypeExtension, AssertThrowTypeExtension): the
-    /// call's throw point, `None` for the other functions.
     fn function_extension(
         &self,
         at: Span,
@@ -364,7 +332,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         let args: Vec<&Expression> = list.arguments.iter().map(|a| a.value()).collect();
         match key {
             "json_decode" | "json_encode" => {
-                // the normalized call's argument at the `$flags` position
                 let named = list.arguments.iter().find_map(|a| match a {
                     Argument::Named(n) if n.name.value == b"flags" => Some(n.value),
                     _ => None,
@@ -378,11 +345,9 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                 let Some(flags) = named.or(positional.map(|a| a.value())) else {
                     return Some(None);
                 };
-                // BitwiseFlagHelper::bitwiseOrContainsConstant() is not no
                 fn contains(c: &Checker, e: &Expression) -> Option<bool> {
                     match unparen(e) {
                         Expression::ConstantAccess(k) => {
-                            // (a namespaced name falls back to the global constant)
                             let name = String::from_utf8_lossy(k.name.value()).into_owned();
                             Some(name.trim_start_matches('\\') == "JSON_THROW_ON_ERROR")
                         }
@@ -391,7 +356,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         {
                             Some(contains(c, b.lhs)? || contains(c, b.rhs)?)
                         }
-                        // exprContainsIntFlag()
                         e => {
                             use mago_codex::ttype::atomic::scalar::TScalar;
                             let t = c.type_of(e)?;
@@ -422,7 +386,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                 Some(match (args.len() < 2, thrown) {
                     (false, Some(t)) => Some(Point::explicit(at, t, false)),
                     (false, None) if self.type_of(args[1]).is_none() => Some(Point::unknown(at)),
-                    // getThrowType() is null: the extension's null means no throw point
                     _ => None,
                 })
             }
@@ -430,10 +393,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// The ported Date* dynamic throw type extensions (DateTimeZone, DateInterval, DateTime and DateTimeImmutable
-    /// constructors, `modify()`, `sub()` and `DateInterval::createFromDateString()`): the call's throw point, `None`
-    /// for the other methods.
-    // ponytail: a constant string argument needs PHP's date parser to tell whether it throws, so it stays unknown
     fn date_extension(
         &self,
         at: Span,
@@ -451,7 +410,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             "datetime::modify" | "datetimeimmutable::modify" => {
                 ("DateMalformedStringException", true)
             }
-            // (the extension gives the reflected throw type)
             "dateinterval::createfromdatestring" => ("DateMalformedIntervalStringException", true),
             "datetime::sub" | "datetimeimmutable::sub" => ("DateInvalidOperationException", true),
             _ => return None,
@@ -460,7 +418,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             |name: &str| Point::explicit(at, Type::Object(name.into(), vec![], false), false);
         let first = args.and_then(|l| l.arguments.first()).map(|a| a.value());
         let Some(first) = first else {
-            // DateInterval's constructor gives its reflected throw type
             return Some((key == "dateinterval::__construct").then(|| typed(exception)));
         };
         if needs_exceptions && !exceptions {
@@ -479,7 +436,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         let Some(t) = self.c.type_of(first) else {
             return Some(Some(Point::unknown(at)));
         };
-        // what is left after removing the constant strings
         let constant = |a: &TAtomic| matches!(a, TAtomic::Scalar(TScalar::String(s)) if s.get_known_literal_value().is_some());
         Some(Some(if t.types.iter().all(constant) {
             Point::unknown(at)
@@ -488,7 +444,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }))
     }
 
-    /// ReflectionProvider::getFunction() of a named call.
     fn function(&self, callee: &Expression) -> Option<Callee<'a>> {
         match super::super::dead_code::function_of(self.c, callee)? {
             super::super::dead_code::Function::User(f) => Some(Callee::User {
@@ -504,8 +459,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// The class-likes an expression's type holds, null aside: `None` when Pun cannot tell, an empty list when the
-    /// type has no class (mixed, a scalar).
     fn classes_of(&self, e: &Expression) -> Option<Vec<&'a ClassLikeMetadata>> {
         let c = self.c;
         match unparen(e) {
@@ -533,7 +486,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                 TAtomic::Object(TObject::Enum(n)) => {
                     out.push(c.codebase.get_class_like(n.name.as_bytes())?);
                 }
-                // `getObjectTypeOrClassStringObjectType()`
                 TAtomic::Scalar(mago_codex::ttype::atomic::scalar::TScalar::ClassLikeString(k)) => {
                     match k.get_object_type(c.codebase) {
                         TAtomic::Object(TObject::Named(n)) => {
@@ -555,8 +507,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         Some(out)
     }
 
-    /// The throw points of a call to method `name` on what `on` holds (`getMethodReflection()` and
-    /// MethodThrowPointHelper::getThrowPoint()): implicit without a method.
     fn member_call(
         &mut self,
         at: Span,
@@ -566,7 +516,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         is_static: bool,
     ) {
         let ClassLikeMemberSelector::Identifier(name) = method else {
-            // ponytail: a dynamic method name
             self.points.push(Point::unknown(at));
             return;
         };
@@ -585,8 +534,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         is_static: bool,
         args: Option<&ArgumentList>,
     ) {
-        // Larastan's Macro::getThrowType(): `validate()` and `validateWithBag()` throw a ValidationException,
-        // other macros have no throw type
         if let [class] = classes
             && super::super::larastan::macro_method(self.c, class, name).is_some()
         {
@@ -608,13 +555,11 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             .iter()
             .filter_map(|k| members::reflected_method(self.c, k, name))
             .collect();
-        // a union keeps its members that have the method
         if found.is_empty() {
             self.points.push(Point::implicit(at));
             return;
         }
         if found.len() > 1 {
-            // UnionTypeMethodReflection: the union of the throw types
             let mut types = Vec::new();
             for m in found {
                 match self.throw_type(&self.callee_of(m)) {
@@ -665,8 +610,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         self.call_point(at, &callee, false, 0);
     }
 
-    /// `$scope->getMethodReflection($type, $name)`'s class-likes: the members of a union that have the method (none
-    /// when the type may lack it); `None` when Pun cannot tell.
     fn method_holders(&self, t: &Type, name: &str) -> Option<Vec<&'a ClassLikeMetadata>> {
         let members = self.with_classes(|| match t {
             Type::Union(ts) => ts
@@ -688,8 +631,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         Some(out)
     }
 
-    /// MethodThrowPointHelper::getThrowPointsForCallOnType() of an ArrayAccess method on what `on` holds, when its
-    /// type is maybe an ArrayAccess and not an array.
     fn array_access(&mut self, at: Span, on: &Expression, method: &str) {
         let Some(t) = self.type_of(on) else {
             self.points.push(Point::unknown(at));
@@ -706,7 +647,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// ImplicitToStringCallHelper: an object's `__toString()` call.
     #[expect(
         clippy::wrong_self_convention,
         reason = "named after upstream's processImplicitToStringCall()"
@@ -726,7 +666,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// PropertyHookThrowPointsResolver::getThrowPointsFromPropertyHook() for an instance property access.
     fn property_hook(
         &mut self,
         at: Span,
@@ -738,7 +677,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             return;
         }
         let ClassLikeMemberSelector::Identifier(name) = property else {
-            // a dynamic name
             self.points.push(Point::implicit(at));
             return;
         };
@@ -797,8 +735,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// AssignHandler's property target: a TypeError when the native type may not take the value, the set hook's
-    /// points, or `__set()`'s for a property the class lacks.
     fn property_assignment(
         &mut self,
         a: &Assignment,
@@ -836,7 +772,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         if let Some(native) = &p.type_declaration_metadata {
             let assigned = match a.operator {
                 AssignmentOperator::Assign(_) => self.type_of(a.rhs),
-                // ponytail: a compound assignment's result type
                 _ => None,
             };
             let compatible = assigned.map(|assigned| {
@@ -862,7 +797,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         self.property_hook(at, object, property, "set");
     }
 
-    /// The throw points of a closure or arrow function's body.
     fn closure_points(&self, e: &Expression) -> Option<Vec<Point>> {
         let mut inner = self.nested();
         match unparen(e) {
@@ -873,7 +807,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         Some(inner.points)
     }
 
-    /// ArgumentsHandler: the closures passed where the callee calls them immediately.
     fn callbacks(&mut self, args: &ArgumentList, params: &[(String, bool)]) {
         for (i, a) in args.arguments.iter().enumerate() {
             let param = match a {
@@ -900,7 +833,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         });
                     }
                 }
-                // ponytail: a callable that is not a closure (a string, an array, a first-class callable)
                 None => {
                     if !matches!(unparen(value), Expression::Literal(Literal::Null(_))) {
                         self.points.push(Point::unknown(at));
@@ -910,7 +842,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// The parameters of a callee and whether ArgumentsHandler::callCallbackImmediately() holds for each.
     fn immediate_params(&self, callee: &Callee) -> Vec<(String, bool)> {
         match callee {
             Callee::User { f, declaring, name } => {
@@ -948,7 +879,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         ) {
                             false
                         } else {
-                            // (a method's parameters are only called immediately when tagged)
                             declaring.is_none()
                                 && types
                                     .get(i)
@@ -991,7 +921,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
     }
 
-    /// StatementsHandler::getOverridingThrowPoints(): a statement's own `@throws` PHPDoc replaces its points.
     fn overriding(&self, s: &Statement) -> Option<Vec<Point>> {
         if matches!(
             s,
@@ -1015,7 +944,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         Some(vec![Point::explicit(s.span(), ty, false)])
     }
 
-    /// TryCatchHandler: the try block's points the catches leave, and the catches' and finally's own.
     pub(in super::super) fn try_statement(&mut self, t: &Try) {
         let mut inner = self.nested();
         inner.hooked = self.hooked.clone();
@@ -1043,7 +971,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             let mut matched = crate::bitset::BitSet::new(originals.len());
             let mut extra = Vec::new();
             self.with_classes(|| {
-                // throwable matches all
                 for (i, o) in originals.iter().enumerate() {
                     if is_super_type_of(o, &throwable).yes() {
                         for (pi, p) in points.iter().enumerate() {
@@ -1052,7 +979,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         }
                     }
                 }
-                // explicit only
                 let mut only_throw = true;
                 if matching.is_empty() {
                     for (pi, p) in points.iter().enumerate() {
@@ -1074,7 +1000,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         }
                     }
                 }
-                // implicit only
                 let broad = |name: &str| {
                     is_super_type_of(&original, &Type::Object(name.into(), vec![], false)).yes()
                 };
@@ -1088,7 +1013,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
                         }
                     }
                 }
-                // include previously removed throw points
                 if matching.is_empty() && is_super_type_of(&original, &throwable).yes() {
                     for p in block.iter().filter(|p| p.any) {
                         extra.push(p.clone());
@@ -1104,7 +1028,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             if matching.is_empty() && extra.is_empty() {
                 continue;
             }
-            // recompute throw points
             points = self.with_classes(|| {
                 points
                     .iter()
@@ -1144,7 +1067,6 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
     }
 }
 
-/// A catch's types, in their written order.
 fn catch_hints<'h, 'arena>(h: &'h Hint<'arena>) -> Vec<&'h Hint<'arena>> {
     match h {
         Hint::Union(u) => {
@@ -1157,7 +1079,6 @@ fn catch_hints<'h, 'arena>(h: &'h Hint<'arena>) -> Vec<&'h Hint<'arena>> {
     }
 }
 
-/// `TypeUtils::flattenTypes()`.
 pub(in super::super) fn flatten(t: &Type) -> Vec<Type> {
     match t {
         Type::Union(ts) => ts.clone(),
@@ -1173,7 +1094,6 @@ fn has_conditional(t: &Type) -> bool {
     }
 }
 
-/// `TypeUtils::findCallableType() !== null`.
 fn finds_callable(t: &Type) -> bool {
     if t.is_callable().yes() {
         return true;
@@ -1184,7 +1104,6 @@ fn finds_callable(t: &Type) -> bool {
     }
 }
 
-/// `$type->toNumber()->isSuperTypeOf(new ConstantIntegerType(0))` is not no: the divisor may be zero.
 fn may_be_zero(c: &Checker, e: &Expression) -> Option<bool> {
     let t = c.type_of(e)?;
     Some(t.types.iter().any(|a| match a {
@@ -1196,11 +1115,9 @@ fn may_be_zero(c: &Checker, e: &Expression) -> Option<bool> {
                     min.is_none_or(|m| m <= 0) && max.is_none_or(|m| m >= 0)
                 }
                 TScalar::Float(_) => false,
-                // (a string, a bool or a numeric's number may be 0)
                 _ => true,
             }
         }
-        // (an array's or an object's toNumber() is an error type, which is a super type of anything)
         _ => true,
     }))
 }
@@ -1252,7 +1169,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
                 }
                 None => self.points.push(Point::implicit(at)),
             },
-            // an immediately invoked closure: its body's points
             callee @ (Expression::Closure(_) | Expression::ArrowFunction(_)) => {
                 for p in self.closure_points(callee).unwrap_or_default() {
                     if p.explicit {
@@ -1262,7 +1178,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
                     }
                 }
             }
-            // ponytail: a callable value's throw points
             _ => self.points.push(Point::unknown(at)),
         }
     }
@@ -1305,7 +1220,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
         let mut dynamic = false;
         let class = match unparen(n.class) {
             Expression::Identifier(id) => self.c.class_like(&self.c.resolved(id)).found(),
-            // the anonymous class's constructor statements
             Expression::AnonymousClass(_) => return,
             e => {
                 dynamic = !matches!(e, Expression::Self_(_) | Expression::Parent(_));
@@ -1541,7 +1455,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
         {
             return;
         }
-        // ponytail: an IteratorAggregate's getIterator() `@throws`
         self.points.push(Point::unknown(at));
     }
 
@@ -1567,8 +1480,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
     fn walk_enum(&mut self, _: &'ast Enum<'arena>, (): &mut ()) {}
 }
 
-/// The expressions whose types the throw points read: receivers, thrown values, divisors, stringified values,
-/// array accesses, iterated values and match subjects.
 pub(in super::super) fn typed(program: &Program, wanted: bool) -> Vec<Span> {
     if !wanted {
         return Vec::new();

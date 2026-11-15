@@ -18,7 +18,6 @@ use pun_format::Pipeline;
 use pun_lint::rules::*;
 use pun_lint::{Linter, Rule};
 
-/// The fixtures of one directory, sorted: `(path, input, expected)`.
 fn fixtures(dir: &Path) -> Vec<(PathBuf, String, String)> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap()
@@ -58,13 +57,8 @@ fn laravel() -> Pipeline {
     pipeline
 }
 
-/// Run every fixture of tests/rector/<class>/{Fixture,Oracle,Pun} (Fixture must exist) through `rules` at PHP 8.4.
-///
-/// An upstream fixture's expected code may lack one final newline of Rector's output: the plugin's tests compare with
-/// `assertSame` and then `assertStringMatchesFormat`, whose pattern ends in `$`, which also matches before a final
-/// newline. The oracle's files are Rector's output byte for byte.
 fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
-    let linter = Linter::new(rules, 80400);
+    let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
     let pipeline = laravel();
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
@@ -93,8 +87,6 @@ fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
     }
 }
 
-/// One fixture through `linter` as the file at `path`: `lint --fix` gives `expected` (an upstream fixture may lack
-/// Rector's final newline), the formatter agrees, and the rule did the work.
 fn check_fixture(
     linter: &Linter,
     pipeline: &Pipeline,
@@ -117,7 +109,6 @@ fn check_fixture(
         "{name}: format(lint --fix)"
     );
     if input != expected {
-        // The rule did the work, not the formatter.
         assert_ne!(
             format(pipeline, input),
             format(pipeline, &expected),
@@ -408,8 +399,6 @@ fn chain_expect_calls_without_merge_different_variables() {
     check(rule, "ChainExpectCallsRectorWithoutMergeDifferentVariables");
 }
 
-/// No options keep the plugin's default (merging different variables); an unknown option, a value that is not a
-/// boolean, and options that are not a table are config errors.
 #[test]
 fn chain_expect_calls_options() {
     let mut rule = PreferChainedExpect::default();
@@ -438,7 +427,6 @@ fn chain_expect_calls_and_use_to_be_empty() {
     );
 }
 
-/// The plugin's tests/Rules/Conflicts: the rule with others that change the same statements.
 #[test]
 fn chain_expect_calls_and_matchers() {
     run_class(
@@ -467,16 +455,16 @@ fn ensure_type_checks_first() {
     check(RequireTypeMatcherFirst, "EnsureTypeChecksFirstRector");
 }
 
-/// Broken/tag.php.inc: swapping a statement that ends in `?>` makes php-parser print the closure again, and Rector
-/// writes the file shown there, which loses the `<?php` and does not parse. Pun's rewrite is the same, so the linter
-/// refuses it instead of writing it.
 #[test]
 fn ensure_type_checks_first_refuses_rectors_broken_reprint() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector/EnsureTypeChecksFirstRector/Broken/tag.php.inc");
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, _) = content.split_once("-----\n").unwrap();
-    let linter = Linter::new(vec![Box::new(RequireTypeMatcherFirst)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(RequireTypeMatcherFirst)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter.fix(&path, input).unwrap_err();
     assert!(
         matches!(&err, pun_lint::LintError::FixBrokeSyntax { rules, .. } if rules == &["lint/pest/require-type-matcher-first"]),
@@ -489,7 +477,6 @@ fn convert_assert_to_expect() {
     check(PreferExpect, "ConvertAssertToExpectRector");
 }
 
-/// The plugin's tests autoload its tests/Fixture classes, copied into Source/.
 #[test]
 fn uses_to_extend() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector/UsesToExtendRector/Source");
@@ -505,11 +492,12 @@ fn uses_to_extend() {
     pun_lint::rules::facts::with_sources(sources, || check(PreferExtend, "UsesToExtendRector"));
 }
 
-/// The plugin's fixtures for this rule are projects: `<Project>/tests/Pest.php.fixture` becomes `tests/Pest.php` for
-/// the run, as its test copies it, and each `.php.inc` is linted as the `.php` file beside it.
 #[test]
 fn remove_redundant_pest_uses() {
-    let linter = Linter::new(vec![Box::new(NoRedundantUses)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoRedundantUses)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let pipeline = laravel();
     let root =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector/RemoveRedundantPestUsesRector");
@@ -582,7 +570,6 @@ fn remove_redundant_pest_uses() {
     assert_eq!(count, 34);
 }
 
-/// Every test directory of this file.
 const DIRECTORIES: [&str; 62] = [
     "ChainExpectCallsAndMatchers",
     "ChainExpectCallsAndUseEachModifier",
@@ -648,7 +635,6 @@ const DIRECTORIES: [&str; 62] = [
     "UsesToExtendRector",
 ];
 
-/// A rule that the engine calls on every node, not only on its `targets()`.
 struct Everywhere(Box<dyn Rule>);
 
 impl Rule for Everywhere {
@@ -667,8 +653,6 @@ impl Rule for Everywhere {
     }
 }
 
-/// The pest rules together over every input of this file's fixtures: called on every node, each rule reports what
-/// it reports on its targets (`targets()` only spares the engine work), and none trips on another rule's code.
 #[test]
 fn pest_rules_ignore_nodes_outside_their_targets() {
     let pest = || {
@@ -677,12 +661,12 @@ fn pest_rules_ignore_nodes_outside_their_targets() {
             .filter(|r| r.id().starts_with("lint/pest/"))
     };
     assert_eq!(pest().count(), 55);
-    let targeted = Linter::new(pest().collect(), 80400);
+    let targeted = Linter::new(pest().collect(), pun_lint::PhpVersion::from_id(80400));
     let everywhere = Linter::new(
         pest()
             .map(|r| Box::new(Everywhere(r)) as Box<dyn Rule>)
             .collect(),
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     let mut stack: Vec<PathBuf> = DIRECTORIES
         .iter()
@@ -758,7 +742,7 @@ it('chains what it does not match', function (): void {
         ->and(2)->toBe(2);
 });
 ";
-    let fixed = Linter::new(rules, 80400)
+    let fixed = Linter::new(rules, pun_lint::PhpVersion::from_id(80400))
         .fix(Path::new("tests/OrderTest.php"), input)
         .unwrap();
     assert_eq!(fixed.source, expected);

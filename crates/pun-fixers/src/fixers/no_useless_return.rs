@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ReturnNotation\NoUselessReturnFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind, Tokens};
 use std::path::Path;
@@ -39,10 +38,10 @@ fn fix_function(tokens: &mut Tokens, start: usize, end: usize) {
     let mut index = end;
     while index > start {
         if tokens[index].is_kind(Kind::T_RETURN) {
-            let next_at = tokens.get_next_meaningful_token(index).unwrap();
+            let next_at = tokens.next_meaningful(index);
             if tokens[next_at].equals(";", true)
                 && tokens.get_next_meaningful_token(next_at) == Some(end)
-                && !tokens[tokens.get_prev_meaningful_token(index).unwrap()]
+                && !tokens[tokens.prev_meaningful(index)]
                     .equals_any(&[Kind::T_ELSE.into(), ")".into()], true)
             {
                 tokens.clear_token_and_merge_surrounding_whitespace(index);

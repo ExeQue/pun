@@ -1,6 +1,3 @@
-//! PHPStan 2.3.1's DumpTypeRule, DumpPhpDocTypeRule and FileAssertRule at level 0. The oracle fixture includes the
-//! deferred debug rules' diagnostics (dumpNativeType, debugScope) so their calls also check that they stay unreported.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -131,7 +128,6 @@ fn dumps_cannot_be_locally_ignored() {
     check("ignored.php");
 }
 
-/// Neither analyser visits the argument after `return`: absent inference must not become a fabricated mixed dump.
 #[test]
 fn missing_expression_artifacts_do_not_fabricate_mixed() {
     check("unreachable.php");

@@ -24,22 +24,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/oracle
       # pun-cli's tests run Pint's and Pun's Blade preflight with a Bun lock file.
-      - uses: oven-sh/setup-bun@v2
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
+          toolchain: stable
           components: llvm-tools-preview
-      - uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: rui314/setup-mold@v1
-      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@e800962fea8b802cd1bd32c4e6f08fbda4bb0048 # cargo-llvm-cov
+        with:
+          tool: cargo-llvm-cov
+      - uses: rui314/setup-mold@339e96b4ff1f3bd865856ba4cbbe8818a7acb038 # v1
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           shared-key: coverage
           cache-on-failure: true
           cache-directories: target/coverage
       # pun-phpstan's corpus_configs reads these four projects' phpstan configs.
-      - uses: actions/cache@v4
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             corpus/pinkary
@@ -48,7 +51,6 @@ jobs:
             corpus/laravel-pint
           key: corpus4-${{ hashFiles('corpus/manifest.toml', 'scripts/corpus.sh') }}
       - run: scripts/corpus.sh pinkary laravel-framework larastan laravel-pint
-      # every crate but punphp-analyse, for the reason in the test job
-      - run: CARGO_BUILD_JOBS="$(nproc)" scripts/coverage.sh punphp-tokens punphp-format punphp-fixers punphp-config punphp-workspace punphp-problem punphp-phpstan punphp-lint punphp punphp-harness
+      - run: CARGO_BUILD_JOBS="$(nproc)" scripts/coverage.sh punphp-tokens punphp-format punphp-fixers punphp-config punphp-workspace punphp-problem punphp-phpstan punphp-lint punphp-packages punphp punphp-harness
       - if: always()
         run: cat context/reports/COVERAGE.md >> "$GITHUB_STEP_SUMMARY"

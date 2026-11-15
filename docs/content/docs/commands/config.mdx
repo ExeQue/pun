@@ -9,7 +9,7 @@ pun config --format json
 pun config --preset psr12
 ```
 
-Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[format]`, `[lint]`, and `[analyse]`.
+Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
 
 ## Resolved values
 
@@ -18,8 +18,9 @@ Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[format]`, `[l
 | Command `rules` tables | Enabled rules after preset, set, group, and rule settings, with levels and options |
 | `[[lint.overrides]]` | Path overrides as configured, not applied to a particular file |
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
-| `ecosystems` | Dependencies detected from `composer.lock` |
-| `[analyse] switches` | Preset type switches resolved by config; not yet applied by the analysis CLI |
+| `[extensions]` | Each extension as `"on"` or `"off"`, after `"auto"` reads the lock |
+| `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
+| `[analyse] switches` | The preset's type switches. With the enabled rules, they set the PHPStan level `pun analyse` runs at |
 | `[php] version` | Explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
 
 Disabled rules are omitted. The TOML starts with a comment naming the configuration sources.
@@ -31,6 +32,5 @@ Disabled rules are omitted. The TOML starts with a comment naming the configurat
 | `--format toml\|json` | Output format; default `toml` |
 | `--config <path>` | Read another config file |
 | `--preset <name>` | Resolve a built-in format preset without `pun.toml` |
-| `--show` | Accepted and ignored; printing is all `pun config` does |
 
 Resolution does not prove full runtime support for migrated analysis settings. See [analysis limitations](/docs/commands/analyse#configuration).

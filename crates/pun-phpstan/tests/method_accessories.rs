@@ -1,6 +1,3 @@
-//! PHPStan 2.3.1 HasMethodType and MethodExistsTypeSpecifyingExtension oracle values. The fixture constructs
-//! HasMethodType for `accessory`; otherwise it intersects the base with the extension's truthy specification.
-
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{
     Accessory, Cast, Level, StrictMixed, Type, accepts, cast_is_error, is_super_type_of, to_phpdoc,
@@ -41,12 +38,9 @@ fn method_accessories_match_phpstan_type_operations() {
         });
         assert_eq!(&got, row, "{base}, {method}: {ty:?}");
     }
-    // HasMethodType::equals() uses the canonical method name, not the description's spelling.
     assert_eq!(accessory("MiXeD"), accessory("mixed"));
     assert_ne!(accessory("MiXeD"), accessory("other"));
 
-    // PHPStan's IntersectionType([HasMethodType('MiXeD'), ClassStringType]) intersected with
-    // HasMethodType('Other'): operand order must not turn the class-string refinement into an object.
     let commuted = Type::Intersection(vec![accessory("MiXeD"), Type::ClassString(None)])
         .require_method("Other");
     assert_eq!(

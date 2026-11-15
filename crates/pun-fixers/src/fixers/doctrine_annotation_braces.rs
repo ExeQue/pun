@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\DoctrineAnnotation\DoctrineAnnotationBracesFixer`.
 use crate::analyzers::doctrine_annotation::{self as doctrine, *};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
@@ -52,7 +51,6 @@ impl Fixer for DoctrineAnnotationBracesFixer {
 }
 
 fn add_braces_to_annotations(tokens: &mut DocTokens) {
-    // `foreach` over the live list: the inserted braces are visited too.
     let mut index = 0;
     while index < tokens.len() {
         if tokens[index].kind == T_AT {
@@ -77,7 +75,6 @@ fn removes_braces_from_annotations(tokens: &mut DocTokens) {
         if tokens[open].kind != T_OPEN_PARENTHESIS {
             continue;
         }
-        // An annotation's parentheses are balanced, so a `(` is always followed by a meaningful token.
         let close = tokens.get_next_meaningful_token(open).unwrap();
         if tokens[close].kind != T_CLOSE_PARENTHESIS {
             continue;

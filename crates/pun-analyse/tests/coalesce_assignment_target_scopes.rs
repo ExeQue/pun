@@ -1,5 +1,3 @@
-//! Coalesce's assignment scope applies to target chains, not index or right-hand-side reads.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};
@@ -14,7 +12,7 @@ fn coalesce_target_scopes_match_complete_phpstan_records() {
     ))
     .unwrap();
     let mut project = Project::new(vec![root.join("input.php")], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let result = analyse_project(&project).unwrap();
     let mut actual: Vec<_> = result
         .errors

@@ -1,10 +1,8 @@
-//! ParameterAllowedConstantsTest.php's reflection contract, from PHPStan 2.3.1.
-
 use pun_phpstan::symbols::{ConstantReflection, PhpVersion, symbols};
 
 #[test]
 fn reflected_policies_preserve_groups_and_are_not_invented_for_unmapped_parameters() {
-    for version in [PhpVersion::Php84, PhpVersion::Php85] {
+    for version in [PhpVersion::new(8, 4), PhpVersion::new(8, 5)] {
         let symbols = symbols(version);
         let html = symbols.functions["htmlspecialchars"].variants[0].params[1]
             .allowed_constants

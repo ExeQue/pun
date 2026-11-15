@@ -1,5 +1,3 @@
-//! The live Never-valued sibling of PHPUnit's dead-tail `Pun/never8` consumer.
-
 use std::path::{Path, PathBuf};
 
 use pun_lint::Linter;
@@ -35,7 +33,10 @@ fn asserted_impossible_repeated_call_does_not_declare_a_callback_return() {
     let expected = include_str!(
         "../../pun-analyse/tests/fixtures/repeated-assertion-expressions/lint-expected.php.inc"
     );
-    let linter = Linter::new(vec![Box::new(PreferMergedWillReturnCallback)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferMergedWillReturnCallback)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let fixed = with_sources(extra.clone(), || linter.fix(Path::new("input.php"), input)).unwrap();
     assert_eq!(fixed.source, expected);
     assert_ne!(fixed.applied, [] as [pun_problem::Problem; 0]);

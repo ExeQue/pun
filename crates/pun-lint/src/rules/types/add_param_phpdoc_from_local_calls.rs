@@ -1,9 +1,3 @@
-//! `lint/types/add-param-phpdoc-from-local-calls`, ported from Rector 2.8.4's
-//! `ClassMethodArrayDocblockParamFromLocalCallsRector` (rules/TypeDeclarationDocblocks/Rector/Class_): a method
-//! parameter declared `array` gets `@param` from the types of the arguments the class's own calls of the method pass
-//! (`LocalMethodCallFinder`, `CallTypesResolver::resolveTypesFromCalls()`). Only a private method counts, a type with
-//! a nested array is left alone, and a parameter's default value is united with the type.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
@@ -15,11 +9,11 @@ use pun_phpstan::types::{Type, mixed, union};
 use super::docblock::{class_name, docs_report, is_array_hint, methods};
 use super::facts::facts;
 use super::names::resolve_class_name;
-use crate::rules::phpdoc_writer::type_mapper::{
+use crate::rules::support::phpdoc_writer::type_mapper::{
     const_array_item_type, const_array_key_type, create_mixed_passed_or_union_type, is_mixed,
     is_useful_array_tag,
 };
-use crate::rules::phpdoc_writer::{DocTarget, decorate_param, expr_type};
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_param, expr_type};
 use crate::syntax::is_this;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
@@ -54,8 +48,6 @@ impl Rule for AddParamPhpdocFromLocalCalls {
             if params.is_empty() {
                 continue;
             }
-            // only private methods have a closed set of local callers; public/protected can be called from outside
-            // with a wider type we cannot see here
             if !method
                 .modifiers
                 .iter()
@@ -75,7 +67,6 @@ impl Rule for AddParamPhpdocFromLocalCalls {
                 }
                 let param_name = String::from_utf8_lossy(&param.variable.name[1..]).into_owned();
                 let tag = info.param_tag(&param_name);
-                // already known, skip
                 if is_useful_array_tag(tag.map(|t| &t.ty)) {
                     continue;
                 }
@@ -90,14 +81,10 @@ impl Rule for AddParamPhpdocFromLocalCalls {
                 let Some((_, resolved)) = resolved else {
                     continue;
                 };
-                // in case of array type declaration, null cannot be passed or is already casted
                 let mut resolved = resolved.clone().remove_null();
-                // the generalization of a nested array (an array of arrays) is imprecise and can diverge from the type
-                // PHPStan itself infers at the call site
                 if has_nested_array(&resolved) {
                     continue;
                 }
-                // the param default value must always be accepted: unite with the default type
                 if let Some(default) = &param.default_value {
                     resolved = union(vec![
                         resolved,
@@ -122,8 +109,6 @@ impl Rule for AddParamPhpdocFromLocalCalls {
     }
 }
 
-/// `hasNestedArray()`: an `ArrayType` (or a union member that is one) whose item type is an `ArrayType`, or a union
-/// with one.
 fn has_nested_array(t: &Type) -> bool {
     match t {
         Type::Union(types) => types.iter().any(has_nested_array),
@@ -135,11 +120,8 @@ fn has_nested_array(t: &Type) -> bool {
     }
 }
 
-/// A call `LocalMethodCallFinder` finds: its arguments, or `None` for a first-class callable (`VariadicPlaceholder`).
 type LocalCall<'ast, 'arena> = Option<&'ast ArgumentList<'arena>>;
 
-/// `LocalMethodCallFinder::match()`: the method and static calls of `name` in the class's methods whose caller's
-/// one class is the class.
 fn local_method_calls<'ast, 'arena>(
     ctx: &Context<'_>,
     scope: &[Node<'ast, 'arena>],
@@ -160,9 +142,6 @@ fn local_method_calls<'ast, 'arena>(
                 Node::PartialApplication(PartialApplication::Method(c)) => {
                     (Caller::Object(c.object), &c.method, None)
                 }
-                // `self::run(...)`: PHPStan 2.3 gives the class of a static method callable no type, so the call's
-                // class is no class name and it is not a local call (as for `self::run(...)` in
-                // no_unused_test_method_param)
                 Node::PartialApplication(PartialApplication::StaticMethod(_)) => return,
                 _ => return,
             };
@@ -180,7 +159,6 @@ fn local_method_calls<'ast, 'arena>(
     calls
 }
 
-/// `BetterNodeFinder::find()` under `node`: every node, in source order.
 fn find<'ast, 'arena>(node: Node<'ast, 'arena>, found: &mut dyn FnMut(Node<'ast, 'arena>)) {
     node.visit_children(|child| {
         found(child);
@@ -189,13 +167,10 @@ fn find<'ast, 'arena>(node: Node<'ast, 'arena>, found: &mut dyn FnMut(Node<'ast,
 }
 
 enum Caller<'ast, 'arena> {
-    /// `$var` of a method call.
     Object(&'ast Expression<'arena>),
-    /// `$class` of a static call.
     Class(&'ast Expression<'arena>),
 }
 
-/// `ClassNameFromObjectTypeResolver::resolve()` of the caller's type: its one class name.
 fn caller_class(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -207,7 +182,6 @@ fn caller_class(
         Caller::Class(Expression::Self_(_) | Expression::Static(_)) => {
             return Some(class_name.to_string());
         }
-        // `NameTypeResolver::resolveParent()`: the parent classes
         Caller::Class(Expression::Parent(_)) => return None,
         Caller::Class(Expression::Identifier(id)) => return Some(resolve_class_name(scope, id)),
         Caller::Object(expr) | Caller::Class(expr) => expr,
@@ -231,14 +205,12 @@ fn caller_class(
     }
 }
 
-/// An argument's position, or its name when it is named.
 #[derive(PartialEq)]
 enum Key {
     Position(usize),
     Name(String),
 }
 
-/// `CallTypesResolver::resolveTypesFromCalls()`: each position's (or name's) type, the types of all calls united.
 fn resolve_types_from_calls(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -246,7 +218,6 @@ fn resolve_types_from_calls(
 ) -> Vec<(Key, Type)> {
     let mut by_position: Vec<(Key, Vec<Type>)> = Vec::new();
     for call in calls {
-        // a first-class callable can be called with anything
         let Some(args) = call else {
             return vec![];
         };
@@ -259,7 +230,6 @@ fn resolve_types_from_calls(
                     n.value,
                 ),
             };
-            // skip empty array, as it doesn't add any value
             if let Expression::Array(a) = value
                 && a.elements.is_empty()
             {
@@ -283,7 +253,6 @@ fn resolve_types_from_calls(
         .collect()
 }
 
-/// `normalizeType()`: an object of a class PHPStan does not know is `mixed`.
 fn normalize_type(ctx: &Context<'_>, t: Type) -> Type {
     match t {
         Type::This(name) => Type::Object(name, vec![], false),
@@ -299,8 +268,6 @@ fn normalize_type(ctx: &Context<'_>, t: Type) -> Type {
     }
 }
 
-/// `unionToSingleType()` with `$removeMixedArray`. (`narrowParentObjectTreeToSingleObjectChildType()` gives its type
-/// back: its loop tests the first type against itself too.)
 fn union_to_single_type(types: Vec<Type>) -> Type {
     let types: Vec<Type> = types
         .into_iter()
@@ -317,7 +284,6 @@ fn union_to_single_type(types: Vec<Type>) -> Type {
     united
 }
 
-/// `isArrayMixedMixedType()`: an array of `mixed` or nothing, by `mixed` keys or none.
 fn is_array_mixed_mixed_type(t: &Type) -> bool {
     let (key, item) = match t {
         Type::Array(key, item) => ((**key).clone(), (**item).clone()),

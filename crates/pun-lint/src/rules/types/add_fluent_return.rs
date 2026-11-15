@@ -1,8 +1,3 @@
-//! `lint/types/add-fluent-return-type`, ported from Rector 2.8.4's `ReturnTypeFromStrictFluentReturnRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod): a method that always returns `$this` (or `new static`) returns
-//! `static`, or `self` in a final or anonymous class, an enum, or before PHP 8.0; one that always returns `new self`
-//! returns `self`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::facts::facts;
@@ -13,9 +8,7 @@ use crate::{Context, Report, Rule};
 
 pub struct AddFluentReturn;
 
-/// `PhpVersionFeature::HAS_RETURN_TYPE`.
 const HAS_RETURN_TYPE: u32 = 70000;
-/// `PhpVersionFeature::STATIC_RETURN_TYPE`.
 const STATIC_RETURN_TYPE: u32 = 80000;
 
 impl Rule for AddFluentReturn {
@@ -23,8 +16,8 @@ impl Rule for AddFluentReturn {
         "lint/types/add-fluent-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        HAS_RETURN_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(HAS_RETURN_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -61,7 +54,7 @@ impl Rule for AddFluentReturn {
             .name
             .as_deref()
             .is_some_and(|n| n.eq_ignore_ascii_case(name));
-        let self_or_static = if scope.is_final || ctx.php_version < STATIC_RETURN_TYPE {
+        let self_or_static = if scope.is_final || ctx.php_version.id() < STATIC_RETURN_TYPE {
             "self"
         } else {
             "static"
@@ -77,8 +70,6 @@ impl Rule for AddFluentReturn {
     }
 }
 
-/// The returned objects as PHPStan's `TypeCombinator::union` joins them, when they are all of one class: `$this`
-/// and `static` of it make `static` (`$this` alone stays `$this`), and the class itself with either makes the class.
 fn one_class(kinds: &[Kind]) -> Option<(&str, bool, bool)> {
     let mut objects = kinds.iter().map(|k| match k {
         Kind::Object {

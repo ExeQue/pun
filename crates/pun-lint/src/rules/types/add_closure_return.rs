@@ -1,13 +1,3 @@
-//! `lint/types/add-closure-return-type` and `lint/types/add-arrow-function-return-type`, ported from Rector 2.8.4's
-//! `ClosureReturnTypeRector` (rules/TypeDeclaration/Rector/Closure) and `AddArrowFunctionReturnTypeRector`
-//! (rules/TypeDeclaration/Rector/ArrowFunction): a closure gets the union of its returns' native types, an arrow
-//! function the native type of its expression.
-//!
-//! Mago does not tell a declared `mixed` from an unknown type, so neither gets a type here (Rector writes `mixed`
-//! for the declared one); and an arrow function returning an offset (`fn () => $a['k']`), for which Rector reads
-//! the docblock type, gets its native type. `new parent()` in a trait is `parent` (PHPStan's
-//! `NonexistentParentClassType`).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{Expression, Node, NodeKind};
@@ -24,9 +14,7 @@ pub struct AddClosureReturn;
 
 pub struct AddArrowFunctionReturn;
 
-/// `PhpVersionFeature::SCALAR_TYPES`.
 const SCALAR_TYPES: u32 = 70000;
-/// `PhpVersionFeature::ARROW_FUNCTION`.
 const ARROW_FUNCTION: u32 = 70400;
 
 impl Rule for AddClosureReturn {
@@ -34,8 +22,8 @@ impl Rule for AddClosureReturn {
         "lint/types/add-closure-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -53,8 +41,6 @@ impl Rule for AddClosureReturn {
     }
 }
 
-/// `ClosureReturnTypeRector::refactor()` over the native types of the returns, or, for
-/// `ClosureReturnTypeFromAssertInstanceOfRector`, over the types PHPStan knows there (`full`).
 pub(crate) fn closure_return<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     ancestors: &[Node<'ast, 'arena>],
@@ -75,7 +61,6 @@ pub(crate) fn closure_return<'ast, 'arena>(
         ancestors,
         scope: scope.as_ref(),
     };
-    // ReturnedNodesReturnTypeInfererTypeInferer::inferFunctionLike
     let returns = returns_scoped(&closure.body);
     if returns.is_empty() {
         return;
@@ -105,7 +90,6 @@ pub(crate) fn closure_return<'ast, 'arena>(
     if !has_void && has_silent_void(&place, closure.body.statements.iter()) {
         has_void = true;
     }
-    // only `void` is mixed; `void` with others has no declaration; `never` is another rule's
     if has_void
         || types
             .iter()
@@ -113,7 +97,7 @@ pub(crate) fn closure_return<'ast, 'arena>(
     {
         return;
     }
-    let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version, &[], true)
+    let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true)
     else {
         return;
     };
@@ -124,7 +108,6 @@ pub(crate) fn closure_return<'ast, 'arena>(
     out.push(add_return_type(node_span(&closure.function), at, &r#type));
 }
 
-/// `new parent()` in a trait: PHPStan's `NonexistentParentClassType`, whose native type node is `parent`.
 fn is_new_parent_in_trait(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     matches!(unparenthesize(expr), Expression::Instantiation(i) if matches!(i.class, Expression::Parent(_)))
         && matches!(
@@ -140,7 +123,6 @@ fn is_new_parent_in_trait(expr: &Expression<'_>, ancestors: &[Node<'_, '_>]) -> 
         )
 }
 
-/// The native type of `expr`, or the type PHPStan knows there.
 fn type_of<'f>(facts: &'f Facts, expr: &Expression<'_>, full: bool) -> Option<&'f TUnion> {
     if full {
         facts
@@ -156,8 +138,8 @@ impl Rule for AddArrowFunctionReturn {
         "lint/types/add-arrow-function-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ARROW_FUNCTION
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ARROW_FUNCTION)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -196,7 +178,8 @@ impl Rule for AddArrowFunctionReturn {
         {
             return;
         }
-        if let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version, &[], true)
+        if let Some(r#type) =
+            return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true)
         {
             out.push(add_return_type(
                 node_span(&arrow.r#fn),

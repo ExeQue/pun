@@ -1,7 +1,3 @@
-//! Larastan 3.14.0's rules (the `laravel` group), run when the project's PHPStan config includes Larastan's
-//! extension.neon. Each rule is registered by extension.neon whatever the level; the opt-in ones only when their
-//! parameter is on. See [`Larastan`].
-
 mod appends;
 mod calls;
 mod classes;
@@ -16,10 +12,12 @@ mod forwards;
 mod helpers;
 mod macros;
 mod octane;
+mod reflection;
 mod relations;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -51,7 +49,6 @@ pub(super) use helpers::{
 };
 pub(super) use macros::{Macros, macro_method};
 
-/// `preg_split('/(And|Or)(?=[A-Z])/', $finder)`: a dynamic where's column segments.
 pub(super) fn where_segments(finder: &str) -> Vec<&str> {
     let bytes = finder.as_bytes();
     let mut out = Vec::new();
@@ -101,78 +98,45 @@ const MODEL: &[u8] = b"illuminate\\database\\eloquent\\model";
 const REQUEST: &[u8] = b"illuminate\\http\\request";
 
 bitflags::bitflags! {
-    /// Larastan's switches (extension.neon's parameters).
     #[derive(Clone, Copy, Debug)]
     pub struct LarastanSwitches: u16 {
-        /// `noEnvCallsOutsideOfConfig` (default true).
         const NO_ENV_CALLS_OUTSIDE_OF_CONFIG = 1;
-        /// `noModelMake` (default true).
         const NO_MODEL_MAKE = 1 << 1;
-        /// `checkOctaneCompatibility` (default false).
         const CHECK_OCTANE_COMPATIBILITY = 1 << 2;
-        /// `checkModelMethodVisibility` (default false).
         const CHECK_MODEL_METHOD_VISIBILITY = 1 << 3;
-        /// `checkAuthCallsWhenInRequestScope` (default false).
         const CHECK_AUTH_CALLS_WHEN_IN_REQUEST_SCOPE = 1 << 4;
-        /// `checkModelAppends` (default true).
         const CHECK_MODEL_APPENDS = 1 << 5;
-        /// `parseModelCastsMethod` (default false).
         const PARSE_MODEL_CASTS_METHOD = 1 << 6;
-        /// `checkModelProperties` (default false): a dynamic where's columns must be the model's properties.
         const CHECK_MODEL_PROPERTIES = 1 << 7;
-        /// `noUnnecessaryCollectionCall` (default true), with the methods of
-        /// [`Larastan::no_unnecessary_collection_call_methods`].
         const NO_UNNECESSARY_COLLECTION_CALL = 1 << 8;
-        /// `noUnnecessaryEnumerableToArrayCalls` (default false).
         const NO_UNNECESSARY_ENUMERABLE_TO_ARRAY_CALLS = 1 << 9;
-        /// `checkUnusedViews` (default false), over [`Larastan::view_directories`].
         const CHECK_UNUSED_VIEWS = 1 << 10;
-        /// `checkMissingTranslations` (default false), over [`Larastan::translation_directories`].
         const CHECK_MISSING_TRANSLATIONS = 1 << 11;
-        /// `checkConfigTypes` (default false).
         const CHECK_CONFIG_TYPES = 1 << 12;
-        /// `generalizeEnvReturnType` (default false).
         const GENERALIZE_ENV_RETURN_TYPE = 1 << 13;
-        /// CollectExtension's `inferFromUsage`: `featureToggles.unresolvedTemplateArguments` (on with bleedingEdge).
         const INFER_FROM_USAGE = 1 << 14;
     }
 }
 
-/// Larastan's switches (extension.neon's parameters), with the Laravel app's config directory.
 #[derive(Clone, Debug)]
 pub struct Larastan {
-    /// The Laravel app (whose migrations are `database/migrations`).
     pub root: PathBuf,
-    /// `configDirectories` as absolute globs, or the app's `config_path()`.
     pub config_directories: Vec<String>,
     pub switches: LarastanSwitches,
-    /// The analysed models' database properties, by lowercase class name (filled by [`Larastan::load`]).
     pub(crate) database_properties: HashMap<String, HashSet<String>>,
-    /// The migrations' tables' columns, by table name.
     pub(crate) table_columns: HashMap<String, HashSet<String>>,
-    /// `noUnnecessaryCollectionCallOnly` and `noUnnecessaryCollectionCallExcept`: the lowercase method names
-    /// [`LarastanSwitches::NO_UNNECESSARY_COLLECTION_CALL`] checks.
     pub no_unnecessary_collection_call_methods: Vec<String>,
-    /// `viewDirectories` (absolute).
     pub view_directories: Vec<PathBuf>,
-    /// `translationDirectories` (absolute).
     pub translation_directories: Vec<PathBuf>,
-    /// The app's config files (filled by [`Larastan::load`] when `checkConfigTypes` is on).
     pub(crate) configs: std::sync::Arc<crate::larastan::config::Configs>,
-    /// The models' database properties and their types, by lowercase class name (filled by [`Larastan::load`]).
     pub(crate) models: std::sync::Arc<crate::laravel::Models>,
-    /// What the extensions ask the booted app (filled by [`Larastan::load`]).
     pub(crate) app: std::sync::Arc<crate::larastan::app::App>,
-    /// PHPStan's `bootstrapFiles` (absolute), where the macros the extensions see are registered.
     pub bootstrap_files: Vec<PathBuf>,
-    /// The macros registered on the app's classes (filled by [`Larastan::load`]).
     pub(crate) macros: std::sync::Arc<crate::larastan::macros::Macros>,
-    /// The app's console commands (filled by [`Larastan::load`]).
     pub(crate) commands: std::sync::Arc<Vec<crate::larastan::console::Command>>,
 }
 
 impl Larastan {
-    /// Larastan's defaults for the app at `root` (whose `config_path()` is `root/config`).
     pub fn new(root: &Path) -> Larastan {
         Larastan {
             root: root.to_path_buf(),
@@ -195,42 +159,6 @@ impl Larastan {
         }
     }
 
-    /// What the rules read of the analysed models and the migrations.
-    pub(crate) fn load(
-        &mut self,
-        project: &crate::Project,
-        codebase: &mago_codex::metadata::CodebaseMetadata,
-    ) {
-        let app = crate::Laravel {
-            root: &self.root,
-            parse_casts_method: self
-                .switches
-                .contains(LarastanSwitches::PARSE_MODEL_CASTS_METHOD),
-        };
-        (self.database_properties, self.table_columns) =
-            crate::laravel::database_properties(app, project, codebase);
-        self.models = std::sync::Arc::new(crate::laravel::models(app, project, codebase));
-        self.commands = std::sync::Arc::new(crate::larastan::console::commands(project, codebase));
-        self.app = std::sync::Arc::new(crate::larastan::app::App::load(&self.root));
-        self.macros = std::sync::Arc::new(crate::larastan::macros::Macros::load(
-            &self.bootstrap_files,
-            &self.root,
-            codebase,
-            &self.app,
-        ));
-        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
-            self.configs = std::sync::Arc::new(crate::larastan::config::Configs::load(
-                &self.config_directories,
-                &self.root,
-                codebase,
-                self.switches
-                    .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
-            ));
-        }
-    }
-
-    /// The switches of a resolved PHPStan config, `None` when it does not include Larastan (whose extension.neon
-    /// declares `noModelMake`). Relative `configDirectories` are relative to `root`, the working directory.
     pub fn from_params(root: &Path, params: &Array) -> Option<Larastan> {
         params.get_str("noModelMake")?;
         let flag = |k: &str, default: bool| match params.get_str(k) {
@@ -346,8 +274,121 @@ impl Larastan {
     }
 }
 
-/// The app Larastan's bootstrap.php boots from the working directory `root`: `bootstrap/app.php`'s, else (a package)
-/// Testbench's default skeleton, which ApplicationResolver::resolve() creates when orchestra/testbench is installed.
+impl crate::AnalyseExtension for Larastan {
+    fn stub_files(&self, root: &Path) -> Vec<PathBuf> {
+        crate::larastan::stubs::files(root)
+    }
+
+    fn bundled_stub(&self, path: &Path) -> Option<&'static [u8]> {
+        crate::larastan::stubs::bundled(path)
+    }
+
+    fn class_aliases(&self) -> Vec<(String, String)> {
+        crate::larastan::aliases::load(&self.root)
+    }
+
+    fn prepare_codebase(&self, codebase: &mut mago_codex::metadata::CodebaseMetadata) {
+        crate::larastan::app::App::load(&self.root).contract_mixins(codebase);
+    }
+
+    fn load(
+        &mut self,
+        project: &crate::Project,
+        codebase: &mago_codex::metadata::CodebaseMetadata,
+    ) {
+        let app = crate::Laravel {
+            root: &self.root,
+            parse_casts_method: self
+                .switches
+                .contains(LarastanSwitches::PARSE_MODEL_CASTS_METHOD),
+        };
+        (self.database_properties, self.table_columns) =
+            crate::laravel::database_properties(app, project, codebase);
+        self.models = Arc::new(crate::laravel::models(app, project, codebase));
+        self.commands = Arc::new(crate::larastan::console::commands(project, codebase));
+        self.app = Arc::new(crate::larastan::app::App::load(&self.root));
+        self.macros = Arc::new(crate::larastan::macros::Macros::load(
+            &self.bootstrap_files,
+            &self.root,
+            codebase,
+            &self.app,
+        ));
+        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
+            self.configs = Arc::new(crate::larastan::config::Configs::load(
+                &self.config_directories,
+                &self.root,
+                codebase,
+                self.switches
+                    .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
+            ));
+        }
+    }
+
+    fn register(
+        &self,
+        registry: &mut mago_analyzer::plugin::PluginRegistry,
+        contents: &[u8],
+        names: &mago_names::ResolvedNames<'_>,
+    ) {
+        registry.register_method_provider(Macros(Arc::clone(&self.app), Arc::clone(&self.macros)));
+        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
+            registry.register_function_provider(ConfigTypes(Arc::clone(&self.configs)));
+            registry.register_method_provider(ConfigTypes(Arc::clone(&self.configs)));
+        }
+        registry.register_method_provider(HelperMethods(Arc::clone(&self.app)));
+        registry.register_method_provider(ModelForwards(contents.to_vec()));
+        registry.register_method_provider(ConsoleTypes(Arc::clone(&self.commands)));
+        registry.register_method_provider(AppMethods(Arc::clone(&self.app), contents.to_vec()));
+        registry.register_function_provider(AppFunctions(
+            Arc::clone(&self.app),
+            self.switches.contains(LarastanSwitches::INFER_FROM_USAGE),
+        ));
+        registry.register_function_provider(Tap);
+        registry.register_function_assertion_provider(AbortIf);
+        registry.register_function_provider(HelperFunctions {
+            app: Arc::clone(&self.app),
+            generalize_env: self
+                .switches
+                .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
+        });
+        registry.register_expression_hook(ContainerOffsets(Arc::clone(&self.app)));
+        registry.register_expression_hook(ScopeStaticCalls(
+            names
+                .iter()
+                .map(|(start, _, name, _)| (start, name.to_vec()))
+                .collect(),
+        ));
+        crate::laravel::register_models(registry, Arc::clone(&self.models));
+    }
+
+    fn settings(&self, settings: &mut mago_analyzer::settings::Settings) {
+        settings.mixin_receiver_binding = true;
+    }
+
+    fn typed_expressions<'arena>(
+        &self,
+        names: &mago_names::ResolvedNames<'arena>,
+        program: &Program<'arena>,
+    ) -> Vec<Span> {
+        let mut wanted = Wanted {
+            larastan: self,
+            names,
+            spans: Vec::new(),
+        };
+        wanted.walk_program(program, &mut ());
+        wanted.spans
+    }
+
+    fn type_node(
+        &self,
+        codebase: &mago_codex::metadata::CodebaseMetadata,
+        name: &str,
+        args: &[pun_phpstan::types::Type],
+    ) -> Option<pun_phpstan::types::Type> {
+        type_node(codebase, self, name, args)
+    }
+}
+
 fn app_root(root: &Path) -> PathBuf {
     let skeleton = root.join("vendor/orchestra/testbench-core/laravel");
     if !root.join("bootstrap/app.php").is_file() && skeleton.join("bootstrap/app.php").is_file() {
@@ -357,14 +398,11 @@ fn app_root(root: &Path) -> PathBuf {
     }
 }
 
-/// Per-walk state: for each function-like scope entered, whether `$request` is defined there as a
-/// `Illuminate\Http\Request` (`$scope->hasVariableType('request')->yes()` and its type).
 #[derive(Default)]
 pub(crate) struct State {
     request: crate::bitset::BitSet,
 }
 
-/// `ModelPropertyExtension::hasProperty()`: a database column of the model that no accessor or `@property` tag hides.
 fn has_database_property(c: &Checker, model: &str, column: &str) -> bool {
     c.larastan.is_some_and(|larastan| {
         !crate::laravel::has_accessor(c.codebase, model, column)
@@ -379,10 +417,8 @@ fn has_database_property(c: &Checker, model: &str, column: &str) -> bool {
     })
 }
 
-/// Larastan's model property extensions on `$property` (with its `$`): ModelAccessorExtension, ModelPropertyExtension
-/// (a database column) and ModelRelationsExtension (a relation method, or its `_count`).
-pub(crate) fn has_model_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
-    if c.larastan.is_none() || !is_model(c, k) {
+fn has_model_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
+    if !is_model(c, k) {
         return false;
     }
     let name =
@@ -414,13 +450,10 @@ pub(crate) fn has_model_property(c: &Checker, k: &ClassLikeMetadata, property: &
     })
 }
 
-/// BuilderHelper::searchOnEloquentBuilder()'s scopes of `model`: a non-public native method with the `#[Scope]`
-/// attribute, a `@method` tag `scopeName` or a native `scopeName` method.
 pub(crate) fn has_scope(c: &Checker, model: &str, method: &[u8]) -> bool {
     is_scope(c.codebase, model.as_bytes(), method)
 }
 
-/// [`has_scope`] on the codebase.
 pub(crate) fn is_scope(
     codebase: &mago_codex::metadata::CodebaseMetadata,
     model: &[u8],
@@ -450,8 +483,6 @@ pub(crate) fn is_scope(
             .is_some()
 }
 
-/// A model's non-public `#[Scope]` method that a call from `scope` (outside the model's classes) cannot reach, which
-/// ClassReflection::getMethod() then takes from ModelForwardsCallsExtension.
 pub(crate) fn is_hidden_scope(
     c: &Checker,
     k: &ClassLikeMetadata,
@@ -478,29 +509,24 @@ pub(crate) fn is_hidden_scope(
         })
 }
 
-/// `ObjectType($parent)->isSuperTypeOf(ObjectType($class))->yes()`, for lowercase `parent`.
 pub(crate) fn is_a(c: &Checker, class: &[u8], parent: &[u8]) -> bool {
     class.eq_ignore_ascii_case(parent)
         || c.codebase
             .is_instance_of(&class.to_ascii_lowercase(), parent)
 }
 
-/// `$classReflection->is(Model::class)`.
 pub(crate) fn is_model(c: &Checker, k: &ClassLikeMetadata) -> bool {
     class_is(c, k, MODEL)
 }
 
-/// `$classReflection->is($parent)` for the class a node is in.
 fn class_is(c: &Checker, k: &ClassLikeMetadata, parent: &[u8]) -> bool {
     is_a(c, k.name.as_bytes(), parent)
 }
 
-/// The names of the objects a type is (`getObjectClassNames()`), `None` when one of its parts is no named object.
 fn object_names(ty: &TUnion) -> Option<Vec<&[u8]>> {
     named_objects(ty).map(|objects| objects.iter().map(|n| n.name.as_bytes()).collect())
 }
 
-/// The type's parts when every one is a named object.
 fn named_objects(ty: &TUnion) -> Option<Vec<&TNamedObject>> {
     ty.types
         .iter()
@@ -511,14 +537,11 @@ fn named_objects(ty: &TUnion) -> Option<Vec<&TNamedObject>> {
         .collect()
 }
 
-/// `ObjectType($class)->isSuperTypeOf($ty)->yes()`: every part of the type is that class or a subclass.
 fn is_object_of(c: &Checker, ty: &TUnion, class: &[u8]) -> bool {
     object_names(ty)
         .is_some_and(|names| !names.is_empty() && names.iter().all(|n| is_a(c, n, class)))
 }
 
-/// A parameter list's `$request` parameter typed as a Request, without null (the implicit nullable of a `null`
-/// default included).
 fn request_parameter(c: &Checker, parameters: &FunctionLikeParameterList) -> bool {
     parameters.parameters.iter().any(|p| {
         p.variable.name == b"$request"
@@ -538,7 +561,6 @@ impl Checker<'_, '_> {
         self.larastan_state.request.push(request);
     }
 
-    /// A closure: its parameters, and `use ($request)` keeps the outer `$request`.
     pub(super) fn larastan_enter_closure(&mut self, f: &Closure) {
         let outer = self.larastan_state.request.last().unwrap_or(false);
         let used = f
@@ -557,25 +579,6 @@ impl Checker<'_, '_> {
     fn request_in_scope(&self) -> bool {
         self.larastan_state.request.last().unwrap_or(false)
     }
-}
-
-/// The expressions whose type the rules here read, for [`super::infer`]: the arguments of `with()` and `value()`,
-/// the class expression of `X::make()`, the object of `->singleton()` / `->bind()` with a closure.
-pub(crate) fn typed_expressions<'arena>(
-    larastan: Option<&Larastan>,
-    names: &mago_names::ResolvedNames<'arena>,
-    program: &Program<'arena>,
-) -> Vec<Span> {
-    let Some(larastan) = larastan else {
-        return Vec::new();
-    };
-    let mut wanted = Wanted {
-        larastan,
-        names,
-        spans: Vec::new(),
-    };
-    wanted.walk_program(program, &mut ());
-    wanted.spans
 }
 
 struct Wanted<'l, 'n, 'arena> {
@@ -676,8 +679,6 @@ thread_local! {
     static RESOLVE_UNRESOLVABLE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
-/// `f` with `TypeUtils::resolveLateResolvableTypes()`'s resolution of unresolvable types: a `collection-of<T>` of a
-/// template the PHPDoc types `f` resolves is the collection of the template's bound.
 pub(crate) fn resolving_unresolvable<R>(f: impl FnOnce() -> R) -> R {
     let previous = RESOLVE_UNRESOLVABLE.with(|r| r.replace(true));
     let result = f();
@@ -685,7 +686,6 @@ pub(crate) fn resolving_unresolvable<R>(f: impl FnOnce() -> R) -> R {
     result
 }
 
-/// A model collection `type_node()` resolved, with its key type `key` (a two-argument collection's first).
 fn with_key(
     collection: pun_phpstan::types::Type,
     key: &pun_phpstan::types::Type,
@@ -699,9 +699,6 @@ fn with_key(
     }
 }
 
-/// BuilderOfType and RelationOfType (`builder-of<TModel[, TRelation]>`, `relation-of<TModel, TRelation>`): their
-/// `getResult()` once no argument holds a template or `static` (`isResolvable()`), else the node kept under its own
-/// name, which no class has, for `resolve_template_types()` to ask again.
 fn late_of(
     codebase: &mago_codex::metadata::CodebaseMetadata,
     name: &str,
@@ -726,7 +723,6 @@ fn late_of(
         return Type::Never(NeverKind::Implicit);
     }
     let model = TUnion::from_vec(models);
-    // (a key that is no constant string names no relation)
     let key = args.get(1).map(|key| match key.constant_strings() {
         keys if keys.is_empty() => mago_codex::ttype::get_string(),
         keys => TUnion::from_vec(
@@ -756,11 +752,7 @@ fn late_of(
         .map_or(Type::Never(NeverKind::Implicit), |t| from(&t))
 }
 
-/// Larastan's TypeNodeResolverExtensions: `view-string` (ViewStringType), `model-property<TModel>`
-/// (ModelPropertyTypeNodeResolverExtension: GenericModelPropertyType with `checkModelProperties`, else a string),
-/// `collection-of<TModel>` (CollectionOfType, the model's own collection) and GenericEloquentBuilderTypeNodeResolverExtension's
-/// `Builder|Model` (`Builder<Model>`, of the Eloquent builder or a subclass).
-pub(crate) fn type_node(
+fn type_node(
     codebase: &mago_codex::metadata::CodebaseMetadata,
     larastan: &Larastan,
     name: &str,
@@ -820,7 +812,6 @@ pub(crate) fn type_node(
             ]))
         }
         ("model-property", _) => Some(Type::Error),
-        // `collection-of<TKey, TModel>`: like `array<TKey, TValue>`, the optional key type comes first
         ("collection-of", [key, t]) => {
             if is_super_type_of(&Type::Union(vec![Type::Int, Type::String]), key).no() {
                 return None;
@@ -837,15 +828,12 @@ pub(crate) fn type_node(
         {
             None
         }
-        // FunctionReturnTypeCheck's TypeUtils::resolveLateResolvableTypes() resolves a template's CollectionOfType by
-        // the template's bound (getObjectClassNames())
         ("collection-of", [t])
             if super::declared::has_template(t)
                 && RESOLVE_UNRESOLVABLE.with(std::cell::Cell::get) =>
         {
             type_node(codebase, larastan, name, &[t.resolve_to_bounds()])
         }
-        // ponytail: elsewhere a template's collection stays the Eloquent collection after the template is resolved
         ("collection-of", [t]) if super::declared::has_template(t) => Some(Type::Object(
             "Illuminate\\Database\\Eloquent\\Collection".into(),
             vec![Type::Int, t.clone()],
@@ -866,7 +854,6 @@ pub(crate) fn type_node(
                         .iter()
                         .flatten()
                         .map(|p| match p.types.as_ref() {
-                            // CollectionOfType's default key, `new BenevolentUnionType([new IntegerType(), new StringType()])`
                             [TAtomic::Scalar(_)] => {
                                 Some(pun_phpstan::types::Type::Benevolent(vec![
                                     Type::Int,

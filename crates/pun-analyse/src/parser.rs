@@ -1,8 +1,5 @@
-//! php-parser 5.9's semantic/name failures, before reflection scanning or rule callbacks. RichParser and
-//! SimpleParser collect parser-stage errors first, then stop at the first NameResolver error. Grammar
-//! translation is limited to the compilation-unit entry case below, not arbitrary recovered CSTs.
-
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use mago_database::file::File;
 use mago_php_version::PHPVersion;
@@ -13,12 +10,8 @@ use mago_syntax::token::TokenKind;
 use mago_syntax::walker::MutWalker;
 use pun_phpstan::ignore::Error;
 
-/// FileAnalyser's ParserErrorsException diagnostics. An invalid scan-only file instead exports no symbols.
 pub(crate) fn errors(file: &File, program: &Program, version: PHPVersion) -> Vec<Error> {
     if program.has_errors() {
-        // PHPParser tokenizes the whole file before entering its grammar. Lexical failures need that separate
-        // collection contract, even when they follow an unrecoverable compilation-unit error. PHP also rejects
-        // vertical tabs and form feeds that Mago's whitespace table accepts; those are not shared trivia.
         if program
             .errors
             .iter()
@@ -39,16 +32,12 @@ pub(crate) fn errors(file: &File, program: &Program, version: PHPVersion) -> Vec
         let Some(Statement::OpeningTag(OpeningTag::Full(tag))) = program.statements.first() else {
             return Vec::new();
         };
-        // Only the shared full-tag spelling belongs to this slice. Do not reinterpret Mago's short tags or
-        // its joined <?php} / <?php/**/ openers as PHPParser grammar failures.
         if !matches!(
             program.source_text[tag.span.end.offset as usize],
             b' ' | b'\t' | b'\r' | b'\n'
         ) {
             return Vec::new();
         }
-        // Contiguous lexer trivia proves there were no earlier statements or expression tokens. The error
-        // expression itself may have been discarded at EOF, so its presence in the recovered CST is not proof.
         let mut end = tag.span.end;
         for trivia in program
             .trivia
@@ -61,8 +50,6 @@ pub(crate) fn errors(file: &File, program: &Program, version: PHPVersion) -> Vec
             end = trivia.span.end;
         }
         return if end == at.start {
-            // php.y's empty top_statement_list reduces to start; Php8 state 532 then expects only EOF.
-            // ParserAbstract::doParse cannot recover here, so suffix semantics and Mago cascades do not run.
             vec![error(
                 file,
                 *at,
@@ -101,8 +88,6 @@ pub(crate) fn errors(file: &File, program: &Program, version: PHPVersion) -> Vec
 }
 
 fn error(file: &File, at: Span, message: String) -> Error {
-    // PHP's tokenizer counts CRLF, LF and bare CR even in a file with mixed line endings. Mago's line table
-    // chooses one convention from the first newline, so it cannot locate an InlineHTML after a bare CR.
     let line = 1 + file.contents[..at.start.offset as usize]
         .iter()
         .enumerate()
@@ -121,7 +106,6 @@ fn error(file: &File, at: Span, message: String) -> Error {
     }
 }
 
-/// Name::toString() omits the fully-qualified or namespace-relative marker, retaining original case.
 fn name(value: &[u8]) -> &[u8] {
     if let Some(value) = value.strip_prefix(b"\\") {
         value
@@ -138,27 +122,17 @@ fn special(value: &[u8]) -> bool {
         || value.eq_ignore_ascii_case(b"static")
 }
 
-/// ParserAbstract's collecting semantic checks. Modifiers are checked as tokens arrive;
-/// declaration checks run on reduction (after their bodies). Every parser-stage error wins over NameResolver.
 struct Reserved<'a> {
     file: &'a File,
     version: PHPVersion,
-    /// Only direct expression-statement/assignment and return continuations are modeled for reverse-emulated
-    /// anonymous headers. Other expression contexts and grammar recovery inside anonymous bodies are not a
-    /// general older-version parser. Header errors after attributes or other modifiers are context-independent.
     continuation: Option<(Span, &'static str)>,
-    /// ParserAbstract's createdArrays registry: array reduction order, then empty item token locations.
     created_arrays: Vec<(Span, Vec<Span>)>,
-    /// array_short_syntax '=' expr never registers its direct LHS, even if RHS reduction aborts.
     assignment_arrays: HashSet<Span>,
-    /// doParse retains errors through the first throwing reduction, but never reduces enclosing nodes.
     fatal: Option<usize>,
     lines: EscapeLines<'a>,
     errors: Vec<Error>,
 }
 
-/// Contiguous PHP encapsed tokens, not Mago's line-split literals or decoded Option values. Gaps retain
-/// indentation/newlines moved into trivia; a zero-length first gap models parseDocString's phantom part.
 fn string_literals(open: Span, close: Span, parts: &Sequence<StringPart<'_>>) -> Vec<Span> {
     let mut result = Vec::new();
     let mut start = open.end;
@@ -186,19 +160,17 @@ fn oversized_codepoint(digits: &[u8]) -> bool {
     }) > 0x10ffff
 }
 
-/// zend_scan_escape_string returns early on malformed as well as oversized Unicode escapes. Its
-/// uncounted newlines affect PHPParser token attributes, independently of semantic escape decoding.
 struct EscapeLines<'a> {
     file: &'a File,
     skipped: Vec<Span>,
 }
 
+static UNICODE: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\(?:\\|u\{([0-9a-fA-F]*)(\})?)").expect("Unicode lexer pattern")
+});
+
 impl EscapeLines<'_> {
     fn string(&mut self, at: Span) {
-        static UNICODE: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {
-            pcre2::bytes::Regex::new(r"\\(?:\\|u\{([0-9a-fA-F]*)(\})?)")
-                .expect("Unicode lexer pattern")
-        });
         let source = &self.file.contents[at.start.offset as usize..at.end.offset as usize];
         for matches in UNICODE.captures_iter(source) {
             let matches = matches.expect("Unicode lexer match");
@@ -253,9 +225,6 @@ impl EscapeLines<'_> {
     }
 }
 
-/// php.y's top_statement_list before handleNamespaces moves semicolon bodies. Keep the original CST nodes,
-/// but project PHP's dropped opening tags, close-tag semicolons/newlines and comment-bearing Nops. Mago also
-/// splits a leading shebang from adjacent HTML; PHP keeps them in one InlineHTML node.
 fn namespace_statements<'ast, 'arena>(
     program: &'ast Program<'arena>,
 ) -> Vec<(&'ast Statement<'arena>, Span)> {
@@ -278,7 +247,6 @@ fn namespace_statements<'ast, 'arena>(
             continue;
         }
         let mut at = statement.span();
-        // An implicit namespace is still just its header at this reduction; its body follows in this list.
         let (end, closes) = match statement {
             Statement::Namespace(Namespace {
                 body: NamespaceBody::Implicit(body),
@@ -316,8 +284,6 @@ fn namespace_statements<'ast, 'arena>(
                 }
             }
             Statement::Noop(_) | Statement::ClosingTag(_) => {
-                // maybeCreateNop/getCommentBeforeToken retain only comments among the dropped tokens since
-                // the previous significant token. Even a discarded semicolon stops that backwards search.
                 if !program.trivia.comments().any(|comment| {
                     comment.span.start.offset >= before
                         && comment.span.end.offset <= at.start.offset
@@ -326,7 +292,6 @@ fn namespace_statements<'ast, 'arena>(
                 }
             }
             Statement::HaltCompiler(_) => {
-                // handleHaltCompiler consumes the remaining InlineHTML as payload, not as another statement.
                 result.push((statement, at));
                 break;
             }
@@ -342,18 +307,30 @@ fn namespace_statements<'ast, 'arena>(
     result
 }
 
+static HASHBANG: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\A#!.*\r?\n\z").expect("upstream hashbang pattern")
+});
+
+static ESCAPES: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new(r"\\([\\$nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})")
+        .expect("upstream escape pattern")
+});
+
+static INDENTATION: LazyLock<[[pcre2::bytes::Regex; 2]; 2]> = LazyLock::new(|| {
+    [r"(?<=\n)", r"(?:(?<=\n)|\A)"].map(|start| {
+        [r"(?=[\r\n])", r"(?:(?=[\r\n])|\z)"].map(|end| {
+            pcre2::bytes::Regex::new(&format!("{start}([ \\t]*)({end})?"))
+                .expect("upstream indentation pattern")
+        })
+    })
+});
+
 impl Reserved<'_> {
-    /// ParserAbstract::getNamespacingStyle/getNamespaceErrorAttributes. A mixed style returns semicolon so
-    /// handleNamespaces does not also report outside code; only the first style mismatch is collected.
     fn namespacing_style(
         &mut self,
         statements: &[(&Statement<'_>, Span)],
         source: &[u8],
     ) -> Option<bool> {
-        static HASHBANG: std::sync::LazyLock<pcre2::bytes::Regex> =
-            std::sync::LazyLock::new(|| {
-                pcre2::bytes::Regex::new(r"\A#!.*\r?\n\z").expect("upstream hashbang pattern")
-            });
         let mut style = None;
         let mut forbidden = false;
         for (index, (statement, at)) in statements.iter().enumerate() {
@@ -400,8 +377,6 @@ impl Reserved<'_> {
         if self.namespacing_style(&statements, program.source_text) != Some(true) {
             return;
         }
-        // handleNamespaces' braced pass permits Nops and HaltCompiler, but not declare(), after the first
-        // namespace. Mago already holds semicolon bodies, so its normalization needs no CST mutation here.
         let mut after_namespace = false;
         for (statement, at) in statements {
             match statement {
@@ -420,9 +395,6 @@ impl Reserved<'_> {
         }
     }
 
-    /// ParserAbstract::doParse/getErrorMessage: an unexpected token starts three-shift error recovery. Semantic
-    /// checks still collect during recovery. The supplied follow set belongs to the owning php.y production;
-    /// it is never inferred from Mago's error text.
     fn header_error(&mut self, recovery: &mut u8, at: Span, token: &str, follow: Option<&str>) {
         if *recovery == 0
             && let Some(follow) = follow
@@ -436,8 +408,6 @@ impl Reserved<'_> {
         *recovery = 3;
     }
 
-    /// Modifiers::verifyClassModifier/checkClassModifier: duplicate flags precede abstract/final conflicts,
-    /// and class_modifiers ORs every token even after a collected error. This is not the member contract.
     fn class_modifiers(
         &mut self,
         modifiers: &Sequence<Modifier>,
@@ -453,12 +423,8 @@ impl Reserved<'_> {
                 Modifier::Abstract(_) => (16, "abstract"),
                 Modifier::Final(_) => (32, "final"),
                 Modifier::Readonly(_) => (64, "readonly"),
-                // Mago accepts generic modifiers here. Other tokens fail in PHPParser's grammar instead.
                 _ => return,
             };
-            // ReadonlyTokenEmulator::getPhpVersion/KeywordEmulator::reverseEmulate turns T_READONLY into
-            // T_STRING below 8.1. A leading bare name becomes an expression (or `new`'s class-name reference),
-            // not a class modifier. After a class modifier/attributes it is already an unexpected token.
             if flag == 64 && self.version < PHPVersion::PHP81 {
                 let follow = if expression {
                     continuation
@@ -498,8 +464,6 @@ impl Reserved<'_> {
         }
     }
 
-    /// Modifiers::verifyModifier, called by checkModifier and checkPropertyHookModifiers. Preserve its priority:
-    /// access conflicts, duplicate flags, then abstract/final. php.y ORs each flag even after a collected error.
     fn modifiers(&mut self, modifiers: &Sequence<Modifier>, property_hook: bool) {
         let mut flags = 0_u16;
         for modifier in modifiers {
@@ -528,7 +492,6 @@ impl Reserved<'_> {
             if let Some(message) = message {
                 self.errors.push(error(self.file, modifier.span(), message));
             }
-            // checkPropertyHookModifiers also rejects every non-final token, independently of verifyModifier.
             if property_hook && !modifier.is_final() {
                 self.errors.push(error(
                     self.file,
@@ -554,8 +517,6 @@ impl Reserved<'_> {
         }
     }
 
-    // identifier_not_reserved excludes T_STATIC at declaration and explicit-alias sites. Unlike self/parent,
-    // static fails in the grammar, not checkClassName/checkUseUse. No Mago error text supplies this message.
     fn declaration(&mut self, id: &LocalIdentifier) {
         if id.value.eq_ignore_ascii_case(b"static") {
             self.errors.push(error(
@@ -569,7 +530,6 @@ impl Reserved<'_> {
     }
 
     fn no_comma(&mut self, values: &TokenSeparatedSequence<&Expression>) {
-        // php.y's no_comma attaches attributes to the comma itself, not the list or its last value.
         if let Some(comma) = values.get_trailing_token() {
             self.errors.push(error(
                 self.file,
@@ -604,8 +564,6 @@ impl Reserved<'_> {
             return;
         }
         self.created_arrays.retain(|(array, _)| *array != at);
-        // fixupArrayDestructuring recurses only into direct item values, not keys, accesses or List_.
-        // PHPParser erases parentheses before this check and treats short and legacy Array_ alike.
         for mut value in elements.iter().filter_map(ArrayElement::get_value) {
             while let Expression::Parenthesized(inner) = value {
                 value = inner.expression;
@@ -622,15 +580,7 @@ impl Reserved<'_> {
         }
     }
 
-    /// String_::parseEscapeSequences/codePointToUtf8: malformed escapes remain literal; only a complete
-    /// hexadecimal Unicode escape above 0x10ffff throws. Saturation matches PHP's overflowing hexdec float.
     fn escapes(&mut self, string: &[u8], at: Span) -> bool {
-        static ESCAPES: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {
-            pcre2::bytes::Regex::new(
-                r"\\([\\$nrtfve]|[xX][0-9a-fA-F]{1,2}|[0-7]{1,3}|u\{([0-9a-fA-F]+)\})",
-            )
-            .expect("upstream escape pattern")
-        });
         for matches in ESCAPES.captures_iter(string) {
             let matches = matches.expect("upstream escape match");
             if let Some(digits) = matches.get(2)
@@ -660,8 +610,6 @@ impl Reserved<'_> {
         }
     }
 
-    /// ParserAbstract::stripIndentation's callback order and original part attributes. Indentation is
-    /// removed before decoding, but removing spaces/tabs at line starts cannot change Unicode escapes.
     fn strip_indentation(
         &mut self,
         string: &[u8],
@@ -674,15 +622,6 @@ impl Reserved<'_> {
         if indent_len == 0 {
             return;
         }
-        static INDENTATION: std::sync::LazyLock<[[pcre2::bytes::Regex; 2]; 2]> =
-            std::sync::LazyLock::new(|| {
-                [r"(?<=\n)", r"(?:(?<=\n)|\A)"].map(|start| {
-                    [r"(?=[\r\n])", r"(?:(?=[\r\n])|\z)"].map(|end| {
-                        pcre2::bytes::Regex::new(&format!("{start}([ \\t]*)({end})?"))
-                            .expect("upstream indentation pattern")
-                    })
-                })
-            });
         for matches in INDENTATION[usize::from(newline_at_start)][usize::from(newline_at_end)]
             .captures_iter(string)
         {
@@ -705,8 +644,6 @@ impl Reserved<'_> {
         }
     }
 
-    /// parseDocString validates and decodes one scalar body or each literal part, aborting before later
-    /// parts on a throwing escape. Embedded expressions have already reduced before this callback.
     fn document_body(&mut self, node: &DocumentString<'_>) {
         let (indent_len, indent_char) = match node.indentation {
             DocumentIndentation::Whitespace(len) => (len, b' '),
@@ -749,13 +686,11 @@ impl Reserved<'_> {
 
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
     fn walk_out_program(&mut self, node: &'ast Program<'arena>, (): &mut ()) {
-        // php.y's start production reduces only after every top-level body semantic check has collected.
         if let Some(end) = self.fatal {
             self.errors.truncate(end);
         } else {
             self.handle_namespaces(node);
         }
-        // ParserAbstract::parse checks surviving arrays only after doParse (including handleNamespaces).
         for (_, items) in &self.created_arrays {
             for at in items {
                 self.errors.push(error(
@@ -767,8 +702,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_literal_integer(&mut self, node: &'ast LiteralInteger<'arena>, (): &mut ()) {
-        // scalar: T_LNUMBER calls parseLNumber, which collects an Int_::fromString failure without
-        // aborting later reductions. Overflowing octal prefixes are T_DNUMBER, never this callback.
         if self.fatal.is_none()
             && self.version >= PHPVersion::PHP70
             && node.raw.starts_with(b"0")
@@ -811,7 +744,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         if self.fatal.is_some() {
             return;
         }
-        // ParserAbstract::parseDocString checks the closing token after embedded expressions reduce.
         if matches!(node.indentation, DocumentIndentation::Mixed(_, _)) {
             self.errors.push(error(
                 self.file,
@@ -838,7 +770,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
     }
     fn walk_for(&mut self, node: &'ast For<'arena>, context: &mut ()) {
         self.walk_keyword(&node.r#for, context);
-        // Each for_expr reduces its own expr_list_forbid_comma before the next clause and the body.
         for values in [&node.initializations, &node.conditions, &node.increments] {
             for value in values {
                 self.walk_expression(value, context);
@@ -851,7 +782,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         self.no_comma(&node.values);
     }
     fn walk_out_echo_tag(&mut self, node: &'ast EchoTag<'arena>, (): &mut ()) {
-        // ParserAbstract::createTokenMap maps T_OPEN_TAG_WITH_ECHO to the same T_ECHO production.
         self.no_comma(&node.values);
     }
     fn walk_return(&mut self, node: &'ast Return<'arena>, context: &mut ()) {
@@ -875,8 +805,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         self.continuation = saved;
     }
     fn walk_out_namespace(&mut self, node: &'ast Namespace<'arena>, (): &mut ()) {
-        // ParserAbstract::checkNamespace runs on reduction, after all body errors, and inspects only direct
-        // children. Semicolon namespaces have null stmts at this stage, not Mago's later implicit body.
         if let NamespaceBody::BraceDelimited(body) = &node.body {
             for statement in &body.statements {
                 if let Statement::Namespace(child) = statement {
@@ -890,8 +818,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_constant(&mut self, node: &'ast Constant<'arena>, (): &mut ()) {
-        // ParserAbstract::checkConstantAttributes runs after every value expression has reduced. PHPParser's
-        // declaration attributes start at the first attribute group, unlike Mago's const-keyword span.
         if let Some(attributes) = node.attribute_lists.first()
             && node.items.len() > 1
         {
@@ -946,13 +872,10 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         node: &'ast FunctionLikeParameter<'arena>,
         (): &mut (),
     ) {
-        // ParserAbstract::checkParam runs after the default expression and hooks have reduced. Both checks
-        // collect independently, with the variadic default before the direct (not nullable/union) void type.
         if node.ellipsis.is_some()
             && let Some(default) = &node.default_value
         {
             let mut value = default.value;
-            // php.y's '(' expr ')' production returns the inner node, retaining its own start attributes.
             while let Expression::Parenthesized(inner) = value {
                 value = inner.expression;
             }
@@ -978,14 +901,11 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_assignment(&mut self, node: &'ast Assignment<'arena>, (): &mut ()) {
-        // Only successful array_short_syntax '=' expr reductions fix up the nested arrays.
         if node.operator.is_assign()
             && let Expression::Array(array) = node.lhs
         {
             self.fixup_array_destructuring(array.span(), &array.elements);
         }
-        // php.y's variable '=' ampersand new_expr production checks after both sides reduce. Do not
-        // unwrap parentheses: a parenthesized LHS or new, and a dereferenced new, use other productions.
         if self.version >= PHPVersion::PHP70
             && node.operator.is_assign()
             && matches!(
@@ -1016,8 +936,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_pipe(&mut self, node: &'ast Pipe<'arena>, (): &mut ()) {
-        // checkPipeOperatorParentheses runs after the RHS reduces. Mago retains parentheses explicitly,
-        // unlike PHPParser's parenthesizedArrowFunctions registry. Earlier targets do not tokenize T_PIPE.
         if self.version >= PHPVersion::PHP85
             && let Expression::ArrowFunction(arrow) = node.callable
         {
@@ -1029,7 +947,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_try(&mut self, node: &'ast Try<'arena>, (): &mut ()) {
-        // ParserAbstract::checkTryCatch runs after the body, catches and finally have reduced.
         if node.catch_clauses.is_empty() && node.finally_clause.is_none() {
             self.errors.push(error(
                 self.file,
@@ -1042,7 +959,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         self.modifiers(&node.modifiers, true);
     }
     fn walk_out_property_hook(&mut self, node: &'ast PropertyHook<'arena>, (): &mut ()) {
-        // ParserAbstract::checkPropertyHook follows the parameter list and body, including their errors.
         let name = node.name.value;
         if !name.eq_ignore_ascii_case(b"get") && !name.eq_ignore_ascii_case(b"set") {
             self.errors.push(error(
@@ -1065,8 +981,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_property_hook_list(&mut self, node: &'ast PropertyHookList<'arena>, (): &mut ()) {
-        // checkEmptyPropertyHookList runs for property and parameter hook lists (including promotion),
-        // before the enclosing checkParam. An absent list is not an empty list.
         if node.hooks.is_empty() {
             self.errors.push(error(
                 self.file,
@@ -1076,7 +990,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_method(&mut self, node: &'ast Method<'arena>, (): &mut ()) {
-        // ParserAbstract::checkClassMethod runs after the body, with method_modifiers' first token as #2.
         let Some(first) = node.modifiers.first() else {
             return;
         };
@@ -1110,7 +1023,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
         }
     }
     fn walk_out_class_like_constant(&mut self, node: &'ast ClassLikeConstant<'arena>, (): &mut ()) {
-        // ParserAbstract::checkClassConst runs on reduction and reports each forbidden flag once at #2.
         let Some(first) = node.modifiers.first() else {
             return;
         };
@@ -1177,7 +1089,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Reserved<'_> {
     }
 }
 
-/// NameContext's three independent import tables and NameResolver's throwing error handler.
 struct Names<'a> {
     file: &'a File,
     errors: Vec<Error>,
@@ -1333,7 +1244,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Names<'_> {
         self.attributes(&node.attribute_lists);
     }
     fn walk_enum(&mut self, node: &'ast Enum<'arena>, (): &mut ()) {
-        // Enum_::scalarType is not resolved as a class name; BackedEnumTypeRule checks it instead.
         self.attributes(&node.attribute_lists);
         for group in &node.attribute_lists {
             self.walk_attribute_list(group, &mut ());
@@ -1444,8 +1354,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Names<'_> {
             self.receiver(node.rhs);
         }
     }
-    // New_ traverses its Class_ (attributes and body) before constructor arguments. Mago stores those
-    // arguments inside AnonymousClass, so move just their visit to the end rather than choosing by offset.
     fn walk_anonymous_class(&mut self, node: &'ast AnonymousClass<'arena>, (): &mut ()) {
         self.attributes(&node.attribute_lists);
         for group in &node.attribute_lists {

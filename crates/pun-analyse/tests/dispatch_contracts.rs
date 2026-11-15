@@ -1,4 +1,3 @@
-//! Public dispatch boundaries, with complete independent PHPStan 2.3.1 diagnostic records.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -54,7 +53,7 @@ fn check(group: &str) {
         configured.method_rules.call_methods = calls;
         let mut direct = Project::new(paths("paths"), paths("scan"));
         direct.level = level;
-        direct.php_version = 80500;
+        direct.php_version = pun_analyse::PhpVersion::from_id(80500);
         direct.options.set(
             pun_analyse::ProjectOptions::CHECK_NON_STRINGABLE_DYNAMIC_ACCESS,
             names,

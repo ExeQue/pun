@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\SingleLineAfterImportsFixer`.
 use crate::analyzers::utils::Utils;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, TokensAnalyzer, php_compat};
@@ -39,7 +38,6 @@ impl Fixer for SingleLineAfterImportsFixer {
             let index = index + added;
             let mut indent: Vec<u8> = Vec::new();
 
-            // if previous line ends with comment and current line starts with whitespace, use current indent
             if tokens[index - 1].is_whitespace(Some(b" \t")) && tokens[index - 2].is_kind(T_COMMENT)
             {
                 indent = tokens[index - 1].get_content().to_vec();
@@ -68,8 +66,6 @@ impl Fixer for SingleLineAfterImportsFixer {
                 added += 1;
             } else {
                 let mut newline = ending.to_vec();
-                // upstream decrements when tokens[semicolonIndex] is `?>`, but a `;` was inserted at or before
-                // that index, shifting `?>` past it
                 insert_index += 1;
                 if tokens[insert_index].is_whitespace(Some(b" \t"))
                     && tokens[insert_index + 1].is_comment()

@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-strict-equality-matchers`, ported from pest-plugin-rector's `UseStrictEqualityMatchersRector`:
-//! `expect($a === $b)->toBeTrue()` becomes `expect($a)->toBe($b)`; `!==` or `toBeFalse()` (or a `->not` before the
-//! matcher) give `->not->toBe($b)`. The new call is made on the chain's `expect()`, so what came between is dropped.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -30,9 +26,8 @@ impl Rule for PreferStrictEqualityMatchers {
         let Node::MethodCall(call) = node else {
             return;
         };
-        let method = match identifier(&call.method) {
-            Some(m @ (b"toBeTrue" | b"toBeFalse")) => m,
-            _ => return,
+        let Some(method @ (b"toBeTrue" | b"toBeFalse")) = identifier(&call.method) else {
+            return;
         };
         let Some(expect) = expect_call(call) else {
             return;

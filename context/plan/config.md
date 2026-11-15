@@ -1,6 +1,6 @@
 # Plan: config, rule names and presets (pun.toml)
 
-Status: **decided, not built** (2026-10-17). This file gathers the config decisions from format.md, lint.md,
+Status: **built** (Build 1-9; Step 1's gate passed at ea7a84bc, ../PLAN.md §3). Decided 2026-10-17. This file gathers the config decisions from format.md, lint.md,
 analyse.md, init.md and commands.md into one schema, and lists the work to build it. It is Step 1 of
 ../PLAN.md §3, and every other plan depends on it. Decisions with dates: ../PLAN.md §2. Rule placement,
 naming style and ignore comments: rules.md; the data: crates/pun-config/rules/mapping.toml.
@@ -27,7 +27,7 @@ a new project (plan/init.md). `pun config` prints the fully resolved config, eve
 
 ```toml
 [php]
-version = "8.4"                       # override only; the default comes from composer.json's "require.php"
+version = "8.4"                       # override only; the default comes from [require] php (composer.json's before migrate)
 
 [files]                               # shared by every command, like Mago's [source]
 paths = ["app", "tests"]              # what to check when no paths are given
@@ -160,8 +160,7 @@ pun list-files [--command format|lint|analyse] [-0] [paths...]
 
 All from 2026-10-17 (Pushpak), recorded in ../PLAN.md §2: pun.toml only and stop without it; `group/name` with no
 aliases; three format presets; lint sets; oxlint levels; `--fix` applies all, `fix = "off"`; five analyse presets
-with `max` on top; analyse on or off; ecosystems from composer.lock; PHP version from composer.json; no PHP
-fallback; `pun list-files` like Mago's. The `[files]` section with per-command `exclude` (Mago's model) and the
+with `max` on top; analyse on or off; ecosystems from composer.lock; PHP version from composer.json; no PHP fallback; `pun list-files` like Mago's. The `[files]` section with per-command `exclude` (Mago's model) and the
 `[analyse] preset` key (instead of a top-level `preset`) are the assistant's defaults for the schema above.
 
 Build 9, the shared problem type (crates/pun-problem, assistant's calls, 2026-10-17):
@@ -179,8 +178,8 @@ Build 5 (wf/composer, 2026-10-17), assistant's calls where the plan is silent:
 - `pun_config::composer::detect(root)` returns the `require.php` constraint with its lowest admitted version
   (`php_version()` gives it as `major.minor` for `[php] version`) and the locked Laravel (`laravel/framework`), Pest
   (`pestphp/pest`) and PHPUnit (`phpunit/phpunit`) versions, each marked `dev` when it comes from `packages-dev`.
-- Only composer.lock turns an ecosystem on: without a lock none is detected (no fallback to composer.json's
-  `require`). `laravel/laravel` and `illuminate/*` are not the framework.
+- Only the lock turns an ecosystem on: without one none is detected (no fallback to `require`). `detect` reads
+  composer.json and composer.lock only (2026-11-15). `laravel/laravel` and `illuminate/*` are not the framework.
 - A locked branch (`dev-main`, `3.x-dev`) keeps its raw version with no numbers; a pre-release (`5.0.0-RC1`) counts as
   its release. A constraint that admits nothing (`>=8.4 <8.3`) gives no PHP version. `>8.4` gives 8.4.1.
 - The PHP 8.4 gate in `load` now uses the same reader (`constraint::lowest`); `allows_below` is gone. Wiring the
@@ -213,7 +212,7 @@ Build 3 (wf/schema, 2026-10-17), assistant's calls where the plan is silent. The
   `"on"` / `"off"` in `[analyse.rules]`. Options of a rule a fixer runs go to it with snake_case top-level keys; other
   rules keep them as written.
 - **Precedence and gates.** Set (at `error`) < group < the rule's own line. Only what a set or preset turns on is gated:
-  an ecosystem group's rules need the ecosystem on (locked in composer.lock and not switched off with its group), a
+  an ecosystem group's rules need the ecosystem on (locked and not switched off with its group), a
   `php-X.Y` rule needs `[php] version` >= X.Y, a `laravel-N` rule needs Laravel on and a locked version >= N (a locked
   branch has no version, so none). A group's level or a rule's line turns rules on whatever the gates. `gated_by` on a
   rule outside an upgrade group carries no version and gates nothing. `doctrine` is never detected.
@@ -225,15 +224,15 @@ Build 3 (wf/schema, 2026-10-17), assistant's calls where the plan is silent. The
 - **Removed keys** are errors naming the replacement: the top-level `preset`, `[format] preset = "per" | "symfony"`,
   `fix = "apply" | "safe-only"`, `"info"`, `severity`, and `[analyse] level` or a number as `[analyse] preset` (naming
   the preset that holds that PHPStan level). Messages are pinned in crates/pun-config/src/tests.rs.
-- **`[php] version`** must be `major.minor`; without it the lowest version composer.json admits, else 8.4 (the config 3
-  follow-up row). composer.lock is read on every load.
+- **`[php] version`** must be `major.minor`; without it the lowest version `require.php` admits (pun.toml's, or
+  composer.json's before migrate), else 8.4 (the config 3 follow-up row). The lock is read on every load.
 - **Migrate** (pun-config's writer, kept minimal for migrate 1): risky and code-deleting fixers are written at
   `"error"` (a table of options without `level` when they have options), Pint's `in` becomes `[files] paths`, a `per`
   or `symfony` preset becomes `empty` plus its rules (their sets are listed as unsupported), and the starter has no
   top-level `preset`.
-- **Not at run time yet** (lint 1-2): `[[lint.overrides]]` are resolved but pun-cli's token pass ignores them, and a
-  `warn` rule's fix fails `pun lint` / `pun check` like an `error`. `--preset per` on the command line still works
-  (Pint's flag; format 1). The no-config message stays "Run `pun migrate`." until `pun init` exists.
+- **Left for later steps, all built since:** `[[lint.overrides]]` and the `warn` / `error` difference at run time
+  (lint 1-2, pun-cli's lint_plan.rs), `--preset per` as an error (format 1), and the no-config message naming
+  `pun init`.
 
 
 Build 7 (wf/files, 2026-10-17), assistant's calls where the plan is silent:
@@ -256,8 +255,8 @@ Build 7 (wf/files, 2026-10-17), assistant's calls where the plan is silent:
 - **Output.** `-0` and `--format=json` print no agent summary; the agent summary is
   `pun list-files: N files[, <command> set] (Ts)` followed by the full, uncapped list. `--format` takes only `json`;
   `--config` is accepted like on every other command.
-- **Not wired yet:** `pun lint` and `pun check` still run over format's (Pint's) file set in one token pass, so
-  `[lint] exclude` only shows in `pun list-files --command lint`. Wiring it belongs with the lint engine (lint 1-2).
+- **Left for the lint engine (lint 1-2), built since:** `pun lint` and the lint half of `pun check` check the
+  `--command lint` set, so `[lint] exclude` applies to them.
 
 Build 8 (wf/config-explain, 2026-10-17), assistant's calls where the plan is silent:
 
@@ -273,7 +272,7 @@ Build 8 (wf/config-explain, 2026-10-17), assistant's calls where the plan is sil
   as written in any `[upstream.<tool>]`, then the loose match pun.toml's errors use (other spellings, old `format.` /
   `lint.` names). Anything but an ID starts with "`<name>` is `<id>` in Pun." and exits 0. An upstream key with no rule
   is an error with its `drop` / `unsupported` reason, or naming its non-rule target (PHPStan parameters such as
-  `checkUnionTypes`); an unknown name is an error. Errors exit 1.
+  `checkUnionTypes`); an unknown name is an error. Errors exit 2.
 - **Its text**: the ID, the summary line when mapping.toml has one, then rows `group` (with the `[meta.groups]` line),
   `presets` / `sets` / `preset` by command (`none (opt-in by name or group)` when empty), `intent` when set, `fix`
   (`none` without one), `fixed by` for analyse rules that have it, `upstream` (every `[upstream.*]` row mapping to the

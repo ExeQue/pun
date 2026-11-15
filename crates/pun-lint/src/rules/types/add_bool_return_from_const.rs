@@ -1,7 +1,3 @@
-//! `lint/types/add-bool-return-type-from-const`, ported from Rector 2.8.4's
-//! `BoolReturnTypeFromBooleanConstReturnsRector` (rules/TypeDeclaration/Rector/ClassMethod): a function or method that
-//! only returns `true` or `false`, and whose end cannot be reached, returns `bool`.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 
 use super::facts::facts;
@@ -16,8 +12,8 @@ impl Rule for AddBoolReturnFromConst {
         "lint/types/add-bool-return-type-from-const"
     }
 
-    fn min_php_version(&self) -> u32 {
-        super::SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(super::SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

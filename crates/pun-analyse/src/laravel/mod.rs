@@ -1,13 +1,3 @@
-//! Larastan's model knowledge as a Mago analyser plugin: a model's database columns are typed
-//! properties, read from the migrations, as Larastan's `ModelPropertyExtension` and `ModelPropertyHelper` give them.
-//! Registered as an expression hook: after Mago types `$model->column` (through `Model::__get`, so `mixed`), the hook
-//! replaces the type with the column's.
-//!
-//! Without PHP running, the model instance Larastan asks (`getTable()`, `getKeyName()`, `getCasts()`, `getDates()`,
-//! `Date::now()`) is answered from the model's own source and its parent models': `$table`, `$primaryKey`,
-//! `$keyType`, `$incrementing`, `$timestamps`, `$casts`, `casts()`, the `SoftDeletes` trait, and a `Date::use()`
-//! call anywhere in the analysed files.
-
 mod collections;
 mod schema;
 mod strings;
@@ -49,15 +39,12 @@ const ATTRIBUTE: &str = "Illuminate\\Database\\Eloquent\\Casts\\Attribute";
 const CARBON_IMMUTABLE: &str = "Carbon\\CarbonImmutable";
 const PROXY: &str = "Illuminate\\Support\\HigherOrderCollectionProxy";
 
-/// A Laravel app: its root (for `database/migrations`) and Larastan's options.
 #[derive(Clone, Copy, Debug)]
 pub struct Laravel<'a> {
     pub root: &'a Path,
-    /// Larastan's `parseModelCastsMethod` (default false): read the array `casts()` returns.
     pub parse_casts_method: bool,
 }
 
-/// Registers the model-attribute hook for the Laravel app.
 pub(crate) fn register(
     registry: &mut PluginRegistry,
     app: Laravel,
@@ -69,7 +56,6 @@ pub(crate) fn register(
     });
 }
 
-/// What a model class declares itself (`None`: inherited or Laravel's default).
 #[derive(Default)]
 struct ModelSource {
     table: Option<String>,
@@ -77,18 +63,14 @@ struct ModelSource {
     key_type: Option<String>,
     incrementing: Option<bool>,
     timestamps: Option<bool>,
-    /// `$casts`.
     casts: Vec<(String, String)>,
-    /// The array `casts()` returns.
     casts_method: Vec<(String, String)>,
 }
 
-/// The model classes, `Date::use()`'s class, from the analysed files.
 #[derive(Default)]
 struct Scan {
     models: HashMap<String, (String, ModelSource)>,
     date_class: Option<String>,
-    /// `parseModelCastsMethod`: else the casts the declared return type of `casts()` names.
     parse_casts_method: bool,
 }
 
@@ -108,13 +90,11 @@ fn resolved(names: &ResolvedNames, e: &Expression) -> Option<String> {
     }
 }
 
-/// A constant string: `'...'` or `Foo::class`.
 fn constant_string(names: &ResolvedNames, e: &Expression) -> Option<String> {
     match e {
         Expression::Literal(Literal::String(s)) => s
             .value
             .map(|v| String::from_utf8_lossy(v).replace("\\\\", "\\")),
-        // a constant concatenation (`AsStringable::class.':argument'`)
         Expression::Binary(b) if b.operator.is_concatenation() => {
             Some(constant_string(names, b.lhs)? + &constant_string(names, b.rhs)?)
         }
@@ -144,7 +124,6 @@ fn string_pairs(names: &ResolvedNames, e: &Expression) -> Vec<(String, String)> 
         .collect()
 }
 
-/// The first `return` in a method body (`NodeFinder::findFirstInstanceOf(Return_)`).
 #[derive(Default)]
 struct FirstReturn<'ast, 'arena>(Option<&'ast Return<'arena>>);
 
@@ -217,7 +196,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Collector<'_, '_, 'arena> {
     }
 }
 
-/// A model with everything Larastan asks its instance for.
 struct Model<'a> {
     name: &'a str,
     table: String,
@@ -229,7 +207,6 @@ struct Model<'a> {
 
 fn model<'a>(scan: &'a Scan, codebase: &CodebaseMetadata, class: &str) -> Option<Model<'a>> {
     let (name, _) = scan.models.get(&class.to_ascii_lowercase())?;
-    // the class and its parents, nearest first
     let mut chain = Vec::new();
     let mut current = Some(name.clone());
     while let Some(c) = current {
@@ -244,7 +221,6 @@ fn model<'a>(scan: &'a Scan, codebase: &CodebaseMetadata, class: &str) -> Option
     fn first<T>(chain: &[&ModelSource], f: impl Fn(&ModelSource) -> Option<T>) -> Option<T> {
         chain.iter().find_map(|s| f(s))
     }
-    // a pivot's (AsPivot::getTable()) is its singular basename
     let pivot = codebase.class_uses_trait(
         name.as_bytes(),
         b"Illuminate\\Database\\Eloquent\\Relations\\Concerns\\AsPivot",
@@ -258,9 +234,6 @@ fn model<'a>(scan: &'a Scan, codebase: &CodebaseMetadata, class: &str) -> Option
         }
     });
     let key = first(&chain, |s| s.primary_key.clone()).unwrap_or_else(|| "id".into());
-    // Model::getCasts(): the key cast to its type when incrementing, then `$casts`; then `casts()` (Larastan)
-    // ModelCastHelper sets `usesUniqueIds` for HasUniqueStringIds, HasUuids and HasUlids: the key (in the default
-    // `uniqueIds()`) is a non-incrementing string
     let unique = ["HasUniqueStringIds", "HasUuids", "HasUlids"]
         .iter()
         .any(|t| {
@@ -281,7 +254,6 @@ fn model<'a>(scan: &'a Scan, codebase: &CodebaseMetadata, class: &str) -> Option
     casts.extend(
         first(&chain, |s| (!s.casts.is_empty()).then(|| s.casts.clone())).unwrap_or_default(),
     );
-    // the nearest `casts()` declaration: its first returned array, else its return type when a constant array
     if scan.parse_casts_method {
         casts.extend(
             first(&chain, |s| {
@@ -312,8 +284,6 @@ fn model<'a>(scan: &'a Scan, codebase: &CodebaseMetadata, class: &str) -> Option
     })
 }
 
-/// The casts of the return type of a model's `casts()`, when a constant array of constant strings (Larastan describes
-/// other values; ponytail: those are not read).
 fn declared_casts(codebase: &CodebaseMetadata, model: &str) -> Vec<(String, String)> {
     use mago_codex::ttype::atomic::array::TArray;
     use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -345,7 +315,6 @@ fn declared_casts(codebase: &CodebaseMetadata, model: &str) -> Vec<(String, Stri
         .collect()
 }
 
-/// The analysed files' models, and the migrations' tables.
 fn scan_tables(
     app: Laravel,
     project: &Project,
@@ -355,7 +324,6 @@ fn scan_tables(
         parse_casts_method: app.parse_casts_method,
         ..Scan::default()
     };
-    // ModelPropertyHelper reflects any model: the files of the scanned and autoloaded models too
     let id =
         |p: &std::path::PathBuf| mago_database::file::FileId::new(p.to_string_lossy().as_bytes());
     let elsewhere: HashMap<_, _> = project
@@ -394,7 +362,6 @@ fn scan_tables(
     }
     let model_key = |class: &str| model(&scan, codebase, class).map(|m| (m.table, m.key));
     let mut schema = SchemaAggregator::new(codebase, &model_key);
-    // MigrationHelper: database/migrations, recursively, in file name order
     let mut migrations = php_files(&app.root.join("database/migrations"), &["php".to_string()]);
     migrations.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
     for file in migrations
@@ -410,8 +377,6 @@ fn scan_tables(
     (scan, tables)
 }
 
-/// `ModelPropertyHelper::hasDatabaseProperty()` without its `@property` check: each concrete model's key name and
-/// its table's columns, by lowercase class name; and each table's columns, by table name.
 pub(crate) fn database_properties(
     app: Laravel,
     project: &Project,
@@ -447,22 +412,18 @@ pub(crate) fn database_properties(
     (properties, columns)
 }
 
-/// The models' column types, by lowercase class name and column.
 pub(crate) type Models = HashMap<String, HashMap<String, TUnion>>;
 
-/// Registers the model-attribute hook with the models [`models()`] read.
 pub(crate) fn register_models(registry: &mut PluginRegistry, models: std::sync::Arc<Models>) {
     registry.register_expression_hook(ModelAttributes { models });
 }
 
-/// The models' column types, by lowercase class name and column: a column an accessor hides is left out.
 pub(crate) fn models(
     app: Laravel,
     project: &Project,
     codebase: &CodebaseMetadata,
 ) -> HashMap<String, HashMap<String, TUnion>> {
     let (scan, tables) = scan_tables(app, project, codebase);
-    // ModelCastHelper::getDateType(): `Date::now()::class`; Illuminate's Carbon is reported as Carbon\Carbon
     let date_class = scan
         .date_class
         .clone()
@@ -482,7 +443,6 @@ pub(crate) fn models(
         }
         let mut properties = HashMap::new();
         let table = tables.get(&m.table);
-        // getDatabaseProperty(): the primary key without a column is typed by `$keyType`
         if table.is_none_or(|t| !t.columns.contains_key(&m.key)) {
             properties.insert(m.key.clone(), column_type(&m.key_type));
         }
@@ -501,7 +461,6 @@ fn named(class: &str) -> TUnion {
     get_named_object(Word::new(class.as_bytes()), None)
 }
 
-/// `TypeStringResolver` on a column's readable type.
 fn column_type(ty: &str) -> TUnion {
     match ty {
         "int" => get_int(),
@@ -513,7 +472,6 @@ fn column_type(ty: &str) -> TUnion {
     }
 }
 
-/// `getDatabaseProperty()`'s readable type.
 fn readable(
     m: &Model,
     name: &str,
@@ -549,11 +507,9 @@ fn readable(
     }
 }
 
-/// `ModelCastHelper::getReadableType()`.
 fn cast_type(cast: &str, original: TUnion, date: &TUnion, codebase: &CodebaseMetadata) -> TUnion {
     let cast = cast.split(':').find(|p| *p != "encrypted").unwrap_or(cast);
     match cast {
-        // (Larastan 3.14) an integer column keeps its own integer type
         "int" | "integer" | "timestamp" => {
             return if original.is_int() {
                 original
@@ -601,7 +557,6 @@ fn cast_type(cast: &str, original: TUnion, date: &TUnion, codebase: &CodebaseMet
     if class.kind.is_enum() {
         return named(class.original_name.as_str_lossy().as_ref());
     }
-    // `Castable::castUsing()`'s returned class
     let mut cast = class.name.as_str_lossy().into_owned();
     if codebase.is_instance_of(
         cast.as_bytes(),
@@ -631,7 +586,6 @@ fn cast_type(cast: &str, original: TUnion, date: &TUnion, codebase: &CodebaseMet
     get_mixed()
 }
 
-/// `ModelPropertyHelper::hasAccessor(strictGenerics: false)`.
 pub(crate) fn has_accessor(codebase: &CodebaseMetadata, class: &str, property: &str) -> bool {
     let Some(method) = codebase.get_declaring_method(class.as_bytes(), camel(property).as_bytes())
     else {
@@ -650,9 +604,6 @@ pub(crate) fn has_accessor(codebase: &CodebaseMetadata, class: &str, property: &
         .is_some_and(|t| t.type_union.types.iter().all(|a| is_named(a, ATTRIBUTE)))
 }
 
-/// ModelAccessorExtension: `hasAccessor(strictGenerics: true)`'s readable type, `getAccessor()`: a non-public,
-/// non-private `{camel}()` returning a generic `Attribute<TGet, TSet>` reads `TGet`, else a `get{Studly}Attribute()`
-/// method its return type.
 pub(crate) fn accessor_type(
     codebase: &CodebaseMetadata,
     class: &str,
@@ -687,7 +638,6 @@ pub(crate) fn accessor_type(
     }
 }
 
-/// ModelRelationsExtension::hasProperty() of a model's `{relation}_count`: a native relation method.
 fn relation_count(codebase: &CodebaseMetadata, class: &[u8], property: &str) -> bool {
     let Some(relation) = property.strip_suffix("_count") else {
         return false;
@@ -705,8 +655,6 @@ fn is_named(atomic: &TAtomic, class: &str) -> bool {
     matches!(atomic, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes().eq_ignore_ascii_case(class.as_bytes()))
 }
 
-/// The hook: `$model->column` and `$model?->column` read the column's type, unless the class declares the property
-/// or a `@property` tag (PHPStan's own reflection comes before Larastan's extension).
 struct ModelAttributes {
     models: std::sync::Arc<Models>,
 }
@@ -723,8 +671,6 @@ impl Provider for ModelAttributes {
 }
 
 impl ModelAttributes {
-    /// The readable type of the instance property `name` of `object` (PHPStan's own reflection before Larastan's
-    /// columns and relations), when it has one.
     fn property(
         &self,
         codebase: &CodebaseMetadata,
@@ -764,8 +710,6 @@ impl ModelAttributes {
         None
     }
 
-    /// ModelOnlyDynamicMethodReturnTypeExtension: `$model->only(...)` is the array shape of the constant strings the
-    /// arguments name (or their arrays' items), each the model's property type, else `null`.
     fn only(&self, context: &HookContext<'_, '_>, call: &MethodCall<'_>) -> Option<TUnion> {
         use mago_codex::ttype::atomic::array::TArray;
         use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -785,7 +729,6 @@ impl ModelAttributes {
         if !codebase.is_instance_of(object.name.as_bytes(), MODEL.as_bytes()) {
             return None;
         }
-        // `getConstantStrings()`: every part a literal string
         let strings = |t: &TUnion| -> Vec<Vec<u8>> {
             let found: Vec<Vec<u8>> = t
                 .types
@@ -811,7 +754,6 @@ impl ModelAttributes {
             };
             let ty = context.get_expression_type(value)?;
             let mut candidates = vec![strings(ty)];
-            // `getArrays()`' item types
             for a in ty.types.iter() {
                 let item = match a {
                     TAtomic::Array(TArray::List(l)) => TUnion::from_vec(
@@ -843,7 +785,6 @@ impl ModelAttributes {
                 };
                 candidates.push(strings(&item));
             }
-            // an argument that names no constant string
             let Some(found) = candidates.into_iter().find(|c| !c.is_empty()) else {
                 return Some(TUnion::from_atomic(TAtomic::Array(TArray::Keyed(
                     TKeyedArray::new_with_parameters(
@@ -871,8 +812,6 @@ impl ModelAttributes {
         ))))
     }
 
-    /// HigherOrderCollectionProxyHelper: a property of `HigherOrderCollectionProxy<'method', TValue, TCollection>`
-    /// is the value's, its result per the collection method proxied.
     fn proxy_property(
         &self,
         codebase: &CodebaseMetadata,
@@ -924,7 +863,6 @@ impl ExpressionHook for ModelAttributes {
         for atomic in object_type.types.iter() {
             let ty = match atomic {
                 TAtomic::Null if nullsafe => get_null(),
-                // HigherOrderCollectionProxyPropertyExtension: `$collection->map->name` reads the value's property
                 TAtomic::Object(TObject::Named(n))
                     if n.name.as_bytes().eq_ignore_ascii_case(PROXY.as_bytes()) =>
                 {
@@ -959,19 +897,14 @@ impl ExpressionHook for ModelAttributes {
                     match column {
                         _ if !declared && let Some(ty) = accessor() => ty,
                         Some(ty) if !declared => ty.clone(),
-                        // ModelRelationsExtension: a relation's `_count`
                         None if !declared && relation_count(context.codebase(), class, &name) => {
                             get_int_range(Some(0), None)
                         }
-                        // ModelRelationsExtension: a relation method's result
                         None if !declared
                             && context.codebase().is_instance_of(class, MODEL.as_bytes()) =>
                         {
                             match collections::relation_property(context.codebase(), n, &name) {
                                 Some(ty) => ty,
-                                // no extension has it: PHPStan's undefined property reads an ErrorType, where Mago
-                                // reads `Model::__get()`
-                                // (an assigned undefined property keeps the scope's type)
                                 None if n.intersection_types.is_none()
                                     && context.get_expression_type(expr).is_some_and(|t| t.is_mixed())
                                     && !context.block_context().flags.inside_assignment()
@@ -999,7 +932,6 @@ impl ExpressionHook for ModelAttributes {
             };
             types.push(ty);
         }
-        // one receiver's type keeps its benevolence
         let ty = match types.len() {
             0 => return Ok(()),
             1 => types.pop().unwrap_or_else(get_mixed),

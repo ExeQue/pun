@@ -1,5 +1,3 @@
-//! Canonical initializer holders differ from ordinary class-constant expression flow.
-
 use std::path::Path;
 
 use pun_analyse::analyse;

@@ -4,19 +4,14 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
-/// The PHP the oracle scripts run on: PHP 8.5, which `token_get_all` and tools/api.php need (8.5 syntax such as a
-/// `final` promoted parameter). `PUN_PHP` names it; else the first `php`, `php8.5` (Debian) or `php85` (Herd) on
-/// PATH that reports 8.5. Anything else fails the test with the versions it found.
+static PHP: LazyLock<Result<PathBuf, String>> = LazyLock::new(find_php);
+
 pub(crate) fn php_path() -> PathBuf {
-    static PHP: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    PHP.get_or_init(find_php)
-        .clone()
-        .unwrap_or_else(|e| panic!("{e}"))
+    PHP.clone().unwrap_or_else(|e| panic!("{e}"))
 }
 
-/// `php_path()` as a command.
 pub(crate) fn php() -> Command {
     Command::new(php_path())
 }
@@ -60,7 +55,6 @@ fn find_php() -> Result<PathBuf, String> {
     ))
 }
 
-/// `MAJOR.MINOR` of the PHP at `php`, or `None` when it does not run.
 fn version(php: &Path) -> Option<String> {
     let out = Command::new(php)
         .args(["-r", "echo PHP_MAJOR_VERSION, '.', PHP_MINOR_VERSION;"])

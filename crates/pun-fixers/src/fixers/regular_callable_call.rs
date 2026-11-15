@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\RegularCallableCallFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -41,15 +40,15 @@ impl Fixer for RegularCallableCallFixer {
                 continue;
             }
             if !functions_analyzer.is_global_function_call(tokens, index) {
-                continue; // redeclare/override
+                continue;
             }
-            let open_parenthesis = tokens.get_next_meaningful_token(index).unwrap();
+            let open_parenthesis = tokens.next_meaningful(index);
             let close_parenthesis =
                 tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open_parenthesis);
             let arguments =
                 arguments_analyzer.get_arguments(tokens, open_parenthesis, close_parenthesis);
             if arguments.is_empty() {
-                return; // no arguments!
+                return;
             }
             process_call(tokens, index, &arguments);
         }
@@ -57,14 +56,12 @@ impl Fixer for RegularCallableCallFixer {
 }
 
 fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, usize>) {
-    let first_arg_index = tokens
-        .get_next_meaningful_token(tokens.get_next_meaningful_token(index).unwrap())
-        .unwrap();
+    let first_arg_index = tokens.next_meaningful(tokens.get_next_meaningful_token(index).unwrap());
     let first_arg_token = tokens[first_arg_index].clone();
     if first_arg_token.is_kind(T_CONSTANT_ENCAPSED_STRING) {
-        let after_first_arg_index = tokens.get_next_meaningful_token(first_arg_index).unwrap();
+        let after_first_arg_index = tokens.next_meaningful(first_arg_index);
         if !tokens[after_first_arg_index].equals_any(&[",".into(), ")".into()], true) {
-            return; // first argument is an expression like `call_user_func("foo"."bar", ...)`, not supported!
+            return;
         }
         let content = first_arg_token.get_content();
         if !is_valid_function_invoke(content) {
@@ -90,7 +87,7 @@ fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, u
         );
     } else if first_arg_token.is_kind(T_FUNCTION)
         || (first_arg_token.is_kind(T_STATIC)
-            && tokens[tokens.get_next_meaningful_token(first_arg_index).unwrap()]
+            && tokens[tokens.next_meaningful(first_arg_index)]
                 .is_kind(T_FUNCTION))
     {
         let first_arg_end_index = tokens.find_block_end(
@@ -111,7 +108,6 @@ fn process_call(tokens: &mut Tokens, index: usize, arguments: &BTreeMap<usize, u
             first_arg_end_index,
         );
     } else if first_arg_token.is_kind(T_VARIABLE) {
-        // `reset($arguments)`: the end of the first argument.
         let first_arg_end_index = *arguments.values().next().unwrap();
         for (&argument_start, &argument_end) in arguments {
             if first_arg_end_index == argument_end {
@@ -168,22 +164,18 @@ fn replace_call_user_func_with_callback(
     first_arg_end_index: usize,
 ) {
     tokens.clear_range(first_arg_start_index, first_arg_end_index);
-    let after_first_arg_index = tokens
-        .get_next_meaningful_token(first_arg_end_index)
-        .unwrap();
+    let after_first_arg_index = tokens.next_meaningful(first_arg_end_index);
     if tokens[after_first_arg_index].equals(",", true) {
         let use_ellipsis = tokens[call_index].equals((T_STRING, "call_user_func_array"), false);
         if use_ellipsis {
-            let second_arg_index = tokens
-                .get_next_meaningful_token(after_first_arg_index)
-                .unwrap();
+            let second_arg_index = tokens.next_meaningful(after_first_arg_index);
             tokens.insert_at(second_arg_index, vec![Token::new(T_ELLIPSIS, "...")]);
         }
         tokens.clear_at(after_first_arg_index);
         tokens.remove_trailing_whitespace(after_first_arg_index, None);
     }
     tokens.override_range(call_index, call_index, new_call_tokens);
-    let prev_index = tokens.get_prev_meaningful_token(call_index).unwrap();
+    let prev_index = tokens.prev_meaningful(call_index);
     if tokens[prev_index].is_kind(T_NS_SEPARATOR) {
         tokens.clear_token_and_merge_surrounding_whitespace(prev_index);
     }

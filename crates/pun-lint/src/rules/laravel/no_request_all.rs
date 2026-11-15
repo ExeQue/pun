@@ -1,15 +1,7 @@
-//! `lint/laravel/no-request-all`, ported from Mago 1.57.0's `no-request-all` (mago-linter
-//! src/rule/safety/no_request_all.rs).
-//!
-//! In a function, method or closure, `$request->all()` (the variable named `$request`, in any case), `request()->all()`
-//! and `Request::all()` (the `Request` facade, `Illuminate\Http\Request`, or any class written `Request`) are reported,
-//! as `mago_syntax`'s `find_method_references_in_block` finds them: not inside a nested closure, arrow function or
-//! class, which are checked on their own if at all.
-
 use mago_syntax::cst::*;
 use mago_syntax::utils::reference::{MethodReference, find_method_references_in_block};
 
-use crate::rules::lint_b_names::{function_call_matches, resolve_class};
+use crate::rules::support::names::{function_call_matches, resolve_class};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

@@ -4,11 +4,13 @@
 use super::tag::Tag;
 use super::*;
 use serde_json::Value;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
+
+static DATA: LazyLock<Value> =
+    LazyLock::new(|| serde_json::from_str(include_str!("tests.json")).unwrap());
 
 fn data() -> &'static Value {
-    static D: OnceLock<Value> = OnceLock::new();
-    D.get_or_init(|| serde_json::from_str(include_str!("tests.json")).unwrap())
+    &DATA
 }
 
 fn cases(name: &str) -> Vec<Vec<Value>> {
@@ -49,7 +51,10 @@ fn panics(f: impl FnOnce() + std::panic::UnwindSafe) -> String {
         Err(e) => e
             .downcast_ref::<String>()
             .cloned()
-            .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+            .or_else(|| {
+                e.downcast_ref::<&str>()
+                    .map(std::string::ToString::to_string)
+            })
             .unwrap_or_default(),
     }
 }
@@ -337,7 +342,6 @@ fn type_expression_parse_invalid() {
     }
 }
 
-// The full message, from `new TypeExpression($value, null, [])` on PHP-CS-Fixer 3.95 (var_export escapes `\` and `'`).
 #[test]
 fn type_expression_parse_error_message() {
     for (value, message) in [
@@ -488,7 +492,6 @@ fn type_expression_map_types() {
     }
 }
 
-/// testSortTypes: sorted case-insensitively, then in another order (upstream uses crc32; here the reverse) and back.
 #[test]
 fn type_expression_sort_types() {
     use pun_tokens::php_compat::strcasecmp;
@@ -507,8 +510,6 @@ fn type_expression_sort_types() {
     }
 }
 
-/// PHP 8's `<=>` on strings: numeric strings by value
-/// (`php -r 'var_dump("10" <=> "9", " 1e1" <=> "10 ", "10" <=> "9a", ".5" <=> "0.50");'`).
 #[test]
 fn php_spaceship_compares_numeric_strings_by_value() {
     use super::type_expression::php_spaceship;
@@ -521,7 +522,6 @@ fn php_spaceship_compares_numeric_strings_by_value() {
 
 #[test]
 fn type_regex_does_not_have_unnamed_capturing_group() {
-    // PHP drops trailing unset groups from $matches; count only up to the last set one like upstream does.
     let m = Preg::match_groups(format!("~{}~", type_expression::REGEX_TYPES), b"int").unwrap();
     let last = m.len() - 1;
     let re = pcre2::bytes::Regex::new(type_expression::REGEX_TYPES).unwrap();
@@ -532,7 +532,6 @@ fn type_regex_does_not_have_unnamed_capturing_group() {
     assert_eq!(named, last);
 }
 
-/// Annotation::getTypes caches: editing the line afterwards doesn't change the reported types (checked against PHP).
 #[test]
 fn annotation_get_types_is_cached() {
     let doc = DocBlock::new(b"/**\n * @param int $a\n */");
@@ -548,7 +547,6 @@ fn annotation_get_types_is_cached() {
 
 #[test]
 fn ascii_fast_paths_match_php() {
-    // Expected values: PHP 8.5 preg_split / preg_match_all / preg_match with the upstream patterns on the same input.
     let split = |c: &str| {
         super::split_lines_ascii(c.as_bytes()).map(|v| {
             v.into_iter()
@@ -583,7 +581,6 @@ fn ascii_fast_paths_match_php() {
         assert_eq!(tag(c).unwrap(), name, "{c:?}");
     }
     assert_eq!(tag(" * @\u{e9}"), None);
-    // Non-ASCII lines take the regex: no `@name` followed by whitespace or the end is upstream's "other".
     assert_eq!(Tag::new(Line::shared(" * @caf\u{e9}")).get_name(), b"other");
     assert_eq!(
         Tag::new(Line::shared(" * caf\u{e9} @see\u{a0}x")).get_name(),

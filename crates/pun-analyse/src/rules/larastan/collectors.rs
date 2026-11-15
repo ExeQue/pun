@@ -1,7 +1,3 @@
-//! UnusedViewsRule and NoMissingTranslationsRule: their collectors run on each analysed file (the values travel
-//! with the file's errors as [`COLLECTED_VIEW`] and [`COLLECTED_TRANSLATION`] entries), then [`finish`] turns the
-//! whole project's values into the rules' errors.
-
 use std::collections::HashSet;
 
 use mago_span::HasSpan;
@@ -16,7 +12,6 @@ use crate::larastan::views;
 const COLLECTED_VIEW: &str = "larastan.collected.view";
 const COLLECTED_TRANSLATION: &str = "larastan.collected.translation";
 
-/// `$template->value` of a `Scalar\String_` argument.
 fn literal(e: Option<&Argument>) -> Option<String> {
     match e?.value() {
         Expression::Literal(Literal::String(s)) => {
@@ -26,7 +21,6 @@ fn literal(e: Option<&Argument>) -> Option<String> {
     }
 }
 
-/// `ViewName::normalize()`.
 fn normalize(name: &str) -> String {
     match name.split_once("::") {
         None => name.replace('/', "."),
@@ -69,7 +63,6 @@ fn collecting(c: &Checker) -> Option<(bool, bool)> {
         .filter(|(v, t)| *v || *t)
 }
 
-/// UsedViewFunctionCollector and UsedTranslationFunctionCollector.
 pub(crate) fn function_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &FunctionCall<'arena>,
@@ -89,7 +82,6 @@ pub(crate) fn function_call<'arena>(
     }
 }
 
-/// UsedViewFacadeMakeCollector, UsedRouteFacadeViewCollector and UsedTranslationFacadeCollector.
 pub(crate) fn static_method_call<'arena>(
     c: &mut Checker<'_, 'arena>,
     call: &StaticMethodCall<'arena>,
@@ -130,7 +122,6 @@ pub(crate) fn static_method_call<'arena>(
     }
 }
 
-/// The method calls the collectors read the object's type of, by their method name.
 pub(super) fn typed_method_call<'a>(larastan: &Larastan, call: &'a MethodCall) -> Option<&'a [u8]> {
     let ClassLikeMemberSelector::Identifier(m) = &call.method else {
         return None;
@@ -148,7 +139,6 @@ pub(super) fn typed_method_call<'a>(larastan: &Larastan, call: &'a MethodCall) -
     read.then_some(m.value)
 }
 
-/// UsedViewMakeCollector, UsedEmailViewCollector and UsedTranslationTranslatorCollector.
 pub(crate) fn method_call<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall<'arena>) {
     let Some(method) = c.larastan.and_then(|l| typed_method_call(l, call)) else {
         return;
@@ -174,7 +164,6 @@ pub(crate) fn method_call<'arena>(c: &mut Checker<'_, 'arena>, call: &MethodCall
     }
 }
 
-/// The rules on the project's collected values: the errors without the collected entries, and the rules' errors.
 pub(crate) fn finish(larastan: Option<&Larastan>, errors: Vec<Error>) -> Vec<Error> {
     let (collected, mut errors): (Vec<Error>, Vec<Error>) = errors.into_iter().partition(|e| {
         matches!(
@@ -227,7 +216,6 @@ pub(crate) fn finish(larastan: Option<&Larastan>, errors: Vec<Error>) -> Vec<Err
         .contains(crate::LarastanSwitches::CHECK_MISSING_TRANSLATIONS)
     {
         let directories = if larastan.translation_directories.is_empty() {
-            // lang_path(): resources/lang when the app has one, else lang
             let resources = larastan.root.join("resources/lang");
             vec![if resources.is_dir() {
                 resources

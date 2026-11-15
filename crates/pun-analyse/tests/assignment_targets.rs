@@ -1,5 +1,3 @@
-//! PHPParser's List_/Array_ roles and byRef ArrayItem values, checked through PHPStan's public Analyser.
-
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -64,7 +62,7 @@ fn destructuring_target_roles_preserve_invalid_values_variable_writes_and_offset
         .map(|(name, source)| root.write(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["inputs"]);
 }
 
@@ -82,14 +80,12 @@ fn destructuring_nullsafe_checks_follow_item_roles_and_precede_other_assignment_
         .map(|(name, source)| root.write(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["nullsafe"]);
 }
 
 #[test]
 fn destructuring_target_roles_match_phpstan_at_strict_levels() {
-    // Literal-array negative controls initialize their variables to distinguish assignability
-    // from undefined-variable inference, which has a separate owner.
     let inputs: Value =
         serde_json::from_str(include_str!("fixtures/assignment-targets/levels.json")).unwrap();
     let expected: Value =
@@ -103,9 +99,8 @@ fn destructuring_target_roles_match_phpstan_at_strict_levels() {
         .collect::<Vec<_>>();
     for level in [0, 1, 2, 7, 8, 9, 10] {
         let mut project = Project::new(files.clone(), Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
-        // config.level1.neon enables this independently of the rule-registration level.
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level >= 1,

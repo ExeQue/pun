@@ -1,52 +1,55 @@
-//! The text PHP itself writes for the files under `vendor/composer/`: `json_encode` with PHP's default flags and with
-//! Composer's (`JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE`), `var_export` of nested arrays,
-//! and `strtr` with several pairs. JSON goes through PHP arrays on the way: an empty object and an object keyed
-//! `"0"`, `"1"`, ... come back as lists, as `json_decode($s, true)` then `json_encode` gives them.
-
 use pun_tokens::php_compat::var_export_string;
 use serde_json::Value;
 use std::fmt::Write;
 
-/// PHP's `md5()`: the digest as lowercase hex.
 pub fn md5(bytes: &[u8]) -> String {
     use md5::Digest;
     md5::Md5::digest(bytes)
         .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
-/// PHP's `sha1()`: the digest as lowercase hex.
 pub fn sha1(bytes: &[u8]) -> String {
     use sha1::Digest;
     sha1::Sha1::digest(bytes)
         .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
-/// `json_encode($v)` with PHP's default flags: one line, `/` and every non-ASCII character escaped.
+pub fn sha256(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes)
+        .iter()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
+}
+
 pub fn json_compact(v: &Value) -> String {
     let mut out = String::new();
     json(&mut out, v, None, true);
     out
 }
 
-/// `json_encode($v, JSON_PRETTY_PRINT)`: four-space indented, `/` and non-ASCII escaped.
 pub fn json_pretty_escaped(v: &Value) -> String {
     let mut out = String::new();
     json(&mut out, v, Some(0), true);
     out
 }
 
-/// `json_encode($v, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)`, four-space indented.
 pub fn json_pretty(v: &Value) -> String {
     let mut out = String::new();
     json(&mut out, v, Some(0), false);
     out
 }
 
-/// Whether PHP holds `m` as a list: its keys are `0`, `1`, ... in order (no keys at all included).
 fn is_list(m: &serde_json::Map<String, Value>) -> bool {
     m.keys().enumerate().all(|(i, k)| *k == i.to_string())
 }
@@ -109,7 +112,6 @@ fn json(out: &mut String, v: &Value, indent: Option<usize>, escape: bool) {
     }
 }
 
-/// A float as `json_encode` writes it (`serialize_precision = -1`): the shortest repr, a whole number without `.0`.
 fn float(f: f64) -> String {
     if f.fract() == 0.0 && f.abs() < 1e15 {
         format!("{f:.0}")
@@ -131,7 +133,6 @@ fn string(out: &mut String, s: &str, escape: bool) {
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
             c if (c as u32) < 0x20 => write!(out, "\\u{:04x}", c as u32).unwrap(),
-            // Escaped even with JSON_UNESCAPED_UNICODE, unless JSON_UNESCAPED_LINE_TERMINATORS.
             '\u{2028}' | '\u{2029}' => write!(out, "\\u{:04x}", c as u32).unwrap(),
             c if escape && !c.is_ascii() => {
                 let mut units = [0u16; 2];
@@ -145,7 +146,6 @@ fn string(out: &mut String, s: &str, escape: bool) {
     out.push('"');
 }
 
-/// `serialize(json_decode($json, true))`: objects and lists both as arrays, a canonical decimal key as an integer.
 pub fn serialize(v: &Value) -> String {
     let mut out = String::new();
     serialize_into(&mut out, v);
@@ -183,12 +183,10 @@ fn serialize_into(out: &mut String, v: &Value) {
     }
 }
 
-/// A PHP array key or value as `var_export` gives it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Php {
     Str(String),
     Int(i64),
-    /// (key, value) pairs in order; a key is a string or an integer.
     Array(Vec<(Key, Php)>),
 }
 
@@ -199,7 +197,6 @@ pub enum Key {
 }
 
 impl Key {
-    /// `$a[$k]`'s key: PHP turns a canonical decimal string (`"7"`, not `"07"`) into an integer.
     pub fn of(k: &str) -> Key {
         match k.parse::<i64>() {
             Ok(i) if i.to_string() == k => Key::Int(i),
@@ -208,15 +205,12 @@ impl Key {
     }
 }
 
-/// `var_export($v, true)`: nested arrays as `array (` with two spaces per level, `'key' => ` with the nested
-/// `array (` on its own line.
 pub fn var_export(v: &Php) -> String {
     let mut out = String::new();
     export(&mut out, v, 0);
     out
 }
 
-/// `var_export` of a string, as text.
 pub fn export_str(s: &str) -> String {
     String::from_utf8(var_export_string(s.as_bytes())).expect("var_export keeps UTF-8 valid")
 }
@@ -248,13 +242,9 @@ fn export(out: &mut String, v: &Php, level: usize) {
     }
 }
 
-/// `strtr($s, $pairs)`: at each position the longest matching key is replaced, and the result is not searched
-/// again.
 pub fn strtr(s: &str, pairs: &[(&str, &str)]) -> String {
     let mut pairs: Vec<&(&str, &str)> = pairs.iter().filter(|p| !p.0.is_empty()).collect();
     pairs.sort_by_key(|p| std::cmp::Reverse(p.0.len()));
-    // A key starts at a character's first byte, which no other byte of the text equals, so the text between two
-    // such bytes is copied as it is.
     let firsts: Vec<u8> = pairs.iter().map(|p| p.0.as_bytes()[0]).collect();
     let bytes = s.as_bytes();
     let mut out = String::with_capacity(s.len());
@@ -287,7 +277,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Expected values from PHP 8.5: `json_encode(json_decode($s, true))` and the same with Composer's flags.
     #[test]
     fn json_matches_php() {
         let v: Value = serde_json::from_str(
@@ -310,12 +299,10 @@ mod tests {
             json_pretty_escaped(&json!(["A\\B", "a/é"])),
             "[\n    \"A\\\\B\",\n    \"a\\/\\u00e9\"\n]"
         );
-        // php -r 'echo md5("abc"), sha1("abc");'
         assert_eq!(md5(b"abc"), "900150983cd24fb0d6963f7d28e17f72");
         assert_eq!(sha1(b"abc"), "a9993e364706816aba3e25717850c26c9cd0d89d");
     }
 
-    /// From PHP 8.5's `serialize(json_decode($s, true))` on the same JSON.
     #[test]
     fn serialize_matches_php() {
         let v: Value = serde_json::from_str(
@@ -328,7 +315,6 @@ mod tests {
         );
     }
 
-    /// From PHP 8.5's `var_export(['v' => ['voku\\' => 5], 0 => 'a\'b'], true)`.
     #[test]
     fn var_export_matches_php() {
         let v = Php::Array(vec![
@@ -345,7 +331,6 @@ mod tests {
         );
     }
 
-    /// From PHP 8.5's `strtr`: the longer key wins at a position, and replaced text is not searched again.
     #[test]
     fn strtr_matches_php() {
         assert_eq!(

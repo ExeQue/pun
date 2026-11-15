@@ -1,8 +1,3 @@
-//! `lint/laravel/prefer-back-helper`, ported from rector-laravel 2.7.3's `RedirectBackToBackHelperRector`
-//! (src/Rector/MethodCall).
-//!
-//! `redirect()->back(...)` and `Redirect::back(...)` (the facade) become `back(...)`.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::redirect_helper;

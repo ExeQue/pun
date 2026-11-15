@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitAssertNewNamesFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{PreviousAssertCalls, apply_fix, is_candidate};
 use pun_format::Fixer;
 use pun_tokens::Kind::T_STRING;

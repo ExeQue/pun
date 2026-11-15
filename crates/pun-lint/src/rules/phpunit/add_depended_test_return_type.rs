@@ -1,17 +1,10 @@
-//! `lint/phpunit/add-depended-test-return-type`, ported from rector-phpunit's `AddReturnTypeToDependedRector`
-//! (rules/CodeQuality/Rector/Class_).
-//!
-//! A public test method (`TestsNodeAnalyzer::isTestClassMethod`: named `test*`, with `#[Test]` or a `@test` tag) of a
-//! test class without a return type whose only `return` returns a value gets the native type of that value as its
-//! return type (`mapPHPStanTypeToPhpParserNode`, `true` and `false` kept). As in Rector, a test method without a
-//! return type that may end without returning a value stops the rule for the methods after it (Rector returns `null`
-//! after it changed the methods before).
-
 use mago_syntax::cst::{ClassLikeMember, Method, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{class_body, is_in_test_class, is_public};
-use crate::rules::rector_batch5::{doc_comment, has_attribute, member_from};
+use crate::rules::support::class_members::member_from;
+use crate::rules::support::docblocks::doc_comment;
+use crate::rules::support::names::has_attribute;
 use crate::rules::types::declare::{return_declaration, union_order};
 use crate::rules::types::facts::facts;
 use crate::rules::types::silent_void::Place;
@@ -71,7 +64,6 @@ impl Rule for AddDependedTestReturnType {
             let [sole] = returns[..] else {
                 continue;
             };
-            // `has_only_return_with_expr()`: the return has a value
             let value = sole.value.unwrap();
             let Some(t) = facts
                 .native_type(node_span(value))
@@ -82,7 +74,7 @@ impl Rule for AddDependedTestReturnType {
             let Some(declared) = return_declaration(
                 union_order(t.types.as_ref()),
                 &facts.codebase,
-                ctx.php_version,
+                ctx.php_version.id(),
                 &[],
                 true,
             ) else {
@@ -99,7 +91,6 @@ impl Rule for AddDependedTestReturnType {
     }
 }
 
-/// `TestsNodeAnalyzer::isTestClassMethod` for a public method whose previous token ends at `from`.
 fn is_test_method(
     source: &str,
     ancestors: &[Node<'_, '_>],

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\NamespaceNotation\BlankLineAfterNamespaceFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens};
@@ -45,8 +44,7 @@ impl BlankLineAfterNamespaceFixer {
             format!("{ending}{ending}")
         };
         let indent = Preg::match_groups("/^.*\\R( *)$/s", current_content)
-            .map(|m| m.str(1).to_vec())
-            .unwrap_or_default();
+            .map_or_default(|m| m.str(1).to_vec());
         Token::new(T_WHITESPACE, [empty_lines.as_bytes(), &indent].concat())
     }
 }
@@ -56,7 +54,6 @@ impl Fixer for BlankLineAfterNamespaceFixer {
         "blank_line_after_namespace"
     }
     fn priority(&self) -> i32 {
-        // Must run after NoUnusedImportsFixer.
         -20
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

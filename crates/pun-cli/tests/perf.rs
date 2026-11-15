@@ -1,4 +1,3 @@
-//! Speed features with timing-free, hand-derived expectations: `PUN_PROFILE` stage counts.
 mod common;
 
 use std::path::{Path, PathBuf};
@@ -43,7 +42,6 @@ fn profile_reports_stage_counts() {
             .find(|l| l.ends_with(&format!(" {stage}")))
             .map(|l| l.split_whitespace().nth(1).unwrap().parse().unwrap())
     };
-    // Both files are linted, tokenized and handed to the one fixer; only a.php changes, so one re-lint.
     assert_eq!(
         (
             count("(lint)"),

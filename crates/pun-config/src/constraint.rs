@@ -1,5 +1,3 @@
-//! Composer version constraints, just enough to find the lowest version a constraint admits.
-
 use anyhow::{Context, Result, anyhow, bail};
 
 pub(crate) type V = (u64, u64, u64);
@@ -7,11 +5,9 @@ pub(crate) type V = (u64, u64, u64);
 #[derive(Clone, Copy)]
 struct Range {
     lo: V,
-    hi: Option<(V, bool)>, // (version, inclusive)
+    hi: Option<(V, bool)>,
 }
 
-/// The lowest version the composer constraint admits, or `None` when it admits none (`>=8.4 <8.3`).
-/// `|` and `||` are OR, spaces and commas are AND, as in composer/semver's `VersionParser::parseConstraints`.
 pub(crate) fn lowest(constraint: &str) -> Result<Option<V>> {
     let mut low: Option<V> = None;
     for alt in constraint
@@ -19,7 +15,6 @@ pub(crate) fn lowest(constraint: &str) -> Result<Option<V>> {
         .map(str::trim)
         .filter(|s| !s.is_empty())
     {
-        // One message, not a context: `pun format --watch` prints errors without their causes.
         let r = conjunction(alt).map_err(|e| anyhow!("invalid constraint `{constraint}`: {e}"))?;
         let nonempty = match r.hi {
             None => true,
@@ -32,8 +27,11 @@ pub(crate) fn lowest(constraint: &str) -> Result<Option<V>> {
     Ok(low)
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "x, y and z are the parts of an x.y.z version"
+)]
 fn conjunction(s: &str) -> Result<Range> {
-    // Hyphen range: "8.1 - 8.3".
     if let Some((a, b)) = s.split_once(" - ") {
         let (a, b) = (parse(a.trim())?, parse(b.trim())?);
         let hi = match b {
@@ -46,7 +44,6 @@ fn conjunction(s: &str) -> Result<Range> {
             hi: Some(hi),
         });
     }
-    // Split on spaces/commas, re-attaching bare operators ("> = 8.1" style is not valid composer).
     let mut parts: Vec<String> = Vec::new();
     let mut pending = String::new();
     for tok in s.split([' ', ',']).filter(|t| !t.is_empty()) {
@@ -78,6 +75,10 @@ fn conjunction(s: &str) -> Result<Range> {
     Ok(r)
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "x, y and z are the parts of an x.y.z version"
+)]
 fn single(p: &str) -> Result<Range> {
     let any = Range {
         lo: (0, 0, 0),
@@ -120,7 +121,6 @@ fn single(p: &str) -> Result<Range> {
         ),
         ">=" => at(full, None),
         ">" => Range {
-            // ">8.3" admits 8.3.1, so the lowest admitted version is just above 8.3.0.
             lo: (full.0, full.1, full.2 + 1),
             hi: None,
         },
@@ -139,6 +139,10 @@ fn single(p: &str) -> Result<Range> {
     })
 }
 
+#[expect(
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "a version wildcard, not a file extension"
+)]
 fn is_wild(ver: &str) -> bool {
     ver.ends_with(".*") || ver.ends_with(".x") || ver.ends_with(".X")
 }
@@ -155,7 +159,6 @@ fn pad((x, y, z): (u64, Option<u64>, Option<u64>)) -> V {
     (x, y.unwrap_or(0), z.unwrap_or(0))
 }
 
-/// "8", "8.4", "v8.4.1", "8.4.*", "8.4.0-dev", "8.4@stable" -> components; wildcards become None.
 fn parse(s: &str) -> Result<(u64, Option<u64>, Option<u64>)> {
     let s = s.trim().trim_start_matches(['v', 'V']);
     let s = s.split(['@', '-', '+']).next().unwrap_or("");
@@ -184,7 +187,6 @@ mod tests {
         Ok(lowest(c)?.is_some_and(|l| l < b))
     }
 
-    /// Expected values from composer/semver (Pint's vendor): `parseConstraints($c)->matches(parseConstraints('<8.4.0.0-dev'))`.
     #[test]
     fn php_84_gate_matches_composer() {
         let b = (8, 4, 0);
@@ -244,7 +246,6 @@ mod tests {
         for (c, below) in cases {
             assert_eq!(allows_below(c, b).unwrap(), below, "{c}");
         }
-        // composer: "Could not parse version constraint ..."
         for bad in [">", "^", ">=8.4 <", "abc", "%8.4", "=>8.4", "!8.4"] {
             assert!(allows_below(bad, b).is_err(), "{bad} should not parse");
         }

@@ -1,10 +1,3 @@
-//! `pun migrate`, lint part: a rector.php (as Rector resolves it) becomes `[lint]` (context/plan/migrate.md §3 and
-//! Build 4). Rector's prepared sets become `[lint] sets` one to one and its PHP sets the `modernize` set; then every
-//! rule Rector runs is matched to its Pun rule through rules/mapping.toml, and [`compose`] writes the difference
-//! between what the sets turn on and what Rector ran as `[lint.rules]` lines, so the pun.toml runs exactly Rector's
-//! rules. A rule skipped everywhere is `"off"`, one skipped for some paths is off in a `[[lint.overrides]]`, and a
-//! skipped path goes to `[lint] exclude`. What Pun can't run is named and skipped.
-
 use super::Parts;
 use crate::composer::Composer;
 use crate::{Config, mapping, rules};
@@ -15,43 +8,30 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt::Write;
 use std::path::Path;
 
-/// A rector.php as Rector resolves it, as pun-cli's `rector_config.php` prints it.
 #[derive(Debug, Default, Deserialize)]
 pub struct RectorConfig {
-    /// Every rule Rector runs (`RectorConfig::getMainRectorClasses()`), sets included, in registration order.
     pub rules: Vec<String>,
-    /// The rules registered with a configuration, by class.
     #[serde(default)]
     pub configured: BTreeMap<String, Configured>,
-    /// `withSkip()` rule entries: class => `null` (everywhere) or the paths it is skipped for.
     #[serde(default)]
     pub skip_rules: Map<String, Value>,
-    /// `withSkip()` path entries (absolute, or patterns).
     #[serde(default)]
     pub skip_paths: Vec<String>,
-    /// `withPaths()` (and `withRootFiles()`), absolute.
     #[serde(default)]
     pub paths: Vec<String>,
-    /// The set files the config loaded.
     #[serde(default)]
     pub sets: Vec<String>,
-    /// `withPhpSets()` or `withPhpLevel()`.
     #[serde(default)]
     pub php_sets: bool,
 }
 
-/// A rule's configuration as `rector_config.php` exports it.
 #[derive(Debug, Default, Deserialize)]
 pub struct Configured {
-    /// The value given to `ruleWithConfiguration()` (merged across sets): a value object is `{"@props": {...}}`, what
-    /// JSON can't hold `{"@unsupported": type}`.
     pub configuration: Value,
-    /// The rule class's string constants: a key among them is an option name, not data.
     #[serde(default)]
     pub constants: Vec<String>,
 }
 
-/// `camelCase` or `snake_case` as `kebab-case`.
 fn kebab(s: &str) -> String {
     let mut out = String::new();
     for c in s.chars() {
@@ -67,8 +47,6 @@ fn kebab(s: &str) -> String {
     out
 }
 
-/// A configuration value as TOML: a value object's properties kebab-cased (unset ones left out), data keys as they
-/// are.
 fn toml_value(v: &Value) -> Result<toml::Value, String> {
     Ok(match v {
         Value::Null => return Err("its configuration holds a null, which pun.toml can't".into()),
@@ -103,8 +81,6 @@ fn toml_value(v: &Value) -> Result<toml::Value, String> {
     })
 }
 
-/// A configured rule's options in pun.toml (context/plan/migrate.md, Decisions): Rector's option keys (the rule's
-/// constants) kebab-cased, a data map as it is, a list under `items`.
 fn rule_options(c: &Configured) -> Result<toml::Table, String> {
     let named = matches!(&c.configuration, Value::Object(o)
         if !o.is_empty() && o.keys().all(|k| c.constants.contains(k)));
@@ -125,25 +101,17 @@ fn rule_options(c: &Configured) -> Result<toml::Table, String> {
     }
 }
 
-/// What a rector.php becomes before [`compose`] reconciles it with the sets.
 #[derive(Debug, Default)]
 pub struct Rector {
     pub sets: Vec<&'static str>,
-    /// The Pun rules of the Rector rules that run everywhere, each with its Rector class's short name.
     pub want: Vec<(String, String)>,
-    /// Rules off for some paths: (paths relative to the project, rule ID).
     pub overrides: Vec<(Vec<String>, String)>,
-    /// Skipped paths, relative to the project.
     pub exclude: Vec<String>,
-    /// `withPaths()`, relative to the project (`.` for the project itself).
     pub paths: Vec<String>,
-    /// What Pun can't run: (Rector class short name, why).
     pub unsupported: Vec<(String, String)>,
-    /// The options of configured rules, by Pun rule ID.
     pub options: BTreeMap<String, toml::Table>,
 }
 
-/// Rector's prepared set files (by file name) and the Pun set each is.
 const PREPARED: [(&str, &str); 7] = [
     ("dead-code.php", "dead-code"),
     ("code-quality.php", "code-quality"),
@@ -154,7 +122,6 @@ const PREPARED: [(&str, &str); 7] = [
     ("early-return.php", "early-return"),
 ];
 
-/// The `[upstream.<rector tool>]` entries by fully qualified class.
 fn by_class() -> &'static BTreeMap<String, toml::Value> {
     static T: std::sync::LazyLock<BTreeMap<String, toml::Value>> = std::sync::LazyLock::new(|| {
         let mut out = BTreeMap::new();
@@ -177,7 +144,6 @@ fn short(class: &str) -> String {
     class.rsplit('\\').next().unwrap().to_string()
 }
 
-/// `path` relative to `root`, without a trailing slash; `.` for the root itself. A path outside it stays as it is.
 fn relative(root: &Path, path: &str) -> String {
     let p = Path::new(path);
     match p.strip_prefix(root) {
@@ -187,7 +153,6 @@ fn relative(root: &Path, path: &str) -> String {
     }
 }
 
-/// What `r` becomes: its sets, the Pun rules of what it runs, its skips and paths, and what Pun can't run.
 pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
     let mut out = Rector::default();
     for set in &r.sets {
@@ -236,7 +201,6 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
             }
             None => {}
         }
-        // A format rule in Pun has no lint override; [`compose`] checks the format config runs it.
         if let Some(paths) = skip.and_then(Value::as_array)
             && id.starts_with("lint/")
         {
@@ -254,23 +218,14 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
     out
 }
 
-/// What [`compose`] wrote for the Rector rules: lines turning rules on and off, and the rules Pun runs through the
-/// sets alone.
 #[derive(Debug, Default, PartialEq)]
 pub struct Reconciled {
     pub on: usize,
     pub off: usize,
-    /// Rector rules whose Pun rule is not ported yet: the sets turn them on once it is.
     pub waiting: usize,
-    /// Rector rules no set covers whose Pun rule is not ported yet, and those that are format rules the format config
-    /// doesn't run: (class short name, why).
     pub unsupported: Vec<(String, String)>,
 }
 
-/// `parts` with `rector`'s `[lint]` (sets, exclude, overrides) added and `[lint.rules]` reconciled: what the sets and
-/// the lines already there turn on (resolved against the project's composer.json and composer.lock, so ecosystem and
-/// upgrade rules count only when they run) against what Rector ran. A rule Rector ran that nothing turns on gets
-/// `"error"` (or is named when Pun can't run it yet); one the sets turn on that Rector didn't run gets `"off"`.
 pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconciled> {
     let quoted = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     if !rector.sets.is_empty() {
@@ -293,7 +248,6 @@ pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconc
     let want: HashSet<&str> = rector.want.iter().map(|w| w.0.as_str()).collect();
     for (id, class) in &rector.want {
         if !id.starts_with("lint/") {
-            // Rector's layout-only rules are format rules in Pun: the format config decides whether they run.
             let runs = (cfg.rules.iter()).any(|r| crate::rule_of(&r.name) == Some(id.as_str()));
             let why = format!("the format rule `{id}` in Pun; turn it on in [format.rules]");
             out.unsupported
@@ -307,7 +261,6 @@ pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconc
         if on.contains(&id.as_str()) && options.is_none() {
             out.waiting += usize::from(!ported(id));
         } else {
-            // A configured rule gets its options (at the default level, error), even when a set turns it on.
             let value = options.map_or("\"error\"".into(), |t| {
                 toml::Value::Table(t.clone()).to_string()
             });
@@ -347,7 +300,6 @@ pub fn compose(root: &Path, parts: &mut Parts, rector: &Rector) -> Result<Reconc
     Ok(out)
 }
 
-/// Whether mapping.toml marks a rule as ported.
 pub(super) fn ported(id: &str) -> bool {
     (rules().iter().find(|(r, _)| r == id))
         .and_then(|(_, e)| e.get("ported"))
@@ -355,7 +307,6 @@ pub(super) fn ported(id: &str) -> bool {
         == Some(true)
 }
 
-/// pun.toml text as `pun_config::load` resolves it in `root`: gated on its composer.json and composer.lock.
 pub(super) fn resolve(root: &Path, text: &str) -> Result<Config> {
     let composer: Composer = crate::composer::detect(root)?;
     crate::parse(

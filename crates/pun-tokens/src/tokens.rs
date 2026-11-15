@@ -1,7 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Tokens`: same method names (snake_cased), same semantics,
-//! including the found-kinds registry and the block-edge cache, since both are observable
-//! by fixers. Not ported: the static code-hash cache (pure optimization) and JSON helpers.
-
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
@@ -11,7 +7,6 @@ use crate::kind::Kind::{self, *};
 use crate::namespaces_analyzer::{NamespaceAnalysis, NamespacesAnalyzer};
 use crate::token::{FoundKey, Proto, Token};
 
-/// `Tokens::BLOCK_TYPE_*`; the discriminant is upstream's number.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum BlockType {
@@ -33,7 +28,6 @@ pub enum BlockType {
 }
 
 impl BlockType {
-    /// Every block type, in `getBlockEdgeDefinitions()` order.
     pub const ALL: [BlockType; 15] = [
         BlockType::Parenthesis,
         BlockType::Brace,
@@ -64,17 +58,13 @@ pub struct Tokens {
     tokens: Vec<Token>,
     found_kinds: Vec<i64>,
     found_contents: HashMap<crate::Content, i64>,
-    /// `blockStartCache` / `blockEndCache`; interior mutability so `find_block_end` takes `&self`.
     blocks: RefCell<BlockCache>,
-    /// `$namespaceDeclarations`: NamespacesAnalyzer's result, dropped on every change.
     namespace_declarations: RefCell<Option<Arc<Vec<NamespaceAnalysis>>>>,
-    /// SwitchAnalyzer's colon indices (upstream caches them per code hash), dropped on every change.
     switch_colons: RefCell<Option<Arc<[usize]>>>,
     changed: bool,
 }
 
 impl Default for Tokens {
-    /// `new Tokens()`: empty, with a found-kinds slot for every kind.
     fn default() -> Self {
         Tokens {
             tokens: Vec::new(),
@@ -115,7 +105,6 @@ impl Tokens {
     pub const BLOCK_TYPE_COMPLEX_STRING_VARIABLE: BlockType = BlockType::ComplexStringVariable;
     pub const BLOCK_TYPE_PROPERTY_HOOK: BlockType = BlockType::PropertyHook;
 
-    /// `getBlockEdgeDefinitions()[$type]`: (start, end).
     pub fn block_edges(t: BlockType) -> (Proto<'static>, Proto<'static>) {
         use Proto::{Char as C, KindContent as K};
         match t {
@@ -170,8 +159,6 @@ impl Tokens {
         }
     }
 
-    /// `detectBlockType`: (type, is_start) for a block edge token. Matches upstream's
-    /// lookup by kind (array tokens) or content (others).
     pub fn detect_block_type(token: &Token) -> Option<(BlockType, bool)> {
         use BlockType as B;
         Some(match token.id {
@@ -234,7 +221,6 @@ impl Tokens {
         t
     }
 
-    /// `Tokens::fromCode`: `token_get_all($code, TOKEN_PARSE)` + transformers.
     pub fn from_code(code: &[u8]) -> Tokens {
         let mut t = Tokens::default();
         t.set_code(code);
@@ -291,7 +277,6 @@ impl Tokens {
         }
     }
 
-    /// `$tokens[$index] = $token` (offsetSet).
     pub fn set(&mut self, index: usize, token: Token) {
         self.invalidate_block_cache_at(index);
         if !self.tokens[index].equals_token(&token, true) {
@@ -304,7 +289,6 @@ impl Tokens {
         self.tokens[index] = token;
     }
 
-    /// Drops the values computed from the token list (`namespace_declarations`, `switch_colon_indices`).
     fn drop_derived(&mut self) {
         *self.namespace_declarations.get_mut() = None;
         *self.switch_colons.get_mut() = None;
@@ -318,8 +302,6 @@ impl Tokens {
         self.changed
     }
 
-    /// `getNamespaceDeclarations()`: NamespacesAnalyzer::getDeclarations runs once per token-list version;
-    /// every edit (set to a different token, insert, clear_empty_tokens, set_code) drops the cached value.
     pub fn namespace_declarations(&self) -> Arc<Vec<NamespaceAnalysis>> {
         if let Some(v) = self.namespace_declarations.borrow().as_ref() {
             return v.clone();
@@ -329,8 +311,6 @@ impl Tokens {
         v
     }
 
-    /// SwitchAnalyzer's `getColonIndicesForSwitch`: `compute` runs once per token-list version, and every edit drops
-    /// the cached value, like `namespace_declarations`.
     pub fn switch_colon_indices(
         &self,
         compute: impl FnOnce(&Tokens) -> Vec<usize>,
@@ -366,10 +346,8 @@ impl Tokens {
             }
             index += 1;
         }
-        // Tokens moved: index-based caches go (upstream resets namespaceDeclarations here too).
         self.drop_derived();
         self.found_contents.insert(crate::Content::default(), 0);
-        // updateSizeByTrimmingTrailingEmptyTokens
         while self
             .tokens
             .last()
@@ -435,14 +413,12 @@ impl Tokens {
         self.find_opposite_block_edge(t, search_index, false)
     }
 
-    /// `findGivenKind($kind, $start, $end)` for one kind: indices in order.
     pub fn find_given_kind(&self, kind: Kind, start: usize, end: Option<usize>) -> Vec<usize> {
         self.find_given_kinds(&[kind], start, end)
             .remove(&kind)
             .unwrap_or_default()
     }
 
-    /// `findGivenKind([...], $start, $end)`: kind => indices.
     pub fn find_given_kinds(
         &self,
         kinds: &[Kind],
@@ -475,7 +451,6 @@ impl Tokens {
         self.generate_partial_code(0, self.tokens.len() - 1)
     }
 
-    /// Inclusive range, like upstream.
     pub fn generate_partial_code(&self, start: usize, end: usize) -> Vec<u8> {
         let mut code = Vec::new();
         for t in &self.tokens[start..=end] {
@@ -545,7 +520,6 @@ impl Tokens {
         tokens: &[Proto<'_>],
         case_sensitive: bool,
     ) -> Option<usize> {
-        // Upstream drops the prototypes whose kind is not in the collection; skip the copy when all of them are.
         let filtered: Vec<Proto<'_>>;
         let tokens = if tokens
             .iter()
@@ -612,8 +586,22 @@ impl Tokens {
         self.get_meaningful_token_sibling(index, -1)
     }
 
-    /// `findSequence($sequence, $start, $end, $caseSensitive)`; returns matched indices.
-    /// `case_sensitive(key)` gives the per-element flag (upstream's bool or array form).
+    #[track_caller]
+    pub fn next_meaningful(&self, index: usize) -> usize {
+        let Some(next) = self.get_next_meaningful_token(index) else {
+            panic!("no meaningful token after index {index}");
+        };
+        next
+    }
+
+    #[track_caller]
+    pub fn prev_meaningful(&self, index: usize) -> usize {
+        let Some(prev) = self.get_prev_meaningful_token(index) else {
+            panic!("no meaningful token before index {index}");
+        };
+        prev
+    }
+
     pub fn find_sequence(
         &self,
         sequence: &[Proto<'_>],
@@ -684,7 +672,6 @@ impl Tokens {
         self.insert_slices(slices);
     }
 
-    /// `insertSlices([$index => [$tokens...], ...])`; indices refer to the collection before insertion.
     pub fn insert_slices(&mut self, slices: BTreeMap<usize, Vec<Token>>) {
         let count: usize = slices.values().map(Vec::len).sum();
         if count == 0 {
@@ -706,7 +693,6 @@ impl Tokens {
             );
             self.register_found_token(t);
         }
-        // One pass: each old token moves once, however many slices there are.
         let mut old = std::mem::take(&mut self.tokens).into_iter();
         let mut tokens = Vec::with_capacity(old_size + count);
         let mut at = 0;
@@ -774,7 +760,6 @@ impl Tokens {
         }
     }
 
-    /// Inclusive range.
     pub fn clear_range(&mut self, index_start: usize, index_end: usize) {
         for i in index_start..=index_end {
             self.clear_at(i);
@@ -786,7 +771,6 @@ impl Tokens {
             return false;
         }
         let html = self.count_token_kind(T_INLINE_HTML);
-        // Preg::match('/^#!.+$/', $this[0]->getContent()): `.` excludes "\n", `$` allows one trailing "\n".
         let shebang = |c: &[u8]| {
             let c = c.strip_suffix(b"\n").unwrap_or(c);
             c.len() > 2 && c.starts_with(b"#!") && !c.contains(&b'\n')
@@ -844,7 +828,6 @@ impl Tokens {
         direction: isize,
         whitespaces: Option<&[u8]>,
     ) {
-        // isset($this[null]) throws upstream when there is no sibling.
         let wi = self
             .get_non_empty_sibling(index, direction)
             .expect("Cannot access offset of type null on SplFixedArray");
@@ -857,14 +840,12 @@ impl Tokens {
             && self.tokens[wi - 1].is_comment()
             && !self.tokens[wi - 1].content.starts_with(b"/*")
         {
-            // Preg::split('/^(\R)/', ...): first line break vs the rest.
             let c = &self.tokens[wi].content;
             let nl = if c.starts_with(b"\r\n") {
                 2
             } else if matches!(c.first(), Some(b'\n' | b'\r' | b'\x0b' | b'\x0c')) {
                 1
             } else {
-                // Preg::split found no leading line break: upstream builds a Token from null and throws.
                 panic!("Undefined array key 1");
             };
             new_content = c[..nl].to_vec();
@@ -915,7 +896,6 @@ impl Tokens {
                     break;
                 }
             }
-            // `index` walks towards `end_index`, the first or last token, so it stays in bounds.
             index = if find_end { index + 1 } else { index - 1 };
         }
         assert!(
@@ -1011,15 +991,32 @@ mod tests {
     }
 
     #[test]
+    fn meaningful_siblings_skip_whitespace_and_comments() {
+        let t = Tokens::from_code(b"<?php a /* c */ ;");
+        assert_eq!(t.next_meaningful(1), 5);
+        assert_eq!(t.prev_meaningful(5), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "no meaningful token after index 5")]
+    fn next_meaningful_names_the_index_when_missing() {
+        Tokens::from_code(b"<?php a /* c */ ;").next_meaningful(5);
+    }
+
+    #[test]
+    #[should_panic(expected = "no meaningful token before index 0")]
+    fn prev_meaningful_names_the_index_when_missing() {
+        Tokens::from_code(b"<?php a /* c */ ;").prev_meaningful(0);
+    }
+
+    #[test]
     fn block_type_all_is_in_upstream_order() {
-        // Tokens::BLOCK_TYPE_PARENTHESIS = 1 ... BLOCK_TYPE_PROPERTY_HOOK = 15.
         let numbers: Vec<u8> = BlockType::ALL.iter().map(|&t| t as u8).collect();
         assert_eq!(numbers, (1..=15).collect::<Vec<u8>>());
     }
 
     #[test]
     fn default_is_an_empty_collection() {
-        // Upstream's `new Tokens()`: no kind found, and inserting registers the new tokens.
         let mut t = Tokens::default();
         assert!(!t.is_token_kind_found(T_OPEN_TAG));
         t.insert_at(0, vec![Token::new(T_OPEN_TAG, "<?php ")]);
@@ -1029,9 +1026,7 @@ mod tests {
 
     #[test]
     fn derived_values_cached_until_changed() {
-        // Like upstream's $namespaceDeclarations and SwitchAnalyzer's per-code cache: computed once, recomputed after
-        // every edit that moves or changes tokens. Without a namespace the global one spans the file, so its scope end
-        // is count - 1.
+        type Edit = Box<dyn Fn(&mut Tokens)>;
         let runs = std::cell::Cell::new(0);
         let colons = |t: &Tokens| {
             runs.set(runs.get() + 1);
@@ -1039,10 +1034,8 @@ mod tests {
         };
         let mut t = Tokens::from_code(b"<?php foo(1);");
         let first = t.namespace_declarations();
-        // token_get_all('<?php foo(1);') has 6 tokens.
         assert_eq!(first[0].scope_end_index, 5);
         assert!(Arc::ptr_eq(&first, &t.namespace_declarations()));
-        // Re-setting an identical token is not a change.
         t.set(1, t[1].clone());
         assert!(Arc::ptr_eq(&first, &t.namespace_declarations()));
         assert_eq!(*t.switch_colon_indices(colons), [6]);
@@ -1051,13 +1044,11 @@ mod tests {
         t.set(1, t[1].clone());
         t.switch_colon_indices(colons);
         assert_eq!(runs.get(), 1);
-        type Edit = Box<dyn Fn(&mut Tokens)>;
         let mut edits: Vec<Edit> = vec![
             Box::new(|t| t.set(1, Token::new(T_STRING, "bar"))),
             Box::new(|t| t.insert_at(1, vec![Token::new(T_WHITESPACE, " ")])),
             Box::new(|t| {
                 t.clear_at(1);
-                // the clear above already dropped them; compute again so only clear_empty_tokens can drop them next
                 t.namespace_declarations();
                 t.switch_colon_indices(|_| vec![]);
                 t.clear_empty_tokens();

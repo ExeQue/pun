@@ -4,6 +4,7 @@
 //! `*NEVER*` (PHPStan's own `__benevolent<…>` is handled the way PHPStan does).
 
 use crate::phpdoc::{self, ConstExpr, Node, ShapeKey};
+use crate::scoped::{Family, Scoped};
 use crate::symbols;
 use crate::types::{
     Accessory, Conditional, NeverKind, Param, ShapeBuilder, Signature, Subject, Template, Type,
@@ -11,11 +12,9 @@ use crate::types::{
 };
 
 thread_local! {
-    /// The `typeAliases` parameter while [`with_type_aliases()`] runs, and the aliases being resolved.
     static GLOBAL_ALIASES: std::cell::RefCell<(Vec<(String, String)>, Vec<String>)> = Default::default();
 }
 
-/// Runs `f` with the `typeAliases` parameter's global type aliases (name, type string) in effect.
 pub fn with_type_aliases<R>(aliases: &[(String, String)], f: impl FnOnce() -> R) -> R {
     let previous =
         GLOBAL_ALIASES.with(|g| std::mem::replace(&mut g.borrow_mut().0, aliases.to_vec()));
@@ -24,57 +23,38 @@ pub fn with_type_aliases<R>(aliases: &[(String, String)], f: impl FnOnce() -> R)
     out
 }
 
-type TypeNodes = dyn Fn(&str, &[Type]) -> Option<Type>;
-
-thread_local! {
-    static TYPE_NODES: std::cell::Cell<Option<*const TypeNodes>> = const { std::cell::Cell::new(None) };
+struct TypeNodes;
+impl Family for TypeNodes {
+    type Of<'a> = dyn Fn(&str, &[Type]) -> Option<Type> + 'a;
 }
 
-/// Runs `f` with `extensions` (TypeNodeResolverExtension) answering an identifier (no arguments), a generic type
-/// node (its resolved arguments) or a union of two identifiers (`|`, the two resolved) before the built-in types, on
-/// this thread.
+thread_local! {
+    static TYPE_NODES: Scoped<TypeNodes> = Scoped::new();
+}
+
 pub fn with_type_nodes<R>(
     extensions: &dyn Fn(&str, &[Type]) -> Option<Type>,
     f: impl FnOnce() -> R,
 ) -> R {
-    struct Restore(Option<*const TypeNodes>);
-    impl Drop for Restore {
-        fn drop(&mut self) {
-            TYPE_NODES.with(|p| p.set(self.0));
-        }
-    }
-    let ptr: *const (dyn Fn(&str, &[Type]) -> Option<Type> + '_) = extensions;
-    #[expect(
-        clippy::transmute_ptr_to_ptr,
-        reason = "erases the trait object's lifetime, which `as` cannot"
-    )]
-    // SAFETY: as in `symbols::with_classes()`: only the lifetime is erased, and `Restore` puts the previous
-    // extensions back before this function returns, also on unwinding.
-    let ptr: *const TypeNodes = unsafe { std::mem::transmute(ptr) };
-    let _restore = Restore(TYPE_NODES.with(|p| p.replace(Some(ptr))));
-    f()
+    TYPE_NODES.with(|t| t.set(extensions, f))
 }
 
 pub(crate) fn type_node(name: &str, args: &[Type]) -> Option<Type> {
-    let extensions = TYPE_NODES.with(std::cell::Cell::get)?;
-    // SAFETY: set by `with_type_nodes()`, whose borrow outlives every call made while it is set.
-    let extensions = unsafe { &*extensions };
-    extensions(name, args)
+    TYPE_NODES
+        .with(|t| t.get(|extensions| extensions(name, args)))
+        .flatten()
 }
 
-/// `UsefulTypeAliasResolver::hasTypeAlias()` of a global type alias.
 pub fn has_global_alias(name: &str) -> bool {
     GLOBAL_ALIASES.with(|g| g.borrow().0.iter().any(|(n, _)| n == name))
 }
 
-/// `resolveGlobalTypeAlias()`: the alias's type string resolved in no namespace.
 fn global_alias(name: &str) -> Option<Type> {
     let definition = GLOBAL_ALIASES.with(|g| {
         let g = g.borrow();
         g.0.iter().find(|(n, _)| n == name).map(|(_, t)| t.clone())
     })?;
     if GLOBAL_ALIASES.with(|g| g.borrow().1.iter().any(|n| n == name)) {
-        // PHPStan throws ShouldNotHappenException on a circular definition; see COVERAGE.md
         return Some(Type::Error);
     }
     GLOBAL_ALIASES.with(|g| g.borrow_mut().1.push(name.to_string()));
@@ -83,7 +63,6 @@ fn global_alias(name: &str) -> Option<Type> {
     Some(ty)
 }
 
-/// `TypeStringResolver::resolve($type, new NameScope(null, [], $class))`; a parse error is an `ErrorType`.
 pub fn resolve_str(input: &str, class: Option<&str>) -> Type {
     match phpdoc::parse(input) {
         Ok(node) => resolve(&node, class),
@@ -101,37 +80,28 @@ fn accessory(base: Type, accessories: &[Accessory]) -> Type {
     Type::Intersection(types)
 }
 
-/// PHPStan's `NameScope`: what a PHPDoc type is resolved in.
 pub trait Scope {
-    /// `getClassName()`: what `self`, `static` and `$this` are.
     fn class(&self) -> Option<&str> {
         None
     }
-    /// The parent class of [`Scope::class()`], for `parent`.
     fn parent(&self) -> Option<String>;
-    /// `resolveStringName()`: a written class name to its full name.
     fn resolve_name(&self, name: &str) -> String {
         name.trim_start_matches('\\').to_string()
     }
-    /// `resolveConstantNames()`: the full names a written constant name may have, in lookup order.
     fn constant_names(&self, name: &str) -> Vec<String> {
         vec![name.trim_start_matches('\\').to_string()]
     }
-    /// `resolveTemplateTypeName()`: a template type in scope.
     fn template(&self, _name: &str) -> Option<Type> {
         None
     }
-    /// `hasUseAlias()`: a `use` statement imports the name.
     fn has_use_alias(&self, _name: &str) -> bool {
         false
     }
-    /// `getNamespace() !== null`
     fn in_namespace(&self) -> bool {
         false
     }
 }
 
-/// A callable's scope: its own templates over the scope around it (`withTemplateTypeMap()`).
 struct WithTemplates<'a> {
     outer: &'a dyn Scope,
     templates: &'a [Template],
@@ -164,7 +134,6 @@ impl Scope for WithTemplates<'_> {
     }
 }
 
-/// A scope with only a class (built-in signatures).
 struct ClassOnly<'a>(Option<&'a str>);
 
 impl Scope for ClassOnly<'_> {
@@ -172,7 +141,6 @@ impl Scope for ClassOnly<'_> {
         self.0
     }
     fn parent(&self) -> Option<String> {
-        // the direct parent is the ancestor class with the most ancestors of its own
         let class = symbols::lookup(self.0?)?;
         class
             .ancestors
@@ -187,7 +155,6 @@ pub fn resolve(node: &Node, class: Option<&str>) -> Type {
     resolve_in(node, &ClassOnly(class))
 }
 
-/// `TypeNodeResolver::resolve($node, $nameScope)`.
 pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
     let r = |n: &Node| resolve_in(n, scope);
     let class = scope.class();
@@ -205,7 +172,6 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
         },
         Node::Nullable(inner) => union(vec![r(inner), Type::Null]),
         Node::Union(members) => {
-            // a union of two identifiers is offered to the extensions first, as `|` with the two resolved
             if let [a @ Node::Ident(_), b @ Node::Ident(_)] = members.as_slice()
                 && let Some(t) = type_node("|", &[r(a), r(b)])
             {
@@ -314,10 +280,7 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
                     variadic: p.variadic,
                 })
                 .collect();
-            // ponytail: a conditional return on the callable's own parameter is a type assertion in PHPStan
-            // (`callable(mixed $x): ($x is int ? true : false)`); kept as a plain conditional return here.
             let ret = r(ret);
-            // ponytail: a pure or static callable keeps no purity or staticness (described as a plain one)
             let pure = ["pure-callable", "pure-closure", "static-pure-closure"]
                 .contains(&ident.to_ascii_lowercase().as_str());
             if pure && ret == Type::Void {
@@ -402,7 +365,6 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
                     Some((key, value)) => {
                         let key = key.as_ref().map_or_else(default_key, |k| array_key(r(k)));
                         let value = r(value);
-                        // finite extra keys are optional keys, except those written explicitly
                         let finite = match &key {
                             Type::ConstInt(_) | Type::ConstString(_) => vec![key.clone()],
                             Type::Union(types)
@@ -448,7 +410,6 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
     }
 }
 
-/// PHP's `(int)` of a phpdoc-parser integer literal: the leading decimal digits (`0x1A` is 0), saturating.
 fn int_value(s: &str) -> i64 {
     let s = s.replace('_', "");
     let sign = usize::from(s.starts_with(['-', '+']));
@@ -461,7 +422,6 @@ fn int_value(s: &str) -> i64 {
     })
 }
 
-/// `transformUnsafeArrayKey()` without the opt-in string-key check: `intersect(toArrayKey(), int|string)`.
 fn array_key(key: Type) -> Type {
     let k = intersect(vec![
         to_array_key(&key),
@@ -470,7 +430,6 @@ fn array_key(key: Type) -> Type {
     to_array_key(&k)
 }
 
-/// `Type::toArrayKey()`
 pub(crate) fn to_array_key(t: &Type) -> Type {
     match t {
         Type::Template(_) => t.clone(),
@@ -484,7 +443,6 @@ pub(crate) fn to_array_key(t: &Type) -> Type {
         Type::Bool => Type::Union(vec![Type::ConstInt(0), Type::ConstInt(1)]),
         Type::Null => Type::ConstString(Vec::new()),
         Type::ConstBool(b) => Type::ConstInt(i64::from(*b)),
-        // ObjectTypeTrait, ArrayTypeTrait, ResourceType, CallableType, IterableType, VoidType: an ErrorType (a mixed)
         Type::Void
         | Type::Resource
         | Type::NonexistentParent
@@ -511,7 +469,6 @@ pub(crate) fn to_array_key(t: &Type) -> Type {
     }
 }
 
-/// `tryResolvePseudoTypeClassType()`: a keyword imported by `use`, or naming a class of the namespace, is that class.
 fn pseudo_type_class(name: &str, scope: &dyn Scope) -> Option<Type> {
     if scope.has_use_alias(name) {
         return Some(Type::Object(scope.resolve_name(name), vec![], false));
@@ -666,8 +623,7 @@ fn identifier(name: &str, scope: &dyn Scope) -> Type {
     if name.contains('-') && !name.starts_with("OCI-") {
         return Type::Error;
     }
-    // `tryResolveConstant()`
-    let constants = &symbols::symbols(symbols::PhpVersion::Php84).constants;
+    let constants = &symbols::symbols(symbols::PhpVersion::new(8, 4)).constants;
     if might_be_constant(written)
         && symbols::lookup(name).is_none()
         && let Some(ty) = scope
@@ -679,8 +635,6 @@ fn identifier(name: &str, scope: &dyn Scope) -> Type {
             "INF" => Type::ConstFloat(f64::INFINITY),
             "-INF" => Type::ConstFloat(f64::NEG_INFINITY),
             "NAN" => Type::ConstFloat(f64::NAN),
-            // ConstantResolver builds some unions by hand (`new UnionType([...])`, e.g. PHP_SAPI's
-            // 'cli'|…|non-falsy-string), so a constant's top-level union is not normalized again.
             ty => match phpdoc::parse(ty) {
                 Ok(Node::Union(members)) => {
                     Type::Union(members.iter().map(|m| resolve(m, None)).collect())
@@ -692,7 +646,6 @@ fn identifier(name: &str, scope: &dyn Scope) -> Type {
     Type::Object(name.to_string(), vec![], false)
 }
 
-/// `(?:^|\\)[A-Z_][A-Z0-9_]*$`
 fn might_be_constant(name: &str) -> bool {
     let last = name.rsplit('\\').next().unwrap_or(name);
     let mut bytes = last.bytes();
@@ -704,7 +657,6 @@ fn might_be_constant(name: &str) -> bool {
 
 fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
     let lower = base.to_ascii_lowercase();
-    // Pun's template serialization (`__template<T, 'scope', bound, default>`)
     if lower == "__template"
         && let [
             Node::Ident(name),
@@ -721,7 +673,6 @@ fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
             argument: false,
         }));
     }
-    // (the call-site variances are a generic object's or `static`'s only)
     let projected: Vec<Type> = args.iter().map(|a| resolve_in(a, scope)).collect();
     let types: Vec<Type> = projected
         .iter()
@@ -778,9 +729,7 @@ fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
             _ => Type::Error,
         },
         "class-string" | "interface-string" => match types.as_slice() {
-            // (a `TemplateMixedType` is a `MixedType`)
             [g] if g.is_object().yes()
-                // (an `ErrorType` is a `MixedType`)
                 || matches!(g, Type::Mixed { .. } | Type::Error)
                 || matches!(g, Type::Template(t) if matches!(t.bound, Type::Mixed { .. })) =>
             {
@@ -809,7 +758,6 @@ fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
             [t] => int_mask(t.clone()).unwrap_or(Type::Error),
             _ => Type::Error,
         },
-        // GenericStaticType
         "static" => match scope.class().and_then(symbols::lookup) {
             Some(c) => Type::Static(c.name.clone(), projected),
             None => Type::Error,
@@ -819,8 +767,6 @@ fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
             _ => Type::Error,
         },
         "key-of" | "value-of" => match types.as_slice() {
-            // ponytail: a KeyOfType/ValueOfType of a template (resolved late) is not modelled; kept as a
-            // `key-of` / `value-of` class the checks skip
             [t] if crate::types::contains_template(t) => Type::Object(lower.clone(), types, false),
             [t] => key_or_value_of(t, lower == "value-of"),
             _ => Type::Error,
@@ -829,9 +775,6 @@ fn generic(base: &str, args: &[Node], scope: &dyn Scope) -> Type {
     }
 }
 
-/// `resolveOffsetAccessNode()`: an error type when `t` has no `o` offset, else an OffsetAccessType (resolved
-/// late, [`resolve_late()`]).
-// ponytail: a template's offset is not checked against its bound
 fn offset_access(t: Type, o: Type) -> Type {
     if !crate::types::contains_template(&t) && offset_value(&t, &o) == Some(Type::Error) {
         return Type::Error;
@@ -839,8 +782,6 @@ fn offset_access(t: Type, o: Type) -> Type {
     Type::OffsetAccess(Box::new(t), Box::new(o))
 }
 
-/// `TypeUtils::resolveLateResolvableTypes()` of the late array shapes and OffsetAccessTypes Pun models.
-// ponytail: an object's offset (ArrayAccess) and a non-constant offset of a constant array stay unresolved
 pub fn resolve_late(t: &Type) -> Type {
     if let Type::LateArrayShape(shape) = t {
         return resolve_late(&shape.resolve());
@@ -854,7 +795,6 @@ pub fn resolve_late(t: &Type) -> Type {
     t
 }
 
-/// `getOffsetValueType()` of the types modelled (`None` for the others), an error type when there is no offset `o`.
 fn offset_value(t: &Type, o: &Type) -> Option<Type> {
     let key = array_key(o.clone());
     Some(match t.unreasoned() {
@@ -882,9 +822,6 @@ fn offset_value(t: &Type, o: &Type) -> Option<Type> {
             }
         }
         Type::Object(name, _, _) => {
-            // ObjectType::getOffsetValueType(): a real ArrayAccess needs offsetGet's resolved
-            // reflection. Project class providers currently expose method names, not variants;
-            // keep that operation unresolved rather than inventing a mixed return type.
             let class = symbols::lookup(name);
             if class.as_ref().is_some_and(|c| {
                 c.name.eq_ignore_ascii_case("ArrayAccess")
@@ -894,8 +831,6 @@ fn offset_value(t: &Type, o: &Type) -> Option<Type> {
             }) {
                 return None;
             }
-            // isExtraOffsetAccessibleClass(): unknown, interface and non-final classes may
-            // support offsets. A known final class cannot, except PHPStan's extra classes.
             let extra = [
                 "DOMNamedNodeMap",
                 "Dom\\NamedNodeMap",
@@ -922,7 +857,6 @@ fn offset_value(t: &Type, o: &Type) -> Option<Type> {
                 mixed()
             }
         }
-        // `list<T>`, `non-empty-array<T>`: the array's
         Type::Intersection(types) => {
             let array = types.iter().find(|t| matches!(t, Type::Array(..)))?;
             offset_value(array, o)?
@@ -958,10 +892,8 @@ fn offset_value(t: &Type, o: &Type) -> Option<Type> {
     })
 }
 
-/// `KeyOfType::getResult()` / `ValueOfType::getResult()`: an enum's case values, else the iterable key or value type.
 pub fn key_or_value_of(t: &Type, value: bool) -> Type {
     if let Type::Template(tt) = t {
-        // (a template's enum cases are its bound's; one bounded by a backed-enum interface has none)
         let backed = |c: &symbols::Class| {
             !c.is_enum
                 && (c.name.eq_ignore_ascii_case("BackedEnum")
@@ -1016,7 +948,6 @@ fn generic_object(base: &str, mut types: Vec<Type>, scope: &dyn Scope) -> Type {
     let main = identifier(base, scope);
     let class_name = match &main {
         Type::Object(name, _, _) => name.clone(),
-        // a template's `getObjectClassNames()`: its object bound's class (`T<U>` is `Bound<U>`)
         Type::Template(t) => match &t.bound {
             Type::Object(name, _, _) => name.clone(),
             _ => return Type::Error,
@@ -1027,7 +958,6 @@ fn generic_object(base: &str, mut types: Vec<Type>, scope: &dyn Scope) -> Type {
         return Type::Object(class_name, types, false);
     };
     let iterable = main.is_iterable().yes();
-    // the defaults of the templates after the given arguments (a required one is skipped, not filled)
     let defaults: Vec<Type> = reflection
         .templates
         .iter()
@@ -1079,9 +1009,7 @@ fn generic_object(base: &str, mut types: Vec<Type>, scope: &dyn Scope) -> Type {
     Type::Object(class_name, types, false)
 }
 
-/// `expandIntMaskToType()`
 fn int_mask(t: Type) -> Option<Type> {
-    // `TypeUtils::getConstantIntegers()`: every member a constant integer
     let members = match &t {
         Type::Union(types) => types.as_slice(),
         t => std::slice::from_ref(t),
@@ -1124,7 +1052,6 @@ fn constant(c: &ConstExpr, scope: &dyn Scope) -> Type {
         ConstExpr::Int(i) => Type::ConstInt(int_value(i)),
         ConstExpr::Float(f) => Type::ConstFloat(f.replace('_', "").parse().unwrap_or(0.0)),
         ConstExpr::Str(s) => Type::ConstString(s.clone()),
-        // PHPStan throws ShouldNotHappenException here (a bare `null` is an identifier); see COVERAGE.md
         ConstExpr::True | ConstExpr::False | ConstExpr::Null | ConstExpr::Array(_) => Type::Error,
         ConstExpr::Fetch(class_name, name) => {
             let is_static = class.is_some() && class_name.eq_ignore_ascii_case("static");
@@ -1157,7 +1084,6 @@ fn constant(c: &ConstExpr, scope: &dyn Scope) -> Type {
                 .iter()
                 .filter(|c| matches(c))
                 .map(|c| Type::EnumCase(reflection.name.clone(), c.clone()));
-            // declared, then inherited (as PHP's reflection lists them)
             let mut seen = Vec::new();
             let classes: Vec<_> = std::iter::once(reflection.clone())
                 .chain(
@@ -1185,7 +1111,6 @@ fn constant(c: &ConstExpr, scope: &dyn Scope) -> Type {
     }
 }
 
-/// `ConstExprNodeResolver::resolve()`: a constant expression's type (a `@method` parameter's default value).
 pub fn const_expr(c: &ConstExpr, scope: &dyn Scope) -> Type {
     match c {
         ConstExpr::Array(items) => {
@@ -1200,7 +1125,6 @@ pub fn const_expr(c: &ConstExpr, scope: &dyn Scope) -> Type {
         ConstExpr::True => Type::ConstBool(true),
         ConstExpr::Null => Type::Null,
         ConstExpr::Fetch(class_name, name) => {
-            // ponytail: `parent` in a class PHPStan does not know resolves as a class name there
             let class_name = match (scope.class(), class_name.to_ascii_lowercase().as_str()) {
                 (Some(c), "self" | "static") => c.to_string(),
                 (Some(_), "parent") => match scope.parent() {
@@ -1234,7 +1158,6 @@ pub fn const_expr(c: &ConstExpr, scope: &dyn Scope) -> Type {
     }
 }
 
-/// `{^PREFIX.*?REST$}` with `*` the only metacharacter.
 fn wildcard(pattern: &str, s: &str) -> bool {
     let mut parts = pattern.split('*');
     let Some(mut rest) = s.strip_prefix(parts.next().expect("a part")) else {

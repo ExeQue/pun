@@ -1,5 +1,3 @@
-//! Native property reflection and straight-line value transfers through the public Analyzer.
-
 use std::borrow::Cow;
 
 use mago_allocator::LocalArena;

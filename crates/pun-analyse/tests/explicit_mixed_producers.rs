@@ -1,5 +1,3 @@
-//! Source-owned explicit mixed identity, through the public Analyzer and native-type API.
-
 use std::borrow::Cow;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -80,9 +78,6 @@ fn check(file_name: &str, partial_native: bool) {
             Position::new(start),
             Position::new(start + expression.len() as u32),
         );
-        // These existing inference gaps are not explicit-mixed producer contracts:
-        // array_pop(string) has a separate return-provider bug, and a truthy branch
-        // assignment does not reconstruct PHPStan's complete falsey scalar/array union.
         if (file_name == "xm.php" && capture["line"] == 54)
             || (file_name == "xm2.php" && capture["line"] == 42)
         {

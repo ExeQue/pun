@@ -1,33 +1,19 @@
-//! The tree walk behind [`Linter::check`](crate::Linter::check), on Mago's typed [`Walker`].
-//!
-//! It visits the nodes [`Node::visit_children`] visits, in the same order, with the same ancestors: every rule sees
-//! the tree it would see from a walk over `visit_children`. Mago's walker has a function per node type, which the
-//! compiler inlines into its parent's, where a walk over `visit_children` matches on [`Node`] and calls a closure for
-//! every node; over laravel-framework's parsed files the walk takes a third less time.
-//!
-//! The walker and `visit_children` disagree on a few node types; the `walk_*` overrides at the end follow
-//! `visit_children` there. `tests/walk.rs` checks that the two walks give the same nodes on files with every node type.
-
 use mago_syntax::cst::*;
 use mago_syntax::walker::Walker;
 
 use crate::{Context, Found, Linter};
 
-/// What the walk carries from node to node: the file, the ancestors of the current node, outermost first, and the
-/// reports. The file is here rather than on [`Walk`] because the walker must be `Sync` and the file's tables are not.
 pub(crate) struct State<'ast, 'arena, 'c> {
     pub ctx: &'c Context<'c>,
     pub ancestors: Vec<Node<'ast, 'arena>>,
     pub found: Found,
 }
 
-/// The rules, for the length of one walk.
 pub(crate) struct Walk<'a> {
     pub linter: &'a Linter,
 }
 
 impl Walk<'_> {
-    /// Call the rules that target `kind` on `node`, then make `node` the innermost ancestor.
     #[inline(always)]
     #[expect(
         clippy::inline_always,
@@ -47,8 +33,6 @@ impl Walk<'_> {
     }
 }
 
-/// `walk_in_*` enters the node and `walk_out_*` leaves it, for each node type `visit_children` yields. The two
-/// adaptation types of `TraitUseAdaptation` are not listed: `visit_children` goes straight to their children.
 macro_rules! hooks {
     ($($variant:ident($ty:ty) $walk_in:ident $walk_out:ident;)*) => {
         $(
@@ -296,9 +280,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         Keyword(Keyword<'arena>) walk_in_keyword walk_out_keyword;
     }
 
-    // Where `visit_children` differs from Mago's walker.
-
-    /// `new` comes before the attributes and modifiers.
     fn walk_anonymous_class(
         &self,
         class: &'ast AnonymousClass<'arena>,
@@ -328,7 +309,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_anonymous_class(class, state);
     }
 
-    /// No `static` keyword.
     fn walk_closure(&self, closure: &'ast Closure<'arena>, state: &mut State<'ast, 'arena, 'c>) {
         self.walk_in_closure(closure, state);
         for attribute_list in &closure.attribute_lists {
@@ -346,7 +326,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_closure(closure, state);
     }
 
-    /// The `use` keyword too.
     fn walk_closure_use_clause(
         &self,
         clause: &'ast ClosureUseClause<'arena>,
@@ -360,7 +339,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_closure_use_clause(clause, state);
     }
 
-    /// The `enddeclare` keyword too.
     fn walk_declare_colon_delimited_body(
         &self,
         body: &'ast DeclareColonDelimitedBody<'arena>,
@@ -375,7 +353,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_declare_colon_delimited_body(body, state);
     }
 
-    /// No terminator.
     fn walk_global(&self, global: &'ast Global<'arena>, state: &mut State<'ast, 'arena, 'c>) {
         self.walk_in_global(global, state);
         self.walk_keyword(&global.global, state);
@@ -385,7 +362,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_global(global, state);
     }
 
-    /// No terminator.
     fn walk_goto(&self, goto: &'ast Goto<'arena>, state: &mut State<'ast, 'arena, 'c>) {
         self.walk_in_goto(goto, state);
         self.walk_keyword(&goto.goto, state);
@@ -393,7 +369,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_goto(goto, state);
     }
 
-    /// `var` before the modifiers, and no terminator.
     fn walk_plain_property(
         &self,
         property: &'ast PlainProperty<'arena>,
@@ -418,7 +393,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_plain_property(property, state);
     }
 
-    /// `var` before the modifiers.
     fn walk_hooked_property(
         &self,
         property: &'ast HookedProperty<'arena>,
@@ -442,7 +416,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_hooked_property(property, state);
     }
 
-    /// No `array` keyword.
     fn walk_legacy_array(
         &self,
         array: &'ast LegacyArray<'arena>,
@@ -455,7 +428,6 @@ impl<'ast, 'arena, 'c> Walker<'ast, 'arena, State<'ast, 'arena, 'c>> for Walk<'_
         self.walk_out_legacy_array(array, state);
     }
 
-    /// No `list` keyword.
     fn walk_list(&self, list: &'ast List<'arena>, state: &mut State<'ast, 'arena, 'c>) {
         self.walk_in_list(list, state);
         for element in &list.elements {

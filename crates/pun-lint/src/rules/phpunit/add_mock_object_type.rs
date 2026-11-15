@@ -1,10 +1,3 @@
-//! `lint/phpunit/add-mock-object-type`, ported from rector-phpunit's `ExpectsParamToMockObjectRector`
-//! (rules/PHPUnit110/Rector/ClassMethod).
-//!
-//! In a test class, a private method's parameter that the method calls `expects()` on (outside closures) gets the
-//! type `\PHPUnit\Framework\MockObject\MockObject` in place of its own, unless that type names `MockObject` already
-//! or a `@param` tag of the method names the parameter.
-
 use mago_syntax::cst::{
     Expression, FunctionLikeParameter, Hint, MethodBody, Modifier, Node, NodeKind, Variable,
 };
@@ -17,7 +10,6 @@ use super::{AnyCall, is_in_test_class, resolve};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PHPUnitClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 pub struct AddMockObjectType;
@@ -66,7 +58,6 @@ impl Rule for AddMockObjectType {
                 continue;
             }
             let name = &param.variable.name;
-            // avoid contradicting the docblock type, that would have to be changed as well
             if let Some(doc) = &doc {
                 match typed_tag(doc, "@param", Some(&String::from_utf8_lossy(name))) {
                     Ok(None) => {}
@@ -90,7 +81,6 @@ impl Rule for AddMockObjectType {
     }
 }
 
-/// The edit that gives `param` the type `ty`, in place of its own.
 pub(super) fn type_edit(param: &FunctionLikeParameter<'_>, ty: &str) -> Edit {
     match &param.hint {
         Some(hint) => Edit::new(node_span(hint), ty),
@@ -107,7 +97,6 @@ pub(super) fn type_edit(param: &FunctionLikeParameter<'_>, ty: &str) -> Edit {
     }
 }
 
-/// `hasMockObjectType()`: the type names `MockObject`, alone, nullable, or in a union or an intersection.
 fn has_mock_object_type(scope: &[Node<'_, '_>], hint: &Hint<'_>) -> bool {
     match hint {
         Hint::Identifier(id) => resolve(scope, id).eq_ignore_ascii_case(MOCK_OBJECT),
@@ -122,7 +111,6 @@ fn has_mock_object_type(scope: &[Node<'_, '_>], hint: &Hint<'_>) -> bool {
     }
 }
 
-/// `isExpectsCalledOnVariable()`: `$name->expects(...)` outside closures.
 fn is_expects_called_on_variable(roots: &[Node<'_, '_>], name: &[u8]) -> bool {
     let mut found = false;
     scoped(roots, &mut |node| {

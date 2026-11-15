@@ -1,5 +1,3 @@
-//! FunctionCallableRule diagnostics from PHPStan 2.3.1, including switches that no standard level enables.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -56,13 +54,11 @@ fn first_class_function_callables_match_phpstan() {
     }
 }
 
-/// PHPStan 2.3.1 crashes while analysing PHP 8.5 partial applications. Its FunctionCallableNode represents only
-/// the single ellipsis, not these bound-argument/placeholder lists; they must not enter FunctionCallableRule.
 #[test]
 fn partial_applications_are_not_first_class_callables() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/function-callable");
     let mut project = Project::new(vec![root.join("partial.php")], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = 7;
     let errors: Vec<_> = run(&project)
         .unwrap()

@@ -1,8 +1,6 @@
 //! php.rs against real PHP and PHPStan 2.3.1 (tests/fixtures/php.json, scripts/export-php-helpers-fixtures.php).
 
-mod common;
-
-use common::fixture;
+use crate::common::fixture;
 use pun_phpstan::php;
 use serde_json::{Value as J, json};
 
@@ -20,7 +18,6 @@ fn php_helpers() {
         }
     };
     for c in f["regex"].as_array().unwrap() {
-        // ponytail (php.rs): the D modifier is not emulated.
         if s(&c["pattern"]).ends_with("/D") {
             continue;
         }
@@ -74,7 +71,6 @@ fn php_helpers() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// Literal-array PHP configs (baselines) as `require` returns them; anything beyond literals is refused.
 #[test]
 fn php_config_files() {
     let dir = format!("{}/tests/fixtures/phpfile", env!("CARGO_MANIFEST_DIR"));
@@ -88,18 +84,30 @@ fn php_config_files() {
         let php = std::fs::read_to_string(format!("{dir}/{name}")).unwrap();
         let got = pun_phpstan::phpfile::load_config(&php, "{dir}");
         if name.starts_with("ok-") {
-            let got = common::tagged(&pun_phpstan::Value::Array(got.unwrap()));
+            let got = crate::common::tagged(&pun_phpstan::Value::Array(got.unwrap()));
             assert_eq!(got, want[&name], "{name}");
         } else {
-            assert!(got.is_err(), "{name}: {got:?}");
+            let message = match name.as_str() {
+                "unsupported-no-open-tag.php" => Some("unexpected \"no php\\n\" on line 1"),
+                "unsupported-push-scalar.php" => Some("$x is not an array"),
+                "unsupported-scalar.php" => Some("the config does not return an array"),
+                "unsupported-undefined.php" => Some("undefined $nope"),
+                "unsupported-unterminated.php" => Some("unterminated string"),
+                _ => None,
+            };
+            let got = got.unwrap_err().to_string();
+            if let Some(message) = message {
+                assert_eq!(got, message, "{name}");
+            }
         }
     }
-    for not_generated in [
-        "<?php class X {}",
-        "<?php const EXTENSIONS;",
-        "<?php const EXTENSIONS = 5;",
+    for (not_generated, message) in [
+        ("<?php class X {}", "no EXTENSIONS constant"),
+        ("<?php const EXTENSIONS;", "no EXTENSIONS value"),
+        ("<?php const EXTENSIONS = 5;", "EXTENSIONS is not an array"),
     ] {
-        assert!(pun_phpstan::phpfile::generated_config_extensions(not_generated, "/").is_err());
+        let got = pun_phpstan::phpfile::generated_config_extensions(not_generated, "/");
+        assert_eq!(got.unwrap_err().to_string(), message);
     }
 }
 

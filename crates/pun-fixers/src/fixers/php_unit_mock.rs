@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitMockFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, is_candidate, target_fulfills};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -45,14 +44,14 @@ impl Fixer for PhpUnitMockFixer {
                     index += 1;
                     continue;
                 }
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
                 if tokens[index].equals(
                     (T_STRING, "getMockWithoutInvokingTheOriginalConstructor"),
                     false,
                 ) {
                     tokens.set(index, Token::new(T_STRING, b"createMock".to_vec()));
                 } else if tokens[index].equals((T_STRING, "getMock"), false) {
-                    let open = tokens.get_next_meaningful_token(index).unwrap();
+                    let open = tokens.next_meaningful(index);
                     let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
                     match analyzer.count_arguments(tokens, open, close) {
                         1 => tokens.set(index, Token::new(T_STRING, b"createMock".to_vec())),

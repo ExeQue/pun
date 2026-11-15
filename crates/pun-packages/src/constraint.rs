@@ -1,15 +1,11 @@
-//! Version constraints as composer/semver parses and matches them: `^8.4`, `~1.2`, `1.0.*`, `1.0 - 2.0`,
-//! `>=1 <2 || ^3`, `dev-main as 1.0`, stability flags, and their bounds.
-
+use crate::error::{Result, bail};
 use crate::version::{ALIAS, MODIFIER, compare, group, normalize, re, stability_of};
-use anyhow::{Result, bail};
 use pcre2::bytes::{Captures, Regex};
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-/// A comparison operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Op {
     Eq,
@@ -21,7 +17,6 @@ pub enum Op {
 }
 
 impl Op {
-    /// `<` or `>`, without `=`.
     fn is_strict(self) -> bool {
         matches!(self, Op::Lt | Op::Gt)
     }
@@ -37,8 +32,6 @@ impl Op {
         }
     }
 
-    /// The operator's direction without its `=`: `<=` and `<` are both `<`. Only `match_specific` asks, after it
-    /// has handled `!=`.
     fn strict(self) -> &'static str {
         match self {
             Op::Lt | Op::Le => "<",
@@ -48,18 +41,13 @@ impl Op {
     }
 }
 
-/// A parsed constraint.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Constraint {
-    /// `*`: every version.
     Any,
-    /// One comparison with a normalized version.
     Single(Op, String),
-    /// All of (conjunctive) or any of (disjunctive) the constraints.
     Multi(Vec<Constraint>, bool),
 }
 
-/// The edge of a constraint's range: (normalized version, inclusive).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bound<'a> {
     pub version: Cow<'a, str>,
@@ -94,7 +82,6 @@ impl<'a> Bound<'a> {
         }
     }
 
-    /// `Bound::compareTo($other, '>')`, and with `above` false `compareTo($other, '<')`.
     pub fn beyond(&self, other: &Bound, above: bool) -> bool {
         if self == other {
             return false;
@@ -105,13 +92,11 @@ impl<'a> Bound<'a> {
         }
     }
 
-    /// `compareTo($other, '>')`.
     pub fn above(&self, other: &Bound) -> bool {
         self.beyond(other, true)
     }
 }
 
-/// PHP's `version_compare($a, $b, $op)`.
 fn version_compare(a: &str, b: &str, op: Op) -> bool {
     let c = compare(a, b);
     match op {
@@ -124,8 +109,6 @@ fn version_compare(a: &str, b: &str, op: Op) -> bool {
     }
 }
 
-/// `Constraint::versionCompare`: a `dev-` branch compares only by name, unless `branches` lets it compare as
-/// `version_compare` does.
 fn compare_versions(a: &str, b: &str, op: Op, branches: bool) -> bool {
     let (a_branch, b_branch) = (a.starts_with("dev-"), b.starts_with("dev-"));
     if op == Op::Ne && (a_branch || b_branch) {
@@ -140,12 +123,10 @@ fn compare_versions(a: &str, b: &str, op: Op, branches: bool) -> bool {
     version_compare(a, b, op)
 }
 
-/// `Constraint::matchSpecific` with `$compareBranches`, as the policy compares a branch with a version.
 pub fn match_specific_branches(op: Op, version: &str, p_op: Op, p_version: &str) -> bool {
     match_specific(op, version, p_op, p_version, true)
 }
 
-/// `Constraint::matchSpecific`: whether two comparisons admit a common version.
 fn match_specific(op: Op, version: &str, p_op: Op, p_version: &str, branches: bool) -> bool {
     let (is_eq, is_ne) = (op == Op::Eq, op == Op::Ne);
     let (p_eq, p_ne) = (p_op == Op::Eq, p_op == Op::Ne);
@@ -178,12 +159,10 @@ fn match_specific(op: Op, version: &str, p_op: Op, p_version: &str, branches: bo
 }
 
 impl Constraint {
-    /// The constraint `== version`, as a package's own version is matched against requirements.
     pub fn exact(version: &str) -> Constraint {
         Constraint::Single(Op::Eq, version.to_string())
     }
 
-    /// Whether some version satisfies both constraints (`ConstraintInterface::matches`).
     pub fn matches(&self, provider: &Constraint) -> bool {
         match self {
             Constraint::Any => true,
@@ -203,17 +182,14 @@ impl Constraint {
         }
     }
 
-    /// The lowest version the constraint admits.
     pub fn lower_bound(&self) -> Bound<'_> {
         self.bounds().0
     }
 
-    /// The highest version the constraint admits.
     pub fn upper_bound(&self) -> Bound<'_> {
         self.bounds().1
     }
 
-    /// The lowest and the highest version the constraint admits.
     pub fn bounds(&self) -> (Bound<'_>, Bound<'_>) {
         match self {
             Constraint::Any => (Bound::zero(), Bound::infinity()),
@@ -257,8 +233,8 @@ impl Constraint {
     }
 }
 
-static OR: LazyLock<Regex> = LazyLock::new(|| re(r"\s*\|\|?\s*"));
-static AND: LazyLock<Regex> =
+pub(crate) static OR: LazyLock<Regex> = LazyLock::new(|| re(r"\s*\|\|?\s*"));
+pub(crate) static AND: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?<!^|as|[=>< ,]) *(?<!-)[, ](?!-) *(?!,|as|$)"));
 static STABILITY_FLAG: LazyLock<Regex> =
     LazyLock::new(|| re(r"(?i)^([^,\s]*?)@(stable|RC|beta|alpha|dev)$"));
@@ -283,7 +259,7 @@ fn version_regex() -> String {
     )
 }
 
-fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
+pub(crate) fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
     let mut out = vec![];
     let mut start = 0;
     for m in re.find_iter(s.as_bytes()).flatten() {
@@ -294,8 +270,6 @@ fn split<'a>(re: &Regex, s: &'a str) -> Vec<&'a str> {
     out
 }
 
-/// Parses a constraint string (`VersionParser::parseConstraints`). A resolve parses the same few thousand strings
-/// across every version of every package, so each thread keeps the ones it parsed.
 pub fn parse(constraints: &str) -> Result<Constraint> {
     thread_local! {
         static PARSED: RefCell<HashMap<String, Constraint>> = RefCell::new(HashMap::new());
@@ -326,15 +300,12 @@ fn parse_uncached(constraints: &str) -> Result<Constraint> {
     })
 }
 
-/// The lowest version a constraint string admits.
 pub fn lower_bound(constraints: &str) -> Result<Bound<'static>> {
     Ok(parse(constraints)?.lower_bound().into_owned())
 }
 
-/// `manipulateVersionString` with a non-negative increment: the four numeric parts with every part after
-/// `position` set to 0 and the one at `position` raised by `increment`.
 fn bump(parts: [&str; 4], position: usize, increment: u128) -> String {
-    let mut out: Vec<String> = parts.iter().map(|p| p.to_string()).collect();
+    let mut out: Vec<String> = parts.iter().map(std::string::ToString::to_string).collect();
     for i in (1..=4).rev() {
         if i > position {
             out[i - 1] = "0".into();
@@ -355,12 +326,14 @@ fn digits<'a>(m: &'a Captures, first: usize) -> [&'a str; 4] {
     ]
 }
 
-/// PHP's `empty()` on a match group: unset, `""` or `"0"`.
 fn empty(s: &str) -> bool {
     s.is_empty() || s == "0"
 }
 
-/// One constraint without `,`, ` ` or `|` (`VersionParser::parseConstraint`).
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn parse_one(constraint: &str) -> Result<Vec<Constraint>> {
     let ge = |v: String| Constraint::Single(Op::Ge, v);
     let lt = |v: String| Constraint::Single(Op::Lt, v);
@@ -506,8 +479,6 @@ mod tests {
         "dev-feature/x",
     ];
 
-    /// For each constraint, the versions in `VERSIONS` it matches, as composer/semver 3.6.0's
-    /// `parseConstraints($c)->matches(new Constraint('==', $v))` gives them (1 = match).
     #[test]
     fn matching_agrees_with_composer() {
         for (c, want) in [
@@ -573,7 +544,6 @@ mod tests {
         }
     }
 
-    /// Whether two constraints intersect, from composer/semver 3.6.0's `matches` on the parsed pair.
     #[test]
     fn constraints_intersect_as_composer() {
         for (a, b, want) in [
@@ -606,7 +576,6 @@ mod tests {
         }
     }
 
-    /// Lower and upper bounds from composer/semver 3.6.0's `getLowerBound()` and `getUpperBound()`.
     #[test]
     fn bounds_match_composer() {
         let b = |v: &'static str, inclusive| Bound {
@@ -695,7 +664,6 @@ mod tests {
         assert!(b("1.0", false).above(&b("1.0", true)));
     }
 
-    /// Error messages from composer/semver 3.6.0.
     #[test]
     fn errors_match_composer() {
         for (c, message) in [

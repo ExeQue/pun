@@ -1,11 +1,3 @@
-//! `lint/phpunit/add-mock-intersection-type`, ported from rector-phpunit's `AddIntersectionVarToMockObjectPropertyRector`
-//! (rules/CodeQuality/Rector/Class_), with `MockObjectPropertyDetector`.
-//!
-//! In a test class with a `setUp()` method, a property typed `PHPUnit\Framework\MockObject\MockObject` that `setUp()`
-//! assigns `createMock(X::class)` to gets the `@var` type `\PHPUnit\Framework\MockObject\MockObject&\X`, unless its
-//! first `@var` tag has an intersection type already. Rector runs it only for PHPUnit 11 and later; Pun leaves that
-//! to the rule's group.
-
 use mago_syntax::cst::{
     Access, Call, ClassLikeMember, Expression, Hint, MethodBody, Node, NodeKind, Property,
 };
@@ -15,11 +7,10 @@ use super::annotations::Annotated;
 use super::phpdoc_type::{TagType, typed_tag, with_tag_type};
 use super::{AnyCall, class_body, expr_name, is_in_test_class, resolve};
 use crate::Context;
-use crate::rules::rector_stmts::{assign, block_list, expression};
+use crate::rules::support::statement_edits::{assign, block_list, expression};
 use crate::syntax::unparenthesize;
 use crate::{Report, Rule};
 
-/// `PHPUnitClassName::MOCK_OBJECT`.
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
 pub struct AddMockIntersectionType;
@@ -58,7 +49,6 @@ impl Rule for AddMockIntersectionType {
             }) else {
                 continue;
             };
-            // only properties typed as a bare native MockObject
             if !is_typed(&scope, property, MOCK_OBJECT) {
                 continue;
             }
@@ -86,9 +76,6 @@ impl Rule for AddMockIntersectionType {
     }
 }
 
-/// `MockObjectPropertyDetector::collectFromClassMethod()` on the class's `setUp()`: the names of the properties
-/// assigned a `method` call (`$this->` or `self::`), each with its last call, in the order of their first; `None`
-/// without a `setUp()`.
 pub(super) fn created_properties<'a>(
     ctx: &Context<'_>,
     mut members: impl Iterator<Item = &'a ClassLikeMember<'a>>,
@@ -128,7 +115,6 @@ pub(super) fn created_properties<'a>(
     Some(calls)
 }
 
-/// php-parser's `Class_::getProperty()`: a property statement declares `name` (any of its items).
 pub(super) fn declares(property: &Property<'_>, name: &[u8]) -> bool {
     match property {
         Property::Plain(p) => p.items.iter().any(|i| i.variable().name[1..] == *name),
@@ -136,7 +122,6 @@ pub(super) fn declares(property: &Property<'_>, name: &[u8]) -> bool {
     }
 }
 
-/// `MockObjectPropertyDetector::detect()`: the property's type is the name `class`.
 pub(super) fn is_typed(scope: &[Node<'_, '_>], property: &Property<'_>, class: &str) -> bool {
     let hint = match property {
         Property::Plain(p) => p.hint.as_ref(),
@@ -145,7 +130,6 @@ pub(super) fn is_typed(scope: &[Node<'_, '_>], property: &Property<'_>, class: &
     matches!(hint, Some(Hint::Identifier(id)) if resolve(scope, id) == class)
 }
 
-/// `resolveMockedClass()`: the class of an `X::...` first argument, as Rector names it (`self` and `static` as such).
 pub(super) fn mocked_class(scope: &[Node<'_, '_>], call: &AnyCall<'_>) -> Option<String> {
     let arg = call.args().into_iter().next()?;
     let Expression::Access(Access::ClassConstant(fetch)) = arg.value() else {
@@ -156,13 +140,10 @@ pub(super) fn mocked_class(scope: &[Node<'_, '_>], call: &AnyCall<'_>) -> Option
         Expression::Self_(_) => Some("self".to_string()),
         Expression::Static(_) => Some("static".to_string()),
         Expression::Parent(_) => Some("parent".to_string()),
-        // `getName()` of the class expression: a variable's name (`$x::class` gives `x`)
         other => expr_name(other).map(|n| String::from_utf8_lossy(n).into_owned()),
     }
 }
 
-/// The edits that set the type of the property's first `@var` tag (or add one) to what `ty` gives for the current
-/// tag, unless that tag has an intersection type already; `None` where nothing changes or Pun does not follow.
 pub(super) fn set_var_type(
     ctx: &Context<'_>,
     scope: &[Node<'_, '_>],
@@ -174,7 +155,6 @@ pub(super) fn set_var_type(
         Some(doc) => typed_tag(doc, "@var", None).ok()?,
         None => None,
     };
-    // already has an intersection @var, skip
     if matches!(tag.as_ref().map(|t| &t.ty), Some(TagType::Intersection(_))) {
         return None;
     }

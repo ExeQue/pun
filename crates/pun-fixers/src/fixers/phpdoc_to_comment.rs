@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocToCommentFixer`.
 use crate::analyzers::comments_analyzer::{
     is_before_return, is_before_structural_element, is_header_comment,
 };
@@ -45,7 +44,6 @@ impl Fixer for PhpdocToCommentFixer {
             .iter()
             .map(|t| strtolower(t.as_bytes()))
             .collect();
-        // Future::getV4OrV3(true, false): the 3.x default.
         self.allow_before_return_statement = o.bool("allow_before_return_statement", false)?;
         Ok(())
     }

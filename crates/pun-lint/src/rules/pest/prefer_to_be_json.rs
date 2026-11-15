@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-be-json`, ported from pest-plugin-rector's `UseToBeJsonRector`: `expect(json_decode($string)
-//! !== null)->toBeTrue()` becomes `expect($string)->toBeJson()`; `=== null`, `toBeFalse()` or a `->not` give
-//! `->not->toBeJson()`. The new call is made on the chain's `expect()`, so what came between is dropped.
-
 use mago_syntax::cst::{BinaryOperator, Expression, FunctionCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -9,7 +5,7 @@ use super::{
     Is, Trinary, expect_call, first_value, func_call, function_name, has_not, identifier,
     set_first_argument, type_is,
 };
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -34,9 +30,8 @@ impl Rule for PreferToBeJson {
         let Node::MethodCall(call) = node else {
             return;
         };
-        let method = match identifier(&call.method) {
-            Some(m @ (b"toBeTrue" | b"toBeFalse")) => m,
-            _ => return,
+        let Some(method @ (b"toBeTrue" | b"toBeFalse")) = identifier(&call.method) else {
+            return;
         };
         let Some(expect) = expect_call(call) else {
             return;
@@ -76,8 +71,6 @@ impl Rule for PreferToBeJson {
     }
 }
 
-/// `extractJsonDecodeCall`: the call of `json_decode` (named exactly) on one side of the comparison, with `null` on the
-/// other (the left side first).
 fn json_decode_call<'a>(
     left: &'a Expression<'a>,
     right: &'a Expression<'a>,

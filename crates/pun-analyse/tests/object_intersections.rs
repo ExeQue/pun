@@ -1,5 +1,3 @@
-//! PHPStan 2.3.1 object intersections and mixed exclusions, through public analysis and type APIs.
-
 use std::path::Path;
 
 use serde_json::Value;
@@ -10,8 +8,7 @@ fn invariant_generic_arguments_compare_compound_types_independently_of_written_o
     let mut project =
         pun_analyse::Project::new(vec![root.join("Methods/data/bug-12984.php")], vec![]);
     project.level = 3;
-    project.php_version = 80500;
-    // Unchanged PHPStan input; a fresh 2.3.1 --level=3 run reports no diagnostics.
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let errors = pun_analyse::run(&project).unwrap();
     assert!(errors.is_empty(), "{errors:#?}");
 }
@@ -24,7 +21,7 @@ fn compare_at_level(file: &str, capture: &str, level: u8) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/object-intersections");
     let mut project = pun_analyse::Project::new(vec![root.join(file)], vec![]);
     project.level = level;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = pun_analyse::run(&project)
         .unwrap()
         .into_iter()
@@ -77,10 +74,9 @@ fn genuine_intersections_keep_inheritance_generics_and_receiver_identity() {
 
 #[test]
 fn exact_instantiations_keep_distinct_classes_and_receiver_producers() {
-    // Both public analysis paths must retain per-value finality, independently of receiver identity.
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/object-intersections");
     let mut project = pun_analyse::Project::new(vec![root.join("exact.php")], vec![]);
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = pun_analyse::run_mago(&project, None)
         .unwrap()
         .dumped
@@ -185,7 +181,6 @@ fn raw_union_preserves_distinct_primary_parameters_and_receiver_identity() {
     };
     let int_box = boxed(get_int());
     let string_box = boxed(get_string());
-    // PHPStan's first dump in constraints.json retains both invariant Box alternatives.
     for (left, right) in [
         (int_box.clone(), string_box.clone()),
         (string_box.clone(), int_box.clone()),
@@ -201,9 +196,6 @@ fn raw_union_preserves_distinct_primary_parameters_and_receiver_identity() {
         assert!(result.types.contains(&string_box));
     }
 
-    // PHPStan 2.3.1's declared self/static/$this parameter unions select the
-    // least restrictive receiver in both orders, independently of new self's producer.
-    // Use the scanned class's source spelling and its lowercase symbol-table key.
     for name in ["Receiver", "receiver"] {
         let plain = TAtomic::Object(TObject::Named(TNamedObject::new(mago_word::word(name))));
         let late = TAtomic::Object(TObject::Named(TNamedObject::new_static(mago_word::word(
@@ -262,7 +254,6 @@ fn exact_objects_keep_semantic_identity_without_changing_printed_class_names() {
             .is_final()
     );
 
-    // PHPStan's public ObjectType(asFinal)/StaticType/ThisType union matrix.
     for (left, right, expected) in [
         (&broad, &exact, vec![broad.clone()]),
         (&broad, &child, vec![broad.clone()]),
@@ -285,9 +276,6 @@ fn exact_objects_keep_semantic_identity_without_changing_printed_class_names() {
         }
     }
 
-    // Internal structural identity retains nested exactness even when IDs coincide.
-    // PHPStan's GenericObjectType equality ignores this reflection override and prints
-    // the same Box<Service>; this checks metadata retention, not its alternative count.
     let boxed = |parameter| {
         named(TNamedObject::new_with_type_parameters(
             mago_word::word("Box"),
@@ -317,7 +305,6 @@ fn exact_objects_keep_semantic_identity_without_changing_printed_class_names() {
     };
     let broad_box = covariant(mago_codex::ttype::get_int());
     let literal_box = covariant(mago_codex::ttype::get_literal_int(1));
-    // The final exact.php dump is CovariantBox<int>, not two alternatives.
     for (left, right) in [(&broad_box, &literal_box), (&literal_box, &broad_box)] {
         let result = combine_union_types(
             &TUnion::from_atomic(left.clone()),
@@ -328,8 +315,6 @@ fn exact_objects_keep_semantic_identity_without_changing_printed_class_names() {
         assert_eq!(result.types.as_ref(), std::slice::from_ref(&broad_box));
     }
 
-    // PHPStan retains unrelated generic classes and non-class/unknown nominal types.
-    // Moving named objects out of printed-ID buckets must not lose these alternatives.
     for other in [
         exact_box,
         named(TNamedObject::new(mago_word::word("External"))),
@@ -790,7 +775,6 @@ fn canonical_object_subtractions_keep_identity_and_children() {
         serde_json::from_str(include_str!("fixtures/object-intersections/type-api.json")).unwrap();
     let description = oracle["types"]["C-not-A"]["description"].as_str().unwrap();
     let excluded = description.strip_prefix("C~").unwrap();
-    // Codex IDs retain the primary conjunct. PHPStan sorts its public descriptions.
     let conjuncts = |description: &str| {
         let mut parts: Vec<_> = description.split('&').map(str::to_owned).collect();
         parts.sort();
@@ -904,8 +888,6 @@ fn codex_object_exclusion_queries_preserve_negative_constraints() {
         serde_json::from_str(include_str!("fixtures/object-intersections/type-api.json")).unwrap();
     for (name, container) in &types {
         for (other_name, input) in &types {
-            // Codex containment is boolean (and reflexive), unlike ObjectType's
-            // trinary query. The unknown-class oracle's Maybes give no boolean answer.
             let want = oracle["relations"][name][other_name]["super"]
                 .as_str()
                 .unwrap();
@@ -924,8 +906,6 @@ fn codex_object_exclusion_queries_preserve_negative_constraints() {
             assert_eq!(got, want == "Yes", "{name} contains {other_name}");
         }
     }
-    // Set inclusion in the scanned interfaces: excluding C&A from C excludes all
-    // possible A instances. Excluding C&B instead gives no such guarantee.
     for (input, want) in [("C-not-A", true), ("C-not-B", false), ("C", false)] {
         assert_eq!(
             union_comparator::is_contained_by(
@@ -941,10 +921,7 @@ fn codex_object_exclusion_queries_preserve_negative_constraints() {
             "{input} excludes A"
         );
     }
-    // Repeated negative guards combine the old and new exclusions rather than replacing either.
     let narrowed = intersect_union_types(&types["not-A"], &types["C-not-B"], &codebase).unwrap();
-    // A wider excluded set gives a narrower value set, independently of the
-    // unknown-class reflection API's trinary approximation above.
     let without_a_b = without(TUnion::from_vec(vec![object("A"), object("B")]));
     for (input, container, want) in [
         (&narrowed, &types["C-not-A"], true),

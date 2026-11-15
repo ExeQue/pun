@@ -1,11 +1,3 @@
-//! The ImpurePoint records NodeScopeResolver collects for one function-like body (its statement result's points
-//! and the property assignments the body's node gatherer adds), with whether the body has a throw point.
-//! Each producer is a port of its handler's `new ImpurePoint(...)`: EchoHandler, InlineHtmlHandler, GlobalHandler,
-//! StaticVariableHandler, UnsetHandler, VariableHandler, AssignHandler, StaticPropertyFetchHandler, PrintHandler,
-//! ExitHandler, EvalHandler, IncludeHandler, YieldHandler, YieldFromHandler, FuncCallHandler, MethodCallHandler,
-//! StaticCallHandler, NewHandler, ImplicitToStringCallHelper, ArgumentsHandler's immediately invoked callables and
-//! ClosureTypeResolver's by-ref closure points. A construct without a ported producer makes the list incomplete.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -22,29 +14,23 @@ use super::members::{self, Method};
 use super::types::flow::unparen;
 use super::{Checker, declared};
 
-/// ImpurePoint: the line of `span`'s start, the identifier, the description and isCertain().
 #[derive(Clone)]
 pub(super) struct Point {
     pub span: Span,
     pub identifier: &'static str,
     pub description: String,
     pub certain: bool,
-    /// a FuncCall's callee variable (without `$`): isPureUnlessCallableInvocation()
     pub invoked: Option<String>,
 }
 
-/// SimpleImpurePoint, a callable's point without a node.
 type Simple = (&'static str, String, bool);
 
 pub(super) struct Points {
     pub points: Vec<Point>,
-    /// The statement result has a throw point (an overapproximation: never false when PHPStan has one).
     pub throws: bool,
-    /// Every construct had a ported producer.
     pub complete: bool,
 }
 
-/// `pureUnlessParameterPassedParameters` of resources/functionMetadata.php.
 const PURE_UNLESS_PARAMETER_PASSED: &[(&str, &[&str])] = &[
     ("similar_text", &["percent"]),
     ("str_ireplace", &["count", "replace_count"]),
@@ -63,8 +49,6 @@ const SUPERGLOBALS: &[&[u8]] = &[
     b"$_ENV",
 ];
 
-/// The impure points of a function or method body. `constructor` exempts the `$this->prop` assignments of a class's
-/// own constructor (ClassMethodHandler's gatherer); `raw` is the declaration's PHPDoc (its `pure-callable` params).
 pub(super) fn body(c: &Checker, statements: &[Statement], constructor: bool, raw: &[u8]) -> Points {
     let mut p = Producer::new(c, constructor);
     p.pure_params = pure_params(raw);
@@ -72,7 +56,6 @@ pub(super) fn body(c: &Checker, statements: &[Statement], constructor: bool, raw
     p.finish()
 }
 
-/// The impure points of an arrow-function-bodied property hook (`get => expr`).
 pub(super) fn expression(c: &Checker, e: &Expression, raw: &[u8]) -> Points {
     let mut p = Producer::new(c, false);
     p.pure_params = pure_params(raw);
@@ -80,7 +63,6 @@ pub(super) fn expression(c: &Checker, e: &Expression, raw: &[u8]) -> Points {
     p.finish()
 }
 
-/// The parameters whose `@param` type is a `pure-callable` or `pure-Closure` (without `$`).
 fn pure_params(raw: &[u8]) -> HashSet<Vec<u8>> {
     let raw = String::from_utf8_lossy(raw);
     let mut out = HashSet::new();
@@ -128,11 +110,8 @@ fn and(a: Tri, b: Tri) -> Tri {
     }
 }
 
-/// The conditional purity a callable value's acceptor carries: its parameters, the
-/// `@pure-unless-callable-is-impure` ones and the `@pure-unless-parameter-passed` ones (whether the flag is certain).
 type Cond = (Vec<Param>, Vec<String>, Vec<(String, bool)>);
 
-/// A local bound to a known callable: its acceptor's impure points and conditional purity.
 #[derive(Clone, PartialEq)]
 struct Bound {
     points: Vec<Simple>,
@@ -145,7 +124,6 @@ impl Bound {
     }
 }
 
-/// TrinaryLogic::lazyExtremeIdentity(): the common value, else maybe.
 fn identity(values: impl Iterator<Item = Tri>) -> Tri {
     let mut out = None;
     for v in values {
@@ -158,34 +136,28 @@ fn identity(values: impl Iterator<Item = Tri>) -> Tri {
     out.unwrap_or(Tri::Maybe)
 }
 
-/// A callable argument's value: `getCallableParametersAcceptors()` of a `isCallable()->yes()` type, or not callable.
 enum Value {
     Null,
     NotCallable,
     Points(Vec<Simple>),
 }
 
-/// A callee's parameter, for argument matching.
 #[derive(Clone, PartialEq)]
 struct Param {
     name: String,
     variadic: bool,
-    /// TypeUtils::findCallableType() of its type is not null
     callable: bool,
-    /// isImmediatelyInvokedCallable(): `Some(true)` / `Some(false)` from the tags, `None` maybe
     immediately: Option<bool>,
 }
 
 struct Producer<'c, 'a, 'b> {
     c: &'c Checker<'a, 'b>,
     points: Vec<Point>,
-    /// the node gatherer's property assignments
     assigns: Vec<Point>,
     throws: bool,
     complete: bool,
     constructor: bool,
     pure_params: HashSet<Vec<u8>>,
-    /// locals holding a closure literal, with its ClosureType's impure points (`None`: not known)
     closures: HashMap<Vec<u8>, Option<Bound>>,
 }
 
@@ -233,7 +205,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         self.complete = false;
     }
 
-    /// StatementsHandler: the statements after an always-terminating one are not processed (declarations aside).
     fn statements(&mut self, statements: &[Statement]) -> bool {
         let mut terminates = false;
         for s in statements {
@@ -288,7 +259,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 false
             }
             Statement::Inline(i) => {
-                // PHP's closing tag token takes the newline that follows it.
                 let mut at = i.span;
                 if i.value.first() == Some(&b'\n') {
                     at.start.offset += 1;
@@ -419,7 +389,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A nested block: the locals it binds to closures are dropped afterwards.
     fn branch(&mut self, statements: &[Statement]) -> bool {
         let saved = self.closures.clone();
         let terminates = self.statements(statements);
@@ -443,7 +412,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         self.push(at, "echo", "echo", true);
     }
 
-    /// ImplicitToStringCallHelper::processImplicitToStringCall().
     #[expect(
         clippy::wrong_self_convention,
         reason = "named after upstream's processImplicitToStringCall()"
@@ -478,7 +446,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// UnsetHandler: a property unset is an impure point.
     fn unset(&mut self, e: &Expression) {
         let mut root = unparen(e);
         while let Expression::ArrayAccess(a) = root {
@@ -579,7 +546,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             Expression::ArrayAccess(a) => {
                 self.expr(a.array);
                 self.expr(a.index);
-                // ArrayDimFetchHandler: an ArrayAccess receiver's offsetGet() call
                 if !self
                     .c
                     .phpstan_type(a.array)
@@ -627,7 +593,7 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             Expression::Construct(construct) => self.construct(e, construct),
             Expression::Clone(k) => {
                 self.expr(k.object);
-                self.incomplete(); // __clone()
+                self.incomplete();
             }
             Expression::Match(m) => {
                 self.expr(m.expression);
@@ -689,7 +655,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 self.selector(&m.method);
                 self.method_call(e, m.class, &m.method, &m.argument_list, true);
             }
-            // a first-class callable only creates a Closure
             Expression::PartialApplication(p) if p.is_first_class_callable() => {}
             Expression::Instantiation(new) => self.instantiation(e, new),
             _ => self.incomplete(),
@@ -754,7 +719,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// NodeScopeResolver::getImpurePointsFromPropertyHook() of a property read: a hooked property is not ported.
     fn property_hook(&mut self, object: &Expression, property: &ClassLikeMemberSelector) {
         let ClassLikeMemberSelector::Identifier(name) = property else {
             self.incomplete();
@@ -792,7 +756,7 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 ArrayElement::Value(v) => self.expr(v.value),
                 ArrayElement::Variadic(v) => {
                     self.expr(v.value);
-                    self.incomplete(); // an iterable's getIterator()
+                    self.incomplete();
                 }
                 ArrayElement::Missing(_) => {}
             }
@@ -802,7 +766,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
     fn assignment(&mut self, a: &Assignment) {
         let simple = matches!(a.operator, AssignmentOperator::Assign(_));
         if !simple {
-            // AssignOpHandler: the target is read first
             self.modify(a.lhs);
             self.expr(a.rhs);
             match a.operator {
@@ -817,7 +780,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         if let Expression::UnaryPrefix(u) = unparen(a.rhs)
             && u.operator.is_reference()
         {
-            // AssignHandler: a reference to a property
             let mut referenced = unparen(u.operand);
             while let Expression::ArrayAccess(a) = referenced {
                 referenced = unparen(a.array);
@@ -837,7 +799,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             self.target(a.lhs);
             return;
         }
-        // AssignHandler::prepareTarget() walks the target's sub-expressions before the value
         self.target_operands(a.lhs);
         self.expr(a.rhs);
         let closure = self.bind(a.rhs);
@@ -854,7 +815,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// The operand of `&`: its sub-expressions without reading it.
     fn reference_operand(&mut self, e: &Expression) {
         match unparen(e) {
             Expression::Variable(Variable::Direct(v)) => {
@@ -874,8 +834,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// The callable a value literally is: a closure, a first-class callable, a function name or a
-    /// `[$object, 'method']` array (`None` for other values, `Some(None)` when it is not known).
     fn bind(&mut self, e: &Expression) -> Option<Option<Bound>> {
         match unparen(e) {
             Expression::Closure(k) => Some(self.closure_type(k).map(Bound::plain)),
@@ -940,7 +898,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A function's callable acceptor: createFromVariant() without a scope, its conditional parameters.
     fn function_bound(&mut self, callee: &Callee) -> Bound {
         let points = self.function_points(callee, None).into_iter().collect();
         let (callable, passed) = self.function_cond(callee);
@@ -970,7 +927,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A function's `@pure-unless-callable-is-impure` and `@pure-unless-parameter-passed` parameters.
     fn function_cond(&self, function: &Callee) -> (Vec<String>, Vec<(String, bool)>) {
         match function {
             Callee::User(f) => {
@@ -1015,7 +971,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// MergedConditionalPurityParameters of the methods a call resolves to: a flag on some of them only is maybe.
     fn method_cond(&self, methods: &[Method]) -> (Vec<String>, Vec<(String, bool)>) {
         let flags: Vec<(Vec<String>, Vec<String>)> = methods
             .iter()
@@ -1045,7 +1000,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         (callable, passed)
     }
 
-    /// A target's sub-expressions, walked before the assigned value.
     fn target_operands(&mut self, e: &Expression) {
         match unparen(e) {
             Expression::Variable(Variable::Direct(_)) => {}
@@ -1064,7 +1018,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// The container of an offset write: read (a superglobal's access point), its own offsets walked.
     fn target_root(&mut self, e: &Expression) {
         match unparen(e) {
             Expression::Variable(Variable::Direct(v)) => {
@@ -1095,11 +1048,10 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             .is_none_or(|t| t.is_array() != Tri::Yes)
             && !matches!(unparen(e), Expression::Variable(_))
         {
-            self.incomplete(); // offsetSet() of an ArrayAccess container
+            self.incomplete();
         }
     }
 
-    /// The write itself: a superglobal assignment or a PropertyAssignNode.
     fn write(&mut self, e: &Expression, at: Span) {
         let mut root = unparen(e);
         while let Expression::ArrayAccess(ArrayAccess { array, .. })
@@ -1172,7 +1124,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A write target without a value walk (foreach, destructuring, by-ref assignment).
     fn target(&mut self, e: &Expression) {
         let e = match unparen(e) {
             Expression::UnaryPrefix(u) if u.operator.is_reference() => u.operand,
@@ -1186,7 +1137,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A read-modify-write target (`++`, `--`, compound assignment): read, then written.
     fn modify(&mut self, e: &Expression) {
         match unparen(e) {
             Expression::Variable(Variable::Direct(v)) => {
@@ -1220,8 +1170,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// ClosureTypeResolver: a closure's own points (property assignments included), then its by-ref use and
-    /// by-ref parameter points. `None` when its body is not fully produced.
     fn closure_type(&mut self, k: &Closure) -> Option<Vec<Simple>> {
         let (points, assigns) = self.closure_body(k)?;
         let mut simple: Vec<Simple> = assigns
@@ -1252,7 +1200,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         Some(simple)
     }
 
-    /// A closure body's statement points and its gathered property assignments.
     fn closure_body(&mut self, k: &Closure) -> Option<(Vec<Point>, Vec<Point>)> {
         let mut inner = Producer::new(self.c, false);
         inner.statements(k.body.statements.as_slice());
@@ -1285,7 +1232,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         inner.complete.then_some((inner.points, inner.assigns))
     }
 
-    /// The callable value of an argument or callee: `None` when it is not known.
     fn value(&mut self, e: &Expression) -> Option<Value> {
         match unparen(e) {
             Expression::Literal(Literal::Null(_)) => Some(Value::Null),
@@ -1312,7 +1258,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 let otherwise = self.value(t.r#else)?;
                 Some(match (then, otherwise) {
                     (Value::Points(mut a), Value::Points(b)) => {
-                        // a union's acceptors; isPure() and()s them
                         let pure = and(purity(&a), purity(&b));
                         a.extend(b);
                         if pure == Tri::Maybe && a.iter().all(|p| p.2) {
@@ -1335,7 +1280,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// getCallableParametersAcceptors()'s impure points of a declared callable type.
     fn typed_value(&self, t: &Type, pure: bool) -> Option<Value> {
         match t {
             Type::Null => Some(Value::Null),
@@ -1357,28 +1301,24 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 }))
             }
             _ if t.is_callable() == Tri::No => Some(Value::NotCallable),
-            Type::Union(types) if t.is_callable() == Tri::Maybe => {
-                // only maybe callable: no acceptor is consulted
-                types
-                    .iter()
-                    .all(|t| {
-                        matches!(
-                            t,
-                            Type::Callable(_)
-                                | Type::Closure(_)
-                                | Type::Null
-                                | Type::Int
-                                | Type::String
-                                | Type::Object(..)
-                        )
-                    })
-                    .then_some(Value::NotCallable)
-            }
+            Type::Union(types) if t.is_callable() == Tri::Maybe => types
+                .iter()
+                .all(|t| {
+                    matches!(
+                        t,
+                        Type::Callable(_)
+                            | Type::Closure(_)
+                            | Type::Null
+                            | Type::Int
+                            | Type::String
+                            | Type::Object(..)
+                    )
+                })
+                .then_some(Value::NotCallable),
             _ => None,
         }
     }
 
-    /// The impure points of a callee invoked through a callable value (`$f()`): the acceptors of its type.
     fn callee_points(&mut self, callee: &Expression) -> Option<Bound> {
         if let Expression::Variable(Variable::Direct(v)) = unparen(callee)
             && let Some(bound) = self.closures.get(v.name)
@@ -1411,11 +1351,9 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
     fn function_call(&mut self, e: &Expression, call: &FunctionCall) {
         let callee = unparen(call.function);
         if !matches!(callee, Expression::Identifier(_)) {
-            // FuncCallHandler: the callable's acceptor points, at the call
             self.expr(callee);
             match self.callee_points(callee) {
                 Some(Bound { mut points, cond }) => {
-                    // SimpleImpurePoint::narrowByConditionalPurity() with the call's arguments
                     if let Some((params, callable, passed)) = cond {
                         match self.verdict(&params, &callable, &passed, Some(&call.argument_list)) {
                             Some(Tri::Yes) => points.clear(),
@@ -1479,7 +1417,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// SimpleImpurePoint::createFromVariant() of a function, with the call's arguments when `args` is given.
     fn function_points(
         &mut self,
         function: &Callee,
@@ -1522,7 +1459,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 if let Some(args) = args
                     && FLIP.contains(&lower.as_str())
                 {
-                    // SIDE_EFFECT_FLIP_PARAMETERS: no side effect with a truthy `return`
                     let mut named = false;
                     for (i, arg) in args.arguments.iter().enumerate() {
                         let flip = match arg {
@@ -1552,7 +1488,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// resolveConditionalPurityVerdict() of a possibly impure call: `None` when it is pure, else isCertain().
     fn narrow(&mut self, function: &Callee, args: &ArgumentList) -> Option<bool> {
         let (callable, passed) = self.function_cond(function);
         let params = self.function_params(function);
@@ -1563,7 +1498,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// A user declaration's PHPDoc.
     fn doc(&self, f: &FunctionLikeMetadata) -> &'a [u8] {
         declared::doc_at(self.c, f.span)
             .map(|(raw, _, _)| raw)
@@ -1632,7 +1566,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             .collect()
     }
 
-    /// SimpleImpurePoint::resolveConditionalPurityVerdict().
     fn verdict(
         &mut self,
         params: &[Param],
@@ -1683,7 +1616,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// ArgumentsHandler::processArgs(): each argument's points, and an immediately invoked callable argument's.
     fn arguments(&mut self, args: &ArgumentList, params: &[Param]) {
         let mut named = false;
         for (i, arg) in args.arguments.iter().enumerate() {
@@ -1744,7 +1676,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// MethodCallHandler/StaticCallHandler: the method's createFromVariant() point, or `call to unknown method`.
     fn method_call(
         &mut self,
         e: &Expression,
@@ -1782,7 +1713,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
                 }
             }
         }
-        // IntersectionTypeMethodReflection of several methods is not ported
         if methods.is_empty() || (intersection && methods.len() > 1) {
             self.arguments(args, &[]);
             self.incomplete();
@@ -1792,7 +1722,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             Method::User { f, .. } => self.user_params(f),
             Method::Builtin { .. } => Vec::new(),
         };
-        // a method's parameters are not immediately invoked unless tagged so
         let params: Vec<Param> = params
             .into_iter()
             .map(|p| Param {
@@ -1801,7 +1730,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
             })
             .collect();
         self.arguments(args, &params);
-        // MethodThrowPointHelper: `@throws void` has no throw point
         self.throws = !methods
             .iter()
             .all(|m| matches!(m, Method::User { f, .. } if throws_void(f)));
@@ -1827,7 +1755,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         self.push(e.span(), "methodCall", description, certain);
     }
 
-    /// The classes a call is made on, and whether they are an intersection.
     fn receiver(
         &self,
         on: &Expression,
@@ -1877,12 +1804,10 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// (hasSideEffects(), isPure()) of a method's reflection.
     fn method_tris(&self, m: &Method) -> (Tri, Tri) {
         match m {
             Method::User { declaring, f, .. } => {
                 let name = f.name.as_bytes();
-                // the BackedEnum methods (resources/functionMetadata.php)
                 if declaring.kind.is_enum()
                     && (name.eq_ignore_ascii_case(b"from") || name.eq_ignore_ascii_case(b"tryFrom"))
                 {
@@ -1923,8 +1848,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         }
     }
 
-    /// SimpleImpurePoint::createFromVariant() of a method without a verdict: isCertain() and the description,
-    /// `None` when hasSideEffects() is no.
     fn method_effects(&self, m: &Method) -> Option<(bool, String)> {
         let (effects, pure) = self.method_tris(m);
         if effects == Tri::No {
@@ -1938,7 +1861,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
         Some((pure == Tri::No || method_void(m), description))
     }
 
-    /// NewHandler: the constructor's point (with its pure-unless verdict), or an unknown class's.
     fn instantiation(&mut self, e: &Expression, new: &Instantiation) {
         self.throws = true;
         let class = match unparen(new.class) {
@@ -2029,7 +1951,6 @@ impl<'c, 'a, 'b> Producer<'c, 'a, 'b> {
     }
 }
 
-/// A built-in constructor's hasSideEffects().
 fn constructor_effects(m: &Method) -> Option<Tri> {
     match m {
         Method::Builtin { f, .. } => Some(match f.side_effects.as_str() {
@@ -2041,7 +1962,6 @@ fn constructor_effects(m: &Method) -> Option<Tri> {
     }
 }
 
-/// A method whose return type is void (a built-in constructor's is not).
 fn method_void(m: &Method) -> bool {
     match m {
         Method::User { f, .. } => f
@@ -2055,7 +1975,6 @@ fn method_void(m: &Method) -> bool {
     }
 }
 
-/// `@throws void`: no implicit throw point.
 fn throws_void(f: &FunctionLikeMetadata) -> bool {
     !f.thrown_types.is_empty()
         && f.thrown_types
@@ -2068,8 +1987,6 @@ fn callable_atom(a: &TAtomic) -> bool {
         || matches!(a, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes().eq_ignore_ascii_case(b"Closure"))
 }
 
-/// SimpleImpurePoint::matchArgForParameter(): the argument a parameter receives, and whether an unpacked argument
-/// might supply it.
 fn match_arg<'x, 'arena>(
     args: Option<&'x ArgumentList<'arena>>,
     params: &[Param],

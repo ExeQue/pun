@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\GroupImportFixer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use crate::analyzers::docblock::type_expression::php_spaceship;
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -19,7 +18,7 @@ struct GroupImportFixer {
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(GroupImportFixer {
-        group_types: ALLOWED_TYPES.iter().map(|s| s.to_string()).collect(),
+        group_types: ALLOWED_TYPES.iter().map(std::string::ToString::to_string).collect(),
     })
 }
 
@@ -54,8 +53,6 @@ impl Fixer for GroupImportFixer {
             };
             self.group_types.iter().any(|t| t == group)
         };
-        // As a first step we need to remove all the use statements for the enabled import types.
-        // We can't add new group imports yet, because we need to operate on previously determined token indices for all types.
         for (type_, uses) in &by_type {
             if enabled(*type_) {
                 remove_single_use_statements(uses, tokens);
@@ -69,7 +66,6 @@ impl Fixer for GroupImportFixer {
     }
 }
 
-/// The imports sharing a namespace with another import of the same type, by type (`ksort`ed).
 fn get_same_namespaces_by_type(
     tokens: &Tokens,
 ) -> Vec<(NamespaceUseType, Vec<NamespaceUseAnalysis>)> {
@@ -132,9 +128,6 @@ fn is_cleared(token: &Token) -> bool {
 fn add_group_use_statements(statements: &[NamespaceUseAnalysis], tokens: &mut Tokens) {
     let mut current: Option<&NamespaceUseAnalysis> = None;
     let mut insert_index = statements[0].start_index;
-    // If group import was inserted in place of removed imports, it may have more tokens than before,
-    // and indices stored in imports of another type can be out-of-sync, and can point in the middle of group import.
-    // Let's move the pointer to the closest empty token (erased single import).
     while !is_cleared(&tokens[insert_index]) {
         insert_index += 1;
     }
@@ -178,7 +171,6 @@ fn insert_to_group_use_with_alias(
     declaration: &NamespaceUseAnalysis,
 ) -> usize {
     let full = &declaration.full_name[..];
-    // `(int) strripos(...) + 1`: a name without `\` starts at 1.
     let start = strrpos(full, b"\\").unwrap_or(0) + 1;
     let new_tokens = vec![
         Token::new(T_STRING, &full[start.min(full.len())..]),
@@ -240,7 +232,6 @@ fn are_declarations_different(
 mod tests {
     use super::*;
 
-    /// GroupImportFixerTest::provideInvalidConfigurationCases: the messages the real fixer's configure() throws.
     #[test]
     fn invalid_configuration() {
         let raw = std::fs::read(concat!(

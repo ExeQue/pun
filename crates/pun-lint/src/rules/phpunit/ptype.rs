@@ -1,6 +1,3 @@
-//! PHPStan's type checks as rector-phpunit's rules use them (`->isString()->yes()`), read from the types Mago gives
-//! an expression ([`facts`]).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_syntax::cst::{Expression, Literal};
@@ -9,12 +6,10 @@ use crate::Context;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
 
-/// `$type->isInteger()->yes()` on the native type of `expr` without `null`: every part is an integer.
 pub(crate) fn native_is_integer(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     native_parts(ctx, expr, TScalar::is_int)
 }
 
-/// `$type->isString()->yes()` on the native type of `expr` without `null`: every part is a string.
 pub(crate) fn native_is_string(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     native_parts(ctx, expr, TScalar::is_any_string)
 }

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Import\NoUnusedImportsFixer`.
 use crate::analyzers::analysis::{NamespaceUseAnalysis, NamespaceUseType};
 use pun_tokens::NamespaceAnalysis;
 use crate::analyzers::constant_invocation::is_constant_invocation;
@@ -30,8 +29,6 @@ impl Fixer for NoUnusedImportsFixer {
         tokens.is_token_kind_found(Kind::T_USE)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // Upstream returns early when there are none, but a candidate's T_USE is always an import (closure and
-        // trait `use` are retokenized), so there is at least one.
         let use_declarations = NamespaceUsesAnalyzer.get_declarations_from_tokens(tokens, true);
         for namespace in NamespacesAnalyzer.get_declarations(tokens) {
             let current: Vec<&NamespaceUseAnalysis> = use_declarations
@@ -41,8 +38,6 @@ impl Fixer for NoUnusedImportsFixer {
                         && u.end_index <= namespace.scope_end_index
                 })
                 .collect();
-            // `$ignoredIndices` (use statement start => end) as a dense jump table: looked up for every token of
-            // the namespace once per import.
             let mut indices = vec![0usize; tokens.count()];
             for u in &current {
                 indices[u.start_index] = u.end_index + 1;
@@ -93,7 +88,7 @@ fn is_import_used(
                 index += 1;
                 continue;
             }
-            let prev = &tokens[tokens.get_prev_meaningful_token(index).unwrap()];
+            let prev = &tokens[tokens.prev_meaningful(index)];
             if prev.is_kind(Kind::T_NAMESPACE) {
                 index = tokens
                     .get_next_token_of_kind(
@@ -112,7 +107,7 @@ fn is_import_used(
                 continue;
             }
             if prev.is_kind(Kind::T_CONST)
-                && tokens[tokens.get_next_meaningful_token(index).unwrap()].equals("=", true)
+                && tokens[tokens.next_meaningful(index)].equals("=", true)
             {
                 index += 1;
                 continue;
@@ -120,7 +115,7 @@ fn is_import_used(
             if in_attribute {
                 return true;
             }
-            let next_index = tokens.get_next_meaningful_token(index).unwrap();
+            let next_index = tokens.next_meaningful(index);
             if GotoLabelAnalyzer.belongs_to_go_to_label(tokens, next_index) {
                 index += 1;
                 continue;
@@ -218,12 +213,8 @@ fn remove_uses_in_same_namespace(
 }
 
 fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnalysis) {
-    let before = tokens
-        .get_prev_meaningful_token(u.chunk_start_index.unwrap())
-        .unwrap();
-    let after = tokens
-        .get_next_meaningful_token(u.chunk_end_index.unwrap())
-        .unwrap();
+    let before = tokens.prev_meaningful(u.chunk_start_index.unwrap());
+    let after = tokens.next_meaningful(u.chunk_end_index.unwrap());
     let has_before = scan_for_non_empty_tokens_until_new_line_found(tokens, after, -1);
     let has_after = scan_for_non_empty_tokens_until_new_line_found(tokens, after, 1);
     let safe = has_before.1 || has_after.1;
@@ -243,7 +234,7 @@ fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnal
         if tokens[index].get_id().is_none() || !tokens[index].is_whitespace(Some(b" ")) {
             continue;
         }
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         if tokens[next].equals(",", true)
             || tokens[next].equals(";", true)
             || tokens[next].is_kind(Kind::CT_GROUP_IMPORT_BRACE_CLOSE)
@@ -252,7 +243,7 @@ fn clean_up_after_import_chunk_removal(tokens: &mut Tokens, u: &NamespaceUseAnal
         } else {
             tokens.set(index, Token::new(Kind::T_WHITESPACE, b" ".to_vec()));
         }
-        let prev = tokens.get_prev_meaningful_token(index).unwrap();
+        let prev = tokens.prev_meaningful(index);
         if tokens[prev].is_kind(Kind::CT_GROUP_IMPORT_BRACE_OPEN) {
             tokens.clear_at(index);
         }
@@ -267,7 +258,6 @@ fn clean_up_surrounding_new_lines(tokens: &mut Tokens, u: &NamespaceUseAnalysis)
         let content = rtrim_chars(tokens[prev_index].get_content(), b" \t").to_vec();
         tokens.ensure_whitespace_at_index(prev_index, 0, &content);
     }
-    // upstream returns separately for no token after the statement and for only empty ones
     let next = if u.end_index + 1 < tokens.count() {
         tokens.get_non_empty_sibling(u.end_index, 1)
     } else {
@@ -300,19 +290,18 @@ fn remove_import_statement_if_empty(tokens: &mut Tokens, u: &NamespaceUseAnalysi
         true,
     );
     if let Some(e) = ending.filter(|&e| e > u.start_index) {
-        let opening = tokens.get_prev_meaningful_token(e).unwrap();
+        let opening = tokens.prev_meaningful(e);
         if tokens[opening].is_kind(Kind::CT_GROUP_IMPORT_BRACE_OPEN) {
             remove_use_declaration(tokens, u, true);
         }
     }
-    let before_semicolon = tokens.get_prev_meaningful_token(u.end_index).unwrap();
+    let before_semicolon = tokens.prev_meaningful(u.end_index);
     let t = &tokens[before_semicolon];
     if t.is_kind(Kind::T_USE) || t.get_content() == b"function" || t.get_content() == b"const" {
         remove_use_declaration(tokens, u, true);
     }
 }
 
-/// Upstream first returns for non-multi imports; the only caller handles multi-import chunks.
 fn remove_line_if_empty(tokens: &mut Tokens, u: &NamespaceUseAnalysis) {
     let before =
         scan_for_non_empty_tokens_until_new_line_found(tokens, u.chunk_start_index.unwrap(), -1);
@@ -345,8 +334,6 @@ fn scan_for_non_empty_tokens_until_new_line_found(
     (None, has_non_empty)
 }
 
-/// False only when the `/i` comment pattern cannot match: an all-ASCII comment without the name in any ASCII case.
-/// (Non-ASCII text goes to the regex, whose `/iu` folding also matches e.g. the Kelvin sign for `k`.)
 fn may_mention(comment: &[u8], name: &[u8]) -> bool {
     !comment.is_ascii()
         || name.is_empty()

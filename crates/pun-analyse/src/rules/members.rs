@@ -1,7 +1,3 @@
-//! `ClassReflection::getMethod()`: a method by name along the class's own methods, its traits (with `as` aliases),
-//! its parents and its interfaces. User code comes from Mago's codex; built-in classes from PHPStan's reflection
-//! (data/symbols.json), whose class entries list only the methods each class declares.
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
@@ -17,11 +13,9 @@ pub(super) enum Method<'a> {
     User {
         declaring: &'a ClassLikeMetadata,
         f: &'a FunctionLikeMetadata,
-        /// The reflected name and modifiers can differ from a trait's stored declaration.
         name: mago_word::Word,
         original_name: mago_word::Word,
         visibility: Visibility,
-        /// An `@method` tag's holder, which the declaring class (the class using its trait) does not name.
         storage: Option<mago_word::Word>,
     },
     Builtin {
@@ -38,7 +32,6 @@ impl Method<'_> {
         }
     }
 
-    /// The declaring class's name (an anonymous class's codex name), for visibility checks.
     pub(super) fn declaring_name(&self) -> String {
         match self {
             Method::User { declaring, .. } => {
@@ -137,7 +130,6 @@ impl Method<'_> {
     }
 }
 
-/// `$class->getMethod($name)`, `None` when `hasMethod()` is false (magic methods aside).
 pub(super) fn method<'a>(
     c: &Checker<'a, '_>,
     class: &'a ClassLikeMetadata,
@@ -164,10 +156,6 @@ pub(super) fn method<'a>(
         .find_map(|i| declared(c, i, &lower))
 }
 
-/// `ClassReflection::getMethod()`: the native method, else the `@method` tag. A tag wins over the native method when
-/// the class it counts at (a used trait's tag counts at the class using it) is no farther in
-/// `getClassHierarchyDistances()` than the native method's trait or declaring class
-/// (PhpClassReflectionExtension::getMethod()): Carbon's `Difference` tags `lessThan($date)`, `Comparison` declares it.
 pub(super) fn reflected_method<'a>(
     c: &Checker<'a, '_>,
     class: &'a ClassLikeMetadata,
@@ -209,8 +197,6 @@ pub(super) fn reflected_method<'a>(
     native.or(annotation)
 }
 
-/// `ClassReflection::getClassHierarchyDistances()`: the class, its traits (recursively, breadth first), each parent
-/// with its traits, then its interfaces, each one further than the one before.
 fn hierarchy_distances(
     c: &Checker,
     class: &ClassLikeMetadata,
@@ -258,8 +244,6 @@ fn hierarchy_distances(
     distances
 }
 
-/// AnnotationsMethodsClassReflectionExtension: a `@method` tag of the class, its traits, its parents or its
-/// interfaces, which `getMethod()` falls back to when the class has no such native method.
 pub(super) fn annotation_method<'a>(
     c: &Checker<'a, '_>,
     class: &'a ClassLikeMetadata,
@@ -285,7 +269,6 @@ pub(super) fn annotation_method<'a>(
             }
             return Some(found);
         }
-        // findClassReflectionWithMethod(): traits first, then the parent, then interfaces, depth first.
         let start = pending.len();
         let get = |n: &mago_word::Word| codebase.get_class_like(n.as_bytes());
         pending.extend(
@@ -307,7 +290,6 @@ pub(super) fn annotation_method<'a>(
     None
 }
 
-/// A method `k` itself declares or takes from a trait (private ones of parents count, as in PHP's reflection).
 fn declared<'a>(
     c: &Checker<'a, '_>,
     k: &'a ClassLikeMetadata,
@@ -328,21 +310,15 @@ fn declared<'a>(
                 f,
             });
         }
-        // after population `methods` (and get_method()) also cover inherited and trait methods: `k`'s own are the
-        // ones written inside its declaration
         if k.methods.contains(lower)
             && let Some(f) = codebase.get_method(k.name.as_bytes(), lower.as_bytes())
             && f.span.file_id == k.span.file_id
             && k.span.start.offset <= f.span.start.offset
             && f.span.end.offset <= k.span.end.offset
-            // Mago's implicit constructor of a `@phpstan-consistent-constructor` class (spanning the class) is not
-            // PHPStan's: the class inherits its parent's
             && !(f.span == k.span && lower.as_bytes() == b"__construct")
         {
             return Some(user(c, k, f, *lower));
         }
-        // a stub's method over one the class inherits from a trait (or a parent): PHPStan's stub PHPDoc applies to
-        // the class's method, which the patch materialised in the class's slot
         if k.methods.contains(lower)
             && let Some(f) = codebase.get_method(k.name.as_bytes(), lower.as_bytes())
             && f.flags
@@ -358,7 +334,6 @@ fn declared<'a>(
         {
             return Some(user(c, k, f, *lower));
         }
-        // `use T { foo as bar; }`
         if k.trait_alias_map.contains_key(lower)
             && let Some(f) = codebase.get_declaring_method(k.name.as_bytes(), lower.as_bytes())
         {
@@ -369,8 +344,6 @@ fn declared<'a>(
     if let Some(method) = own(k) {
         return Some(method);
     }
-    // Populated `used_traits` also contains parents' traits; only a direct use changes the method's owner.
-    // Keep sibling searches independent, as BetterReflection's per-trait AlreadyVisitedClasses copies do.
     let mut pending = vec![(
         k,
         k.direct_trait_names(),
@@ -379,7 +352,6 @@ fn declared<'a>(
     let mut active = HashSet::from([k.name]);
     let mut found = None;
     while let Some((parent, traits, declaring)) = pending.last_mut() {
-        // A trait's methods are declared by the class using it; `insteadof` keeps the selected declaration.
         if let Some(Method::User { f, .. }) = found.take()
             && declaring.is_none_or(|d| d.span == f.span)
         {

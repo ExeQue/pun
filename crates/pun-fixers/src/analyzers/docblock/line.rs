@@ -1,5 +1,3 @@
-//! `PhpCsFixer\DocBlock\Line`.
-
 use crate::analyzers::preg::Preg;
 use pun_tokens::php_compat::{isspace, trim};
 use std::cell::RefCell;
@@ -10,7 +8,6 @@ pub(crate) struct Line {
     content: Vec<u8>,
 }
 
-/// Lines are shared between a DocBlock and its annotations/tags, like upstream's objects.
 pub(crate) type LineRef = Rc<RefCell<Line>>;
 
 impl Line {
@@ -44,7 +41,6 @@ impl Line {
         if !self.content.is_ascii() {
             return Preg::r#match(r"/\*\s*@/", &self.content);
         }
-        // ASCII `\s`: space, TAB, LF, VT, FF, CR.
         self.content.iter().enumerate().any(|(i, &b)| {
             b == b'*' && self.content[i + 1..].iter().find(|&&c| !isspace(c)) == Some(&b'@')
         })

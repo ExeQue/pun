@@ -1223,3 +1223,10 @@ reflection picks between the two as PHPStan's PhpClassReflectionExtension does.
 union (`array-key`) and the result has only that union's members (`TKey|int`), the result stays benevolent.
 TypeCombinator::union() keeps a BenevolentUnionType that absorbs the other members, so the key of
 `Collection<TKey|int, ...>` prints `(int|string)`.
+
+## Duplicate declarations in two files
+
+`metadata/mod.rs` `should_replace_metadata()`: when two equally trusted declarations of one symbol come from different
+files, the one merged later wins. Upstream compared the spans, whose first field is a `FileId` hashed from the file's
+absolute path, so the winner depended on where the project was checked out. Pun merges scanned files in sorted path
+order, so the last file in that order wins. Two declarations in one file still compare by span.

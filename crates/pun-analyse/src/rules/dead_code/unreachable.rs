@@ -1,6 +1,3 @@
-//! UnreachableStatementRule: NodeScopeResolver's UnreachableStatementNode, the first statement after one that always
-//! terminates (getNextUnreachableStatements). What follows it is never processed, so nothing inside reports again.
-
 use std::collections::HashSet;
 
 use mago_span::{HasSpan, Span};
@@ -14,11 +11,9 @@ use super::finally;
 pub(in super::super) struct Statements {
     pub(in super::super) reported: HashSet<Span>,
     pub(in super::super) skipped: HashSet<Span>,
-    /// The original statement of each UnreachableStatementNode, built at every level.
     pub(in super::super) nodes: HashSet<Span>,
 }
 
-/// UnreachableStatementNode positions and statements the source walker never processes.
 pub(in super::super) fn find(c: &Checker, program: &Program) -> Statements {
     let mut finder = Finder {
         c,
@@ -37,13 +32,11 @@ impl Finder<'_, '_, '_> {
     fn list(&mut self, statements: &[Statement], early_binding: bool) {
         let mut terminated = false;
         for (i, s) in statements.iter().enumerate() {
-            // ponytail: a label always ends the dead part, as if a goto reached it
             if matches!(s, Statement::Label(_)) {
                 terminated = false;
                 continue;
             }
             if terminated {
-                // StatementsHandler::processStatementStep still analyses declarations after termination.
                 if !matches!(
                     s,
                     Statement::Function(_)

@@ -13,32 +13,27 @@ It replaces three things:
 | --- | --- |
 | Rector (+ rector-laravel, rector-phpunit, pest-plugin-rector) | every rule except the Symfony, Doctrine and downgrade sets, which are unsupported (decided) |
 | PHP-CS-Fixer / Pint | the 76 risky fixers (decided: risky rules are lint, format.md §4) |
-| Mago's linter | its rules, as normal lint rules under Pun names (`mago.*` and `--mago` today) |
+| Mago's linter | its rules, as normal lint rules under Pun names |
 
 The goal is the same changes as `rector process` for the rules a project uses. With the format rules on top,
 `pun check --fix` writes the same bytes as `rector process && pint`.
 
 ## 2. How it works today
 
-There are two separate paths, and neither is the final design.
+A file goes through two engines in one run (crates/pun-cli/src/run.rs):
 
-1. **The token path** (`pun lint`, `pun check`). `[lint.rules]` that a token fixer backs run through the formatter's
-   pipeline (format.md §2), with lint fixers instead of format fixers (crates/pun-cli/src/run.rs, `Stage::Lint`).
-   - Without `--fix`, the run reports the files the rules would change, the way `pun format --test` does.
-   - With `--fix`, only rules marked `fix = "apply"` are written. The rest are listed as remaining.
-   - `pun check --fix` runs format and lint fixers together in PHP-CS-Fixer's priority order, so it matches Pint.
-   - This covers the ported risky CS-Fixer fixers and the 17 Pun rules ported from Mago.
-2. **The Mago path** (`pun lint --mago`). This runs 5 of Mago's Laravel rules (`no-request-all`,
-   `prefer-casts-method` and three more) through mago-linter and prints `path:line:col: level [rule] message`.
-   - It only reports; these rules have no fix.
-   - It is behind the `mago-lint` cargo feature, because mago-linter is about 65k lines to compile
-     (crates/pun-cli/src/lint.rs).
+1. **The native rules** (crates/pun-lint) on Mago's syntax tree (§6): each rule returns problems with a span,
+   message and help, and fixes as text edits on byte ranges. `Linter::fix` applies them with
+   `pun_problem::apply_fixes` in rounds until no rule has a fix left (at most 100 rounds). `@pun-ignore` comments
+   (rules.md §4) and the per-file levels of `[[lint.overrides]]` (crates/pun-cli/src/lint_plan.rs) apply here.
+2. **The token path:** the lint rules that are PHP-CS-Fixer fixers (the risky fixers, the 40 rules moved from
+   format and the 17 `Pun/*` ports of Mago rules) run in the formatter's pipeline (format.md §2), in PHP-CS-Fixer's
+   priority order, so `pun check --fix` still writes Pint's bytes. These report a file at its first changed line,
+   not one problem per change (PLAN.md §3, Track B).
 
-**What is missing for real lint:**
-- No Rector rule runs at all.
-- There are no per-line diagnostics on the token path (a rule reports a file, not a line).
-- There is no line-level ignore comment yet (only `@pun-ignore-file`).
-- Tiers, add-ons and severities are accepted by the config but don't do anything.
+Mago's lint rules are native lint rules under Pun names; `pun lint --mago` and the `mago-lint` feature are gone.
+702 of the 719 lint rules run; the 17 left are the rules Rector 2.8.4 and rector-laravel 2.7.3 added (PLAN.md §0).
+Type-aware rules still read no expression types from analyse (lint 8).
 
 ## 3. The config
 
@@ -49,32 +44,29 @@ run. `--fix` applies every fix of every enabled rule; safe or unsafe is a label 
 PHP-CS-Fixer or Rector name in `[lint.rules]` is an error that names the Pun ID to use.
 
 *Today* pun-config reads this schema (config.md Build 3) and resolves sets, groups and rule lines into
-`Config.lint.rules`; pun-cli runs the ones a token fixer backs and `--fix` applies all but `fix = "off"`. Overrides and
-the `warn` / `error` difference are not applied at run time yet (lint 1-2).
+`Config.lint.rules`; pun-cli applies them per file with the overrides and `-A`/`-W`/`-D` (lint_plan.rs), only `error`
+fails the run, and `--fix` applies every fix but those of rules with `fix = "off"`.
 
 ## 4. Rules: what exists
 
-There are 703 lint rules in crates/pun-config/rules/mapping.toml; all 703 are for 1.0 (PLAN.md §2, 2026-10-26). Each has its group, fix safety, sets and upstream
+There are 719 lint rules in crates/pun-config/rules/mapping.toml; all 719 are for 1.0 (PLAN.md §2, 2026-10-26). Each has its group, fix safety, sets and upstream
 sources. Each maps to exactly one in-scope upstream rule (a Rector rule in one of the planned sets, a
 PHP-CS-Fixer fixer that is risky or moved from format, or a strict-rules class), or is Mago-derived (`origin = "mago"`); rules.md §7 has the reasons and
 the lists of what was removed and added on 2026-10-18.
 
 | | Count |
 | --- | ---: |
-| Lint rules | 703 |
-| Ported (run natively today) | 50 (risky CS-Fixer fixers plus Pun's ports of Mago rules) |
-| Its one upstream rule: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 264 / 80 / 79 / 59 |
+| Lint rules | 719 |
+| Ported (run natively today) | 702 |
+| Its one upstream rule: Rector core / rector-laravel / rector-phpunit / pest-plugin-rector | 264 / 94 / 81 / 59 |
 | Its one upstream rule: PHP-CS-Fixer fixer (76 risky, 39 code rules moved from format) / Pint / strict-rules class | 115 / 1 / 17 |
 | Mago-derived (no other source) / Pun-only | 87 / 1 |
 | Also carrying a Mago mapping | 43 |
-| Fix safety: safe / unsafe / mixed / report only | 310 / 307 / 7 / 79 |
-| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 78 / 37 / 238 / 87 / 6 / 5 / 0 / 117 / 138 |
-| Ecosystem groups: laravel (+ laravel-12) / phpunit / pest | 89 (+1) / 111 / 62 |
+| Fix safety: safe / unsafe / mixed / report only | 308 / 324 / 7 / 80 |
+| Sets: dead-code / modernize / code-quality / types / early-return / privatization / naming / coding-style / none | 78 / 37 / 246 / 91 / 5 / 5 / 0 / 112 / 148 |
+| Ecosystem groups: laravel (+ laravel-12) / phpunit / pest | 100 (+1) / 113 / 62 |
 
-Groups today are intent groups, as in Biome: `correctness`, `suspicious`, `style`, `complexity`, `performance`,
-`security`, plus `dead-code`, `types`, `modernize`, `laravel`, `testing` and `refactor` (configurable codemods such as
-Rector's `RenameMethod`). Decided: they become topic groups shared with format (format.md §8), and intent stays as
-data.
+The groups are the topic groups shared with format (format.md §8, config.md Build 1); intent stays as data.
 
 Unsupported on purpose: the rector-symfony (116), rector-doctrine (59) and rector-downgrade-php (92) rules. `pun migrate`
 names each one as unsupported and skips it (migrate.md §3).
@@ -88,7 +80,7 @@ names each one as unsupported and skips it (migrate.md §3).
 | `--config rector.php` | `--config pun.toml`; rector.php is read only by `pun migrate` |
 | `--only=SomeRector` | `--only <rule>` (to build) |
 | `--output-format console/json/github/gitlab/junit` | `--format`, same formats as `pun format` (format.md §9) |
-| `--no-diffs`, `--no-progress-bar` | the same flags `pun format` already has |
+| `--no-diffs`, `--no-progress-bar` | not needed: Pun has neither flag; `-q` prints nothing |
 | `--clear-cache` | not needed: Pun has no cache |
 | `rector list-rules` | `pun explain <rule>` (config.md Build 8) |
 
@@ -111,8 +103,9 @@ Type-aware rules (`add-return-type` and others) ask pun-analyse for types, as Re
 
 ## 7. Build
 
-Done: the rule catalogue (703 rules with names, groups, safety and upstream mapping), the 31 token-path rules, and
-`pun check --fix` equal to Pint. The steps, after config.md Build 1-6 (names, sets, levels and overrides in pun.toml):
+Done: the rule catalogue (719 rules with names, groups, safety and upstream mapping), steps 1, 2, 4, 5, 6, 9 and
+most of 7 (702 of the 719 rules), and `pun check --fix` equal to Pint. Left: step 3 (per-line problems for the token
+path), the rest of 7 and step 8 (PLAN.md §3 Track B). The steps, after config.md Build 1-6 (names, sets, levels and overrides in pun.toml):
 
 1. **The engine on Mago's syntax tree**, starting as a spike alongside PLAN.md Step 1 (Pushpak, 2026-10-17). A rule visits the tree and returns problems (span, message, help) and text
    edits on byte ranges. Fixes apply in a loop until no rule has more, with overlapping edits deferred to the next
@@ -128,7 +121,7 @@ Done: the rule catalogue (703 rules with names, groups, safety and upstream mapp
 7. **Rules in usage order,** each passing Rector's own fixtures: Pinkary's rector.php, then dead-code and modernize
    (init's default sets), then code-quality, types, early-return, privatization, naming, coding-style, then
    rector-laravel and the PHP 8.4+ and Laravel 12+ upgrade groups then Pest's Rector plugin, PHPUnit and the rules in no set.
-   *Done when* all 703 lint rules are native (the 1.0 bar).
+   *Done when* all 719 lint rules are native (the 1.0 bar).
 8. **Type-aware rules** query analyse's index (analyse.md Build 3) instead of PHPStan.
 9. **`pun migrate` for rector.php** (migrate.md Build 4).
 
@@ -234,7 +227,7 @@ Answered 2026-10-17 (Pushpak):
   - `--deny-warnings` makes warnings fail the run, and `--max-warnings <n>` fails above n warnings.
   - `-A` / `-W` / `-D <rule or group>` (allow / warn / deny) set a level for one run from the command line.
   - `[[lint.overrides]]` with `files = ["tests/**"]` changes levels for some paths, like oxlint's `overrides`.
-- **Every lint rule for 1.0 runs natively before 1.0** (all 703; Symfony, Doctrine and downgrade sets, upgrade sets below PHP
+- **Every lint rule for 1.0 runs natively before 1.0** (all 719; Symfony, Doctrine and downgrade sets, upgrade sets below PHP
   8.4 and Laravel 12, and rules Rector deprecated stay unsupported).
   Porting order follows usage (§7 item 7), but 1.0 waits for all of them.
 - **Mago's rules become normal lint rules** and `pun lint --mago` goes away (assistant's default, not objected to).
@@ -275,9 +268,9 @@ Lint spike (Build 1, 2026-10-17):
 
 Lint 7 batch 1 (dead-code, 2026-10-18; 13 of 14 rules ported, parity on Pinkary and laravel-framework):
 
-- **Assistant's call: php-parser's view is shared code.** `rules/php_parser.rs` holds statement lists as php-parser
+- **Assistant's call: php-parser's view is shared code.** `rules/support/statements.rs` holds statement lists as php-parser
   keeps them (its `Nop` for trailing comments, `;` dropped), and how Rector's printer removes, replaces or empties a
-  statement; `rules/used_variable.rs` holds `ExprUsedInNodeAnalyzer` and `isVariableUsedInNextStmt`. Rules call
+  statement; `rules/support/variable_usage.rs` holds `ExprUsedInNodeAnalyzer` and `isVariableUsedInNextStmt`. Rules call
   them instead of each one copying them.
 - **Assistant's call: where Rector writes broken code, Pun writes the valid fix.** Rector's printer turns
   `return (1);` in a constructor into `return ();` and stops on `public $a = (null);`; Pun writes `return;` and
@@ -303,11 +296,11 @@ Lint 7 batch 1 (dead-code, 2026-10-18; 13 of 14 rules ported, parity on Pinkary 
 Lint 7 batch 3 (statement rules, 2026-10-18; 11 of 14 rules ported):
 
 - **Assistant's call (lint 7 batch 3): statement lists as php-parser sees them.** The statement rules share
-  `rules/rector_stmts.rs`, which reads a Mago statement list the way php-parser builds it (open and close tags and
+  `rules/support/statement_edits.rs`, which reads a Mago statement list the way php-parser builds it (open and close tags and
   `;` dropped, a trailing comment as a `Nop`, a braced `if`/`else` body flattened, the newline after `?>` not inline
   HTML) and writes moved and new statements as Rector's format-preserving printer does (a removed statement takes the
   whitespace before it, new `if`s pretty-printed a statement a line, a kept node keeps its old whitespace). It copies
-  the token helpers of batch 1's `php_parser.rs` rather than editing it; the two merge once both land.
+  the token helpers of `support/statements.rs` rather than editing it; the two merge once both land.
 - **Assistant's call (lint 7 batch 3): reordered `case`s.** `no-duplicate-case-body` ports php-parser's `Differ`
   (Myers, with `coalesceReplacements`) and the `pArray` rules for the switch's cases, so the blank lines and comments
   between moved cases land where Rector's printer puts them. A moved trailing comment (php-parser's `Nop`) is
@@ -359,7 +352,7 @@ laravel-framework (identical files)):
 Lint 7 batch 5 (code-quality, dead-code and privatization, 2026-10-19; 11 of 13 rules ported by lint-a; `prefer-property-over-local-getter` and `CombinedAssignRector` went to lint-b; on the corpus Pinkary has nothing to change, and laravel-framework's 9 files Rector changes come out
 the same, plus one file Rector cannot parse):
 
-- **Assistant's call (lint 7 batch 5): shared code in `rules/rector_batch5.rs`.** php-parser's `pArray` removal
+- **Assistant's call (lint 7 batch 5): shared code in `rules/support/` (`rewrites.rs`, `statement_splice.rs` and others, split by subject).** php-parser's `pArray` removal
   (a removed item after a kept one takes the text from the kept item's end; leading removals stop at the first kept
   item's comments; an emptied list is printed anew), the 1:1 and many-to-one statement replace, PhpVersionFactory's
   version strings, `ParamAnalyzer`, the `ClassMethod` reprint without some parameters, and the docblock `@param`

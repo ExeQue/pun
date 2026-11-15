@@ -1,6 +1,3 @@
-//! Independent FunctionCallParametersCheck switches and RuleLevelHelper receiver eligibility.
-//! Complete PHPStan 2.3.1 public expectations: fixtures/argument-settings/capture.php.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -34,7 +31,6 @@ fn public_argument_settings_matrix() {
         let mut projects = vec![("from_config", Project::from_config(&root, &params))];
         if parts[1] == "default" && parts[2] == "default" {
             let mut project = Project::new(vec![root.join("matrix.php")], vec![]);
-            // Defaults must resolve when running, not when Project::new() was called at level 0.
             project.level = level;
             projects.push(("new_then_level", project));
         }
@@ -56,7 +52,7 @@ fn public_argument_settings_matrix() {
         want.sort();
         for (constructor, mut project) in projects {
             project.analysed = vec![root.join("matrix.php")];
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut got: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

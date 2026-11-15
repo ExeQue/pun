@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-same-size`, ported from pest-plugin-rector's `UseToHaveSameSizeRector`:
-//! `expect(count($a))->toBe(count($b))` (or `sizeof()`, or `toEqual()`) becomes `expect($a)->toHaveSameSize($b)`, and
-//! `->toHaveCount(count($b))` becomes `->toHaveSameSize($b)`, when the checked value is known to be an array or iterable.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -9,7 +5,7 @@ use super::{
     Is, Trinary, first_value, func_call, is_name, set_call_arguments, subject_holder, texts,
     type_is,
 };
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -31,18 +27,17 @@ impl Rule for PreferToHaveSameSize {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        fn counted<'a>(e: Option<&'a Expression<'a>>) -> Option<Option<&'a Expression<'a>>> {
+            e.and_then(func_call)
+                .filter(|f| named(f, "count") || named(f, "sizeof"))
+                .map(|f| first_value(&f.argument_list))
+        }
         let Node::MethodCall(call) = node else {
             return;
         };
         let Some(holder) = subject_holder(call) else {
             return;
         };
-        // `isCountFunction` and `getCountedValue`.
-        fn counted<'a>(e: Option<&'a Expression<'a>>) -> Option<Option<&'a Expression<'a>>> {
-            e.and_then(func_call)
-                .filter(|f| named(f, "count") || named(f, "sizeof"))
-                .map(|f| first_value(&f.argument_list))
-        }
         let countable = |e: &Expression<'_>| {
             type_is(ctx, e, Is::Array) == Trinary::Yes
                 || type_is(ctx, e, Is::Iterable) == Trinary::Yes

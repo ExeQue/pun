@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\HeaderCommentFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::{Preg, RawPreg};
 use anyhow::{Result, bail};
@@ -33,7 +32,6 @@ struct HeaderCommentFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `header` is required, so the fixer has no default configuration: `configure` sets every field.
     Box::new(HeaderCommentFixer {
         header: vec![],
         validator: None,
@@ -49,9 +47,6 @@ impl Fixer for HeaderCommentFixer {
         "header_comment"
     }
     fn priority(&self) -> i32 {
-        // When this fixer is configured with ["separate" => "bottom", "comment_type" => "PHPDoc"]
-        // and the target file has no namespace or declare() construct,
-        // the fixed header comment gets trimmed by NoBlankLinesAfterPhpdocFixer if we run before it.
         -30
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -79,7 +74,6 @@ impl Fixer for HeaderCommentFixer {
             Some(Value::String(s)) => s.as_bytes(),
             Some(v) => return Err(o.type_error("header", v, "\"string\"")),
         };
-        // The `header` normalizer.
         let header = if trim(header).is_empty() {
             vec![]
         } else if header.windows(2).any(|w| w == b"*/") {
@@ -90,7 +84,6 @@ impl Fixer for HeaderCommentFixer {
         let validator = match o.get("validator") {
             None | Some(Value::Null) => None,
             Some(Value::String(s)) => {
-                // The `validator` normalizer: `Preg::match($value, '')` must not throw.
                 if RawPreg::replace(s, "", "").is_err() {
                     bail!("[header_comment] Provided RegEx is not valid.");
                 }
@@ -130,7 +123,6 @@ impl Fixer for HeaderCommentFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         let mut header_as_comment = self.get_header_as_comment();
-        // `$locationIndices[$locationIndex] = $possibleLocation`, in insertion order.
         let mut location_indices: Vec<(usize, Location)> = vec![];
         for possible in [Location::AfterOpen, Location::AfterDeclareStrict] {
             let index = find_header_comment_insertion_index(tokens, possible);
@@ -141,7 +133,6 @@ impl Fixer for HeaderCommentFixer {
             }
         }
 
-        // pre-run to find existing comment, if dynamic content is allowed
         if self.validator.is_some() {
             for &(_, possible) in &location_indices {
                 let new_index = find_header_comment_insertion_index(tokens, possible);
@@ -202,7 +193,6 @@ impl HeaderCommentFixer {
         Preg::r#match(self.validator.as_ref().unwrap(), lines.join(&b'\n'))
     }
 
-    /// Enclose the given text in a comment block.
     fn get_header_as_comment(&self) -> Vec<u8> {
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();
         let mut comment = [if self.phpdoc { &b"/**"[..] } else { b"/*" }, line_ending].concat();
@@ -258,7 +248,6 @@ impl HeaderCommentFixer {
     fn fix_white_space_around_header(&self, tokens: &mut Tokens, header_index: usize) {
         let line_ending = self.whitespaces_config.get_line_ending().as_bytes();
 
-        // fix lines after header comment
         let expected = if matches!(self.separate, Separate::Both | Separate::Bottom)
             && tokens.get_next_meaningful_token(header_index).is_some()
         {
@@ -288,7 +277,6 @@ impl HeaderCommentFixer {
             }
         }
 
-        // fix lines before header comment
         let expected = if matches!(self.separate, Separate::Both | Separate::Top) {
             2
         } else {
@@ -301,7 +289,6 @@ impl HeaderCommentFixer {
         }
         let line_break_count = get_line_break_count(tokens, header_index, -1);
         if line_break_count < expected {
-            // because of the way the insert index was determined for header comment there cannot be an empty token here
             tokens.insert_at(
                 header_index,
                 vec![Token::new(
@@ -323,7 +310,6 @@ impl HeaderCommentFixer {
     }
 }
 
-/// Find the index where the header comment must be inserted.
 fn find_header_comment_insertion_index(tokens: &Tokens, location: Location) -> usize {
     let open_tag_index = usize::from(tokens[0].is_kind(T_INLINE_HTML));
     let fallback = open_tag_index + 1;
@@ -331,7 +317,7 @@ fn find_header_comment_insertion_index(tokens: &Tokens, location: Location) -> u
         return fallback;
     }
     let Some(index) = tokens.get_next_meaningful_token(open_tag_index) else {
-        return fallback; // file without meaningful tokens but an open tag, comment should always be placed directly after the open tag
+        return fallback;
     };
     if !tokens[index].is_kind(T_DECLARE) {
         return fallback;
@@ -343,7 +329,7 @@ fn find_header_comment_insertion_index(tokens: &Tokens, location: Location) -> u
         &|t| t.equals("=", true),
         &|t| t.is_kind(T_LNUMBER),
         &|t| t.equals(")", true),
-        &|t| t.equals(";", true), // don't insert after close tag
+        &|t| t.equals(";", true),
     ];
     for step in steps {
         match tokens.get_next_meaningful_token(next) {
@@ -367,8 +353,6 @@ fn get_line_break_count(tokens: &Tokens, index: usize, direction: isize) -> usiz
         if direction == -1 && token.is_kind(T_OPEN_TAG) {
             whitespace.extend_from_slice(token.get_content());
         }
-        // Upstream walks on over empty (cleared) tokens; none exist here: the runner clears them after every fixer and
-        // this fixer clears a header only after its last whitespace fix.
         break;
     }
     substr_count(&whitespace, b"\n")
@@ -397,9 +381,6 @@ fn remove_header(tokens: &mut Tokens, index: usize) {
 mod tests {
     use super::*;
 
-    /// HeaderCommentFixerTest::provideInvalidConfigurationCases: the messages (regexes) the real fixer's configure()
-    /// throws, except the cases configuring an option with an object, which JSON can't express, and `[]`, which Pint's
-    /// RuleSet refuses before configure() ("Configuration must be an array and may not be empty.").
     #[test]
     fn invalid_configuration() {
         let raw = std::fs::read(concat!(
@@ -422,7 +403,6 @@ mod tests {
                 continue;
             }
             let error = fixer().configure(config).unwrap_err().to_string();
-            // The test prepends `[header_comment] ` to the expected message (a regex fragment).
             let pattern = format!("#^\\[header_comment\\] {message}$#");
             assert!(
                 Preg::r#match(&pattern, &error),

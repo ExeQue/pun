@@ -1,8 +1,3 @@
-//! NodeScopeResolver's statement results, as far as the rules read them: whether a statement list always terminates
-//! (`StatementResult::isAlwaysTerminating()`), whether it yields, its break/continue exit points, and the end statements
-//! of a function body (`ExecutionEndNode`). Inference retains resolved call termination separately from value
-//! types: implicit `never` does not terminate, and a loop condition typed `true` always iterates.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::Tri;
@@ -11,7 +6,6 @@ use std::collections::HashMap;
 
 use mago_codex::ttype::union::TUnion;
 
-/// How many loops a `break`/`continue` leaves: `break;` (Bare), `break 3;` (Levels(3)), `break $n;` (Dynamic).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Num {
     Bare,
@@ -25,12 +19,10 @@ pub(crate) struct Jump {
     pub num: Num,
 }
 
-/// An `InternalStatementResult`.
 #[derive(Clone, Default, Debug)]
 pub(crate) struct Flow {
     pub always: bool,
     pub has_yield: bool,
-    /// The break and continue exit points (returns and throws only matter through `always`).
     pub jumps: Vec<Jump>,
 }
 
@@ -42,7 +34,6 @@ impl Flow {
         }
     }
 
-    /// `filterOutLoopExitPoints()`.
     fn without_loop_exits(mut self) -> Flow {
         if self
             .jumps
@@ -54,7 +45,6 @@ impl Flow {
         self
     }
 
-    /// `getExitPointsByType()`: the jumps of this loop.
     fn this_loop(&self, is_break: bool) -> usize {
         self.jumps
             .iter()
@@ -62,7 +52,6 @@ impl Flow {
             .count()
     }
 
-    /// `getExitPointsForOuterLoop()`.
     fn outer_loop(&self) -> Vec<Jump> {
         self.jumps
             .iter()
@@ -81,7 +70,6 @@ impl Flow {
     }
 }
 
-/// The statements php-parser has for a body: a block's statements, or the one statement.
 pub(crate) fn body<'s, 'arena>(s: &'s Statement<'arena>) -> Vec<&'s Statement<'arena>> {
     match s {
         Statement::Block(b) => list(b.statements.as_slice()),
@@ -89,7 +77,6 @@ pub(crate) fn body<'s, 'arena>(s: &'s Statement<'arena>) -> Vec<&'s Statement<'a
     }
 }
 
-/// The statements php-parser keeps: no opening or closing tags, no empty statements.
 pub(crate) fn list<'s, 'arena>(s: &'s [Statement<'arena>]) -> Vec<&'s Statement<'arena>> {
     s.iter()
         .filter(|s| {
@@ -101,24 +88,18 @@ pub(crate) fn list<'s, 'arena>(s: &'s [Statement<'arena>]) -> Vec<&'s Statement<
         .collect()
 }
 
-/// The start of the node an end statement reports at.
 pub(crate) struct End {
     pub at: Span,
     pub flow: Flow,
 }
 
-/// Statement results over Mago's types of the analysed file (none when only the syntax is known).
 pub(crate) struct Results<'t> {
     pub types: &'t HashMap<Span, TUnion>,
     pub call_terminations: Option<&'t HashMap<(u32, u32), bool>>,
-    /// the analysed file's contents, for the comments php-parser turns into a trailing `Nop` statement
     pub contents: &'t [u8],
-    /// the codebase, for an enum's cases (none when only the syntax is known)
     pub codebase: Option<&'t mago_codex::metadata::CodebaseMetadata>,
 }
 
-/// The `Nop` php-parser appends to a statement list when a comment comes right before its closing brace, on the
-/// comment's last line. `close` is the brace.
 pub(crate) fn nop(contents: &[u8], close: Span) -> Option<Span> {
     let mut p = close.start.offset as usize;
     while p > 0 && contents[p - 1].is_ascii_whitespace() {
@@ -131,8 +112,6 @@ pub(crate) fn nop(contents: &[u8], close: Span) -> Option<Span> {
     Some(Span::new(close.file_id, pos, pos))
 }
 
-/// The line ending at `p` ends with a `//` or `#` comment.
-// ponytail: the line is scanned for quotes only; a line inside a heredoc or multi-line string is not told apart
 fn line_comment(contents: &[u8], p: usize) -> bool {
     let start = contents[..p]
         .iter()
@@ -173,8 +152,6 @@ impl<'t> Results<'t> {
             .unwrap_or(false)
     }
 
-    /// `processStmtNodes()` of a function-like body: its result and, when the last statement is reached, the
-    /// ExecutionEndNodes (`parent` is the function-like, reported for an empty body).
     pub(crate) fn execution_ends(
         &self,
         stmts: &[&Statement<'_>],
@@ -242,7 +219,6 @@ impl<'t> Results<'t> {
         (flow, ends)
     }
 
-    /// `processStmtNodes()` of a statement list.
     pub(crate) fn statements(&self, stmts: &[&Statement<'_>]) -> Flow {
         let mut flow = Flow::default();
         for s in stmts {
@@ -267,7 +243,6 @@ impl<'t> Results<'t> {
         flow
     }
 
-    /// `processStmtNode()`: the statement's result and its end statements (an `if`'s branches).
     fn statement(&self, s: &Statement<'_>) -> (Flow, Vec<End>) {
         let flow = match s {
             Statement::Return(r) => Flow {
@@ -305,8 +280,6 @@ impl<'t> Results<'t> {
         (flow, Vec::new())
     }
 
-    /// The cases cover every value of the subject (its type narrowed by them is `never`): enum cases and literal
-    /// scalars are removed one by one.
     fn exhaustive<'arena>(&self, s: &Switch<'arena>, cases: &[SwitchCase<'arena>]) -> bool {
         let Some(codebase) = self.codebase else {
             return false;
@@ -334,7 +307,6 @@ impl<'t> Results<'t> {
         left.is_empty()
     }
 
-    /// `toBoolean()->isTrue()` of a condition, by Mago's type of it.
     pub(crate) fn condition(&self, e: &Expression<'_>) -> Tri {
         if let Some(t) = constant_truth(e) {
             return Tri::from(t);
@@ -347,7 +319,6 @@ impl<'t> Results<'t> {
     }
 
     fn r#if<'arena>(&self, i: &If<'arena>) -> (Flow, Vec<End>) {
-        // (condition, keyword, statements)
         let close = |s: &Statement| match s {
             Statement::Block(b) => nop(self.contents, b.right_brace),
             _ => None,
@@ -404,13 +375,12 @@ impl<'t> Results<'t> {
             jumps: Vec::new(),
         };
         let mut ends = Vec::new();
-        let mut decided = false; // `$ifAlwaysTrue || $lastElseIfConditionIsTrue`
+        let mut decided = false;
         let mut has_else = false;
         for (n, (cond, keyword, stmts, nop)) in branches.into_iter().enumerate() {
             let truth = cond.map(|c| self.condition(c));
             let branch = self.statements(&stmts);
             let considered = match truth {
-                // the `if` branch: unless its condition is always false
                 Some(t) if n == 0 => !t.no(),
                 Some(t) => !decided && !t.no(),
                 None => {
@@ -536,7 +506,7 @@ impl<'t> Results<'t> {
         let mut has_default = false;
         let mut has_yield = yields(s.expression);
         let mut jumps = Vec::new();
-        let mut last: Option<(bool, bool)> = None; // (branch always, final always) of a falling-through branch
+        let mut last: Option<(bool, bool)> = None;
         for case in cases {
             let stmts = match case {
                 SwitchCase::Expression(c) => {
@@ -599,7 +569,6 @@ impl<'t> Results<'t> {
         }
     }
 
-    /// An expression statement also terminates when its value is explicit never.
     fn early_terminating(&self, e: &Expression<'_>) -> bool {
         matches!(
             e,
@@ -607,7 +576,6 @@ impl<'t> Results<'t> {
         ) || self.type_of(e).is_some_and(|t| t.is_explicit_never())
     }
 
-    /// `ExpressionResult::isAlwaysTerminating()`: the expression always ends the execution where it is evaluated.
     pub(crate) fn terminates(&self, e: &Expression<'_>) -> bool {
         match e {
             Expression::Throw(_)
@@ -641,7 +609,6 @@ impl<'t> Results<'t> {
         }
     }
 
-    /// (a nested function or class is an expression that [`Self::terminates`] stops at, so no statement is reached)
     fn children_terminate(&self, n: Node<'_, '_>) -> bool {
         n.children().into_iter().any(|c| match c {
             Node::Expression(e) => self.terminates(e),
@@ -676,7 +643,6 @@ pub(crate) fn is_this(e: &Expression) -> bool {
     matches!(e, Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
 }
 
-/// A literal condition's truthiness (`while (true)`, `for (;;1)`).
 fn constant_truth(e: &Expression) -> Option<bool> {
     match unparen(e) {
         Expression::Literal(Literal::True(_)) => Some(true),
@@ -691,7 +657,6 @@ fn constant_truth(e: &Expression) -> Option<bool> {
     }
 }
 
-/// The single values of a type: enum cases, literal scalars (`None` for any other type).
 fn values(
     codebase: &mago_codex::metadata::CodebaseMetadata,
     a: &mago_codex::ttype::atomic::TAtomic,
@@ -750,7 +715,6 @@ fn non_empty_array(a: &mago_codex::ttype::atomic::TAtomic) -> bool {
     }
 }
 
-/// The expression contains a `yield` (outside nested functions and classes).
 pub(crate) fn yields(e: &Expression) -> bool {
     match e {
         Expression::Yield(_) => true,
@@ -761,7 +725,6 @@ pub(crate) fn yields(e: &Expression) -> bool {
     }
 }
 
-/// (a nested function or class is an expression that [`yields`] stops at)
 fn node_yields(n: Node) -> bool {
     n.children().into_iter().any(|c| match c {
         Node::Expression(e) => yields(e),

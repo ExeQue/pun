@@ -1,5 +1,3 @@
-//! Canonical trait initializers, from fresh actual PHPStan 2.3.1 public analyses.
-
 use std::path::Path;
 
 use pun_analyse::{analyse, reports};
@@ -101,7 +99,7 @@ fn check_declaration_selection(name: &str, source: &str) {
     .unwrap();
     assert_eq!(oracle["errors"], serde_json::json!([]));
     let mut project = Project::new(vec![root.join(source)], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

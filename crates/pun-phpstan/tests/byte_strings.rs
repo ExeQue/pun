@@ -1,5 +1,3 @@
-//! PHPStan ConstantStringType stores arbitrary bytes, independently of UTF-8 diagnostic presentation.
-
 use pun_phpstan::types::{Accessory, Level, Type, accepts, is_super_type_of, union};
 use serde_json::{Value, json};
 
@@ -161,13 +159,11 @@ fn byte_identity_extraction_accessories_and_unions_match_phpstan() {
             "{quoted}"
         );
     }
-    // ThisType keeps textual class identity when ConstantStringType switches to byte identity.
     for row in oracle["identity_neighbors"].as_array().unwrap() {
         let a = Type::This(row[0].as_str().unwrap().to_owned());
         let b = Type::This(row[1].as_str().unwrap().to_owned());
         assert_eq!(json!(a == b), row[2]);
     }
-    // A non-string alternative must not become a constant method name during byte conversion.
     for row in oracle["callable_neighbors"].as_array().unwrap() {
         let callable =
             pun_phpstan::resolve::resolve_str(row[0].as_str().unwrap(), None).is_callable();

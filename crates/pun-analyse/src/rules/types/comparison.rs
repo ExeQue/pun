@@ -1,6 +1,3 @@
-//! InvalidComparisonOperationRule (`equal.invalid`, `smaller.invalid`, ...): a number compared with an object or an
-//! array (PHP throws or the result is meaningless).
-
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Accessory, Level, Type, is_super_type_of};
 
@@ -16,7 +13,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "spaceship.invalid",
 ];
 
-/// The comparison's identifier prefix and sigil.
 pub(super) fn operator(op: &BinaryOperator) -> Option<(&'static str, &'static str)> {
     Some(match op {
         BinaryOperator::Equal(_) => ("equal", "=="),
@@ -38,7 +34,6 @@ fn instance(t: &Type, class: &str) -> bool {
     is_super_type_of(&Type::Object(class.into(), vec![], false), t).yes()
 }
 
-/// `isNumberType()`: the expression is (possibly) an int or float, as the level checks it.
 fn is_number(c: &Checker, e: &Expression, full: &Type) -> bool {
     let Some(t) = c
         .find_type_to_check(e, &|t| is_super_type_of(&number(), t).yes())
@@ -49,7 +44,6 @@ fn is_number(c: &Checker, e: &Expression, full: &Type) -> bool {
     if t != *full {
         return false;
     }
-    // `$acceptedType->equals($type->toNumber())`: SimpleXMLElement, GMP and numeric-string cast to `float|int`
     let numeric_string = matches!(&t, Type::Intersection(ts) if ts.contains(&Type::Accessory(Accessory::NumericString)));
     !is_super_type_of(&number(), &t).no()
         || numeric_string
@@ -89,8 +83,6 @@ pub(in super::super) fn binary(c: &mut Checker, b: &Binary) {
         if l == r {
             return false;
         }
-        // GmpOperatorTypeSpecifyingExtension, BcMathNumberOperatorTypeSpecifyingExtension (an error with a float,
-        // which checkExtensionsForComparisonOperators off leaves to the checks below)
         if instance(&left, "GMP") || instance(&right, "GMP") {
             return false;
         }

@@ -1,6 +1,3 @@
-//! Complete public diagnostics from PHPStan 2.3.1 with independently registered method-rule services.
-//! Reproduce with fixtures/named-producer-gates/capture.php and the pinned PHPStan PHAR.
-
 use std::path::Path;
 
 use pun_analyse::{MethodRules, Project, run};
@@ -23,7 +20,7 @@ fn check(prefix: &str, mode: &str, filter_join_identifier: bool) {
     };
     let mut project = Project::new(files, Vec::new());
     project.level = 5;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.options.set(
         pun_analyse::ProjectOptions::CHECK_NON_STRINGABLE_DYNAMIC_ACCESS,
         prefix == "boundaries-",

@@ -1,19 +1,14 @@
-//! The pool: every package version that could be part of the solution, numbered from 1. It is built from the
-//! request by loading, repository by repository, the versions of each required name that match what is asked for,
-//! then the names those versions require, until nothing new is asked for.
-
 use super::filters::{Advisory, Filters, ListEntry};
 use super::package::{Origin, Package, alias_package, load};
 use crate::constraint::{Bound, Constraint, Op};
+use crate::error::{Result, bail};
 use crate::version::{is_platform, name_matches};
-use anyhow::Result;
 use indexmap::IndexMap;
 use serde_json::{Map, Value};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-/// The stabilities a project accepts: everything up to `minimum`, and per package its stability flag.
 #[derive(Debug, Clone, Default)]
 pub struct Stabilities {
     pub minimum: u8,
@@ -21,7 +16,6 @@ pub struct Stabilities {
 }
 
 impl Stabilities {
-    /// `StabilityFilter::isPackageAcceptable`.
     pub fn accepts(&self, names: &[&str], stability: u8) -> bool {
         names.iter().any(|name| match self.flags.get(*name) {
             Some(flag) => stability <= *flag,
@@ -30,19 +24,14 @@ impl Stabilities {
     }
 }
 
-/// Versions already loaded from a repository, by name.
 pub type Loaded = HashMap<String, HashSet<String>>;
 
-/// What a repository returns for a batch of names: the names it has, and the matching packages in its order.
 pub struct Found {
     pub names: Vec<String>,
     pub packages: Vec<usize>,
 }
 
-/// A source of package versions.
 pub trait Repository {
-    /// The versions of each name in `batch` that match its constraint and the stabilities, except those in
-    /// `loaded`, added to `arena`. `index` is the repository's place in the pool builder's list.
     fn load(
         &mut self,
         index: usize,
@@ -52,15 +41,11 @@ pub trait Repository {
         loaded: &Loaded,
     ) -> Result<Found>;
 
-    /// The security advisories the repository publishes for these names.
     fn advisories(&mut self, names: &[String]) -> Result<Vec<Advisory>>;
 
-    /// The filter-list entries the repository publishes for these names.
     fn list_entries(&mut self, names: &[String]) -> Result<Vec<ListEntry>>;
 }
 
-/// A repository listing its packages: the root package, a `package` repository, a lock. Packages given as JSON are
-/// loaded into the arena on first use.
 #[derive(Default)]
 pub struct ArrayRepository {
     pub packages: Vec<usize>,
@@ -77,9 +62,7 @@ impl ArrayRepository {
         }
     }
 
-    /// A `package` repository from its config: `package` (one or a list), `security-advisories` and `filter`.
     pub fn from_config(config: &Map<String, Value>) -> Result<ArrayRepository> {
-        // Composer's schema requires `package`, one package or a list of them.
         let pending = match config.get("package") {
             Some(Value::Object(p)) => vec![p.clone()],
             other => (other.and_then(Value::as_array).into_iter().flatten())
@@ -186,8 +169,6 @@ impl Repository for ArrayRepository {
     }
 }
 
-/// A repository with `only`, `exclude` or `canonical` set (`FilterRepository`): it is asked only for the names it
-/// allows, and a non-canonical one lets later repositories offer the names it has too.
 pub struct Filtered<'a> {
     inner: Box<dyn Repository + 'a>,
     only: Option<Vec<String>>,
@@ -195,7 +176,6 @@ pub struct Filtered<'a> {
     canonical: bool,
 }
 
-/// Wraps `inner` in its repository config's filters, when it has any.
 pub fn filtered<'a>(
     inner: Box<dyn Repository + 'a>,
     config: &Map<String, Value>,
@@ -209,17 +189,17 @@ pub fn filtered<'a>(
                     .map(str::to_ascii_lowercase)
                     .collect(),
             )),
-            Some(_) => anyhow::bail!("\"{key}\" key for repository should be an array"),
+            Some(_) => bail!("\"{key}\" key for repository should be an array"),
         }
     };
     let (only, exclude) = (names("only")?, names("exclude")?);
     if only.is_some() && exclude.is_some() {
-        anyhow::bail!("Only one of \"only\" and \"exclude\" can be specified for a repository");
+        bail!("Only one of \"only\" and \"exclude\" can be specified for a repository");
     }
     let canonical = match config.get("canonical") {
         None => true,
         Some(Value::Bool(b)) => *b,
-        Some(_) => anyhow::bail!("\"canonical\" key for repository should be a boolean"),
+        Some(_) => bail!("\"canonical\" key for repository should be a boolean"),
     };
     if only.is_none() && exclude.is_none() && canonical {
         return Ok(inner);
@@ -270,29 +250,20 @@ impl Repository for Filtered<'_> {
     }
 }
 
-/// How far a partial update reaches beyond the packages it names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Transitive {
     #[default]
     OnlyListed,
-    /// `--with-dependencies`: their dependencies too, except root requirements.
     Dependencies,
-    /// `--with-all-dependencies`.
     All,
 }
 
-/// What to solve for.
 #[derive(Debug, Default)]
 pub struct Request {
-    /// Root requirements, lowercase names, in order.
     pub requires: IndexMap<String, Constraint>,
-    /// Packages that must be installed as they are: the root and the platform.
     pub fixed: Vec<usize>,
-    /// Packages of a partial update that stay at their locked version.
     pub locked: Vec<usize>,
-    /// The lock's packages, when there is one.
     pub lock: Option<Vec<usize>>,
-    /// The names a partial update may change (patterns with `*`).
     pub allow_list: Vec<String>,
     pub transitive: Transitive,
 }
@@ -317,17 +288,16 @@ impl Request {
     }
 }
 
-/// The packages the solver chooses from.
+/// The package ids that provide a name, by the name and constraint asked for.
+type Providers = HashMap<(String, Option<Constraint>), Rc<[i32]>>;
+
 pub struct Pool {
     pub arena: Vec<Package>,
-    /// Arena index of each package id, from id 1.
     pub ids: Vec<usize>,
     id_of: HashMap<usize, i32>,
     by_name: HashMap<String, Vec<i32>>,
-    cache: RefCell<HashMap<(String, Option<Constraint>), Rc<[i32]>>>,
-    /// Fixed or locked packages whose stability the project does not accept.
+    cache: RefCell<Providers>,
     pub unacceptable: Vec<usize>,
-    /// Packages the policy kept out, with the reason.
     pub removed: Vec<(usize, String)>,
 }
 
@@ -335,8 +305,7 @@ impl Pool {
     pub fn new(arena: Vec<Package>, packages: Vec<usize>, unacceptable: Vec<usize>) -> Pool {
         let mut by_name: HashMap<String, Vec<i32>> = HashMap::new();
         let mut id_of = HashMap::new();
-        for (i, &p) in packages.iter().enumerate() {
-            let id = i as i32 + 1;
+        for (id, &p) in (1..).zip(&packages) {
             id_of.insert(p, id);
             for name in arena[p].names(true) {
                 by_name.entry(name.to_string()).or_default().push(id);
@@ -353,7 +322,7 @@ impl Pool {
         }
     }
 
-    /// The same arena with only `packages` in the pool, renumbered from 1.
+    #[must_use]
     pub fn with_packages(self, packages: Vec<usize>) -> Pool {
         let removed = self.removed;
         Pool {
@@ -366,22 +335,18 @@ impl Pool {
         self.ids.len()
     }
 
-    /// The package with this id or literal.
     pub fn package(&self, literal: i32) -> &Package {
         &self.arena[self.ids[literal.unsigned_abs() as usize - 1]]
     }
 
-    /// The arena index of the package with this id or literal.
     pub fn index(&self, literal: i32) -> usize {
         self.ids[literal.unsigned_abs() as usize - 1]
     }
 
-    /// The id of an arena package, if it is in the pool.
     pub fn id(&self, index: usize) -> Option<i32> {
         self.id_of.get(&index).copied()
     }
 
-    /// The ids of the packages named, providing or replacing `name` in a way that matches `constraint`.
     pub fn what_provides(&self, name: &str, constraint: Option<&Constraint>) -> Rc<[i32]> {
         let key = (name.to_string(), constraint.cloned());
         if let Some(hit) = self.cache.borrow().get(&key) {
@@ -395,7 +360,6 @@ impl Pool {
         ids
     }
 
-    /// Whether `candidate` is, provides or replaces `name` at a version `constraint` admits.
     pub fn provides(
         &self,
         candidate: &Package,
@@ -410,9 +374,6 @@ impl Pool {
     }
 }
 
-/// `Intervals::isSubsetOf` for the shapes that decide pool loading: equal constraints, anything within `*`, a
-/// member of a disjunction, and two single ranges. Anything else counts as not a subset, which loads more but never
-/// fewer versions.
 fn subset(a: &Constraint, b: &Constraint) -> bool {
     if let Constraint::Multi(items, false) = a {
         return within_member(a, None, b) || items.iter().all(|i| subset(i, b));
@@ -420,8 +381,6 @@ fn subset(a: &Constraint, b: &Constraint) -> bool {
     within_member(a, simple(a).then(|| a.bounds()), b)
 }
 
-/// Whether `a` (with its bounds when it is a single range) equals `b`, lies within one of `b`'s alternatives, or is
-/// a single range within `b`'s.
 fn within_member(a: &Constraint, bounds: Option<(Bound<'_>, Bound<'_>)>, b: &Constraint) -> bool {
     if a == b || *b == Constraint::Any {
         return true;
@@ -438,7 +397,6 @@ fn within_member(a: &Constraint, bounds: Option<(Bound<'_>, Bound<'_>)>, b: &Con
     }
 }
 
-/// A single range: comparisons without `!=` or a branch.
 fn simple(c: &Constraint) -> bool {
     let single = |c: &Constraint| matches!(c, Constraint::Single(op, v) if *op != Op::Ne && !v.starts_with("dev-"));
     match c {
@@ -447,8 +405,6 @@ fn simple(c: &Constraint) -> bool {
     }
 }
 
-/// Adds `c` to `existing` as Composer's union of the two would. `c` is never already one of `existing`'s
-/// alternatives: it would be a subset then, and nothing is merged.
 fn union(existing: &Constraint, c: Constraint) -> Constraint {
     let mut items = match existing {
         Constraint::Multi(items, false) => items.clone(),
@@ -458,18 +414,14 @@ fn union(existing: &Constraint, c: Constraint) -> Constraint {
     Constraint::Multi(items, false)
 }
 
-/// The root's `x as y` requirements: name, then aliased version, then (alias pretty, alias normalized).
 pub type RootAliases = HashMap<String, HashMap<String, (String, String)>>;
 
 pub struct PoolBuilder<'a> {
     pub stabilities: &'a Stabilities,
     pub root_aliases: &'a RootAliases,
-    /// Root requirements pinned to a commit (`dev-main#abc123`).
     pub root_references: &'a HashMap<String, String>,
-    /// Package types never installed (`php-ext`, `php-ext-zend`).
     pub ignored_types: &'a [&'a str],
     pub filters: &'a Filters,
-    /// The time cooldown periods count back from, in seconds since the epoch.
     pub now: i64,
     alias_map: HashMap<usize, Vec<(usize, usize)>>,
     to_load: IndexMap<String, Constraint>,
@@ -480,7 +432,6 @@ pub struct PoolBuilder<'a> {
     skipped: HashMap<String, Vec<usize>>,
     path_unlocked: HashSet<String>,
     max_extended: HashSet<String>,
-    /// The constraints `mark` found already loaded, by name.
     covered: HashMap<String, HashSet<Constraint>>,
     counter: usize,
 }
@@ -515,9 +466,6 @@ impl<'a> PoolBuilder<'a> {
         }
     }
 
-    /// Builds the pool. `repositories` holds the root package's repository, then the project's repositories in
-    /// priority order, numbered as the packages' [`Origin::Repository`]; the platform and lock packages are already
-    /// in `arena` and in the request.
     pub fn build(
         mut self,
         mut arena: Vec<Package>,
@@ -541,7 +489,7 @@ impl<'a> PoolBuilder<'a> {
                 if data.get("dist").and_then(|d| d.get("type")) == Some(&Value::from("path"))
                     && (data.get("transport-options"))
                         .and_then(|o| o.get("symlink"))
-                        .and_then(|s| s.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         != Some(false)
                 {
                     self.path_unlocked.insert(package.name.clone());
@@ -585,7 +533,6 @@ impl<'a> PoolBuilder<'a> {
         Ok(pool)
     }
 
-    /// Drops what the policy filters keep out of the pool; returns the kept packages and the removed ones with why.
     #[expect(clippy::type_complexity, reason = "the kept and the removed packages")]
     fn filter(
         &self,
@@ -612,7 +559,6 @@ impl<'a> PoolBuilder<'a> {
         let locked: HashSet<(&str, &str)> = (request.lock.iter().flatten())
             .map(|&p| (arena[p].name.as_str(), arena[p].version.as_str()))
             .collect();
-        // Each package is checked only against the advisories for its names, in the repositories' order.
         let mut by_name: HashMap<&str, Vec<usize>> = HashMap::new();
         for (i, a) in advisories.iter().enumerate() {
             by_name.entry(&a.package).or_default().push(i);
@@ -620,7 +566,6 @@ impl<'a> PoolBuilder<'a> {
         let (mut kept, mut removed) = (vec![], vec![]);
         for p in packages {
             let package = &arena[p];
-            // A locked package is checked only for being abandoned and against the filter lists that block installs.
             let is_locked =
                 request.is_locked(p) || package.alias_of.is_some_and(|of| request.is_locked(of));
             let base = &arena[package.alias_of.unwrap_or(p)];
@@ -643,8 +588,6 @@ impl<'a> PoolBuilder<'a> {
     }
 
     fn mark(&mut self, request: &Request, name: &str, constraint: &Constraint) {
-        // Most versions of a package require the same constraints, and a requirement that needs nothing loaded
-        // keeps needing nothing until `unlock` forgets the name, so each is checked once.
         if (self.covered.get(name)).is_some_and(|c| c.contains(constraint)) {
             return;
         }
@@ -807,14 +750,12 @@ impl<'a> PoolBuilder<'a> {
         }
     }
 
-    /// The root requirements among the skipped packages providing `name` (`getSkippedRootRequires`).
     fn skipped_root_requires(
         &self,
         arena: &[Package],
         request: &Request,
         name: &str,
     ) -> Vec<String> {
-        // Called only for a skipped name.
         let skipped = &self.skipped[name];
         if request.requires.contains_key(name) {
             return skipped.iter().map(|&p| arena[p].name.clone()).collect();
@@ -926,8 +867,6 @@ impl<'a> PoolBuilder<'a> {
     }
 
     fn remove_loaded(&mut self, arena: &[Package], p: usize, index: usize) {
-        // Only a repository's packages are in `loaded_per_repo`; the root is fixed and never removed, and the
-        // platform and the lock are never loaded from.
         let repo = match arena[p].origin {
             Origin::Repository(i) => i,
             Origin::Root | Origin::Platform | Origin::Locked => usize::MAX,
@@ -952,8 +891,6 @@ impl<'a> PoolBuilder<'a> {
     }
 }
 
-/// `setSourceDistReferences`: the source reference, and the dist reference (and URL, for the hosts whose archive
-/// URLs carry it) when the dist has one.
 fn set_references(p: &mut Package, reference: &str) {
     use serde_json::Value;
     static HOSTS: std::sync::LazyLock<pcre2::bytes::Regex> = std::sync::LazyLock::new(|| {

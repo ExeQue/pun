@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\FunctionDeclarationFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -39,7 +38,6 @@ impl Fixer for FunctionDeclarationFixer {
         )?;
         self.closure_function_spacing_none =
             c.string("closure_function_spacing", "one", SUPPORTED_SPACINGS)? == "none";
-        // Future::getV4OrV3('none', 'one'): v3 default.
         self.closure_fn_spacing_none =
             c.string("closure_fn_spacing", "one", SUPPORTED_SPACINGS)? == "none";
         self.trailing_comma_single_line = c.bool("trailing_comma_single_line", false)?;
@@ -54,8 +52,6 @@ impl Fixer for FunctionDeclarationFixer {
                 continue;
             }
             let token = tokens[index].clone();
-            // Upstream also stops at `;`/`?>` and skips; in valid code a T_FUNCTION/T_FN always reaches its `(` first
-            // (`use function` is CT_FUNCTION_IMPORT).
             let start_parenthesis_index = tokens
                 .get_next_token_of_kind(index, &["(".into()], true)
                 .unwrap();
@@ -64,9 +60,7 @@ impl Fixer for FunctionDeclarationFixer {
             if !self.trailing_comma_single_line
                 && !tokens.is_partial_code_multiline(index, end_parenthesis_index)
             {
-                let comma_index = tokens
-                    .get_prev_meaningful_token(end_parenthesis_index)
-                    .unwrap();
+                let comma_index = tokens.prev_meaningful(end_parenthesis_index);
                 if tokens[comma_index].equals(",", true) {
                     tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                 }
@@ -89,7 +83,6 @@ impl Fixer for FunctionDeclarationFixer {
                 .get_next_non_whitespace(end_parenthesis_index, None)
                 .unwrap();
             if tokens[after_parenthesis_index].is_kind(CT_USE_LAMBDA) {
-                // fix whitespace after CT:T_USE_LAMBDA (we might add a token, so do this before determining start and end parenthesis)
                 tokens.ensure_whitespace_at_index(after_parenthesis_index + 1, 0, b" ");
                 let use_start_parenthesis_index = tokens
                     .get_next_token_of_kind(after_parenthesis_index, &["(".into()], true)
@@ -99,9 +92,7 @@ impl Fixer for FunctionDeclarationFixer {
                 if !self.trailing_comma_single_line
                     && !tokens.is_partial_code_multiline(index, use_end_parenthesis_index)
                 {
-                    let comma_index = tokens
-                        .get_prev_meaningful_token(use_end_parenthesis_index)
-                        .unwrap();
+                    let comma_index = tokens.prev_meaningful(use_end_parenthesis_index);
                     if tokens[comma_index].equals(",", true) {
                         tokens.clear_token_and_merge_surrounding_whitespace(comma_index);
                     }
@@ -137,7 +128,7 @@ impl Fixer for FunctionDeclarationFixer {
                 tokens.ensure_whitespace_at_index(index + 1, 0, b" ");
             }
             if is_lambda {
-                let prev = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev = tokens.prev_meaningful(index);
                 if tokens[prev].is_kind(T_STATIC) {
                     tokens.ensure_whitespace_at_index(prev + 1, 0, b" ");
                 }

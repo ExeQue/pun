@@ -7,30 +7,24 @@ use pun_lint::{Linter, Rule, rules};
 
 #[test]
 fn unused_foreach_key_with_a_missing_array_element_in_compact() {
-    // The dead-code rules' copy of CompactFuncCallAnalyzer: the null item is skipped and 'k' is found,
-    // so the key stays.
     let code = "<?php\nforeach ($a as $k => $v) { compact([, 'k']); }\n";
     assert_eq!(fix_with(rules::NoUnusedForeachKey, code), code);
 }
 
-/// A file of one dead-code rule, checked against Rector: Rector ran with only that rule's class (`withRules`) and
-/// `withPhpVersion(80400)`.
 fn check_rule_oracle(rule: impl Rule + 'static, name: &str) {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/oracle")
         .join(name);
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(vec![Box::new(rule)], 80400)
+    let fixed = Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(&path, input)
         .unwrap();
     assert_eq!(fixed.source, expected, "{name}");
 }
 
-/// What one rule alone writes for `code` (hand-derived expectations, where Pun keeps the meaning Rector's printer
-/// loses).
 fn fix_with(rule: impl Rule + 'static, code: &str) -> String {
-    Linter::new(vec![Box::new(rule)], 80400)
+    Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(Path::new("a.php"), code)
         .unwrap()
         .source
@@ -38,13 +32,11 @@ fn fix_with(rule: impl Rule + 'static, code: &str) -> String {
 
 #[test]
 fn and_true() {
-    // `\true` and `TRUE`, kept parentheses where the place needs them, `and` (not `&&`), nested `&&` of trues.
     check_rule_oracle(rules::NoAndTrue, "no_and_true.php.inc");
 }
 
 #[test]
 fn and_true_keeps_parentheses_that_hold_the_meaning() {
-    // Rector writes `$x || $b ?? $c`, which PHP reads as `($x || $b) ?? $c`.
     assert_eq!(
         fix_with(rules::NoAndTrue, "<?php\n$a = $x || true && ($b ?? $c);\n"),
         "<?php\n$a = $x || ($b ?? $c);\n"
@@ -53,13 +45,11 @@ fn and_true_keeps_parentheses_that_hold_the_meaning() {
 
 #[test]
 fn cast_in_concat() {
-    // `(binary)`, both sides, parentheses around the cast, a cast on a call, `.=` (not a concat) and `(int)`.
     check_rule_oracle(rules::NoCastInConcat, "no_cast_in_concat.php.inc");
 }
 
 #[test]
 fn cast_in_concat_keeps_parentheses_around_a_ternary() {
-    // Rector writes `'a' . $b ? 'x' : 'y'`, which PHP reads as `('a' . $b) ? 'x' : 'y'`.
     assert_eq!(
         fix_with(
             rules::NoCastInConcat,
@@ -71,21 +61,16 @@ fn cast_in_concat_keeps_parentheses_around_a_ternary() {
 
 #[test]
 fn useless_continue() {
-    // Trailing comments (php-parser's Nop) keep the `continue`; `continue 0`, `continue (1)`, a `;` after it, and
-    // alternative syntax.
     check_rule_oracle(rules::NoUselessContinue, "no_useless_continue.php.inc");
 }
 
 #[test]
 fn empty_block() {
-    // `;` bodies, comment-only bodies, alternative syntax, `else` without braces, every inverted condition, header
-    // variables used later, a `try` block's catches as the next statements, a `case` list.
     check_rule_oracle(rules::NoEmptyBlock, "no_empty_block.php.inc");
 }
 
 #[test]
 fn empty_block_keeps_parentheses_around_an_inverted_ternary() {
-    // Rector writes `if (!$a ? $b : $c)`, which PHP reads as `if ((!$a) ? $b : $c)`.
     assert_eq!(
         fix_with(
             rules::NoEmptyBlock,
@@ -97,7 +82,6 @@ fn empty_block_keeps_parentheses_around_an_inverted_ternary() {
 
 #[test]
 fn empty_block_keeps_parentheses_around_an_assignment_in_a_comparison() {
-    // Rector writes `if ($a = 1 !== $b)`, which PHP reads as `if ($a = (1 !== $b))`.
     assert_eq!(
         fix_with(
             rules::NoEmptyBlock,
@@ -109,8 +93,6 @@ fn empty_block_keeps_parentheses_around_an_assignment_in_a_comparison() {
 
 #[test]
 fn useless_catch() {
-    // A trailing comment moves with the statements and leaves an empty line, heredocs keep their indent, `throw
-    // ($e)`, a catch without a variable, a multi-type catch, a `try` as an `if`'s only statement.
     check_rule_oracle(rules::NoUselessCatch, "no_useless_catch.php.inc");
 }
 
@@ -124,8 +106,6 @@ fn double_self_assignment() {
 
 #[test]
 fn duplicate_array_key() {
-    // Comments go with their item, `'a'` and `"a"` are different keys, class constants, `static::`, negative
-    // numbers, constants, destructuring, interpolated keys, magic constants, floats.
     check_rule_oracle(rules::NoDuplicateArrayKey, "no_duplicate_array_key.php.inc");
 }
 
@@ -139,13 +119,11 @@ fn redundant_final_const() {
 
 #[test]
 fn unused_foreach_key() {
-    // `@var` tags for the key go, the doc comment too when nothing else is in it.
     check_rule_oracle(rules::NoUnusedForeachKey, "no_unused_foreach_key.php.inc");
 }
 
 #[test]
 fn return_in_constructor() {
-    // A one-line block and a `case` are written again a statement per line, an `if` without braces gets them.
     check_rule_oracle(
         rules::NoReturnInConstructor,
         "no_return_in_constructor.php.inc",
@@ -154,7 +132,6 @@ fn return_in_constructor() {
 
 #[test]
 fn return_in_constructor_in_parentheses() {
-    // Rector writes `return ();`, a syntax error (hand-derived).
     assert_eq!(
         fix_with(
             rules::NoReturnInConstructor,
@@ -166,7 +143,6 @@ fn return_in_constructor_in_parentheses() {
 
 #[test]
 fn empty_array_identical_on_a_parameter_written_later() {
-    // PHPStan's scope keeps a parameter's native type until a write; one after the check (outside a loop) leaves it.
     check_rule_oracle(
         rules::PreferEmptyArrayIdentical,
         "prefer_empty_array_identical.php.inc",
@@ -175,7 +151,6 @@ fn empty_array_identical_on_a_parameter_written_later() {
 
 #[test]
 fn arrow_function_return_type_of_a_member_of_an_unknown_class() {
-    // Mago types a member of `?Unknown` as `null` and of `new Unknown()` as `never`; PHPStan knows no type for either.
     check_rule_oracle(
         rules::AddArrowFunctionReturn,
         "add_arrow_function_return_type_unknown_class.php.inc",
@@ -184,7 +159,6 @@ fn arrow_function_return_type_of_a_member_of_an_unknown_class() {
 
 #[test]
 fn statement_padding_skips_a_file_with_inline_html() {
-    // NewlineAfterStatementRector is HTML-averse: the `if` would get its blank line without the `<p>` after `?>`.
     check_rule_oracle(
         rules::RequireStatementPadding,
         "require_statement_padding_html.php.inc",
@@ -206,7 +180,10 @@ fn implicit_array_creation() {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/oracle/no_implicit_array_creation.php");
     let source = std::fs::read_to_string(&path).unwrap();
-    let linter = Linter::new(vec![Box::new(rules::NoImplicitArrayCreation)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::NoImplicitArrayCreation)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let found: Vec<(usize, String)> = linter
         .check(&path, &source)
         .unwrap()
@@ -235,12 +212,11 @@ fn implicit_array_creation() {
 
 #[test]
 fn file_with_only_an_opening_tag_gets_no_strict_types_declaration() {
-    // Regression: `<?php` alone made the strict types rules index an empty statement list.
     for rule in [
         Box::new(rules::AddSafeStrictTypes) as Box<dyn Rule>,
         Box::new(rules::RequireStrictTypesInTests),
     ] {
-        let linter = Linter::new(vec![rule], 80400);
+        let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         assert_eq!(
             linter.check(Path::new("a.php"), "<?php\n").unwrap(),
             [] as [pun_problem::Problem; 0]

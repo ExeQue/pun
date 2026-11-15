@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ArrayNotation\NoMultilineWhitespaceAroundDoubleArrowFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::rtrim};
 use std::path::Path;
@@ -22,7 +21,6 @@ impl Fixer for NoMultilineWhitespaceAroundDoubleArrowFixer {
         "no_multiline_whitespace_around_double_arrow"
     }
     fn priority(&self) -> i32 {
-        // Must run before BinaryOperatorSpacesFixer, MethodArgumentSpaceFixer.
         31
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -37,7 +35,6 @@ impl Fixer for NoMultilineWhitespaceAroundDoubleArrowFixer {
             {
                 fix_whitespace(tokens, index - 1);
             }
-            // do not move anything about if there is a comment following the whitespace
             if !tokens[index + 2].is_comment() {
                 fix_whitespace(tokens, index + 1);
             }

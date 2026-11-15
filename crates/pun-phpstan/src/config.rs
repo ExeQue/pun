@@ -1,14 +1,122 @@
-//! Resolving a project's PHPStan configuration the way `phpstan analyse` does (PHPStan 2.3.5): the config half of
-//! `CommandHelper::begin()` and `ContainerFactory::create()`, down to the container's parameters, including the
-//! validation errors PHPStan prints for broken configs. Services are not built.
+use std::fmt;
+use std::fmt::Write as _;
 
 use crate::di::{
     self, Files, Loader, assert_list, dirname, escape, escape_percent, expand,
     expand_included_file, merge, merge_arrays,
 };
 use crate::php::{absolutize_path, is_fnmatch_pattern, normalize_path, parent_relative_path, preg};
-use crate::schema;
 use crate::value::{Array, Key, Value};
+use crate::{neon, phpfile, schema};
+
+/// Why a PHPStan configuration could not be resolved, displayed as PHPStan (or Nette DI) words it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    Unreadable(String),
+    Neon {
+        file: String,
+        error: neon::Error,
+    },
+    UnsupportedPhp {
+        file: String,
+        error: phpfile::Error,
+    },
+    UnknownExtension(String),
+    RecursiveInclude(String),
+    NotAList {
+        label: String,
+        given: String,
+    },
+    ReplacingNonArray(String),
+    MissingParameter(String),
+    CircularReference(Vec<String>),
+    NonScalarConcatenation {
+        parameter: String,
+        into: String,
+    },
+    MissingProjectConfig(String),
+    MissingLevelConfig(String),
+    GeneratedConfig(phpfile::Error),
+    ExtensionIncludeNotString {
+        package: String,
+        given: &'static str,
+    },
+    MissingExtensionConfig(String),
+    IncludedMultipleTimes(Vec<String>),
+    Schema(schema::Error),
+    /// PHPStan's `InvalidConfigurationException`s, each printed as `Invalid configuration:\n<message>`.
+    Invalid(Vec<String>),
+    InvalidExcludePaths(String),
+    InvalidIgnoreErrors(String),
+    UnresolvedStatement,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Unreadable(file) => write!(f, "File '{file}' is missing or is not readable."),
+            Error::Neon { file, error } => write!(f, "Error while loading {file}: {error}"),
+            Error::UnsupportedPhp { file, error } => {
+                write!(f, "Unsupported PHP config {file}: {error}")
+            }
+            Error::UnknownExtension(file) => write!(f, "Unknown file extension '{file}'."),
+            Error::RecursiveInclude(file) => write!(f, "Recursive included file '{file}'"),
+            Error::NotAList { label, given } => {
+                write!(f, "The {label} expects to be list, {given} given.")
+            }
+            Error::ReplacingNonArray(item) => write!(
+                f,
+                "Replacing operator is available only for arrays, item '{item}' is not array."
+            ),
+            Error::MissingParameter(name) => write!(f, "Missing parameter '{name}'."),
+            Error::CircularReference(names) => write!(
+                f,
+                "Circular reference detected for parameters: %{}%",
+                names.join("%, %")
+            ),
+            Error::NonScalarConcatenation { parameter, into } => write!(
+                f,
+                "Unable to concatenate non-scalar parameter '{parameter}' into '{into}'."
+            ),
+            Error::MissingProjectConfig(file) => {
+                write!(f, "Project config file at path {file} does not exist.")
+            }
+            Error::MissingLevelConfig(file) => write!(f, "Level config file {file} was not found."),
+            Error::GeneratedConfig(error) => write!(f, "{error}"),
+            Error::ExtensionIncludeNotString { package, given } => write!(
+                f,
+                "Cannot include config from package {package}, expecting string file path but got {given}"
+            ),
+            Error::MissingExtensionConfig(file) => {
+                write!(f, "Config file {file} does not exist or isn't readable")
+            }
+            Error::IncludedMultipleTimes(files) => {
+                let what = if files.len() == 1 {
+                    "This file is included multiple times:"
+                } else {
+                    "These files are included multiple times:"
+                };
+                write!(f, "{what}\n- {}", files.join("\n- "))
+            }
+            Error::Schema(error) => write!(f, "{error}"),
+            Error::Invalid(messages) => {
+                let messages: Vec<String> = messages
+                    .iter()
+                    .map(|m| format!("Invalid configuration:\n{m}"))
+                    .collect();
+                f.write_str(&messages.join("\n"))
+            }
+            Error::InvalidExcludePaths(message) | Error::InvalidIgnoreErrors(message) => {
+                f.write_str(message)
+            }
+            Error::UnresolvedStatement => {
+                f.write_str("Class \"Nette\\DI\\ServiceCreationException\" not found")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 macro_rules! conf {
     ($($name:literal),* $(,)?) => {
@@ -16,7 +124,6 @@ macro_rules! conf {
     };
 }
 
-/// PHPStan 2.3.5's `conf/` directory (from the PHAR).
 pub const CONF: &[(&str, &str)] = conf![
     "bleedingEdge.neon",
     "config.level0.neon",
@@ -38,7 +145,6 @@ pub const CONF: &[(&str, &str)] = conf![
     "services.neon",
 ];
 
-/// The PHPStan extensions registered with `#[ContainerExtension]`, in registration (name) order.
 const ATTRIBUTE_EXTENSIONS: [&str; 13] = [
     "attributeServicesDirectories",
     "autowiredAttributeServices",
@@ -62,38 +168,23 @@ const SENSITIVE_ENV: [&str; 4] = [
     "TIDEWAYS_APIKEY",
 ];
 
-/// Inputs `phpstan analyse` gets from its command line and environment.
 #[derive(Clone, Debug, Default)]
 pub struct Options {
-    /// Working directory.
     pub cwd: String,
-    /// `-c`.
     pub config: Option<String>,
-    /// `-l`.
     pub level: Option<String>,
-    /// Analysed paths from the command line.
     pub paths: Vec<String>,
-    /// `--generate-baseline`.
     pub generate_baseline: Option<String>,
-    /// `-a`.
     pub autoload_file: Option<String>,
-    /// Where `phpstan.phar` is (`%rootDir%` is its directory); usually `vendor/phpstan/phpstan/phpstan.phar`.
     pub phar: String,
-    /// phpstan/extension-installer's `GeneratedConfig.php`, when installed.
     pub generated_config: Option<String>,
-    /// `sys_get_temp_dir()`.
     pub sys_temp_dir: String,
-    /// `getenv()`.
     pub env: Vec<(String, String)>,
-    /// Projects whose Composer autoloader PHPStan's bin script loaded.
     pub composer_autoloader_project_paths: Vec<String>,
-    /// `ini_get('register_argc_argv') === '1'`.
     pub register_argc_argv: bool,
 }
 
 impl Options {
-    /// Defaults for a project directory: config discovery, `vendor/phpstan/phpstan/phpstan.phar`, the
-    /// extension-installer's GeneratedConfig if present, this process's environment and temp dir.
     pub fn for_project(cwd: &str) -> Options {
         let generated = format!("{cwd}/vendor/phpstan/extension-installer/src/GeneratedConfig.php");
         Options {
@@ -112,7 +203,6 @@ impl Options {
     }
 }
 
-/// Real files, with `phar://…/phpstan.phar/conf/*` served from [`CONF`].
 pub struct ProjectFiles {
     phar: String,
 }
@@ -153,7 +243,6 @@ impl Files for ProjectFiles {
     }
 }
 
-/// The resolved container parameters (`$container->getParameters()`, without `env`).
 #[derive(Debug)]
 pub struct Resolved {
     pub parameters: Array,
@@ -167,8 +256,8 @@ fn list(items: &[String]) -> Value {
     Value::Array(Array::list(items.iter().map(|i| s(i))))
 }
 
-fn opt(v: &Option<String>) -> Value {
-    v.as_deref().map_or(Value::Null, s)
+fn opt(v: Option<&str>) -> Value {
+    v.map_or(Value::Null, s)
 }
 
 fn arr(pairs: Vec<(&str, Value)>) -> Array {
@@ -187,17 +276,14 @@ fn get<'a>(a: &'a Array, path: &[&str]) -> Option<&'a Value> {
     Some(v).filter(|v| **v != Value::Null)
 }
 
-/// `CommandHelper::begin()` up to the container, then `ContainerFactory::create()`. `Err` is what PHPStan prints
-/// (console tags stripped) before exiting.
-pub fn resolve(o: &Options) -> Result<Resolved, String> {
-    // PHP opens a PHAR through its real path, so `%rootDir%` has symlinks resolved.
+pub fn resolve(o: &Options) -> Result<Resolved, Error> {
     let phar = std::fs::canonicalize(&o.phar)
         .map_or_else(|_| o.phar.clone(), |p| p.to_string_lossy().into_owned());
     let files = ProjectFiles::new(&phar);
     resolve_with(&Options { phar, ..o.clone() }, &files)
 }
 
-pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> {
+pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, Error> {
     let cwd = normalize_path(&o.cwd);
     let mut env = Array::new();
     for (k, v) in &o.env {
@@ -245,9 +331,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     let mut paths_from_config: Vec<String> = Vec::new();
     if let Some(config) = &config {
         if !files.is_file(config) {
-            return Err(format!(
-                "Project config file at path {config} does not exist."
-            ));
+            return Err(Error::MissingProjectConfig(config.clone()));
         }
         let expand_relative = vec![
             "[parameters][paths][]".to_string(),
@@ -282,17 +366,17 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     if let Some(l) = &level {
         let file = format!("{config_dir}/config.level{l}.neon");
         if !files.is_file(&file) {
-            return Err(format!("Level config file {file} was not found."));
+            return Err(Error::MissingLevelConfig(file));
         }
         additional.push(file);
     }
     if let Some(generated) = &o.generated_config {
         let php = files
             .read(generated)
-            .ok_or_else(|| format!("File '{generated}' is missing or is not readable."))?;
+            .ok_or_else(|| Error::Unreadable(generated.clone()))?;
         let dir = dirname(generated);
-        let extensions =
-            crate::phpfile::generated_config_extensions(&String::from_utf8_lossy(&php), &dir)?;
+        let extensions = phpfile::generated_config_extensions(&String::from_utf8_lossy(&php), &dir)
+            .map_err(Error::GeneratedConfig)?;
         for (name, ext) in extensions.iter() {
             let Some(ext) = ext.as_array() else { continue };
             let includes = get(ext, &["extra", "includes"])
@@ -301,11 +385,10 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
                 .unwrap_or_default();
             for inc in includes.values() {
                 let Value::Str(inc) = inc else {
-                    return Err(format!(
-                        "Cannot include config from package {}, expecting string file path but got {}",
-                        name.as_string(),
-                        inc.gettype()
-                    ));
+                    return Err(Error::ExtensionIncludeNotString {
+                        package: name.as_string(),
+                        given: inc.gettype(),
+                    });
                 };
                 let mut path = get(ext, &["relative_install_path"])
                     .and_then(Value::to_php_string)
@@ -319,9 +402,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
                 }
                 let path = path.expect("set");
                 if !files.is_file(&path) {
-                    return Err(format!(
-                        "Config file {path} does not exist or isn't readable"
-                    ));
+                    return Err(Error::MissingExtensionConfig(path));
                 }
                 additional.push(path);
             }
@@ -332,7 +413,6 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     }
     let tmp_dir = tmp_dir.unwrap_or_else(|| format!("{}/phpstan", o.sys_temp_dir));
 
-    // ContainerFactory::create()
     let schema_file =
         format!("{phar_root}/src/DependencyInjection/../../conf/parametersSchema.neon");
     let mut all_config_files = Vec::new();
@@ -356,31 +436,19 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
         }
     }
     if !duplicates.is_empty() {
-        let what = if duplicates.len() == 1 {
-            "This file is included multiple times:"
-        } else {
-            "These files are included multiple times:"
-        };
-        return Err(format!(
-            "{what}\n- {}",
-            duplicates
-                .iter()
-                .map(|d| d.as_str())
-                .collect::<Vec<_>>()
-                .join("\n- ")
+        return Err(Error::IncludedMultipleTimes(
+            duplicates.into_iter().cloned().collect(),
         ));
     }
     let project_config = project_config.as_array().cloned().expect("merged arrays");
     let attribute_services_directories = attribute_services_directories(
         project_config.get_str("attributeServicesDirectories"),
         &cwd,
-    )
-    .map_err(|e| format!("Invalid configuration:\n{e}"))?;
+    )?;
     let expand_relative: Vec<String> = project_config
         .get_str("expandRelativePaths")
         .and_then(Value::as_array)
-        .map(|a| a.values().filter_map(Value::to_php_string).collect())
-        .unwrap_or_default();
+        .map_or_default(|a| a.values().filter_map(Value::to_php_string).collect());
 
     let static_params = arr(vec![
         ("debugMode", Value::Bool(true)),
@@ -399,14 +467,13 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
             "composerAutoloaderProjectPaths",
             list(&o.composer_autoloader_project_paths),
         ),
-        ("generateBaselineFile", opt(&generate_baseline)),
+        ("generateBaselineFile", opt(generate_baseline.as_deref())),
         ("usedLevel", s(level.as_deref().unwrap_or("0"))),
-        ("cliAutoloadFile", opt(&o.autoload_file)),
+        ("cliAutoloadFile", opt(o.autoload_file.as_deref())),
         (
             "attributeServicesDirectories",
             list(&attribute_services_directories),
         ),
-        // filled by AutowiredAttributeServicesExtension
         ("attributeServicesClasses", list(&[])),
         ("env", Value::Array(env)),
     ]);
@@ -445,11 +512,9 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
         sections
             .iter()
             .find(|(k, _)| *k == Key::from(name))
-            .map(|(_, l)| l.as_slice())
-            .unwrap_or(&[])
+            .map_or(&[][..], |(_, l)| l.as_slice())
     };
 
-    // ParametersExtension: Expect::array() over every `parameters:` section, then expansion.
     let mut flat: Option<Value> = None;
     for data in section("parameters") {
         flat = Some(match flat {
@@ -457,8 +522,6 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
             Some(base) => merge(data.clone(), base),
         });
     }
-    // The escaped static parameters are the last section and an array, so the merge is one too (a scalar
-    // `parameters:` in a config is dropped, and its expansion fails later as in PHPStan).
     let flat = flat
         .and_then(|f| f.as_array().cloned())
         .expect("static parameters merged last");
@@ -470,8 +533,6 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
         sys_get_temp_dir_calls(v, &o.sys_temp_dir);
     }
     let mut params = di::expand_array(&params, &params, Some(&[]))?;
-    // ParametersExtension then expands every other section with them (services later, per definition); only the
-    // errors matter here.
     for (name, datas) in &sections {
         if *name != Key::from("services") {
             for d in datas {
@@ -507,7 +568,6 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
             expand(def, &params, None)?;
         }
     }
-    // `elseif ($extra = key(array_diff_key(...)))`: only the first unknown section counts, and section 0 is falsy.
     if let Some((extra, _)) = sections
         .iter()
         .find(|(k, _)| !known.contains(&k.as_string()))
@@ -515,10 +575,10 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
     {
         let extra = extra.as_string();
         let hint = schema::suggestion(&known, &extra);
-        return Err(format!(
-            "Invalid configuration:\nFound section '{extra}' in configuration, but corresponding extension is missing{}",
+        return Err(Error::Invalid(vec![format!(
+            "Found section '{extra}' in configuration, but corresponding extension is missing{}",
             hint.map_or(".".to_string(), |h| format!(", did you mean '{h}'?"))
-        ));
+        )]));
     }
 
     if validate {
@@ -527,25 +587,18 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, String> 
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let errors = schema::parameters_schema(&schema_section)?
+        let errors = schema::parameters_schema(&schema_section)
+            .map_err(Error::Schema)?
             .validate(&Value::Array(params.clone()), &["parameters"]);
         if !errors.is_empty() {
-            return Err(errors
-                .iter()
-                .map(|e| format!("Invalid configuration:\n{e}"))
-                .collect::<Vec<_>>()
-                .join("\n"));
+            return Err(Error::Invalid(errors));
         }
         validate_php_version(&params)?;
-        validate_ignore_error_entries(&params)
-            .map_err(|e| format!("Invalid configuration:\n{e}"))?;
+        validate_ignore_error_entries(&params)?;
     }
     params.remove(&Key::from("env"));
-    // A statement left in the parameters becomes a dynamic parameter, whose generated code references the unprefixed
-    // exception class: every `phpstan` run then dies with this message.
-    // ponytail: PHP would evaluate a plain function call (`::strtoupper(a)`) fine; only sys_get_temp_dir() is.
     if contains_statement(&Value::Array(params.clone())) {
-        return Err("Class \"Nette\\DI\\ServiceCreationException\" not found".into());
+        return Err(Error::UnresolvedStatement);
     }
     Ok(Resolved { parameters: params })
 }
@@ -564,18 +617,14 @@ fn truthy(v: &Value) -> bool {
         && *v != Value::str("0")
 }
 
-/// `ContainerFactory::getConfigFiles()`: the files a config pulls in (missing ones skipped) and their data, merged
-/// with each include taking precedence over its parent.
 fn config_files(
     files: &dyn Files,
     file: &str,
     loader_params: &Array,
-) -> Result<(Vec<String>, Array), String> {
-    // (getConfigFiles() skips missing files, but the project config was loaded before: none is missing here)
+) -> Result<(Vec<String>, Array), Error> {
     let mut data = if file.ends_with(".php") {
         di::load_file(files, file, &[], &Array::new())?
     } else {
-        // attributeServicesDirectories comes out absolutized relative to the declaring file in this pre-pass
         di::load_neon(
             files,
             file,
@@ -601,22 +650,19 @@ fn config_files(
     Ok((all, data))
 }
 
-/// `AttributeServicesDirectoriesResolver::resolve()`: the section's directories, absolute, without nested ones and
-/// sorted, or its errors (`InvalidAttributeServicesDirectoriesException`, joined by blank lines). The cache key
-/// components are left out: only the container cache reads them.
 fn attribute_services_directories(
     section: Option<&Value>,
     cwd: &str,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, Error> {
     let entries = match section {
         None | Some(Value::Null) => return Ok(Vec::new()),
         Some(Value::Array(a)) if a.is_empty() => return Ok(Vec::new()),
         Some(Value::Array(a)) => a,
         Some(_) => {
-            return Err(
+            return Err(Error::Invalid(vec![
                 "The attributeServicesDirectories section must contain a list of directory paths."
                     .to_string(),
-            );
+            ]));
         }
     };
     let mut errors = Vec::new();
@@ -640,7 +686,6 @@ fn attribute_services_directories(
         let dir = normalize_path(&absolutize_path(cwd, entry));
         directories.push(dir.trim_end_matches('/').to_string());
     }
-    // deduplicateNested(): shortest first, a directory inside a kept one is dropped, then sorted
     directories.sort_by_key(String::len);
     let mut kept: Vec<String> = Vec::new();
     for d in directories {
@@ -662,12 +707,10 @@ fn attribute_services_directories(
     if errors.is_empty() {
         Ok(kept)
     } else {
-        Err(errors.join("\n\n"))
+        Err(Error::Invalid(vec![errors.join("\n\n")]))
     }
 }
 
-/// `sysGetTempDir: ::sys_get_temp_dir()` is the one statement among PHPStan's own parameters; it is evaluated like the
-/// container does at runtime.
 fn sys_get_temp_dir_calls(v: &mut Value, tmp: &str) {
     match v {
         Value::Entity(e)
@@ -687,14 +730,11 @@ fn path_problem(path: &str) -> Option<String> {
     })
 }
 
-/// `ValidateExcludePathsExtension`: rewrites `excludePaths` to its `analyseAndScan`/`analyse` keys without the
-/// `(?)` markers, or fails on paths that don't exist.
 fn validate_exclude_paths(
     params: &mut Array,
     validate: bool,
     config: Option<&str>,
-) -> Result<(), String> {
-    // (always an array: PHPStan's default merged with the project's; anything else crashes PHPStan)
+) -> Result<(), Error> {
     let exclude = params
         .get_str("excludePaths")
         .and_then(Value::as_array)
@@ -712,8 +752,7 @@ fn validate_exclude_paths(
         for (key, paths) in new.iter() {
             for p in paths
                 .as_array()
-                .map(|a| a.values().cloned().collect::<Vec<_>>())
-                .unwrap_or_default()
+                .map_or_default(|a| a.values().cloned().collect::<Vec<_>>())
             {
                 let Value::Str(p) = p else { continue };
                 if let Some(e) = path_problem(&p) {
@@ -742,13 +781,13 @@ fn validate_exclude_paths(
         out.push_str("If the excluded path can sometimes exist, append (?)\nto its config entry to mark it as optional. Example:\n\n");
         out.push_str("parameters:\n\texcludePaths:\n");
         for (key, paths) in &suggest {
-            out.push_str(&format!("\t\t{key}:\n"));
+            let _ = writeln!(out, "\t\t{key}:");
             for p in paths {
                 let p = config.map_or_else(|| p.clone(), |c| parent_relative_path(&dirname(c), p));
-                out.push_str(&format!("\t\t\t- {p} (?)\n"));
+                let _ = writeln!(out, "\t\t\t- {p} (?)");
             }
         }
-        return Err(out);
+        return Err(Error::InvalidExcludePaths(out));
     }
     let mut unwrapped = Array::new();
     for (k, paths) in new {
@@ -767,7 +806,6 @@ fn validate_exclude_paths(
     Ok(())
 }
 
-/// `ignoreErrors` (always an array: PHPStan's default `[]` merged with the project's).
 fn ignore_errors(params: &Array) -> Array {
     params
         .get_str("ignoreErrors")
@@ -776,10 +814,7 @@ fn ignore_errors(params: &Array) -> Array {
         .unwrap_or_default()
 }
 
-/// `ValidateIgnoredErrorsExtension` (regex compilation and, with `reportUnmatchedIgnoredErrors`, paths).
-/// ponytail: IgnoredRegexValidator's "unescaped `|` ignores types" / "anchor in the middle" checks need PHPStan's
-/// type parser and are not ported yet.
-fn validate_ignored_errors(params: &Array) -> Result<(), String> {
+fn validate_ignored_errors(params: &Array) -> Result<(), Error> {
     let ignore = ignore_errors(params);
     if ignore.is_empty() {
         return Ok(());
@@ -845,28 +880,25 @@ fn validate_ignored_errors(params: &Array) -> Result<(), String> {
         out.push_str("\n\n");
     }
     out.push_str("To ignore non-existent paths in ignoreErrors,\nset reportUnmatchedIgnoredErrors: false in your configuration file.\n");
-    Err(out)
+    Err(Error::InvalidIgnoreErrors(out))
 }
 
-fn validate_php_version(params: &Array) -> Result<(), String> {
+fn validate_php_version(params: &Array) -> Result<(), Error> {
     if let Some(Value::Array(v)) = params.get_str("phpVersion")
         && let (Some(Value::Int(min)), Some(Value::Int(max))) = (v.get_str("min"), v.get_str("max"))
         && max < min
     {
-        return Err("Invalid configuration:\nInvalid PHP version range: phpVersion.max should be greater or equal to phpVersion.min.".into());
+        return Err(Error::Invalid(vec!["Invalid PHP version range: phpVersion.max should be greater or equal to phpVersion.min.".into()]));
     }
     Ok(())
 }
 
-/// The checks PHPStan's config resolution runs on `ignoreErrors` (with `reportUnmatchedIgnoredErrors`), in its order and
-/// with its messages, for an `ignoreErrors` built outside a neon file (pun.toml's `[[analyse.ignore]]`).
-pub fn validate_ignore_errors(params: &Array) -> Result<(), String> {
+pub fn validate_ignore_errors(params: &Array) -> Result<(), Error> {
     validate_ignored_errors(params)?;
-    validate_ignore_error_entries(params).map_err(|e| format!("Invalid configuration:\n{e}"))
+    validate_ignore_error_entries(params)
 }
 
-/// `ContainerFactory::validateParameters()`'s `ignoreErrors` entry rules.
-fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
+fn validate_ignore_error_entries(params: &Array) -> Result<(), Error> {
     let ignore = ignore_errors(params);
     let at_least = [
         "message",
@@ -878,15 +910,14 @@ fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
         "path",
         "paths",
     ];
-    // Pun's `rule` (never in a neon file, whose schema rejects the key) names what to ignore too.
     for entry in ignore.values() {
         let Value::Array(e) = entry else { continue };
         let has = |k: &str| e.contains(&Key::from(k));
         if !at_least.iter().any(|k| has(k)) && !has("rule") {
-            return Err(format!(
+            return Err(Error::Invalid(vec![format!(
                 "An ignoreErrors entry must contain at least one of the following fields: {}.",
                 at_least.join(", ")
-            ));
+            )]));
         }
         for group in [
             &["rawMessage", "rawMessages", "message", "messages"][..],
@@ -896,17 +927,17 @@ fn validate_ignore_error_entries(params: &Array) -> Result<(), String> {
             for (i, a) in group.iter().enumerate() {
                 for b in &group[i + 1..] {
                     if has(a) && has(b) {
-                        return Err(format!(
+                        return Err(Error::Invalid(vec![format!(
                             "An ignoreErrors entry cannot contain both {a} and {b} fields."
-                        ));
+                        )]));
                     }
                 }
             }
         }
         if has("count") && !has("path") {
-            return Err(
+            return Err(Error::Invalid(vec![
                 "An ignoreErrors entry with count field must also contain path field.".into(),
-            );
+            ]));
         }
     }
     Ok(())

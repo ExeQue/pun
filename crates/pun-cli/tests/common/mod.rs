@@ -1,8 +1,3 @@
-//! Shared by the tests that run `pun format` next to Pint. Human output is Pun's own (output.md §1), so a human run
-//! that ends in a summary (Pint's Termwind box, Pun's summary line) is compared by the files each tool names; abort
-//! boxes, `-q`, stdin and every `--format` stay byte for byte.
-//!
-//! Also the scratch-project helpers every end-to-end test uses, and `pty` for the interactive commands.
 #![allow(dead_code, reason = "each test binary uses some of the helpers")]
 pub(crate) mod prettier;
 pub(crate) mod pty;
@@ -20,7 +15,6 @@ pub(crate) fn oracle() -> Option<PathBuf> {
     p.exists().then(|| p.canonicalize().unwrap())
 }
 
-/// A fresh, empty directory `pun-<prefix>-<name>-<pid>-<n>` under the temp dir, canonical.
 pub(crate) fn scratch(prefix: &str, name: &str) -> PathBuf {
     static N: AtomicUsize = AtomicUsize::new(0);
     let d = std::env::temp_dir().join(format!(
@@ -33,7 +27,6 @@ pub(crate) fn scratch(prefix: &str, name: &str) -> PathBuf {
     d.canonicalize().unwrap()
 }
 
-/// Writes each `(path, content)` under `dir`, creating parent directories.
 pub(crate) fn write_files(dir: &Path, files: &[(&str, &str)]) {
     for (f, c) in files {
         let p = dir.join(f);
@@ -42,20 +35,16 @@ pub(crate) fn write_files(dir: &Path, files: &[(&str, &str)]) {
     }
 }
 
-/// A scratch project holding `files`.
 pub(crate) fn project(prefix: &str, name: &str, files: &[(&str, &str)]) -> PathBuf {
     let d = scratch(prefix, name);
     write_files(&d, files);
     d
 }
 
-/// The text of `f` under `d`.
 pub(crate) fn read(d: &Path, f: &str) -> String {
     std::fs::read_to_string(d.join(f)).unwrap()
 }
 
-/// Every file under `dir` by its `/`-separated relative path, except symlinks and the paths `skip` names (checked
-/// for directories too). An unreadable file reads as `<unreadable>`.
 pub(crate) fn snapshot(dir: &Path, skip: impl Fn(&str) -> bool) -> BTreeMap<String, Vec<u8>> {
     fn walk(
         dir: &Path,
@@ -85,8 +74,6 @@ pub(crate) fn snapshot(dir: &Path, skip: impl Fn(&str) -> bool) -> BTreeMap<Stri
     out
 }
 
-/// Clears `c`'s environment but for the variables in `keep` and LLVM_PROFILE_FILE (so coverage runs don't drop
-/// .profraw files into the project).
 pub(crate) fn clean_env<'c>(c: &'c mut Command, keep: &[&str]) -> &'c mut Command {
     c.env_clear();
     for k in keep.iter().chain(&["LLVM_PROFILE_FILE"]) {
@@ -97,7 +84,6 @@ pub(crate) fn clean_env<'c>(c: &'c mut Command, keep: &[&str]) -> &'c mut Comman
     c
 }
 
-/// `pun migrate` in `dir`, which must succeed.
 pub(crate) fn migrate(dir: &Path) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .arg("migrate")
@@ -112,7 +98,6 @@ pub(crate) fn migrate(dir: &Path) {
     );
 }
 
-/// Whether `args` print human output: no `--format`, no `-q` (alone or in a short-option group), no stdin.
 pub(crate) fn human(args: &[&str]) -> bool {
     !args.iter().any(|a| {
         a.starts_with("--format")
@@ -123,7 +108,6 @@ pub(crate) fn human(args: &[&str]) -> bool {
     })
 }
 
-/// Whether `line` is Pun's summary line, which always ends with the run's time (`0.12s`).
 fn pun_summary(line: &str) -> bool {
     let time = line.strip_suffix('s').and_then(|l| l.rsplit(' ').next());
     time.is_some_and(|t| {
@@ -131,10 +115,6 @@ fn pun_summary(line: &str) -> bool {
     })
 }
 
-/// Pint's and Pun's stdout of one human run, made comparable: when Pint printed its summary and Pun its summary line,
-/// each becomes the files it names (Pint's issue lines `⨯`, `✓`, `!`; Pun's file lines and error frames, but not its
-/// dim `-v` lines for unchanged files, which Pint doesn't list), followed by what Pun printed after its summary (an
-/// abort box) when Pint's output ends with it too. Anything else (an abort box alone) stays as it is.
 pub(crate) fn human_pair<'a>(
     pint: &str,
     pun: &str,
@@ -166,7 +146,6 @@ pub(crate) fn human_pair<'a>(
     )
 }
 
-/// The files of `files` that `text` names after a space, before a space, a line end or a `:`.
 fn named<'a>(text: &str, files: impl IntoIterator<Item = &'a String>) -> String {
     let lines: Vec<&str> = (text.lines())
         .filter(|l| {
@@ -187,7 +166,6 @@ fn named<'a>(text: &str, files: impl IntoIterator<Item = &'a String>) -> String 
     format!("named: {}", named.join(", "))
 }
 
-/// `out` without ANSI CSI sequences (`ESC [`, parameters, one final byte in `@`..=`~`).
 pub(crate) fn strip_ansi(out: &str) -> String {
     let mut plain = String::new();
     let mut chars = out.chars();

@@ -1,11 +1,3 @@
-//! Port of Mago's `use-simpler-expectation` (Pest): `expect($a > $b)->toBeTrue()` → `expect($a)->toBeGreaterThan($b)`,
-//! likewise `>=`, `<`, `<=`, `===` (`toBe`), `!==` (`not->toBe`) and `instanceof` (`toBeInstanceOf(X::class)`).
-//! Opt-in only (`Pun/use_simpler_expectation`). Only fixes when the comparison is the whole `expect()` argument
-//! and the matcher follows `expect()` directly. Not ported:
-//! - `expect(!$x)->toBeTrue()` → `expect($x)->toBeFalse()` (and the `toBeFalse` mirror): `!$x` is true for every
-//!   falsy value, `toBeFalse()` only for `false`.
-//! - matchers after `->not` or `->and()`: Mago's fix drops the `not` / rewrites the wrong expectation.
-//! - `instanceof $var`: `$var::class` fails when `$var` holds a class-name string.
 use crate::analyzers::helpers::COMPOUND_ASSIGNMENTS;
 use crate::analyzers::pest::{ExpectMatcher, match_expect_matcher};
 use pun_format::Fixer;
@@ -51,11 +43,11 @@ impl Fixer for UseSimplerExpectation {
             let Some((op, matcher)) = single_comparison(tokens, expect_open, expect_close) else {
                 continue;
             };
-            let lhs_end = tokens.get_prev_meaningful_token(op).unwrap();
-            let rhs_start = tokens.get_next_meaningful_token(op).unwrap();
-            let mut rhs_end = tokens.get_prev_meaningful_token(expect_close).unwrap();
+            let lhs_end = tokens.prev_meaningful(op);
+            let rhs_start = tokens.next_meaningful(op);
+            let mut rhs_end = tokens.prev_meaningful(expect_close);
             if tokens[rhs_end].equals(",", true) {
-                rhs_end = tokens.get_prev_meaningful_token(rhs_end).unwrap();
+                rhs_end = tokens.prev_meaningful(rhs_end);
             }
             let instanceof = tokens[op].is_kind(T_INSTANCEOF);
             if instanceof
@@ -87,8 +79,6 @@ impl Fixer for UseSimplerExpectation {
     }
 }
 
-/// The one top-level comparison in `expect(...)` when it is the root of the argument expression: no other
-/// comparison and no operator of lower precedence (`==`, bitwise, logical, `??`, ternary, assignment, ...).
 fn single_comparison(tokens: &Tokens, open: usize, close: usize) -> Option<(usize, &'static str)> {
     let mut found = None;
     let mut has_not = false;
@@ -164,7 +154,6 @@ fn single_comparison(tokens: &Tokens, open: usize, close: usize) -> Option<(usiz
         }
         k += 1;
     }
-    // `!$a instanceof B` is `!($a instanceof B)`.
     found.filter(|&(op, _)| !(has_not && tokens[op].is_kind(T_INSTANCEOF)))
 }
 
@@ -212,7 +201,6 @@ mod tests {
                 format!("<?php\n\n{to}\n")
             );
         }
-        // multiple_violations: the negation and range check have no exact fix.
         assert_eq!(
             fix(
                 "<?php\n\nexpect(!$a)->toBeTrue();\nexpect($a > $b)->toBeTrue();\nexpect($a === $b)->toBeTrue();\nexpect($obj instanceof Foo)->toBeTrue();\nexpect($x >= 1 && $x <= 10)->toBeTrue();\n"
@@ -220,11 +208,9 @@ mod tests {
             "<?php\n\nexpect(!$a)->toBeTrue();\nexpect($a)->toBeGreaterThan($b);\nexpect($a)->toBe($b);\nexpect($obj)->toBeInstanceOf(Foo::class);\nexpect($x >= 1 && $x <= 10)->toBeTrue();\n"
         );
         for same in [
-            // direct_expectations, dedicated_matchers, non_pattern_expressions
             "<?php\n\nexpect($condition)->toBeTrue();\nexpect($condition)->toBeFalse();\n",
             "<?php\n\nexpect($a)->toBeGreaterThan($b);\nexpect($a)->not->toBe($b);\nexpect($obj)->toBeInstanceOf(ClassName::class);\nexpect($value)->toBeBetween(1, 10);\n",
             "<?php\n\nexpect($a && $b)->toBeTrue();\nexpect($a || $b)->toBeFalse();\nexpect($a == $b)->toBeTrue();\nexpect($a != $b)->toBeTrue();\n",
-            // negated_to_be_true / negated_to_be_false / range checks: Mago fixes or reports, Pun leaves them.
             "<?php\n\nexpect(!$condition)->toBeTrue();\nexpect(!$condition)->ToBeFalse();\nexpect($x <= 10 && $x >= 1)->toBeTrue();\n",
         ] {
             assert_eq!(fix(same), same);

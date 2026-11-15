@@ -1,7 +1,3 @@
-//! RegularExpressionPatternRule (`regexp.pattern`): the constant patterns of `preg_*` calls must compile; from level 5
-//! RegularExpressionQuotingRule (`argument.invalidPregQuote`): a `preg_quote()` in a concatenated pattern escapes its
-//! delimiter.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::array::TArray;
 use mago_codex::ttype::atomic::array::key::ArrayKey;
@@ -13,7 +9,6 @@ use super::super::Checker;
 pub(crate) const IDENTIFIERS: &[&str] = &["argument.invalidPregQuote"];
 use super::flow::unparen;
 
-/// The function's lowercase name as written (`(string) $functionCall->name`), for a call by name.
 fn name(c: &Checker, call: &FunctionCall) -> Option<String> {
     let Expression::Identifier(id) = call.function else {
         return None;
@@ -29,7 +24,6 @@ fn first_argument<'a, 'arena>(call: &'a FunctionCall<'arena>) -> Option<&'a Expr
     call.argument_list.arguments.first().map(|a| a.value())
 }
 
-/// The expressions whose type [`patterns`] reads: the pattern, and the parts of a concatenated one.
 pub(super) fn typed(call: &FunctionCall, out: &mut Vec<Span>) {
     let Expression::Identifier(id) = call.function else {
         return;
@@ -76,7 +70,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
     if !name.starts_with("preg_") || call.argument_list.arguments.is_empty() {
         return;
     }
-    // (the arguments are not empty)
     let Some(pattern) = first_argument(call) else {
         return;
     };
@@ -143,7 +136,6 @@ pub(in super::super) fn function_call(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// The values of a constant array (`getConstantArrays()`).
 fn values(a: &TArray) -> Vec<&mago_codex::ttype::union::TUnion> {
     match a {
         TArray::List(l) if l.element_type.is_never() => l
@@ -167,7 +159,6 @@ fn atom_strings(t: &mago_codex::ttype::union::TUnion) -> Vec<Vec<u8>> {
         .collect()
 }
 
-/// `getConstantStrings()` of an expression's type.
 fn constant_strings(c: &Checker, e: &Expression) -> Vec<Vec<u8>> {
     if let Expression::Literal(Literal::String(s)) = unparen(e) {
         return s.value.map(|v| vec![v.to_vec()]).unwrap_or_default();
@@ -183,7 +174,6 @@ fn constant_strings(c: &Checker, e: &Expression) -> Vec<Vec<u8>> {
     }
 }
 
-/// `RegexExpressionHelper::resolvePatternConcat()`: a `preg_quote()` call stands for `(?:.*)`.
 fn concat(c: &Checker, e: &Expression) -> Vec<Vec<u8>> {
     match unparen(e) {
         Expression::Call(Call::Function(f)) if matches!(f.function, Expression::Identifier(id) if id.value().rsplit(|b| *b == b'\\').next().is_some_and(|n| n.eq_ignore_ascii_case(b"preg_quote"))) =>
@@ -204,8 +194,6 @@ fn concat(c: &Checker, e: &Expression) -> Vec<Vec<u8>> {
     }
 }
 
-/// `ArgumentsNormalizer::reorderFuncArguments()`'s argument for parameter `index` named `parameter`.
-// ponytail: positional or named, not unpacked arguments
 pub(in crate::rules) fn argument<'a, 'arena>(
     call: &'a FunctionCall<'arena>,
     index: usize,
@@ -221,7 +209,6 @@ pub(in crate::rules) fn argument<'a, 'arena>(
         .map(|a| a.value())
 }
 
-/// RegularExpressionQuotingRule.
 fn quoting(c: &mut Checker, call: &FunctionCall, name: &str) {
     if !matches!(
         name,
@@ -238,8 +225,6 @@ fn quoting(c: &mut Checker, call: &FunctionCall, name: &str) {
     let Some(pattern) = argument(call, 0, "pattern").map(unparen) else {
         return;
     };
-    // preg_replace, preg_replace_callback and preg_filter also take an array of patterns, each one in its own right
-    // (another function's array pattern is no concatenation, so it is skipped below)
     let patterns: Vec<&Expression> =
         if matches!(pattern, Expression::Array(_) | Expression::LegacyArray(_))
             && matches!(
@@ -260,7 +245,6 @@ fn quoting(c: &mut Checker, call: &FunctionCall, name: &str) {
     }
 }
 
-/// The values of an array literal's items (an unpacked one too, as `$item->value`).
 fn items<'a, 'arena>(e: &'a Expression<'arena>) -> Vec<&'a Expression<'arena>> {
     let elements = match unparen(e) {
         Expression::Array(Array { elements, .. })
@@ -274,7 +258,6 @@ fn items<'a, 'arena>(e: &'a Expression<'arena>) -> Vec<&'a Expression<'arena>> {
 }
 
 fn quote_delimiters(c: &mut Checker, concat: &Binary) {
-    // RegexExpressionHelper::getPatternDelimiters(): the first character of the leftmost operand's constant strings
     let mut left = concat.lhs;
     while let Expression::Binary(b) = unparen(left)
         && matches!(b.operator, BinaryOperator::StringConcat(_))
@@ -290,7 +273,6 @@ fn quote_delimiters(c: &mut Checker, concat: &Binary) {
     }
 }
 
-/// `validateQuoteDelimiters()`.
 fn validate(c: &mut Checker, concat: &Binary, delimiters: &[char]) {
     for side in [concat.lhs, concat.rhs] {
         match unparen(side) {
@@ -307,12 +289,10 @@ fn validate(c: &mut Checker, concat: &Binary, delimiters: &[char]) {
     }
 }
 
-/// Delimiters `preg_quote()` always escapes.
 fn default_escaped(d: char) -> bool {
     ".\\+*?[^]$(){}=!<>|:-#".contains(d)
 }
 
-/// `validatePregQuote()`.
 fn pregquote(c: &Checker, call: &FunctionCall, delimiters: &[char]) -> Option<String> {
     let delimiters: Vec<char> = delimiters
         .iter()
@@ -332,7 +312,6 @@ fn pregquote(c: &Checker, call: &FunctionCall, delimiters: &[char]) -> Option<St
         .iter()
         .map(|q| String::from_utf8_lossy(q).into_owned())
         .find_map(|q| {
-            // a delimiter of more than one character is never escaped by default
             let escaped = q.chars().count() == 1 && q.chars().all(default_escaped);
             (!escaped && !delimiters.iter().any(|d| q == d.to_string())).then(|| {
                 match delimiters.as_slice() {

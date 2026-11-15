@@ -1,5 +1,3 @@
-//! Coalescing diagnostics use source-input scopes, not synthetic writes or post-assignment artifacts.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -28,7 +26,7 @@ fn coalesce_inputs_match_phpstan() {
         let file = fixtures.join(path);
         let mut project = Project::new(vec![file.clone()], Vec::new());
         project.level = level;
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             true,

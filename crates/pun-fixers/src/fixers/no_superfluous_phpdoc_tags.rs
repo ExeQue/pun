@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\NoSuperfluousPhpdocTagsFixer`.
 use crate::analyzers::analysis::TypeAnalysis;
 use crate::analyzers::docblock::{Annotation, DocBlock, type_expression::REGEX_TYPES};
 use crate::analyzers::fixer_configuration_resolver::resolve;
@@ -13,6 +12,22 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::LazyLock;
+
+static PARAM_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@param(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+(?:\&\h*)?(?:\.{{3}}\h*)?\$\S+)?(?:\s+(?<description>(?!\*+\/)\S+))?}}s"
+    )
+});
+static VAR_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@var(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+\$\S+)?(?:\s+(?<description>(?!\*\/)\S+))?}}s"
+    )
+});
+static RETURN_REGEX: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r"{{\*\h*@return(?:\h+{REGEX_TYPES})?(?!\S)(?:\s+(?<description>(?!\*\/)\S+))?}}s"
+    )
+});
 
 const SYMBOL_KINDS: &[Kind] = &[T_CLASS, T_INTERFACE, T_ENUM];
 const MODIFIER_KINDS: &[Kind] = &[
@@ -36,7 +51,6 @@ const TYPE_KINDS: &[Kind] = &[
     T_NS_SEPARATOR,
 ];
 
-/// `array{types: list<string>, allows_null: bool}`.
 #[derive(Clone)]
 struct TypeInfo {
     types: Vec<Vec<u8>>,
@@ -60,12 +74,10 @@ enum ElementType {
 struct Element {
     index: usize,
     type_: ElementType,
-    /// Token index => kind (PHP keeps the tokens; only their kinds are read).
     modifiers: Vec<Kind>,
     first_type_index: Option<usize>,
 }
 
-/// `$shortNames`: lower-cased short name => lower-cased full name.
 type ShortNames = BTreeMap<Vec<u8>, Vec<u8>>;
 
 #[derive(Default)]
@@ -100,7 +112,6 @@ impl Fixer for NoSuperfluousPhpdocTagsFixer {
         let r = resolve(self.name(), options, &keys)?;
         self.allow_mixed = r.bool("allow_mixed", false)?;
         self.remove_inheritdoc = r.bool("remove_inheritdoc", false)?;
-        // Future::getV4OrV3(true, false)
         self.allow_hidden_params = r.bool("allow_hidden_params", false)?;
         self.allow_unused_params = r.bool("allow_unused_params", false)?;
         Ok(())
@@ -110,7 +121,6 @@ impl Fixer for NoSuperfluousPhpdocTagsFixer {
         for u in NamespaceUsesAnalyzer.get_declarations_from_tokens(tokens, false) {
             short_names.insert(strtolower(&u.short_name), strtolower(&u.full_name));
         }
-        // Only doc comment contents change below, so the namespaces are the same for every getNamespaceAt().
         let namespaces = NamespacesAnalyzer.get_declarations(tokens);
         let mut current_symbol: Option<Vec<u8>> = None;
         let mut current_symbol_end_index = None;
@@ -127,7 +137,7 @@ impl Fixer for NoSuperfluousPhpdocTagsFixer {
             }
             if token.is_given_kind(SYMBOL_KINDS) {
                 current_symbol = Some(
-                    tokens[tokens.get_next_meaningful_token(index).unwrap()]
+                    tokens[tokens.next_meaningful(index)]
                         .get_content()
                         .to_vec(),
                 );
@@ -312,18 +322,16 @@ impl NoSuperfluousPhpdocTagsFixer {
                     true,
                 )
                 .unwrap();
-            let type_index = tokens
-                .get_next_meaningful_token(before_argument_index)
-                .unwrap();
+            let type_index = tokens.next_meaningful(before_argument_index);
             let mut info = if type_index != index {
                 parse_type_hint(tokens, type_index)
             } else {
                 no_type_info()
             };
             if !info.allows_null {
-                let next_index = tokens.get_next_meaningful_token(index).unwrap();
+                let next_index = tokens.next_meaningful(index);
                 if tokens[next_index].equals("=", true)
-                    && tokens[tokens.get_next_meaningful_token(next_index).unwrap()]
+                    && tokens[tokens.next_meaningful(next_index)]
                         .equals((T_STRING, "null"), false)
                 {
                     info.allows_null = true;
@@ -331,7 +339,6 @@ impl NoSuperfluousPhpdocTagsFixer {
             }
             arguments_info.insert(token.get_content().to_vec(), info);
         }
-        // virtualise "hidden params" as if they would be regular ones
         if self.allow_hidden_params {
             let params_string = tokens.generate_partial_code(start, end);
             for comment in Preg::match_all(r"~/\*.*?\*/~s", &params_string) {
@@ -350,38 +357,21 @@ impl NoSuperfluousPhpdocTagsFixer {
         ctx: &Ctx,
     ) -> bool {
         let tag = annotation.get_tag().get_name();
-        static PARAM: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@param(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+(?:\&\h*)?(?:\.{{3}}\h*)?\$\S+)?(?:\s+(?<description>(?!\*+\/)\S+))?}}s"
-            )
-        });
-        static VAR: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@var(?:\h+{REGEX_TYPES})?(?!\S)(?:\h+\$\S+)?(?:\s+(?<description>(?!\*\/)\S+))?}}s"
-            )
-        });
-        static RETURN: LazyLock<String> = LazyLock::new(|| {
-            format!(
-                r"{{\*\h*@return(?:\h+{REGEX_TYPES})?(?!\S)(?:\s+(?<description>(?!\*\/)\S+))?}}s"
-            )
-        });
         let regex: &str = if tag == b"param" {
-            &PARAM
+            &PARAM_REGEX
         } else if tag == b"var" {
-            &VAR
+            &VAR_REGEX
         } else {
-            &RETURN
+            &RETURN_REGEX
         };
         let content = annotation.get_content();
         let Some(matches) = Preg::match_groups(regex, &content) else {
-            // Unable to match the annotation, it must be malformed or has unsupported format.
             return false;
         };
         if matches.name_exists("description") {
             return false;
         }
-        if matches.name("types").is_none_or(|t| t.is_empty()) {
-            // If there's no type info in the annotation, further checks make no sense, exit early.
+        if matches.name("types").is_none_or(<[u8]>::is_empty) {
             return true;
         }
         let mut annotation_types = to_comparable_names(annotation.get_types(), ctx);
@@ -399,8 +389,6 @@ impl NoSuperfluousPhpdocTagsFixer {
         if annotation_types == actual_types {
             return true;
         }
-        // retry comparison with annotation type unioned with null
-        // phpstan implies the null presence from the native type
         annotation_types.push(b"null".to_vec());
         annotation_types.sort();
         actual_types == annotation_types
@@ -408,13 +396,11 @@ impl NoSuperfluousPhpdocTagsFixer {
 }
 
 fn get_return_type_info(tokens: &Tokens, closing_parenthesis_index: usize) -> TypeInfo {
-    let colon_index = tokens
-        .get_next_meaningful_token(closing_parenthesis_index)
-        .unwrap();
+    let colon_index = tokens.next_meaningful(closing_parenthesis_index);
     if tokens[colon_index].is_kind(CT_TYPE_COLON) {
         parse_type_hint(
             tokens,
-            tokens.get_next_meaningful_token(colon_index).unwrap(),
+            tokens.next_meaningful(colon_index),
         )
     } else {
         no_type_info()
@@ -428,19 +414,19 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
         let mut type_ = Vec::new();
         if tokens[index].is_given_kind(&[T_READONLY, T_PRIVATE_SET, T_PROTECTED_SET, T_PUBLIC_SET])
         {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         if tokens[index].is_given_kind(&[
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PUBLIC,
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PROTECTED,
             CT_CONSTRUCTOR_PROPERTY_PROMOTION_PRIVATE,
         ]) {
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
             continue;
         }
         if tokens[index].is_kind(CT_NULLABLE_TYPE) {
             allows_null = true;
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         while tokens[index].is_given_kind(&[
             T_NS_SEPARATOR,
@@ -450,7 +436,7 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
             T_CALLABLE,
         ]) {
             type_.extend_from_slice(tokens[index].get_content());
-            index = tokens.get_next_meaningful_token(index).unwrap();
+            index = tokens.next_meaningful(index);
         }
         if type_.is_empty() {
             break;
@@ -459,7 +445,7 @@ fn parse_type_hint(tokens: &Tokens, mut index: usize) -> TypeInfo {
         if !tokens[index].is_given_kind(&[CT_TYPE_ALTERNATION, CT_TYPE_INTERSECTION]) {
             break;
         }
-        index = tokens.get_next_meaningful_token(index).unwrap();
+        index = tokens.next_meaningful(index);
     }
     TypeInfo { types, allows_null }
 }
@@ -482,7 +468,7 @@ fn to_comparable_names(mut types: Vec<Vec<u8>>, ctx: &Ctx) -> Vec<Vec<u8>> {
             }
             let mut type_ = strtolower(&type_);
             if let Some(full) = ctx.short_names.get(&type_) {
-                return full.clone(); // always FQCN /wo leading backslash and in lower-case
+                return full.clone();
             }
             if let Some(rest) = type_.strip_prefix(b"\\") {
                 return rest.to_vec();
@@ -495,8 +481,6 @@ fn to_comparable_names(mut types: Vec<Vec<u8>>, ctx: &Ctx) -> Vec<Vec<u8>> {
             type_
         })
         .collect();
-    // ponytail: PHP's sort() compares numeric strings numerically; both sides of every comparison are sorted
-    // the same way and native types are never numeric, so plain byte order gives the same equality result.
     normalized.sort();
     normalized
 }
@@ -508,7 +492,6 @@ fn fix_class_doc_comment(content: &[u8], element: &Element) -> Vec<u8> {
 }
 
 fn remove_superfluous_inherit_doc(doc_comment: &[u8]) -> Vec<u8> {
-    // The pattern needs the tag; without it the replacement returns the comment unchanged.
     if !doc_comment
         .windows(10)
         .any(|w| w.eq_ignore_ascii_case(b"inheritdoc"))

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ControlStructure\TrailingCommaInMultilineFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -40,7 +39,6 @@ impl Fixer for TrailingCommaInMultilineFixer {
     }
     fn configure(&mut self, options: &Value) -> Result<()> {
         let o = resolve(self.name(), options, &["after_heredoc", "elements"])?;
-        // Future::getV4OrV3(true, false)
         self.after_heredoc = o.bool("after_heredoc", false)?;
         self.elements = o.strings("elements", &["arrays"], ELEMENTS)?;
         Ok(())
@@ -69,7 +67,7 @@ impl Fixer for TrailingCommaInMultilineFixer {
             if !tokens[index].equals("(", true) {
                 continue;
             }
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             if tokens[prev_index].is_kind(T_ARRAY) {
                 if fix_arrays {
                     self.fix_block(tokens, index);
@@ -128,7 +126,7 @@ impl TrailingCommaInMultilineFixer {
         }
         let (block_type, _) = Tokens::detect_block_type(&tokens[start_index]).unwrap();
         let end_index = tokens.find_block_end(block_type, start_index);
-        let before_end_index = tokens.get_prev_meaningful_token(end_index).unwrap();
+        let before_end_index = tokens.prev_meaningful(end_index);
         if !tokens.is_partial_code_multiline(before_end_index, end_index) {
             return;
         }

@@ -1,10 +1,7 @@
-//! `lint/pest/prefer-to-be-in`, ported from pest-plugin-rector's `UseToBeInRector`: `expect(in_array($needle, $haystack, true))->toBeTrue()`
-//! becomes `expect($needle)->toBeIn($haystack)`. The haystack's type must be an array or an iterable.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{Is, Trinary, function_matcher, type_is};
-use crate::rules::rector_code_quality::is_constant;
+use crate::rules::support::expressions::is_constant;
 use crate::{Context, Report, Rule};
 
 pub struct PreferToBeIn;

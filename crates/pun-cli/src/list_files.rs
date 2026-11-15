@@ -1,10 +1,10 @@
-//! `pun list-files` (context/plan/config.md §7, after Mago's `list-files`): the files a command would check with the
-//! current pun.toml, one per line, relative to the project root and sorted.
+use crate::Exit;
 use crate::agent;
 use anyhow::{Result, bail};
 use clap::Args;
 use pun_config::Options;
 use pun_workspace::Command;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -33,7 +33,7 @@ enum CommandArg {
     Analyse,
 }
 
-pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
+pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
     let json = match a.format.as_deref() {
         None => false,
         Some("json") => true,
@@ -44,6 +44,7 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
         &root,
         &Options {
             config: a.config,
+            ignore_php_constraint: crate::ignore_php_constraint(),
             ..Default::default()
         },
     )?;
@@ -59,11 +60,16 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
     let out = if json {
         serde_json::to_string(&files)? + "\n"
     } else if a.zero_terminate {
-        files.iter().map(|f| format!("{f}\0")).collect()
+        files.iter().fold(String::new(), |mut out, f| {
+            let _ = write!(out, "{f}\0");
+            out
+        })
     } else {
-        let list: String = files.iter().map(|f| format!("{f}\n")).collect();
+        let list: String = files.iter().fold(String::new(), |mut out, f| {
+            let _ = writeln!(out, "{f}");
+            out
+        });
         if agent::enabled() {
-            // The count goes to stderr, so stdout stays one path per line (`pun list-files | xargs`).
             let detail: Vec<String> = command
                 .map(|c| format!("{} set", c.1))
                 .into_iter()
@@ -74,5 +80,5 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<u8> {
         list
     };
     std::io::stdout().write_all(out.as_bytes())?;
-    Ok(0)
+    Ok(Exit::Success)
 }

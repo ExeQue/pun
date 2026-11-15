@@ -1,7 +1,3 @@
-//! Port of Mago's `sensitive-parameter`: adds `#[\SensitiveParameter]` to parameters whose name ends in
-//! `password`, `token`, `secret`, `apikey` or `api_key` (after an optional `get`/`get_` prefix), unless the
-//! parameter is boolean-like (`bool $canChangePassword`) or already has the attribute.
-//! Opt-in only (`Pun/sensitive_parameter`). The attribute needs PHP >= 8.0 syntax and only takes effect on 8.2+.
 use crate::analyzers::helpers::split_list;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -35,7 +31,6 @@ impl Fixer for SensitiveParameter {
             }) {
                 k = tokens.get_next_meaningful_token(n);
             }
-            // `function`/`fn` (not `use function`, a CT_FUNCTION_IMPORT) always reaches its parameter list.
             let open = k.unwrap();
             let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
             for (s, _) in split_list(tokens, open, close).into_iter().rev() {
@@ -59,7 +54,6 @@ impl Fixer for SensitiveParameter {
 fn needs_attribute(tokens: &Tokens, s: usize) -> bool {
     let mut type_names = vec![];
     let mut k = s;
-    // Every parameter has a variable, so the loop always returns.
     loop {
         let t = &tokens[k];
         if t.is_kind(T_ATTRIBUTE) {
@@ -77,8 +71,7 @@ fn needs_attribute(tokens: &Tokens, s: usize) -> bool {
             let lower = t.get_content()[1..].to_ascii_lowercase();
             let name = lower
                 .strip_prefix(b"get")
-                .map(|n| n.strip_prefix(b"_").unwrap_or(n))
-                .unwrap_or(&lower);
+                .map_or(&lower[..], |n| n.strip_prefix(b"_").unwrap_or(n));
             let sensitive = [&b"password"[..], b"token", b"secret", b"apikey", b"api_key"]
                 .iter()
                 .any(|w| name.ends_with(w));

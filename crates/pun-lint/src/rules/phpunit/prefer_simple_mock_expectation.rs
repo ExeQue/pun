@@ -1,10 +1,3 @@
-//! `lint/phpunit/prefer-simple-mock-expectation`, ported from rector-phpunit's `SingleWithConsecutiveToWithRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, `withConsecutive()` with one argument becomes `with()` and `willReturnOnConsecutiveCalls()`
-//! becomes `willReturn()`. Each `$this->equalTo($a)` in the argument becomes `$a`, and an array that held one
-//! becomes the list of its items.
-
 use mago_syntax::cst::{ArrayElement, Expression, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -39,7 +32,7 @@ impl Rule for PreferSimpleMockExpectation {
             return;
         }
         let args = call.args();
-        if args.len() != 1 || crate::rules::lint_b_helpers::unpacked(args[0]) {
+        if args.len() != 1 || crate::rules::support::arguments::unpacked(args[0]) {
             return;
         }
         let name = if call.is_name(&["withConsecutive"]) {
@@ -54,7 +47,6 @@ impl Rule for PreferSimpleMockExpectation {
         let new: Vec<NewArg> = match unparenthesize(value) {
             Expression::Array(array) if has_assert_inside => {
                 let mut new = Vec::new();
-                // `new Arg($arrayItem->value)`: the key and the spread go
                 for element in &array.elements {
                     let item = match element {
                         ArrayElement::KeyValue(kv) => kv.value,

@@ -1,8 +1,3 @@
-//! Branches of the dead-code rules that PHPStan's own rule fixtures miss: NotAnalysedTraitRule (it stays quiet when
-//! only files are analysed, as the level fixtures are), the bleedingEdge toggles (reportPreciseLineForUnusedFunction-
-//! Parameter, unusedLabel, then all of bleedingEdge.neon) and the private members of traits. Expected: PHPStan's run on tests/fixtures/dead_code for
-//! each phpstan*.neon there, restricted to the identifiers Pun reports.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse, reports, run};
@@ -24,7 +19,6 @@ fn check(neon: &str) {
         .unwrap()
         .into_iter()
         .map(|e| {
-            // compared without a trait's ` (in context of …)`: PHPStan's JSON names some errors' files without it
             let file = e.file.strip_prefix(&prefix).unwrap_or(&e.file);
             let file = file
                 .split(" (in context of ")
@@ -63,7 +57,6 @@ fn check(neon: &str) {
     assert_eq!(got, want);
 }
 
-/// PHPStan 2.3.1 --level=4: skip terminated statements, but keep labels and declarations live.
 #[test]
 fn unreachable_walk_preserves_labels_and_independent_declarations() {
     let path =
@@ -119,8 +112,6 @@ fn bleeding_edge() {
     check("phpstan-edge");
 }
 
-/// Metadata for a nonexistent parameter is not an omitted optional callback. Keep all caller diagnostics,
-/// including the absence of unused-result errors, from PHPStan's original no-named-arguments fixture.
 #[test]
 fn callback_purity_requires_a_flagged_parameter() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
@@ -176,7 +167,6 @@ fn callback_purity_requires_a_flagged_parameter() {
     assert_eq!(got, want);
 }
 
-/// Native continuation survives inference's reference bookkeeping, not semantic reference writes.
 #[test]
 fn native_continuation_through_project_inference_matches_phpstan() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/dead_code");
@@ -184,7 +174,7 @@ fn native_continuation_through_project_inference_matches_phpstan() {
         serde_json::from_str(include_str!("fixtures/dead_code/native-inference.json")).unwrap();
     let mut project = Project::new(vec![root.join("native-inference.php")], vec![]);
     project.level = 4;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut actual: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -202,7 +192,6 @@ fn native_continuation_through_project_inference_matches_phpstan() {
     assert_eq!(serde_json::to_value(actual).unwrap(), expected["errors"]);
 }
 
-/// Default ImpossibleCheckTypeFunctionCallRule tips use native argument decisions, not PHPDoc syntax.
 #[test]
 fn function_certainty_tips_match_phpstan_full_records() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
@@ -217,7 +206,7 @@ fn function_certainty_tips_match_phpstan_full_records() {
         for level in [0, 4, 5] {
             let mut project = Project::new(vec![fixtures.join(file)], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut actual: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()
@@ -252,7 +241,6 @@ fn function_certainty_tips_match_phpstan_full_records() {
     );
 }
 
-/// PHPStan retains zero as a synthetic level-one exit, drops local level-one jumps, and preserves direct positions.
 #[test]
 fn outer_loop_exit_points_match_phpstan_full_records() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/dead_code");
@@ -260,7 +248,7 @@ fn outer_loop_exit_points_match_phpstan_full_records() {
         serde_json::from_str(include_str!("fixtures/dead_code/outer-loop-exits.json")).unwrap();
     let mut project = Project::new(vec![root.join("outer-loop-exits.php")], vec![]);
     project.level = 4;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let analysis = pun_analyse::analyse_project(&project).unwrap();
     let mut actual: Vec<_> = analysis
         .errors

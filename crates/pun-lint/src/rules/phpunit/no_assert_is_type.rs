@@ -1,9 +1,3 @@
-//! `lint/phpunit/no-assert-is-type`, ported from rector-phpunit's `AssertIsTypeMethodCallRector`
-//! (rules/PHPUnit120/Rector/Class_).
-//!
-//! `$this->isType('string')` becomes `$this->isString()`, and likewise for each type name PHPUnit's `isType()` takes.
-//! Rector runs it only for PHPUnit 11.5 and later; Pun leaves that to the rule's group.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

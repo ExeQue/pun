@@ -1,6 +1,3 @@
-//! Level 2: VarianceCheck, for FunctionSignatureVarianceRule, MethodSignatureVarianceRule, PropertyVarianceRule
-//! and GenericAncestorsCheck.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::symbols;
@@ -14,7 +11,6 @@ use super::properties::PropertyNode;
 pub(super) const IDENTIFIERS: &[&str] =
     &["generics.variance", "function.variance", "method.variance"];
 
-/// TemplateTypeVariance
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Variance {
     Invariant,
@@ -36,7 +32,6 @@ impl Variance {
         }
     }
 
-    /// (a bivariant or static position is always valid, and no template is declared so, so neither is described)
     fn describe(self) -> &'static str {
         match self {
             Invariant => "invariant",
@@ -61,7 +56,6 @@ impl Variance {
     }
 }
 
-/// A template's declared variance: a class's from its reflection, a function's or method's from `variances`.
 fn declared_variance(t: &Template) -> Variance {
     let Some(class) = t.scope.strip_prefix("class ") else {
         return Invariant;
@@ -76,13 +70,11 @@ fn declared_variance(t: &Template) -> Variance {
         .unwrap_or(Invariant)
 }
 
-/// `getReferencedTemplateTypes()`
 fn referenced<'t>(ty: &'t Type, position: Variance, out: &mut Vec<(&'t Template, Variance)>) {
     let co = position.compose(Covariant);
     match ty {
         Type::Template(t) => out.push((t, position)),
         Type::Object(class, args, _) | Type::Static(class, args) => {
-            // `key-of<T>` / `value-of<T>` of a template
             if class == "key-of" || class == "value-of" {
                 return args.iter().for_each(|a| referenced(a, position, out));
             }
@@ -151,7 +143,6 @@ fn function_scope(t: &Template) -> bool {
     t.scope.starts_with("function ") || t.scope.starts_with("method ")
 }
 
-/// VarianceCheck::check()
 pub(super) fn check(position: Variance, ty: &Type, context: &str, out: &mut Vec<String>) {
     let mut refs = Vec::new();
     referenced(ty, position, &mut refs);
@@ -169,7 +160,6 @@ pub(super) fn check(position: Variance, ty: &Type, context: &str, out: &mut Vec<
     }
 }
 
-/// VarianceCheck::checkParametersAcceptor(): `subject` is `function f()` / `method C::m()`.
 fn parameters_acceptor(
     c: &mut Checker,
     at: Span,
@@ -223,7 +213,6 @@ fn parameters_acceptor(
     }
 }
 
-/// FunctionSignatureVarianceRule
 pub(super) fn function(c: &mut Checker, f: &Function) {
     if c.level < 2 {
         return;
@@ -239,7 +228,6 @@ pub(super) fn function(c: &mut Checker, f: &Function) {
     );
 }
 
-/// MethodSignatureVarianceRule (`method` is the name the method is analysed under).
 pub(super) fn method(c: &mut Checker, m: &Method, method: &str) {
     if c.level < 2 {
         return;
@@ -260,8 +248,6 @@ pub(super) fn method(c: &mut Checker, m: &Method, method: &str) {
     );
 }
 
-/// `hasRestrictedWriteAccess()`: a read-only property (natively or by PHPDoc), a `private(set)` one, or one with
-/// hooks but no `set` hook.
 fn restricted(
     c: &Checker,
     modifiers: &[Modifier],
@@ -298,7 +284,6 @@ fn position(restricted: bool) -> Variance {
     if restricted { Covariant } else { Invariant }
 }
 
-/// PropertyVarianceRule of a declared property (`decl` is where its PHPDoc is read from).
 pub(super) fn property(c: &mut Checker, node: &PropertyNode, decl: Span, by_phpdoc: bool) {
     if c.level < 2 || node.has(|m| m.is_private()) {
         return;
@@ -311,13 +296,10 @@ pub(super) fn property(c: &mut Checker, node: &PropertyNode, decl: Span, by_phpd
     });
 }
 
-/// PropertyVarianceRule of constructor `m`'s promoted parameters, typed as its signature types them.
 pub(super) fn promoted(c: &mut Checker, m: &Method) {
     if c.level < 2 {
         return;
     }
-    // PhpDocsResolver::getPhpDocs()'s `$isReadOnly`: the class is immutable, or the constructor's own PHPDoc has a
-    // `@readonly` tag
     let by_phpdoc = c.decls.last().is_some_and(|d| d.immutable_doc)
         || c.decls
             .last()

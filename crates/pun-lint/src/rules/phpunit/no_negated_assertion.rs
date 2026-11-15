@@ -1,8 +1,3 @@
-//! `lint/phpunit/no-negated-assertion`, ported from rector-phpunit's `AssertNotOperatorRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! `assertTrue(!$a)` becomes `assertFalse($a)`, and `assertFalse(!$a)` becomes `assertTrue($a)`.
-
 use mago_syntax::cst::{Expression, Node, NodeKind, UnaryPrefixOperator};
 use pun_problem::Safety;
 

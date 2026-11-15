@@ -1,10 +1,5 @@
-//! `lint/phpunit/add-property-type-setup-docblock`, ported from Rector 2.8.4's
-//! `TypedPropertyFromDocblockSetUpDefinedRector` (rules/TypeDeclaration/Rector/Class_): in a PHPUnit test case with a
-//! `setUp()` method, an untyped private non-static property with one item that the constructor or `setUp()` always
-//! assigns (`ConstructorAssignDetector`) gets the declaration of its `@var` type. The `@var` goes when it says no more
-//! than the new declaration (`DeadVarTagValueNodeAnalyzer::isDead`).
-
 use mago_syntax::cst::{Modifier, Node, NodeKind};
+use pun_phpstan::phpdoc::Node as PhpDocNode;
 use pun_problem::{Edit, Safety, Span};
 
 use super::add_property_type_constructor::is_test_case;
@@ -16,12 +11,11 @@ use super::facts::facts;
 use super::property_type::{
     ClassView, TYPED_PROPERTIES, Ty, VarTag, doc_type, property_declaration, ty, variable_span,
 };
-use crate::rules::lint_b_doc::Doc;
-use crate::rules::no_redundant_property_default::is_property_assigned;
-use crate::rules::no_useless_var_tag::{Target, is_dead};
+use crate::rules::dead_code::no_redundant_property_default::is_property_assigned;
+use crate::rules::phpdoc::no_useless_var_tag::{Target, is_dead};
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
-use pun_phpstan::phpdoc::Node as PhpDocNode;
 
 pub struct AddPropertyTypeSetupDocblock;
 
@@ -30,8 +24,8 @@ impl Rule for AddPropertyTypeSetupDocblock {
         "lint/phpunit/add-property-type-setup-docblock"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -62,8 +56,6 @@ impl Rule for AddPropertyTypeSetupDocblock {
             {
                 continue;
             }
-            // getVarType(): phpdoc-parser's reading of the first `@var` (which takes `$this`, unlike `VarTag`), and
-            // the type PHPStan reads there
             let Some(((_, tag), doc)) =
                 Doc::last_of(ctx, &view.path, node_span(prop.property).start)
                     .and_then(|doc| first_named(&doc, "@var"))
@@ -71,7 +63,6 @@ impl Rule for AddPropertyTypeSetupDocblock {
             else {
                 continue;
             };
-            // `self` in the tag is `SelfObjectType`, which declares as `self` (Mago reads the class)
             let says_self = names_self(&tag.ty);
             let own = |m: Ty| match m {
                 Ty::Object(n) if says_self && n.eq_ignore_ascii_case(&view.name) => Ty::Static(n),
@@ -84,7 +75,7 @@ impl Rule for AddPropertyTypeSetupDocblock {
             if matches!(t, Ty::Mixed) {
                 continue;
             }
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };
@@ -106,19 +97,15 @@ impl Rule for AddPropertyTypeSetupDocblock {
     }
 }
 
-/// `DeadVarTagValueNodeAnalyzer::isDead()` of the property's `@var` once it is declared `declaration`.
 fn is_dead_after(
     facts: &super::facts::Facts,
     view: &ClassView<'_, '_>,
     tag: &TypeTag,
     declaration: &str,
 ) -> bool {
-    // Rector keeps the `@var` (`self`, `static`, `$this`, `?self`, `self|null`) of a property it declares `self` or
-    // `?self`: its `SelfObjectType` never equals the doc's type
     if declaration.trim_start_matches('?') == "self" {
         return false;
     }
-    // the declaration Pun writes reads the same as a PHPDoc type
     let (node, _) = pun_phpstan::phpdoc::parse_prefix(declaration)
         .expect("a type declaration parses as a PHPDoc type");
     let scope = TypeScope::new(&view.path, facts.documented());
@@ -128,7 +115,6 @@ fn is_dead_after(
     })
 }
 
-/// Whether a PHPDoc type names `self`, alone or in a union.
 fn names_self(node: &PhpDocNode) -> bool {
     match node {
         PhpDocNode::Ident(n) => n.eq_ignore_ascii_case("self"),

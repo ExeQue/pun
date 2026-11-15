@@ -1,17 +1,13 @@
-//! Why an update found no solution, in plain sentences: for each problem the solver reports, one line per rule
-//! that took part, naming the packages and versions involved and what would fix it when that is clear.
-
 use super::Failure;
 use super::package::{Origin, Package};
 use super::solver::Reason;
 use crate::constraint::Constraint;
 use crate::version::is_platform;
 use serde_json::{Map, Value};
+use std::fmt::Write as _;
 
-/// How many matching versions a line names before it shortens the list.
 const SHOWN: usize = 4;
 
-/// One list of lines per problem.
 pub fn explain(failure: &Failure, manifest: &Map<String, Value>) -> Vec<Vec<String>> {
     let arena = &failure.arena;
     failure
@@ -71,8 +67,6 @@ fn line(
     }
 }
 
-/// What the repositories (or the platform) have for `name`, against `constraint`; `pool` holds the arena indices
-/// the solver chose from.
 fn found(arena: &[Package], pool: &[usize], name: &str, constraint: &Constraint) -> String {
     let mut all: Vec<&Package> = (arena.iter())
         .filter(|p| p.name == name && p.alias_of.is_none() && p.origin != Origin::Root)
@@ -91,7 +85,6 @@ fn found(arena: &[Package], pool: &[usize], name: &str, constraint: &Constraint)
             None => format!(", but the platform does not have {name}"),
         };
     }
-    // A partial update keeps the packages it does not update at their locked version.
     if let Some(p) =
         (pool.iter().map(|&p| &arena[p])).find(|p| p.name == name && p.origin == Origin::Locked)
         && !constraint.matches(&Constraint::exact(&p.version))
@@ -101,7 +94,6 @@ fn found(arena: &[Package], pool: &[usize], name: &str, constraint: &Constraint)
             p.pretty_name, p.pretty_version, p.pretty_name
         );
     }
-    // The pool loads only the versions a constraint admits, so none found means none that match.
     if all.is_empty() {
         return ", but no version of it matches; check the name, the constraint and minimum-stability".into();
     }
@@ -112,7 +104,7 @@ fn found(arena: &[Package], pool: &[usize], name: &str, constraint: &Constraint)
     let list = |versions: &[&str]| {
         let mut s = versions[..versions.len().min(SHOWN)].join(", ");
         if versions.len() > SHOWN {
-            s.push_str(&format!(" and {} more", versions.len() - SHOWN));
+            let _ = write!(s, " and {} more", versions.len() - SHOWN);
         }
         s
     };
@@ -136,10 +128,13 @@ mod tests {
     use serde_json::json;
 
     fn object(v: Value) -> Map<String, Value> {
-        v.as_object().unwrap().clone()
+        serde_json::from_value(v).unwrap()
     }
 
-    /// The problem lines (sorted) for `require` on a repository of `packages`, with PHP 8.5.0 and ext-json installed.
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn problems(
         require: Value,
         packages: Value,
@@ -154,9 +149,16 @@ mod tests {
         let packages = packages.as_array().unwrap().iter().cloned().map(object);
         let repo: Box<dyn Repository> = Box::new(ArrayRepository::of(packages.collect()));
         let lock = lock.map(|l| Lock::from_composer_lock(&l.to_string()).unwrap());
-        let resolved = resolve(&manifest, platform, vec![repo], lock.as_ref(), options).unwrap();
+        let resolved = resolve(
+            &manifest,
+            platform,
+            vec![repo],
+            lock.as_ref(),
+            options,
+            &|_| None,
+        )
+        .unwrap();
         let mut lines = explain(&resolved.err().expect("no solution"), &manifest);
-        // The order is the solver's; the sentences are what these tests check.
         for l in &mut lines {
             l.sort();
         }
@@ -260,8 +262,6 @@ mod tests {
         );
     }
 
-    /// The platform is fixed: a package that conflicts with it can't be installed, and no line names the fixed
-    /// package itself.
     #[test]
     fn conflicts_with_the_platform() {
         let repo = json!([package(

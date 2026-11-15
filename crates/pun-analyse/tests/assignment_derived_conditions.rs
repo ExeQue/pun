@@ -1,5 +1,3 @@
-//! Pure assignment RHS types inherit PHPStan's existing conditional holders.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -27,7 +25,7 @@ fn check(cases: &[&str]) {
         for level in [0, 4, 5] {
             let mut project = Project::new(vec![root.join(format!("{case}.php"))], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level > 0,
@@ -182,7 +180,6 @@ fn retained_assignment_shapes_do_not_change_live_or_native_artifacts() {
                         .find(|scope| scope.name.as_str() == Some(name))
                         .unwrap();
                     assert!(scope.filtered);
-                    // PHPStan's complete retained.php dumps specify these exact closed arrays.
                     use mago_codex::ttype::atomic::{
                         TAtomic,
                         array::{TArray, key::ArrayKey},

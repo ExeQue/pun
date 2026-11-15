@@ -8,15 +8,9 @@
 //! change it. Each one must pass as `format(pun lint --fix) == format(expected)` with format being the laravel preset,
 //! and the text edits must give the expected bytes before format too.
 
-#[allow(
-    dead_code,
-    reason = "each test target uses a different part of this shared module"
-)]
-mod lint_c;
-
 use std::path::Path;
 
-use lint_c::{run_class_paths, run_dirs};
+use crate::common::{run_class_paths, run_dirs};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddFactoryExtendsPhpdoc, AddHasFactoryTrait, AddQueryClosureType, AddRelationGenerics,
@@ -113,9 +107,6 @@ fn make_model_attributes_and_scopes_protected() {
     );
 }
 
-/// The fixtures run with the patterns of rector-laravel's config/configured_rule.php, Oracle/ and Pun/ with the default
-/// ones, Configured/ (Rector's output with this configuration) with `$c?l`, `[!a-c]_date` and `x\_at`, and
-/// Unpatterned/ (Rector's output) with no pattern, which allows every column.
 #[test]
 fn eloquent_order_by_to_latest_or_oldest() {
     let class = "EloquentOrderByToLatestOrOldestRector";
@@ -157,7 +148,6 @@ fn eloquent_order_by_to_latest_or_oldest_options() {
     );
     rule.configure(&serde_json::json!(null)).unwrap();
     assert_eq!(rule.allowed_patterns, ["*_at", "*_date", "*_on"]);
-    // Rector's `configure` without the key leaves no pattern, which allows every column
     rule.configure(&serde_json::json!({})).unwrap();
     assert_eq!(rule.allowed_patterns, [] as [std::string::String; 0]);
 }
@@ -180,9 +170,6 @@ fn container_bind_concrete_with_closure_only() {
     );
 }
 
-/// Fixture/WithoutConfiguration, Oracle/ and Pun/ run without options; Fixture/Configured with the list of
-/// rector-laravel's config/configured_rule_with_configuration.php, and Configured/ with `App\A`, `app\b`, `\App\G`,
-/// `App\H` and `App\Missing`.
 #[test]
 fn add_has_factory_to_models() {
     let class = "AddHasFactoryToModelsRector";
@@ -234,16 +221,12 @@ fn add_has_factory_to_models_options() {
         rule.configure(&serde_json::json!({"items": "App\\A"}))
             .is_err()
     );
-    // Rector fails on a name with `*` (no pattern matching in `isNames`)
     assert!(
         rule.configure(&serde_json::json!({"items": ["App\\*"]}))
             .is_err()
     );
 }
 
-/// The fixtures and Oracle/ run with rector-laravel's config/configured_rule.php (`encrypter` to the `Encrypter`
-/// class, the `Session` class to `session`), Oracle/ with `session` to `store` after them, written as `pun migrate`
-/// writes the value objects.
 #[test]
 fn replace_service_container_call_arg() {
     let constant = |class: &str| {
@@ -330,10 +313,6 @@ fn call_on_app_array_access_to_standalone_assign() {
     );
 }
 
-/// rector-laravel 2.7.3's test of the rule (`AddGenericReturnTypeToRelationsRectorTest`, Fixture/NewGenerics); the
-/// rule no longer reads Laravel's version, so every suite runs with the stubs as they are. Fixture/OldGenerics and
-/// Fixture/NewGenericsNoPivot are the tests of `AddLegacyGenericReturnTypeToRelationsRector` and
-/// `AddNewGenericReturnTypeToRelationsRector`, which Pun has not ported.
 #[test]
 fn add_generic_return_type_to_relations() {
     let stubs = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector-laravel-stubs");

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\SingleLineThrowFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -11,13 +10,11 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(SingleLineThrowFixer)
 }
 
-/// REMOVE_WHITESPACE_AFTER_TOKENS + REMOVE_WHITESPACE_AROUND_TOKENS.
 const PREVIOUS_TOKENS_TO_CLEAR: [Proto<'static>; 3] = [
     Proto::Char(b"["),
     Proto::Char(b"("),
     Proto::Kind(T_DOUBLE_COLON),
 ];
-/// REMOVE_WHITESPACE_AROUND_TOKENS + REMOVE_WHITESPACE_BEFORE_TOKENS.
 const NEXT_TOKENS_TO_CLEAR: [Proto<'static>; 6] = [
     Proto::Char(b"("),
     Proto::Kind(T_DOUBLE_COLON),
@@ -49,7 +46,7 @@ impl Fixer for SingleLineThrowFixer {
             if !tokens[index].is_kind(T_THROW) {
                 continue;
             }
-            let mut end_candidate_index = tokens.get_next_meaningful_token(index).unwrap();
+            let mut end_candidate_index = tokens.next_meaningful(index);
             while !tokens[end_candidate_index].equals_any(&END_TOKENS, true) {
                 if let Some((block_type, is_start)) =
                     Tokens::detect_block_type(&tokens[end_candidate_index])
@@ -59,13 +56,9 @@ impl Fixer for SingleLineThrowFixer {
                     }
                     end_candidate_index = tokens.find_block_end(block_type, end_candidate_index);
                 }
-                end_candidate_index = tokens
-                    .get_next_meaningful_token(end_candidate_index)
-                    .unwrap();
+                end_candidate_index = tokens.next_meaningful(end_candidate_index);
             }
-            let end = tokens
-                .get_prev_meaningful_token(end_candidate_index)
-                .unwrap();
+            let end = tokens.prev_meaningful(end_candidate_index);
             trim_new_lines(tokens, index, end);
         }
     }

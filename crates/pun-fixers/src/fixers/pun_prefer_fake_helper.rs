@@ -1,7 +1,3 @@
-//! Port of Mago's `prefer-fake-helper` (Laravel): `$this->faker` → `fake()` inside `*Factory` classes.
-//! Opt-in only (`Pun/prefer_fake_helper`). Like Mago, occurrences inside string interpolation are left alone;
-//! unlike Mago, write contexts (`$this->faker = ...`, `isset($this->faker)`) are skipped too, since
-//! `fake()` there would not compile.
 use crate::analyzers::helpers::COMPOUND_ASSIGNMENTS;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -54,7 +50,6 @@ fn fix_body(tokens: &mut Tokens, open: usize, end: usize) {
         } else if t.is_kind(T_END_HEREDOC) {
             in_string = false;
         } else if let Some(o) = class_body(tokens, i) {
-            // Nested anonymous class: `$this` is not the factory there.
             i = tokens.find_block_end(Tokens::BLOCK_TYPE_BRACE, o);
         } else if !in_string && t.is_kind(T_VARIABLE) && t.get_content() == b"$this" {
             try_fix(tokens, i);
@@ -108,7 +103,6 @@ fn try_fix(tokens: &mut Tokens, this: usize) {
     );
 }
 
-/// The `{` of a class declaration or anonymous class at `i`; `None` for anything else, including `Foo::class`.
 fn class_body(tokens: &Tokens, i: usize) -> Option<usize> {
     if !tokens[i].is_kind(T_CLASS)
         || tokens
@@ -120,7 +114,6 @@ fn class_body(tokens: &Tokens, i: usize) -> Option<usize> {
     tokens.get_next_token_of_kind(i, &["{".into()], true)
 }
 
-/// Walks back from `index` (inside a class body, so a `{` is always found) to its statement start.
 fn inside_isset_or_unset(tokens: &Tokens, index: usize) -> bool {
     let mut depth = 0;
     let mut i = index;
@@ -159,14 +152,12 @@ mod tests {
 
     #[test]
     fn mago_cases() {
-        // fix_faker_property
         assert_eq!(
             fix(&factory(
                 "return ['name' => $this->faker->unique()->word()];"
             )),
             factory("return ['name' => fake()->unique()->word()];")
         );
-        // fake_helper_used, faker_property_outside_factory, interpolation is reported but not fixed
         for same in [
             factory("return ['name' => fake()->word()];"),
             "<?php\n\nclass ReportService\n{\n    public function build(): string\n    {\n        return $this->faker->word();\n    }\n}\n".into(),
@@ -197,10 +188,8 @@ mod tests {
         ] {
             assert_eq!(fix(&same), same);
         }
-        // A class after the factory is not touched.
         let two = "<?php class AFactory { function f() { $this->faker->a(); } } class B { function f() { $this->faker->b(); } }";
         assert_eq!(fix(two), two.replacen("$this->faker->a", "fake()->a", 1));
-        // `::class` is not a class declaration (it used to swallow everything up to the next `{`).
         let refs = "<?php $f = AFactory::class; class AFactory { function f() { $m = B::class; if ($m) { $this->faker->a(); } } }";
         assert_eq!(fix(refs), refs.replacen("$this->faker->a", "fake()->a", 1));
     }

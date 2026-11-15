@@ -8,7 +8,15 @@
 
 ## Introduction
 
-Pun is an ultrafast, unified toolchain for PHP 8.4+ projects. One native binary formats, lints and analyses your code, configured by a single `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector and PHPStan configs.
+Pun is an ultrafast, unified toolchain for PHP 8.4+ projects. One native binary formats, lints and analyses your code and installs your Composer packages from `composer.json` and `composer.lock`, with its own settings in a single `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector and PHPStan configs.
+
+Install the binary for Linux or macOS (x86_64 or arm64):
+
+```sh
+curl -fsSL https://pun.laravel.cloud/install | sh
+```
+
+Or add it to a project with Composer:
 
 ```sh
 composer require --dev punphp/pun
@@ -27,12 +35,12 @@ Thank you for considering contributing to Pun! Read [AGENTS.md](AGENTS.md) for h
 
 ## Security Vulnerabilities
 
-Please review [our security policy](https://github.com/punphp/pun/security/policy) on how to report security vulnerabilities.
+Please review [our security policy](https://github.com/shipfastlabs/pun/security/policy) on how to report security vulnerabilities.
 
 ## Credits
 
-Pun would not be possible without [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan) and [Rector](https://github.com/rectorphp/rector). Pun uses Mago's parser and analysis libraries directly and ports behaviour, rules and test fixtures from these projects. Thank you to everyone behind them.
+Pun would not be possible without [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector) and [Composer](https://github.com/composer/composer). Pun uses Mago's parser and analysis libraries directly and ports behaviour, rules and test fixtures from these projects. Thank you to everyone behind them.
 
 ## License
 
-Pun is open-sourced software licensed under the [MIT license](LICENSE). The licences of ported code are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+Pun is open-sourced software licensed under the [MIT license](LICENSE). The licences of ported code are in [licenses/THIRD_PARTY_NOTICES.md](licenses/THIRD_PARTY_NOTICES.md), and those of the bundled Rust crates in [licenses/THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).

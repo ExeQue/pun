@@ -1,5 +1,3 @@
-//! Fresh PHPStan 2.3.1 ASCII casing intersections and asymmetric joins.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

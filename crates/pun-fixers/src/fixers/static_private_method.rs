@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\StaticPrivateMethodFixer`.
 use pun_format::Fixer;
 use pun_tokens::php_compat::strtolower;
 use pun_tokens::{Kind::*, Token, Tokens, TokensAnalyzer};
@@ -29,7 +28,7 @@ impl Fixer for StaticPrivateMethodFixer {
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         loop {
             let mut anything_changed = false;
-            let end = tokens.count() - 3; // min. number of tokens to form a class candidate to fix
+            let end = tokens.count() - 3;
             for index in (1..=end).rev() {
                 if !tokens[index].is_kind(T_CLASS) {
                     continue;
@@ -49,17 +48,13 @@ impl Fixer for StaticPrivateMethodFixer {
 
 fn fix_class(tokens: &mut Tokens, class_open: usize, class_close: usize) -> bool {
     let mut fixed_methods: HashSet<Vec<u8>> = HashSet::new();
-    // Upstream's generator yields from the end, and each insert lands at or after the method it fixes, so the
-    // methods still to come keep their indices.
     for (function_keyword_index, method_open, method_close) in
         get_class_methods(tokens, class_open, class_close)
     {
         if skip_method(tokens, function_keyword_index, method_open, method_close) {
             continue;
         }
-        let method_name_index = tokens
-            .get_next_meaningful_token(function_keyword_index)
-            .unwrap();
+        let method_name_index = tokens.next_meaningful(function_keyword_index);
         fixed_methods.insert(tokens[method_name_index].get_content().to_vec());
         tokens.insert_slices(BTreeMap::from([(
             function_keyword_index,
@@ -86,8 +81,8 @@ fn skip_method(
     method_close: usize,
 ) -> bool {
     let analyzer = TokensAnalyzer::new(tokens);
-    let prev = |i: usize| tokens.get_prev_meaningful_token(i).unwrap();
-    let next = |i: usize| tokens.get_next_meaningful_token(i).unwrap();
+    let prev = |i: usize| tokens.prev_meaningful(i);
+    let next = |i: usize| tokens.next_meaningful(i);
     let method_name_index = next(function_keyword_index);
     let method_name = strtolower(tokens[method_name_index].get_content());
     if MAGIC_METHODS.contains(&&method_name[..]) {
@@ -143,7 +138,7 @@ fn fix_references_in_function(
     let mut index = method_open + 1;
     while index < method_close - 1 {
         if tokens[index].is_kind(T_FUNCTION) {
-            let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+            let prev_index = tokens.prev_meaningful(index);
             let closure_start = tokens
                 .get_next_token_of_kind(index, &["{".into()], true)
                 .unwrap();
@@ -165,11 +160,9 @@ fn fix_references_in_function(
             index += 1;
             continue;
         }
-        let object_operator_index = tokens.get_next_meaningful_token(index).unwrap();
-        let method_name_index = tokens
-            .get_next_meaningful_token(object_operator_index)
-            .unwrap();
-        let arguments_brace_index = tokens.get_next_meaningful_token(method_name_index).unwrap();
+        let object_operator_index = tokens.next_meaningful(index);
+        let method_name_index = tokens.next_meaningful(object_operator_index);
+        let arguments_brace_index = tokens.next_meaningful(method_name_index);
         if tokens[object_operator_index].is_kind(T_OBJECT_OPERATOR)
             && tokens[arguments_brace_index].equals("(", true)
             && fixed_methods.contains(tokens[method_name_index].get_content())

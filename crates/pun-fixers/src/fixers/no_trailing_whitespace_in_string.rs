@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\NoTrailingWhitespaceInStringFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;

@@ -1,14 +1,7 @@
-//! `lint/laravel/prefer-env-helper`, ported from rector-laravel 2.7.3's `EnvVariableToEnvHelperRector`
-//! (src/Rector/ArrayDimFetch).
-//!
-//! Reading `$_ENV['NAME']` becomes `\Illuminate\Support\Env::get('NAME')`. An item that is written is left alone,
-//! as is one passed to a by-reference parameter (`ArrayDimFetchContextNodeVisitor::IS_IN_WRITE_CONTEXT`) or one in an
-//! interpolated string (`IS_IN_INTERPOLATED_STRING`).
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{in_string, is_by_ref_argument, is_variable, is_written, replace};
-use crate::rules::rector_code_quality::text;
+use crate::rules::support::expressions::text;
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

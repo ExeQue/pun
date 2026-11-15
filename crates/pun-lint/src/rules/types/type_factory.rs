@@ -1,11 +1,3 @@
-//! Rector 2.8.4's `TypeFactory::createMixedPassedOrUnionTypeAndKeepConstant` (src/NodeTypeResolver/PHPStan/Type/
-//! TypeFactory.php) with the `TypeHasher` it keys types by (src/NodeTypeResolver/PHPStan/TypeHasher.php), on Mago's
-//! types standing in for PHPStan's, and `ReturnedNodesReturnTypeInfererTypeInferer::inferFunctionLike`, which builds a
-//! body's return type with it.
-//!
-//! A type is an owned [`TAtomic`]. `new ArrayType($key, $item)` is a keyed array with those parameters; PHPStan's
-//! `ConstantArrayType` is a sealed Mago array (known items, no parameters).
-
 use std::sync::Arc;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -25,19 +17,13 @@ use super::native::native_type;
 use super::silent_void::{Place, has_silent_void};
 use crate::syntax::unparenthesize as unparenthesized;
 
-/// What `createUnionOrSingleType` gives.
 #[derive(Debug)]
 pub(crate) enum Created {
-    /// `MixedType`: no types, or one of them mixed.
     Mixed,
     Single(TAtomic),
-    /// `new UnionType($types)`, in order.
     Union(Vec<TAtomic>),
 }
 
-/// `createMixedPassedOrUnionTypeAndKeepConstant`: each type flattened (`unwrapUnionedTypes`, a constant array
-/// becoming one `array<key, item>` per item type), made unique by hash with constants kept unless their general type
-/// is there (`uniquateTypes`), then mixed, the one type, or their union.
 pub(crate) fn create_keep_constant(types: Vec<TAtomic>) -> Created {
     let mut unwrapped = Vec::new();
     for t in types {
@@ -51,7 +37,6 @@ pub(crate) fn create_keep_constant(types: Vec<TAtomic>) -> Created {
     let mut types = uniquate(unwrapped);
     match types.len() {
         1 => Created::Single(types.remove(0)),
-        // no types (an empty union), or one of them mixed
         _ if types.is_empty() || types.iter().any(|t| matches!(t, TAtomic::Mixed(_))) => {
             Created::Mixed
         }
@@ -59,9 +44,6 @@ pub(crate) fn create_keep_constant(types: Vec<TAtomic>) -> Created {
     }
 }
 
-/// `uniquateTypes($types, keepConstant: true)`: one type per hash, the last of them in the place of the first; a
-/// constant (a literal, `true`, `false`) is hashed by its kind and dropped when its general type is there too, and
-/// `true` or `false` after both were seen is `bool` (`normalizeBooleanType`).
 fn uniquate(types: Vec<TAtomic>) -> Vec<TAtomic> {
     let mut unique: Vec<(String, TAtomic)> = Vec::new();
     let mut constants: Vec<(String, String)> = Vec::new();
@@ -103,7 +85,6 @@ fn uniquate(types: Vec<TAtomic>) -> Vec<TAtomic> {
     unique.into_iter().map(|(_, t)| t).collect()
 }
 
-/// `removeValueFromConstantType`: the general type of a constant, `None` for any other type.
 fn without_value(t: &TAtomic) -> Option<TAtomic> {
     Some(TAtomic::Scalar(match t {
         TAtomic::Scalar(TScalar::Float(f)) if f.is_literal() => TScalar::float(),
@@ -114,7 +95,6 @@ fn without_value(t: &TAtomic) -> Option<TAtomic> {
     }))
 }
 
-/// Whether PHPStan's `isConstantValue()` holds: a literal scalar, `true`, `false` or `null`.
 fn is_constant_value(t: &TAtomic) -> bool {
     match t {
         TAtomic::Null => true,
@@ -126,12 +106,9 @@ fn is_constant_value(t: &TAtomic) -> bool {
     }
 }
 
-/// `TypeHasher::createTypeHash`: an array by its item type, key type and item description; an object by its class
-/// name (`static` and `$this` too); a constant by its kind; anything else by its description.
 fn type_hash(t: &TAtomic) -> String {
     match t {
         TAtomic::Mixed(_) => "mixed".to_string(),
-        // a keyed array with parameters is not constant
         TAtomic::Array(TArray::Keyed(TKeyedArray {
             parameters: Some((key, item)),
             non_empty: false,
@@ -160,7 +137,6 @@ fn type_hash(t: &TAtomic) -> String {
     }
 }
 
-/// The hash of a type that may be a union: a union of constants is hashed by its class, `UnionType`.
 fn union_hash(u: &TUnion) -> String {
     match u.types.as_ref() {
         [one] => type_hash(one),
@@ -169,7 +145,6 @@ fn union_hash(u: &TUnion) -> String {
     }
 }
 
-/// A type's description, standing in for PHPStan's `describe()`: equal for equal types.
 fn describe(u: &TUnion) -> String {
     let mut ids: Vec<String> = u.types.iter().map(describe_atomic).collect();
     ids.sort();
@@ -180,7 +155,6 @@ fn describe_atomic(t: &TAtomic) -> String {
     t.get_id().to_string()
 }
 
-/// Whether `t` is PHPStan's `ConstantArrayType`: an array whose keys are all known (`[]`, `[1, 'a' => $b]`).
 pub(crate) fn is_constant_array(t: &TAtomic) -> bool {
     match t {
         TAtomic::Array(TArray::Keyed(k)) => k.parameters.is_none(),
@@ -195,7 +169,6 @@ pub(crate) fn is_constant_array(t: &TAtomic) -> bool {
     }
 }
 
-/// A constant array's entries: (key, optional, item).
 fn constant_entries(t: &TArray) -> Vec<(TAtomic, bool, &TUnion)> {
     match t {
         TArray::Keyed(k) => (k.known_items.iter().flat_map(|i| i.iter()))
@@ -213,15 +186,11 @@ fn constant_entries(t: &TArray) -> Vec<(TAtomic, bool, &TUnion)> {
     }
 }
 
-/// `unwrapConstantArrayTypes`: the item types of a constant array (its iterable value type, flattened), each as an
-/// `array<key, item>` with the key at the same place in its flattened key type (`mixed` past its end); an item that
-/// is a constant array is unwrapped too, each of its arrays the item of one array. `[]` is `array<never, never>`.
 fn unwrap_constant_array(t: &TArray) -> Vec<TAtomic> {
     let entries = constant_entries(t);
     if entries.is_empty() {
         return vec![array_of(TAtomic::Never, TAtomic::Never)];
     }
-    // Mago merges `[]` with a shape into one whose items are all optional, where PHPStan keeps `array{}` apart
     let mut out = Vec::new();
     if entries.iter().all(|(_, optional, _)| *optional) {
         out.push(array_of(TAtomic::Never, TAtomic::Never));
@@ -252,7 +221,6 @@ fn unwrap_constant_array(t: &TArray) -> Vec<TAtomic> {
     out
 }
 
-/// `new ArrayType($key, $item)`.
 fn array_of(key: TAtomic, item: TAtomic) -> TAtomic {
     TAtomic::Array(TArray::Keyed(TKeyedArray::new_with_parameters(
         Arc::new(TUnion::from_atomic(key)),
@@ -260,8 +228,6 @@ fn array_of(key: TAtomic, item: TAtomic) -> TAtomic {
     )))
 }
 
-/// `TypeCombinator::union`'s members, for the keys and items of a constant array: `mixed` swallows the rest, repeats
-/// go, a literal goes when its general type is there, and `true` with `false` is `bool`.
 fn combine(types: Vec<TAtomic>) -> Vec<TAtomic> {
     if let Some(mixed) = types.iter().find(|t| matches!(t, TAtomic::Mixed(_))) {
         return vec![mixed.clone()];
@@ -298,8 +264,6 @@ fn combine(types: Vec<TAtomic>) -> Vec<TAtomic> {
     out
 }
 
-/// `NodeTypeCorrector::correctType` on a native type that is not a union: a non-empty string is `string`, a
-/// non-empty array `array`, and a list loses its list-ness (`array<int, T>`).
 fn corrected(t: &TAtomic) -> TAtomic {
     match t {
         TAtomic::Scalar(TScalar::String(s)) if !s.is_known_literal() && s.is_non_empty() => {
@@ -326,9 +290,6 @@ fn corrected(t: &TAtomic) -> TAtomic {
     }
 }
 
-/// `NodeTypeResolver::getNativeType` of a returned value, as the members PHPStan's union has, in its order: `new
-/// class extends A {}` with one parent is that parent (`NewTypeResolver`), and a type that is not a union is
-/// corrected ([`corrected`]).
 fn returned_native_type(
     place: &Place<'_, '_, '_>,
     codebase: &CodebaseMetadata,
@@ -349,9 +310,6 @@ fn returned_native_type(
     })
 }
 
-/// `ReturnedNodesReturnTypeInfererTypeInferer::inferFunctionLike`: the type of each `return`'s value (`void` for a
-/// bare `return`, and for an end the body can reach), made one type by [`create_keep_constant`]. `Mixed` without
-/// returns, for only `void`, and where Mago has no type for a value.
 pub(crate) fn infer_returns(
     place: &Place<'_, '_, '_>,
     body: &Block<'_>,
@@ -384,15 +342,10 @@ pub(crate) fn infer_returns(
     }
 }
 
-/// Whether `TypeCombinator::removeNull` leaves a `UnionType`: two or more members other than `null` (`UnionType::
-/// tryRemove` keeps the rest as they are).
 pub(crate) fn is_union_without_null(created: &Created) -> bool {
     matches!(created, Created::Union(types) if types.iter().filter(|t| !matches!(t, TAtomic::Null)).count() > 1)
 }
 
-/// The members of a union with each object that another member's class covers dropped, as
-/// `TypeCombinator::union` leaves them: `$this` and `static` of a class go with the class, and a subclass with
-/// its parent.
 pub(crate) fn without_covered_objects<'a>(
     types: Vec<&'a TAtomic>,
     codebase: &CodebaseMetadata,
@@ -426,14 +379,11 @@ pub(crate) fn without_covered_objects<'a>(
         .collect()
 }
 
-/// The members of one expression's type with its arrays that are not constant made one array, as
-/// `TypeCombinator::union` keeps them: Mago splits `array_map()`'s type into `array<k, v>|list<v>`.
 pub(crate) fn merged_arrays(types: Vec<TAtomic>) -> Vec<TAtomic> {
     let general = |t: &TAtomic| matches!(t, TAtomic::Array(_)) && !is_constant_array(t);
     if types.iter().filter(|t| general(t)).count() < 2 {
         return types;
     }
-    // the union of non-empty arrays is non-empty (`array_map(...) ?: 1`)
     let non_empty = types.iter().filter(|t| general(t)).all(|t| {
         matches!(
             t,

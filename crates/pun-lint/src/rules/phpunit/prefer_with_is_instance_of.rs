@@ -1,15 +1,8 @@
-//! `lint/phpunit/prefer-with-is-instance-of`, ported from rector-phpunit's `SimplerWithIsInstanceOfRector`
-//! (rules/CodeQuality/Rector/MethodCall).
-//!
-//! In a test class, an argument of a `with()` call that is `callback()` of a closure doing only
-//! `assertInstanceOf(X, ...)` and a `return`, or only `return $x instanceof X;`, becomes `$this->isInstanceOf(X)`. A
-//! class name `X` of `instanceof` is written `\X::class` (resolved), `self`, `parent` and `static` as they are.
-
 use mago_syntax::cst::{BinaryOperator, Call, Expression, Node, NodeKind, Statement};
 use pun_problem::{Edit, Safety};
 
 use super::{AnyCall, expr_text, is_in_test_class, resolve};
-use crate::rules::rector_stmts::block_list;
+use crate::rules::support::statement_edits::block_list;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -51,7 +44,6 @@ impl Rule for PreferWithIsInstanceOf {
     }
 }
 
-/// `matchCallbackSoleInstanceofCheckClassName`: the class a `callback()` of a closure checks, as printed.
 fn sole_instanceof_class(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],

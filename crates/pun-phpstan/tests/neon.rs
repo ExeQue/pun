@@ -2,9 +2,7 @@
 //! nette/neon v3.3.4 results) plus extra inputs for branches it doesn't reach (tests/fixtures/neon-extra.json, same
 //! exporter).
 
-mod common;
-
-use common::{fixture, tagged, untagged};
+use crate::common::{fixture, tagged, untagged};
 use pun_phpstan::neon;
 
 fn run(name: &str) {
@@ -28,7 +26,6 @@ fn run(name: &str) {
                 failures.push(format!("decode {input}\n  want {want}\n  got  {got}"));
             }
         } else if case.get("output").is_some() && case["encode"].get("object").is_none() {
-            // Objects (stdClass) never occur in PHPStan configs; `Value` has no object, so those encoder cases are skipped.
             let v = untagged(&case["encode"]);
             let got = neon::encode(
                 &v,

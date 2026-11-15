@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\StringImplicitBackslashesFixer`, with PHP-CS-Fixer 3's defaults
-//! (`single_quoted: unescape`, `double_quoted: escape`, `heredoc: escape`), as Pint runs without future mode.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use anyhow::Result;
@@ -76,7 +74,6 @@ impl Fixer for StringImplicitBackslashesFixer {
             if !content.contains(&b'\\') {
                 continue;
             }
-            // nowdoc syntax
             if token.is_kind(T_ENCAPSED_AND_WHITESPACE)
                 && rtrim(tokens[index - 1].get_content()).ends_with(b"'")
             {

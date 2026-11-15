@@ -1,12 +1,3 @@
-//! Composer's `PoolOptimizer`: drops the versions the solver would never choose before it builds rules for them.
-//! Versions of a package that every requirement in the pool treats alike, and that require, conflict with, replace
-//! and provide the same things, are interchangeable, so only the one the policy prefers stays. In a partial update,
-//! versions that a locked package's requirements rule out go too. On Pinkary this leaves 1,789 of 19,799 versions.
-//!
-//! Composer keys its groups by the constraints' text; equal constraints have equal text, so the keys here are the
-//! constraints themselves. Composer also compacts each constraint first (`Intervals::compactConstraint`), which
-//! puts a few more versions in one group; without it a group can only be smaller, and keeps a version or two more.
-
 use super::package::{Link, Package};
 use super::policy::Policy;
 use super::pool::{Pool, Request};
@@ -15,22 +6,19 @@ use indexmap::{IndexMap, IndexSet};
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-/// The constraints required of (or conflicting with) each name.
 type ByName<'a> = HashMap<&'a str, IndexSet<&'a Constraint>>;
 
-/// A group's key: the requirement a version satisfies, then the replaces and conflicts that hold for every version
-/// of it, in Composer's order (`true` marks a conflict).
 type GroupKey<'a> = Vec<(bool, &'a Constraint)>;
 
-/// A package's links of each kind (0 requires, 1 conflicts, 2 replaces, 3 provides), sorted by target.
 type Dependencies<'a> = Vec<(u8, &'a str, &'a Constraint)>;
 
-/// The arena indices of the pool's packages that stay, in pool order.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
     let arena = &pool.arena;
 
-    // The constraints the pool and the root require of each name, and those it conflicts with; a disjunction
-    // counts as each of its members, so `^2.14 || ^3.3` keeps the best version for each.
     let mut requires = ByName::new();
     let mut conflicts = ByName::new();
     for (name, c) in &request.requires {
@@ -50,7 +38,6 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
         }
     }
 
-    // A fixed or locked version is never removed, nor are the aliases it belongs with.
     let mut pinned: HashMap<&str, Vec<Constraint>> = HashMap::new();
     for &p in request.fixed.iter().chain(&request.locked) {
         let package = &arena[p];
@@ -72,10 +59,7 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
         }
     }
 
-    // Group the rest by name, by the requirements they satisfy and by their own links; each group keeps the
-    // version the policy prefers.
-    // Each version's groups are worked out on its own thread, then filed in pool order.
-    let grouped: Vec<(usize, Dependencies, Vec<(&str, GroupKey)>)> = (pool.ids.par_iter())
+    let grouped: Vec<(usize, Dependencies, Vec<_>)> = (pool.ids.par_iter())
         .filter(|p| !irremovable.contains(*p))
         .map(|&p| {
             let package = &arena[p];
@@ -105,7 +89,6 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
                                 .collect(),
                         ));
                     } else if !in_invariant_group && !invariant.is_empty() {
-                        // Every requirement the version misses puts it in this one group.
                         in_invariant_group = true;
                         keys.push((name, invariant.clone()));
                     }
@@ -155,8 +138,6 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
         }
     }
 
-    // In a partial update the locked packages stay, so versions their requirements rule out can go, unless no
-    // requirement in the pool names the locked package and it may be removed.
     if !request.locked.is_empty() {
         let mut candidates: HashMap<&str, Vec<usize>> = HashMap::new();
         for &p in &pool.ids {
@@ -207,7 +188,6 @@ fn add<'a>(into: &mut ByName<'a>, name: &'a str, c: &'a Constraint) {
     let mut stack = vec![c];
     while let Some(c) = stack.pop() {
         match c {
-            // A disjunction counts as each member, nested ones too, in order.
             Constraint::Multi(items, false) => stack.extend(items.iter().rev()),
             _ => {
                 set.insert(c);
@@ -216,7 +196,6 @@ fn add<'a>(into: &mut ByName<'a>, name: &'a str, c: &'a Constraint) {
     }
 }
 
-/// The package's requires, conflicts, replaces and provides, each sorted by target (Composer's dependency hash).
 fn dependencies(package: &Package) -> Dependencies<'_> {
     let kinds: [&[Link]; 4] = [
         &package.requires,

@@ -1,12 +1,3 @@
-//! `lint/types/add-property-type-behat-context`, ported from Rector 2.8.4's `TypedStaticPropertyInBehatContextRector`
-//! (rules/TypeDeclaration/Rector/Class_): in a class that extends or implements something and is a
-//! `Behat\Behat\Context\Context`, an untyped static property without a default (or with `null`) whose `@var` names a
-//! class gets that class, nullable, and a `null` default; the `@var` goes when it says no more.
-//!
-//! The `@var` is a class when it is one name that is no phpdoc keyword (`int`, `string`, `self`, `object`, ...), or a
-//! generic of one (`Collection<int, Item>`, which stays); the name is resolved through the `use` imports and the
-//! namespace, whether the class exists or not, as Rector's phpdoc types are.
-
 use mago_syntax::cst::{Modifier, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -15,10 +6,9 @@ use super::property_type::{
     ClassView, Ty, VarTag, is_null_literal, is_var_tag_useless_as, variable_span,
 };
 use crate::rules::phpunit::phpdoc_type::{TagType, is_name};
-use crate::rules::rector_batch5::imported;
+use crate::rules::support::names::imported;
 use crate::{Context, Report, Rule};
 
-/// `BehatClassName::CONTEXT`.
 const CONTEXT: &str = "Behat\\Behat\\Context\\Context";
 
 pub struct AddPropertyTypeBehatContext;
@@ -72,7 +62,6 @@ impl Rule for AddPropertyTypeBehatContext {
             {
                 continue;
             }
-            // hasNonNullDefault
             if prop.default().is_some_and(|d| !is_null_literal(d)) {
                 continue;
             }
@@ -92,7 +81,6 @@ impl Rule for AddPropertyTypeBehatContext {
                     None => continue,
                 },
             };
-            // `self` is the class (`SelfObjectType`)
             let class = if written.eq_ignore_ascii_case("self") {
                 view.name.clone()
             } else if is_keyword(written) {
@@ -101,7 +89,6 @@ impl Rule for AddPropertyTypeBehatContext {
                 match written.strip_prefix('\\') {
                     Some(fq) => fq.to_string(),
                     None => match imported(&view.path, written) {
-                        // an alias (`AliasedObjectType`) keeps its own name
                         Some(full)
                             if !written.contains('\\')
                                 && !full
@@ -147,9 +134,6 @@ impl Rule for AddPropertyTypeBehatContext {
     }
 }
 
-/// The class name of a `@var` the shared tag reader leaves unread (a value over several lines, or a generic with
-/// white space or a `,` inside its brackets, `Collection<int, Item>`) when its type is one name, maybe with brackets;
-/// Rector types the property by the name and keeps the tag.
 fn unread_name<'s>(var: &VarTag<'s>) -> Option<&'s str> {
     let doc = var.annotated.doc.as_ref()?;
     let text = (0..doc.len()).map(|i| doc.text(i)).find(|t| {
@@ -180,7 +164,6 @@ fn unread_name<'s>(var: &VarTag<'s>) -> Option<&'s str> {
     (after.is_empty() || after.starts_with(char::is_whitespace)).then_some(name)
 }
 
-/// A phpdoc name that is no class (`TypeNodeResolver`'s keywords).
 fn is_keyword(name: &str) -> bool {
     matches!(
         name.to_ascii_lowercase().as_str(),

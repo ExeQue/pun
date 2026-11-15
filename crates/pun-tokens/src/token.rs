@@ -1,16 +1,11 @@
-//! Port of `PhpCsFixer\Tokenizer\Token`.
-
 use crate::kind::Kind::{self, *};
 
-/// A token. `id == None` is upstream's non-array token (`'('`, `';'`, cleared `''`), whose
-/// identity is its content. Content is bytes: PHP strings, possibly invalid UTF-8.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Token {
-    pub id: Option<Kind>,
-    pub content: crate::Content,
+    pub(crate) id: Option<Kind>,
+    pub(crate) content: crate::Content,
 }
 
-/// Upstream's "token prototype" for `equals`: `'('`, `[T_STRING]`, `[T_STRING, 'foo']`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Proto<'a> {
     Char(&'a [u8]),
@@ -42,23 +37,19 @@ impl<'a> From<&'a Token> for Proto<'a> {
     }
 }
 
-/// A content prototype, PHP-CS-Fixer's `'x'`.
 pub(crate) const fn c(s: &'static str) -> Proto<'static> {
     Proto::Char(s.as_bytes())
 }
 
-/// A token-kind prototype, PHP-CS-Fixer's `[T_X]`.
 pub(crate) const fn k(kind: Kind) -> Proto<'static> {
     Proto::Kind(kind)
 }
 
-/// An index the token walk must have found: upstream reads the missing (`null`) offset of its `SplFixedArray`.
 pub(crate) fn idx(i: Option<usize>) -> usize {
     i.expect("Cannot access offset of type null on SplFixedArray")
 }
 
 impl Proto<'_> {
-    /// `Tokens::extractTokenKind`: the key used by `isTokenKindFound`.
     pub fn found_key(&self) -> FoundKey<'_> {
         match *self {
             Proto::Char(c) => FoundKey::Content(c),
@@ -67,7 +58,6 @@ impl Proto<'_> {
     }
 }
 
-/// A key of `Tokens::$foundTokenKinds`: a kind, or the content of a non-array token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FoundKey<'a> {
     Kind(Kind),
@@ -189,7 +179,6 @@ pub const KEYWORDS: &[Kind] = &[
 const DEFAULT_WHITESPACES: &[u8] = b" \t\n\r\0\x0B";
 
 impl Token {
-    /// `new Token([$id, $content])`.
     pub fn new(id: Kind, content: impl Into<crate::Content>) -> Token {
         let content = content.into();
         debug_assert!(
@@ -202,7 +191,6 @@ impl Token {
         }
     }
 
-    /// `new Token($isArray ? [$id, $content] : $content)`: `Token::new` for an id, else `Token::char`.
     pub fn with_id(id: Option<Kind>, content: impl Into<crate::Content>) -> Token {
         match id {
             Some(id) => Token::new(id, content),
@@ -210,7 +198,6 @@ impl Token {
         }
     }
 
-    /// `new Token($content)` (non-array token).
     pub fn char(content: impl Into<crate::Content>) -> Token {
         Token {
             id: None,
@@ -245,9 +232,7 @@ impl Token {
             )
     }
 
-    /// `Token::equals($other, $caseSensitive)`.
     pub fn equals<'a>(&self, other: impl Into<Proto<'a>>, case_sensitive: bool) -> bool {
-        // A `&` token only matches the `&` prototype (via isAmp); upstream compares it to Token instances only.
         match other.into() {
             Proto::Char(b"&") => self.is_amp(),
             Proto::Char(c) => self.id.is_none() && self.content == c,
@@ -263,7 +248,6 @@ impl Token {
         }
     }
 
-    /// `equals` with a Token instance (`$other instanceof self` branch).
     pub fn equals_token(&self, other: &Token, case_sensitive: bool) -> bool {
         if self.id.is_none() && self.content == b"&" {
             return other.is_amp();
@@ -285,12 +269,10 @@ impl Token {
         others.iter().any(|&o| self.equals(o, case_sensitive))
     }
 
-    /// `isGivenKind` with one kind.
     pub fn is_kind(&self, kind: Kind) -> bool {
         self.id == Some(kind)
     }
 
-    /// `isGivenKind` with a list of kinds.
     pub fn is_given_kind(&self, kinds: &[Kind]) -> bool {
         self.id.is_some_and(|id| kinds.contains(&id))
     }
@@ -313,8 +295,6 @@ impl Token {
     pub fn is_magic_constant(&self) -> bool {
         self.is_given_kind(MAGIC_CONSTANTS)
     }
-    /// `isWhitespace($whitespaces)`; `None` = PHP's default `" \t\n\r\0\x0B"`. Note that an
-    /// empty (cleared) token counts as whitespace, like upstream.
     pub fn is_whitespace(&self, whitespaces: Option<&[u8]>) -> bool {
         if self.id.is_some() && self.id != Some(T_WHITESPACE) {
             return false;
@@ -328,7 +308,6 @@ impl Token {
 mod tests {
     use super::*;
 
-    // `new Token([T_STRING, 'a'])` is an array token; `new Token('(')` is not, and has no id.
     #[test]
     fn with_id_builds_array_or_char_tokens() {
         let a = Token::with_id(Some(T_STRING), "a");

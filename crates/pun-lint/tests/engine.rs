@@ -1,5 +1,3 @@
-//! The engine: one parse, problems, the fix loop and its errors. Expected values are derived by hand.
-
 use std::path::{Path, PathBuf};
 
 use mago_span::HasSpan;
@@ -9,8 +7,7 @@ use pun_problem::{Edit, Fix, Level, Safety, Span};
 
 #[test]
 fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
-    let linter = Linter::new(rules::all(), 80400);
-    // strict types declared, so statements/add-safe-strict-types has nothing to add
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\ndeclare(strict_types=1);\n$a = !true;\n";
     let problems = linter.check(Path::new("src/a.php"), code).unwrap();
     assert_eq!(problems.len(), 1);
@@ -34,33 +31,34 @@ fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
 fn rules_below_their_php_version_do_not_run() {
     let rules = || -> Vec<Box<dyn Rule>> { vec![Box::new(ReportOnly), Box::new(NeedsPhp84)] };
     let both = vec!["lint/test/report-only", "lint/test/needs-php-8.4"];
-    assert_eq!(Linter::new(rules(), 80400).rule_ids(), both);
     assert_eq!(
-        Linter::new(rules(), 80399).rule_ids(),
+        Linter::new(rules(), pun_lint::PhpVersion::from_id(80400)).rule_ids(),
+        both
+    );
+    assert_eq!(
+        Linter::new(rules(), pun_lint::PhpVersion::from_id(80399)).rule_ids(),
         vec!["lint/test/report-only"]
     );
 }
 
 #[test]
 fn fix_counts_rounds_and_keeps_problems_without_a_fix() {
-    // Round 1 unwraps the outer parentheses; the inner ones overlap it and wait. Round 2 unwraps them. ReportOnly's
-    // problem stays.
     let rules: Vec<Box<dyn Rule>> = vec![Box::new(ReportOnly), Box::new(Unwrap)];
-    let linter = Linter::new(rules, 80400);
+    let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\n$a = ((1));\ntry { } finally { }\n";
     let fixed = linter.fix(Path::new("a.php"), code).unwrap();
     assert_eq!(fixed.source, "<?php\n$a = 1;\ntry { } finally { }\n");
     assert_eq!(fixed.rounds, 2);
     assert_eq!(fixed.applied.len(), 2);
-    assert_eq!(fixed.applied[0].span, Span::new(11, 16)); // `((1))`, in the original source
-    assert_eq!(fixed.applied[1].span, Span::new(11, 14)); // `(1)`, in round 2's source
+    assert_eq!(fixed.applied[0].span, Span::new(11, 16));
+    assert_eq!(fixed.applied[1].span, Span::new(11, 14));
     assert_eq!(fixed.remaining.len(), 1);
     assert_eq!(fixed.remaining[0].rule, "lint/test/report-only");
 }
 
 #[test]
 fn nothing_to_fix_is_zero_rounds() {
-    let linter = Linter::new(rules::all(), 80400);
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\ndeclare(strict_types=1);\n$a += 1;\n";
     let fixed = linter.fix(Path::new("a.php"), code).unwrap();
     assert_eq!(fixed.source, code);
@@ -70,14 +68,14 @@ fn nothing_to_fix_is_zero_rounds() {
 
 #[test]
 fn a_file_that_does_not_parse_is_refused() {
-    let linter = Linter::new(rules::all(), 80400);
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let err = linter
         .check(Path::new("a.php"), "<?php\n$a = ;\n")
         .unwrap_err();
     let LintError::Syntax { span, .. } = &err else {
         panic!("{err:?}");
     };
-    assert_eq!(span.start, 11); // the `;`
+    assert_eq!(span.start, 11);
     assert!(err.to_string().starts_with("syntax error: "), "{err}");
     assert_eq!(
         linter
@@ -89,7 +87,10 @@ fn a_file_that_does_not_parse_is_refused() {
 
 #[test]
 fn a_fix_that_breaks_the_syntax_is_an_error() {
-    let linter = Linter::new(vec![Box::new(DropSemicolons)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(DropSemicolons)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter
         .fix(Path::new("a.php"), "<?php\n$a = 1;\n$b = 2;\n")
         .unwrap_err();
@@ -106,7 +107,10 @@ fn a_fix_that_breaks_the_syntax_is_an_error() {
 
 #[test]
 fn fixes_that_never_settle_stop_after_max_rounds() {
-    let linter = Linter::new(vec![Box::new(AlwaysAppend)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(AlwaysAppend)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter.fix(Path::new("a.php"), "<?php\n").unwrap_err();
     assert_eq!(
         err,
@@ -122,8 +126,7 @@ fn fixes_that_never_settle_stop_after_max_rounds() {
 
 #[test]
 fn a_panicking_rule_fails_its_file_only() {
-    let linter = Linter::new(vec![Box::new(Panics)], 80400);
-    // `unwrap()` on a `None` and a formatted `panic!` carry their message as `&str` and `String`.
+    let linter = Linter::new(vec![Box::new(Panics)], pun_lint::PhpVersion::from_id(80400));
     for (code, message) in [
         ("<?php\ntry { } finally { }\n", "no finally"),
         ("<?php\nbreak;\n", "line 2"),
@@ -137,17 +140,14 @@ fn a_panicking_rule_fails_its_file_only() {
         );
         assert_eq!(err.to_string(), format!("a lint rule panicked: {message}"));
     }
-    // A payload that is no text gives an empty message.
     let err = linter.check(Path::new("a.php"), "<?php\ncontinue;\n");
     assert_eq!(err.unwrap_err().to_string(), "a lint rule panicked: ");
-    // The next file is linted as usual.
     assert_eq!(
         linter.check(Path::new("b.php"), "<?php\n$a = 1;\n"),
         Ok(vec![])
     );
 }
 
-/// Panics on `try` (a `&str` payload), `break` (a `String`) and `continue` (neither).
 struct Panics;
 
 impl Rule for Panics {
@@ -171,7 +171,6 @@ impl Rule for Panics {
     }
 }
 
-/// Reports every `try`, with no fix.
 struct ReportOnly;
 
 impl Rule for ReportOnly {
@@ -197,7 +196,6 @@ impl Rule for ReportOnly {
     }
 }
 
-/// Reports nothing, and needs PHP 8.4.
 struct NeedsPhp84;
 
 impl Rule for NeedsPhp84 {
@@ -205,8 +203,8 @@ impl Rule for NeedsPhp84 {
         "lint/test/needs-php-8.4"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80400
+    fn min_php_version(&self) -> pun_lint::PhpVersion {
+        pun_lint::PhpVersion::from_id(80400)
     }
 
     fn visit<'ast, 'arena>(
@@ -219,7 +217,6 @@ impl Rule for NeedsPhp84 {
     }
 }
 
-/// Replaces each parenthesized expression with its inside.
 struct Unwrap;
 
 impl Rule for Unwrap {
@@ -250,7 +247,6 @@ impl Rule for Unwrap {
     }
 }
 
-/// Deletes every statement terminator `;`.
 struct DropSemicolons;
 
 impl Rule for DropSemicolons {
@@ -280,7 +276,6 @@ impl Rule for DropSemicolons {
     }
 }
 
-/// Appends a newline at the end of the file, every time.
 struct AlwaysAppend;
 
 impl Rule for AlwaysAppend {
@@ -315,7 +310,8 @@ fn a_rule_without_options_rejects_any() {
     let mut rule = ReportOnly;
     assert_eq!(rule.configure(&serde_json::Value::Null), Ok(()));
     assert_eq!(
-        rule.configure(&serde_json::json!({"a": 1})),
+        rule.configure(&serde_json::json!({"a": 1}))
+            .map_err(|e| e.to_string()),
         Err("takes no options".to_string())
     );
 }

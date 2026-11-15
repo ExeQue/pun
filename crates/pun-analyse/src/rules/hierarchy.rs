@@ -1,8 +1,3 @@
-//! Class-hierarchy declaration rules that read only class metadata: the final and readonly parts of
-//! ExistingClassInClassExtendsRule, ExistingClassInTraitUseRule, AbstractMethodInNonAbstractClassRule,
-//! MissingMethodImplementationRule, ConsistentConstructorDeclarationRule, SealedDefinitionTraitRule,
-//! InvalidCallablePropertyTypeRule and MissingMagicSerializationMethodsRule.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
@@ -14,7 +9,6 @@ use super::members;
 use super::reflection::{Known, known};
 use super::{Checker, DISCOVERING_SYMBOLS_TIP};
 
-/// `ClassReflection::implementsInterface(Serializable::class)`.
 pub(super) fn implements_serializable(k: &ClassLikeMetadata) -> bool {
     k.all_parent_interfaces
         .iter()
@@ -22,7 +16,6 @@ pub(super) fn implements_serializable(k: &ClassLikeMetadata) -> bool {
 }
 
 impl<'a> Checker<'a, '_> {
-    /// The PHPDoc right before a class-like's declaration (`getResolvedPhpDoc()` of its own comment).
     pub(super) fn class_doc(
         &self,
         k: &ClassLikeMetadata,
@@ -36,9 +29,6 @@ impl<'a> Checker<'a, '_> {
             .unwrap_or_default()
     }
 
-    /// `isFinalByKeyword()` of a declared class: Mago's FINAL flag also holds an `@final` tag (even one between the
-    /// attributes and the keyword, which is not the class's PHPDoc), so the declaration's modifiers decide. Without
-    /// the source (PHPStan's API stub, which has no `@final` tags) the flag is the keyword.
     fn final_by_keyword(&self, k: &ClassLikeMetadata) -> bool {
         k.flags.is_final()
             && k.name_span
@@ -46,8 +36,6 @@ impl<'a> Checker<'a, '_> {
                 .unwrap_or(true)
     }
 
-    /// Whether the declaration at `span` has the modifier `modifier` before its name (after its attributes), or
-    /// `None` when its file can't be read (a built-in symbol's stub).
     pub(super) fn has_modifier(&self, span: Span, name: Span, modifier: &[u8]) -> Option<bool> {
         let contents = self.file_contents(span.file_id)?;
         let head = &contents[span.start.offset as usize..name.start.offset as usize];
@@ -55,7 +43,6 @@ impl<'a> Checker<'a, '_> {
             .iter()
             .rposition(|b| *b == b']')
             .map_or(head, |i| &head[i + 1..]);
-        // the words outside the comments between them
         let mut words = Vec::with_capacity(modifiers.len());
         let mut rest = modifiers;
         while let Some(&b) = rest.first() {
@@ -74,8 +61,6 @@ impl<'a> Checker<'a, '_> {
         )
     }
 
-    /// BetterReflection's `ReflectionMethod::isAbstract()`: an interface's method, or one declared `abstract` (Mago
-    /// also flags a method without a body).
     pub(super) fn method_abstract(
         &self,
         declaring: &ClassLikeMetadata,
@@ -91,8 +76,6 @@ impl<'a> Checker<'a, '_> {
     }
 }
 
-/// ExistingClassInClassExtendsRule on a parent that is a class: `class.extendsFinal` (`isFinalByKeyword()`) and
-/// `class.extendsFinalByPhpDoc` (`isFinal()` from an `@final` tag).
 pub(super) fn extends_final(c: &mut Checker, at: Span, current: &str, parent: Known) {
     let (by_keyword, by_doc) = match parent {
         Known::User(k) => (
@@ -119,8 +102,6 @@ pub(super) fn extends_final(c: &mut Checker, at: Span, current: &str, parent: Kn
     }
 }
 
-/// ExistingClassInClassExtendsRule: a readonly class extends a non-readonly one, or the other way round. `current`
-/// is `Class Foo` or `Anonymous class`.
 pub(super) fn extends_readonly(
     c: &mut Checker,
     at: Span,
@@ -156,9 +137,7 @@ pub(super) fn extends_readonly(
     }
 }
 
-/// ExistingClassInTraitUseRule (its ClassNameCheck part, the `*.nameCase` errors, is not ported).
 pub(super) fn trait_use<'arena>(c: &mut Checker<'_, 'arena>, u: &TraitUse<'arena>) {
-    // a trait's own body is walked only in a using class's context
     let decl = c.decls.last().expect("in a class-like");
     let (kind, display) = (decl.kind, decl.display.clone());
     let in_trait = c.in_trait().map(|t| {
@@ -181,7 +160,6 @@ pub(super) fn trait_use<'arena>(c: &mut Checker<'_, 'arena>, u: &TraitUse<'arena
         Some(&class_names::Location::TraitUse { class }),
         true,
     );
-    // (an interface is never a trait's context)
     if kind == SymbolKind::Interface {
         let display = display.expect("a named interface");
         for id in &u.trait_names {
@@ -229,8 +207,6 @@ pub(super) fn trait_use<'arena>(c: &mut Checker<'_, 'arena>, u: &TraitUse<'arena
     }
 }
 
-/// AbstractMethodInNonAbstractClassRule and ConsistentConstructorDeclarationRule on a method (`name` is its name, a
-/// trait method's alias).
 pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, name: &str) {
     let decl = c.decls.last().expect("in a class-like");
     let display = decl.display.clone().unwrap_or_default();
@@ -239,7 +215,6 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
     let modifiers = m.modifiers.as_slice();
     if !class_abstract && modifiers.iter().any(Modifier::is_abstract) {
         let lower = name.to_ascii_lowercase();
-        // an enum's native cases(), and a backed enum's from() and tryFrom()
         let native = kind == SymbolKind::Enum
             && (lower == "cases"
                 || (class.is_some_and(|k| backed(c, k))
@@ -268,7 +243,6 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
             None,
         );
     }
-    // ConsistentConstructorDeclarationRule (InClassMethodNode)
     if name.eq_ignore_ascii_case("__construct")
         && modifiers.iter().any(Modifier::is_private)
         && let Some(k) = class
@@ -291,11 +265,7 @@ pub(super) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>, na
     }
 }
 
-/// MissingMethodImplementationRule and MissingMagicSerializationMethodsRule (InClassNode) on the class or enum `k`
-/// declared at `at`.
 pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
-    // getNativeReflection() throws IdentifierNotFound on a missing ancestor; an ancestor of the wrong kind (a class
-    // implementing an enum) is a broken hierarchy PHP refuses to load, which PHPStan reports elsewhere
     let wrong_kind = |n: &mago_word::Word, kind: SymbolKind| {
         c.codebase
             .get_class_like(n.as_bytes())
@@ -319,14 +289,10 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     } else {
         "Non-abstract class"
     };
-    // getNativeReflection()->getMethods(): each name resolved as PHP does (the class, its traits and parents, then
-    // its interfaces); Mago's declaring ids also hold `@method` tags and can let an interface's method shadow a
-    // trait's
     let mut names: Vec<_> = k.declaring_method_ids.keys().collect();
     names.sort_by_key(|lower| lower.as_bytes());
     for lower in names {
         let lower_name = lower.as_bytes();
-        // BetterReflection adds an enum's native cases(), and a backed enum's from() and tryFrom()
         if is_enum
             && (lower_name == b"cases"
                 || (backed(c, k) && (lower_name == b"from" || lower_name == b"tryfrom")))
@@ -334,14 +300,12 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
             continue;
         }
         let Some(m) = members::method(c, k, lower_name) else {
-            continue; // a `@method` tag
+            continue;
         };
         let is_abstract = match &m {
             members::Method::User { declaring, f, .. } => {
                 c.method_abstract(declaring, f) && !inherited_satisfies(c, declaring, f, lower_name)
             }
-            // isProvidedByBuiltinAncestor(): a non-abstract built-in parent implementing the interface provides its
-            // methods at runtime (SplFixedArray's stub `implements Iterator`, whose methods PHP 8 dropped)
             members::Method::Builtin { declaring, .. } => {
                 (declaring.is_interface
                     || c.codebase
@@ -371,7 +335,6 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
             None,
         );
     }
-    // MissingMagicSerializationMethodsRule: PhpVersion::serializableRequiresMagicMethods()
     if c.php_version < 80100 || is_enum || !implements_serializable(k) {
         return;
     }
@@ -389,8 +352,6 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     }
 }
 
-/// PHP keeps an inherited method over a trait's abstract one: `f`, declared by `declaring` from one of its traits,
-/// is satisfied by a concrete method of a parent.
 fn inherited_satisfies(
     c: &Checker,
     declaring: &ClassLikeMetadata,
@@ -407,11 +368,7 @@ fn inherited_satisfies(
         .is_some_and(|m| !m.is_abstract() && !m.declared_in_interface())
 }
 
-/// Whether a trait of `k` or of a parent, or one they use, has a concrete method `lower`, which implements an
-/// interface's method in PHP (`members::method()` can miss one that Mago's declaring ids hide behind another trait's
-/// `@method` tag, as Carbon's `tomorrow()`).
 fn trait_implements(c: &Checker, k: &ClassLikeMetadata, lower: &[u8], depth: usize) -> bool {
-    // a cyclic hierarchy is another rule's error
     depth < 64
         && std::iter::once(&k.name)
             .chain(k.all_parent_classes.iter())
@@ -431,12 +388,10 @@ fn trait_implements(c: &Checker, k: &ClassLikeMetadata, lower: &[u8], depth: usi
             })
 }
 
-/// `isBackedEnum()`: an enum with a backing type, valid or not (Mago types only `int` and `string` ones).
 fn backed(c: &Checker, k: &ClassLikeMetadata) -> bool {
     k.enum_type.is_some() || c.codebase.is_instance_of(k.name.as_bytes(), b"backedenum")
 }
 
-/// SealedDefinitionTraitRule: a `@phpstan-sealed` or `@psalm-inheritors` tag with a type on a trait.
 pub(super) fn sealed_trait<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'arena>) {
     let name = c.resolved_span(t.name.span);
     let Some(doc) = c
@@ -456,7 +411,6 @@ pub(super) fn sealed_trait<'arena>(c: &mut Checker<'_, 'arena>, t: &Trait<'arena
     }
 }
 
-/// Whether a PHPDoc has a `@psalm-inheritors` or `@phpstan-sealed` tag followed by a value (`getSealedTagValues()`).
 fn sealed_tag(doc: &[u8]) -> bool {
     let body = doc.strip_prefix(b"/**").unwrap_or(doc);
     let body = body.strip_suffix(b"*/").unwrap_or(body);
@@ -471,7 +425,6 @@ fn sealed_tag(doc: &[u8]) -> bool {
     })
 }
 
-/// InvalidCallablePropertyTypeRule on one ClassPropertyNode (`name` with its `$`).
 pub(super) fn callable_property(c: &mut Checker, at: Span, name: &[u8], hint: Option<&Hint>) {
     if !hint.is_some_and(names_callable) {
         return;
@@ -490,7 +443,6 @@ pub(super) fn callable_property(c: &mut Checker, at: Span, name: &[u8], hint: Op
     }
 }
 
-/// A CallableType in a native type, through its unions and intersections.
 fn names_callable(hint: &Hint) -> bool {
     match hint {
         Hint::Callable(_) => true,
@@ -502,7 +454,6 @@ fn names_callable(hint: &Hint) -> bool {
     }
 }
 
-/// MethodVisibilityInInterfaceRule: a private or protected method declared in an interface.
 pub(super) fn interface_method_visibility<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>) {
     let Some(decl) = c
         .decls
@@ -527,10 +478,7 @@ pub(super) fn interface_method_visibility<'arena>(c: &mut Checker<'_, 'arena>, m
     );
 }
 
-/// AllowedSubTypesRule on the class-like `k` declared at `at`: each direct parent (interfaces, then the parent
-/// class) that lists its allowed subtypes must list this one.
 pub(super) fn allowed_subtypes(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
-    // getImmediateInterfaces() holds interfaces only (an enum named in `implements` is reported elsewhere)
     let parents: Vec<&ClassLikeMetadata> = k
         .direct_parent_interfaces
         .iter()
@@ -542,7 +490,6 @@ pub(super) fn allowed_subtypes(c: &mut Checker, at: Span, k: &ClassLikeMetadata)
                 .filter_map(|n| c.codebase.get_class_like(n.as_bytes())),
         )
         .collect();
-    // getName(): an anonymous class's internal name
     let class_name = c.class_name(k);
     let kind = match k.kind {
         SymbolKind::Interface => "interface",
@@ -567,18 +514,13 @@ pub(super) fn allowed_subtypes(c: &mut Checker, at: Span, k: &ClassLikeMetadata)
     }
 }
 
-/// `ClassReflection::getAllowedSubTypes()` through SealedAllowedSubTypesClassReflectionExtension: the last
-/// `@psalm-inheritors`/`@phpstan-sealed` tag's types (a union's members), plus the class itself when it can be
-/// instantiated. An enum allows only its cases, so no class-like.
 fn allowed_sub_types(c: &Checker, k: &ClassLikeMetadata) -> Option<Vec<pun_phpstan::types::Type>> {
     use pun_phpstan::types::Type;
     if k.kind == SymbolKind::Enum {
-        // EnumAllowedSubTypesClassReflectionExtension: only the enum's cases
         return Some(Vec::new());
     }
     let (_, entry) = c.php_doc(k.span.file_id, k.span.start.offset)?;
     let tags = &entry.tags;
-    // getSealedTagValues() skips a tag whose type does not parse
     let last = ["@psalm-inheritors", "@phpstan-sealed"]
         .iter()
         .flat_map(|name| tags.iter().filter(move |(t, _)| t == name))
@@ -599,7 +541,6 @@ fn allowed_sub_types(c: &Checker, k: &ClassLikeMetadata) -> Option<Vec<pun_phpst
     Some(types)
 }
 
-/// `MissingMethodImplementationRule::isProvidedByBuiltinAncestor()`
 fn provided_by_builtin_ancestor(c: &Checker, k: &ClassLikeMetadata, interface: &str) -> bool {
     k.all_parent_classes
         .iter()

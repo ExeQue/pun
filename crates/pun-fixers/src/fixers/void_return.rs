@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\FunctionNotation\VoidReturnFixer`.
 use crate::analyzers::docblock::DocBlock;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
@@ -50,8 +49,7 @@ impl Fixer for VoidReturnFixer {
             if !self.fix_lambda && TokensAnalyzer::new(tokens).is_lambda(index) {
                 continue;
             }
-            let function_name = tokens.get_next_meaningful_token(index).unwrap();
-            // These cause syntax errors.
+            let function_name = tokens.next_meaningful(index);
             if tokens[function_name].equals_any(
                 &[
                     (T_STRING, "__clone").into(),
@@ -75,7 +73,6 @@ impl Fixer for VoidReturnFixer {
                 continue;
             }
             if tokens[start_index].equals(";", true) {
-                // No function body defined, fallback to PHPDoc.
                 if find_return_annotation_types(tokens, index)
                     .iter()
                     .any(|t| t == &[b"void".to_vec()])
@@ -102,7 +99,7 @@ fn has_return_type_hint(tokens: &Tokens, index: usize) -> bool {
     let end_func_index = tokens
         .get_prev_token_of_kind(index, &[")".into()], true)
         .unwrap();
-    let next_index = tokens.get_next_meaningful_token(end_func_index).unwrap();
+    let next_index = tokens.next_meaningful(end_func_index);
     tokens[next_index].is_kind(CT_TYPE_COLON)
 }
 
@@ -110,7 +107,6 @@ fn has_void_return(tokens: &Tokens, start_index: usize, end_index: usize) -> boo
     let analyzer = TokensAnalyzer::new(tokens);
     let mut i = start_index;
     while i < end_index {
-        // skip anonymous classes and lambda functions
         if (tokens[i].is_kind(T_CLASS) && analyzer.is_anonymous_class(i))
             || (tokens[i].is_kind(T_FUNCTION) && analyzer.is_lambda(i))
         {
@@ -121,10 +117,10 @@ fn has_void_return(tokens: &Tokens, start_index: usize, end_index: usize) -> boo
             continue;
         }
         if tokens[i].is_given_kind(&[T_YIELD, T_YIELD_FROM]) {
-            return false; // Generators cannot return void.
+            return false;
         }
         if tokens[i].is_kind(T_RETURN) {
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             if !tokens[i].equals(";", true) {
                 return false;
             }
@@ -148,7 +144,6 @@ fn fix_function_definition(tokens: &mut Tokens, index: usize) {
     );
 }
 
-/// `findReturnAnnotations`, mapped to each annotation's `getTypes()`.
 fn find_return_annotation_types(tokens: &Tokens, mut index: usize) -> Vec<Vec<Vec<u8>>> {
     loop {
         index = tokens.get_prev_non_whitespace(index, None).unwrap();

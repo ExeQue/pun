@@ -1,13 +1,3 @@
-//! `lint/types/add-return-type-from-new`, ported from Rector 2.8.4's `ReturnTypeFromReturnNewRector`
-//! (rules/TypeDeclaration/Rector/ClassMethod) with its `StrictReturnNewAnalyzer`: a function or method that always
-//! returns a new object gets that object's class as its return type.
-//!
-//! Two shapes count. Every `return` returns a variable whose native type is `object`, or the class `X` that a
-//! top-level `$var = new X;` set it to; or every `return` returns `new ...` of a known class, `self`, `static` or an
-//! anonymous class, giving one type or a union of classes. With more than one `return`, an anonymous class counts
-//! as the first class or interface it names (`TypeFactory::normalizeObjectType`), and one that names none makes the
-//! union `object`.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{
@@ -29,21 +19,14 @@ use crate::{Context, Report, Rule};
 
 pub struct AddReturnTypeFromNew;
 
-/// `PhpVersionFeature::OBJECT_TYPE`.
 const OBJECT_TYPE: u32 = 70200;
-/// `PhpVersionFeature::STATIC_RETURN_TYPE` and `UNION_TYPES`.
 const PHP_80: u32 = 80000;
 
-/// The type of a `new` expression, as Rector maps it to a return type.
 #[derive(PartialEq)]
 enum NewType {
-    /// A class, fully qualified.
     Class(String),
-    /// `new self`.
     SelfType,
-    /// `new static`.
     Static,
-    /// An anonymous class: the classes and interfaces it names, in order.
     Anonymous(Vec<String>),
 }
 
@@ -52,8 +35,8 @@ impl Rule for AddReturnTypeFromNew {
         "lint/types/add-return-type-from-new"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -87,7 +70,7 @@ impl Rule for AddReturnTypeFromNew {
                 &facts,
                 ancestors,
                 &returns,
-                ctx.php_version,
+                ctx.php_version.id(),
                 matches!(node, Node::Method(_)),
             ),
         };
@@ -97,8 +80,6 @@ impl Rule for AddReturnTypeFromNew {
     }
 }
 
-/// The type of `new ...`, when `createObjectTypeFromNew` gives one: an anonymous class, `self`, `static`, or a class
-/// the codebase knows.
 fn new_type(facts: &Facts, ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<NewType> {
     match expr {
         Expression::AnonymousClass(class) => Some(anonymous(ancestors, class)),
@@ -119,12 +100,10 @@ fn new_type(facts: &Facts, ancestors: &[Node<'_, '_>], expr: &Expression<'_>) ->
     }
 }
 
-/// `NewTypeResolver::resolveAnonymousClassType`: the class it extends and the interfaces it implements.
 fn anonymous(ancestors: &[Node<'_, '_>], class: &AnonymousClass<'_>) -> NewType {
     NewType::Anonymous(anonymous_parents(ancestors, class))
 }
 
-/// The classes and interfaces an anonymous class names (`ObjectWithoutClassTypeWithParentTypes`), in order.
 pub(super) fn anonymous_parents(
     ancestors: &[Node<'_, '_>],
     class: &AnonymousClass<'_>,
@@ -138,7 +117,6 @@ pub(super) fn anonymous_parents(
         .collect()
 }
 
-/// `refactorDirectReturnNew`: every `return` returns `new ...`; their types, made unique, mapped to a return type.
 fn direct_return_new(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -149,7 +127,6 @@ fn direct_return_new(
     let mut types: Vec<NewType> = Vec::new();
     for r in returns {
         let mut t = new_type(facts, ancestors, r.value?)?;
-        // normalizeObjectType
         if let NewType::Anonymous(parents) = &t
             && returns.len() > 1
             && let Some(first) = parents.first()
@@ -183,8 +160,6 @@ fn direct_return_new(
     if php_version < PHP_80 {
         return None;
     }
-    // an anonymous class that names no parent is `object`, which takes in the other classes (PHPStan's
-    // `NativePhpTypeNodeHelper::union()` drops the names beside `object`)
     if types.iter().any(|t| matches!(t, NewType::Anonymous(_))) {
         return Some("object".to_string());
     }
@@ -193,7 +168,6 @@ fn direct_return_new(
         .map(|t| match t {
             NewType::Class(class) => Some(format!("\\{class}")),
             NewType::SelfType => Some("self".to_string()),
-            // PHPStan 2.3's `StaticType::toNativePhpTypeNode()`: `static` in a union too (PHP 8.0 here)
             NewType::Static => Some("static".to_string()),
             NewType::Anonymous(_) => None,
         })
@@ -201,7 +175,6 @@ fn direct_return_new(
     Some(classes?.join("|"))
 }
 
-/// `isResponseInsideController`: a Symfony response returned from a method of a Symfony controller.
 fn is_response_inside_controller(facts: &Facts, ancestors: &[Node<'_, '_>], class: &str) -> bool {
     facts.codebase.is_instance_of(
         class.to_ascii_lowercase().as_bytes(),
@@ -216,8 +189,6 @@ fn is_response_inside_controller(facts: &Facts, ancestors: &[Node<'_, '_>], clas
     })
 }
 
-/// `StrictReturnNewAnalyzer::matchAlwaysReturnVariableNew`: every `return` returns a variable whose native type is
-/// `object`, or the class a top-level `$var = new X;` last set it to; all of them one type.
 fn always_returned_variable_new(
     facts: &Facts,
     body: &mago_syntax::cst::Block<'_>,
@@ -233,8 +204,6 @@ fn always_returned_variable_new(
         };
         let class = match native_type(facts, value)?.types.as_ref() {
             [TAtomic::Object(TObject::Any)] => "object".to_string(),
-            // PHPStan types an anonymous class's object as `object`; Mago names the class `{anonymous-class:...}`.
-            // `$this` inside one is PHPStan's `ThisType`, which is neither.
             [TAtomic::Object(TObject::Named(named))]
                 if !named.is_this && named.name.as_bytes().starts_with(b"{anonymous-class:") =>
             {
@@ -261,8 +230,6 @@ fn always_returned_variable_new(
     }
 }
 
-/// `resolveCreatedVariablesToTypes`: the class each variable was last set to by a top-level `$var = new X;`. Another
-/// value unsets it; an anonymous class leaves it as it was; `new self` and `new static` give the keyword.
 fn created_variables_to_types<'a>(
     body: &'a mago_syntax::cst::Block<'a>,
     ancestors: &[Node<'_, '_>],
@@ -300,8 +267,6 @@ fn created_variables_to_types<'a>(
     created
 }
 
-/// The variable whose value a write to `target` changes: the variable itself, or the base of an offset or `[]` on it.
-/// A property write keeps the object.
 fn written_variable(target: &Expression<'_>) -> Option<Span> {
     match target {
         Expression::Variable(Variable::Direct(v)) => Some(node_span(v)),
@@ -311,10 +276,6 @@ fn written_variable(target: &Expression<'_>) -> Option<Span> {
     }
 }
 
-/// Whether the body writes the variable `name` anywhere but a top-level `$name = ...;`: assigns to it or to its
-/// offsets (alone or in a destructuring), loops into it, increments it, unsets it, or declares it `global` or
-/// `static`. Writing to its properties, or taking a reference to it, keeps its type. Mago's type of the variable
-/// misses some of these (an object of an unknown class), PHPStan's does not.
 fn is_written_elsewhere(body: &mago_syntax::cst::Block<'_>, name: &[u8]) -> bool {
     let allowed: Vec<Span> = body
         .statements
@@ -329,7 +290,6 @@ fn is_written_elsewhere(body: &mago_syntax::cst::Block<'_>, name: &[u8]) -> bool
             _ => None,
         })
         .collect();
-    // spans the variable is written at, and spans any variable inside is written in
     let mut exact: Vec<Span> = Vec::new();
     let mut within: Vec<Span> = Vec::new();
     let mut uses: Vec<Span> = Vec::new();

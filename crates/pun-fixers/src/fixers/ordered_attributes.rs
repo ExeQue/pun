@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\AttributeNotation\OrderedAttributesFixer`.
 use crate::analyzers::analysis::NamespaceUseType;
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::docblock::type_expression::php_spaceship;
@@ -14,7 +13,6 @@ use std::path::Path;
 
 struct OrderedAttributesFixer {
     custom: bool,
-    /// `array_flip` of the configured FQNs: the position of each.
     order: Vec<Vec<u8>>,
 }
 
@@ -25,7 +23,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// One sortable item: an attribute group (`#[...]`) or an attribute inside one.
 #[derive(Clone)]
 struct Element {
     name: Vec<u8>,
@@ -38,7 +35,6 @@ impl Fixer for OrderedAttributesFixer {
         "ordered_attributes"
     }
     fn priority(&self) -> i32 {
-        // Must run after FullyQualifiedStrictTypesFixer.
         0
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -52,7 +48,6 @@ impl Fixer for OrderedAttributesFixer {
             &[("alpha", false), ("custom", true)],
         )?;
         let order = o.strings("order", &[], &[])?;
-        // The `order` normalizer: `$value !== array_unique($value)`, then `array_flip` of the names without `\`.
         if (1..order.len()).any(|i| order[..i].contains(&order[i])) {
             bail!("[ordered_attributes] The list includes attributes that are not unique.");
         }
@@ -123,7 +118,6 @@ impl OrderedAttributesFixer {
 
     fn get_attribute_name(&self, tokens: &Tokens, name: &[u8], index: usize) -> Vec<u8> {
         if self.custom {
-            // Upstream keeps one analyzer per run; its namespace and import caches see the same declarations.
             return FullyQualifiedNameAnalyzer::new(tokens).get_fully_qualified_name(
                 name,
                 index,
@@ -149,7 +143,6 @@ impl OrderedAttributesFixer {
     }
 }
 
-/// `$elements === $sortedElements`: the sort kept every element in place.
 fn same_order(a: &[Element], b: &[Element]) -> bool {
     a.iter().zip(b).all(|(x, y)| x.start == y.start)
 }
@@ -181,7 +174,6 @@ fn sort_tokens(
 mod tests {
     use super::*;
 
-    /// OrderedAttributesFixerTest::provideInvalidConfigurationCases: the messages the real fixer's configure() throws.
     #[test]
     fn invalid_configuration() {
         let raw = std::fs::read(concat!(

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocSummaryFixer`.
 use crate::analyzers::docblock::{DocBlock, ShortDescription};
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::php_compat::{rtrim, rtrim_chars, strtolower};
@@ -39,8 +38,6 @@ impl Fixer for PhpdocSummaryFixer {
             };
             let mut line = doc.get_line(end).unwrap().borrow_mut();
             let content = rtrim(line.get_content()).to_vec();
-            // final line of Description is NOT properly formatted, and first line of Description,
-            // if different than final line, does NOT indicate a list
             if !is_correctly_formatted(&content)
                 && (end == 1
                     || (doc.is_multi_line()
@@ -62,6 +59,5 @@ fn is_correctly_formatted(content: &[u8]) -> bool {
     {
         return true;
     }
-    // rtrim's char list is bytes, so the multibyte marks count byte by byte, as upstream
     rtrim_chars(content, ".:。!?¡¿！？".as_bytes()).len() != content.len()
 }

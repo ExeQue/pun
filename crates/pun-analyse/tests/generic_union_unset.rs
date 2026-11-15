@@ -1,5 +1,3 @@
-//! Complete PHPStan records for generic-union unset values, not declaration-effect substitutes.
-
 use pun_analyse::{Project, analyse_project};
 use serde_json::{Value, json};
 
@@ -19,7 +17,7 @@ fn generic_union_unset_matches_complete_phpstan_records() {
     ] {
         for &level in levels {
             let mut project = Project::new(vec![root.join(format!("{file}.php"))], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

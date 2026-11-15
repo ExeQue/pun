@@ -1,11 +1,3 @@
-//! `lint/phpunit/no-at-matcher`, ported from rector-phpunit's `ReplaceAtMethodWithDesiredMatcherRector`
-//! (rules/PHPUnit90/Rector/MethodCall).
-//!
-//! In a test class, a method call on a method call whose arguments hold an `at()` call (`findAtMethodCall`, which
-//! looks at that inner call's own arguments only) gets the matcher the count asks for: `at(0)` becomes `never()`,
-//! `at(1)` `once()` and `at(n)` `exactly(n)`, the count being the last integer literal among `at()`'s arguments.
-//! php-parser prints the new call: `at()`'s receiver, `->` and the name.
-
 use mago_syntax::cst::{Call, Expression, Literal, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 

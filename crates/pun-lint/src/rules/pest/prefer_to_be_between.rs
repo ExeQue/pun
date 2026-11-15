@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-be-between`, ported from pest-plugin-rector's `UseToBeBetweenRector`: `expect($value >= $min
-//! && $value <= $max)->toBeTrue()` becomes `expect($value)->toBeBetween($min, $max)` when `$value` is known to be an int or a
-//! float.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::Safety;
 

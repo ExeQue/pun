@@ -1,11 +1,3 @@
-//! The `phpunit` group: rules ported from rector-phpunit (rectorphp/rector-phpunit at 22c6dae, rules/...), each in its
-//! own file, and what they share: `TestsNodeAnalyzer`, `IdentifierManipulator` and `ArgumentMover`.
-//!
-//! Rector asks PHPStan whether a class is a `PHPUnit\Framework\TestCase` and what type a call's receiver has. Pun reads
-//! the class-like a node is in from its declaration and its ancestors from the codebase ([`facts`]), which lists a
-//! parent class by name even when its file is not known; a receiver other than `$this`, `self`, `static` and `parent`
-//! takes the type Mago gives it.
-
 mod add_allow_mock_objects_attribute;
 mod add_closure_return_type_from_assert;
 mod add_data_provider_allow_mock_objects;
@@ -93,92 +85,9 @@ mod require_mock_expects;
 pub(crate) mod require_strict_types_in_tests;
 mod require_string_assert_argument;
 
-pub(crate) use crate::rules::rector_batch5::resolve_class_name as resolve;
-pub(crate) use crate::rules::rector_code_quality::text;
-pub use add_allow_mock_objects_attribute::AddAllowMockObjectsAttribute;
-pub use add_closure_return_type_from_assert::AddClosureReturnTypeFromAssert;
-pub use add_data_provider_allow_mock_objects::AddDataProviderAllowMockObjects;
-pub use add_data_provider_iterator_return_type::AddDataProviderIteratorReturnType;
-pub use add_depended_test_return_type::AddDependedTestReturnType;
-pub use add_instanceof_assert::{AddInstanceofAssert, AddInstanceofAssertForArgument};
-pub use add_mock_intersection_param::AddMockIntersectionParam;
-pub use add_mock_intersection_type::AddMockIntersectionType;
-pub use add_mock_object_type::AddMockObjectType;
-pub use add_param_type_depends::AddParamTypeDepends;
-pub use add_return_type_from_mock_object::AddReturnTypeFromMockObject;
-pub use add_stub_intersection_type::AddStubIntersectionType;
-pub use add_test_void_return::AddTestVoidReturn;
-pub use add_will_return_callback_param_type::AddWillReturnCallbackParamType;
-pub use no_assert_contains_only::NoAssertContainsOnly;
-pub use no_assert_is_type::NoAssertIsType;
-pub use no_assert_same_type_mismatch::NoAssertSameTypeMismatch;
-pub use no_at_matcher::NoAtMatcher;
-pub use no_bare_mock_assign::NoBareMockAssign;
-pub use no_bare_mock_builder::NoBareMockBuilder;
-pub use no_empty_test::NoEmptyTest;
-pub use no_entity_mock::NoEntityMock;
-pub use no_expects_any::NoExpectsAny;
-pub use no_final_constructor_override::NoFinalConstructorOverride;
-pub use no_flipped_assertion::NoFlippedAssertion;
-pub use no_float_delta_parameter::NoFloatDeltaParameter;
-pub use no_mock_intersection_property::NoMockIntersectionProperty;
-pub use no_negated_assertion::NoNegatedAssertion;
-pub use no_setup_override_attribute::NoSetupOverrideAttribute;
-pub use no_stub_with_expectations::NoStubWithExpectations;
-pub use no_test_constructor::NoTestConstructor;
-pub use no_unused_mock::NoUnusedMock;
-pub use no_unused_mock_property::NoUnusedMockProperty;
-pub use no_value_object_mock::NoValueObjectMock;
-pub use prefer_assert::PreferAssert;
-pub use prefer_assert_array_has_key::PreferAssertArrayHasKey;
-pub use prefer_assert_count::PreferAssertCount;
-pub use prefer_assert_instanceof::PreferAssertInstanceof;
-pub use prefer_assert_instanceof_over_empty::PreferAssertInstanceofOverEmpty;
-pub use prefer_assert_instances_of::PreferAssertInstancesOf;
-pub use prefer_assert_null_true_false::PreferAssertNullTrueFalse;
-pub use prefer_assert_string_contains::PreferAssertStringContains;
-pub use prefer_assert_true_false::PreferAssertTrueFalse;
-pub use prefer_attribute_over_annotation::PreferAttributeOverAnnotation;
-pub use prefer_comparison_assertion::PreferComparisonAssertion;
-pub use prefer_covers_attribute::PreferCoversAttribute;
-pub use prefer_create_stub::PreferCreateStub;
-pub use prefer_create_stub_argument::PreferCreateStubArgument;
-pub use prefer_create_stub_expression::PreferCreateStubExpression;
-pub use prefer_create_stub_in_coalesce::PreferCreateStubInCoalesce;
-pub use prefer_data_provider::PreferDataProvider;
-pub use prefer_data_provider_attribute::PreferDataProviderAttribute;
-pub use prefer_depends_attribute::PreferDependsAttribute;
-pub use prefer_inline_create_stub::PreferInlineCreateStub;
-pub use prefer_local_over_setup_property::PreferLocalOverSetupProperty;
-pub use prefer_merged_will_return_callback::PreferMergedWillReturnCallback;
-pub use prefer_mock_intersection_return::PreferMockIntersectionReturn;
-pub use prefer_named_data_provider_keys::PreferNamedDataProviderKeys;
-pub use prefer_narrow_will_return_callback::PreferNarrowWillReturnCallback;
-pub use prefer_narrow_with_consecutive::PreferNarrowWithConsecutive;
-pub use prefer_property_assertions::PreferPropertyAssertions;
-pub use prefer_requires_attribute::PreferRequiresAttribute;
-pub use prefer_simple_callback_assert::PreferSimpleCallbackAssert;
-pub use prefer_simple_mock_expectation::PreferSimpleMockExpectation;
-pub use prefer_simple_with_matcher::PreferSimpleWithMatcher;
-pub use prefer_specific_true_false_assertion::PreferSpecificTrueFalseAssertion;
-pub use prefer_specific_will_method::PreferSpecificWillMethod;
-pub use prefer_standalone_asserts_over_callback::PreferStandaloneAssertsOverCallback;
-pub use prefer_stub_var::PreferStubVar;
-pub use prefer_test_attribute::PreferTestAttribute;
-pub use prefer_test_prefix::PreferTestPrefix;
-pub use prefer_test_with_attribute::PreferTestWithAttribute;
+pub(crate) use crate::rules::support::expressions::text;
+pub(crate) use crate::rules::support::names::resolve_class_name as resolve;
 pub(crate) use prefer_test_with_attribute::print_float;
-pub use prefer_this_call::PreferThisCall;
-pub use prefer_ticket_attribute::PreferTicketAttribute;
-pub use prefer_will_return_callback::PreferWillReturnCallback;
-pub use prefer_with_is_instance_of::PreferWithIsInstanceOf;
-pub use prefer_yield_data_provider::PreferYieldDataProvider;
-pub use require_data_provider_newlines::RequireDataProviderNewlines;
-pub use require_exact_test_argument_type::RequireExactTestArgumentType;
-pub use require_final_test_case::RequireFinalTestCase;
-pub use require_mock_expects::RequireMockExpects;
-pub use require_strict_types_in_tests::RequireStrictTypesInTests;
-pub use require_string_assert_argument::RequireStringAssertArgument;
 
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
@@ -187,109 +96,112 @@ use mago_syntax::cst::{
     Node, Variable,
 };
 use pun_problem::{Edit, Span};
+use std::fmt::Write as _;
 
+use crate::Context;
 use crate::rules::laravel::is_a;
+use crate::rules::support::sequence_diff::{Elem, coalesce_replacements, diff};
 use crate::rules::types::class_scope;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Rule};
 
-/// The group's rules, in a fixed order.
-pub(crate) fn all() -> Vec<Box<dyn Rule>> {
-    vec![
-        Box::new(NoEmptyTest),
-        Box::new(NoNegatedAssertion),
-        Box::new(PreferAssertNullTrueFalse),
-        Box::new(PreferAssertTrueFalse),
-        Box::new(PreferAssertStringContains),
-        Box::new(NoAssertIsType),
-        Box::new(NoAssertContainsOnly),
-        Box::new(PreferComparisonAssertion),
-        Box::new(PreferAssertInstanceof),
-        Box::new(PreferAssertInstanceofOverEmpty),
-        Box::new(PreferPropertyAssertions),
-        Box::new(AddClosureReturnTypeFromAssert),
-        Box::new(NoFlippedAssertion),
-        Box::new(NoFloatDeltaParameter),
-        Box::new(PreferSpecificTrueFalseAssertion),
-        Box::new(PreferAssertArrayHasKey),
-        Box::new(RequireStringAssertArgument),
-        Box::new(PreferAssertInstancesOf),
-        Box::new(NoAssertSameTypeMismatch),
-        Box::new(PreferAssertCount),
-        Box::new(NoExpectsAny),
-        Box::new(PreferSimpleWithMatcher),
-        Box::new(PreferSpecificWillMethod),
-        Box::new(PreferSimpleMockExpectation),
-        Box::new(PreferNarrowWithConsecutive),
-        Box::new(NoFinalConstructorOverride),
-        Box::new(NoSetupOverrideAttribute),
-        Box::new(RequireStrictTypesInTests),
-        Box::new(PreferThisCall),
-        Box::new(NoUnusedMock),
-        Box::new(NoAtMatcher),
-        Box::new(NoBareMockBuilder),
-        Box::new(PreferCreateStubInCoalesce),
-        Box::new(RequireDataProviderNewlines),
-        Box::new(PreferWithIsInstanceOf),
-        Box::new(PreferSimpleCallbackAssert),
-        Box::new(PreferNarrowWillReturnCallback),
-        Box::new(PreferAssert),
-        Box::new(PreferMergedWillReturnCallback),
-        Box::new(AddDependedTestReturnType),
-        Box::new(NoTestConstructor),
-        Box::new(PreferNamedDataProviderKeys),
-        Box::new(PreferTestPrefix),
-        Box::new(NoValueObjectMock),
-        Box::new(NoBareMockAssign),
-        Box::new(PreferStandaloneAssertsOverCallback),
-        Box::new(PreferTicketAttribute),
-        Box::new(PreferDataProviderAttribute),
-        Box::new(PreferRequiresAttribute),
-        Box::new(PreferDependsAttribute),
-        Box::new(PreferCoversAttribute),
-        Box::new(PreferTestWithAttribute),
-        Box::new(PreferAttributeOverAnnotation::default()),
-        Box::new(PreferDataProvider),
-        Box::new(RequireFinalTestCase),
-        Box::new(AddTestVoidReturn),
-        Box::new(AddDataProviderIteratorReturnType),
-        Box::new(AddReturnTypeFromMockObject),
-        Box::new(PreferCreateStubExpression),
-        Box::new(NoMockIntersectionProperty),
-        Box::new(NoUnusedMockProperty),
-        Box::new(PreferCreateStub),
-        Box::new(RequireMockExpects),
-        Box::new(PreferInlineCreateStub),
-        Box::new(PreferStubVar),
-        Box::new(PreferMockIntersectionReturn),
-        Box::new(AddMockIntersectionType),
-        Box::new(AddStubIntersectionType),
-        Box::new(AddMockObjectType),
-        Box::new(AddMockIntersectionParam),
-        Box::new(AddAllowMockObjectsAttribute),
-        Box::new(AddDataProviderAllowMockObjects),
-        Box::new(AddParamTypeDepends),
-        Box::new(PreferLocalOverSetupProperty),
-        Box::new(RequireExactTestArgumentType),
-        Box::new(PreferTestAttribute),
-        Box::new(NoEntityMock),
-        Box::new(PreferYieldDataProvider),
-        Box::new(NoStubWithExpectations),
-        Box::new(PreferCreateStubArgument),
-        Box::new(AddWillReturnCallbackParamType),
-        Box::new(PreferWillReturnCallback),
-        Box::new(AddInstanceofAssert),
-        Box::new(AddInstanceofAssertForArgument),
-    ]
+rules! {
+    pub(super) fn all {
+        no_empty_test => NoEmptyTest,
+        no_negated_assertion => NoNegatedAssertion,
+        prefer_assert_null_true_false => PreferAssertNullTrueFalse,
+        prefer_assert_true_false => PreferAssertTrueFalse,
+        prefer_assert_string_contains => PreferAssertStringContains,
+        no_assert_is_type => NoAssertIsType,
+        no_assert_contains_only => NoAssertContainsOnly,
+        prefer_comparison_assertion => PreferComparisonAssertion,
+        prefer_assert_instanceof => PreferAssertInstanceof,
+        prefer_assert_instanceof_over_empty => PreferAssertInstanceofOverEmpty,
+        prefer_property_assertions => PreferPropertyAssertions,
+        add_closure_return_type_from_assert => AddClosureReturnTypeFromAssert,
+        no_flipped_assertion => NoFlippedAssertion,
+        no_float_delta_parameter => NoFloatDeltaParameter,
+        prefer_specific_true_false_assertion => PreferSpecificTrueFalseAssertion,
+        prefer_assert_array_has_key => PreferAssertArrayHasKey,
+        require_string_assert_argument => RequireStringAssertArgument,
+        prefer_assert_instances_of => PreferAssertInstancesOf,
+        no_assert_same_type_mismatch => NoAssertSameTypeMismatch,
+        prefer_assert_count => PreferAssertCount,
+        no_expects_any => NoExpectsAny,
+        prefer_simple_with_matcher => PreferSimpleWithMatcher,
+        prefer_specific_will_method => PreferSpecificWillMethod,
+        prefer_simple_mock_expectation => PreferSimpleMockExpectation,
+        prefer_narrow_with_consecutive => PreferNarrowWithConsecutive,
+        no_final_constructor_override => NoFinalConstructorOverride,
+        no_setup_override_attribute => NoSetupOverrideAttribute,
+        require_strict_types_in_tests => RequireStrictTypesInTests,
+        prefer_this_call => PreferThisCall,
+        no_unused_mock => NoUnusedMock,
+        no_at_matcher => NoAtMatcher,
+        no_bare_mock_builder => NoBareMockBuilder,
+        prefer_create_stub_in_coalesce => PreferCreateStubInCoalesce,
+        require_data_provider_newlines => RequireDataProviderNewlines,
+        prefer_with_is_instance_of => PreferWithIsInstanceOf,
+        prefer_simple_callback_assert => PreferSimpleCallbackAssert,
+        prefer_narrow_will_return_callback => PreferNarrowWillReturnCallback,
+        prefer_assert => PreferAssert,
+        prefer_merged_will_return_callback => PreferMergedWillReturnCallback,
+        add_depended_test_return_type => AddDependedTestReturnType,
+        no_test_constructor => NoTestConstructor,
+        prefer_named_data_provider_keys => PreferNamedDataProviderKeys,
+        prefer_test_prefix => PreferTestPrefix,
+        no_value_object_mock => NoValueObjectMock,
+        no_bare_mock_assign => NoBareMockAssign,
+        prefer_standalone_asserts_over_callback => PreferStandaloneAssertsOverCallback,
+        prefer_ticket_attribute => PreferTicketAttribute,
+        prefer_data_provider_attribute => PreferDataProviderAttribute,
+        prefer_requires_attribute => PreferRequiresAttribute,
+        prefer_depends_attribute => PreferDependsAttribute,
+        prefer_covers_attribute => PreferCoversAttribute,
+        prefer_test_with_attribute => PreferTestWithAttribute,
+        prefer_attribute_over_annotation => PreferAttributeOverAnnotation::default(),
+        prefer_data_provider => PreferDataProvider,
+        require_final_test_case => RequireFinalTestCase,
+        add_test_void_return => AddTestVoidReturn,
+        add_data_provider_iterator_return_type => AddDataProviderIteratorReturnType,
+        add_return_type_from_mock_object => AddReturnTypeFromMockObject,
+        prefer_create_stub_expression => PreferCreateStubExpression,
+        no_mock_intersection_property => NoMockIntersectionProperty,
+        no_unused_mock_property => NoUnusedMockProperty,
+        prefer_create_stub => PreferCreateStub,
+        require_mock_expects => RequireMockExpects,
+        prefer_inline_create_stub => PreferInlineCreateStub,
+        prefer_stub_var => PreferStubVar,
+        prefer_mock_intersection_return => PreferMockIntersectionReturn,
+        add_mock_intersection_type => AddMockIntersectionType,
+        add_stub_intersection_type => AddStubIntersectionType,
+        add_mock_object_type => AddMockObjectType,
+        add_mock_intersection_param => AddMockIntersectionParam,
+        add_allow_mock_objects_attribute => AddAllowMockObjectsAttribute,
+        add_data_provider_allow_mock_objects => AddDataProviderAllowMockObjects,
+        add_param_type_depends => AddParamTypeDepends,
+        prefer_local_over_setup_property => PreferLocalOverSetupProperty,
+        require_exact_test_argument_type => RequireExactTestArgumentType,
+        prefer_test_attribute => PreferTestAttribute,
+        no_entity_mock => NoEntityMock,
+        prefer_yield_data_provider => PreferYieldDataProvider,
+        no_stub_with_expectations => NoStubWithExpectations,
+        prefer_create_stub_argument => PreferCreateStubArgument,
+        add_will_return_callback_param_type => AddWillReturnCallbackParamType,
+        prefer_will_return_callback => PreferWillReturnCallback,
+        add_instanceof_assert => AddInstanceofAssert,
+        add_instanceof_assert => AddInstanceofAssertForArgument,
+        super::types::doctrine_repository => AddPropertyTypeContainerGet,
+        super::types::add_property_type_create_mock => AddPropertyTypeCreateMock,
+        super::types::add_property_type_setup => AddPropertyTypeSetup,
+        super::types::add_property_type_setup_docblock => AddPropertyTypeSetupDocblock,
+    }
 }
 
 pub(crate) const TEST_CASE: &str = "PHPUnit\\Framework\\TestCase";
 pub(crate) const TEST_CASE_LEGACY: &str = "PHPUnit_Framework_TestCase";
 pub(crate) const ASSERT: &str = "PHPUnit\\Framework\\Assert";
 
-/// `TestsNodeAnalyzer::isInTestClass` for a node whose ancestors are `ancestors`; `method` is the node itself when it
-/// is a method (a trait's test methods are told apart by it).
 pub(crate) fn is_in_test_class(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -298,7 +210,6 @@ pub(crate) fn is_in_test_class(
     let Some(scope) = class_scope(ancestors) else {
         return false;
     };
-    // the class-like `class_scope()` read
     let at = ancestors
         .iter()
         .rposition(|a| {
@@ -333,19 +244,16 @@ pub(crate) fn is_in_test_class(
     class_is(ctx, &ancestors[..=at], &[TEST_CASE, TEST_CASE_LEGACY])
 }
 
-/// `ClassReflection::is()` for the class-like `ancestors` ends in, against any of `targets`.
 pub(super) fn class_is(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], targets: &[&str]) -> bool {
     let scope = class_scope(ancestors).unwrap();
     if let Some(name) = &scope.name {
         return is_a(ctx, name, targets);
     }
-    // an anonymous class, the last of `ancestors`
     let span = mago_span::HasSpan::span(ancestors.last().unwrap());
     let name = facts(ctx).anonymous_class_name(span);
     is_a(ctx, &name, targets) || scope.parents.iter().any(|p| is_a(ctx, p, targets))
 }
 
-/// Whether a method is public (no visibility modifier counts as public).
 pub(crate) fn is_public(method: &Method<'_>) -> bool {
     !method
         .modifiers
@@ -353,12 +261,9 @@ pub(crate) fn is_public(method: &Method<'_>) -> bool {
         .any(|m| matches!(m, Modifier::Private(_) | Modifier::Protected(_)))
 }
 
-/// A method or static method call, as php-parser's `MethodCall` and `StaticCall` (a first-class callable is a
-/// partial application in Mago, never one of these).
 #[derive(Clone, Copy)]
 pub(crate) struct AnyCall<'a> {
     pub span: Span,
-    /// The object of a method call, or the class of a static one.
     pub receiver: &'a Expression<'a>,
     pub is_static: bool,
     pub method: &'a ClassLikeMemberSelector<'a>,
@@ -386,7 +291,6 @@ impl<'a> AnyCall<'a> {
         }
     }
 
-    /// The method name when written as an identifier.
     pub(crate) fn name(&self) -> Option<&'a [u8]> {
         match self.method {
             ClassLikeMemberSelector::Identifier(id) => Some(id.value),
@@ -398,28 +302,21 @@ impl<'a> AnyCall<'a> {
         node_span(self.method)
     }
 
-    /// `NodeNameResolver::isNames` on the method name: ASCII case-insensitive.
     pub(crate) fn is_name(&self, names: &[&str]) -> bool {
         self.name()
             .is_some_and(|n| names.iter().any(|w| n.eq_ignore_ascii_case(w.as_bytes())))
     }
 
-    /// `getArgs()`.
     pub(crate) fn args(&self) -> Vec<&'a Argument<'a>> {
         self.args.arguments.iter().collect()
     }
 
-    /// The receiver and its `->` or `::` as php-parser's pretty printer writes them for a call node it prints anew
-    /// (`pDereferenceLhs($node->var) . '->'`): the kept receiver's own text, without what stood between it and the
-    /// operator.
     pub(crate) fn receiver_text(&self, ctx: &Context<'_>) -> String {
         let operator = if self.is_static { "::" } else { "->" };
         format!("{}{operator}", text(ctx, self.receiver))
     }
 }
 
-/// `TestsNodeAnalyzer::isPHPUnitTestCaseCall`: the receiver's type is a `TestCase` or an `Assert` (`ObjectType`
-/// only, so not a union, an intersection or a trait's `$this`).
 pub(crate) fn is_test_case_call(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -428,7 +325,6 @@ pub(crate) fn is_test_case_call(
     receiver_is(ctx, ancestors, call, &[TEST_CASE, ASSERT])
 }
 
-/// `TestsNodeAnalyzer::isPHPUnitMethodCallNames`.
 pub(crate) fn is_test_case_call_named(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -438,7 +334,6 @@ pub(crate) fn is_test_case_call_named(
     call.is_name(names) && is_test_case_call(ctx, ancestors, call)
 }
 
-/// Whether the receiver of `call` is an `ObjectType` of one of `targets` or a subclass.
 pub(crate) fn receiver_is(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -451,7 +346,6 @@ pub(crate) fn receiver_is(
             Expression::Self_(_) | Expression::Static(_) => {
                 own_class(ancestors).is_some_and(|c| is_a(ctx, &c, targets))
             }
-            // A union of every parent class unless there is only one.
             Expression::Parent(_) => own_class(ancestors).is_some_and(|own| {
                 let parents = class_parents(ctx, &own);
                 parents.len() == 1 && is_a(ctx, &parents[0], targets)
@@ -468,7 +362,6 @@ pub(crate) fn receiver_is(
     object_class(ctx, receiver).is_some_and(|c| is_a(ctx, &c, targets))
 }
 
-/// The class of an `ObjectType` (a single named object, not a union or an intersection) that Mago gives `expr`.
 pub(crate) fn object_class(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<String> {
     let facts = facts(ctx);
     let t = facts.full_type(node_span(expr))?;
@@ -480,12 +373,10 @@ pub(crate) fn object_class(ctx: &Context<'_>, expr: &Expression<'_>) -> Option<S
     }
 }
 
-/// The parent classes of `class`, nearest first.
 pub(crate) fn class_parents(ctx: &Context<'_>, class: &str) -> Vec<String> {
     let facts = facts(ctx);
     let mut out = Vec::new();
     let mut at = class.to_string();
-    // a parent seen before ends a cycle
     while let Some(name) = facts
         .codebase
         .get_class_like(at.as_bytes())
@@ -504,7 +395,6 @@ pub(crate) fn class_parents(ctx: &Context<'_>, class: &str) -> Vec<String> {
     out
 }
 
-/// The nodes up to the innermost class-like (not a trait) of `ancestors`.
 fn own_class_like<'n, 'ast, 'arena>(
     ancestors: &'n [Node<'ast, 'arena>],
 ) -> Option<&'n [Node<'ast, 'arena>]> {
@@ -521,14 +411,11 @@ fn own_class_like<'n, 'ast, 'arena>(
     (!matches!(ancestors[at], Node::Trait(_))).then(|| &ancestors[..=at])
 }
 
-/// The fully qualified name of the named class-like (not a trait or an anonymous class) `ancestors` lead into.
 pub(crate) fn own_class(ancestors: &[Node<'_, '_>]) -> Option<String> {
     let nodes = own_class_like(ancestors)?;
     class_scope(nodes)?.name
 }
 
-/// `ReflectionResolver::resolveClassReflection()`'s class for a node with the ancestors `ancestors`: the class-like it
-/// is in, an anonymous class by the name Mago gives it.
 pub(crate) fn own_class_reflection(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -540,7 +427,6 @@ pub(crate) fn own_class_reflection(
     })
 }
 
-/// The members of a class-like and the spans of its braces.
 pub(crate) fn class_body<'a>(
     node: Node<'a, 'a>,
 ) -> Option<(
@@ -566,47 +452,37 @@ pub(crate) const CLASS_LIKES: &[mago_syntax::cst::NodeKind] = &[
     mago_syntax::cst::NodeKind::Enum,
 ];
 
-/// The text php-parser prints for an expression node it keeps: the node without the parentheses around it.
 pub(crate) fn expr_text<'s>(ctx: &Context<'s>, expr: &Expression<'_>) -> &'s str {
     text(ctx, unparenthesize(expr))
 }
 
-/// The call's arguments from `from` on, kept.
 pub(crate) fn old_args(call: &AnyCall<'_>, from: usize) -> impl Iterator<Item = NewArg> {
     (from..call.args.arguments.len()).map(NewArg::Old)
 }
 
-/// `ArgumentMover::removeFirstArg` with the call renamed to `name`.
 pub(crate) fn remove_first_arg(ctx: &Context<'_>, call: &AnyCall<'_>, name: &str) -> Vec<Edit> {
     let new: Vec<NewArg> = old_args(call, 1).collect();
     rewrite_args(ctx, call, Some(name), &new)
 }
 
-/// `IdentifierManipulator::renameNodeWithMap`: the new name for the call's name as written, a key of `map`.
 pub(crate) fn renamed(call: &AnyCall<'_>, map: &[(&str, &'static str)]) -> Option<&'static str> {
     let name = call.name()?;
-    // method names are case-insensitive in PHP, the map matches the same way
     map.iter()
         .find(|(k, _)| k.as_bytes().eq_ignore_ascii_case(name))
         .map(|(_, v)| *v)
 }
 
-/// The call printed anew as php-parser prints `new MethodCall($node->var, $name, $args)` (or a `StaticCall`): the
-/// kept receiver, the name and the arguments joined with `, `.
 pub(crate) fn new_call(ctx: &Context<'_>, call: &AnyCall<'_>, name: &str, args: &[&str]) -> String {
     format!("{}{name}({})", call.receiver_text(ctx), args.join(", "))
 }
 
-/// `ValueResolver::getValue` for a string: a string literal.
 pub(crate) fn string_value(expr: &Expression<'_>) -> Option<String> {
-    match crate::rules::rector_batch5::value(expr)? {
-        crate::rules::rector_batch5::Value::Str(s) => Some(s),
+    match crate::rules::support::values::value(expr)? {
+        crate::rules::support::values::Value::Str(s) => Some(s),
         _ => None,
     }
 }
 
-/// `ValueResolver::getValue` for a class name: a string literal, or `X::class` resolved (`self` and `static` to the
-/// class the node is in, `parent` to its parent; `None` where Rector has no class for them and fails).
 pub(crate) fn class_string(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -632,8 +508,6 @@ pub(crate) fn class_string(
     }
 }
 
-/// Whether PHPStan's type of `expr` is a `ConstantScalarType` (a literal value or `null`) or a `ConstantArrayType`
-/// (an array whose items are all known). A literal and a magic constant are, whatever type Mago gives them.
 pub(crate) fn is_constant_value(ctx: &Context<'_>, expr: &Expression<'_>) -> bool {
     use mago_codex::ttype::atomic::array::TArray;
     let expr = unparenthesize(expr);
@@ -651,17 +525,11 @@ pub(crate) fn is_constant_value(ctx: &Context<'_>, expr: &Expression<'_>) -> boo
         })
 }
 
-/// An argument of a rewritten call: an argument the call keeps (by its index), or the text php-parser prints for an
-/// argument node that is not one of the call's own (a new `Arg`, or an argument moved in from another call).
 pub(crate) enum NewArg {
     Old(usize),
     New(String),
 }
 
-/// The edits for setting a call's arguments to `new` (and its name to `name`), as php-parser's format-preserving
-/// printer writes them (`pArray` over the `args` list, with `Differ::diffWithReplacements`). Where `pArray` gives up
-/// (a sole argument replaced by several, or every argument removed from the start), the call is printed anew:
-/// receiver, name and the arguments joined with `, `.
 pub(crate) fn rewrite_args(
     ctx: &Context<'_>,
     call: &AnyCall<'_>,
@@ -706,15 +574,16 @@ pub(crate) fn rewrite_args(
     let mut delayed: Vec<String> = Vec::new();
     let mut indent = String::new();
     let comment_start = |from: usize, i: usize| {
-        crate::rules::rector_stmts::first_comment(source, from, old[i].start)
+        crate::rules::support::statement_edits::first_comment(source, from, old[i].start)
             .unwrap_or(old[i].start)
     };
     for (index, elem) in diff.iter().enumerate() {
         match *elem {
             Elem::Keep(o, n) | Elem::Replace(o, n) => {
                 before_first_keep = false;
-                indent =
-                    " ".repeat(crate::rules::rector_stmts::line_indent(source, old[o].start).len());
+                indent = " ".repeat(
+                    crate::rules::support::statement_edits::line_indent(source, old[o].start).len(),
+                );
                 let from = comment_start(pos, o);
                 if !skip_removed {
                     result.push_str(&source[pos..from]);
@@ -722,7 +591,7 @@ pub(crate) fn rewrite_args(
                 for add in delayed.drain(..) {
                     result.push_str(&add);
                     if multiline {
-                        result.push_str(&format!(",\n{indent}"));
+                        let _ = write!(result, ",\n{indent}");
                     } else {
                         result.push_str(", ");
                     }
@@ -741,7 +610,7 @@ pub(crate) fn rewrite_args(
                     continue;
                 }
                 if multiline {
-                    result.push_str(&format!(",\n{indent}"));
+                    let _ = write!(result, ",\n{indent}");
                 } else {
                     result.push_str(", ");
                 }
@@ -768,111 +637,6 @@ pub(crate) fn rewrite_args(
     edits
 }
 
-/// An element of php-parser's `Differ`, on indexes of the old and the new list.
-#[derive(Clone, Copy)]
-pub(crate) enum Elem {
-    Keep(usize, usize),
-    Remove(usize),
-    Add(usize),
-    Replace(usize, usize),
-}
-
-/// php-parser's `Differ::diff` (Myers) from the items `0..n` to the list `new`, where `new[y] == x` means the old item
-/// `x` is kept as the new item `y` (a new item has a key of `n` or above).
-pub(crate) fn diff(n: usize, new: &[usize]) -> Vec<Elem> {
-    let m = new.len();
-    let max = (n + m) as isize;
-    let at = |k: isize| (k + max + 1) as usize;
-    let mut v = vec![0usize; 2 * max as usize + 3];
-    let mut trace: Vec<Vec<usize>> = Vec::new();
-    let (mut x, mut y) = (0, 0);
-    'outer: for d in 0..=max {
-        trace.push(v.clone());
-        let mut k = -d;
-        while k <= d {
-            x = if k == -d || (k != d && v[at(k - 1)] < v[at(k + 1)]) {
-                v[at(k + 1)]
-            } else {
-                v[at(k - 1)] + 1
-            };
-            y = (x as isize - k) as usize;
-            while x < n && y < m && x == new[y] {
-                x += 1;
-                y += 1;
-            }
-            v[at(k)] = x;
-            if x >= n && y >= m {
-                break 'outer;
-            }
-            k += 2;
-        }
-    }
-    let mut out = Vec::new();
-    for d in (0..trace.len() as isize).rev() {
-        let v = &trace[d as usize];
-        let k = x as isize - y as isize;
-        let prev_k = if k == -d || (k != d && v[at(k - 1)] < v[at(k + 1)]) {
-            k + 1
-        } else {
-            k - 1
-        };
-        let prev_x = v[at(prev_k)];
-        let prev_y = prev_x as isize - prev_k;
-        while x > prev_x && y as isize > prev_y {
-            out.push(Elem::Keep(x - 1, y - 1));
-            x -= 1;
-            y -= 1;
-        }
-        if d == 0 {
-            break;
-        }
-        while x > prev_x {
-            out.push(Elem::Remove(x - 1));
-            x -= 1;
-        }
-        while y as isize > prev_y {
-            out.push(Elem::Add(y - 1));
-            y -= 1;
-        }
-    }
-    out.reverse();
-    out
-}
-
-/// `Differ::coalesceReplacements`: a run of removals followed by as many additions is a run of replacements.
-pub(crate) fn coalesce_replacements(diff: Vec<Elem>) -> Vec<Elem> {
-    let mut out = Vec::new();
-    let mut i = 0;
-    while i < diff.len() {
-        if !matches!(diff[i], Elem::Remove(_)) {
-            out.push(diff[i]);
-            i += 1;
-            continue;
-        }
-        let mut j = i;
-        while j < diff.len() && matches!(diff[j], Elem::Remove(_)) {
-            j += 1;
-        }
-        let mut k = j;
-        while k < diff.len() && matches!(diff[k], Elem::Add(_)) {
-            k += 1;
-        }
-        if j - i == k - j {
-            for n in 0..j - i {
-                if let (Elem::Remove(old), Elem::Add(new)) = (diff[i + n], diff[j + n]) {
-                    out.push(Elem::Replace(old, new));
-                }
-            }
-        } else {
-            out.extend_from_slice(&diff[i..k]);
-        }
-        i = k;
-    }
-    out
-}
-
-/// `NodeNameResolver::getName` on an expression: a variable's name, a property fetch's property, a constant's or a
-/// called function's name as written (without a leading `\`).
 pub(crate) fn expr_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     use mago_syntax::cst::{Access, Call};
     let strip = |n: &'a [u8]| n.strip_prefix(b"\\").unwrap_or(n);
@@ -899,7 +663,6 @@ pub(crate) fn expr_name<'a>(expr: &'a Expression<'a>) -> Option<&'a [u8]> {
     }
 }
 
-/// `BetterNodeFinder::findFirst`: whether `node` or a node inside it matches `found`.
 pub(crate) fn contains(node: Node<'_, '_>, found: &dyn Fn(Node<'_, '_>) -> bool) -> bool {
     if found(node) {
         return true;
@@ -913,14 +676,10 @@ pub(crate) fn contains(node: Node<'_, '_>, found: &dyn Fn(Node<'_, '_>) -> bool)
     hit
 }
 
-/// Whether the node is a method call named one of `names`.
 pub(crate) fn is_method_call_named(node: Node<'_, '_>, names: &[&str]) -> bool {
     AnyCall::of(node).is_some_and(|c| !c.is_static && c.is_name(names))
 }
 
-/// The text of `expr` with every method call named `equalTo` inside it replaced by its first argument's value, as
-/// `traverseNodesWithCallable` leaves it: the replacement of `expr` itself is lost (the traversed array is dropped),
-/// and a replacement is traversed in turn.
 pub(crate) fn without_equal_to(ctx: &Context<'_>, expr: &Expression<'_>) -> String {
     use mago_syntax::cst::MethodCall;
     fn collect<'a>(node: Node<'a, 'a>, root: Span, calls: &mut Vec<&'a MethodCall<'a>>) {
@@ -949,8 +708,6 @@ pub(crate) fn without_equal_to(ctx: &Context<'_>, expr: &Expression<'_>) -> Stri
     out
 }
 
-/// The text of an `equalTo()` call's replacement: its first argument's value, with its own `equalTo()` calls
-/// replaced; the call as it is without one (`$node->getArgs()[0]->value` is `null`, which replaces nothing).
 fn replaced_equal_to(ctx: &Context<'_>, call: &mago_syntax::cst::MethodCall<'_>) -> String {
     match call.argument_list.arguments.first() {
         Some(first) => inner_without_equal_to(ctx, first.value()),
@@ -958,7 +715,6 @@ fn replaced_equal_to(ctx: &Context<'_>, call: &mago_syntax::cst::MethodCall<'_>)
     }
 }
 
-/// [`without_equal_to`] for a node inside the traversed one, which is replaced too when it is an `equalTo()` call.
 pub(crate) fn inner_without_equal_to(ctx: &Context<'_>, expr: &Expression<'_>) -> String {
     use mago_syntax::cst::Call;
     let value = unparenthesize(expr);
@@ -970,18 +726,15 @@ pub(crate) fn inner_without_equal_to(ctx: &Context<'_>, expr: &Expression<'_>) -
     without_equal_to(ctx, value)
 }
 
-/// `pStmt_ClassMethod` for a method php-parser prints anew without its attributes: the modifiers in php-parser's
-/// order, the parameters joined with `, ` (a line each, without a trailing comma, when one has comments), and the
-/// statements of its body `block` a line each (blank lines between them go).
 pub(crate) fn method_anew(
     ctx: &crate::Context<'_>,
     method: &Method<'_>,
     block: &mago_syntax::cst::Block<'_>,
 ) -> String {
+    use crate::rules::support::statement_edits::{block_list, line_indent};
     let source = ctx.source;
-    use crate::rules::rector_stmts::{block_list, line_indent};
     let indent = line_indent(source, node_span(method).start);
-    let mut out = crate::rules::rector_batch5::modifiers_text(&method.modifiers);
+    let mut out = crate::rules::support::class_members::modifiers_text(&method.modifiers);
     out.push_str("function ");
     if method.ampersand.is_some() {
         out.push('&');
@@ -1008,16 +761,13 @@ pub(crate) fn method_anew(
     out
 }
 
-/// A block php-parser prints anew at the indent `indent` (`pStmts`): `{`, each statement on a line one level deeper
-/// after its comments (a line each; the blank lines between go), the comments after the last statement (the `Nop`),
-/// and `}` on a line of its own.
 pub(crate) fn block_anew(
     ctx: &crate::Context<'_>,
-    list: &crate::rules::rector_stmts::List<'_>,
+    list: &crate::rules::support::statement_edits::List<'_>,
     indent: &str,
 ) -> String {
+    use crate::rules::support::statement_edits::{line_indent, reindent, tokens};
     let source = ctx.source;
-    use crate::rules::rector_stmts::{line_indent, reindent, tokens};
     let inner = format!("{indent}    ");
     let mut lines = Vec::new();
     let comments = |from: usize, to: usize, lines: &mut Vec<String>| {
@@ -1051,17 +801,14 @@ pub(crate) fn block_anew(
     )
 }
 
-/// php-parser's `pMaybeMultiline` over items whose source spans are `items` (the first starts after `from`), printed
-/// at the indent `indent`: the items joined with `, `, or, when one has comments before it, each item on a line of its
-/// own one level deeper after its comments, without a trailing comma, and a line break before the closing token.
 pub(crate) fn maybe_multiline(
     ctx: &crate::Context<'_>,
     from: usize,
     items: &[Span],
     indent: &str,
 ) -> String {
+    use crate::rules::support::statement_edits::{previous_token_end, tokens};
     let source = ctx.source;
-    use crate::rules::rector_stmts::{previous_token_end, tokens};
     let mut from = from;
     let mut printed = Vec::new();
     for span in items {
@@ -1098,29 +845,24 @@ pub(crate) fn maybe_multiline(
     format!("{}\n{indent}", lines.join(","))
 }
 
-/// The edits for removing the members `removed` flags from a class, an anonymous class or a trait, as php-parser
-/// prints them: with a member kept, [`remove_members`]; with only the comments after the last member kept
-/// (php-parser's `Nop`), the members go up to those comments; with nothing kept, the class-like is printed anew
-/// (`pClassCommon`): its attributes a line each, then its modifiers, name or arguments, `extends` and `implements`
-/// lists on one line, and an empty body on the next. An interface or an enum, which holds no test, gets no edits.
 pub(crate) fn remove_class_members(
     source: &str,
     node: Node<'_, '_>,
     removed: &[bool],
 ) -> Vec<Edit> {
-    use crate::rules::rector_batch5::{modifiers_text, remove_members};
-    use crate::rules::rector_stmts::{first_comment, line_indent};
-    use mago_span::HasSpan;
-    use mago_syntax::cst::{AttributeList, Extends, Implements, Sequence};
-    let text = |s: mago_span::Span| &source[s.start.offset as usize..s.end.offset as usize];
-    let span = node_span(&node);
-    let indent = line_indent(source, span.start);
     type Parts<'n, 'a> = (
         &'n Sequence<'a, AttributeList<'a>>,
         String,
         Option<&'n Extends<'a>>,
         Option<&'n Implements<'a>>,
     );
+    use crate::rules::support::class_members::{modifiers_text, remove_members};
+    use crate::rules::support::statement_edits::{first_comment, line_indent};
+    use mago_span::HasSpan;
+    use mago_syntax::cst::{AttributeList, Extends, Implements, Sequence};
+    let text = |s: mago_span::Span| &source[s.start.offset as usize..s.end.offset as usize];
+    let span = node_span(&node);
+    let indent = line_indent(source, span.start);
     let (lists, head, extends, implements): Parts<'_, '_> = match node {
         Node::Class(c) => (
             &c.attribute_lists,
@@ -1133,7 +875,6 @@ pub(crate) fn remove_class_members(
             c.implements.as_ref(),
         ),
         Node::AnonymousClass(c) => {
-            // Rector's oracle prints the arguments of an anonymous class without their comments, on one line
             let args: Vec<&str> = c
                 .argument_list
                 .iter()
@@ -1152,7 +893,6 @@ pub(crate) fn remove_class_members(
                 c.implements.as_ref(),
             )
         }
-        // a trait: no other class-like holds a test
         _ => {
             let Node::Trait(t) = node else { return vec![] };
             (
@@ -1173,7 +913,6 @@ pub(crate) fn remove_class_members(
     if let Some(nop) = first_comment(source, spans[spans.len() - 1].end, close) {
         return vec![Edit::new(Span::new(first, nop), "")];
     }
-    // PHPStan names an anonymous class, so `pAttrGroups` puts its attributes on lines of their own too
     let mut out = String::from(if matches!(node, Node::AnonymousClass(_)) {
         "new "
     } else {
@@ -1200,6 +939,6 @@ pub(crate) fn remove_class_members(
         out.push_str(" implements ");
         out.push_str(&names(&implements.types));
     }
-    out.push_str(&format!("\n{indent}{{\n{indent}}}"));
+    let _ = write!(out, "\n{indent}{{\n{indent}}}");
     vec![Edit::new(span, out)]
 }

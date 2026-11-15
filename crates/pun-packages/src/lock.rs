@@ -1,23 +1,9 @@
-//! pun.lock: the exact packages a project installs, next to pun.toml. It is TOML holding what composer.lock holds:
-//! each package's metadata as its repository published it (version, dist, requirements, autoload rules, ...), in
-//! the same order, so `vendor/composer/installed.json` can be written from it byte for byte. `content-hash` is the
-//! md5 Composer computes over the parts of the manifest that decide the resolution, so a pun.lock says whether it
-//! still matches pun.toml.
-
+use crate::error::{Context, Result, bail};
 use crate::php::json_compact;
-use anyhow::{Context, Result, bail};
-use pun_config::toml_text;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::fmt::Write;
 use std::path::Path;
 
-/// pun.lock's format version.
-pub const VERSION: i64 = 1;
-
-const HEADER: &str =
-    "# pun.lock: the exact packages `pun install` installs. Written by Pun; do not edit by hand.\n";
-
-/// The top-level keys after `content-hash`, in the order pun.lock writes them.
 const SETTINGS: [&str; 9] = [
     "minimum-stability",
     "stability-flags",
@@ -33,15 +19,81 @@ const SETTINGS: [&str; 9] = [
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lock {
     pub content_hash: String,
-    /// [`SETTINGS`] that are set, in that order.
     pub settings: Map<String, Value>,
-    /// Each package as composer.lock's entry for it.
-    pub packages: Vec<Map<String, Value>>,
-    pub packages_dev: Vec<Map<String, Value>>,
+    pub packages: Vec<LockedPackage>,
+    pub packages_dev: Vec<LockedPackage>,
 }
 
-/// `md5(json_encode(...))` of the manifest's `name`, `version`, links, stability settings, repositories, `extra`,
-/// `config.platform` and `config.policy`, with the top-level keys sorted (Composer's `Locker::getContentHash`).
+/// One package of a lock, in composer.lock's shape. The keys keep the order they were read in, so a lock writes
+/// back byte for byte; the accessors name the keys Pun reads.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct LockedPackage(pub Map<String, Value>);
+
+impl std::ops::Deref for LockedPackage {
+    type Target = Map<String, Value>;
+
+    fn deref(&self) -> &Map<String, Value> {
+        &self.0
+    }
+}
+
+impl LockedPackage {
+    fn str(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(Value::as_str)
+    }
+
+    pub fn pretty_name(&self) -> &str {
+        self.str("name").unwrap_or_default()
+    }
+
+    pub fn name(&self) -> String {
+        self.pretty_name().to_ascii_lowercase()
+    }
+
+    pub fn version(&self) -> &str {
+        self.str("version").unwrap_or_default()
+    }
+
+    pub fn kind(&self) -> Option<&str> {
+        self.str("type")
+    }
+
+    pub fn dist(&self) -> Option<&Map<String, Value>> {
+        self.0.get("dist").and_then(Value::as_object)
+    }
+
+    /// The commit or version the package installs at: the dist's, else the source's, as Composer reads it.
+    pub fn reference(&self) -> Option<&str> {
+        let get = |k: &str| {
+            self.0
+                .get(k)?
+                .get("reference")?
+                .as_str()
+                .filter(|r| !r.is_empty())
+        };
+        if self.0.contains_key("dist") {
+            get("dist").or_else(|| get("source"))
+        } else {
+            get("source")
+        }
+    }
+
+    pub fn bins(&self) -> impl Iterator<Item = &str> {
+        (self.0.get("bin").and_then(Value::as_array))
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+    }
+
+    pub fn link_targets(&self, kind: &str) -> impl Iterator<Item = String> {
+        (self.0.get(kind).and_then(Value::as_object))
+            .into_iter()
+            .flatten()
+            .map(|(target, _)| target.to_ascii_lowercase())
+    }
+}
+
 pub fn content_hash(manifest: &Map<String, Value>) -> String {
     const RELEVANT: [&str; 11] = [
         "name",
@@ -75,12 +127,8 @@ pub fn content_hash(manifest: &Map<String, Value>) -> String {
 }
 
 impl Lock {
-    /// composer.lock's text as a pun.lock. Its `content-hash` is Composer's, so it is fresh for pun.toml exactly when
-    /// composer.lock was fresh for composer.json (dependency sections migrate unchanged).
     pub fn from_composer_lock(text: &str) -> Result<Lock> {
-        let mut json: Value =
-            serde_json::from_str(text).context("composer.lock is not valid JSON")?;
-        toml_text::strip_nulls(&mut json, "", &mut vec![]);
+        let json: Value = serde_json::from_str(text).context("composer.lock is not valid JSON")?;
         let Value::Object(mut root) = json else {
             bail!("composer.lock must hold an object");
         };
@@ -88,12 +136,14 @@ impl Lock {
             Some(Value::String(h)) => h.clone(),
             _ => bail!("composer.lock has no content-hash"),
         };
-        let mut packages = |key: &str| -> Result<Vec<Map<String, Value>>> {
+        let mut packages = |key: &str| -> Result<Vec<LockedPackage>> {
             match root.shift_remove(key) {
                 None => Ok(vec![]),
                 Some(Value::Array(items)) => (items.into_iter())
                     .map(|p| match p {
-                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => Ok(m),
+                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => {
+                            Ok(LockedPackage(m))
+                        }
                         _ => bail!(
                             "composer.lock: every entry of {key} must be a package with a name"
                         ),
@@ -114,84 +164,17 @@ impl Lock {
         })
     }
 
-    /// pun.lock's text: the header comment, `version`, `content-hash` and the settings, then one `[[packages]]` (or
-    /// `[[packages-dev]]`) table per package with dotted keys in composer.lock's order.
-    pub fn to_toml(&self) -> String {
-        let mut out = String::from(HEADER);
-        writeln!(out, "version = {VERSION}").unwrap();
-        writeln!(
-            out,
-            "content-hash = {}",
-            toml_text::string(&self.content_hash)
-        )
-        .unwrap();
-        toml_text::dotted(&mut out, "", &self.settings);
-        for (table, list) in [
-            ("packages", &self.packages),
-            ("packages-dev", &self.packages_dev),
-        ] {
-            for p in list {
-                write!(out, "\n[[{table}]]\n").unwrap();
-                toml_text::dotted(&mut out, "", p);
-            }
-        }
-        out
-    }
-
-    /// pun.lock's text read back.
-    pub fn parse(text: &str) -> Result<Lock> {
-        let table: toml::Table = toml::from_str(text)?;
-        let mut json = toml_text::to_json(&toml::Value::Table(table));
-        let mut root = json.as_object_mut().map(std::mem::take).unwrap_or_default();
-        match root.get("version").and_then(Value::as_i64) {
-            Some(VERSION) => {}
-            Some(v) => bail!(
-                "pun.lock has format version {v}; this Pun reads version {VERSION}, so update Pun"
-            ),
-            None => bail!("pun.lock has no version"),
-        }
-        let Some(Value::String(content_hash)) = root.shift_remove("content-hash") else {
-            bail!("pun.lock has no content-hash");
-        };
-        let mut packages = |key: &str| -> Result<Vec<Map<String, Value>>> {
-            match root.shift_remove(key) {
-                None => Ok(vec![]),
-                Some(Value::Array(items)) => (items.into_iter())
-                    .map(|p| match p {
-                        Value::Object(m) if m.get("name").is_some_and(Value::is_string) => Ok(m),
-                        _ => bail!("pun.lock: every [[{key}]] needs a name"),
-                    })
-                    .collect(),
-                Some(_) => bail!("pun.lock: {key} must be [[{key}]] tables"),
-            }
-        };
-        let (packages, packages_dev) = (packages("packages")?, packages("packages-dev")?);
-        let settings = (SETTINGS.iter())
-            .filter_map(|k| Some((k.to_string(), root.get(*k)?.clone())))
-            .collect();
-        Ok(Lock {
-            content_hash,
-            settings,
-            packages,
-            packages_dev,
-        })
-    }
-
-    /// `root/pun.lock`, or `None` when there is none.
     pub fn read(root: &Path) -> Result<Option<Lock>> {
-        let path = root.join("pun.lock");
+        let path = root.join("composer.lock");
         match std::fs::read_to_string(&path) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e).with_context(|| format!("can't read {}", path.display())),
-            Ok(text) => Lock::parse(&text)
+            Ok(text) => Lock::from_composer_lock(&text)
                 .with_context(|| format!("invalid {}", path.display()))
                 .map(Some),
         }
     }
 
-    /// composer.lock's text, as Composer's `Locker::setLockData` writes it: the readme, `content-hash`, both package
-    /// lists, then the settings in Composer's order; `stability-flags`, `platform` and `platform-dev` stay objects
-    /// when empty.
     pub fn to_composer_lock(&self) -> String {
         const README: [&str; 3] = [
             "This file locks the dependencies of your project to a known state",
@@ -210,7 +193,7 @@ impl Lock {
         ] {
             lock.insert(
                 key.into(),
-                list.iter().cloned().map(Value::Object).collect(),
+                list.iter().map(|p| Value::Object(p.0.clone())).collect(),
             );
         }
         let defaults = [
@@ -244,8 +227,7 @@ impl Lock {
         text
     }
 
-    /// Every package, the dev ones last.
-    pub fn all(&self) -> impl Iterator<Item = &Map<String, Value>> {
+    pub fn all(&self) -> impl Iterator<Item = &LockedPackage> {
         self.packages.iter().chain(&self.packages_dev)
     }
 }
@@ -255,7 +237,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// A composer.lock as Composer 2.11.2 writes it, trimmed to two packages.
     const COMPOSER_LOCK: &str = r#"{
     "_readme": ["This file locks the dependencies of your project to a known state"],
     "content-hash": "0f2b0c8f6a1d4e1b9c3a7d5e8f601234",
@@ -291,30 +272,86 @@ mod tests {
     "plugin-api-version": "2.9.0"
 }"#;
 
+    /// What Composer 2.11.2's `update --no-install` wrote for a path package.
+    const WRITTEN: &str = r#"{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "b813925a3a3cb24452a1367848daf51c",
+    "packages": [],
+    "packages-dev": [
+        {
+            "name": "acme/tool",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/tool"
+            },
+            "type": "library",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        }
+    ],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {},
+    "prefer-stable": true,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.11.0"
+}
+"#;
+
     #[test]
-    fn composer_lock_round_trips_through_pun_lock() {
+    fn composer_lock_reads_and_writes_back_as_composer_wrote_it() {
         let lock = Lock::from_composer_lock(COMPOSER_LOCK).unwrap();
         assert_eq!(lock.content_hash, "0f2b0c8f6a1d4e1b9c3a7d5e8f601234");
         assert_eq!((lock.packages.len(), lock.packages_dev.len()), (1, 1));
-        let text = lock.to_toml();
-        assert!(text.starts_with(HEADER), "{text}");
-        assert!(text.contains(
-            "\n[[packages]]\nname = \"psr/log\"\nversion = \"3.0.2\"\nsource.type = \"git\"\n"
-        ));
-        let back = Lock::parse(&text).unwrap();
-        assert_eq!(back, lock);
-        // composer.lock's own order, key by key, including the `null` reference left out.
         let want: Value = serde_json::from_str(COMPOSER_LOCK).unwrap();
-        assert_eq!(Value::Object(back.packages[0].clone()), want["packages"][0]);
         assert_eq!(
-            Value::Object(back.packages_dev[0].clone()),
-            json!({"name": "acme/tool", "version": "dev-main", "dist": {"type": "path", "url": "packages/tool"}, "type": "metapackage", "extra": {}})
+            Value::Object(lock.packages[0].0.clone()),
+            want["packages"][0]
         );
-        assert_eq!(back.all().count(), 2);
+        assert_eq!(
+            Value::Object(lock.packages_dev[0].0.clone()),
+            want["packages-dev"][0]
+        );
+        assert_eq!(lock.all().count(), 2);
+        assert_eq!(
+            Lock::from_composer_lock(WRITTEN)
+                .unwrap()
+                .to_composer_lock(),
+            WRITTEN
+        );
     }
 
-    /// The hash Composer 2.11.2 wrote into laravel/laravel's composer.lock for this composer.json's relevant keys
-    /// (`php -r 'echo Composer\Package\Locker::getContentHash($json);'`).
+    #[test]
+    fn references() {
+        let r = |v: Value| {
+            LockedPackage(v.as_object().unwrap().clone())
+                .reference()
+                .map(String::from)
+        };
+        assert_eq!(
+            r(json!({"dist": {"reference": "d"}, "source": {"reference": "s"}})).as_deref(),
+            Some("d")
+        );
+        assert_eq!(
+            r(json!({"dist": {"reference": ""}, "source": {"reference": "s"}})).as_deref(),
+            Some("s")
+        );
+        assert_eq!(
+            r(json!({"source": {"reference": "s"}})).as_deref(),
+            Some("s")
+        );
+        assert_eq!(r(json!({"dist": {"url": "u"}})), None);
+    }
+
     #[test]
     fn content_hash_matches_composer() {
         let manifest = json!({
@@ -335,21 +372,6 @@ mod tests {
 
     #[test]
     fn bad_locks_are_errors() {
-        let err = |t: &str| Lock::parse(t).unwrap_err().to_string();
-        assert_eq!(err("content-hash = \"x\"\n"), "pun.lock has no version");
-        assert_eq!(
-            err("version = 9\n"),
-            "pun.lock has format version 9; this Pun reads version 1, so update Pun"
-        );
-        assert_eq!(err("version = 1\n"), "pun.lock has no content-hash");
-        assert_eq!(
-            err("version = 1\ncontent-hash = \"x\"\n[[packages]]\nversion = \"1\"\n"),
-            "pun.lock: every [[packages]] needs a name"
-        );
-        assert_eq!(
-            err("version = 1\ncontent-hash = \"x\"\npackages = 1\n"),
-            "pun.lock: packages must be [[packages]] tables"
-        );
         let lerr = |t: &str| Lock::from_composer_lock(t).unwrap_err().to_string();
         assert_eq!(lerr("[]"), "composer.lock must hold an object");
         assert_eq!(lerr("{}"), "composer.lock has no content-hash");
@@ -362,33 +384,30 @@ mod tests {
             "composer.lock: every entry of packages must be a package with a name"
         );
         assert_eq!(lerr("{"), "composer.lock is not valid JSON");
-        let empty = Lock::parse("version = 1\ncontent-hash = \"x\"\n").unwrap();
-        assert_eq!(
-            empty,
-            Lock::from_composer_lock(r#"{"content-hash":"x"}"#).unwrap()
-        );
+        let empty = Lock::from_composer_lock(r#"{"content-hash":"x"}"#).unwrap();
         assert!(empty.packages.is_empty() && empty.packages_dev.is_empty());
     }
 
     #[test]
-    fn reads_pun_lock_from_the_project() {
+    fn reads_composer_lock_from_the_project() {
         let d = std::env::temp_dir().join(format!("pun-lock-read-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
+        let path = d.join("composer.lock");
         assert!(Lock::read(&d).unwrap().is_none());
-        std::fs::write(d.join("pun.lock"), "version = 1\ncontent-hash = \"abc\"\n").unwrap();
+        std::fs::write(&path, r#"{"content-hash": "abc"}"#).unwrap();
         assert_eq!(Lock::read(&d).unwrap().unwrap().content_hash, "abc");
-        std::fs::write(d.join("pun.lock"), "version = 1\n").unwrap();
+        std::fs::write(&path, "{}").unwrap();
         let err = Lock::read(&d).unwrap_err();
+        assert_eq!(err.to_string(), format!("invalid {}", path.display()));
         assert_eq!(
-            err.to_string(),
-            format!("invalid {}", d.join("pun.lock").display())
+            std::error::Error::source(&err).unwrap().to_string(),
+            "composer.lock has no content-hash"
         );
-        assert_eq!(err.root_cause().to_string(), "pun.lock has no content-hash");
-        std::fs::remove_file(d.join("pun.lock")).unwrap();
-        std::fs::create_dir(d.join("pun.lock")).unwrap();
+        std::fs::remove_file(&path).unwrap();
+        std::fs::create_dir(&path).unwrap();
         let err = Lock::read(&d).unwrap_err().to_string();
-        assert_eq!(err, format!("can't read {}", d.join("pun.lock").display()));
+        assert_eq!(err, format!("can't read {}", path.display()));
         std::fs::remove_dir_all(&d).unwrap();
     }
 }

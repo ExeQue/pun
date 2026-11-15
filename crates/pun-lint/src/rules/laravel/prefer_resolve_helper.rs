@@ -1,13 +1,9 @@
-//! `lint/laravel/prefer-resolve-helper`, ported from rector-laravel 2.7.3's `AppToResolveRector` (src/Rector/FuncCall).
-//!
-//! `app('foo')` becomes `resolve('foo')`. A call without the `abstract` argument, or with one that is null, is left
-//! alone: `app()` returns the container.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::{get_arg, replace};
-use crate::rules::lint_b_helpers::{Constant, constant, value};
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::expressions::named;
+use crate::rules::support::values::{Constant, constant};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 

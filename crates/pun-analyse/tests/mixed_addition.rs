@@ -1,5 +1,3 @@
-//! The bounded getPlusType mixed/mixed branch, through the public Analyzer.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -91,8 +89,6 @@ fn analyze(
     assert!(!program.has_errors());
     let names = NameResolver::new(&arena).resolve(program);
     let mut codebase = scan_program(&arena, &file, program, &names, Default::default());
-    // Exercise the analyzer independently of guard producers and PHPDoc's type-string grammar.
-    // These are public reflection inputs, mirroring the oracle getPlusType callback's types.
     let function = codebase
         .function_likes
         .get_mut(&(empty_word(), word("example")))
@@ -128,8 +124,6 @@ fn analyze(
     (artifacts, result)
 }
 
-// Adapt only presentation: PHPStan wraps benevolent unions and spells the unconstrained
-// array as `array`; Mago's canonical ID displays its explicit key/value parameters.
 fn description(ty: &TUnion) -> String {
     let mut members: Vec<_> = ty
         .types
@@ -187,10 +181,8 @@ function example(mixed $left, mixed $right): void {
                     ty.ignore_nullable_issues() && ty.ignore_falsable_issues(),
                     row["benevolent"]
                 );
-                // The native lane cannot price mixed arithmetic, and must not borrow full types.
                 assert!(artifacts.get_native_expression_type(&binary).is_none());
                 if !left.is_never() && !right.is_never() {
-                    // Both assignments must really execute, even when the result is benevolent.
                     for (expression, expected) in [("$leftCopy;", &left), ("$rightCopy;", &right)] {
                         let mut read = span(source, expression);
                         read.end.offset -= 1;
@@ -237,7 +229,6 @@ fn public_analyzer_benevolent_addition_has_no_mixed_operand_or_return_cascade() 
             false,
             false,
         );
-        // Every member captured from PHPStan is accepted by this declared return union.
         assert!(result.issues.is_empty(), "{row}: {:?}", result.issues);
         assert_eq!(
             description(
@@ -256,7 +247,7 @@ fn frontend_addition_preserves_complete_phpstan_diagnostics_including_level_ten(
     for level in [0, 8, 9, 10] {
         let mut project = Project::new(vec![root.join("frontend.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()
@@ -287,7 +278,6 @@ fn frontend_addition_preserves_complete_phpstan_diagnostics_including_level_ten(
 
 #[test]
 fn mixed_subtraction_and_multiplication_are_benevolent_numbers() {
-    // PHPStan 2.3.1 dumps `(float|int)` for `mixed - mixed` and `mixed * mixed` (resolveCommonMath()).
     let mut number = TUnion::from_vec(vec![
         get_int().types[0].clone(),
         get_float().types[0].clone(),
@@ -301,7 +291,6 @@ fn mixed_subtraction_and_multiplication_are_benevolent_numbers() {
         let (artifacts, result) = analyze(&source, get_mixed(), get_mixed(), false, false);
         let binary = span(&source, &format!("$left {operator} $right"));
         assert_eq!(artifacts.get_expression_type(&binary).unwrap(), &number);
-        // This pre-existing native diagnostic remains outside the bounded plus port.
         assert_eq!(
             result
                 .issues

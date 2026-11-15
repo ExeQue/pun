@@ -1,5 +1,3 @@
-//! PHPStan's definite constant-array intersection through public scanning and type APIs.
-
 use std::{borrow::Cow, collections::BTreeMap, path::Path};
 
 use mago_allocator::LocalArena;
@@ -107,8 +105,6 @@ fn describe(union: &TUnion) -> Value {
     json!(atoms.join("|"))
 }
 
-// This tests the public type API, not Mago's unsupported explicit-key list PHPDoc syntax.
-// Parse the fields as array notation, then supply the independent list constraint directly.
 fn list_input(source: &str, union: &TUnion) -> TUnion {
     if !source.starts_with("list{") {
         return union.clone();
@@ -197,8 +193,6 @@ fn definite_arrays_intersect_in_both_orders_without_losing_fields_or_callable_me
             intersect_union_types(right, left, &codebase).unwrap_or_else(get_never),
         ];
         if left_source.starts_with("list{") || right_source.starts_with("list{") {
-            // PHPStan 2.3.1 reports isList()->Yes in both orders for all five list pairs.
-            // Field-only descriptions would miss losing this independent list constraint.
             for intersection in &intersections {
                 if !intersection.is_never() {
                     assert!(

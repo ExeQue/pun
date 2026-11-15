@@ -1,15 +1,9 @@
-//! The bits of Symfony Console that shape Pint's bytes: colour decision (StreamOutput::hasColorSupport,
-//! `--ansi`/`--no-ansi`), terminal width (Terminal::getWidth) and the `<fg=red>…</>` OutputFormatter.
-
 use pcre2::bytes::Regex;
 use std::io::IsTerminal;
 use std::sync::LazyLock;
 
-/// The first of the 256 code points (plane 16's private use area) that carry the bytes of a non-UTF-8 diff through
-/// Pun's `String` output until `raw` writes them out, as PHP's byte strings print them.
 const CARRIED: u32 = 0x10_FF00;
 
-/// `bytes` as text: UTF-8 stays as is, every other byte becomes its carrier code point.
 pub(crate) fn carry(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len());
     for chunk in bytes.utf8_chunks() {
@@ -19,43 +13,37 @@ pub(crate) fn carry(bytes: &[u8]) -> String {
     s
 }
 
-/// Whether `text` carries a byte that isn't UTF-8.
 pub(crate) fn carries_bytes(text: &str) -> bool {
     text.chars()
         .any(|c| (CARRIED..=CARRIED + 0xFF).contains(&u32::from(c)))
 }
 
-/// The bytes `text` stands for: its carriers written back as the bytes they carry.
 pub(crate) fn raw(text: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     let mut buf = [0; 4];
     for c in text.chars() {
-        match u32::from(c).checked_sub(CARRIED) {
-            Some(b) if b <= 0xFF => out.push(b as u8),
+        match (u32::from(c).checked_sub(CARRIED)).and_then(|b| u8::try_from(b).ok()) {
+            Some(b) => out.push(b),
             _ => out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes()),
         }
     }
     out
 }
 
-/// `text` with each carried byte as U+FFFD, for output that doesn't keep the bytes.
 pub(crate) fn lossy(text: &str) -> String {
     String::from_utf8_lossy(&raw(text)).into_owned()
 }
 
-/// `eprintln!` for text that may carry raw bytes.
 pub(crate) fn eprintln_raw(text: &str) -> std::io::Result<()> {
     let mut e = std::io::stderr().lock();
     std::io::Write::write_all(&mut e, &raw(text))?;
     std::io::Write::write_all(&mut e, b"\n")
 }
 
-/// `print!` for text that may carry raw bytes.
 pub(crate) fn print_raw(text: &str) -> std::io::Result<()> {
     std::io::Write::write_all(&mut std::io::stdout().lock(), &raw(text))
 }
 
-/// Whether stdout (fd 1) / stderr (fd 2) get ANSI styles, as Application::configureIO + ConsoleOutput decide.
 pub(crate) fn decorated(fd: i32, ansi: bool, no_ansi: bool) -> bool {
     if ansi {
         return true;
@@ -71,8 +59,10 @@ pub(crate) fn decorated(fd: i32, ansi: bool, no_ansi: bool) -> bool {
     has_color_support(tty, &|k| std::env::var(k).ok())
 }
 
-/// StreamOutput::hasColorSupport (non-Windows).
 fn has_color_support(tty: bool, env: &dyn Fn(&str) -> Option<String>) -> bool {
+    static TERM_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^((screen|xterm|vt100|vt220|putty|rxvt|ansi|cygwin|linux).*)|(.*-256(color)?(-bce)?)$").unwrap()
+    });
     let set = |k: &str| env(k).is_some_and(|v| !v.is_empty());
     if set("NO_COLOR") {
         return false;
@@ -96,14 +86,13 @@ fn has_color_support(tty: bool, env: &dyn Fn(&str) -> Option<String>) -> bool {
     if term == "dumb" {
         return false;
     }
-    static TERM_RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"^((screen|xterm|vt100|vt220|putty|rxvt|ansi|cygwin|linux).*)|(.*-256(color)?(-bce)?)$").unwrap()
-    });
     TERM_RE.is_match(term.as_bytes()).unwrap_or(false)
 }
 
-/// Terminal::getWidth: `COLUMNS` (as PHP's `(int)`), else `stty -a` on the inherited stdin, else 80.
 pub(crate) fn width() -> usize {
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?is)rows.(\d+);.columns.(\d+);|;.(\d+).rows;.(\d+).columns").unwrap()
+    });
     if let Ok(c) = std::env::var("COLUMNS") {
         return php_int(c.trim());
     }
@@ -112,12 +101,7 @@ pub(crate) fn width() -> usize {
         .stdin(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::null())
         .output();
-    let text = stty
-        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-        .unwrap_or_default();
-    static RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"(?is)rows.(\d+);.columns.(\d+);|;.(\d+).rows;.(\d+).columns").unwrap()
-    });
+    let text = stty.map_or_default(|o| String::from_utf8_lossy(&o.stdout).into_owned());
     let cols = RE.captures(text.as_bytes()).ok().flatten().and_then(|c| {
         c.get(2)
             .or(c.get(4))
@@ -129,7 +113,6 @@ pub(crate) fn width() -> usize {
     }
 }
 
-/// PHP `(int) "12abc"` = 12, `(int) "abc"` = 0 (non-negative only; widths are never negative).
 fn php_int(s: &str) -> usize {
     s.bytes()
         .take_while(u8::is_ascii_digit)
@@ -138,10 +121,8 @@ fn php_int(s: &str) -> usize {
         })
 }
 
-/// OutputFormatter::escape (symfony/console 7.4.18: every `<` and `>`, even after a backslash).
 pub(crate) fn escape(text: &str) -> String {
     let mut out = text.replace('<', "\\<").replace('>', "\\>").into_bytes();
-    // escapeTrailingBackslash: trailing backslashes become NULs, which format() turns back into backslashes.
     let n = out.iter().rev().take_while(|&&c| c == b'\\').count();
     if n > 0 {
         let len = out.len();
@@ -177,7 +158,6 @@ impl Style {
             if c == "default" {
                 return Some(format!("{base}9"));
             }
-            // ponytail: `#rgb` colours and unknown names throw in Symfony (Pint crashes); we print the tag literally.
             COLORS
                 .iter()
                 .position(|&n| n == c)
@@ -227,8 +207,8 @@ impl Style {
         })
     }
 
-    /// OutputFormatter::createStyleFromString.
     fn parse(tag: &str) -> Option<Style> {
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([^=]+)=([^;]+)(;|$)").unwrap());
         match tag {
             "error" => return Style::new(Some("white"), Some("red"), &[]),
             "info" => return Style::new(Some("green"), None, &[]),
@@ -236,7 +216,6 @@ impl Style {
             "question" => return Style::new(Some("black"), Some("cyan"), &[]),
             _ => {}
         }
-        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([^=]+)=([^;]+)(;|$)").unwrap());
         let (mut fg, mut bg, mut options) = (None, None, String::new());
         let mut any = false;
         for c in RE.captures_iter(tag.as_bytes()).flatten() {
@@ -246,7 +225,6 @@ impl Style {
                 "fg" => fg = Some(s(2)),
                 "bg" => bg = Some(s(2)),
                 "options" => options = s(2),
-                // ponytail: href= (hyperlinks) is never emitted by Pint; treated like an unknown key.
                 _ => return None,
             }
         }
@@ -262,14 +240,11 @@ impl Style {
     }
 }
 
-/// OutputFormatter::format: `<fg=..;bg=..;options=..>`, `<info>` etc. become ANSI (or vanish when not decorated);
-/// unknown tags stay as text; `\<` is an escaped `<`.
 pub(crate) fn format(message: &str, decorated: bool) -> String {
     static TAG: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(r"(?i)<(([a-z](?:[^\\<>]*+|\\.)*)|/([a-z][^<>]*+)?)>").unwrap()
     });
     let b = message.as_bytes();
-    // ponytail: Symfony keeps one style stack per output across writes; Pint never leaves a tag open, so one per call.
     let mut stack: Vec<Style> = vec![];
     let mut out = String::with_capacity(message.len());
     let apply = |out: &mut String, stack: &[Style], text: &str| match stack.last() {
@@ -299,7 +274,6 @@ pub(crate) fn format(message: &str, decorated: bool) -> String {
             if open {
                 stack.push(style);
             } else if let Some(i) = stack.iter().rposition(|s| *s == style) {
-                // ponytail: an unmatched close tag throws in Symfony; ignored here.
                 stack.truncate(i);
             }
         } else {
@@ -310,7 +284,6 @@ pub(crate) fn format(message: &str, decorated: bool) -> String {
     strtr(&out)
 }
 
-/// `strtr($output, ["\0" => '\\', '\\<' => '<', '\\>' => '>'])`.
 fn strtr(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut it = s.chars().peekable();
@@ -373,7 +346,6 @@ mod tests {
         );
     }
 
-    /// Hand-derived: Symfony throws on these (Pint would crash); Pun prints the tag as text instead.
     #[test]
     fn unsupported_styles_stay_text() {
         assert_eq!(
@@ -391,7 +363,6 @@ mod tests {
 
     #[test]
     fn escapes_like_symfony() {
-        // OutputFormatter::escape("…") under PHP.
         assert_eq!(escape("<?xml a=\"<b>\"?>"), "\\<?xml a=\"\\<b\\>\"?\\>");
         assert_eq!(escape("a<<b \\<c>"), "a\\<\\<b \\\\<c\\>");
         assert_eq!(format(&escape("a \\<b>"), true), "a \\<b>");

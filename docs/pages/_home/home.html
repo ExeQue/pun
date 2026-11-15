@@ -3,7 +3,7 @@
   <section class="hero wrap">
     <div class="hero-copy">
       <h1 class="rise">The ultrafast <span class="sticker pop-in">unified</span> PHP toolchain.</h1>
-      <p class="lede rise" style="--d:.12s">One very, very fast Rust binary for your whole PHP workflow. Format, lint and analyse today, with installing your packages next.</p>
+      <p class="lede rise" style="--d:.12s">One very, very fast Rust binary for your whole PHP workflow. Format, lint, analyse and install your packages.</p>
 
       <div class="install rise" style="--d:.18s" data-install>
         <div class="cmd">
@@ -28,10 +28,10 @@
     </div>
   </section>
 
-  <div class="ribbon" aria-label="ultrafast, format, lint, analyse, migrate, packages soon, one binary, one config, built in Rust, verified installs">
+  <div class="ribbon" aria-label="ultrafast, format, lint, analyse, migrate, packages, one binary, one config, built in Rust, verified installs">
     <div class="ribbon-track" aria-hidden="true">
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages, soon</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages, soon</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
+      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
+      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
     </div>
   </div>
 
@@ -40,11 +40,11 @@
     <h2>One toolchain. <span class="sticker gum">Every</span> step.</h2>
     <p class="sec-lede">Install your dependencies, check your code, fix what can be fixed. One binary covers the whole loop.</p>
     <div class="trio">
-      <div class="job lilac next">
-        <div class="job-head"><h3>Install</h3><span class="tag">next</span></div>
+      <a class="job lilac" href="/docs/commands/install">
+        <div class="job-head"><h3>Install</h3><span class="tag">now</span></div>
         <p>Resolve and install your project's packages from Packagist, with the same parallel speed as everything else.</p>
         <code>$ pun install</code>
-      </div>
+      </a>
       <a class="job zap" href="/docs/commands/check">
         <div class="job-head"><h3>Check</h3><span class="tag">now</span></div>
         <p>Format, lint and analyse the whole project in one pass, with one pun.toml.</p>
@@ -67,9 +67,9 @@
     <p class="sec-lede">pun check formats, lints and analyses your project in a single run. By the time you look back at the terminal, all three are finished.</p>
     <div class="term">
       <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>~/blog</span></div>
-<pre class="term-body" data-run-body><span class="cmdline"><span class="prompt">$</span> pun check</span><span class="step" style="--i:0"><span class="ok">✔</span> <b class="cmd-chip zap">format</b> All files formatted</span><span class="step" style="--i:1"><span class="bad">✖</span> <b class="cmd-chip gum">lint</b> 1 error in 1 file · 1 fixable</span><span class="step sub" style="--i:2">   <span class="path">app/Http/Controllers/PostController.php:24:9</span>  <span class="rule">lint/laravel/no-request-all</span>
-   Pass only validated input, not $request-&gt;all().</span><span class="step" style="--i:3"><span class="bad">✖</span> <b class="cmd-chip lilac">analyse</b> 1 error in 1 file</span><span class="step sub" style="--i:4">   <span class="path">app/Models/Post.php:18:16</span>  <span class="rule">analyse/undefined/method</span>
-   Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors · 1 fixable (run pun check --fix)</span></pre>
+<pre class="term-body" data-run-body><span class="cmdline"><span class="prompt">$</span> pun check</span><span class="step" style="--i:0"><span class="ok">✔</span> <b class="cmd-chip zap">format</b> All files formatted</span><span class="step" style="--i:1"><span class="bad">✖</span> <b class="cmd-chip gum">lint</b> 1 error in 1 file</span><span class="step sub" style="--i:2">   <span class="path">app/Http/Controllers/PostController.php:24:9</span>  <span class="rule">lint/laravel/no-request-all</span>
+   Avoid using `$request-&gt;all()` or `Request::all()`.</span><span class="step" style="--i:3"><span class="bad">✖</span> <b class="cmd-chip lilac">analyse</b> 1 error in 1 file</span><span class="step sub" style="--i:4">   <span class="path">app/Models/Post.php:18:16</span>  <span class="rule">analyse/undefined/method</span>
+   Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors</span></pre>
     </div>
     <p class="note">Example output from a small Laravel app.</p>
   </section>
@@ -95,21 +95,21 @@
         <code>$ pun lint --fix</code>
       </a>
       <a class="job lilac" href="/docs/commands/analyse">
-        <div class="job-head"><h3>Analyse</h3><span class="tag">beta</span></div>
+        <div class="job-head"><h3>Analyse</h3><span class="tag">Larastan built in</span></div>
         <p>Finds the bugs before your users do, with no levels to juggle.</p>
         <div class="mini"><span class="dim">Post.php:18</span>
 <span class="hot">Undefined method Post::publsh()</span></div>
         <span class="replaces">Replaces PHPStan and Larastan</span>
         <code>$ pun analyse</code>
       </a>
-      <div class="job mint next">
-        <div class="job-head"><h3>Install</h3><span class="tag">next</span></div>
+      <a class="job mint" href="/docs/commands/install">
+        <div class="job-head"><h3>Install</h3><span class="tag">Composer-compatible</span></div>
         <p>A package manager for Packagist, built for speed: parallel downloads, a shared cache and an instant no-op install.</p>
         <div class="mini"><span class="dim">$ pun require laravel/framework</span>
 <span class="add">+ vendor/ installed</span></div>
         <span class="replaces">Replaces Composer</span>
         <code>$ pun install</code>
-      </div>
+      </a>
     </div>
     <div class="duo">
       <a class="strip" href="/docs/commands/check"><h3>Check</h3><p>All three in one pass. With --fix it applies lint fixes, formats, then analyses what is left.</p><code>$ pun check --fix</code></a>
@@ -127,27 +127,6 @@
       <li><h3>Native, all the way down</h3><p>One Rust binary. There is no PHP process to boot before it can read your code.</p></li>
       <li><h3>Every core, every file</h3><p>Format, lint and analyse spread the work across every core your machine has.</p></li>
       <li><h3>Fast enough to forget</h3><p>Put it on save, in a pre-commit hook and in every CI run. It keeps up with all three.</p></li>
-    </ul>
-  </section>
-
-  <!-- LARAVEL -->
-  <section class="wrap sec laravel-sec">
-    <div class="laravel-copy">
-      <h2>Built for Laravel. <span class="sticker">Not</span> bolted on.</h2>
-      <p class="sec-lede">Pun knows your app the way Larastan and rector-laravel do, without installing either. Nothing to turn on: it reads your composer.lock.</p>
-      <div class="code toml-mini">
-        <div class="code-bar"><span>pun.toml</span><span>TOML</span></div>
-<pre><span class="dim"># Laravel and Pest: found in composer.lock</span>
-[format]
-preset = <span class="str">"laravel"</span></pre>
-      </div>
-    </div>
-    <ul class="laravel-list">
-      <li><h3>Larastan, built in</h3><p>Models, relations, facades, macros, container bindings and config, understood natively by pun analyse.</p></li>
-      <li><h3>rector-laravel rules</h3><p>Laravel upgrades and code-quality rewrites in pun lint, applied only when you say so.</p></li>
-      <li><h3>Pint's laravel preset</h3><p>The default for pun format. Same bytes Pint writes on every Laravel project.</p></li>
-      <li><h3>Tests that read well</h3><p><code>assertStatus(404)</code> becomes <code>assertNotFound()</code>, <code>$this-&gt;faker</code> becomes <code>fake()</code>, and Pest expectations get specific.</p></li>
-      <li><h3>App rules</h3><p>Flags <code>$request-&gt;all()</code>, <code>$casts</code> properties, named migrations and middleware set in controllers.</p></li>
     </ul>
   </section>
 
@@ -187,8 +166,8 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
     <ul class="points four">
       <li><h3>Format</h3><p>Byte for byte with Pint and PHP-CS-Fixer. Every project on the scoreboard has zero differing files.</p></li>
       <li><h3>Lint</h3><p>Rector, rector-laravel, Mago and the risky fixers, under one set of rule names. pun migrate maps your config.</p></li>
-      <li><h3>Analyse</h3><p>Every PHPStan identifier maps to one Pun rule, with Larastan built in. Analyse is in beta.</p></li>
-      <li><h3>Install</h3><p>The same packages Composer resolves, installed into vendor/. Coming next.</p></li>
+      <li><h3>Analyse</h3><p>Every PHPStan identifier maps to one Pun rule, with Larastan built in.</p></li>
+      <li><h3>Install</h3><p>The same lock and vendor/ tree Composer writes for the same requirements.</p></li>
     </ul>
     <a class="btn sm" href="/docs/parity">See the parity scoreboard <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </section>
@@ -198,9 +177,9 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
     <div class="code agent">
       <div class="code-bar"><span>pun check · under Claude Code</span><span>agent</span></div>
 <pre><span class="cmdline"><span class="prompt">$</span> pun check</span>
-<span class="dim">app/Models/Post.php:</span>18:9 analyse/undefined/method ...
-<span class="dim">app/Http/Kernel.php:</span>42:5 lint/types/no-loose-comparison ...
-<span class="hot">2 problems</span></pre>
+<span class="hot">pun check: fail, 2 errors (48 checked, 0.31s)</span>
+<span class="dim">app/User.php:</span>42:13 lint/types/no-loose-comparison ...
+<span class="dim">app/Post.php:</span>18:16 analyse/undefined/method ...</pre>
     </div>
     <div>
       <h2>Fewer tokens. Same answers.</h2>
@@ -216,7 +195,7 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
       <h2>Stop waiting<br />on your tools.</h2>
       <div class="actions">
         <a class="btn zap" href="/docs#get-started">Get started <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-        <a class="btn" href="https://github.com/punphp/pun">Star on GitHub</a>
+        <a class="btn" href="https://github.com/shipfastlabs/pun">Star on GitHub</a>
       </div>
     </div>
   </section>

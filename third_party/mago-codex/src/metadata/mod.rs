@@ -1960,6 +1960,10 @@ fn should_replace_metadata(
         return !new_is_polyfill;
     }
 
+    if new_span.file_id != existing_span.file_id {
+        return true;
+    }
+
     new_span < existing_span
 }
 

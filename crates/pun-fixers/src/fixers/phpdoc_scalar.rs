@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocScalarFixer`.
 use crate::analyzers::abstract_phpdoc_types_fixer as base;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
@@ -30,9 +29,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 impl PhpdocScalarFixer {
-    /// normalize() only rewrites a type spelled exactly as a configured name (after dropping `[]`), so a docblock
-    /// where every occurrence of those names runs on into more identifier characters (`str` in `string`) comes out
-    /// unchanged.
     fn may_change(&self, doc: &[u8]) -> bool {
         let word = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b >= 0x80;
         self.types.iter().any(|t| {

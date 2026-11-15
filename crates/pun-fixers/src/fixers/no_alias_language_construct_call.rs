@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\NoAliasLanguageConstructCallFixer`.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ListNotation\ListSyntaxFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
@@ -11,7 +10,6 @@ struct ListSyntaxFixer {
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    // `configure` sets the field.
     crate::configured(ListSyntaxFixer {
         candidate_token_kind: T_LIST,
     })

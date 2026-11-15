@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Semicolon\NoEmptyStatementFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Tokens, TokensAnalyzer};
 use std::path::Path;
@@ -17,9 +16,7 @@ impl NoEmptyStatementFixer {
     ) {
         let curly_opening_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_BRACE, curly_close_index);
-        let before_curly_opening_index = tokens
-            .get_prev_meaningful_token(curly_opening_index)
-            .unwrap();
+        let before_curly_opening_index = tokens.prev_meaningful(curly_opening_index);
         if tokens[before_curly_opening_index].is_given_kind(&[
             T_ELSE,
             T_FINALLY,
@@ -32,9 +29,7 @@ impl NoEmptyStatementFixer {
             return;
         }
         if tokens[before_curly_opening_index].is_kind(T_STRING) {
-            let mut classy_test_index = tokens
-                .get_prev_meaningful_token(before_curly_opening_index)
-                .unwrap();
+            let mut classy_test_index = tokens.prev_meaningful(before_curly_opening_index);
             while tokens[classy_test_index].equals(",", true)
                 || tokens[classy_test_index].is_given_kind(&[
                     T_STRING,
@@ -43,7 +38,7 @@ impl NoEmptyStatementFixer {
                     T_IMPLEMENTS,
                 ])
             {
-                classy_test_index = tokens.get_prev_meaningful_token(classy_test_index).unwrap();
+                classy_test_index = tokens.prev_meaningful(classy_test_index);
             }
             let clear = tokens[classy_test_index].is_kind(T_NAMESPACE)
                 || (tokens[classy_test_index].is_classy()
@@ -53,15 +48,12 @@ impl NoEmptyStatementFixer {
             }
             return;
         }
-        // early return check, below only control structures with conditions are fixed
         if !tokens[before_curly_opening_index].equals(")", true) {
             return;
         }
         let opening_brace_index =
             tokens.find_block_start(Tokens::BLOCK_TYPE_PARENTHESIS, before_curly_opening_index);
-        let before_opening_brace_index = tokens
-            .get_prev_meaningful_token(opening_brace_index)
-            .unwrap();
+        let before_opening_brace_index = tokens.prev_meaningful(opening_brace_index);
         if tokens[before_opening_brace_index].is_given_kind(&[
             T_IF, T_ELSEIF, T_FOR, T_FOREACH, T_WHILE, T_SWITCH, T_CATCH, T_DECLARE,
         ]) {
@@ -69,11 +61,9 @@ impl NoEmptyStatementFixer {
             return;
         }
         if tokens[before_opening_brace_index].is_kind(T_STRING) {
-            let before_string_index = tokens
-                .get_prev_meaningful_token(before_opening_brace_index)
-                .unwrap();
+            let before_string_index = tokens.prev_meaningful(before_opening_brace_index);
             if tokens[before_string_index].is_kind(T_FUNCTION) {
-                tokens.clear_token_and_merge_surrounding_whitespace(index); // implicit return
+                tokens.clear_token_and_merge_surrounding_whitespace(index);
             }
         }
     }
@@ -94,18 +84,17 @@ impl Fixer for NoEmptyStatementFixer {
         let mut index = 0;
         while index < count {
             if tokens[index].is_given_kind(&[T_BREAK, T_CONTINUE]) {
-                index = tokens.get_next_meaningful_token(index).unwrap();
+                index = tokens.next_meaningful(index);
                 if tokens[index].equals((T_LNUMBER, "1"), true) {
                     tokens.clear_token_and_merge_surrounding_whitespace(index);
                 }
                 index += 1;
                 continue;
             }
-            // skip T_FOR parenthesis to ignore double `;` like `for ($i = 1; ; ++$i) {...}`
             if tokens[index].is_kind(T_FOR) {
                 index = tokens.find_block_end(
                     Tokens::BLOCK_TYPE_PARENTHESIS,
-                    tokens.get_next_meaningful_token(index).unwrap(),
+                    tokens.next_meaningful(index),
                 ) + 1;
                 index += 1;
                 continue;
@@ -114,8 +103,7 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            let previous_meaningful_index = tokens.get_prev_meaningful_token(index).unwrap();
-            // A semicolon can always be removed if it follows a semicolon, '{' or opening tag.
+            let previous_meaningful_index = tokens.prev_meaningful(index);
             if tokens[previous_meaningful_index]
                 .equals_any(&["{".into(), ";".into(), T_OPEN_TAG.into()], true)
             {
@@ -123,7 +111,6 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            // A semicolon might be removed if it follows a '}' but only if the brace is part of certain structures.
             if tokens[previous_meaningful_index].equals("}", true) {
                 Self::fix_semicolon_after_curly_brace_close(
                     tokens,
@@ -139,10 +126,7 @@ impl Fixer for NoEmptyStatementFixer {
                 index += 1;
                 continue;
             }
-            // A semicolon might be removed together with its noop statement, for example "<?php 1;"
-            let pre_previous_meaningful_index = tokens
-                .get_prev_meaningful_token(previous_meaningful_index)
-                .unwrap();
+            let pre_previous_meaningful_index = tokens.prev_meaningful(previous_meaningful_index);
             if tokens[pre_previous_meaningful_index].equals_any(
                 &[";".into(), "{".into(), "}".into(), T_OPEN_TAG.into()],
                 true,

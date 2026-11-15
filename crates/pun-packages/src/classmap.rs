@@ -1,9 +1,4 @@
-//! The classes a PHP file declares, and the class map of directories, as composer/class-map-generator 1.9 finds
-//! them: strings, heredocs and comments are blanked out, then `class`, `interface`, `trait` and `enum` declarations are
-//! matched together with the `namespace` they sit in. For PSR-0 and PSR-4 directories only the classes whose path
-//! fits the rule count; the rest are reported as violations.
-
-use anyhow::Result;
+use crate::error::{Error, Result, bail};
 use pcre2::bytes::{Regex, RegexBuilder};
 use pun_tokens::{Kind, tokenize};
 use rayon::prelude::*;
@@ -20,7 +15,6 @@ fn re(pattern: &str) -> Regex {
 
 const TYPES: [&str; 4] = ["class", "interface", "trait", "enum"];
 
-/// Per declaration keyword: the anchored pattern that finds one declaration, for files with a single candidate.
 static TYPE_AT: LazyLock<Vec<(u8, &str, Regex)>> = LazyLock::new(|| {
     (TYPES.iter())
         .map(|t| {
@@ -44,10 +38,11 @@ static DECLARATIONS: LazyLock<Regex> = LazyLock::new(|| {
         )")
 });
 
-/// The code of `contents` with every string, heredoc and comment taken out, as `PhpFileCleaner` gives it; with
-/// `max_matches` 1 it stops after the first declaration.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
-    // The bytes that can start something the cleaner acts on, as a table: the scan between them is the hot loop.
     const REJECT: [bool; 256] = {
         let mut t = [false; 256];
         let set = b"?\"'`</#citre";
@@ -62,7 +57,6 @@ fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
     let peek = |i: usize, ch: u8| i + 1 < len && c[i + 1] == ch;
     let mut out = Vec::with_capacity(len);
     let mut i = 0;
-    // `skipToNewline`: to the next line break; in a `//` or `#` comment, a `?>` ends it too.
     let to_newline = |i: &mut usize, php_comment: bool| loop {
         let stop: &[u8] = if php_comment { b"\r\n?" } else { b"\r\n" };
         *i += c[*i..]
@@ -75,7 +69,6 @@ fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
         *i += 1;
     };
     while i < len {
-        // skipToPhp
         while i < len {
             if c[i] == b'<' && peek(i, b'?') {
                 i += 2;
@@ -92,7 +85,6 @@ fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
                 break;
             }
             if ch == b'"' || ch == b'\'' || ch == b'`' {
-                // skipString
                 i += 1;
                 while i < len {
                     i += c[i..]
@@ -167,12 +159,11 @@ fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
     out
 }
 
-/// A heredoc or nowdoc opener at `i`: where its body starts, and its label.
 fn heredoc_at(c: &[u8], i: usize) -> Option<(usize, Vec<u8>)> {
     let mut locs = HEREDOC.capture_locations();
-    let m = HEREDOC.captures_read_at(&mut locs, c, i).ok()??;
-    let (s, e) = locs.get(2)?;
-    Some((m.end(), c[s..e].to_vec()))
+    let found = HEREDOC.captures_read_at(&mut locs, c, i).ok()??;
+    let (start, end) = locs.get(2)?;
+    Some((found.end(), c[start..end].to_vec()))
 }
 
 fn skip_heredoc(c: &[u8], i: &mut usize, label: &[u8], to_newline: &dyn Fn(&mut usize, bool)) {
@@ -201,7 +192,6 @@ fn skip_heredoc(c: &[u8], i: &mut usize, label: &[u8], to_newline: &dyn Fn(&mut 
     }
 }
 
-/// `php_strip_whitespace`: the code without comments, each run of whitespace one space.
 fn strip_whitespace(code: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(code.len());
     let mut space = false;
@@ -223,9 +213,7 @@ fn strip_whitespace(code: &[u8]) -> Vec<u8> {
     out
 }
 
-/// The classes `code` declares, fully qualified, in order (`PhpFileParser::findClasses`).
 pub fn find_classes(code: &[u8]) -> Vec<String> {
-    // The tokenizer only runs for shell strings, which the cleaner would misread.
     let (contents, raw) = if code.contains(&b'`') {
         (strip_whitespace(code), false)
     } else {
@@ -248,7 +236,6 @@ pub fn find_classes(code: &[u8]) -> Vec<String> {
     );
     let mut at = 0;
     while let Ok(Some(m)) = DECLARATIONS.captures_read_at(&mut locs, &cleaned, at) {
-        // Every alternative consumes at least the keyword.
         at = m.end();
         let get = |g: usize| locs.get(g).map(|(s, e)| &cleaned[s..e]);
         if get(ns).is_some() {
@@ -287,7 +274,6 @@ fn group(re: &Regex, name: &str) -> usize {
         .expect("named group")
 }
 
-/// Which mapping a directory is scanned for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rule {
     Classmap,
@@ -295,14 +281,11 @@ pub enum Rule {
     Psr4,
 }
 
-/// A class map being built: class → file, the classes found in more than one file, and the PSR violations.
 #[derive(Debug, Default)]
 pub struct ClassMap {
     pub map: Vec<(String, String)>,
     index: HashMap<String, usize>,
-    /// class → the other files that declare it.
     pub ambiguous: Vec<(String, Vec<String>)>,
-    /// (file, warning).
     pub violations: Vec<(String, String)>,
     scanned: HashSet<PathBuf>,
 }
@@ -326,7 +309,6 @@ impl ClassMap {
         }
     }
 
-    /// `ClassMap::addClass`: sets the class's file, replacing the one there without reporting it as ambiguous.
     pub fn set(&mut self, class: &str, path: &str) {
         match self.index.get(class) {
             Some(&i) => self.map[i].1 = path.to_string(),
@@ -338,15 +320,12 @@ impl ClassMap {
         self.index.get(class).map(|&i| self.map[i].1.as_str())
     }
 
-    /// The map sorted by class name (`ksort`).
     pub fn sorted(&self) -> Vec<(String, String)> {
         let mut map = self.map.clone();
         map.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
         map
     }
 
-    /// The ambiguous classes with the files that look like tests, fixtures, examples or stubs left out, and only those
-    /// still in two files.
     pub fn ambiguous_reported(&self) -> Vec<(&str, Vec<&str>)> {
         static DUPLICATES: LazyLock<Regex> =
             LazyLock::new(|| re(r"(?i)(?:^|/)(test|fixture|example|stub)s?/"));
@@ -361,9 +340,6 @@ impl ClassMap {
             .collect()
     }
 
-    /// `ClassMapGenerator::scanPaths` for each job in order, as one parallel pass: every directory is listed and
-    /// every file parsed at once, then the results are added job by job, so the first job to reach a file still
-    /// claims it. Fails on the first file that can't be read, as Composer does.
     pub fn scan_all(&mut self, jobs: &[Job], cwd: &str) -> Result<()> {
         let listed: Vec<Result<Vec<(String, PathBuf)>>> = jobs.par_iter().map(list).collect();
         let mut unique: HashMap<&Path, usize> = HashMap::new();
@@ -385,14 +361,12 @@ impl ClassMap {
             })
             .collect();
         for (job, files) in jobs.iter().zip(&listed) {
-            let files = files.as_ref().map_err(|e| anyhow::anyhow!("{e}"))?;
+            let files = files.as_ref().map_err(Error::msg)?;
             for (path, real) in files {
                 if self.scanned.contains(real) {
                     continue;
                 }
-                let mut classes = parsed[unique[real.as_path()]]
-                    .clone()
-                    .map_err(anyhow::Error::msg)?;
+                let mut classes = parsed[unique[real.as_path()]].clone().map_err(Error::msg)?;
                 if job.rule == Rule::Classmap {
                     self.scanned.insert(real.clone());
                 } else {
@@ -409,7 +383,6 @@ impl ClassMap {
         Ok(())
     }
 
-    /// The classes of `path` its PSR rule can load; when none can, each is a violation.
     fn filter(
         &mut self,
         classes: Vec<String>,
@@ -462,44 +435,41 @@ impl ClassMap {
     }
 }
 
-/// One directory (or file) to scan.
 #[derive(Debug, Clone)]
 pub struct Job {
-    /// Absolute and normalized.
     pub dir: String,
-    /// As the autoload rule gives it (relative for the root), for the error when it is missing.
     pub given: String,
     pub exclude: Option<Regex>,
     pub rule: Rule,
     pub namespace: String,
 }
 
-/// The PHP files of a job, (path, real path), without the excluded ones.
 fn list(job: &Job) -> Result<Vec<(String, PathBuf)>> {
     let dir = Path::new(&job.dir);
     let mut files = vec![];
     match std::fs::canonicalize(dir) {
         Ok(real) if dir.is_file() => files.push((job.dir.clone(), real)),
         Ok(real) if dir.is_dir() => walk(&job.dir, &real, &mut files),
-        _ => anyhow::bail!(
+        _ => bail!(
             "Could not scan for classes inside \"{}\" which does not appear to be a file nor a folder",
             job.given
         ),
     }
-    files.retain(|(path, real)| {
-        let php = [".php", ".inc", ".hh"].iter().any(|e| path.ends_with(e));
-        php && !job.exclude.as_ref().is_some_and(|x| {
-            x.is_match(real.to_string_lossy().as_bytes())
-                .unwrap_or(false)
-                || x.is_match(path.as_bytes()).unwrap_or(false)
-        })
-    });
-    Ok(files)
+    let mut kept = vec![];
+    for (path, real) in files {
+        if ![".php", ".inc", ".hh"].iter().any(|e| path.ends_with(e)) {
+            continue;
+        }
+        if let Some(x) = &job.exclude
+            && (x.is_match(real.to_string_lossy().as_bytes())? || x.is_match(path.as_bytes())?)
+        {
+            continue;
+        }
+        kept.push((path, real));
+    }
+    Ok(kept)
 }
 
-/// Finder's walk: depth first in directory order, without dot files or version control directories, symlinks
-/// followed. Each file comes with its real path: `real` (its directory's) joined with its name, unless a symlink
-/// leads elsewhere, so only symlinks cost a lookup.
 fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {
     const VCS: [&str; 4] = ["_svn", "CVS", "_darcs", ".arch-params"];
     for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
@@ -532,8 +502,6 @@ fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {
 mod tests {
     use super::*;
 
-    /// Expected values from composer/class-map-generator 1.9.0's `PhpFileParser::findClasses` in PHP 8.5, on the same
-    /// code (written to a file).
     #[test]
     fn finds_classes_like_composer() {
         let code = br"<?php
@@ -563,7 +531,6 @@ namespace Other { abstract class Base {} }
                 "Other\\Base"
             ]
         );
-        // A single candidate takes the cleaner's early return; a shell string goes through the tokenizer.
         assert_eq!(find_classes(b"<?php\nclass Only {}\n"), ["Only"]);
         assert_eq!(
             find_classes(b"<?php\n$x = `ls`; # class NotThis\nclass Shell {}\n"),
@@ -578,8 +545,6 @@ namespace Other { abstract class Base {} }
             find_classes(b"<html><?php class A {} ?> class B <?php class C {}"),
             ["A", "C"]
         );
-        // A `?` inside a `#` comment, escaped and unescaped backslashes in strings, a `*` inside a block comment, a
-        // heredoc whose closing label is indented, and a string or comment still open at the end of the file.
         let tricky = br#"<?php
 # note ? here, class FakeHash {}
 class A {}
@@ -599,10 +564,6 @@ $x = 'unterminated class Fake5 {}
         );
     }
 
-    /// Expected values from class-map-generator 1.9.0's `ClassMapGenerator::scanPaths` on the same tree, run from
-    /// `/usr`: a classmap scan then a psr-0 scan of one directory (the psr-0 scan skips the files already mapped), and
-    /// the psr-0 scan alone with its violations. Dot files, VCS directories, a dangling symlink and a fifo are passed
-    /// over; a directory symlink is followed; a class declared twice in one file is not ambiguous.
     #[test]
     fn scans_like_composer() {
         let t = std::env::temp_dir().join(format!("pun-classmap-scan-{}", std::process::id()));

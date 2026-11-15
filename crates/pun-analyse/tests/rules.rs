@@ -29,7 +29,6 @@ fn phpstan_rule_fixtures() {
     let mut files = Vec::new();
     fixtures(&root, &mut files);
     files.sort();
-    // PUN_RULES_FILTER=Functions/ selects fixture paths; only executed cases can retire a gap.
     let filter = std::env::var("PUN_RULES_FILTER").unwrap_or_default();
     files.retain(|f| f.to_string_lossy().contains(&filter));
     let gaps: BTreeSet<String> = std::fs::read_to_string(root.join("gaps.txt"))
@@ -42,7 +41,6 @@ fn phpstan_rule_fixtures() {
     let mut failing = BTreeSet::new();
     let mut tested = BTreeSet::new();
     let mut details = Vec::new();
-    // identifier => (cases where it occurs, cases where it matches)
     let mut per_rule: BTreeMap<String, (usize, usize)> = BTreeMap::new();
     let tests: Vec<Value> = files
         .iter()
@@ -57,7 +55,6 @@ fn phpstan_rule_fixtures() {
                 .map(move |case| (test, case))
         })
         .collect();
-    // Every case is its own project, so they run in parallel; the results are compared in order below.
     let results: Vec<(String, BTreeSet<Key>, BTreeSet<Key>)> = jobs
         .par_iter()
         .map(|&(test, case)| {

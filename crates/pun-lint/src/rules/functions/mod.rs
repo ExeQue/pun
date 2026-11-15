@@ -1,0 +1,12 @@
+pub(super) mod no_assign_in_argument;
+pub(super) mod no_call_user_func_method;
+pub(super) mod no_extra_arguments;
+pub(super) mod no_missing_format_argument;
+pub(super) mod no_required_after_optional;
+pub(super) mod no_swapped_explode_arguments;
+pub(super) mod no_void_reference_return;
+pub(super) mod require_array_filter_callback;
+pub(super) mod require_assert_description;
+pub(super) mod require_strict_array_search;
+pub(super) mod require_strict_function_call;
+pub(super) mod require_strict_in_array;

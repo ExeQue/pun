@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\NoSpaceAroundDoubleColonFixer`.
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Tokens};
 use std::path::Path;
@@ -31,7 +30,6 @@ impl Fixer for NoSpaceAroundDoubleColonFixer {
         "no_space_around_double_colon"
     }
     fn priority(&self) -> i32 {
-        // Must run before MethodChainingIndentationFixer.
         1
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {

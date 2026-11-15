@@ -1,12 +1,9 @@
-//! Port of `App\PrettierFormatters\AlpineMaskPatterns`: masks an Alpine `x-mask` pattern (a literal template such
-//! as "9999-999", which prettier would format as a JS subtraction) across prettier, then restores it.
 use super::embedded_blade_masker::Unrestorable;
 use super::php::contains;
 use crate::analyzers::preg::RawPreg;
 use pun_tokens::php_compat::{str_replace, substr_count};
 use std::cell::RefCell;
 
-/// `PATTERN`: a trailing ".modifier" still masks; `x-mask:dynamic` is a real JS expression and is left alone.
 const PATTERN: &str = r#"/(?<![-\w:.@])x-mask(?:\.[\w.-]+)?\s*=\s*(?:(["'])(.+?)\1|([^\s"'=<>`]+))/i"#;
 
 #[derive(Default)]
@@ -17,8 +14,6 @@ pub(super) struct AlpineMaskPatterns {
 }
 
 impl AlpineMaskPatterns {
-    /// `Err` where Pint's `preg_replace_callback` returns `null` (cast to `""`, emptying the file); Pun reports the
-    /// file instead, like `EmbeddedBladeMasker::pre_format`.
     pub(super) fn pre_format(&mut self, content: &[u8]) -> Result<Vec<u8>, String> {
         self.map = Vec::new();
         self.original = content.to_vec();
@@ -31,8 +26,6 @@ impl AlpineMaskPatterns {
                 let group = if m.offset(3).is_some() { 3 } else { 2 };
                 let value = m.str(group);
                 let token = this.borrow_mut().mask(value);
-                // Splice the token in at the value's own position, so a value that also appears in the
-                // attribute name is left alone.
                 let position = m.offset(group).expect("the value group matched") - m.start();
                 [&whole[..position], &token, &whole[position + value.len()..]].concat()
             },
@@ -42,7 +35,6 @@ impl AlpineMaskPatterns {
         result.map_err(|e| format!("preg_replace_callback(): {e}"))
     }
 
-    /// `Err(Unrestorable)` when a token does not come back exactly once.
     pub(super) fn post_format(&self, content: &[u8]) -> Result<Vec<u8>, Unrestorable> {
         if self.map.is_empty() {
             return Ok(content.to_vec());
@@ -65,7 +57,6 @@ impl AlpineMaskPatterns {
         token
     }
 
-    /// `makeToken`: "pm<n>_" padded with "_" to the pattern's byte length, widened until the source lacks it.
     fn make_token(&mut self, length: usize) -> Vec<u8> {
         let mut token = format!("pm{}_", self.counter).into_bytes();
         self.counter += 1;

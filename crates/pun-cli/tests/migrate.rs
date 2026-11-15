@@ -4,10 +4,9 @@ mod common;
 
 use common::pty::{pun, pun_with};
 use common::read;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// `pun migrate` on a pseudo-terminal, typing `keys` (printf escapes) once it is up. The output with `\r` and ANSI
-/// sequences removed.
 fn pty(dir: &Path, keys: &str) -> String {
     let (out, code) = common::pty::pty(dir, "migrate", keys, &[("NO_COLOR", "1")]);
     assert_eq!(code, Some(0), "{out}");
@@ -18,7 +17,6 @@ fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
     common::project("migrate", name, files)
 }
 
-/// `out` with the rule counts of `[analyse]` lines as `N`: they follow mapping.toml's levels and presets.
 fn counts(out: &str) -> String {
     let words: Vec<String> = out.split(' ').map(String::from).collect();
     (words.iter().enumerate())
@@ -36,9 +34,8 @@ fn counts(out: &str) -> String {
 
 const PINT: &str = r#"{"preset":"empty","rules":{"array_syntax":true,"final_class":true}}"#;
 const TOML: &str = "# Written by `pun migrate` from pint.json.\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"arrays/syntax\" = true\n\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n";
-/// The line pint.json gets (ASCII glyphs: the tests run without a UTF-8 locale).
 const MOVED: &str = " ok pint.json  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n";
-const PR: &str = "   Want them? Send a PR to https://github.com/punphp/pun\n";
+const PR: &str = "   Want them? Send a PR to https://github.com/shipfastlabs/pun\n";
 const IGNORED: &str = "<?php\n\n// @php-cs-fixer-ignore array_syntax,final_class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
 const UNKNOWN: &str = " ! app/Unknown.php  `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it); skipped\n";
 const REWRITTEN: &str = "<?php\n\n// @pun-ignore-file format/arrays/syntax,lint/style/require-final-class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
@@ -57,14 +54,16 @@ fn writes_pun_toml_and_rewrites_ignores() {
             ("app/Plain.php", "<?php\n$a = array(1);\n"),
         ],
     );
-    // --dry-run: the diffs (pun.toml first) and the summary, nothing written.
     let (out, err, code) = pun(&d, &["migrate", "--dry-run"]);
     assert_eq!(code, Some(0));
     assert_eq!(
         out,
         format!(
             "--- pun.toml\n+++ pun.toml\n@@ -1,0 +1,9 @@\n{}--- app/Ignored.php\n+++ app/Ignored.php\n@@ -1,5 +1,5 @@\n <?php\n \n-// @php-cs-fixer-ignore array_syntax,final_class\n+// @pun-ignore-file format/arrays/syntax,lint/style/require-final-class\n $a = array(1);\n $s = '// @php-cs-fixer-ignore array_syntax';\n ok pint.json        -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n ok ignore comments  -> @pun-ignore-file in 1 file\n{UNKNOWN}{PR} - Dry run: would write pun.toml\n",
-            TOML.lines().map(|l| format!("+{l}\n")).collect::<String>()
+            TOML.lines().fold(String::new(), |mut out, l| {
+                let _ = writeln!(out, "+{l}");
+                out
+            })
         )
     );
     assert_eq!(err, "");
@@ -84,12 +83,10 @@ fn writes_pun_toml_and_rewrites_ignores() {
     );
     assert_eq!(read(&d, "pun.toml"), TOML);
     assert_eq!(read(&d, "app/Ignored.php"), REWRITTEN);
-    // The rewritten file opts out of both rules: `pun check --fix` leaves it, fixes the other one.
     pun(&d, &["check", "--fix", "app/Ignored.php", "app/Plain.php"]);
     assert_eq!(read(&d, "app/Ignored.php"), REWRITTEN);
     assert_eq!(read(&d, "app/Plain.php"), "<?php\n$a = [1];\n");
 
-    // Idempotent: a second run changes nothing.
     let (out, _, code) = pun(&d, &["migrate"]);
     assert_eq!(
         (out.as_str(), code),
@@ -103,7 +100,6 @@ fn writes_pun_toml_and_rewrites_ignores() {
         out,
         format!("{MOVED}{UNKNOWN}{PR} - Dry run: pun.toml is already up to date\n")
     );
-    // A pun.toml that says something else is never overwritten.
     std::fs::write(d.join("pun.toml"), "# mine\n").unwrap();
     let (_, err, code) = pun(&d, &["migrate"]);
     assert_eq!(
@@ -116,8 +112,6 @@ fn writes_pun_toml_and_rewrites_ignores() {
     assert_eq!(read(&d, "pun.toml"), "# mine\n");
 }
 
-/// A rule Pun can't run is named on stderr and skipped; the rest is written and migrate exits 0
-/// (context/plan/migrate.md §3).
 #[test]
 fn skips_unsupported_rules() {
     let d = project(
@@ -127,12 +121,11 @@ fn skips_unsupported_rules() {
             r#"{"preset":"empty","rules":{"braces":true,"array_syntax":true}}"#,
         )],
     );
-    // With a UTF-8 locale: the glyphs of context/plan/migrate.md §3. The reason is mapping.toml's `drop` for braces.
     let (out, err, code) = pun_with(&d, &["migrate"], &[("LANG", "en_US.UTF-8")]);
     assert_eq!(
         (out.as_str(), err.as_str(), code),
         (
-            " ✔ pint.json  → [format] preset empty, 1 rule changed\n ⚠ braces  deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines; skipped\n   Want them? Send a PR to https://github.com/punphp/pun\n ✔ Wrote pun.toml\n",
+            " ✔ pint.json  → [format] preset empty, 1 rule changed\n ⚠ braces  deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ✔ Wrote pun.toml\n",
             "",
             Some(0)
         )
@@ -141,7 +134,6 @@ fn skips_unsupported_rules() {
         read(&d, "pun.toml"),
         "# Written by `pun migrate` from pint.json.\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"arrays/syntax\" = true\n"
     );
-    // Pint's own config errors stop it too.
     let d = project("broken", &[("pint.json", "{")]);
     let (_, err, code) = pun(&d, &["migrate"]);
     assert_eq!(
@@ -156,7 +148,6 @@ fn skips_unsupported_rules() {
     );
 }
 
-/// `--config` / `--preset` read like `pint --config` / `pint --preset`; no pint.json is Pint's default (laravel).
 #[test]
 fn config_and_preset_flags() {
     let d = project(
@@ -191,13 +182,9 @@ fn config_and_preset_flags() {
         "{out}"
     );
     assert!(out.contains("+\"strings/single-quote\" = true\n"), "{out}");
-    // No pint.json and `--preset per`: every rule of @PER-CS3x0 (and the sets under it) runs natively, so nothing is
-    // named as skipped.
     let (out, _, code) = pun(&d, &["migrate", "--dry-run", "--preset=per"]);
     assert_eq!(code, Some(0));
     assert!(!out.contains("Want them?"), "{out}");
-    // A pint.json with `"preset": "symfony"`: only the preset's rules that are still `ported = false` in mapping.toml
-    // are named (every format rule of @Symfony is native; the lint rules are being ported, so which ones varies).
     let s = project("symfony", &[("pint.json", r#"{"preset":"symfony"}"#)]);
     let (out, _, code) = pun(&s, &["migrate", "--dry-run"]);
     assert_eq!(code, Some(0));
@@ -227,9 +214,6 @@ const CHECKLIST: &[(&str, &str)] = &[
     ("rector.php", "<?php\n"),
 ];
 
-/// Without a terminal every detected config is listed and migrated: pint.json gives [format], phpstan.neon
-/// [analyse]; rector.php is only read through the project's Rector, and Mago is not supported yet. `--from` picks; one
-/// that isn't there is an error.
 #[test]
 fn lists_every_detected_config() {
     let files = [
@@ -252,7 +236,7 @@ fn lists_every_detected_config() {
  ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
  ! format/whitespace/encoding  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
  ! mago.toml                   Mago config: not supported by Pun yet; left untouched
-   Want them? Send a PR to https://github.com/punphp/pun
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
  ok Wrote pun.toml
 ",
             "",
@@ -262,7 +246,6 @@ fn lists_every_detected_config() {
     let toml = read(&d, "pun.toml");
     assert!(
         toml.starts_with(TOML)
-            // PHPStan's level-5 checks that a lint rule fixes are those lint rules, not analyse rules.
             && toml[TOML.len()..].starts_with(concat!(
                 "\"complexity/no-redundant-nullsafe\" = \"error\"\n",
                 "\"dead-code/no-duplicate-array-key\" = \"error\"\n",
@@ -279,7 +262,6 @@ fn lists_every_detected_config() {
     for (f, c) in files {
         assert_eq!(read(&d, f), c);
     }
-    // --from: only those, never a prompt; without Pint or PHP-CS-Fixer there is no pun.toml to write.
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let (out, _, code) = pun(&d, &["migrate", "--from", "phpstan,mago"]);
     assert_eq!(
@@ -290,7 +272,7 @@ fn lists_every_detected_config() {
  - phpstan.dist.neon       not migrated: pun.toml needs the format config too
  - rector.php              not selected
  ! mago.toml  Mago config: not supported by Pun yet; left untouched
-   Want them? Send a PR to https://github.com/punphp/pun
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
  - No Pint or PHP-CS-Fixer config selected; pun.toml not written
 ",
             Some(0)
@@ -311,8 +293,6 @@ fn lists_every_detected_config() {
     assert_eq!(err, "x --from pint: no nope.json found\n");
 }
 
-/// An I/O error names its file, and a PHP fatal error in the old config shows PHP's message (stderr, as stdout is
-/// empty). Directories stand in for unreadable and unwritable files, as root can read a mode-000 file.
 #[test]
 fn errors_name_the_file() {
     let d = project("unreadable", &[]);
@@ -364,9 +344,23 @@ fn errors_name_the_file() {
             Some(2)
         )
     );
+    // Reading a PHP config needs PHP; without it on PATH the error names the config.
+    let empty = d.join("no-php");
+    std::fs::create_dir(&empty).unwrap();
+    let (_, err, code) = pun_with(
+        &d,
+        &["migrate", "--yes"],
+        &[("PATH", empty.to_str().unwrap())],
+    );
+    assert_eq!(
+        (err.as_str(), code),
+        (
+            "x reading .php-cs-fixer.php needs `php` on PATH: No such file or directory (os error 2)\n",
+            Some(2)
+        )
+    );
 }
 
-/// PHPStan alone: nothing gives [format], so pun.toml is the starter beside phpstan.neon's [analyse].
 #[test]
 fn starter_beside_phpstan() {
     let d = project(
@@ -377,7 +371,7 @@ fn starter_beside_phpstan() {
     assert_eq!(
         (counts(&out).as_str(), code),
         (
-            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n   Want them? Send a PR to https://github.com/punphp/pun\n ok Wrote starter pun.toml (preset laravel)\n",
+            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ok Wrote starter pun.toml (preset laravel)\n",
             Some(0)
         )
     );
@@ -386,12 +380,32 @@ fn starter_beside_phpstan() {
     ));
 }
 
-/// Agent mode never asks: one summary line, then a line per config.
-/// phpstan.neon that includes a vendor file before `composer install`: left for later, the rest is migrated (the
-/// expected lines are derived by hand from the rector.php case above).
+/// A phpstan.neon without a level runs no rules (PHPStan: "No rules detected"): every analyse group is turned
+/// off and no check moves to [lint], so `pun analyse` says the same.
+#[test]
+fn phpstan_without_a_level_runs_no_rules() {
+    let d = project(
+        "phpstan-no-level",
+        &[
+            ("phpstan.neon", "parameters:\n    paths: [app]\n"),
+            ("app/A.php", "<?php\n\nundefined_fn();\n"),
+        ],
+    );
+    let (out, _, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(
+        (counts(&out).lines().next(), code),
+        (
+            Some(" ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off"),
+            Some(0)
+        )
+    );
+    let (out, err, code) = pun(&d, &["analyse"]);
+    assert_eq!((out.as_str(), code), ("", Some(2)));
+    assert!(err.starts_with("x No rules detected\n"), "{err}");
+}
+
 #[test]
 fn phpstan_without_vendor_is_left() {
-    // laravel/pint's own phpstan.neon writes the include with a leading `./`.
     for (name, prefix) in [("no-vendor", ""), ("no-vendor-dot", "./")] {
         let neon = format!(
             "includes:\n    - {prefix}vendor/larastan/larastan/extension.neon\nparameters:\n    level: 5\n"
@@ -411,7 +425,6 @@ fn phpstan_without_vendor_is_left() {
         );
         assert_eq!(read(&d, "pun.toml"), TOML);
     }
-    // An include that is missing outside vendor/ is still an error, as it is in PHPStan.
     let d = project(
         "no-include",
         &[
@@ -445,7 +458,7 @@ fn agent_mode() {
         head.starts_with("pun migrate: dry-run, pun.toml to write (preset empty, 1 format rule, 9 lint rules), ignore comments to rewrite in 0 files (from pint.json, "),
         "{head}"
     );
-    assert!(rest.starts_with("pint.json migrate\nphpstan.neon migrate\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\nphpstan.neon unsupported format/casts/short-scalar: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/functions/backtick-to-shell-exec: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/whitespace/encoding: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\napp/Unknown.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n--- pun.toml\n"), "{rest}");
+    assert!(rest.starts_with("pint.json migrate\nphpstan.neon migrate\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\nphpstan.neon unsupported format/casts/short-scalar: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/functions/backtick-to-shell-exec: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/whitespace/encoding: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\napp/Unknown.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n--- pun.toml\n"), "{rest}");
     let out = agent(&["migrate", "--from=rector"]);
     assert!(
         out.starts_with(
@@ -459,7 +472,6 @@ fn agent_mode() {
     assert!(out.starts_with("pun migrate: ok, starter pun.toml written (preset laravel, 115 format rules, 15 lint rules), ignore comments rewritten in 0 files (no pint.json, .php-cs-fixer.php, phpstan.neon, rector.php or mago.toml found, "), "{out}");
 }
 
-/// On a terminal: a checklist of the detected configs, all checked. Down + space unchecks PHPStan.
 #[test]
 fn checklist_on_a_terminal() {
     let d = project("tty", CHECKLIST);
@@ -468,7 +480,6 @@ fn checklist_on_a_terminal() {
         out.contains("Migrate which configs? (space toggles, enter confirms)"),
         "{out}"
     );
-    // dialoguer's ColorfulTheme, as `pun init` has (without colour it draws no cursor): all checked, then PHPStan not.
     assert!(
         out.contains(
             "✔ Pint          pint.json\n✔ PHPStan       phpstan.neon\n✔ Rector        rector.php\n"
@@ -488,7 +499,6 @@ fn checklist_on_a_terminal() {
         "{out}"
     );
     assert_eq!(read(&d, "pun.toml"), TOML);
-    // Esc: nothing selected, nothing written.
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let out = pty(&d, "\\033");
     assert!(
@@ -500,12 +510,10 @@ fn checklist_on_a_terminal() {
     assert!(!d.join("pun.toml").exists());
 }
 
-/// No config at all: the terminal is asked before the starter pun.toml is written.
 #[test]
 fn starter_on_a_terminal() {
     let d = project("tty-empty", &[]);
     let out = pty(&d, "n");
-    // The pty echoes the typed answer before migrate prints.
     assert!(
         out.contains(
             "No pint.json, .php-cs-fixer.php, phpstan.neon, rector.php or mago.toml found.\n"
@@ -523,13 +531,9 @@ fn starter_on_a_terminal() {
     assert!(read(&d, "pun.toml").starts_with("# Written by `pun migrate`: no pint.json, .php-cs-fixer.php, phpstan.neon, rector.php or mago.toml found; starter config.\n"));
 }
 
-/// With phpstan.neon migrated, `@phpstan-ignore` comments become `@pun-ignore` with each identifier's rule
-/// (rules/mapping.toml: method.notFound and function.notFound are analyse/undefined/{method,function}) and the
-/// parenthesised comments as the reason. An identifier Pun doesn't know, and `@phpstan-ignore-next-line` (no
-/// identifier), are left and named.
 #[test]
 fn rewrites_phpstan_ignores() {
-    let php = "<?php\n\n$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n/** @phpstan-ignore acme.rule */\n$b = 1;\n// @phpstan-ignore-next-line\n$c = 2;\n";
+    let php = "<?php\n\n$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n/** @phpstan-ignore acme.rule */\n$b = 1;\n// @phpstan-ignore-next-line\n$c = 2;\ninclude 'x.php'; require 'y.php'; // @phpstan-ignore include.fileNotFound, require.fileNotFound\n";
     let d = project(
         "phpstan-ignores",
         &[
@@ -546,17 +550,20 @@ fn rewrites_phpstan_ignores() {
         out.contains("-$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n+$a->foo(); // @pun-ignore analyse/undefined/method,analyse/undefined/function -- a macro adds it\n"),
         "{out}"
     );
+    // Two identifiers of one Pun rule name it once.
+    assert!(
+        out.contains(
+            "+include 'x.php'; require 'y.php'; // @pun-ignore analyse/undefined/include-file\n"
+        ),
+        "{out}"
+    );
     assert!(
         counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n ! app/A.php  `@phpstan-ignore acme.rule` left as is (`acme.rule` is not a PHPStan identifier Pun knows); skipped\n ! app/A.php  `@phpstan-ignore-next-line` left as is (it names no identifier, and a Pun ignore names its rules); skipped\n"),
         "{out}"
     );
-    // A dry run writes nothing.
     assert_eq!(read(&d, "app/A.php"), php);
 }
 
-/// On a terminal, after PHPStan's exact rules, migrate offers the closest preset (level 5: `recommended`,
-/// context/plan/analyse.md) with what it would change; one empty file has no problems either way. `y` drops the
-/// on/off lines, the default (`n`) keeps them.
 #[test]
 fn offers_the_closest_preset() {
     let files = [
@@ -564,7 +571,7 @@ fn offers_the_closest_preset() {
             "phpstan.neon",
             "parameters:\n    level: 5\n    paths: [app]\n",
         ),
-        ("app/A.php", "<?php\n"),
+        ("app/A.php", "<?php\n\nundefined_fn();\n"),
     ];
     let d = project("tty-preset", &files);
     let out = pty(&d, "\\ry");
@@ -592,10 +599,6 @@ fn oracle(rel: &str) -> Option<PathBuf> {
     p.exists().then(|| p.canonicalize().unwrap())
 }
 
-/// phpstan.neon with a baseline, phpstan-strict-rules (its checks are Pun lint and format rules), a parameter that
-/// is a rule option, and an ignored pattern. Expected from rules/mapping.toml: `additionalConstructors` is the
-/// `additional-constructors` option, strict-rules' `backtick.notAllowed` the format rule
-/// `functions/backtick-to-shell-exec`.
 #[test]
 fn phpstan_baseline_extensions_options_and_ignores() {
     let Some(strict) = oracle("phpstan/vendor/phpstan/phpstan-strict-rules") else {
@@ -666,6 +669,7 @@ fn rector_paths_skips_and_unsupported_rules() {
             ("src/Sub/b.php", "<?php\n"),
             ("scripts/x.php", "<?php\n"),
             ("tools/deep/y.php", "<?php\n"),
+            ("tools/z.php", "<?php\n"),
         ],
     );
     std::os::unix::fs::symlink(vendor, d.join("vendor")).unwrap();
@@ -673,14 +677,13 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(code, Some(0), "{out}{err}");
     let out = counts(&out);
     assert!(
-        out.starts_with(" ok rector.php     -> [lint] sets dead-code, modernize; N on, N off"),
+        out.starts_with(" ok rector.php  -> [lint] sets dead-code, modernize; N on, N off"),
         "{out}"
     );
     assert!(
         out.contains(", 3 paths excluded, 1 per-path skip\n"),
         "{out}"
     );
-    // php53 (withPhpSets below 8.4) adds many upgrade rules that share one reason.
     assert!(
         out.lines().any(|l| l.starts_with(" ! 107 Rector rules ")
             && l.ends_with(
@@ -698,7 +701,6 @@ fn rector_paths_skips_and_unsupported_rules() {
         toml.contains("[[lint.overrides]]\nfiles = [\"src/Sub\"]\nrules = { \"phpdoc/no-useless-param\" = \"off\" }\n"),
         "{toml}"
     );
-    // Rector's paths cover the project and no set is prepared: nothing excluded, no sets.
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let whole = (rector.replace("__DIR__.'/src'", "__DIR__")).replace(
         "    ->withPreparedSets(deadCode: true)\n    ->withPhpSets(php53: true)\n",
@@ -708,12 +710,10 @@ fn rector_paths_skips_and_unsupported_rules() {
     let (out, _, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        counts(&out).starts_with(" ok rector.php     -> [lint] no sets; N on, N off"),
+        counts(&out).starts_with(" ok rector.php  -> [lint] no sets; N on, N off"),
         "{out}"
     );
     assert!(!out.contains("excluded"), "{out}");
-    // A rector.php Rector can't load stops the migration with its message: the config's own exception (on stdout)
-    // or a fatal error (on stderr).
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     std::fs::write(d.join("rector.php"), "<?php\nreturn 1;\n").unwrap();
     let (_, err, code) = pun(&d, &["migrate", "--yes"]);
@@ -743,8 +743,6 @@ fn rector_paths_skips_and_unsupported_rules() {
     );
 }
 
-/// A `@phpstan-ignore` that names a check Pun has as a format rule (rules/mapping.toml: `whitespace.fileEnd` is
-/// `format/tags/no-closing`) is left: format rules are not ignored per line.
 #[test]
 fn phpstan_ignore_of_a_format_check_is_left() {
     let php = "<?php\n\n$a = 1; // @phpstan-ignore whitespace.fileEnd\n";
@@ -766,7 +764,6 @@ fn phpstan_ignore_of_a_format_check_is_left() {
     );
 }
 
-/// Mago is detected but can't be migrated yet: the checklist says so.
 #[test]
 fn checklist_marks_unsupported_configs() {
     let d = project("tty-mago", &[("pint.json", PINT), ("mago.toml", "")]);
@@ -777,39 +774,8 @@ fn checklist_marks_unsupported_configs() {
     );
 }
 
-/// pun.toml's dependency sections for the composer.json below, in pun.toml's section order, `$schema` dropped and the
-/// token moved out.
-const DEPENDENCIES: &str = r#"[package]
-name = "acme/app"
-type = "project"
-
-[require]
-php = ">=8.4"
-"acme/lib" = "^1.2"
-
-[require-dev]
-"acme/tools" = "^0.3"
-
-[autoload]
-psr-4 = { 'App\' = "src/" }
-
-[autoload-dev]
-classmap = ["tests/"]
-
-[config]
-optimize-autoloader = true
-
-[[repositories]]
-type = "path"
-url = "packages/*"
-"#;
-
-/// composer.json moves into pun.toml (its token into auth.json) and composer.lock into pun.lock, and `pun install`
-/// installs from them what Composer installs. The project is punphp-packages' install fixture, whose composer.lock
-/// and expected files Composer 2.11.2 wrote; the `$schema` and token added to its composer.json leave that lock
-/// current (`composer validate` reports no outdated lock).
 #[test]
-fn moves_composer_dependencies() {
+fn leaves_composer_json_and_its_lock_alone() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../pun-packages/tests/fixtures");
     let d = project("composer", &[("pint.json", PINT)]);
     let copied = std::process::Command::new("cp")
@@ -819,49 +785,29 @@ fn moves_composer_dependencies() {
         .status()
         .unwrap();
     assert!(copied.success());
-    let json = read(&d, "composer.json").replacen(
-        '{',
-        "{\n    \"$schema\": \"https://getcomposer.org/schema.json\",",
-        1,
-    );
-    let json = json.replace(
-        "\"optimize-autoloader\": true",
-        "\"optimize-autoloader\": true,\n        \"github-oauth\": {\"github.com\": \"ghp_test\"}",
-    );
-    std::fs::write(d.join("composer.json"), json).unwrap();
+    let (json, lock) = (read(&d, "composer.json"), read(&d, "composer.lock"));
 
     let (out, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(0), "{out}{err}");
-    let lines = " ok pint.json      -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n ok composer.json  -> [require] 2, [require-dev] 1\n ok composer.lock  -> pun.lock, 2 packages (written)\n ! credentials    -> auth.json (github-oauth); add auth.json to .gitignore\n";
-    assert!(out.starts_with(lines), "{out}");
-    assert_eq!(read(&d, "pun.toml"), format!("{TOML}\n{DEPENDENCIES}"));
+    assert!(!out.contains("composer"), "{out}");
+    assert_eq!(read(&d, "pun.toml"), TOML);
     assert_eq!(
-        read(&d, "auth.json"),
-        "{\n    \"github-oauth\": {\n        \"github.com\": \"ghp_test\"\n    }\n}\n"
+        (read(&d, "composer.json"), read(&d, "composer.lock")),
+        (json, lock)
     );
-    assert!(
-        read(&d, "pun.lock").contains("\ncontent-hash = \"505e2931b9db2a3f50543bd9b4e608c1\"\n")
-    );
+    assert!(!d.join("pun.lock").exists() && !d.join("auth.json").exists());
 
     let (out, err, code) = pun(&d, &["install"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(
-        err.starts_with("Installing 2 packages from pun.lock\n") && !err.contains("older than"),
+        err.starts_with("Installing 2 packages from composer.lock\n")
+            && !err.contains("out of date"),
         "{err}"
     );
     let expected =
         std::fs::read_to_string(fixtures.join("project-expected/composer/installed.php")).unwrap();
     assert_eq!(read(&d, "vendor/composer/installed.php"), expected);
 
-    // A pun.toml written before migrate moved dependencies gets them added; nothing else changed is left alone.
-    std::fs::write(d.join("pun.toml"), TOML).unwrap();
-    let (out, _, code) = pun(&d, &["migrate", "--yes"]);
-    assert_eq!(code, Some(0), "{out}");
-    assert!(
-        out.contains(" ok composer.lock  -> pun.lock, 2 packages (already up to date)\n"),
-        "{out}"
-    );
-    assert_eq!(read(&d, "pun.toml"), format!("{TOML}\n{DEPENDENCIES}"));
     std::fs::write(d.join("pun.toml"), format!("{TOML}# mine\n")).unwrap();
     let (_, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(2));

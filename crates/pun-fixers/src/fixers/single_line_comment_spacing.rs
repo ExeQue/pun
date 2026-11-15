@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\SingleLineCommentSpacingFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat};
@@ -30,11 +29,11 @@ impl Fixer for SingleLineCommentSpacingFixer {
             let new_content;
             if content[0] == b'/' {
                 if content_length < 3 {
-                    continue; // cheap check for "//"
+                    continue;
                 }
                 if content[1] == b'*' {
                     if content_length < 5 || content[2] == b'*' || content.contains(&b'\n') {
-                        continue; // cheap check for "/**/", comment that looks like a PHPDoc, or multi line comment
+                        continue;
                     }
                     let c = [
                         php_compat::rtrim(&content[..content_length - 2]),
@@ -48,7 +47,7 @@ impl Fixer for SingleLineCommentSpacingFixer {
                 }
             } else {
                 if content_length < 2 || content[1] == b'[' {
-                    continue; // cheap check for "#" or annotation (like) comment
+                    continue;
                 }
                 new_content = fix_comment_leading_space(&content, "#");
             }

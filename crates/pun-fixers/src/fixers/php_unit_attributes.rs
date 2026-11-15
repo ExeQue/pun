@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\PhpUnit\PhpUnitAttributesFixer`.
 use crate::analyzers::abstract_php_unit_fixer::{apply_fix, get_doc_block_index, is_candidate};
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::docblock::{Annotation, DocBlock};
@@ -28,10 +27,8 @@ enum Fix {
     Uses,
 }
 
-/// `prepareFixingMap`.
 fn fixing_map(annotation_name: &[u8]) -> Option<Fix> {
     Some(match annotation_name {
-        // annotations that map to attribute without parameters
         b"after"
         | b"afterClass"
         | b"before"
@@ -46,13 +43,10 @@ fn fixing_map(annotation_name: &[u8]) -> Option<Fix> {
         | b"test"
         | b"preCondition"
         | b"postCondition" => Fix::WithoutParameters,
-        // annotations that map to attribute with single string value
         b"group" | b"testDox" | b"ticket" => Fix::WithSingleStringValue,
-        // annotations that map from 'enabled'/'disabled' value to attribute with boolean value
         b"backupGlobals" | b"backupStaticAttributes" | b"preserveGlobalState" => {
             Fix::WithEnabledDisabledValue
         }
-        // annotations that has custom mapping function
         b"covers" => Fix::Covers,
         b"dataProvider" => Fix::DataProvider,
         b"depends" => Fix::Depends,
@@ -167,7 +161,6 @@ impl PhpUnitAttributesFixer {
     }
 }
 
-/// `shouldBeFixed`.
 fn should_be_fixed(annotation_name: &[u8], class_scope: bool) -> bool {
     let method_only: &[&[u8]] = &[
         b"covers",
@@ -193,9 +186,8 @@ fn should_be_fixed(annotation_name: &[u8], class_scope: bool) -> bool {
     !(if class_scope { class_only } else { method_only }).contains(&annotation_name)
 }
 
-/// `isAttributeAlreadyPresent`.
 fn is_attribute_already_present(tokens: &Tokens, index: usize, tokens_to_insert: &[Token]) -> bool {
-    let attribute_index = tokens.get_next_meaningful_token(index).unwrap();
+    let attribute_index = tokens.next_meaningful(index);
     if !tokens[attribute_index].is_kind(T_ATTRIBUTE) {
         return false;
     }
@@ -267,9 +259,7 @@ fn fix_annotation(fix: Fix, tokens: &Tokens, index: usize, annotation: &Annotati
     }
 }
 
-/// `fixCovers`.
 fn fix_covers(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Token> {
-    // Upstream's `explode('::', null)` throws when the annotation has no value.
     let value = matches
         .as_ref()
         .map(|m| m.str(1))
@@ -277,8 +267,6 @@ fn fix_covers(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<T
     let split: Vec<&[u8]> = explode(b"::", value);
     match split.len() {
         1 => {
-            // naive guessing if it's a Trait or Class, as we do not have access to codebase to make sure, but it's
-            // better than nothing
             let name = if split[0].ends_with(b"Trait") {
                 b"CoversTrait".as_slice()
             } else {
@@ -298,12 +286,10 @@ fn fix_covers(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<T
             attribute_tokens.push(fix_name_and_create_escaped_string_token(split[1]));
             create_attribute_tokens(tokens, index, b"CoversMethod", attribute_tokens)
         }
-        // unexpected format, do not attempt to fix
         _ => vec![],
     }
 }
 
-/// `fixDataProvider`.
 fn fix_data_provider(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Token> {
     let Some(matches) = matches else {
         return vec![];
@@ -324,12 +310,10 @@ fn fix_data_provider(tokens: &Tokens, index: usize, matches: Option<Captures>) -
     )
 }
 
-/// `fixNameAndCreateEscapedStringToken`.
 fn fix_name_and_create_escaped_string_token(method_name: &[u8]) -> Token {
     create_escaped_string_token(rtrim_chars(method_name, b" ()\n\r\t\x0B\0"))
 }
 
-/// `fixDepends`.
 fn fix_depends(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Token> {
     let Some(matches) = matches else {
         return vec![];
@@ -358,7 +342,7 @@ fn fix_depends(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<
             name_suffix = [b"External".as_slice(), &name_suffix].concat();
         }
     }
-    let mut attribute_tokens = class.map(to_class_constant).unwrap_or_default();
+    let mut attribute_tokens = class.map_or_default(to_class_constant);
     if let Some(method) = method {
         if !attribute_tokens.is_empty() {
             attribute_tokens.extend(separator());
@@ -373,7 +357,6 @@ fn fix_depends(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<
     )
 }
 
-/// `fixRequires`.
 fn fix_requires(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Token> {
     let Some(matches) = matches else {
         return vec![];
@@ -419,7 +402,6 @@ fn fix_requires(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec
     create_attribute_tokens(tokens, index, attribute_name, attribute_tokens)
 }
 
-/// `fixVersionConstraint`.
 fn fix_version_constraint(version: &[u8]) -> Vec<u8> {
     if Preg::r#match(r"/^[\d\.-]+(dev|(RC|alpha|beta)[\d\.])?$/", version) {
         return [b">= ".as_slice(), version].concat();
@@ -427,7 +409,6 @@ fn fix_version_constraint(version: &[u8]) -> Vec<u8> {
     version.to_vec()
 }
 
-/// `fixTestWith`.
 fn fix_test_with(tokens: &Tokens, index: usize, content: &[u8]) -> Vec<Token> {
     let content = Preg::replace(r"/@testWith\s+/", "", content);
     let content = Preg::replace(r"/(^|\R)\s+\**\s*/", "\n", &content);
@@ -447,7 +428,6 @@ fn fix_test_with(tokens: &Tokens, index: usize, content: &[u8]) -> Vec<Token> {
     attribute_tokens
 }
 
-/// `fixUses`.
 fn fix_uses(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Token> {
     let Some(matches) = matches else {
         return vec![];
@@ -464,7 +444,6 @@ fn fix_uses(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<Tok
     create_attribute_tokens(tokens, index, attribute_name, attribute_tokens)
 }
 
-/// `getMatches`; `None` when the pattern does not match (an empty `$matches`).
 fn get_matches<'s>(name: &[u8], content: &'s [u8]) -> Option<Captures<'s>> {
     let pattern = [
         b"/@".as_slice(),
@@ -475,12 +454,10 @@ fn get_matches<'s>(name: &[u8], content: &'s [u8]) -> Option<Captures<'s>> {
     Preg::match_groups(&pattern, content)
 }
 
-/// PHP's `isset($matches[$i])`: unmatched groups before the last matched one are set (to `""`).
 fn isset(matches: &Captures, i: usize) -> bool {
     i < matches.len()
 }
 
-/// `getAttributeNameForAnnotation`.
 fn attribute_name_for_annotation(annotation_name: &[u8]) -> Vec<u8> {
     if annotation_name == b"backupStaticAttributes" {
         return b"BackupStaticProperties".to_vec();
@@ -490,7 +467,6 @@ fn attribute_name_for_annotation(annotation_name: &[u8]) -> Vec<u8> {
     name
 }
 
-/// `createAttributeTokens`.
 fn create_attribute_tokens(
     tokens: &Tokens,
     index: usize,
@@ -518,7 +494,6 @@ fn create_attribute_tokens(
     out
 }
 
-/// `toClassConstant`.
 fn to_class_constant(name: &[u8]) -> Vec<Token> {
     let mut out = tokenize_name(name);
     out.push(Token::new(T_DOUBLE_COLON, b"::".to_vec()));
@@ -526,12 +501,10 @@ fn to_class_constant(name: &[u8]) -> Vec<Token> {
     out
 }
 
-/// `, ` between two attribute arguments.
 fn separator() -> [Token; 2] {
     [Token::char(b","), Token::new(T_WHITESPACE, b" ".to_vec())]
 }
 
-/// `createEscapedStringToken`.
 fn create_escaped_string_token(value: &[u8]) -> Token {
     Token::new(
         T_CONSTANT_ENCAPSED_STRING,

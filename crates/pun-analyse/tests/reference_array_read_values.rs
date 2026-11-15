@@ -1,5 +1,3 @@
-//! Array references retain each operand's read, including ErrorType, before escape.
-
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -39,7 +37,7 @@ fn reference_array_reads_match_complete_phpstan_records() {
     let mut failures = Vec::new();
     for level in [1, 5] {
         let mut project = Project::new(vec![root.join("values.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -86,8 +84,6 @@ fn reference_array_reads_match_complete_phpstan_records() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-// Render only the scalar and finite-array forms in this oracle. No analyzer conversion
-// is used, so ErrorType cannot be repaired by the PHPStan-style consumer under test.
 fn describe(ty: &TUnion) -> String {
     if ty.is_error() {
         return "*ERROR*".to_owned();

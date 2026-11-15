@@ -1,15 +1,11 @@
-//! `lint/pest/prefer-to-be-url`, ported from pest-plugin-rector's `UseToBeUrlRector`: `expect(filter_var($url,
-//! FILTER_VALIDATE_URL))->not->toBeFalse()` and `expect(filter_var($url, FILTER_VALIDATE_URL) !== false)->toBeTrue()`
-//! become `expect($url)->toBeUrl()` when `$url` is known to be a string.
-
 use mago_syntax::cst::{BinaryOperator, Expression, FunctionCall, MethodCall, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{
     Is, Trinary, first_value, func_call, is_name, property_fetch, rename, subject_holder, type_is,
 };
-use crate::rules::rector_code_quality::is_constant;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::is_constant;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -46,7 +42,6 @@ impl Rule for PreferToBeUrl {
             else {
                 return;
             };
-            // `removeNotFromChain`.
             if let Some(not) = property_fetch(call.object).filter(|p| is_name(&p.property, "not")) {
                 edits.push(Edit::new(
                     Span::new(
@@ -89,7 +84,6 @@ impl Rule for PreferToBeUrl {
     }
 }
 
-/// `isFilterVarValidateUrl`: a call of `filter_var` whose second argument is the constant `FILTER_VALIDATE_URL`.
 fn filter_var_validate_url<'a>(expr: &'a Expression<'a>) -> Option<&'a FunctionCall<'a>> {
     let call = func_call(expr).filter(|f| named(f, "filter_var"))?;
     let filter = call.argument_list.arguments.get(1)?;
@@ -104,7 +98,6 @@ fn filter_var_validate_url<'a>(expr: &'a Expression<'a>) -> Option<&'a FunctionC
     }
 }
 
-/// `isNotChain`: a `->not` among the property fetches right under the call.
 fn is_not_chain(call: &MethodCall<'_>) -> bool {
     let mut var = call.object;
     while let Some(fetch) = property_fetch(var) {

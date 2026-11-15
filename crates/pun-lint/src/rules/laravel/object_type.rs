@@ -1,9 +1,3 @@
-//! Rector's `NodeTypeResolver::isObjectType` (rector/rector src/NodeTypeResolver/NodeTypeResolver.php) on Mago's
-//! types: whether an expression, a class name or a class declaration is an object of a given class, the way the
-//! rector-laravel rules ask it. The type is PHPStan's `getType()`, docblocks read (`Facts::full_type`); a class name
-//! is the object of the class it names (`NameTypeResolver`, `self` and `static` the enclosing class, `parent` its
-//! parent).
-
 use std::collections::HashSet;
 
 use mago_codex::metadata::CodebaseMetadata;
@@ -23,7 +17,6 @@ use crate::rules::types::compare::mapper::flatten;
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
 
-/// `isObjectType($expr, new ObjectType($class))`.
 pub(crate) fn is_object_type(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -49,19 +42,11 @@ pub(crate) fn is_object_type(
     }
 }
 
-/// PHPStan's type of a method call where Mago's differs.
 enum Receiver {
-    /// An object of the class.
     Class(String),
-    /// `*ERROR*`: no class of the receiver has the method.
     Error,
 }
 
-/// PHPStan's type of the method call `expr` (along a chain of them) where a method is reached through a `@mixin`.
-/// PHPStan's `MixinMethodsClassReflectionExtension` returns the mixin's own method, so its `$this` and `static` are the
-/// mixin, where Mago binds them to the receiver; a method then missing on the mixin is `*ERROR*`
-/// (`$relation->whereNotNull('a')->with('b')` is the query builder's `whereNotNull()`, which has no `with()`). `None`
-/// where Mago's type stands, or Pun does not know: a class or parent the codebase lacks, a mixin that is a template.
 fn mixin_receiver(facts: &Facts, expr: &Expression<'_>) -> Option<Receiver> {
     let Expression::Call(Call::Method(call)) = unparenthesize(expr) else {
         return None;
@@ -84,7 +69,6 @@ fn mixin_receiver(facts: &Facts, expr: &Expression<'_>) -> Option<Receiver> {
     let codebase = facts.documented();
     known_lineage(codebase, &class)?;
     if codebase.method_exists(class.as_bytes(), name.value) {
-        // the receiver's own method; one Pun corrected binds its `static` to it
         return match inner {
             Some(Receiver::Class(_)) if returns_static(codebase, &class, name.value) => {
                 Some(Receiver::Class(class))
@@ -99,7 +83,6 @@ fn mixin_receiver(facts: &Facts, expr: &Expression<'_>) -> Option<Receiver> {
     }
 }
 
-/// The class and its parents, when the codebase knows them all.
 fn known_lineage<'c>(
     codebase: &'c CodebaseMetadata,
     class: &str,
@@ -111,9 +94,6 @@ fn known_lineage<'c>(
     Some(std::iter::once(metadata).chain(parents).collect())
 }
 
-/// `MixinMethodsClassReflectionExtension::findMethod`: the mixin of the class, its traits or its parents that has the
-/// method (itself or through its own mixins), and whether the method returns `$this` or `static`. `Some(None)` where no
-/// mixin has it, `None` where Pun does not know.
 fn mixin_method(
     codebase: &CodebaseMetadata,
     class: &str,
@@ -147,7 +127,6 @@ fn mixin_method(
     Some(None)
 }
 
-/// Whether the method returns `$this` or `static`, docblocks read.
 fn returns_static(codebase: &CodebaseMetadata, class: &str, method: &[u8]) -> bool {
     let declared = codebase.get_declaring_method(class.as_bytes(), method);
     declared
@@ -157,9 +136,6 @@ fn returns_static(codebase: &CodebaseMetadata, class: &str, method: &[u8]) -> bo
         })
 }
 
-/// The type hint of the parameter a variable stands for in a function Mago did not analyse (a second declaration of
-/// a function's name, which PHPStan analyses as it is): the variable is a parameter of the enclosing function and the
-/// body never assigns it.
 fn unanalysed_param_hint<'a>(
     ancestors: &[Node<'a, 'a>],
     expr: &Expression<'_>,
@@ -186,9 +162,6 @@ fn unanalysed_param_hint<'a>(
     (!assigned).then_some(param.hint.as_ref()?)
 }
 
-/// `isObjectType` on a resolved type: `mixed` is not; a single object is when its class is `class` or a subclass,
-/// or uses the trait `class`; otherwise, without `null` and `false`, every part must be an object of a subclass
-/// (`ObjectType::isSuperTypeOf()->yes()`).
 pub(crate) fn is_type_of(ctx: &Context<'_>, t: &TUnion, class: &str) -> bool {
     if t.is_mixed() {
         return false;
@@ -210,11 +183,6 @@ pub(crate) fn is_type_of(ctx: &Context<'_>, t: &TUnion, class: &str) -> bool {
     }) && any
 }
 
-/// `NodeTypeResolver::isObjectType` on a type declaration (`ParamTypeResolver`, a return type). A class name matches
-/// when it is the class or a subclass (`self` is the enclosing class, `parent` its parents, all of which must match;
-/// `static` is `mixed`). A nullable or union type matches when, without `null` (nothing left but `null` does not
-/// match) and then without `false`, every part is such a class name: PHPStan's `isSuperTypeOf` of what is left, where
-/// nothing left (`never`) is a match. An intersection type is `mixed`.
 pub(crate) fn is_hint_type(
     ctx: &Context<'_>,
     ancestors: &[Node<'_, '_>],
@@ -227,11 +195,10 @@ pub(crate) fn is_hint_type(
             .and_then(|s| s.name)
             .is_some_and(|own| is_a(ctx, &own, &[class])),
         Hint::Parent(_) => {
-            // `NameTypeResolver::resolveParent`: every parent class, none being `mixed`
             let facts = facts(ctx);
             let parents: Vec<String> = class_scope(ancestors)
                 .and_then(|s| s.name.zip(s.parent_class))
-                .map(|(own, parent)| {
+                .map_or_default(|(own, parent)| {
                     let all = facts.codebase.get_class_like(own.as_bytes());
                     all.map_or(vec![parent], |c| {
                         c.all_parent_classes
@@ -239,8 +206,7 @@ pub(crate) fn is_hint_type(
                             .map(std::string::ToString::to_string)
                             .collect()
                     })
-                })
-                .unwrap_or_default();
+                });
             !parents.is_empty() && parents.iter().all(|p| is_a(ctx, p, &[class]))
         }
         _ => false,
@@ -248,7 +214,6 @@ pub(crate) fn is_hint_type(
     let mut parts = Vec::new();
     match hint {
         Hint::Identifier(_) | Hint::Self_(_) | Hint::Parent(_) => return named(hint),
-        // `?T` is `T|null` when `T` is not `mixed`
         Hint::Nullable(n) => return named(n.hint) || matches!(n.hint, Hint::False(_)),
         Hint::Union(_) | Hint::False(_) => flatten(hint, true, &mut parts),
         _ => return false,
@@ -264,9 +229,6 @@ pub(crate) fn is_hint_type(
             .all(named)
 }
 
-/// The class of an object type (a named object, `$this`, `static`, or an enum case). Mago types a value of a class it
-/// does not know as a reference to the name, where PHPStan has an object of that class, which matches only its own
-/// name.
 pub(crate) fn object_class(atomic: &TAtomic) -> Option<String> {
     match atomic {
         TAtomic::Object(TObject::Named(n)) => Some(n.name.to_string()),
@@ -276,8 +238,6 @@ pub(crate) fn object_class(atomic: &TAtomic) -> Option<String> {
     }
 }
 
-/// `ObjectType::isSuperTypeOf` between classes: the same class, or a class the codebase knows that extends or
-/// implements it. Traits do not count.
 fn is_subclass(ctx: &Context<'_>, name: &str, class: &str) -> bool {
     if name.eq_ignore_ascii_case(class) {
         return true;
@@ -290,8 +250,6 @@ fn is_subclass(ctx: &Context<'_>, name: &str, class: &str) -> bool {
     })
 }
 
-/// The class a name written as a class (`Foo`, `\Foo`) stands for; `self`, `static` and `parent` are expressions of
-/// their own ([`special_class`]).
 pub(crate) fn name_class(
     ancestors: &[Node<'_, '_>],
     id: &mago_syntax::cst::Identifier<'_>,
@@ -299,7 +257,6 @@ pub(crate) fn name_class(
     Some(resolve_class_name(ancestors, id))
 }
 
-/// The class `self`, `static` or `parent` stands for.
 pub(crate) fn special_class(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Option<String> {
     let scope = class_scope(ancestors)?;
     match expr {
@@ -308,9 +265,6 @@ pub(crate) fn special_class(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -
     }
 }
 
-/// The class a class-string type names, for `$type->getClassStringObjectType()->getClassName()` when the type is
-/// one class string: a literal class string (`Foo::class`), `class-string<Foo>`, or a literal string that names a
-/// class-like the codebase knows (`ConstantStringType::isClassString()`).
 pub(crate) fn class_string_class(ctx: &Context<'_>, t: &TUnion) -> Option<String> {
     let [TAtomic::Scalar(scalar)] = &t.types[..] else {
         return None;
@@ -318,7 +272,6 @@ pub(crate) fn class_string_class(ctx: &Context<'_>, t: &TUnion) -> Option<String
     match scalar {
         TScalar::ClassLikeString(c) => match (c.literal_value(), c.constraint()) {
             (Some(value), _) => Some(value.to_string()),
-            // `static` and `$this` name the class as declared (Mago keeps their name in lowercase)
             (None, Some(TAtomic::Object(TObject::Named(n)))) if n.is_static || n.is_this => {
                 let facts = facts(ctx);
                 let class = facts.codebase.get_class_like(n.name.as_bytes())?;
@@ -337,7 +290,6 @@ pub(crate) fn class_string_class(ctx: &Context<'_>, t: &TUnion) -> Option<String
     }
 }
 
-/// PHPStan's `TrinaryLogic`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Tri {
     No,
@@ -345,15 +297,10 @@ pub(crate) enum Tri {
     Yes,
 }
 
-/// `ObjectType($sup)->isSuperTypeOf(ObjectType($sub))` between class names: the same name, or `sub` extending or
-/// implementing `sup`, is yes; a class the codebase does not know, `sup` extending `sub`, or an interface on either
-/// side with a class that is not final on the other, is maybe; a trait or anything else is no.
 pub(crate) fn class_super_of(ctx: &Context<'_>, sup: &str, sub: &str) -> Tri {
     exact_class_super_of(ctx, sup, sub, false)
 }
 
-/// [`class_super_of`] where `sup` may be an exact class (PHPStan 2's type of `new Foo()`, whose class reflection is
-/// `asFinal()`): final, so no class is its subclass (`isSubclassOfClass` of a final class is false).
 pub(crate) fn exact_class_super_of(ctx: &Context<'_>, sup: &str, sub: &str, exact: bool) -> Tri {
     if sup.eq_ignore_ascii_case(sub) {
         return Tri::Yes;
@@ -383,8 +330,6 @@ pub(crate) fn exact_class_super_of(ctx: &Context<'_>, sup: &str, sub: &str, exac
     Tri::No
 }
 
-/// `ObjectType($class)->isSuperTypeOf($type)` for a type Mago gives: one part as [`object_super_of`]; several as
-/// `UnionType::isSubTypeOf`, the answer they all give, else maybe.
 pub(crate) fn object_super_of_union(ctx: &Context<'_>, class: &str, t: &TUnion) -> Tri {
     let mut answers = t.types.iter().map(|a| object_super_of(ctx, class, a));
     let first = answers.next().unwrap_or(Tri::Yes);
@@ -395,9 +340,6 @@ pub(crate) fn object_super_of_union(ctx: &Context<'_>, class: &str, t: &TUnion) 
     }
 }
 
-/// `ObjectType($class)->isSuperTypeOf()` of one part of a type: an object of a class as [`class_super_of`] (a closure
-/// is a `Closure`), `object`, `mixed`, `callable`, a template and a template Mago left unresolved (PHPStan's error
-/// type, a `mixed`) are maybe, `never` is yes, and anything that is not an object is no.
 pub(crate) fn object_super_of(ctx: &Context<'_>, class: &str, atomic: &TAtomic) -> Tri {
     if let Some(name) = object_class(atomic) {
         return class_super_of(ctx, class, &name);
@@ -406,7 +348,6 @@ pub(crate) fn object_super_of(ctx: &Context<'_>, class: &str, atomic: &TAtomic) 
         TAtomic::Callable(c) if c.get_signature().is_some_and(|s| s.is_closure) => {
             class_super_of(ctx, class, "Closure")
         }
-        // `callable` is a compound type that may be an object
         TAtomic::Callable(_)
         | TAtomic::Object(_)
         | TAtomic::Mixed(_)

@@ -1,5 +1,3 @@
-//! Local ??= declaration effects through both public Project constructors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -25,7 +23,7 @@ fn local_coalesce_effects_match_complete_phpstan_records() {
         let direct = Project::new(vec![file], Vec::new());
         for (constructor, mut project) in [("from_config", configured), ("new", direct)] {
             project.level = level as u8;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level > 0,

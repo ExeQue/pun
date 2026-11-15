@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\LanguageConstruct\NoUnsetOnPropertyFixer`.
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
@@ -11,7 +10,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(NoUnsetOnPropertyFixer)
 }
 
-/// `_UnsetInfo`.
 struct UnsetInfo {
     start_index: usize,
     end_index: usize,
@@ -28,8 +26,8 @@ fn get_unsets_info(tokens: &Tokens, index: usize) -> Vec<UnsetInfo> {
     let mut unsets = Vec::new();
     for (start_index, end_index) in ArgumentsAnalyzer.get_arguments(tokens, unset_start, unset_end)
     {
-        let start_index = tokens.get_next_meaningful_token(start_index - 1).unwrap();
-        let end_index = tokens.get_prev_meaningful_token(end_index + 1).unwrap();
+        let start_index = tokens.next_meaningful(start_index - 1);
+        let end_index = tokens.prev_meaningful(end_index + 1);
         unsets.push(UnsetInfo {
             start_index,
             end_index,
@@ -43,13 +41,11 @@ fn get_unsets_info(tokens: &Tokens, index: usize) -> Vec<UnsetInfo> {
 
 fn is_property(tokens: &Tokens, index: usize, end_index: usize) -> bool {
     if tokens[index].is_kind(T_VARIABLE) {
-        // An argument of `unset(` is always followed by `,` or `)`.
-        let next_index = tokens.get_next_meaningful_token(index).unwrap();
+        let next_index = tokens.next_meaningful(index);
         if !tokens[next_index].is_kind(T_OBJECT_OPERATOR) {
             return false;
         }
-        // An object operator is never the last token of a valid argument.
-        let next_index = tokens.get_next_meaningful_token(next_index).unwrap();
+        let next_index = tokens.next_meaningful(next_index);
         if tokens
             .get_next_meaningful_token(next_index)
             .is_some_and(|n| n < end_index)
@@ -74,7 +70,6 @@ fn is_property(tokens: &Tokens, index: usize, end_index: usize) -> bool {
 }
 
 fn update_tokens(tokens: &mut Tokens, unset_info: &UnsetInfo, is_last_unset: bool) {
-    // if entry is first and to be transformed we remove leading "unset("
     if unset_info.is_first && unset_info.is_to_transform {
         let brace_index = tokens
             .get_prev_token_of_kind(unset_info.start_index, &["(".into()], true)
@@ -85,37 +80,31 @@ fn update_tokens(tokens: &mut Tokens, unset_info: &UnsetInfo, is_last_unset: boo
         tokens.clear_token_and_merge_surrounding_whitespace(brace_index);
         tokens.clear_token_and_merge_surrounding_whitespace(unset_index);
     }
-    // if entry is last and to be transformed we remove trailing ")"
     if is_last_unset && unset_info.is_to_transform {
         let brace_index = tokens
             .get_next_token_of_kind(unset_info.end_index, &[")".into()], true)
             .unwrap();
-        let previous_index = tokens.get_prev_meaningful_token(brace_index).unwrap();
+        let previous_index = tokens.prev_meaningful(brace_index);
         if tokens[previous_index].equals(",", true) {
-            tokens.clear_token_and_merge_surrounding_whitespace(previous_index); // trailing ',' in function call (PHP 7.3)
+            tokens.clear_token_and_merge_surrounding_whitespace(previous_index);
         }
         tokens.clear_token_and_merge_surrounding_whitespace(brace_index);
     }
-    // if entry is not last we replace comma with semicolon (last entry already has semicolon - from original unset)
     if !is_last_unset {
         let comma_index = tokens
             .get_next_token_of_kind(unset_info.end_index, &[",".into()], true)
             .unwrap();
         tokens.set(comma_index, Token::char(";"));
     }
-    // if entry is to be unset and is not last we add trailing ")"
     if !unset_info.is_to_transform && !is_last_unset {
         tokens.insert_at(unset_info.end_index + 1, vec![Token::char(")")]);
     }
-    // if entry is to be unset and is not first we add leading "unset("
     if !unset_info.is_to_transform && !unset_info.is_first {
         tokens.insert_at(
             unset_info.start_index,
             vec![Token::new(T_UNSET, "unset"), Token::char("(")],
         );
     }
-    // and finally
-    // if entry is to be transformed we add trailing " = null"
     if unset_info.is_to_transform {
         tokens.insert_at(
             unset_info.end_index + 1,
@@ -152,7 +141,7 @@ impl Fixer for NoUnsetOnPropertyFixer {
             if !unsets_info.iter().any(|u| u.is_to_transform) {
                 continue;
             }
-            let mut is_last_unset = true; // "last" as we reverse the array below
+            let mut is_last_unset = true;
             for unset_info in unsets_info.iter().rev() {
                 update_tokens(tokens, unset_info, is_last_unset);
                 is_last_unset = false;

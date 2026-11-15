@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-to-have-length`, ported from pest-plugin-rector's `UseToHaveLengthRector`:
-//! `expect(strlen($string))->toBe(5)` (or `mb_strlen()`, or `toEqual()`) becomes `expect($string)->toHaveLength(5)`
-//! when `$string` is known to be a string.
-
 use mago_syntax::cst::{Node, NodeKind};
 use pun_problem::Safety;
 

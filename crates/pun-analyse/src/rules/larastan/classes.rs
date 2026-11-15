@@ -1,6 +1,3 @@
-//! DeferrableServiceProviderMissingProvidesRule (InClassNode) and NoPublicModelScopeAndAccessorRule
-//! (InClassMethodNode).
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_span::HasSpan;
@@ -14,7 +11,6 @@ const DEFERRABLE_PROVIDER: &[u8] = b"illuminate\\contracts\\support\\deferrablep
 const ATTRIBUTE: &[u8] = b"illuminate\\database\\eloquent\\casts\\attribute";
 const SCOPE_ATTRIBUTE: &str = "Illuminate\\Database\\Eloquent\\Attributes\\Scope";
 
-/// DeferrableServiceProviderMissingProvidesRule on a class declaration.
 pub(crate) fn class<'arena>(c: &mut Checker<'_, 'arena>, class: &Class<'arena>) {
     let Some(k) = c.larastan.and(c.class_scope()) else {
         return;
@@ -26,7 +22,6 @@ pub(crate) fn class<'arena>(c: &mut Checker<'_, 'arena>, class: &Class<'arena>) 
     {
         return;
     }
-    // the provides method is overwritten somewhere in the class hierarchy
     if members::method(c, k, b"provides").is_none_or(|m| {
         !m.declaring_name()
             .as_bytes()
@@ -44,7 +39,6 @@ pub(crate) fn class<'arena>(c: &mut Checker<'_, 'arena>, class: &Class<'arena>) 
     );
 }
 
-/// NoPublicModelScopeAndAccessorRule on a method of a model.
 pub(crate) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>) {
     let Some(k) = c
         .larastan
@@ -85,7 +79,6 @@ pub(crate) fn method<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>) {
     c.report(m.span(), identifier, message, None);
 }
 
-/// `scope*` with a `Builder` first parameter, or `#[Scope]`.
 fn is_scope(c: &Checker, m: &Method) -> bool {
     if m.name.value.starts_with(b"scope")
         && let Some(Hint::Identifier(id)) = m
@@ -105,7 +98,6 @@ fn is_scope(c: &Checker, m: &Method) -> bool {
         .any(|a| c.resolved(&a.name) == SCOPE_ATTRIBUTE)
 }
 
-/// The method's return type (PHPDoc, else native) is an `Attribute`.
 fn is_accessor(
     c: &Checker,
     k: &mago_codex::metadata::class_like::ClassLikeMetadata,

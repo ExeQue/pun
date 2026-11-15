@@ -1,4 +1,3 @@
-//! Shared parts of `PhpCsFixer\Fixer\AbstractPhpUnitFixer` and `DocBlockAnnotationTrait`.
 use crate::analyzers::analysis::NamespaceUseType;
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::fully_qualified_name_analyzer::FullyQualifiedNameAnalyzer;
@@ -6,13 +5,10 @@ use crate::analyzers::php_unit_test_case_analyzer::PhpUnitTestCaseAnalyzer;
 use pun_tokens::Kind::*;
 use pun_tokens::Tokens;
 
-/// `AbstractPhpUnitFixer::isCandidate`.
 pub(crate) fn is_candidate(tokens: &Tokens) -> bool {
     tokens.is_all_token_kinds_found(&[T_CLASS, T_STRING])
 }
 
-/// `AbstractPhpUnitFixer::applyFix`: runs `apply_php_unit_class_fix(tokens, start, end)` per PHPUnit class,
-/// lazily like upstream's generator (each class is located after the previous one was fixed).
 pub(crate) fn apply_fix(
     tokens: &mut Tokens,
     mut apply_php_unit_class_fix: impl FnMut(&mut Tokens, usize, usize),
@@ -25,9 +21,7 @@ pub(crate) fn apply_fix(
     }
 }
 
-/// `AbstractPhpUnitFixer::isTestAttributePresent`.
 pub(crate) fn is_test_attribute_present(tokens: &Tokens, index: usize) -> bool {
-    // The class's `{` always precedes a method.
     let attribute_index = tokens
         .get_prev_token_of_kind(index, &["{".into(), T_ATTRIBUTE.into()], true)
         .unwrap();
@@ -48,7 +42,6 @@ pub(crate) fn is_test_attribute_present(tokens: &Tokens, index: usize) -> bool {
     false
 }
 
-/// `DocBlockAnnotationTrait::getDocBlockIndex`.
 pub(crate) fn get_doc_block_index(tokens: &Tokens, mut index: usize) -> usize {
     loop {
         index = tokens.get_prev_non_whitespace(index, None).unwrap();
@@ -72,15 +65,12 @@ pub(crate) fn get_doc_block_index(tokens: &Tokens, mut index: usize) -> usize {
     }
 }
 
-/// One call `AbstractPhpUnitFixer::getPreviousAssertCall` yields.
 pub(crate) struct AssertCall {
     pub index: usize,
     pub lowered_name: Vec<u8>,
     pub open_brace_index: usize,
 }
 
-/// `AbstractPhpUnitFixer::getPreviousAssertCall` as a cursor: each [`PreviousAssertCalls::next`] looks back from
-/// where the previous one stopped, on the tokens as they are now (upstream's generator is lazy too).
 pub(crate) struct PreviousAssertCalls {
     index: usize,
     start_index: usize,
@@ -99,14 +89,12 @@ impl PreviousAssertCalls {
     pub(crate) fn next(&mut self, tokens: &Tokens) -> Option<AssertCall> {
         while self.index > self.start_index {
             let index = tokens.get_prev_token_of_kind(self.index, &[T_STRING.into()], true)?;
-            // the loop's `--$index`
             self.index = index.saturating_sub(1);
             let lowered = pun_tokens::php_compat::strtolower(tokens[index].get_content());
             if !lowered.starts_with(b"assert") {
                 continue;
             }
-            // the class's `}` comes after it
-            let open_brace_index = tokens.get_next_meaningful_token(index).unwrap();
+            let open_brace_index = tokens.next_meaningful(index);
             if !tokens[open_brace_index].equals("(", true) {
                 continue;
             }
@@ -123,7 +111,6 @@ impl PreviousAssertCalls {
     }
 }
 
-/// `PhpUnitTargetVersion::fulfills`: whether the configured target `candidate` is `target` or later.
 pub(crate) fn target_fulfills(candidate: &str, target: &str) -> bool {
     if candidate == "newest" {
         return true;
@@ -132,9 +119,6 @@ pub(crate) fn target_fulfills(candidate: &str, target: &str) -> bool {
     parts(candidate) >= parts(target)
 }
 
-/// `DocBlockAnnotationTrait::ensureIsDocBlockWithAnnotation`: the class-like at `index` gets `@annotation` in its doc
-/// comment (a new one when it has none), unless the doc has one of `preventing_annotations` or the class one of
-/// `preventing_attributes` (lower-cased fully qualified names).
 pub(crate) fn ensure_is_doc_block_with_annotation(
     tokens: &mut Tokens,
     index: usize,
@@ -160,7 +144,6 @@ pub(crate) fn ensure_is_doc_block_with_annotation(
     }
 }
 
-/// `DocBlockAnnotationTrait::createDocBlock`.
 pub(crate) fn create_doc_block(
     tokens: &mut Tokens,
     doc_block_index: usize,
@@ -184,7 +167,7 @@ pub(crate) fn create_doc_block(
         b" */",
     ]
     .concat();
-    let index = tokens.get_next_meaningful_token(doc_block_index).unwrap();
+    let index = tokens.next_meaningful(doc_block_index);
     tokens.insert_at(
         index,
         vec![
@@ -202,7 +185,6 @@ pub(crate) fn create_doc_block(
     }
 }
 
-/// `DocBlockAnnotationTrait::updateDocBlockIfNeeded`, with `makeDocBlockMultiLineIfNeeded` and `addAnnotation`.
 fn update_doc_block_if_needed(
     tokens: &mut Tokens,
     doc_block_index: usize,
@@ -246,7 +228,6 @@ fn update_doc_block_if_needed(
     tokens.set(doc_block_index, Token::new(T_DOC_COMMENT, lines.concat()));
 }
 
-/// `DocBlockAnnotationTrait::isPreventedByAttribute`.
 fn is_prevented_by_attribute(
     tokens: &Tokens,
     mut index: usize,
@@ -256,7 +237,7 @@ fn is_prevented_by_attribute(
         return false;
     }
     loop {
-        index = tokens.get_prev_meaningful_token(index).unwrap();
+        index = tokens.prev_meaningful(index);
         if !tokens[index].is_given_kind(&[T_FINAL, T_READONLY]) {
             break;
         }

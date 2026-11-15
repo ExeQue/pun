@@ -1,7 +1,3 @@
-//! WritingToReadOnlyPropertiesRule (`assign.propertyReadOnly`): writing a property that is not writable (a virtual
-//! property without a `set` hook, an `@property-read` tag). Level 0 and 1 run it with `checkThisOnly`, so only
-//! `$this->name` is checked.
-
 use mago_syntax::cst::*;
 use mago_word::word;
 
@@ -9,7 +5,6 @@ use super::super::Checker;
 use super::super::overriding_property::hook_names;
 use super::flow::unparen;
 
-/// The property fetches an assignment writes (`$this->a = `, `$this->a .= `, `[$this->a] = `).
 pub(in super::super) fn assignment(c: &mut Checker, a: &Assignment) {
     targets(c, a.lhs);
 }
@@ -41,7 +36,7 @@ fn element(c: &mut Checker, el: &ArrayElement) {
 
 fn property(c: &mut Checker, p: &PropertyAccess) {
     let Expression::Variable(Variable::Direct(v)) = p.object else {
-        return; // ponytail: checkThisOnly is off from level 2, which needs every expression's type
+        return;
     };
     let ClassLikeMemberSelector::Identifier(name) = &p.property else {
         return;

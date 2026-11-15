@@ -1,45 +1,43 @@
-//! The root package's `scripts`, run for an event as Composer runs them: `@php x`, `@putenv K=V`, `@other-script`,
-//! a `Class::method` callback (called through a small PHP runner with the parts of Composer's event that scripts
-//! use), or a shell command with `vendor/bin` first on `PATH`.
-
 #![expect(
     clippy::print_stderr,
     reason = "each script is echoed before it runs, as Composer echoes it"
 )]
 
-use anyhow::{Context, Result, bail};
+use crate::Env;
+use crate::error::{Context, Result, bail};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub struct Runner<'a> {
-    pub base: &'a Path,
-    pub vendor: &'a str,
-    pub bin_dir: &'a str,
-    pub manifest: &'a Map<String, Value>,
+pub struct Runner {
+    pub base: PathBuf,
+    pub vendor: String,
+    pub bin_dir: String,
+    pub manifest: Map<String, Value>,
     pub dev_mode: bool,
-    /// `PHP_BINARY`, else `php` on `PATH`.
     pub php: String,
+    path: String,
     env: Vec<(String, Option<String>)>,
     stack: Vec<String>,
 }
 
-impl<'a> Runner<'a> {
+impl Runner {
     pub fn new(
-        base: &'a Path,
-        vendor: &'a str,
-        bin_dir: &'a str,
-        manifest: &'a Map<String, Value>,
+        base: &Path,
+        vendor: &str,
+        bin_dir: &str,
+        manifest: &Map<String, Value>,
         dev_mode: bool,
+        env: Env,
     ) -> Self {
-        let php = php_binary(std::env::var("PHP_BINARY").ok());
         Runner {
-            base,
-            vendor,
-            bin_dir,
-            manifest,
+            base: base.to_path_buf(),
+            vendor: vendor.to_string(),
+            bin_dir: bin_dir.to_string(),
+            manifest: manifest.clone(),
             dev_mode,
-            php,
+            php: php_binary(env("PHP_BINARY")),
+            path: env("PATH").unwrap_or_default(),
             env: vec![],
             stack: vec![],
         }
@@ -56,7 +54,6 @@ impl<'a> Runner<'a> {
         }
     }
 
-    /// Runs every listener of `event`; a failing one stops the run with its exit code in the error.
     pub fn dispatch(&mut self, event: &str, args: &[String]) -> Result<()> {
         if self.stack.iter().any(|e| e == event) {
             bail!("Circular call to script handler '{event}' detected");
@@ -73,14 +70,15 @@ impl<'a> Runner<'a> {
     }
 
     fn run(&mut self, event: &str, callable: &str, args: &[String]) -> Result<()> {
-        let (callable, args) = match callable.contains("@no_additional_args") {
-            true => (
+        let (callable, args) = if callable.contains("@no_additional_args") {
+            (
                 callable
                     .replace(" @no_additional_args", "")
                     .replace("@no_additional_args", ""),
                 &[][..],
-            ),
-            false => (callable.to_string(), args),
+            )
+        } else {
+            (callable.to_string(), args)
         };
         if callable.is_empty() {
             return Ok(());
@@ -155,7 +153,7 @@ impl<'a> Runner<'a> {
         std::fs::write(&runner, include_str!("../assets/script-callback.php"))?;
         let status = (self.command(&self.php.clone()))
             .arg(&runner)
-            .arg(self.vendor)
+            .arg(&self.vendor)
             .arg(event)
             .arg(if self.dev_mode { "1" } else { "0" })
             .arg(callable)
@@ -178,9 +176,9 @@ impl<'a> Runner<'a> {
 
     fn command(&self, program: &str) -> Command {
         let mut c = Command::new(program);
-        c.current_dir(self.base);
-        let path = std::env::var("PATH").unwrap_or_default();
-        if Path::new(self.bin_dir).is_dir() && !path.split(':').any(|p| p == self.bin_dir) {
+        c.current_dir(&self.base);
+        let path = &self.path;
+        if Path::new(&self.bin_dir).is_dir() && !path.split(':').any(|p| p == self.bin_dir) {
             c.env("PATH", format!("{}:{path}", self.bin_dir));
         }
         c.env("COMPOSER_DEV_MODE", if self.dev_mode { "1" } else { "0" });
@@ -195,18 +193,15 @@ impl<'a> Runner<'a> {
     }
 }
 
-/// The PHP that `@php` and callbacks run: `PHP_BINARY` when set, else `php` from PATH.
 fn php_binary(env: Option<String>) -> String {
     env.filter(|p| !p.is_empty())
         .unwrap_or_else(|| "php".into())
 }
 
-/// `ProcessExecutor::escape` on a POSIX shell: always single-quoted.
 fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
-/// Splits on whitespace, keeping quoted parts together and unquoting them.
 fn split_args(command: &str) -> Vec<String> {
     let (mut out, mut word, mut quote, mut started) = (vec![], String::new(), None::<char>, false);
     for ch in command.chars() {
@@ -247,20 +242,23 @@ mod tests {
         d
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn run(dir: &Path, scripts: Value, event: &str) -> Result<()> {
         let manifest = json!({"scripts": scripts}).as_object().unwrap().clone();
         let vendor = dir.join("vendor").to_string_lossy().into_owned();
         let bin = dir.join("vendor/bin").to_string_lossy().into_owned();
-        Runner::new(dir, &vendor, &bin, &manifest, true).dispatch(event, &[])
+        Runner::new(dir, &vendor, &bin, &manifest, true, &|k| {
+            std::env::var(k).ok()
+        })
+        .dispatch(event, &[])
     }
 
-    /// What Composer 2.11.2 does with the same scripts (`composer run-script a` in a copy): `@putenv` sets the
-    /// environment of later commands, `@b 'x y'` runs script b with that argument appended, `vendor/bin` comes first
-    /// on PATH, and COMPOSER_DEV_MODE is 1.
     #[test]
     fn commands_references_and_environment() {
         let d = project("run");
-        // `composer` on PATH stands in for Composer, which `@composer` runs.
         for (bin, line) in [("tool", "tool"), ("composer", "composer $*")] {
             std::fs::write(
                 d.join("vendor/bin").join(bin),
@@ -285,9 +283,6 @@ mod tests {
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// Composer 2.11.2's `composer run-script a -- one "two words"` on the same scripts: a reference passes the
-    /// arguments where `@additional_args` stands (or at the end), a command takes them there too, `@no_additional_args`
-    /// drops them, `@php` runs PHP, and a reference to a script that doesn't exist (or to none) does nothing.
     #[test]
     fn arguments_like_composer() {
         let d = project("args");
@@ -300,9 +295,11 @@ mod tests {
         let vendor = d.join("vendor").to_string_lossy().into_owned();
         let bin = d.join("vendor/bin").to_string_lossy().into_owned();
         let args = ["one".to_string(), "two words".to_string()];
-        Runner::new(&d, &vendor, &bin, &manifest, true)
-            .dispatch("a", &args)
-            .unwrap();
+        Runner::new(&d, &vendor, &bin, &manifest, true, &|k| {
+            std::env::var(k).ok()
+        })
+        .dispatch("a", &args)
+        .unwrap();
         assert_eq!(
             std::fs::read_to_string(d.join("out.txt")).unwrap(),
             "b one two words extra\nc one two words\nn\nphp\n"
@@ -336,13 +333,11 @@ mod tests {
             error(json!({"a": "@b", "b": "exit 4"}), "a"),
             "Script @b was called via a: Script exit 4 handling the b event returned with error code 4"
         );
-        // An event without scripts, and an empty one, do nothing.
         run(&d, json!({"a": ""}), "a").unwrap();
         run(&d, json!({}), "post-install-cmd").unwrap();
         std::fs::remove_dir_all(&d).unwrap();
     }
 
-    /// A `Class::method` callback gets an event with Composer's accessors; returning false fails it with code 1.
     #[test]
     fn php_callbacks() {
         let d = project("callback");
@@ -369,7 +364,6 @@ mod tests {
             error,
             "Script Acme\\Hooks::fail handling the x event returned with error code 1"
         );
-        // A class that isn't there is reported and skipped, as Composer skips it.
         run(&d, json!({"x": "Acme\\Missing::run"}), "x").unwrap();
         std::fs::remove_dir_all(&d).unwrap();
     }

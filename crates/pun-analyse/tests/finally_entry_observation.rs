@@ -1,5 +1,3 @@
-//! Finally inputs are actual branch ends, throw points, and abrupt-exit scopes.
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
@@ -123,7 +121,7 @@ fn default_frontend_preserves_complete_ordinary_diagnostics() {
         ],
         Vec::new(),
     );
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let result = pun_analyse::analyse_project(&project).unwrap();
     let actual: Vec<_> = result
         .errors

@@ -1,6 +1,3 @@
-//! AccessPropertiesCheck and AccessStaticPropertiesCheck on expression receivers eligible under `checkThisOnly`.
-//! Non-nullsafe fetches on `$this` stay with property_access.rs.
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -18,7 +15,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "staticProperty.protected",
 ];
 
-/// The class a receiver type names, for its properties.
 fn class_of(t: &Type) -> Option<&str> {
     match t {
         Type::Object(n, _, _) | Type::Static(n, _) | Type::This(n) | Type::EnumCase(n, _) => {
@@ -30,7 +26,6 @@ fn class_of(t: &Type) -> Option<&str> {
 }
 
 impl<'a> Checker<'a, '_> {
-    /// The classes of `k` and its ancestors and traits.
     fn lineage(
         &self,
         k: &'a ClassLikeMetadata,
@@ -42,7 +37,6 @@ impl<'a> Checker<'a, '_> {
             .filter_map(|n| self.codebase.get_class_like(n.as_bytes()))
     }
 
-    /// The `@mixin` types of `k` and its lineage.
     pub(super) fn mixins(&self, k: &'a ClassLikeMetadata) -> Vec<Type> {
         self.lineage(k)
             .flat_map(|a| a.mixins.iter())
@@ -50,8 +44,6 @@ impl<'a> Checker<'a, '_> {
             .collect()
     }
 
-    /// The classes `@phpstan-require-extends` and `@phpstan-require-implements` of `k` (and its lineage) name, whose
-    /// members it has (RequireExtendsPropertiesClassReflectionExtension, RequireExtendsMethodsClassReflectionExtension).
     pub(super) fn required(&self, k: &'a ClassLikeMetadata) -> Vec<&'a ClassLikeMetadata> {
         self.lineage(k)
             .flat_map(|a| a.require_extends.iter().chain(a.require_implements.iter()))
@@ -59,9 +51,7 @@ impl<'a> Checker<'a, '_> {
             .collect()
     }
 
-    /// [`Self::has_property()`] of class `n`.
     fn class_has_property(&self, n: &str, property: &[u8], is_static: bool) -> Tri {
-        // an unknown class is findTypeToCheck()'s ErrorType, never checked
         let Lookup::Found(k) = self.class_like(n) else {
             return Tri::Yes;
         };
@@ -70,13 +60,10 @@ impl<'a> Checker<'a, '_> {
         } else {
             property_access::has_instance_property(self, k, property)
         };
-        // SimpleXMLElementProperties: every name is a child element
         let xml = std::iter::once(&k.name)
             .chain(k.all_parent_classes.iter())
             .any(|n| n.as_bytes().eq_ignore_ascii_case(b"SimpleXMLElement"));
-        // the class reflection extensions answer instance properties only
         let extended = || {
-            // MixinPropertiesClassReflectionExtension; ponytail: a mixin other than a class (`@mixin T`) is not resolved
             self.mixins(k)
                 .iter()
                 .any(|t| !matches!(t, Type::Object(..)) || self.mixin_has_property(t, property))
@@ -85,7 +72,7 @@ impl<'a> Checker<'a, '_> {
                     .required(k)
                     .iter()
                     .any(|r| property_access::has_instance_property(self, r, property))
-                || super::super::larastan::has_model_property(self, k, property)
+                || (self.class_reflection_extensions()).any(|e| e.has_property(self, k, property))
         };
         if has || !is_static && extended() {
             return Tri::Yes;
@@ -100,8 +87,6 @@ impl<'a> Checker<'a, '_> {
         }
     }
 
-    /// MixinPropertiesClassReflectionExtension::findProperty(): a mixin type already being asked for the same property
-    /// (a mixin of the class itself, or of a descendant) is skipped.
     fn mixin_has_property(&self, t: &Type, property: &[u8]) -> bool {
         thread_local! {
             static IN_PROCESS: std::cell::RefCell<std::collections::HashSet<(String, Vec<u8>)>> = Default::default();
@@ -118,16 +103,13 @@ impl<'a> Checker<'a, '_> {
         has
     }
 
-    /// `Type::hasInstanceProperty()` (`is_static` false) or `hasStaticProperty()`; `property` has its `$`.
     pub(in super::super) fn has_property(&self, t: &Type, property: &[u8], is_static: bool) -> Tri {
         t.query_members(&|t| match t {
-            // (an object shape has no static properties)
             Type::ObjectShape(props) => match props.iter().find(|(n, ..)| !is_static && n.as_bytes() == &property[1..]) {
                 Some((_, _, optional)) => if *optional { Tri::Maybe } else { Tri::Yes },
                 None => Tri::No,
             },
             Type::ObjectWithoutClass | Type::Iterable(..) | Type::Callable(_) => Tri::Maybe,
-            // HigherOrderCollectionProxyPropertyExtension (HigherOrderCollectionProxyHelper::hasPropertyOrMethod())
             Type::Object(n, args, _)
                 if !is_static
                     && self.larastan.is_some()
@@ -142,8 +124,6 @@ impl<'a> Checker<'a, '_> {
         })
     }
 
-    /// The declaring class and visibility of the instance property a type has.
-    // ponytail: a union's UnionTypePropertyReflection is its first member's property
     fn property_of(
         &self,
         t: &Type,
@@ -166,8 +146,6 @@ impl<'a> Checker<'a, '_> {
     }
 }
 
-/// AccessPropertiesCheck::processSingleProperty() on `$object->name` (`nullsafe` for `?->`, `allowed` when an
-/// undefined expression is allowed there).
 pub(in super::super) fn property_fetch(
     c: &mut Checker,
     span: Span,
@@ -180,7 +158,7 @@ pub(in super::super) fn property_fetch(
         return;
     }
     let ClassLikeMemberSelector::Identifier(id) = selector else {
-        return; // ponytail: a dynamic name's constant strings
+        return;
     };
     let name = String::from_utf8_lossy(id.value).into_owned();
     let property = format!("${name}");
@@ -219,7 +197,6 @@ pub(in super::super) fn property_fetch(
     }
     let has = c.has_property(&t, property, false);
     let has_static = c.has_property(&t, property, true);
-    // !checkDynamicProperties
     if has.maybe() && !has_static.yes() && allowed {
         return;
     }
@@ -283,7 +260,6 @@ pub(in super::super) fn property_fetch(
         );
         return;
     }
-    // ponytail: a write is checked as a read: asymmetric visibility (`private(set)`, `protected(set)`) is not
     let Some((declaring, visibility)) = c.property_of(&t, property) else {
         return;
     };
@@ -295,8 +271,6 @@ pub(in super::super) fn property_fetch(
     ) {
         return;
     }
-    // ClassReflection::getInstanceProperty(): a class allowing dynamic properties answers an unreadable native
-    // property with its `@property` tag
     let tagged = t.object_class_names().iter().any(|n| {
         matches!(c.class_like(n), Lookup::Found(k)
             if k.magic_property_ids.contains_key(&word(property)) && property_access::allows_dynamic_properties(c, k))
@@ -317,8 +291,6 @@ pub(in super::super) fn property_fetch(
     c.report(id.span(), &format!("property.{v}"), message, None);
 }
 
-/// The class expressions of static property fetches the check reads (`$x::$name`; names and keywords are
-/// property_access.rs's).
 pub(super) fn typed_class(class: &Expression, spans: &mut Vec<Span>) {
     let class = super::flow::unparen(class);
     if !matches!(
@@ -332,9 +304,6 @@ pub(super) fn typed_class(class: &Expression, spans: &mut Vec<Span>) {
     }
 }
 
-/// AccessStaticPropertiesCheck::processSingleProperty() on `$class::$name`. As for a named class (property_access.rs),
-/// no allowed-undefined context exempts it (oracle-checked: `isset($class::$x)` on `C|false` is reported).
-/// `property` has its `$` (a dynamic name is not checked).
 pub(in super::super) fn static_property_fetch(
     c: &mut Checker,
     p: &StaticPropertyAccess,
@@ -368,7 +337,6 @@ pub(in super::super) fn static_property_fetch(
         t => t.clone(),
     };
     let described = declared::with_classes(c, || for_describe.describe(Level::TypeOnly));
-    // TypeCombinator::remove($classType, new StringType())
     if let Type::Union(ts) = &t {
         t = pun_phpstan::types::union(
             ts.iter()

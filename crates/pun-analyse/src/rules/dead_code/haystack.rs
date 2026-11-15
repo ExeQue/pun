@@ -1,6 +1,3 @@
-//! ImpossibleInArrayHaystackFiniteTypesRule (level 4, `featureToggles.finiteTypesInHaystack`): a finite value in a
-//! constant array haystack of in_array(), array_search() or array_keys() that can never be the needle.
-
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
 use pun_phpstan::types::{ConstArray, Level, Tri, Type, is_super_type_of, recommended_level};
@@ -66,7 +63,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
             if finite_count(c, value) == 0 {
                 continue;
             }
-            // isAnotherValueOfNeedleType()
             let another = is_super_type_of(&value.generalize(), &needle).yes();
             let key = value.describe(Level::Precise);
             match dead.iter_mut().find(|d| d.0 == key) {
@@ -75,7 +71,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
             }
         }
     });
-    // A call no haystack value matches is ImpossibleCheckTypeFunctionCallRule's; array_search() has no such rule.
     if !any_possible_match && name == "in_array" {
         return;
     }
@@ -114,7 +109,6 @@ pub(in super::super) fn call(c: &mut Checker, call: &FunctionCall) {
     }
 }
 
-/// `count(getFiniteTypes())`, with ConstantArrayType's product of its values' finite types (at most 128).
 fn finite_count(c: &Checker, t: &Type) -> usize {
     let Type::ConstArray(a) = t else {
         return finite(c, t).len();
@@ -136,7 +130,6 @@ fn finite_count(c: &Checker, t: &Type) -> usize {
     count
 }
 
-/// An expression whose native type is its type: Mago's native lane does not observe literals and constants.
 pub(super) fn constant_expression(e: &Expression) -> bool {
     match super::super::types::flow::unparen(e) {
         Expression::Literal(_) | Expression::ConstantAccess(_) => true,
@@ -159,7 +152,6 @@ pub(super) fn constant_expression(e: &Expression) -> bool {
     }
 }
 
-/// `isTrue()`.
 fn is_true(t: &Type) -> Tri {
     match t {
         Type::ConstBool(b) => Tri::from(*b),
@@ -175,7 +167,6 @@ fn is_true(t: &Type) -> Tri {
     }
 }
 
-/// findCanNeverMatchReasons(): the reasons a value never matches, None when it can.
 fn never_matches(c: &Checker, needle: &Type, value: &Type, strict: Tri) -> Option<Vec<String>> {
     let decide = |(result, reasons): (Tri, Vec<String>)| result.no().then_some(reasons);
     if strict.yes() {
@@ -193,8 +184,6 @@ fn never_matches(c: &Checker, needle: &Type, value: &Type, strict: Tri) -> Optio
     Some(reasons)
 }
 
-/// InitializerExprTypeResolver::resolveIdenticalType(): yes for true, no for false, maybe for bool, with the
-/// isSuperTypeOf() reasons of a false result.
 fn identical(c: &Checker, left: &Type, right: &Type) -> (Tri, Vec<String>) {
     if matches!(left, Type::Never(_)) || matches!(right, Type::Never(_)) {
         return (Tri::No, Vec::new());
@@ -216,7 +205,6 @@ fn identical(c: &Checker, left: &Type, right: &Type) -> (Tri, Vec<String>) {
     (Tri::Maybe, Vec::new())
 }
 
-/// resolveEqualType().
 fn equal(c: &Checker, left: &Type, right: &Type) -> (Tri, Vec<String>) {
     if matches!(left, Type::Never(_)) || matches!(right, Type::Never(_)) {
         return (Tri::No, Vec::new());
@@ -230,7 +218,6 @@ fn equal(c: &Checker, left: &Type, right: &Type) -> (Tri, Vec<String>) {
     (loose(left, right), Vec::new())
 }
 
-/// MixedType::isSuperTypeOf()'s reason for a value its subtracted type already removed.
 fn super_reasons(a: &Type, b: &Type) -> Vec<String> {
     match a {
         Type::SubtractedMixed { excluded, .. } if is_super_type_of(excluded, b).yes() => {
@@ -244,7 +231,6 @@ fn super_reasons(a: &Type, b: &Type) -> Vec<String> {
     }
 }
 
-/// resolveConstantArrayTypeComparison().
 fn arrays(left: &ConstArray, right: &ConstArray, compare: &dyn Fn(&Type, &Type) -> Tri) -> Tri {
     let mut result = Tri::Yes;
     let mut remaining: Vec<usize> = (0..right.keys.len()).collect();

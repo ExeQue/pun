@@ -1,12 +1,3 @@
-//! `lint/types/add-param-type-array-any-all` and `lint/types/prefer-narrow-param-type`, ported from Rector 2.8.4's
-//! `AddArrayAnyAllClosureParamTypeRector` and `NarrowArrayAnyAllNullableParamTypeRector` (rules/TypeDeclaration/
-//! Rector/FuncCall): the first parameter of the closure or arrow function passed to `array_any()`/`array_all()` gets
-//! the array's item type when it has none; with `array_find()`/`array_find_key()` too, a nullable one (`?T`) is
-//! narrowed to an item type that cannot be `null`.
-//!
-//! A property's docblock union keeps its written order (`@var array<string, \Closure|string>`), and a constant
-//! array's values the order of its keys, as PHPStan has them.
-
 use mago_codex::ttype::atomic::TAtomic;
 use mago_syntax::cst::{Expression, FunctionLikeParameterList, Hint, Node, NodeKind};
 use pun_problem::Safety;
@@ -17,12 +8,11 @@ use super::param::{
     item_declaration, item_type, param_declaration_unsorted,
 };
 use crate::rules::laravel::get_arg;
-use crate::rules::lint_b_helpers::value;
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::arguments::value;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
-/// `PhpVersionFeature::ARRAY_ANY`.
 const ARRAY_ANY: u32 = 80400;
 
 pub struct AddParamTypeArrayAnyAll;
@@ -34,8 +24,8 @@ impl Rule for AddParamTypeArrayAnyAll {
         "lint/types/add-param-type-array-any-all"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ARRAY_ANY
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ARRAY_ANY)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -65,8 +55,8 @@ impl Rule for PreferNarrowParamType {
         "lint/types/prefer-narrow-param-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ARRAY_ANY
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ARRAY_ANY)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -91,7 +81,6 @@ impl Rule for PreferNarrowParamType {
     }
 }
 
-/// The shared `refactor()`: `narrow` for the nullable parameter of `NarrowArrayAnyAllNullableParamTypeRector`.
 fn visit(
     node: Node<'_, '_>,
     ancestors: &[Node<'_, '_>],
@@ -134,7 +123,6 @@ fn visit(
         return;
     }
     let declaration = match shape {
-        // `ConstantArrayType::getItemType()`, PHPStan's union of the values in the order their keys were set
         ArrayShape::Constant(values) => {
             let Some(types) = constant_values(&facts, ancestors, value(array), &values) else {
                 return;
@@ -142,11 +130,11 @@ fn visit(
             param_declaration_unsorted(
                 &constant_values_union(&types),
                 &facts.codebase,
-                ctx.php_version,
+                ctx.php_version.id(),
             )
         }
         ArrayShape::General(_) => {
-            item_declaration(&facts, ancestors, value(array), &item, ctx.php_version)
+            item_declaration(&facts, ancestors, value(array), &item, ctx.php_version.id())
         }
     };
     let Some(declaration) = declaration else {
@@ -164,7 +152,6 @@ fn visit(
     ));
 }
 
-/// The parameters of a closure or an arrow function.
 pub(crate) fn closure_params<'a>(
     expr: &'a Expression<'a>,
 ) -> Option<&'a FunctionLikeParameterList<'a>> {

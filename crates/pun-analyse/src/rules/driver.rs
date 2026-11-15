@@ -1,6 +1,3 @@
-//! The per-file driver: one [`Checker`] walk of each analysed file, then of each trait its classes use in the
-//! class's context, with the `@phpstan-ignore*` comments applied.
-
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -26,9 +23,7 @@ use crate::Project;
 use crate::codebase::{Sources, parse};
 use crate::relative_path::RelativePath;
 
-/// The reflection data Pun ships beside pun-phpstan's symbols, read once per run.
 pub(crate) struct Natives {
-    /// The built-in classes at the project's PHP version, by lowercase name (data/native-methods.json).
     pub(super) classes: HashMap<String, super::overriding::NativeClass>,
     pub(super) throws: super::types::throw_points::ThrowData,
     pub(super) curl_options: Vec<(u32, HashMap<i64, String>)>,
@@ -54,143 +49,86 @@ impl Natives {
 }
 
 bitflags::bitflags! {
-    /// The project's switches the rules read.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub(crate) struct Switches: u64 {
         const REPORT_IGNORES_WITHOUT_COMMENTS = 1 << 0;
         const REPORT_UNMATCHED_IGNORES = 1 << 1;
-        /// PHPStan's `checkClassCaseSensitivity` parameter: off at level 0 (conf/config.neon), on from level 2
-        /// (config.level2.neon). The rules that pass it to ClassNameCheck (FunctionDefinitionCheck,
-        /// ExistingClassInInstanceOfRule, CaughtExceptionExistenceRule, ExistingClassesInPropertiesRule) report
-        /// `*.nameCase` only with it on. Set from [`ProjectOptions::CHECK_CLASS_CASE_SENSITIVITY`](crate::ProjectOptions::CHECK_CLASS_CASE_SENSITIVITY), which the presets will set.
         const CHECK_CLASS_CASE_SENSITIVITY = 1 << 2;
-        /// [`ProjectOptions::CHECK_INTERNAL_CLASS_CASE_SENSITIVITY`](crate::ProjectOptions::CHECK_INTERNAL_CLASS_CASE_SENSITIVITY).
         const CHECK_INTERNAL_CLASS_CASE_SENSITIVITY = 1 << 3;
-        /// [`ProjectOptions::CHECK_IMPORTED_CLASS_NAME_CASE`](crate::ProjectOptions::CHECK_IMPORTED_CLASS_NAME_CASE).
         const CHECK_IMPORTED_CLASS_NAME_CASE = 1 << 4;
-        /// [`ProjectOptions::CHECK_FUNCTION_NAME_CASE`](crate::ProjectOptions::CHECK_FUNCTION_NAME_CASE).
         const CHECK_FUNCTION_NAME_CASE = 1 << 5;
         const CHECK_ARGUMENT_TYPES = 1 << 6;
         const CHECK_ARGUMENTS_PASSED_BY_REFERENCE = 1 << 7;
         const CHECK_THIS_ONLY = 1 << 8;
-        /// [`Project::check_advanced_isset`], otherwise config.level4.neon's default.
         const CHECK_ADVANCED_ISSET = 1 << 9;
-        /// [`Project::check_explicit_mixed`] and [`Project::check_implicit_mixed`], otherwise the level's defaults.
         const CHECK_EXPLICIT_MIXED = 1 << 10;
         const CHECK_IMPLICIT_MIXED = 1 << 11;
-        /// [`Project::treat_php_doc_types_as_certain`], otherwise config.neon's true default (IssetCheck only).
         const TREAT_PHP_DOC_TYPES_AS_CERTAIN = 1 << 12;
-        /// [`ProjectOptions::CHECK_GENERIC_ITERABLE_CLASSES`](crate::ProjectOptions::CHECK_GENERIC_ITERABLE_CLASSES).
         const GENERIC_ITERABLE_CLASSES = 1 << 13;
-        /// [`ProjectOptions::NEW_STATIC_IN_ABSTRACT_CLASS_STATIC_METHOD`](crate::ProjectOptions::NEW_STATIC_IN_ABSTRACT_CLASS_STATIC_METHOD).
         const NEW_STATIC_IN_ABSTRACT_CLASS_STATIC_METHOD = 1 << 14;
-        /// `featureToggles.internalTag`: RestrictedInternalFunctionUsageExtension & co. (config.level0.neon).
         const INTERNAL_TAG = 1 << 15;
-        /// [`ProjectOptions::PRECISE_UNUSED_PARAMETER_LINE`](crate::ProjectOptions::PRECISE_UNUSED_PARAMETER_LINE).
         const PRECISE_UNUSED_PARAMETER_LINE = 1 << 16;
-        /// The method and property extensions of `featureToggles.internalTag`, at level 2 (config.level2.neon).
         const INTERNAL_MEMBERS = 1 << 17;
-        /// [`ProjectOptions::DEPRECATION_RULES`](crate::ProjectOptions::DEPRECATION_RULES) and [`ProjectOptions::BLEEDING_EDGE`](crate::ProjectOptions::BLEEDING_EDGE).
         const DEPRECATIONS = 1 << 18;
         const BLEEDING_EDGE = 1 << 19;
-        /// UnusedLabelRule: level 4 with [`ProjectOptions::UNUSED_LABEL`](crate::ProjectOptions::UNUSED_LABEL).
         const UNUSED_LABEL = 1 << 20;
-        /// [`ProjectOptions::SWITCH_CONDITION`](crate::ProjectOptions::SWITCH_CONDITION).
         const SWITCH_CONDITION = 1 << 21;
-        /// [`ProjectOptions::SORT_WITHOUT_EFFECT`](crate::ProjectOptions::SORT_WITHOUT_EFFECT).
         const SORT_WITHOUT_EFFECT = 1 << 22;
-        /// [`ProjectOptions::CHECK_NON_STRINGABLE_DYNAMIC_ACCESS`](crate::ProjectOptions::CHECK_NON_STRINGABLE_DYNAMIC_ACCESS).
         const NON_STRINGABLE_NAMES = 1 << 23;
         const CLI_ARGUMENTS_VARIABLES_REGISTERED = 1 << 24;
         const CHECK_MAYBE_UNDEFINED_VARIABLES = 1 << 25;
         const POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS = 1 << 26;
         const POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH = 1 << 27;
         const POLLUTE_SCOPE_WITH_BLOCK = 1 << 28;
-        /// [`ProjectOptions::REPORT_METHOD_PURITY_OVERRIDE`](crate::ProjectOptions::REPORT_METHOD_PURITY_OVERRIDE).
         const METHOD_PURITY_OVERRIDE = 1 << 29;
-        /// [`ProjectOptions::CHECK_UNINITIALIZED_PROPERTIES`](crate::ProjectOptions::CHECK_UNINITIALIZED_PROPERTIES).
         const UNINITIALIZED_PROPERTIES = 1 << 30;
-        /// [`ProjectOptions::CHECK_MISSING_CALLABLE_SIGNATURE`](crate::ProjectOptions::CHECK_MISSING_CALLABLE_SIGNATURE).
         const MISSING_CALLABLE_SIGNATURE = 1 << 31;
-        /// [`ProjectOptions::UNRESOLVED_TEMPLATE_ARGUMENTS`](crate::ProjectOptions::UNRESOLVED_TEMPLATE_ARGUMENTS).
         const TEMPLATE_ARGUMENTS = 1 << 32;
     }
 }
 
-/// What the rules read of the project (its `ignoreErrors` stay on the calling thread).
 pub(crate) struct Checks {
     switches: Switches,
     natives: Natives,
-    /// The declarations a stub patches, by span, with the stub declaration's span.
     patched_docs: HashMap<Span, Span>,
-    /// The classes the rules built, shared by every file.
     classes: super::declared::ClassCache,
     php_version: u32,
-    /// [`Project::level`].
     pub(super) level: u8,
-    /// [`Project::relative_path`].
     relative_path: RelativePath,
-    /// [`Project::larastan`].
     larastan: Option<super::Larastan>,
-    /// The member names the restricted-usage extensions can report (whose expressions get typed), when one runs.
     internal: Option<super::internal::Names>,
-    /// [`Project::type_aliases`].
     pub(super) type_aliases: Vec<(String, String)>,
-    /// [`Project::reported`].
     reported: Option<crate::project::Reported>,
-    /// [`Project::method_rules`], independent of identifier filtering.
     method_rules: crate::MethodRules,
-    /// [`Project::strict_rules`].
     pub(super) strict: crate::StrictRules,
-    /// [`Project::exceptions`].
     pub(super) exceptions: crate::Exceptions,
-    /// [`Project::too_wide`].
     too_wide: crate::TooWide,
-    /// RequireFileExistsRule's path and feature-toggle settings.
     include_file: super::include_file::Settings,
-    /// The rules registered by a feature toggle at their level.
     toggled: Toggled,
-    /// Each file's function-likes (in the codex's iteration order), by span.
     pub(super) function_likes: HashMap<FileId, Vec<(Span, SymbolIdentifier)>>,
 }
 
-/// Rules that config.levelN.neon registers with a feature toggle (all on with bleedingEdge).
 #[derive(Default)]
 pub(super) struct Toggled {
     pub(super) on: Toggles,
-    /// ValueAssignedToGlobalConstantRule and ValueAssignedToDefineRule: level 2 with
-    /// `featureToggles.checkDynamicConstantNameValues`, over `dynamicConstantNames`' typed entries.
     pub(super) constant_types: Option<Vec<(String, String)>>,
-    /// PrintfParameterTypeRule: level 5 with `featureToggles.checkPrintfParameterTypes`, then whether
-    /// `checkStrictPrintfPlaceholderTypes` is on.
     pub(super) printf_types: Option<bool>,
 }
 
 bitflags::bitflags! {
-    /// The feature-toggled rules that are on.
     #[derive(Clone, Copy, Default)]
     pub(super) struct Toggles: u8 {
-        /// AssignToByRefExprFromForeachRule: level 1 with `featureToggles.assignToByRefForeachExpr`.
         const BY_REF_FOREACH = 1;
-        /// DateIntervalInstantiationRule: level 5 with `featureToggles.checkDateIntervalConstructor`.
         const DATE_INTERVAL = 1 << 1;
-        /// ParameterCastableToNumberRule: level 5 with `featureToggles.checkParameterCastableToNumberFunctions`.
         const CASTABLE_TO_NUMBER = 1 << 2;
-        /// ImpossibleInArrayHaystackFiniteTypesRule: level 4 with `featureToggles.finiteTypesInHaystack`.
         const FINITE_HAYSTACK = 1 << 3;
-        /// UnusedVariableRule: level 4 with `featureToggles.unusedVariable`.
         const UNUSED_VARIABLE = 1 << 4;
-        /// Unused{Function,Method}ParametersRule: level 4 with `featureToggles.unusedParameters`.
         const UNUSED_PARAMETERS = 1 << 5;
-        /// `featureToggles.unusedParameters` itself: the closure use and constructor parameter flow findings.
         const UNUSED_FLOW = 1 << 6;
-        /// InstantiationRule's `featureToggles.newOnNonObject` check.
         const NEW_ON_NON_OBJECT = 1 << 7;
     }
 }
 
-/// Each declaration a stub with a PHPDoc patches (a method, a function, a class-like) with the stub declaration's span:
-/// PHPStan reads a stub's PHPDoc in place of the original's (StubPhpDocProvider).
 fn patched_docs(codebase: &CodebaseMetadata) -> HashMap<Span, Span> {
     let functions = codebase
         .patch_function_likes
@@ -209,15 +147,19 @@ fn patched_docs(codebase: &CodebaseMetadata) -> HashMap<Span, Span> {
 }
 
 impl Checks {
-    /// Drops the errors of identifiers the run doesn't report.
     pub(crate) fn keep_reported(&self, errors: &mut Vec<Error>) {
         if let Some(reported) = &self.reported {
             errors.retain(|e| {
                 let id = e.identifier.as_deref().unwrap_or_default();
-                // the collectors' entries feed `larastan_finish`, which removes them
                 id == "phpstan.parse" || id.starts_with("larastan.collected.") || reported(id)
             });
         }
+    }
+
+    fn extensions(&self) -> impl Iterator<Item = &dyn crate::AnalyseExtension> {
+        self.larastan
+            .iter()
+            .map(|l| l as &dyn crate::AnalyseExtension)
     }
 }
 
@@ -236,7 +178,7 @@ impl Checks {
         }
         let mut larastan = project.larastan.clone();
         if let Some(l) = &mut larastan {
-            l.load(project, codebase);
+            crate::AnalyseExtension::load(l, project, codebase);
         }
         let mut switches = Switches::empty();
         switches.set(
@@ -425,9 +367,9 @@ impl Checks {
         );
         Checks {
             switches,
-            natives: Natives::load(project.php_version),
+            natives: Natives::load(project.php_version.id()),
             level: project.level,
-            php_version: project.php_version,
+            php_version: project.php_version.id(),
             relative_path: project.relative_path.clone(),
             larastan,
             internal: (internal_members
@@ -437,7 +379,7 @@ impl Checks {
             .then(|| {
                 super::internal::Names::of(
                     codebase,
-                    project.php_version,
+                    project.php_version.id(),
                     internal_members,
                     project
                         .options
@@ -541,16 +483,13 @@ impl Checks {
     }
 }
 
-/// `use T { ... }` in class `class`: the aliases with a new name that apply to T (`foo as bar`, `T::foo as bar`).
 pub(super) struct TraitUse {
     pub(super) class: String,
     pub(super) trait_name: String,
     pub(super) renames: HashMap<String, String>,
-    /// The `PHP_VERSION_ID` guards at the `use`: the trait is analysed in that scope.
     pub(super) php_versions: Vec<super::scope::Guard>,
 }
 
-/// A checker for one walk of `file`.
 fn checker<'a, 'arena>(
     arena: &'arena LocalArena,
     file: &'a File,
@@ -571,7 +510,10 @@ fn checker<'a, 'arena>(
         .function_likes
         .get(&file.id)
         .map_or(&[][..], Vec::as_slice);
-    let mut typed = super::larastan::typed_expressions(project.larastan.as_ref(), names, program);
+    let extensions: Vec<_> = project.extensions().collect();
+    let mut typed: Vec<_> = (extensions.iter())
+        .flat_map(|e| e.typed_expressions(names, program))
+        .collect();
     typed.extend(super::internal::typed_expressions(
         project.internal.as_ref(),
         program,
@@ -620,36 +562,25 @@ fn checker<'a, 'arena>(
                 .checks
                 .contains(crate::ExceptionChecks::MISSING_CHECKED_EXCEPTION_IN_THROWS),
     ));
-    let (include_typed, include_state) = super::include_file::prepare(
+    let run = super::infer::Run {
         arena,
         file,
         program,
         names,
         codebase,
         php_version,
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-        &project.include_file,
-        &facts.comments,
+        switches: project.switches,
+        comments: &facts.comments,
         functions,
-    );
+    };
+    let (include_typed, include_state) = super::include_file::prepare(&run, &project.include_file);
     typed.extend(include_typed);
-    let mut variables = super::variables::Observations::default();
     let calls = if project.method_rules.call_methods {
         super::named_argument::requests(program)
     } else {
         Vec::new()
     };
-    let mut variable_writes = HashMap::new();
-    let mut property_initializations = HashMap::new();
-    let (
+    let super::infer::Inferred {
         mut types,
         defined,
         origins,
@@ -659,51 +590,21 @@ fn checker<'a, 'arena>(
         native_types,
         nullsafe_method_receiver_types,
         property_offset_writes,
-    ) = infer(
-        arena,
-        file,
-        program,
-        names,
-        codebase,
-        php_version,
-        project.level,
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-        typed,
-        calls,
-        &mut variables,
-        &mut variable_writes,
-        &mut property_initializations,
-        project.larastan.as_ref(),
-        trait_class,
-        &facts.comments,
-        functions,
-        project.switches.contains(Switches::TEMPLATE_ARGUMENTS),
+        variables,
+        variable_writes,
+        property_initializations,
+    } = infer(
+        &run,
+        super::infer::Request {
+            level: project.level,
+            extra: typed,
+            calls,
+            extensions: &extensions,
+            trait_class,
+        },
     );
     if project.level >= 4 {
-        let (subjects, unknown) = super::dead_code::match_subject_types(
-            file,
-            program,
-            codebase,
-            php_version,
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-            functions,
-        );
+        let (subjects, unknown) = super::dead_code::match_subject_types(&run);
         types.extend(subjects);
         for span in unknown {
             types.remove(&span);
@@ -787,9 +688,6 @@ fn checker<'a, 'arena>(
     }
 }
 
-/// The file's errors after its `@phpstan-ignore*` comments (LocalIgnoresProcessor), with the unmatched ones, and
-/// the errors of the traits its classes use, analysed in each class's context. `files` finds a symbol's file. Also
-/// returns how many locally ignored errors PHPStan could fix (`getFixableIgnoredErrors()`).
 pub(crate) fn check_file(
     path: &Path,
     codebase: &CodebaseMetadata,
@@ -797,7 +695,6 @@ pub(crate) fn check_file(
     files: &HashMap<FileId, PathBuf>,
     sources: &Sources,
 ) -> (Vec<Error>, usize) {
-    // the scan read every analysed file it could
     let Some(file) = sources.get(path) else {
         return (Vec::new(), 0);
     };
@@ -856,7 +753,6 @@ pub(crate) fn check_file(
         .into_iter()
         .map(TraitWalk::Enter)
         .collect();
-    // TraitUseHandler::processTraitUse() guards only the active path: another use can have different aliases.
     let mut active = HashSet::new();
     while let Some(step) = pending.pop() {
         let u = match step {
@@ -880,10 +776,6 @@ pub(crate) fn check_file(
     (out, fixable_ignored)
 }
 
-/// NodeScopeResolver::processTraitUse() and InTraitNode: the trait of `u` walked in the context of its class
-/// (declared in `class_file`), its errors labelled `T.php (in context of class C)` and matched against the trait's
-/// own `@phpstan-ignore` comments. Also returns the traits it uses. Only a trait in an analysed file is walked: one
-/// PHPStan only scans (scanDirectories, vendor) reports nothing.
 fn in_trait_context(
     class_file: &str,
     u: &TraitUse,
@@ -899,7 +791,6 @@ fn in_trait_context(
     else {
         return (Vec::new(), Vec::new(), 0);
     };
-    // the analysed files are the ones the scan kept the sources of
     let Some(file) = files
         .get(&t.span.file_id)
         .and_then(|p| sources.get(p).cloned())
@@ -922,7 +813,6 @@ fn in_trait_context(
     let display = codebase
         .get_class_like(class.as_bytes())
         .map_or_else(|| class.to_string(), |k| checker.display(k));
-    // getFileDescription(): an anonymous class's name stands alone
     let context = if class.starts_with("{anonymous-class:") {
         display
     } else {
@@ -956,15 +846,14 @@ fn in_trait_context(
     )
 }
 
-/// Walk a file with the `typeAliases` parameter and Larastan's type node extensions in effect.
 fn walk<'arena>(
     checker: &mut super::Checker<'_, 'arena>,
     program: &'arena Program<'arena>,
     project: &Checks,
 ) {
-    let (codebase, larastan) = (checker.codebase, checker.larastan);
+    let codebase = checker.codebase;
     let nodes = |name: &str, args: &[pun_phpstan::types::Type]| {
-        larastan.and_then(|l| super::larastan::type_node(codebase, l, name, args))
+        (project.extensions()).find_map(|e| e.type_node(codebase, name, args))
     };
     pun_phpstan::resolve::with_type_aliases(&project.type_aliases, || {
         pun_phpstan::resolve::with_type_nodes(&nodes, || checker.walk_program(program, &mut ()));

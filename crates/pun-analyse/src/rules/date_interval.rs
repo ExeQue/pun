@@ -1,7 +1,3 @@
-//! DateIntervalInstantiationRule (level 5, `featureToggles.checkDateIntervalConstructor`): `new DateInterval()` with
-//! a constant string the constructor rejects. PHPStan runs the constructor; this ports what it runs, PHP 8.5's
-//! `date_interval_initialize()` over timelib 2022.17's `timelib_strtointerval()` (parse_iso_intervals.re).
-
 use mago_syntax::cst::*;
 
 use super::Checker;
@@ -39,7 +35,6 @@ pub(super) fn instantiation(c: &mut Checker, new: &Instantiation) {
     }
 }
 
-/// `date_interval_initialize()`: the exception message of `new DateInterval($format)`, whose `%s` stops at a NUL.
 fn construct(format: &[u8]) -> Result<(), String> {
     let printed = || {
         String::from_utf8_lossy(format.split(|b| *b == 0).next().unwrap_or_default()).into_owned()
@@ -54,7 +49,6 @@ fn construct(format: &[u8]) -> Result<(), String> {
     }
 }
 
-/// What `timelib_strtointerval()` found: an error, a period, a begin and an end date.
 #[derive(Default)]
 struct Parsed {
     error: bool,
@@ -64,16 +58,13 @@ struct Parsed {
     date: bool,
 }
 
-/// C's `isspace()` in the C locale.
 fn is_space(b: u8) -> bool {
     matches!(b, b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
 }
 
-/// `timelib_strtointerval()`: trims the whitespace (keeping one character of an all-whitespace string), then scans.
 fn strtointerval(s: &[u8]) -> Parsed {
     let mut parsed = Parsed::default();
     if s.is_empty() {
-        // "Empty string"
         parsed.error = true;
         return parsed;
     }
@@ -100,7 +91,6 @@ fn digits(s: &[u8], at: usize) -> usize {
         .count()
 }
 
-/// Whether `s[at..]` starts with the fixed-length `pattern`.
 fn fixed(s: &[u8], at: usize, pattern: &[Unit]) -> bool {
     pattern.len() <= s.len().saturating_sub(at)
         && pattern
@@ -109,13 +99,10 @@ fn fixed(s: &[u8], at: usize, pattern: &[Unit]) -> bool {
             .all(|(i, class)| class.matches(&s[at + i..]))
 }
 
-/// One position of a fixed-length scanner rule.
 #[derive(Clone, Copy)]
 enum Unit {
     Digit,
     Byte(u8),
-    /// `hour24lz`, `minutelz`, `monthlz`, `monthlzz`, `daylz`, `daylzz` as a two-byte unit (the second byte is a
-    /// [`Unit::Rest`]).
     Pair(fn(u8, u8) -> bool),
     Rest,
 }
@@ -131,27 +118,22 @@ impl Unit {
     }
 }
 
-/// `[01][0-9] | "2"[0-4]`
 fn hour24lz(a: u8, b: u8) -> bool {
     matches!((a, b), (b'0' | b'1', b'0'..=b'9') | (b'2', b'0'..=b'4'))
 }
 
-/// `[0-5][0-9]`
 fn minutelz(a: u8, b: u8) -> bool {
     matches!(a, b'0'..=b'5') && b.is_ascii_digit()
 }
 
-/// `"0" [1-9] | "1" [0-2]`
 fn monthlz(a: u8, b: u8) -> bool {
     matches!((a, b), (b'0', b'1'..=b'9') | (b'1', b'0'..=b'2'))
 }
 
-/// `"0" [0-9] | "1" [0-2]`
 fn monthlzz(a: u8, b: u8) -> bool {
     matches!((a, b), (b'0', b'0'..=b'9') | (b'1', b'0'..=b'2'))
 }
 
-/// `"0" [1-9] | [1-2][0-9] | "3" [01]`
 fn daylz(a: u8, b: u8) -> bool {
     matches!(
         (a, b),
@@ -159,7 +141,6 @@ fn daylz(a: u8, b: u8) -> bool {
     )
 }
 
-/// `"0" [0-9] | [1-2][0-9] | "3" [01]`
 fn daylzz(a: u8, b: u8) -> bool {
     matches!(
         (a, b),
@@ -169,7 +150,6 @@ fn daylzz(a: u8, b: u8) -> bool {
 
 use Unit::{Byte, Digit, Pair, Rest};
 
-/// `datetimebasic = year4 monthlz daylz "T" hour24lz minutelz secondlz "Z"`
 const DATETIME_BASIC: [Unit; 16] = [
     Digit,
     Digit,
@@ -189,7 +169,6 @@ const DATETIME_BASIC: [Unit; 16] = [
     Byte(b'Z'),
 ];
 
-/// `datetimeextended = year4 "-" monthlz "-" daylz "T" hour24lz ':' minutelz ':' secondlz "Z"`
 const DATETIME_EXTENDED: [Unit; 20] = [
     Digit,
     Digit,
@@ -213,7 +192,6 @@ const DATETIME_EXTENDED: [Unit; 20] = [
     Byte(b'Z'),
 ];
 
-/// `combinedrep = "P" year4 "-" monthlzz "-" daylzz "T" hour24lz ':' minutelz ':' secondlz`
 const COMBINED: [Unit; 20] = [
     Byte(b'P'),
     Digit,
@@ -237,9 +215,6 @@ const COMBINED: [Unit; 20] = [
     Rest,
 ];
 
-/// The length of `period = "P" (number "Y")? (number "M")? (number "W")? (number "D")? ("T" (number "H")? (number
-/// "M")? (number "S")?)?` at `at`. A digit run is followed by one letter, so taking each group that matches gives
-/// the longest match.
 fn period(s: &[u8], at: usize) -> Option<usize> {
     if s.get(at) != Some(&b'P') {
         return None;
@@ -263,7 +238,6 @@ fn period(s: &[u8], at: usize) -> Option<usize> {
     Some(end - at)
 }
 
-/// `scan()`: the longest rule match at `at` (the first rule on a tie) and its action; the length consumed.
 fn token(s: &[u8], at: usize, parsed: &mut Parsed) -> usize {
     let recurrences = (s[at] == b'R' && digits(s, at + 1) > 0).then(|| 1 + digits(s, at + 1));
     let datetime = if fixed(s, at, &DATETIME_EXTENDED) {
@@ -279,7 +253,6 @@ fn token(s: &[u8], at: usize, parsed: &mut Parsed) -> usize {
         .iter()
         .position(|r| longest > 0 && *r == Some(longest))
     {
-        // recurrences
         Some(0) => {}
         Some(1) => {
             if parsed.date || parsed.period {
@@ -294,7 +267,6 @@ fn token(s: &[u8], at: usize, parsed: &mut Parsed) -> usize {
             parsed.period = true;
         }
         Some(_) => parsed.period = true,
-        // `[ .,\t/]` and `"\000"|"\n"` are skipped, `any` is "Unexpected character"
         None => {
             if !matches!(s[at], b' ' | b'.' | b',' | b'\t' | b'/' | 0 | b'\n') {
                 parsed.error = true;
@@ -305,7 +277,6 @@ fn token(s: &[u8], at: usize, parsed: &mut Parsed) -> usize {
     longest
 }
 
-/// The `period` rule's action over its token, whose C string ends with a NUL.
 fn period_action(token: &[u8], parsed: &mut Parsed) {
     let at = |i: usize| token.get(i).copied().unwrap_or(0);
     let mut ptr = 1;
@@ -314,14 +285,11 @@ fn period_action(token: &[u8], parsed: &mut Parsed) {
             ptr += 1;
         }
         if at(ptr) == 0 {
-            // "Missing expected time part"
             parsed.error = true;
             break;
         }
-        // timelib_get_unsigned_nr(&ptr, 12): the token has no sign, and its numbers start at `ptr`
         ptr += digits(token, ptr).min(12);
         if !matches!(at(ptr), b'Y' | b'W' | b'D' | b'H' | b'S' | b'M') {
-            // "Undefined period specifier"
             parsed.error = true;
         }
         ptr += 1;
@@ -335,7 +303,6 @@ fn period_action(token: &[u8], parsed: &mut Parsed) {
 mod tests {
     use super::construct;
 
-    /// `new DateInterval($s)` on PHP 8.5.12 (timelib 2022.17), via `php -r`.
     #[test]
     fn matches_php() {
         let ok = |s: &[u8]| assert_eq!(construct(s), Ok(()), "{}", String::from_utf8_lossy(s));

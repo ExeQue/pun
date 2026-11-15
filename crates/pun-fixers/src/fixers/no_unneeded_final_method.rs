@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\NoUnneededFinalMethodFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -20,7 +19,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     })
 }
 
-/// One method of `getMethods`.
 struct Method {
     method_final_index: Option<usize>,
     method_is_private: bool,
@@ -79,7 +77,7 @@ fn get_methods(tokens: &Tokens) -> Vec<Method> {
     let mut out = vec![];
     for (index, element) in tokens_analyzer.get_classy_elements() {
         if element.kind != ClassyElementType::Method {
-            continue; // not a method
+            continue;
         }
         let class_index = element.class_index;
         let is_enum = *enums
@@ -89,7 +87,7 @@ fn get_methods(tokens: &Tokens) -> Vec<Method> {
         let mut method_is_private = false;
         let mut previous = index;
         loop {
-            previous = tokens.get_prev_meaningful_token(previous).unwrap();
+            previous = tokens.prev_meaningful(previous);
             if tokens[previous].is_kind(T_PRIVATE) {
                 method_is_private = true;
             } else if tokens[previous].is_kind(T_FINAL) {
@@ -115,7 +113,7 @@ fn get_methods(tokens: &Tokens) -> Vec<Method> {
                 .final_
                 .is_some()
         });
-        let next = tokens.get_next_meaningful_token(index).unwrap();
+        let next = tokens.next_meaningful(index);
         out.push(Method {
             method_final_index,
             method_is_private,

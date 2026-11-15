@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\SingleBlankLineAtEofFixer`.
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Tokens};
 use std::path::Path;
@@ -17,7 +16,6 @@ impl Fixer for SingleBlankLineAtEofFixer {
         "single_blank_line_at_eof"
     }
     fn priority(&self) -> i32 {
-        // must run last to be sure the file is properly formatted before it runs
         -100
     }
     fn is_candidate(&self, _tokens: &Tokens) -> bool {

@@ -1,11 +1,5 @@
-//! `pun init` (context/plan/init.md): writes pun.toml for a project without a Pint, PHP-CS-Fixer, PHPStan, Rector or
-//! Mago config. It reads composer.json and composer.lock, asks three questions (code style, lint sets, analysis
-//! preset) with defaults that fit the project, and writes only those three choices. A project with an old config is
-//! `pun migrate`'s: a terminal is offered it, anything else is told so and nothing is written. `--yes`, agent mode,
-//! `CI` or no terminal ask nothing and take the defaults or the flags. Workflow wiring (composer scripts, CI, hooks) is
-//! printed, never written.
 use crate::render::{ColorChoice, Look, Renderer};
-use crate::{agent, migrate, root};
+use crate::{Exit, agent, migrate, root};
 use anyhow::{Result, bail};
 use dialoguer::console::Term;
 use pun_config::composer::{Composer, Locked};
@@ -40,7 +34,7 @@ const STYLES: [&str; 2] = ["laravel", "psr12"];
 /// The lint sets ticked by default (init.md §2).
 const DEFAULT_SETS: [&str; 2] = ["dead-code", "modernize"];
 
-pub(crate) fn run(a: InitArgs) -> Result<u8> {
+pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     let root = root()?;
     if root.join("pun.toml").exists() {
         bail!(
@@ -58,7 +52,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
     let composer = pun_config::composer::detect(&root)?;
     let style = match a.style {
         Some(s) => s,
-        None if composer.laravel.is_some() => Style::Laravel,
+        None if composer.locked("laravel/framework").is_some() => Style::Laravel,
         None => Style::Psr12,
     };
     let human = !agent::enabled();
@@ -92,7 +86,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
             .default(true)
             .interact_on(&term)?;
         if migrate {
-            return migrate::run(migrate::MigrateArgs::default());
+            return migrate::run(&migrate::MigrateArgs::default());
         }
     }
     let (style, sets, analyse) = if interactive {
@@ -119,7 +113,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
         ];
         let next = ["next: run `pun check`, `pun check --fix` before committing; add `pun check` to CI and composer scripts".to_string()];
         print!("{}", agent::render("ok", &detail, "", &next, false));
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     if !interactive {
         println!("Code style: {style}");
@@ -133,7 +127,7 @@ pub(crate) fn run(a: InitArgs) -> Result<u8> {
     println!("\n  {}", r.done("Wrote pun.toml").trim_end());
     println!("\n  Done. Run `pun check` any time; `pun check --fix` before you commit.");
     println!("  Add `pun check` to CI and your composer scripts.");
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// The three questions, each starting on its default.
@@ -236,13 +230,12 @@ fn found(root: &Path, c: &Composer) -> String {
         None => l.version.clone(),
     };
     let mut parts = vec![];
-    if let Some(l) = &c.laravel {
+    if let Some(l) = c.locked("laravel/framework") {
         parts.push(format!("Laravel {}", version(l)));
     }
-    if let Some(l) = &c.pest {
+    if let Some(l) = c.locked("pestphp/pest") {
         parts.push(format!("Pest {}", version(l)));
-    } else if let Some(l) = &c.phpunit {
-        // Pest runs on PHPUnit, so PHPUnit is named only without Pest.
+    } else if let Some(l) = c.locked("phpunit/phpunit") {
         parts.push(format!("PHPUnit {}", version(l)));
     }
     if let Some(php) = &c.php {
@@ -260,14 +253,9 @@ fn found(root: &Path, c: &Composer) -> String {
 
 /// The ecosystems composer.lock turns on, as the line after the questions names them.
 fn ecosystems(c: &Composer) -> Option<String> {
-    let names: Vec<String> = [
-        (c.laravel.is_some(), "Laravel"),
-        (c.pest.is_some(), "Pest"),
-        (c.phpunit.is_some(), "PHPUnit"),
-    ]
-    .into_iter()
-    .filter(|e| e.0)
-    .map(|e| e.1.to_string())
-    .collect();
+    let names: Vec<String> = (pun_config::extensions::ALL.into_iter())
+        .filter(|e| e.packages.first().is_some_and(|p| c.locked(p).is_some()))
+        .map(|e| e.name.to_string())
+        .collect();
     (!names.is_empty()).then(|| and(&names))
 }

@@ -1,5 +1,3 @@
-//! Expectations captured from the public PHPStan 2.3.1 analyser, not from Pun's inference.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

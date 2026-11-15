@@ -1,4 +1,3 @@
-//! Live virtual property holders, independently captured from PHPStan 2.3.1.
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -181,7 +180,6 @@ fn check(source: &[u8], expected: &str) {
                         .property_initialization_observations
                         .contains_key(&absent_operand)
                 );
-                // The public response is owned, Send + Sync, without a runtime/arena or worker dependency.
                 fn owned_transport<T: Send + Sync + 'static>(value: T) -> T {
                     std::thread::spawn(move || value).join().unwrap()
                 }
@@ -189,8 +187,6 @@ fn check(source: &[u8], expected: &str) {
                     owned_transport(artifacts.property_initialization_observations.clone()),
                     artifacts.property_initialization_observations
                 );
-                // Ordinary straight-line operands are observed exactly once; loop fixed points may
-                // already visit other operands more than once, equally with tracking off and on.
                 for record in records.iter().filter(|record| {
                     matches!(
                         record["class"].as_str(),
@@ -226,8 +222,6 @@ fn check_legacy_control(artifacts: &AnalysisArtifacts, records: &[Value]) {
         .iter()
         .any(|record| record["class"] == "EarlyReturn")
     {
-        // This existing readonly/runtime summary is NOT the virtual marker: it includes the
-        // later assignment even though an earlier constructor path returned uninitialized.
         assert!(
             artifacts.method_initialized_properties[&(word("earlyreturn"), word("__construct"))]
                 .contains(&word("$value"))

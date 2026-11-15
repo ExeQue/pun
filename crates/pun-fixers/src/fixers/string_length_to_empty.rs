@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\StringNotation\StringLengthToEmptyFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{
     FunctionReferenceFinder, IS_RISKY, is_candidate,
 };
@@ -86,11 +85,9 @@ fn keep_parentheses(
     open_parenthesis_index: usize,
     close_parenthesis_index: usize,
 ) -> bool {
-    let mut i = tokens
-        .get_next_meaningful_token(open_parenthesis_index)
-        .unwrap();
+    let mut i = tokens.next_meaningful(open_parenthesis_index);
     if tokens[i].is_cast() {
-        i = tokens.get_next_meaningful_token(i).unwrap();
+        i = tokens.next_meaningful(i);
     }
     while i < close_parenthesis_index {
         let token = &tokens[i];
@@ -120,7 +117,7 @@ fn find_str_length_calls(tokens: &Tokens) -> Vec<(usize, usize, usize)> {
         let Some(candidate) = finder.find("strlen", tokens, i, Some(count)) else {
             break;
         };
-        i = candidate.1 + 1; // proceed to openParenthesisIndex
+        i = candidate.1 + 1;
         candidates.push(candidate);
     }
     candidates.reverse();
@@ -151,25 +148,19 @@ impl Fixer for StringLengthToEmptyFixer {
                 close_parenthesis_index,
             ) != 1
             {
-                continue; // must be one argument
+                continue;
             }
-            // test for leading `\` before `strlen` call
-            let next_index = tokens
-                .get_next_meaningful_token(close_parenthesis_index)
-                .unwrap();
-            let mut previous_index = tokens
-                .get_prev_meaningful_token(function_name_index)
-                .unwrap();
+            let next_index = tokens.next_meaningful(close_parenthesis_index);
+            let mut previous_index = tokens.prev_meaningful(function_name_index);
             let mut namespace_separator_index = None;
             if tokens[previous_index].is_kind(T_NS_SEPARATOR) {
                 namespace_separator_index = Some(previous_index);
-                previous_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+                previous_index = tokens.prev_meaningful(previous_index);
             }
             let (operator_index, operand_index, replacement);
-            // test for yoda vs non-yoda fix case
             if is_operator_of_interest(&tokens[previous_index]) {
                 operator_index = previous_index;
-                operand_index = tokens.get_prev_meaningful_token(previous_index).unwrap();
+                operand_index = tokens.prev_meaningful(previous_index);
                 if !is_operand_of_interest(&tokens[operand_index]) {
                     continue;
                 }
@@ -181,13 +172,13 @@ impl Fixer for StringLengthToEmptyFixer {
                 if is_of_higher_precedence(&tokens[next_index]) {
                     continue;
                 }
-                let left = tokens.get_prev_meaningful_token(operand_index).unwrap();
+                let left = tokens.prev_meaningful(operand_index);
                 if is_of_higher_precedence(&tokens[left]) {
                     continue;
                 }
             } else if is_operator_of_interest(&tokens[next_index]) {
                 operator_index = next_index;
-                operand_index = tokens.get_next_meaningful_token(next_index).unwrap();
+                operand_index = tokens.next_meaningful(next_index);
                 if !is_operand_of_interest(&tokens[operand_index]) {
                     continue;
                 }
@@ -197,7 +188,7 @@ impl Fixer for StringLengthToEmptyFixer {
                     continue;
                 };
                 replacement = r;
-                let right = tokens.get_next_meaningful_token(operand_index).unwrap();
+                let right = tokens.next_meaningful(operand_index);
                 if is_of_higher_precedence(&tokens[right]) {
                     continue;
                 }
@@ -207,14 +198,12 @@ impl Fixer for StringLengthToEmptyFixer {
             } else {
                 continue;
             }
-            // prepare for fixing
             let keep = keep_parentheses(tokens, open_parenthesis_index, close_parenthesis_index);
             let operand_content = if replacement == T_IS_IDENTICAL {
                 "==="
             } else {
                 "!=="
             };
-            // apply fixing
             tokens.set(operand_index, Token::new(T_CONSTANT_ENCAPSED_STRING, "''"));
             tokens.set(operator_index, Token::new(replacement, operand_content));
             if !keep {

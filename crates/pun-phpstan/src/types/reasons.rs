@@ -1,12 +1,7 @@
-//! `AcceptsResult::$reasons`: why `accepts()` failed, the tips of the argument, return and property type errors
-//! (`acceptsReasonsTip()`). Each reason comes from the same branch of `accepts()` as in PHPStan; the answer itself is
-//! [`accepts_with()`]'s.
-
 use super::accepts::{StrictMixed, accepts_with};
 use super::templates::ancestor;
 use super::*;
 
-/// The reasons of `$a->accepts($b, $strictTypes)`.
 pub fn accepts_reasons(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Vec<String> {
     use Type as T;
     if sm.explicit || sm.implicit {
@@ -106,7 +101,6 @@ pub fn accepts_reasons(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Vec
     }
 }
 
-/// `array_values(array_unique(array_merge(...)))` of results combined with `and()`/`or()`.
 fn merged(all: impl IntoIterator<Item = Vec<String>>) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for r in all.into_iter().flatten() {
@@ -117,7 +111,6 @@ fn merged(all: impl IntoIterator<Item = Vec<String>>) -> Vec<String> {
     out
 }
 
-/// UnionType::accepts()
 fn union(a: &Type, types: &[Type], b: &Type, strict: bool, sm: StrictMixed) -> Vec<String> {
     use Type as T;
     if let T::Iterable(k, v) = b {
@@ -168,10 +161,8 @@ fn union(a: &Type, types: &[Type], b: &Type, strict: bool, sm: StrictMixed) -> V
     reasons
 }
 
-/// `CompoundType::isAcceptedBy()` of `b`.
 fn accepted_by(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Vec<String> {
     use Type as T;
-    // (a StrictMixedType answers `mixed`, which gives no reasons)
     let rec = |t: &Type| accepts_reasons(a, t, strict, sm);
     match b {
         T::SubtractedMixed { excluded, .. } if is_super_type_of(excluded, a).yes() => {
@@ -181,7 +172,6 @@ fn accepted_by(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Vec<String>
             )]
         }
         T::Union(types) | T::Benevolent(types) => merged(types.iter().map(rec)),
-        // AcceptsResult::lazyMaxMin(): the first member accepted answers
         T::Intersection(types) => match types.iter().find(|t| accepts_with(a, t, strict, sm).yes())
         {
             Some(t) => rec(t),
@@ -196,7 +186,6 @@ fn accepted_by(a: &Type, b: &Type, strict: bool, sm: StrictMixed) -> Vec<String>
     }
 }
 
-/// CallableTypeHelper::isParametersAcceptorSuperTypeOf() with `$treatMixedAsAny`: `ours` accepting `theirs`.
 fn signature(ours: &Signature, theirs: &Signature, strict: bool) -> Vec<String> {
     let theirs = specialize_signature(ours, theirs);
     let mut params: Vec<&Param> = theirs.params.iter().collect();
@@ -249,9 +238,6 @@ fn signature(ours: &Signature, theirs: &Signature, strict: bool) -> Vec<String> 
     merged([reasons])
 }
 
-/// ConstantArrayType::checkOurKeys()
-// ponytail: an unsealed shape's extra keys give no reasons, nor the offsets of a non-array (a string's, an
-// ArrayAccess object's)
 fn our_keys(c: &ConstArray, b: &Type, strict: bool) -> Vec<String> {
     let constant = match b {
         Type::ConstArray(b) => Some(b),
@@ -321,8 +307,6 @@ fn our_keys(c: &ConstArray, b: &Type, strict: bool) -> Vec<String> {
     merged([reasons])
 }
 
-/// GenericObjectType::isSuperTypeOfInternal() in an accepts context: an invariant template given a subtype is not
-/// covariant (TemplateTypeVariance::isValidVariance()).
 pub(super) fn generic(class: &str, args: &[Type], b: &Type) -> Vec<String> {
     let (Type::Object(name, other, _) | Type::Static(name, other)) = b else {
         return vec![];
@@ -330,7 +314,6 @@ pub(super) fn generic(class: &str, args: &[Type], b: &Type) -> Vec<String> {
     let (Some(c), Some(theirs)) = (symbols::lookup(class), ancestor(name, other, class)) else {
         return vec![];
     };
-    // a raw object of the class itself is no GenericObjectType ancestor
     if other.is_empty() && name.eq_ignore_ascii_case(class) {
         return vec![];
     }

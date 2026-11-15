@@ -1,7 +1,4 @@
-//! Nette DI's config machinery as PHPStan 2.3.5 uses it: `Nette\Schema\Helpers::merge`, `Nette\DI\Helpers::expand`
-//! / `escape`, `Nette\DI\Config\Loader` (includes) and `PHPStan\DependencyInjection\NeonAdapter::process` (`!`
-//! replacing, statements, relative paths, `(?)` optional excludePaths).
-
+use crate::config::Error;
 use crate::neon;
 use crate::php::{absolutize_path, normalize_path};
 use crate::value::{Array, Entity, Key, Value};
@@ -12,12 +9,10 @@ fn prevent_key() -> Key {
     Key::Str(PREVENT_MERGING.into())
 }
 
-/// `isset($value['_prevent_merging'])`
 pub(crate) fn has_prevent(a: &Array) -> bool {
     a.get(&prevent_key()).is_some_and(|v| *v != Value::Null)
 }
 
-/// `Nette\Schema\Helpers::merge($value, $base)`: `$value` wins; its list items are appended to `$base`.
 pub(crate) fn merge(value: Value, base: Value) -> Value {
     match (value, base) {
         (Value::Array(v), Value::Array(b)) => Value::Array(merge_arrays(v, b)),
@@ -30,7 +25,6 @@ pub(crate) fn merge(value: Value, base: Value) -> Value {
     }
 }
 
-/// [`merge`] of two arrays.
 pub(crate) fn merge_arrays(mut v: Array, mut b: Array) -> Array {
     if has_prevent(&v) {
         v.remove(&prevent_key());
@@ -49,7 +43,6 @@ pub(crate) fn merge_arrays(mut v: Array, mut b: Array) -> Array {
     b
 }
 
-/// `Nette\DI\Helpers::escape()`.
 pub(crate) fn escape(v: Value) -> Value {
     match v {
         Value::Array(a) => {
@@ -75,7 +68,6 @@ pub(crate) fn escape(v: Value) -> Value {
     }
 }
 
-/// Only `%` doubling: for values PHPStan passes as runtime (dynamic) parameters, which expansion never touches.
 pub(crate) fn escape_percent(v: Value) -> Value {
     match v {
         Value::Array(a) => {
@@ -97,19 +89,17 @@ fn statement(entity: Value, arguments: Array) -> Value {
     }))
 }
 
-/// `Nette\DI\Helpers::expand($var, $params, $recursive)`; `recursive` is `None` for a plain expansion.
 pub(crate) fn expand(
     var: &Value,
     params: &Array,
     recursive: Option<&[String]>,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     match var {
         Value::Array(a) => Ok(Value::Array(expand_array(a, params, recursive)?)),
         Value::Entity(e) => Ok(statement(
             expand(&e.value, params, recursive)?,
             expand_array(&e.attributes, params, recursive)?,
         )),
-        // (Nette expands them again when recursive, which never ends: PHPStan dies, Pun keeps them as they are)
         Value::Str(s) if s == "%parameters%" && !params.contains(&Key::from("parameters")) => {
             Ok(Value::Array(params.clone()))
         }
@@ -118,7 +108,6 @@ pub(crate) fn expand(
     }
 }
 
-/// `preg_split('#%([\w.-]*)%#i', $s, -1, PREG_SPLIT_DELIM_CAPTURE)`
 fn split_placeholders(s: &str) -> Vec<&str> {
     let b = s.as_bytes();
     let mut parts = Vec::new();
@@ -148,7 +137,7 @@ fn expand_string(
     params: &Array,
     recursive: Option<&[String]>,
     only_string: bool,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     let parts = split_placeholders(s);
     let mut res: Vec<Value> = Vec::new();
     let mut dynamic = false;
@@ -164,9 +153,10 @@ fn expand_string(
             } else if matches!(val, Value::Entity(_)) {
                 dynamic = true;
             } else if !val.is_scalar() {
-                return Err(format!(
-                    "Unable to concatenate non-scalar parameter '{part}' into '{s}'."
-                ));
+                return Err(Error::NonScalarConcatenation {
+                    parameter: (*part).to_string(),
+                    into: s.to_string(),
+                });
             }
             res.push(val);
         }
@@ -189,7 +179,7 @@ fn expand_parameter(
     params: &Array,
     recursive: Option<&[String]>,
     only_string: bool,
-) -> Result<Value, String> {
+) -> Result<Value, Error> {
     let mut val = Value::Array(params.clone());
     let mut path: Vec<&str> = Vec::new();
     let keys: Vec<&str> = parameter.split('.').collect();
@@ -207,10 +197,7 @@ fn expand_parameter(
             {
                 let path_str = path.join(".");
                 if rec.contains(&path_str) {
-                    return Err(format!(
-                        "Circular reference detected for parameters: %{}%",
-                        rec.join("%, %")
-                    ));
+                    return Err(Error::CircularReference(rec.to_vec()));
                 }
                 let mut rec = rec.to_vec();
                 rec.push(path_str);
@@ -222,18 +209,17 @@ fn expand_parameter(
         } else if matches!(val, Value::Entity(_)) {
             val = statement(Value::str("(?)[?]"), Array::list([val, Value::str(*key)]));
         } else {
-            return Err(format!("Missing parameter '{parameter}'."));
+            return Err(Error::MissingParameter(parameter.to_string()));
         }
     }
     Ok(val)
 }
 
-/// [`expand`] of an array (keys are expanded too).
 pub(crate) fn expand_array(
     a: &Array,
     params: &Array,
     recursive: Option<&[String]>,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let mut res = Array::new();
     for (k, v) in a.iter() {
         let k = match k {
@@ -245,35 +231,31 @@ pub(crate) fn expand_array(
     Ok(res)
 }
 
-/// PHP `dirname()` for `/`-separated paths.
 pub(crate) fn dirname(path: &str) -> String {
-    // (only ever given absolute file paths: no trailing slash, no bare name)
     let parent = std::path::Path::new(path)
         .parent()
         .map(|p| p.to_string_lossy().into_owned());
     parent.unwrap_or_else(|| "/".into())
 }
 
-/// Source of config files: the filesystem, plus PHPStan's own `conf/` inside the PHAR (embedded in Pun).
 pub trait Files {
     fn read(&self, path: &str) -> Option<Vec<u8>>;
-    /// PHP `is_file()`: true for an unreadable file too, without reading it.
     fn is_file(&self, path: &str) -> bool;
 }
 
-/// `PHPStan\DependencyInjection\NeonAdapter::load()`. `known` holds the parameters known before the container
-/// is compiled (rootDir, currentWorkingDirectory, env; LoaderFactory's), which path entries may use.
 pub fn load_neon(
     files: &dyn Files,
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let contents = files
         .read(file)
-        .ok_or_else(|| format!("File '{file}' is missing or is not readable."))?;
-    let decoded =
-        neon::decode_bytes(&contents).map_err(|e| format!("Error while loading {file}: {e}"))?;
+        .ok_or_else(|| Error::Unreadable(file.to_string()))?;
+    let decoded = neon::decode_bytes(&contents).map_err(|error| Error::Neon {
+        file: file.to_string(),
+        error,
+    })?;
     let arr = match decoded {
         Value::Array(a) => a,
         Value::Null => Array::new(),
@@ -293,8 +275,6 @@ fn relative_to(file: &str, path: &str) -> String {
     normalize_path(&absolutize_path(&dir, path))
 }
 
-/// `NeonAdapter::expandKnownParameters()`: replaces each `~%([\w.-]*)%~` with a known string parameter (`env.HOME`
-/// is nested), or None when one is not known.
 fn expand_known(value: &str, known: &Array) -> Option<String> {
     let b = value.as_bytes();
     let mut out = String::new();
@@ -328,7 +308,7 @@ pub(crate) fn process(
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let mut res = Array::new();
     for (key, mut val) in arr {
         let mut key = key;
@@ -344,9 +324,7 @@ pub(crate) fn process(
                     val = Value::Array(a);
                 }
                 _ => {
-                    return Err(format!(
-                        "Replacing operator is available only for arrays, item '{s}' is not array."
-                    ));
+                    return Err(Error::ReplacingNonArray(s.clone()));
                 }
             }
             key = Key::from_string(stripped);
@@ -371,9 +349,6 @@ pub(crate) fn process(
                 } else {
                     segment('(', ')')
                 };
-                // (NeonAdapter folds `a()::b()` chains into nested statements; Pun only reads parameters, where any
-                // statement ends resolution (see config.rs), so chains stay as decoded.)
-                // `createOptionalPath()`
                 let optional = match &e.value {
                     Value::Str(s)
                         if EXCLUDE_PATH_KEYS.contains(&key_to_resolve.as_str())
@@ -423,14 +398,12 @@ pub(crate) fn process(
     Ok(res)
 }
 
-/// `Nette\Utils\Validators::assert($value, 'list', $label)` message.
-pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
+pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), Error> {
     if let Value::Array(a) = v
         && a.is_list()
     {
         return Ok(());
     }
-    // (`includes: null` is skipped before)
     let ty = match v {
         Value::Bool(_) => "bool".to_string(),
         Value::Int(_) | Value::Float(_) => format!(
@@ -445,13 +418,14 @@ pub(crate) fn assert_list(v: &Value, label: &str) -> Result<(), String> {
         Value::Str(s) if s.len() < 40 => format!("string {}", v.var_export()),
         Value::Str(_) => "string".to_string(),
         Value::Array(_) => "array".to_string(),
-        // (the phar's scoped class name)
         _ => "object _PHPStan_95d9e8b05\\Nette\\DI\\Definitions\\Statement".to_string(),
     };
-    Err(format!("The {label} expects to be list, {ty} given."))
+    Err(Error::NotAList {
+        label: label.to_string(),
+        given: ty,
+    })
 }
 
-/// `Loader::expandIncludedFile()` / `ContainerFactory::expandIncludedFile()`: `#([a-z]+:)?[/\\\\]#Ai`.
 pub(crate) fn expand_included_file(included: &str, main: &str) -> String {
     let rest = match included.find(':') {
         Some(i) if i > 0 && included[..i].bytes().all(|c| c.is_ascii_alphabetic()) => {
@@ -466,14 +440,12 @@ pub(crate) fn expand_included_file(included: &str, main: &str) -> String {
     }
 }
 
-/// Reads one config file: `.neon`/`.dist` through PHPStan's NeonAdapter, `.php` through the baseline-shaped PHP
-/// reader (anything else in a `.php` config needs PHP).
 pub(crate) fn load_file(
     files: &dyn Files,
     file: &str,
     expand_relative: &[String],
     known: &Array,
-) -> Result<Array, String> {
+) -> Result<Array, Error> {
     let ext = file
         .rsplit_once('.')
         .map(|(_, e)| e.to_ascii_lowercase())
@@ -484,16 +456,17 @@ pub(crate) fn load_file(
         "php" => {
             let contents = files
                 .read(file)
-                .ok_or_else(|| format!("File '{file}' is missing or is not readable."))?;
+                .ok_or_else(|| Error::Unreadable(file.to_string()))?;
             crate::phpfile::load_config(&String::from_utf8_lossy(&contents), &dirname(file))
-                .map_err(|e| format!("Unsupported PHP config {file}: {e}"))
+                .map_err(|error| Error::UnsupportedPhp {
+                    file: file.to_string(),
+                    error,
+                })
         }
-        _ => Err(format!("Unknown file extension '{file}'.")),
+        _ => Err(Error::UnknownExtension(file.to_string())),
     }
 }
 
-/// `Nette\DI\Config\Loader` with PHPStan's `NeonLoader`: returns every loaded file's data, includes first (the
-/// `$merge = false` form the compiler consumes).
 pub(crate) struct Loader<'a> {
     pub files: &'a dyn Files,
     pub parameters: Array,
@@ -518,25 +491,23 @@ impl<'a> Loader<'a> {
         }
     }
 
-    /// `Loader::load($file, false)`.
-    pub(crate) fn load(&mut self, file: &str) -> Result<Vec<Array>, String> {
+    pub(crate) fn load(&mut self, file: &str) -> Result<Vec<Array>, Error> {
         self.load_inner(file, false)
     }
 
-    /// `Loader::load($file)` (merged).
-    pub(crate) fn load_merged(&mut self, file: &str) -> Result<Array, String> {
+    pub(crate) fn load_merged(&mut self, file: &str) -> Result<Array, Error> {
         Ok(self.load_inner(file, true)?.pop().unwrap_or_default())
     }
 
-    fn load_inner(&mut self, file: &str, merged: bool) -> Result<Vec<Array>, String> {
+    fn load_inner(&mut self, file: &str, merged: bool) -> Result<Vec<Array>, Error> {
         if self.generate_baseline.as_deref() == Some(normalize_path(file).as_str()) {
             return Ok(Vec::new());
         }
         if !self.files.is_file(file) {
-            return Err(format!("File '{file}' is missing or is not readable."));
+            return Err(Error::Unreadable(file.to_string()));
         }
         if self.loaded.iter().any(|f| f == file) {
-            return Err(format!("Recursive included file '{file}'"));
+            return Err(Error::RecursiveInclude(file.to_string()));
         }
         self.loaded.push(file.to_string());
         let mut data = load_file(self.files, file, &self.expand_relative, &self.parameters)?;

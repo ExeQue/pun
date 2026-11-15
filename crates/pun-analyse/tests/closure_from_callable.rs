@@ -1,5 +1,3 @@
-//! Closure::fromCallable contracts from actual PHPStan 2.3.1 runs, through the public analyser.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};

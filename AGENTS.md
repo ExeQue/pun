@@ -27,7 +27,7 @@ Run these checks in this order, cheapest first:
 ```sh
 cargo test -p punphp-<x>
 cargo test -p punphp-fixers <substring>
-scripts/analyse-tests.sh
+cargo nextest run -p punphp-analyse
 cargo build -p punphp -p punphp-harness
 target/debug/pun-harness format --corpus pinkary --diffs 5
 scripts/cli-parity.sh "ARGS"...
@@ -36,9 +36,10 @@ scripts/coverage.sh punphp-tokens
 ```
 
 - Package `punphp-<x>` lives in `crates/pun-<x>` and is imported as `pun_<x>`.
-- `cargo clippy --workspace --all-targets -- -D warnings` must pass. Every crate uses the shared `[workspace.lints]`; silence a single hit with `#[expect(lint, reason = "...")]`.
-- `scripts/analyse-tests.sh` builds every `punphp-analyse` test target once and runs the binaries in parallel. Every target must pass. The whole run takes about 40 minutes on 8 cores, a quarter of it building. `SKIP="levels rules"` leaves out the two slowest (about 7 and 3 minutes alone) while you iterate.
-- `PUN_FIXERS_ONLY=a,b` makes `build.rs` compile only fixers `a` and `b`.
+- `cargo clippy --workspace --all-targets -- -D warnings` must pass. The original crates use the shared `[workspace.lints]` (all of pedantic). The six crates that port upstream PHP (pun-tokens, pun-format, pun-fixers, pun-lint, pun-phpstan, pun-analyse) carry their own `[lints]` table: the same lints plus the allows the port shape needs. Silence a single hit with `#[expect(lint, reason = "...")]`.
+- `punphp-analyse`'s tests are one binary (`tests/main.rs` declares each file as a module). With `CARGO_PROFILE_DEV_OPT_LEVEL=1`, as CI sets it, it builds in about 5 minutes and runs in about 10 on 8 cores. `levels::` and `rules::` are the two slowest tests; leave them out with `-E 'not test(/^(levels|rules)::/)'` while you iterate. A new test file needs a `mod` line in `tests/main.rs`.
+- CI runs the tests with cargo-nextest, one process per test. Locally, `cargo nextest run` and `cargo test` both work.
+- `crates/pun-fixers/build.rs` registers every file in `src/fixers/` as a fixer, so a new fixer is one file with a `pub(crate) fn fixer()`.
 - `pun-harness` compares Pint with `pun migrate` followed by `pun check --fix`. Add `--fixer <name>` to test one rule.
 - `scripts/cli-parity.sh` compares the exit codes, machine formats, and resulting files of Pint and `pun` byte for byte.
 - `scripts/fuzz-parity.sh` is a mutation fuzzer that compares Pun with Pint. It needs a freshly built `target/debug/pun`.
@@ -107,7 +108,7 @@ Every Rector run uses `--dry-run --clear-cache`.
 - Release: a tag runs cargo-dist (`dist-workspace.toml`, `.github/workflows/release.yml`), which builds the four archives `composer/bin/pun` downloads (Linux musl and macOS, x86_64 and arm64). `.gitattributes` export-ignores every top-level path except the Composer package; add each new top-level path there. Every crate has `publish = false`.
 - The commands divide the work like this. `format` changes layout only. `lint` applies code rules, including PHP-CS-Fixer's risky fixers. `analyse` reports type errors. `check` runs all three in one pass.
 - The Mago crates are pinned to `=1.57.0`. Bump them together. Four of them (mago-analyzer, mago-codex, mago-syntax, mago-phpdoc-syntax) are vendored and patched in `third_party/`; each has a PATCHES.md, and a bump re-applies those patches.
-- Harness-only environment variables: `PUN_IGNORE_PHP_CONSTRAINT=1` (for corpora that allow PHP below 8.4), `PUN_BIN`, `PUN_HARNESS_ROOT`, and `PUN_PROFILE`.
+- Harness-only environment variables: `PUN_IGNORE_PHP_CONSTRAINT=1` (for corpora that allow PHP below 8.4), `PUN_BIN`, `PUN_HARNESS_ROOT`, `PUN_PROFILE`, and `PUN_GITHUB_URL` (the plain-HTTP server `pun self-update` downloads from in its tests, instead of github.com and api.github.com).
 - Every test that spawns `pun` sets `PUN_AGENT=0`. Tests of agent mode are the exception.
 
 ## Build budget
@@ -117,7 +118,7 @@ Every Rector run uses `--dry-run --clear-cache`.
 3. Prefix long commands with `timeout 900 nice`, for example `timeout 900 nice cargo test -p punphp-tokens`.
 4. Build and test only the crates you changed (`-p`). Give each concurrent build its own `CARGO_TARGET_DIR`
    (`target-<name>`) so two cargo runs never wait on one lock or reuse each other's stale artifacts.
-5. Delete scratch target dirs and downloads when you no longer need them. Keep `target/`. A target dir with every analyse test built is about 56 GB, so check `df -h` before you start another one.
+5. Delete scratch target dirs and downloads when you no longer need them. Keep `target/`. Check `df -h` before you start another one.
 
 Corpus runs cover one fixer on one project. While you iterate, use Pinkary or laravel-framework.
 
@@ -166,13 +167,28 @@ Write each commit message as a Conventional Commit: `type(scope): subject`. Use 
 
 The only author is Pushpak Chhajed <pushpak1300@gmail.com>. Do not add `Co-authored-by` trailers.
 
+## Releases
+
+Release only when Pushpak asks. Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml` (cargo-dist), which builds the four archives, attests them, and publishes the GitHub release that `pun self-update`, `docs/public/install` and `composer/bin/pun` download. Packagist reads the same tag as the Composer package's version. A suffix such as `-beta.1` makes it a pre-release.
+
+1. Check that CI passed on the commit you release.
+2. Set the version in two places: `version` under `[workspace.package]` in `Cargo.toml`, and `PUN_VERSION` in `composer/bin/pun` (`tests/composer.rs` checks that they match). Run `cargo build -p punphp` so `Cargo.lock` follows, and check `target/debug/pun --version`.
+3. Commit the three files as `chore(release): version X.Y.Z` and push it to `origin/main`.
+4. Tag that commit with a lightweight tag, `git tag vX.Y.Z`, and push only the tag: `git push origin vX.Y.Z`.
+5. Watch the Release workflow (`gh run watch`). When it finishes, `gh release view vX.Y.Z` lists the four `punphp-<target>.tar.gz` archives, their `.sha256` files, `sha256.sum` and `dist-manifest.json`.
+6. Check the installed binary: `curl -fsSL https://pun.laravel.cloud/install | sh -s -- vX.Y.Z`, then `pun --version`.
+
+Never move or delete a published tag. If a release is broken, fix it on main and release the next patch version.
+
+The shipfastlabs organization runs only GitHub Actions pinned to a full commit SHA, so a workflow that uses `@v4` fails at "Set up job". Pin each action as `owner/action@<sha> # <tag>`. `release.yml` is generated by cargo-dist: set its actions' SHAs under `[dist.github-action-commits]` in `dist-workspace.toml`, run `dist generate --mode ci`, and check it with `dist generate --check`.
+
 ## Docs site
 
 `docs/` is also the public docs site, built with [Blume](https://useblume.dev). To run it, use `bun install && bun run dev` inside `docs/`.
 
 - `docs/content/docs/*.mdx`: the pages.
 - `docs/pages/index.astro`: the homepage.
-- `docs/theme.css`: the brand tokens. They mirror `design/tokens.json`.
+- `docs/theme.css`: the brand tokens. They mirror `docs/design/tokens.json`.
 - Internal notes (plan, decisions, tasks, reference) live in `context/`, not `docs/`.
 
 When a change alters a flag, a rule, or behavior, update the matching page under `docs/content/docs/`. The `blume` and `blume-update-docs` skills in `.claude/skills/` cover the tooling.

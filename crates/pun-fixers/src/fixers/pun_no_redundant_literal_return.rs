@@ -1,8 +1,3 @@
-//! Port of Mago's `no-redundant-literal-return`: `if ($x === null) { return null; } return $x;` → `return $x;`
-//! (also `elseif ($x === <lit>) { return <lit>; }` arms and an `else { return $x; }`).
-//! Opt-in only (`Pun/no_redundant_literal_return`). Deviation from Mago: float literals are not treated as
-//! literals, because `-0.0 === 0.0` holds while returning `$x` would return `-0.0`. Alternative syntax
-//! (`if (...):`) and guards containing comments are skipped.
 use pun_format::Fixer;
 use pun_tokens::Kind::*;
 use pun_tokens::{Token, Tokens};
@@ -42,7 +37,6 @@ fn fix_if(tokens: &mut Tokens, i: usize) -> Option<()> {
     }
     let mut k = i;
     let mut var: Option<Vec<u8>> = None;
-    // `if` and every `elseif`: `(<var> === <lit>)` then a body that only returns `<lit>`.
     loop {
         let open = tokens
             .get_next_meaningful_token(k)
@@ -84,7 +78,6 @@ fn fix_if(tokens: &mut Tokens, i: usize) -> Option<()> {
             ],
         );
     } else {
-        // The next statement must be `return <var>;`.
         if !tokens[k].is_kind(T_RETURN) || (i..k).any(|j| tokens[j].is_comment()) {
             return None;
         }
@@ -100,7 +93,6 @@ fn fix_if(tokens: &mut Tokens, i: usize) -> Option<()> {
     Some(())
 }
 
-/// `(<var> === <lit>)` or `(<lit> === <var>)`: the variable name and the normalized literal.
 fn condition(tokens: &Tokens, open: usize, close: usize) -> Option<(Vec<u8>, Vec<Vec<u8>>)> {
     let inner: Vec<usize> = (open + 1..close)
         .filter(|&k| !tokens[k].is_whitespace(None))
@@ -120,8 +112,6 @@ fn condition(tokens: &Tokens, open: usize, close: usize) -> Option<(Vec<u8>, Vec
     Some((tokens[v[0]].get_content().to_vec(), literal(tokens, lit)?))
 }
 
-/// After `after` (a condition's `)` or `else`): `{ return <expr>; }` or `return <expr>;`.
-/// Returns the expression's non-whitespace tokens and the body's last token.
 fn return_body(tokens: &Tokens, after: usize) -> Option<(Vec<usize>, usize)> {
     let mut k = tokens.get_next_meaningful_token(after)?;
     let braced = tokens[k].equals("{", true);
@@ -153,7 +143,6 @@ fn return_body(tokens: &Tokens, after: usize) -> Option<(Vec<usize>, usize)> {
     (!expr.is_empty()).then_some((expr, k))
 }
 
-/// Normalized literal (null/true/false, string, integer, arrays of those); `None` for anything else.
 fn literal(tokens: &Tokens, ks: &[usize]) -> Option<Vec<Vec<u8>>> {
     let mut out: Vec<Vec<u8>> = vec![];
     let mut parens = 0usize;
@@ -236,7 +225,6 @@ mod tests {
                 ret
             );
         }
-        // with_else_clause, with_elseif_and_return, with_elseif_and_else, multiple_elseif_clauses
         assert_eq!(
             fix(&func(
                 "    if ($x === null) {\n        return null;\n    } else {\n        return $x;\n    }"
@@ -311,7 +299,6 @@ mod tests {
             ),
             func("    if ($x === null) {\n        return null;\n    }\n    return $x + 1;"),
             func("    if ($x->y === null) {\n        return null;\n    }\n    return $x;"),
-            // Escaped strings are compared by their source text only, so equal values spelled differently are kept.
             func("    if ($x === 'a\\'b') {\n        return \"a'b\";\n    }\n    return $x;"),
         ] {
             assert_eq!(fix(&same), same);

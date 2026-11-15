@@ -1,15 +1,10 @@
-//! Workspaces: a root pun.toml lists member directories (`[workspace] members = ["packages/*"]`), each a package
-//! with its own pun.toml. The repository shares one pun.lock and one vendor/ at the root: every
-//! member is a path package symlinked into vendor/, and the members' requirements join one resolution, so the
-//! repository gets one version of each package. Commands run in a member work on the whole workspace.
-
 use anyhow::{Context, Result, bail};
 use serde_json::{Map, Value, json};
 use std::path::{Path, PathBuf};
 
 pub(crate) struct Workspace {
     pub(crate) root: PathBuf,
-    /// `members` as written, relative to the root.
+    /// The globs that match a member, each a path repository.
     globs: Vec<String>,
     pub(crate) members: Vec<Member>,
 }
@@ -19,8 +14,6 @@ pub(crate) struct Member {
     pub(crate) dir: PathBuf,
 }
 
-/// The workspace `dir` is in: the nearest pun.toml at or above it with a `[workspace]`, when `dir` is its root or
-/// lies in one of its members.
 pub(crate) fn find(dir: &Path) -> Result<Option<Workspace>> {
     for root in dir.ancestors() {
         let Some(globs) = globs(root)? else { continue };
@@ -31,13 +24,11 @@ pub(crate) fn find(dir: &Path) -> Result<Option<Workspace>> {
     Ok(None)
 }
 
-/// `[workspace] members` of the pun.toml in `root`, if it has a `[workspace]`.
 fn globs(root: &Path) -> Result<Option<Vec<String>>> {
     let path = root.join("pun.toml");
     let Ok(text) = std::fs::read_to_string(&path) else {
         return Ok(None);
     };
-    // Most pun.toml files have no workspace; skip parsing those.
     if !text.contains("workspace") {
         return Ok(None);
     }
@@ -64,11 +55,15 @@ fn globs(root: &Path) -> Result<Option<Vec<String>>> {
     }
 }
 
+/// The members the globs match. Only the globs that match a member become path repositories, since Composer's path
+/// repository fails on a glob whose directory doesn't exist.
 fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
-    let mut members: Vec<Member> = vec![];
-    for glob in &globs {
-        for dir in expand(root, glob) {
+    let (mut members, mut matching): (Vec<Member>, Vec<String>) = (vec![], vec![]);
+    for glob in globs {
+        let mut matches = false;
+        for dir in expand(root, &glob) {
             let Some(name) = name_of(&dir)? else { continue };
+            matches = true;
             if let Some(other) = members.iter().find(|m| m.name == name && m.dir != dir) {
                 bail!(
                     "two workspace members are named {name}: {} and {}",
@@ -80,36 +75,31 @@ fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
                 members.push(Member { name, dir });
             }
         }
+        if matches {
+            matching.push(glob);
+        }
     }
     members.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(Workspace {
         root: root.to_path_buf(),
-        globs,
+        globs: matching,
         members,
     })
 }
 
-/// The package name of the member in `dir`, from its pun.toml's `[package] name`; `None` when the directory is not
-/// a package.
 fn name_of(dir: &Path) -> Result<Option<String>> {
-    let manifest = match pun_config::manifest::read(dir)? {
-        Some(m) => m.json,
-        None if dir.join("composer.json").is_file() => bail!(
-            "the workspace member in {} keeps its dependencies in composer.json: run `pun migrate` there",
-            dir.display()
-        ),
-        None => return Ok(None),
+    let Some(manifest) = pun_config::manifest::read(dir)? else {
+        return Ok(None);
     };
-    match manifest.get("name").and_then(Value::as_str) {
+    match manifest.json.get("name").and_then(Value::as_str) {
         Some(name) => Ok(Some(name.to_ascii_lowercase())),
         None => bail!(
-            "the workspace member in {} has no name: set `name` under [package]",
+            "the workspace member in {} has no name: set `name` in its composer.json",
             dir.display()
         ),
     }
 }
 
-/// The directories `glob` (relative to `root`, `*` and `?` within one path segment) matches, sorted.
 fn expand(root: &Path, glob: &str) -> Vec<PathBuf> {
     let mut dirs = vec![root.to_path_buf()];
     for segment in glob.split('/').filter(|s| !s.is_empty() && *s != ".") {
@@ -138,7 +128,6 @@ fn expand(root: &Path, glob: &str) -> Vec<PathBuf> {
     dirs
 }
 
-/// Whether `name` matches `pattern`, where `*` is any run of characters and `?` one character.
 fn wildcard(pattern: &[u8], name: &[u8]) -> bool {
     match (pattern.split_first(), name.split_first()) {
         (None, None) => true,
@@ -155,7 +144,6 @@ fn wildcard(pattern: &[u8], name: &[u8]) -> bool {
 }
 
 impl Workspace {
-    /// The member that `name` names or that holds `dir`.
     pub(crate) fn member(&self, name: Option<&str>, dir: &Path) -> Result<Option<&Member>> {
         match name {
             Some(name) => {
@@ -176,15 +164,12 @@ impl Workspace {
         }
     }
 
-    /// The root manifest as the resolver reads it: a path repository for each member glob, ahead of the
-    /// manifest's own repositories, and each member required at any version unless the root requires it already.
     pub(crate) fn manifest(&self, mut manifest: Map<String, Value>) -> Map<String, Value> {
         let mut repositories: Vec<Value> = (self.globs.iter())
             .map(|g| json!({"type": "path", "url": g, "options": {"symlink": true}}))
             .collect();
         match manifest.get("repositories") {
             Some(Value::Array(own)) => repositories.extend(own.iter().cloned()),
-            // The keyed form: `"packagist.org": false` turns a repository off.
             Some(Value::Object(own)) => repositories.extend(own.iter().map(|(k, v)| match v {
                 Value::Bool(false) => json!({ k.as_str(): false }),
                 v => v.clone(),
@@ -201,9 +186,11 @@ impl Workspace {
         for member in &self.members {
             if !required(&manifest, &member.name) {
                 let require = manifest.entry("require").or_insert_with(|| json!({}));
-                if let Some(r) = require.as_object_mut() {
-                    r.insert(member.name.clone(), "*@dev".into());
+                if !require.is_object() {
+                    // Composer's schema rejects such a `require`, and Pun's resolver reads it as no requirements.
+                    *require = json!({});
                 }
+                require[member.name.as_str()] = "*@dev".into();
             }
         }
         manifest

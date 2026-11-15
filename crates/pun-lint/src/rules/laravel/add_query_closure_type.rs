@@ -1,11 +1,3 @@
-//! `lint/laravel/add-query-closure-type`, ported from rector-laravel 2.7.3's `EloquentWhereTypeHintClosureParameterRector`
-//! (src/Rector/MethodCall).
-//!
-//! A query builder's `where()` or `orWhere()` (a method call on an `Illuminate\Contracts\Database\Query\Builder`, or a
-//! static call a model forwards to its query) whose first argument is a closure or arrow function gets that function's
-//! first parameter typed: `\Illuminate\Contracts\Database\Eloquent\Builder` when the call is on a model, else
-//! `\Illuminate\Contracts\Database\Query\Builder`. A parameter already typed with a class name stays.
-
 use mago_syntax::cst::{Node, NodeKind};
 
 use super::object_type::is_object_type;

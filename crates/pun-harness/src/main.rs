@@ -1,5 +1,3 @@
-//! Differential harness: run the pinned Pint oracle on a copy of each corpus project, and `pun migrate` then
-//! `pun check --fix` on another, and byte-diff the results. See context/reference/oracle.md.
 #![allow(
     clippy::print_stdout,
     clippy::print_stderr,
@@ -67,6 +65,10 @@ impl Drop for Scratch {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn main() -> Result<ExitCode> {
     // PUN_HARNESS_ROOT: run against another checkout layout (corpus/, .oracle/, scripts/, docs/).
     let root = std::env::var_os("PUN_HARNESS_ROOT")
@@ -87,7 +89,6 @@ fn main() -> Result<ExitCode> {
     if !pint.exists() {
         bail!("{} missing: run scripts/oracle.sh", pint.display());
     }
-    // PUN_BIN: a private copy of the pun binary, so concurrent agents rebuilding target/debug/pun don't race.
     let pun =
         std::env::var_os("PUN_BIN").map_or_else(|| root.join("target/debug/pun"), PathBuf::from);
     if !pun.exists() {
@@ -125,11 +126,8 @@ fn main() -> Result<ExitCode> {
         run(
             Command::new("php")
                 .arg(&pint)
-                // Same files as one process, in a fifth of the time on laravel-framework.
                 .arg("--parallel")
                 .args(&args)
-                // Pint 1.32 caches results in the temp dir, and compiles the Blade views of its human output there;
-                // keep both with the copies so they go with them.
                 .arg(format!(
                     "--cache-file={}",
                     tmp.join(&p.name).join("pint.cache").display()
@@ -139,7 +137,6 @@ fn main() -> Result<ExitCode> {
             "pint",
         )?;
         if pun.exists() {
-            // migrate reads the same pint.json / --preset Pint got, so this also proves the migration.
             let pun_cmd = |sub: &[&str]| {
                 let mut c = Command::new(&pun);
                 c.env("PUN_IGNORE_PHP_CONSTRAINT", "1")
@@ -147,16 +144,12 @@ fn main() -> Result<ExitCode> {
                     .current_dir(&pun_dir);
                 c
             };
-            // Without a pint.json, `pun migrate` writes the starter pun.toml, whose lint + analyse tier
-            // (`preset = "recommended"`) would add rules Pint doesn't run once tiers apply. Migrating Pint's own
-            // defaults (an explicit `{}`) keeps those projects Pint-equivalent.
             let mut migrate_args = args.clone();
             if fixer.is_none() && !src.join("pint.json").exists() {
                 let defaults = tmp.join(&p.name).join("pint-defaults.json");
                 fs::write(&defaults, "{}\n")?;
                 migrate_args.splice(0..0, ["--config".into(), defaults.display().to_string()]);
             }
-            // Only the format config: rector.php and phpstan.neon would migrate too and need vendor/.
             run(
                 pun_cmd(&["migrate", "--from", "pint"]).args(&migrate_args),
                 "pun migrate",
@@ -194,9 +187,10 @@ fn main() -> Result<ExitCode> {
     if fixer.is_none() && preset.is_none() {
         write_scoreboard(&root.join("context/reports/scoreboard.md"), &outcomes)?;
     }
-    Ok(match outcomes.iter().any(|o| !o.differing.is_empty()) {
-        true => ExitCode::FAILURE,
-        false => ExitCode::SUCCESS,
+    Ok(if outcomes.iter().any(|o| !o.differing.is_empty()) {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     })
 }
 
@@ -255,7 +249,6 @@ fn copy_tree(src: &Path, dst: &Path) -> Result<()> {
         }
         let ty = entry.file_type()?;
         if name == "node_modules" {
-            // Needed by Pint/laravel_blade (prettier); excluded from formatting and diffing.
             std::os::unix::fs::symlink(&from, &to)?;
         } else if ty.is_dir() {
             copy_tree(&from, &to)?;
@@ -288,30 +281,27 @@ fn list_files(dir: &Path, rel: &str, out: &mut BTreeSet<String>) -> Result<()> {
 }
 
 fn compare(name: &str, src: &Path, oracle: &Path, pun: &Path) -> Result<Outcome> {
-    let (mut a, mut b) = (BTreeSet::new(), BTreeSet::new());
-    list_files(oracle, "", &mut a)?;
-    list_files(pun, "", &mut b)?;
-    // Written by `pun migrate`: the config, composer.lock as pun.lock, and credentials moved out of composer.json.
-    for written in ["pun.toml", "pun.lock", "auth.json"] {
-        b.remove(written);
-    }
+    let (mut by_oracle, mut by_pun) = (BTreeSet::new(), BTreeSet::new());
+    list_files(oracle, "", &mut by_oracle)?;
+    list_files(pun, "", &mut by_pun)?;
+    by_pun.remove("pun.toml");
     let mut o = Outcome {
         name: name.into(),
-        files: a.union(&b).count(),
+        files: by_oracle.union(&by_pun).count(),
         identical: 0,
         differing: vec![],
         oracle_changed: 0,
         pun_changed: 0,
     };
-    for rel in a.union(&b) {
-        let (x, y, s) = (
+    for rel in by_oracle.union(&by_pun) {
+        let (oracle_out, pun_out, source) = (
             fs::read(oracle.join(rel)).ok(),
             fs::read(pun.join(rel)).ok(),
             fs::read(src.join(rel)).ok(),
         );
-        o.oracle_changed += usize::from(x != s);
-        o.pun_changed += usize::from(y != s);
-        if x == y {
+        o.oracle_changed += usize::from(oracle_out != source);
+        o.pun_changed += usize::from(pun_out != source);
+        if oracle_out == pun_out {
             o.identical += 1;
         } else {
             o.differing.push(rel.clone());
@@ -323,7 +313,6 @@ fn compare(name: &str, src: &Path, oracle: &Path, pun: &Path) -> Result<Outcome>
 /// Rewrites the rows for the projects that ran, keeps the rest.
 fn write_scoreboard(path: &Path, outcomes: &[Outcome]) -> Result<()> {
     let old = fs::read_to_string(path).unwrap_or_default();
-    // Hand-written sections after the table (e.g. "## Benchmarks") are kept as they are.
     let (table, trailer) = old.split_at(old.find("\n## ").unwrap_or(old.len()));
     let mut rows: Vec<String> = table
         .lines()

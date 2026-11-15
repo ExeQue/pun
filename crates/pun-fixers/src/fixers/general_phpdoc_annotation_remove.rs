@@ -1,5 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\GeneralPhpdocAnnotationRemoveFixer` (the configurable rule; the proxy used by
-//! phpdoc_no_access / phpdoc_no_package lives in analyzers/general_phpdoc_annotation_remove.rs).
 use crate::analyzers::docblock::{Annotation, DocBlock};
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use pun_format::Fixer;
@@ -64,7 +62,6 @@ impl Fixer for GeneralPhpdocAnnotationRemoveFixer {
             }
             let doc = DocBlock::new(tokens[index].get_content());
             let annotations = self.get_annotations_to_remove(&doc);
-            // nothing to do if there are no annotations
             if annotations.is_empty() {
                 continue;
             }

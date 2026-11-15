@@ -1,8 +1,3 @@
-//! `lint/types/add-return-type-from-get-repository`, ported from Rector 2.8.4's
-//! `ReturnTypeFromGetRepositoryDocblockRector` (rules/TypeDeclaration/Rector/ClassMethod): a method without a return
-//! type whose one `return` returns an entity manager's `getRepository()` call (directly or through the variable it
-//! was assigned to) returns the existing class its `@return` names, and the `@return` goes.
-
 use mago_syntax::cst::{
     Assignment, AssignmentOperator, Call, ClassLikeMemberSelector, Expression, MethodCall, Node,
     NodeKind,
@@ -17,7 +12,7 @@ use super::compare::{Object, RType};
 use super::docblock::{FunctionLike, variable_name};
 use super::facts::{Facts, facts};
 use super::{returns_scoped, untyped};
-use crate::rules::lint_b_doc::Doc;
+use crate::rules::support::docblocks::Doc;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 
@@ -66,7 +61,6 @@ impl Rule for AddReturnTypeFromGetRepository {
         chain.push(node);
         let scope = TypeScope::new(&chain, facts.documented());
         let returned = with_classes(facts.documented(), || scope.map_doc(parsed));
-        // `mapPHPStanTypeToPhpParserNode()` of an `ObjectType`: a fully qualified name
         let class = match returned {
             RType::Object(Object::FullyQualified(name)) => {
                 name.trim_start_matches('\\').to_string()
@@ -75,7 +69,6 @@ impl Rule for AddReturnTypeFromGetRepository {
             RType::T(Type::Object(name, _, _)) => name,
             _ => return,
         };
-        // must be an existing repository class
         if facts.codebase.get_class_like(class.as_bytes()).is_none() {
             return;
         }
@@ -93,7 +86,6 @@ impl Rule for AddReturnTypeFromGetRepository {
     }
 }
 
-/// `isGetRepositoryReturnOnly()`.
 fn is_get_repository_return_only(
     facts: &Facts,
     f: &FunctionLike<'_, '_>,
@@ -110,11 +102,9 @@ fn is_get_repository_return_only(
         return false;
     };
     match value {
-        // direct return: return $this->em->getRepository(...);
         Expression::Call(Call::Method(call)) => {
             is_get_repository_method_call(facts, ancestors, call)
         }
-        // indirect return: $repo = $this->em->getRepository(...); ...; return $repo;
         _ => {
             let Some(name) = variable_name(value) else {
                 return false;
@@ -125,8 +115,6 @@ fn is_get_repository_return_only(
     }
 }
 
-/// `isGetRepositoryMethodCall()`: `->getRepository()` on an entity manager (`getType()` of the caller an
-/// `ObjectType` of `EntityManagerInterface` or a class that implements it).
 fn is_get_repository_method_call(
     facts: &Facts,
     ancestors: &[Node<'_, '_>],
@@ -146,8 +134,6 @@ fn is_get_repository_method_call(
                 .is_instance_of(class.as_bytes(), ENTITY_MANAGER_INTERFACE.as_bytes()))
 }
 
-/// `findVariableAssignMethodCall()`: the method call the last assignment of `$name` in the method assigns, `None`
-/// when an assignment of it assigns anything else.
 fn find_variable_assign_method_call<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     name: &str,
@@ -159,7 +145,6 @@ fn find_variable_assign_method_call<'ast, 'arena>(
         if variable_name(a.lhs) != Some(name) {
             continue;
         }
-        // reassigned to something else, cannot be sure of the type
         let Expression::Call(Call::Method(c)) = unparenthesize(a.rhs) else {
             return None;
         };
@@ -168,7 +153,6 @@ fn find_variable_assign_method_call<'ast, 'arena>(
     call
 }
 
-/// `NodeFinder::findInstanceOf($node, Assign::class)`: every `=` assignment under `node`, in source order.
 fn collect_assignments<'ast, 'arena>(
     node: Node<'ast, 'arena>,
     out: &mut Vec<&'ast Assignment<'arena>>,

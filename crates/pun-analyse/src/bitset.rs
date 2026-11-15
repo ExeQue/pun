@@ -1,6 +1,3 @@
-//! A sequence of flags stored one bit each.
-
-/// A sequence of `len` flags, one bit each.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct BitSet {
     words: Vec<u64>,
@@ -8,7 +5,6 @@ pub(crate) struct BitSet {
 }
 
 impl BitSet {
-    /// `len` flags, all clear.
     pub(crate) fn new(len: usize) -> BitSet {
         BitSet {
             words: vec![0; len.div_ceil(64)],
@@ -20,12 +16,10 @@ impl BitSet {
         self.len
     }
 
-    /// Flag `i`; a flag past the end is clear.
     pub(crate) fn get(&self, i: usize) -> bool {
         i < self.len && self.words[i / 64] & (1 << (i % 64)) != 0
     }
 
-    /// Sets flag `i` to `value`, growing the sequence to hold it.
     pub(crate) fn set(&mut self, i: usize, value: bool) {
         if i >= self.len {
             self.len = i + 1;
@@ -52,7 +46,6 @@ impl BitSet {
         self.len.checked_sub(1).map(|i| self.get(i))
     }
 
-    /// Keeps the first `len` flags.
     pub(crate) fn truncate(&mut self, len: usize) {
         for i in len..self.len.min(self.words.len() * 64) {
             self.words[i / 64] &= !(1 << (i % 64));
@@ -75,7 +68,6 @@ impl IntoIterator for BitSet {
     }
 }
 
-/// The flags of a [`BitSet`], in order.
 pub(crate) struct IntoIter {
     set: BitSet,
     next: usize,

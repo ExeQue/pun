@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Whitespace\IndentationTypeFixer`.
 use pun_tokens::php_compat::str_replace;
 use crate::analyzers::preg::Preg;
 use pun_format::{Fixer, WhitespacesFixerConfig};
@@ -37,7 +36,6 @@ impl IndentationTypeFixer {
     fn fix_indent_token(&self, tokens: &Tokens, index: usize) -> Token {
         let mut content = tokens[index].get_content().to_vec();
         let mut previous_token_has_trailing_linebreak = false;
-        // @TODO this can be removed when we have a transformer for "T_OPEN_TAG" to "T_OPEN_TAG + T_WHITESPACE"
         if index > 0 && tokens[index - 1].get_content().contains(&b'\n') {
             content.insert(0, b'\n');
             previous_token_has_trailing_linebreak = true;
@@ -70,8 +68,6 @@ impl Fixer for IndentationTypeFixer {
         "indentation_type"
     }
     fn priority(&self) -> i32 {
-        // Must run before PhpdocIndentFixer.
-        // Must run after ClassAttributesSeparationFixer.
         50
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -81,7 +77,6 @@ impl Fixer for IndentationTypeFixer {
         self.whitespaces_config = config.clone();
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // With a spaces indent only tabs are rewritten, so tab-free tokens come out unchanged.
         let spaces = self.whitespaces_config.get_indent() != "\t";
         for index in 0..tokens.count() {
             let token = &tokens[index];

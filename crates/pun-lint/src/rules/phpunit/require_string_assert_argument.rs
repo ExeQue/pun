@@ -1,9 +1,3 @@
-//! `lint/phpunit/require-string-assert-argument`, ported from rector-phpunit's
-//! `StringCastAssertStringContainsStringRector` (rules/CodeQuality/Rector/MethodCall).
-//!
-//! The haystack of `assertStringContainsString()` and `assertStringNotContainsString()` is cast with `(string)` when
-//! its type is not surely a string.
-
 use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety};
 
@@ -69,7 +63,6 @@ impl Rule for RequireStringAssertArgument {
     }
 }
 
-/// Whether the expression binds looser than a cast, so the cast needs parentheses around it.
 fn loose(expr: &Expression<'_>) -> bool {
     matches!(
         expr,

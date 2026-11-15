@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\ClassNotation\OrderedTraitsFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use anyhow::Result;
 use pun_format::Fixer;
@@ -36,8 +35,6 @@ impl Fixer for OrderedTraitsFixer {
         tokens.is_token_kind_found(Kind::CT_USE_TRAIT)
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
-        // upstream's generator yields a group only after it is complete and sorting keeps the token
-        // count, so collecting the groups first is equivalent
         for uses in find_use_statements_groups(tokens) {
             self.sort_use_statements(tokens, uses);
         }
@@ -63,7 +60,7 @@ fn find_use_statements_groups(tokens: &Tokens) -> Vec<Vec<(usize, Tokens)>> {
             continue;
         }
         let start_index = tokens
-            .get_next_non_whitespace(tokens.get_prev_meaningful_token(index).unwrap(), None)
+            .get_next_non_whitespace(tokens.prev_meaningful(index), None)
             .unwrap();
         let mut end_index = tokens
             .get_next_token_of_kind(index, &[";".into(), "{".into()], true)

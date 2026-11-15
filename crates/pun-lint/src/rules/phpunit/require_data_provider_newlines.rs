@@ -1,18 +1,9 @@
-//! `lint/phpunit/require-data-provider-newlines`, ported from rector-phpunit's `DataProviderArrayItemsNewLinedRector`
-//! (rules/CodeQuality/Rector/ClassMethod).
-//!
-//! In a public method of a test class that is not a test (its name does not start with `test` and it has no
-//! `#[Test]`), every returned array (`BetterNodeFinder::findInstanceOf`, nested functions included) with an item that
-//! starts on the line the item before it ends is printed with an item a line: Rector's `NEWLINED_ARRAY_PRINT`, which
-//! is `[`, each item one level deeper than the `return` after its comments with a trailing comma, and `]`. An item's
-//! own lines move with it.
-
 use mago_syntax::cst::{ArrayElement, Expression, MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
 use super::{is_in_test_class, is_public};
-use crate::rules::rector_batch5::has_attribute;
-use crate::rules::rector_stmts::{line_indent, previous_token_end, reindent, tokens};
+use crate::rules::support::names::has_attribute;
+use crate::rules::support::statement_edits::{line_indent, previous_token_end, reindent, tokens};
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

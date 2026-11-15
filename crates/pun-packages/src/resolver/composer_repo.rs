@@ -1,14 +1,10 @@
-//! A Composer repository (Packagist, Private Packagist, Satis) read through its v2 metadata: one file per package
-//! (`p2/<name>.json`, and `p2/<name>~dev.json` for branches), fetched in parallel with conditional requests and
-//! kept in Composer's own cache directory, so Pun and Composer share it.
-
 use super::filters::{Advisory, ListEntry};
 use super::package::{Origin, Package, load, stability_value};
 use super::pool::{Found, Loaded, Repository, Stabilities};
 use crate::constraint::Constraint;
+use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetched, Fetcher};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
-use anyhow::{Context, Result, bail};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -28,9 +24,6 @@ pub struct ComposerRepository<'a> {
     files: HashMap<String, Option<File>>,
 }
 
-/// A package's metadata file, kept small: its `packages` as JSON text, which each load that needs it parses again,
-/// and the fields advisories and filters read. Parsed whole, Packagist's files for one Laravel app take most of a
-/// gigabyte.
 #[derive(Deserialize)]
 struct File {
     packages: Option<Box<RawValue>>,
@@ -40,7 +33,10 @@ struct File {
     filter: Option<Value>,
 }
 
-/// The `last-modified` a cached file was stored with; `None` when the file is not a JSON object.
+#[expect(
+    clippy::option_option,
+    reason = "None: the cached file is not JSON; Some(None): it has no stamp"
+)]
 fn last_modified(text: &[u8]) -> Option<Option<String>> {
     #[derive(Deserialize)]
     struct Stamp {
@@ -51,7 +47,6 @@ fn last_modified(text: &[u8]) -> Option<Option<String>> {
     Some(stamp.modified.and_then(|m| m.as_str().map(String::from)))
 }
 
-/// A file's text as a JSON object.
 fn object(text: &[u8], url: &str) -> Result<Map<String, Value>> {
     match serde_json::from_slice(text).with_context(|| format!("{url} is not valid JSON"))? {
         Value::Object(m) => Ok(m),
@@ -59,7 +54,6 @@ fn object(text: &[u8], url: &str) -> Result<Map<String, Value>> {
     }
 }
 
-/// The cache directory name Composer uses for a repository URL.
 fn cache_name(url: &str) -> String {
     url.chars()
         .map(|c| {
@@ -72,7 +66,6 @@ fn cache_name(url: &str) -> String {
         .collect()
 }
 
-/// A URL from the repository's root file made absolute against the repository's scheme and host.
 fn canonical(base: &str, url: &str) -> String {
     if !url.starts_with('/') {
         return url.to_string();
@@ -89,7 +82,6 @@ fn canonical(base: &str, url: &str) -> String {
 }
 
 impl<'a> ComposerRepository<'a> {
-    /// The repository at `url`. Nothing is fetched until a package is asked of it.
     pub fn open(fetcher: &'a Fetcher, url: &str) -> ComposerRepository<'a> {
         let url = url.trim_end_matches('/').to_string();
         let cache = (fetcher.cache_dir()).map(|c| c.join("repo").join(cache_name(&url)));
@@ -103,7 +95,6 @@ impl<'a> ComposerRepository<'a> {
         }
     }
 
-    /// Reads `packages.json` (from the cache when it is under ten minutes old) the first time it is needed.
     fn root(&mut self) -> Result<()> {
         if !self.metadata_url.is_empty() {
             return Ok(());
@@ -145,8 +136,6 @@ impl<'a> ComposerRepository<'a> {
         Some((text, modified))
     }
 
-    /// The file at `url`: the cached copy when it is younger than `max_age` seconds, else fetched with
-    /// `If-Modified-Since`. `None` when the repository has no such file.
     fn cached_or_fetch(
         &self,
         url: &str,
@@ -165,8 +154,6 @@ impl<'a> ComposerRepository<'a> {
     }
 }
 
-/// One metadata file's text, conditional on the cached copy's `last-modified`; a failed request falls back to the
-/// cache. A cached copy that is not a JSON object counts as none.
 fn fetch_file(
     fetcher: &Fetcher,
     url: &str,
@@ -184,7 +171,6 @@ fn fetch_file(
     };
     match response {
         Fetched::NotModified => {
-            // Only a cached copy is asked for conditionally. Touch it so a fresh root file is reused for a while.
             let touch = |path: &PathBuf| {
                 std::fs::File::options()
                     .append(true)
@@ -201,26 +187,17 @@ fn fetch_file(
                 data.insert("last-modified".into(), m.into());
             }
             let text = Value::Object(data).to_string().into_bytes();
-            if let Some(path) = cache
-                && let Some(dir) = path.parent()
-                && std::fs::create_dir_all(dir).is_ok()
-            {
-                let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
-                if std::fs::write(&tmp, &text).is_ok() {
-                    let _ = std::fs::rename(&tmp, &path);
-                }
+            if let Some(path) = cache {
+                // The cache is best effort, as Composer's: a failed write only costs a download next time.
+                let _ = crate::fetch::store(&path, &text);
             }
             Ok(Some(text))
         }
     }
 }
 
-/// At most this many metadata requests run at once (Composer allows 12); each round of a resolve waits for its
-/// slowest request, so more at once shortens every round.
 const PARALLEL: usize = 48;
 
-/// Fetches each (file, url, cache path) on worker threads, which also read the cached copies and parse the
-/// results, returning (file, result) in order.
 fn fetch_all(
     fetcher: &Fetcher,
     jobs: Vec<(String, String, Option<PathBuf>)>,
@@ -230,7 +207,7 @@ fn fetch_all(
         .into_iter()
         .map(|j| std::sync::Mutex::new(Some(j)))
         .collect();
-    let results: Vec<std::sync::Mutex<Option<(String, Result<Option<File>>)>>> = (0..jobs.len())
+    let results: Vec<std::sync::Mutex<Option<_>>> = (0..jobs.len())
         .map(|_| std::sync::Mutex::new(None))
         .collect();
     std::thread::scope(|scope| {
@@ -260,8 +237,6 @@ fn fetch_all(
         .collect()
 }
 
-/// `MetadataMinifier::expand`: each version holds only what changed from the one before; `__unset` removes a key.
-/// Calls `each` with every version expanded in turn, so a caller copies only the versions it keeps.
 pub fn expand(
     versions: &[Value],
     mut each: impl FnMut(&Map<String, Value>) -> Result<()>,
@@ -287,7 +262,6 @@ pub fn expand(
     Ok(())
 }
 
-/// `isVersionAcceptable`: the version or its branch alias matches the constraint at an accepted stability.
 fn acceptable(
     c: &Constraint,
     name: &str,
@@ -295,7 +269,6 @@ fn acceptable(
     data: &Map<String, Value>,
     s: &Stabilities,
 ) -> bool {
-    // Only a branch has an alias; most versions are tags, so skip copying their metadata to look.
     let branch = (data.get("version").and_then(Value::as_str))
         .is_some_and(|v| v.starts_with("dev-") || v.ends_with("-dev"));
     let alias = branch.then(|| branch_alias(data).map(|a| a.0)).flatten();
@@ -344,9 +317,8 @@ impl Repository for ComposerRepository<'_> {
         for (file, data) in fetched {
             self.files.insert(file, data?);
         }
-        // Each file decodes and expands on its own thread; the packages join the arena in the files' order.
         let (url, notify) = (&self.url, &self.notify);
-        let decoded: Vec<Option<Result<(Vec<Package>, Vec<usize>)>>> = (wanted.par_iter())
+        let decoded: Vec<Option<Result<_>>> = (wanted.par_iter())
             .map(|(file, name, constraint)| {
                 let data = self.files.get(file)?.as_ref()?;
                 let all: Value = serde_json::from_str(data.packages.as_ref()?.get()).ok()?;
@@ -368,7 +340,6 @@ impl Repository for ComposerRepository<'_> {
                         return Ok(());
                     }
                     let mut version = version.clone();
-                    // Composer's repository loader keeps no transport options.
                     version.shift_remove("transport-options");
                     if let Some(n) = notify {
                         version
@@ -464,7 +435,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Expected values from composer/metadata-minifier's `MetadataMinifier::expand` on the same list.
     #[test]
     fn expands_as_composer() {
         let versions = [
@@ -505,13 +475,8 @@ mod tests {
 
     const MODIFIED: &str = "Mon, 02 Nov 2026 10:00:00 GMT";
 
-    /// Each request the server saw: its path, `If-Modified-Since` and `Authorization`.
     type Seen = std::sync::Arc<std::sync::Mutex<Vec<(String, Option<String>, Option<String>)>>>;
 
-    /// An HTTP server on localhost for `tests/fixtures/composer-repo`: each file with a fixed `Last-Modified`, 304
-    /// when the request's `If-Modified-Since` is that date, 404 for a missing file. `extra` adds files by path
-    /// (without `Last-Modified`), `/busy/` answers 503 and `/forbidden/` 403; while `down` is set, every request
-    /// answers 500.
     fn serve(
         extra: &'static [(&'static str, &'static str)],
     ) -> (String, Seen, std::sync::Arc<std::sync::atomic::AtomicBool>) {
@@ -546,7 +511,6 @@ mod tests {
                 let added = extra.iter().find(|(p, _)| *p == path);
                 let file = (added.map(|(_, body)| body.as_bytes().to_vec()))
                     .or_else(|| std::fs::read(root.join(path.trim_start_matches('/'))).ok());
-                // The files `extra` adds have no Last-Modified.
                 let modified = if added.is_some() {
                     String::new()
                 } else {
@@ -588,7 +552,10 @@ mod tests {
         d
     }
 
-    /// A project on the repository at `url` requiring `require`, with Packagist off and PHP at 8.5.0.
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn manifest(url: &str, require: Value) -> Map<String, Value> {
         let m = json!({
             "name": "acme/app",
@@ -599,22 +566,22 @@ mod tests {
         m.as_object().unwrap().clone()
     }
 
-    /// The composer.lock text an update of `manifest` writes, or the error's chain.
     fn update(fetcher: &Fetcher, manifest: &Map<String, Value>) -> Result<String, String> {
         use super::super::{Options, locker, repos, resolve};
         let options = Options::default();
+        let no_env = |_: &str| None;
         let run = || -> Result<String> {
-            let repositories = repos::open(std::path::Path::new("."), manifest, None, fetcher)?;
+            let repositories =
+                repos::open(std::path::Path::new("."), manifest, None, fetcher, &no_env)?;
             let php = json!({"name": "php", "version": "8.5.0"});
             let platform = vec![php.as_object().unwrap().clone()];
-            let resolved = resolve(manifest, platform, repositories, None, &options)?;
-            let resolution = resolved.map_err(|_| anyhow::anyhow!("no solution"))?;
+            let resolved = resolve(manifest, platform, repositories, None, &options, &no_env)?;
+            let resolution = resolved.map_err(|_| crate::error::Error::msg("no solution"))?;
             Ok(locker::lock(&resolution, manifest, &options).to_composer_lock())
         };
         run().map_err(|e| format!("{e:#}"))
     }
 
-    /// The paths and `If-Modified-Since` of the requests since the last call, sorted.
     fn requests(seen: &Seen) -> Vec<(String, Option<String>)> {
         let all = std::mem::take(&mut *seen.lock().unwrap());
         let mut all: Vec<_> = all.into_iter().map(|(p, s, _)| (p, s)).collect();
@@ -622,10 +589,6 @@ mod tests {
         all
     }
 
-    /// The lock Composer 2.11.2 wrote (`composer update --no-install`) for the same manifest on the same repository
-    /// served by `python3 -m http.server`, `BASE` standing for its URL. Composer skips the version with an advisory
-    /// and the one on the malware list, expands the minified file, reads the branch from `~dev`, and adds the
-    /// repository's notification URL.
     #[test]
     fn reads_a_composer_repository_as_composer() {
         let (base, seen, down) = serve(&[]);
@@ -670,8 +633,6 @@ mod tests {
                 .unwrap();
         assert_eq!(cached["last-modified"], MODIFIED);
 
-        // Again: packages.json comes from the cache, each package file is asked for only if it changed. A cached copy
-        // that is not JSON counts as none.
         std::fs::write(cache.join("provider-acme~util.json"), "not json").unwrap();
         assert_eq!(update(&fetcher, &manifest).unwrap(), got);
         let again: Vec<_> = (files.iter())
@@ -679,7 +640,6 @@ mod tests {
             .collect();
         assert_eq!(requests(&seen), again);
 
-        // A packages.json older than ten minutes is asked for again; unchanged, its copy is touched.
         let root = cache.join("packages.json");
         let old = SystemTime::now() - Duration::from_secs(3600);
         std::fs::File::options()
@@ -693,7 +653,6 @@ mod tests {
         let touched = std::fs::metadata(&root).unwrap().modified().unwrap();
         assert!(touched.elapsed().unwrap() < Duration::from_secs(600));
 
-        // A cache that can't be written to is only not written.
         let lib_only = self::manifest(&base, json!({"acme/lib": "^1.0"}));
         let readonly = dir.join("readonly");
         let repo = readonly.join(format!("repo/{}", cache_name(&base)));
@@ -706,7 +665,6 @@ mod tests {
         assert_eq!(std::fs::read_dir(&repo).unwrap().count(), 0);
         requests(&seen);
 
-        // While the server fails, cached copies are used; a file with none fails the update.
         down.store(true, std::sync::atomic::Ordering::Relaxed);
         assert!(locked.contains("\"name\": \"Acme/Lib\""), "{locked}");
         assert_eq!(update(&fetcher, &lib_only).unwrap(), locked);
@@ -719,8 +677,11 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// Messages derived by hand: Pun's own for what it does not read, Composer's for an invalid version.
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn repository_errors() {
         const FILES: &[(&str, &str)] = &[
             ("/v1/packages.json", r#"{"packages": []}"#),
@@ -802,7 +763,6 @@ mod tests {
                 "fetching {base}/forbidden/packages.json: HTTP 403 from {base}/forbidden/packages.json"
             )
         );
-        // Each request carries the host's credentials; a busy server is asked three times.
         let all = std::mem::take(&mut *seen.lock().unwrap());
         assert!(all.iter().all(|r| r.2.as_deref() == Some("Bearer t0k")));
         assert_eq!(
@@ -810,21 +770,16 @@ mod tests {
             format!("fetching {base}/busy/packages.json: HTTP 503 from {base}/busy/packages.json")
         );
         assert_eq!(requests(&seen).len(), 3);
-        // A file without the package has no versions of it.
         assert_eq!(fails("bad", "acme/empty"), "no solution");
-        // A tag and a branch from two files: Composer 2.11.2 locks 1.0.0 for `*@dev` on a `package` repository
-        // holding both.
         let m = manifest(&format!("{base}/bad"), json!({"acme/both": "*@dev"}));
         let locked = update(&fetcher, &m).unwrap();
         assert!(locked.contains("\"version\": \"1.0.0\""), "{locked}");
         requests(&seen);
-        // Platform requirements alone never read the repository, met or not.
         let m = manifest(&format!("{base}/none"), json!({"php": ">=8"}));
         assert!(update(&fetcher, &m).unwrap().contains("\"packages\": [],"));
         let m = manifest(&format!("{base}/none"), json!({"ext-absent": "*"}));
         assert_eq!(update(&fetcher, &m).unwrap_err(), "no solution");
         assert_eq!(requests(&seen), []);
-        // A server that refuses the connection fails after the third try.
         let closed = std::net::TcpListener::bind("127.0.0.1:0")
             .unwrap()
             .local_addr()

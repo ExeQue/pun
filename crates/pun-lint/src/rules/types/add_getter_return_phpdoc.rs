@@ -1,17 +1,12 @@
-//! `lint/types/add-getter-return-phpdoc`, ported from Rector 2.8.4's
-//! `DocblockGetterReturnArrayFromPropertyDocblockVarRector` (rules/TypeDeclarationDocblocks/Rector/ClassMethod): a
-//! getter declared `: array` that returns `$this->property` gets the property's `@var` array type as `@return`.
-
 use mago_syntax::cst::{Node, NodeKind};
+use pun_phpstan::phpdoc::Node as DocNode;
 
 use super::docblock::{
     class_members, class_name, docs_report, is_array_hint, method, methods, properties,
     returned_this_property,
 };
-use crate::rules::phpdoc_writer::type_mapper::is_useful_array_tag;
-use pun_phpstan::phpdoc::Node as DocNode;
-
-use crate::rules::phpdoc_writer::{DocTarget, decorate_return_node};
+use crate::rules::support::phpdoc_writer::type_mapper::is_useful_array_tag;
+use crate::rules::support::phpdoc_writer::{DocTarget, decorate_return_node};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
@@ -53,7 +48,6 @@ impl Rule for AddGetterReturnPhpdoc {
             if is_useful_array_tag(info.return_tag().map(|t| &t.ty)) {
                 continue;
             }
-            // `GetterClassMethodPropertyFinder::find()`: the property, or else a promoted parameter of the constructor
             let Some(name) = returned_this_property(m) else {
                 continue;
             };
@@ -74,7 +68,6 @@ impl Rule for AddGetterReturnPhpdoc {
             let Some(var) = property_info.var_tag() else {
                 continue;
             };
-            // is type useful?
             if !matches!(
                 var.parsed,
                 Some(DocNode::Generic { .. } | DocNode::Array(_))

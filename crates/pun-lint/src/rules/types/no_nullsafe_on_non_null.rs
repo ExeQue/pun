@@ -1,16 +1,3 @@
-//! `lint/types/no-nullsafe-on-non-null`, ported from Rector 2.8.4's `CleanupUnneededNullsafeOperatorRector`
-//! (rules/CodeQuality/Rector/NullsafeMethodCall): `f()?->m()` becomes `f()->m()` when the function, method or static
-//! method called before `?->` declares that it returns one object type.
-//!
-//! `ReturnStrictTypeAnalyzer::resolveMethodCallReturnType` finds the callee as `ReflectionResolver` does: a function
-//! by its name, a method by the one class of its receiver's type (`getType`, see [`super::rector_type`]; a union,
-//! nullable or not, has none), a static method by its class name, `self`, `static` or `parent`. It reads the
-//! callee's native return type, or the stub's for one of PHP's own; `static` of a method of the calling class stays
-//! `static`, which is no object type.
-//!
-//! Rector prints the call anew: the receiver's own text, `->`, the name and the arguments as `pMaybeMultiline` writes
-//! them, so comments around `?->` go.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -28,7 +15,6 @@ use crate::{Context, Report, Rule};
 
 pub struct NoNullsafeOnNonNull;
 
-/// `PhpVersionFeature::NULLSAFE_OPERATOR`.
 const NULLSAFE_OPERATOR: u32 = 80000;
 
 impl Rule for NoNullsafeOnNonNull {
@@ -36,8 +22,8 @@ impl Rule for NoNullsafeOnNonNull {
         "lint/types/no-nullsafe-on-non-null"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NULLSAFE_OPERATOR
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NULLSAFE_OPERATOR)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -86,14 +72,12 @@ impl Rule for NoNullsafeOnNonNull {
     }
 }
 
-/// A function or method a call reaches: its declaring class for a method, and its name.
 pub(crate) struct Callee<'f> {
     pub(crate) metadata: &'f FunctionLikeMetadata,
     class: Option<String>,
     name: Vec<u8>,
 }
 
-/// `ReflectionResolver::resolveFunctionLikeReflectionFromCall` for a function, method or static method call.
 pub(crate) fn callee<'f>(
     facts: &'f Facts,
     ancestors: &[Node<'_, '_>],
@@ -168,8 +152,6 @@ pub(crate) fn callee<'f>(
     })
 }
 
-/// Whether the callee's return type, as `resolveMethodCallReturnType` reads it, is an `ObjectType`: one class, an
-/// enum or a closure; `static` only of a class other than the calling one.
 fn returns_object(facts: &Facts, scope: Option<&ClassScope>, callee: &Callee<'_>) -> bool {
     let native = match &callee.class {
         Some(class) => is_builtin_class(class.as_bytes()),
@@ -188,7 +170,6 @@ fn returns_object(facts: &Facts, scope: Option<&ClassScope>, callee: &Callee<'_>
             if !(named.is_static || named.is_this) {
                 return true;
             }
-            // `normalizeStaticType`: `static` of another class is that class
             let current = scope.and_then(|s| s.name.clone());
             !(callee.class.as_ref())
                 .is_some_and(|d| current.is_some_and(|c| c.eq_ignore_ascii_case(d)))
@@ -199,7 +180,6 @@ fn returns_object(facts: &Facts, scope: Option<&ClassScope>, callee: &Callee<'_>
     }
 }
 
-/// The return type PHP's stubs give a built-in function or method (with the docblock).
 fn documented_return<'c>(
     codebase: &'c CodebaseMetadata,
     callee: &Callee<'_>,

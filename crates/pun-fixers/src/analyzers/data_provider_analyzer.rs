@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Tokenizer\Analyzer\DataProviderAnalyzer` and its `DataProviderAnalysis`.
 use crate::analyzers::analysis::{Attribute, NamespaceUseType};
 use crate::analyzers::attribute_analyzer::AttributeAnalyzer;
 use crate::analyzers::docblock::type_expression::REGEX_IDENTIFIER;
@@ -9,15 +8,12 @@ use pun_tokens::Kind::*;
 use pun_tokens::Tokens;
 use pun_tokens::php_compat::strtolower;
 
-/// `DataProviderAnalysis`.
 pub(crate) struct DataProviderAnalysis {
     pub name: Vec<u8>,
     pub name_index: usize,
-    /// (token index, offset in it) of each usage: an attribute's string, or a `@dataProvider` tag in a doc comment.
     pub usage_indices: Vec<(usize, usize)>,
 }
 
-/// `DataProviderAnalyzer::getDataProviders`, ordered by the provider's name index.
 pub(crate) fn get_data_providers(
     tokens: &Tokens,
     start_index: usize,
@@ -59,7 +55,6 @@ pub(crate) fn get_data_providers(
         let Some(&index) = methods.get(&strtolower(&name)) else {
             continue;
         };
-        // a later name for the same method replaces the earlier one in place
         if let Some(existing) = analyses.iter_mut().find(|a| a.name_index == index) {
             existing.usage_indices = usages;
             continue;
@@ -74,14 +69,12 @@ pub(crate) fn get_data_providers(
     analyses
 }
 
-/// `getMethods`: lower-cased method name => the name's index.
 fn get_methods(tokens: &Tokens, start_index: usize, end_index: usize) -> IndexMap<Vec<u8>, usize> {
     let mut functions = IndexMap::new();
     for index in start_index..end_index {
         if !tokens[index].is_kind(T_FUNCTION) {
             continue;
         }
-        // the class's `}` comes after it
         let name_index = tokens.get_next_non_whitespace(index, None).unwrap();
         if !tokens[name_index].is_kind(T_STRING) {
             continue;
@@ -91,7 +84,6 @@ fn get_methods(tokens: &Tokens, start_index: usize, end_index: usize) -> IndexMa
     functions
 }
 
-/// `getAttributeIndexAndDocCommentIndices`: the first attribute and doc comment found walking back from the method.
 fn attribute_and_doc_comment(tokens: &Tokens, mut index: usize) -> (Option<usize>, Option<usize>) {
     let mut attribute_index = None;
     let mut doc_comment_index = None;
@@ -109,7 +101,6 @@ fn attribute_and_doc_comment(tokens: &Tokens, mut index: usize) -> (Option<usize
     (attribute_index, doc_comment_index)
 }
 
-/// `getDataProviderNameIndex`.
 fn data_provider_name_index(
     tokens: &Tokens,
     fqn: &FullyQualifiedNameAnalyzer<'_>,
@@ -123,7 +114,6 @@ fn data_provider_name_index(
     if name != b"PHPUnit\\Framework\\Attributes\\DataProvider" {
         return None;
     }
-    // the attribute's `#[` comes before it
     let close = tokens
         .get_prev_token_of_kind(attribute.end + 1, &[")".into(), T_ATTRIBUTE.into()], true)
         .unwrap();

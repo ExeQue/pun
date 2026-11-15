@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Operator\OperatorLinebreakFixer`.
 use crate::analyzers::alternative_syntax_analyzer::AlternativeSyntaxAnalyzer;
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::goto_label_analyzer::GotoLabelAnalyzer;
@@ -31,7 +30,6 @@ const BOOLEAN_OPERATORS: [Proto<'static>; 5] = [
     Proto::Kind(T_LOGICAL_XOR),
 ];
 
-/// `getNonBooleanOperators()`, with `Token::getObjectOperatorKinds()` at the end.
 const NON_BOOLEAN_OPERATORS: [Proto<'static>; 42] = [
     Proto::Char(b"%"),
     Proto::Char(b"&"),
@@ -117,7 +115,7 @@ impl Fixer for OperatorLinebreakFixer {
             }
             let mut operator_indices = vec![index];
             if tokens[index].equals(":", true) {
-                let prev_index = tokens.get_prev_meaningful_token(index).unwrap();
+                let prev_index = tokens.prev_meaningful(index);
                 if tokens[prev_index].equals("?", true) {
                     operator_indices = vec![prev_index, index];
                     index = prev_index;
@@ -132,20 +130,20 @@ impl OperatorLinebreakFixer {
     fn fix_operator_linebreak(&self, tokens: &mut Tokens, operator_indices: &[usize]) {
         let min = operator_indices[0];
         let max = *operator_indices.last().unwrap();
-        let index_start = tokens.get_prev_meaningful_token(min).unwrap() + 1;
-        let index_end = tokens.get_next_meaningful_token(max).unwrap() - 1;
+        let index_start = tokens.prev_meaningful(min) + 1;
+        let index_end = tokens.next_meaningful(max) - 1;
         if !is_multiline(tokens, index_start, index_end) {
-            return; // operator is not surrounded by multiline whitespaces, do not touch it
+            return;
         }
         if self.beginning {
             if !is_multiline(tokens, max, index_end) {
-                return; // operator already is placed correctly
+                return;
             }
             fix_move_to_the_beginning(tokens, operator_indices);
             return;
         }
         if !is_multiline(tokens, index_start, min) {
-            return; // operator already is placed correctly
+            return;
         }
         fix_move_to_the_end(tokens, operator_indices);
     }
@@ -159,7 +157,7 @@ fn fix_move_to_the_beginning(tokens: &mut Tokens, operator_indices: &[usize]) {
     let min = operator_indices[0];
     let max = *operator_indices.last().unwrap();
     let prev_index = tokens.get_non_empty_sibling(min, -1).unwrap();
-    let next_index = tokens.get_next_meaningful_token(max).unwrap();
+    let next_index = tokens.next_meaningful(max);
     for i in (max + 1..next_index).rev() {
         if is_multiline_whitespace(&tokens[i]) {
             let is_whitespace_before = tokens[prev_index].is_whitespace(None);
@@ -176,7 +174,7 @@ fn fix_move_to_the_beginning(tokens: &mut Tokens, operator_indices: &[usize]) {
 fn fix_move_to_the_end(tokens: &mut Tokens, operator_indices: &[usize]) {
     let min = operator_indices[0];
     let max = *operator_indices.last().unwrap();
-    let prev_index = tokens.get_prev_meaningful_token(min).unwrap();
+    let prev_index = tokens.prev_meaningful(min);
     let next_index = tokens.get_non_empty_sibling(max, 1).unwrap();
     for i in prev_index + 1..max {
         if is_multiline_whitespace(&tokens[i]) {

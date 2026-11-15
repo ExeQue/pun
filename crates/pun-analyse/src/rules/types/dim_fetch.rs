@@ -1,7 +1,3 @@
-//! Level 3's InvalidKeyInArrayItemRule (`array.invalidKey`), ArrayDestructuringRule (`offsetAccess.nonArray`) and
-//! NonexistentOffsetInArrayDimFetchRule (`offsetAccess.nonOffsetAccessible`, `class.notFound`), with the
-//! NonexistentOffsetInArrayDimFetchCheck (`offsetAccess.notFound`) the last two share.
-
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{
@@ -19,7 +15,6 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "offsetAccess.notFound",
 ];
 
-/// `$dimType->describe(...)` of the offset messages: a constant string precisely, anything else by value.
 fn describe_dim(t: &Type) -> String {
     t.describe(if t.constant_strings().is_empty() {
         Level::Value
@@ -28,17 +23,14 @@ fn describe_dim(t: &Type) -> String {
     })
 }
 
-/// `isUndefinedExpressionAllowed()`.
 fn undefined_allowed(c: &Checker, at: Span) -> bool {
     property_access::undefined_allowed(c, at) || c.variables.allowed.contains(&at)
 }
 
-/// `reportMaybes` (conf/config.level7.neon).
 fn report_maybes(c: &Checker) -> bool {
     c.level >= 7
 }
 
-/// InvalidKeyInArrayItemRule on a keyed item of an array literal or a destructuring.
 pub(in super::super) fn array_item(c: &mut Checker, item: &KeyValueArrayElement) {
     if c.level < 3 {
         return;
@@ -66,8 +58,6 @@ pub(in super::super) fn array_item(c: &mut Checker, item: &KeyValueArrayElement)
     }
 }
 
-/// `isOffsetAccessLegal()`: what is not offset-accessible is still legal to read an offset of (a warning, not an
-/// error), but for closures and strict mixed.
 fn legal(t: &Type) -> Tri {
     match t {
         Type::Union(ts) => Tri::extreme_identity(ts.iter().map(legal)),
@@ -92,8 +82,6 @@ fn legal(t: &Type) -> Tri {
     }
 }
 
-/// The holder's type as NullsafeOperatorHelper::getNullsafeShortcircuitedExprRespectingScope() reads it: a holder
-/// whose chain short-circuits on a `?->` is read without the `null` it adds.
 fn shortcircuited(c: &Checker, holder: &Expression) -> Option<Type> {
     fn nullsafe(e: &Expression) -> bool {
         match unparen(e) {
@@ -105,7 +93,6 @@ fn shortcircuited(c: &Checker, holder: &Expression) -> Option<Type> {
             _ => false,
         }
     }
-    // `$scope->getType($node->var)` in the scope before the fetch, not after its dimension (`$a[$a = '0']`)
     let t = match c.variables.dim_receivers.get(&holder.span()) {
         Some(before) => c.phpstan_type_from(holder, before),
         None => c.phpstan_type(holder)?,
@@ -117,13 +104,9 @@ fn shortcircuited(c: &Checker, holder: &Expression) -> Option<Type> {
     })
 }
 
-/// NonexistentOffsetInArrayDimFetchCheck::check() on a holder of type `holder` (`None`: unknown), whose expression is
-/// in an assignment or where an undefined one is allowed when `exempt`.
 fn check(c: &Checker, holder: Option<Type>, exempt: bool, dim: &Type) -> Option<String> {
     let has = |t: &Type| unset::has_offset(c, t, dim);
     let t = c.find_type_to_check_of(holder, &|t| has(t).yes())?;
-    // PHPStan's arrays only have int and string keys: writing another key (`$a[[]] = ...`) makes the holder an
-    // ErrorType, where Mago keeps an array of that key type
     if exempt
         || (t.is_array().yes()
             && !is_super_type_of(
@@ -141,7 +124,6 @@ fn check(c: &Checker, holder: Option<Type>, exempt: bool, dim: &Type) -> Option<
     if found.no() {
         if t.is_array().yes() && matches!(intersect(vec![all_keys(), dim.clone()]), Type::Never(_))
         {
-            // Already reported by InvalidKeyInArrayDimFetchRule
             return None;
         }
         return Some(format!(
@@ -164,10 +146,9 @@ fn check(c: &Checker, holder: Option<Type>, exempt: bool, dim: &Type) -> Option<
     };
     let report = flattened.iter().any(|inner| {
         let check = if inner.is_array().yes() { &valid } else { dim };
-        // (reportPossiblyNonexistentGeneralArrayOffset and reportPossiblyNonexistentConstantArrayOffset are off)
         if inner.is_constant_array().yes()
             && !unset::has_offset(c, inner, check).yes()
-            && constant_scalar(check)
+            && super::too_wide::constant_scalar(check)
         {
             return true;
         }
@@ -186,7 +167,6 @@ fn check(c: &Checker, holder: Option<Type>, exempt: bool, dim: &Type) -> Option<
     })
 }
 
-/// `AllowedArrayKeysTypes::getType()` without a PHP version.
 fn all_keys() -> Type {
     union(vec![
         Type::Int,
@@ -197,7 +177,6 @@ fn all_keys() -> Type {
     ])
 }
 
-/// `TypeUtils::flattenTypes()`: a union's members, and a constant array as each of its arrays.
 fn flatten(t: &Type) -> Vec<Type> {
     let members = match t {
         Type::Union(ts) => ts.clone(),
@@ -212,12 +191,10 @@ fn flatten(t: &Type) -> Vec<Type> {
         .collect()
 }
 
-/// `ConstantArrayType::getAllArrays()`: the array with each combination of its optional keys present.
 fn all_arrays(a: &ConstArray) -> Vec<Type> {
     let optional = &a.optional;
     let n = optional.len();
     let combinations: Vec<Vec<usize>> = if n <= 10 {
-        // `powerSet()`
         (0..1usize << n)
             .map(|i| {
                 (0..n)
@@ -251,22 +228,6 @@ fn all_arrays(a: &ConstArray) -> Vec<Type> {
         .collect()
 }
 
-/// `isConstantScalarValue()->yes()`.
-fn constant_scalar(t: &Type) -> bool {
-    match t {
-        Type::Union(ts) => ts.iter().all(constant_scalar),
-        _ => matches!(
-            t,
-            Type::ConstBool(_)
-                | Type::ConstInt(_)
-                | Type::ConstFloat(_)
-                | Type::ConstString(_)
-                | Type::Null
-        ),
-    }
-}
-
-/// `isImplicitArrayCreation()`: the chain's root is a variable certainly undefined.
 fn implicit_array_creation(c: &Checker, holder: &Expression) -> bool {
     let mut root = unparen(holder);
     while let Expression::ArrayAccess(a) = root {
@@ -280,7 +241,6 @@ fn implicit_array_creation(c: &Checker, holder: &Expression) -> bool {
     }
 }
 
-/// The name of a call to a function written without a namespace (`Name::toLowerString()` after NameResolver).
 fn called<'e, 'arena>(e: &'e Expression<'arena>) -> Option<(String, &'e ArgumentList<'arena>)> {
     let Expression::Call(Call::Function(call)) = unparen(e) else {
         return None;
@@ -299,7 +259,6 @@ fn arguments<'e, 'arena>(list: &'e ArgumentList<'arena>) -> Vec<&'e Expression<'
     list.arguments.iter().map(|a| a.value()).collect()
 }
 
-/// `$array[f($array)]` where `f` surely gives one of the array's keys.
 fn known_key(c: &Checker, holder: &Expression, dim: &Expression) -> bool {
     let same = |arg: &Expression| match (unparen(arg), unparen(holder)) {
         (Expression::Variable(Variable::Direct(a)), Expression::Variable(Variable::Direct(h))) => {
@@ -354,7 +313,6 @@ fn known_key(c: &Checker, holder: &Expression, dim: &Expression) -> bool {
     false
 }
 
-/// NonexistentOffsetInArrayDimFetchRule on `$holder[$dim]` (`$holder[]` without a dim).
 pub(in super::super) fn dim_fetch(
     c: &mut Checker,
     node: Span,
@@ -397,8 +355,6 @@ pub(in super::super) fn dim_fetch(
         );
     }
     let Some(found) = found else { return };
-    // `$scope->hasExpressionType($node)->yes()`: a fetch the scope narrowed, as array_key_exists() with a key that
-    // is not constant does
     if c.defined.get(&node) == Some(&Tri::Yes) {
         return;
     }
@@ -444,7 +400,6 @@ pub(in super::super) fn dim_fetch(
     }
 }
 
-/// The dim fetches whose `hasExpressionType()` [`dim_fetch`] reads.
 pub(in super::super) fn watched(program: &Program) -> Vec<Span> {
     struct Fetches(Vec<Span>);
     impl<'ast, 'arena> mago_syntax::walker::MutWalker<'ast, 'arena, ()> for Fetches {
@@ -457,7 +412,6 @@ pub(in super::super) fn watched(program: &Program) -> Vec<Span> {
     fetches.0
 }
 
-/// ArrayDestructuringRule on `[...] = $value` (`value` the assigned expression's type), reported at `at`.
 pub(in super::super) fn destructuring(
     c: &mut Checker,
     at: Span,
@@ -477,7 +431,6 @@ pub(in super::super) fn destructuring(
     }
 }
 
-/// The items of a destructuring target (`short`: a `[...]` in it is a nested destructuring).
 fn list_items<'e, 'arena>(
     target: &'e Expression<'arena>,
 ) -> Option<(
@@ -548,7 +501,6 @@ fn destructured(
     }
 }
 
-/// `getOffsetValueType()`: a union's is its members' that have one.
 fn offset_value(t: &Type, key: &Type) -> Type {
     match t {
         Type::Union(ts) => {

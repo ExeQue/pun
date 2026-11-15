@@ -1,19 +1,8 @@
-//! The problem type that `pun lint`, `pun analyse` and the renderer share (config.md Build 9).
-//!
-//! A [`Problem`] is one finding: a rule ID, the file, a byte [`Span`], a message, an optional help line, a [`Level`]
-//! and an optional [`Fix`]. A fix is a list of text edits on byte ranges (lint.md §6), labelled safe or unsafe.
-//! [`LineIndex`] turns a byte offset into the `line:col` the output shows, and [`apply_fixes`] applies a set of fixes
-//! to a source, deferring the ones that overlap a fix applied before them.
-//!
-//! Lines and columns are 1-based. A column counts bytes, not characters (as PHP's `strlen` and Mago's spans do), so
-//! `é` advances it by 2. A line ends at `\n`, `\r\n` or a lone `\r`, as in PHP's own scanner.
-
 use std::ops::Range;
 use std::path::PathBuf;
 
 pub mod ignore;
 
-/// A byte range `start..end` in a file's source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Span {
     pub start: usize,
@@ -26,21 +15,18 @@ impl Span {
     }
 }
 
-/// How bad a problem is. Lint rules are `error` or `warn` (`off` rules report nothing); analyse is always `Error`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Level {
     Error,
     Warning,
 }
 
-/// Whether a fix keeps the code's behaviour (`safe`) or may change it (`unsafe`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Safety {
     Safe,
     Unsafe,
 }
 
-/// Replace the bytes in `span` with `text`. An empty span inserts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Edit {
     pub span: Span,
@@ -56,14 +42,12 @@ impl Edit {
     }
 }
 
-/// A fix: edits that apply together or not at all.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fix {
     pub safety: Safety,
     pub edits: Vec<Edit>,
 }
 
-/// One finding. `rule` is the full ID (`lint/laravel/no-debug-calls`), `path` is relative to the project root.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub rule: String,
@@ -75,19 +59,16 @@ pub struct Problem {
     pub fix: Option<Fix>,
 }
 
-/// A 1-based line and a 1-based byte column.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LineCol {
     pub line: usize,
     pub column: usize,
 }
 
-/// The start offset of every line of one source, built once and queried per problem.
 #[derive(Clone, Debug)]
 pub struct LineIndex {
     starts: Vec<usize>,
     len: usize,
-    /// The length of each line's terminator (0 for the last line).
     ends: Vec<usize>,
 }
 
@@ -119,12 +100,10 @@ impl LineIndex {
         }
     }
 
-    /// The number of lines; a source ending in a line break has an empty last line.
     pub fn line_count(&self) -> usize {
         self.starts.len()
     }
 
-    /// The line and column of a byte offset. An offset past the end is clamped to the end.
     pub fn line_col(&self, offset: usize) -> LineCol {
         let offset = offset.min(self.len);
         let line = self.starts.partition_point(|&s| s <= offset);
@@ -134,7 +113,6 @@ impl LineIndex {
         }
     }
 
-    /// The byte range of a 1-based line without its terminator, or `None` past the last line.
     pub fn line_range(&self, line: usize) -> Option<Range<usize>> {
         let index = line.checked_sub(1)?;
         let start = *self.starts.get(index)?;
@@ -146,20 +124,14 @@ impl LineIndex {
     }
 }
 
-/// What [`apply_fixes`] did, by index into the fixes it was given.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Applied {
     pub source: String,
     pub applied: Vec<usize>,
-    /// Fixes that touch a fix applied before them; they can apply in the next round, on the new source.
     pub deferred: Vec<usize>,
-    /// Fixes that can never apply: an edit past the end, reversed, splitting a UTF-8 character, or overlapping
-    /// another edit of the same fix.
     pub invalid: Vec<usize>,
 }
 
-/// Two edits conflict when their ranges overlap, or when one is an insertion at or inside the other's range (the
-/// order of the inserted text would be ambiguous). Adjacent replacements do not conflict.
 fn conflicts(a: Span, b: Span) -> bool {
     let overlap = a.start < b.end && b.start < a.end;
     let inserts_into = |ins: Span, other: Span| {
@@ -168,8 +140,6 @@ fn conflicts(a: Span, b: Span) -> bool {
     overlap || inserts_into(a, b) || inserts_into(b, a)
 }
 
-/// Apply `fixes` to `source` in the order given, so the caller's order is the priority. A fix applies whole, or is
-/// deferred when one of its edits conflicts with an edit of a fix applied before it.
 pub fn apply_fixes(source: &str, fixes: &[&Fix]) -> Applied {
     let mut accepted: Vec<&Edit> = Vec::new();
     let mut applied = Vec::new();

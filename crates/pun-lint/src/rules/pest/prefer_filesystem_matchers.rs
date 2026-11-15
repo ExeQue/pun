@@ -1,7 +1,3 @@
-//! `lint/pest/prefer-filesystem-matchers`, ported from pest-plugin-rector's `SimplifyFilesystemMatchersRector`:
-//! `expect(is_file($path) && is_readable($path))->toBeTrue()` becomes `expect($path)->toBeReadableFile()` (and the
-//! same for directories and `is_writable()`) when `$path` is known to be a string, and `->toBeFile()->toBeReadable()` becomes `->toBeReadableFile()`.
-
 use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 
@@ -38,7 +34,6 @@ impl Rule for PreferFilesystemMatchers {
             return;
         }
         let message = "Use one filesystem matcher instead of two checks.".to_string();
-        // `refactorBooleanAnd`.
         if is_name(&call.method, "toBeTrue")
             && let Some(holder) = subject_holder(call)
             && let Some(Expression::Binary(and)) = matcher_subject(call).map(unparenthesize)
@@ -64,7 +59,6 @@ impl Rule for PreferFilesystemMatchers {
             let mut edits = holder.set_arguments(ctx, value);
             let end = node_span(call).end;
             if call.argument_list.arguments.is_empty() {
-                // `$node->var = $expectCall`: what came between the holder and the matcher goes.
                 let object = node_span(unparenthesize(call.object)).end;
                 if object > holder.span.end {
                     edits.push(Edit::new(Span::new(holder.span.end, object), ""));
@@ -84,10 +78,8 @@ impl Rule for PreferFilesystemMatchers {
             ));
             return;
         }
-        // `refactorChainedMatchers`.
-        let outer = match identifier(&call.method) {
-            Some(o @ (b"toBeReadable" | b"toBeWritable")) => o,
-            _ => return,
+        let Some(outer @ (b"toBeReadable" | b"toBeWritable")) = identifier(&call.method) else {
+            return;
         };
         let Some(inner) = method_call(call.object) else {
             return;
@@ -110,7 +102,6 @@ impl Rule for PreferFilesystemMatchers {
     }
 }
 
-/// `COMBINED_FUNCTION_MATCHERS[first][second]`.
 fn function_matcher(first: &[u8], second: &[u8]) -> Option<&'static str> {
     match (first, second) {
         (b"is_dir", b"is_readable") => Some("toBeReadableDirectory"),
@@ -121,7 +112,6 @@ fn function_matcher(first: &[u8], second: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// `COMBINED_CHAIN_MATCHERS[inner][outer]`.
 fn chain_matcher(inner: &[u8], outer: &[u8]) -> Option<&'static str> {
     match (inner, outer) {
         (b"toBeDirectory", b"toBeReadable") => Some("toBeReadableDirectory"),

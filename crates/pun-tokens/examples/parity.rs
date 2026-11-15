@@ -41,7 +41,6 @@ fn collect(path: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Parse dump.php output into (path -> stream | error).
 fn parse_dump(data: &[u8]) -> Vec<(String, Result<Stream, String>)> {
     let mut files = Vec::new();
     let mut i = 0;
@@ -73,7 +72,6 @@ fn parse_dump(data: &[u8]) -> Vec<(String, Result<Stream, String>)> {
     files
 }
 
-/// Our stream, plus the time spent producing it (excluding conversion for comparison).
 fn ours(mode: &str, code: &[u8]) -> (Stream, Duration) {
     let name = |k: Option<pun_tokens::Kind>| k.map_or("-".to_string(), |k| k.name().to_string());
     match mode {
@@ -120,7 +118,7 @@ fn ours(mode: &str, code: &[u8]) -> (Stream, Duration) {
             (
                 tokens
                     .iter()
-                    .map(|t| (name(t.id), t.content.to_vec(), 0))
+                    .map(|t| (name(t.get_id()), t.get_content().to_vec(), 0))
                     .collect(),
                 d,
             )
@@ -150,8 +148,6 @@ fn main() {
     }
 }
 
-/// Compare every .php file under `paths` with the dump of `php`; prints a report, returns the number of mismatched
-/// files.
 pub(crate) fn run(php: &Path, mode: &str, paths: &[String], verbose: bool) -> usize {
     let mut files = Vec::new();
     for a in paths {
@@ -188,7 +184,6 @@ pub(crate) fn run(php: &Path, mode: &str, paths: &[String], verbose: bool) -> us
                 continue;
             }
         };
-        // Only for code PHP accepts: like upstream, Tokens::fromCode isn't defined on unparsable input.
         let code = std::fs::read(path).unwrap();
         let (got, d) = ours(mode, &code);
         rust_time += d;

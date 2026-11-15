@@ -1,6 +1,3 @@
-//! `lint/pest/prefer-to-match`, ported from pest-plugin-rector's `UseToMatchRector`: `expect(preg_match('/pattern/',
-//! $value))->toBe(1)` (or `toEqual(1)`) becomes `expect($value)->toMatch('/pattern/')` when `$value` is known to be a string.
-
 use mago_syntax::cst::{Expression, Literal, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -8,7 +5,7 @@ use super::{
     Is, Trinary, func_call, is_name, matcher_subject, set_call_arguments, subject_holder, texts,
     type_is,
 };
-use crate::rules::rector_code_quality::named;
+use crate::rules::support::expressions::named;
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
 

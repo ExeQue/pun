@@ -1,5 +1,3 @@
-//! Global initializer values must reach normal inference, not only duplicate-key recovery.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -38,7 +36,7 @@ fn compiler_halt_offset_requires_a_parsed_statement() {
         std::fs::write(&file, source.as_str().unwrap()).unwrap();
         let mut project = Project::new(vec![file], Vec::new());
         project.level = 1;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let actual: Vec<_> = run(&project)
             .unwrap()
             .into_iter()
@@ -74,7 +72,7 @@ fn loaded_vendor_initializers_do_not_scan_unrelated_autoload_files() {
     );
     let mut project = Project::from_config(&root, &params);
     project.analysed = vec![root.join("autoload.php")];
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     compare(project, "autoload.php", "expected-autoload.json");
 }
 
@@ -84,7 +82,7 @@ fn check(file: &str, scanned: Option<&str>, expected: &str) {
         vec![root.join(file)],
         scanned.map(|p| root.join(p)).into_iter().collect(),
     );
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     compare(project, file, expected);
 }
 

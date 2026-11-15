@@ -1,5 +1,3 @@
-//! Shared FunctionCallParametersCheck constant policies, compared with the PHPStan 2.3.1 phar.
-
 use std::path::Path;
 
 use pun_analyse::{Project, reports, run};
@@ -11,7 +9,7 @@ fn check(file: &str, expected: &str, level: u8, version: u32) {
         serde_json::from_slice(&std::fs::read(root.join(expected)).unwrap()).unwrap();
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = level;
-    project.php_version = version;
+    project.php_version = pun_analyse::PhpVersion::from_id(version);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -70,7 +68,6 @@ fn upstream_constant_parameter_fixtures_are_strict_without_gaps() {
             "Methods/CallMethodsRuleTest",
             "Functions/CallUserFuncRuleTest",
         ] {
-            // CallUserFuncRule has only a level-five export.
             if level == 9 && suite == "Functions/CallUserFuncRuleTest" {
                 continue;
             }

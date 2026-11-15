@@ -1,33 +1,15 @@
-//! `@pun-ignore` comments (context/plan/rules.md §4): which problems a file's comments suppress, and which of their
-//! rule IDs suppressed nothing.
-//!
-//! | Form | Applies to |
-//! | --- | --- |
-//! | `$x = foo(); // @pun-ignore <id>` | the line it trails |
-//! | `// @pun-ignore <id>` on its own line | the line after the comment |
-//! | `// @pun-ignore-next-line <id>` | the line after the comment |
-//! | `// @pun-ignore-file <id>` | the whole file |
-//! | `// @pun-ignore-start <id>` ... `// @pun-ignore-end` | the lines from the start comment to the end comment (to the end of the file when it has none) |
-//!
-//! An ID is a full rule ID (`lint/security/no-eval`), a rule's `group/name`, a group (`lint/security` or
-//! `security`), comma-separated. Text after ` -- ` is the reason. `//`, `#`, `/* */` and `/** */` comments all
-//! work. A directive without an ID is malformed. A problem's line is the line its span starts on.
-
 use std::ops::Range;
 
 use pun_tokens::Kind;
 
 use crate::{Edit, Fix, LineIndex, Problem, Safety, Span};
 
-/// Where a directive applies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Scope {
-    /// 1-based lines, inclusive.
     Lines(usize, usize),
     File,
 }
 
-/// One rule ID of a directive and where it is written.
 #[derive(Clone, Debug)]
 struct Id {
     text: String,
@@ -39,23 +21,16 @@ struct Id {
 struct Directive {
     scope: Scope,
     ids: Vec<Id>,
-    /// The comment holding it.
     comment: Span,
-    /// The comment is alone on its line(s), so deleting it deletes the line.
     own_line: bool,
 }
 
-/// A directive that names no rule: `// @pun-ignore` alone, or `// @pun-ignore -- reason`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Malformed {
-    /// The directive's `@pun-ignore…` word.
     pub span: Span,
     pub message: String,
 }
 
-/// An ignore ID that suppressed nothing, with the fix that deletes it: the whole comment (and its line, when the
-/// comment is alone on it) when no other ID of the comment was used, otherwise the ID and its comma. The IDs of one
-/// all-unused comment share the same deletion; the fix loop applies it once and the rest go with the comment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Unused {
     pub id: String,
@@ -63,7 +38,6 @@ pub struct Unused {
     pub fix: Fix,
 }
 
-/// The ignore directives of one file.
 #[derive(Clone, Debug, Default)]
 pub struct Ignores {
     directives: Vec<Directive>,
@@ -72,7 +46,6 @@ pub struct Ignores {
 
 const MARK: &str = "@pun-ignore";
 
-/// Whether ignore ID `id` covers `rule`: the same ID, its `group/name`, its `<command>/<group>`, or its group.
 pub fn covers(id: &str, rule: &str) -> bool {
     if id == rule {
         return true;
@@ -89,7 +62,6 @@ pub fn covers(id: &str, rule: &str) -> bool {
 }
 
 impl Ignores {
-    /// The directives in `source`'s comments. A source without `@pun-ignore` is not tokenized.
     pub fn parse(source: &str) -> Ignores {
         let mut out = Ignores::default();
         if !source.contains(MARK) {
@@ -113,7 +85,6 @@ impl Ignores {
                 .into_iter()
                 .find_map(|k| rest.strip_prefix(k).map(|r| (k, r)))
                 .expect("the empty suffix always matches");
-            // `@pun-ignore-foo`: not a directive.
             if after.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
                 continue;
             }
@@ -127,7 +98,6 @@ impl Ignores {
                 && (index.line_range(last))
                     .is_some_and(|r| source[comment.end..r.end].trim().is_empty());
             if kind == "-end" {
-                // `open` holds `-start` directives, whose scope is lines.
                 if let Some(i) = open.pop()
                     && let Scope::Lines(from, _) = out.directives[i].scope
                 {
@@ -163,12 +133,10 @@ impl Ignores {
         out
     }
 
-    /// No directive and nothing malformed: the common case, which a caller can skip.
     pub fn is_empty(&self) -> bool {
         self.directives.is_empty() && self.malformed.is_empty()
     }
 
-    /// `problems` without those a directive covers; each covering ID is marked used.
     pub fn retain(&mut self, problems: &mut Vec<Problem>, index: &LineIndex) {
         if self.directives.is_empty() {
             return;
@@ -176,7 +144,6 @@ impl Ignores {
         problems.retain(|p| !self.ignores(&p.rule, index.line_col(p.span.start).line));
     }
 
-    /// Whether a directive covers a problem of `rule` on 1-based `line`; every covering ID is marked used.
     pub fn ignores(&mut self, rule: &str, line: usize) -> bool {
         let mut ignored = false;
         for d in &mut self.directives {
@@ -197,8 +164,6 @@ impl Ignores {
         ignored
     }
 
-    /// Whether an `@pun-ignore-file` directive covers `rule`, for rules that report a whole file rather than a line;
-    /// every covering ID is marked used.
     pub fn ignores_file(&mut self, rule: &str) -> bool {
         let mut ignored = false;
         for d in self
@@ -214,8 +179,6 @@ impl Ignores {
         ignored
     }
 
-    /// The IDs no problem used, among those `ran` says belong to a rule that ran (an ID of another command's rule,
-    /// or of a rule that is off, can't be judged). Each carries the fix that deletes it.
     pub fn unused(&self, source: &str, ran: impl Fn(&str) -> bool) -> Vec<Unused> {
         let mut out = Vec::new();
         for d in &self.directives {
@@ -245,7 +208,6 @@ impl Ignores {
     }
 }
 
-/// The IDs after a directive's word: comma-separated up to ` -- `, the comment's end or the line's end.
 fn ids(source: &str, from: usize, comment_end: usize, block: bool) -> Vec<Id> {
     let end = if block { comment_end - 2 } else { comment_end };
     let mut text = &source[from..end];
@@ -274,10 +236,8 @@ fn ids(source: &str, from: usize, comment_end: usize, block: bool) -> Vec<Id> {
     out
 }
 
-/// The bytes to delete for a whole directive: the comment, and its line when it is alone there.
 fn delete_comment(source: &str, d: &Directive) -> Span {
     if !d.own_line {
-        // Also the spaces between the code and a trailing comment.
         let before = source[..d.comment.start]
             .trim_end_matches([' ', '\t'])
             .len();
@@ -289,7 +249,6 @@ fn delete_comment(source: &str, d: &Directive) -> Span {
     Span::new(start, end)
 }
 
-/// The bytes to delete for one ID of a list: the ID and the comma (and spaces) after it, or before it for the last.
 fn delete_id(source: &str, d: &Directive, id: Span) -> Span {
     let after: Range<usize> = id.end..d.comment.end;
     let tail = &source[after];

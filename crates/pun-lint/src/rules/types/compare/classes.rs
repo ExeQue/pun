@@ -1,8 +1,3 @@
-//! The class reflection pun-phpstan's type model asks about the classes PHP does not define (the project's and the
-//! fixtures' `Source/`): Mago's codebase as `pun_phpstan::symbols::Class`, ported from pun-analyse's `Classes::build`
-//! (rules/declared.rs). The comparator only asks a class's name, ancestors, kind, finality and constants, so the
-//! parts built from PHPDocs there (templates, generic ancestors, methods) stay empty.
-
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -19,7 +14,6 @@ fn text(b: &[u8]) -> String {
     String::from_utf8_lossy(b).into_owned()
 }
 
-/// Runs `f` with the type model knowing the classes of `codebase`.
 pub(crate) fn with_classes<R>(codebase: &CodebaseMetadata, f: impl FnOnce() -> R) -> R {
     let cache: RefCell<HashMap<String, Option<Arc<Class>>>> = RefCell::default();
     let get = |name: &str| {
@@ -35,7 +29,6 @@ pub(crate) fn with_classes<R>(codebase: &CodebaseMetadata, f: impl FnOnce() -> R
     symbols::with_classes(&get, || symbols::with_functions(&functions, f))
 }
 
-/// `Classes::build`: the class-like `name` of `codebase`.
 fn build(codebase: &CodebaseMetadata, name: &str) -> Option<Class> {
     let k = codebase.get_class_like(name.as_bytes())?;
     let canonical = |w: &[u8]| {
@@ -43,7 +36,6 @@ fn build(codebase: &CodebaseMetadata, name: &str) -> Option<Class> {
             .get_class_like(w)
             .map_or_else(|| text(w), |c| text(c.original_name.as_bytes()))
     };
-    // BetterReflection's nominal hierarchy: the declared parents and interfaces, followed up
     let mut pending: Vec<&[u8]> = (k.direct_parent_class.iter())
         .chain(k.direct_parent_interfaces.iter())
         .map(mago_word::Word::as_bytes)
@@ -63,7 +55,6 @@ fn build(codebase: &CodebaseMetadata, name: &str) -> Option<Class> {
             );
         }
     }
-    // an enum's implicit interfaces
     if k.kind == SymbolKind::Enum {
         ancestors.retain(|a| a != "UnitEnum" && a != "BackedEnum");
         ancestors.push("UnitEnum".to_string());
@@ -81,7 +72,6 @@ fn build(codebase: &CodebaseMetadata, name: &str) -> Option<Class> {
         is_final: k.flags.is_final(),
         properties: Vec::new(),
         allows_dynamic_properties: k.flags.allows_dynamic_properties(),
-        // a constant whose value is not a literal reads as `mixed`, as in pun-analyse
         constants: (k.constants.values())
             .map(|m| {
                 let value = (m.inferred_type.as_ref())
@@ -100,7 +90,6 @@ fn build(codebase: &CodebaseMetadata, name: &str) -> Option<Class> {
     })
 }
 
-/// A literal constant value as PHPStan's constant type.
 fn literal(a: &TAtomic) -> Option<Type> {
     match a {
         TAtomic::Scalar(TScalar::Integer(TInteger::Literal(i))) => Some(Type::ConstInt(*i)),

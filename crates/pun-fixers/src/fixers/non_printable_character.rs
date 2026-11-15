@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Basic\NonPrintableCharacterFixer`.
 use crate::analyzers::fixer_configuration_resolver::resolve;
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
@@ -28,16 +27,14 @@ const TOKENS: &[Kind] = &[
     T_DOC_COMMENT,
 ];
 
-/// `$symbolsReplace`: character => [replacement, codepoint].
 const SYMBOLS_REPLACE: &[(&[u8], &[u8], &str)] = &[
-    (b"\xe2\x80\x8b", b"", "200b"),  // ZWSP U+200B
-    (b"\xe2\x80\x87", b" ", "2007"), // FIGURE SPACE U+2007
-    (b"\xe2\x80\xaf", b" ", "202f"), // NBSP U+202F
-    (b"\xe2\x81\xa0", b"", "2060"),  // WORD JOINER U+2060
-    (b"\xc2\xa0", b" ", "a0"),       // NO-BREAK SPACE U+A0
+    (b"\xe2\x80\x8b", b"", "200b"),
+    (b"\xe2\x80\x87", b" ", "2007"),
+    (b"\xe2\x80\xaf", b" ", "202f"),
+    (b"\xe2\x81\xa0", b"", "2060"),
+    (b"\xc2\xa0", b" ", "a0"),
 ];
 
-/// `strtr($content, $map)`: no key is a prefix of another, so a left-to-right scan is strtr's longest-first match.
 fn strtr(content: &[u8], map: &[(&[u8], Vec<u8>)]) -> Vec<u8> {
     let mut out = Vec::with_capacity(content.len());
     let mut i = 0;
@@ -126,19 +123,17 @@ impl Fixer for NonPrintableCharacterFixer {
                 }
                 tokens.set(
                     index,
-                    Token::new(token.id.unwrap(), strtr(&content, &escape_sequences)),
+                    Token::new(token.get_id().unwrap(), strtr(&content, &escape_sequences)),
                 );
                 continue;
             }
             if token.is_given_kind(TOKENS) {
                 let new_content = strtr(&content, &replacements);
-                // variable name cannot contain space
                 if token.is_given_kind(&[T_STRING_VARNAME, T_VARIABLE])
                     && new_content.contains(&b' ')
                 {
                     continue;
                 }
-                // multiline comment must have "*/" only at the end
                 if token.is_given_kind(&[T_COMMENT, T_DOC_COMMENT])
                     && new_content.starts_with(b"/*")
                     && new_content.windows(2).position(|w| w == b"*/")
@@ -146,7 +141,7 @@ impl Fixer for NonPrintableCharacterFixer {
                 {
                     continue;
                 }
-                tokens.set(index, Token::new(token.id.unwrap(), new_content));
+                tokens.set(index, Token::new(token.get_id().unwrap(), new_content));
             }
         }
     }

@@ -1,15 +1,6 @@
-//! `pun analyse` (`pun analyze`): PHPStan's rules on pun-analyse, configured by pun.toml's `[analyse]`
-//! (context/plan/analyse.md Build 1-2).
-//!
-//! The files come from `[analyse] paths` (or `[files] paths`) minus the excludes, which also drop files from the
-//! symbol scan. Errors whose identifier belongs to a rule the preset or `[analyse.rules]` turns off are dropped, then
-//! `@pun-ignore` comments and the Pun baseline. Humans get problem blocks and the summary; `--format` (PHPStan's
-//! `--error-format`) prints PHPStan's machine formats byte for byte (`analyse_report`). The exit code is PHPStan's:
-//! 1 with errors, 0 without, and 2 when Pun couldn't run.
-
 use crate::render::{Look, Renderer, Summary};
 use crate::report::Abort;
-use crate::{agent, analyse_report, baseline, github, render, root};
+use crate::{Exit, agent, analyse_report, baseline, github, render, root};
 use anyhow::Result;
 use clap::Args;
 use pun_config::rule_of_identifier;
@@ -20,6 +11,7 @@ use pun_problem::{Level, LineIndex, Problem, Span};
 use pun_workspace::{Command, Exclusions};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -35,10 +27,14 @@ pub(crate) struct AnalyseArgs {
     format: Option<String>,
     /// Write every error to the baseline (`[analyse] baseline`, else pun-baseline.toml) and exit 0.
     #[arg(long, value_name = "FILE", num_args = 0..=1)]
+    #[expect(
+        clippy::option_option,
+        reason = "clap: the flag is absent, bare, or given a file"
+    )]
     generate_baseline: Option<Option<PathBuf>>,
     /// The number of threads (default: one per core).
-    #[arg(long)]
-    max_processes: Option<String>,
+    #[arg(long, value_parser = crate::threads)]
+    max_processes: Option<usize>,
     /// Print each finding on one line.
     #[arg(long)]
     concise: bool,
@@ -51,20 +47,14 @@ pub(crate) struct AnalyseArgs {
     /// Colour the output: auto, always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
-    /// Accepted for PHPStan compatibility; Pun shows progress only on a terminal after one second.
-    #[arg(long, hide = true)]
-    no_progress: bool,
-    /// Accepted for PHPStan compatibility; Pun has no memory limit.
-    #[arg(long, hide = true)]
-    memory_limit: Option<String>,
     /// `GITHUB_ACTIONS=true`: human output gets GitHub annotations after it.
     #[arg(skip)]
     pub(crate) github_actions: bool,
 }
 
 impl AnalyseArgs {
-    pub(crate) fn max_processes(&self) -> Option<&str> {
-        self.max_processes.as_deref()
+    pub(crate) fn max_processes(&self) -> Option<usize> {
+        self.max_processes
     }
 
     pub(crate) fn failure(&self) -> crate::report::Failure {
@@ -137,7 +127,6 @@ fn syntax_errors(files: &[PathBuf], reported: &[pun_analyse::Error]) -> Vec<pun_
         .filter(|file| !reported.contains(&*file.to_string_lossy()))
         .filter_map(|file| {
             let err = pun_format::lint(&std::fs::read(file).ok()?).err()?;
-            // PHP's compile-time "Fatal error" messages are left to the engine's PHPParser port.
             let message = String::from_utf8_lossy(&err.message);
             let message = message.strip_prefix("Parse error: ")?.trim_end_matches('.');
             let message = match message.strip_prefix("syntax error") {
@@ -176,13 +165,14 @@ fn project(
     use pun_phpstan::ignore::IgnoredErrors;
     use pun_phpstan::{Array, Key, Value};
     let mut params = cfg.analyse.parameters(&cfg.root);
-    pun_phpstan::config::validate_ignore_errors(&params).map_err(|e| run_error(e, None))?;
+    pun_phpstan::config::validate_ignore_errors(&params)
+        .map_err(|e| run_error(e.to_string(), None))?;
     let mut extensions = Array::new();
     extensions.push(Value::Str("php".into()));
     params.set(Key::Str("fileExtensions".into()), Value::Array(extensions));
     params.set(
         Key::Str("phpVersion".into()),
-        Value::Int(i64::from(cfg.analyse_php_id)),
+        Value::Int(i64::from(cfg.analyse_php_version.id())),
     );
     let mut project = pun_analyse::Project::from_config(&cfg.root, &params);
     let excluded = Exclusions::new(cfg, Command::Analyse)?;
@@ -191,9 +181,7 @@ fn project(
         .autoloaded
         .retain(|a| !excluded.is_excluded(&a.path));
     project.analysed = analysed;
-    // InceptionResult::isOnlyFiles() over the analysed paths: the parameters carry no `paths`
     project.only_files = analysed_paths.iter().all(|p| p.is_file());
-    // FuzzyRelativePathHelper (anonymous class names) over the analysed paths
     let analysed_paths: Vec<String> = analysed_paths
         .iter()
         .map(|p| p.to_string_lossy().into_owned())
@@ -201,7 +189,6 @@ fn project(
     project.relative_path = pun_analyse::RelativePath::of(&analysed_paths);
     let ignores = (params.get_str("ignoreErrors").and_then(Value::as_array)).cloned();
     let ignores = ignores.unwrap_or_default();
-    // pun.toml is the config file the entries are in, as IgnoreErrorsConfigFixer finds them in a project's NEON file
     let pun_toml = cfg.pun_toml();
     let mut ignore_errors = IgnoredErrors::new(&ignores, true).with_rules(rule_of_identifier);
     if let Some(file) = pun_toml {
@@ -222,8 +209,6 @@ fn project(
     };
     project.method_rules = method_rules;
     project.reported = Some(std::sync::Arc::new(move |id| {
-        // Both registered comparison owners emit these identifiers. Their invocation gates, not the
-        // identifier's single canonical mapping, decide which owner's errors exist.
         if method_rules.consistent_constructor
             && matches!(
                 id,
@@ -239,7 +224,6 @@ fn project(
         {
             return true;
         }
-        // Unmatched/comment-policy errors come from ignore processing, not a configurable rule.
         rule_of_identifier(id).map_or_else(
             || id == "phpstan.parse" || id.starts_with("ignore."),
             |r| on.contains(r),
@@ -253,9 +237,10 @@ fn project(
 pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Result<Analysed> {
     let files = pun_workspace::files(cfg, Some(Command::Analyse), paths)?;
     let count = files.len();
-    let configured: Vec<PathBuf> = match paths.is_empty() {
-        false => paths.to_vec(),
-        true => cfg.analyse.paths.iter().map(PathBuf::from).collect(),
+    let configured: Vec<PathBuf> = if paths.is_empty() {
+        cfg.analyse.paths.iter().map(PathBuf::from).collect()
+    } else {
+        paths.to_vec()
     };
     let mut paths: Vec<PathBuf> = (configured.iter())
         .map(|p| PathBuf::from(normalize_path(&cfg.root.join(p).to_string_lossy())))
@@ -269,15 +254,12 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
     let mut errors = analysis.errors;
     errors.extend(syntax_errors(&project.analysed, &errors));
     let mut general = analysis.general;
-    // AnalyseCommand presents only exception-backed failures, deduplicated by message. Non-ignorable rule
-    // errors are not severe; the public analyser still retains diagnostics from the other valid files.
     let severe = errors.iter().any(|e| e.identifier == "phpstan.parse");
     if severe {
         let mut seen = std::collections::HashSet::new();
         errors.retain(|e| e.identifier == "phpstan.parse" && seen.insert(e.message.clone()));
         general.clear();
     }
-    // pun-analyse reported the enabled rules' errors only, and the errors about ignores
     let mut findings: Vec<Finding> = (errors.into_iter())
         .map(|e| {
             let rule =
@@ -286,8 +268,6 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
                 } else {
                     UNMATCHED_IGNORE
                 });
-            // PHPStan reports, sorts and relativises normalised paths (a configured `../x` included).
-            // A trait's "T.php (in context of class A\B)" keeps the class name's backslashes.
             let file = match e.file.split_once(" (in context of ") {
                 Some((path, class)) => {
                     format!("{} (in context of {class}", normalize_path(path))
@@ -296,10 +276,8 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
             };
             let file = PathBuf::from(file);
             Finding {
-                // SimpleRelativePathHelper turns every backslash, the context's class name's included, into `/`.
                 rel: relative(&cfg.root, &file).replace('\\', "/"),
                 file,
-                // ponytail: PHPStan's -1 (a node without a position) prints as 0
                 line: u32::try_from(e.line).unwrap_or(0),
                 identifier: e.identifier,
                 rule: rule.to_string(),
@@ -395,27 +373,27 @@ pub(crate) fn problem(f: &Finding, source: &str, index: &LineIndex) -> Problem {
     }
 }
 
-pub(crate) fn run(a: AnalyseArgs) -> Result<u8> {
+pub(crate) fn run(a: &AnalyseArgs) -> Result<Exit> {
     let started = Instant::now();
     let root = root()?;
     let opts = Options {
         config: a.config.clone(),
+        ignore_php_constraint: crate::ignore_php_constraint(),
         ..Default::default()
     };
     let cfg = crate::run::load(&root, &opts)?;
-    // as PHPStan stops without a level (`pun check` runs the other commands instead)
     if cfg.analyse.rules.is_empty() {
         let hint = "set [analyse] preset, or turn rules on under [analyse.rules]";
         return Err(run_error("No rules detected".into(), Some(hint.into())));
     }
     if let Some(path) = &a.generate_baseline {
-        return generate_baseline(&a, &cfg, path.as_deref(), started);
+        return generate_baseline(a, &cfg, path.as_deref(), started);
     }
     let analysed = analyse(&cfg, &a.paths, true)?;
-    present(&a, &cfg, &analysed, started)
+    present(a, &cfg, &analysed, started)
 }
 
-fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<u8> {
+fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<Exit> {
     let root = &cfg.root;
     let errors = analysed.findings.len() + analysed.malformed.len() + analysed.general.len();
     match a.format.as_deref() {
@@ -447,11 +425,14 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
             }
         }
     }
-    Ok(u8::from(errors > 0))
+    Ok(if errors > 0 {
+        Exit::Failure
+    } else {
+        Exit::Success
+    })
 }
 
 fn unsupported_format(e: &anyhow::Error) -> anyhow::Error {
-    // PHPStan's message already lists the formats.
     run_error(e.to_string(), None)
 }
 
@@ -461,7 +442,7 @@ fn generate_baseline(
     cfg: &Config,
     path: Option<&Path>,
     started: Instant,
-) -> Result<u8> {
+) -> Result<Exit> {
     let path = match path {
         Some(path) => path.to_path_buf(),
         None => PathBuf::from(cfg.analyse.baseline.as_deref().unwrap_or(baseline::DEFAULT)),
@@ -474,7 +455,6 @@ fn generate_baseline(
     {
         return present(a, cfg, &analysed, started);
     }
-    // PHPStan's baseline leaves out the errors that can't be ignored
     analysed.findings.retain(Finding::ignorable);
     let b = baseline::Baseline::of(&analysed.findings);
     b.write(&cfg.root.join(&path))?;
@@ -484,18 +464,19 @@ fn generate_baseline(
     if agent::enabled() {
         let detail = [format!("baseline {shown} written with {errors}")];
         print!("{}", agent::render("ok", &detail, "", &[], false));
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     if a.quiet {
-        return Ok(0);
+        return Ok(Exit::Success);
     }
     let look = Look::stdout(a.color.unwrap_or(render::ColorChoice::Auto));
     let r = Renderer::new(look, &cfg.root);
     let mut message = format!("Baseline generated with {errors} in {shown}");
     if cfg.analyse.baseline.as_deref() != Some(path.to_string_lossy().as_ref()) {
-        message.push_str(&format!(
+        let _ = write!(
+            message,
             "; add `baseline = \"{shown}\"` under [analyse] in pun.toml to use it"
-        ));
+        );
     }
     print!(
         "{}",
@@ -504,7 +485,7 @@ fn generate_baseline(
             started.elapsed().as_secs_f64()
         ))
     );
-    Ok(0)
+    Ok(Exit::Success)
 }
 
 /// Problem blocks, sorted by file and line, then the summary; a note when baseline entries no longer match.
@@ -520,7 +501,7 @@ pub(crate) fn human(
     let mut out = problem_blocks(&r, analysed);
     let glyph = r.look.paint(render::Role::Error, r.look.glyph("✖", "x"));
     for g in &analysed.general {
-        out.push_str(&format!("{glyph} {g}\n"));
+        let _ = writeln!(out, "{glyph} {g}");
     }
     if !out.is_empty() {
         out.push('\n');

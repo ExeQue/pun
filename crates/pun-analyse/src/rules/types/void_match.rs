@@ -1,6 +1,3 @@
-//! UsageOfVoidMatchExpressionRule (`match.void`): the result of a `match` whose arms all call void functions is
-//! used (the match is not a statement's top-level expression).
-
 use mago_codex::ttype::union::TUnion;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
@@ -9,7 +6,6 @@ use super::super::Checker;
 
 pub(super) const IDENTIFIERS: &[&str] = &["match.void"];
 
-/// The match result, whose arm union retains void independently of ordinary call values.
 pub(super) fn typed(m: &Match, spans: &mut Vec<mago_span::Span>) {
     spans.push(m.span());
 }

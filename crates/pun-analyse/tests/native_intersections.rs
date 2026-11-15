@@ -1,5 +1,3 @@
-//! Native intersections through public scanning, before Pun's panic recovery can mask their source.
-
 use std::borrow::Cow;
 use std::path::Path;
 
@@ -26,7 +24,6 @@ fn native_signature_metadata_matches_phpstan_without_masked_source_recovery() {
     let program = parse_file(&arena, &file);
     assert!(!program.has_errors());
     let names = NameResolver::new(&arena).resolve(program);
-    // No catch_unwind or masking: the old empty-union assertion must fail this public control.
     let mut codebase = mago_prelude::Prelude::build().metadata;
     codebase.extend(scan_program(
         &arena,
@@ -60,7 +57,6 @@ fn native_signature_metadata_matches_phpstan_without_masked_source_recovery() {
                 .as_str()
                 .unwrap()
                 .replace("*NEVER*", "never");
-            // as_nullable retains redundant never. Compare semantic types without mutating metadata.
             let normalized = TUnion::from_vec(metadata.type_union.types.to_vec());
             assert_eq!(
                 normalized.get_id().to_string(),

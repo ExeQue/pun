@@ -1,7 +1,9 @@
 # Plan: `pun migrate`
 
-Status: **decided, not built for the new design** (2026-10-17). Decisions from the format, lint, analyse, init and
-command walkthroughs, gathered here. Decisions with dates: ../PLAN.md §2.
+Status: **built** for the new design: Build 1-6 (pint.json, .php-cs-fixer.php, rector.php and phpstan.neon, the
+unsupported items, the output and the closest-preset offer), plus the composer.json step (plan/packages.md). Decided
+2026-10-17; the decisions from the format, lint, analyse, init and command walkthroughs are gathered here. Decisions
+with dates: ../PLAN.md §2.
 
 ## 1. What it is
 
@@ -27,7 +29,7 @@ It moves everything Pun supports, and names everything it doesn't. The proof is 
  ✔ phpstan.neon     → [analyse] 212 rules (level 6), 14 ignoreErrors
  ⚠ phpdoc_tag_casing                   not supported by Pun yet; skipped
  ⚠ phpstan: Mockery extension          not supported by Pun yet; skipped
-   Want them? Send a PR to https://github.com/punphp/pun
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
  ⚠ phpstan-baseline.neon was not copied. Run `pun analyse --generate-baseline` for a Pun baseline.
 ```
 - **pint.json and .php-cs-fixer.php:** the preset, then a delta of rules with TOML option names. `per` and `symfony`
@@ -68,7 +70,7 @@ It moves everything Pun supports, and names everything it doesn't. The proof is 
 ## Decisions
 
 From 2026-10-17 (Pushpak): migrate is complete and explicit about what it can't move; unsupported items are named and
-skipped, with a request to send a PR to punphp/pun, never sent to PHP; baselines are never copied; everything
+skipped, with a request to send a PR to shipfastlabs/pun, never sent to PHP; baselines are never copied; everything
 migrates at `error`; the closest preset is offered interactively; no workflow wiring. Open: `--remove-tools`
 (../PLAN.md §4).
 

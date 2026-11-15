@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Phpdoc\PhpdocNoPackageFixer` (proxy of general_phpdoc_annotation_remove).
 use crate::analyzers::general_phpdoc_annotation_remove::GeneralPhpdocAnnotationRemove;
 use pun_format::Fixer;
 use pun_tokens::Tokens;

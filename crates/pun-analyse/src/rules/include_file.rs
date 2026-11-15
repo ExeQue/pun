@@ -1,22 +1,10 @@
-//! PHPStan 2.3.5's RequireFileExistsRule and IncludedFilePathResolver. The checker walks a trait's declaring
-//! file, not the using class's file, so both compile-time path constants and the script-directory fallback use it.
-//!
-//! Runtime boundary: Pun does not start PHP or execute bootstrap code. `Project::include_paths` supplies PHP's
-//! runtime include_path (the portable default is `.`). Local files, file:// and local phar:// members are stat'd.
-//! PHP's zip:// has no URL-stat handler, even for readable members. Runtime-registered wrappers, PHAR aliases and
-//! mounts need bootstrap execution and remain unsupported. PHAR stat models the pinned runtime's default
-//! require_hash=1, zlib present and bz2 absent; OpenSSL signatures/sidecars are not supported. Missing-file
-//! dependencies are not cached here: the analyser checks the filesystem again on every run.
-
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
-use mago_allocator::LocalArena;
-use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::union::TUnion;
 use mago_database::file::File;
-use mago_names::ResolvedNames;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -33,7 +21,6 @@ pub(super) struct Settings {
     pub path_constants: bool,
 }
 
-/// The same inference engine with generalized path constants, isolated from the other rules' types.
 pub(super) struct State {
     types: HashMap<Span, TUnion>,
 }
@@ -57,24 +44,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted {
     }
 }
 
-/// InitializerExprTypeResolver generalizes __DIR__/__FILE__ by default. Mago already supplies that contract when
-/// File.path is absent. Use it for this rule's requested expressions only, preserving real paths for every other
-/// rule and for resolveFilePaths()'s __DIR__ fallback. This also handles aliases and control-flow joins without
-/// guessing provenance from literal contents or implementing another type/data-flow engine.
-pub(super) fn prepare<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    program: &'arena Program<'arena>,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    settings: &Settings,
-    comments: &super::Comments,
-    functions: &[(Span, mago_codex::symbol::SymbolIdentifier)],
-) -> (Vec<Span>, State) {
+pub(super) fn prepare(run: &infer::Run<'_, '_>, settings: &Settings) -> (Vec<Span>, State) {
+    let program = run.program;
     let mut wanted = Wanted {
         spans: Vec::new(),
         in_include: 0,
@@ -89,26 +60,16 @@ pub(super) fn prepare<'arena>(
         );
     }
     let file = File::new(
-        file.name.clone(),
-        file.file_type,
+        run.file.name.clone(),
+        run.file.file_type,
         None,
-        file.contents.clone(),
+        run.file.contents.clone(),
     );
-    let (types, _, _, _, _, _, _, _, _) = infer::analyse(
-        arena,
-        &file,
-        program,
-        names,
-        codebase,
-        php_version,
-        pollute_scope_with_loop_initial_assignments,
-        pollute_scope_with_always_iterable_foreach,
-        pollute_scope_with_block,
-        wanted.spans,
-        Vec::new(),
-        comments,
-        functions,
-    );
+    let run = infer::Run {
+        file: &file,
+        ..*run
+    };
+    let types = infer::analyse(&run, wanted.spans, Vec::new()).types;
     (Vec::new(), State { types })
 }
 
@@ -124,7 +85,6 @@ fn included<'a, 'arena>(
     })
 }
 
-/// processNode(), doesFileExist() and getErrorMessage(). All four diagnostics are ignorable.
 pub(super) fn construct(c: &mut Checker, construct: &Construct) {
     let Some((expr, kind, identifier)) = included(construct) else {
         return;
@@ -181,7 +141,6 @@ fn resolve_file_paths(c: &Checker, expr: &Expression, fallback: &mut bool) -> Ve
             .map(|s| format!("{dir}{s}"))
             .collect();
     }
-    // Upstream passes the same reference through right, then left: the last recursive call owns the flag.
     let right = resolve_file_paths(c, b.rhs, fallback);
     let left = resolve_file_paths(c, b.lhs, fallback);
     let mut paths = Vec::new();
@@ -208,8 +167,6 @@ fn expression_type(c: &Checker, expr: &Expression) -> Option<Type> {
 }
 
 fn strings(c: &Checker, expr: &Expression) -> Vec<String> {
-    // ConstantResolver deliberately models both OS separators, even on Unix. Rebuild concatenations from their
-    // typed operands so Mago's platform-specific DIRECTORY_SEPARATOR cannot discard an alternative.
     match unparen(expr) {
         Expression::ConstantAccess(a)
             if c.written_or_resolved(&a.name).trim_start_matches('\\') == "DIRECTORY_SEPARATOR"
@@ -239,8 +196,6 @@ fn strings(c: &Checker, expr: &Expression) -> Vec<String> {
     }
 }
 
-/// UnionType::pickFromTypes() rejects the entire union if any member has no constant strings. In contrast,
-/// IntersectionType collects the strings of every member (accessories contribute none).
 fn constant_strings(t: &Type) -> Vec<String> {
     match t {
         Type::ConstString(s) => vec![String::from_utf8_lossy(s).into_owned()],
@@ -267,9 +222,6 @@ fn does_file_exist(c: &Checker, path: &str) -> bool {
     candidates(c, path).iter().any(|p| p.is_file())
 }
 
-/// PHP 8.5.12 ext/phar/phar.c: phar_detect_phar_fname_ext(), phar_check_str(), phar_fix_filepath().
-/// The first existing archive filename with a non-leading extension wins, even if its contents are invalid.
-/// Relative wrapper paths use cwd alone: FileHelper::absolutizePath() preserves stream URLs unchanged.
 fn phar_file(cwd: &Path, path: &str) -> Option<bool> {
     if path.contains('\0') {
         return None;
@@ -303,11 +255,8 @@ fn phar_file(cwd: &Path, path: &str) -> Option<bool> {
     None
 }
 
-/// PHP dispatches by contents, not by the archive extension. Stat only needs the manifest/index: member PHP,
-/// serialized metadata and stubs are never evaluated, extracted or deserialized.
 fn archive_file(bytes: &[u8], member: &[u8], recursion: u8) -> Option<bool> {
     if bytes.starts_with(b"\x1f\x8b\x08") {
-        // The manifest's own limit, below: a small archive must not expand until memory runs out.
         const LIMIT: u64 = 100 * 1024 * 1024;
         let mut unpacked = Vec::new();
         flate2::read::GzDecoder::new(bytes)
@@ -317,7 +266,6 @@ fn archive_file(bytes: &[u8], member: &[u8], recursion: u8) -> Option<bool> {
         if unpacked.len() as u64 > LIMIT {
             return None;
         }
-        // ext/phar/phar.c rejects --recursion_count == 0 before restarting archive dispatch.
         let recursion = recursion - 1;
         if recursion == 0 {
             return None;
@@ -340,9 +288,6 @@ fn archive_file(bytes: &[u8], member: &[u8], recursion: u8) -> Option<bool> {
     None
 }
 
-/// Native PHAR manifest, ext/phar/phar.c: phar_parse_pharfile(). The phar 0.0.3 crate was evaluated but only
-/// accepts the exact `__HALT_COMPILER(); ?>\r\n` stub and does not expose directory flags for stat. Keep this
-/// bounded byte parser instead; ZIP/TAR indexing and gzip decoding use their existing libraries below.
 fn native_phar_file(bytes: &[u8], mut halt: usize, member: &[u8]) -> Option<bool> {
     if matches!(bytes.get(halt..halt + 3), Some(b" ?>" | b"\n?>")) {
         halt += 3;
@@ -389,7 +334,6 @@ fn native_phar_file(bytes: &[u8], mut halt: usize, member: &[u8]) -> Option<bool
         return None;
     }
     for _ in 0..2 {
-        // alias and serialized metadata: length-prefixed opaque bytes
         let size = word(&mut manifest)? as usize;
         take(&mut manifest, size)?;
     }
@@ -401,9 +345,9 @@ fn native_phar_file(bytes: &[u8], mut halt: usize, member: &[u8]) -> Option<bool
             return None;
         }
         let size = word(&mut manifest)?;
-        word(&mut manifest)?; // timestamp
+        word(&mut manifest)?;
         let compressed_size = word(&mut manifest)?;
-        word(&mut manifest)?; // crc32 (not checked by stat)
+        word(&mut manifest)?;
         let flags = word(&mut manifest)?;
         let metadata_size = word(&mut manifest)? as usize;
         take(&mut manifest, metadata_size)?;
@@ -425,7 +369,6 @@ fn take<'a>(data: &mut &'a [u8], size: usize) -> Option<&'a [u8]> {
     Some(head)
 }
 
-/// PHAR's four digest signatures. OpenSSL signatures additionally need runtime key/sidecar configuration.
 fn signature(kind: u32, parts: &[&[u8]], expected: &[u8]) -> bool {
     fn digest<D: Digest>(parts: &[&[u8]], expected: &[u8]) -> bool {
         let mut digest = D::new();
@@ -443,8 +386,6 @@ fn signature(kind: u32, parts: &[&[u8]], expected: &[u8]) -> bool {
     }
 }
 
-/// ext/phar/zip.c: phar_parse_zipfile(). PHP's phar:// wrapper accepts ordinary ZIP data archives as well as
-/// executable ZIP PHARs. Only the latter require a signature; a present signature is always verified.
 fn zip_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).ok()?;
     let central = zip.central_directory_start() as usize;
@@ -469,7 +410,7 @@ fn zip_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
             let end = start.checked_add(file.size())?;
             let mut contents = bytes.get(start as usize..end as usize)?;
             let kind = word(&mut contents)?;
-            word(&mut contents)?; // signature length (PHP verifies the actual remaining bytes)
+            word(&mut contents)?;
             signed = signature(
                 kind,
                 &[
@@ -484,15 +425,12 @@ fn zip_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
             }
         } else {
             executable |= name == b".phar/stub.php";
-            // PHP only treats '/' as a separator here, unlike zip::ZipFile::is_dir()'s Windows spelling.
             found |= name == member && !name.ends_with(b"/");
         }
     }
     Some(found && (!executable || signed))
 }
 
-/// ext/phar/tar.c: phar_parse_tarfile(). PHAR's signature member is hidden from its manifest. Link entries are
-/// files for stat; hard links require a preceding target in the manifest, while dangling symlinks are accepted.
 fn tar_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
     let mut tar = tar::Archive::new(Cursor::new(bytes));
     let mut executable = false;
@@ -533,14 +471,12 @@ fn tar_file(bytes: &[u8], member: &[u8]) -> Option<bool> {
     Some(found && (!executable || signed))
 }
 
-/// IncludedFilePathResolver::resolve(). Absolute paths bypass directory prefixes, but are not canonicalized:
-/// `missing-directory/../existing.php` is not a file. Only FileHelper's directory gets normalizePath().
+static SCHEME: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
+    pcre2::bytes::Regex::new("(?i)^([a-z0-9+\\-.]+)://").expect("upstream wrapper pattern")
+});
+
 fn candidates(c: &Checker, path: &str) -> Vec<PathBuf> {
-    static SCHEME: std::sync::OnceLock<pcre2::bytes::Regex> = std::sync::OnceLock::new();
-    let scheme = SCHEME.get_or_init(|| {
-        pcre2::bytes::Regex::new("(?i)^([a-z0-9+\\-.]+)://").expect("upstream wrapper pattern")
-    });
-    let path = if scheme.is_match(path.as_bytes()).expect("wrapper match") {
+    let path = if SCHEME.is_match(path.as_bytes()).expect("wrapper match") {
         let (scheme, rest) = path.split_once("://").expect("matched separator");
         if !scheme.eq_ignore_ascii_case("file") {
             return Vec::new();
@@ -617,8 +553,6 @@ fn normalize_directory(path: &str) -> String {
     )
 }
 
-/// ExprPrinter's concatenation spacing, associativity and interpolated-variable braces. The remaining operands
-/// retain their source spelling, as php-parser retains a literal's quote kind and a constant's written name.
 fn print_expr(c: &Checker, expr: &Expression) -> String {
     match unparen(expr) {
         Expression::Binary(b) if matches!(b.operator, BinaryOperator::StringConcat(_)) => {
@@ -670,9 +604,6 @@ fn variables(expr: &Expression) -> Vec<Vec<u8>> {
     vars.0
 }
 
-/// The synthetic fully-qualified, lowercase calls in isInFileExists() are expression keys, not a generic
-/// implication that every file check establishes every other one. A namespace-local call (or uppercase spelling)
-/// has a different key in PHPStan; the oracle controls deliberately retain this distinction.
 pub(super) fn guards(c: &Checker, expr: &Expression, truth: bool) -> Vec<scope::Guard> {
     let recurse = |e, truth| guards(c, e, truth);
     match unparen(expr) {
@@ -751,8 +682,6 @@ pub(super) fn guards(c: &Checker, expr: &Expression, truth: bool) -> Vec<scope::
     }
 }
 
-/// MutatingScope invalidates remembered calls when an argument changes. Keep the guard slots (block marks index
-/// them), but invalidate only those depending on an assigned variable.
 pub(super) fn assigned(c: &mut Checker, lhs: &Expression) {
     let vars = variables(lhs);
     for guard in &mut c.guards {
@@ -769,8 +698,6 @@ mod tests {
     use super::archive_file;
     use std::io::Write;
 
-    /// A tar holding `x.php`, gzip-compressed after `padding` more zero bytes. Tar readers stop at the first
-    /// zero block, so the padding only changes the unpacked size.
     fn gzipped_tar(padding: usize) -> Vec<u8> {
         let mut tar = tar::Builder::new(Vec::new());
         let mut header = tar::Header::new_gnu();
@@ -784,8 +711,6 @@ mod tests {
         gz.finish().unwrap()
     }
 
-    /// A few kilobytes of gzip must not unpack into gigabytes: past 100 MiB the archive is unreadable, as an
-    /// oversized manifest is, while the same member in a small archive is found.
     #[test]
     fn gzip_archives_unpack_to_at_most_100_mib() {
         assert_eq!(archive_file(&gzipped_tar(0), b"x.php", 3), Some(true));

@@ -1,4 +1,3 @@
-//! Complete public PHPStan diagnostics retain written trait-alias spelling independently of lookup casing.
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -8,7 +7,7 @@ fn check(case: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/mixed-case-alias");
     let mut project = Project::new(vec![root.join(format!("{case}.php"))], Vec::new());
     project.level = 5;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.strict_rules.set(
         pun_analyse::StrictRules::MATCHING_INHERITED_METHOD_NAMES,
         case == "strict",

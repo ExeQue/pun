@@ -5,9 +5,7 @@
 //! wrote for them. Each must pass as `format(pun lint --fix) == format(expected)` with the laravel preset, and the text edits
 //! must give the expected bytes before format too.
 
-mod lint_c;
-
-use lint_c::run_class_at;
+use crate::common::run_class_at;
 use pun_lint::rules::{AddSafeStrictTypes, NoNullArrayKey};
 
 #[test]

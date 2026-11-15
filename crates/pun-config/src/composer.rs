@@ -1,14 +1,9 @@
-//! What a project's dependencies say about it (context/plan/config.md §5 and Build 5): the PHP version from
-//! `require.php` (the lowest version the constraint admits) and the Laravel, Pest and PHPUnit versions locked
-//! (`packages` and `packages-dev`). They come from pun.toml and pun.lock when pun.toml holds the dependencies, and
-//! from composer.json and composer.lock in a project whose dependencies Composer still manages.
-
 use crate::constraint;
 use anyhow::{Context, Result};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// A `major.minor.patch` version. Missing parts are 0.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
     pub major: u64,
@@ -26,44 +21,33 @@ impl From<constraint::V> for Version {
     }
 }
 
-/// `require.php` of composer.json.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PhpRequire {
-    /// The constraint as written.
     pub constraint: String,
-    /// The lowest version it admits; `None` when it admits none.
     pub lowest: Option<Version>,
 }
 
-/// One package as composer.lock pins it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Locked {
-    /// The version as locked (`v13.23.0`, `dev-main`).
     pub version: String,
-    /// `version` as numbers, `None` for a branch (`dev-main`, `3.x-dev`).
     pub semver: Option<Version>,
 }
 
-/// What composer.json and composer.lock say. Every field is `None` when its file or entry is missing.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Composer {
     pub php: Option<PhpRequire>,
-    /// `config.platform.php` of composer.json, as written (`8.3.12`).
     pub platform_php: Option<String>,
-    /// `laravel/framework`.
-    pub laravel: Option<Locked>,
-    /// `pestphp/pest`.
-    pub pest: Option<Locked>,
-    /// `phpunit/phpunit`.
-    pub phpunit: Option<Locked>,
-    /// The files that were read, in order.
+    /// The locked versions of the packages that turn an extension on.
+    pub locked: BTreeMap<String, Locked>,
     pub sources: Vec<PathBuf>,
 }
 
 impl Composer {
-    /// PhpVersionFactory::create()'s version from `config.platform.php`: `explode('.')`, each part read as PHP's
-    /// `(int)` does (its leading digits), clamped to MIN_PHP_VERSION and MAX_PHP_VERSION.
-    pub fn platform_php_id(&self) -> Option<u32> {
+    pub fn locked(&self, package: &str) -> Option<&Locked> {
+        self.locked.get(package)
+    }
+
+    pub fn platform_php_version(&self) -> Option<crate::PhpVersion> {
         let mut parts = self.platform_php.as_deref()?.split('.');
         let mut part = || {
             let p = parts.next().unwrap_or("");
@@ -71,34 +55,21 @@ impl Composer {
             p[..digits].parse::<u32>().unwrap_or(0)
         };
         let id = part() * 10_000 + part() * 100 + part();
-        Some(id.clamp(70_100, 80_699))
+        Some(crate::PhpVersion::from_id(id.clamp(70_100, 80_699)))
     }
 
-    /// The default `[php] version`: the lowest PHP version composer.json admits.
     pub fn php_version(&self) -> Option<crate::PhpVersion> {
         let v = self.php.as_ref()?.lowest?;
-        Some(crate::PhpVersion {
-            major: v.major.try_into().ok()?,
-            minor: v.minor.try_into().ok()?,
-        })
+        let major: u8 = v.major.try_into().ok()?;
+        let minor: u8 = v.minor.try_into().ok()?;
+        Some(crate::PhpVersion::new(major.into(), minor.into()))
     }
 }
 
-/// Reads pun.toml's dependency sections and pun.lock, or without those composer.json and composer.lock. A missing
-/// file is not an error; an unreadable one, invalid JSON or TOML, or an unparsable `require.php` is.
 pub fn detect(root: &Path) -> Result<Composer> {
     let mut out = Composer::default();
-    let (manifest, lock) = match crate::manifest::read(root)? {
-        Some(m) => {
-            out.sources.push(m.path);
-            let lock = read_toml(&root.join("pun.lock"), &mut out.sources)?;
-            (Some(Value::Object(m.json)), lock)
-        }
-        None => (
-            read(&root.join("composer.json"), &mut out.sources)?,
-            read(&root.join("composer.lock"), &mut out.sources)?,
-        ),
-    };
+    let manifest = read(&root.join("composer.json"), &mut out.sources)?;
+    let lock = read(&root.join("composer.lock"), &mut out.sources)?;
     if let Some(json) = manifest {
         out.php = php_require(&json)?;
         out.platform_php =
@@ -111,35 +82,24 @@ pub fn detect(root: &Path) -> Result<Composer> {
             .into_iter()
             .flatten()
         {
-            let slot = match p.get("name").and_then(Value::as_str) {
-                Some("laravel/framework") => &mut out.laravel,
-                Some("pestphp/pest") => &mut out.pest,
-                Some("phpunit/phpunit") => &mut out.phpunit,
-                _ => continue,
+            let Some(name) = (p.get("name").and_then(Value::as_str))
+                .filter(|n| crate::extensions::packages().any(|e| e == *n))
+            else {
+                continue;
             };
             let version = p.get("version").and_then(Value::as_str).unwrap_or("");
-            *slot = Some(Locked {
-                version: version.to_string(),
-                semver: semver(version),
-            });
+            out.locked.insert(
+                name.to_string(),
+                Locked {
+                    version: version.to_string(),
+                    semver: semver(version),
+                },
+            );
         }
     }
     Ok(out)
 }
 
-/// pun.lock as JSON, or `None` when there is none.
-fn read_toml(path: &Path, sources: &mut Vec<PathBuf>) -> Result<Option<Value>> {
-    let text = match std::fs::read_to_string(path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        r => r.with_context(|| format!("can't read {}", path.display()))?,
-    };
-    let table: toml::Table =
-        toml::from_str(&text).with_context(|| format!("invalid {}", path.display()))?;
-    sources.push(path.to_path_buf());
-    Ok(Some(crate::toml_text::to_json(&toml::Value::Table(table))))
-}
-
-/// `require.php` of a composer.json.
 fn php_require(json: &Value) -> Result<Option<PhpRequire>> {
     let Some(c) = json.pointer("/require/php").and_then(Value::as_str) else {
         return Ok(None);
@@ -161,7 +121,6 @@ fn read(path: &Path, sources: &mut Vec<PathBuf>) -> Result<Option<Value>> {
     Ok(Some(v))
 }
 
-/// A locked version as numbers: `v13.23.0` and `5.0.0-RC1` (its release) parse, a branch does not.
 fn semver(v: &str) -> Option<Version> {
     let v = v.strip_prefix(['v', 'V']).unwrap_or(v);
     let release = v.split(['-', '+']).next()?;
@@ -213,16 +172,13 @@ mod tests {
         format!(r#"{{"name":"{name}","version":"{version}"}}"#)
     }
 
-    fn locked(version: &str, semver: Option<Version>) -> Option<Locked> {
-        Some(Locked {
+    fn locked(version: &str, semver: Option<Version>) -> Locked {
+        Locked {
             version: version.into(),
             semver,
-        })
+        }
     }
 
-    /// Lowest admitted versions derived by hand from composer/semver: `|` / `||` is OR (take the lowest
-    /// alternative), spaces and commas are AND (take the highest lower bound), `^8.2` is `>=8.2.0 <9.0.0`,
-    /// `~8.4.1` is `>=8.4.1 <8.5.0`, `8.4.*` is `>=8.4.0 <8.5.0`, `>8.4` starts above 8.4.0.
     #[test]
     fn lowest_php_version() {
         let cases = [
@@ -257,7 +213,6 @@ mod tests {
                 "{c}"
             );
         }
-        // Admits nothing: no version to take.
         let none = php(">=8.4 <8.3");
         assert_eq!(none.php.unwrap().lowest, None);
         assert_eq!(php(">=8.4 <8.3").php_version(), None);
@@ -265,9 +220,7 @@ mod tests {
 
     #[test]
     fn missing_files() {
-        // Neither file: nothing known, nothing read.
         assert_eq!(detect(&dir(&[])).unwrap(), Composer::default());
-        // composer.json without `require.php` and without a lock.
         let d = dir(&[(
             "composer.json",
             r#"{"require":{"laravel/framework":"^13.0"}}"#,
@@ -275,51 +228,54 @@ mod tests {
         let c = detect(&d).unwrap();
         assert_eq!(c.php, None);
         assert_eq!(c.php_version(), None);
-        assert_eq!((c.laravel, c.pest, c.phpunit), (None, None, None));
+        assert!(c.locked.is_empty());
         assert_eq!(c.sources, [d.join("composer.json")]);
-        // A lock without composer.json still names the ecosystems.
         let d = dir(&[(
             "composer.lock",
             &lock(&pkg("laravel/framework", "v12.0.1"), ""),
         )]);
         let c = detect(&d).unwrap();
         assert_eq!(c.php, None);
-        assert_eq!(c.laravel, locked("v12.0.1", Some(v(12, 0, 1))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v12.0.1", Some(v(12, 0, 1))))
+        );
         assert_eq!(c.sources, [d.join("composer.lock")]);
     }
 
-    /// Once pun.toml holds the dependencies, pun.toml and pun.lock are read and the composer.json and composer.lock
-    /// left beside them are not, since `pun update` changes only the pun files.
     #[test]
-    fn pun_files_win_over_composers() {
+    fn platform_php_and_dev_packages() {
         let d = dir(&[
-            ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
+            (
+                "composer.json",
+                r#"{"require":{"php":"^8.5"},"config":{"platform":{"php":"8.5.1"}}}"#,
+            ),
             (
                 "composer.lock",
-                &lock(&pkg("laravel/framework", "v12.0.1"), ""),
+                &lock(
+                    &pkg("laravel/framework", "v13.1.0"),
+                    &pkg("pestphp/pest", "v5.0.3"),
+                ),
             ),
-            (
-                "pun.toml",
-                "[require]\nphp = \"^8.5\"\n\n[config.platform]\nphp = \"8.5.1\"\n",
-            ),
-            (
-                "pun.lock",
-                "version = 1\ncontent-hash = \"0\"\n\n[[packages]]\nname = \"laravel/framework\"\nversion = \"v13.1.0\"\n\n[[packages-dev]]\nname = \"pestphp/pest\"\nversion = \"v5.0.3\"\n",
-            ),
+            ("pun.lock", "version = 1\n"),
         ]);
         let c = detect(&d).unwrap();
-        assert_eq!(c.php.map(|p| p.lowest), Some(Some(v(8, 5, 0))));
+        assert_eq!(c.php.as_ref().map(|p| p.lowest), Some(Some(v(8, 5, 0))));
         assert_eq!(c.platform_php.as_deref(), Some("8.5.1"));
-        assert_eq!(c.laravel, locked("v13.1.0", Some(v(13, 1, 0))));
-        assert_eq!(c.pest, locked("v5.0.3", Some(v(5, 0, 3))));
-        assert_eq!(c.sources, [d.join("pun.toml"), d.join("pun.lock")]);
-        // Without pun.lock, nothing is locked, whatever composer.lock says.
-        std::fs::remove_file(d.join("pun.lock")).unwrap();
-        assert_eq!(detect(&d).unwrap().laravel, None);
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v13.1.0", Some(v(13, 1, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v5.0.3", Some(v(5, 0, 3))))
+        );
+        assert_eq!(
+            c.sources,
+            [d.join("composer.json"), d.join("composer.lock")]
+        );
     }
 
-    /// Versions as corpus/pinkary's composer.lock pins them: Laravel in `packages`, Pest and PHPUnit in
-    /// `packages-dev`.
     #[test]
     fn all_three_ecosystems() {
         let text = lock(
@@ -343,32 +299,47 @@ mod tests {
             c.php_version().map(|v| v.to_string()).as_deref(),
             Some("8.4")
         );
-        assert_eq!(c.laravel, locked("v13.23.0", Some(v(13, 23, 0))));
-        assert_eq!(c.pest, locked("v5.0.3", Some(v(5, 0, 3))));
-        assert_eq!(c.phpunit, locked("13.2.6", Some(v(13, 2, 6))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v13.23.0", Some(v(13, 23, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v5.0.3", Some(v(5, 0, 3))))
+        );
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("13.2.6", Some(v(13, 2, 6))))
+        );
         assert_eq!(
             c.sources,
             [d.join("composer.json"), d.join("composer.lock")]
         );
     }
 
-    /// Each ecosystem on its own, from either list; the others stay off.
     #[test]
     fn each_ecosystem() {
         let only = |packages: &str, dev: &str| {
             detect(&dir(&[("composer.lock", &lock(packages, dev))])).unwrap()
         };
         let c = only(&pkg("laravel/framework", "v11.31.0"), "");
-        assert_eq!(c.laravel, locked("v11.31.0", Some(v(11, 31, 0))));
-        assert_eq!((c.pest, c.phpunit), (None, None));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v11.31.0", Some(v(11, 31, 0))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only("", &pkg("pestphp/pest", "v4.1.0"));
-        assert_eq!(c.pest, locked("v4.1.0", Some(v(4, 1, 0))));
-        assert_eq!((c.laravel, c.phpunit), (None, None));
-        // A library that ships PHPUnit as a runtime dependency.
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v4.1.0", Some(v(4, 1, 0))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only(&pkg("phpunit/phpunit", "12.4.1"), "");
-        assert_eq!(c.phpunit, locked("12.4.1", Some(v(12, 4, 1))));
-        assert_eq!((c.laravel, c.pest), (None, None));
-        // Look-alike names are not the framework.
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("12.4.1", Some(v(12, 4, 1))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only(
             &[
                 pkg("laravel/laravel", "v13.0.0"),
@@ -377,10 +348,9 @@ mod tests {
             .join(","),
             "",
         );
-        assert_eq!(c.laravel, None);
+        assert_eq!(c.locked("laravel/framework").cloned(), None);
     }
 
-    /// Branches have no numbers; a pre-release counts as its release; a short version pads with zeros.
     #[test]
     fn locked_versions() {
         let c = detect(&dir(&[(
@@ -395,18 +365,29 @@ mod tests {
             ),
         )]))
         .unwrap();
-        assert_eq!(c.laravel, locked("dev-main", None));
-        assert_eq!(c.phpunit, locked("12.4", Some(v(12, 4, 0))));
-        assert_eq!(c.pest, locked("5.0.0-RC1", Some(v(5, 0, 0))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("dev-main", None))
+        );
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("12.4", Some(v(12, 4, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("5.0.0-RC1", Some(v(5, 0, 0))))
+        );
         let c = detect(&dir(&[(
             "composer.lock",
             &lock(&pkg("pestphp/pest", "3.x-dev"), ""),
         )]))
         .unwrap();
-        assert_eq!(c.pest, locked("3.x-dev", None));
-        // A lock without a `packages-dev` list.
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("3.x-dev", None))
+        );
         let c = detect(&dir(&[("composer.lock", r#"{"packages":[]}"#)])).unwrap();
-        assert_eq!(c.pest, None);
+        assert_eq!(c.locked("pestphp/pest").cloned(), None);
     }
 
     #[test]
@@ -418,7 +399,6 @@ mod tests {
             e(&[("composer.json", r#"{"require":{"php":">="}}"#)])
                 .starts_with("invalid constraint `>=`: ")
         );
-        // A file that is there but can't be read is not a missing one: the PHP 8.4 gate would be skipped.
         for name in ["composer.json", "composer.lock"] {
             let d = dir(&[]);
             std::fs::create_dir(d.join(name)).unwrap();

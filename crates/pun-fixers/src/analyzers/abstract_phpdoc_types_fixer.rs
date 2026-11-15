@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\AbstractPhpdocTypesFixer` (applyFix + fixType); subclasses pass `normalize`.
 use crate::analyzers::docblock::{Annotation, DocBlock, TAGS_WITH_TYPES, TypeExpression};
 use pun_tokens::{Kind, Token, Tokens};
 use std::cell::RefCell;
@@ -8,19 +7,12 @@ pub(crate) fn is_candidate(tokens: &Tokens) -> bool {
     tokens.is_token_kind_found(Kind::T_DOC_COMMENT)
 }
 
-/// Types content => fixed types content.
 type FixedTypes = HashMap<Vec<u8>, Vec<u8>>;
 
 thread_local! {
-    /// fixType's result per (`memo_key`, types content): it depends on nothing else, and the same few types recur
-    /// across every docblock of a project. Only successful parses are stored.
-    // ponytail: unbounded per thread; a project has at most tens of thousands of distinct type strings.
     static FIXED_TYPES: RefCell<HashMap<String, FixedTypes>> = RefCell::default();
 }
 
-/// `memo_key` names the fixer and its configuration: two fixers (or configurations) never share results.
-/// `may_change(docblock)` is false only when `normalize` provably leaves every type in it as it is (the docblock is
-/// then not parsed at all).
 pub(crate) fn apply_fix(
     tokens: &mut Tokens,
     memo_key: &str,

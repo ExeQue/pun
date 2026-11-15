@@ -1,7 +1,3 @@
-//! `lint/types/add-param-type-spl-fixed-array`, ported from Rector 2.8.4's `AddParamTypeSplFixedArrayRector`
-//! (rules/TypeDeclaration/Rector/FunctionLike) with `PhpDocTypeChanger::changeParamType`: a parameter of a function or
-//! method declared as PHP-CS-Fixer's `Tokens` class gets the generic `@param Tokens<Token>` type in the docblock.
-
 use mago_syntax::cst::{FunctionLikeParameterList, Hint, Node, NodeKind};
 use pun_problem::Safety;
 
@@ -11,7 +7,6 @@ use crate::rules::phpunit::phpdoc_type::{TagType, typed_tag};
 use crate::syntax::node_span;
 use crate::{Context, Report, Rule};
 
-/// `SPL_FIXED_ARRAY_TO_SINGLE`: each `SplFixedArray` class with the class of its items.
 const SPL_FIXED_ARRAY_TO_SINGLE: [(&str, &str); 2] = [
     (
         "PhpCsFixer\\Tokenizer\\Tokens",
@@ -54,7 +49,6 @@ impl Rule for AddParamTypeSplFixedArray {
         let mut appended: Vec<String> = Vec::new();
         let mut replaced: Vec<(usize, String)> = Vec::new();
         for param in &params.parameters {
-            // a class name only: `?Tokens` and unions are no `TypeWithClassName`
             let Some(Hint::Identifier(id)) = &param.hint else {
                 continue;
             };
@@ -70,19 +64,15 @@ impl Rule for AddParamTypeSplFixedArray {
                 .as_ref()
                 .map(|d| typed_tag(d, "@param", Some(&name)))
             {
-                // `hasInvalidTag('@param')`: better skip
                 Some(Err(())) => return,
-                Some(Ok(Some(tag))) => {
-                    // the tag's type is replaced unless it is the generic type already
-                    match &tag.ty {
-                        TagType::Name(n)
-                            if super::names::resolve_written_class_name(ancestors, n) == *fixed =>
-                        {
-                            replaced.push((tag.index, tag.print_with(&generic)));
-                        }
-                        _ => continue,
+                Some(Ok(Some(tag))) => match &tag.ty {
+                    TagType::Name(n)
+                        if super::names::resolve_written_class_name(ancestors, n) == *fixed =>
+                    {
+                        replaced.push((tag.index, tag.print_with(&generic)));
                     }
-                }
+                    _ => {}
+                },
                 _ => appended.push(format!("@param {generic} {name}")),
             }
         }
@@ -93,7 +83,6 @@ impl Rule for AddParamTypeSplFixedArray {
             None => format!("/**\n * {}\n */", appended.join("\n * ")),
             Some(doc) => {
                 let mut text = doc.text_all().to_string();
-                // replace from the last tag back, so earlier offsets hold
                 for (index, printed) in replaced.iter().rev() {
                     let child = doc.text(*index).trim_end();
                     let from = child.as_ptr() as usize - doc.text_all().as_ptr() as usize;
@@ -102,8 +91,7 @@ impl Rule for AddParamTypeSplFixedArray {
                 if appended.is_empty() {
                     text
                 } else {
-                    // the replaced tags printed in place, then the new ones added to that doc
-                    let Some(doc) = crate::rules::lint_b_doc::Doc::parse(&text) else {
+                    let Some(doc) = crate::rules::support::docblocks::Doc::parse(&text) else {
                         return;
                     };
                     let appended: Vec<&str> = appended.iter().map(String::as_str).collect();

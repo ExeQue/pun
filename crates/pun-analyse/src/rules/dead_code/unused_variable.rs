@@ -1,6 +1,3 @@
-//! UnusedVariableRule (level 4, `featureToggles.unusedVariable`): local writes whose value is never read, read only
-//! into values that are never used, or overwritten first, from the semantic producer's VariableWritesNode.
-
 use std::collections::{HashMap, HashSet};
 
 use mago_span::{HasSpan, Span};
@@ -26,7 +23,6 @@ enum Kind {
     Input,
 }
 
-/// The kind of every write target in a body, by span; the rest are assignments, list items and offset writes.
 #[derive(Default)]
 struct Kinds(HashMap<Span, Kind>);
 
@@ -75,8 +71,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Kinds {
     }
 }
 
-/// The write targets that are expressions (a `$a[...]` offset write prints its target), and the plain assignments
-/// by target.
 #[derive(Default)]
 struct Targets<'ast, 'arena>(
     HashMap<Span, &'ast Expression<'arena>>,
@@ -96,7 +90,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Targets<'ast, 'arena> {
     }
 }
 
-/// The values and offsets of plain assignments, for AssignHandler::redundant().
 pub(super) fn typed(program: &Program) -> Vec<Span> {
     #[derive(Default)]
     struct Wanted(Vec<Span>);
@@ -118,11 +111,6 @@ pub(super) fn typed(program: &Program) -> Vec<Span> {
     wanted.0
 }
 
-/// AssignHandler::redundant(): the value the target certainly already has, in both lanes.
-///
-/// ponytail: Mago's native lane is partial (it gives up after an `if` on a call, a loop, ...). When it has no type,
-/// `constant` (every write of the variable in the body is a plain `=` of a constant expression) stands in: then the
-/// native type is the full one, short of a narrowing by a PHPDoc-typed condition.
 fn redundant(c: &Checker, assignment: &Assignment, constant: bool) -> Option<Type> {
     let (full, native) = c.variables.assigned_roots.get(&assignment.lhs.span())?;
     let native = native.as_ref().or(constant.then_some(full))?;
@@ -132,7 +120,6 @@ fn redundant(c: &Checker, assignment: &Assignment, constant: bool) -> Option<Typ
         dimensions.push(access.index);
         target = access.array;
     }
-    // A literal's native type is its type; Mago's native lane types an array literal less precisely
     let native_of = |e: &Expression| {
         let literal = matches!(
             super::super::types::flow::unparen(e),
@@ -186,7 +173,6 @@ fn single_value(c: &Checker, t: &Type) -> bool {
     }
 }
 
-/// `toArrayKey()->getConstantScalarValues()` of exactly one value.
 fn array_key(t: &Type) -> Option<Type> {
     match t {
         Type::ConstInt(_) => Some(t.clone()),
@@ -203,7 +189,6 @@ fn array_key(t: &Type) -> Option<Type> {
     }
 }
 
-/// `isArray()->yes() && hasOffsetValueType()->yes()`, then `getOffsetValueType()`, of a constant array.
 fn offset_value(t: &Type, key: &Type) -> Option<Type> {
     let Type::ConstArray(a) = t else { return None };
     let i = a.keys.iter().position(|k| k == key)?;
@@ -249,7 +234,6 @@ pub(in super::super) fn check(c: &mut Checker, span: Span, node: Node<'_, '_>) {
         .collect();
     let mut not_constant = HashSet::new();
     for write in writes.writes.values() {
-        // the offsets an array literal writes belong to its assignment
         if write.parent.is_none()
             && !targets
                 .1
@@ -360,7 +344,6 @@ pub(in super::super) fn check(c: &mut Checker, span: Span, node: Node<'_, '_>) {
     }
 }
 
-/// getMessage()
 fn message(
     kind: Kind,
     target: &str,
@@ -392,7 +375,6 @@ fn message(
     }
 }
 
-/// getIdentifier()
 fn identifier(kind: Kind, unused_variable: bool, read: bool, overwritten: bool) -> String {
     let prefix = match kind {
         Kind::Assign | Kind::Input if unused_variable => return "variable.unused".into(),

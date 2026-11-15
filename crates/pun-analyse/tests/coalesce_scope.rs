@@ -1,5 +1,3 @@
-//! Assignment certainty and optional coalesce writes through the public analyser, against PHPStan 2.3.1.
-
 use std::path::Path;
 
 use pun_analyse::{Project, run};
@@ -69,7 +67,7 @@ fn false_isset_offset_probes_do_not_invent_nullable_entries() {
         .collect();
     let mut project = Project::new(vec![root.join("offset-probes.php")], Vec::new());
     project.level = 4;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

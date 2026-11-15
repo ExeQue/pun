@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Alias\PowToExponentiationFixer`.
 use crate::analyzers::abstract_function_reference_fixer::{FunctionReferenceFinder, IS_RISKY};
 use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use pun_format::Fixer;
@@ -12,7 +11,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
     Box::new(PowToExponentiationFixer)
 }
 
-/// `getAllowedKinds`.
 const ALLOWED_KINDS: &[Kind] = &[
     T_DNUMBER,
     T_LNUMBER,
@@ -87,7 +85,7 @@ fn find_pow_calls(tokens: &Tokens) -> Vec<(usize, usize, usize)> {
         let Some(candidate) = finder.find("pow", tokens, i, Some(end)) else {
             break;
         };
-        i = candidate.1 + 1; // proceed to openParenthesisIndex
+        i = candidate.1 + 1;
         candidates.push(candidate);
     }
     candidates
@@ -100,17 +98,14 @@ fn fix_pow_to_exponentiation(
     close_parenthesis_index: usize,
     arguments: &[(usize, usize)],
 ) -> usize {
-    // `reset($arguments)`: the end of the first argument.
     let comma = tokens
         .get_next_token_of_kind(arguments[0].1, &[",".into()], true)
         .unwrap();
     tokens.set(comma, Token::new(T_POW, "**"));
     tokens.clear_at(close_parenthesis_index);
-    let previous_index = tokens
-        .get_prev_meaningful_token(close_parenthesis_index)
-        .unwrap();
+    let previous_index = tokens.prev_meaningful(close_parenthesis_index);
     if tokens[previous_index].equals(",", true) {
-        tokens.clear_at(previous_index); // trailing ',' in function call (PHP 7.3)
+        tokens.clear_at(previous_index);
     }
     let mut added = 0;
     for &(argument_start_index, argument_end_index) in arguments.iter().rev() {
@@ -122,9 +117,7 @@ fn fix_pow_to_exponentiation(
     }
     tokens.clear_at(open_parenthesis_index);
     tokens.clear_token_and_merge_surrounding_whitespace(function_name_index);
-    let prev_meaningful_token_index = tokens
-        .get_prev_meaningful_token(function_name_index)
-        .unwrap();
+    let prev_meaningful_token_index = tokens.prev_meaningful(function_name_index);
     if tokens[prev_meaningful_token_index].is_kind(T_NS_SEPARATOR) {
         tokens.clear_at(prev_meaningful_token_index);
     }
@@ -147,14 +140,14 @@ fn is_parenthesis_needed(
             continue;
         }
         if tokens[i].equals("$", true) {
-            i = tokens.get_next_meaningful_token(i).unwrap();
+            i = tokens.next_meaningful(i);
             if tokens[i].is_kind(CT_DYNAMIC_VAR_BRACE_OPEN) {
                 i = tokens.find_block_end(Tokens::BLOCK_TYPE_DYNAMIC_VAR_BRACE, i) + 1;
                 continue;
             }
         }
         if tokens[i].equals("+", true)
-            && tokens.get_prev_meaningful_token(i).unwrap() < argument_start_index
+            && tokens.prev_meaningful(i) < argument_start_index
         {
             i += 1;
             continue;

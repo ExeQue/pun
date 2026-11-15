@@ -1,8 +1,3 @@
-//! The level-2 parts of MethodTagCheck, PropertyTagCheck and MixinCheck: MethodTagRule, PropertyTagRule and
-//! MixinRule on a class, interface or enum (InClassNode), MixinTraitRule on a trait declaration, and
-//! MethodTagTraitUseRule, PropertyTagTraitUseRule and MixinTraitUseRule on a trait in the context of a class
-//! using it (InTraitNode). The `checkMissingTypehints` parts are level 6 (missing_types.rs).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::Span;
 use pun_phpstan::phpdoc::{self, TagValue};
@@ -25,17 +20,13 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "mixin.trait",
 ];
 
-/// A class-like's `@method`, `@property` and `@mixin` tags, resolved (PhpDocNodeResolver).
 #[derive(Default)]
 struct Tags {
-    /// (method, [(parameter description, type)], return type); a later tag for a method replaces an earlier one
     methods: Vec<(String, Vec<(String, Type)>)>,
-    /// (property, tag name, types)
     properties: Vec<(String, &'static str, Vec<Type>)>,
     mixins: Vec<Type>,
 }
 
-/// PHP's `$array[$key] = $value`: replaced in place, or appended.
 fn set<K: PartialEq, V>(list: &mut Vec<(K, V)>, key: K, value: V) {
     match list.iter_mut().find(|(k, _)| *k == key) {
         Some(entry) => entry.1 = value,
@@ -106,7 +97,6 @@ fn tags(c: &Checker, k: &ClassLikeMetadata, scope: &NameScope) -> Tags {
         set(&mut methods, name.clone(), types);
     }
     out.methods = methods;
-    // (name, readable, writable)
     let mut properties: Vec<(String, (Option<Type>, Option<Type>))> = Vec::new();
     for (names, read, write) in [
         (&["@property", "@phpstan-property"][..], true, true),
@@ -159,7 +149,6 @@ fn tags(c: &Checker, k: &ClassLikeMetadata, scope: &NameScope) -> Tags {
     out
 }
 
-/// `canCallMethods()->yes() && canAccessProperties()->yes()`
 fn object_like(t: &Type) -> bool {
     match t {
         Type::Mixed { .. }
@@ -179,7 +168,6 @@ fn object_like(t: &Type) -> bool {
     }
 }
 
-/// UnresolvableTypeHelper: an error type or an implicit `never` anywhere in `ty`.
 fn unresolvable(ty: &Type) -> bool {
     let mut found = false;
     super::type_aliases::each(ty, &mut |t| {
@@ -188,7 +176,6 @@ fn unresolvable(ty: &Type) -> bool {
     found
 }
 
-/// What the checks found: errors with an optional tip, and the class names ClassNameCheck reads.
 #[derive(Default)]
 struct Found {
     errors: Vec<(&'static str, String, Option<&'static str>)>,
@@ -196,8 +183,6 @@ struct Found {
 }
 
 impl Found {
-    /// The use-context checks of one type: its referenced classes, unresolvability and generic types. `what` is
-    /// the subject of the messages ("PHPDoc tag @mixin"), `trait_id` the identifier of a trait reference.
     fn type_checks(
         &mut self,
         ty: &Type,
@@ -231,7 +216,6 @@ fn messages(subject: &str) -> GenericMessages {
     GenericMessages::at(&s)
 }
 
-/// `checkInTraitUseContext()` of the three checks on `tags`, `display` naming the class-like that declares them.
 fn use_context(tags: &Tags, display: &str, out: &mut Found) {
     for (method, types) in &tags.methods {
         for (description, ty) in types {
@@ -277,7 +261,6 @@ fn use_context(tags: &Tags, display: &str, out: &mut Found) {
     }
 }
 
-/// MixinCheck::checkInTraitDefinitionContext() at level 2: a mixin that is no object.
 fn definition_context(tags: &Tags, out: &mut Found) {
     for ty in &tags.mixins {
         if !object_like(ty) {
@@ -306,7 +289,6 @@ fn report(c: &mut Checker, at: Span, found: Found) {
     }
 }
 
-/// MethodTagRule, PropertyTagRule and MixinRule on a class, interface or enum declared at `at`.
 pub(super) fn class_like(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     if c.level < 2 {
         return;
@@ -320,7 +302,6 @@ pub(super) fn class_like(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     report(c, at, found);
 }
 
-/// MixinTraitRule on trait `name` declared at `at`.
 pub(super) fn trait_definition(c: &mut Checker, at: Span, name: &str) {
     if c.level < 2 {
         return;
@@ -339,13 +320,10 @@ pub(super) fn trait_definition(c: &mut Checker, at: Span, name: &str) {
     report(c, at, found);
 }
 
-/// MethodTagTraitUseRule, PropertyTagTraitUseRule and MixinTraitUseRule on trait `name` in the context of
-/// `class`, the class using it (which `self` and `static` mean).
 pub(super) fn trait_use(c: &mut Checker, at: Span, name: &str, class: &str) {
     if c.level < 2 {
         return;
     }
-    // (the class's walk put both in the codebase)
     let k = c.codebase.get_class_like(name.as_bytes()).expect("a trait");
     let using = c
         .codebase

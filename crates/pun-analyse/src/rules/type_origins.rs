@@ -1,9 +1,3 @@
-//! Source edges for information Mago erases: PHPDoc shape order and explicit mixed. These are not inferred types.
-//! Local copies, declarations and inline call arguments carry an origin. If/ternary/short-circuit branches
-//! read incoming state and join common origins or the upstream-selected equal mixed declaration. Other flow
-//! joins, replacements and reference escapes forget origins. Offset unsets preserve source metadata, not values;
-//! conversion still requires Mago's actual expression type, including its post-unset narrowing.
-
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -22,9 +16,7 @@ pub(in super::super) type Function = (Word, Word);
 #[derive(PartialEq, Eq)]
 pub(in super::super) struct Call {
     pub name: String,
-    /// An instance receiver, whose actual inferred type must resolve the method before its docs are used.
     pub receiver: Option<Span>,
-    /// A written static class name, or the lexical `self`/`static`/`parent` keyword. Neither field: a function.
     pub class: Option<Word>,
     pub args: Vec<(Option<String>, Span)>,
 }
@@ -38,18 +30,14 @@ pub(in super::super) struct MethodCallGuard {
 
 #[derive(Clone, PartialEq, Eq)]
 pub(in super::super) enum Origin {
-    /// The function's parameter at the index; `true` when the function is a closure written as a call's argument.
     Parameter(Function, usize, bool),
     Annotation(Span, String, Option<Function>),
     Copy(Span),
-    /// A literal's key/value expressions, in PHP insertion order. No unknown keys or unpacks are invented.
     Array(Vec<(Option<Span>, Span)>),
     Offset(Span, Span),
-    /// Ordered, explicit offset unsets: virtual write-back can append a previously absent parent key.
     Unset(Span, Vec<Span>),
     Call(Arc<Call>),
     Callback(Arc<Call>, usize, usize),
-    /// Calls with arguments must resolve the receiver and prove its native signature cannot pass references.
     AfterMethodCall(Arc<MethodCallGuard>, Arc<Origin>),
 }
 
@@ -64,7 +52,6 @@ fn branching(e: &Expression) -> bool {
     )
 }
 
-/// `functions` are the file's function-likes ([`super::super::driver::Checks`]'s table).
 pub(super) fn collect(
     file: &File,
     comments: &super::super::Comments,
@@ -92,7 +79,6 @@ pub(super) fn collect(
     walker.found
 }
 
-/// Keep dependency artifacts, but do not cause unrelated declarations to be analysed.
 pub(super) fn dependencies(found: &Origins, wanted: &[Span]) -> Vec<Span> {
     let mut seen: std::collections::HashSet<Span> = wanted.iter().copied().collect();
     let mut pending = wanted.to_vec();
@@ -142,7 +128,6 @@ struct Sources<'a, 'arena> {
     locals: HashMap<Vec<u8>, Origin>,
     current: Option<Function>,
     calls: Vec<Option<Arc<Call>>>,
-    /// The value spans of every argument walked so far.
     arguments: HashSet<Span>,
     unset_targets: Vec<Span>,
     control_depth: usize,
@@ -199,8 +184,6 @@ impl Sources<'_, '_> {
             if !paths.iter().all(|p| p.contains_key(&name)) {
                 continue;
             }
-            // ExpressionTypeHolder::and() keeps its left type when MixedType::equals() ignores the
-            // explicit flag. Callers order paths as the upstream merge, not by origin preference.
             if self.explicit_mixed_parameter(&origin)
                 || paths.iter().all(|p| p.get(&name) == Some(&origin))
             {
@@ -229,8 +212,6 @@ impl Sources<'_, '_> {
     }
 
     fn call(&mut self, span: Span, arguments: &ArgumentList, target: Option<Call>) {
-        // Larastan's LiteralExtension reads one unpacked argument's array, marked `...`, and
-        // ModelOnlyDynamicMethodReturnTypeExtension each argument's array, unpacked or not
         let literal = |call: &Call| {
             call.receiver.is_none()
                 && call.class.is_none()
@@ -278,7 +259,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Sources<'_, 'arena> {
         self.leave();
     }
     fn walk_in_argument_list(&mut self, list: &'ast ArgumentList<'arena>, (): &mut ()) {
-        // PHPStan infers a closure's parameters from the parameter type it is passed to, also as an array value
         fn add(arguments: &mut HashSet<Span>, e: &Expression) {
             arguments.insert(e.span());
             if let Expression::Array(a) = e.unparenthesized() {
@@ -433,8 +413,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Sources<'_, 'arena> {
             .extend(u.values.iter().rev().map(HasSpan::span));
     }
     fn walk_array_access(&mut self, a: &'ast ArrayAccess<'arena>, ctx: &mut ()) {
-        // ArrayDimFetchHandler evaluates the index first. It can replace the receiver's value and
-        // source edge; syntax order must not attach the old declaration to that new value.
         self.walk_expression(a.index, ctx);
         self.walk_expression(a.array, ctx);
     }
@@ -448,7 +426,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Sources<'_, 'arena> {
         {
             self.found.insert(e.span(), origin.clone());
         }
-        // References and mutations are not straight-line value copies. Forget, rather than attach stale docs.
         if matches!(e, Expression::UnaryPrefix(p) if p.operator.is_reference() || p.operator.is_increment_or_decrement())
             || matches!(e, Expression::UnaryPostfix(_))
         {
@@ -486,8 +463,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Sources<'_, 'arena> {
             self.found
                 .insert(e.span(), Origin::Offset(a.array.span(), a.index.span()));
         }
-        // Keep the operation's source edge, not a cached inferred value. Parent offsets written back
-        // by nested unsets retain existing slots or append new ones in this operation's real order.
         if self.unset_targets.last() == Some(&e.span()) {
             self.unset_targets.pop();
             let mut root = super::super::types::flow::unparen(e);

@@ -1,5 +1,3 @@
-//! Public MixedType contracts from pinned PHPStan 2.3.1, shared with the Analyzer's oracle.
-
 use std::collections::BTreeMap;
 
 use pun_phpstan::types::{
@@ -76,7 +74,7 @@ fn pun_mixed_exclusions_describe_compare_and_accept_like_phpstan() {
             ["union", a, b] => union(vec![types[a].clone(), types[b].clone()]),
             ["intersect", a, b] => intersect(vec![types[a].clone(), types[b].clone()]),
             [a] => types[a].clone(),
-            _ => continue, // Subtraction and unset originate in codex, not the conversion layer.
+            _ => continue,
         };
         for (level, key) in [
             (Level::Precise, "precise"),
@@ -363,7 +361,6 @@ fn subtraction_descriptions_follow_runtime_type_not_rendered_delimiters() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-// Exclusions retain the positive identity for iteration, but not for containment or precise unions.
 #[test]
 fn object_exclusions_keep_identity_through_public_queries_and_unions() {
     use pun_phpstan::resolve::resolve_str;

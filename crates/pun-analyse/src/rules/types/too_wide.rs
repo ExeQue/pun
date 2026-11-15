@@ -1,8 +1,3 @@
-//! Level 4's TooWideFunctionReturnTypehintRule, TooWideMethodReturnTypehintRule, TooWideClosureReturnTypehintRule
-//! and TooWideArrowFunctionReturnTypehintRule over TooWideTypeCheck (`return.unusedType`), with the default
-//! `reportTooWideBool` and `reportNestedTooWideType` (both off) and `checkTooWideReturnTypesInProtectedAndPublicMethods`
-//! (off), and TooWidePropertyTypeRule (`property.unusedType`).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
@@ -19,8 +14,7 @@ use super::returns::returns;
 
 pub(super) const IDENTIFIERS: &[&str] = &["return.unusedType", "property.unusedType"];
 
-/// `isConstantScalarValue()->yes()`.
-fn constant_scalar(t: &Type) -> bool {
+pub(super) fn constant_scalar(t: &Type) -> bool {
     match t {
         Type::ConstInt(_)
         | Type::ConstFloat(_)
@@ -32,7 +26,6 @@ fn constant_scalar(t: &Type) -> bool {
     }
 }
 
-/// `TypeUtils::resolveLateResolvableTypes()`: a conditional type is the branch its subject takes.
 fn resolved(t: &Type) -> Type {
     match t {
         Type::Conditional(cd) => resolved(&cd.resolve()),
@@ -40,7 +33,6 @@ fn resolved(t: &Type) -> Type {
     }
 }
 
-/// The members of a declared union `narrowType()` drops, as `createErrors()` describes them.
 fn unused(declared: &Type, actual: &Type) -> Vec<String> {
     let Type::Union(members) = declared else {
         return Vec::new();
@@ -48,7 +40,6 @@ fn unused(declared: &Type, actual: &Type) -> Vec<String> {
     if constant_scalar(declared) && constant_scalar(actual) {
         return Vec::new();
     }
-    // (`checkFunctionReturnType()` narrows with `$checkDescendantClass` false)
     let used = members
         .iter()
         .filter(|m| !is_super_type_of(m, actual).no())
@@ -62,7 +53,6 @@ fn unused(declared: &Type, actual: &Type) -> Vec<String> {
         .collect()
 }
 
-/// `checkFunctionReturnType()` of a body (`native` is whether it has a native return type).
 fn body(
     c: &mut Checker,
     b: &Block,
@@ -182,7 +172,6 @@ pub(in super::super) fn method(c: &mut Checker, m: &Method) {
     body(c, b, m.span(), native, &ret, &of, !first && !private);
 }
 
-/// `checkAnonymousFunction()`.
 fn anonymous(c: &mut Checker, at: Span, actual: &Type, ret: &Type) {
     let Type::Union(members) = ret else { return };
     if actual.is_null().yes() {
@@ -242,8 +231,6 @@ pub(in super::super) fn arrow_function(c: &mut Checker, f: &ArrowFunction) {
     anonymous(c, f.span(), &actual, &ret);
 }
 
-/// The writes of a class's members: assignments, `++`/`--` operands, foreach targets and calls (whose by-reference
-/// arguments are written their parameters' out types, not read here).
 #[derive(Default)]
 struct Writes<'ast, 'arena> {
     assignments: Vec<&'ast Assignment<'arena>>,
@@ -284,10 +271,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Writes<'ast, 'arena> {
     fn walk_anonymous_class(&mut self, _: &'ast AnonymousClass<'arena>, (): &mut ()) {}
 }
 
-/// What an assignment writes to a property.
 enum Written {
     Value(Type),
-    /// an offset of it
     Offset,
     Unknown,
 }
@@ -299,10 +284,6 @@ fn without_null(t: &Type) -> Type {
     }
 }
 
-/// TooWidePropertyTypeRule on class `k` declared with `members`: its private properties (not promoted ones) against
-/// their default and the values its members assign them.
-// ponytail: the assignments in the traits the class uses are not read, nor are those of a list element, `++`/`--`, a
-// foreach target or a by-reference argument, whose properties are skipped
 pub(in super::super) fn properties(
     c: &mut Checker,
     k: &ClassLikeMetadata,
@@ -315,12 +296,10 @@ pub(in super::super) fn properties(
     for m in members {
         w.walk_class_like_member(m, &mut ());
     }
-    // the properties of `k` by name: their assigned types, `None` when one is unknown
     let mut assigned: Vec<(String, Written)> = Vec::new();
     let mut write = |name: String, t: Written| assigned.push((name, t));
     let own = |declaring: &ClassLikeMetadata| declaring.name == k.name;
     for a in &w.assignments {
-        // `= &$x`: the referenced side's type
         let rhs = match a.rhs {
             Expression::UnaryPrefix(u) if u.operator.is_reference() => u.operand,
             rhs => rhs,
@@ -408,8 +387,6 @@ pub(in super::super) fn properties(
             for (_, t) in assigned.iter().filter(|(n, _)| *n == text) {
                 match t {
                     Written::Value(t) => types.push(t.clone()),
-                    // ponytail: an offset write gives an array property its array type (`setOffsetValueType()` of
-                    // the type before), other properties are skipped
                     Written::Offset
                         if is_super_type_of(
                             &Type::array(mixed(), mixed()),
@@ -423,7 +400,6 @@ pub(in super::super) fn properties(
                 }
             }
             if let PropertyItem::Concrete(d) = item {
-                // (a default value's type is always asked for)
                 types.extend(c.phpstan_type(d.value));
             } else if p.hint().is_none() {
                 types.push(Type::Null);

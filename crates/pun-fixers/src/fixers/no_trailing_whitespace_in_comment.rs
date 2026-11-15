@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\Comment\NoTrailingWhitespaceInCommentFixer`.
 use crate::analyzers::preg::Preg;
 use pun_format::Fixer;
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::ltrim_chars};
@@ -28,7 +27,6 @@ impl Fixer for NoTrailingWhitespaceInCommentFixer {
                 continue;
             }
             let token = &tokens[index];
-            // A doc comment or a `/* */` comment keeps its kind; a `//` or `#` comment trims the next whitespace.
             let block_kind = if token.is_kind(T_DOC_COMMENT) {
                 Some(T_DOC_COMMENT)
             } else {
@@ -48,8 +46,6 @@ impl Fixer for NoTrailingWhitespaceInCommentFixer {
     }
 }
 
-/// `/(*ANY)[\h]+$/m` can only match before a line break or at the end; for ASCII text that means a space or tab
-/// followed by CR, LF, VT, FF or the end. Non-ASCII text (Unicode `\h` and line breaks) always takes the regex.
 fn may_have_trailing_h(c: &[u8]) -> bool {
     let h = |b: &u8| matches!(b, b' ' | b'\t');
     !c.is_ascii()

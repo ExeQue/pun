@@ -1,7 +1,3 @@
-//! IssetRule and NullCoalesceRule through IssetCheck::check() (`checkAdvancedIsset` from level 4) on isset
-//! operands and the left side of `??` and `??=`. Certainty and `hasExpressionType()` come from Mago's block context (see
-//! [`super::super::infer`]).
-
 use mago_analyzer::property_initialization::{
     PropertyInitializationCertainty, PropertyInitializationRequest,
 };
@@ -27,8 +23,6 @@ const SUPERGLOBALS: [&[u8]; 9] = [
     b"$_ENV",
 ];
 
-/// Isset operands and coalescing left-side chains (level 1): the expressions whose type the check reads,
-/// and the variables and fetches whose certainty it reads.
 pub(in super::super) fn coalesce_types(
     program: &Program,
     level: u8,
@@ -65,13 +59,9 @@ impl Chains {
             Expression::Access(Access::Property(p)) => {
                 self.watched.push(e.span());
                 self.typed.extend(dynamic_name(&p.property));
-                // IssetabilityDescriptor reads the virtual marker only for literal `$this->name`.
-                // Aliased ThisType writes still create it in the live analyzer, not here.
                 if let ClassLikeMemberSelector::Identifier(name) = &p.property
                     && matches!(unparen(p.object), Expression::Variable(Variable::Direct(v)) if v.name == b"$this")
                 {
-                    // `??=` visits the assignment, not its read target. Its before-position
-                    // is the rule's incoming scope; never substitute the post-write target type.
                     self.initializations.push((
                         e.span(),
                         PropertyInitializationRequest {
@@ -113,7 +103,6 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Chains {
     }
 }
 
-/// IssetRule invokes the shared check for every operand, including later multi-isset subjects.
 pub(in super::super) fn isset(c: &mut Checker, construct: &IssetConstruct) {
     if c.level < 1 {
         return;
@@ -128,7 +117,6 @@ pub(in super::super) fn isset(c: &mut Checker, construct: &IssetConstruct) {
         };
         match check.check(value, None) {
             Some((identifier, message)) => {
-                // Errors without an explicit line inherit the IssetExpressionNode's line upstream.
                 let line = c.line_of(construct.span());
                 c.condition_error(value.span(), line, &identifier, true, message, None);
             }
@@ -137,7 +125,6 @@ pub(in super::super) fn isset(c: &mut Checker, construct: &IssetConstruct) {
     }
 }
 
-/// EmptyRule on the operand of `empty()`.
 pub(in super::super) fn empty(c: &mut Checker, construct: &EmptyConstruct) {
     if c.level < 1 {
         return;
@@ -151,7 +138,6 @@ pub(in super::super) fn empty(c: &mut Checker, construct: &EmptyConstruct) {
     };
     match check.check(construct.value, None) {
         Some((identifier, message)) => {
-            // Errors without an explicit line inherit the EmptyExpressionNode's line upstream.
             let line = c.line_of(construct.span());
             c.condition_error(
                 construct.value.span(),
@@ -166,7 +152,6 @@ pub(in super::super) fn empty(c: &mut Checker, construct: &EmptyConstruct) {
     }
 }
 
-/// NullCoalesceRule on `??` (`lhs` of a binary) and `??=` (the target of an assignment).
 pub(in super::super) fn coalesce(
     c: &mut Checker,
     left: &Expression,
@@ -183,10 +168,7 @@ pub(in super::super) fn coalesce(
         advanced: c.on(crate::rules::Switches::CHECK_ADVANCED_ISSET),
         message: type_message,
     };
-    // in a trait, per class context (ConstantConditionInTraitHelper)
     let found = check.check(left, None).or_else(|| {
-        // checkUnnecessaryNullCoalesce() (bleeding edge)
-        // ponytail: a right side other than `null` itself (pure, without writes) is not considered
         let null = matches!(unparen(right), Expression::Literal(Literal::Null(_)))
             || matches!(unparen(right), Expression::ConstantAccess(a) if a.name.value().eq_ignore_ascii_case(b"null"));
         (c.on(crate::rules::Switches::BLEEDING_EDGE) && null && check.is_set(left)).then(|| {
@@ -205,7 +187,6 @@ pub(in super::super) fn coalesce(
     }
 }
 
-/// An error: its identifier and message.
 type Found = Option<(String, String)>;
 
 struct IssetCheck<'c, 'a, 'arena> {
@@ -213,18 +194,15 @@ struct IssetCheck<'c, 'a, 'arena> {
     operator: String,
     identifier: &'static str,
     advanced: bool,
-    /// The rule's `$typeMessageCallback`.
     message: fn(&Type) -> Option<&'static str>,
 }
 
-/// The declaring class and metadata of a property a fetch finds (`findPropertyReflectionFromNode()`).
 struct Property<'a> {
     declaring: &'a ClassLikeMetadata,
     metadata: &'a PropertyMetadata,
     holder: Type,
 }
 
-/// The expression whose constant strings PropertyReflectionFinder reads for an instance property name.
 fn dynamic_name(name: &ClassLikeMemberSelector) -> Option<Span> {
     match name {
         ClassLikeMemberSelector::Variable(v) => Some(v.span()),
@@ -233,7 +211,6 @@ fn dynamic_name(name: &ClassLikeMemberSelector) -> Option<Span> {
     }
 }
 
-/// NullCoalesceRule's message for the type on the left side.
 fn type_message(t: &Type) -> Option<&'static str> {
     match t.is_null() {
         Tri::Maybe => None,
@@ -242,7 +219,6 @@ fn type_message(t: &Type) -> Option<&'static str> {
     }
 }
 
-/// EmptyRule's message for the type of its operand.
 fn empty_message(t: &Type) -> Option<&'static str> {
     let is_null = t.is_null();
     let is_falsey = falsy(t);
@@ -256,18 +232,15 @@ fn empty_message(t: &Type) -> Option<&'static str> {
     })
 }
 
-/// `toBoolean()->isFalse()`.
 fn falsy(t: &Type) -> Tri {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => Tri::extreme_identity(ts.iter().map(falsy)),
-        // intersectTypes(): a constant member decides
         Type::Intersection(ts) => ts
             .iter()
             .map(falsy)
             .find(|r| !r.maybe())
             .unwrap_or(Tri::Maybe),
         Type::Template(t) => falsy(&t.bound),
-        // MixedType::toBoolean(): a mixed without any falsey value
         Type::SubtractedMixed { excluded, .. } => {
             let falsey = union(vec![
                 Type::Null,
@@ -289,7 +262,6 @@ fn falsy(t: &Type) -> Tri {
         Type::ConstInt(i) => Tri::from(*i == 0),
         Type::ConstFloat(f) => Tri::from(*f == 0.0),
         Type::ConstString(s) => Tri::from(s.is_empty() || s == b"0"),
-        // (a range of only 0 is the constant 0)
         Type::IntRange(min, max) => {
             if min.is_none_or(|m| m <= 0) && max.is_none_or(|m| m >= 0) {
                 Tri::Maybe
@@ -297,7 +269,6 @@ fn falsy(t: &Type) -> Tri {
                 Tri::No
             }
         }
-        // ConstantArrayType::getArraySize()
         Type::ConstArray(a) if a.keys.len() > a.optional.len() => Tri::No,
         Type::ConstArray(a) => {
             if a.keys.is_empty() && a.unsealed.is_none() {
@@ -309,7 +280,6 @@ fn falsy(t: &Type) -> Tri {
         Type::Accessory(
             Accessory::NonFalsyString | Accessory::NonEmptyArray | Accessory::HasOffsetValue(..),
         ) => Tri::No,
-        // ObjectType::toBoolean()
         Type::Object(name, ..) => {
             let undecided = ["SimpleXMLElement", "BcMath\\Number", "GMP"]
                 .iter()
@@ -327,7 +297,6 @@ fn falsy(t: &Type) -> Tri {
     }
 }
 
-/// `hasOffsetValueType()`: arrays coerce their keys, while strings inspect the raw offset type.
 fn has_offset(t: &Type, offset: &Type) -> Tri {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => {
@@ -339,7 +308,6 @@ fn has_offset(t: &Type, offset: &Type) -> Tri {
             }
         }
         Type::Intersection(ts) => {
-            // a non-empty list has offset 0
             if t.is_list().yes()
                 && t.is_iterable_at_least_once().yes()
                 && array_key(offset) == Type::ConstInt(0)
@@ -369,7 +337,6 @@ fn has_offset(t: &Type, offset: &Type) -> Tri {
                 Tri::Maybe
             }
         }
-        // a constant string's offsets in range
         Type::ConstString(v) if is_super_type_of(&Type::Int, offset).yes() => {
             let len = v.len() as i64;
             is_super_type_of(&Type::IntRange(Some(-len), Some(len - 1)), offset)
@@ -392,9 +359,7 @@ fn has_offset(t: &Type, offset: &Type) -> Tri {
     }
 }
 
-/// ConstantArrayType::recursiveHasOffsetValueType(), after the one outer toArrayKey() conversion.
 fn has_array_offset(a: &ConstArray, offset: &Type) -> Tri {
-    // IntegerRangeType::getFiniteTypes() uses CALCULATE_SCALARS_LIMIT (128) on max - min.
     let alternatives = match offset {
         Type::Union(ts) | Type::Benevolent(ts) => Some(ts.clone()),
         Type::IntRange(Some(min), Some(max)) if i128::from(*max) - i128::from(*min) <= 128 => {
@@ -443,7 +408,6 @@ fn has_array_offset(a: &ConstArray, offset: &Type) -> Tri {
     }
 }
 
-/// `getOffsetValueType()` of an offset `t` has.
 fn offset_value(t: &Type, offset: &Type) -> Type {
     match t {
         Type::Union(ts) | Type::Benevolent(ts) => union(
@@ -454,7 +418,6 @@ fn offset_value(t: &Type, offset: &Type) -> Type {
         ),
         Type::ConstArray(a) => {
             let offset = array_key(offset);
-            // getOffsetValueType() includes only matching slots, not unrelated nullable fields.
             let mut values: Vec<Type> = a
                 .keys
                 .iter()
@@ -468,7 +431,6 @@ fn offset_value(t: &Type, offset: &Type) -> Type {
             {
                 values.push(value.clone());
             }
-            // A nonconstant string can hit integer keys without a definite type match.
             if values.is_empty() {
                 t.iterable_value_type()
             } else {
@@ -491,7 +453,6 @@ fn is_constant(t: &Type) -> bool {
     )
 }
 
-/// The scalar and refined-string cases of `toArrayKey()`, preserving template identity.
 fn array_key(t: &Type) -> Type {
     match t {
         Type::Union(ts) => union(ts.iter().map(array_key).collect()),
@@ -529,12 +490,9 @@ impl<'a> IssetCheck<'_, 'a, '_> {
     fn ty_from(&self, e: &Expression, native: bool) -> Option<Type> {
         let e = unparen(e);
         if native {
-            // Only the operand's live read is evidence. Never recover a missing read from full types,
-            // source PHPDoc metadata, a later scope, or another evaluation of the expression.
             return self.c.phpstan_type_in(e, &self.c.native_types);
         }
         match e {
-            // (Mago types a property fetch on `$this`, not `$this`)
             Expression::Variable(Variable::Direct(v)) if v.name == b"$this" => Some(Type::This(
                 String::from_utf8_lossy(self.c.class_scope()?.original_name.as_bytes())
                     .into_owned(),
@@ -543,7 +501,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         }
     }
 
-    /// The type of an offset's holder: an offset it does not have is an ErrorType (Mago types it null).
     fn holder_type(&self, e: &Expression, native: bool) -> Option<Type> {
         if let Expression::ArrayAccess(a) = unparen(e)
             && has_offset(
@@ -557,7 +514,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         self.ty_from(e, native)
     }
 
-    /// `$scope->hasVariableType()`.
     fn defined(&self, v: &DirectVariable) -> Tri {
         if SUPERGLOBALS.contains(&v.name) || v.name == b"$this" {
             return Tri::Yes;
@@ -565,7 +521,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         self.c.defined.get(&v.span).copied().unwrap_or(Tri::Maybe)
     }
 
-    /// `$scope->hasExpressionType($expr)->yes()`.
     fn has_expression_type(&self, e: &Expression) -> bool {
         self.c.defined.get(&e.span()) == Some(&Tri::Yes)
     }
@@ -598,8 +553,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         ))
     }
 
-    /// The property a fetch finds: a declared one of the holder's single class.
-    // ponytail: a union holder's properties (UnionTypePropertyReflection) are not looked up
     fn property(&self, e: &Expression) -> Option<Property<'a>> {
         let (class, name, holder) = match e {
             Expression::Access(Access::Property(p)) => {
@@ -616,8 +569,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
                         name.clone()
                     }
                 };
-                // IssetabilityDescriptor's reflection resolver keeps the ordinary scope, including
-                // PHPDoc template arguments and singleton dynamic names, even for a native resolution.
                 let holder = self.ty_from(p.object, false)?;
                 if matches!(
                     holder.resolve_to_bounds(),
@@ -635,7 +586,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
                     holder,
                 )
             }
-            // (a static fetch: the callers pass property fetches only)
             _ => {
                 let Expression::Access(Access::StaticProperty(p)) = e else {
                     return None;
@@ -683,8 +633,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         })
     }
 
-    /// PhpPropertyReflection::getWritableType(): a set hook's parameter takes precedence over the property's
-    /// readable type, including when the hook is inherited.
     fn writable_type(&self, p: &Property) -> Type {
         let name = &p.metadata.name.0.as_bytes()[1..];
         let mut property = Some((p.declaring, p.metadata));
@@ -719,7 +667,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         declared::property_of(self.c, p.declaring, p.metadata, name)
     }
 
-    /// A reflected declaring class's active template map, not the unparameterized storage declaration.
     fn property_args(&self, p: &Property) -> Vec<Type> {
         let holder = p.holder.resolve_to_bounds();
         let actual = match &holder {
@@ -737,7 +684,7 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         let class = declared::original_name(p.declaring);
         let names = p.holder.object_class_names();
         let args = declared::with_classes(self.c, || {
-            let name = &names[0]; // property() requires exactly one class name.
+            let name = &names[0];
             if name.eq_ignore_ascii_case(&class) {
                 actual
             } else {
@@ -757,7 +704,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
             .collect()
     }
 
-    /// PropertyDescriptor::describeProperty().
     fn describe(&self, p: &Property, e: &Expression) -> String {
         let mut declaring = self.c.display(p.declaring);
         let args = self.property_args(p);
@@ -813,7 +759,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         }
     }
 
-    /// The expression a property fetch reads on (its object, or a static fetch's class expression).
     fn holder<'e, 'arena>(e: &'e Expression<'arena>) -> Option<&'e Expression<'arena>> {
         match e {
             Expression::Access(Access::Property(p)) => Some(p.object),
@@ -907,7 +852,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
                     return undefined();
                 };
                 let m = p.metadata;
-                // isInitializedThisProperty()
                 if let Some(native) = &m.type_declaration_metadata
                     && !m.flags.is_virtual_property()
                     && self.c.property_initializations.get(&e.span())
@@ -958,7 +902,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
             _ if error.is_some() => error,
             _ if !self.advanced => None,
             _ => {
-                // a property fetch on what is not an object is an ErrorType (Mago types it null)
                 let t = match e {
                     Expression::Access(Access::NullSafeProperty(p))
                         if {
@@ -1006,8 +949,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         }
     }
 
-    /// A natively typed property this fetch may read before its initialization: no default value, not assigned in
-    /// this scope, and not a promoted one PHP initializes (readonly or hooked).
     fn maybe_uninitialized(&self, p: &Property, e: &Expression) -> bool {
         let m = p.metadata;
         m.type_declaration_metadata.is_some()
@@ -1017,7 +958,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
             && (!m.flags.is_promoted_property() || (!m.flags.is_readonly() && m.hooks.is_empty()))
     }
 
-    /// `IssetabilityResolution::isSet()` with a callback that is always true.
     fn is_set(&self, e: &Expression) -> bool {
         let e = unparen(e);
         match e {
@@ -1025,7 +965,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
                 self.defined(v).yes() && v.name != b"$_SESSION"
             }
             Expression::ArrayAccess(a) => {
-                // NullCoalesceRule::checkUnnecessaryNullCoalesce explicitly requests full types.
                 let (Some(holder), Some(offset)) = (
                     self.holder_type(a.array, false),
                     self.ty_from(a.index, false),
@@ -1050,7 +989,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
         }
     }
 
-    /// A fetch the holder's class has no property for, declared, `@property` or `__get()`: PHPStan's ErrorType.
     fn undefined_property(&self, holder: &Type, name: &ClassLikeMemberSelector) -> bool {
         let ClassLikeMemberSelector::Identifier(name) = name else {
             return false;
@@ -1077,7 +1015,6 @@ impl<'a> IssetCheck<'_, 'a, '_> {
                 .method_exists(class.name.as_bytes(), b"__get")
     }
 
-    /// IssetCheck::checkUndefined().
     fn undefined(&self, e: &Expression) -> Found {
         let e = unparen(e);
         match e {

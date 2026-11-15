@@ -1,6 +1,3 @@
-//! Larastan's CollectionHelper: a model's own Eloquent collection class (`#[CollectedBy]`, `newCollection()`), and
-//! ModelRelationsExtension's relation properties, whose collections it replaces.
-
 use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::misc::GenericParent;
 use mago_codex::ttype::atomic::TAtomic;
@@ -25,7 +22,6 @@ fn named(class: Word, parameters: Option<Vec<TUnion>>) -> TAtomic {
     )))
 }
 
-/// `determineCollectionClassName()`: the class `#[CollectedBy]` names, else the one `newCollection()` returns.
 fn collection_class_name(codebase: &CodebaseMetadata, model: &[u8]) -> Word {
     let fallback = || word(ELOQUENT_COLLECTION);
     let Some(k) = codebase.get_class_like(model) else {
@@ -54,13 +50,10 @@ fn collection_class_name(codebase: &CodebaseMetadata, model: &[u8]) -> Word {
     }
 }
 
-/// `determineCollectionClass()`: the model's collection, given its key and value when it is generic over both, its
-/// value when its one template is `TModel`.
 pub(crate) fn collection_class(codebase: &CodebaseMetadata, model: &[u8]) -> TAtomic {
     keyed_collection_class(codebase, model, get_int())
 }
 
-/// `determineCollectionClass()` with a key type.
 fn keyed_collection_class(codebase: &CodebaseMetadata, model: &[u8], key: TUnion) -> TAtomic {
     let class = collection_class_name(codebase, model);
     let Some(k) = codebase.get_class_like(class.as_bytes()) else {
@@ -78,8 +71,6 @@ fn keyed_collection_class(codebase: &CodebaseMetadata, model: &[u8], key: TUnion
     named(k.original_name, parameters)
 }
 
-/// CollectionOfType::getResult() for Mago's expander (`collection-of<TModel>` without a template): each object
-/// class's own collection; `None` when no part is a model (CollectionOfTypeNodeResolverExtension declines it).
 pub(crate) fn collection_of(
     codebase: &CodebaseMetadata,
     model: &TUnion,
@@ -90,7 +81,6 @@ pub(crate) fn collection_of(
     let models = classes.iter().any(|c| {
         c.as_bytes().eq_ignore_ascii_case(MODEL) || codebase.is_instance_of(c.as_bytes(), MODEL)
     });
-    // without a key, `new BenevolentUnionType([new IntegerType(), new StringType()])`
     let key = key.cloned().unwrap_or_else(|| {
         let mut key = TUnion::from_vec(vec![
             TAtomic::Scalar(TScalar::int()),
@@ -110,7 +100,6 @@ pub(crate) fn collection_of(
     })
 }
 
-/// `getObjectClassNames()` of a type whose parts are objects.
 fn object_class_names(ty: &TUnion) -> Vec<Word> {
     ty.types
         .iter()
@@ -121,7 +110,6 @@ fn object_class_names(ty: &TUnion) -> Vec<Word> {
         .collect()
 }
 
-/// `getTemplateType(Collection::class, 'TModel')->getObjectClassNames()` of an Eloquent collection type.
 fn collection_models(codebase: &CodebaseMetadata, n: &TNamedObject) -> Option<Vec<Word>> {
     let class = n.name.as_bytes();
     if !class.eq_ignore_ascii_case(ELOQUENT_COLLECTION)
@@ -140,7 +128,6 @@ fn collection_models(codebase: &CodebaseMetadata, n: &TNamedObject) -> Option<Ve
     Some(object_class_names(&models))
 }
 
-/// Whether the type names `Illuminate\Database\Eloquent\Collection` (`getReferencedClasses()`).
 pub(crate) fn references_collection(ty: &TUnion) -> bool {
     ty.types.iter().any(|t| match t {
         TAtomic::Object(TObject::Named(n)) => {
@@ -154,7 +141,6 @@ pub(crate) fn references_collection(ty: &TUnion) -> bool {
     })
 }
 
-/// `replaceCollectionsInType()`: each Eloquent collection of models becomes the models' own collections.
 pub(crate) fn replace_collections(codebase: &CodebaseMetadata, ty: &TUnion) -> TUnion {
     if !references_collection(ty) {
         return ty.clone();
@@ -188,7 +174,6 @@ pub(crate) fn replace_collections(codebase: &CodebaseMetadata, ty: &TUnion) -> T
     TUnion::from_vec(types)
 }
 
-/// Whether every part of a declared return type is a relation.
 pub(crate) fn is_relation(codebase: &CodebaseMetadata, ty: &TUnion) -> bool {
     !ty.types.is_empty()
         && ty.types.iter().all(|a| {
@@ -196,7 +181,6 @@ pub(crate) fn is_relation(codebase: &CodebaseMetadata, ty: &TUnion) -> bool {
         })
 }
 
-/// ModelRelationsExtension::getProperty(): a relation method's `TResult`, its collections the related models' own.
 pub(crate) fn relation_property(
     codebase: &CodebaseMetadata,
     object: &TNamedObject,
@@ -230,8 +214,6 @@ pub(crate) fn relation_property(
             k,
             n.type_parameters.as_deref(),
         )?;
-        // `getTemplateType()` through every ancestor: an intermediate class's templates (BelongsToMany's, under
-        // MorphToMany) are the relation's own once more
         for _ in 0..4 {
             let pending: Vec<_> = result
                 .get_all_child_nodes()
@@ -268,8 +250,6 @@ pub(crate) fn relation_property(
     Some(replace_collections(codebase, &TUnion::from_vec(types)))
 }
 
-/// HigherOrderCollectionProxyHelper::determineReturnType(): the result of the collection method `name` proxied over
-/// `value`, whose method or property gives `returned`; `None` for its ErrorType.
 pub(crate) fn proxy_result(
     codebase: &CodebaseMetadata,
     name: &str,

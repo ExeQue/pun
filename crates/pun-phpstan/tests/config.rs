@@ -2,11 +2,9 @@
 //! `scripts/export-phpstan-config-fixtures.php`): edge-case configs in tests/fixtures/config/<case>/ and the corpus
 //! projects' own configs (tests/fixtures/config-corpus/*.json; needs `scripts/corpus.sh` and `.oracle/phpstan`).
 
-mod common;
-
 use std::path::{Path, PathBuf};
 
-use common::{dumped, fixture, placeholders};
+use crate::common::{dumped, fixture, placeholders};
 use pun_phpstan::config::{Options, resolve};
 use serde_json::{Value as J, json};
 
@@ -22,8 +20,7 @@ fn options(cwd: &Path, case: &J, base: Options) -> Options {
     };
     let args: Vec<String> = case["args"]
         .as_array()
-        .map(|a| a.iter().map(|x| x.as_str().unwrap().to_string()).collect())
-        .unwrap_or_default();
+        .map_or_default(|a| a.iter().map(|x| x.as_str().unwrap().to_string()).collect());
     let mut it = args.into_iter();
     while let Some(a) = it.next() {
         match a.as_str() {
@@ -53,7 +50,7 @@ fn got(o: &Options, map: &[(&str, &str)]) -> J {
             json!({ "parameters": dumped(&pun_phpstan::Value::Array(r.parameters)) }),
             map,
         ),
-        Err(e) => placeholders(json!({ "error": e }), map),
+        Err(e) => placeholders(json!({ "error": e.to_string() }), map),
     }
 }
 
@@ -215,7 +212,7 @@ fn unreadable_default_config() {
     };
     let got = resolve(&o)
         .map(|_| ())
-        .map_err(|e| e.replace(&*dir.to_string_lossy(), "{cwd}"));
+        .map_err(|e| e.to_string().replace(&*dir.to_string_lossy(), "{cwd}"));
     std::fs::remove_dir_all(&dir).unwrap();
     if !readable {
         assert_eq!(
@@ -223,4 +220,39 @@ fn unreadable_default_config() {
             Err("File '{cwd}/phpstan.neon' is missing or is not readable.".into())
         );
     }
+}
+
+/// Configs PHPStan reads by running PHP, which Pun cannot: the errors name the file and what Pun's reader stopped at.
+#[test]
+fn pun_only_config_errors() {
+    let dir = std::env::temp_dir().join(format!("pun-phpstan-pun-only-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let dir = dir.canonicalize().unwrap();
+    let cwd = dir.to_string_lossy().into_owned();
+    std::fs::write(dir.join("scalar.php"), "<?php return 5;").unwrap();
+    std::fs::write(dir.join("Generated.php"), "<?php class X {}").unwrap();
+    let error = |neon: &str, generated: Option<&str>| {
+        std::fs::write(dir.join("phpstan.neon"), neon).unwrap();
+        let o = Options {
+            cwd: cwd.clone(),
+            phar: format!("{ROOT}/phpstan.phar"),
+            generated_config: generated.map(|g| format!("{cwd}/{g}")),
+            ..Options::default()
+        };
+        resolve(&o)
+            .map(|_| ())
+            .unwrap_err()
+            .to_string()
+            .replace(&cwd, "{cwd}")
+    };
+    let php_include = error("includes:\n  - scalar.php\n", None);
+    let generated = error("", Some("Generated.php"));
+    let schema = error("parametersSchema:\n  foo: structure(1)\n", None);
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(
+        php_include,
+        "Unsupported PHP config {cwd}/scalar.php: the config does not return an array"
+    );
+    assert_eq!(generated, "no EXTENSIONS constant");
+    assert_eq!(schema, "structure() expects an array");
 }

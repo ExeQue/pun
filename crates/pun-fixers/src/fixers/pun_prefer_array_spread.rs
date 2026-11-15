@@ -1,7 +1,3 @@
-//! Port of Mago's `prefer-array-spread`: `array_merge($a, $b)` → `[...$a, ...$b]`. Array-literal arguments are
-//! inlined when that keeps the keys (no integer-like keys), empty ones are dropped.
-//! Opt-in only (`Pun/prefer_array_spread`). Risky: needs PHP >= 8.1 (string keys in spreads), and a spread
-//! also accepts `Traversable`s, where `array_merge()` throws a `TypeError`.
 use crate::analyzers::helpers::split_list;
 use crate::analyzers::functions_analyzer::FunctionsAnalyzer;
 use pun_format::Fixer;
@@ -19,7 +15,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 enum Arg {
     Drop,
     Spread,
-    /// Inline the literal's elements (first and last element token).
     Inline(usize, usize),
 }
 
@@ -45,7 +40,7 @@ impl Fixer for PreferArraySpread {
             {
                 continue;
             }
-            let open = tokens.get_next_meaningful_token(i).unwrap();
+            let open = tokens.next_meaningful(i);
             let close = tokens.find_block_end(Tokens::BLOCK_TYPE_PARENTHESIS, open);
             let start = tokens
                 .get_prev_meaningful_token(i)
@@ -79,7 +74,6 @@ impl Fixer for PreferArraySpread {
                         ),
                     }
                 }
-                // The last argument keeps its own layout (`[...$a, \n    'k' => 1,\n]`): only its brackets go.
                 let last_kept = kept[kept.len() - 1];
                 for (a, kind) in kinds.iter().enumerate() {
                     let Arg::Inline(first, last) = *kind else {
@@ -88,7 +82,7 @@ impl Fixer for PreferArraySpread {
                     let (s, e) = args[a];
                     if a == last_kept {
                         let open_d = if tokens[s].is_kind(T_ARRAY) {
-                            tokens.get_next_meaningful_token(s).unwrap()
+                            tokens.next_meaningful(s)
                         } else {
                             s
                         };
@@ -131,13 +125,11 @@ impl Fixer for PreferArraySpread {
     }
 }
 
-/// An argument that is an array literal is dropped when empty and inlined when every key is a non-integer
-/// string literal (integer keys are renumbered by `array_merge()` but kept by an inlined literal).
 fn classify(tokens: &Tokens, s: usize, e: usize) -> Arg {
     let open = if tokens[s].is_kind(CT_ARRAY_BRACKET_OPEN) {
         s
     } else if tokens[s].is_kind(T_ARRAY) {
-        tokens.get_next_meaningful_token(s).unwrap()
+        tokens.next_meaningful(s)
     } else {
         return Arg::Spread;
     };
@@ -186,7 +178,6 @@ fn inside_block(tokens: &Tokens, from: usize, k: usize) -> bool {
     false
 }
 
-/// `'5'` is the integer key 5 in PHP; `''`, `'01'`, `'-0'`, `'+5'`, `' 5'` and out-of-range numbers stay strings.
 fn is_string_array_key(raw: &[u8]) -> bool {
     let inner = &raw[1..raw.len() - 1];
     let value: Vec<u8> = match raw[0] {
@@ -298,7 +289,6 @@ mod tests {
                 format!("<?php\n\n{to}\n")
             );
         }
-        // spread_operator_is_fine, call_with_unpacked_argument_is_not_reported
         for same in [
             "<?php\n\n$merged = [...$first, ...$second];\n",
             "<?php\n\n$merged = array_merge(...$arrays);\n",
@@ -337,7 +327,6 @@ mod tests {
             fix("<?php $x = array_merge($a, [\"b\\n\" => 1]);"),
             "<?php $x = [...$a, ...[\"b\\n\" => 1]];"
         );
-        // A nested array's keys don't count; a computed key or a literal inside a larger expression is spread.
         assert_eq!(
             fix("<?php $x = array_merge($a, [[1 => 2]]);"),
             "<?php $x = [...$a, [1 => 2]];"

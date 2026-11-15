@@ -1,11 +1,3 @@
-//! UnusedPrivateConstantRule, UnusedPrivateMethodRule and UnusedPrivatePropertyRule (ClassConstantsNode,
-//! ClassMethodsNode, ClassPropertiesNode), over what ClassStatementsGatherer collects in the class's scope: its own
-//! members and the methods of the traits it uses, without nested anonymous classes.
-//! ponytail: `$classType->isSuperTypeOf($calledOnType)` is a class-relation check on Mago's types of the analysed
-//! file's expressions (an expression in a trait's file is a maybe); no AlwaysUsed*/ReadWriteProperties extensions,
-//! `propertyAlways*Tags` or `checkUninitializedProperties`; by-reference arguments write a property only through
-//! functions of the class's own file.
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -25,7 +17,6 @@ use super::super::{Checker, assign};
 use crate::codebase::parse;
 use crate::text;
 
-/// `$classType->isSuperTypeOf($calledOnType)`, without its yes/maybe distinction.
 fn related(c: &Checker, k: &ClassLikeMetadata, name: &[u8]) -> bool {
     let Some(other) = c.codebase.get_class_like(name) else {
         return true;
@@ -37,13 +28,10 @@ fn related(c: &Checker, k: &ClassLikeMetadata, name: &[u8]) -> bool {
     {
         return true;
     }
-    // a subclass of k may implement the interface
     other.kind == SymbolKind::Interface && k.kind == SymbolKind::Class && !k.flags.is_final()
 }
 
-/// A member fetch's `$calledOnType` relation to the class.
 enum On<'e, 'arena> {
-    /// `$this`, `self`, `static` or the class's own name: the class itself.
     Class,
     Name(Vec<u8>),
     Expr(&'e Expression<'arena>),
@@ -64,23 +52,16 @@ struct Gatherer<'g, 'a, 'arena> {
     c: &'g Checker<'a, 'arena>,
     k: &'g ClassLikeMetadata,
     names: &'g ResolvedNames<'g>,
-    /// The class's own file (Mago's types are the checker's).
     own: bool,
     methods: HashMap<String, (String, Span, bool)>,
     constants: HashMap<String, i64>,
     properties: HashMap<String, Prop>,
-    /// The method (or `$p::get` hook) the walk is in.
     in_method: Option<String>,
-    /// The hooked property and whether the hook is `set`.
     in_hook: Option<(String, bool)>,
     closures: usize,
-    /// The constructor's promoted parameters, when walking `__construct`.
     promoted: Vec<String>,
-    /// Inside an argument of `new <this class>(...)` for this constructor parameter (isPropertySelfWrite).
     self_write: Option<String>,
-    /// Array callables `[$this, 'm']`: (method, in method).
     arrays: Vec<(String, Option<String>)>,
-    /// The parameters of the constructor the class declares.
     constructor: Vec<String>,
 }
 
@@ -107,7 +88,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// Not `$classType->isSuperTypeOf($on)->no()`.
     fn maybe(&self, on: &On) -> bool {
         match on {
             On::Class => true,
@@ -133,7 +113,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// The constant strings of `span`'s type, when it has only those.
     fn strings(&self, span: Span) -> Option<Vec<String>> {
         let t = self.own.then(|| self.c.types.get(&span)).flatten()?;
         t.types
@@ -142,7 +121,6 @@ impl Gatherer<'_, '_, '_> {
             .collect()
     }
 
-    /// A member name: written, or the constant strings of its expression (`None`: any name).
     fn names(&self, s: &ClassLikeMemberSelector) -> Option<Vec<String>> {
         match s {
             ClassLikeMemberSelector::Identifier(id) => Some(vec![text(id.value)]),
@@ -158,7 +136,6 @@ impl Gatherer<'_, '_, '_> {
 
     fn method_call(&mut self, on: On, method: &ClassLikeMemberSelector) {
         let Some(names) = self.names(method) else {
-            // a dynamic name may be any of them
             self.methods.clear();
             return;
         };
@@ -166,7 +143,6 @@ impl Gatherer<'_, '_, '_> {
             return;
         }
         for name in names {
-            // a recursive call does not use it (the method is found, declared in the class)
             if matches!(on, On::Class) && self.in_method.as_deref() == Some(&*name) {
                 continue;
             }
@@ -185,7 +161,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// A PropertyRead (`write` false) or PropertyWrite of `$on->name` / `On::$name`.
     fn property(&mut self, on: On, names: Option<Vec<String>>, write: bool) {
         let Some(names) = names else {
             self.properties.clear();
@@ -243,7 +218,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// The property an assignment target writes, through its dimensions: (fetch, via offset).
     fn target<'e, 'x>(e: &'e Expression<'x>) -> (&'e Expression<'x>, bool) {
         let mut e = unparen(e);
         let mut offset = false;
@@ -256,7 +230,6 @@ impl Gatherer<'_, '_, '_> {
         (e, offset)
     }
 
-    /// processAssignVar(): the writes of an assignment target, then its own sub-expressions.
     fn assign_var(&mut self, var: &Expression) {
         let var = unparen(var);
         if let Expression::Array(_) | Expression::LegacyArray(_) | Expression::List(_) = var {
@@ -270,7 +243,6 @@ impl Gatherer<'_, '_, '_> {
             fetch,
             Expression::Access(Access::Property(_) | Access::StaticProperty(_))
         ) {
-            // an offset write reads the property when it may hold an object (ArrayAccess)
             if offset {
                 self.fetch(fetch, false);
             }
@@ -286,7 +258,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// The dimensions of `var` down to its fetch.
     fn dims(&mut self, var: &Expression) {
         let mut e = unparen(var);
         while let Expression::ArrayAccess(ArrayAccess { array, .. })
@@ -345,7 +316,6 @@ impl Gatherer<'_, '_, '_> {
 
     fn node(&mut self, n: Node) {
         match n {
-            // other scopes
             Node::Class(_)
             | Node::Interface(_)
             | Node::Trait(_)
@@ -397,7 +367,6 @@ impl Gatherer<'_, '_, '_> {
                 self.children(n);
                 self.in_hook = saved;
             }
-            // the parameter itself is no read
             Node::FunctionLikeParameter(_) => {
                 for child in n.children() {
                     if !matches!(child, Node::DirectVariable(_)) {
@@ -466,12 +435,10 @@ impl Gatherer<'_, '_, '_> {
                 };
                 match &a.operator {
                     AssignmentOperator::Assign(_) => {}
-                    // the compound operators read the target first
                     _ => self.fetch(Self::target(a.lhs).0, false),
                 }
                 self.assign_var(a.lhs);
                 match by_ref {
-                    // `$a = &$this->p` reads and writes it
                     Some(operand)
                         if matches!(
                             unparen(operand),
@@ -530,7 +497,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// A call's children, outside any constructor argument (the call stack's last call is this one).
     fn call_children(&mut self, n: Node) {
         let saved = self.self_write.take();
         self.children(n);
@@ -542,7 +508,6 @@ impl Gatherer<'_, '_, '_> {
             Expression::Identifier(id) => Some(self.names.get(&id.span())),
             _ => None,
         };
-        // ClassStatementsGatherer::tryToApplyPropertyReads()
         let enumerating = name.is_some_and(|n| {
             let n = n.strip_prefix(b"\\").unwrap_or(n);
             n.eq_ignore_ascii_case(b"get_object_vars") || n.eq_ignore_ascii_case(b"array_walk")
@@ -563,7 +528,6 @@ impl Gatherer<'_, '_, '_> {
         }
         self.call_children(Node::FunctionCall(f));
         if self.own {
-            // processVirtualAssign() of the arguments passed by reference
             let by_ref = assign::by_ref_arguments(self.c, f);
             let values: Vec<&Expression> = f
                 .argument_list
@@ -581,7 +545,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// processVirtualAssign() of the arguments a method or static call takes by reference.
     fn by_ref(&mut self, call: assign::Callee, args: &ArgumentList) {
         if !self.own {
             return;
@@ -594,7 +557,6 @@ impl Gatherer<'_, '_, '_> {
         }
     }
 
-    /// A two-item array: `[$this, 'm']`, `[self::class, 'm']` (findTypeAndMethodNames()).
     fn array_callable(&mut self, elements: &[ArrayElement]) {
         let [ArrayElement::Value(first), ArrayElement::Value(second)] = elements else {
             return;
@@ -621,7 +583,6 @@ impl Gatherer<'_, '_, '_> {
     }
 }
 
-/// The traits `k` uses, with their own traits.
 fn traits<'c>(c: &'c Checker, k: &ClassLikeMetadata) -> Vec<&'c ClassLikeMetadata> {
     let mut out: Vec<&ClassLikeMetadata> = Vec::new();
     let mut pending = vec![k];
@@ -639,7 +600,6 @@ fn traits<'c>(c: &'c Checker, k: &ClassLikeMetadata) -> Vec<&'c ClassLikeMetadat
     out
 }
 
-/// The trait declarations at `spans` in `program`.
 fn traits_in<'p>(statements: &'p [Statement<'p>], spans: &[Span], out: &mut Vec<&'p Trait<'p>>) {
     for s in statements {
         match s {
@@ -650,7 +610,6 @@ fn traits_in<'p>(statements: &'p [Statement<'p>], spans: &[Span], out: &mut Vec<
     }
 }
 
-/// The rules on class or enum `k` declared with `members`.
 pub(in super::super) fn class(
     c: &mut Checker,
     k: &ClassLikeMetadata,
@@ -702,7 +661,6 @@ pub(in super::super) fn class(
                     properties.insert(
                         text(name),
                         Prop {
-                            // the item's line: PropertyHandler gives ClassPropertyNode the PropertyItem's attributes
                             line_at: item.span(),
                             is_static,
                             promoted: false,
@@ -718,7 +676,6 @@ pub(in super::super) fn class(
             _ => {}
         }
     }
-    // promoted constructor parameters, after the properties
     for member in members {
         let ClassLikeMember::Method(m) = member else {
             continue;
@@ -744,7 +701,6 @@ pub(in super::super) fn class(
                     is_static: false,
                     promoted: true,
                     read: !readable,
-                    // the promotion writes it
                     written: true,
                     true_read: !readable,
                     only_readable: readable && !writable,
@@ -753,7 +709,6 @@ pub(in super::super) fn class(
             );
         }
     }
-    // the traits' files, parsed: their constants are the class's
     let traits = traits(c, k);
     let mut files: Vec<Arc<File>> = Vec::new();
     for t in &traits {
@@ -827,7 +782,6 @@ pub(in super::super) fn class(
         arrays: Vec::new(),
         constructor: constructor.clone(),
     };
-    // the class's own attributes are processed in its scope (bug 12011)
     for list in attributes {
         g.node(Node::AttributeList(list));
     }
@@ -835,7 +789,6 @@ pub(in super::super) fn class(
         g.node(Node::ClassLikeMember(member));
     }
     let mut state = (g.methods, g.constants, g.properties, g.arrays);
-    // the traits' members, in the class's scope
     for (i, (_, names)) in parsed.iter().enumerate() {
         let mut g = Gatherer {
             c,
@@ -869,7 +822,6 @@ pub(in super::super) fn class(
     report(c, &display, methods, constants, properties);
 }
 
-/// isReadable() and isWritable() of a native property: a virtual one only through its hooks.
 fn rw(c: &Checker, k: &ClassLikeMetadata, name: &[u8], hooks: &[&[u8]]) -> (bool, bool) {
     let mut variable = b"$".to_vec();
     variable.extend_from_slice(name);
@@ -962,7 +914,6 @@ fn report(
     }
 }
 
-/// The name expression of `Foo::$$name` or `Foo::${expr}`.
 fn dynamic_name(v: &Variable) -> Option<Span> {
     match v {
         Variable::Direct(_) => None,
@@ -971,7 +922,6 @@ fn dynamic_name(v: &Variable) -> Option<Span> {
     }
 }
 
-/// The expressions whose type decides a member fetch in a class body.
 pub(super) fn typed(program: &Program) -> Vec<Span> {
     struct Wanted {
         depth: usize,

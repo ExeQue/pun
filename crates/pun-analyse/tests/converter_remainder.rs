@@ -1,5 +1,3 @@
-//! Complete PHPStan records for converter inputs, through both public Project constructors.
-
 use std::path::Path;
 
 use pun_analyse::{Project, analyse_project};
@@ -21,7 +19,7 @@ fn callback_dependencies_ignore_extra_positional_and_unknown_named_arguments() {
         configured.analysed = vec![root.join(file)];
         let mut direct = Project::new(configured.analysed.clone(), Vec::new());
         direct.level = level as u8;
-        direct.php_version = 80500;
+        direct.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut expected = oracle["records"][format!("{file}/{level}")]
             .as_array()
             .unwrap()

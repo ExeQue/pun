@@ -1,6 +1,3 @@
-//! PHPStan's `ReflectionProvider`: user code from Mago's codex, built-ins from PHPStan's reflection at the project's
-//! PHP version (data/symbols.json).
-
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::visibility::Visibility;
@@ -13,24 +10,16 @@ use mago_allocator::LocalArena;
 use super::{Checker, anonymous, params};
 use crate::codebase::parse;
 
-/// PHPStan's reflection of built-ins for a `phpVersion` id: 8.5's from 80500 on, 8.4's below.
 pub(crate) fn builtins(php_version: u32) -> &'static Symbols {
-    symbols::symbols(if php_version >= 80500 {
-        PhpVersion::Php85
-    } else {
-        PhpVersion::Php84
-    })
+    symbols::symbols(PhpVersion::from_id(php_version))
 }
 
 impl Checker<'_, '_> {
-    /// `ClassReflection::getDisplayName()`: the name as declared, or an anonymous class's
-    /// `class@anonymous/<path>:<line>` (see [`anonymous::names()`]).
     pub(super) fn display(&self, k: &ClassLikeMetadata) -> String {
         let name = k.original_name.as_bytes();
         if let Some(display) = self.anonymous.get(name) {
             return display.clone();
         }
-        // one declared in another file (an inferred `new class`)
         if name.starts_with(b"{anonymous-class:")
             && let Some(display) = self
                 .files
@@ -47,7 +36,6 @@ impl Checker<'_, '_> {
         String::from_utf8_lossy(name).into_owned()
     }
 
-    /// `ClassReflection::getName()`: the display name, or an anonymous class's internal `AnonymousClass<md5>`.
     pub(super) fn class_name(&self, k: &ClassLikeMetadata) -> String {
         let display = self.display(k);
         if !k.original_name.as_bytes().starts_with(b"{anonymous-class:") {
@@ -61,8 +49,6 @@ impl Checker<'_, '_> {
         anonymous::internal_name(&display, &file, self.relative_path)
     }
 
-    /// `describe(VerbosityLevel::typeOnly())` of the static object type of `$this` in class `k`: its name, with its
-    /// template types as arguments.
     pub(super) fn describe_object(&self, k: &ClassLikeMetadata) -> String {
         let display = self.display(k);
         if k.template_types.is_empty() {
@@ -76,14 +62,12 @@ impl Checker<'_, '_> {
     }
 }
 
-/// What PHPStan's reflection knows of a class: user code from Mago, built-ins from data/symbols.json.
 #[derive(Clone, Copy)]
 pub(super) enum Known<'a> {
     User(&'a ClassLikeMetadata),
     Builtin(&'static symbols::Class),
 }
 
-/// The reflection data ClassConstantRule reads; enum cases and built-in constants are public.
 pub(super) struct ClassConstant {
     pub visibility: Option<Visibility>,
     pub declaring: String,
@@ -95,7 +79,6 @@ impl Known<'_> {
         match self {
             Known::User(k) => {
                 let visibility = if let Some(m) = k.constants.get(&word(name.as_bytes())) {
-                    // Populated constants retain the original declaration's span.
                     let declaring = std::iter::once(&k.name)
                         .chain(k.all_parent_classes.iter())
                         .filter_map(|n| c.codebase.get_class_like(n.as_bytes()))
@@ -160,7 +143,6 @@ impl Known<'_> {
         }
     }
 
-    /// `isFinal()`: the keyword or an `@final` tag (Mago's flag holds both).
     pub(super) fn is_final(&self) -> bool {
         match self {
             Known::User(k) => k.flags.is_final(),
@@ -172,7 +154,6 @@ impl Known<'_> {
         !self.is_trait() && !self.is_interface() && !self.is_enum()
     }
 
-    /// `getClassTypeDescription()`.
     pub(super) fn type_description(&self) -> &'static str {
         if self.is_interface() {
             "Interface"
@@ -185,7 +166,6 @@ impl Known<'_> {
         }
     }
 
-    /// The name as declared (a name in the source never finds an anonymous class).
     pub(super) fn display(&self) -> String {
         match self {
             Known::User(k) => String::from_utf8_lossy(k.original_name.as_bytes()).into_owned(),
@@ -194,7 +174,6 @@ impl Known<'_> {
     }
 }
 
-/// `ReflectionProvider::hasClass()` / `getClass()` (a leading `\` is ignored).
 pub(super) fn known<'a>(c: &Checker<'a, '_>, name: &str) -> Option<Known<'a>> {
     let name = name.trim_start_matches('\\');
     if let Some(k) = c
@@ -211,7 +190,6 @@ pub(super) fn known<'a>(c: &Checker<'a, '_>, name: &str) -> Option<Known<'a>> {
 }
 
 impl<'a> Checker<'a, '_> {
-    /// `ReflectionProvider::getFunction()`: the display name and the variants.
     pub(super) fn function(&self, name: &[u8]) -> Option<(String, params::Variants)> {
         if let Some(f) = self
             .codebase
@@ -228,7 +206,6 @@ impl<'a> Checker<'a, '_> {
         Some((f.name.clone(), params::Variants::of_builtin(f)))
     }
 
-    /// [`known()`] with Mago's metadata, which the rules reading constructors, methods and flags need.
     pub(super) fn class_like(&self, name: &str) -> Lookup<'a> {
         match known(self, name) {
             None => Lookup::NotFound,
@@ -241,11 +218,8 @@ impl<'a> Checker<'a, '_> {
     }
 }
 
-/// [`Checker::class_like()`].
 pub(super) enum Lookup<'a> {
-    /// PHPStan has no such class.
     NotFound,
-    /// A built-in PHPStan has that Mago's prelude lacks: nothing to check on it.
     Opaque,
     Found(&'a ClassLikeMetadata),
 }

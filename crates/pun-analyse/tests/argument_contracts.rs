@@ -1,5 +1,3 @@
-//! Shared parameter checks against the PHPStan 2.3.1 phar, including attribute constructors.
-
 use pun_analyse::{Project, reports, run};
 use serde_json::Value;
 use std::path::Path;
@@ -12,7 +10,7 @@ fn check(level: u8, version: u32, files: &[&str], expected: &str) {
         serde_json::from_slice(&std::fs::read(root.join(expected)).unwrap()).unwrap();
     let mut project = Project::new(files.iter().map(|f| root.join(f)).collect(), Vec::new());
     project.level = level;
-    project.php_version = version;
+    project.php_version = pun_analyse::PhpVersion::from_id(version);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -148,8 +146,6 @@ fn original_shared_parameter_fixtures_match_without_gaps() {
     assert_eq!(checked, 4);
 }
 
-/// Check every shared-argument diagnostic of the original caller fixture. Its independent unused-result errors
-/// belong to the dead-code checker, not the callable parameter contract.
 #[test]
 fn original_first_class_callbacks_retain_no_named_arguments() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
@@ -199,7 +195,6 @@ fn original_first_class_callbacks_retain_no_named_arguments() {
 
 #[test]
 fn void_diagnostics_keep_raw_calls_while_argument_types_use_values() {
-    // PHPStan 2.3.1, level N and phpVersion 80500 on void-values.php; retain complete diagnostics.
     for level in [1, 2, 5] {
         check(
             level,

@@ -1,4 +1,3 @@
-//! Port of `PhpCsFixer\Fixer\NamespaceNotation\NoLeadingNamespaceWhitespaceFixer`.
 use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::{Kind::*, Token, Tokens, php_compat::trim};
 use std::path::Path;
@@ -13,7 +12,6 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
 }
 
 fn ends_with_whitespace(s: &[u8]) -> bool {
-    // upstream's `'' === $str` guard never fires: freshly tokenized tokens are non-empty
     s.last().is_some_and(|&b| trim(&[b]).is_empty())
 }
 
