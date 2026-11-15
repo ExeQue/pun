@@ -18,7 +18,7 @@ path = "tests/main.rs"
 
 [dependencies]
 pun-phpstan.workspace = true
-pun-tokens.workspace = true
+pun-tokens = { workspace = true, features = ["mago"] }
 pcre2.workspace = true
 regex-automata.workspace = true
 mago-allocator.workspace = true

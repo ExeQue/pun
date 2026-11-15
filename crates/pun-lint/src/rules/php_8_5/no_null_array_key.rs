@@ -20,8 +20,8 @@ impl Rule for NoNullArrayKey {
         "lint/php-8.5/no-null-array-key"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80500
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80500)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

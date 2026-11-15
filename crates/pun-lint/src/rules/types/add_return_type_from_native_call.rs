@@ -19,8 +19,8 @@ impl Rule for AddReturnTypeFromNativeCall {
         "lint/types/add-return-type-from-native-call"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -69,12 +69,12 @@ impl Rule for AddReturnTypeFromNativeCall {
         let r#type = match create_keep_constant(types) {
             Created::Mixed => return,
             Created::Single(t) => {
-                return_declaration([&t], &facts.codebase, ctx.php_version, &[], true)
+                return_declaration([&t], &facts.codebase, ctx.php_version.id(), &[], true)
             }
             Created::Union(types) => union_declaration(
                 &types.iter().collect::<Vec<_>>(),
                 &facts.codebase,
-                ctx.php_version,
+                ctx.php_version.id(),
             ),
         };
         if let Some(r#type) = r#type {

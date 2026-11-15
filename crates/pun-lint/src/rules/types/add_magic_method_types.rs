@@ -16,8 +16,8 @@ impl Rule for AddMagicMethodTypes {
         "lint/types/add-magic-method-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        super::SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(super::SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -47,7 +47,7 @@ impl Rule for AddMagicMethodTypes {
             b"__call" | b"__callstatic" => (Some("string"), Some("array")),
             b"__set" => (
                 Some("string"),
-                (ctx.php_version >= MIXED_TYPE).then_some("mixed"),
+                (ctx.php_version.id() >= MIXED_TYPE).then_some("mixed"),
             ),
             b"__get" | b"__isset" | b"__unset" => (Some("string"), None),
             _ => return,
@@ -78,7 +78,10 @@ impl Rule for AddMagicMethodTypes {
                 edits.push(Edit::new(Span::new(at, at), format!("{type} ")));
             }
         }
-        if name == b"__get" && ctx.php_version >= MIXED_TYPE && method.return_type_hint.is_none() {
+        if name == b"__get"
+            && ctx.php_version.id() >= MIXED_TYPE
+            && method.return_type_hint.is_none()
+        {
             let at = node_span(&method.parameter_list).end;
             edits.push(Edit::new(Span::new(at, at), ": mixed".to_string()));
         }

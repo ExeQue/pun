@@ -85,8 +85,8 @@ impl Rule for PreferClassNameConstant {
         "lint/style/prefer-class-name-constant"
     }
 
-    fn min_php_version(&self) -> u32 {
-        50500
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(50500)
     }
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {

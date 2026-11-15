@@ -25,7 +25,7 @@ fn check(mode: &str, level: u8) {
     }
     let mut project = Project::from_config(&root, &parameters);
     project.analysed = vec![root.join("calls.php")];
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

@@ -38,7 +38,7 @@ pub struct MagoRun {
 
 pub fn run_mago(project: &Project, laravel: Option<Laravel>) -> Result<MagoRun, CouldNotReadFile> {
     let (codebase, _) = codebase::build(project, laravel.as_ref().map(|app| app.root))?;
-    let version = codebase::php_version(project.php_version);
+    let version = project.php_version.to_mago();
     let mut registry = create_registry_with_plugins(&[], false);
     if let Some(app) = laravel {
         laravel::register(&mut registry, app, project, &codebase);

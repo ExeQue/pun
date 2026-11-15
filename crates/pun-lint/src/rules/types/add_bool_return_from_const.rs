@@ -12,8 +12,8 @@ impl Rule for AddBoolReturnFromConst {
         "lint/types/add-bool-return-type-from-const"
     }
 
-    fn min_php_version(&self) -> u32 {
-        super::SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(super::SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

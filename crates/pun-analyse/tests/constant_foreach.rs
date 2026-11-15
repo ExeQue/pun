@@ -8,7 +8,7 @@ fn nested_conditional_and_continue_writes_satisfy_integer_parameters() {
         vec![],
     );
     project.level = 9;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let errors = pun_analyse::run(&project).unwrap();
     assert!(errors.is_empty(), "{errors:#?}");
 }
@@ -17,7 +17,7 @@ fn compare(file: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/constant-foreach");
     let mut project = pun_analyse::Project::new(vec![root.join(file)], vec![]);
     project.level = 9;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = pun_analyse::run(&project)
         .unwrap()
         .into_iter()

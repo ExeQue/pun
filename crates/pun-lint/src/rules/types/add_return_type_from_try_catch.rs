@@ -21,8 +21,8 @@ impl Rule for AddReturnTypeFromTryCatch {
         "lint/types/add-return-type-from-try-catch"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -90,7 +90,8 @@ impl Rule for AddReturnTypeFromTryCatch {
             return;
         }
         let types = union_order(try_type.types.iter());
-        if let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version, &[], true)
+        if let Some(r#type) =
+            return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true)
         {
             out.push(add_return_type(f.span, f.at, &r#type));
         }

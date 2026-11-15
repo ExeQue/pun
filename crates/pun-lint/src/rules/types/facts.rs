@@ -74,16 +74,19 @@ pub fn set_project_scan(build: impl FnOnce() -> Arc<ProjectCodebase> + Send + 's
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Box::new(build));
 }
 
-pub fn project_codebase(files: &[(String, String)], php_version: u32) -> Arc<ProjectCodebase> {
+pub fn project_codebase(
+    files: &[(String, String)],
+    php_version: crate::PhpVersion,
+) -> Arc<ProjectCodebase> {
     project_codebase_autoloaded(files, php_version, &|_| None)
 }
 
 pub fn project_codebase_autoloaded(
     files: &[(String, String)],
-    php_version: u32,
+    php_version: crate::PhpVersion,
     autoload: &(dyn Fn(&[u8]) -> Option<(String, String)> + Sync),
 ) -> Arc<ProjectCodebase> {
-    let version = php_version_of(php_version);
+    let version = php_version.to_mago();
     let stubbed = |native: bool| {
         let mut codebase = PRELUDE.0.clone();
         stub_preg_match(&mut codebase, version, native);
@@ -1213,10 +1216,6 @@ fn build(ctx: &Context<'_>, dead_code: bool) -> Rc<Facts> {
     Rc::new(scan(ctx, project, dead_code))
 }
 
-fn php_version_of(id: u32) -> PHPVersion {
-    PHPVersion::new(id / 10000, id / 100 % 100, id % 100)
-}
-
 fn mago_file(path: &str, code: &str, file_type: FileType) -> File {
     File::new(
         Cow::Owned(path.as_bytes().to_vec()),
@@ -1331,7 +1330,7 @@ fn scan(ctx: &Context<'_>, project: Option<Arc<ProjectCodebase>>, dead_code: boo
         files.push((path.clone(), ctx.source.to_string()));
         project_codebase(&files, ctx.php_version)
     });
-    let version = php_version_of(ctx.php_version);
+    let version = ctx.php_version.to_mago();
     let native_source = without_docblocks(ctx.source);
     Facts {
         codebase: refresh_closures(&project.native, &path, &native_source, version),

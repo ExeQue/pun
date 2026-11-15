@@ -8,7 +8,7 @@ fn check(level: u8, expected: &str, count: usize) {
         serde_json::from_slice(&std::fs::read(root.join(expected)).unwrap()).unwrap();
     let mut project = Project::new(vec![root.join("reasons.php")], Vec::new());
     project.level = level;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let relevant = |id: &str| {
         matches!(
             id,

@@ -73,7 +73,7 @@ fn a_reflected_never_return_is_not_a_failed_lookup() {
         serde_json::from_slice(&std::fs::read(root.join("expected-phpstan.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("never.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = run_mago(&project, None)
         .unwrap()
         .dumped

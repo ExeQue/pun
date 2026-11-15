@@ -11,8 +11,8 @@ impl Rule for AddClosureNeverReturn {
         "lint/types/add-closure-never-return"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NEVER_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NEVER_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

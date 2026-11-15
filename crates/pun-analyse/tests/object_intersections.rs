@@ -8,7 +8,7 @@ fn invariant_generic_arguments_compare_compound_types_independently_of_written_o
     let mut project =
         pun_analyse::Project::new(vec![root.join("Methods/data/bug-12984.php")], vec![]);
     project.level = 3;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let errors = pun_analyse::run(&project).unwrap();
     assert!(errors.is_empty(), "{errors:#?}");
 }
@@ -21,7 +21,7 @@ fn compare_at_level(file: &str, capture: &str, level: u8) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/object-intersections");
     let mut project = pun_analyse::Project::new(vec![root.join(file)], vec![]);
     project.level = level;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = pun_analyse::run(&project)
         .unwrap()
         .into_iter()
@@ -76,7 +76,7 @@ fn genuine_intersections_keep_inheritance_generics_and_receiver_identity() {
 fn exact_instantiations_keep_distinct_classes_and_receiver_producers() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/object-intersections");
     let mut project = pun_analyse::Project::new(vec![root.join("exact.php")], vec![]);
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = pun_analyse::run_mago(&project, None)
         .unwrap()
         .dumped

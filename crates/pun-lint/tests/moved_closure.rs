@@ -14,14 +14,14 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
     let expected = include_str!("fixtures/moved-closure/f.expected.php");
     set_project_codebase(Some(project_codebase(
         &[("f.php".into(), source.into())],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )));
     let linter = Linter::new(
         vec![
             Box::new(NoElseAfterReturn),
             Box::new(AddArrowFunctionReturn),
         ],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     let fixed = linter.fix(Path::new("f.php"), source).unwrap();
     set_project_codebase(None);
@@ -40,7 +40,7 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
                 ("caller.php".into(), caller.into()),
                 ("library.php".into(), library),
             ],
-            80400,
+            pun_lint::PhpVersion::from_id(80400),
         );
         set_project_codebase(Some(project));
         let fixed = linter.fix(Path::new("caller.php"), caller).unwrap();
@@ -69,7 +69,7 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
     let expected = anonymous_section(expected);
     set_project_codebase(Some(project_codebase(
         &[("anonymous.php".into(), input.clone())],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )));
     let rules: [Box<dyn Rule>; 2] = [
         Box::new(AddReturnTypeFromConstant),
@@ -77,7 +77,7 @@ fn project_fix_rounds_keep_the_moved_arrow_typed() {
     ];
     for rule in rules {
         let id = rule.id();
-        let linter = Linter::new(vec![rule], 80400);
+        let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         for (input, expected) in [
             (input.clone(), expected.clone()),
             (

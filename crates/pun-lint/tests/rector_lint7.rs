@@ -86,7 +86,7 @@ fn run_with_sources(linter: &Linter, dir: &str, sources: &[&str]) {
 }
 
 fn only(rule: impl Rule + 'static) -> Linter {
-    Linter::new(vec![Box::new(rule)], 80400)
+    Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
 }
 
 #[test]
@@ -236,12 +236,18 @@ fn func_get_args_to_variadic_param() {
     run(&linter, "FuncGetArgsToVariadicParamRector/Oracle");
     let path = Path::new("old.php");
     let code = "<?php function f() { $args = func_get_args(); }\n";
-    let old = Linter::new(vec![Box::new(PreferVariadicParam)], 50500);
+    let old = Linter::new(
+        vec![Box::new(PreferVariadicParam)],
+        pun_lint::PhpVersion::from_id(50500),
+    );
     assert_eq!(
         old.fix(path, code).unwrap().applied,
         [] as [pun_problem::Problem; 0]
     );
-    let new = Linter::new(vec![Box::new(PreferVariadicParam)], 50600);
+    let new = Linter::new(
+        vec![Box::new(PreferVariadicParam)],
+        pun_lint::PhpVersion::from_id(50600),
+    );
     assert_ne!(
         new.fix(path, code).unwrap().applied,
         [] as [pun_problem::Problem; 0]
@@ -614,8 +620,11 @@ fn rules_ignore_nodes_outside_their_targets() {
         ),
     ];
     for (rule, dirs) in cases {
-        let targeted = Linter::new(vec![rule()], 80400);
-        let everywhere = Linter::new(vec![Box::new(Everywhere(rule()))], 80400);
+        let targeted = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400));
+        let everywhere = Linter::new(
+            vec![Box::new(Everywhere(rule()))],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         for dir in dirs {
             let root = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("tests")

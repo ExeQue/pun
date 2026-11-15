@@ -48,7 +48,7 @@ fn compound_read_diagnostics_match_phpstan_for_implemented_rules() {
             vec![],
         );
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             true,

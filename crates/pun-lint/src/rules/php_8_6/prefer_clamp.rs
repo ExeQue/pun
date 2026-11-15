@@ -14,8 +14,8 @@ impl Rule for PreferClamp {
         "lint/php-8.6/prefer-clamp"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80600
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80600)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

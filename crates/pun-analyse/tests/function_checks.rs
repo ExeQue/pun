@@ -21,7 +21,7 @@ fn printf_parameters_match_phpstan() {
                 .unwrap();
         for (php_version, mut want) in expected {
             let mut project = Project::new(vec![root.join(format!("{fixture}.php"))], Vec::new());
-            project.php_version = php_version;
+            project.php_version = pun_analyse::PhpVersion::from_id(php_version);
             let mut got: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

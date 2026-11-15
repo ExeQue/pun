@@ -66,7 +66,7 @@ fn names_phpstan(code: &[u8]) -> bool {
 }
 
 pub(crate) fn php_version(id: u32) -> PHPVersion {
-    PHPVersion::new(id / 10000, id / 100 % 100, id % 100)
+    pun_tokens::PhpVersion::from_id(id).to_mago()
 }
 
 #[derive(Debug)]
@@ -550,7 +550,7 @@ pub(crate) fn build(
 ) -> Result<(CodebaseMetadata, Sources), CouldNotReadFile> {
     let _ = mago_codex::ttype::expander::COLLECTION_OF_RESULT.set(crate::laravel::collection_of);
     let _ = mago_codex::ttype::expander::BUILDER_OF_RESULT.set(crate::rules::late_builder);
-    let version = php_version(project.php_version);
+    let version = project.php_version.to_mago();
     let aliases = laravel_root
         .or_else(|| project.larastan.as_ref().map(|l| l.root.as_path()))
         .map(crate::larastan::aliases::load)
@@ -578,10 +578,10 @@ pub(crate) fn build(
         classes.push((i, a));
     }
     let index = autoload::Index::new(classes.into_iter(), &aliases);
-    let php_version = project.php_version;
+    let php_version = project.php_version.id();
     let builtins = move || {
         crate::rules::builtins(php_version);
-        pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::Php84)
+        pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::new(8, 4))
     };
     let (names_phpstan_tx, names_phpstan_rx) = std::sync::mpsc::channel::<()>();
     let api = std::thread::spawn(move || names_phpstan_rx.recv().ok().map(|()| scan_api(version)));
@@ -818,7 +818,7 @@ fn ancestor_stub_docs(metadata: &mut CodebaseMetadata) {
 }
 
 fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, project: &Project) {
-    let version = php_version(project.php_version);
+    let version = project.php_version.to_mago();
     let loaded: &CodebaseMetadata = metadata;
     let mut roots: Vec<Initializer> = project
         .analysed
@@ -961,7 +961,7 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
         sources: initializer_sources,
         arena: &arena,
         parsed: HashMap::new(),
-        version: php_version(project.php_version),
+        version: project.php_version.to_mago(),
         visited: HashSet::new(),
         requested: HashSet::new(),
         copies,

@@ -363,7 +363,7 @@ fn complete_public_diagnostics_match_the_pinned_oracle() {
     for (name, record) in expected["files"].as_object().unwrap() {
         for level in [0, 8, 10] {
             let mut project = Project::new(vec![root.join(name)], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

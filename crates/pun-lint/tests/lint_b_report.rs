@@ -31,7 +31,7 @@ fn check(id: &str, dir: &Path) {
         .into_iter()
         .find(|r| r.id() == id)
         .unwrap_or_else(|| panic!("{id} is not registered"));
-    let linter = Linter::new(vec![rule], 80400);
+    let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
     let mut paths: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -101,20 +101,29 @@ fn version_gates() {
         )
         .rule_ids()
     };
-    assert_eq!(ids(80399), ["lint/functions/no-void-reference-return"]);
-    assert_eq!(ids(80199), [] as [&str; 0]);
-    let found = Linter::new(vec![Box::new(rules::NoUnderscoreClass)], 80400)
-        .check(Path::new("a.php"), code)
-        .unwrap();
+    assert_eq!(
+        ids(pun_lint::PhpVersion::from_id(80399)),
+        ["lint/functions/no-void-reference-return"]
+    );
+    assert_eq!(ids(pun_lint::PhpVersion::from_id(80199)), [] as [&str; 0]);
+    let found = Linter::new(
+        vec![Box::new(rules::NoUnderscoreClass)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .check(Path::new("a.php"), code)
+    .unwrap();
     assert_eq!(found.len(), 1);
 }
 
 #[test]
 fn dynamic_call_on_anonymous_class() {
     let code = "<?php\n\nfunction f($m) {\n    $x = new class { };\n    $x->$m();\n}\n";
-    let found = Linter::new(vec![Box::new(rules::NoDynamicMethodCall)], 80400)
-        .check(Path::new("f.php"), code)
-        .unwrap();
+    let found = Linter::new(
+        vec![Box::new(rules::NoDynamicMethodCall)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .check(Path::new("f.php"), code)
+    .unwrap();
     let messages: Vec<&str> = found.iter().map(|p| p.message.as_str()).collect();
     assert_eq!(
         messages,
@@ -153,8 +162,11 @@ fn phpstan_rules_ignore_nodes_outside_their_targets() {
     ];
     for id in ids {
         let rule = || rules::all().into_iter().find(|r| r.id() == id).unwrap();
-        let targeted = Linter::new(vec![rule()], 80400);
-        let everywhere = Linter::new(vec![Box::new(Everywhere(rule()))], 80400);
+        let targeted = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400));
+        let everywhere = Linter::new(
+            vec![Box::new(Everywhere(rule()))],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/lint_b_report")
             .join(id.trim_start_matches("lint/"));
@@ -174,9 +186,12 @@ fn phpstan_rules_ignore_nodes_outside_their_targets() {
 #[test]
 fn hash_emoji_fix() {
     let input = "<?php\n\n#\u{fe0f}\u{20e3} a comment\n# plain\n#\u{fe0f}\u{20e3}[Attr]\nfunction f() {} #\u{fe0f}\u{20e3} trailing\n// #\u{fe0f}\u{20e3} not hash\n";
-    let fixed = Linter::new(vec![Box::new(rules::NoHashEmoji)], 80400)
-        .fix(Path::new("a.php"), input)
-        .unwrap();
+    let fixed = Linter::new(
+        vec![Box::new(rules::NoHashEmoji)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(Path::new("a.php"), input)
+    .unwrap();
     assert_eq!(
         fixed.source,
         "<?php\n\n# a comment\n# plain\n#[Attr]\nfunction f() {} # trailing\n// #\u{fe0f}\u{20e3} not hash\n"
@@ -196,7 +211,7 @@ fn upstream_fixes() {
                 name.file_name().unwrap().to_string_lossy()
             );
             let rule = rules::all().into_iter().find(|r| r.id() == id).unwrap();
-            let linter = Linter::new(vec![rule], 80400);
+            let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
             for case in std::fs::read_dir(&name).unwrap() {
                 let path = case.unwrap().path();
                 let content = std::fs::read_to_string(&path).unwrap();

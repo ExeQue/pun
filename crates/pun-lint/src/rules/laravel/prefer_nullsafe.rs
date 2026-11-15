@@ -18,8 +18,8 @@ impl Rule for PreferNullsafe {
         "lint/laravel/prefer-nullsafe"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80000
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80000)
     }
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {

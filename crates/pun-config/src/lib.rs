@@ -60,8 +60,8 @@ pub struct Finder {
 pub struct Config {
     pub root: PathBuf,
     pub preset: FormatPreset,
-    pub php: String,
-    pub analyse_php_id: u32,
+    pub php: PhpVersion,
+    pub analyse_php_version: PhpVersion,
     pub rules: Vec<Rule>,
     pub finder: Finder,
     pub blade: bool,
@@ -233,12 +233,12 @@ fn parse(
         })?,
         None => composer.php_version().unwrap_or(PhpVersion::FLOOR),
     };
-    let analyse_php_id = if explicit {
-        php.to_id()
+    let analyse_php_version = if explicit {
+        php
     } else {
         composer
-            .platform_php_id()
-            .unwrap_or(PhpVersion::NEWEST.to_id())
+            .platform_php_version()
+            .unwrap_or(PhpVersion::NEWEST)
     };
     let files = Files::from(files);
     for p in &files.paths {
@@ -284,8 +284,8 @@ fn parse(
     Ok(Config {
         root: root.to_path_buf(),
         preset,
-        php: php.to_string(),
-        analyse_php_id,
+        php,
+        analyse_php_version,
         rules,
         finder: Finder {
             in_dirs: files.paths.clone(),
@@ -474,7 +474,7 @@ impl Config {
     }
 
     pub fn php_version(&self) -> PhpVersion {
-        self.php.parse().unwrap()
+        self.php
     }
 
     pub fn show(&self) -> Value {
@@ -507,7 +507,9 @@ impl Config {
         let a = &self.analyse;
         let f = &self.finder;
         let shown = Shown {
-            php: ShownPhp { version: &self.php },
+            php: ShownPhp {
+                version: self.php.to_string(),
+            },
             files: &self.files,
             format: ShownFormat {
                 preset: &self.preset,
@@ -542,7 +544,7 @@ impl Config {
 /// `pun config`: the resolved configuration in pun.toml's shape.
 #[derive(Serialize)]
 struct Shown<'a> {
-    php: ShownPhp<'a>,
+    php: ShownPhp,
     files: &'a Files,
     format: ShownFormat<'a>,
     lint: ShownLint<'a>,
@@ -550,8 +552,8 @@ struct Shown<'a> {
 }
 
 #[derive(Serialize)]
-struct ShownPhp<'a> {
-    version: &'a str,
+struct ShownPhp {
+    version: String,
 }
 
 #[derive(Serialize)]

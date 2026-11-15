@@ -18,8 +18,8 @@ impl Rule for AddReturnTypeFromTernary {
         "lint/types/add-return-type-from-ternary"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -65,7 +65,7 @@ impl Rule for AddReturnTypeFromTernary {
         if let Some(r#type) = return_declaration(
             without_covered_objects(union_order(t.types.as_ref()), &facts.codebase),
             &facts.codebase,
-            ctx.php_version,
+            ctx.php_version.id(),
             &[],
             true,
         ) {

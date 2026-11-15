@@ -148,7 +148,7 @@ fn owned_and_borrowed_csts_keep_php_prefix_values_and_complete_raw_spans() {
 
 #[test]
 fn strict_lexer_linter_and_formatter_still_reject_native_invalid_octals() {
-    let linter = pun_lint::Linter::new(Vec::new(), 80500);
+    let linter = pun_lint::Linter::new(Vec::new(), pun_lint::PhpVersion::from_id(80500));
     let expected: Value =
         serde_json::from_str(include_str!("fixtures/numeric-admission.json")).unwrap();
     for literal in ["08", "078", "0_8", "07_9", "010000000000000000000008"] {

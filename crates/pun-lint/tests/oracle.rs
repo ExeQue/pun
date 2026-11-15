@@ -15,7 +15,9 @@ fn check_oracle(name: &str) {
         .join(name);
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(spike_rules(), 80400).fix(&path, input).unwrap();
+    let fixed = Linter::new(spike_rules(), pun_lint::PhpVersion::from_id(80400))
+        .fix(&path, input)
+        .unwrap();
     assert_eq!(fixed.source, expected, "{name}");
 }
 
@@ -26,7 +28,7 @@ fn compound_assignment() {
 
 #[test]
 fn compound_assignment_keeps_parentheses_around_low_precedence_operators() {
-    let linter = Linter::new(spike_rules(), 80400);
+    let linter = Linter::new(spike_rules(), pun_lint::PhpVersion::from_id(80400));
     let fixed = linter
         .fix(
             Path::new("a.php"),
@@ -51,14 +53,14 @@ fn check_rule_oracle(rule: impl Rule + 'static, name: &str) {
         .join(name);
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(vec![Box::new(rule)], 80400)
+    let fixed = Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(&path, input)
         .unwrap();
     assert_eq!(fixed.source, expected, "{name}");
 }
 
 fn fix_with(rule: impl Rule + 'static, code: &str) -> String {
-    Linter::new(vec![Box::new(rule)], 80400)
+    Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(Path::new("a.php"), code)
         .unwrap()
         .source
@@ -238,7 +240,10 @@ fn implicit_array_creation() {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/oracle/no_implicit_array_creation.php");
     let source = std::fs::read_to_string(&path).unwrap();
-    let linter = Linter::new(vec![Box::new(rules::NoImplicitArrayCreation)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::NoImplicitArrayCreation)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let found: Vec<(usize, String)> = linter
         .check(&path, &source)
         .unwrap()
@@ -271,7 +276,7 @@ fn file_with_only_an_opening_tag_gets_no_strict_types_declaration() {
         Box::new(rules::AddSafeStrictTypes) as Box<dyn Rule>,
         Box::new(rules::RequireStrictTypesInTests),
     ] {
-        let linter = Linter::new(vec![rule], 80400);
+        let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         assert_eq!(
             linter.check(Path::new("a.php"), "<?php\n").unwrap(),
             [] as [pun_problem::Problem; 0]

@@ -245,7 +245,7 @@ fn check_complete_diagnostics(file: &str, oracle: &str) {
         for bleeding in [false, true] {
             let mut project = Project::new(vec![root.join(file)], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.check_this_only = Some(false);
             project
                 .options

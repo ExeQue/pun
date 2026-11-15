@@ -14,11 +14,9 @@ use serde::de::{Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
 
 use crate::scoped::{Family, Scoped};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PhpVersion {
-    Php84,
-    Php85,
-}
+pub use pun_tokens::PhpVersion;
+
+const PHP85: PhpVersion = PhpVersion::new(8, 5);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ByRef {
@@ -410,7 +408,7 @@ fn load(version: PhpVersion) -> Symbols {
             .collect(),
         constants: data.constants.0.into_iter().collect(),
     };
-    if version == PhpVersion::Php85 {
+    if version >= PHP85 {
         for (name, f) in data.php85.functions.0 {
             symbols.functions.remove(&name);
             if let Some(f) = f {
@@ -427,18 +425,20 @@ fn load(version: PhpVersion) -> Symbols {
     symbols
 }
 
-static PHP84: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::Php84));
-static PHP85: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::Php85));
+static PHP84_SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| load(PhpVersion::new(8, 4)));
+static PHP85_SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| load(PHP85));
 
+/// PHPStan's built-in symbols for `version`: 8.5's from 8.5 on, 8.4's below it.
 pub fn symbols(version: PhpVersion) -> &'static Symbols {
-    match version {
-        PhpVersion::Php84 => &PHP84,
-        PhpVersion::Php85 => &PHP85,
+    if version >= PHP85 {
+        &PHP85_SYMBOLS
+    } else {
+        &PHP84_SYMBOLS
     }
 }
 
 pub fn class(name: &str) -> Option<&'static Class> {
-    symbols(PhpVersion::Php84)
+    symbols(PhpVersion::new(8, 4))
         .classes
         .get(&name.trim_start_matches('\\').to_ascii_lowercase())
 }
@@ -505,7 +505,7 @@ pub fn has_function(name: &str) -> bool {
 }
 
 pub fn function(name: &str) -> Option<&'static Function> {
-    symbols(PhpVersion::Php84)
+    symbols(PhpVersion::new(8, 4))
         .functions
         .get(&name.trim_start_matches('\\').to_ascii_lowercase())
 }

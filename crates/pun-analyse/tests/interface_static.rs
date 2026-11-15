@@ -34,7 +34,7 @@ fn check_diagnostics(files: &[&str]) {
     for level in [0, 5, 9] {
         let mut project = Project::new(files.iter().map(|name| root.join(name)).collect(), vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.check_this_only = Some(false);
         let mut actual: Vec<_> = run(&project)
             .unwrap()

@@ -13,8 +13,8 @@ impl Rule for NoRedundantReadonlyProperty {
         "lint/classes/no-redundant-readonly-property"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80200
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80200)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

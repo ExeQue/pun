@@ -87,7 +87,7 @@ impl Rule for AddParamTypeArrayReduce {
                 let name = param_declaration_unsorted(
                     std::slice::from_ref(a),
                     &facts.codebase,
-                    ctx.php_version,
+                    ctx.php_version.id(),
                 )
                 .unwrap_or_default();
                 let short = name
@@ -102,10 +102,15 @@ impl Rule for AddParamTypeArrayReduce {
             };
             let mut types = t.types.to_vec();
             types.sort_by_key(|a| position(a));
-            edits.extend(refactor_parameter(&facts, param, &types, ctx.php_version));
+            edits.extend(refactor_parameter(
+                &facts,
+                param,
+                &types,
+                ctx.php_version.id(),
+            ));
         }
         if let (Some(param), Some(t)) = (params.first(), carry) {
-            edits.extend(refactor_parameter(&facts, param, &t, ctx.php_version));
+            edits.extend(refactor_parameter(&facts, param, &t, ctx.php_version.id()));
         }
         if edits.is_empty() {
             return;

@@ -15,7 +15,7 @@ fn complete_parameter_branch_contracts_match_phpstan() {
         for level in [0, 4, 5] {
             let mut project = Project::new(vec![root.join(format!("{name}.php"))], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let result = analyse_project(&project).unwrap();
             let mut actual: Vec<_> = result
                 .errors

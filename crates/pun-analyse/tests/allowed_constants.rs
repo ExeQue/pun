@@ -9,7 +9,7 @@ fn check(file: &str, expected: &str, level: u8, version: u32) {
         serde_json::from_slice(&std::fs::read(root.join(expected)).unwrap()).unwrap();
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = level;
-    project.php_version = version;
+    project.php_version = pun_analyse::PhpVersion::from_id(version);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

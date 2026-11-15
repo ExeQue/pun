@@ -12,8 +12,8 @@ impl Rule for NoUselessReadonly {
         "lint/phpdoc/no-useless-readonly"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80100
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80100)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

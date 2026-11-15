@@ -11,7 +11,7 @@ fn failed_string_offsets_match_phpstan() {
     )
     .unwrap();
     let mut project = Project::new(vec![root.join("string-offsets.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -47,7 +47,7 @@ fn evaluated_loop_bound_keeps_explode_separator_nonempty() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/rules/data");
     for level in [5, 9] {
         let mut project = Project::new(vec![root.join("Functions/data/bug-11506.php")], Vec::new());
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.level = level;
         let errors = run(&project).unwrap();
         assert!(errors.is_empty(), "level {level}: {errors:#?}");

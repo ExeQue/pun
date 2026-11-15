@@ -11,8 +11,8 @@ impl Rule for NoVoidReferenceReturn {
         "lint/functions/no-void-reference-return"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80200
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80200)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

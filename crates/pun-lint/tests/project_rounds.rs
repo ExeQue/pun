@@ -32,8 +32,14 @@ fn a_later_round_leaves_the_changed_class_alone() {
     let mut files = Vec::new();
     sources(&root.join("phpunit-stubs"), &mut files);
     files.push(("/project/tests/BodyTest.php".into(), input.into()));
-    set_project_codebase(Some(project_codebase(&files, 80400)));
-    let linter = Linter::new(vec![Box::new(PreferYieldDataProvider)], 80400);
+    set_project_codebase(Some(project_codebase(
+        &files,
+        pun_lint::PhpVersion::from_id(80400),
+    )));
+    let linter = Linter::new(
+        vec![Box::new(PreferYieldDataProvider)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let fixed = linter
         .fix(Path::new("/project/tests/BodyTest.php"), input)
         .unwrap();
@@ -94,14 +100,14 @@ function names(): array
     let path = "/project/tests/ChainTest.php";
     set_project_codebase(Some(project_codebase(
         &[(path.into(), input.into())],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )));
     let linter = Linter::new(
         vec![
             Box::new(PreferChainedExpect::default()),
             Box::new(PreferToBeTrueFalse),
         ],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     let fixed = linter.fix(Path::new(path), input).unwrap();
     set_project_codebase(None);

@@ -29,8 +29,8 @@ impl Rule for AddParamTypeArrayFunction {
         "lint/types/add-param-type-array-function"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -89,11 +89,11 @@ impl Rule for AddParamTypeArrayFunction {
                 param_declaration_unsorted(
                     &constant_values_union(&types),
                     &facts.codebase,
-                    ctx.php_version,
+                    ctx.php_version.id(),
                 )
             }
             ArrayShape::General(_) => {
-                item_declaration(&facts, ancestors, value(array), &item, ctx.php_version)
+                item_declaration(&facts, ancestors, value(array), &item, ctx.php_version.id())
             }
         };
         let Some(declaration) = declaration else {

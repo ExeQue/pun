@@ -30,7 +30,7 @@ fn check(input: &str, expected: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/call-scope-observations");
     let expected: serde_json::Value = serde_json::from_str(expected).unwrap();
     let mut project = Project::new(vec![root.join(input)], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.check_this_only = Some(false);
     project.check_function_argument_types = Some(true);
     let mut actual: Vec<_> = run(&project)

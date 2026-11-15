@@ -247,7 +247,7 @@ fn frontend_addition_preserves_complete_phpstan_diagnostics_including_level_ten(
     for level in [0, 8, 9, 10] {
         let mut project = Project::new(vec![root.join("frontend.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()

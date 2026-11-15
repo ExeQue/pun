@@ -12,8 +12,8 @@ impl Rule for PreferArrayFindKey {
         "lint/php-8.4/prefer-array-find-key"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80400
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80400)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

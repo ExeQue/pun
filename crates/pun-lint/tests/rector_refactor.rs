@@ -62,8 +62,11 @@ impl Rule for Everywhere {
 }
 
 fn everywhere(make: impl Fn() -> Box<dyn Rule>, class: &str, php_version: u32) {
-    let targeted = Linter::new(vec![make()], php_version);
-    let everywhere = Linter::new(vec![Box::new(Everywhere(make()))], php_version);
+    let targeted = Linter::new(vec![make()], pun_lint::PhpVersion::from_id(php_version));
+    let everywhere = Linter::new(
+        vec![Box::new(Everywhere(make()))],
+        pun_lint::PhpVersion::from_id(php_version),
+    );
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(class);
@@ -200,9 +203,12 @@ fn rename_cast_kinds() {
     let cast = |class: &str, from: i64, to: i64| json!({"from-cast-expr-class": format!("PhpParser\\Node\\Expr\\Cast\\{class}"), "from-cast-kind": from, "to-cast-kind": to});
     let options = json!({"items": [cast("Bool_", 2, 1), cast("Int_", 1, 2), cast("String_", 2, 1), cast("Double", 2, 1)]});
     let code = "<?php\n\n$a = (boolean) $x;\n$b = (bool) $x;\n$c = (int) $x;\n$d = (binary) $x;\n$e = (string) $x;\n$f = (float) $x;\n$g = (array) $x;\n$h = (object) $x;\n$i = (integer) $x;\n";
-    let fixed = Linter::new(vec![configured(RenameCast::default(), &options)], 80400)
-        .fix(Path::new("f.php"), code)
-        .unwrap();
+    let fixed = Linter::new(
+        vec![configured(RenameCast::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(Path::new("f.php"), code)
+    .unwrap();
     assert_eq!(
         fixed.source,
         "<?php\n\n$a = (bool) $x;\n$b = (bool) $x;\n$c = (int) $x;\n$d = (string) $x;\n$e = (string) $x;\n$f = (double) $x;\n$g = (array) $x;\n$h = (object) $x;\n$i = (integer) $x;\n"
@@ -342,9 +348,12 @@ fn add_override_attribute_to_overridden_properties() {
     );
     let code =
         "<?php\n\nclass B\n{\n    public $a;\n}\n\nclass C extends B\n{\n    public $a;\n}\n";
-    let found = Linter::new(vec![Box::new(AddOverrideAttribute)], 80400)
-        .check(std::path::Path::new("f.php"), code)
-        .unwrap();
+    let found = Linter::new(
+        vec![Box::new(AddOverrideAttribute)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .check(std::path::Path::new("f.php"), code)
+    .unwrap();
     assert_eq!(found, [] as [pun_problem::Problem; 0]);
 }
 
@@ -407,7 +416,7 @@ fn rename_method_parent_interface_and_integer_key() {
     let code = format!(
         "{interfaces}class K\n{{\n    public function a() {{}}\n}}\n\nfunction f(K $k)\n{{\n    return $k->a();\n}}\n"
     );
-    let fixed = Linter::new(vec![Box::new(rule)], 80400)
+    let fixed = Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400))
         .fix(std::path::Path::new("f.php"), &code)
         .unwrap();
     let expected = format!(
@@ -435,9 +444,13 @@ fn rename_to_another_case() {
     };
     let code = "<?php\n\nstrlen('a');\nSTRLEN('b');\nStrlen('c');\necho my_const;\necho MY_CONST;\necho My_Const;\n";
     let path = Path::new("f.php");
-    let found = Linter::new(rules(), 80400).check(path, code).unwrap();
+    let found = Linter::new(rules(), pun_lint::PhpVersion::from_id(80400))
+        .check(path, code)
+        .unwrap();
     assert_eq!(found.len(), 4);
-    let fixed = Linter::new(rules(), 80400).fix(path, code).unwrap();
+    let fixed = Linter::new(rules(), pun_lint::PhpVersion::from_id(80400))
+        .fix(path, code)
+        .unwrap();
     assert_eq!(
         fixed.source,
         "<?php\n\nSTRLEN('a');\nSTRLEN('b');\nSTRLEN('c');\necho MY_CONST;\necho MY_CONST;\necho MY_CONST;\n"
@@ -478,7 +491,7 @@ fn unconfigured_rules_do_nothing() {
         ),
     ];
     for (rule, class) in cases {
-        let linter = Linter::new(vec![rule], 80400);
+        let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/rector")
             .join(class);
@@ -505,7 +518,7 @@ fn remove_func_call_arg_of_first_class_callable() {
     let options = json!({"items": [{"function": "foo", "argument-position": 0}]});
     let fixed = Linter::new(
         vec![configured(RemoveFunctionArgument::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )
     .fix(Path::new("f.php"), "<?php\n\n$f = foo(...);\nfoo(1, 2);\n")
     .unwrap();
@@ -522,13 +535,15 @@ fn rename_class_const_fetch_to_another_case() {
     let code = "<?php\n\nnamespace App;\n\nclass A\n{\n    const X = 1;\n}\n\necho A::X;\necho A::x;\necho A::{$n};\n";
     let path = Path::new("f.php");
     assert_eq!(
-        Linter::new(vec![rule()], 80400)
+        Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400))
             .check(path, code)
             .unwrap()
             .len(),
         1
     );
-    let fixed = Linter::new(vec![rule()], 80400).fix(path, code).unwrap();
+    let fixed = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400))
+        .fix(path, code)
+        .unwrap();
     assert_eq!(fixed.source, code.replace("A::x", "A::X"));
 }
 
@@ -544,9 +559,12 @@ fn rename_method_skips() {
         .join("tests/rector/RenameMethodRector/OracleConfigured/skips.php.inc");
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(vec![configured(RenameMethod::default(), &options)], 80400)
-        .fix(&path, input)
-        .unwrap();
+    let fixed = Linter::new(
+        vec![configured(RenameMethod::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    )
+    .fix(&path, input)
+    .unwrap();
     assert_eq!(fixed.source, expected);
 }
 
@@ -563,7 +581,7 @@ fn string_class_name_skip_patterns() {
     let (input, expected) = content.split_once("-----\n").unwrap();
     let fixed = Linter::new(
         vec![configured(PreferClassNameConstant::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     )
     .fix(&path, input)
     .unwrap();
@@ -649,7 +667,10 @@ fn rename_class() {
         "RenameClassRector",
         80400,
     );
-    let linter = Linter::new(vec![configured(RenameClass::default(), &options)], 80400);
+    let linter = Linter::new(
+        vec![configured(RenameClass::default(), &options)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector/RenameClassRector/FixtureUnformattable");
     for path in std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().path()) {
@@ -722,7 +743,10 @@ fn rename_class() {
         ("OracleCrlf", &options),
         ("OracleCrlfAutoImportNames", &auto),
     ] {
-        let linter = Linter::new(vec![configured(RenameClass::default(), options)], 80400);
+        let linter = Linter::new(
+            vec![configured(RenameClass::default(), options)],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         for path in std::fs::read_dir(root.join(dir))
             .unwrap()
             .map(|e| e.unwrap().path())
@@ -803,7 +827,7 @@ fn annotation_to_attribute() {
     }
     let linter = Linter::new(
         vec![configured(AnnotationToAttribute::default(), &options)],
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     for path in std::fs::read_dir(root.join("FixtureUnformattable"))
         .unwrap()

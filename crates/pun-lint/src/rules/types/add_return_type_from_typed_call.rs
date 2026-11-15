@@ -27,8 +27,8 @@ impl Rule for AddReturnTypeFromTypedCall {
         "lint/types/add-return-type-from-typed-call"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -74,7 +74,7 @@ impl Rule for AddReturnTypeFromTypedCall {
                         Target::Function(c.function),
                         ancestors,
                         current.as_deref(),
-                        ctx.php_version,
+                        ctx.php_version.id(),
                     )
                 }
                 Expression::Call(Call::Method(c)) => {
@@ -85,7 +85,7 @@ impl Rule for AddReturnTypeFromTypedCall {
                         Target::Method(c.object, &c.method),
                         ancestors,
                         current.as_deref(),
-                        ctx.php_version,
+                        ctx.php_version.id(),
                     )
                 }
                 Expression::Call(Call::StaticMethod(c)) => {
@@ -96,20 +96,20 @@ impl Rule for AddReturnTypeFromTypedCall {
                         Target::Static(c.class, &c.method),
                         ancestors,
                         current.as_deref(),
-                        ctx.php_version,
+                        ctx.php_version.id(),
                     )
                 }
                 Expression::Access(Access::ClassConstant(_)) => facts
                     .native_type(node_span(value))
                     .filter(|t| !t.is_mixed())
-                    .and_then(|t| declaration(&facts, &t.types, &[], ctx.php_version)),
+                    .and_then(|t| declaration(&facts, &t.types, &[], ctx.php_version.id())),
                 Expression::Literal(
                     Literal::String(_) | Literal::Integer(_) | Literal::Float(_),
                 )
                 | Expression::Array(_)
                 | Expression::LegacyArray(_) => facts
                     .full_type(node_span(value))
-                    .and_then(|t| declaration(&facts, &t.types, &[], ctx.php_version)),
+                    .and_then(|t| declaration(&facts, &t.types, &[], ctx.php_version.id())),
                 _ => return,
             };
             let Some(declared) = declared else {
@@ -127,7 +127,7 @@ impl Rule for AddReturnTypeFromTypedCall {
         }
         let r#type = match nodes.as_slice() {
             [one] => one.clone(),
-            _ if ctx.php_version < UNION_TYPES => return,
+            _ if ctx.php_version.id() < UNION_TYPES => return,
             many => {
                 let mut members: Vec<String> = Vec::new();
                 for node in many {

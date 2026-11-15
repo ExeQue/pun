@@ -19,8 +19,8 @@ impl Rule for AddParamTypeArrowDimFetch {
         "lint/types/add-param-type-arrow-dim-fetch"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

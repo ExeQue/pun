@@ -55,7 +55,7 @@ impl Rule for AddReturnTypeFromConstant {
             types.extend(union_order(t.types.as_ref()));
         }
         if let Some(r#type) =
-            return_declaration(types, &facts.codebase, ctx.php_version, &[], false)
+            return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], false)
         {
             out.push(add_return_type(f.span, f.at, &r#type));
         }

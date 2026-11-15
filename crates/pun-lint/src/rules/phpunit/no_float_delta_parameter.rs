@@ -12,8 +12,8 @@ impl Rule for NoFloatDeltaParameter {
         "lint/phpunit/no-float-delta-parameter"
     }
 
-    fn min_php_version(&self) -> u32 {
-        70200
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(70200)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

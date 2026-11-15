@@ -51,7 +51,7 @@ fn expected<'ast, 'arena>(
 
 #[test]
 fn check_walks_the_nodes_of_visit_children_with_their_ancestors() {
-    let linter = Linter::new(vec![Box::new(Record)], 80400);
+    let linter = Linter::new(vec![Box::new(Record)], pun_lint::PhpVersion::from_id(80400));
     let mut seen = BTreeSet::new();
     for name in ["every-node.php", "braced-namespace.php", "short-tag.php"] {
         let path = Path::new(env!("CARGO_MANIFEST_DIR"))

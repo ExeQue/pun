@@ -1544,6 +1544,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "punphp-phpstan",
+ "punphp-tokens",
  "serde",
  "serde_json",
  "toml",
@@ -1658,6 +1659,7 @@ name = "punphp-tokens"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "mago-php-version",
  "pcre2",
  "serde_json",
 ]

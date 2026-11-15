@@ -21,8 +21,8 @@ impl Rule for AddReturnTypeFromParent {
         "lint/types/add-return-type-from-parent"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -76,7 +76,7 @@ impl Rule for AddReturnTypeFromParent {
                 .and_then(|s| s.name)
                 .unwrap_or_default(),
         };
-        let Some(r#type) = parent_return_type(&facts, &class, &name, ctx.php_version) else {
+        let Some(r#type) = parent_return_type(&facts, &class, &name, ctx.php_version.id()) else {
             return;
         };
         out.push(add_return_type(

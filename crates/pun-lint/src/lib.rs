@@ -14,19 +14,21 @@ use pun_problem::{Edit, Fix, Level, Problem, Safety, Span, apply_fixes};
 
 pub mod rules;
 pub mod syntax;
+
+pub use pun_tokens::PhpVersion;
 mod walk;
 
 pub struct Context<'a> {
     pub source: &'a str,
     pub path: &'a Path,
-    pub php_version: u32,
+    pub php_version: PhpVersion,
     tokens: OnceCell<Vec<rules::support::statements::Token>>,
     facts: OnceCell<Rc<rules::types::facts::Facts>>,
     dead_code_facts: OnceCell<Rc<rules::types::facts::Facts>>,
 }
 
 impl<'a> Context<'a> {
-    pub fn new(source: &'a str, path: &'a Path, php_version: u32) -> Self {
+    pub fn new(source: &'a str, path: &'a Path, php_version: PhpVersion) -> Self {
         Context {
             source,
             path,
@@ -65,8 +67,8 @@ impl Report {
 pub trait Rule: Send + Sync {
     fn id(&self) -> &'static str;
 
-    fn min_php_version(&self) -> u32 {
-        0
+    fn min_php_version(&self) -> PhpVersion {
+        PhpVersion::from_id(0)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -176,11 +178,11 @@ struct Found {
 pub struct Linter {
     rules: Vec<Box<dyn Rule>>,
     by_kind: Vec<Vec<(&'static str, usize)>>,
-    php_version: u32,
+    php_version: PhpVersion,
 }
 
 impl Linter {
-    pub fn new(rules: Vec<Box<dyn Rule>>, php_version: u32) -> Self {
+    pub fn new(rules: Vec<Box<dyn Rule>>, php_version: PhpVersion) -> Self {
         let rules: Vec<Box<dyn Rule>> = rules
             .into_iter()
             .filter(|r| r.min_php_version() <= php_version)

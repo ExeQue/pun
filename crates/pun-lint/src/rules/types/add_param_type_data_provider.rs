@@ -99,7 +99,7 @@ impl Rule for AddParamTypeDataProvider {
                     .map(|t| own_static(t, own.as_deref()))
                     .collect();
                 if let Some(declaration) =
-                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version)
+                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version.id())
                 {
                     edits.push(add_hint(param, &declaration));
                 }

@@ -11,8 +11,8 @@ impl Rule for AddFunctionVoidReturn {
         "lint/types/add-function-void-return"
     }
 
-    fn min_php_version(&self) -> u32 {
-        VOID_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(VOID_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

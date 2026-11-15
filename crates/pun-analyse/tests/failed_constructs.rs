@@ -14,7 +14,7 @@ fn failed_construct_reads_preserve_evaluation_and_independent_errors() {
         .as_array()
         .unwrap();
     let mut project = Project::new(vec![root.join("constructs.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project.level = 9;
     let raw = run_mago(&project, None).unwrap();
     let mut got: Vec<_> = raw

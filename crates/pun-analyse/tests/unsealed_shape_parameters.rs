@@ -134,7 +134,7 @@ fn public_analysis_retains_all_complete_phpstan_value_records() {
         serde_json::from_slice(&std::fs::read(root().join("values.json")).unwrap()).unwrap();
     let mut project = pun_analyse::Project::new(vec![root().join("values.php")], Vec::new());
     project.level = 0;
-    project.php_version = 80511;
+    project.php_version = pun_analyse::PhpVersion::from_id(80511);
     let analysis = pun_analyse::analyse_project(&project).unwrap();
     let actual: Vec<_> = analysis
         .errors

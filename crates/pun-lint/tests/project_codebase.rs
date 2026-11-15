@@ -12,7 +12,10 @@ const ITEM: &str = "<?php\n\nclass Item\n{\n    public string $name = '';\n}\n";
 const HOLDER: &str = "<?php\n\nfinal class Holder\n{\n    private Item $item;\n\n    public function __construct()\n    {\n        $this->item = new Item();\n    }\n\n    public function name()\n    {\n        return $this->item->name;\n    }\n}\n";
 
 fn fix() -> String {
-    let linter = Linter::new(vec![Box::new(AddReturnTypeFromProperty)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(AddReturnTypeFromProperty)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     linter.fix(Path::new("holder.php"), HOLDER).unwrap().source
 }
 
@@ -25,7 +28,10 @@ fn a_file_sees_the_project_codebase() {
         ("item.php".to_string(), ITEM.to_string()),
         ("holder.php".to_string(), HOLDER.to_string()),
     ];
-    set_project_codebase(Some(project_codebase(&files, 80400)));
+    set_project_codebase(Some(project_codebase(
+        &files,
+        pun_lint::PhpVersion::from_id(80400),
+    )));
     let typed = fix();
     set_project_codebase(None);
     assert_eq!(
@@ -49,9 +55,9 @@ fn a_deferred_scan_runs_when_a_rule_reads_facts() {
             ("item.php".to_string(), ITEM.to_string()),
             ("holder.php".to_string(), HOLDER.to_string()),
         ];
-        project_codebase(&files, 80400)
+        project_codebase(&files, pun_lint::PhpVersion::from_id(80400))
     });
-    let goto = Linter::new(vec![Box::new(NoGoto)], 80400);
+    let goto = Linter::new(vec![Box::new(NoGoto)], pun_lint::PhpVersion::from_id(80400));
     assert_eq!(
         goto.check(Path::new("holder.php"), HOLDER).unwrap(),
         [] as [pun_problem::Problem; 0]
@@ -79,8 +85,14 @@ fn a_changed_file_keeps_its_methods_called_on_this() {
         "$n = $this->recent();\n\n        return $n;",
     );
     let files = [("/p/views.php".to_string(), scanned)];
-    set_project_codebase(Some(project_codebase(&files, 80400)));
-    let linter = Linter::new(vec![Box::new(NoUnusedPrivateMethod)], 80400);
+    set_project_codebase(Some(project_codebase(
+        &files,
+        pun_lint::PhpVersion::from_id(80400),
+    )));
+    let linter = Linter::new(
+        vec![Box::new(NoUnusedPrivateMethod)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let fixed = linter
         .fix(Path::new("/p/views.php"), changed)
         .unwrap()
@@ -115,8 +127,15 @@ fn autoloaded_vendor_parents_guard_overrides() {
         b"app\\localbase" => Some(("/project/app/LocalBase.php".to_string(), base("App"))),
         _ => None,
     };
-    set_project_codebase(Some(project_codebase_autoloaded(&files, 80400, &autoload)));
-    let linter = Linter::new(vec![Box::new(AddReturnTypeFromConstant)], 80400);
+    set_project_codebase(Some(project_codebase_autoloaded(
+        &files,
+        pun_lint::PhpVersion::from_id(80400),
+        &autoload,
+    )));
+    let linter = Linter::new(
+        vec![Box::new(AddReturnTypeFromConstant)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let fixed = linter
         .fix(Path::new("/project/app/Commands.php"), commands)
         .unwrap()
@@ -152,8 +171,15 @@ fn a_file_autoloaded_for_two_names_is_scanned_for_each() {
             )
         })
     };
-    set_project_codebase(Some(project_codebase_autoloaded(&files, 80400, &autoload)));
-    let linter = Linter::new(vec![Box::new(AddReturnTypeFromConstant)], 80400);
+    set_project_codebase(Some(project_codebase_autoloaded(
+        &files,
+        pun_lint::PhpVersion::from_id(80400),
+        &autoload,
+    )));
+    let linter = Linter::new(
+        vec![Box::new(AddReturnTypeFromConstant)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let fixed = linter
         .fix(Path::new("/project/app/Commands.php"), commands)
         .unwrap()

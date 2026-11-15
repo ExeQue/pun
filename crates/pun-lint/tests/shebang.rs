@@ -236,7 +236,10 @@ fn shebang_owned_and_borrowed_csts_restore_declarations_without_rewriting_source
 
 #[test]
 fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
-    let linter = Linter::new(vec![Box::new(rules::PreferCompoundAssignment)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::PreferCompoundAssignment)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     for prefix in [
         "#!php<?php ",
         "#!php<?php\n",
@@ -254,7 +257,10 @@ fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
 
 #[test]
 fn shebang_lint_native_facts_reparse_the_same_class_and_variable_return() {
-    let linter = Linter::new(vec![Box::new(rules::AddReturnTypeFromNew)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::AddReturnTypeFromNew)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     for prefix in [
         "#!php<?php ",
         "#!php\r<?php ",

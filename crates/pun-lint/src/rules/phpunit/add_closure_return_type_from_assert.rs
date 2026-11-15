@@ -13,8 +13,8 @@ impl Rule for AddClosureReturnTypeFromAssert {
         "lint/phpunit/add-closure-return-type-from-assert"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

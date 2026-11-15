@@ -124,7 +124,7 @@ fn built_in_signatures() {
         .into_iter()
         .map(|(ctx, s, d, ..)| ((ctx, s), d))
         .collect();
-    for version in [PhpVersion::Php84, PhpVersion::Php85] {
+    for version in [PhpVersion::new(8, 4), PhpVersion::new(8, 5)] {
         let symbols = symbols::symbols(version);
         let mut callables: Vec<(Option<&str>, &Function)> =
             symbols.functions.values().map(|f| (None, f)).collect();
@@ -169,7 +169,7 @@ fn constants() {
         .filter(|(ctx, ..)| ctx.is_none())
         .map(|(_, s, d, ..)| (s, d))
         .collect();
-    let symbols = symbols::symbols(PhpVersion::Php84);
+    let symbols = symbols::symbols(PhpVersion::new(8, 4));
     let mut failures = Vec::new();
     for (name, ty) in &symbols.constants {
         if !name

@@ -20,8 +20,8 @@ impl Rule for AddDataProviderAllowMockObjects {
         "lint/phpunit/add-data-provider-allow-mock-objects"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ATTRIBUTES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ATTRIBUTES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -13,7 +13,7 @@ fn refined_offset_keys_match_complete_phpstan_records() {
         for level in [0, 1, 4, 5, 9] {
             let mut project = Project::new(vec![root.join(format!("{case}.php"))], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level > 0,
@@ -268,7 +268,7 @@ fn sequential_offset_history_matches_complete_phpstan_records() {
         for level in [0, 1, 4, 5, 9] {
             let mut project = Project::new(vec![root.join(format!("{case}.php"))], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level > 0,
@@ -321,7 +321,7 @@ fn array_keys_and_raw_string_offsets_remain_asymmetric() {
     for level in [0, 1, 4, 5, 9] {
         let mut project = Project::new(vec![root.join("asymmetric.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level > 0,
@@ -372,7 +372,7 @@ fn prepared_offset_existence_is_independent_of_failed_read_values() {
     for level in [0, 1, 4, 5, 9] {
         let mut project = Project::new(vec![root.join("prepared.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level > 0,
@@ -425,7 +425,7 @@ fn written_offset_holders_do_not_require_array_receivers() {
     for level in [0, 1, 4, 5, 9] {
         let mut project = Project::new(vec![root.join("written.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level > 0,
@@ -478,7 +478,7 @@ fn finite_array_keys_select_only_their_own_values() {
     for level in [0, 1, 4, 5, 9] {
         let mut project = Project::new(vec![root.join("finite.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level > 0,

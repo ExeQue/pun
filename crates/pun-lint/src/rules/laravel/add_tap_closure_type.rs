@@ -125,7 +125,7 @@ fn refactor_parameter(
         return None;
     }
     let ordered = expression_order(value, |e| facts.full_type(node_span(e)))?;
-    let declared = declaration(&facts, ordered, ctx.php_version)?;
+    let declared = declaration(&facts, ordered, ctx.php_version.id())?;
     let values = value_members(&facts, &t.types, own.as_deref());
     parameter_edit(ctx, ancestors, param, own.as_deref(), declared, &values)
 }

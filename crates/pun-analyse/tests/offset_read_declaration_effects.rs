@@ -17,7 +17,7 @@ fn offset_read_declaration_effects_match_complete_phpstan_records() {
     ] {
         for &level in levels {
             let mut project = Project::new(vec![root.join(format!("{file}.php"))], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

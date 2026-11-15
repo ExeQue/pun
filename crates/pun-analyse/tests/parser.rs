@@ -423,7 +423,7 @@ fn readonly_class_headers_follow_the_target_lexer_version() {
         .collect();
     for version in [80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(files.clone(), Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["analysed"][version.to_string()],
@@ -451,7 +451,7 @@ fn reverse_readonly_keyword_failures_reject_all_scanned_symbols() {
         let symbols = root.write("symbols", code.as_str().unwrap());
         for version in [80000, 80100, 80200, 80400, 80500] {
             let mut project = Project::new(vec![main.clone()], vec![symbols.clone()]);
-            project.php_version = version;
+            project.php_version = pun_analyse::PhpVersion::from_id(version);
             assert_eq!(
                 errors(&project),
                 expected["scanned"][name][version.to_string()],
@@ -924,7 +924,7 @@ fn pipe_parentheses_preserve_direct_rhs_identity_starts_and_valid_neighbors() {
         .map(|(name, code)| root.write(name, code.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -937,7 +937,7 @@ fn pipe_parentheses_collect_after_parameters_and_inner_pipes_before_namespace_po
         include_str!("fixtures/parser/pipe-parentheses-order.php"),
     );
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.reported = Some(std::sync::Arc::new(|_| false));
     let mut entry = Array::new();
     entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -967,7 +967,7 @@ fn pipe_parentheses_failures_in_scanned_files_reject_all_symbols() {
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write("symbols", code.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -986,7 +986,7 @@ fn pipe_parentheses_do_not_translate_older_target_pipe_grammar() {
     let file = root.write("input", "1 |> fn($x) => $x;");
     for version in [80000, 80100, 80200, 80400] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         let got = errors(&project);
         let want = expected["older"][version.to_string()]["errors"]
             .as_array()
@@ -1015,7 +1015,7 @@ fn reference_new_assignment_matches_direct_grammar_roles_and_lhs_locations() {
         .map(|(name, code)| root.write(name, code.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -1028,7 +1028,7 @@ fn reference_new_assignment_collects_inner_argument_and_body_errors_before_outer
         include_str!("fixtures/parser/reference-new-order.php"),
     );
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.reported = Some(std::sync::Arc::new(|_| false));
     let mut entry = Array::new();
     entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1054,7 +1054,7 @@ fn reference_new_assignment_rejects_whole_scanned_files_but_not_valid_neighbors(
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write("symbols", code.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -1071,7 +1071,7 @@ fn reference_new_assignment_version_boundary_comes_from_php_parser() {
     let file = root.write("input", "$value =& new stdClass;");
     for version in [70100, 70400, 80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["versions"][version.to_string()]["errors"],
@@ -1080,7 +1080,7 @@ fn reference_new_assignment_version_boundary_comes_from_php_parser() {
     }
     for version in [50600, 70000] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         let messages: Vec<_> = analyse_project(&project)
             .unwrap()
             .errors
@@ -1107,7 +1107,7 @@ fn reference_new_assignment_does_not_translate_other_grammar_productions() {
         let root = Inputs::new();
         let file = root.write("input", code.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let got = errors(&project);
         let want = upstream["unsupported"][name]["errors"].as_array().unwrap();
         assert!(
@@ -1139,7 +1139,7 @@ fn expression_list_commas_match_comma_locations_and_preserve_valid_neighbors() {
         .map(|(name, source)| root.write_source(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -1152,7 +1152,7 @@ fn expression_list_commas_reduce_each_for_clause_before_later_clauses_and_body()
         include_str!("fixtures/parser/expression-list-commas-order.php"),
     );
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.reported = Some(std::sync::Arc::new(|_| false));
     let mut entry = Array::new();
     entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1184,7 +1184,7 @@ fn expression_list_commas_reject_all_scanned_symbols_but_keep_valid_lists() {
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write_source("symbols", source.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -1206,7 +1206,7 @@ fn expression_list_commas_have_no_php_version_gate() {
     );
     for version in [70100, 70400, 80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["versions"][version.to_string()]["errors"],
@@ -1229,7 +1229,7 @@ fn expression_list_commas_leave_other_productions_and_recovery_to_their_own_cont
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let actual = errors(&project);
         let allowed = upstream["boundaries"][name]["errors"].as_array().unwrap();
         assert!(
@@ -1262,7 +1262,7 @@ fn empty_array_elements_match_comma_locations_and_recursive_destructuring_roles(
         .map(|(name, source)| root.write_source(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -1275,7 +1275,7 @@ fn empty_array_elements_follow_namespace_checks_in_array_creation_and_item_order
         include_str!("fixtures/parser/empty-array-elements-order.php"),
     );
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.reported = Some(std::sync::Arc::new(|_| false));
     let mut entry = Array::new();
     entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1307,7 +1307,7 @@ fn empty_array_elements_reject_all_scanned_symbols_but_keep_destructuring_neighb
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write_source("symbols", source.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -1329,7 +1329,7 @@ fn empty_array_elements_have_no_php_version_gate() {
     );
     for version in [70100, 70400, 80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["versions"][version.to_string()]["errors"],
@@ -1352,7 +1352,7 @@ fn empty_array_elements_leave_other_grammar_and_recovery_to_their_own_contracts(
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let actual = errors(&project);
         let allowed = upstream["boundaries"][name]["errors"].as_array().unwrap();
         assert!(
@@ -1385,7 +1385,7 @@ fn mixed_document_closing_matches_marker_locations_and_valid_neighbors() {
         .map(|(name, source)| root.write_source(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -1404,7 +1404,7 @@ fn mixed_document_closing_follows_body_checks_and_precedes_root_postprocessing()
         let root = Inputs::new();
         let file = root.write_source("order", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.reported = Some(std::sync::Arc::new(|_| false));
         let mut entry = Array::new();
         entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1438,7 +1438,7 @@ fn mixed_document_closing_rejects_whole_scanned_files_but_preserves_valid_docume
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write_source("symbols", source.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -1460,7 +1460,7 @@ fn mixed_document_closing_has_no_target_version_gate() {
     );
     for version in [70100, 70300, 70400, 80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["versions"][version.to_string()]["errors"],
@@ -1483,7 +1483,7 @@ fn mixed_document_closing_leaves_other_literal_and_recovery_contracts_open() {
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let actual = errors(&project);
         let allowed = expected["boundaries"][name]["errors"].as_array().unwrap();
         assert!(
@@ -1516,7 +1516,7 @@ fn document_body_indentation_matches_part_locations_blank_lines_and_valid_neighb
         .map(|(name, source)| root.write_source(name, source.as_str().unwrap()))
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["analysed"]["errors"]);
 }
 
@@ -1535,7 +1535,7 @@ fn document_body_indentation_preserves_per_part_collection_and_parser_precedence
         let root = Inputs::new();
         let file = root.write_source("order", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.reported = Some(std::sync::Arc::new(|_| false));
         let mut entry = Array::new();
         entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1569,7 +1569,7 @@ fn document_body_indentation_rejects_scanned_symbols_and_preserves_valid_files()
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write_source("symbols", source.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["scanned"][name]["errors"],
@@ -1592,7 +1592,7 @@ fn document_body_indentation_has_no_target_version_gate() {
     let file = root.write_source("input", &source);
     for version in [70100, 70300, 70400, 80000, 80100, 80200, 80400, 80500] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         assert_eq!(
             errors(&project),
             expected["versions"][version.to_string()]["errors"],
@@ -1615,7 +1615,7 @@ fn document_body_indentation_does_not_invent_other_literal_or_recovery_errors() 
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let actual = errors(&project);
         let allowed = expected["boundaries"][name]["errors"].as_array().unwrap();
         assert!(
@@ -1648,7 +1648,7 @@ fn document_escape_failures_distinguish_oversized_codepoints_from_nonfatal_none_
         })
         .collect();
     let mut project = Project::new(files, Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     assert_eq!(errors(&project), expected["escapes"]["errors"]);
 }
 
@@ -1665,7 +1665,7 @@ fn document_escape_fatal_reductions_preserve_prior_errors_and_array_postprocessi
         let root = Inputs::new();
         let file = root.write_source("order", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.reported = Some(std::sync::Arc::new(|_| false));
         let mut entry = Array::new();
         entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
@@ -1697,7 +1697,7 @@ fn document_escape_failures_reject_whole_scan_files_without_rejecting_nonfatal_e
         let main = root.write_source("main", include_str!("fixtures/parser/scan-main.php"));
         let symbols = root.write_source("symbols", source.as_str().unwrap());
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         assert_eq!(
             errors(&project),
             expected["escape_scanned"][name]["errors"],
@@ -1719,7 +1719,7 @@ fn document_escape_version_policy_matches_every_admitted_public_target() {
             let root = Inputs::new();
             let file = root.write_source("input", source.as_str().unwrap());
             let mut project = Project::new(vec![file], Vec::new());
-            project.php_version = version;
+            project.php_version = pun_analyse::PhpVersion::from_id(version);
             assert_eq!(
                 errors(&project),
                 expected["escape_versions"][version.to_string()][name]["errors"],
@@ -1744,7 +1744,7 @@ fn numeric_admission_collects_literal_reductions_before_enclosing_checks() {
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut entry = Array::new();
         entry.set(Key::from("identifier"), Php::str("phpstan.parse"));
         project.ignore_errors = configured_ignores(
@@ -1781,7 +1781,7 @@ fn numeric_admission_preserves_supported_target_versions() {
             let root = Inputs::new();
             let file = root.write_source("input", inputs[name].as_str().unwrap());
             let mut project = Project::new(vec![file], Vec::new());
-            project.php_version = version;
+            project.php_version = pun_analyse::PhpVersion::from_id(version);
             assert_eq!(
                 errors(&project),
                 expected["versions"][version.to_string()][name]["errors"],
@@ -1805,7 +1805,7 @@ fn numeric_admission_pre_php7_policy_matches_the_pinned_parser() {
     let file = root.write_source("input", inputs["legacy"].as_str().unwrap());
     for version in [50600, 70000] {
         let mut project = Project::new(vec![file.clone()], Vec::new());
-        project.php_version = version;
+        project.php_version = pun_analyse::PhpVersion::from_id(version);
         let actual = errors(&project);
         let parser: Vec<_> = actual
             .as_array()
@@ -1848,7 +1848,7 @@ fn numeric_admission_rejects_whole_scan_files_but_keeps_overflowing_prefixes() {
         let symbols = root.write("symbols", &parts.join("\n"));
         let main = root.write("main", "new BeforeScan(); before_scan(); echo BEFORE_SCAN;\nnew AfterScan(); after_scan(); echo AFTER_SCAN;");
         let mut project = Project::new(vec![main], vec![symbols]);
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = 1;
         assert_eq!(
             errors(&project),

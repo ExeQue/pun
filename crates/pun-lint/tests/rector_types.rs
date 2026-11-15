@@ -289,7 +289,10 @@ fn return_type_from_strict_typed_call_never_is_not_propagated() {
         include_str!("rector/ReturnTypeFromStrictTypedCallRector/Oracle/contract_never.php.inc");
     let (input, expected) = fixture.split_once("-----\n").unwrap();
     for version in [80100, 80400] {
-        let linter = pun_lint::Linter::new(vec![Box::new(AddReturnTypeFromTypedCall)], version);
+        let linter = pun_lint::Linter::new(
+            vec![Box::new(AddReturnTypeFromTypedCall)],
+            pun_lint::PhpVersion::from_id(version),
+        );
         let path = std::path::Path::new("contract_never.php");
         let problems = linter.check(path, input).unwrap();
         assert_eq!(problems.len(), 1, "PHP {version}: {problems:?}");
@@ -351,7 +354,10 @@ fn closure_return_type_intersection_below_dnf() {
     .unwrap();
     let input = input.split_once("-----\n").unwrap().0;
     for version in [80000, 80100] {
-        let linter = pun_lint::Linter::new(vec![Box::new(AddClosureReturn)], version);
+        let linter = pun_lint::Linter::new(
+            vec![Box::new(AddClosureReturn)],
+            pun_lint::PhpVersion::from_id(version),
+        );
         let fixed = linter
             .fix(std::path::Path::new("closure_dnf.php"), input)
             .unwrap();
@@ -381,7 +387,7 @@ fn left_alone_at_other_versions() {
         ),
     ];
     for (rule, version, input) in cases {
-        let linter = pun_lint::Linter::new(vec![rule], version);
+        let linter = pun_lint::Linter::new(vec![rule], pun_lint::PhpVersion::from_id(version));
         let fixed = linter.fix(std::path::Path::new("f.php"), input).unwrap();
         assert_eq!(fixed.source, input, "PHP {version}");
     }

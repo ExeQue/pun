@@ -20,7 +20,7 @@ fn project_keeps_literal_nested_integer_and_reassigned_array_records() {
         configured.analysed = direct.analysed.clone();
         direct.level = level as u8;
         for (constructor, mut project) in [("new", direct), ("from_config", configured)] {
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut actual: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

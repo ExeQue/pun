@@ -114,7 +114,7 @@ impl Rule for AddParamTypeMethodCall {
                     continue;
                 }
                 let Some(declaration) =
-                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version)
+                    param_declaration_unsorted(&types, &facts.codebase, ctx.php_version.id())
                 else {
                     continue;
                 };

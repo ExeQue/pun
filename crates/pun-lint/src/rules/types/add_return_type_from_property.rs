@@ -22,8 +22,8 @@ impl Rule for AddReturnTypeFromProperty {
         "lint/types/add-return-type-from-property"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -73,7 +73,7 @@ impl Rule for AddReturnTypeFromProperty {
             return;
         }
         if let Some(r#type) =
-            return_declaration(types, &facts.codebase, ctx.php_version, &order, true)
+            return_declaration(types, &facts.codebase, ctx.php_version.id(), &order, true)
         {
             out.push(add_return_type(f.span, f.at, &r#type));
         }

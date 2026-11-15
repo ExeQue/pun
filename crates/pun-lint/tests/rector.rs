@@ -103,14 +103,20 @@ fn run(linter: &Linter, dir: &str) {
 #[test]
 fn combined_assign() {
     run(
-        &Linter::new(vec![Box::new(PreferCompoundAssignment)], 80400),
+        &Linter::new(
+            vec![Box::new(PreferCompoundAssignment)],
+            pun_lint::PhpVersion::from_id(80400),
+        ),
         "CombinedAssignRector/Fixture",
     );
 }
 
 #[test]
 fn and_assigns_to_separate_lines() {
-    let linter = Linter::new(vec![Box::new(NoAndAssignment)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoAndAssignment)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "AndAssignsToSeparateLinesRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "AndAssignsToSeparateLinesRector/Oracle");
@@ -119,7 +125,10 @@ fn and_assigns_to_separate_lines() {
 
 #[test]
 fn array_key_exists_ternary_then_value_to_coalescing() {
-    let linter = Linter::new(vec![Box::new(PreferNullCoalesce)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferNullCoalesce)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(
         &linter,
         "ArrayKeyExistsTernaryThenValueToCoalescingRector/Fixture",
@@ -133,7 +142,10 @@ fn array_key_exists_ternary_then_value_to_coalescing() {
 
 #[test]
 fn change_array_push_to_array_assign() {
-    let linter = Linter::new(vec![Box::new(PreferArrayAppend)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferArrayAppend)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "ChangeArrayPushToArrayAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ChangeArrayPushToArrayAssignRector/Oracle");
@@ -142,7 +154,10 @@ fn change_array_push_to_array_assign() {
 
 #[test]
 fn negated_ands_to_positive_ors() {
-    let linter = Linter::new(vec![Box::new(NoNegatedAnd)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoNegatedAnd)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "NegatedAndsToPositiveOrsRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "NegatedAndsToPositiveOrsRector/Oracle");
@@ -151,7 +166,10 @@ fn negated_ands_to_positive_ors() {
 
 #[test]
 fn new_array_item_concat_assign_to_assign() {
-    let linter = Linter::new(vec![Box::new(NoConcatAssignNewItem)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoConcatAssignNewItem)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "NewArrayItemConcatAssignToAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "NewArrayItemConcatAssignToAssignRector/Oracle");
@@ -159,7 +177,10 @@ fn new_array_item_concat_assign_to_assign() {
 
 #[test]
 fn replace_constant_boolean_not() {
-    let linter = Linter::new(vec![Box::new(NoNegatedBooleanLiteral)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoNegatedBooleanLiteral)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "ReplaceConstantBooleanNotRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ReplaceConstantBooleanNotRector/Oracle");
@@ -167,7 +188,10 @@ fn replace_constant_boolean_not() {
 
 #[test]
 fn simplify_de_morgan_binary() {
-    let linter = Linter::new(vec![Box::new(NoNegatedGroup)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoNegatedGroup)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyDeMorganBinaryRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyDeMorganBinaryRector/Oracle");
@@ -176,7 +200,10 @@ fn simplify_de_morgan_binary() {
 
 #[test]
 fn simplify_empty_array_check() {
-    let linter = Linter::new(vec![Box::new(PreferEmptyArrayCompare)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferEmptyArrayCompare)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyEmptyArrayCheckRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyEmptyArrayCheckRector/Oracle");
@@ -184,7 +211,10 @@ fn simplify_empty_array_check() {
 
 #[test]
 fn simplify_func_get_args_count() {
-    let linter = Linter::new(vec![Box::new(PreferFuncNumArgs)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferFuncNumArgs)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyFuncGetArgsCountRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyFuncGetArgsCountRector/Oracle");
@@ -192,7 +222,10 @@ fn simplify_func_get_args_count() {
 
 #[test]
 fn simplify_in_array_values() {
-    let linter = Linter::new(vec![Box::new(NoUselessArrayValues)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoUselessArrayValues)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyInArrayValuesRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyInArrayValuesRector/Oracle");
@@ -201,7 +234,10 @@ fn simplify_in_array_values() {
 
 #[test]
 fn simplify_tautology_ternary() {
-    let linter = Linter::new(vec![Box::new(NoTautologyTernary)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoTautologyTernary)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyTautologyTernaryRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyTautologyTernaryRector/Oracle");
@@ -209,7 +245,10 @@ fn simplify_tautology_ternary() {
 
 #[test]
 fn single_in_array_to_compare() {
-    let linter = Linter::new(vec![Box::new(NoSingleItemInArray)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoSingleItemInArray)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SingleInArrayToCompareRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SingleInArrayToCompareRector/Oracle");
@@ -218,7 +257,10 @@ fn single_in_array_to_compare() {
 
 #[test]
 fn unwrap_sprintf_one_argument() {
-    let linter = Linter::new(vec![Box::new(NoSingleArgumentSprintf)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoSingleArgumentSprintf)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "UnwrapSprintfOneArgumentRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "UnwrapSprintfOneArgumentRector/Oracle");
@@ -265,7 +307,10 @@ fn run_with_whitespace_exceptions(linter: &Linter, dir: &str, whitespace_only: &
 }
 
 fn only(rule: impl pun_lint::Rule + 'static, php_version: u32) -> Linter {
-    Linter::new(vec![Box::new(rule)], php_version)
+    Linter::new(
+        vec![Box::new(rule)],
+        pun_lint::PhpVersion::from_id(php_version),
+    )
 }
 
 #[test]
@@ -375,7 +420,10 @@ fn remove_useless_return_expr_in_construct() {
 
 #[test]
 fn remove_unreachable_statement() {
-    let linter = Linter::new(vec![Box::new(NoUnreachableCode)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoUnreachableCode)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RemoveUnreachableStatementRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveUnreachableStatementRector/Oracle");
@@ -384,7 +432,10 @@ fn remove_unreachable_statement() {
 
 #[test]
 fn simplify_mirror_assign() {
-    let linter = Linter::new(vec![Box::new(NoMirrorAssignment)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoMirrorAssignment)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyMirrorAssignRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyMirrorAssignRector/Oracle");
@@ -392,7 +443,10 @@ fn simplify_mirror_assign() {
 
 #[test]
 fn remove_useless_assign_from_property_promotion() {
-    let linter = Linter::new(vec![Box::new(NoRedundantPromotedAssign)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoRedundantPromotedAssign)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(
         &linter,
         "RemoveUselessAssignFromPropertyPromotionRector/Fixture",
@@ -406,7 +460,10 @@ fn remove_useless_assign_from_property_promotion() {
 
 #[test]
 fn remove_duplicated_case_in_switch() {
-    let linter = Linter::new(vec![Box::new(NoDuplicateCaseBody)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoDuplicateCaseBody)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RemoveDuplicatedCaseInSwitchRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveDuplicatedCaseInSwitchRector/Oracle");
@@ -414,7 +471,10 @@ fn remove_duplicated_case_in_switch() {
 
 #[test]
 fn simplify_if_else_with_same_content() {
-    let linter = Linter::new(vec![Box::new(NoIdenticalBranches)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoIdenticalBranches)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "SimplifyIfElseWithSameContentRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone). Rector reprints a
     // single-statement body its own way, so only the formatted code is compared.
@@ -423,7 +483,10 @@ fn simplify_if_else_with_same_content() {
 
 #[test]
 fn remove_always_else() {
-    let linter = Linter::new(vec![Box::new(NoElseAfterReturn)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoElseAfterReturn)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RemoveAlwaysElseRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveAlwaysElseRector/Oracle");
@@ -446,7 +509,10 @@ fn run_formatted(linter: &Linter, dir: &str) {
 
 #[test]
 fn change_if_else_value_assign_to_early_return() {
-    let linter = Linter::new(vec![Box::new(PreferEarlyReturn)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferEarlyReturn)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(
         &linter,
         "ChangeIfElseValueAssignToEarlyReturnRector/Fixture",
@@ -457,7 +523,10 @@ fn change_if_else_value_assign_to_early_return() {
 
 #[test]
 fn prepared_value_to_early_return() {
-    let linter = Linter::new(vec![Box::new(PreferEarlyReturnOverPreparedValue)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferEarlyReturnOverPreparedValue)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "PreparedValueToEarlyReturnRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "PreparedValueToEarlyReturnRector/Oracle");
@@ -465,7 +534,10 @@ fn prepared_value_to_early_return() {
 
 #[test]
 fn repeated_or_equal_to_in_array() {
-    let linter = Linter::new(vec![Box::new(PreferInArray)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferInArray)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RepeatedOrEqualToInArrayRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RepeatedOrEqualToInArrayRector/Oracle");
@@ -473,7 +545,10 @@ fn repeated_or_equal_to_in_array() {
 
 #[test]
 fn repeated_and_not_equal_to_not_in_array() {
-    let linter = Linter::new(vec![Box::new(PreferNotInArray)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferNotInArray)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RepeatedAndNotEqualToNotInArrayRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RepeatedAndNotEqualToNotInArrayRector/Oracle");
@@ -572,7 +647,10 @@ fn absolutize_require_and_include_path() {
 
 #[test]
 fn flip_negated_ternary_instanceof() {
-    let linter = Linter::new(vec![Box::new(NoNegatedInstanceofTernary)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoNegatedInstanceofTernary)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "FlipNegatedTernaryInstanceofRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "FlipNegatedTernaryInstanceofRector/Oracle");
@@ -581,7 +659,10 @@ fn flip_negated_ternary_instanceof() {
 
 #[test]
 fn dirname_dir_concat_string_to_direct_string_path() {
-    let linter = Linter::new(vec![Box::new(NoDirnameDirConcat)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoDirnameDirConcat)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(
         &linter,
         "DirnameDirConcatStringToDirectStringPathRector/Fixture",
@@ -595,7 +676,10 @@ fn dirname_dir_concat_string_to_direct_string_path() {
 
 #[test]
 fn array_explicit_bool_compare() {
-    let linter = Linter::new(vec![Box::new(PreferExplicitArrayComparison)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferExplicitArrayComparison)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "ArrayExplicitBoolCompareRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ArrayExplicitBoolCompareRector/Oracle");
@@ -604,7 +688,10 @@ fn array_explicit_bool_compare() {
 
 #[test]
 fn inline_if_to_explicit_if() {
-    let linter = Linter::new(vec![Box::new(PreferIfStatement)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(PreferIfStatement)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "InlineIfToExplicitIfRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "InlineIfToExplicitIfRector/Oracle");
@@ -613,7 +700,10 @@ fn inline_if_to_explicit_if() {
 
 #[test]
 fn remove_overridden_assign_before_if_else() {
-    let linter = Linter::new(vec![Box::new(NoOverriddenAssignBeforeIf)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoOverriddenAssignBeforeIf)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RemoveOverriddenAssignBeforeIfElseRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveOverriddenAssignBeforeIfElseRector/Oracle");
@@ -621,7 +711,10 @@ fn remove_overridden_assign_before_if_else() {
 
 #[test]
 fn remove_redundant_type_check() {
-    let linter = Linter::new(vec![Box::new(NoRedundantTypeCheck)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoRedundantTypeCheck)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     run(&linter, "RemoveRedundantTypeCheckRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveRedundantTypeCheckRector/Oracle");

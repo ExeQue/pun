@@ -268,7 +268,7 @@ fn default_analyse_keeps_complete_phpstan_2_3_5_records() {
         ],
         Vec::new(),
     );
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = 0;
     let analysis = pun_analyse::analyse_project(&project).unwrap();
     let actual: Vec<_> = analysis

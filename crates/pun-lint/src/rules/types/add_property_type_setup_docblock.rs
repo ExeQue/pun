@@ -24,8 +24,8 @@ impl Rule for AddPropertyTypeSetupDocblock {
         "lint/phpunit/add-property-type-setup-docblock"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -75,7 +75,7 @@ impl Rule for AddPropertyTypeSetupDocblock {
             if matches!(t, Ty::Mixed) {
                 continue;
             }
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };

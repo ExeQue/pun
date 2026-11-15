@@ -69,9 +69,12 @@ impl Rule for Everywhere {
 }
 
 fn everywhere(make: impl Fn() -> Box<dyn Rule>, unconfigured: Box<dyn Rule>, class: &str) {
-    let targeted = Linter::new(vec![make()], 80400);
-    let everywhere = Linter::new(vec![Box::new(Everywhere(make()))], 80400);
-    let unconfigured = Linter::new(vec![unconfigured], 80400);
+    let targeted = Linter::new(vec![make()], pun_lint::PhpVersion::from_id(80400));
+    let everywhere = Linter::new(
+        vec![Box::new(Everywhere(make()))],
+        pun_lint::PhpVersion::from_id(80400),
+    );
+    let unconfigured = Linter::new(vec![unconfigured], pun_lint::PhpVersion::from_id(80400));
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(class);
@@ -147,7 +150,10 @@ fn static_call_to_method_call() {
         70400,
         &[],
     );
-    let linter = Linter::new(vec![static_rule(&options)], 80000);
+    let linter = Linter::new(
+        vec![static_rule(&options)],
+        pun_lint::PhpVersion::from_id(80000),
+    );
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(STATIC)

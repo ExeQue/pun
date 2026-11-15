@@ -13,8 +13,8 @@ impl Rule for AddNeverReturn {
         "lint/types/add-never-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NEVER_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NEVER_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

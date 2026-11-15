@@ -176,8 +176,8 @@ impl Rule for PreferCreateFromTimestamp {
         "lint/style/prefer-create-from-timestamp"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80400
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80400)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

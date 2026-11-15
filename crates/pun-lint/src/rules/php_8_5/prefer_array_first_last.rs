@@ -13,8 +13,8 @@ impl Rule for PreferArrayFirstLast {
         "lint/php-8.5/prefer-array-first-last"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80500
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80500)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -22,8 +22,8 @@ impl Rule for NoNullsafeOnNonNull {
         "lint/types/no-nullsafe-on-non-null"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NULLSAFE_OPERATOR
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NULLSAFE_OPERATOR)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

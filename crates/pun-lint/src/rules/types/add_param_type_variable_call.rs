@@ -73,7 +73,7 @@ impl Rule for AddParamTypeVariableCall {
                 }
                 let object = TUnion::from_vec(vec![object.clone()]);
                 let Some(declaration) =
-                    param_declaration(&object, &facts.codebase, ctx.php_version)
+                    param_declaration(&object, &facts.codebase, ctx.php_version.id())
                 else {
                     continue;
                 };

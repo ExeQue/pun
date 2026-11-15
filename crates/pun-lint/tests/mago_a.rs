@@ -28,7 +28,7 @@ fn cases(dir: &str) -> Vec<PathBuf> {
 }
 
 fn run(rule: impl Rule + 'static, dir: &str) {
-    let linter = Linter::new(vec![Box::new(rule)], 80400);
+    let linter = Linter::new(vec![Box::new(rule)], pun_lint::PhpVersion::from_id(80400));
     for path in cases(dir) {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         let input = std::fs::read_to_string(&path).unwrap();
@@ -101,7 +101,10 @@ fn no_negated_condition() {
 
 #[test]
 fn no_negated_condition_fix() {
-    let linter = Linter::new(vec![Box::new(rules::NoNegatedCondition)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(rules::NoNegatedCondition)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let input = "<?php\n\
         $a = !$b ? 1 : 2;\n\
         $c = $d !== null ? $d : 'x';\n\

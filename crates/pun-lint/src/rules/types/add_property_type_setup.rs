@@ -19,8 +19,8 @@ impl Rule for AddPropertyTypeSetup {
         "lint/phpunit/add-property-type-setup"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -53,7 +53,7 @@ impl Rule for AddPropertyTypeSetup {
                 },
             };
             let t = infer(&facts, &view, &prop, set_up, ctx, test_case);
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };

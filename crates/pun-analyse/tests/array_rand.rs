@@ -15,7 +15,7 @@ fn check_version(file: &str, level: u8, expected: &str, php_version: u32) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/array-rand");
     let mut project = Project::new(vec![root.join(file)], Vec::new());
     project.level = level;
-    project.php_version = php_version;
+    project.php_version = pun_analyse::PhpVersion::from_id(php_version);
     let got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

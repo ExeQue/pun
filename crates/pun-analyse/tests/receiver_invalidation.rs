@@ -24,7 +24,7 @@ fn check(input: &str, expected: &str, patched: bool) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/receiver-invalidation");
     let expected: serde_json::Value = serde_json::from_str(expected).unwrap();
     let mut project = Project::new(vec![root.join(input)], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     if patched {
         project.scanned.push(root.join("scanned.php"));
         project.stubs.push(root.join("patch.stub"));

@@ -170,7 +170,7 @@ fn run_dirs_full(
     stubs: &[&Path],
     preset_too: &[&str],
 ) {
-    let linter = Linter::new(rules, php_version);
+    let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(php_version));
     let pipeline = laravel();
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")

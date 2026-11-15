@@ -15,7 +15,7 @@ fn check(case: &str) {
     for level in [0, 9] {
         let mut project = pun_analyse::Project::new(vec![file.clone()], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut actual: Vec<_> = pun_analyse::run(&project)
             .unwrap()
             .into_iter()

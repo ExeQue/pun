@@ -29,7 +29,7 @@ fn check(project: Project, errors: &Value) {
         want,
         "{:?}; PHP {}; bleeding edge {}",
         project.analysed,
-        project.php_version,
+        project.php_version.id(),
         project
             .options
             .contains(pun_analyse::ProjectOptions::BLEEDING_EDGE)
@@ -71,7 +71,7 @@ fn float_casts_constants_and_overridable_receivers() {
         serde_json::from_slice(&std::fs::read(root.join("expected-scalars.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("scalars.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &expected["files"]["scalars.php"]["messages"]);
 }
 
@@ -85,7 +85,7 @@ fn compound_constant_initializers_use_the_declaring_scope() {
         vec![root.join("initializers.php")],
         vec![root.join("initializers-source.php")],
     );
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &expected["files"]["initializers.php"]["messages"]);
 }
 
@@ -96,7 +96,7 @@ fn platform_integer_copies_preserve_bitness_and_actual_narrowing() {
         serde_json::from_slice(&std::fs::read(root.join("expected-platform.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("platform.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &expected["files"]["platform.php"]["messages"]);
 }
 
@@ -107,7 +107,7 @@ fn full_arithmetic_and_constant_resolution_match_phpstan() {
         serde_json::from_slice(&std::fs::read(root.join("expected-full-constants.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("full-constants.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(
         project,
         &expected["files"]["full-constants.php"]["messages"],
@@ -121,7 +121,7 @@ fn wide_integer_literals_and_copies_match_phpstan() {
         serde_json::from_slice(&std::fs::read(root.join("expected-wide-integers.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("wide-integers.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &oracle["errors"]);
 }
 
@@ -183,7 +183,7 @@ fn unpacking(config: &str, php_version: u32, bleeding_edge: bool) {
     )
     .unwrap();
     let mut project = Project::new(vec![root.join("unpacking.php")], Vec::new());
-    project.php_version = php_version;
+    project.php_version = pun_analyse::PhpVersion::from_id(php_version);
     project
         .options
         .set(pun_analyse::ProjectOptions::BLEEDING_EDGE, bleeding_edge);
@@ -212,7 +212,7 @@ fn quoted_shapes_reach_duplicate_keys_through_scanning_and_inline_annotations() 
         serde_json::from_slice(&std::fs::read(root.join("expected-quoted-shapes.json")).unwrap())
             .unwrap();
     let mut project = Project::new(vec![root.join("quoted-shapes.php")], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project
         .options
         .set(pun_analyse::ProjectOptions::BLEEDING_EDGE, true);

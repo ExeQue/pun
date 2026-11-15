@@ -61,7 +61,7 @@ fn method_callable_members_match_phpstan() {
 fn partial_applications_and_pipes_do_not_enter_member_callable_rules() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/method-callable");
     let mut project = Project::new(vec![root.join("partial.php")], Vec::new());
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     project.level = 7;
     let errors: Vec<_> = run(&project)
         .unwrap()

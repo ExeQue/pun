@@ -22,8 +22,8 @@ impl Rule for AddClosureReturn {
         "lint/types/add-closure-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -97,7 +97,7 @@ pub(crate) fn closure_return<'ast, 'arena>(
     {
         return;
     }
-    let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version, &[], true)
+    let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true)
     else {
         return;
     };
@@ -138,8 +138,8 @@ impl Rule for AddArrowFunctionReturn {
         "lint/types/add-arrow-function-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ARROW_FUNCTION
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ARROW_FUNCTION)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -178,7 +178,8 @@ impl Rule for AddArrowFunctionReturn {
         {
             return;
         }
-        if let Some(r#type) = return_declaration(types, &facts.codebase, ctx.php_version, &[], true)
+        if let Some(r#type) =
+            return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true)
         {
             out.push(add_return_type(
                 node_span(&arrow.r#fn),

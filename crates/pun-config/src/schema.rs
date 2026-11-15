@@ -6,6 +6,8 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+pub use pun_tokens::PhpVersion;
+
 pub const LINT_SETS: [&str; 8] = [
     "dead-code",
     "modernize",
@@ -348,46 +350,6 @@ impl Files {
             paths: t.paths,
             exclude: t.exclude,
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PhpVersion {
-    pub major: u8,
-    pub minor: u8,
-}
-
-impl PhpVersion {
-    pub const FLOOR: PhpVersion = PhpVersion { major: 8, minor: 4 };
-    pub const NEWEST: PhpVersion = PhpVersion { major: 8, minor: 5 };
-
-    pub fn to_id(self) -> u32 {
-        u32::from(self.major) * 10_000 + u32::from(self.minor) * 100
-    }
-}
-
-impl std::str::FromStr for PhpVersion {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, String> {
-        let bad = || format!("expected a PHP version as major.minor, such as \"8.4\"; got \"{s}\"");
-        let (major, minor) = s.split_once('.').ok_or_else(bad)?;
-        Ok(PhpVersion {
-            major: major.parse().map_err(|_| bad())?,
-            minor: minor.parse().map_err(|_| bad())?,
-        })
-    }
-}
-
-impl std::fmt::Display for PhpVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", self.major, self.minor)
-    }
-}
-
-impl Serialize for PhpVersion {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.collect_str(self)
     }
 }
 

@@ -479,7 +479,7 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             }
         }
         let autowire = self.autowire;
-        if self.ctx.php_version < PROMOTION || autowire.is_some() {
+        if self.ctx.php_version.id() < PROMOTION || autowire.is_some() {
             self.add_property_to_class(name, class);
         }
         if let Some(method) = autowire {
@@ -498,7 +498,7 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             );
             return;
         }
-        if self.ctx.php_version >= PROMOTION && !self.has_property(name) {
+        if self.ctx.php_version.id() >= PROMOTION && !self.has_property(name) {
             self.add_promoted_property(name, class);
             return;
         }
@@ -569,12 +569,12 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         self.new_properties.push(NewProperty {
             name: name.to_string(),
             class: class.to_string(),
-            doc: self.ctx.php_version < TYPED_PROPERTIES,
+            doc: self.ctx.php_version.id() < TYPED_PROPERTIES,
         });
     }
 
     fn add_promoted_property(&mut self, name: &str, class: &str) {
-        let readonly = if self.ctx.php_version >= READONLY {
+        let readonly = if self.ctx.php_version.id() >= READONLY {
             "readonly "
         } else {
             ""

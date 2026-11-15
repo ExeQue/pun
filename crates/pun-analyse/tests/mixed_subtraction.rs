@@ -536,7 +536,7 @@ fn guarded_mixed_receivers_follow_explicit_implicit_and_template_level_threshold
     for level in [2, 8, 9, 10] {
         let mut project =
             pun_analyse::Project::new(vec![root.join("level-receivers.php")], Vec::new());
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.level = level;
         let got: Vec<_> = pun_analyse::run(&project)
             .unwrap()
@@ -577,7 +577,7 @@ fn guard_oracle(file: &str, oracle: &str) {
     let root =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/mixed-subtraction");
     let mut project = pun_analyse::Project::new(vec![root.join(file)], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = pun_analyse::run(&project)
         .unwrap()
         .into_iter()

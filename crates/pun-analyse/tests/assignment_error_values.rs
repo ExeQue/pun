@@ -13,7 +13,7 @@ fn error_assignments_preserve_primary_errors_and_types_without_suppressing_mixed
         .unwrap();
     let mut project = Project::new(vec![root.join("values.php")], Vec::new());
     project.level = 8;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
 
     let raw = run_mago(&project, None).unwrap();
     let mixed_assignments: Vec<_> = raw

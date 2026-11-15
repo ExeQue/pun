@@ -21,6 +21,7 @@ pub use project::{
     ExceptionChecks, Exceptions, MethodRules, Project, ProjectOptions, Reported, StrictRules,
     TooWide,
 };
+pub use pun_tokens::PhpVersion;
 pub use relative_path::RelativePath;
 pub use rules::{Larastan, LarastanSwitches};
 

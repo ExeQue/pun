@@ -28,7 +28,7 @@ impl Rule for Everywhere {
         self.0.id()
     }
 
-    fn min_php_version(&self) -> u32 {
+    fn min_php_version(&self) -> pun_lint::PhpVersion {
         self.0.min_php_version()
     }
 
@@ -59,7 +59,7 @@ fn run(id: &str, dir: &str) {
             if everywhere {
                 rule = Box::new(Everywhere(rule));
             }
-            let linter = Linter::new(vec![rule], 80400);
+            let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
             let file = std::fs::read_to_string(path.with_extension("filename"))
                 .map_or(path.clone(), |f| PathBuf::from(f.trim()));
             let input = std::fs::read_to_string(&path).unwrap();

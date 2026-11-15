@@ -318,8 +318,11 @@ fn rules_ignore_nodes_outside_their_targets() {
         ),
     ];
     for (rule, class) in cases {
-        let targeted = Linter::new(vec![rule()], 80400);
-        let everywhere = Linter::new(vec![Box::new(Everywhere(rule()))], 80400);
+        let targeted = Linter::new(vec![rule()], pun_lint::PhpVersion::from_id(80400));
+        let everywhere = Linter::new(
+            vec![Box::new(Everywhere(rule()))],
+            pun_lint::PhpVersion::from_id(80400),
+        );
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests/rector")
             .join(class);

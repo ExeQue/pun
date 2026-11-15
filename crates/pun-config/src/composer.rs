@@ -43,7 +43,7 @@ pub struct Composer {
 }
 
 impl Composer {
-    pub fn platform_php_id(&self) -> Option<u32> {
+    pub fn platform_php_version(&self) -> Option<crate::PhpVersion> {
         let mut parts = self.platform_php.as_deref()?.split('.');
         let mut part = || {
             let p = parts.next().unwrap_or("");
@@ -51,15 +51,14 @@ impl Composer {
             p[..digits].parse::<u32>().unwrap_or(0)
         };
         let id = part() * 10_000 + part() * 100 + part();
-        Some(id.clamp(70_100, 80_699))
+        Some(crate::PhpVersion::from_id(id.clamp(70_100, 80_699)))
     }
 
     pub fn php_version(&self) -> Option<crate::PhpVersion> {
         let v = self.php.as_ref()?.lowest?;
-        Some(crate::PhpVersion {
-            major: v.major.try_into().ok()?,
-            minor: v.minor.try_into().ok()?,
-        })
+        let major: u8 = v.major.try_into().ok()?;
+        let minor: u8 = v.minor.try_into().ok()?;
+        Some(crate::PhpVersion::new(major.into(), minor.into()))
     }
 }
 

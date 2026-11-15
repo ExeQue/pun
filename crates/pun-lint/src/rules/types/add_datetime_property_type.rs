@@ -14,8 +14,8 @@ impl Rule for AddDatetimePropertyType {
         "lint/types/add-datetime-property-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        70400
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(70400)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

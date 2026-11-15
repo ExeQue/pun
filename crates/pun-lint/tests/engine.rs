@@ -7,7 +7,7 @@ use pun_problem::{Edit, Fix, Level, Safety, Span};
 
 #[test]
 fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
-    let linter = Linter::new(rules::all(), 80400);
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\ndeclare(strict_types=1);\n$a = $a + 1;\n";
     let problems = linter.check(Path::new("src/a.php"), code).unwrap();
     assert_eq!(problems.len(), 1);
@@ -31,9 +31,12 @@ fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
 fn rules_below_their_php_version_do_not_run() {
     let rules = || -> Vec<Box<dyn Rule>> { vec![Box::new(ReportOnly), Box::new(NeedsPhp84)] };
     let both = vec!["lint/test/report-only", "lint/test/needs-php-8.4"];
-    assert_eq!(Linter::new(rules(), 80400).rule_ids(), both);
     assert_eq!(
-        Linter::new(rules(), 80399).rule_ids(),
+        Linter::new(rules(), pun_lint::PhpVersion::from_id(80400)).rule_ids(),
+        both
+    );
+    assert_eq!(
+        Linter::new(rules(), pun_lint::PhpVersion::from_id(80399)).rule_ids(),
         vec!["lint/test/report-only"]
     );
 }
@@ -41,7 +44,7 @@ fn rules_below_their_php_version_do_not_run() {
 #[test]
 fn fix_counts_rounds_and_keeps_problems_without_a_fix() {
     let rules: Vec<Box<dyn Rule>> = vec![Box::new(ReportOnly), Box::new(Unwrap)];
-    let linter = Linter::new(rules, 80400);
+    let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\n$a = ((1));\ntry { } finally { }\n";
     let fixed = linter.fix(Path::new("a.php"), code).unwrap();
     assert_eq!(fixed.source, "<?php\n$a = 1;\ntry { } finally { }\n");
@@ -55,7 +58,7 @@ fn fix_counts_rounds_and_keeps_problems_without_a_fix() {
 
 #[test]
 fn nothing_to_fix_is_zero_rounds() {
-    let linter = Linter::new(rules::all(), 80400);
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let code = "<?php\ndeclare(strict_types=1);\n$a += 1;\n";
     let fixed = linter.fix(Path::new("a.php"), code).unwrap();
     assert_eq!(fixed.source, code);
@@ -65,7 +68,7 @@ fn nothing_to_fix_is_zero_rounds() {
 
 #[test]
 fn a_file_that_does_not_parse_is_refused() {
-    let linter = Linter::new(rules::all(), 80400);
+    let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
     let err = linter
         .check(Path::new("a.php"), "<?php\n$a = ;\n")
         .unwrap_err();
@@ -84,7 +87,10 @@ fn a_file_that_does_not_parse_is_refused() {
 
 #[test]
 fn a_fix_that_breaks_the_syntax_is_an_error() {
-    let linter = Linter::new(vec![Box::new(DropSemicolons)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(DropSemicolons)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter
         .fix(Path::new("a.php"), "<?php\n$a = 1;\n$b = 2;\n")
         .unwrap_err();
@@ -101,7 +107,10 @@ fn a_fix_that_breaks_the_syntax_is_an_error() {
 
 #[test]
 fn fixes_that_never_settle_stop_after_max_rounds() {
-    let linter = Linter::new(vec![Box::new(AlwaysAppend)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(AlwaysAppend)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter.fix(Path::new("a.php"), "<?php\n").unwrap_err();
     assert_eq!(
         err,
@@ -117,7 +126,7 @@ fn fixes_that_never_settle_stop_after_max_rounds() {
 
 #[test]
 fn a_panicking_rule_fails_its_file_only() {
-    let linter = Linter::new(vec![Box::new(Panics)], 80400);
+    let linter = Linter::new(vec![Box::new(Panics)], pun_lint::PhpVersion::from_id(80400));
     for (code, message) in [
         ("<?php\ntry { } finally { }\n", "no finally"),
         ("<?php\nbreak;\n", "line 2"),
@@ -194,8 +203,8 @@ impl Rule for NeedsPhp84 {
         "lint/test/needs-php-8.4"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80400
+    fn min_php_version(&self) -> pun_lint::PhpVersion {
+        pun_lint::PhpVersion::from_id(80400)
     }
 
     fn visit<'ast, 'arena>(

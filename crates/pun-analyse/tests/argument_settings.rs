@@ -52,7 +52,7 @@ fn public_argument_settings_matrix() {
         want.sort();
         for (constructor, mut project) in projects {
             project.analysed = vec![root.join("matrix.php")];
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut got: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()

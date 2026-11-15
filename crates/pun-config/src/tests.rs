@@ -220,7 +220,7 @@ not-path = ["p"]
         )
     );
     assert_eq!(c.lint.exclude, ["build"]);
-    assert_eq!(c.php, "8.5");
+    assert_eq!(c.php.to_string(), "8.5");
     assert_eq!(c.sources, [d.join("composer.json"), d.join("pun.toml")]);
     let d = dir(&[(
         "pun.toml",
@@ -240,13 +240,18 @@ not-path = ["p"]
         json!({"sort_algorithm": "alpha", "imports_order": ["class", "const"]})
     );
     assert!(c.blade);
-    assert_eq!(c.php, "8.4");
+    assert_eq!(c.php.to_string(), "8.4");
     assert!(c.lint.rules.is_empty() && c.files == Files::default());
 }
 
 #[test]
 fn php_version() {
-    let c = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().php;
+    let c = |files: &[(&str, &str)]| {
+        load(&dir(files), &Options::default())
+            .unwrap()
+            .php
+            .to_string()
+    };
     let toml = ("pun.toml", "");
     assert_eq!(
         c(&[toml, ("composer.json", r#"{"require":{"php":"^8.5"}}"#)]),
@@ -271,7 +276,8 @@ fn analyse_php_version() {
     let id = |files: &[(&str, &str)]| {
         load(&dir(files), &Options::default())
             .unwrap()
-            .analyse_php_id
+            .analyse_php_version
+            .id()
     };
     let toml = ("pun.toml", "");
     assert_eq!(
@@ -1527,14 +1533,9 @@ fn natural_language_join_matches_upstream() {
 fn php_version_id() {
     let d = dir(&[("pun.toml", "[php]\nversion = \"8.5\"\n")]);
     let c = load(&d, &Options::default()).unwrap();
-    assert_eq!(c.php_version().to_id(), 80500);
+    assert_eq!(c.php_version().id(), 80500);
     assert_eq!(c.show()["php"]["version"], "8.5");
-    assert_eq!(crate::PhpVersion::FLOOR.to_id(), 80400);
-    assert!("8".parse::<crate::PhpVersion>().is_err());
-    assert_eq!(
-        serde_json::to_value(crate::PhpVersion { major: 8, minor: 5 }).unwrap(),
-        "8.5"
-    );
+    assert_eq!(crate::PhpVersion::FLOOR.id(), 80400);
     assert_eq!(crate::FormatPreset::Psr12.to_string(), "psr12");
 }
 

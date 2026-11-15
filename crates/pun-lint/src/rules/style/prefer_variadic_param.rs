@@ -13,8 +13,8 @@ impl Rule for PreferVariadicParam {
         "lint/style/prefer-variadic-param"
     }
 
-    fn min_php_version(&self) -> u32 {
-        50600
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(50600)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

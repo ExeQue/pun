@@ -17,7 +17,7 @@ fn generic_array_declaration_effects_match_complete_phpstan_records() {
     ] {
         for &level in levels {
             let mut project = Project::new(vec![root.join(format!("{file}.php"))], Vec::new());
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             project.level = level;
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -74,7 +74,7 @@ fn unset_declaration_effects_match_complete_phpstan_records() {
     let mut failures = Vec::new();
     for level in [0, 1, 2, 4, 5, 8, 10] {
         let mut project = Project::new(vec![root.join("unset.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -128,7 +128,7 @@ fn declaration_effects_match_the_oracle_without_claiming_unknown_producers() {
                 .to_vec(),
             Vec::new(),
         );
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
@@ -180,7 +180,7 @@ fn constructor_declaration_effects_match_independent_phpstan_records() {
     .unwrap();
     for level in [1, 2, 4, 10] {
         let mut project = Project::new(vec![root.join("constructors.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         let actual: Vec<_> = analyse_project(&project)
             .unwrap()
@@ -237,7 +237,7 @@ fn builtin_purity_overrides_match_complete_phpstan_records_through_project() {
     .unwrap();
     for mode in ["enabled", "disabled", "no-overrides"] {
         let mut project = Project::new(vec![root.join("contracts.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = 3;
         project.options.set(
             pun_analyse::ProjectOptions::REPORT_METHOD_PURITY_OVERRIDE,

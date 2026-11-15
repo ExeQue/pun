@@ -174,7 +174,7 @@ fn native_continuation_through_project_inference_matches_phpstan() {
         serde_json::from_str(include_str!("fixtures/dead_code/native-inference.json")).unwrap();
     let mut project = Project::new(vec![root.join("native-inference.php")], vec![]);
     project.level = 4;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut actual: Vec<_> = run(&project)
         .unwrap()
         .into_iter()
@@ -206,7 +206,7 @@ fn function_certainty_tips_match_phpstan_full_records() {
         for level in [0, 4, 5] {
             let mut project = Project::new(vec![fixtures.join(file)], vec![]);
             project.level = level;
-            project.php_version = 80500;
+            project.php_version = pun_analyse::PhpVersion::from_id(80500);
             let mut actual: Vec<_> = run(&project)
                 .unwrap()
                 .into_iter()
@@ -248,7 +248,7 @@ fn outer_loop_exit_points_match_phpstan_full_records() {
         serde_json::from_str(include_str!("fixtures/dead_code/outer-loop-exits.json")).unwrap();
     let mut project = Project::new(vec![root.join("outer-loop-exits.php")], vec![]);
     project.level = 4;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let analysis = pun_analyse::analyse_project(&project).unwrap();
     let mut actual: Vec<_> = analysis
         .errors

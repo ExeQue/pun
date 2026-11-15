@@ -623,7 +623,7 @@ fn identifier(name: &str, scope: &dyn Scope) -> Type {
     if name.contains('-') && !name.starts_with("OCI-") {
         return Type::Error;
     }
-    let constants = &symbols::symbols(symbols::PhpVersion::Php84).constants;
+    let constants = &symbols::symbols(symbols::PhpVersion::new(8, 4)).constants;
     if might_be_constant(written)
         && symbols::lookup(name).is_none()
         && let Some(ty) = scope

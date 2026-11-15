@@ -99,7 +99,7 @@ impl Rule for AnnotationToAttribute {
         let Node::Program(program) = node else {
             return;
         };
-        if self.configs.is_empty() || ctx.php_version < 80000 {
+        if self.configs.is_empty() || ctx.php_version.id() < 80000 {
             return;
         }
         let Some(edits) = self.fix(ctx, program, node) else {
@@ -312,7 +312,7 @@ impl AnnotationToAttribute {
                 name,
                 &constructor,
                 foldable_parameters(ctx, &config.attribute_class).as_deref(),
-                ctx.php_version >= 80100,
+                ctx.php_version.id() >= 80100,
             ));
         }
         for (i, new) in renames {

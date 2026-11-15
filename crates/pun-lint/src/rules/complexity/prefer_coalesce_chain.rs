@@ -54,7 +54,7 @@ impl Rule for PreferCoalesceChain {
             match *stmt {
                 Statement::Expression(e)
                     if matches!(unparenthesize(e.expression), Expression::Throw(_))
-                        && ctx.php_version >= 80000 =>
+                        && ctx.php_version.id() >= 80000 =>
                 {
                     append = Some(unparenthesize(e.expression));
                 }

@@ -68,7 +68,7 @@ impl Rule for AddParamTypeArrayMap {
                     .collect(),
             );
             if let Some(declaration) =
-                param_declaration_in(&item, &facts.codebase, ctx.php_version, &order)
+                param_declaration_in(&item, &facts.codebase, ctx.php_version.id(), &order)
             {
                 edits.push(add_hint(param, &declaration));
             }

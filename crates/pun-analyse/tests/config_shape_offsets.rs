@@ -61,7 +61,7 @@ fn compare(case: &str) {
         .switches
         .set(pun_analyse::LarastanSwitches::CHECK_CONFIG_TYPES, true);
     project.larastan = Some(larastan);
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let result = analyse_project(&project).unwrap();
     let mut actual: Vec<_> = result
         .errors

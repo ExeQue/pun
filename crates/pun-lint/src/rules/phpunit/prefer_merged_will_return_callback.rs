@@ -74,7 +74,7 @@ impl Rule for PreferMergedWillReturnCallback {
         else {
             return;
         };
-        let declared = return_declaration(types, &facts.codebase, ctx.php_version, &[], true);
+        let declared = return_declaration(types, &facts.codebase, ctx.php_version.id(), &[], true);
 
         let mut edits = vec![Edit::new(node_span(old_value), expr_text(ctx, returned))];
         let params: Vec<&[u8]> = closure

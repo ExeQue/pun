@@ -29,7 +29,8 @@ fn check(project: Project, expected: &Value) -> Result<(), String> {
     } else {
         Err(format!(
             "{:?}; PHP {}\nactual: {got:?}\nexpected: {want:?}",
-            project.analysed, project.php_version
+            project.analysed,
+            project.php_version.id()
         ))
     }
 }
@@ -49,7 +50,7 @@ fn readonly_array_access_offset_keeps_constructor_arguments() {
         .unwrap();
     let file = root.join("data").join(case["files"][0].as_str().unwrap());
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     check(project, &case["errors"]).unwrap();
 }
 
@@ -69,7 +70,7 @@ fn oracle_at_level(name: &str, expected_name: &str, php_version: u32, level: u8)
         .unwrap()["messages"]
         .clone();
     let mut project = Project::new(vec![root.join(name)], Vec::new());
-    project.php_version = php_version;
+    project.php_version = pun_analyse::PhpVersion::from_id(php_version);
     project.level = level;
     check(project, &messages).unwrap();
 }
@@ -221,7 +222,7 @@ fn required_native_oracle(name: &str, scanned: &[&str]) {
         vec![file.clone()],
         scanned.iter().map(|name| root.join(name)).collect(),
     );
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

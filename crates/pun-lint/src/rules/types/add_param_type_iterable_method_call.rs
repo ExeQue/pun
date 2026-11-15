@@ -103,7 +103,7 @@ impl Rule for AddParamTypeIterableMethodCall {
                     ancestors,
                     param,
                     new,
-                    ctx.php_version,
+                    ctx.php_version.id(),
                 ));
             }
         }

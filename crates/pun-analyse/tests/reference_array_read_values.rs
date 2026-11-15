@@ -37,7 +37,7 @@ fn reference_array_reads_match_complete_phpstan_records() {
     let mut failures = Vec::new();
     for level in [1, 5] {
         let mut project = Project::new(vec![root.join("values.php")], Vec::new());
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.level = level;
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,

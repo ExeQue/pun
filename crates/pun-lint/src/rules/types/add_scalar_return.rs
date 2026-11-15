@@ -36,8 +36,8 @@ impl Rule for AddStringReturnFromScalar {
         "lint/types/add-string-return-type-from-scalar"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -74,8 +74,8 @@ impl Rule for AddNumericReturnFromScalar {
         "lint/types/add-numeric-return-type-from-scalar"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

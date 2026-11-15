@@ -1132,7 +1132,7 @@ fn if_certainty_tips_distinguish_documented_and_native_constants() {
         serde_json::from_str(include_str!("fixtures/native-conditions/expected.json")).unwrap();
     let mut project = pun_analyse::Project::new(vec![root.join("conditions.php")], vec![]);
     project.level = 9;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut actual: Vec<_> = pun_analyse::run(&project)
         .unwrap()
         .into_iter()

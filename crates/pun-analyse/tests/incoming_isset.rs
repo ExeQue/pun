@@ -26,7 +26,7 @@ fn check_property_reflection(file: &str, capture: &str) {
     for level in [1, 4, 5] {
         let mut project = Project::new(vec![root.join(file)], Vec::new());
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()
@@ -173,7 +173,7 @@ fn incoming_isset_certainty_matches_phpstan() {
     for level in [4, 5, 9] {
         let mut project = Project::new(vec![root.join("flow.php")], Vec::new());
         project.level = level;
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             true,
@@ -262,7 +262,7 @@ fn independent_advanced_isset_matches_phpstan_through_public_project() {
         for (constructor, mut project) in [("from_config", configured), ("new", direct)] {
             project.analysed = vec![root.join("advanced-settings.php")];
             project.level = level;
-            project.php_version = 80400;
+            project.php_version = pun_analyse::PhpVersion::from_id(80400);
             project.options.set(
                 pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
                 level >= 1,
@@ -311,7 +311,7 @@ fn isset_invocation_contract_matches_phpstan() {
             Vec::new(),
         );
         project.level = level;
-        project.php_version = 80400;
+        project.php_version = pun_analyse::PhpVersion::from_id(80400);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             true,

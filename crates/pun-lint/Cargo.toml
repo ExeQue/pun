@@ -20,7 +20,7 @@ path = "tests/project.rs"
 
 [dependencies]
 pun-problem.workspace = true
-pun-tokens.workspace = true
+pun-tokens = { workspace = true, features = ["mago"] }
 pun-phpstan.workspace = true
 mago-allocator.workspace = true
 mago-database.workspace = true

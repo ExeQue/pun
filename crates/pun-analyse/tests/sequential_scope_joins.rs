@@ -217,7 +217,7 @@ fn original_nullable_property_serialization_matches_phpstan() {
         Vec::new(),
     );
     project.level = 3;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let start = Instant::now();
     eprintln!("starting unchanged bug-12110.php through public run()");
     let mut actual: Vec<_> = run(&project)

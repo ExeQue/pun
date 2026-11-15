@@ -19,8 +19,8 @@ impl Rule for AddPropertyTypeCreateMock {
         "lint/phpunit/add-property-type-create-mock"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -67,7 +67,7 @@ impl Rule for AddPropertyTypeCreateMock {
             let Assigned::Type(t) = assigned_type(&facts, &view, &prop, assigned) else {
                 continue;
             };
-            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version)
+            let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
             else {
                 continue;
             };

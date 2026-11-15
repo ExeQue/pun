@@ -23,8 +23,8 @@ impl Rule for AddReturnTypeFromMockObject {
         "lint/phpunit/add-return-type-from-mock-object"
     }
 
-    fn min_php_version(&self) -> u32 {
-        SCALAR_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(SCALAR_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

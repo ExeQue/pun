@@ -58,7 +58,7 @@ fn laravel() -> Pipeline {
 }
 
 fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
-    let linter = Linter::new(rules, 80400);
+    let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
     let pipeline = laravel();
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
@@ -479,7 +479,10 @@ fn ensure_type_checks_first_refuses_rectors_broken_reprint() {
         .join("tests/rector/EnsureTypeChecksFirstRector/Broken/tag.php.inc");
     let content = std::fs::read_to_string(&path).unwrap();
     let (input, _) = content.split_once("-----\n").unwrap();
-    let linter = Linter::new(vec![Box::new(RequireTypeMatcherFirst)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(RequireTypeMatcherFirst)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let err = linter.fix(&path, input).unwrap_err();
     assert!(
         matches!(&err, pun_lint::LintError::FixBrokeSyntax { rules, .. } if rules == &["lint/pest/require-type-matcher-first"]),
@@ -509,7 +512,10 @@ fn uses_to_extend() {
 
 #[test]
 fn remove_redundant_pest_uses() {
-    let linter = Linter::new(vec![Box::new(NoRedundantUses)], 80400);
+    let linter = Linter::new(
+        vec![Box::new(NoRedundantUses)],
+        pun_lint::PhpVersion::from_id(80400),
+    );
     let pipeline = laravel();
     let root =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/rector/RemoveRedundantPestUsesRector");
@@ -673,12 +679,12 @@ fn pest_rules_ignore_nodes_outside_their_targets() {
             .filter(|r| r.id().starts_with("lint/pest/"))
     };
     assert_eq!(pest().count(), 58);
-    let targeted = Linter::new(pest().collect(), 80400);
+    let targeted = Linter::new(pest().collect(), pun_lint::PhpVersion::from_id(80400));
     let everywhere = Linter::new(
         pest()
             .map(|r| Box::new(Everywhere(r)) as Box<dyn Rule>)
             .collect(),
-        80400,
+        pun_lint::PhpVersion::from_id(80400),
     );
     let mut stack: Vec<PathBuf> = DIRECTORIES
         .iter()
@@ -754,7 +760,7 @@ it('chains what it does not match', function (): void {
         ->and(2)->toBe(2);
 });
 ";
-    let fixed = Linter::new(rules, 80400)
+    let fixed = Linter::new(rules, pun_lint::PhpVersion::from_id(80400))
         .fix(Path::new("tests/OrderTest.php"), input)
         .unwrap();
     assert_eq!(fixed.source, expected);

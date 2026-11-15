@@ -105,7 +105,10 @@ fn run_with_whitespace_exceptions(linter: &Linter, dir: &str, whitespace_only: &
 }
 
 fn only(rule: impl pun_lint::Rule + 'static, php_version: u32) -> Linter {
-    Linter::new(vec![Box::new(rule)], php_version)
+    Linter::new(
+        vec![Box::new(rule)],
+        pun_lint::PhpVersion::from_id(php_version),
+    )
 }
 
 #[test]

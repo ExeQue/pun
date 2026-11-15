@@ -16,7 +16,7 @@ fn check(file: &str, expected: &str, level: u8) {
 fn check_files(root: &Path, files: Vec<PathBuf>, expected: &str, level: u8) {
     let mut project = Project::new(files, Vec::new());
     project.level = level;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

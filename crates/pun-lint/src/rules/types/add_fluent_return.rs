@@ -16,8 +16,8 @@ impl Rule for AddFluentReturn {
         "lint/types/add-fluent-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        HAS_RETURN_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(HAS_RETURN_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -54,7 +54,7 @@ impl Rule for AddFluentReturn {
             .name
             .as_deref()
             .is_some_and(|n| n.eq_ignore_ascii_case(name));
-        let self_or_static = if scope.is_final || ctx.php_version < STATIC_RETURN_TYPE {
+        let self_or_static = if scope.is_final || ctx.php_version.id() < STATIC_RETURN_TYPE {
             "self"
         } else {
             "static"

@@ -5,6 +5,7 @@ use pun_phpstan::Key;
 use pun_phpstan::Value;
 use pun_phpstan::ignore::IgnoredErrors;
 use pun_phpstan::php::FileExcluder;
+use pun_tokens::PhpVersion;
 use rayon::prelude::*;
 use serde_json::Value as Json;
 
@@ -59,7 +60,7 @@ pub struct Project {
     pub analysed: Vec<PathBuf>,
     pub scanned: Vec<PathBuf>,
     pub autoloaded: Vec<Autoloaded>,
-    pub php_version: u32,
+    pub php_version: PhpVersion,
     pub current_working_directory: PathBuf,
     pub include_paths: Vec<PathBuf>,
     pub ignore_errors: IgnoredErrors,
@@ -283,7 +284,7 @@ bitflags::bitflags! {
     }
 }
 
-pub(crate) const RUNTIME_PHP_VERSION: u32 = 80511;
+pub(crate) const RUNTIME_PHP_VERSION: PhpVersion = PhpVersion::from_id(80511);
 
 fn strings<'a>(params: &'a Array, key: &str) -> Vec<&'a str> {
     params
@@ -348,7 +349,7 @@ impl Project {
                 v => Some(v),
             })
             .and_then(|v| match v {
-                Value::Int(i) => u32::try_from(*i).ok(),
+                Value::Int(i) => u32::try_from(*i).ok().map(PhpVersion::from_id),
                 _ => None,
             })
             .unwrap_or(RUNTIME_PHP_VERSION);

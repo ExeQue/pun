@@ -70,7 +70,10 @@ fn laravel() -> Pipeline {
 }
 
 fn run(rule: impl Rule + 'static, php_version: u32, dir: &str) {
-    let linter = Linter::new(vec![Box::new(rule)], php_version);
+    let linter = Linter::new(
+        vec![Box::new(rule)],
+        pun_lint::PhpVersion::from_id(php_version),
+    );
     let pipeline = laravel();
     let mut failed = Vec::new();
     for (path, input, mut expected) in fixtures(dir) {

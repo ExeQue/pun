@@ -35,8 +35,8 @@ impl Rule for AddSafeStrictTypes {
         "lint/statements/add-safe-strict-types"
     }
 
-    fn min_php_version(&self) -> u32 {
-        70000
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(70000)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -46,7 +46,7 @@ fn check_with(file: &str, level: u8, switches: Option<&str>) {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/named-method-reflections");
     let mut project = Project::new(vec![root.join(format!("{file}.php"))], vec![]);
     project.level = level;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     if let Some(switches) = switches {
         project.check_function_argument_types = Some(switches.as_bytes()[0] == b'T');
         project.check_arguments_passed_by_reference = Some(switches.as_bytes()[1] == b'T');

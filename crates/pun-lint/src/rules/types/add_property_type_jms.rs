@@ -33,8 +33,8 @@ impl Rule for AddPropertyTypeJmsScalar {
         "lint/types/add-property-type-jms-scalar"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ATTRIBUTES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ATTRIBUTES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -57,8 +57,8 @@ impl Rule for AddPropertyTypeJmsObject {
         "lint/types/add-property-type-jms-object"
     }
 
-    fn min_php_version(&self) -> u32 {
-        ATTRIBUTES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(ATTRIBUTES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

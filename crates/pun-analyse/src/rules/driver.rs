@@ -361,9 +361,9 @@ impl Checks {
         );
         Checks {
             switches,
-            natives: Natives::load(project.php_version),
+            natives: Natives::load(project.php_version.id()),
             level: project.level,
-            php_version: project.php_version,
+            php_version: project.php_version.id(),
             relative_path: project.relative_path.clone(),
             larastan,
             internal: (internal_members
@@ -373,7 +373,7 @@ impl Checks {
             .then(|| {
                 super::internal::Names::of(
                     codebase,
-                    project.php_version,
+                    project.php_version.id(),
                     internal_members,
                     project
                         .options

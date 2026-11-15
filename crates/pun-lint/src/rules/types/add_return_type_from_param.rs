@@ -18,8 +18,8 @@ impl Rule for AddReturnTypeFromParam {
         "lint/types/add-return-type-from-param"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NULLABLE_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NULLABLE_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

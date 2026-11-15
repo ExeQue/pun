@@ -26,7 +26,7 @@ fn receiver_descriptions_match_complete_phpstan_records() {
         configured.analysed = vec![file.clone()];
         let mut direct = Project::new(vec![file], Vec::new());
         direct.level = level as u8;
-        direct.php_version = 80500;
+        direct.php_version = pun_analyse::PhpVersion::from_id(80500);
         direct.options.set(
             pun_analyse::ProjectOptions::CHECK_CLASS_CASE_SENSITIVITY,
             level >= 2,

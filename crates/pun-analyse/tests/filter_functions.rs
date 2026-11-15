@@ -30,7 +30,7 @@ fn check(file: &str, oracle: &str, level: u8) {
         ); 0]
     );
     let mut project = Project::new(vec![root.join(file)], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     project.level = level;
     let got: Vec<_> = run(&project)
         .unwrap()

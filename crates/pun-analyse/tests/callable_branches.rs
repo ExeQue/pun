@@ -7,7 +7,7 @@ fn check(input: &Path, capture: &Path) {
     let oracle: Value = serde_json::from_slice(&std::fs::read(capture).unwrap()).unwrap();
     let mut project = Project::new(vec![input.to_owned()], Vec::new());
     project.level = 9;
-    project.php_version = 80500;
+    project.php_version = pun_analyse::PhpVersion::from_id(80500);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

@@ -25,8 +25,8 @@ impl Rule for AddParamTypeProperty {
         "lint/types/add-param-type-property"
     }
 
-    fn min_php_version(&self) -> u32 {
-        TYPED_PROPERTIES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(TYPED_PROPERTIES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -61,7 +61,7 @@ impl Rule for AddParamTypeProperty {
             else {
                 continue;
             };
-            let Some(declaration) = declaration(&facts, &types, ctx.php_version) else {
+            let Some(declaration) = declaration(&facts, &types, ctx.php_version.id()) else {
                 continue;
             };
             let overrides = !method

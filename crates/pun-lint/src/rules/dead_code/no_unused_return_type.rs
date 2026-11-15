@@ -46,8 +46,8 @@ impl Rule for NoUnusedReturnType {
         "lint/dead-code/no-unused-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        UNION_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(UNION_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -139,7 +139,7 @@ impl Rule for NoUnusedReturnType {
             return;
         }
         let narrowed = with_classes(facts.documented(), || remove_all(&return_type, &unused));
-        let Some(declaration) = declaration(&narrowed, ctx.php_version) else {
+        let Some(declaration) = declaration(&narrowed, ctx.php_version.id()) else {
             return;
         };
         if declaration == "null" {

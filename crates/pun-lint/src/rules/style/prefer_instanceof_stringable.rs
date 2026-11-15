@@ -11,8 +11,8 @@ impl Rule for PreferInstanceofStringable {
         "lint/style/prefer-instanceof-stringable"
     }
 
-    fn min_php_version(&self) -> u32 {
-        80000
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(80000)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -10,7 +10,7 @@ fn check(level: u8, version: u32, files: &[&str], expected: &str) {
         serde_json::from_slice(&std::fs::read(root.join(expected)).unwrap()).unwrap();
     let mut project = Project::new(files.iter().map(|f| root.join(f)).collect(), Vec::new());
     project.level = level;
-    project.php_version = version;
+    project.php_version = pun_analyse::PhpVersion::from_id(version);
     let mut got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

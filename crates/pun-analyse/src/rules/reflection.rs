@@ -11,11 +11,7 @@ use super::{Checker, anonymous, params};
 use crate::codebase::parse;
 
 pub(crate) fn builtins(php_version: u32) -> &'static Symbols {
-    symbols::symbols(if php_version >= 80500 {
-        PhpVersion::Php85
-    } else {
-        PhpVersion::Php84
-    })
+    symbols::symbols(PhpVersion::from_id(php_version))
 }
 
 impl Checker<'_, '_> {

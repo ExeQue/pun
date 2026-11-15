@@ -20,8 +20,8 @@ impl Rule for AddNullableReturn {
         "lint/types/add-nullable-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        NULLABLE_TYPE
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(NULLABLE_TYPE)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -48,8 +48,8 @@ impl Rule for AddUnionReturn {
         "lint/types/add-union-return-type"
     }
 
-    fn min_php_version(&self) -> u32 {
-        UNION_TYPES
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(UNION_TYPES)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -91,6 +91,6 @@ fn union_return<'ast, 'arena>(
         return None;
     };
     let types: Vec<&TAtomic> = types.iter().collect();
-    let r#type = union_declaration(&types, &facts.codebase, ctx.php_version)?;
+    let r#type = union_declaration(&types, &facts.codebase, ctx.php_version.id())?;
     Some((f, r#type))
 }

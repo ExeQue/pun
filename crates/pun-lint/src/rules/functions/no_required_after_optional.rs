@@ -11,8 +11,8 @@ impl Rule for NoRequiredAfterOptional {
         "lint/functions/no-required-after-optional"
     }
 
-    fn min_php_version(&self) -> u32 {
-        70100
+    fn min_php_version(&self) -> crate::PhpVersion {
+        crate::PhpVersion::from_id(70100)
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -73,7 +73,7 @@ fn void_cast_before_php_8_5() {
     let file = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/rules/data/Cast/data/void-cast-support.php");
     let mut project = Project::new(vec![file], Vec::new());
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let got: Vec<_> = run(&project)
         .unwrap()
         .into_iter()

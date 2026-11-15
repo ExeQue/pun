@@ -182,8 +182,7 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     };
     let engines = Engines {
         stage,
-        linter: (!natives.is_empty())
-            .then(|| pun_lint::Linter::new(natives, cfg.php_version().to_id())),
+        linter: (!natives.is_empty()).then(|| pun_lint::Linter::new(natives, cfg.php_version())),
         lint_files: lints.then(|| lint_set.into_iter().collect()),
         format_files: match stage {
             Stage::Check { .. } => Some(format_set.into_iter().collect()),
@@ -464,7 +463,9 @@ fn project_codebase(cfg: &Config, files: Vec<PathBuf>) {
 fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::ProjectCodebase> {
     use pun_lint::rules::facts;
     use pun_phpstan::{Array, Key, Value};
-    std::thread::spawn(|| pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::Php84));
+    std::thread::spawn(|| {
+        pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::new(8, 4))
+    });
     let read = || -> Vec<(String, String)> {
         (files.par_iter())
             .filter_map(|f| {
@@ -516,7 +517,7 @@ fn scan_project(cfg: &Config, files: &[PathBuf]) -> Arc<pun_lint::rules::facts::
             std::fs::read_to_string(path).ok()?,
         ))
     };
-    facts::project_codebase_autoloaded(&sources, cfg.php_version().to_id(), &autoload)
+    facts::project_codebase_autoloaded(&sources, cfg.php_version(), &autoload)
 }
 
 fn composer_classmap(root: &Path) -> Vec<(Vec<u8>, PathBuf)> {

@@ -166,7 +166,7 @@ fn decorate(
             continue;
         };
         let Some(text) =
-            declaration(&facts, t, ctx.php_version).filter(|_| !t.type_union.is_mixed())
+            declaration(&facts, t, ctx.php_version.id()).filter(|_| !t.type_union.is_mixed())
         else {
             continue;
         };
@@ -180,7 +180,7 @@ fn decorate(
     if !inner.has_return_type()
         && let Some(t) = &resolved.return_type
         && !conflicts_with_returned(&facts, class, inner, t)
-        && let Some(text) = declaration(&facts, t, ctx.php_version)
+        && let Some(text) = declaration(&facts, t, ctx.php_version.id())
     {
         let at = inner.return_type_at();
         edits.push(Edit::new(Span::new(at, at), format!(": {text}")));

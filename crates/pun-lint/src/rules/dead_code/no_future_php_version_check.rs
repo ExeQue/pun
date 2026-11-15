@@ -35,7 +35,7 @@ impl Rule for NoFuturePhpVersionCheck {
         if !view.elseifs.is_empty() {
             return;
         }
-        let version = i64::from(ctx.php_version);
+        let version = i64::from(ctx.php_version.id());
         let Some(holds) = evaluate(r#if.condition, version) else {
             return;
         };

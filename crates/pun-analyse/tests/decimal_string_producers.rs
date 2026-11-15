@@ -24,7 +24,7 @@ fn decimal_string_producers_match_complete_phpstan_records() {
     for level in [0, 4, 9] {
         let mut project = Project::new(vec![root.join("producers.php")], vec![]);
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut got: Vec<_> = run(&project)
             .unwrap()
             .into_iter()

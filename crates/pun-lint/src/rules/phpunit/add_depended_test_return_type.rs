@@ -74,7 +74,7 @@ impl Rule for AddDependedTestReturnType {
             let Some(declared) = return_declaration(
                 union_order(t.types.as_ref()),
                 &facts.codebase,
-                ctx.php_version,
+                ctx.php_version.id(),
                 &[],
                 true,
             ) else {

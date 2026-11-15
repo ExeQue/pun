@@ -16,7 +16,7 @@ fn conditional_declaration_effects_match_complete_phpstan_records() {
             vec![],
         );
         project.level = level;
-        project.php_version = 80500;
+        project.php_version = pun_analyse::PhpVersion::from_id(80500);
         project.options.set(
             pun_analyse::ProjectOptions::CHECK_MAYBE_UNDEFINED_VARIABLES,
             level > 0,

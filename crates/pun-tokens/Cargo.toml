@@ -12,6 +12,10 @@ name = "pun_tokens"
 [dependencies]
 libc.workspace = true
 pcre2.workspace = true
+mago-php-version = { workspace = true, optional = true }
+
+[features]
+mago = ["dep:mago-php-version"]
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -21,7 +21,7 @@ fn finite_membership_matches_complete_phpstan_records() {
         configured.analysed = vec![file.clone()];
         let mut direct = Project::new(vec![file], Vec::new());
         direct.level = level as u8;
-        direct.php_version = 80500;
+        direct.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut want: Vec<_> = oracle[level.to_string()]
             .as_array()
             .unwrap()

@@ -93,8 +93,8 @@ impl Rule for AddParamTypeDimFetchKey {
                 continue;
             };
             let declaration = match order {
-                Some(names) if ctx.php_version >= UNION_TYPES => Some(names.join("|")),
-                _ => param_declaration(&key, &facts.codebase, ctx.php_version),
+                Some(names) if ctx.php_version.id() >= UNION_TYPES => Some(names.join("|")),
+                _ => param_declaration(&key, &facts.codebase, ctx.php_version.id()),
             };
             if let Some(declaration) = declaration {
                 edits.push(add_hint(param, &declaration));

@@ -27,7 +27,7 @@ impl Rule for NoDeadPhpVersionCheck {
         let Node::Statement(s @ Statement::If(r#if)) = node else {
             return;
         };
-        let Some(runs) = decided(r#if.condition, i64::from(ctx.php_version)) else {
+        let Some(runs) = decided(r#if.condition, i64::from(ctx.php_version.id())) else {
             return;
         };
         let source = ctx.source;
@@ -35,7 +35,7 @@ impl Rule for NoDeadPhpVersionCheck {
         if !runs && (view.else_.is_some() || !view.elseifs.is_empty()) {
             return;
         }
-        let version = i64::from(ctx.php_version);
+        let version = i64::from(ctx.php_version.id());
         let edits = replace_with(ctx, s, ancestors, runs.then_some(&view.stmts), |other| {
             let Statement::If(i) = other else {
                 return false;

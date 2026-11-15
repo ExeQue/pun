@@ -8,7 +8,7 @@ fn required_ancestors_preserve_receiver_identity_and_explicit_intersections() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/required-receivers");
     let mut project = Project::new(vec![root.join("methods.php")], vec![]);
     project.level = 3;
-    project.php_version = 80400;
+    project.php_version = pun_analyse::PhpVersion::from_id(80400);
     let selected = |id: &str| {
         id.starts_with("method.")
             || id.starts_with("staticMethod.")
