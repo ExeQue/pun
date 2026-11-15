@@ -29,6 +29,7 @@ pun format app/Models
 | `--stdin-filename=<path>` | Path for code read from stdin (`-` as the path). |
 | `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` hides successful output. |
 | `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. Invalid or nonpositive values keep the default. |
+| `--cache-file=<path>` | Keep the [result cache](#cache) in this file. |
 
 ## Pun's own flags
 
@@ -39,7 +40,16 @@ pun format app/Models
 | `--watch` | Keep running and re-format files as they change. |
 | `--stdin` | Read code from stdin. `--stdin-filename` gives it a path for exclusions. |
 | `--explain` | Print the fixers the run applies, in priority order. |
+| `--no-cache` | Check every file. Don't read or write the [result cache](#cache). |
 | `--color=auto\|always\|never` | Color mode. `auto` respects `NO_COLOR`. `--ansi` and `--no-ansi` also work. |
+
+## Cache
+
+Pun remembers the files that were clean: nothing to change and no problem or warning. The next run skips such a file while its content, the config, the flags, and the Pun binary stay the same. Files with findings are checked on every run, and so is a file that `--fix` just changed.
+
+The cache is one file per project in `$PUN_CACHE_DIR/results`. The default cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns it off. Code from stdin never uses it. Deleting the file is safe.
+
+Lint results that use other files, such as a parent class, also depend on every file in the project and on `vendor/composer/installed.json`. A change to any of them makes lint check those files again.
 
 ## Output
 

@@ -16,6 +16,8 @@ A migrated Pint config needs `pun check --fix`, not `pun format`, because Pint's
 
 `pun check` takes the [format flags](/docs/commands/format#pints-flags) and the [lint level flags](/docs/commands/lint#levels-on-the-command-line). Analysis uses the `[analyse]` settings, ignore comments, and the configured baseline.
 
+Format and lint use the [result cache](/docs/commands/format#cache). Analysis checks every file on every run. `--no-cache` turns the cache off.
+
 ```bash
 pun check --dirty
 pun check --staged

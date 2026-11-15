@@ -47,19 +47,20 @@ scripts/coverage.sh punphp-tokens
 
 ## Benchmark Pun against Pint and Mago
 
-`scripts/bench.py [project...]` measures wall-clock time and peak memory for every run of four tools on each corpus project. It prints a per-run table, then a table of medians with Pun's speedup over each tool. Every tool is check-only and nothing writes to the corpus. Pun has no cache, so every run checks every file.
+`scripts/bench.py [project...]` measures wall-clock time and peak memory for every run of four tools on each corpus project. It prints a per-run table, then a table of medians with Pun's speedup over each tool. Every tool is check-only and nothing writes to the corpus. The `pun` rows run with `--no-cache`, so they check every file; `pun-warm` is the reference row on a filled result cache.
 
 1. `scripts/oracle.sh` installs Pint into `.oracle/pint`. `scripts/corpus.sh` checks out the projects in `corpus/`.
 2. `cargo build --profile profiling -p punphp` builds `target/profiling/pun`. `PUN_BIN=path` selects another binary.
 3. Put the Mago 1.57.0 release binary (the version the Mago crates pin) under `.oracle/mago/`, or pass `MAGO_BIN=path`.
-4. Run `scripts/bench.py`. `RUNS` (default 3) sets the measured runs per tool, `WARMUP` (default 1) the untimed runs before them, and `TOOLS` a subset of `pint-parallel,pint,pint-warm,pun,pun-format,mago`.
+4. Run `scripts/bench.py`. `RUNS` (default 3) sets the measured runs per tool, `WARMUP` (default 1) the untimed runs before them, and `TOOLS` a subset of `pint-parallel,pint,pint-warm,pun,pun-warm,pun-format,mago`.
 
 The four tools:
 
 - `pint-parallel`: `pint --test --parallel` inside `corpus/<name>`, with the project's own `pint.json`.
 - `pint`: `pint --test`, one process, in the same place.
-- Pint 1.32 caches results. `pint` and `pint-parallel` get a cache file that is deleted before every run, because Pun has no cache. `pint-warm` reuses the cache the warm-up runs filled; it is a reference row.
-- `pun`: `pun check --test` in a scratch copy of the project (no `.git`, `node_modules` symlinked), after `pun migrate --yes` has written its `pun.toml`.
+- Pint 1.32 caches results. `pint` and `pint-parallel` get a cache file that is deleted before every run, so they are cold like the `pun` row. `pint-warm` reuses the cache the warm-up runs filled; it is a reference row.
+- `pun`: `pun check --test --no-cache` in a scratch copy of the project (no `.git`, `node_modules` symlinked), after `pun migrate --yes` has written its `pun.toml`.
+- `pun-warm`: `pun check --test` on the result cache the warm-up runs filled (in the scratch directory, not the user's cache). The analyser has no cache. It is a reference row.
 - `mago`: `mago fmt --check .` in the same scratch copy, with Mago's default config. Mago's style is not Pint's, so its numbers are a speed and memory reference, not a parity check. Without the `.` and without a `mago.toml`, Mago checks no files.
 
 Memory is the peak summed RSS of the whole process tree, sampled every 20 ms and never below the command's own maxrss, so Pint's parallel PHP workers and Pun's Prettier workers count. The script sets `PUN_AGENT=0` and `PUN_IGNORE_PHP_CONSTRAINT=1`, and ignores exit codes.
@@ -71,7 +72,7 @@ Pinkary is the slowest project for Pun because Blade formatting runs through Pre
 `BENCH=analyse` and `BENCH=lint` measure the same way and print the same two tables. The medians table adds each tool's error count and Pun's memory ratio. `BENCH=format` is the default and behaves as described above.
 
 - Setup: each project gets a scratch copy with `composer install` under `BENCH_SCRATCH` (default `target-bench/`), made once and reused. PHPStan 2.3.5 is copied from `.oracle/phpstan` into the copy's `vendor/`. `SETUP_ONLY=1` makes the copies without measuring, so run it through a normal heavy slot first.
-- Pun runs as `pun analyse --config pun-bench-analyse.toml --format=json` and `pun lint --config pun-bench-lint.toml --format=json`, from `target/profiling/pun` or `PUN_BIN`. `pun-bench-analyse.toml` is what `pun migrate` writes from the same neon. `pun-bench-lint.toml` turns on every lint rule that has a Rector class, at `error`.
+- Pun runs as `pun analyse --config pun-bench-analyse.toml --format=json` and `pun lint --no-cache --config pun-bench-lint.toml --format=json`, from `target/profiling/pun` or `PUN_BIN`. `pun-bench-analyse.toml` is what `pun migrate` writes from the same neon. `pun-bench-lint.toml` turns on every lint rule that has a Rector class, at `error`.
 - `BENCH_RESULTS=file.json` keeps runs across calls and adds each call's runs to them. Use it to split a slow project by tool (`TOOLS=`) or by run, so one call fits a 10-minute slot. Delete the file to start over.
 - The script sets `XDEBUG_MODE=off` and removes the coding-agent variables that switch PHPStan's output format.
 
@@ -88,7 +89,8 @@ Lint mode runs on pinkary and laravel-framework, on the paths of each project's 
 
 - `rector-ported`: `.oracle/rector-ecosystem` (Rector with rector-laravel) with exactly the Rector classes of pun-lint's rules. The list comes from `check --rules` and `rules/mapping.toml`, so it grows as rules are ported.
 - `rector-full`: the project's own Rector and rector.php. This is a reference row.
-- `pun`: `pun lint` with every native rule.
+- `pun`: `pun lint --no-cache` with every native rule.
+- `pun-warm`: `pun lint` on the result cache its warm-up filled. This is a reference row.
 - `mago`: `mago lint`.
 
 Every Rector run uses `--dry-run --clear-cache`.

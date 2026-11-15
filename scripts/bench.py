@@ -4,7 +4,7 @@
     scripts/bench.py                              # every project, every tool
     scripts/bench.py pinkary laravel-framework    # some projects
     RUNS=5 WARMUP=0 scripts/bench.py              # measured runs per tool (default 3), untimed warm-ups (default 1)
-    TOOLS=pun,mago scripts/bench.py               # some tools: pint-parallel, pint, pint-warm, pun, pun-format, mago
+    TOOLS=pun,mago scripts/bench.py               # some tools: pint-parallel, pint, pint-warm, pun, pun-warm, pun-format, mago
     PUN_BIN=target/release/pun MAGO_BIN=mago scripts/bench.py
 
 Setup: scripts/oracle.sh (or its Pint part) for .oracle/pint; scripts/corpus.sh for corpus/;
@@ -13,10 +13,13 @@ Pun's mago crates pin) under .oracle/mago/ or MAGO_BIN. Every tool is check-only
 
 - pint-parallel: `pint --test --parallel` in corpus/<name>, with the project's pint.json.
 - pint: `pint --test` (one process), same place.
-  Pint 1.32 caches results, so both get a `--cache-file` that is deleted before every run: Pun has no cache.
+  Pint 1.32 caches results, so both get a `--cache-file` that is deleted before every run: these rows are cold.
 - pint-warm: `pint --test` on a cache the warm-up runs filled. A reference row.
-- pun: `pun check --test` in a scratch copy (no .git, node_modules symlinked) after `pun migrate --yes`.
-- pun-format: `pun format --test`, same scratch copy (`pun` also runs lint and the analyser).
+- pun: `pun check --test --no-cache` in a scratch copy (no .git, node_modules symlinked) after `pun migrate --yes`:
+  cold, every file checked.
+- pun-warm: `pun check --test` on a result cache the warm-up runs filled (the analyser has no cache). A reference row.
+- pun-format: `pun format --test --no-cache`, same scratch copy (`pun` also runs lint and the analyser).
+Pun's result cache lives in the scratch directory, never in the user's cache.
 - mago: `mago fmt --check .` in the same scratch copy, default config. Mago's style is not Pint's: a speed and memory
   reference, not a parity check. Without a path and without mago.toml it checks nothing.
 
@@ -44,7 +47,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROJECTS = ["pinkary", "pinkary-dirty", "laravel-framework", "laravel-laravel", "laravel-pint", "pest", "larastan"]
-TOOLS = ["pint-parallel", "pint", "pint-warm", "pun", "pun-format", "mago"]
+TOOLS = ["pint-parallel", "pint", "pint-warm", "pun", "pun-warm", "pun-format", "mago"]
 
 
 def tree_rss_bytes(root: int) -> int:
@@ -97,6 +100,7 @@ def bench_format() -> None:
     env = {**os.environ, "PUN_AGENT": "0", "PUN_IGNORE_PHP_CONSTRAINT": "1"}
     os.environ.update(env)
     scratch = Path(tempfile.mkdtemp())
+    os.environ["PUN_CACHE_DIR"] = str(scratch / "pun-cache")
     detail = ["| project | tool | run | time | peak memory |", "|---|---|---:|---:|---:|"]
     summary = {}
     try:
@@ -119,13 +123,15 @@ def bench_format() -> None:
                 "pint-parallel": (["php", str(pint), "--test", "--parallel", f"--cache-file={cold_cache}"], src),
                 "pint": (["php", str(pint), "--test", f"--cache-file={cold_cache}"], src),
                 "pint-warm": (["php", str(pint), "--test", f"--cache-file={scratch / (name + '.pint-warm.cache')}"], src),
-                "pun": ([pun, "check", "--test"], work),
-                "pun-format": ([pun, "format", "--test"], work),
+                "pun": ([pun, "check", "--test", "--no-cache"], work),
+                "pun-warm": ([pun, "check", "--test"], work),
+                "pun-format": ([pun, "format", "--test", "--no-cache"], work),
                 "mago": ([mago or "mago", "fmt", "--check", "."], work),
             }
             for tool in tools:
                 cmd, cwd = commands[tool]
-                for _ in range(warmup):
+                # The warm rows need one run that fills their cache.
+                for _ in range(max(warmup, 1) if tool.endswith("-warm") else warmup):
                     cold_cache.unlink(missing_ok=True)
                     run_once(cmd, cwd)
                 results = []
@@ -188,7 +194,7 @@ LINT = {
 }
 MODES = {
     "analyse": (["phpstan-cold", "phpstan-warm", "pun", "mago"], ANALYSE),
-    "lint": (["rector-ported", "rector-full", "pun", "mago"], LINT),
+    "lint": (["rector-ported", "rector-full", "pun", "pun-warm", "mago"], LINT),
 }
 # The corpus larastan commit needs PHPStan 2.3; the oracle pins PHPStan 2.3.5 and Larastan v3.14.0, so analyse that tag.
 TAGS = {"larastan": ("https://github.com/larastan/larastan.git", "v3.14.0")}
@@ -423,6 +429,10 @@ def bench_mode(mode: str) -> None:
     rector_rules = ported_rector_rules() if mode == "lint" else []
     env = {k: v for k, v in os.environ.items() if k not in AGENT_ENV}
     env.update({"PUN_AGENT": "0", "PUN_IGNORE_PHP_CONSTRAINT": "1", "XDEBUG_MODE": "off"})
+    # Pun's lint result cache, out of the user's cache: `pun` runs without it, `pun-warm` on what its warm-up filled.
+    import atexit
+    env["PUN_CACHE_DIR"] = tempfile.mkdtemp(prefix="pun-bench-cache-")
+    atexit.register(shutil.rmtree, env["PUN_CACHE_DIR"], True)
 
     # BENCH_RESULTS=file.json keeps the runs of earlier calls (split by project, tool or run) and adds these runs to
     # them; the tables cover every run in the file. Delete the file to start over.
@@ -458,7 +468,8 @@ def bench_mode(mode: str) -> None:
             # The project's own Rector install: its rector.php loads sets (Pest's, for one) from its vendor/.
             "rector-full": ["php", "vendor/bin/rector"] + rector + ["rector.php"],
             "pun": [pun, "analyse", "--config", "pun-bench-analyse.toml", "--format=json"] if mode == "analyse"
-                   else [pun, "lint", "--config", "pun-bench-lint.toml", "--format=json", *paths],
+                   else [pun, "lint", "--no-cache", "--config", "pun-bench-lint.toml", "--format=json", *paths],
+            "pun-warm": [pun, "lint", "--config", "pun-bench-lint.toml", "--format=json", *paths],
             "mago": [mago or "mago", "--config", str(work / "pun-bench-mago.toml"), "analyze",
                      "--reporting-format", "json"] if mode == "analyse"
                     else [mago or "mago", "lint", "--reporting-format", "json", *paths],
@@ -474,8 +485,8 @@ def bench_mode(mode: str) -> None:
                 with open(out_path, "w") as out:
                     return run_once(cmd, work, out, env)
 
-            # The warm row needs one run that fills PHPStan's result cache.
-            for _ in range(max(warmup, 1) if tool == "phpstan-warm" else warmup):
+            # The warm rows need one run that fills their result cache.
+            for _ in range(max(warmup, 1) if tool.endswith("-warm") else warmup):
                 once()
             timed = []
             for i in range(1, runs + 1):
