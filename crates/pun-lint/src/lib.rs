@@ -64,6 +64,22 @@ impl Report {
     }
 }
 
+/// The rules an extension adds, kept in the order they were added.
+#[derive(Default)]
+pub struct RuleRegistry {
+    rules: Vec<Box<dyn Rule>>,
+}
+
+impl RuleRegistry {
+    pub fn add(&mut self, rules: impl IntoIterator<Item = Box<dyn Rule>>) {
+        self.rules.extend(rules);
+    }
+
+    pub fn into_rules(self) -> Vec<Box<dyn Rule>> {
+        self.rules
+    }
+}
+
 pub trait Rule: Send + Sync {
     fn id(&self) -> &'static str;
 

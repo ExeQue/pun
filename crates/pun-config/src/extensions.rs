@@ -56,7 +56,7 @@ pub static DOCTRINE: ExtensionMeta = ExtensionMeta {
 pub static ALL: [&ExtensionMeta; 4] = [&LARAVEL, &PEST, &PHPUNIT, &DOCTRINE];
 
 /// The extension that owns `group`, and the version in the group's name when it is a version group.
-pub(crate) fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>)> {
+pub fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>)> {
     ALL.into_iter().find_map(|e| {
         e.groups.iter().find_map(|g| {
             let rest = group.strip_prefix(g)?;

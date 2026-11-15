@@ -36,11 +36,14 @@ mod add_param_type_variable_call;
 mod add_property_type_assigns;
 mod add_property_type_behat_context;
 mod add_property_type_constructor;
-mod add_property_type_create_mock;
+// The PHPUnit extension registers its rule.
+pub(super) mod add_property_type_create_mock;
 mod add_property_type_jms;
 mod add_property_type_setter_getter;
-mod add_property_type_setup;
-mod add_property_type_setup_docblock;
+// The PHPUnit extension registers its rule.
+pub(super) mod add_property_type_setup;
+// The PHPUnit extension registers its rule.
+pub(super) mod add_property_type_setup_docblock;
 mod add_return_phpdoc_common_object;
 mod add_return_phpdoc_dim_assigned_object;
 mod add_return_phpdoc_direct_array;
@@ -68,7 +71,8 @@ mod add_var_phpdoc_from_dim_fetch;
 mod add_var_phpdoc_from_getter;
 pub(crate) mod declare;
 pub(crate) mod docblock;
-mod doctrine_repository;
+// The PHPUnit extension registers its `lint/phpunit` rule.
+pub(super) mod doctrine_repository;
 mod implicit_array_observer;
 mod native;
 mod never;
@@ -143,11 +147,7 @@ rules! {
         add_property_type_jms => AddPropertyTypeJmsScalar,
         add_property_type_jms => AddPropertyTypeJmsObject,
         add_property_type_behat_context => AddPropertyTypeBehatContext,
-        doctrine_repository => AddPropertyTypeContainerGet,
         doctrine_repository => AddPropertyTypeGetRepository,
-        add_property_type_create_mock => AddPropertyTypeCreateMock,
-        add_property_type_setup => AddPropertyTypeSetup,
-        add_property_type_setup_docblock => AddPropertyTypeSetupDocblock,
         doctrine_repository => AddDoctrineRepositoryReturnType,
         add_return_type_from_get_repository => AddReturnTypeFromGetRepository,
         add_var_phpdoc_from_default => AddVarPhpdocFromDefault,

@@ -1,0 +1,17 @@
+[package]
+name = "punphp-extension"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "pun_extension"
+
+[dependencies]
+pun-config.workspace = true
+pun-lint.workspace = true
+
+[lints]
+workspace = true

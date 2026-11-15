@@ -109,6 +109,10 @@ No step changes output. Every step must keep these green: the parity tests, `pun
 2. **The `[extensions]` table.** Add it with `auto`, `on` and `off`. An unknown name is a config error (exit 2).
 3. **pun-extension and the lint registry.** `run.rs` and `lint_plan.rs` build their rules from `ALL`. The rules
    themselves stay inside pun-lint for now, because moving them means making about 400 helper references public.
+   Done: `pun_extension::lint_rules` registers the core's rules, then each extension's. The core used to sit between
+   Laravel's and Pest's rules, so a file's findings now list in a different order; on pinkary with every lint group on,
+   `pun lint --fix` writes the same bytes. Four `lint/phpunit` rules that live in `types/` are now the PHPUnit
+   extension's.
 4. **The format registry.**
    - `build.rs` emits `core()`, `laravel()` and `pest()`.
    - The `php_unit_*` and Doctrine fixers stay core, because PHP-CS-Fixer ships them in its core.

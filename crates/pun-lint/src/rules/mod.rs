@@ -41,14 +41,37 @@ pub use types::*;
 
 use crate::Rule;
 
+/// Every built-in rule: the core's, then the Laravel, Pest and PHPUnit extensions', in the order `pun` registers
+/// them.
 pub fn all() -> Vec<Box<dyn Rule>> {
-    let mut rules = laravel::all();
-    rules.extend(types::all());
-    rules.extend(pest::all());
-    rules.extend(phpunit::all());
+    let mut rules = core();
+    rules.extend(laravel());
+    rules.extend(pest());
+    rules.extend(phpunit());
+    rules
+}
+
+/// The rules outside every extension's groups.
+pub fn core() -> Vec<Box<dyn Rule>> {
+    let mut rules = types::all();
     rules.extend(refactor::all());
     rules.extend(ungrouped());
     rules
+}
+
+/// The Laravel extension's rules.
+pub fn laravel() -> Vec<Box<dyn Rule>> {
+    laravel::all()
+}
+
+/// The Pest extension's rules.
+pub fn pest() -> Vec<Box<dyn Rule>> {
+    pest::all()
+}
+
+/// The PHPUnit extension's rules.
+pub fn phpunit() -> Vec<Box<dyn Rule>> {
+    phpunit::all()
 }
 
 rules! {

@@ -9,6 +9,7 @@ mod analyse;
 mod analyse_report;
 mod baseline;
 mod console;
+mod extensions;
 mod fix_report;
 mod github;
 mod init;

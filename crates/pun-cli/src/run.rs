@@ -340,7 +340,7 @@ fn native_rules(
     lint_set: &[PathBuf],
 ) -> Result<Vec<Box<dyn pun_lint::Rule>>> {
     let on = plan.mentioned();
-    let mut natives: Vec<_> = (pun_lint::rules::all().into_iter())
+    let mut natives: Vec<_> = (crate::extensions::lint_rules().into_iter())
         .filter(|r| on.contains(r.id()))
         .collect();
     for r in &mut natives {

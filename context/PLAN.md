@@ -497,7 +497,7 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |
-| extensions (plan/extensions.md Migration 1-8): steps 1 (`ExtensionMeta` in pun-config) and 2 (`[extensions]`) are done | doing |
+| extensions (plan/extensions.md Migration 1-8): steps 1 (`ExtensionMeta` in pun-config), 2 (`[extensions]`) and 3 (pun-extension, the lint registry) are done | doing |
 | later: LSP; run, test; native Blade | after 1.0 |
 | later: analyse 7, Pest and PHPUnit typing (analyse.md §9) | after 1.0 |
 | audit item 17 follow-up: add property.trait to IDENTIFIERS, take identifiers as &'static str (no format! in names.rs), assert in tests/rules.rs that every reported identifier is listed, drop testPromotedProperties from gaps.txt; waits for the rules/* claim | todo |

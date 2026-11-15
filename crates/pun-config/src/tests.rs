@@ -636,6 +636,16 @@ fn extensions() {
 }
 
 #[test]
+fn extension_groups() {
+    let owned: Vec<&str> = (crate::extensions::ALL.iter())
+        .flat_map(|e| e.groups.iter().copied())
+        .collect();
+    let unique: std::collections::BTreeSet<_> = owned.iter().collect();
+    assert_eq!(unique.len(), owned.len(), "{owned:?}");
+    assert!(owned.iter().all(|g| groups().iter().any(|x| x == g)));
+}
+
+#[test]
 fn composer_gate() {
     let d = dir(&[("composer.json", r#"{"require":{"php":"^8.2"}}"#)]);
     assert!(err(&d, preset("laravel")).contains("PHP < 8.4"));

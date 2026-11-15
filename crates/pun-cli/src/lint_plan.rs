@@ -44,8 +44,12 @@ pub(crate) fn token_rules() -> &'static HashMap<&'static str, &'static str> {
 }
 
 pub(crate) fn native_rules() -> &'static BTreeSet<&'static str> {
-    static T: LazyLock<BTreeSet<&'static str>> =
-        LazyLock::new(|| pun_lint::rules::all().iter().map(|r| r.id()).collect());
+    static T: LazyLock<BTreeSet<&'static str>> = LazyLock::new(|| {
+        crate::extensions::lint_rules()
+            .iter()
+            .map(|r| r.id())
+            .collect()
+    });
     &T
 }
 

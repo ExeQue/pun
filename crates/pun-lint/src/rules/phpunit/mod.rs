@@ -193,6 +193,10 @@ rules! {
         prefer_will_return_callback => PreferWillReturnCallback,
         add_instanceof_assert => AddInstanceofAssert,
         add_instanceof_assert => AddInstanceofAssertForArgument,
+        super::types::doctrine_repository => AddPropertyTypeContainerGet,
+        super::types::add_property_type_create_mock => AddPropertyTypeCreateMock,
+        super::types::add_property_type_setup => AddPropertyTypeSetup,
+        super::types::add_property_type_setup_docblock => AddPropertyTypeSetupDocblock,
     }
 }
 
