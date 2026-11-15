@@ -3,18 +3,18 @@ title: Workspaces
 description: Keep several packages in one repository with one lock and one vendor/.
 ---
 
-A workspace is a repository that holds several packages, such as a monorepo of an app and the libraries it uses. The packages share one `composer.lock` and one `vendor/` at the repository's root, so the whole repository gets one version of each dependency and installs once.
+A workspace holds several packages in one repository. They share one `composer.lock` and one `vendor/` at the repository root.
 
 ## Create a workspace
 
-1. Add a `[workspace]` section to the `pun.toml` at the repository's root. List the member directories, or globs that match them:
+1. In the root `pun.toml`, list the member directories, or globs that match them:
 
    ```toml pun.toml
    [workspace]
    members = ["packages/*", "apps/*"]
    ```
 
-2. Give each member a `composer.json` with its package name:
+2. Give each member a `composer.json` with a `name`:
 
    ```json packages/billing/composer.json
    {
@@ -27,22 +27,25 @@ A workspace is a repository that holds several packages, such as a monorepo of a
 
 3. Run `pun install`.
 
-The root's own requirements and repositories go in the root's `composer.json`. The root needs no `composer.json` and no requirements of its own. Pun requires every member at the root and installs each one as a path package, symlinked into `vendor/`. A member requires another member like any package, at `*` or the constraint you want.
+Pun requires every member at the root and symlinks each one into `vendor/` as a path package. A member requires another member like any package, at `*` or any constraint. Put the root's own requirements and repositories in the root `composer.json`. The root needs neither a `composer.json` nor requirements of its own.
 
-`*` and `?` in a glob match within one directory name. Directories without a `composer.json` are skipped, and a glob that matches no member, such as `apps/*` before `apps/` exists, adds none. A member's `composer.json` without `name` is an error that asks you to set it. Two members can't have the same name.
+- `*` and `?` in a glob match within one directory name.
+- Pun skips directories without a `composer.json`. A glob that matches nothing, such as `apps/*` before `apps/` exists, adds no member.
+- A member without `name` is an error.
+- Two members can't have the same name.
 
 ## Work in a member
 
-Every package command finds the workspace from the current directory, so `pun install`, `pun update`, `pun require`, and `pun remove` work in any member. They read and write the root's `composer.lock` and `vendor/`.
+`pun install`, `pun update`, `pun require`, and `pun remove` find the workspace from the current directory, so they work in any member. They read and write the root's `composer.lock` and `vendor/`.
 
-`pun require` and `pun remove` edit the `composer.json` of the member you run them in. To edit another member's `composer.json`, name it with `-p`:
+`pun require` and `pun remove` edit the `composer.json` of the member you run them in, or the root's at the root. To edit another member, name it with `-p`:
 
 ```bash
 pun require -p acme/billing guzzlehttp/guzzle
 pun remove -p acme/billing guzzlehttp/guzzle
 ```
 
-At the root without `-p`, they edit the root's `composer.json`. When a request doesn't resolve, the member's `composer.json` and the lock stay as they were.
+If a request doesn't resolve, the `composer.json` and the lock stay unchanged.
 
 ## Limits
 

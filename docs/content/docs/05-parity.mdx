@@ -3,28 +3,13 @@ title: Parity
 description: Recorded Pint comparisons and compatibility limits.
 ---
 
-Pun's formatter is compared with Pint 1.32.1 and PHP-CS-Fixer 3.95.25. The results below are recorded runs, not a guarantee for every configuration.
+Pun's formatter is compared with Pint 1.32.1 and PHP-CS-Fixer 3.95.25. These are recorded runs, not a guarantee for every configuration.
 
-PHPStan, Larastan, and Rector support is incomplete. A mapped rule is not necessarily implemented. The [rule reference](/docs/rules) marks unimplemented rules as Planned.
-
-## Laravel class aliases
-
-When Laravel analysis is enabled, Pun reads class aliases without running PHP. The alias sources are:
-
-- The installed framework's `Facade::defaultAliases()` and default application config.
-- A literal `aliases` array in `config/app.php`, or the standard `defaultAliases()->merge([...])->toArray()` expression. A replacement array does not retain the defaults.
-- `app.aliases` in `bootstrap/cache/config.php`, when that cache exists. The cache replaces the source config.
-- `bootstrap/cache/packages.php`, or package aliases in `vendor/composer/installed.json` when the manifest is absent. Package discovery respects the application's and packages' `dont-discover` lists.
-
-Package aliases override application aliases. An imported global `Blade` alias denotes `Illuminate\Support\Facades\Blade`, not the container's Blade compiler. Without an import, `Blade` inside `namespace App` refers to `App\Blade`. A global alias does not define that class.
-
-Alias identity does not add method forwarding to container services. Pun does not execute service providers, dynamic config expressions, or programmatic `AliasLoader` changes. Custom bootstrap, config, cache, and vendor paths, and real-time `Facades\...` classes are not supported by this alias reader.
-
-An exact-spelling reference activates its alias throughout Pun's order-independent symbol graph. Unlike PHPStan, Pun does not model a differently cased lookup before that reference. Known class declarations win. Runtime load-order collisions, including differently cased aliases with different targets, are not simulated.
+PHPStan, Larastan, and Rector support is incomplete, and a mapped rule is not always implemented. The [rule reference](/docs/rules) marks unimplemented rules as Planned.
 
 ## Byte-for-byte output
 
-The harness runs Pint on one project copy and `pun migrate` followed by `pun check --fix` on another. It then compares each file. The results of the 2026-11-09 run against Pint 1.32.1 are:
+Each run formats one copy of a project with Pint and another with `pun migrate` and `pun check --fix`, then compares every file. Results of the 2026-11-09 run against Pint 1.32.1:
 
 | Project | Files | Identical | Differing |
 | --- | --- | --- | --- |
@@ -37,13 +22,30 @@ The harness runs Pint on one project copy and `pun migrate` followed by `pun che
 | pinkary | 799 | 799 | 0 |
 | pinkary (unformatted copy) | 799 | 799 | 0 |
 
-`scripts/cli-parity.sh` compares exit codes, machine reports, and changed files. Pun deliberately exits 2 when it cannot run, where Pint exits 1.
+In the unformatted Pinkary copy, Pint changes 346 files. The `psr12` preset also has zero differing files.
 
-Pinkary appears twice: as committed and as an unformatted copy where Pint changes 346 files. The report also records zero differing files for the `psr12` preset.
+`scripts/cli-parity.sh` compares exit codes, machine reports, and changed files. Pun exits 2 when it cannot run, where Pint exits 1. `scripts/fuzz-parity.sh` mutates real files and compares both tools. The scoreboard includes fuzz runs on Pinkary and laravel/framework, with CRLF and mixed line endings.
 
-## Fuzzing
+## Laravel class aliases
 
-`scripts/fuzz-parity.sh` mutates style in real PHP files, formats copies with both tools, and compares the results. The report includes seeded runs on Pinkary and laravel/framework, plus CRLF and mixed-line-ending cases.
+With Laravel analysis on, Pun reads class aliases without running PHP, from:
+
+- The installed framework's `Facade::defaultAliases()` and default application config.
+- A literal `aliases` array in `config/app.php`, or `defaultAliases()->merge([...])->toArray()`. A literal array without `merge` drops the defaults.
+- `app.aliases` in `bootstrap/cache/config.php`, which replaces the source config when it exists.
+- `bootstrap/cache/packages.php`, or package aliases in `vendor/composer/installed.json` when that manifest is absent. Package discovery respects the `dont-discover` lists of the application and its packages.
+
+Package aliases override application aliases. An imported global `Blade` alias means `Illuminate\Support\Facades\Blade`. Without an import, `Blade` inside `namespace App` means `App\Blade`, and the global alias does not define that class.
+
+A reference with the alias's exact spelling activates it everywhere, in any order. Known class declarations win.
+
+Pun does not support these:
+
+- Method forwarding to container services through an alias.
+- Aliases from service providers, dynamic config expressions, or `AliasLoader` calls.
+- Custom bootstrap, config, cache, or vendor paths, and real-time `Facades\...` classes.
+- A differently cased lookup before the exact-spelling reference. PHPStan models it.
+- Runtime load-order collisions, such as differently cased aliases with different targets.
 
 ## Reproduce a comparison
 

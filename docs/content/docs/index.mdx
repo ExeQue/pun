@@ -1,11 +1,11 @@
 ---
 title: Introduction
-description: Pun is the ultrafast unified PHP toolchain for PHP 8.4+ projects, compatible with the tools you already use.
+description: Pun is one fast binary for your PHP toolchain, compatible with Pint, Rector, PHPStan, and Composer.
 ---
 
-Pun is one very fast binary, written in Rust, for your whole PHP workflow. Our goal is a unified toolchain that stays compatible with the tools PHP projects use today: Pint and PHP-CS-Fixer, Rector, PHPStan and Larastan, and Composer. Each Pun command gives the same answers as the tool it replaces, so you can switch one command at a time.
+Pun is one fast binary, written in Rust, for your PHP workflow. Each command gives the same answers as the tool it replaces: Pint and PHP-CS-Fixer, Rector, PHPStan and Larastan, or Composer. You can switch one command at a time.
 
-Pun supports projects that target PHP 8.4 or later. Supporting current PHP only lets every command match its upstream tool exactly, instead of approximating behaviour across older versions.
+Pun supports projects that target PHP 8.4 or later.
 
 ## Commands
 
@@ -26,11 +26,11 @@ Pun supports projects that target PHP 8.4 or later. Supporting current PHP only 
 
 ## Status
 
-- **Format** matches Pint byte for byte on every project in the [parity scoreboard](/docs/parity). It changes layout only. Pint's risky and code-deleting fixers are lint rules, so a migrated Pint configuration uses `pun check --fix`.
-- **Lint** and **analyse** port Rector, PHPStan, and Larastan rule by rule. The [rule reference](/docs/rules) marks the rules that are not ported yet as Planned.
-- **The package manager** resolves versions as Composer does and writes the lock and the `vendor/` tree Composer writes. It reads `composer`, `package`, and `path` repositories, and runs the Composer plugins that `allow-plugins` allows. `vcs` repositories are not supported yet.
+- **Format** matches Pint on every project in the [parity scoreboard](/docs/parity). It changes layout only. Pint's risky and code-deleting fixers are lint rules, so run `pun check --fix` to apply a migrated Pint config.
+- **Lint** and **analyse** cover part of Rector, PHPStan, and Larastan. The [rule reference](/docs/rules) marks missing rules as Planned.
+- **The package manager** reads `composer`, `package`, and `path` repositories, and runs the Composer plugins that `allow-plugins` allows. It does not support `vcs` repositories.
 
-PHP checks need no PHP runtime. Blade formatting requires Node.js (or Bun) and Prettier. Some config migrations require PHP and the original tool.
+PHP checks need no PHP runtime. Blade formatting needs Node.js (or Bun) and Prettier. Some config migrations need PHP and the original tool.
 
 ## Get started
 
@@ -39,22 +39,22 @@ PHP checks need no PHP runtime. Blade formatting requires Node.js (or Bun) and P
 <Steps>
   <Step title="Create pun.toml">
 
-If you have a Pint, PHP-CS-Fixer, Rector, or PHPStan config, start from a clean Git working tree. Migration can rewrite ignore comments in PHP files. Preview and run the migration:
+If you have a Pint, PHP-CS-Fixer, Rector, or PHPStan config, start from a clean Git working tree, because migration can rewrite ignore comments in PHP files. Preview the migration, then run it:
 
 ```bash
 pun migrate --dry-run
 pun migrate
 ```
 
-Review warnings about unsupported items. Migration skips those items and writes the supported configuration.
+Migration skips unsupported items and warns about each one.
 
-For a project without tool configs, use:
+For a project without tool configs, run:
 
 ```bash
 pun init
 ```
 
-Both commands write `pun.toml`. Neither changes your scripts or CI configuration.
+Neither command changes your scripts or CI configuration.
 
   </Step>
   <Step title="Check the project">
@@ -63,7 +63,7 @@ Both commands write `pun.toml`. Neither changes your scripts or CI configuration
 pun check
 ```
 
-Pun reports format, lint, and analysis findings without editing files. Exit code 0 means clean, 1 means findings, and 2 means Pun could not run.
+`pun check` reports format, lint, and analysis findings without editing files. It exits 0 when clean, 1 on findings, and 2 when Pun could not run.
 
   </Step>
   <Step title="Apply fixes">
@@ -73,7 +73,7 @@ pun check --fix
 git diff
 ```
 
-Review the format and lint changes. Analysis never edits files, and lint rules with `fix = "off"` remain report-only.
+Analysis never edits files. Lint rules with `fix = "off"` only report.
 
   </Step>
   <Step title="Check changed files">
@@ -84,7 +84,7 @@ pun check --staged
 pun format --diff=main
 ```
 
-`--dirty` selects uncommitted changes. `--staged` selects files with staged changes. `--diff=main` selects files changed since branching from `main`.
+`--dirty` selects uncommitted changes, `--staged` selects files with staged changes, and `--diff=main` selects files changed since you branched from `main`.
 
   </Step>
 </Steps>
@@ -106,8 +106,4 @@ Recorded comparisons with each upstream tool.
 
 ## Credits
 
-Pun would not be possible without [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector), and [Composer](https://github.com/composer/composer).
-
-A special thank-you to Mago's maintainers and contributors. Pun uses Mago's parser and analysis libraries directly and ports rules from its linter.
-
-To the people behind all these projects: thank you for the years of care in your code, tests, and documentation. Pun has come this far because you shared your work.
+Pun builds on [Mago](https://github.com/carthage-software/mago), [PHP-CS-Fixer](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer), [Laravel Pint](https://github.com/laravel/pint), [PHPStan](https://github.com/phpstan/phpstan), [Larastan](https://github.com/larastan/larastan), [Rector](https://github.com/rectorphp/rector), and [Composer](https://github.com/composer/composer). Special thanks to Mago's maintainers: Pun uses Mago's parser and analysis libraries directly. Thank you all for sharing your work.

@@ -1,24 +1,22 @@
 ---
 title: CI
-description: Check a project without edits and publish CI reports.
+description: Check a project in CI and publish reports.
 ---
 
-Run [`pun check`](/docs/commands/check) without `--fix`. It reports formatting changes, lint errors, and analysis errors without editing files.
+In CI, run [`pun check`](/docs/commands/check) without `--fix`, so it reports findings without editing files. It exits 0 when clean, 1 on findings, and 2 when Pun could not run. Warnings fail the run only with `--deny-warnings` or when they exceed `--max-warnings`.
 
 ## GitHub Actions
 
-Add this step after your usual PHP setup and `composer install`, which installs Pun from your `require-dev` (see [installation](/docs/installation)).
+Add this step after your PHP setup and `composer install`, which installs Pun from `require-dev`:
 
 ```yaml .github/workflows/style.yml
 - name: Check
   run: vendor/bin/pun check
 ```
 
-Under `GITHUB_ACTIONS=true`, Pun adds annotations to its default output. `pun check --format=github` prints annotations only.
+When `GITHUB_ACTIONS=true`, Pun adds annotations to its default output. `pun check --format=github` prints only annotations.
 
-## Report files
-
-For a formatting-only check with a Checkstyle report:
+## Write a report file
 
 ```bash
 pun format --test --output-to-file=pun.xml --output-format=checkstyle
@@ -26,8 +24,10 @@ pun format --test --output-to-file=pun.xml --output-format=checkstyle
 
 `--output-format` also accepts `junit`, `gitlab`, `json`, `xml`, and `txt`.
 
-## Pre-commit hook
+## Add a pre-commit hook
 
-Use `pun check --staged` to select files with staged changes. Pun reads working-tree contents, including unstaged edits in those files.
+```bash
+pun check --staged
+```
 
-Exit code 0 means clean, 1 means findings, and 2 means Pun could not run. Warnings fail only with `--deny-warnings` or when they exceed `--max-warnings`.
+`--staged` selects files with staged changes, but Pun checks their working-tree contents, including unstaged edits.

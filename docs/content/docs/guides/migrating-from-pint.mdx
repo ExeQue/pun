@@ -1,9 +1,9 @@
 ---
 title: Migrating from Pint
-description: Convert Pint config, compare formatting results, and update scripts.
+description: Convert your Pint config, compare the results, and update scripts.
 ---
 
-Start from a clean Git working tree with [Pun installed](/docs/installation). Keep Pint available until you have compared the results.
+Start from a clean Git working tree. Keep Pint installed until you have compared the results.
 
 <Steps>
   <Step title="Convert the config">
@@ -13,7 +13,7 @@ pun migrate --from pint --dry-run
 pun migrate --from pint
 ```
 
-Review migration warnings. Unsupported rules are skipped, so a successful migration alone does not prove equivalent formatting.
+Migration skips unsupported rules and warns about each one. Review the warnings.
 
   </Step>
   <Step title="Compare the results">
@@ -26,14 +26,10 @@ pun check
 git diff
 ```
 
-Investigate differences before switching. `pun check` can also report lint or analysis findings that Pint does not check.
-
-The [recorded parity tests](/docs/parity) compare file contents in separate project copies. The commands above are a project-level check, not an exhaustive parity test.
+Investigate any difference before you switch. `pun check` can also report lint and analysis findings that Pint does not check.
 
   </Step>
   <Step title="Update scripts and CI">
-
-Replace Pint commands in your existing Composer scripts:
 
 ```json composer.json
 {
@@ -44,16 +40,13 @@ Replace Pint commands in your existing Composer scripts:
 }
 ```
 
-Replace `vendor/bin/pint --test` in CI with `pun check`. See the [CI guide](/docs/guides/ci).
+In CI, replace `vendor/bin/pint --test` with `pun check`. See the [CI guide](/docs/guides/ci).
 
   </Step>
 </Steps>
 
 ## What moved where
 
-The [Pint mapping](/docs/migrate/from/pint) lists every upstream fixer, its Pun rule, option translation and dropped rules.
-For other configs, use the [migration mapping overview](/docs/migrate/from).
+Layout rules become format rules. Risky and code-deleting rules become lint rules, so `pun format` alone does not apply your full Pint config. The [Pint mapping](/docs/migrate/from/pint) lists every fixer and its Pun rule.
 
-Layout rules become format rules. Risky and code-deleting rules become lint rules. `pun format` alone therefore does not apply the full Pint configuration.
-
-Migration keeps `pint.json` and the Pint dependency. To roll back, restore your scripts and CI commands and review any rewritten ignore comments. There is no `--remove-tools` flag.
+Migration keeps `pint.json` and the Pint dependency. To roll back, restore your scripts and CI commands, and review any rewritten ignore comments.
