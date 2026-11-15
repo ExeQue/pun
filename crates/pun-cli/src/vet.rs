@@ -362,8 +362,8 @@ pub(crate) fn run(a: VetArgs) -> Result<Exit> {
             let name = package.to_ascii_lowercase();
             let work = std::env::temp_dir().join(format!("pun-vet-{}", std::process::id()));
             let (a, b) = (work.join(&from), work.join(&to));
-            let unpacked = unpack_version(&fetcher, lock, &name, &from, &a)
-                .and_then(|()| unpack_version(&fetcher, lock, &name, &to, &b));
+            let unpacked = unpack_version(&fetcher, lock, PACKAGIST, &name, &from, &a)
+                .and_then(|()| unpack_version(&fetcher, lock, PACKAGIST, &name, &to, &b));
             let code = unpacked.and_then(|()| {
                 let status = std::process::Command::new("git")
                     .current_dir(&work)
@@ -386,7 +386,7 @@ pub(crate) fn run(a: VetArgs) -> Result<Exit> {
                 .join(&name)
                 .join(&version);
             if !dir.is_dir() {
-                unpack_version(&fetcher, lock, &name, &version, &dir)?;
+                unpack_version(&fetcher, lock, PACKAGIST, &name, &version, &dir)?;
             }
             println!("{}", dir.display());
             Ok(Exit::Success)
@@ -577,10 +577,12 @@ fn fetch_imports(store: &mut Store, fetcher: &Fetcher, needs: &[Need]) -> Result
     Ok(())
 }
 
-/// Unpacks `name` at `version` into `target`: the locked package when the lock has that version, else Packagist's.
+/// Unpacks `name` at `version` into `target`: the locked package when the lock has that version, else the one the
+/// Composer repository at `packagist` (Packagist's URL) publishes.
 fn unpack_version(
     fetcher: &Fetcher,
     lock: &pun_packages::lock::Lock,
+    packagist: &str,
     name: &str,
     version: &str,
     target: &Path,
@@ -594,7 +596,7 @@ fn unpack_version(
         .cloned();
     let package = match locked {
         Some(p) => p.0,
-        None => packagist_version(fetcher, name, version)?,
+        None => packagist_version(fetcher, packagist, name, version)?,
     };
     let (bytes, _) = fetcher.archive(&package)?;
     let kind = (package
@@ -606,11 +608,16 @@ fn unpack_version(
     Ok(())
 }
 
-/// The metadata Packagist publishes for `name` at `version`.
-fn packagist_version(fetcher: &Fetcher, name: &str, version: &str) -> Result<Map<String, Value>> {
+/// The metadata the Composer repository at `packagist` publishes for `name` at `version`.
+fn packagist_version(
+    fetcher: &Fetcher,
+    packagist: &str,
+    name: &str,
+    version: &str,
+) -> Result<Map<String, Value>> {
     let wanted = key(version.split_once('#').map_or(version, |(v, _)| v));
     for file in [name.to_string(), format!("{name}~dev")] {
-        let url = format!("{PACKAGIST}/p2/{file}.json");
+        let url = format!("{packagist}/p2/{file}.json");
         let Fetched::Body(body, _) = fetcher.metadata(&url, None)? else {
             continue;
         };
@@ -658,6 +665,7 @@ fn git_who() -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn audit(criteria: Criteria, version: Option<&str>, delta: Option<&str>) -> Audit {
         Audit {
@@ -710,5 +718,117 @@ mod tests {
             verdict(&need("1.0.0", D), &[], &[]),
             Verdict::Unvetted(None)
         );
+        let later = audit(D, Some("3.0.0"), None);
+        assert_eq!(
+            verdict(&need("0.9.0", D), &[&later, &late], &[]),
+            Verdict::Unvetted(Some("2.0.0".into()))
+        );
+        let revert = audit(D, None, Some("1.1.0 -> 1.0.0"));
+        assert_eq!(
+            verdict(&need("1.2.0", D), &[&full, &step, &revert], &[]),
+            Verdict::Unvetted(Some("1.1.0".into()))
+        );
+    }
+
+    /// Serves the routes (path, body) that `routes` makes from the server's URL, on 127.0.0.1 until the test binary
+    /// exits; any other path is a 404.
+    fn serve(routes: impl FnOnce(&str) -> Vec<(&'static str, Vec<u8>)>) -> String {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let routes = routes(&base);
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let (mut head, mut byte) = (vec![], [0]);
+                while !head.ends_with(b"\r\n\r\n") && stream.read(&mut byte).unwrap() == 1 {
+                    head.push(byte[0]);
+                }
+                let head = String::from_utf8_lossy(&head).into_owned();
+                let path = head.split(' ').nth(1).unwrap_or_default();
+                let (status, body) = (routes.iter().find(|r| r.0 == path))
+                    .map_or((404, &[][..]), |r| (200, r.1.as_slice()));
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} X\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                let _ = stream.write_all(body);
+            }
+        });
+        base
+    }
+
+    /// A tar archive whose one top directory holds `VERSION` with `text`, as GitHub's archives have one.
+    fn tarball(text: &str) -> Vec<u8> {
+        let mut tar = tar::Builder::new(vec![]);
+        let mut header = tar::Header::new_gnu();
+        header.set_size(text.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        tar.append_data(&mut header, "acme-lib-0123abc/VERSION", text.as_bytes())
+            .unwrap();
+        tar.into_inner().unwrap()
+    }
+
+    /// A version the lock lacks comes from the repository's `p2` files, Composer's minified metadata in which each
+    /// version lists only what changed from the one before; branches are in the `~dev` file, and a `#reference`
+    /// doesn't take part in the lookup.
+    #[test]
+    fn unpacks_versions_the_lock_lacks_from_packagist() {
+        let p2 = |versions: Value| {
+            let p2 = json!({"minified": "composer/2.0", "packages": {"acme/lib": versions}});
+            serde_json::to_vec(&p2).unwrap()
+        };
+        let base = serve(|base| {
+            let dist = |file: &str| json!({"type": "tar", "url": format!("{base}/{file}")});
+            vec![
+                (
+                    "/p2/acme/lib.json",
+                    p2(json!([
+                        {"name": "acme/lib", "version": "v1.1.0", "version_normalized": "1.1.0.0",
+                         "dist": dist("1.1.0.tar")},
+                        {"version": "v1.0.0", "version_normalized": "1.0.0.0", "dist": dist("1.0.0.tar")}
+                    ])),
+                ),
+                (
+                    "/p2/acme/lib~dev.json",
+                    p2(
+                        json!([{"name": "acme/lib", "version": "dev-main", "dist": dist("main.tar")}]),
+                    ),
+                ),
+                ("/1.1.0.tar", tarball("1.1.0")),
+                ("/1.0.0.tar", tarball("1.0.0")),
+                ("/main.tar", tarball("main")),
+                ("/p2/acme/odd.json", b"{\"packages\": {}}".to_vec()),
+                ("/p2/acme/odd~dev.json", b"<html>".to_vec()),
+            ]
+        });
+        let lock = pun_packages::lock::Lock::from_composer_lock(
+            r#"{"content-hash": "0", "packages": []}"#,
+        )
+        .unwrap();
+        let fetcher = Fetcher::new(None, pun_packages::fetch::Auth::default(), false);
+        let dir = std::env::temp_dir().join(format!("pun-vet-unpack-{}", std::process::id()));
+        let unpack = |version: &str| -> Result<String> {
+            let target = dir.join(version);
+            unpack_version(&fetcher, &lock, &base, "acme/lib", version, &target)?;
+            Ok(std::fs::read_to_string(target.join("VERSION"))?)
+        };
+        assert_eq!(unpack("1.0.0").unwrap(), "1.0.0");
+        assert_eq!(unpack("v1.1.0").unwrap(), "1.1.0");
+        assert_eq!(unpack("dev-main#0123abc").unwrap(), "main");
+        assert_eq!(
+            format!("{:#}", unpack("2.0.0").unwrap_err()),
+            "Packagist has no acme/lib 2.0.0"
+        );
+        let missing = packagist_version(&fetcher, &base, "acme/gone", "1.0.0").unwrap_err();
+        assert_eq!(format!("{missing:#}"), "Packagist has no acme/gone 1.0.0");
+        let odd = packagist_version(&fetcher, &base, "acme/odd", "1.0.0").unwrap_err();
+        assert!(
+            format!("{odd:#}").starts_with(&format!("{base}/p2/acme/odd~dev.json is not JSON: ")),
+            "{odd:#}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
