@@ -8,22 +8,22 @@ pun remove laravel/sanctum
 pun rm 'spatie/*'
 ```
 
-`pun remove` deletes each package from `require` or `require-dev` in `composer.json`, whichever holds it. Then it updates the removed packages and their dependencies and installs the result, as [`pun update`](/docs/commands/update) does. Packages that nothing else needs leave `composer.lock` and `vendor/`. A name can be a `vendor/*` pattern. `pun rm` is the same command.
+`pun remove` deletes packages from `require` or `require-dev`, then runs [`pun update`](/docs/commands/update). Packages nothing else needs leave the lock and `vendor/`. `pun rm` is an alias.
 
-Pun edits `composer.json` in place, as `composer remove` does, and only after the new requirements resolve. If the install after the update fails, Pun puts back both `composer.json` and `composer.lock`.
+Pun edits `composer.json` only after the requirements resolve. If the install fails, Pun restores `composer.json` and `composer.lock`.
 
 ## Options
 
 | Option | Effect |
 | --- | --- |
-| `--no-update` | Edit `composer.json` without resolving or installing |
-| `-p`, `--package=MEMBER` | In a [workspace](/docs/guides/workspaces), edit this member's `composer.json` |
+| `--no-update` | Edit `composer.json` only |
+| `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
 
-`pun remove` also takes the resolve options of [`pun update`](/docs/commands/update#options), except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option. It has no `--dev` flag: the package leaves whichever section holds it.
+`pun remove` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.
 
 ## Exit codes
 
 | Code | When |
 | --- | --- |
 | 0 | Removed and installed |
-| 2 | No `composer.json`, the requirements can't be resolved, a repository failed, or the install failed |
+| 2 | No `composer.json`, unresolvable requirements, a failed repository, or a failed install |

@@ -9,28 +9,26 @@ pun require spatie/laravel-data:^4.0
 pun require --dev pestphp/pest
 ```
 
-`pun require` adds each package to `require` in `composer.json`, or to `require-dev` with `--dev`. In a directory without a `composer.json`, it creates one. Then it updates the named packages and their dependencies and installs the result, as [`pun update`](/docs/commands/update) does.
+`pun require` adds packages to `require`, or to `require-dev` with `--dev`, creating `composer.json` if needed. Then it updates those packages and their dependencies and installs them, as [`pun update`](/docs/commands/update) does.
 
-A package is written as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun picks the newest version that resolves and writes it as `^major.minor`. A package already in the other section moves to the one you named, with a warning.
+Write a package as `vendor/name`, `vendor/name:^1.2`, or `vendor/name ^1.2`. Without a version, Pun writes the newest version that resolves as `^major.minor`. A package in the other section moves, with a warning.
 
-Pun changes `composer.json` only after the new requirements resolve. If they don't, `composer.json` and `composer.lock` stay as they were and `pun require` exits 2. If the install after the update fails, Pun puts back both files.
-
-Pun edits `composer.json` in place, as `composer require` does: the rest of the file keeps its layout and key order. A file laid out in a way Composer's editor can't follow is written again in Composer's format.
+If the requirements don't resolve, nothing changes and `pun require` exits 2. If the install fails, Pun restores `composer.json` and `composer.lock`.
 
 ## Options
 
 | Option | Effect |
 | --- | --- |
-| `--dev` | Add the packages to `require-dev` |
-| `--sort-packages` | Keep the section sorted. `config.sort-packages` in `composer.json` does this for every edit. |
-| `--no-update` | Edit `composer.json` without resolving or installing |
-| `-p`, `--package=MEMBER` | In a [workspace](/docs/guides/workspaces), edit this member's `composer.json` |
+| `--dev` | Add to `require-dev` |
+| `--sort-packages` | Keep the section sorted. Also `config.sort-packages`. |
+| `--no-update` | Edit `composer.json` only |
+| `-p`, `--package=MEMBER` | Edit this [workspace](/docs/guides/workspaces) member's `composer.json` |
 
-`pun require` also takes the resolve options of [`pun update`](/docs/commands/update#options), except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.
+`pun require` also takes the [`pun update`](/docs/commands/update#options) options except `--dry-run`, and every [`pun install`](/docs/commands/install#options) option.
 
 ## Exit codes
 
 | Code | When |
 | --- | --- |
 | 0 | Added and installed |
-| 2 | The requirements can't be resolved, a repository failed, or the install failed |
+| 2 | Unresolvable requirements, a failed repository, or a failed install |

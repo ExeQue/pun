@@ -1,6 +1,6 @@
 ---
 title: pun install
-description: Install the locked dependencies into vendor/, with the same files Composer writes.
+description: Install the locked dependencies into vendor/.
 ---
 
 ```bash
@@ -9,74 +9,53 @@ pun install --no-dev --classmap-authoritative
 pun install --ignore-platform-req=ext-imagick
 ```
 
-`pun install` installs the exact versions in `composer.lock` into `vendor/`. The result is the tree `composer install` produces from the same lock: the same package files, `vendor/autoload.php`, `vendor/composer/installed.json` and `installed.php`, the autoloader, `platform_check.php`, and the `vendor/bin` proxies. Composer, Laravel's `package:discover`, and `Composer\InstalledVersions` read it unchanged, so you can switch between `pun install` and `composer install` in either direction.
-
-On pinkary, a Laravel app with 211 packages, a fresh install takes about 1.7 seconds against Composer's 13.5 seconds when both caches hold the archives. With nothing to change, it takes 0.65 seconds against 6.7 seconds.
+`pun install` installs the versions in `composer.lock` into `vendor/`. The result matches `composer install`, so you can switch between the two tools.
 
 ## Where the dependencies come from
 
-`pun install` reads `composer.json` and installs `composer.lock`, the same files `composer install` reads. `pun.toml` holds no dependencies. Without a `composer.json`, `pun install` exits 2:
+`pun install` reads `composer.json` and `composer.lock`, not `pun.toml`. Without a `composer.json`, it exits 2. [`pun require`](/docs/commands/require) creates one.
 
-```text
-no composer.json in /path/to/project: add a dependency with `pun require <package>`
-```
-
-[`pun require`](/docs/commands/require) creates `composer.json` when the directory has none.
-
-Without a `composer.lock`, `pun install` resolves the dependencies to their newest versions, writes `composer.lock`, and installs it, as [`pun update`](/docs/commands/update) does. When `composer.json` changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
+Without a lock, `pun install` resolves one first, as [`pun update`](/docs/commands/update) does. If `composer.json` changed after the lock was written, `pun install` warns that the lock is out of date. Run `pun update` to refresh it.
 
 ## What an install does
 
-1. Packages already installed at the locked reference stay. Packages no longer locked are removed, with their `vendor/bin` proxies.
-2. Every other package is downloaded in parallel, or taken from Composer's download cache. Pun and Composer share the cache, so each tool reuses the other's downloads.
-3. Each archive is checked against the `shasum` in the lock before it is unpacked. A mismatch stops the install.
-4. Path repositories become symlinks, as in Composer.
+1. Packages already at the locked reference stay. Packages no longer locked are removed.
+2. Other packages download in parallel, or come from Composer's download cache.
+3. Each archive must match its `shasum` in the lock, or the install stops.
+4. Path repositories become symlinks.
 5. Pun writes `vendor/composer`, the autoloader, and `vendor/bin`.
 
-Downloads use the credentials in `COMPOSER_AUTH`, the project's `auth.json`, and the `auth.json` in Composer's home directory: `github-oauth`, `gitlab-token`, `bearer`, and `http-basic`. When more than one source names a host, the first in that order wins. `COMPOSER_MAX_PARALLEL_HTTP` limits parallel downloads (default 48).
+Pun installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
 
-As in Composer, `config.secure-http` is on by default: Pun refuses `http://` dist URLs and redirects to them. Set `"secure-http": false` in the config to allow them.
+Credentials come from `COMPOSER_AUTH`, the project's `auth.json`, then Composer's global `auth.json`. Pun supports `github-oauth`, `gitlab-token`, `bearer`, and `http-basic`. `COMPOSER_MAX_PARALLEL_HTTP` limits parallel downloads (default 48). Pun refuses `http://` URLs unless `config.secure-http` is `false`.
 
 ## Scripts and plugins
 
-Pun runs the root package's `pre-install-cmd`, `pre-autoload-dump`, `post-autoload-dump`, and `post-install-cmd` scripts as Composer does. `@php`, `@putenv`, `@composer`, references to other scripts, and shell commands run with `vendor/bin` first on `PATH`. A `Class::method` callback runs in PHP and receives an event with `getComposer()->getConfig()`, `getIO()`, `isDevMode()`, and `getArguments()`. Laravel's `ComposerScripts` needs nothing more.
+Pun runs the root package's `pre-install-cmd`, `pre-autoload-dump`, `post-autoload-dump`, and `post-install-cmd` scripts, with `vendor/bin` first on `PATH`. A `Class::method` callback gets an event with `getComposer()->getConfig()`, `getIO()`, `isDevMode()`, and `getArguments()`.
 
-Pun runs the Composer plugins that `config.allow-plugins` allows. Two common plugins have native ports, so they need no PHP process:
+Pun runs the plugins that `config.allow-plugins` allows. `pestphp/pest-plugin` and `php-http/discovery` need no PHP. Other plugins run on the system PHP, and the first one makes Pun download `composer.phar` 2.11.2 into Composer's cache. If a plugin throws, the command exits 2.
 
-| Plugin | What Pun does |
-| --- | --- |
-| `pestphp/pest-plugin` | Writes `vendor/pest-plugins.json` |
-| `php-http/discovery` | Nothing. It acts only on `composer update`. |
-
-Every other allowed plugin runs on Composer 2.11.2's own classes, in a PHP process on the system PHP. Composer's PluginManager activates the plugins, and each script event reaches their listeners in Composer's order: listeners with priority 0 or higher, then the root package's scripts, then listeners with a negative priority. A plugin that this command installs or upgrades activates during the same command, as in Composer. If a listener throws, the command exits 2 with the plugin's message.
-
-The first time a project needs this, Pun downloads `composer.phar` 2.11.2 from getcomposer.org into Composer's cache directory and checks its SHA-256. A project with only the native plugins starts no PHP process and downloads nothing.
-
-As in Composer, `--no-scripts` skips only the root package's scripts, and plugins still run. `--no-plugins` skips the plugins.
-
-Pun does not yet send plugins the package events (`pre-package-install` and the rest), `pre-operations-exec`, `pre-pool-create`, or the download events. It also does not yet apply a custom installer's install path, such as `composer/installers`, or run a plugin's own commands.
+Plugins don't get the package events, `pre-operations-exec`, `pre-pool-create`, or the download events. Custom installer paths, such as those of `composer/installers`, and plugin commands aren't supported.
 
 ## Options
 
 | Option | Effect |
 | --- | --- |
 | `--no-dev` | Leave out `require-dev` packages, and remove them if installed |
-| `-o`, `--optimize-autoloader` | Add the PSR-0 and PSR-4 classes to the class map. `config.optimize-autoloader` turns it on too. |
-| `-a`, `--classmap-authoritative` | Load classes from the class map only. Turns on `--optimize-autoloader`. |
-| `--apcu-autoloader` | Cache class lookups in APCu. `config.apcu-autoloader` turns it on too. |
-| `--apcu-autoloader-prefix=PREFIX` | The APCu cache prefix. Turns on `--apcu-autoloader`. Without it, each install picks a random prefix. |
-| `--no-autoloader` | Skip the autoloader and its `pre-autoload-dump` and `post-autoload-dump` events |
+| `-o`, `--optimize-autoloader` | Add PSR-0 and PSR-4 classes to the class map. Also `config.optimize-autoloader`. |
+| `-a`, `--classmap-authoritative` | Load classes from the class map only. Implies `-o`. |
+| `--apcu-autoloader` | Cache class lookups in APCu. Also `config.apcu-autoloader`. |
+| `--apcu-autoloader-prefix=PREFIX` | The APCu prefix (default: random). Implies `--apcu-autoloader`. |
+| `--no-autoloader` | Skip the autoloader and its dump events |
 | `--no-scripts` | Skip the root package's scripts. Plugins still run. |
 | `--no-plugins` | Skip the Composer plugins |
-| `--ignore-platform-req=REQ` | Leave `REQ` out of `platform_check.php`. Repeatable. `*` matches any run of characters, as in `ext-*`. |
+| `--ignore-platform-req=REQ` | Leave `REQ` out of the platform check. Repeatable. Accepts `*`. |
 | `--ignore-platform-reqs` | Write no platform check |
 | `-d`, `--working-dir=DIR` | Run in `DIR` |
-
-Pun installs from dist archives (`zip` and `tar`) and path repositories. Packages locked with only a VCS source fail with an error that names them.
 
 ## Exit codes
 
 | Code | When |
 | --- | --- |
 | 0 | Installed |
-| 2 | No `composer.json`, requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |
+| 2 | No `composer.json`, unresolvable requirements, a failed download, checksum, or script, or another run error |

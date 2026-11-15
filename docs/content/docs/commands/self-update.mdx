@@ -1,6 +1,6 @@
 ---
 title: pun self-update
-description: Replace pun with the latest release, verified the same way the installer verifies it.
+description: Replace pun with the latest release.
 ---
 
 ```bash
@@ -9,19 +9,19 @@ pun self-update --check
 pun self-update v0.1.0
 ```
 
-`pun self-update` replaces the running `pun` with the latest release. Name a version to install that release instead. `--check` reports whether a newer release is out and changes nothing.
+`pun self-update` installs the latest release, or the version you name. `--check` only reports whether a newer release is out.
 
-The new binary passes the same checks as the [install script](/docs/installation):
+The download passes the same checks as the [install script](/docs/installation): HTTPS only, the published SHA-256 checksum, an archive with only regular files and directories under `punphp-<target>/`, and a new binary that reports the expected version. With a signed-in GitHub CLI (`gh`), the GitHub build attestation must also verify. Set `PUN_REQUIRE_ATTESTATION=1` to fail without it.
 
-1. Every request uses HTTPS.
-2. The archive matches the SHA-256 checksum published with the release.
-3. When a signed-in GitHub CLI (`gh`) is available, the GitHub build attestation proves that Pun's release workflow built the archive on a GitHub-hosted runner. Set `PUN_REQUIRE_ATTESTATION=1` to fail without it.
-4. The archive holds only regular files and directories under `punphp-<target>/`.
-5. The new binary runs and reports the expected version.
+If Composer installed Pun, run `composer update punphp/pun` instead.
 
-Pun writes the new binary next to the old one and renames it into place, so a `pun` that is running never reads a partial file.
+## Update from v0.1.1 or older
 
-If Composer installed Pun (`vendor/bin/pun`), update it with `composer update punphp/pun`. `pun self-update` exits 2 in that case.
+v0.1.1 and older check the attestation against the old repository name, `punphp/pun`, so `pun self-update` fails when `gh` is signed in. Reinstall once with the installer:
+
+```bash
+curl -fsSL https://pun.laravel.cloud/install | sh
+```
 
 ## Exit codes
 

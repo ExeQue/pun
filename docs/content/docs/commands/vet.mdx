@@ -1,6 +1,6 @@
 ---
 title: pun vet
-description: Check that someone you trust reviewed every locked package, or that you exempted it.
+description: Check that every locked package was reviewed or exempted.
 ---
 
 ```bash
@@ -10,28 +10,26 @@ pun vet diff monolog/monolog 3.8.0 3.9.0
 pun vet certify monolog/monolog 3.8.0 3.9.0
 ```
 
-`pun vet` checks the packages in your lock against a record of code reviews. Every package must be reviewed by you or by someone whose reviews you import, or be exempted. A dependency update then can't bring in code nobody read: the new version fails the check until someone reviews what changed.
+`pun vet` checks that every locked package was reviewed, by you or a team you import, or exempted. A new version fails until someone reviews what changed.
 
-A review is called an audit. It covers either one version of a package or the changes from one version to another. A version passes when a chain of audits leads to it from a full audit or an exemption. For example, a full audit of 1.0.0 plus audits of the changes 1.0.0 → 1.1.0 and 1.1.0 → 1.2.0 cover 1.2.0. Reviewing a diff is usually much less work than reading a whole package.
+A review is an audit of one version or of the changes between two. A version passes when a chain of audits reaches it from a full audit or an exemption. For example, audits of 1.0.0, 1.0.0 → 1.1.0, and 1.1.0 → 1.2.0 cover 1.2.0.
 
 ## Criteria
 
-Each audit and exemption vouches for one criterion:
-
 | Criterion | Means | Needed by |
 | --- | --- | --- |
-| `safe-to-run` | Safe to run on a developer's machine and in CI | `require-dev` packages |
-| `safe-to-deploy` | Safe to run in production. Implies `safe-to-run`. | `require` packages |
+| `safe-to-run` | Safe on a developer's machine and in CI | `require-dev` packages |
+| `safe-to-deploy` | Safe in production. Implies `safe-to-run`. | `require` packages |
 
-Path packages are your own code and metapackages hold no code, so neither needs an audit.
+Path packages and metapackages need no audit.
 
 ## Start
 
-`pun vet init` creates `supply-chain/` and exempts every locked package at its locked version. The check passes from the start, and every later change to the lock needs an audit. Replace the exemptions with audits over time. Commit `supply-chain/` with the lock.
+`pun vet init` creates `supply-chain/` and exempts every locked package at its locked version. Commit `supply-chain/` with the lock.
 
 ## When a package fails the check
 
-`pun vet` lists each package that no chain of audits covers, with the command that shows what to review:
+`pun vet` prints the command to review each failing package:
 
 ```text
 ✖ 1 of 214 packages is not vetted:
@@ -40,24 +38,24 @@ Path packages are your own code and metapackages hold no code, so neither needs 
     review it: pun vet diff monolog/monolog 3.8.0 3.9.0
 ```
 
-1. Run the command. `pun vet diff <package> <from> <to>` shows the changes between two versions with `git diff`. When no version of the package is reviewed yet, the command is `pun vet inspect <package> <version>`, which unpacks the version into Pun's cache and prints the directory.
-2. Read the code with the criterion in mind.
-3. Record the audit with `pun vet certify <package> <from> <to>`, or `pun vet certify <package> <version>` for a full audit. The audit goes in `supply-chain/audits.toml`, with your name from git's `user.name` and `user.email`.
+1. Run the command. `pun vet diff <package> <from> <to>` shows the changes with `git diff`. For a package with no reviewed version, `pun vet inspect <package> <version>` unpacks it into Pun's cache and prints the directory.
+2. Read the code.
+3. Run `pun vet certify <package> <from> <to>`, or `pun vet certify <package> <version>` for a full audit.
 
-`certify` takes `--criteria`, `--who`, and `--notes`. Without `--criteria`, the audit vouches for what the lock needs of the package.
+`certify` writes to `supply-chain/audits.toml` and takes `--criteria`, `--who`, and `--notes`. `--criteria` defaults to what the lock needs. `--who` defaults to git's `user.name` and `user.email`.
 
-Versions not in the lock come from Packagist. A branch version names its commit, as in `dev-main#0123abcd`, because a branch moves.
+Versions not in the lock come from Packagist. Name a branch version with its commit, as in `dev-main#0123abcd`.
 
 ## Import other teams' audits
 
-To trust another team's audits, list their `audits.toml` in `supply-chain/config.toml`:
+List another team's `audits.toml` in `supply-chain/config.toml`:
 
 ```toml
 [imports.acme]
 url = "https://example.com/supply-chain/audits.toml"
 ```
 
-The URL must use HTTPS. A path such as `../../shared/audits.toml` is read from `supply-chain/`. Pun fetches each import once and keeps the audits of your locked packages in `supply-chain/imports.lock`, so later checks run offline and an import changes only when you run `pun vet fetch-imports`.
+The URL must use HTTPS. A relative path is read from `supply-chain/`. Pun stores the fetched audits in `supply-chain/imports.lock`, so later checks run offline. Imports change only when you run `pun vet fetch-imports`.
 
 ## Files
 
@@ -67,7 +65,7 @@ The URL must use HTTPS. A path such as `../../shared/audits.toml` is read from `
 | `supply-chain/config.toml` | The exemptions and the imports |
 | `supply-chain/imports.lock` | The imported audits, as last fetched |
 
-An audit has `criteria`, `who`, optional `notes`, and either `version` or `delta = "<from> -> <to>"`:
+An audit has `criteria`, `who`, optional `notes`, and either `version` or `delta`:
 
 ```toml
 [[audits."monolog/monolog"]]
@@ -76,7 +74,7 @@ criteria = "safe-to-deploy"
 delta = "3.8.0 -> 3.9.0"
 ```
 
-`pun vet prune` removes the exemptions the lock no longer needs: those of packages you removed, and those that audits now cover.
+`pun vet prune` removes exemptions for removed packages and for versions that audits now cover.
 
 ## Exit codes
 
