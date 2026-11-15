@@ -272,7 +272,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
 /// The lint plan, or the config error that names every format and lint rule Pun hasn't ported.
 fn ported_plan(a: &FormatArgs, cfg: &Config, lint: &LintOpts) -> Result<Plan> {
     let plan = Plan::new(cfg, &lint.levels).map_err(config_error)?;
-    let mut unported = Pipeline::new(&cfg.rules, &pun_fixers::all)?.not_ported;
+    let mut unported = Pipeline::new(&cfg.rules, &crate::extensions::fixers)?.not_ported;
     if let Err(lint) = &plan {
         unported.extend_from_slice(lint);
     }
@@ -930,7 +930,7 @@ fn add_findings(results: &mut Vec<FileResult>, analysed: &crate::analyse::Analys
 }
 
 fn pipeline(cfg: &Config) -> Result<Pipeline> {
-    let mut p = Pipeline::new(&cfg.rules, &pun_fixers::all)?;
+    let mut p = Pipeline::new(&cfg.rules, &crate::extensions::fixers)?;
     p.set_preset(&cfg.preset);
     p.ignore_mismatched_rules(
         std::env::var("PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS")

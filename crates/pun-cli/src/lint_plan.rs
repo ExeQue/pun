@@ -31,7 +31,10 @@ pub(crate) struct On {
 
 pub(crate) fn token_rules() -> &'static HashMap<&'static str, &'static str> {
     static T: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
-        let ported: BTreeSet<&'static str> = pun_fixers::all().iter().map(|f| f.name()).collect();
+        let ported: BTreeSet<&'static str> = crate::extensions::fixers()
+            .iter()
+            .map(|f| f.name())
+            .collect();
         (pun_config::fixer_entries().iter())
             .filter_map(|(fixer, e)| {
                 let id = e.get("pun")?.as_str()?;

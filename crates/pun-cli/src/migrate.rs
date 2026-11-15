@@ -525,8 +525,10 @@ fn convert(
     source: Option<&(Source, PathBuf)>,
     report: &mut Report,
 ) -> Result<migrate::Migration> {
-    let fixers: std::collections::HashSet<&str> =
-        pun_fixers::all().iter().map(|f| f.name()).collect();
+    let fixers: std::collections::HashSet<&str> = crate::extensions::fixers()
+        .iter()
+        .map(|f| f.name())
+        .collect();
     let runs = |name: &str| fixers.contains(name);
     let m = match source {
         Some((Source::PhpCsFixer, f)) => {

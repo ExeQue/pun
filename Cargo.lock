@@ -1556,6 +1556,8 @@ name = "punphp-extension"
 version = "0.1.1"
 dependencies = [
  "punphp-config",
+ "punphp-fixers",
+ "punphp-format",
  "punphp-lint",
 ]
 

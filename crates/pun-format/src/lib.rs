@@ -12,6 +12,22 @@ mod fixer_annotation;
 mod php_grammar;
 mod php_parser;
 
+/// The fixers an extension adds. A run sorts them by priority, so the order they are added in changes nothing.
+#[derive(Default)]
+pub struct FixerRegistry {
+    fixers: Vec<Box<dyn Fixer>>,
+}
+
+impl FixerRegistry {
+    pub fn add(&mut self, fixers: impl IntoIterator<Item = Box<dyn Fixer>>) {
+        self.fixers.extend(fixers);
+    }
+
+    pub fn into_fixers(self) -> Vec<Box<dyn Fixer>> {
+        self.fixers
+    }
+}
+
 pub trait Fixer: Send + Sync {
     fn name(&self) -> &'static str;
     fn priority(&self) -> i32;
