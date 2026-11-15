@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 autotests = false
+# A symlink back to the fixture's own vendor directory, so cargo's package walk would loop.
+exclude = ["tests/fixtures/larastan-types/root/vendor/orchestra/testbench-core/laravel/vendor"]
 
 [lib]
 name = "pun_analyse"
