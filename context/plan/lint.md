@@ -268,9 +268,9 @@ Lint spike (Build 1, 2026-10-17):
 
 Lint 7 batch 1 (dead-code, 2026-10-18; 13 of 14 rules ported, parity on Pinkary and laravel-framework):
 
-- **Assistant's call: php-parser's view is shared code.** `rules/php_parser.rs` holds statement lists as php-parser
+- **Assistant's call: php-parser's view is shared code.** `rules/support/statements.rs` holds statement lists as php-parser
   keeps them (its `Nop` for trailing comments, `;` dropped), and how Rector's printer removes, replaces or empties a
-  statement; `rules/used_variable.rs` holds `ExprUsedInNodeAnalyzer` and `isVariableUsedInNextStmt`. Rules call
+  statement; `rules/support/variable_usage.rs` holds `ExprUsedInNodeAnalyzer` and `isVariableUsedInNextStmt`. Rules call
   them instead of each one copying them.
 - **Assistant's call: where Rector writes broken code, Pun writes the valid fix.** Rector's printer turns
   `return (1);` in a constructor into `return ();` and stops on `public $a = (null);`; Pun writes `return;` and
@@ -296,11 +296,11 @@ Lint 7 batch 1 (dead-code, 2026-10-18; 13 of 14 rules ported, parity on Pinkary 
 Lint 7 batch 3 (statement rules, 2026-10-18; 11 of 14 rules ported):
 
 - **Assistant's call (lint 7 batch 3): statement lists as php-parser sees them.** The statement rules share
-  `rules/rector_stmts.rs`, which reads a Mago statement list the way php-parser builds it (open and close tags and
+  `rules/support/statement_edits.rs`, which reads a Mago statement list the way php-parser builds it (open and close tags and
   `;` dropped, a trailing comment as a `Nop`, a braced `if`/`else` body flattened, the newline after `?>` not inline
   HTML) and writes moved and new statements as Rector's format-preserving printer does (a removed statement takes the
   whitespace before it, new `if`s pretty-printed a statement a line, a kept node keeps its old whitespace). It copies
-  the token helpers of batch 1's `php_parser.rs` rather than editing it; the two merge once both land.
+  the token helpers of `support/statements.rs` rather than editing it; the two merge once both land.
 - **Assistant's call (lint 7 batch 3): reordered `case`s.** `no-duplicate-case-body` ports php-parser's `Differ`
   (Myers, with `coalesceReplacements`) and the `pArray` rules for the switch's cases, so the blank lines and comments
   between moved cases land where Rector's printer puts them. A moved trailing comment (php-parser's `Nop`) is
@@ -352,7 +352,7 @@ laravel-framework (identical files)):
 Lint 7 batch 5 (code-quality, dead-code and privatization, 2026-10-19; 11 of 13 rules ported by lint-a; `prefer-property-over-local-getter` and `CombinedAssignRector` went to lint-b; on the corpus Pinkary has nothing to change, and laravel-framework's 9 files Rector changes come out
 the same, plus one file Rector cannot parse):
 
-- **Assistant's call (lint 7 batch 5): shared code in `rules/rector_batch5.rs`.** php-parser's `pArray` removal
+- **Assistant's call (lint 7 batch 5): shared code in `rules/support/` (`rewrites.rs`, `statement_splice.rs` and others, split by subject).** php-parser's `pArray` removal
   (a removed item after a kept one takes the text from the kept item's end; leading removals stop at the first kept
   item's comments; an emptied list is printed anew), the 1:1 and many-to-one statement replace, PhpVersionFactory's
   version strings, `ParamAnalyzer`, the `ClassMethod` reprint without some parameters, and the docblock `@param`

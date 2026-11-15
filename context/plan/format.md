@@ -134,7 +134,7 @@ pint.json, harness and fuzzer. Speed and memory come first (decided). The steps 
    `php_unit_fqcn_annotation`, `simple_to_complex_string_variable` and the lint rules `no_null_property_initialization`,
    `no_useless_nullsafe_operator`, `phpdoc_to_comment` as unsupported. Assistant's calls: `phpdoc/no-alias-tag`'s
    default `replacements` is PHP-CS-Fixer 3's (no `const => var`; Pint runs without future mode); the
-   GeneralPhpdocTagRenameFixer code moved to analyzers/ so its proxy builds under `PUN_FIXERS_ONLY`; the
+   GeneralPhpdocTagRenameFixer code lives in analyzers/, shared by its proxies; the
    NoUselessConcatOperatorFixer port leaves out `operandsCanNotBeMerged`'s first check (the first operand is not a
    `"..."` with variables), which no caller can reach; tests/fixtures.rs gives a case that omits a trailing argument the
    parameter's default (NoUselessConcatOperatorFixerTest's `$configuration = ['juggle_simple_strings' => true]`).
