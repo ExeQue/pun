@@ -9,20 +9,21 @@ pun install --no-dev --classmap-authoritative
 pun install --ignore-platform-req=ext-imagick
 ```
 
-`pun install` installs the exact versions in `pun.lock` into `vendor/`. The result is the tree `composer install` produces from the same lock: the same package files, `vendor/autoload.php`, `vendor/composer/installed.json` and `installed.php`, the autoloader, `platform_check.php`, and the `vendor/bin` proxies. Composer, Laravel's `package:discover`, and `Composer\InstalledVersions` read it unchanged, so you can switch between `pun install` and `composer install` in either direction.
+`pun install` installs the exact versions in `composer.lock` into `vendor/`. The result is the tree `composer install` produces from the same lock: the same package files, `vendor/autoload.php`, `vendor/composer/installed.json` and `installed.php`, the autoloader, `platform_check.php`, and the `vendor/bin` proxies. Composer, Laravel's `package:discover`, and `Composer\InstalledVersions` read it unchanged, so you can switch between `pun install` and `composer install` in either direction.
 
 On pinkary, a Laravel app with 211 packages, a fresh install takes about 1.7 seconds against Composer's 13.5 seconds when both caches hold the archives. With nothing to change, it takes 0.65 seconds against 6.7 seconds.
 
 ## Where the dependencies come from
 
-`pun install` reads the dependency sections of `pun.toml` and installs `pun.lock`. It never reads `composer.json` or `composer.lock`. It exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate), which copies `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`, in two cases:
+`pun install` reads `composer.json` and installs `composer.lock`, the same files `composer install` reads. `pun.toml` holds no dependencies. Without a `composer.json`, `pun install` exits 2:
 
-- `pun.toml` has no dependency sections and the project has a `composer.json`.
-- The project has a `composer.lock` but no `pun.lock`.
+```text
+no composer.json in /path/to/project: add a dependency with `pun require <package>`
+```
 
-A `pun.toml` with no dependency sections and no `composer.json` beside it also exits 2. Add a first package with [`pun require`](/docs/commands/require).
+[`pun require`](/docs/commands/require) creates `composer.json` when the directory has none.
 
-Without a `pun.lock`, `pun install` resolves the dependencies to their newest versions, writes `pun.lock`, and installs it, as [`pun update`](/docs/commands/update) does. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
+Without a `composer.lock`, `pun install` resolves the dependencies to their newest versions, writes `composer.lock`, and installs it, as [`pun update`](/docs/commands/update) does. When `composer.json` changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
 
 ## What an install does
 
@@ -72,4 +73,4 @@ Pun installs from dist archives (`zip` and `tar`) and path repositories. Package
 | Code | When |
 | --- | --- |
 | 0 | Installed |
-| 2 | A project not migrated yet, requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |
+| 2 | No `composer.json`, requirements that can't be resolved, a failed download or checksum, a failed script, or another run error |

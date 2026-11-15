@@ -23,7 +23,7 @@ On a terminal, `pun init` asks three questions:
 
 `--lint-sets ""` selects no lint sets. The `empty` format preset is valid in `pun.toml` but is not an init choice.
 
-Pun reads the PHP constraint and the locked Laravel, Pest, and PHPUnit versions from the [project's manifest and lock](/docs/configuration/pun-toml#where-pun-reads-the-dependencies): `composer.json` and `composer.lock` in a project without `pun.toml`. The generated config contains only the three choices:
+Pun reads the PHP constraint and the locked Laravel, Pest, and PHPUnit versions from the project's [`composer.json` and `composer.lock`](/docs/configuration/pun-toml#dependencies). The generated config contains only the three choices:
 
 ```toml
 [format]

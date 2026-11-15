@@ -10,7 +10,7 @@ punx friendsofphp/php-cs-fixer fix --dry-run
 pun x squizlabs/php_codesniffer phpcbf src
 ```
 
-`pun x` installs a Composer package into Pun's cache and runs one of its commands in the current directory. The package never enters your project's `pun.toml`, `pun.lock`, or `vendor/`, and each tool gets its own dependencies, so two tools can't conflict. `punx` is the same command under a shorter name: the installer puts it beside `pun`.
+`pun x` installs a Composer package into Pun's cache and runs one of its commands in the current directory. The package never enters your project's `composer.json`, `composer.lock`, or `vendor/`, and each tool gets its own dependencies, so two tools can't conflict. `punx` is the same command under a shorter name: the installer puts it beside `pun`.
 
 The first run of a package resolves its newest stable release and installs it, as [`pun install`](/docs/commands/install) does. Later runs reuse that install and start at once. When the last resolve is more than a day old, the run resolves again to pick up a new release. If that fails, for example offline, the run uses the version it has.
 
@@ -64,7 +64,7 @@ phpstan/phpstan:^2.1  2.1.40
 
 `punx clean` removes every install. Name packages to remove only theirs: `punx clean phpstan` removes every version of `phpstan/phpstan`, and `punx clean phpstan:^2.1` removes only the `^2.1` install. The next run of a removed package installs it again.
 
-Installs live in `$PUN_CACHE_DIR/x`. Without `PUN_CACHE_DIR`, the cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. Downloads go through Composer's cache, so a package your projects already use doesn't download again.
+Installs live in `$PUN_CACHE_DIR/x`. Each install is a directory with its own `composer.json`, `composer.lock`, and `vendor/`. Without `PUN_CACHE_DIR`, the cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. Downloads go through Composer's cache, so a package your projects already use doesn't download again.
 
 ## Exit codes
 

@@ -34,7 +34,7 @@ An explicit `--format` takes precedence over automatic compact output. For forma
 
 ## Laravel Boost
 
-The `punphp/pun` Composer package ships a [Laravel Boost](https://github.com/laravel/boost) guideline and a `pun-development` skill. `php artisan boost:install` offers them when `composer.lock` lists `punphp/pun` as a direct dependency, because Boost reads packages from `composer.lock`, not `pun.lock`. They tell the agent to run `pun check --fix --dirty` after it changes PHP files, and to use Pun's package commands in place of Composer's.
+The `punphp/pun` Composer package ships a [Laravel Boost](https://github.com/laravel/boost) guideline and a `pun-development` skill. `php artisan boost:install` offers them when `composer.lock` lists `punphp/pun` as a direct dependency, as Boost reads packages from `composer.lock`. They tell the agent to run `pun check --fix --dirty` after it changes PHP files, and to use Pun's package commands in place of Composer's.
 
 ## Markdown docs
 

@@ -23,7 +23,6 @@ Pun looks in the project root:
 | Rector | `rector.php` | `[lint]` |
 | PHPStan | `phpstan.neon`, `phpstan.neon.dist`, `phpstan.dist.neon` | `[analyse]` |
 | Mago | `mago.toml` | Detected but not translated |
-| Composer | `composer.json`, `composer.lock` | The [dependency sections](/docs/configuration/pun-toml#dependencies) and `pun.lock` |
 
 On a terminal, a checklist selects the configs to migrate. All detected configs start selected.
 
@@ -67,17 +66,6 @@ Migration converts levels to an analyse preset with explicit rule differences. I
 
 PHPStan baselines are not copied. Generate a Pun baseline with `pun analyse --generate-baseline`, then configure `[analyse] baseline`.
 
-## Composer
-
-When the project has a `composer.json`, migrate appends its dependencies to `pun.toml` and writes `pun.lock` from `composer.lock`. [`pun install`](/docs/commands/install) then installs from those two files.
-
-- Every composer.json key keeps its name and value. Root fields such as `name`, `type`, and `minimum-stability` go under `[package]`. `require`, `autoload`, `scripts`, `config`, `extra`, and the other sections become tables of the same name, and `repositories` becomes `[[repositories]]`.
-- Credentials in `config` (`github-oauth`, `http-basic`, `bearer`, `gitlab-token`, and the other `auth.json` keys) move to the project's `auth.json`, which Composer also reads. If `.gitignore` does not list `auth.json`, migrate says so.
-- `pun.lock` keeps `composer.lock`'s content hash, packages, and order. The dependencies in `pun.toml` hash to the same value, so `pun install` treats the lock as current.
-- `$schema` is dropped. Keys that composer.json does not define, and `null` values, are reported and skipped.
-
-`composer.json` and `composer.lock` stay in place. Pun's package commands never read them again, and `pun update` changes only `pun.lock`, so they fall behind after the first update. A `pun.toml` written by an earlier `pun migrate` without dependencies gets them added.
-
 ## Ignore comments
 
 `@php-cs-fixer-ignore` becomes `@pun-ignore-file`. Recognized `@phpstan-ignore` identifiers become Pun rule IDs. Unknown identifiers and blanket PHPStan ignores stay unchanged and are reported.
@@ -88,6 +76,6 @@ See [ignore comments](/docs/configuration/ignore-comments).
 
 `--dry-run` prints a diff without writing. A second migration leaves identical output unchanged and refuses to overwrite a differing `pun.toml`.
 
-Migration leaves source configs and dependencies in place. It may rewrite ignore comments in PHP files. It does not edit scripts, CI, hooks, or editor settings.
+Migration leaves source configs in place. It never changes `composer.json` or `composer.lock`: the dependencies stay there, and the [package commands](/docs/commands/install) read them from there. It may rewrite ignore comments in PHP files. It does not edit scripts, CI, hooks, or editor settings.
 
 Writes are not transactional: a write error can leave earlier changes in place. Exit code 2 means migration could not complete.

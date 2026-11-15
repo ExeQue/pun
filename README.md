@@ -8,7 +8,7 @@
 
 ## Introduction
 
-Pun is an ultrafast, unified toolchain for PHP 8.4+ projects. One native binary formats, lints and analyses your code and installs your Composer packages, configured by a single `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector, PHPStan and Composer configs.
+Pun is an ultrafast, unified toolchain for PHP 8.4+ projects. One native binary formats, lints and analyses your code and installs your Composer packages from `composer.json` and `composer.lock`, with its own settings in a single `pun.toml`. It formats code byte for byte like [Laravel Pint](https://github.com/laravel/pint), and `pun migrate` converts your existing Pint, PHP-CS-Fixer, Rector and PHPStan configs.
 
 Install the binary for Linux or macOS (x86_64 or arm64):
 

@@ -5,6 +5,8 @@ description: Paths, exclusions, presets, rule levels, and options.
 
 Pun reads `pun.toml`. [`pun init`](/docs/commands/init) creates it; [`pun migrate`](/docs/commands/migrate) converts existing tool configs. Every section is optional.
 
+`pun.toml` holds only Pun's own settings: `[workspace]` and the tool sections `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`. The dependencies stay in `composer.json` and `composer.lock` (see [Dependencies](#dependencies)).
+
 This example shows the main settings:
 
 ```toml pun.toml
@@ -56,7 +58,7 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` in the [project's manifest](#where-pun-reads-the-dependencies), otherwise 8.4. A `require.php` that allows PHP below 8.4 is a config error. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
+| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` in [`composer.json`](#dependencies), otherwise 8.4. A `require.php` that allows PHP below 8.4 is a config error. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
 | `[files] paths` | Default paths when no command-line paths are given. Each must be inside the project; a path that leaves it, directly or through a symlink, is a config error |
 | `[files] exclude` | Shared exclusions, combined with command-specific exclusions |
 
@@ -81,7 +83,7 @@ Extensions add the rules and analysis for a framework or test tool. Pun builds t
 
 Each key takes one of these values:
 
-- `"auto"` (the default): on when the [project's lock](#where-pun-reads-the-dependencies) locks one of the extension's packages.
+- `"auto"` (the default): on when the project's [`composer.lock`](#dependencies) locks one of the extension's packages.
 - `"on"`: on without the lock.
 - `"off"`: off for every command, as if each of its groups were `"off"`.
 
@@ -148,57 +150,27 @@ message = "#^Call to an undefined method App\\\\Models\\\\User::#"
 paths = ["app/Http/*"]
 ```
 
-## Dependencies
+## [workspace]
 
-The dependency sections hold what `composer.json` holds, under the same names. [`pun migrate`](/docs/commands/migrate#composer) writes them, and [`pun install`](/docs/commands/install) reads them.
+`members` lists the directories of a workspace's packages, or globs that match them. It is the section's only key. Each member keeps its dependencies in its own `composer.json`. See [workspaces](/docs/guides/workspaces).
 
 ```toml pun.toml
-[package]
-name = "acme/app"
-type = "project"
-minimum-stability = "stable"
-
-[require]
-php = "^8.4"
-"laravel/framework" = "^13.0"
-
-[require-dev]
-"pestphp/pest" = "^5.0"
-
-[autoload]
-psr-4 = { 'App\' = "app/" }
-
-[scripts]
-post-autoload-dump = ["@php artisan package:discover --ansi"]
-
-[config]
-optimize-autoloader = true
-
-[[repositories]]
-type = "path"
-url = "packages/*"
+[workspace]
+members = ["packages/*"]
 ```
 
-| Section | composer.json key |
-| --- | --- |
-| `[package]` | Root fields: `name`, `description`, `version`, `type`, `keywords`, `homepage`, `license`, `authors`, `minimum-stability`, `prefer-stable`, `bin`, and the rest |
-| `[require]`, `[require-dev]`, `[conflict]`, `[replace]`, `[provide]`, `[suggest]` | The same key. Each value is a string. |
-| `[autoload]`, `[autoload-dev]`, `[scripts]`, `[scripts-descriptions]`, `[scripts-aliases]`, `[config]`, `[extra]` | The same key |
-| `[[repositories]]` | `repositories`, as a list |
-| `[workspace]` | None. `members` lists the member directories, or globs that match them. See [workspaces](/docs/guides/workspaces). |
+## Dependencies
 
-Each section except `[[repositories]]` must be a table, and each `[require]`-style value must be a string. A `[package]` key that composer.json's root does not define is an error that lists the keys it takes.
+The project's dependencies live in `composer.json` and `composer.lock`, as Composer keeps them. `pun.toml` holds only Pun's own settings.
 
-`pun.lock` records the exact packages `pun install` installs. Pun writes it. Do not edit it by hand.
+- [`pun install`](/docs/commands/install), [`update`](/docs/commands/update), [`require`](/docs/commands/require), and [`remove`](/docs/commands/remove) read `composer.json` and write the `composer.lock` Composer writes. `require` and `remove` edit `composer.json` in place. [`pun vet`](/docs/commands/vet) checks the packages in `composer.lock`. Composer works on the same files, so a team can use both tools on one project.
+- The commands that load the configuration, such as `format`, `lint`, `analyse`, `check`, `config`, and `extension list`, read the PHP constraint (`require.php`), `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from the `composer.json` and `composer.lock` in the project root.
 
-### Where Pun reads the dependencies
+A composer.json section in `pun.toml` is a config error (exit 2). The sections are `[package]`, `[require]`, `[require-dev]`, `[conflict]`, `[provide]`, `[replace]`, `[suggest]`, `[autoload]`, `[autoload-dev]`, `[scripts]`, `[scripts-descriptions]`, `[scripts-aliases]`, `[config]`, `[[repositories]]`, and `[extra]`:
 
-The commands that load the configuration, such as `format`, `lint`, `analyse`, `check`, `config`, and `extension list`, read the PHP constraint, `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from one manifest and one lock:
-
-- When `pun.toml` has any dependency section other than `[workspace]`, Pun reads `pun.toml` and `pun.lock`. It ignores `composer.json` and `composer.lock`, even when `pun.lock` does not exist yet.
-- Otherwise, Pun reads `composer.json` and `composer.lock`. This is a project that `pun migrate` has not moved yet, or that keeps only tool settings in `pun.toml`.
-
-The package commands (`install`, `update`, `require`, `remove`, and `vet`) read only `pun.toml` and `pun.lock`.
+```text
+pun.toml: [require] belongs in composer.json: Pun reads the dependencies from composer.json and composer.lock, and pun.toml holds only Pun's own settings
+```
 
 ## Rule names
 
@@ -276,6 +248,7 @@ Each of these is an error that names what to write instead:
 | `"info"`, or `severity` in a rule table | `"warn"`, and `level` |
 | `true` / `false` for a lint rule | `"error"` / `"off"` |
 | `[analyse] level = 5` | `[analyse] preset = "recommended"` |
+| `[require]`, `[package]`, or another [composer.json section](#dependencies) (exit 2) | the same key in `composer.json`; `[package]`'s keys go at its root |
 
 ## Without pun.toml
 
