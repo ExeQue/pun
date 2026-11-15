@@ -1,6 +1,7 @@
 use crate::constraint;
 use anyhow::{Context, Result};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -36,13 +37,16 @@ pub struct Locked {
 pub struct Composer {
     pub php: Option<PhpRequire>,
     pub platform_php: Option<String>,
-    pub laravel: Option<Locked>,
-    pub pest: Option<Locked>,
-    pub phpunit: Option<Locked>,
+    /// The locked versions of the packages that turn an extension on.
+    pub locked: BTreeMap<String, Locked>,
     pub sources: Vec<PathBuf>,
 }
 
 impl Composer {
+    pub fn locked(&self, package: &str) -> Option<&Locked> {
+        self.locked.get(package)
+    }
+
     pub fn platform_php_version(&self) -> Option<crate::PhpVersion> {
         let mut parts = self.platform_php.as_deref()?.split('.');
         let mut part = || {
@@ -87,17 +91,19 @@ pub fn detect(root: &Path) -> Result<Composer> {
             .into_iter()
             .flatten()
         {
-            let slot = match p.get("name").and_then(Value::as_str) {
-                Some("laravel/framework") => &mut out.laravel,
-                Some("pestphp/pest") => &mut out.pest,
-                Some("phpunit/phpunit") => &mut out.phpunit,
-                _ => continue,
+            let Some(name) = (p.get("name").and_then(Value::as_str))
+                .filter(|n| crate::extensions::packages().any(|e| e == *n))
+            else {
+                continue;
             };
             let version = p.get("version").and_then(Value::as_str).unwrap_or("");
-            *slot = Some(Locked {
-                version: version.to_string(),
-                semver: semver(version),
-            });
+            out.locked.insert(
+                name.to_string(),
+                Locked {
+                    version: version.to_string(),
+                    semver: semver(version),
+                },
+            );
         }
     }
     Ok(out)
@@ -242,7 +248,7 @@ mod tests {
         let c = detect(&d).unwrap();
         assert_eq!(c.php, None);
         assert_eq!(c.php_version(), None);
-        assert_eq!((c.laravel, c.pest, c.phpunit), (None, None, None));
+        assert!(c.locked.is_empty());
         assert_eq!(c.sources, [d.join("composer.json")]);
         let d = dir(&[(
             "composer.lock",
@@ -250,7 +256,10 @@ mod tests {
         )]);
         let c = detect(&d).unwrap();
         assert_eq!(c.php, None);
-        assert_eq!(c.laravel, Some(locked("v12.0.1", Some(v(12, 0, 1)))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v12.0.1", Some(v(12, 0, 1))))
+        );
         assert_eq!(c.sources, [d.join("composer.lock")]);
     }
 
@@ -272,13 +281,22 @@ mod tests {
             ),
         ]);
         let c = detect(&d).unwrap();
-        assert_eq!(c.php.map(|p| p.lowest), Some(Some(v(8, 5, 0))));
+        assert_eq!(c.php.as_ref().map(|p| p.lowest), Some(Some(v(8, 5, 0))));
         assert_eq!(c.platform_php.as_deref(), Some("8.5.1"));
-        assert_eq!(c.laravel, Some(locked("v13.1.0", Some(v(13, 1, 0)))));
-        assert_eq!(c.pest, Some(locked("v5.0.3", Some(v(5, 0, 3)))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v13.1.0", Some(v(13, 1, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v5.0.3", Some(v(5, 0, 3))))
+        );
         assert_eq!(c.sources, [d.join("pun.toml"), d.join("pun.lock")]);
         std::fs::remove_file(d.join("pun.lock")).unwrap();
-        assert_eq!(detect(&d).unwrap().laravel, None);
+        assert_eq!(
+            detect(&d).unwrap().locked("laravel/framework").cloned(),
+            None
+        );
     }
 
     #[test]
@@ -304,9 +322,18 @@ mod tests {
             c.php_version().map(|v| v.to_string()).as_deref(),
             Some("8.4")
         );
-        assert_eq!(c.laravel, Some(locked("v13.23.0", Some(v(13, 23, 0)))));
-        assert_eq!(c.pest, Some(locked("v5.0.3", Some(v(5, 0, 3)))));
-        assert_eq!(c.phpunit, Some(locked("13.2.6", Some(v(13, 2, 6)))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v13.23.0", Some(v(13, 23, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v5.0.3", Some(v(5, 0, 3))))
+        );
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("13.2.6", Some(v(13, 2, 6))))
+        );
         assert_eq!(
             c.sources,
             [d.join("composer.json"), d.join("composer.lock")]
@@ -319,14 +346,23 @@ mod tests {
             detect(&dir(&[("composer.lock", &lock(packages, dev))])).unwrap()
         };
         let c = only(&pkg("laravel/framework", "v11.31.0"), "");
-        assert_eq!(c.laravel, Some(locked("v11.31.0", Some(v(11, 31, 0)))));
-        assert_eq!((c.pest, c.phpunit), (None, None));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("v11.31.0", Some(v(11, 31, 0))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only("", &pkg("pestphp/pest", "v4.1.0"));
-        assert_eq!(c.pest, Some(locked("v4.1.0", Some(v(4, 1, 0)))));
-        assert_eq!((c.laravel, c.phpunit), (None, None));
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("v4.1.0", Some(v(4, 1, 0))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only(&pkg("phpunit/phpunit", "12.4.1"), "");
-        assert_eq!(c.phpunit, Some(locked("12.4.1", Some(v(12, 4, 1)))));
-        assert_eq!((c.laravel, c.pest), (None, None));
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("12.4.1", Some(v(12, 4, 1))))
+        );
+        assert_eq!(c.locked.len(), 1);
         let c = only(
             &[
                 pkg("laravel/laravel", "v13.0.0"),
@@ -335,7 +371,7 @@ mod tests {
             .join(","),
             "",
         );
-        assert_eq!(c.laravel, None);
+        assert_eq!(c.locked("laravel/framework").cloned(), None);
     }
 
     #[test]
@@ -352,17 +388,29 @@ mod tests {
             ),
         )]))
         .unwrap();
-        assert_eq!(c.laravel, Some(locked("dev-main", None)));
-        assert_eq!(c.phpunit, Some(locked("12.4", Some(v(12, 4, 0)))));
-        assert_eq!(c.pest, Some(locked("5.0.0-RC1", Some(v(5, 0, 0)))));
+        assert_eq!(
+            c.locked("laravel/framework").cloned(),
+            Some(locked("dev-main", None))
+        );
+        assert_eq!(
+            c.locked("phpunit/phpunit").cloned(),
+            Some(locked("12.4", Some(v(12, 4, 0))))
+        );
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("5.0.0-RC1", Some(v(5, 0, 0))))
+        );
         let c = detect(&dir(&[(
             "composer.lock",
             &lock(&pkg("pestphp/pest", "3.x-dev"), ""),
         )]))
         .unwrap();
-        assert_eq!(c.pest, Some(locked("3.x-dev", None)));
+        assert_eq!(
+            c.locked("pestphp/pest").cloned(),
+            Some(locked("3.x-dev", None))
+        );
         let c = detect(&dir(&[("composer.lock", r#"{"packages":[]}"#)])).unwrap();
-        assert_eq!(c.pest, None);
+        assert_eq!(c.locked("pestphp/pest").cloned(), None);
     }
 
     #[test]

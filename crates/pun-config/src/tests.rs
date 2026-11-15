@@ -349,7 +349,7 @@ fn lint_sets() {
     let l = lint(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!(
         (l.rules.len(), l.ecosystems),
-        (77, vec![crate::Ecosystem::Laravel])
+        (77, vec![&crate::extensions::LARAVEL])
     );
     assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
     let off = format!("{types}[lint.groups]\nlaravel = \"off\"\n");

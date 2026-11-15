@@ -171,7 +171,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   issue is used directly only where the analyse spike showed exactly the same check (`yes`, no extras), Laravel as a built-in Mago plugin (Pest after 1.0). Built-in symbols come from PHPStan's
   reflection (crates/pun-phpstan/data/symbols.json). Baselines are Pun's own (`pun analyse --generate-baseline`,
   pun-baseline.toml); migrate never copies a PHPStan baseline.
-- **No extension system before 1.0.** Framework support is compiled in, as Mago's plugins are. Mockery, Livewire,
+- **Extensions** (plan/extensions.md, started after v0.1.1 by Pushpak, 2026-11-15): Laravel, Pest, PHPUnit and
+  Doctrine support moves behind one Rust `Extension` trait, compiled in as Mago's plugins are. Mockery, Livewire,
   Filament and the like come later as extensions.
 - **Mago** from crates.io, pinned `=1.57.0`, bumped together; mago-analyzer, mago-codex, mago-syntax and
   mago-phpdoc-syntax are vendored with patches in `third_party/`, each with its PATCHES.md.
@@ -496,7 +497,8 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
 | packages: the Composer plugin host (plan/packages.md §3); without it, allowed plugins other than pest-plugin and php-http/discovery are reported and skipped | todo |
-| later: LSP; run, test; native Blade; extension system | after 1.0 |
+| extensions (plan/extensions.md Migration 1-8): step 1, `ExtensionMeta` in pun-config, is done | doing |
+| later: LSP; run, test; native Blade | after 1.0 |
 | later: analyse 7, Pest and PHPUnit typing (analyse.md §9) | after 1.0 |
 | audit item 17 follow-up: add property.trait to IDENTIFIERS, take identifiers as &'static str (no format! in names.rs), assert in tests/rules.rs that every reported identifier is listed, drop testPromotedProperties from gaps.txt; waits for the rules/* claim | todo |
 | oracle: .oracle/phpstan's Composer project has symfony/polyfill-php85, so PHPStan run from it knows array_first() and friends at phpVersion 80400; take built-in-symbol expectations from the standalone phar outside a Composer project | todo |

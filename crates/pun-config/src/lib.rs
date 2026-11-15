@@ -1,6 +1,7 @@
 pub mod composer;
 mod constraint;
 mod explain;
+pub mod extensions;
 mod identifiers;
 pub mod manifest;
 mod mapping;
@@ -13,8 +14,8 @@ pub mod toml_text;
 pub use explain::{RULE_DOCS_URL, explain};
 pub use identifiers::rule_of_identifier;
 pub use schema::{
-    Analyse, AnalysePreset, AnalyseRule, Ecosystem, Files, FixSafety, FormatPreset, Ignore,
-    LINT_SETS, Level, Lint, LintRule, LintSetting, Override, PhpVersion, groups,
+    Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, LINT_SETS, Level,
+    Lint, LintRule, LintSetting, Override, PhpVersion, groups,
 };
 
 use anyhow::{Context, Result, bail};
@@ -574,7 +575,7 @@ struct ShownFormat<'a> {
 struct ShownLint<'a> {
     sets: &'a [String],
     exclude: &'a [String],
-    ecosystems: &'a [Ecosystem],
+    ecosystems: &'a [&'static extensions::ExtensionMeta],
     rules: Map<String, Value>,
     overrides: Vec<ShownOverride<'a>>,
 }
@@ -591,7 +592,7 @@ struct ShownAnalyse<'a> {
     paths: &'a [String],
     exclude: &'a [String],
     switches: &'a [&'static str],
-    ecosystems: &'a [Ecosystem],
+    ecosystems: &'a [&'static extensions::ExtensionMeta],
     rules: Map<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     baseline: Option<&'a str>,

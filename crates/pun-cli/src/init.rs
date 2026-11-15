@@ -52,7 +52,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
     let composer = pun_config::composer::detect(&root)?;
     let style = match a.style {
         Some(s) => s,
-        None if composer.laravel.is_some() => Style::Laravel,
+        None if composer.locked("laravel/framework").is_some() => Style::Laravel,
         None => Style::Psr12,
     };
     let human = !agent::enabled();
@@ -230,12 +230,12 @@ fn found(root: &Path, c: &Composer) -> String {
         None => l.version.clone(),
     };
     let mut parts = vec![];
-    if let Some(l) = &c.laravel {
+    if let Some(l) = c.locked("laravel/framework") {
         parts.push(format!("Laravel {}", version(l)));
     }
-    if let Some(l) = &c.pest {
+    if let Some(l) = c.locked("pestphp/pest") {
         parts.push(format!("Pest {}", version(l)));
-    } else if let Some(l) = &c.phpunit {
+    } else if let Some(l) = c.locked("phpunit/phpunit") {
         parts.push(format!("PHPUnit {}", version(l)));
     }
     if let Some(php) = &c.php {
@@ -253,14 +253,9 @@ fn found(root: &Path, c: &Composer) -> String {
 
 /// The ecosystems composer.lock turns on, as the line after the questions names them.
 fn ecosystems(c: &Composer) -> Option<String> {
-    let names: Vec<String> = [
-        (c.laravel.is_some(), "Laravel"),
-        (c.pest.is_some(), "Pest"),
-        (c.phpunit.is_some(), "PHPUnit"),
-    ]
-    .into_iter()
-    .filter(|e| e.0)
-    .map(|e| e.1.to_string())
-    .collect();
+    let names: Vec<String> = (pun_config::extensions::ALL.into_iter())
+        .filter(|e| e.packages.first().is_some_and(|p| c.locked(p).is_some()))
+        .map(|e| e.name.to_string())
+        .collect();
     (!names.is_empty()).then(|| and(&names))
 }

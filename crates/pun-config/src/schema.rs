@@ -1,4 +1,5 @@
 use crate::composer::{Composer, Locked};
+use crate::extensions::{self, ExtensionMeta};
 use crate::{fixer_of, options, renamed, rules};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
@@ -147,28 +148,6 @@ const SWITCHES: [(AnalysePreset, &str); 4] = [
     (AnalysePreset::Max, "implicit-mixed"),
 ];
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Ecosystem {
-    Laravel,
-    Pest,
-    Phpunit,
-    Doctrine,
-}
-
-impl Ecosystem {
-    const ALL: [Self; 4] = [Self::Laravel, Self::Pest, Self::Phpunit, Self::Doctrine];
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Laravel => "laravel",
-            Self::Pest => "pest",
-            Self::Phpunit => "phpunit",
-            Self::Doctrine => "doctrine",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Files {
     pub paths: Vec<String>,
@@ -250,7 +229,7 @@ pub struct Override {
 pub struct Lint {
     pub sets: Vec<String>,
     pub exclude: Vec<String>,
-    pub ecosystems: Vec<Ecosystem>,
+    pub ecosystems: Vec<&'static ExtensionMeta>,
     pub rules: Vec<LintRule>,
     pub overrides: Vec<Override>,
 }
@@ -270,7 +249,7 @@ pub struct Analyse {
     pub stubs: Vec<String>,
     pub ignore: Vec<Ignore>,
     pub switches: Vec<&'static str>,
-    pub ecosystems: Vec<Ecosystem>,
+    pub ecosystems: Vec<&'static ExtensionMeta>,
     pub larastan: bool,
     pub rules: Vec<AnalyseRule>,
     pub bleeding_edge: bool,
@@ -359,37 +338,31 @@ pub(crate) struct Gates<'a> {
 }
 
 impl Gates<'_> {
-    fn locked(&self, ecosystem: Ecosystem) -> Option<&Locked> {
-        let l = match ecosystem {
-            Ecosystem::Laravel => &self.composer.laravel,
-            Ecosystem::Pest => &self.composer.pest,
-            Ecosystem::Phpunit => &self.composer.phpunit,
-            Ecosystem::Doctrine => return None,
-        };
-        l.as_ref()
+    fn locked(&self, e: &ExtensionMeta) -> Option<&Locked> {
+        self.composer.locked(e.packages.first()?)
     }
 
-    pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<Ecosystem> {
-        (Ecosystem::ALL.into_iter())
-            .filter(|e| self.locked(*e).is_some() && !off(e.name()))
+    pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<&'static ExtensionMeta> {
+        (extensions::ALL.into_iter())
+            .filter(|e| self.locked(e).is_some() && !off(e.id))
             .collect()
     }
 
-    pub(crate) fn allows(&self, group: &str, on: &[Ecosystem]) -> bool {
+    pub(crate) fn allows(&self, group: &str, on: &[&ExtensionMeta]) -> bool {
         if let Some(v) = group.strip_prefix("php-") {
             return v.parse().is_ok_and(|v: PhpVersion| self.php >= v);
         }
-        if let Some(v) = group.strip_prefix("laravel-") {
-            let locked = self.locked(Ecosystem::Laravel).and_then(|l| l.semver);
-            return on.contains(&Ecosystem::Laravel)
-                && version(v)
-                    .zip(locked)
-                    .is_some_and(|(v, l)| (l.major, l.minor) >= v);
+        match extensions::owner(group) {
+            Some((e, None)) => on.contains(&e),
+            Some((e, Some(v))) => {
+                let locked = self.locked(e).and_then(|l| l.semver);
+                on.contains(&e)
+                    && version(v)
+                        .zip(locked)
+                        .is_some_and(|(v, l)| (l.major, l.minor) >= v)
+            }
+            None => true,
         }
-        if let Some(e) = Ecosystem::ALL.into_iter().find(|e| e.name() == group) {
-            return on.contains(&e);
-        }
-        true
     }
 }
 
@@ -733,9 +706,9 @@ pub(crate) fn analyse(
         baseline: t.baseline,
         stubs: t.stubs,
         ignore,
-        larastan: ecosystems.contains(&Ecosystem::Laravel)
+        larastan: ecosystems.contains(&&extensions::LARAVEL)
             && crate::phpstan_parameters::larastan_supports(
-                gates.composer.laravel.as_ref().and_then(|l| l.semver),
+                gates.locked(&extensions::LARAVEL).and_then(|l| l.semver),
             ),
         ecosystems,
         rules: (on.into_iter())

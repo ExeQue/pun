@@ -544,7 +544,10 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         return Ok(done);
     }
     let larastan = phpstan.extensions.contains("larastan/larastan");
-    let laravel = cfg.analyse.ecosystems.contains(&crate::Ecosystem::Laravel);
+    let laravel = cfg
+        .analyse
+        .ecosystems
+        .contains(&&crate::extensions::LARAVEL);
     if !larastan && laravel {
         parts
             .analyse_rules
