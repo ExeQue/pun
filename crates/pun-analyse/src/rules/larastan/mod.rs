@@ -12,6 +12,7 @@ mod forwards;
 mod helpers;
 mod macros;
 mod octane;
+mod reflection;
 mod relations;
 
 use std::collections::{HashMap, HashSet};
@@ -416,8 +417,8 @@ fn has_database_property(c: &Checker, model: &str, column: &str) -> bool {
     })
 }
 
-pub(crate) fn has_model_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
-    if c.larastan.is_none() || !is_model(c, k) {
+fn has_model_property(c: &Checker, k: &ClassLikeMetadata, property: &[u8]) -> bool {
+    if !is_model(c, k) {
         return false;
     }
     let name =

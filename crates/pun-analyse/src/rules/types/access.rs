@@ -72,7 +72,7 @@ impl<'a> Checker<'a, '_> {
                     .required(k)
                     .iter()
                     .any(|r| property_access::has_instance_property(self, r, property))
-                || super::super::larastan::has_model_property(self, k, property)
+                || (self.class_reflection_extensions()).any(|e| e.has_property(self, k, property))
         };
         if has || !is_static && extended() {
             return Tri::Yes;

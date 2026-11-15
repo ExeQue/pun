@@ -10,6 +10,7 @@ mod by_ref_foreach;
 mod callable_tags;
 mod calls;
 mod class_names;
+mod class_reflection;
 mod class_tags;
 mod classes;
 mod conditional_return;

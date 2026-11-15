@@ -8,6 +8,7 @@ use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Accessory, Level, Tri, Type, intersect, is_super_type_of};
 
+use super::super::class_reflection::{MethodAnswer, MethodPhase};
 use super::super::overriding::Class;
 use super::super::reflection::Lookup;
 use super::super::{Checker, calls, declared, members, method_reflection, params};
@@ -93,7 +94,7 @@ impl<'a> Checker<'a, '_> {
         ty
     }
 
-    pub(super) fn can_call_methods(&self, t: &Type) -> Tri {
+    pub(in super::super) fn can_call_methods(&self, t: &Type) -> Tri {
         self.capable(t, true)
     }
 
@@ -252,16 +253,10 @@ impl<'a> Checker<'a, '_> {
             }
             return Ok(Some(method));
         }
-        if self.larastan.is_some() && super::super::larastan::is_model(self, k) {
-            let builder = super::super::larastan::builder_name(self.codebase, k.name.as_bytes());
-            let builder = Type::Object(
-                String::from_utf8_lossy(builder.as_bytes()).into_owned(),
-                vec![Type::Object(declared::original_name(k), vec![], false)],
-                false,
-            );
-            if let Some(method) = self.extended_method(&builder, name, active)? {
-                return Ok(Some(method));
-            }
+        if let Some(method) =
+            self.extension_method(MethodPhase::BeforeMixins, t, k, name, active)?
+        {
+            return Ok(Some(method));
         }
         for mixin in self.method_mixins(k, t) {
             if matches!(mixin.resolve_to_bounds(), Type::Mixed { .. } | Type::Error) {
@@ -315,196 +310,28 @@ impl<'a> Checker<'a, '_> {
                     .rev(),
             );
         }
-        if let Some(larastan) = self.larastan {
-            let original = declared::original_name(k);
-            if !super::super::larastan::is_model(self, k)
-                && !super::super::larastan::is_a(
-                    self,
-                    k.name.as_bytes(),
-                    b"illuminate\\database\\eloquent\\builder",
-                )
-                && super::super::larastan::macro_method(self, k, name).is_some()
-            {
-                return Err(());
-            }
-            if super::super::larastan::is_model(self, k) {
-                let builder =
-                    super::super::larastan::builder_name(self.codebase, k.name.as_bytes());
-                let builder = Type::Object(
-                    String::from_utf8_lossy(builder.as_bytes()).into_owned(),
-                    vec![Type::Object(original, vec![], false)],
-                    false,
-                );
-                return self.extended_method(&builder, name, active);
-            }
-            let args = match t {
-                Type::Object(_, args, _) | Type::Static(_, args) => args.clone(),
-                _ => Vec::new(),
-            };
-            let ancestor_args = |ancestor: &str| -> Vec<Type> {
-                if original.eq_ignore_ascii_case(ancestor) {
-                    return args.clone();
-                }
-                declared::with_classes(self, || {
-                    pun_phpstan::symbols::lookup(&original)
-                        .and_then(|k| pun_phpstan::types::ancestor_args(&k, ancestor, &args))
-                        .unwrap_or_default()
-                })
-            };
-            if super::super::larastan::is_a(
-                self,
-                k.name.as_bytes(),
-                b"illuminate\\database\\eloquent\\builder",
-            ) {
-                if super::super::larastan::macro_method(self, k, name).is_some() {
-                    return Err(());
-                }
-                let model = ancestor_args("Illuminate\\Database\\Eloquent\\Builder")
-                    .into_iter()
-                    .next()
-                    .map_or_else(
-                        || {
-                            Type::Object(
-                                "Illuminate\\Database\\Eloquent\\Model".into(),
-                                vec![],
-                                false,
-                            )
-                        },
-                        |m| m.resolve_to_bounds(),
-                    );
-                for class in model.object_class_names() {
-                    if super::super::larastan::has_scope(self, &class, name) {
-                        return Err(());
+        self.extension_method(MethodPhase::Last, t, k, name, active)
+    }
+
+    /// The extensions' answer for `name` at `phase` of the lookup.
+    fn extension_method(
+        &self,
+        phase: MethodPhase,
+        t: &Type,
+        k: &mago_codex::metadata::class_like::ClassLikeMetadata,
+        name: &[u8],
+        active: &mut HashSet<String>,
+    ) -> Result<Option<method_reflection::Method<'a>>, ()> {
+        for e in self.class_reflection_extensions() {
+            match e.method(self, phase, t, k, name) {
+                Some(MethodAnswer::Forward(to)) => {
+                    let method = self.extended_method(&to, name, active)?;
+                    if method.is_some() || phase == MethodPhase::Last {
+                        return Ok(method);
                     }
                 }
-                let query = "Illuminate\\Database\\Query\\Builder";
-                if let Lookup::Found(q) = self.class_like(query) {
-                    if members::method(self, q, name).is_some() {
-                        return self.extended_method(
-                            &Type::Object(query.into(), vec![], false),
-                            name,
-                            active,
-                        );
-                    }
-                    if super::super::larastan::macro_method(self, q, name).is_some() {
-                        return Err(());
-                    }
-                }
-                if let Some(finder) = name.strip_prefix(b"where") {
-                    let finder = String::from_utf8_lossy(finder);
-                    let segments = super::super::larastan::where_segments(&finder);
-                    if !larastan
-                        .switches
-                        .contains(crate::LarastanSwitches::CHECK_MODEL_PROPERTIES)
-                        || segments.iter().all(|s| {
-                            let property = format!("${}", super::super::larastan::snake(s));
-                            self.has_property(&model, property.as_bytes(), false).yes()
-                        })
-                    {
-                        return Err(());
-                    }
-                }
-                let soft_deletes = model.object_class_names().iter().any(|m| {
-                    self.codebase.class_uses_trait(
-                        m.as_bytes(),
-                        b"Illuminate\\Database\\Eloquent\\SoftDeletes",
-                    )
-                });
-                if soft_deletes
-                    && [
-                        &b"withTrashed"[..],
-                        b"onlyTrashed",
-                        b"withoutTrashed",
-                        b"restore",
-                        b"createOrRestore",
-                        b"restoreOrCreate",
-                    ]
-                    .contains(&name)
-                {
-                    return Err(());
-                }
-                return Ok(None);
-            }
-            if super::super::larastan::is_a(
-                self,
-                k.name.as_bytes(),
-                b"illuminate\\database\\eloquent\\factories\\factory",
-            ) && super::super::larastan::factory_magic_method(
-                self.codebase,
-                &mago_codex::ttype::atomic::object::named::TNamedObject::new(k.name),
-                &String::from_utf8_lossy(name),
-            ) {
-                return Err(());
-            }
-            if super::super::larastan::with_method_class(self.codebase, k.name.as_bytes(), name)
-                .is_some()
-            {
-                return Err(());
-            }
-            if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderCollectionProxy") {
-                let [proxied, value, _] = args.as_slice() else {
-                    return Ok(None);
-                };
-                if proxied.constant_strings().len() != 1
-                    || !self.can_call_methods(value).yes()
-                    || !self.has_method(value, name).yes()
-                {
-                    return Ok(None);
-                }
-                return self.extended_method(value, name, active);
-            }
-            if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderTapProxy") {
-                let [target] = args.as_slice() else {
-                    return Ok(None);
-                };
-                if target.object_class_names().is_empty() || !self.has_method(target, name).yes() {
-                    return Ok(None);
-                }
-                return self.extended_method(target, name, active);
-            }
-            if super::super::larastan::is_a(
-                self,
-                k.name.as_bytes(),
-                b"illuminate\\database\\eloquent\\relations\\relation",
-            ) {
-                let related = ancestor_args("Illuminate\\Database\\Eloquent\\Relations\\Relation")
-                    .into_iter()
-                    .next()
-                    .filter(|r| !r.object_class_names().is_empty())
-                    .unwrap_or_else(|| {
-                        Type::Object(
-                            "Illuminate\\Database\\Eloquent\\Model".into(),
-                            vec![],
-                            false,
-                        )
-                    });
-                if !related.object_class_names().first().is_some_and(|m| {
-                    super::super::larastan::is_a(
-                        self,
-                        m.as_bytes(),
-                        b"illuminate\\database\\eloquent\\model",
-                    )
-                }) {
-                    return Ok(None);
-                }
-                let builder = match related.object_class_names().as_slice() {
-                    [model] => String::from_utf8_lossy(
-                        super::super::larastan::builder_name(self.codebase, model.as_bytes())
-                            .as_bytes(),
-                    )
-                    .into_owned(),
-                    _ => "Illuminate\\Database\\Eloquent\\Builder".into(),
-                };
-                let builder = Type::Object(builder, vec![related], false);
-                return self.extended_method(&builder, name, active);
-            }
-            if k.kind.is_interface()
-                && original.starts_with("Illuminate\\Contracts")
-                && let Some(concrete) = larastan.app.resolve(&original)
-                && let Lookup::Found(c) = self.class_like(concrete)
-            {
-                let concrete = Type::Object(declared::original_name(c), vec![], false);
-                return self.extended_method(&concrete, name, active);
+                Some(MethodAnswer::Exists) => return Err(()),
+                None => {}
             }
         }
         Ok(None)
@@ -583,7 +410,7 @@ impl<'a> Checker<'a, '_> {
         out
     }
 
-    fn has_method(&self, t: &Type, name: &[u8]) -> Tri {
+    pub(in super::super) fn has_method(&self, t: &Type, name: &[u8]) -> Tri {
         t.query_members(&|t| match t {
             Type::Accessory(Accessory::HasMethod(_)) => {
                 t.has_method(&String::from_utf8_lossy(name))
@@ -878,15 +705,8 @@ fn check_single_method<'arena>(
     };
     let declaring = &method.display;
     let visibility = method.visibility();
-    let forwarded = c.larastan.is_some()
-        && ["increment", "decrement"]
-            .iter()
-            .any(|m| method.name.eq_ignore_ascii_case(m))
-        && t.object_class_names().iter().all(|n| {
-            c.class_like(n)
-                .found()
-                .is_some_and(|k| super::super::larastan::is_model(c, k))
-        });
+    let forwarded =
+        (c.class_reflection_extensions()).any(|e| e.calls_inaccessible_method(c, &t, &method.name));
     if !forwarded
         && !calls::can_call(
             c,
@@ -1053,15 +873,12 @@ pub(in super::super) fn check_static<'arena>(
     let Some(method) = method else { return };
     let declaring = method.declaring_display(c);
     let declared = method.name();
-    let forwarded = c.larastan.is_some()
-        && t.object_class_names().iter().all(|n| {
-            c.class_like(n).found().is_some_and(|k| {
-                super::super::larastan::is_model(c, k)
-                    && !c
-                        .codebase
-                        .is_instance_of(k.name.as_bytes(), method.declaring_name().as_bytes())
-            })
-        });
+    let forwarded = c.class_reflection_extensions().any(|e| {
+        t.object_class_names().iter().all(|n| {
+            (c.class_like(n).found())
+                .is_some_and(|k| e.static_forward(c, k, &method.declaring_name()).is_some())
+        })
+    });
     if forwarded
         && let Some(call) = call
         && let [model] = t.object_class_names().as_slice()
@@ -1142,16 +959,15 @@ pub(in super::super) fn forwarded_static_call<'arena>(
     call: &StaticMethodCall<'arena>,
 ) -> bool {
     let own = Type::Object(declared::original_name(model), vec![], false);
-    if !matches!(c.method_of_type(&own, name.value), Ok(Some(m)) if !c.codebase.is_instance_of(model.name.as_bytes(), m.declaring_name().as_bytes()))
-    {
+    let Ok(Some(declared)) = c.method_of_type(&own, name.value) else {
         return false;
-    }
-    let builder = super::super::larastan::builder_name(c.codebase, model.name.as_bytes());
-    let t = Type::Object(
-        String::from_utf8_lossy(builder.as_bytes()).into_owned(),
-        vec![own],
-        false,
-    );
+    };
+    let declaring = declared.declaring_name();
+    let Some(t) =
+        (c.class_reflection_extensions()).find_map(|e| e.static_forward(c, model, &declaring))
+    else {
+        return false;
+    };
     let Some(method) = c.reflected_method(&t, name.value).ok().flatten() else {
         return false;
     };

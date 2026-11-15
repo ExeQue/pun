@@ -133,19 +133,18 @@ No step changes output. Every step must keep these green: the parity tests, `pun
    `load` takes `&mut self`, so 5.6 needs owned extensions. The bundled Larastan stubs are now read only while
    Larastan is on.
 
-   5.3, from the spike on `types/receivers.rs`:
-   - Each Larastan branch in `extended_method` forwards the lookup to another type, says the method exists, or says
-     it doesn't: `fn has_method(&self, r, receiver, class, name) -> Option<MethodAnswer>`, with
-     `MethodAnswer::{Forward(Type), Exists, Missing}` and `None` for "not mine". The core keeps the cycle guard.
-   - `has_property(&self, r, class, name) -> bool` replaces `larastan::has_model_property` in `types/access.rs`.
-   - Three gaps:
-     - PHPStan asks extensions after the native lookup and before `@method` and `@mixin`, but Pun asks Larastan's
-       model-to-builder forward before mixins and the rest after require-extends. Either `has_method` gets a phase,
-       or the reorder is first proven byte-identical on the corpora.
-     - The hooks need reflection queries that live on the crate-private `Checker`, so they need a small public
-       reflection facade, or a crate-private trait until the extension moves to its own crate.
-     - The `increment`/`decrement` visibility bypass (PHPStan's `getMethod($name, $scope)` fallback) and static
-       calls forwarded from a model to its builder need more than a yes or no.
+   Done (2026-11-15): 5.3. A crate-private `ClassReflectionExtension` (`rules/class_reflection.rs`), which
+   Larastan implements in `rules/larastan/reflection.rs`, holds PHPStan's methods and properties class reflection
+   extensions:
+   - `method(c, phase, receiver, class, name) -> Option<MethodAnswer>`, with `MethodAnswer::{Forward(Type), Exists}`.
+     `MethodPhase` keeps Pun's lookup order (Pushpak, 2026-11-15): `BeforeMixins` runs after the class's own methods,
+     where a forward that finds nothing lets the lookup go on; `Last` runs after `@mixin` and
+     `@phpstan-require-extends`. PHPStan asks once, before `@mixin`; moving to that order needs its own corpus proof.
+   - `has_property`, `calls_inaccessible_method` (PHPStan's `getMethod($name, $scope)` fallback: a model's
+     `increment`/`decrement`) and `static_forward` (a static call on a model to a builder method).
+   - The trait takes the crate-private `Checker`, so it stays crate-private until step 7 gives it a public reflection
+     facade. `calls.rs` still gates the static forward on `c.larastan`; that goes with 5.4.
+
 6. **mapping.toml.** The ecosystem rows move into per-extension fragments.
    Folded into step 7 (2026-11-15): the Rust section loader and eight scripts read the one file, and
    `gen-phpstan-parameters.py` rewrites it in place, so the fragments move once each extension has a crate to hold
