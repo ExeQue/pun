@@ -895,6 +895,22 @@ fn check_summary_and_pills() {
         "\x1b[1;30;103m format  \x1b[0m"
     );
     assert_eq!(Look::plain().pill(Step::Analyse), " analyse ");
+    // output.md: bright yellow/magenta/blue at 16 colours; zap, gum and lilac (tokens.json) behind code-bg's light
+    // ink (#17121F) otherwise.
+    assert_eq!(
+        [Step::Lint, Step::Analyse].map(|s| at(Depth::Ansi16, Theme::Dark).pill(s)),
+        [
+            "\x1b[1;30;105m  lint   \x1b[0m",
+            "\x1b[1;30;104m analyse \x1b[0m"
+        ]
+    );
+    assert_eq!(
+        [Step::Format, Step::Analyse].map(|s| dark.pill(s)),
+        [
+            "\x1b[1;38;2;23;18;31;48;2;255;229;61m format  \x1b[0m",
+            "\x1b[1;38;2;23;18;31;48;2;187;170;255m analyse \x1b[0m"
+        ]
+    );
 
     let r = Renderer::new(Look::plain(), "/project");
     let items = [CheckItem {
@@ -938,5 +954,53 @@ fn check_summary_and_pills() {
 
 ✖ 2 errors · 1 fixable (run pun check --fix)
 "
+    );
+}
+
+#[test]
+fn check_warnings_and_concise_items() {
+    let items = [CheckItem {
+        path: "app/Models/Post.php".into(),
+        at: ":18:16".into(),
+        rules: vec!["analyse/undefined/method".into()],
+        message: Some("Call to an undefined method App\\Models\\Post::publsh().".into()),
+        below: String::new(),
+    }];
+    // Warnings alone are ⚠, beside errors they only add a count; `--concise` puts an item on one line and drops the
+    // blank line after the step.
+    let mut concise = Renderer::new(ascii(), "/project");
+    concise.concise = true;
+    let warned = |errors, warnings| StepLine {
+        step: Step::Lint,
+        errors,
+        warnings,
+        fixable: 0,
+        files: 1,
+        text: None,
+        failed: false,
+        items: &items,
+    };
+    let summary = |errors, warnings| Summary {
+        errors,
+        warnings,
+        fixable: 0,
+        fix_command: "pun check --fix",
+        need_formatting: 0,
+        files: 1,
+        elapsed: Duration::from_millis(310),
+    };
+    let out = [
+        concise.check_step(&warned(0, 2)),
+        concise.check_step(&warned(1, 1)),
+        concise.check_summary(&summary(0, 1)),
+        concise.check_summary(&summary(1, 2)),
+    ]
+    .concat();
+    let item = "   app/Models/Post.php:18:16  analyse/undefined/method  Call to an undefined method App\\Models\\Post::publsh().\n";
+    assert_eq!(
+        out,
+        format!(
+            "!   lint     2 warnings in 1 file\n{item}x   lint     1 error, 1 warning in 1 file\n{item}! 1 warning\nx 1 error - 2 warnings\n"
+        )
     );
 }
