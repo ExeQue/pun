@@ -74,6 +74,8 @@ pub(crate) fn snapshot(dir: &Path, skip: impl Fn(&str) -> bool) -> BTreeMap<Stri
     out
 }
 
+/// A command with only the `keep` variables (and coverage's), and a cache directory of its test's own: the result
+/// cache keeps a file per project root, so no test shares cached results with another test or with the user.
 pub(crate) fn clean_env<'c>(c: &'c mut Command, keep: &[&str]) -> &'c mut Command {
     c.env_clear();
     for k in keep.iter().chain(&["LLVM_PROFILE_FILE"]) {
@@ -81,7 +83,14 @@ pub(crate) fn clean_env<'c>(c: &'c mut Command, keep: &[&str]) -> &'c mut Comman
             c.env(k, v);
         }
     }
-    c
+    c.env("PUN_CACHE_DIR", test_cache_dir())
+}
+
+/// The cache directory of the running test: one per process and thread, so per test under nextest and cargo test.
+pub(crate) fn test_cache_dir() -> PathBuf {
+    let thread = format!("{:?}", std::thread::current().id());
+    let thread: String = thread.chars().filter(char::is_ascii_digit).collect();
+    std::env::temp_dir().join(format!("pun-test-cache-{}-{thread}", std::process::id()))
 }
 
 pub(crate) fn migrate(dir: &Path) {

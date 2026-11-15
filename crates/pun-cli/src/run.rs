@@ -1,3 +1,4 @@
+use crate::cache::{self, Cache};
 use crate::lint_plan::{self, CliLevel, Engine, On, Plan};
 use crate::render::{Look, RunError, Spinner};
 use crate::report::{self, Abort, FileResult, Status};
@@ -13,7 +14,7 @@ use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Stage {
     Format,
     Lint { fix: bool },
@@ -151,9 +152,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     let blade_on = formats
         && (cfg.rules.iter()).any(|r| r.name == "Pint/laravel_blade" && r.options.is_null());
     let _probe = StopProbe;
-    if let Some(abort) = crate::prettier::ensure(&root, blade_on) {
-        return Err(abort.into());
-    }
+    let prettier = crate::prettier::ensure(&root, blade_on)?;
     let pipelines = Pipelines::new(&cfg, if formats { cfg.rules.clone() } else { vec![] });
     let base_token = if lints {
         token_rules(&plan.for_file(&root.join("-")), stage.fix(), false)
@@ -180,11 +179,12 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     let known: HashSet<&PathBuf> = format_set.iter().collect();
     files.extend(lint_set.iter().filter(|f| !known.contains(f)).cloned());
     drop(known);
-    let natives = if lints {
+    let (natives, project) = if lints {
         native_rules(a, &cfg, &plan, selected.as_ref(), &lint_set)?
     } else {
-        vec![]
+        (vec![], None)
     };
+    let cache = open_cache(a, stage, lint, &cfg, &prettier, project.as_deref());
     let engines = Engines {
         stage,
         linter: (!natives.is_empty()).then(|| pun_lint::Linter::new(natives, cfg.php_version())),
@@ -207,7 +207,10 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         .then(|| Spinner::stderr(files.len(), look, std::io::stderr().is_terminal()))
         .flatten();
     let process = |path: &PathBuf, code: std::io::Result<Vec<u8>>| -> Result<Processed> {
-        let r = process_file(a, &engines, dry_run, path, code);
+        let r = match (&cache, code) {
+            (Some(cache), Ok(code)) => process_cached(a, &engines, cache, dry_run, path, code),
+            (_, code) => process_file(a, &engines, dry_run, path, code),
+        };
         if let Some(s) = &spinner {
             s.tick();
         }
@@ -227,6 +230,9 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
     for p in processed {
         remaining.extend(p.remaining);
         results.push(p.result);
+    }
+    if let Some(cache) = cache {
+        cache.save(&results.iter().map(|r| r.rel.as_str()).collect());
     }
 
     let mut unmatched_baseline = 0;
@@ -331,14 +337,17 @@ fn file_sets(
     Ok((format_set, lint_set))
 }
 
-/// The configured native lint rules the plan turns on, with the project's codebase scanned for them.
+type Natives = Vec<Box<dyn pun_lint::Rule>>;
+
+/// The configured native lint rules the plan turns on, with the project's codebase scanned for them, and the files
+/// that scan reads.
 fn native_rules(
     a: &FormatArgs,
     cfg: &Config,
     plan: &Plan,
     selected: Option<&Vec<PathBuf>>,
     lint_set: &[PathBuf],
-) -> Result<Vec<Box<dyn pun_lint::Rule>>> {
+) -> Result<(Natives, Option<Vec<PathBuf>>)> {
     let on = plan.mentioned();
     let mut natives: Vec<_> = (crate::extensions::lint_rules().into_iter())
         .filter(|r| on.contains(r.id()))
@@ -346,14 +355,169 @@ fn native_rules(
     for r in &mut natives {
         configure(cfg, r.as_mut())?;
     }
-    if !natives.is_empty() {
-        let project = match (selected, a.paths.is_empty()) {
-            (None, true) => lint_set.to_vec(),
-            _ => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?,
-        };
-        project_codebase(cfg, project);
+    if natives.is_empty() {
+        return Ok((natives, None));
     }
-    Ok(natives)
+    let project = match (selected, a.paths.is_empty()) {
+        (None, true) => lint_set.to_vec(),
+        _ => pun_workspace::files(cfg, Some(pun_workspace::Command::Lint), &[])?,
+    };
+    project_codebase(cfg, project.clone());
+    Ok((natives, Some(project)))
+}
+
+/// The result cache of this run, unless `--no-cache`, `PUN_NO_CACHE` or `PUN_PROFILE` turns it off. The run key covers
+/// everything besides the file that can change a file's result; `project` (the files the lint rules' project scan
+/// reads) adds a fingerprint that the files whose linting reads the project are keyed on as well.
+fn open_cache(
+    a: &FormatArgs,
+    stage: Stage,
+    lint: &LintOpts,
+    cfg: &Config,
+    prettier: &str,
+    project: Option<&[PathBuf]>,
+) -> Option<Cache> {
+    let set = |k: &str| std::env::var_os(k).is_some_and(|v| !v.is_empty() && v != "0");
+    if a.pun.no_cache || set("PUN_NO_CACHE") || std::env::var_os("PUN_PROFILE").is_some() {
+        return None;
+    }
+    let file = match &a.cache_file {
+        Some(f) => cfg.root.join(f),
+        None => Cache::default_file(&cfg.root)?,
+    };
+    let exe = std::env::current_exe().ok()?;
+    let mut key = cache::Key::default();
+    let flags = (
+        a.test,
+        a.bail,
+        a.repair,
+        a.blade,
+        &a.config,
+        a.no_config,
+        &a.preset,
+    );
+    let env = [
+        "PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS",
+        "PUN_IGNORE_PHP_CONSTRAINT",
+    ];
+    (key.add("pun", env!("CARGO_PKG_VERSION")))
+        .add("exe", cache::stat(&exe))
+        .add("stage", format!("{stage:?}"))
+        .add("flags", format!("{flags:?}"))
+        .add("levels", format!("{:?}", lint.levels))
+        .add("config", format!("{cfg:?}"))
+        .add("env", format!("{:?}", env.map(std::env::var_os)))
+        .add("prettier", prettier);
+    if !prettier.is_empty() {
+        for f in PRETTIER_FILES {
+            key.stat(&cfg.root.join(f));
+        }
+    }
+    let project = project.map(|files| project_fingerprint(&cfg.root, files));
+    Some(Cache::open(file, &cfg.root, key.digest(), project))
+}
+
+/// The files besides the installed packages that can change what Prettier does to a Blade file.
+const PRETTIER_FILES: [&str; 12] = [
+    "package.json",
+    "package-lock.json",
+    "bun.lock",
+    "bun.lockb",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "node_modules/.package-lock.json",
+    "node_modules/tailwindcss/package.json",
+    "tailwind.config.js",
+    "tailwind.config.cjs",
+    "tailwind.config.mjs",
+    "tailwind.config.ts",
+];
+
+/// Composer's files that change when the packages or the autoloader change, and Pest's global `uses()`.
+const COMPOSER_FILES: [&str; 9] = [
+    "tests/Pest.php",
+    "composer.json",
+    "composer.lock",
+    "vendor/composer/installed.json",
+    "vendor/composer/autoload_classmap.php",
+    "vendor/composer/autoload_files.php",
+    "vendor/composer/autoload_namespaces.php",
+    "vendor/composer/autoload_psr4.php",
+    "vendor/composer/autoload_static.php",
+];
+
+/// The size and modification time of every file the project scan can read outside the installed packages (the
+/// scanned files and the project's own autoloaded ones), and of Composer's files.
+fn project_fingerprint(root: &Path, files: &[PathBuf]) -> cache::Digest {
+    let mut paths = files.to_vec();
+    paths.extend(autoloaded(root));
+    let stats: Vec<Vec<u8>> = paths.par_iter().map(|p| cache::stat(p)).collect();
+    let mut key = cache::Key::default();
+    for (p, s) in paths.iter().zip(stats) {
+        key.add(&p.to_string_lossy(), s);
+    }
+    for f in COMPOSER_FILES {
+        key.stat(&root.join(f));
+    }
+    key.digest()
+}
+
+/// The PHP files composer.json's `autoload` and `autoload-dev` name outside `vendor/`.
+fn autoloaded(root: &Path) -> Vec<PathBuf> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        let mut entries: Vec<_> = (std::fs::read_dir(dir).into_iter().flatten())
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        entries.sort();
+        for p in entries {
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.extension().is_some_and(|e| e == "php") {
+                out.push(p);
+            }
+        }
+    }
+    let code = std::fs::read(root.join("composer.json")).unwrap_or_default();
+    let json: serde_json::Value = serde_json::from_slice(&code).unwrap_or_default();
+    let mut named = vec![];
+    for section in ["autoload", "autoload-dev"] {
+        let s = &json[section];
+        for kind in ["psr-4", "psr-0"] {
+            for dirs in s[kind].as_object().into_iter().flat_map(|m| m.values()) {
+                named.extend(dirs.as_str());
+                named.extend(
+                    dirs.as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|d| d.as_str()),
+                );
+            }
+        }
+        for kind in ["classmap", "files"] {
+            named.extend(
+                s[kind]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|d| d.as_str()),
+            );
+        }
+    }
+    let vendor = root.join("vendor");
+    let mut out = vec![];
+    for name in named {
+        let p = root.join(name);
+        if p.starts_with(&vendor) {
+            continue;
+        }
+        if p.is_dir() {
+            walk(&p, &mut out);
+        } else {
+            out.push(p);
+        }
+    }
+    out
 }
 
 /// `--bail`: the files in order, up to the first that needs fixing or fails.
@@ -651,6 +815,57 @@ fn filter_problems(
 
 const FIX_ROUNDS: usize = 10;
 
+/// Whether the run formats and whether it lints `path`.
+fn scopes(e: &Engines, path: &PathBuf) -> (bool, bool) {
+    let in_format = match &e.format_files {
+        Some(f) => f.contains(path),
+        None => !matches!(e.stage, Stage::Lint { .. }),
+    };
+    let in_lint = e.lint_files.as_ref().is_some_and(|f| f.contains(path));
+    (in_format, in_lint)
+}
+
+/// `process_file` through the result cache: a file the cache holds as clean is clean without checking it, and a
+/// file this check finds clean goes into the cache.
+fn process_cached(
+    a: &FormatArgs,
+    e: &Engines,
+    cache: &Cache,
+    dry_run: bool,
+    path: &PathBuf,
+    code: Vec<u8>,
+) -> Result<Processed> {
+    if code.is_empty() || path.is_symlink() {
+        return process_file(a, e, dry_run, path, Ok(code));
+    }
+    let rel = path.strip_prefix(e.root).unwrap_or(path).to_string_lossy();
+    let content = cache::Key::default()
+        .add("path", path.as_os_str().as_encoded_bytes())
+        .add("scopes", format!("{:?}", scopes(e, path)))
+        .add("code", &code)
+        .digest();
+    if cache.hit(&rel, &content) {
+        return Ok(Processed {
+            result: FileResult::new(path.clone(), rel.into_owned()),
+            remaining: None,
+        });
+    }
+    let (processed, reads) =
+        pun_lint::rules::facts::tracking(|| process_file(a, e, dry_run, path, Ok(code)));
+    if let Ok(p) = &processed {
+        let r = &p.result;
+        let clean = r.status == Status::NoChanges
+            && r.problems.is_empty()
+            && r.applied.is_empty()
+            && r.message.is_empty()
+            && p.remaining.is_none();
+        if clean && !reads.noted {
+            cache.keep(&rel, &content, reads.project);
+        }
+    }
+    processed
+}
+
 #[expect(
     clippy::too_many_lines,
     reason = "long; to be split (code audit: functions over 100 lines)"
@@ -681,11 +896,7 @@ fn process_file(
         r.status = Status::Skipped;
         return Ok(done(r));
     }
-    let in_format = match &e.format_files {
-        Some(f) => f.contains(path),
-        None => !matches!(e.stage, Stage::Lint { .. }),
-    };
-    let in_lint = e.lint_files.as_ref().is_some_and(|f| f.contains(path));
+    let (in_format, in_lint) = scopes(e, path);
     let on = match (in_lint, &e.plan) {
         (true, Some(plan)) => plan.for_file(path),
         _ => BTreeMap::new(),

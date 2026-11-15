@@ -5,14 +5,15 @@ use std::path::Path;
     clippy::too_many_lines,
     reason = "long; to be split (code audit: functions over 100 lines)"
 )]
-pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
+/// The versions of the Prettier packages Blade formatting runs (empty when it is off), or the error that stops the run.
+pub(crate) fn ensure(root: &Path, enabled: bool) -> anyhow::Result<String> {
     const REQUIRED: [(&str, &str); 3] = [
         ("prettier", "^3.9.6"),
         ("prettier-plugin-blade", "^3.3.3"),
         ("prettier-plugin-tailwindcss", "^0.8.1"),
     ];
     if !enabled {
-        return None;
+        return Ok(String::new());
     }
     let probes = pun_fixers::prettier::probe(&REQUIRED.map(|r| r.0));
     let Some(probes) = probes else {
@@ -22,8 +23,9 @@ pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
         );
         abort.error.message =
             "`format/laravel/blade` needs a JavaScript runtime (Node.js or Bun), and there is none on PATH".into();
-        return Some(abort);
+        return Err(abort.into());
     };
+    let versions = format!("{probes:?}");
     let manager = if root.join("bun.lock").exists() || root.join("bun.lockb").exists() {
         ("bun", "add -d")
     } else if root.join("pnpm-lock.yaml").exists() {
@@ -73,7 +75,7 @@ pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
             "`format/laravel/blade` needs {} in the project",
             missing.join(", ")
         );
-        return Some(abort);
+        return Err(abort.into());
     }
     if !outdated.is_empty() {
         let list: Vec<String> = outdated
@@ -108,9 +110,9 @@ pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
             "`format/laravel/blade` needs newer prettier packages: {}",
             have.join(", ")
         );
-        return Some(abort);
+        return Err(abort.into());
     }
-    None
+    Ok(versions)
 }
 
 fn caret_satisfies(version: &str, base: &str) -> bool {

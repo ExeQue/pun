@@ -18,6 +18,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 project="$(cd "$1" && pwd)"; seed="$2"; shift 2
 paths=("$@"); [ ${#paths[@]} -eq 0 ] && paths=(.)
 export PUN_BIN="${PUN_BIN:-$ROOT/target/debug/pun}"  # also read by mutate.py minimise
+export PUN_NO_CACHE=1  # every mutant is a new scratch project: a result cache would only fill the user's
 # Each agent builds into its own CARGO_TARGET_DIR, so target/debug/pun goes stale: a binary older than the sources
 # reports differences the code no longer has.
 stale=$(cd "$ROOT/crates" && find pun-tokens pun-format pun-fixers pun-config -name '*.rs' -newer "$PUN_BIN" -print -quit)

@@ -1477,6 +1477,7 @@ version = "0.1.2"
 dependencies = [
  "agent-detector",
  "anyhow",
+ "blake3",
  "clap",
  "dialoguer",
  "flate2",

@@ -139,7 +139,9 @@ fn main() -> Result<ExitCode> {
         if pun.exists() {
             let pun_cmd = |sub: &[&str]| {
                 let mut c = Command::new(&pun);
+                // Parity of the fixers, not of the result cache, which would fill the user's with scratch copies.
                 c.env("PUN_IGNORE_PHP_CONSTRAINT", "1")
+                    .env("PUN_NO_CACHE", "1")
                     .args(sub)
                     .current_dir(&pun_dir);
                 c

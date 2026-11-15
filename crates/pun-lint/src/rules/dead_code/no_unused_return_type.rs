@@ -237,6 +237,7 @@ impl NoUnusedReturnType {
 }
 
 fn required_constraint(file: &Path, package: &str) -> Option<String> {
+    crate::rules::facts::note_project_read();
     let json: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(file).ok()?).ok()?;
     let mut found = None;

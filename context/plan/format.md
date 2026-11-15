@@ -9,7 +9,7 @@ how it works today, the decided design, and the build list (§7). Decisions with
 any project, `pun check --fix` writes the same bytes as `pint`; `pun format` alone runs only the safe subset (see
 "Risky rules" below).
 
-Measured (8-core orb, profiling build, `--test`, reports/scoreboard.md; Pun has no cache, so every run is cold):
+Measured (8-core orb, profiling build, `--test`, reports/scoreboard.md; cold runs, without the result cache):
 
 | Run | Pint | Pun |
 | --- | --- | --- |
@@ -34,8 +34,9 @@ For each file:
    repeat-until-stable loop, because upstream has none. Each fixer is a function-by-function port of the upstream PHP.
 5. **Print** the tokens back. Unchanged tokens keep their original bytes.
 
-Around that: file discovery copies Pint's finder rules (pun-workspace), and files run in parallel. There is no
-result cache: every run checks every file (Pushpak, 2026-11-05).
+Around that: file discovery copies Pint's finder rules (pun-workspace), and files run in parallel. A result
+cache skips the files that were clean in an earlier run with the same key (Pushpak, 2026-11-15, reversing "no result
+cache" of 2026-11-05; PLAN.md §1, `crates/pun-cli/src/cache.rs`).
 
 **Delegate mode (removed).** It ran a rule Pun hadn't ported through real PHP-CS-Fixer in long-lived `php`
 workers. Pun runs no upstream PHP (config.md Build 6). An unported rule in pun.toml is a config error; `pun migrate`
@@ -91,8 +92,9 @@ skipped.
 Today `pun format` takes Pint's flags that change what it does (`--test`, `--bail`, `--repair`, `--dirty`,
 `--diff=<branch>`, `--config`, `--no-config`, `--preset`, `--format`, `--output-to-file`, `--output-format`,
 `--stdin-filename`, `--max-processes`, `-v`, `-q`, and `--ansi`/`--no-ansi` as hidden spellings of `--color`) plus
-`--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain` and `--color`. The flags that only existed for
-compatibility and did nothing (`-p`/`--parallel`, `--cache-file`, `--no-cache`, `-n`/`--no-interaction`) are gone. Decided changes:
+`--staged`, `--since=<ref>`, `--watch`, `--stdin`, `--explain` and `--color`. `--cache-file` (Pint's) and `--no-cache`
+(Pun's) are back with the result cache (Pushpak, 2026-11-15). The flags that only existed for compatibility and did
+nothing (`-p`/`--parallel`, `-n`/`--no-interaction`) are gone. Decided changes:
 `--native-only` goes with delegate mode, the human output becomes Pun's own (§9), and exit codes and the machine
 formats (`--format=json|txt|checkstyle|junit|xml|gitlab|github`) stay Pint-compatible. Under a coding agent it prints
 compact lines (output.md §3).

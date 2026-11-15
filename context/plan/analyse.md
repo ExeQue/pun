@@ -92,7 +92,7 @@ The groups are the topic groups (config.md Build 1), so `undefined/method` and `
 | `--generate-baseline` | `pun analyse --generate-baseline` (writes pun-baseline.toml) |
 | `--error-format=json/table/github/gitlab/checkstyle/junit/raw/teamcity` | `--format`, the same formats |
 | `--memory-limit`, `--xdebug`, `--debug` | not needed |
-| `clear-result-cache` | not needed: Pun has no result cache |
+| `clear-result-cache` | not needed: analyse has no result cache (format and lint have one, PLAN.md §1) |
 | `--pro`, `--watch` | no `--watch` on `pun analyse` yet (`pun format --watch` has one) |
 
 ## 6. Build
@@ -128,7 +128,8 @@ PLAN.md §3 Track C). The steps, after config.md Build 1-3:
    container, helpers, macros), its 20 rules, then the seven improvements.
 7. **Pest built in** (§9), with the PHPUnit typing it needs. **After 1.0** (Pushpak, 2026-10-18): until then test
    files are analysed as plain PHP; `[analyse] exclude` globs leave them out entirely.
-8. **No result cache** (Pushpak, 2026-11-05): every run checks every file; speed comes from the design.
+8. **No result cache yet**: every run checks every file. Pushpak's 2026-11-15 decision gives format, lint and check a
+   result cache (PLAN.md §1); analyse is not covered by it yet.
 9. **`pun migrate` for phpstan.neon** (migrate.md Build 5). Coverage back to 100% throughout.
 
 ## 7. How PHPStan and Mago analyse, and what Pun builds on (2026-10-17)
@@ -262,7 +263,8 @@ Answered 2026-10-17 (Pushpak):
   A rule is either on or off: `[analyse.rules] "types/missing-iterable-value-type" = "off"`, or `true` with options
   in a table. `off` stays because PHPStan users already turn rules off (by level or `ignoreErrors`), and migrate needs
   it to keep a project's current rule set.
-- **No result cache** (Pushpak, 2026-11-05): every run checks every file from scratch.
+- **No result cache yet**: every run checks every file from scratch. Format, lint and check keep one since Pushpak's
+  2026-11-15 decision (PLAN.md §1), which reverses "no caches" of 2026-11-05.
 - **A project's own PHPStan PHP code:** named as unsupported by migrate; `stubFiles` keep working.
 - **Larastan's model knowledge** comes from migrations and the schema dump, read without running PHP (§8).
 

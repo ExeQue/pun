@@ -21,6 +21,7 @@ fn run_with(
         .current_dir(dir)
         .env("PUN_AGENT", "0")
         .env("COMPOSER_HOME", home.join("composer"))
+        .env_remove("PUN_CACHE_DIR")
         .envs(env.iter().copied())
         .output()
         .unwrap();

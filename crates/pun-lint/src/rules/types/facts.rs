@@ -74,6 +74,48 @@ pub fn set_project_scan(build: impl FnOnce() -> Arc<ProjectCodebase> + Send + 's
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Box::new(build));
 }
 
+/// What linting a file read besides the file itself, for a result cache.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Reads {
+    /// The project's codebase (its other files and Composer's packages), composer.json or a Pest.php.
+    pub project: bool,
+    /// A note went to stderr (a contained Mago panic), which a cached result would not print again.
+    pub noted: bool,
+}
+
+thread_local! {
+    static READS: std::cell::Cell<Reads> = const { std::cell::Cell::new(Reads { project: false, noted: false }) };
+}
+
+/// Whether any note went to stderr in this process: one printed by the project scan, on another thread, concerns
+/// every file that reads the project.
+static NOTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Runs `f` (the linting of one file) and returns what it read. Nested calls, as when rayon runs another file's
+/// work on this thread while `f` waits, keep their reads apart.
+pub fn tracking<T>(f: impl FnOnce() -> T) -> (T, Reads) {
+    let outer = READS.replace(Reads::default());
+    let value = f();
+    let mut reads = READS.replace(outer);
+    reads.noted |= reads.project && NOTED.load(std::sync::atomic::Ordering::Relaxed);
+    (value, reads)
+}
+
+pub(crate) fn note_project_read() {
+    READS.set(Reads {
+        project: true,
+        ..READS.get()
+    });
+}
+
+fn note_stderr() {
+    READS.set(Reads {
+        noted: true,
+        ..READS.get()
+    });
+    NOTED.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
 pub fn project_codebase(
     files: &[(String, String)],
     php_version: crate::PhpVersion,
@@ -1204,6 +1246,7 @@ fn build(ctx: &Context<'_>, dead_code: bool) -> Rc<Facts> {
     let mut pending = PENDING
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    note_project_read();
     if let Some(build) = pending.take() {
         set_project_codebase(Some(build()));
     }
@@ -1251,6 +1294,7 @@ fn scan_symbols<'a>(
 fn contained<T>(pass: &str, file: &File, run: impl FnOnce() -> T) -> Option<T> {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(run))
         .map_err(|panic| {
+            note_stderr();
             let message = (panic.downcast_ref::<&str>().map(ToString::to_string))
                 .or_else(|| panic.downcast_ref::<String>().cloned())
                 .unwrap_or_default();
@@ -1473,5 +1517,30 @@ mod tests {
             super::contained(pass, &file, || -> i32 { panic!("{pass} failed") }),
             None
         );
+    }
+
+    /// A result cache keys a file on the project only when linting it read the project, so a read must count for
+    /// the file whose linting made it, even when another file's linting runs nested on the same thread. A note on
+    /// stderr makes the file it concerns, and every file that reads the project, uncacheable.
+    #[test]
+    fn tracks_reads_per_file() {
+        use super::{Reads, note_project_read, tracking};
+        let file = super::mago_file("a.php", "<?php", FileType::Host);
+        let ((), outer) = tracking(|| {
+            assert!(tracking(note_project_read).1.project);
+            assert_eq!(
+                super::contained("scanner", &file, || -> i32 { panic!("boom") }),
+                None
+            );
+        });
+        assert_eq!(
+            outer,
+            Reads {
+                project: false,
+                noted: true
+            }
+        );
+        assert_eq!(tracking(|| ()).1, Reads::default());
+        assert!(tracking(note_project_read).1.noted);
     }
 }

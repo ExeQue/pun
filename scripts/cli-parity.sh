@@ -47,7 +47,8 @@ else
   [ -d "$project/node_modules" ] && ln -s "$project/node_modules" "$src/node_modules"
 fi
 # Pun's side: `pun migrate --from pint` on the same pint.json (rector.php and phpstan.neon are not Pint's), then `pun format` with the same arguments.
-mkdir -p "$W/bin" && printf '#!/bin/sh\n"%s" migrate --from pint >/dev/null 2>&1 || "%s" migrate >/dev/null 2>&1; exec "%s" format "$@"\n' "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" > "$W/bin/pint" && chmod +x "$W/bin/pint"
+# Pun's result cache lives in $W (each argument set runs on a fresh copy at the same path, so later sets read it).
+mkdir -p "$W/bin" && printf '#!/bin/sh\nexport PUN_CACHE_DIR="%s/cache"\n"%s" migrate --from pint >/dev/null 2>&1 || "%s" migrate >/dev/null 2>&1; exec "%s" format "$@"\n' "$W" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" "${PUN_TARGET:-$R/target}/debug/pun" > "$W/bin/pint" && chmod +x "$W/bin/pint"
 P=$W/proj
 status=0
 run() { # name cmd...

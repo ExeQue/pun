@@ -8,6 +8,7 @@ mod agent;
 mod analyse;
 mod analyse_report;
 mod baseline;
+mod cache;
 mod console;
 mod extensions;
 mod fix_report;
@@ -201,6 +202,9 @@ pub(crate) struct FormatArgs {
     /// File path context for stdin input.
     #[arg(long)]
     stdin_filename: Option<PathBuf>,
+    /// The path to the cache file (default: one per project in Pun's cache directory).
+    #[arg(long, value_name = "PATH")]
+    cache_file: Option<PathBuf>,
     #[expect(
         clippy::doc_markdown,
         reason = "this doc comment is the --help text, printed as written"
@@ -283,6 +287,9 @@ pub(crate) struct PunArgs {
     /// Keep running and re-format files as they change (Pun).
     #[arg(long, conflicts_with_all = ["stdin", "stdin_filename"])]
     watch: bool,
+    /// Check every file, without reading or writing the result cache (Pun; also `PUN_NO_CACHE=1`).
+    #[arg(long)]
+    no_cache: bool,
 }
 
 /// What a run tells the shell. Pint's 0 and 1, and 2 when Pun couldn't run, where Pint exits 1.

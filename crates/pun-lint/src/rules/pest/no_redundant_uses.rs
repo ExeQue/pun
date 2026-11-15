@@ -181,6 +181,7 @@ fn class_name(scope: &[Node<'_, '_>], class: &Expression<'_>) -> Option<Vec<u8>>
 }
 
 fn globally_applied_classes(path: &Path) -> HashSet<Vec<u8>> {
+    crate::rules::facts::note_project_read();
     let mut classes = HashSet::new();
     let path = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
     let Some(tests) = test_directory(&path) else {

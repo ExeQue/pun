@@ -6,7 +6,10 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 fn run(cmd: &mut Command) -> Output {
-    cmd.env("PUN_AGENT", "0").output().unwrap()
+    (cmd.env("PUN_AGENT", "0"))
+        .env("PUN_CACHE_DIR", common::test_cache_dir())
+        .output()
+        .unwrap()
 }
 
 #[test]

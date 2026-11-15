@@ -36,6 +36,8 @@ pun-workspace = { path = "crates/pun-workspace", package = "punphp-workspace" }
 agent-detector = { version = "=0.2.1", default-features = false }
 anyhow = "1"
 bitflags = "2"
+# pun-cli: the result cache's hashes
+blake3 = "1"
 clap = { version = "4", features = ["derive"] }
 # `pun migrate`'s checklist; no editor/password/fuzzy features.
 dialoguer = { version = "0.12", default-features = false }
