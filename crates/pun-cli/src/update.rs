@@ -2,7 +2,7 @@ use crate::Exit;
 use crate::install::{InstallArgs, Project, fetcher, install_locked, project};
 use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
-use pun_packages::fetch::composer_dirs;
+use pun_packages::fetch::{self, composer_dirs};
 use pun_packages::lock::Lock;
 use pun_packages::manifest_edit::{json_remove, json_set, name_version_pairs};
 use pun_packages::resolver::pool::Transitive;
@@ -286,12 +286,7 @@ fn write(path: &Path, text: &str) -> Result<()> {
 fn restore(path: &Path, original: Option<&str>) -> Result<()> {
     match original {
         Some(text) => write(path, text),
-        None => match std::fs::remove_file(path) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
-                Err(e).with_context(|| format!("can't remove {}", path.display()))
-            }
-            _ => Ok(()),
-        },
+        None => fetch::remove(path).with_context(|| format!("can't remove {}", path.display())),
     }
 }
 

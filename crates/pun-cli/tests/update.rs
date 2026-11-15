@@ -270,3 +270,489 @@ fn composer_plugins_run_as_composer_runs_them() {
         )
     );
 }
+
+/// Copies `tests/fixtures/update/<name>` to `file` in `d`.
+fn put(d: &Path, name: &str, file: &str) {
+    std::fs::write(d.join(file), expected(name)).unwrap();
+}
+
+/// The lock changes `pun update` prints, from Composer 2.11.2's `Upgrading`/`Downgrading` lines on the same project
+/// (tests/fixtures/update/flags.composer.json): `-w` frees a named package's dependencies but not the root's own
+/// requirements, `-W` frees those too, and `--prefer-lowest` writes the lock Composer writes.
+#[test]
+fn update_flags_match_composer() {
+    let d = common::scratch("update", "flags");
+    put(&d, "flags.composer.json", "composer.json");
+    let (out, err, code) = pun(&d, &["update", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    let (out, err, code) = pun(&d, &["update", "--prefer-lowest", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(
+        err.contains("Lock changes:\n v acme/a 1.1.0 -> 1.0.0\n v acme/b 1.1.0 -> 1.0.0\n v acme/c 1.1.0 -> 1.0.0\n v acme/d 1.1.0 -> 1.0.0\nWrote composer.lock"),
+        "{err}"
+    );
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("flags-lowest.composer.lock")
+    );
+
+    let nothing = "Nothing to change: the lock is up to date\n";
+    for (args, changes) in [
+        (["acme/a", "--dry-run"].as_slice(), nothing),
+        (
+            &["acme/a", "-w", "--dry-run"],
+            "Lock changes:\n ^ acme/a 1.0.0 -> 1.1.0\n ^ acme/c 1.0.0 -> 1.1.0\n",
+        ),
+        (&["acme/d", "--with-dependencies", "--dry-run"], nothing),
+        (
+            &["acme/d", "-W", "--dry-run"],
+            "Lock changes:\n ^ acme/b 1.0.0 -> 1.1.0\n ^ acme/d 1.0.0 -> 1.1.0\n",
+        ),
+    ] {
+        let (out, err, code) = pun(&d, &[&["update"], args].concat());
+        assert_eq!((err.as_str(), code), (changes, Some(0)), "{args:?} {out}");
+    }
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("flags-lowest.composer.lock")
+    );
+
+    let (_, err, code) = pun(&d, &["remove", "--no-update", "acme/d"]);
+    assert_eq!((err.as_str(), code), ("Updated composer.json\n", Some(0)));
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("flags-remove-d.composer.json")
+    );
+    put(&d, "flags.composer.json", "composer.json");
+    let (out, err, code) = pun(&d, &["require", "acme/e:^1.0", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(
+        err.starts_with(" ! acme/e moves from require-dev to require\n"),
+        "{err}"
+    );
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("flags-move-e.composer.json")
+    );
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("flags-move-e.composer.lock")
+    );
+
+    let (_, err, code) = pun(&d, &["require", "acme/e:^^1"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("acme/e: ^^1 is not a version constraint"),
+        "{err}"
+    );
+    let (_, err, code) = pun(&d, &["require", "-p", "acme/core", "acme/e"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("-p names a workspace member, and this project has no [workspace]"),
+        "{err}"
+    );
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("flags-move-e.composer.json")
+    );
+
+    // A platform package has no version to pick: Composer 2.11.2 writes `*`.
+    put(&d, "flags.composer.json", "composer.json");
+    put(&d, "flags-lowest.composer.lock", "composer.lock");
+    let (out, err, code) = pun(&d, &["require", "php", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(!err.contains("Using version"), "{err}");
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("flags.composer.json").replace(
+            "\"acme/d\": \"^1.0\"\n",
+            "\"acme/d\": \"^1.0\",\n        \"php\": \"*\"\n"
+        )
+    );
+}
+
+/// `require` without a version on branches, as Composer 2.11.2 writes it (tests/fixtures/update/branches-*): the
+/// branch name itself, with a warning for a feature branch; `remove` without a lock resolves everything again; a
+/// `remove` that leaves requirements that don't resolve keeps composer.json; and an install that fails puts back
+/// composer.json and composer.lock, deleting them when `require` created them.
+#[test]
+fn require_and_remove_on_branches() {
+    let d = common::scratch("update", "branches");
+    put(&d, "branches.composer.json", "composer.json");
+    let (out, err, code) = pun(&d, &["require", "acme/f", "acme/m", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(
+        err.contains("Using version dev-feature for acme/f\n ! dev-feature looks like a feature branch, which may not keep working for long\nUsing version dev-main for acme/m\nUpdated composer.json\n"),
+        "{err}"
+    );
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("branches-require.composer.json")
+    );
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("branches-require.composer.lock")
+    );
+
+    std::fs::remove_file(d.join("composer.lock")).unwrap();
+    let (out, err, code) = pun(&d, &["remove", "acme/m", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert_eq!(
+        read(&d, "composer.json"),
+        expected("branches-remove.composer.json")
+    );
+    assert_eq!(
+        read(&d, "composer.lock"),
+        expected("branches-remove.composer.lock")
+    );
+
+    let (json, lock) = (read(&d, "composer.json"), read(&d, "composer.lock"));
+    let (_, err, code) = pun(&d, &["require", "acme/h:^1.0"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("Your configuration does not allow connections to http://127.0.0.1:9/h.zip")
+            && err.contains(
+                "The install failed, so composer.json and composer.lock are back as they were\n"
+            ),
+        "{err}"
+    );
+    assert_eq!(
+        (read(&d, "composer.json"), read(&d, "composer.lock")),
+        (json.clone(), lock)
+    );
+
+    let unresolvable = json.replace(
+        "\"acme/f\": \"dev-feature\"",
+        "\"acme/f\": \"^9.0\",\n        \"acme/m\": \"dev-main\"",
+    );
+    std::fs::write(d.join("composer.json"), &unresolvable).unwrap();
+    let (_, err, code) = pun(&d, &["remove", "acme/m"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("x The requirements can't be resolved:"),
+        "{err}"
+    );
+    assert_eq!(read(&d, "composer.json"), unresolvable);
+
+    let fresh = common::scratch("update", "fresh");
+    let home = fresh.join(".composer");
+    common::write_files(
+        &home,
+        &[(
+            "config.json",
+            r#"{"repositories": [{"packagist.org": false}, {"type": "package", "package": {"name": "acme/h", "version": "1.0.0", "dist": {"type": "zip", "url": "http://127.0.0.1:9/h.zip"}}}]}"#,
+        )],
+    );
+    let project = fresh.join("app");
+    std::fs::create_dir(&project).unwrap();
+    let env = [("COMPOSER_HOME", home.to_str().unwrap())];
+    let (_, err, code) = common::pty::pun_with(&project, &["require", "acme/h:^1.0"], &env);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(!project.join("composer.json").exists() && !project.join("composer.lock").exists());
+    let (_, err, code) =
+        common::pty::pun_with(&project, &["require", "--no-update", "acme/x:^1.0"], &env);
+    assert_eq!(code, Some(0), "{err}");
+    assert_eq!(
+        read(&project, "composer.json"),
+        "{\n    \"require\": {\n        \"acme/x\": \"^1.0\"\n    }\n}\n"
+    );
+}
+
+/// The autoloader options write what Composer 2.11.2 writes for the fixture project without its
+/// `optimize-autoloader` config: `-o` adds the PSR-4 classes to the class map, `-a` also makes it authoritative,
+/// and the APCu options set the prefix, a random 20-character one without `--apcu-autoloader-prefix`.
+#[test]
+fn install_options_match_composer() {
+    let d = fixture("options");
+    let manifest = read(&d, "composer.json");
+    let plain = manifest.replace(
+        ",\n    \"config\": {\n        \"optimize-autoloader\": true\n    }",
+        "",
+    );
+    assert_ne!(plain, manifest);
+    std::fs::write(d.join("composer.json"), plain).unwrap();
+    let kernel = "    'App\\\\Kernel' => $baseDir . '/src/Kernel.php',\n";
+    let real = |d: &Path| read(d, "vendor/composer/autoload_real.php");
+    for (flags, classmap, line) in [
+        ([].as_slice(), false, None),
+        (&["-o"], true, None),
+        (
+            &["--classmap-authoritative"],
+            true,
+            Some("        $loader->setClassMapAuthoritative(true);\n"),
+        ),
+        (
+            &["--apcu-autoloader-prefix=abc"],
+            false,
+            Some("        $loader->setApcuPrefix('abc');\n"),
+        ),
+    ] {
+        let (out, err, code) = pun(&d, &[&["install"], flags].concat());
+        assert_eq!(code, Some(0), "{flags:?} {out}{err}");
+        let map = read(&d, "vendor/composer/autoload_classmap.php");
+        assert_eq!(map.contains(kernel), classmap, "{flags:?} {map}");
+        for other in ["setClassMapAuthoritative", "setApcuPrefix"] {
+            let want = line.is_some_and(|l| l.contains(other));
+            assert_eq!(real(&d).contains(other), want, "{flags:?} {}", real(&d));
+        }
+        assert!(
+            line.is_none_or(|l| real(&d).contains(l)),
+            "{flags:?} {}",
+            real(&d)
+        );
+    }
+    let (_, err, code) = pun(&d, &["install", "--apcu-autoloader"]);
+    assert_eq!(code, Some(0), "{err}");
+    let prefix = real(&d)
+        .split("$loader->setApcuPrefix('")
+        .nth(1)
+        .and_then(|r| r.split_once("');"))
+        .map_or_else(String::new, |(p, _)| p.to_string());
+    assert!(
+        prefix.len() == 20 && prefix.bytes().all(|b| b.is_ascii_hexdigit()) && prefix != "abc",
+        "{}",
+        real(&d)
+    );
+
+    let fresh = fixture("no-autoloader");
+    let (_, err, code) = pun(&fresh, &["install", "--no-autoloader"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(!err.contains("autoloader:"), "{err}");
+    let mut written: Vec<String> = std::fs::read_dir(fresh.join("vendor/composer"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    written.sort();
+    assert_eq!(
+        written,
+        ["InstalledVersions.php", "installed.json", "installed.php"]
+    );
+    assert!(!fresh.join("vendor/autoload.php").exists());
+
+    let (_, err, code) = pun(&d, &["install", "-d", "nowhere"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(err.contains("can't open nowhere"), "{err}");
+}
+
+/// What `pun install` reports besides the packages: a lock older than composer.json, Composer's warning for a bin
+/// the package lacks, the archives Composer's cache already held, and an empty lock.
+#[test]
+fn install_reports_like_composer() {
+    let d = fixture("reports");
+    let manifest = read(&d, "composer.json");
+    std::fs::write(d.join("composer.json"), manifest.replace("^0.3", "^0.4")).unwrap();
+    let lock = read(&d, "composer.lock");
+    let missing = lock.replace(
+        "\"bin/lib\"\n",
+        "\"bin/lib\",\n                \"bin/missing\"\n",
+    );
+    assert_ne!(missing, lock);
+    std::fs::write(d.join("composer.lock"), missing).unwrap();
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(
+        err.contains(" ! composer.lock is out of date with composer.json")
+            && err.contains(" ! Skipped installation of bin bin/missing for package acme/lib: file not found in package\n"),
+        "{err}"
+    );
+
+    // Composer's cache key for an archive: the package's name, then the sha1 of its URL (worked out by hand).
+    let d = common::scratch("update", "cache");
+    let cache = d.join("cache");
+    let archive = cache.join("files/acme/z/3b9fe2fa9f3740a78809b3c74fe51b6b5e249bdc.tar");
+    std::fs::create_dir_all(archive.parent().unwrap()).unwrap();
+    let mut tar = tar::Builder::new(vec![]);
+    let mut header = tar::Header::new_gnu();
+    header.set_size(3);
+    header.set_mode(0o644);
+    header.set_cksum();
+    tar.append_data(&mut header, "z/README", &b"hi\n"[..])
+        .unwrap();
+    std::fs::write(&archive, tar.into_inner().unwrap()).unwrap();
+    common::write_files(
+        &d,
+        &[(
+            "composer.json",
+            r#"{"repositories": [{"packagist.org": false}, {"type": "package", "package": {"name": "acme/z", "version": "1.0.0", "dist": {"type": "tar", "url": "https://example.invalid/acme-z-1.0.0.tar"}}}], "require": {"acme/z": "^1.0"}}"#,
+        )],
+    );
+    let home = d.join("home");
+    let env = [
+        ("COMPOSER_CACHE_DIR", cache.to_str().unwrap()),
+        ("COMPOSER_HOME", home.to_str().unwrap()),
+    ];
+    let (out, err, code) = common::pty::pun_with(&d, &["update"], &env);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(
+        err.contains(" + packages: 1 installed (1 from the cache)\n"),
+        "{err}"
+    );
+    assert_eq!(read(&d, "vendor/acme/z/README"), "hi\n");
+
+    std::fs::write(
+        d.join("composer.json"),
+        r#"{"repositories": [{"packagist.org": false}]}"#,
+    )
+    .unwrap();
+    let (out, err, code) = common::pty::pun_with(&d, &["update"], &env);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(err.contains(" + packages: 1 removed\n"), "{err}");
+    let (out, err, code) = common::pty::pun_with(&d, &["install"], &env);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(err.contains(" + packages: none\n"), "{err}");
+}
+
+/// The workspace rules of docs/content/docs/guides/workspaces.mdx: members from globs (a glob that matches nothing,
+/// files, and directories without a composer.json add none, and a member two globs match counts once), the root's
+/// repositories in either of Composer's forms, its own constraint on a member kept, `require` at the root editing
+/// the root's composer.json, and the errors for a bad `[workspace]`, a nameless member, and two members of one
+/// name.
+#[test]
+fn workspaces_follow_the_guide() {
+    let d = common::scratch("update", "guide");
+    common::write_files(
+        &d,
+        &[
+            (
+                "ext/log/composer.json",
+                r#"{"name": "ext/log", "version": "2.3.0"}"#,
+            ),
+            (
+                "repo/pun.toml",
+                "[workspace]\nmembers = [\"packages/*\", \"apps/*\", \"packages/core\"]\n",
+            ),
+            (
+                "repo/composer.json",
+                "{\n    \"repositories\": {\n        \"log\": {\n            \"type\": \"path\",\n            \"url\": \"../ext/log\"\n        },\n        \"packagist.org\": false\n    }\n}\n",
+            ),
+            (
+                "repo/packages/core/composer.json",
+                r#"{"name": "acme/core", "version": "1.0.0", "require": {"ext/log": "^2.3"}}"#,
+            ),
+            ("repo/packages/README.md", "# Packages\n"),
+            ("repo/packages/docs/index.md", "# Docs\n"),
+        ],
+    );
+    let root = d.join("repo");
+    let (out, err, code) = pun(&root, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(err.contains(" + packages: 2 installed\n"), "{err}");
+    assert!(root.join("vendor/acme/core").is_symlink() && root.join("vendor/ext/log").exists());
+
+    let (out, err, code) = pun(&root, &["require", "ext/log:^2.0", "--no-install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert_eq!(
+        read(&root, "composer.json"),
+        "{\n    \"repositories\": {\n        \"log\": {\n            \"type\": \"path\",\n            \"url\": \"../ext/log\"\n        },\n        \"packagist.org\": false\n    },\n    \"require\": {\n        \"ext/log\": \"^2.0\"\n    }\n}\n"
+    );
+    let lock = read(&root, "composer.lock");
+    assert!(lock.contains("\"name\": \"acme/core\""), "{lock}");
+
+    let core = read(&root, "packages/core/composer.json");
+    let args = ["require", "-p", "acme/core", "ext/log:^2.0"];
+    let (_, err, code) = common::pty::pun_with(&root, &args, &[("PHP_BINARY", "/nowhere/php")]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(
+        err.contains("can't run /nowhere/php to read the platform"),
+        "{err}"
+    );
+    assert_eq!(read(&root, "packages/core/composer.json"), core);
+
+    let manifest = read(&root, "composer.json");
+    let pinned = manifest.replace("\"ext/log\": \"^2.0\"", "\"acme/core\": \"^2.0\"");
+    std::fs::write(root.join("composer.json"), pinned).unwrap();
+    let (_, err, code) = pun(&root, &["update", "--dry-run"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(err.contains("acme/core ^2.0"), "{err}");
+    std::fs::write(root.join("composer.json"), manifest).unwrap();
+
+    for (files, error) in [
+        (
+            [("pun.toml", "[workspace]\nmembers = \"packages/*\"\n")].as_slice(),
+            "[workspace] takes one key, members, a list of directories or globs such as \"packages/*\"".to_string(),
+        ),
+        (
+            &[("pun.toml", "[workspace]\nmembers = [\"packages/*\"]\nexclude = []\n")],
+            "[workspace] takes one key, members".to_string(),
+        ),
+        (
+            &[("packages/docs/composer.json", "{}")],
+            format!(
+                "the workspace member in {} has no name: set `name` in its composer.json",
+                root.join("packages/docs").display()
+            ),
+        ),
+        (
+            &[("packages/twin/composer.json", r#"{"name": "Acme/Core"}"#)],
+            format!(
+                "two workspace members are named acme/core: {} and {}",
+                root.join("packages/core").display(),
+                root.join("packages/twin").display()
+            ),
+        ),
+    ] {
+        let before: Vec<(String, Option<String>)> = (files.iter())
+            .map(|(f, _)| (f.to_string(), std::fs::read_to_string(root.join(f)).ok()))
+            .collect();
+        common::write_files(&root, files);
+        let (_, err, code) = pun(&root, &["install"]);
+        assert_eq!(code, Some(2), "{err}");
+        assert!(err.contains(&error), "{err}");
+        for (f, text) in before {
+            match text {
+                Some(text) => std::fs::write(root.join(&f), text).unwrap(),
+                None => std::fs::remove_file(root.join(&f)).unwrap(),
+            }
+        }
+    }
+
+    // The root needs no composer.json; one whose `require` isn't an object (Composer's schema rejects it) holds no
+    // requirements, as without one.
+    let bare = d.join("bare");
+    common::write_files(
+        &bare,
+        &[
+            ("pun.toml", "[workspace]\nmembers = [\"packages/*\"]\n"),
+            (
+                "packages/one/composer.json",
+                r#"{"name": "acme/one", "version": "1.0.0"}"#,
+            ),
+            (
+                ".composer/config.json",
+                r#"{"repositories": [{"packagist.org": false}]}"#,
+            ),
+        ],
+    );
+    let home = bare.join(".composer");
+    let env = [("COMPOSER_HOME", home.to_str().unwrap())];
+    for root in [None, Some(r#"{"require": []}"#)] {
+        if let Some(text) = root {
+            std::fs::write(bare.join("composer.json"), text).unwrap();
+        }
+        let (_, err, code) = common::pty::pun_with(&bare, &["update", "--dry-run"], &env);
+        assert_eq!(
+            (err.as_str(), code),
+            ("Lock changes:\n + acme/one 1.0.0\n", Some(0)),
+            "{root:?}"
+        );
+    }
+
+    // A pun.toml without `[workspace]`, mentioning the word or not, leaves the project a plain one.
+    let plain = d.join("plain");
+    common::write_files(
+        &plain,
+        &[(
+            "composer.json",
+            r#"{"repositories": [{"packagist.org": false}]}"#,
+        )],
+    );
+    for config in ["# Not a workspace root.\n", "# Pun's settings.\n"] {
+        std::fs::write(plain.join("pun.toml"), config).unwrap();
+        let (_, err, code) = pun(&plain, &["update", "--dry-run"]);
+        assert_eq!(
+            (err.as_str(), code),
+            ("Nothing to change: the lock is up to date\n", Some(0)),
+            "{config}"
+        );
+    }
+}
