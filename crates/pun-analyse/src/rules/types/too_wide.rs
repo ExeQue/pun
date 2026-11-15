@@ -14,7 +14,7 @@ use super::returns::returns;
 
 pub(super) const IDENTIFIERS: &[&str] = &["return.unusedType", "property.unusedType"];
 
-fn constant_scalar(t: &Type) -> bool {
+pub(super) fn constant_scalar(t: &Type) -> bool {
     match t {
         Type::ConstInt(_)
         | Type::ConstFloat(_)

@@ -148,7 +148,7 @@ fn check(c: &Checker, holder: Option<Type>, exempt: bool, dim: &Type) -> Option<
         let check = if inner.is_array().yes() { &valid } else { dim };
         if inner.is_constant_array().yes()
             && !unset::has_offset(c, inner, check).yes()
-            && constant_scalar(check)
+            && super::too_wide::constant_scalar(check)
         {
             return true;
         }
@@ -226,20 +226,6 @@ fn all_arrays(a: &ConstArray) -> Vec<Type> {
             builder.get()
         })
         .collect()
-}
-
-fn constant_scalar(t: &Type) -> bool {
-    match t {
-        Type::Union(ts) => ts.iter().all(constant_scalar),
-        _ => matches!(
-            t,
-            Type::ConstBool(_)
-                | Type::ConstInt(_)
-                | Type::ConstFloat(_)
-                | Type::ConstString(_)
-                | Type::Null
-        ),
-    }
 }
 
 fn implicit_array_creation(c: &Checker, holder: &Expression) -> bool {

@@ -21,6 +21,7 @@ use super::super::missing_types::declaring;
 use super::super::{Checker, declared, generics};
 use super::flow::{self, list};
 use super::missing_return::{late, method_name};
+use super::too_wide::constant_scalar;
 
 pub(crate) const IDENTIFIERS: &[&str] = &[
     "paramOut.type",
@@ -855,18 +856,6 @@ fn too_wide(
         }
     }
     errors
-}
-
-fn constant_scalar(t: &Type) -> bool {
-    match t {
-        Type::ConstInt(_)
-        | Type::ConstFloat(_)
-        | Type::ConstString(_)
-        | Type::ConstBool(_)
-        | Type::Null => true,
-        Type::Union(ts) => ts.iter().all(constant_scalar),
-        _ => false,
-    }
 }
 
 fn narrow(c: &Checker, declared: &Type, actual: &Type) -> Type {
