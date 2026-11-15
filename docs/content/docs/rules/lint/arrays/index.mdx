@@ -7,7 +7,7 @@ pagination: false
 
 Array literals, list() destructuring and array access.
 
-Across commands: format: 12, lint: 3, analyse: 3.
+Across commands: format: 12, lint: 2, analyse: 3.
 
 <CardGroup cols={2}>
 <Card title="lint/arrays/no-implicit-array-creation">
@@ -17,15 +17,6 @@ Across commands: format: 12, lint: 3, analyse: 3.
 Disallows implicit array creation: appending to or writing an offset of an undefined or `null` variable.
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.disallowedImplicitArrayCreation`.
-
-</Card>
-<Card title="lint/arrays/prefer-array-append">
-
-[`lint/arrays/prefer-array-append`](/docs/rules/lint/arrays/prefer-array-append)
-
-Use `$array[] =` instead of `array_push()` in a statement.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
 
 </Card>
 <Card title="lint/arrays/prefer-array-spread">

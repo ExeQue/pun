@@ -10,7 +10,7 @@ pub struct PreferInArrayOverSearch;
 
 impl Rule for PreferInArrayOverSearch {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-in-array-over-search"
+        "lint/complexity/prefer-in-array"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -13,7 +13,7 @@ pub struct NoEmptyLoop;
 
 impl Rule for NoEmptyLoop {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-empty-loop"
+        "lint/dead-code/no-empty-block"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

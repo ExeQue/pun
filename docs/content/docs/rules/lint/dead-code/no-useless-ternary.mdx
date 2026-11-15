@@ -7,11 +7,22 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-useless-ternary" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+Enabled by the [`dead-code`](/docs/rules/sets/dead-code), [`code-quality`](/docs/rules/sets/code-quality) sets. Fix: safe (keeps behaviour).
 
 ## Replaces
 
 - [`RemoveUselessTernary`](https://getrector.com/rule-detail/remove-useless-ternary-rector) (rector).
+- [`SimplifyTautologyTernary`](https://getrector.com/rule-detail/simplify-tautology-ternary-rector) (rector).
+- [`UnnecessaryTernaryExpression`](https://getrector.com/rule-detail/unnecessary-ternary-expression-rector) (rector).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/dead-code/no-bool-ternary`
+- `lint/dead-code/no-tautology-ternary`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

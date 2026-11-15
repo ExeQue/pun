@@ -10,7 +10,7 @@ pub struct NoNegatedComparison;
 
 impl Rule for NoNegatedComparison {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-negated-comparison"
+        "lint/complexity/prefer-simple-condition"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

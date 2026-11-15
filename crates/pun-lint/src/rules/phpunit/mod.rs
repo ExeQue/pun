@@ -62,7 +62,6 @@ mod prefer_narrow_will_return_callback;
 mod prefer_narrow_with_consecutive;
 mod prefer_property_assertions;
 mod prefer_requires_attribute;
-mod prefer_same_for_scalars;
 mod prefer_simple_callback_assert;
 mod prefer_simple_mock_expectation;
 mod prefer_simple_with_matcher;
@@ -127,7 +126,6 @@ rules! {
         require_string_assert_argument => RequireStringAssertArgument,
         prefer_assert_instances_of => PreferAssertInstancesOf,
         no_assert_same_type_mismatch => NoAssertSameTypeMismatch,
-        prefer_same_for_scalars => PreferSameForScalars,
         prefer_assert_count => PreferAssertCount,
         no_expects_any => NoExpectsAny,
         prefer_simple_with_matcher => PreferSimpleWithMatcher,

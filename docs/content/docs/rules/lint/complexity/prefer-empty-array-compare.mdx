@@ -12,6 +12,15 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 ## Replaces
 
 - [`SimplifyEmptyArrayCheck`](https://getrector.com/rule-detail/simplify-empty-array-check-rector) (rector).
+- [`SimplifyEmptyCheckOnEmptyArray`](https://getrector.com/rule-detail/simplify-empty-check-on-empty-array-rector) (rector).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/complexity/prefer-empty-array-identical`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

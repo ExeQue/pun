@@ -16,7 +16,7 @@ pub struct NoAlwaysTrueInstanceofAssert;
 
 impl Rule for NoAlwaysTrueInstanceofAssert {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-always-true-instanceof-assert"
+        "lint/dead-code/no-always-true-instanceof"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -11,7 +11,7 @@ pub struct PreferClassKeyword;
 
 impl Rule for PreferClassKeyword {
     fn id(&self) -> &'static str {
-        "lint/style/prefer-class-keyword"
+        "lint/style/prefer-class-constant"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

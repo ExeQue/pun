@@ -17,7 +17,7 @@ enum Inner<'a> {
 
 impl Rule for PreferCoalesceOverForeach {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-coalesce-over-foreach"
+        "lint/complexity/prefer-null-coalesce"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

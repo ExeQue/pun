@@ -4,7 +4,6 @@ pub(super) mod no_extra_arguments;
 pub(super) mod no_missing_format_argument;
 pub(super) mod no_required_after_optional;
 pub(super) mod no_swapped_explode_arguments;
-pub(super) mod no_unused_closure_variable;
 pub(super) mod no_void_reference_return;
 pub(super) mod require_array_filter_callback;
 pub(super) mod require_assert_description;

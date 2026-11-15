@@ -11,7 +11,7 @@ pub struct NoBoolTernary;
 
 impl Rule for NoBoolTernary {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-bool-ternary"
+        "lint/dead-code/no-useless-ternary"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

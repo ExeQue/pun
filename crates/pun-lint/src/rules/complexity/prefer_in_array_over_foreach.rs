@@ -12,7 +12,7 @@ pub struct PreferInArrayOverForeach;
 
 impl Rule for PreferInArrayOverForeach {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-in-array-over-foreach"
+        "lint/complexity/prefer-in-array"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

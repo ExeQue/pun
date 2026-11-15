@@ -12,6 +12,15 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 ## Replaces
 
 - [`array_push`](https://cs.symfony.com/doc/rules/alias/array_push.html) (php-cs-fixer, risky).
+- [`ChangeArrayPushToArrayAssign`](https://getrector.com/rule-detail/change-array-push-to-array-assign-rector) (rector).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/arrays/prefer-array-append`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

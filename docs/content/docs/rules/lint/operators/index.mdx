@@ -7,7 +7,7 @@ pagination: false
 
 Operators and their operands.
 
-Across commands: format: 15, lint: 8, analyse: 15.
+Across commands: format: 15, lint: 6, analyse: 15.
 
 <CardGroup cols={2}>
 <Card title="lint/operators/no-and-or-keywords">
@@ -46,15 +46,6 @@ There should not be useless Null-safe operator `?->` used.
 Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/operators/prefer-boolean-and-or">
-
-[`lint/operators/prefer-boolean-and-or`](/docs/rules/lint/operators/prefer-boolean-and-or)
-
-Use `&&` and `||` instead of `and` and `or`.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Intent: suspicious.
-
-</Card>
 <Card title="lint/operators/prefer-coalesce">
 
 [`lint/operators/prefer-coalesce`](/docs/rules/lint/operators/prefer-coalesce)
@@ -71,15 +62,6 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: safe (keeps b
 Use the null coalescing assignment operator `??=` where possible.
 
 Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/operators/prefer-shorthand-operator">
-
-[`lint/operators/prefer-shorthand-operator`](/docs/rules/lint/operators/prefer-shorthand-operator)
-
-Shorthand notation for operators should be used if possible.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
 
 </Card>
 </CardGroup>

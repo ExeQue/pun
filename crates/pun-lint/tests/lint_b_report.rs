@@ -27,10 +27,15 @@ fn line_col(source: &str, offset: usize) -> (usize, usize) {
 }
 
 fn check(id: &str, dir: &Path) {
-    let rule = rules::all()
-        .into_iter()
-        .find(|r| r.id() == id)
-        .unwrap_or_else(|| panic!("{id} is not registered"));
+    // A directory named after a rule since merged into another tests that implementation alone.
+    let rule: Box<dyn pun_lint::Rule> = match id {
+        "lint/style/no-dynamic-name" => Box::new(rules::NoDynamicName),
+        "lint/style/no-variable-variable" => Box::new(rules::NoVariableVariable),
+        _ => rules::all()
+            .into_iter()
+            .find(|r| r.id() == id)
+            .unwrap_or_else(|| panic!("{id} is not registered")),
+    };
     let linter = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80400));
     let mut paths: Vec<_> = std::fs::read_dir(dir)
         .unwrap()

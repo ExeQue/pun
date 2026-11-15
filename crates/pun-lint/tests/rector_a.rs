@@ -112,23 +112,6 @@ fn only(rule: impl pun_lint::Rule + 'static, php_version: u32) -> Linter {
 }
 
 #[test]
-fn logical_to_boolean() {
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Fixture",
-    );
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Oracle",
-    );
-    run(
-        &only(rules::PreferBooleanAndOr, 80400),
-        "LogicalToBooleanRector/Pun",
-    );
-}
-
-#[test]
 fn unwrap_future_compatible_if_php_version() {
     run(
         &only(rules::NoFuturePhpVersionCheck, 100000),
@@ -392,14 +375,6 @@ fn ternary_to_boolean_or_false_to_boolean_and() {
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Fixture");
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Oracle");
     run(&linter, "TernaryToBooleanOrFalseToBooleanAndRector/Pun");
-}
-
-#[test]
-fn strlen_zero_to_identical_empty_string() {
-    let linter = only(rules::PreferEmptyStringIdentical, 80400);
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Fixture");
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Oracle");
-    run(&linter, "StrlenZeroToIdenticalEmptyStringRector/Pun");
 }
 
 #[test]

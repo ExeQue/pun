@@ -4,9 +4,9 @@ use mago_syntax::cst::{
 use pun_problem::{Edit, Safety};
 use serde_json::Value;
 
+use super::document_string::document_value;
 use super::names::resolve_class_name;
 use super::object_type::is_object_type;
-use super::prefer_validation_rule_array::document_value;
 use super::{is_name, member_name};
 use crate::rules::support::expressions::named;
 use crate::rules::types::facts::facts;
@@ -172,7 +172,7 @@ fn written(
 ) -> Option<ContainerService> {
     let bytes = match unparenthesize(value) {
         Expression::Literal(Literal::String(s)) => s.value?.to_vec(),
-        Expression::CompositeString(CompositeString::Document(d)) => document_value(ctx, d)?,
+        Expression::CompositeString(CompositeString::Document(d)) => document_value(d)?,
         Expression::Access(Access::ClassConstant(c)) => {
             let class = match unparenthesize(c.class) {
                 Expression::Identifier(id) => resolve_class_name(ancestors, id),

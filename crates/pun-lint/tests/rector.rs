@@ -15,13 +15,11 @@ use pun_lint::rules::NoDirnameDirConcat;
 use pun_lint::rules::NoDuplicateCaseBody;
 use pun_lint::rules::NoElseAfterReturn;
 use pun_lint::rules::NoIdenticalBranches;
-use pun_lint::rules::NoMirrorAssignment;
 use pun_lint::rules::NoNegatedInstanceofTernary;
 use pun_lint::rules::NoOverriddenAssignBeforeIf;
 use pun_lint::rules::NoRedundantPromotedAssign;
 use pun_lint::rules::NoRedundantTypeCheck;
 use pun_lint::rules::NoUnreachableCode;
-use pun_lint::rules::PreferCompoundAssignment;
 use pun_lint::rules::PreferEarlyReturn;
 use pun_lint::rules::PreferEarlyReturnOverPreparedValue;
 use pun_lint::rules::PreferExplicitArrayComparison;
@@ -30,8 +28,8 @@ use pun_lint::rules::PreferInArray;
 use pun_lint::rules::PreferNotInArray;
 use pun_lint::rules::{
     NoAndAssignment, NoConcatAssignNewItem, NoNegatedAnd, NoNegatedBooleanLiteral, NoNegatedGroup,
-    NoSingleArgumentSprintf, NoSingleItemInArray, NoTautologyTernary, NoUselessArrayValues,
-    PreferArrayAppend, PreferEmptyArrayCompare, PreferFuncNumArgs, PreferNullCoalesce,
+    NoSingleItemInArray, NoTautologyTernary, NoUselessArrayValues, PreferEmptyArrayCompare,
+    PreferFuncNumArgs, PreferNullCoalesce,
 };
 
 fn fixtures(dir: &str) -> Vec<(PathBuf, String, String)> {
@@ -101,17 +99,6 @@ fn run(linter: &Linter, dir: &str) {
 }
 
 #[test]
-fn combined_assign() {
-    run(
-        &Linter::new(
-            vec![Box::new(PreferCompoundAssignment)],
-            pun_lint::PhpVersion::from_id(80400),
-        ),
-        "CombinedAssignRector/Fixture",
-    );
-}
-
-#[test]
 fn and_assigns_to_separate_lines() {
     let linter = Linter::new(
         vec![Box::new(NoAndAssignment)],
@@ -138,18 +125,6 @@ fn array_key_exists_ternary_then_value_to_coalescing() {
         &linter,
         "ArrayKeyExistsTernaryThenValueToCoalescingRector/Oracle",
     );
-}
-
-#[test]
-fn change_array_push_to_array_assign() {
-    let linter = Linter::new(
-        vec![Box::new(PreferArrayAppend)],
-        pun_lint::PhpVersion::from_id(80400),
-    );
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Oracle");
-    run(&linter, "ChangeArrayPushToArrayAssignRector/Pun");
 }
 
 #[test]
@@ -253,18 +228,6 @@ fn single_in_array_to_compare() {
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SingleInArrayToCompareRector/Oracle");
     run(&linter, "SingleInArrayToCompareRector/Pun");
-}
-
-#[test]
-fn unwrap_sprintf_one_argument() {
-    let linter = Linter::new(
-        vec![Box::new(NoSingleArgumentSprintf)],
-        pun_lint::PhpVersion::from_id(80400),
-    );
-    run(&linter, "UnwrapSprintfOneArgumentRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "UnwrapSprintfOneArgumentRector/Oracle");
-    run(&linter, "UnwrapSprintfOneArgumentRector/Pun");
 }
 
 #[test]
@@ -378,31 +341,6 @@ fn remove_final_from_const() {
 }
 
 #[test]
-fn remove_null_property_initialization() {
-    run(
-        &only(rules::NoNullPropertyInit, 80400),
-        "RemoveNullPropertyInitializationRector/Fixture",
-    );
-}
-
-#[test]
-fn remove_null_property_initialization_skips_typed_properties() {
-    run(
-        &only(rules::NoNullPropertyInit, 70400),
-        "RemoveNullPropertyInitializationRector/FixtureTypedProperties",
-    );
-}
-
-#[test]
-fn remove_unused_closure_variable_use() {
-    run_with_whitespace_exceptions(
-        &only(rules::NoUnusedClosureVariable, 80400),
-        "RemoveUnusedClosureVariableUseRector/Fixture",
-        &[],
-    );
-}
-
-#[test]
 fn remove_unused_foreach_key() {
     run(
         &only(rules::NoUnusedForeachKey, 80400),
@@ -428,17 +366,6 @@ fn remove_unreachable_statement() {
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "RemoveUnreachableStatementRector/Oracle");
     run(&linter, "RemoveUnreachableStatementRector/Pun");
-}
-
-#[test]
-fn simplify_mirror_assign() {
-    let linter = Linter::new(
-        vec![Box::new(NoMirrorAssignment)],
-        pun_lint::PhpVersion::from_id(80400),
-    );
-    run(&linter, "SimplifyMirrorAssignRector/Fixture");
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(&linter, "SimplifyMirrorAssignRector/Oracle");
 }
 
 #[test]
@@ -620,20 +547,6 @@ fn array_merge_of_non_arrays_to_simple_array() {
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Oracle");
     run(&linter, "ArrayMergeOfNonArraysToSimpleArrayRector/Pun");
-}
-
-#[test]
-fn remove_readonly_property_visibility_on_readonly_class() {
-    let linter = only(rules::NoRedundantReadonlyProperty, 80400);
-    run(
-        &linter,
-        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector/Fixture",
-    );
-    // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
-    run(
-        &linter,
-        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector/Oracle",
-    );
 }
 
 #[test]

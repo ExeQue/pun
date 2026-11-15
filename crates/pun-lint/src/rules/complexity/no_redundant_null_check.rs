@@ -2,7 +2,7 @@ use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
 use std::fmt::Write as _;
 
-use crate::rules::classes::no_redundant_readonly_property::print_modifiers;
+use crate::rules::support::class_dependency::print_modifiers;
 use crate::rules::support::conditions::{
     comments_between, if_not_null_return_value, if_parts, indentation, is_stmts_aware,
     print_comments, reprint,

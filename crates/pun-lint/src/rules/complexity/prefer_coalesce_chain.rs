@@ -11,7 +11,7 @@ pub struct PreferCoalesceChain;
 
 impl Rule for PreferCoalesceChain {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-coalesce-chain"
+        "lint/complexity/prefer-null-coalesce"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

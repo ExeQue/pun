@@ -9,7 +9,7 @@ pub struct PreferArrayAll;
 
 impl Rule for PreferArrayAll {
     fn id(&self) -> &'static str {
-        "lint/php-8.4/prefer-array-all"
+        "lint/php-8.4/prefer-array-find"
     }
 
     fn min_php_version(&self) -> crate::PhpVersion {

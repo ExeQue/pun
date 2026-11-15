@@ -82,7 +82,7 @@ fn is_a_argument(ancestors: &[Node<'_, '_>], span: pun_problem::Span) -> bool {
 
 impl Rule for PreferClassNameConstant {
     fn id(&self) -> &'static str {
-        "lint/style/prefer-class-name-constant"
+        "lint/style/prefer-class-constant"
     }
 
     fn min_php_version(&self) -> crate::PhpVersion {

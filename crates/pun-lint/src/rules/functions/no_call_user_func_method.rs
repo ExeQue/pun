@@ -3,7 +3,6 @@ use mago_syntax::cst::{
 };
 use pun_problem::{Edit, Fix, Safety};
 
-use crate::rules::classes::prefer_serialize_method::is_identifier;
 use crate::rules::support::arguments::{unpacked, value};
 use crate::rules::support::expressions::named;
 use crate::rules::support::values::{Known, known};
@@ -120,4 +119,13 @@ fn this_available(ancestors: &[Node<'_, '_>]) -> bool {
         }
     }
     false
+}
+
+/// A name `$this->name` can take: a letter, `_` or a byte from 0x80, then those and digits.
+pub(super) fn is_identifier(name: &str) -> bool {
+    let mut bytes = name.bytes();
+    bytes
+        .next()
+        .is_some_and(|b| b == b'_' || b.is_ascii_alphabetic() || b >= 0x80)
+        && bytes.all(|b| b == b'_' || b.is_ascii_alphanumeric() || b >= 0x80)
 }

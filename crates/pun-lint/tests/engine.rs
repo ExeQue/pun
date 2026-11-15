@@ -8,23 +8,23 @@ use pun_problem::{Edit, Fix, Level, Safety, Span};
 #[test]
 fn check_reports_each_problem_once_with_rule_path_span_and_fix() {
     let linter = Linter::new(rules::all(), pun_lint::PhpVersion::from_id(80400));
-    let code = "<?php\ndeclare(strict_types=1);\n$a = $a + 1;\n";
+    let code = "<?php\ndeclare(strict_types=1);\n$a = !true;\n";
     let problems = linter.check(Path::new("src/a.php"), code).unwrap();
     assert_eq!(problems.len(), 1);
 
-    let compound = &problems[0];
-    assert_eq!(compound.rule, "lint/style/prefer-compound-assignment");
-    assert_eq!(compound.path, PathBuf::from("src/a.php"));
-    assert_eq!(compound.span, Span::new(31, 42));
-    assert_eq!(compound.level, Level::Error);
+    let negated = &problems[0];
+    assert_eq!(negated.rule, "lint/complexity/no-negated-boolean-literal");
+    assert_eq!(negated.path, PathBuf::from("src/a.php"));
+    assert_eq!(negated.span, Span::new(36, 41)); // `!true`
+    assert_eq!(negated.level, Level::Error);
     assert_eq!(
-        compound.message,
-        "Use `+=` instead of repeating the assigned variable."
+        negated.message,
+        "Use `false` instead of negating a boolean literal."
     );
-    assert_eq!(compound.help, None);
-    let fix = compound.fix.as_ref().unwrap();
-    assert_eq!(fix.safety, Safety::Unsafe);
-    assert_eq!(fix.edits, vec![Edit::new(Span::new(33, 41), " += ")]);
+    assert_eq!(negated.help, None);
+    let fix = negated.fix.as_ref().unwrap();
+    assert_eq!(fix.safety, Safety::Safe);
+    assert_eq!(fix.edits, vec![Edit::new(Span::new(36, 41), "false")]);
 }
 
 #[test]

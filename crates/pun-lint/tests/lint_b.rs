@@ -105,15 +105,6 @@ fn run(rule: impl Rule + 'static, php_version: u32, dir: &str) {
 }
 
 #[test]
-fn combined_assign_oracle() {
-    run(
-        rules::PreferCompoundAssignment,
-        80400,
-        "CombinedAssignRector/Oracle",
-    );
-}
-
-#[test]
 fn privatize_local_getter_to_property() {
     run(
         rules::PreferPropertyOverLocalGetter,
@@ -232,15 +223,6 @@ fn privatize_final_class_property() {
 }
 
 #[test]
-fn convert_static_to_self() {
-    run(
-        rules::PreferSelfOverStatic,
-        80400,
-        "ConvertStaticToSelfRector",
-    );
-}
-
-#[test]
 fn strict_array_search() {
     run(
         rules::RequireStrictArraySearch,
@@ -283,24 +265,6 @@ fn version_compare_func_call_to_constant() {
         rules::PreferPhpVersionId,
         80400,
         "VersionCompareFuncCallToConstantRector",
-    );
-}
-
-#[test]
-fn sleep_to_serialize() {
-    run(
-        rules::PreferSerializeMethod,
-        80500,
-        "SleepToSerializeRector",
-    );
-}
-
-#[test]
-fn wakeup_to_unserialize() {
-    run(
-        rules::PreferUnserializeMethod,
-        80500,
-        "WakeupToUnserializeRector",
     );
 }
 

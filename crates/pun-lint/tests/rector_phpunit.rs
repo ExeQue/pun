@@ -267,11 +267,6 @@ fn match_assert_same_expected_type() {
 }
 
 #[test]
-fn assert_equals_to_same() {
-    check(PreferSameForScalars, "AssertEqualsToSameRector");
-}
-
-#[test]
 fn assert_compare_on_countable_with_method_to_assert_count() {
     check(
         PreferAssertCount,

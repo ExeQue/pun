@@ -16,7 +16,7 @@ pub struct NoUnusedTestMethodParam;
 
 impl Rule for NoUnusedTestMethodParam {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-unused-test-method-param"
+        "lint/dead-code/no-unused-private-method-param"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

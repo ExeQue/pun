@@ -7,7 +7,7 @@ pagination: false
 
 Code that can be written more simply, and size and complexity limits.
 
-Across commands: format: 0, lint: 65, analyse: 0.
+Across commands: format: 0, lint: 56, analyse: 0.
 
 <CardGroup cols={2}>
 <Card title="lint/complexity/no-and-assignment">
@@ -26,15 +26,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 Flags function-like parameters that use a boolean type and drive the function's behaviour.
 
 Not in any preset or set. Enable it by name or group. Fix: none (report only).
-
-</Card>
-<Card title="lint/complexity/no-boolean-literal-compare">
-
-[`lint/complexity/no-boolean-literal-compare`](/docs/rules/lint/complexity/no-boolean-literal-compare)
-
-Simplify bool value compare to true or false
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
 <Card title="lint/complexity/no-compact">
@@ -199,29 +190,11 @@ Detects `iterator_to_array()` calls used directly as a `foreach` expression.
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only).
 
 </Card>
-<Card title="lint/complexity/no-negated-and">
-
-[`lint/complexity/no-negated-and`](/docs/rules/lint/complexity/no-negated-and)
-
-Simplify negated "and" conditions to "or" with de Morgan theorem
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/complexity/no-negated-boolean-literal">
 
 [`lint/complexity/no-negated-boolean-literal`](/docs/rules/lint/complexity/no-negated-boolean-literal)
 
 Replace negated boolean literals (!false, !true) with their simplified equivalents (true, false)
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/complexity/no-negated-comparison">
-
-[`lint/complexity/no-negated-comparison`](/docs/rules/lint/complexity/no-negated-comparison)
-
-Replace negated comparisons such as `!($a === $b)` with the inverse operator.
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
@@ -276,15 +249,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 [`lint/complexity/no-redundant-null-check`](/docs/rules/lint/complexity/no-redundant-null-check)
 
 Return the value directly instead of checking it for null first.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/complexity/no-redundant-nullable-check">
-
-[`lint/complexity/no-redundant-nullable-check`](/docs/rules/lint/complexity/no-redundant-nullable-check)
-
-Direct return on if nullable check before return
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
@@ -370,15 +334,6 @@ Change array_merge of non arrays to array directly
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/complexity/prefer-coalesce-chain">
-
-[`lint/complexity/prefer-coalesce-chain`](/docs/rules/lint/complexity/prefer-coalesce-chain)
-
-Turn consecutive `if ($x !== null) return $x;` checks into one `??` chain.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/complexity/prefer-coalesce-over-empty-ternary">
 
 [`lint/complexity/prefer-coalesce-over-empty-ternary`](/docs/rules/lint/complexity/prefer-coalesce-over-empty-ternary)
@@ -388,29 +343,11 @@ Change ternary empty on array property with array dim fetch to coalesce operator
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
 </Card>
-<Card title="lint/complexity/prefer-coalesce-over-foreach">
-
-[`lint/complexity/prefer-coalesce-over-foreach`](/docs/rules/lint/complexity/prefer-coalesce-over-foreach)
-
-Replace a foreach that looks up a key with `??`.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
 <Card title="lint/complexity/prefer-empty-array-compare">
 
 [`lint/complexity/prefer-empty-array-compare`](/docs/rules/lint/complexity/prefer-empty-array-compare)
 
 Compare with `[]` instead of empty()/is_array() on arrays.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/complexity/prefer-empty-array-identical">
-
-[`lint/complexity/prefer-empty-array-identical`](/docs/rules/lint/complexity/prefer-empty-array-identical)
-
-Simplify empty() functions calls on empty arrays
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 
@@ -447,24 +384,6 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 [`lint/complexity/prefer-in-array`](/docs/rules/lint/complexity/prefer-in-array)
 
 Use in_array() instead of repeated `||`/`&&` comparisons, array_search() checks and foreach loops.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/complexity/prefer-in-array-over-foreach">
-
-[`lint/complexity/prefer-in-array-over-foreach`](/docs/rules/lint/complexity/prefer-in-array-over-foreach)
-
-Replace a foreach that returns a boolean on a match with `in_array()`.
-
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
-
-</Card>
-<Card title="lint/complexity/prefer-in-array-over-search">
-
-[`lint/complexity/prefer-in-array-over-search`](/docs/rules/lint/complexity/prefer-in-array-over-search)
-
-Simplify `array_search()` compared with `false` to `in_array()`
 
 Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
 

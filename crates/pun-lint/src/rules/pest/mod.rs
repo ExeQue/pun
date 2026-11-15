@@ -1,13 +1,11 @@
 mod no_before_all_in_describe;
 mod no_expect_exception;
-mod no_focused_test;
 mod no_invalid_repeat;
 mod no_negated_boolean_matcher;
 mod no_redundant_type_expectation;
 mod no_redundant_uses;
 mod no_static_test_closure;
 mod prefer_chained_expect;
-mod prefer_comparison_matchers;
 mod prefer_defer;
 mod prefer_each_modifier;
 mod prefer_expect;
@@ -30,7 +28,6 @@ mod prefer_to_be_json;
 mod prefer_to_be_list;
 mod prefer_to_be_lowercase;
 mod prefer_to_be_nan;
-mod prefer_to_be_true_false;
 mod prefer_to_be_truthy_falsy;
 mod prefer_to_be_uppercase;
 mod prefer_to_be_url;
@@ -80,13 +77,11 @@ rules! {
     pub(super) fn all {
         no_before_all_in_describe => NoBeforeAllInDescribe,
         no_expect_exception => NoExpectException,
-        no_focused_test => NoFocusedTest,
         no_invalid_repeat => NoInvalidRepeat,
         no_negated_boolean_matcher => NoNegatedBooleanMatcher,
         no_redundant_type_expectation => NoRedundantTypeExpectation,
         no_redundant_uses => NoRedundantUses,
         no_static_test_closure => NoStaticTestClosure,
-        prefer_comparison_matchers => PreferComparisonMatchers,
         prefer_defer => PreferDefer,
         prefer_each_modifier => PreferEachModifier,
         prefer_expect => PreferExpect,
@@ -109,7 +104,6 @@ rules! {
         prefer_to_be_list => PreferToBeList,
         prefer_to_be_lowercase => PreferToBeLowercase,
         prefer_to_be_nan => PreferToBeNan,
-        prefer_to_be_true_false => PreferToBeTrueFalse,
         prefer_to_be_truthy_falsy => PreferToBeTruthyFalsy,
         prefer_to_be_uppercase => PreferToBeUppercase,
         prefer_to_be_url => PreferToBeUrl,

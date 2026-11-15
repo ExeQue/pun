@@ -21,7 +21,7 @@ pub struct NoRedundantNullableCheck;
 
 impl Rule for NoRedundantNullableCheck {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-redundant-nullable-check"
+        "lint/complexity/no-redundant-null-check"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

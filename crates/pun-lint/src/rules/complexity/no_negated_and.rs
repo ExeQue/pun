@@ -9,7 +9,7 @@ pub struct NoNegatedAnd;
 
 impl Rule for NoNegatedAnd {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-negated-and"
+        "lint/complexity/no-negated-group"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

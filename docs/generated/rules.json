@@ -3311,26 +3311,6 @@
       "ported": true
     },
     {
-      "id": "lint/arrays/prefer-array-append",
-      "command": "lint",
-      "group": "arrays",
-      "summary": "Use $array[] = instead of array_push() in a statement.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ChangeArrayPushToArrayAssign",
-        "ChangeArrayPushToArrayAssignRector",
-        "Rector\\CodeQuality\\Rector\\FuncCall\\ChangeArrayPushToArrayAssignRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/arrays/prefer-array-spread",
       "command": "lint",
       "group": "arrays",
@@ -3402,31 +3382,15 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "no-null-property-init",
-        "no_null_property_initialization"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/classes/no-null-property-init",
-      "command": "lint",
-      "group": "classes",
-      "summary": "Remove initialization with null value from property declarations",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
+        "pint",
         "rector"
       ],
       "upstream": [
         "Rector\\DeadCode\\Rector\\PropertyProperty\\RemoveNullPropertyInitializationRector",
         "RemoveNullPropertyInitialization",
-        "RemoveNullPropertyInitializationRector"
+        "RemoveNullPropertyInitializationRector",
+        "no-null-property-init",
+        "no_null_property_initialization"
       ],
       "ported": true
     },
@@ -3524,31 +3488,15 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "no-redundant-readonly",
-        "no_redundant_readonly_property"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/classes/no-redundant-readonly-property",
-      "command": "lint",
-      "group": "classes",
-      "summary": "In a readonly class, drop readonly from properties and promoted parameters",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
+        "pint",
         "rector"
       ],
       "upstream": [
         "Rector\\CodeQuality\\Rector\\Class_\\RemoveReadonlyPropertyVisibilityOnReadonlyClassRector",
         "RemoveReadonlyPropertyVisibilityOnReadonlyClass",
-        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector"
+        "RemoveReadonlyPropertyVisibilityOnReadonlyClassRector",
+        "no-redundant-readonly",
+        "no_redundant_readonly_property"
       ],
       "ported": true
     },
@@ -3643,71 +3591,15 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "redundant-static",
-        "self_static_accessor"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/classes/prefer-self-over-static",
-      "command": "lint",
-      "group": "classes",
-      "summary": "Change static::* to self::* on final class or private static members",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
+        "pint",
         "rector"
       ],
       "upstream": [
         "ConvertStaticToSelf",
         "ConvertStaticToSelfRector",
-        "Rector\\CodeQuality\\Rector\\Class_\\ConvertStaticToSelfRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/classes/prefer-serialize-method",
-      "command": "lint",
-      "group": "classes",
-      "summary": "Change __sleep() to __serialize() with correct return values",
-      "enabled": [
-        "modernize"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\Php85\\Rector\\Class_\\SleepToSerializeRector",
-        "SleepToSerialize",
-        "SleepToSerializeRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/classes/prefer-unserialize-method",
-      "command": "lint",
-      "group": "classes",
-      "summary": "Change __wakeup() to __unserialize()",
-      "enabled": [
-        "modernize"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\Php85\\Rector\\Class_\\WakeupToUnserializeRector",
-        "WakeupToUnserialize",
-        "WakeupToUnserializeRector"
+        "Rector\\CodeQuality\\Rector\\Class_\\ConvertStaticToSelfRector",
+        "redundant-static",
+        "self_static_accessor"
       ],
       "ported": true
     },
@@ -3798,26 +3690,6 @@
       ],
       "upstream": [
         "no-boolean-flag-parameter"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/complexity/no-boolean-literal-compare",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Simplify bool value compare to true or false",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\Identical\\SimplifyBoolIdenticalTrueRector",
-        "SimplifyBoolIdenticalTrue",
-        "SimplifyBoolIdenticalTrueRector"
       ],
       "ported": true
     },
@@ -4136,26 +4008,6 @@
       "ported": true
     },
     {
-      "id": "lint/complexity/no-negated-and",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Simplify negated \"and\" conditions to \"or\" with de Morgan theorem",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "NegatedAndsToPositiveOrs",
-        "NegatedAndsToPositiveOrsRector",
-        "Rector\\CodeQuality\\Rector\\BooleanNot\\NegatedAndsToPositiveOrsRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/complexity/no-negated-boolean-literal",
       "command": "lint",
       "group": "complexity",
@@ -4176,26 +4028,6 @@
       "ported": true
     },
     {
-      "id": "lint/complexity/no-negated-comparison",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Replace negated comparisons such as !($a === $b) with the inverse operator.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "BooleanNotIdenticalToNotIdentical",
-        "BooleanNotIdenticalToNotIdenticalRector",
-        "Rector\\CodeQuality\\Rector\\Identical\\BooleanNotIdenticalToNotIdenticalRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/complexity/no-negated-group",
       "command": "lint",
       "group": "complexity",
@@ -4209,6 +4041,9 @@
         "rector"
       ],
       "upstream": [
+        "NegatedAndsToPositiveOrs",
+        "NegatedAndsToPositiveOrsRector",
+        "Rector\\CodeQuality\\Rector\\BooleanNot\\NegatedAndsToPositiveOrsRector",
         "Rector\\CodeQuality\\Rector\\BooleanNot\\SimplifyDeMorganBinaryRector",
         "SimplifyDeMorganBinary",
         "SimplifyDeMorganBinaryRector"
@@ -4308,26 +4143,9 @@
       ],
       "upstream": [
         "Rector\\CodeQuality\\Rector\\If_\\SimplifyIfNotNullReturnRector",
-        "SimplifyIfNotNullReturn",
-        "SimplifyIfNotNullReturnRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/complexity/no-redundant-nullable-check",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Direct return on if nullable check before return",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
         "Rector\\CodeQuality\\Rector\\If_\\SimplifyIfNullableReturnRector",
+        "SimplifyIfNotNullReturn",
+        "SimplifyIfNotNullReturnRector",
         "SimplifyIfNullableReturn",
         "SimplifyIfNullableReturnRector"
       ],
@@ -4520,26 +4338,6 @@
       "ported": true
     },
     {
-      "id": "lint/complexity/prefer-coalesce-chain",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Turn consecutive if ($x !== null) return $x; checks into one ?? chain.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ConsecutiveNullCompareReturnsToNullCoalesceQueue",
-        "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector",
-        "Rector\\CodeQuality\\Rector\\If_\\ConsecutiveNullCompareReturnsToNullCoalesceQueueRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/complexity/prefer-coalesce-over-empty-ternary",
       "command": "lint",
       "group": "complexity",
@@ -4560,26 +4358,6 @@
       "ported": true
     },
     {
-      "id": "lint/complexity/prefer-coalesce-over-foreach",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Replace a foreach that looks up a key with ??.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\Foreach_\\SimplifyForeachToCoalescingRector",
-        "SimplifyForeachToCoalescing",
-        "SimplifyForeachToCoalescingRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/complexity/prefer-empty-array-compare",
       "command": "lint",
       "group": "complexity",
@@ -4594,26 +4372,9 @@
       ],
       "upstream": [
         "Rector\\CodeQuality\\Rector\\BooleanAnd\\SimplifyEmptyArrayCheckRector",
-        "SimplifyEmptyArrayCheck",
-        "SimplifyEmptyArrayCheckRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/complexity/prefer-empty-array-identical",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Simplify empty() functions calls on empty arrays",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
         "Rector\\CodeQuality\\Rector\\Empty_\\SimplifyEmptyCheckOnEmptyArrayRector",
+        "SimplifyEmptyArrayCheck",
+        "SimplifyEmptyArrayCheckRector",
         "SimplifyEmptyCheckOnEmptyArray",
         "SimplifyEmptyCheckOnEmptyArrayRector"
       ],
@@ -4693,47 +4454,13 @@
         "rector"
       ],
       "upstream": [
-        "Rector\\CodeQuality\\Rector\\BooleanOr\\RepeatedOrEqualToInArrayRector",
-        "RepeatedOrEqualToInArray",
-        "RepeatedOrEqualToInArrayRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/complexity/prefer-in-array-over-foreach",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Replace a foreach that returns a boolean on a match with in_array().",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
         "ForeachToInArray",
         "ForeachToInArrayRector",
-        "Rector\\CodeQuality\\Rector\\Foreach_\\ForeachToInArrayRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/complexity/prefer-in-array-over-search",
-      "command": "lint",
-      "group": "complexity",
-      "summary": "Simplify array_search() compared with false to in_array()",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
+        "Rector\\CodeQuality\\Rector\\BooleanOr\\RepeatedOrEqualToInArrayRector",
+        "Rector\\CodeQuality\\Rector\\Foreach_\\ForeachToInArrayRector",
         "Rector\\CodeQuality\\Rector\\Identical\\SimplifyArraySearchRector",
+        "RepeatedOrEqualToInArray",
+        "RepeatedOrEqualToInArrayRector",
         "SimplifyArraySearch",
         "SimplifyArraySearchRector"
       ],
@@ -4851,7 +4578,13 @@
       "upstream": [
         "ArrayKeyExistsTernaryThenValueToCoalescing",
         "ArrayKeyExistsTernaryThenValueToCoalescingRector",
-        "Rector\\CodeQuality\\Rector\\Ternary\\ArrayKeyExistsTernaryThenValueToCoalescingRector"
+        "ConsecutiveNullCompareReturnsToNullCoalesceQueue",
+        "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector",
+        "Rector\\CodeQuality\\Rector\\Foreach_\\SimplifyForeachToCoalescingRector",
+        "Rector\\CodeQuality\\Rector\\If_\\ConsecutiveNullCompareReturnsToNullCoalesceQueueRector",
+        "Rector\\CodeQuality\\Rector\\Ternary\\ArrayKeyExistsTernaryThenValueToCoalescingRector",
+        "SimplifyForeachToCoalescing",
+        "SimplifyForeachToCoalescingRector"
       ],
       "ported": true
     },
@@ -4909,7 +4642,13 @@
         "rector"
       ],
       "upstream": [
+        "BooleanNotIdenticalToNotIdentical",
+        "BooleanNotIdenticalToNotIdenticalRector",
+        "Rector\\CodeQuality\\Rector\\Identical\\BooleanNotIdenticalToNotIdenticalRector",
+        "Rector\\CodeQuality\\Rector\\Identical\\SimplifyBoolIdenticalTrueRector",
         "Rector\\CodeQuality\\Rector\\Identical\\SimplifyConditionsRector",
+        "SimplifyBoolIdenticalTrue",
+        "SimplifyBoolIdenticalTrueRector",
         "SimplifyConditions",
         "SimplifyConditionsRector"
       ],
@@ -5127,9 +4866,13 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\CodeQuality\\Rector\\FunctionLike\\SimplifyUselessVariableRector",
+        "SimplifyUselessVariable",
+        "SimplifyUselessVariableRector",
         "inline-variable-return",
         "return_assignment"
       ],
@@ -5262,9 +5005,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\CodeQuality\\Rector\\If_\\SimplifyIfReturnBoolRector",
+        "SimplifyIfReturnBool",
+        "SimplifyIfReturnBoolRector",
         "simplified_if_return"
       ],
       "ported": true
@@ -5306,26 +5053,6 @@
       ],
       "upstream": [
         "combine_consecutive_unsets"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/control-flow/prefer-returned-condition",
-      "command": "lint",
-      "group": "control-flow",
-      "summary": "Shortens if return false/true to direct return",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\If_\\SimplifyIfReturnBoolRector",
-        "SimplifyIfReturnBool",
-        "SimplifyIfReturnBoolRector"
       ],
       "ported": true
     },
@@ -5409,29 +5136,12 @@
       ],
       "upstream": [
         "Rector\\DeadCode\\Rector\\If_\\RemoveDeadInstanceOfRector",
+        "Rector\\DeadCode\\Rector\\StmtsAwareInterface\\RemoveDeadInstanceOfAssertRector",
         "RemoveDeadInstanceOf",
+        "RemoveDeadInstanceOfAssert",
+        "RemoveDeadInstanceOfAssertRector",
         "RemoveDeadInstanceOfRector",
         "instanceof.alwaysTrue"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-always-true-instanceof-assert",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove assert() with instanceof check on a value whose type is already known",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\StmtsAwareInterface\\RemoveDeadInstanceOfAssertRector",
-        "RemoveDeadInstanceOfAssert",
-        "RemoveDeadInstanceOfAssertRector"
       ],
       "ported": true
     },
@@ -5452,26 +5162,6 @@
         "Rector\\DeadCode\\Rector\\BooleanAnd\\RemoveAndTrueRector",
         "RemoveAndTrue",
         "RemoveAndTrueRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-bool-ternary",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove unnecessary ternary expressions",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\Ternary\\UnnecessaryTernaryExpressionRector",
-        "UnnecessaryTernaryExpression",
-        "UnnecessaryTernaryExpressionRector"
       ],
       "ported": true
     },
@@ -5637,29 +5327,12 @@
       ],
       "upstream": [
         "Rector\\DeadCode\\Rector\\For_\\RemoveDeadIfForeachForRector",
+        "Rector\\DeadCode\\Rector\\For_\\RemoveDeadLoopRector",
         "RemoveDeadIfForeachFor",
         "RemoveDeadIfForeachForRector",
-        "no-empty-loop"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-empty-loop",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove loop with no body",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\For_\\RemoveDeadLoopRector",
         "RemoveDeadLoop",
-        "RemoveDeadLoopRector"
+        "RemoveDeadLoopRector",
+        "no-empty-loop"
       ],
       "ported": true
     },
@@ -5806,66 +5479,6 @@
       "ported": true
     },
     {
-      "id": "lint/dead-code/no-mirror-assignment",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove $value = $value assignments.",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\Expression\\SimplifyMirrorAssignRector",
-        "SimplifyMirrorAssign",
-        "SimplifyMirrorAssignRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-null-default-argument",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove default null argument, where null is already a default param value",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\MethodCall\\RemoveNullArgOnNullDefaultParamRector",
-        "RemoveNullArgOnNullDefaultParam",
-        "RemoveNullArgOnNullDefaultParamRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-null-default-named-argument",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove named null argument, where null is already a default param value",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\MethodCall\\RemoveNullNamedArgOnNullDefaultParamRector",
-        "RemoveNullNamedArgOnNullDefaultParam",
-        "RemoveNullNamedArgOnNullDefaultParamRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/dead-code/no-null-tag-value",
       "command": "lint",
       "group": "dead-code",
@@ -5902,26 +5515,6 @@
         "Rector\\DeadCode\\Rector\\If_\\RemoveOverriddenAssignBeforeIfElseRector",
         "RemoveOverriddenAssignBeforeIfElse",
         "RemoveOverriddenAssignBeforeIfElseRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-overwritten-assignment",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove an assignment that the next statement overwrites without reading it.",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\Assign\\RemoveDoubleAssignRector",
-        "RemoveDoubleAssign",
-        "RemoveDoubleAssignRector"
       ],
       "ported": true
     },
@@ -5980,8 +5573,14 @@
       ],
       "upstream": [
         "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveArgumentFromDefaultParentCallRector",
+        "Rector\\DeadCode\\Rector\\MethodCall\\RemoveNullArgOnNullDefaultParamRector",
+        "Rector\\DeadCode\\Rector\\MethodCall\\RemoveNullNamedArgOnNullDefaultParamRector",
         "RemoveArgumentFromDefaultParentCall",
-        "RemoveArgumentFromDefaultParentCallRector"
+        "RemoveArgumentFromDefaultParentCallRector",
+        "RemoveNullArgOnNullDefaultParam",
+        "RemoveNullArgOnNullDefaultParamRector",
+        "RemoveNullNamedArgOnNullDefaultParam",
+        "RemoveNullNamedArgOnNullDefaultParamRector"
       ],
       "ported": true
     },
@@ -6096,31 +5695,15 @@
       "fix": "safe",
       "ecosystem": "core",
       "tools": [
-        "mago"
-      ],
-      "upstream": [
-        "Pun/no_self_assignment",
-        "no-self-assignment"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-tautology-ternary",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Use the value a ternary always gives when it compares the two values it chooses between.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
+        "mago",
         "rector"
       ],
       "upstream": [
-        "Rector\\CodeQuality\\Rector\\Ternary\\SimplifyTautologyTernaryRector",
-        "SimplifyTautologyTernary",
-        "SimplifyTautologyTernaryRector"
+        "Pun/no_self_assignment",
+        "Rector\\DeadCode\\Rector\\Expression\\SimplifyMirrorAssignRector",
+        "SimplifyMirrorAssign",
+        "SimplifyMirrorAssignRector",
+        "no-self-assignment"
       ],
       "ported": true
     },
@@ -6185,7 +5768,10 @@
         "rector"
       ],
       "upstream": [
+        "Rector\\DeadCode\\Rector\\Assign\\RemoveDoubleAssignRector",
         "Rector\\DeadCode\\Rector\\Assign\\RemoveUnusedVariableAssignRector",
+        "RemoveDoubleAssign",
+        "RemoveDoubleAssignRector",
         "RemoveUnusedVariableAssign",
         "RemoveUnusedVariableAssignRector",
         "no-dead-store",
@@ -6355,7 +5941,10 @@
         "rector"
       ],
       "upstream": [
+        "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveTestsOverriddenPrivateMethodParameterRector",
         "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveUnusedPrivateMethodParameterRector",
+        "RemoveTestsOverriddenPrivateMethodParameter",
+        "RemoveTestsOverriddenPrivateMethodParameterRector",
         "RemoveUnusedPrivateMethodParameter",
         "RemoveUnusedPrivateMethodParameterRector"
       ],
@@ -6461,26 +6050,6 @@
       ],
       "upstream": [
         "no-unused-static"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-unused-test-method-param",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove parameter of private test class method, that is overridden by direct assign before its first use",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\ClassMethod\\RemoveTestsOverriddenPrivateMethodParameterRector",
-        "RemoveTestsOverriddenPrivateMethodParameter",
-        "RemoveTestsOverriddenPrivateMethodParameterRector"
       ],
       "ported": true
     },
@@ -6663,7 +6232,8 @@
       "group": "dead-code",
       "summary": "Simplify ternaries whose result does not depend on the condition, or that equal a boolean expression.",
       "enabled": [
-        "dead-code"
+        "dead-code",
+        "code-quality"
       ],
       "fix": "safe",
       "ecosystem": "core",
@@ -6671,29 +6241,15 @@
         "rector"
       ],
       "upstream": [
+        "Rector\\CodeQuality\\Rector\\Ternary\\SimplifyTautologyTernaryRector",
+        "Rector\\CodeQuality\\Rector\\Ternary\\UnnecessaryTernaryExpressionRector",
         "Rector\\DeadCode\\Rector\\Ternary\\RemoveUselessTernaryRector",
         "RemoveUselessTernary",
-        "RemoveUselessTernaryRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/dead-code/no-useless-variable",
-      "command": "lint",
-      "group": "dead-code",
-      "summary": "Remove useless variable assigns",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\FunctionLike\\SimplifyUselessVariableRector",
-        "SimplifyUselessVariable",
-        "SimplifyUselessVariableRector"
+        "RemoveUselessTernaryRector",
+        "SimplifyTautologyTernary",
+        "SimplifyTautologyTernaryRector",
+        "UnnecessaryTernaryExpression",
+        "UnnecessaryTernaryExpressionRector"
       ],
       "ported": true
     },
@@ -6848,35 +6404,19 @@
         "mago",
         "php-cs-fixer",
         "phpstan",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
         "PHPStan\\Rules\\Functions\\UnusedClosureUsesRule",
+        "Rector\\DeadCode\\Rector\\Closure\\RemoveUnusedClosureVariableUseRector",
+        "RemoveUnusedClosureVariableUse",
+        "RemoveUnusedClosureVariableUseRector",
         "UnusedClosureUsesRule",
         "closure.unusedUse",
         "closure.unusedUseFlow",
         "lambda_not_used_import",
         "no-unused-closure-capture"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/functions/no-unused-closure-variable",
-      "command": "lint",
-      "group": "functions",
-      "summary": "Remove unused variable in use() of closure",
-      "enabled": [
-        "dead-code"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\DeadCode\\Rector\\Closure\\RemoveUnusedClosureVariableUseRector",
-        "RemoveUnusedClosureVariableUse",
-        "RemoveUnusedClosureVariableUseRector"
       ],
       "ported": true
     },
@@ -7311,10 +6851,15 @@
       "fix": "unsafe",
       "ecosystem": "laravel",
       "tools": [
-        "mago"
+        "mago",
+        "rector",
+        "rector-laravel"
       ],
       "upstream": [
+        "EloquentMagicMethodToQueryBuilder",
+        "EloquentMagicMethodToQueryBuilderRector",
         "Pun/no_implicit_model_query",
+        "RectorLaravel\\Rector\\StaticCall\\EloquentMagicMethodToQueryBuilderRector",
         "no-implicit-model-query"
       ],
       "ported": true
@@ -7562,10 +7107,15 @@
       "fix": "safe",
       "ecosystem": "laravel",
       "tools": [
-        "mago"
+        "mago",
+        "rector",
+        "rector-laravel"
       ],
       "upstream": [
         "Pun/prefer_array_validation_rules",
+        "RectorLaravel\\Rector\\MethodCall\\ValidationRuleArrayStringValueToArrayRector",
+        "ValidationRuleArrayStringValueToArray",
+        "ValidationRuleArrayStringValueToArrayRector",
         "prefer-array-validation-rules"
       ],
       "ported": true
@@ -7873,10 +7423,15 @@
       "fix": "safe",
       "ecosystem": "laravel",
       "tools": [
-        "mago"
+        "mago",
+        "rector",
+        "rector-laravel"
       ],
       "upstream": [
+        "AssertStatusToAssertMethod",
+        "AssertStatusToAssertMethodRector",
         "Pun/prefer_dedicated_status_assertion",
+        "RectorLaravel\\Rector\\MethodCall\\AssertStatusToAssertMethodRector",
         "prefer-dedicated-status-assertion"
       ],
       "ported": true
@@ -8384,27 +7939,6 @@
       "ported": true
     },
     {
-      "id": "lint/laravel/prefer-query-builder-call",
-      "command": "lint",
-      "group": "laravel",
-      "summary": "The EloquentMagicMethodToQueryBuilderRule is designed to automatically transform certain magic method calls on Eloquent Models into corresponding Query Builder method calls.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "laravel",
-      "tools": [
-        "rector",
-        "rector-laravel"
-      ],
-      "upstream": [
-        "EloquentMagicMethodToQueryBuilder",
-        "EloquentMagicMethodToQueryBuilderRector",
-        "RectorLaravel\\Rector\\StaticCall\\EloquentMagicMethodToQueryBuilderRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/laravel/prefer-queue-attribute",
       "command": "lint",
       "group": "laravel",
@@ -8620,27 +8154,6 @@
         "RectorLaravel\\Rector\\FuncCall\\SleepFuncToSleepStaticCallRector",
         "SleepFuncToSleepStaticCall",
         "SleepFuncToSleepStaticCallRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/laravel/prefer-status-assertion-method",
-      "command": "lint",
-      "group": "laravel",
-      "summary": "Replace (new \\Illuminate\\Testing\\TestResponse)->assertStatus(200) with (new \\Illuminate\\Testing\\TestResponse)->assertOk()",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "laravel",
-      "tools": [
-        "rector",
-        "rector-laravel"
-      ],
-      "upstream": [
-        "AssertStatusToAssertMethod",
-        "AssertStatusToAssertMethodRector",
-        "RectorLaravel\\Rector\\MethodCall\\AssertStatusToAssertMethodRector"
       ],
       "ported": true
     },
@@ -8902,27 +8415,6 @@
       "ported": true
     },
     {
-      "id": "lint/laravel/prefer-validation-rule-array",
-      "command": "lint",
-      "group": "laravel",
-      "summary": "Convert string validation rules into arrays for Laravel's Validator.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "laravel",
-      "tools": [
-        "rector",
-        "rector-laravel"
-      ],
-      "upstream": [
-        "RectorLaravel\\Rector\\MethodCall\\ValidationRuleArrayStringValueToArrayRector",
-        "ValidationRuleArrayStringValueToArray",
-        "ValidationRuleArrayStringValueToArrayRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/laravel/prefer-view-array",
       "command": "lint",
       "group": "laravel",
@@ -9040,9 +8532,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "LogicalToBoolean",
+        "LogicalToBooleanRector",
+        "Rector\\CodeQuality\\Rector\\LogicalAnd\\LogicalToBooleanRector",
         "logical_operators"
       ],
       "ported": true
@@ -9110,26 +8606,6 @@
       "ported": true
     },
     {
-      "id": "lint/operators/prefer-boolean-and-or",
-      "command": "lint",
-      "group": "operators",
-      "summary": "Use && and || instead of and and or.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "LogicalToBoolean",
-        "LogicalToBooleanRector",
-        "Rector\\CodeQuality\\Rector\\LogicalAnd\\LogicalToBooleanRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/operators/prefer-coalesce",
       "command": "lint",
       "group": "operators",
@@ -9164,25 +8640,6 @@
       ],
       "upstream": [
         "assign_null_coalescing_to_coalesce_equal"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/operators/prefer-shorthand-operator",
-      "command": "lint",
-      "group": "operators",
-      "summary": "Shorthand notation for operators should be used if possible.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "long_to_shorthand_operator"
       ],
       "ported": true
     },
@@ -9280,48 +8737,6 @@
       "ported": true
     },
     {
-      "id": "lint/pest/no-expect-exception",
-      "command": "lint",
-      "group": "pest",
-      "summary": "Converts expectException() and expectExceptionMessage() patterns to expect()->toThrow()",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "safe",
-      "ecosystem": "pest",
-      "tools": [
-        "pest-plugin-rector",
-        "rector"
-      ],
-      "upstream": [
-        "ConvertExpectExceptionToThrow",
-        "ConvertExpectExceptionToThrowRector",
-        "Pest\\Rector\\Rules\\ConvertExpectExceptionToThrowRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/pest/no-focused-test",
-      "command": "lint",
-      "group": "pest",
-      "summary": "Removes only() from all tests",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "pest",
-      "tools": [
-        "pest-plugin-rector",
-        "rector"
-      ],
-      "upstream": [
-        "Pest\\Rector\\Rules\\RemoveOnlyRector",
-        "RemoveOnly",
-        "RemoveOnlyRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/pest/no-invalid-repeat",
       "command": "lint",
       "group": "pest",
@@ -9374,10 +8789,15 @@
       "fix": "unsafe",
       "ecosystem": "pest",
       "tools": [
-        "mago"
+        "mago",
+        "pest-plugin-rector",
+        "rector"
       ],
       "upstream": [
+        "Pest\\Rector\\Rules\\RemoveOnlyRector",
         "Pun/no_only",
+        "RemoveOnly",
+        "RemoveOnlyRector",
         "no-only"
       ],
       "ported": true
@@ -9463,27 +8883,6 @@
         "ChainExpectCalls",
         "ChainExpectCallsRector",
         "Pest\\Rector\\Rules\\ChainExpectCallsRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/pest/prefer-comparison-matchers",
-      "command": "lint",
-      "group": "pest",
-      "summary": "Converts expect($x > 10)->toBeTrue() to expect($x)->toBeGreaterThan(10)",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "safe",
-      "ecosystem": "pest",
-      "tools": [
-        "pest-plugin-rector",
-        "rector"
-      ],
-      "upstream": [
-        "Pest\\Rector\\Rules\\SimplifyComparisonExpectationsRector",
-        "SimplifyComparisonExpectations",
-        "SimplifyComparisonExpectationsRector"
       ],
       "ported": true
     },
@@ -9664,10 +9063,15 @@
       "fix": "safe",
       "ecosystem": "pest",
       "tools": [
-        "mago"
+        "mago",
+        "pest-plugin-rector",
+        "rector"
       ],
       "upstream": [
+        "Pest\\Rector\\Rules\\SimplifyComparisonExpectationsRector",
         "Pun/use_simpler_expectation",
+        "SimplifyComparisonExpectations",
+        "SimplifyComparisonExpectationsRector",
         "use-simpler-expectation"
       ],
       "ported": true
@@ -9683,10 +9087,15 @@
       "fix": "safe",
       "ecosystem": "pest",
       "tools": [
-        "mago"
+        "mago",
+        "pest-plugin-rector",
+        "rector"
       ],
       "upstream": [
+        "Pest\\Rector\\Rules\\SimplifyToLiteralBooleanRector",
         "Pun/use_specific_expectations",
+        "SimplifyToLiteralBoolean",
+        "SimplifyToLiteralBooleanRector",
         "use-specific-expectations"
       ],
       "ported": true
@@ -10003,27 +9412,6 @@
         "Pest\\Rector\\Rules\\UseToBeNanRector",
         "UseToBeNan",
         "UseToBeNanRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/pest/prefer-to-be-true-false",
-      "command": "lint",
-      "group": "pest",
-      "summary": "Simplifies expect($x)->toBe(true) to expect($x)->toBeTrue() and similar patterns",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "safe",
-      "ecosystem": "pest",
-      "tools": [
-        "pest-plugin-rector",
-        "rector"
-      ],
-      "upstream": [
-        "Pest\\Rector\\Rules\\SimplifyToLiteralBooleanRector",
-        "SimplifyToLiteralBoolean",
-        "SimplifyToLiteralBooleanRector"
       ],
       "ported": true
     },
@@ -10504,6 +9892,9 @@
         "rector"
       ],
       "upstream": [
+        "ConvertExpectExceptionToThrow",
+        "ConvertExpectExceptionToThrowRector",
+        "Pest\\Rector\\Rules\\ConvertExpectExceptionToThrowRector",
         "Pest\\Rector\\Rules\\UseToThrowRector",
         "UseToThrow",
         "UseToThrowRector"
@@ -10590,46 +9981,6 @@
       "ported": true
     },
     {
-      "id": "lint/php-8.4/prefer-array-all",
-      "command": "lint",
-      "group": "php-8.4",
-      "summary": "Replace foreach with boolean assignment and break OR foreach with early return with array_all",
-      "enabled": [
-        "modernize"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ForeachToArrayAll",
-        "ForeachToArrayAllRector",
-        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayAllRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/php-8.4/prefer-array-any",
-      "command": "lint",
-      "group": "php-8.4",
-      "summary": "Replace foreach with boolean assignment + break OR foreach with early return with array_any",
-      "enabled": [
-        "modernize"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ForeachToArrayAny",
-        "ForeachToArrayAnyRector",
-        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayAnyRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/php-8.4/prefer-array-find",
       "command": "lint",
       "group": "php-8.4",
@@ -10643,29 +9994,18 @@
         "rector"
       ],
       "upstream": [
+        "ForeachToArrayAll",
+        "ForeachToArrayAllRector",
+        "ForeachToArrayAny",
+        "ForeachToArrayAnyRector",
         "ForeachToArrayFind",
-        "ForeachToArrayFindRector",
-        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayFindRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/php-8.4/prefer-array-find-key",
-      "command": "lint",
-      "group": "php-8.4",
-      "summary": "Replace foreach with assignment and break with array_find_key",
-      "enabled": [
-        "modernize"
-      ],
-      "fix": "safe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
         "ForeachToArrayFindKey",
         "ForeachToArrayFindKeyRector",
-        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayFindKeyRector"
+        "ForeachToArrayFindRector",
+        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayAllRector",
+        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayAnyRector",
+        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayFindKeyRector",
+        "Rector\\Php84\\Rector\\Foreach_\\ForeachToArrayFindRector"
       ],
       "ported": true
     },
@@ -12156,9 +11496,14 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector",
+        "rector-phpunit"
       ],
       "upstream": [
+        "AssertEqualsToSame",
+        "AssertEqualsToSameRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\AssertEqualsToSameRector",
         "php_unit_strict",
         "strict-assertions"
       ],
@@ -12525,27 +11870,6 @@
       "ported": true
     },
     {
-      "id": "lint/phpunit/prefer-merged-will-return-callback",
-      "command": "lint",
-      "group": "phpunit",
-      "summary": "Merge split mocking method ->with($this->callback(...)) and ->willReturn(expr) to single ->willReturnCallback() call",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "safe",
-      "ecosystem": "phpunit",
-      "tools": [
-        "rector",
-        "rector-phpunit"
-      ],
-      "upstream": [
-        "MergeWithCallableAndWillReturn",
-        "MergeWithCallableAndWillReturnRector",
-        "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\MergeWithCallableAndWillReturnRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/phpunit/prefer-mock-intersection-return",
       "command": "lint",
       "group": "phpunit",
@@ -12702,27 +12026,6 @@
         "Rector\\PHPUnit\\AnnotationsToAttributes\\Rector\\Class_\\RequiresAnnotationWithValueToAttributeRector",
         "RequiresAnnotationWithValueToAttribute",
         "RequiresAnnotationWithValueToAttributeRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/phpunit/prefer-same-for-scalars",
-      "command": "lint",
-      "group": "phpunit",
-      "summary": "Turns assertEquals() into stricter assertSame() for scalar values in PHPUnit TestCase",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "phpunit",
-      "tools": [
-        "rector",
-        "rector-phpunit"
-      ],
-      "upstream": [
-        "AssertEqualsToSame",
-        "AssertEqualsToSameRector",
-        "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\AssertEqualsToSameRector"
       ],
       "ported": true
     },
@@ -13026,7 +12329,10 @@
         "rector-phpunit"
       ],
       "upstream": [
+        "MergeWithCallableAndWillReturn",
+        "MergeWithCallableAndWillReturnRector",
         "Rector\\PHPUnit\\CodeQuality\\Rector\\Class_\\VoidMethodWithCallbackToWillReturnCallbackRector",
+        "Rector\\PHPUnit\\CodeQuality\\Rector\\MethodCall\\MergeWithCallableAndWillReturnRector",
         "VoidMethodWithCallbackToWillReturnCallback",
         "VoidMethodWithCallbackToWillReturnCallbackRector"
       ],
@@ -14064,26 +13370,6 @@
       "ported": true
     },
     {
-      "id": "lint/strings/no-single-argument-sprintf",
-      "command": "lint",
-      "group": "strings",
-      "summary": "Use the format itself instead of sprintf() with no values.",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\FuncCall\\UnwrapSprintfOneArgumentRector",
-        "UnwrapSprintfOneArgument",
-        "UnwrapSprintfOneArgumentRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/strings/no-trailing-whitespace-in-string",
       "command": "lint",
       "group": "strings",
@@ -14097,26 +13383,6 @@
       ],
       "upstream": [
         "no_trailing_whitespace_in_string"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/strings/prefer-empty-string-identical",
-      "command": "lint",
-      "group": "strings",
-      "summary": "Changes strlen comparison to 0 to direct empty string compare",
-      "enabled": [
-        "code-quality"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\CodeQuality\\Rector\\Identical\\StrlenZeroToIdenticalEmptyStringRector",
-        "StrlenZeroToIdenticalEmptyString",
-        "StrlenZeroToIdenticalEmptyStringRector"
       ],
       "ported": true
     },
@@ -14304,9 +13570,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "ChangeArrayPushToArrayAssign",
+        "ChangeArrayPushToArrayAssignRector",
+        "Rector\\CodeQuality\\Rector\\FuncCall\\ChangeArrayPushToArrayAssignRector",
         "array_push"
       ],
       "ported": true
@@ -14389,24 +13659,6 @@
       "upstream": [
         "PHPStan\\Rules\\VariableVariables\\VariableMethodCallableRule",
         "VariableMethodCallableRule"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/style/no-dynamic-name",
-      "command": "lint",
-      "group": "style",
-      "summary": "Discourages usage of PHP's variable variables feature.",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "none",
-      "ecosystem": "core",
-      "tools": [
-        "mago"
-      ],
-      "upstream": [
-        "no-variable-variable"
       ],
       "ported": true
     },
@@ -14864,9 +14116,16 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\Php85\\Rector\\Class_\\SleepToSerializeRector",
+        "Rector\\Php85\\Rector\\Class_\\WakeupToUnserializeRector",
+        "SleepToSerialize",
+        "SleepToSerializeRector",
+        "WakeupToUnserialize",
+        "WakeupToUnserializeRector",
         "modern_serialization_methods"
       ],
       "ported": true
@@ -14936,9 +14195,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\CodeQuality\\Rector\\FuncCall\\UnwrapSprintfOneArgumentRector",
+        "UnwrapSprintfOneArgument",
+        "UnwrapSprintfOneArgumentRector",
         "no_useless_sprintf"
       ],
       "ported": true
@@ -14954,12 +14217,14 @@
       "fix": "none",
       "ecosystem": "core",
       "tools": [
+        "mago",
         "phpstan",
         "phpstan-strict-rules"
       ],
       "upstream": [
         "PHPStan\\Rules\\VariableVariables\\VariableVariablesRule",
         "VariableVariablesRule",
+        "no-variable-variable",
         "variable.dynamicName"
       ],
       "ported": true
@@ -15055,31 +14320,18 @@
       "tools": [
         "mago",
         "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "class_keyword",
-        "no-literal-namespace-string"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/style/prefer-class-keyword",
-      "command": "lint",
-      "group": "style",
-      "summary": "Use class keyword for class name resolution in string instead of hardcoded string reference",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
+        "pint",
         "rector"
       ],
       "upstream": [
         "Rector\\CodingStyle\\Rector\\String_\\UseClassKeywordForClassNameResolutionRector",
+        "Rector\\Php55\\Rector\\String_\\StringClassNameToClassConstantRector",
+        "StringClassNameToClassConstant",
+        "StringClassNameToClassConstantRector",
         "UseClassKeywordForClassNameResolution",
-        "UseClassKeywordForClassNameResolutionRector"
+        "UseClassKeywordForClassNameResolutionRector",
+        "class_keyword",
+        "no-literal-namespace-string"
       ],
       "ported": true
     },
@@ -15103,26 +14355,6 @@
       "ported": true
     },
     {
-      "id": "lint/style/prefer-class-name-constant",
-      "command": "lint",
-      "group": "style",
-      "summary": "Replace string class names by <class>::class constant",
-      "enabled": [
-        "coding-style"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\Php55\\Rector\\String_\\StringClassNameToClassConstantRector",
-        "StringClassNameToClassConstant",
-        "StringClassNameToClassConstantRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/style/prefer-compound-assignment",
       "command": "lint",
       "group": "style",
@@ -15134,12 +14366,15 @@
       "ecosystem": "core",
       "tools": [
         "mago",
+        "php-cs-fixer",
+        "pint",
         "rector"
       ],
       "upstream": [
         "CombinedAssign",
         "CombinedAssignRector",
         "Rector\\CodeQuality\\Rector\\Assign\\CombinedAssignRector",
+        "long_to_shorthand_operator",
         "use-compound-assignment"
       ],
       "ported": true
@@ -15287,9 +14522,13 @@
       "ecosystem": "core",
       "tools": [
         "php-cs-fixer",
-        "pint"
+        "pint",
+        "rector"
       ],
       "upstream": [
+        "Rector\\CodeQuality\\Rector\\Identical\\StrlenZeroToIdenticalEmptyStringRector",
+        "StrlenZeroToIdenticalEmptyString",
+        "StrlenZeroToIdenticalEmptyStringRector",
         "string_length_to_empty"
       ],
       "ported": true

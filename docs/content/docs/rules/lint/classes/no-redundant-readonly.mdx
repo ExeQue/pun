@@ -12,7 +12,16 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 ## Replaces
 
 - [`no_redundant_readonly_property`](https://cs.symfony.com/doc/rules/class_notation/no_redundant_readonly_property.html) (php-cs-fixer).
+- [`RemoveReadonlyPropertyVisibilityOnReadonlyClass`](https://getrector.com/rule-detail/remove-readonly-property-visibility-on-readonly-class-rector) (rector).
 - [`no-redundant-readonly`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-readonly) (mago-linter).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/classes/no-redundant-readonly-property`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

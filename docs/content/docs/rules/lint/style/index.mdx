@@ -7,7 +7,7 @@ pagination: false
 
 One consistent way to write the same thing.
 
-Across commands: format: 0, lint: 91, analyse: 0.
+Across commands: format: 0, lint: 88, analyse: 0.
 
 <CardGroup cols={2}>
 <Card title="lint/style/add-param-type-from-phpdoc">
@@ -116,15 +116,6 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (r
 Disallows a first-class callable of a method with a variable name (`$object->$method(...)`).
 
 Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (report only). Additional upstream gates: `strictRules.noVariableVariables`.
-
-</Card>
-<Card title="lint/style/no-dynamic-name">
-
-[`lint/style/no-dynamic-name`](/docs/rules/lint/style/no-dynamic-name)
-
-Discourages usage of PHP's variable variables feature.
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (report only).
 
 </Card>
 <Card title="lint/style/no-dynamic-property">
@@ -433,15 +424,6 @@ Use `Foo::class` instead of class-name strings.
 Enabled by the [`modernize`](/docs/rules/sets/modernize), [`coding-style`](/docs/rules/sets/coding-style) sets. Fix: unsafe (can change behaviour).
 
 </Card>
-<Card title="lint/style/prefer-class-keyword">
-
-[`lint/style/prefer-class-keyword`](/docs/rules/lint/style/prefer-class-keyword)
-
-Use `class` keyword for class name resolution in string instead of hardcoded string reference
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour).
-
-</Card>
 <Card title="lint/style/prefer-class-keyword-on-object">
 
 [`lint/style/prefer-class-keyword-on-object`](/docs/rules/lint/style/prefer-class-keyword-on-object)
@@ -449,15 +431,6 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 Replace `get_class` calls on object variables with class keyword syntax.
 
 Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
-
-</Card>
-<Card title="lint/style/prefer-class-name-constant">
-
-[`lint/style/prefer-class-name-constant`](/docs/rules/lint/style/prefer-class-name-constant)
-
-Replace string class names by `<class>::class` constant
-
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour).
 
 </Card>
 <Card title="lint/style/prefer-compound-assignment">

@@ -58,8 +58,7 @@ use pun_lint::rules::{
     NoConstantViaVariable, NoInvalidVarTag, NoPhpdocClassCaseMismatch, NoRedundantForeachGuard,
     NoRedundantPropertyDefault, NoTypedPropertyInstanceof, NoUnusedTestMethodParam, NoUselessCast,
     NoUselessFilterVar, NoUselessMath, PreferInlineArrayReturn, PreferInstanceMethod,
-    PreferPropertyExists, PreferReturnedCondition, RequireConsistentReturn,
-    RequirePreviousException,
+    PreferPropertyExists, RequireConsistentReturn, RequirePreviousException,
 };
 use pun_lint::{Linter, Rule};
 
@@ -166,11 +165,6 @@ fn isset_on_property_object_to_property_exists() {
         PreferPropertyExists,
         "IssetOnPropertyObjectToPropertyExistsRector",
     );
-}
-
-#[test]
-fn simplify_if_return_bool() {
-    check(PreferReturnedCondition, "SimplifyIfReturnBoolRector");
 }
 
 #[test]
@@ -299,10 +293,6 @@ fn rules_ignore_nodes_outside_their_targets() {
         (
             || Box::new(PreferPropertyExists),
             "IssetOnPropertyObjectToPropertyExistsRector",
-        ),
-        (
-            || Box::new(PreferReturnedCondition),
-            "SimplifyIfReturnBoolRector",
         ),
         (
             || Box::new(NoInvalidVarTag),

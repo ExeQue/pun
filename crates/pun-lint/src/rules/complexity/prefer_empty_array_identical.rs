@@ -11,7 +11,7 @@ pub struct PreferEmptyArrayIdentical;
 
 impl Rule for PreferEmptyArrayIdentical {
     fn id(&self) -> &'static str {
-        "lint/complexity/prefer-empty-array-identical"
+        "lint/complexity/prefer-empty-array-compare"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

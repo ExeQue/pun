@@ -237,7 +237,7 @@ fn shebang_owned_and_borrowed_csts_restore_declarations_without_rewriting_source
 #[test]
 fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
     let linter = Linter::new(
-        vec![Box::new(rules::PreferCompoundAssignment)],
+        vec![Box::new(rules::NoNegatedBooleanLiteral)],
         pun_lint::PhpVersion::from_id(80400),
     );
     for prefix in [
@@ -247,9 +247,10 @@ fn shebang_lint_fixes_keep_inline_bytes_before_the_restored_php() {
         "#!php\n<?php ",
         "#!php\r\n<?php ",
     ] {
-        let source = format!("{prefix}$a = $a + 1;");
+        // The rewrite is derived by hand. Only the PHP expression changes, never its inline prefix.
+        let source = format!("{prefix}$a = !true;");
         let fixed = linter.fix(Path::new("shebang.php"), &source).unwrap();
-        assert_eq!(fixed.source, format!("{prefix}$a += 1;"));
+        assert_eq!(fixed.source, format!("{prefix}$a = false;"));
         assert_eq!(fixed.applied.len(), 1);
         assert_eq!(fixed.remaining, [] as [pun_problem::Problem; 0]);
     }

@@ -18,7 +18,6 @@ pub(super) mod rewrites;
 pub(super) mod scope_usage;
 pub(super) mod security;
 pub(super) mod sequence_diff;
-pub(super) mod serialize_methods;
 pub(super) mod side_effects;
 pub(super) mod statement_edits;
 pub(super) mod statement_splice;

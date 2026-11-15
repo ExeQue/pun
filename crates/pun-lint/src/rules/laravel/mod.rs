@@ -5,6 +5,7 @@ mod add_relation_generics;
 mod add_relation_query_closure_type;
 mod add_tap_closure_type;
 mod conditional_helpers;
+mod document_string;
 mod names;
 mod no_app_array_access;
 mod no_collection_aliases;
@@ -37,7 +38,6 @@ mod prefer_facade_over_app;
 mod prefer_latest_oldest;
 mod prefer_nullsafe;
 mod prefer_protected_model_methods;
-mod prefer_query_builder_call;
 mod prefer_report_if;
 mod prefer_request_facade;
 mod prefer_request_server;
@@ -46,7 +46,6 @@ mod prefer_resolve_helper;
 mod prefer_scope_attribute;
 mod prefer_session_facade;
 mod prefer_sleep_facade;
-mod prefer_status_assertion_method;
 mod prefer_str_starts_with;
 mod prefer_table_attribute;
 mod prefer_throw_if;
@@ -54,7 +53,6 @@ mod prefer_to_route_helper;
 mod prefer_today;
 mod prefer_travel_to;
 mod prefer_typed_assert_closure;
-mod prefer_validation_rule_array;
 mod prefer_view_array;
 mod print;
 pub(crate) mod property_attribute;
@@ -136,13 +134,11 @@ rules! {
         no_negated_contains => NoNegatedContains,
         no_negated_filter => NoNegatedFilter,
         no_negated_when => NoNegatedWhen,
-        prefer_status_assertion_method => PreferStatusAssertionMethod,
         prefer_environment_check => PreferEnvironmentCheck,
         prefer_typed_assert_closure => PreferTypedAssertClosure,
         no_useless_value_call => NoUselessValueCall,
         no_useless_with_call => NoUselessWithCall,
         prefer_dispatch_helper => PreferDispatchHelper,
-        prefer_validation_rule_array => PreferValidationRuleArray,
         no_controller_middleware => NoControllerMiddleware,
         prefer_view_array => PreferViewArray,
         add_query_closure_type => AddQueryClosureType,
@@ -153,7 +149,6 @@ rules! {
         prefer_collection_all => PreferCollectionAll,
         prefer_closure_only_bind => PreferClosureOnlyBind,
         add_has_factory_trait => AddHasFactoryTrait::default(),
-        prefer_query_builder_call => PreferQueryBuilderCall::default(),
         prefer_class_container_key => PreferClassContainerKey::default(),
         add_factory_extends_phpdoc => AddFactoryExtendsPhpdoc,
         add_relation_generics => AddRelationGenerics,

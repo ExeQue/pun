@@ -20,7 +20,6 @@ pub(super) mod prefer_catch_name_from_type;
 pub(super) mod prefer_class_constant;
 pub(super) mod prefer_class_keyword;
 pub(super) mod prefer_class_name_constant;
-pub(super) mod prefer_compound_assignment;
 pub(super) mod prefer_early_continue;
 pub(super) mod prefer_early_return;
 pub(super) mod prefer_early_return_over_prepared_value;

@@ -12,7 +12,18 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize), [`code-quality`](/docs
 ## Replaces
 
 - [`self_static_accessor`](https://cs.symfony.com/doc/rules/class_notation/self_static_accessor.html) (php-cs-fixer).
+- [`ConvertStaticToSelf`](https://getrector.com/rule-detail/convert-static-to-self-rector) (rector).
 - [`redundant-static`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#redundant-static) (mago-linter).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/classes/prefer-self-over-static`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+
+Rector also rewrote `static::` to `self::` for private members of non-final classes; that case is not covered yet.
 
 ## Configuration
 

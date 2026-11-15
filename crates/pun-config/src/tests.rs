@@ -357,14 +357,14 @@ fn lint_sets() {
     assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
     let l = lint(&[("pun.toml", modernize)]);
-    assert_eq!(l.rules.len(), 29);
+    assert_eq!(l.rules.len(), 24);
     assert!(ids(&l.rules).contains(&"lint/php-8.4/prefer-array-find"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     let l = lint(&[(
         "pun.toml",
         &format!("[php]\nversion = \"8.5\"\n{modernize}"),
     )]);
-    assert_eq!(l.rules.len(), 35);
+    assert_eq!(l.rules.len(), 30);
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
@@ -380,7 +380,7 @@ fn lint_groups() {
     };
     let level = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).map(|r| r.level);
     let l = lint("[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"warn\"\n");
-    assert_eq!(l.rules.len(), 93);
+    assert_eq!(l.rules.len(), 90);
     assert!(
         l.rules
             .iter()
@@ -715,7 +715,7 @@ fn rule_metadata() {
     );
     assert_eq!(rule("analyse/types/argument").unwrap().fix.name(), "none");
     assert_eq!(
-        rule("lint/arrays/prefer-array-append").unwrap().fix.name(),
+        rule("lint/style/no-array-push").unwrap().fix.name(),
         "unsafe"
     );
     assert!(rule("dead-code/no-self-assignment").is_none());
@@ -1160,7 +1160,7 @@ fn pun_toml_errors() {
         (
             "lint",
             "simplify-mirror-assign",
-            "lint/dead-code/no-mirror-assignment",
+            "lint/dead-code/no-self-assignment",
         ),
         (
             "lint",
@@ -1197,6 +1197,23 @@ fn pun_toml_errors() {
     assert_eq!(
         e("[[lint.overrides]]\nfiles = [\"tests/**\"]\nrules = { final_class = \"off\" }\n"),
         "pun.toml: `final_class` is `lint/style/require-final-class` in pun.toml"
+    );
+    // A rule merged into another, by its full ID or its `<group>/<name>`.
+    for name in [
+        "lint/arrays/prefer-array-append",
+        "arrays/prefer-array-append",
+    ] {
+        assert_eq!(
+            e(&format!("[lint.rules]\n\"{name}\" = \"error\"\n")),
+            format!(
+                "pun.toml: `{name}` was merged into `lint/style/no-array-push`: use `lint/style/no-array-push` in pun.toml"
+            )
+        );
+    }
+    // Its upstream rule now maps to the rule it was merged into.
+    assert_eq!(
+        e("[lint.rules]\nChangeArrayPushToArrayAssign = \"error\"\n"),
+        "pun.toml: `ChangeArrayPushToArrayAssign` is `lint/style/no-array-push` in pun.toml"
     );
 }
 

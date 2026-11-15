@@ -12,7 +12,16 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 ## Replaces
 
 - [`Pun/no_implicit_model_query`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
+- [`EloquentMagicMethodToQueryBuilder`](https://getrector.com/rule-detail/eloquent-magic-method-to-query-builder-rector) (rector-laravel).
 - [`no-implicit-model-query`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-implicit-model-query) (mago-linter).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/laravel/prefer-query-builder-call`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

@@ -11,7 +11,7 @@ pub struct NoOverwrittenAssignment;
 
 impl Rule for NoOverwrittenAssignment {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-overwritten-assignment"
+        "lint/dead-code/no-unused-assignment"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

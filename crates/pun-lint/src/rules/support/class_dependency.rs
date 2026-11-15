@@ -11,7 +11,6 @@ use mago_names::ResolvedNames;
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
 
-use crate::rules::classes::no_redundant_readonly_property::print_modifiers;
 use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::laravel::property_attribute::ClassView;
 use crate::rules::style::prefer_catch_name_from_type::fqn_to_variable_name;
@@ -1682,4 +1681,35 @@ fn print_int(raw: &[u8], value: u64) -> Option<String> {
     } else {
         value.to_string()
     })
+}
+
+/// php-parser's `pModifiers` for the flags of `modifiers` without `readonly`: each modifier and a space, in its fixed
+/// order.
+pub(crate) fn print_modifiers(modifiers: &Sequence<'_, Modifier<'_>>, add_public: bool) -> String {
+    let has = |f: fn(&Modifier<'_>) -> bool| modifiers.iter().any(f);
+    let order: [(&str, bool); 9] = [
+        ("final", has(|m| matches!(m, Modifier::Final(_)))),
+        ("abstract", has(|m| matches!(m, Modifier::Abstract(_)))),
+        (
+            "public",
+            add_public || has(|m| matches!(m, Modifier::Public(_))),
+        ),
+        ("protected", has(|m| matches!(m, Modifier::Protected(_)))),
+        ("private", has(|m| matches!(m, Modifier::Private(_)))),
+        ("public(set)", has(|m| matches!(m, Modifier::PublicSet(_)))),
+        (
+            "protected(set)",
+            has(|m| matches!(m, Modifier::ProtectedSet(_))),
+        ),
+        (
+            "private(set)",
+            has(|m| matches!(m, Modifier::PrivateSet(_))),
+        ),
+        ("static", has(|m| matches!(m, Modifier::Static(_)))),
+    ];
+    order
+        .iter()
+        .filter(|(_, on)| *on)
+        .map(|(name, _)| format!("{name} "))
+        .collect()
 }

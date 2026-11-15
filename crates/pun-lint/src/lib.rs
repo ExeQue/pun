@@ -194,6 +194,8 @@ struct Found {
 pub struct Linter {
     rules: Vec<Box<dyn Rule>>,
     by_kind: Vec<Vec<(&'static str, usize)>>,
+    /// IDs shared by several rules: a rule merged from several upstream rules runs each implementation.
+    shared: std::collections::HashSet<&'static str>,
     php_version: PhpVersion,
 }
 
@@ -212,9 +214,16 @@ impl Linter {
                 None => by_kind.iter_mut().for_each(|r| r.push((rule.id(), i))),
             }
         }
+        let mut ids = std::collections::HashSet::new();
+        let shared = rules
+            .iter()
+            .map(|r| r.id())
+            .filter(|id| !ids.insert(*id))
+            .collect();
         Linter {
             rules,
             by_kind,
+            shared,
             php_version,
         }
     }
@@ -265,7 +274,13 @@ impl Linter {
         let found = state.found;
         let mut found: Vec<(&'static str, Report)> =
             found.rules.into_iter().zip(found.reports).collect();
-        found.sort_by_key(|(_, report)| report.span.start);
+        found.sort_by_key(|(_, report)| (report.span.start, report.fix.is_none()));
+        // A rule merged from several upstream rules runs each of their implementations; where two report the same
+        // span, the rule reports it once, with a fix when either has one.
+        let mut seen = std::collections::HashSet::new();
+        found.retain(|(rule, report)| {
+            !self.shared.contains(rule) || seen.insert((*rule, report.span.start, report.span.end))
+        });
         Ok(found
             .into_iter()
             .map(|(rule, report)| Problem {

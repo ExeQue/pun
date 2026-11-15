@@ -473,24 +473,21 @@ fn plain(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, Option<i32
 
 #[test]
 fn problems_in_every_report() {
-    let toml = "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"strings/no-single-argument-sprintf\" = \"error\"\n\"security/no-eval\" = \"error\"\n";
+    let toml = "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"complexity/no-negated-boolean-literal\" = \"error\"\n\"security/no-eval\" = \"error\"\n";
     let d = project(
         "lint",
         "reports",
         &[
             ("pun.toml", toml),
-            (
-                "a.php",
-                "<?php\n$n = sprintf('x');\neval('1;');\neval('2;');\n",
-            ),
+            ("a.php", "<?php\n$n = !true;\neval('1;');\neval('2;');\n"),
         ],
     );
-    let sprintf = "`sprintf()` with only a format does nothing; use the format itself.";
+    let negated = "Use `false` instead of negating a boolean literal.";
     let (lines, _, code) = agent(&d, &["lint"]);
     assert_eq!(
         lines,
         [
-            format!("a.php:2:6 lint/strings/no-single-argument-sprintf [fix:unsafe] {sprintf}"),
+            format!("a.php:2:6 lint/complexity/no-negated-boolean-literal [fix:safe] {negated}"),
             "a.php:3:1 lint/security/no-eval Unsafe use of `eval` construct.".into(),
             "a.php:4:1 lint/security/no-eval Unsafe use of `eval` construct.".into(),
         ]
@@ -499,12 +496,12 @@ fn problems_in_every_report() {
     assert_eq!(
         plain(&d, &["-v", "--format=json"], &[]),
         (
-            r#"{"about":"PHP CS Fixer 3.95.25 Adalbertus by Fabien Potencier, Dariusz Ruminski and contributors.","files":[{"name":"a.php","appliedFixers":["lint\/strings\/no-single-argument-sprintf","lint\/security\/no-eval"]}],"time":{"total":0},"memory":0}"#.into(),
+            r#"{"about":"PHP CS Fixer 3.95.25 Adalbertus by Fabien Potencier, Dariusz Ruminski and contributors.","files":[{"name":"a.php","appliedFixers":["lint\/complexity\/no-negated-boolean-literal","lint\/security\/no-eval"]}],"time":{"total":0},"memory":0}"#.into(),
             Some(1)
         )
     );
     let annotations = format!(
-        "::error file=a.php,line=2,col=6,title=lint/strings/no-single-argument-sprintf::{sprintf}\n::error file=a.php,line=3,col=1,title=lint/security/no-eval::Unsafe use of `eval` construct.\n::error file=a.php,line=4,col=1,title=lint/security/no-eval::Unsafe use of `eval` construct.\n"
+        "::error file=a.php,line=2,col=6,title=lint/complexity/no-negated-boolean-literal::{negated}\n::error file=a.php,line=3,col=1,title=lint/security/no-eval::Unsafe use of `eval` construct.\n::error file=a.php,line=4,col=1,title=lint/security/no-eval::Unsafe use of `eval` construct.\n"
     );
     assert_eq!(
         plain(&d, &["--format=github"], &[]),

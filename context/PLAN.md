@@ -154,6 +154,9 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
   with no Pest plugin or PHPUnit typing (analyse 7 moves after 1.0). A project that doesn't want them analysed
   excludes them by glob: `[analyse] exclude = ["tests/**"]` removes matching files from both the analysis and the
   symbol scan (PHPStan's `excludePaths.analyseAndScan`); vendor/ is still read for symbols.
+- **Duplicate lint rules are merged** (2026-11-15, plan/rules.md §3): 46 rules that duplicated another (usually a
+  PHP-CS-Fixer fixer and its Rector port) are merged into 21; the keeper's `merged` and `replaces` fields record the
+  upstream names and old IDs, `pun migrate` maps every upstream name to the keeper, and old IDs error with the new one.
 - **No upgrades below the floor** (2026-10-17): Rector's php-5.3 to php-8.3 upgrade sets and Laravel upgrade sets
   before 12 are not supported; php-8.4/8.5 and laravel-12/13 are. Pun targets PHP 8.4+ projects.
 

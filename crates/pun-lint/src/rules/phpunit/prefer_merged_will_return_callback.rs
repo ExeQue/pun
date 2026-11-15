@@ -13,7 +13,7 @@ pub struct PreferMergedWillReturnCallback;
 
 impl Rule for PreferMergedWillReturnCallback {
     fn id(&self) -> &'static str {
-        "lint/phpunit/prefer-merged-will-return-callback"
+        "lint/phpunit/prefer-will-return-callback"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -33,7 +33,7 @@ struct Conversion<'a> {
 
 impl Rule for NoExpectException {
     fn id(&self) -> &'static str {
-        "lint/pest/no-expect-exception"
+        "lint/pest/prefer-to-throw"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

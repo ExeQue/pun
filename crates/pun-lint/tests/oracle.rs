@@ -5,42 +5,6 @@ use std::path::Path;
 
 use pun_lint::{Linter, Rule, rules};
 
-fn spike_rules() -> Vec<Box<dyn Rule>> {
-    vec![Box::new(rules::PreferCompoundAssignment)]
-}
-
-fn check_oracle(name: &str) {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/oracle")
-        .join(name);
-    let content = std::fs::read_to_string(&path).unwrap();
-    let (input, expected) = content.split_once("-----\n").unwrap();
-    let fixed = Linter::new(spike_rules(), pun_lint::PhpVersion::from_id(80400))
-        .fix(&path, input)
-        .unwrap();
-    assert_eq!(fixed.source, expected, "{name}");
-}
-
-#[test]
-fn compound_assignment() {
-    check_oracle("prefer_compound_assignment.php.inc");
-}
-
-#[test]
-fn compound_assignment_keeps_parentheses_around_low_precedence_operators() {
-    let linter = Linter::new(spike_rules(), pun_lint::PhpVersion::from_id(80400));
-    let fixed = linter
-        .fix(
-            Path::new("a.php"),
-            "<?php\n$a = $a + ($b or $c);\n$a = $a . (($b xor $c));\n$a = $a - ($b and $c);\n",
-        )
-        .unwrap();
-    assert_eq!(
-        fixed.source,
-        "<?php\n$a += ($b or $c);\n$a .= (($b xor $c));\n$a -= ($b and $c);\n"
-    );
-}
-
 #[test]
 fn unused_foreach_key_with_a_missing_array_element_in_compact() {
     let code = "<?php\nforeach ($a as $k => $v) { compact([, 'k']); }\n";
@@ -146,34 +110,10 @@ fn duplicate_array_key() {
 }
 
 #[test]
-fn null_property_init() {
-    check_rule_oracle(rules::NoNullPropertyInit, "no_null_property_init.php.inc");
-}
-
-#[test]
-fn null_property_init_in_parentheses() {
-    assert_eq!(
-        fix_with(
-            rules::NoNullPropertyInit,
-            "<?php\nclass A { public $h = (null); }\n"
-        ),
-        "<?php\nclass A { public $h; }\n"
-    );
-}
-
-#[test]
 fn redundant_final_const() {
     check_rule_oracle(
         rules::NoRedundantFinalConst,
         "no_redundant_final_const.php.inc",
-    );
-}
-
-#[test]
-fn unused_closure_variable() {
-    check_rule_oracle(
-        rules::NoUnusedClosureVariable,
-        "no_unused_closure_variable.php.inc",
     );
 }
 

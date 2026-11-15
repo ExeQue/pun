@@ -7,7 +7,7 @@ pub struct NoDynamicName;
 
 impl Rule for NoDynamicName {
     fn id(&self) -> &'static str {
-        "lint/style/no-dynamic-name"
+        "lint/style/no-variable-variable"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

@@ -11,7 +11,20 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: safe (keeps b
 
 ## Replaces
 
+- [`ForeachToArrayAll`](https://getrector.com/rule-detail/foreach-to-array-all-rector) (rector).
+- [`ForeachToArrayAny`](https://getrector.com/rule-detail/foreach-to-array-any-rector) (rector).
 - [`ForeachToArrayFind`](https://getrector.com/rule-detail/foreach-to-array-find-rector) (rector).
+- [`ForeachToArrayFindKey`](https://getrector.com/rule-detail/foreach-to-array-find-key-rector) (rector).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/php-8.4/prefer-array-all`
+- `lint/php-8.4/prefer-array-any`
+- `lint/php-8.4/prefer-array-find-key`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

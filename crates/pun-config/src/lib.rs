@@ -323,6 +323,19 @@ fn parse(
     })
 }
 
+/// The rule a removed rule was merged into: `name` is an ID in a rule's `replaces` (`lint/arrays/prefer-array-append`),
+/// with or without its `<command>/`.
+pub fn merged_into(name: &str) -> Option<&'static str> {
+    rules().iter().find_map(|(id, e)| {
+        let replaces = e.get("replaces")?.as_array()?;
+        replaces
+            .iter()
+            .filter_map(toml::Value::as_str)
+            .any(|old| old == name || old.split_once('/').is_some_and(|(_, rest)| rest == name))
+            .then_some(id.as_str())
+    })
+}
+
 fn renamed(name: &str) -> Option<&'static str> {
     let bare = ["format.", "lint.", "analyse."]
         .iter()

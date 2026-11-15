@@ -4,7 +4,6 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::*;
 use pun_problem::{Fix, Safety};
 
-use crate::rules::dead_code::no_useless_variable::find_last;
 use crate::rules::support::conditions::comments_between;
 use crate::rules::support::expressions::is_constant;
 use crate::rules::support::names::called_function_name;
@@ -394,4 +393,41 @@ fn is_null_reset_of_internal_object(
     read.and_then(|span| object_class(facts, span))
         .and_then(|class| facts.codebase.get_class_like(class))
         .is_some_and(|c| c.flags.is_built_in())
+}
+
+/// Where the variable `name` last got its value under `node` before `before`, not inside a class or a function-like
+/// other than `node`: the last place that names it, or the right side of a later plain assignment to it.
+pub(crate) fn find_last(
+    node: Node<'_, '_>,
+    name: &[u8],
+    before: usize,
+    found: &mut Option<pun_problem::Span>,
+) {
+    node.visit_children(|child| {
+        if node_span(&child).start >= before
+            || matches!(
+                child,
+                Node::Closure(_)
+                    | Node::ArrowFunction(_)
+                    | Node::Function(_)
+                    | Node::Class(_)
+                    | Node::AnonymousClass(_)
+            )
+        {
+            return;
+        }
+        match child {
+            Node::Assignment(a)
+                if matches!(a.operator, AssignmentOperator::Assign(_))
+                    && matches!(a.lhs, Expression::Variable(Variable::Direct(v)) if v.name == name) =>
+            {
+                find_last(Node::Expression(a.rhs), name, before, found);
+                *found = Some(node_span(a.rhs));
+                return;
+            }
+            Node::DirectVariable(v) if v.name == name => *found = Some(node_span(v)),
+            _ => {}
+        }
+        find_last(child, name, before, found);
+    });
 }

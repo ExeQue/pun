@@ -9,7 +9,7 @@ pub struct NoTautologyTernary;
 
 impl Rule for NoTautologyTernary {
     fn id(&self) -> &'static str {
-        "lint/dead-code/no-tautology-ternary"
+        "lint/dead-code/no-useless-ternary"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

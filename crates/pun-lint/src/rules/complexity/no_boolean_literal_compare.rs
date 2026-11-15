@@ -9,7 +9,7 @@ pub struct NoBooleanLiteralCompare;
 
 impl Rule for NoBooleanLiteralCompare {
     fn id(&self) -> &'static str {
-        "lint/complexity/no-boolean-literal-compare"
+        "lint/complexity/prefer-simple-condition"
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

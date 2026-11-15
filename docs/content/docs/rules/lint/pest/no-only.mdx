@@ -12,7 +12,16 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 ## Replaces
 
 - [`Pun/no_only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
+- [`RemoveOnly`](https://pestphp.com/docs/rector#content-removeonlyrector) (pest-plugin-rector).
 - [`no-only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-only) (mago-linter).
+
+## Merged rules
+
+This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
+
+- `lint/pest/no-focused-test`
+
+`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
 
 ## Configuration
 

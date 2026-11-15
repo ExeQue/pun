@@ -11,6 +11,9 @@ pub fn explain(name: &str) -> Result<String> {
     if let Some((id, _)) = exact {
         return Ok(text(id));
     }
+    if let Some(id) = crate::merged_into(name) {
+        return Ok(format!("`{name}` was merged into `{id}`.\n\n{}", text(id)));
+    }
     let id = match entries().into_iter().find(|(_, k, _)| k == name) {
         Some((tool, _, e)) => {
             let str = |k| e.get(k).and_then(toml::Value::as_str).map(str::to_string);
