@@ -1,34 +1,9 @@
-# Security policy
+# Security Policy
 
-## Report a vulnerability
+**Please don't disclose security issues publicly.**
 
-Do not open a public issue for a security problem. Use **Report a vulnerability** on the repository's
-[Security tab](https://github.com/shipfastlabs/pun/security/advisories/new). You get a reply within seven days.
+## Reporting a Vulnerability
 
-Only the latest release receives security fixes.
-
-## What Pun runs
-
-Pun reads PHP files and never executes them, with two exceptions. Run these only on code you trust, or inside a
-sandbox:
-
-- **Blade formatting** (`pun format --blade`, or the `laravel/blade` rule in `pun.toml`) starts Node and loads
-  Prettier and its plugins from the project's `node_modules`.
-- **`pun migrate`** runs PHP to read a `.php-cs-fixer.php` or `rector.php`. Both files are PHP code, and reading
-  them loads the project's `vendor/autoload.php`.
-
-`pun.toml` comes with the repository. It can turn rules on and choose which files `--fix` rewrites, but only inside
-the project: `[files] paths` cannot point outside it.
-
-## The Composer package
-
-`vendor/bin/pun` downloads the binary for your platform from this repository's GitHub release and checks its
-SHA-256 checksum, which is published in the same release. The checksum detects a corrupt or incomplete download.
-
-## The standalone installer
-
-`https://pun.laravel.cloud/install` downloads the archive and its SHA-256 checksum from the GitHub release over HTTPS.
-Pun's release workflow attests every archive with GitHub artifact attestations (Sigstore build provenance). With a
-signed-in GitHub CLI, the installer checks the archive's attestation against `shipfastlabs/pun`'s `release.yml` and the
-release tag, so a replaced archive fails even when its checksum was replaced too. `PUN_REQUIRE_ATTESTATION=1` makes
-that check required.
+If you discover a security vulnerability in Pun, please report it through the repository's
+[Security tab](https://github.com/shipfastlabs/pun/security/advisories/new). All security vulnerabilities will be
+promptly addressed.
