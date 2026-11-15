@@ -3,7 +3,7 @@
   <section class="hero wrap">
     <div class="hero-copy">
       <h1 class="rise">The ultrafast <span class="sticker pop-in">unified</span> PHP toolchain.</h1>
-      <p class="lede rise" style="--d:.12s">One very, very fast Rust binary for your whole PHP workflow. Format, lint and analyse today, with installing your packages next.</p>
+      <p class="lede rise" style="--d:.12s">One very, very fast Rust binary for your whole PHP workflow. Format, lint, analyse and install your packages.</p>
 
       <div class="install rise" style="--d:.18s" data-install>
         <div class="cmd">
@@ -28,10 +28,10 @@
     </div>
   </section>
 
-  <div class="ribbon" aria-label="ultrafast, format, lint, analyse, migrate, packages soon, one binary, one config, built in Rust, verified installs">
+  <div class="ribbon" aria-label="ultrafast, format, lint, analyse, migrate, packages, one binary, one config, built in Rust, verified installs">
     <div class="ribbon-track" aria-hidden="true">
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages, soon</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
-      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages, soon</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
+      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
+      <span>ultrafast</span><span>format</span><span>lint</span><span>analyse</span><span>migrate</span><span>packages</span><span>one binary</span><span>one config</span><span>built in Rust</span><span>verified installs</span>
     </div>
   </div>
 
@@ -40,11 +40,11 @@
     <h2>One toolchain. <span class="sticker gum">Every</span> step.</h2>
     <p class="sec-lede">Install your dependencies, check your code, fix what can be fixed. One binary covers the whole loop.</p>
     <div class="trio">
-      <div class="job lilac next">
-        <div class="job-head"><h3>Install</h3><span class="tag">next</span></div>
+      <a class="job lilac" href="/docs/commands/install">
+        <div class="job-head"><h3>Install</h3><span class="tag">now</span></div>
         <p>Resolve and install your project's packages from Packagist, with the same parallel speed as everything else.</p>
         <code>$ pun install</code>
-      </div>
+      </a>
       <a class="job zap" href="/docs/commands/check">
         <div class="job-head"><h3>Check</h3><span class="tag">now</span></div>
         <p>Format, lint and analyse the whole project in one pass, with one pun.toml.</p>
@@ -102,14 +102,14 @@
         <span class="replaces">Replaces PHPStan and Larastan</span>
         <code>$ pun analyse</code>
       </a>
-      <div class="job mint next">
-        <div class="job-head"><h3>Install</h3><span class="tag">next</span></div>
+      <a class="job mint" href="/docs/commands/install">
+        <div class="job-head"><h3>Install</h3><span class="tag">Composer-compatible</span></div>
         <p>A package manager for Packagist, built for speed: parallel downloads, a shared cache and an instant no-op install.</p>
         <div class="mini"><span class="dim">$ pun require laravel/framework</span>
 <span class="add">+ vendor/ installed</span></div>
         <span class="replaces">Replaces Composer</span>
         <code>$ pun install</code>
-      </div>
+      </a>
     </div>
     <div class="duo">
       <a class="strip" href="/docs/commands/check"><h3>Check</h3><p>All three in one pass. With --fix it applies lint fixes, formats, then analyses what is left.</p><code>$ pun check --fix</code></a>
@@ -134,10 +134,10 @@
   <section class="wrap sec laravel-sec">
     <div class="laravel-copy">
       <h2>Built for Laravel. <span class="sticker">Not</span> bolted on.</h2>
-      <p class="sec-lede">Pun knows your app the way Larastan and rector-laravel do, without installing either. Nothing to turn on: it reads your composer.lock.</p>
+      <p class="sec-lede">Pun knows your app the way Larastan and rector-laravel do, without installing either. Nothing to turn on: it reads your lock file.</p>
       <div class="code toml-mini">
         <div class="code-bar"><span>pun.toml</span><span>TOML</span></div>
-<pre><span class="dim"># Laravel and Pest: found in composer.lock</span>
+<pre><span class="dim"># Laravel and Pest: found in pun.lock</span>
 [format]
 preset = <span class="str">"laravel"</span></pre>
       </div>
@@ -188,7 +188,7 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
       <li><h3>Format</h3><p>Byte for byte with Pint and PHP-CS-Fixer. Every project on the scoreboard has zero differing files.</p></li>
       <li><h3>Lint</h3><p>Rector, rector-laravel, Mago and the risky fixers, under one set of rule names. pun migrate maps your config.</p></li>
       <li><h3>Analyse</h3><p>Every PHPStan identifier maps to one Pun rule, with Larastan built in. Analyse is in beta.</p></li>
-      <li><h3>Install</h3><p>The same packages Composer resolves, installed into vendor/. Coming next.</p></li>
+      <li><h3>Install</h3><p>The same lock and vendor/ tree Composer writes for the same requirements.</p></li>
     </ul>
     <a class="btn sm" href="/docs/parity">See the parity scoreboard <svg class="icon arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </section>
