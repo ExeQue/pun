@@ -108,7 +108,7 @@ Every Rector run uses `--dry-run --clear-cache`.
 - Release: a tag runs cargo-dist (`dist-workspace.toml`, `.github/workflows/release.yml`), which builds the four archives `composer/bin/pun` downloads (Linux musl and macOS, x86_64 and arm64). `.gitattributes` export-ignores every top-level path except the Composer package; add each new top-level path there. Every crate has `publish = false`.
 - The commands divide the work like this. `format` changes layout only. `lint` applies code rules, including PHP-CS-Fixer's risky fixers. `analyse` reports type errors. `check` runs all three in one pass.
 - The Mago crates are pinned to `=1.57.0`. Bump them together. Four of them (mago-analyzer, mago-codex, mago-syntax, mago-phpdoc-syntax) are vendored and patched in `third_party/`; each has a PATCHES.md, and a bump re-applies those patches.
-- Harness-only environment variables: `PUN_IGNORE_PHP_CONSTRAINT=1` (for corpora that allow PHP below 8.4), `PUN_BIN`, `PUN_HARNESS_ROOT`, and `PUN_PROFILE`.
+- Harness-only environment variables: `PUN_IGNORE_PHP_CONSTRAINT=1` (for corpora that allow PHP below 8.4), `PUN_BIN`, `PUN_HARNESS_ROOT`, `PUN_PROFILE`, and `PUN_GITHUB_URL` (the plain-HTTP server `pun self-update` downloads from in its tests, instead of github.com and api.github.com).
 - Every test that spawns `pun` sets `PUN_AGENT=0`. Tests of agent mode are the exception.
 
 ## Build budget
