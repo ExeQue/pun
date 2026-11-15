@@ -128,22 +128,26 @@ fn arguments<'a>(list: &'a ArgumentList<'a>) -> Vec<(Option<&'a [u8]>, &'a Expre
 }
 
 fn call_like(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], node: Node<'_, '_>) -> Vec<Edit> {
+    // Only a `createMock()` argument gets an edit, so a call without one needs no types, which cost analysing the file.
+    let no_mock = |args: &[(Option<&[u8]>, &Expression<'_>)]| {
+        !args.iter().any(|(_, value)| create_mock(value).is_some())
+    };
     let (class, method, args) = match node {
         Node::Instantiation(new) => {
             let Some(list) = &new.argument_list else {
                 return Vec::new();
             };
+            let args = arguments(list);
+            if no_mock(&args) {
+                return Vec::new();
+            }
             let class = match unparenthesize(new.class) {
                 Expression::Identifier(id) => Some(resolve(ancestors, id)),
                 Expression::Self_(_) | Expression::Static(_) => own_class(ancestors),
                 Expression::Parent(_) => None,
                 other => object_class(ctx, other),
             };
-            (
-                class.into_iter().collect(),
-                &b"__construct"[..],
-                arguments(list),
-            )
+            (class.into_iter().collect(), &b"__construct"[..], args)
         }
         Node::AnonymousClass(new) => {
             let Some(list) = &new.argument_list else {
@@ -156,7 +160,10 @@ fn call_like(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], node: Node<'_, '_>) 
                     PartialArgument::Named(named) => Some((Some(named.name.value), named.value)),
                     other => other.value().map(|v| (None, v)),
                 })
-                .collect();
+                .collect::<Vec<_>>();
+            if no_mock(&args) {
+                return Vec::new();
+            }
             let class = facts(ctx).anonymous_class_name(mago_span::HasSpan::span(new));
             (vec![class], &b"__construct"[..], args)
         }
@@ -165,11 +172,11 @@ fn call_like(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], node: Node<'_, '_>) 
             let Some(name) = call.name() else {
                 return Vec::new();
             };
-            (
-                called_classes(ctx, ancestors, &call),
-                name,
-                arguments(call.args),
-            )
+            let args = arguments(call.args);
+            if no_mock(&args) {
+                return Vec::new();
+            }
+            (called_classes(ctx, ancestors, &call), name, args)
         }
     };
     let facts = facts(ctx);
