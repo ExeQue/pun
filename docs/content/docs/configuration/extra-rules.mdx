@@ -3,9 +3,7 @@ title: Extra rules
 description: Mago-derived lint rules for Laravel, Pest, and code cleanup.
 ---
 
-Pun ports additional lint rules from [Mago](https://github.com/carthage-software/mago). They are not format rules. Individual [rule pages](/docs/rules/lint) list set membership and implementation status.
-
-Explicit rule settings use `[lint.rules]`:
+These lint rules come from [Mago](https://github.com/carthage-software/mago). Turn them on in `[lint.rules]`:
 
 ```toml pun.toml
 [lint.rules]
@@ -13,7 +11,7 @@ Explicit rule settings use `[lint.rules]`:
 "laravel/prefer-fake-helper" = "error"
 ```
 
-`pun lint --fix` applies available fixes. Review changes from rules marked risky below.
+`pun lint --fix` applies available fixes. Review the changes from rules marked risky. Each [rule page](/docs/rules/lint) lists the rule's sets.
 
 ## Laravel
 
@@ -29,7 +27,7 @@ Explicit rule settings use `[lint.rules]`:
 
 | Rule | Rewrites |
 | --- | --- |
-| `pest/prefer-specific-expectations` | `->toBe(true)` → `->toBeTrue()`, likewise `false` and `null` |
+| `pest/prefer-specific-expectations` | `->toBe(true)` → `->toBeTrue()`, and the same for `false` and `null` |
 | `pest/prefer-dedicated-expectation` (risky) | `expect(is_array($x))->toBeTrue()` → `expect($x)->toBeArray()` |
 | `pest/prefer-simpler-expectation` | `expect($a > $b)->toBeTrue()` → `expect($a)->toBeGreaterThan($b)` |
 | `pest/no-only` (risky) | removes `->only()` from tests |

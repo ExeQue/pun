@@ -3,15 +3,15 @@ title: Ignore comments
 description: Suppress specific rules for a line, region, or file.
 ---
 
-Ignore comments require rule IDs or groups. Multiple IDs are comma-separated. Use full IDs such as `lint/security/no-eval` or groups such as `lint/dead-code`.
+An ignore comment names full rule IDs, such as `lint/security/no-eval`, or groups, such as `lint/dead-code`. Separate several with commas.
 
 | Form | Applies to |
 | --- | --- |
-| `$x = foo(); // @pun-ignore analyse/undefined/function` | the line it trails |
-| `// @pun-ignore lint/types/no-loose-comparison` on its own line | the next line |
-| `// @pun-ignore-next-line <id>` | the next line, explicitly |
-| `// @pun-ignore-file <id>` before the first statement | the whole file |
-| `// @pun-ignore-start <id>` … `// @pun-ignore-end` | a region |
+| `$x = foo(); // @pun-ignore analyse/undefined/function` | The line it ends |
+| `// @pun-ignore lint/types/no-loose-comparison` on its own line | The next line |
+| `// @pun-ignore-next-line <id>` | The next line |
+| `// @pun-ignore-file <id>` before the first statement | The whole file |
+| `// @pun-ignore-start <id>` … `// @pun-ignore-end` | A region |
 
 Add a reason after ` -- `:
 
@@ -21,8 +21,9 @@ eval($code); // @pun-ignore lint/security/no-eval -- legacy plugin loader
 
 ## Scope and validation
 
-`/* */` and `/** */` comments are also supported. Format rules and token-based PHP-CS-Fixer lint ports support only file-level ignores.
+- `/* */` and `/** */` comments work too.
+- Format rules and the token-based lint rules from PHP-CS-Fixer accept only `@pun-ignore-file`.
+- An ignore comment without an ID is an error.
+- `lint/comments/no-unused-ignore` reports IDs that suppress nothing. `--fix` removes them.
 
-A bare ignore without an ID is an error. `lint/comments/no-unused-ignore` reports IDs that suppress nothing; `--fix` removes them.
-
-[`pun migrate`](/docs/commands/migrate#ignore-comments) converts recognized PHPStan and PHP-CS-Fixer ignore comments.
+[`pun migrate`](/docs/commands/migrate#ignore-comments) converts the PHPStan and PHP-CS-Fixer ignore comments it recognizes.

@@ -1,30 +1,27 @@
 ---
 title: From pint.json
-description: Configuration keys and rule names translated from Pint.
+description: How pun migrate translates pint.json keys and rules.
 ---
 
-Pun commands read `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/commands/migrate) translates these settings:
+Pun reads `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/commands/migrate) translates the settings:
 
 | pint.json | pun.toml |
 | --- | --- |
 | `"preset": "laravel"` | `[format] preset = "laravel"` |
-| `"rules"` that differ from the preset | `[format.rules]`, under Pun IDs and [option names](/docs/configuration/pun-toml#rule-options) |
+| `"preset": "per"` or `"symfony"` | `preset = "empty"` and the preset's rules in `[format.rules]` |
+| `"rules"` that differ from the preset | `[format.rules]`, with Pun IDs and [option names](/docs/configuration/pun-toml#rule-options) |
 | Risky and code-deleting rules | `[lint.rules]` at `"error"` |
 | `"in"` | `[files] paths` |
-| `"exclude"` | `[files] exclude`, so every command skips it, including the lint rules that came from Pint |
+| `"exclude"` | `[files] exclude`, which every command applies |
 | `"notName"`, `"notPath"` | `[format] not-name`, `not-path`, which only format applies |
-| `"extend"` | Resolved the way Pint resolves it |
+| `"extend"` | Resolved as Pint resolves it |
 | `"Pun/prefer_fake_helper": true` | `[lint.rules] "laravel/prefer-fake-helper" = "error"` |
 
-Two Pint behaviours carry over only partly:
+Two Pint behaviours differ after migration:
 
-- **A plain folder name** in `exclude`, such as `tmp`, matches at any depth in Pint. In Pun, only format matches it at any depth; lint and analyse skip only the folder at the project root. Change the entry to `**/tmp` to skip it everywhere. See [exclusions](/docs/configuration/pun-toml#php-and-files).
-- **`notName` and `notPath`** apply only to format. Lint rules that came from Pint, such as `imports/no-unused`, still check those files.
+- A plain folder name in `exclude`, such as `tmp`, matches at any depth only for format. Lint and analyse skip only `tmp` at the project root. Write `**/tmp` to skip it everywhere. See [exclusions](/docs/configuration/pun-toml#php-and-files).
+- Lint rules that came from Pint, such as `imports/no-unused`, still check files that `notName` and `notPath` skip.
 
-A `.php-cs-fixer.php` is read through PHP-CS-Fixer with system PHP. When both configs are selected, Pint takes precedence.
+`pun migrate` reads a `.php-cs-fixer.php` through PHP-CS-Fixer with system PHP. If you select both configs, `pint.json` wins.
 
-Pint's `per` and `symfony` presets expand into explicit rules over `preset = "empty"`. Rule options are translated to Pun names and values.
-
-The [Pint rule mapping](/docs/migrate/from/pint) lists upstream names, translated options, and unsupported items. Skipped rules are reported during migration.
-
-Use `pun check --fix` to apply both format and lint rules from a migrated config. The [migration guide](/docs/guides/migrating-from-pint) covers comparison and script changes.
+Migration reports the rules it skips. The [Pint rule mapping](/docs/migrate/from/pint) lists every rule, its options, and what is unsupported. To apply the format and lint rules of a migrated config, run `pun check --fix`. The [migration guide](/docs/guides/migrating-from-pint) covers the rest of the switch.
