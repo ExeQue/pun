@@ -56,7 +56,7 @@ exclude = ["tests/**"]
 
 | Key | Meaning |
 | --- | --- |
-| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` (in `[require]`, or `composer.json` before `pun migrate`), otherwise 8.4. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
+| `[php] version` | Target PHP version as `major.minor`. Default: lowest version allowed by `require.php` in the [project's manifest](#where-pun-reads-the-dependencies), otherwise 8.4. A `require.php` that allows PHP below 8.4 is a config error. Without it, `pun analyse` uses `config.platform.php`, otherwise PHP 8.5, as PHPStan does |
 | `[files] paths` | Default paths when no command-line paths are given. Each must be inside the project; a path that leaves it, directly or through a symlink, is a config error |
 | `[files] exclude` | Shared exclusions, combined with command-specific exclusions |
 
@@ -81,7 +81,7 @@ Extensions add the rules and analysis for a framework or test tool. Pun builds t
 
 Each key takes one of these values:
 
-- `"auto"` (the default): on when `pun.lock` (or `composer.lock` before `pun migrate`) locks one of the extension's packages.
+- `"auto"` (the default): on when the [project's lock](#where-pun-reads-the-dependencies) locks one of the extension's packages.
 - `"on"`: on without the lock.
 - `"off"`: off for every command, as if each of its groups were `"off"`.
 
@@ -185,8 +185,20 @@ url = "packages/*"
 | `[require]`, `[require-dev]`, `[conflict]`, `[replace]`, `[provide]`, `[suggest]` | The same key. Each value is a string. |
 | `[autoload]`, `[autoload-dev]`, `[scripts]`, `[scripts-descriptions]`, `[scripts-aliases]`, `[config]`, `[extra]` | The same key |
 | `[[repositories]]` | `repositories`, as a list |
+| `[workspace]` | None. `members` lists the member directories, or globs that match them. See [workspaces](/docs/guides/workspaces). |
+
+Each section except `[[repositories]]` must be a table, and each `[require]`-style value must be a string. A `[package]` key that composer.json's root does not define is an error that lists the keys it takes.
 
 `pun.lock` records the exact packages `pun install` installs. Pun writes it. Do not edit it by hand.
+
+### Where Pun reads the dependencies
+
+The commands that load the configuration, such as `format`, `lint`, `analyse`, `check`, `config`, and `extension list`, read the PHP constraint, `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from one manifest and one lock:
+
+- When `pun.toml` has any dependency section other than `[workspace]`, Pun reads `pun.toml` and `pun.lock`. It ignores `composer.json` and `composer.lock`, even when `pun.lock` does not exist yet.
+- Otherwise, Pun reads `composer.json` and `composer.lock`. This is a project that `pun migrate` has not moved yet, or that keeps only tool settings in `pun.toml`.
+
+The package commands (`install`, `update`, `require`, `remove`, and `vet`) read only `pun.toml` and `pun.lock`.
 
 ## Rule names
 
@@ -287,5 +299,10 @@ Pun reads these besides `pun.toml`:
 | `GITHUB_ACTIONS=true` | Human output is followed by GitHub annotations |
 | `PUN_AGENT`, `PAO_FORCE`, `PAO_DISABLE` | Turn [agent output](/docs/guides/coding-agents) on or off |
 | `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS` | PHP-CS-Fixer's switch: an ignore comment that names a rule the run does not use is accepted instead of being an error |
-| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `composer.json` allows PHP below 8.4. Unsupported: Pun's results on older syntax are not checked against Pint |
+| `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: Pun's results on older syntax are not checked against Pint |
 | `PUN_PROFILE` | Prints per-stage timings on stderr after the run |
+| `PUN_CACHE_DIR` | The cache for [`pun x`](/docs/commands/x#manage-installs) installs and [`pun vet inspect`](/docs/commands/vet) |
+| `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |
+| `COMPOSER_HOME`, `COMPOSER_CACHE_DIR` | Composer's home and download cache, shared by the [package commands](/docs/commands/install) |
+| `COMPOSER_AUTH`, `COMPOSER_MAX_PARALLEL_HTTP` | Download credentials and the parallel download limit of [`pun install`](/docs/commands/install#what-an-install-does) |
+| `COMPOSER_ROOT_VERSION` | The root package's version, as in Composer |

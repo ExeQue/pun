@@ -26,7 +26,7 @@ phpunit   off  Rules for PHPUnit tests: phpunit/phpunit is not locked
 doctrine  off  Rules for Doctrine annotations: no package turns it on; set doctrine = "on" in [extensions]
 ```
 
-An extension is on when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`, or when it is `"auto"` (the default) and `pun.lock` (or `composer.lock` before `pun migrate`) locks its package. Format rules don't depend on extensions: `[format]` alone turns them on.
+An extension is on when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`, or when it is `"auto"` (the default) and the [project's lock](/docs/configuration/pun-toml#where-pun-reads-the-dependencies) locks its package. That lock is `pun.lock` once `pun.toml` holds the dependencies, and `composer.lock` before. Format rules don't depend on extensions: `[format]` alone turns them on.
 
 ## Options
 
