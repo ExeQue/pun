@@ -20,7 +20,7 @@ Explicit rule settings use `[lint.rules]`:
 | Rule | Rewrites |
 | --- | --- |
 | `laravel/prefer-dedicated-status-assertion` | `->assertStatus(404)` → `->assertNotFound()` |
-| `laravel/prefer-fake-helper` | `$this->faker` → `fake()` in `*Factory` classes |
+| `laravel/prefer-fake-helper` (risky) | `$this->faker` → `fake()` in `*Factory` classes |
 | `laravel/prefer-array-validation-rules` | `'required\|string'` → `['required', 'string']` in `rules()` |
 | `laravel/no-implicit-model-query` (risky) | `User::where(...)` → `User::query()->where(...)` |
 | `laravel/require-final-controller` (risky) | `class UserController` → `final class UserController` |
@@ -32,7 +32,7 @@ Explicit rule settings use `[lint.rules]`:
 | `pest/prefer-specific-expectations` | `->toBe(true)` → `->toBeTrue()`, likewise `false` and `null` |
 | `pest/prefer-dedicated-expectation` (risky) | `expect(is_array($x))->toBeTrue()` → `expect($x)->toBeArray()` |
 | `pest/prefer-simpler-expectation` | `expect($a > $b)->toBeTrue()` → `expect($a)->toBeGreaterThan($b)` |
-| `pest/no-only` | removes `->only()` from tests |
+| `pest/no-only` (risky) | removes `->only()` from tests |
 
 ## Redundant code and modern PHP
 

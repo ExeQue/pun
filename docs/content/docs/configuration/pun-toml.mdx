@@ -100,7 +100,7 @@ A rule or group you name in `[lint.groups]`, `[lint.rules]` or `[analyse.rules]`
 | `not-name`, `not-path` | File names and paths format skips, as in Pint's finder |
 | `rules` | `true`, `false`, a table of options, or the value of a rule's only option |
 
-Format rules change layout, casing, and spelling. Risky and code-deleting fixers are [lint rules](/docs/commands/lint). Migration expands Pint's `per` and `symfony` presets into explicit rules over `empty`.
+Format rules change layout, casing, and spelling. Pun indents with four spaces and writes `\n` line endings, as Pint does; there is no setting for either, so PHP-CS-Fixer's `setIndent()` and `setLineEnding()` have no equivalent. Risky and code-deleting fixers are [lint rules](/docs/commands/lint). Migration expands Pint's `per` and `symfony` presets into explicit rules over `empty`.
 
 `not-name` and `not-path` accept Pint-style patterns, including PHP regular expressions. An invalid regex is a run error.
 

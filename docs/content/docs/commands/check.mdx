@@ -29,6 +29,28 @@ pun check --format=github
 
 `--staged` selects files with staged changes but reads their working-tree contents. It does not read only the staged diff.
 
+## Output
+
+Findings are grouped by command, with one summary line at the end:
+
+```
+$ pun check
+✔  format    All files formatted
+✖   lint     2 errors in 1 file · 1 fixable
+   app/Http/Controllers/PostController.php:12:9  lint/dead-code/no-unused-assignment
+   Remove this assignment; nothing reads the variable after it.
+   app/Http/Controllers/PostController.php:12:17  lint/laravel/no-request-all
+   Avoid using `$request->all()` or `Request::all()`.
+
+✖  analyse   1 error in 1 file
+   app/Models/Post.php:11:9  analyse/undefined/method
+   Call to an undefined method App\Models\Post::publsh().
+
+✖ 3 errors · 1 fixable (run pun check --fix)
+```
+
+A command with nothing to report gets one line. `--concise` prints one line per problem.
+
 ## Exit codes
 
 | Code | Meaning |

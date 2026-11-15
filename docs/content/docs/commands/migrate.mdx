@@ -41,6 +41,8 @@ Reading a `.php-cs-fixer.php` or a `rector.php` runs project code: both files ar
 - Finder paths and `exclude` become `[files] paths` and `exclude`, so lint and analyse skip the excluded folders too. `notName` and `notPath` become format exclusions. [Two exclusion details](/docs/configuration/pint-json) differ from Pint.
 - `per`, `symfony`, and rule sets such as `@PER-CS` expand into explicit rules over `preset = "empty"`.
 - Options use [Pun names and values](/docs/configuration/pun-toml#rule-options).
+- Finder calls with no `pun.toml` key are reported and skipped: `name()` other than `*.php`, `path()`, `depth()`, `contains()`, `notContains()`, `size()`, `date()`, `filter()`, `append()`, `followLinks()`, and `ignoreVCSIgnored()`. A Finder that is not Symfony's `Finder` is skipped too.
+- `setIndent()` and `setLineEnding()` are not read, and migration does not report them. Pun always indents with four spaces and writes `\n` line endings, as Pint does.
 
 The starter also enables Pint's risky and code-deleting preset rules under lint. Use `pun check --fix` to apply both kinds of rule.
 

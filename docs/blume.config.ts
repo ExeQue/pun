@@ -4,7 +4,7 @@ import { devModulePreload } from "./dev-modulepreload.ts";
 export default defineConfig({
   title: "Pun",
   description:
-    "A very, very fast all-in-one PHP toolchain: format, lint, and analyse PHP 8.4+ projects with one binary and one pun.toml.",
+    "A very, very fast all-in-one PHP toolchain: format, lint, and analyse PHP 8.4+ projects and install their Composer packages, with one binary and one pun.toml.",
   logo: { image: "/logo.svg", text: "" },
 
   content: {
@@ -21,7 +21,7 @@ export default defineConfig({
   redirects: [{ from: "/docs/quickstart", to: "/docs#get-started" }],
 
   github: {
-    owner: "punphp",
+    owner: "shipfastlabs",
     repo: "pun",
     dir: "docs",
   },
@@ -57,7 +57,7 @@ export default defineConfig({
   agents: {
     llmsTxt: {
       details:
-        "Pun is a Rust toolchain for PHP 8.4+ projects. It reads pun.toml. `pun format` changes layout; `pun lint --fix` applies code fixes; `pun analyse` reports type errors; `pun check` runs all three, with --fix for format and lint edits. `pun migrate` converts existing tool configs and reports skipped items. PHPStan, Larastan, and Rector support is incomplete; Planned rules are not implemented. Blade formatting requires Node.js and Prettier. Coding agents receive compact output automatically.",
+        "Pun is a Rust toolchain for PHP 8.4+ projects. It reads pun.toml. `pun format` changes layout; `pun lint --fix` applies code fixes; `pun analyse` reports type errors; `pun check` runs all three, with --fix for format and lint edits. `pun migrate` converts existing tool configs and reports skipped items. `pun install`, `update`, `require` and `remove` read composer.json and write the composer.lock and vendor/ Composer writes; `pun x` runs a package's command without adding it; `pun vet` checks locked packages against code reviews. PHPStan, Larastan, and Rector support is incomplete; Planned rules are not implemented. Blade formatting requires Node.js and Prettier. Coding agents receive compact output automatically.",
     },
   },
 
