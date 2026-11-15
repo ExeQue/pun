@@ -72,7 +72,7 @@ pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit, &Doctrine];
 
 ```toml
 [extensions]
-laravel = "auto"   # the default: on when pun.lock locks one of the extension's packages
+laravel = "auto"   # the default: on when composer.lock locks one of the extension's packages
 pest = "off"
 symfony = "on"
 ```

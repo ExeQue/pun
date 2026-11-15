@@ -1,7 +1,7 @@
 # Plan: the package manager (`pun install`, `pun update`, `pun require`, `pun remove`)
 
-Status: **`pun install` from a lock is built** (2026-11-14): pun.toml's dependency sections and pun.lock (§3), the
-autoload dump, `vendor/bin`, scripts, the pest-plugin port, and `pun migrate`'s composer.json step. On pinkary every
+Status: **`pun install` from a lock is built** (2026-11-14): composer.json and composer.lock (§3), the
+autoload dump, `vendor/bin`, scripts and the pest-plugin port. On pinkary every
 file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and `pun update`, `pun require` and
 `pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
 158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
@@ -15,10 +15,9 @@ Beyond Composer: §7. Open questions: §8.
 
 ## 1. What it is
 
-Pun installs a project's dependencies the way Composer does, much faster. It reads pun.toml, reads and writes
-pun.lock, and fills `vendor/` with the same files `composer install` writes. `pun migrate` copies a project's
-composer.json and composer.lock into pun.toml and pun.lock once and leaves both in place; no package command reads
-them (§6). The proof is a parity
+Pun installs a project's dependencies the way Composer does, much faster. It reads composer.json, reads and writes
+composer.lock, and fills `vendor/` with the same files `composer install` writes, so `composer` and `pun` work on the
+same project side by side (§6). The proof is a parity
 harness: on every corpus project, `pun install` and `composer install` give byte-identical `vendor/` trees from the
 same lock, and `pun update` writes the lock `composer update` writes.
 
@@ -26,10 +25,10 @@ The everyday commands are top-level, with Composer's names and flags:
 
 | Command | Composer | What it does |
 | --- | --- | --- |
-| `pun install` | `composer install` | Installs pun.lock (resolves and writes it when there is none) |
-| `pun update [packages]` | `composer update` | Resolves again, writes pun.lock, installs |
-| `pun require <pkg[:constraint]>` | `composer require` | Adds to pun.toml, then a partial update |
-| `pun remove <pkg>` | `composer remove` | Removes from pun.toml, then a partial update |
+| `pun install` | `composer install` | Installs composer.lock (resolves and writes it when there is none) |
+| `pun update [packages]` | `composer update` | Resolves again, writes composer.lock, installs |
+| `pun require <pkg[:constraint]>` | `composer require` | Adds to composer.json, then a partial update |
+| `pun remove <pkg>` | `composer remove` | Removes from composer.json, then a partial update |
 | `pun composer <command>` | `composer <command>` | Every other Composer command: `dump-autoload`, `show`, `outdated`, `why`, `why-not`, `audit`, `validate`, `licenses`, `run-script`, `check-platform-reqs`, `config`, ... (not built yet) |
 
 `pun composer install` and `pun install` are the same command. A `pun composer` command Pun has not built yet is a
@@ -57,13 +56,13 @@ run error (exit 2) that names it; Pun does not shell out to the Composer CLI.
 
 ## 3. The decided behaviour
 
-- **pun.toml and pun.lock hold the dependencies** (superseding "Composer's files are the source of truth", §6).
-  pun.toml's dependency sections carry composer.json's keys under the same names (`[package]` for the root fields,
-  then `[require]`, `[autoload]`, `[[repositories]]` and the rest), so the manifest Pun hashes is composer.json's and
-  `content-hash` is Composer's (checked on pinkary and laravel-pint). pun.lock is composer.lock in TOML: the same
-  settings and packages in the same order, one `[[packages]]` table each with dotted keys. `pun migrate` writes both
-  from composer.json and composer.lock and moves credentials to `auth.json`. The package commands read pun.toml and
-  pun.lock only: in a project not migrated yet they exit 2 and say to run `pun migrate` (Pushpak, 2026-11-14).
+- **composer.json and composer.lock hold the dependencies**, as package.json and bun.lock do for Bun (Pushpak,
+  2026-11-15, reversing the pun.toml/pun.lock move of 2026-11-14, §6). The package commands read composer.json and
+  write composer.lock byte for byte as Composer 2.11.2 does; `require` and `remove` edit composer.json in place with a
+  port of Composer's `JsonManipulator`. pun.toml holds only Pun's own settings: `[workspace]` and the tooling
+  sections, as bunfig.toml holds only Bun's. A composer.json section in pun.toml (`[require]`, `[autoload]`, ...) is a
+  config error (exit 2) that says it belongs in composer.json. `pun migrate` does not touch composer.json or
+  composer.lock.
 - **`vendor/` is Composer's layout:** package directories, `vendor/composer/` (`installed.json`, `installed.php`,
   `InstalledVersions.php`, `ClassLoader.php`, `autoload_*.php`, `platform_check.php`, `LICENSE`), `vendor/autoload.php`
   and the `vendor/bin` proxies, all byte-identical to Composer 2's. `ClassLoader.php` and `InstalledVersions.php` are
@@ -120,7 +119,8 @@ Built as one crate, not the three planned (`pun-semver`, `pun-composer`, `pun-fe
   Composer's shared cache and auth over ureq (`fetch.rs`), the installed repository, the autoload dump and class
   map, bin proxies, scripts and events, the native plugin ports (`plugins.rs`), and the manifest edits of `require`
   and `remove` (`manifest_edit.rs`). Its resolver and installer tests run on recorded metadata (`tests/fixtures`).
-- `pun-config`: pun.toml's dependency sections (`manifest.rs`), read in composer.json's shape.
+- `pun-config`: reading composer.json (`manifest.rs`) and the detection the config loader runs on it and
+  composer.lock (`composer.rs`).
 - `pun-cli`: the commands (`install.rs`, `update.rs` with `require` and `remove`, `x.rs`, `vet.rs`, `workspace.rs`,
   `self_update.rs`) and their output.
 - Not built: the plugin host (the PHP bootstrap on Composer's phar, the JSON protocol and the event dispatch), and
@@ -170,13 +170,11 @@ what CI and most teammates run, and it needs no resolver.
 
 - Top-level verbs `install`, `update`, `require`, `remove`; `pun composer <command>` for the rest (Pushpak,
   2026-11-13).
-- ~~`composer.json` and `composer.lock` stay the source of truth~~: the dependencies move to pun.toml and pun.lock,
-  "like phast" (Pushpak, 2026-11-14). The format is Pun's own: composer.json's keys in TOML, not phast's schema.
-  `pun migrate` is the only command that reads composer.json and composer.lock: no package command falls back to
-  them, and none writes them (Pushpak, 2026-11-14). `pun migrate` leaves composer.json and composer.lock in place
-  (Pushpak, 2026-11-14). The config loader's detection (PHP version, Laravel, Pest) reads pun.toml and pun.lock once
-  pun.toml holds the dependencies, and falls back to composer.json and composer.lock in a project not migrated
-  (Pushpak, 2026-11-14).
+- `composer.json` and `composer.lock` are the source of truth, and every Composer feature they carry is supported
+  (Pushpak, 2026-11-15). This reverses the move of the dependencies into pun.toml and pun.lock "like phast"
+  (Pushpak, 2026-11-14): pun.lock is gone, and pun.toml keeps only `[workspace]` and Pun's own settings, after Bun's
+  package.json / bunfig.toml split. Pun-only install settings that Composer has no key for go in pun.toml, not
+  `extra.pun`, when they are built (§7).
 - Port Composer's solver, not PubGrub, so the lock matches Composer's (assistant's call, AGENTS.md "Match the upstream
   tool").
 - The solver runs on the pool Composer's `PoolOptimizer` leaves, without `Intervals::compactConstraint` (a group can
@@ -201,16 +199,16 @@ what CI and most teammates run, and it needs no resolver.
 
 ## 7. Beyond Composer: what pnpm and Cargo add
 
-Every feature here keeps `vendor/` what Composer writes, and an unused feature changes nothing Pun writes. The
-`extra.pun` keys below date from before the dependencies moved into pun.toml (§3); workspaces, the one built, use
-pun.toml's own `[workspace]`. Each one is built after the step it depends on.
+Every feature here keeps `vendor/` what Composer writes, and an unused feature changes nothing Pun writes. Settings
+that Composer has no key for live in pun.toml (§6), as Bun keeps them in bunfig.toml's `[install]`: the
+`extra.pun.*` names below become pun.toml keys when they are built. Each one is built after the step it depends on.
 
 1. **Workspaces (monorepos), as Cargo and pnpm have them.** Built (2026-11-14) as below, except where noted.
-   - The root `pun.toml` opts in with `[workspace] members`, a list of globs (`["packages/*", "apps/*"]`), since the
-     dependencies live in pun.toml (Pushpak, 2026-11-14). Each member is a directory with its own pun.toml; a member
-     whose dependencies are still in composer.json is an error that says to run `pun migrate` there. Pun adds a `path` repository per glob and requires each member at `*@dev` in memory; nothing is
-     written to the root manifest. Not built: `pun workspace init`.
-   - One pun.lock and one `vendor/` at the root, as Cargo keeps one `Cargo.lock` and one `target/`. Members
+   - The root `pun.toml` opts in with `[workspace] members`, a list of globs (`["packages/*", "apps/*"]`) (Pushpak,
+     2026-11-14). Each member is a directory with its own composer.json, which needs a `name`. Pun adds a `path`
+     repository per glob and requires each member at `*@dev` in memory; nothing is written to the root
+     composer.json. Not built: `pun workspace init`.
+   - One composer.lock and one `vendor/` at the root, as Cargo keeps one `Cargo.lock` and one `target/`. Members
      are installed as path packages (symlinked) and every member's `require` joins one resolution, so the whole
      repository gets one version of each package.
    - Every command finds the workspace root by walking up from the current directory, so `pun install` works in any
@@ -231,12 +229,12 @@ pun.toml's own `[workspace]`. Each one is built after the step it depends on.
    holds. Where the filesystem cannot clone, files are copied; hardlinks (pnpm's default) are opt-in through
    `extra.pun.link = "hardlink"`, because editing a hardlinked file in `vendor/` edits every project's copy.
 3. **`--locked` and `--offline`, as Cargo has them.** After step 4, not built. `pun install --locked` fails when
-   there is no `pun.lock` or its `content-hash` does not match pun.toml's dependencies (Composer only warns). It is the default when
+   there is no composer.lock or its `content-hash` does not match composer.json (Composer only warns). It is the default when
    `CI` is set, as pnpm's `--frozen-lockfile` is. `--offline` resolves and installs from the cache only and names the
    first package it cannot find there.
 4. **`pun x`, as `pnpm dlx` and `cargo install` have it.** Built (2026-11-14), also as `punx`.
-   `pun x laravel/installer new app` resolves the package into a cached scratch project (its own pun.toml and
-   pun.lock) and runs its binary without touching the current project. `pun x pkg:^1.2` (or `pkg@1.2`) pins a
+   `pun x laravel/installer new app` resolves the package into a cached scratch project (its own composer.json
+   and composer.lock) and runs its binary without touching the current project. `pun x pkg:^1.2` (or `pkg@1.2`) pins a
    version, short aliases name common tools (`laravel`, `pint`, `phpstan`, `pest`, ...), and `punx list` and
    `punx clean [package...]` show and remove the cached installs.
 5. **A minimum release age, as pnpm has it.** After step 8. `extra.pun.minimum-release-age` (minutes) makes the

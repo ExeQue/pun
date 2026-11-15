@@ -18,10 +18,10 @@ v0.1.0, the first stable release, is out (2026-11-14). CI runs on GitHub again a
   `curl -fsSL https://pun.laravel.cloud/install | sh` installs the latest release without Composer, and the release
   archives carry GitHub build attestations (Pushpak, 2026-11-14). No crate, npm package or Homebrew tap is published (`publish = false` in every crate).
   plan/foundations.md §4.
-- **Package manager** (plan/packages.md): `pun install` from pun.lock, `pun migrate`'s composer.json step and
-  `pun self-update` are built. The dependencies live in pun.toml and pun.lock: `pun migrate` copies composer.json's
-  dependencies into pun.toml and composer.lock into pun.lock, and keeps composer.json. The package commands read only
-  pun.toml and pun.lock, with no Composer or composer.lock fallback. On pinkary `pun install` writes Composer's exact `vendor/` in
+- **Package manager** (plan/packages.md): `pun install` and `pun self-update` are built. composer.json and
+  composer.lock hold the dependencies, as package.json and bun.lock do for Bun; pun.toml holds only `[workspace]` and
+  Pun's own settings (Pushpak, 2026-11-15, reversing the pun.toml/pun.lock move of 2026-11-14). `pun migrate` leaves
+  composer.json and composer.lock alone, and `composer` keeps working beside `pun`. On pinkary `pun install` writes Composer's exact `vendor/` in
   1.5 s fresh and 0.7 s with nothing to do (Composer: 11.6 s and 7.3 s). The resolver, `pun update`, `pun require`
   and `pun remove` are built: on pinkary `pun update --no-install` writes Composer's exact lock in 1.8 s and 227 MB
   (Composer: 9.4 s and 166 MB); install, require and remove are 6x to 11x faster than Composer's
@@ -128,9 +128,8 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **Analyse rules are on or off**; every finding is an error.
 - **No levels anywhere.** Migrate writes the exact rules an old config ran, at `error`, and when interactive offers the
   closest preset with a count of the new problems it would report.
-- **Laravel, Pest and PHPUnit turn on by themselves** from pun.lock (composer.lock in a project not migrated yet),
-  with their version rules; a group can be switched off. `[php] version` comes from pun.toml's `[require] php`
-  (composer.json's before migrate); the config value only overrides it.
+- **Laravel, Pest and PHPUnit turn on by themselves** from composer.lock, with their version rules; a group can be
+  switched off. `[php] version` comes from composer.json's `require.php`; the config value only overrides it.
 - **`[files]`** (paths, exclude) is shared by every command, and each command's `exclude` adds to it (assistant's
   default, Mago's model).
 - **Unsupported items** (an unported rule, a custom fixer class, Rector's Symfony, Doctrine and downgrade sets, a PHPStan

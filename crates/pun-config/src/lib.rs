@@ -9,7 +9,6 @@ pub mod migrate;
 pub mod options;
 mod phpstan_parameters;
 mod schema;
-pub mod toml_text;
 
 pub use explain::{RULE_DOCS_URL, explain};
 pub use identifiers::rule_of_identifier;
@@ -204,8 +203,13 @@ fn parse(
 ) -> Result<Config> {
     let mut table: toml::Table =
         toml::from_str(text).with_context(|| format!("invalid {}", path.display()))?;
-    manifest::parse(path, &table)?;
-    table.retain(|k, _| !manifest::SECTIONS.contains(&k) && k != "workspace");
+    if let Some(s) = manifest::SECTIONS.iter().find(|s| table.contains_key(**s)) {
+        bail!(
+            "{}: [{s}] belongs in composer.json: Pun reads the dependencies from composer.json and composer.lock, and pun.toml holds only Pun's own settings",
+            path.display()
+        );
+    }
+    table.remove("workspace");
     let toml: PunToml = table
         .try_into()
         .with_context(|| format!("invalid {}", path.display()))?;

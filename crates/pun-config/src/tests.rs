@@ -997,6 +997,10 @@ fn pun_toml_errors() {
             "[format] paths moved to [files] paths, which every command shares",
         ),
         (
+            "[workspace]\nmembers = []\n\n[require-dev]\n\"pestphp/pest\" = \"^4.0\"\n",
+            "[require-dev] belongs in composer.json: Pun reads the dependencies from composer.json and composer.lock, and pun.toml holds only Pun's own settings",
+        ),
+        (
             "[format]\npreset = \"per\"\n",
             "[format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
         ),

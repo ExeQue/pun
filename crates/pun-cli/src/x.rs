@@ -257,11 +257,10 @@ fn clean(specs: &[String]) -> Result<Exit> {
 /// Installs the package into `dir` unless its install there is less than a day old.
 fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     let manifest = format!(
-        "[require]\n{} = {}\n",
-        toml::Value::String(name.into()),
-        toml::Value::String(constraint.into())
+        "{}\n",
+        serde_json::json!({ "require": { name: constraint } })
     );
-    let lock = dir.join("pun.lock");
+    let lock = dir.join("composer.lock");
     let installed = dir.join("vendor/composer/installed.json").is_file();
     let age = (std::fs::metadata(&lock).and_then(|m| m.modified()))
         .ok()
@@ -269,7 +268,7 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
     if installed && age.is_some_and(|a| a < FRESH) {
         return Ok(());
     }
-    std::fs::write(dir.join("pun.toml"), manifest)
+    std::fs::write(dir.join("composer.json"), manifest)
         .with_context(|| format!("can't write {}", dir.display()))?;
     if !installed {
         eprintln!("Installing {name} into {}", dir.display());

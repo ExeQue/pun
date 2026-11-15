@@ -80,18 +80,13 @@ fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
 }
 
 fn name_of(dir: &Path) -> Result<Option<String>> {
-    let manifest = match pun_config::manifest::read(dir)? {
-        Some(m) => m.json,
-        None if dir.join("composer.json").is_file() => bail!(
-            "the workspace member in {} keeps its dependencies in composer.json: run `pun migrate` there",
-            dir.display()
-        ),
-        None => return Ok(None),
+    let Some(manifest) = pun_config::manifest::read(dir)? else {
+        return Ok(None);
     };
-    match manifest.get("name").and_then(Value::as_str) {
+    match manifest.json.get("name").and_then(Value::as_str) {
         Some(name) => Ok(Some(name.to_ascii_lowercase())),
         None => bail!(
-            "the workspace member in {} has no name: set `name` under [package]",
+            "the workspace member in {} has no name: set `name` in its composer.json",
             dir.display()
         ),
     }

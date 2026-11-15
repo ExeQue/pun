@@ -27,53 +27,20 @@ fn expected(name: &str) -> String {
     .unwrap()
 }
 
-fn as_pun_lock(text: &str) -> String {
-    pun_packages::lock::Lock::from_composer_lock(text)
-        .unwrap()
-        .to_toml()
-}
-
-fn migrated(name: &str) -> PathBuf {
-    let d = fixture(name);
-    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
-    assert_eq!(code, Some(0), "{out}{err}");
-    d
-}
-
 #[test]
 fn update_writes_composers_lock() {
     let d = fixture("update");
-    for command in ["install", "update", "remove acme/lib"] {
-        let args: Vec<&str> = command.split(' ').collect();
-        let (out, err, code) = pun(&d, &args);
-        assert_eq!(code, Some(2), "{out}{err}");
-        assert!(
-            err.contains("the dependencies are still in composer.json: run `pun migrate`"),
-            "{err}"
-        );
-    }
-    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
-    assert_eq!(code, Some(0), "{out}{err}");
-    let lock = as_pun_lock(&read(&d, "composer.lock"));
-    assert_eq!(read(&d, "pun.lock"), lock);
-    std::fs::remove_file(d.join("pun.lock")).unwrap();
-    let (_, err, code) = pun(&d, &["install"]);
-    assert_eq!(code, Some(2));
-    assert!(
-        err.contains("there is a composer.lock but no pun.lock"),
-        "{err}"
-    );
+    let composer_lock = read(&d, "composer.lock");
     std::fs::remove_file(d.join("composer.lock")).unwrap();
-
     let (out, err, code) = pun(&d, &["update", "--dry-run"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(err.contains(" + acme/lib 1.2.0\n"), "{err}");
-    assert!(!d.join("pun.lock").exists());
+    assert!(!d.join("composer.lock").exists());
 
     let (out, err, code) = pun(&d, &["update", "--no-install"]);
     assert_eq!(code, Some(0), "{out}{err}");
-    assert_eq!(read(&d, "pun.lock"), lock);
-    assert!(!d.join("vendor").exists() && !d.join("composer.lock").exists());
+    assert_eq!(read(&d, "composer.lock"), composer_lock);
+    assert!(!d.join("vendor").exists());
 
     let (out, err, code) = pun(&d, &["update", "acme/lib", "acme/nope"]);
     assert_eq!(code, Some(0), "{out}{err}");
@@ -83,14 +50,18 @@ fn update_writes_composers_lock() {
             && err.contains(" + packages: 2 installed\n"),
         "{err}"
     );
-    assert_eq!(read(&d, "pun.lock"), lock);
+    assert_eq!(read(&d, "composer.lock"), composer_lock);
     assert!(d.join("vendor/composer/installed.php").exists());
+
+    std::fs::remove_file(d.join("composer.json")).unwrap();
+    let (_, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("no composer.json in "), "{err}");
 }
 
 #[test]
 fn remove_matches_composer() {
-    let d = migrated("remove");
-    let toml = read(&d, "pun.toml");
+    let d = fixture("remove");
     let (out, err, code) = pun(&d, &["install"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(d.join("vendor/acme/tools").exists());
@@ -102,12 +73,12 @@ fn remove_matches_composer() {
         "{err}"
     );
     assert_eq!(
-        read(&d, "pun.toml"),
-        toml.replace("\n[require-dev]\n\"acme/tools\" = \"^0.3\"\n", "")
+        read(&d, "composer.json"),
+        expected("remove-tools.composer.json")
     );
     assert_eq!(
-        read(&d, "pun.lock"),
-        as_pun_lock(&expected("remove-tools.composer.lock"))
+        read(&d, "composer.lock"),
+        expected("remove-tools.composer.lock")
     );
     assert!(!d.join("vendor/acme/tools").exists());
     let (_, err, code) = pun(&d, &["remove", "acme/absent"]);
@@ -115,21 +86,21 @@ fn remove_matches_composer() {
 }
 
 #[test]
-fn require_edits_pun_toml() {
-    let d = migrated("require");
-    let (toml, lock) = (read(&d, "pun.toml"), read(&d, "pun.lock"));
+fn require_edits_composer_json() {
+    let d = fixture("require");
+    let (json, lock) = (read(&d, "composer.json"), read(&d, "composer.lock"));
 
     let (out, err, code) = pun(&d, &["remove", "acme/lib", "--no-install"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert_eq!(
-        read(&d, "pun.toml"),
-        toml.replace("\"acme/lib\" = \"^1.2\"\n", "")
+        read(&d, "composer.json"),
+        json.replace(",\n        \"acme/lib\": \"^1.2\"", "")
     );
     let (out, err, code) = pun(&d, &["require", "acme/lib"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(err.contains("Using version ^1.2 for acme/lib\n"), "{err}");
-    assert_eq!(read(&d, "pun.toml"), toml);
-    assert_eq!(read(&d, "pun.lock"), lock);
+    assert_eq!(read(&d, "composer.json"), json);
+    assert_eq!(read(&d, "composer.lock"), lock);
     assert!(d.join("vendor/acme/lib").exists());
 
     let (out, err, code) = pun(&d, &["require", "acme/lib:^9.0"]);
@@ -139,17 +110,17 @@ fn require_edits_pun_toml() {
         "{err}"
     );
     assert_eq!(
-        (read(&d, "pun.toml"), read(&d, "pun.lock")),
-        (toml.clone(), lock)
+        (read(&d, "composer.json"), read(&d, "composer.lock")),
+        (json.clone(), lock)
     );
 
     let (_, err, code) = pun(&d, &["require", "--no-update", "--dev", "acme/new:^1.0"]);
     assert_eq!(code, Some(0), "{err}");
     assert_eq!(
-        read(&d, "pun.toml"),
-        toml.replace(
-            "\"acme/tools\" = \"^0.3\"\n",
-            "\"acme/tools\" = \"^0.3\"\n\"acme/new\" = \"^1.0\"\n"
+        read(&d, "composer.json"),
+        json.replace(
+            "\"acme/tools\": \"^0.3\"\n",
+            "\"acme/tools\": \"^0.3\",\n        \"acme/new\": \"^1.0\"\n"
         )
     );
     for bad in ["nope", "acme/app"] {
@@ -168,17 +139,18 @@ fn workspace_members_share_one_lock() {
                 "ext/log/composer.json",
                 r#"{"name": "ext/log", "version": "2.3.0"}"#,
             ),
+            ("repo/pun.toml", "[workspace]\nmembers = [\"packages/*\"]\n"),
             (
-                "repo/pun.toml",
-                "[workspace]\nmembers = [\"packages/*\"]\n\n[[repositories]]\ntype = \"path\"\nurl = \"../ext/log\"\n\n[[repositories]]\n\"packagist.org\" = false\n",
+                "repo/composer.json",
+                r#"{"repositories": [{"type": "path", "url": "../ext/log"}, {"packagist.org": false}]}"#,
             ),
             (
-                "repo/packages/core/pun.toml",
-                "[package]\nname = \"acme/core\"\n",
+                "repo/packages/core/composer.json",
+                "{\n    \"name\": \"acme/core\"\n}\n",
             ),
             (
-                "repo/packages/billing/pun.toml",
-                "[package]\nname = \"acme/billing\"\n\n[require]\n\"acme/core\" = \"*\"\n",
+                "repo/packages/billing/composer.json",
+                "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\"\n    }\n}\n",
             ),
         ],
     );
@@ -193,19 +165,19 @@ fn workspace_members_share_one_lock() {
             "{link}"
         );
     }
-    assert!(!billing.join("vendor").exists() && !billing.join("pun.lock").exists());
+    assert!(!billing.join("vendor").exists() && !billing.join("composer.lock").exists());
 
     let (out, err, code) = pun(&billing, &["require", "ext/log"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert_eq!(
-        read(&billing, "pun.toml"),
-        "[package]\nname = \"acme/billing\"\n\n[require]\n\"acme/core\" = \"*\"\n\"ext/log\" = \"^2.3\"\n"
+        read(&billing, "composer.json"),
+        "{\n    \"name\": \"acme/billing\",\n    \"require\": {\n        \"acme/core\": \"*\",\n        \"ext/log\": \"^2.3\"\n    }\n}\n"
     );
-    let lock = read(&root, "pun.lock");
-    assert!(lock.contains("require.\"ext/log\" = \"^2.3\""), "{lock}");
+    let lock = read(&root, "composer.lock");
+    assert!(lock.contains("\"ext/log\": \"^2.3\""), "{lock}");
     assert!(root.join("vendor/ext/log").exists());
 
-    let core = read(&root, "packages/core/pun.toml");
+    let core = read(&root, "packages/core/composer.json");
     let (out, err, code) = pun(&root, &["require", "-p", "acme/core", "ext/log:^9"]);
     assert_eq!(code, Some(2), "{out}{err}");
     assert!(
@@ -214,8 +186,8 @@ fn workspace_members_share_one_lock() {
     );
     assert_eq!(
         (
-            read(&root, "packages/core/pun.toml"),
-            read(&root, "pun.lock")
+            read(&root, "packages/core/composer.json"),
+            read(&root, "composer.lock")
         ),
         (core, lock)
     );

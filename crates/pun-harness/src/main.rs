@@ -284,9 +284,7 @@ fn compare(name: &str, src: &Path, oracle: &Path, pun: &Path) -> Result<Outcome>
     let (mut by_oracle, mut by_pun) = (BTreeSet::new(), BTreeSet::new());
     list_files(oracle, "", &mut by_oracle)?;
     list_files(pun, "", &mut by_pun)?;
-    for written in ["pun.toml", "pun.lock", "auth.json"] {
-        by_pun.remove(written);
-    }
+    by_pun.remove("pun.toml");
     let mut o = Outcome {
         name: name.into(),
         files: by_oracle.union(&by_pun).count(),

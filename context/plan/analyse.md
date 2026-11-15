@@ -59,7 +59,7 @@ baseline = "pun-baseline.toml"
 
 - **No levels.** `pun migrate` expands a PHPStan level into the exact rules it ran, each with its options. In
   interactive mode it offers the closest preset, with a count of the new problems the preset would report.
-- **Laravel turns on by itself** when the lock (pun.lock, or composer.lock before migrate) has laravel/framework.
+- **Laravel turns on by itself** when composer.lock has laravel/framework.
 - PHPStan's level 7 to 10 behaviour is four switches: `union-types`, `nullables`, `explicit-mixed`, `implicit-mixed`
   (config.md §5). The presets turn them on.
 
@@ -179,7 +179,7 @@ inference.
 
 Larastan has two halves, and without the first one every Laravel app drowns in false "undefined method" and
 "undefined property" errors on its models. Pun builds both into the Laravel plugin (§7). It turns on by itself when
-the lock (pun.lock, or composer.lock before migrate) has laravel/framework.
+composer.lock has laravel/framework.
 
 **1. Laravel knowledge: types PHPStan can't see.**
 
@@ -220,7 +220,7 @@ PHPStan's fixtures do for core. The corpus adds pinkary and larastan's own sourc
 
 **What Mago does.** Mago has no runtime extension system either. Its "plugins" are Rust modules compiled into the
 binary (stdlib, PSL, PSR container, flow-php), each turned on by name in its config. Pun follows the same model: support
-for a framework is Pun code inside the binary, turned on from the lock (pun.lock, or composer.lock before migrate). A real extension system (third-party
+for a framework is Pun code inside the binary, turned on from composer.lock. A real extension system (third-party
 plugins) is planned for later, not now (Pushpak).
 
 **In the core for 1.0** (assistant's call within Pushpak's brief: "super Laravel support and Pest support", no

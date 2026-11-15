@@ -1,7 +1,7 @@
 use super::composer_repo::{ComposerRepository, PACKAGIST};
 use super::pool::{ArrayRepository, Repository, filtered};
 use crate::Env;
-use crate::error::{Context, Error, Result, bail};
+use crate::error::{Context, Result, bail};
 use crate::fetch::Fetcher;
 use crate::installed::{git_version, root_version};
 use crate::php::{Key, serialize, sha1};
@@ -217,14 +217,8 @@ pub fn path_packages(
     for dir in matches {
         let path = root.join(&dir);
         let file = path.join("composer.json");
-        let json = if let Ok(json) = std::fs::read_to_string(&file) {
-            json
-        } else {
-            let Some(m) = pun_config::manifest::read(&path).map_err(|e| Error::foreign(&*e))?
-            else {
-                continue;
-            };
-            Value::Object(m.json).to_string()
+        let Ok(json) = std::fs::read_to_string(&file) else {
+            continue;
         };
         let Value::Object(mut package) = serde_json::from_str(&json)
             .with_context(|| format!("{} does not contain valid JSON", file.display()))?
@@ -610,22 +604,6 @@ mod tests {
             ])]
         );
         assert!(read(json!({"type": "path", "url": "packages/zz*"})).is_empty());
-        std::fs::create_dir_all(d.join("members/toml")).unwrap();
-        std::fs::write(
-            d.join("members/toml/pun.toml"),
-            "[package]\nname = \"acme/toml\"\nversion = \"1.0.0\"\n\n[require]\nphp = \">=8.4\"\n",
-        )
-        .unwrap();
-        let member = read(json!({"type": "path", "url": "members/*"}));
-        assert_eq!(
-            [&member[0][0], &member[0][1], &member[0][2], &member[0][4]],
-            [
-                &json!("acme/toml"),
-                &json!("1.0.0"),
-                &json!("members/toml"),
-                &relative
-            ]
-        );
         for bad in [
             json!({"type": "path", "url": "nothing/*"}),
             json!({"type": "path"}),

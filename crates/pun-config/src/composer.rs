@@ -68,17 +68,8 @@ impl Composer {
 
 pub fn detect(root: &Path) -> Result<Composer> {
     let mut out = Composer::default();
-    let (manifest, lock) = match crate::manifest::read(root)? {
-        Some(m) => {
-            out.sources.push(m.path);
-            let lock = read_toml(&root.join("pun.lock"), &mut out.sources)?;
-            (Some(Value::Object(m.json)), lock)
-        }
-        None => (
-            read(&root.join("composer.json"), &mut out.sources)?,
-            read(&root.join("composer.lock"), &mut out.sources)?,
-        ),
-    };
+    let manifest = read(&root.join("composer.json"), &mut out.sources)?;
+    let lock = read(&root.join("composer.lock"), &mut out.sources)?;
     if let Some(json) = manifest {
         out.php = php_require(&json)?;
         out.platform_php =
@@ -107,17 +98,6 @@ pub fn detect(root: &Path) -> Result<Composer> {
         }
     }
     Ok(out)
-}
-
-fn read_toml(path: &Path, sources: &mut Vec<PathBuf>) -> Result<Option<Value>> {
-    let text = match std::fs::read_to_string(path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        r => r.with_context(|| format!("can't read {}", path.display()))?,
-    };
-    let table: toml::Table =
-        toml::from_str(&text).with_context(|| format!("invalid {}", path.display()))?;
-    sources.push(path.to_path_buf());
-    Ok(Some(crate::toml_text::to_json(&toml::Value::Table(table))))
 }
 
 fn php_require(json: &Value) -> Result<Option<PhpRequire>> {
@@ -264,21 +244,20 @@ mod tests {
     }
 
     #[test]
-    fn pun_files_win_over_composers() {
+    fn platform_php_and_dev_packages() {
         let d = dir(&[
-            ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
+            (
+                "composer.json",
+                r#"{"require":{"php":"^8.5"},"config":{"platform":{"php":"8.5.1"}}}"#,
+            ),
             (
                 "composer.lock",
-                &lock(&pkg("laravel/framework", "v12.0.1"), ""),
+                &lock(
+                    &pkg("laravel/framework", "v13.1.0"),
+                    &pkg("pestphp/pest", "v5.0.3"),
+                ),
             ),
-            (
-                "pun.toml",
-                "[require]\nphp = \"^8.5\"\n\n[config.platform]\nphp = \"8.5.1\"\n",
-            ),
-            (
-                "pun.lock",
-                "version = 1\ncontent-hash = \"0\"\n\n[[packages]]\nname = \"laravel/framework\"\nversion = \"v13.1.0\"\n\n[[packages-dev]]\nname = \"pestphp/pest\"\nversion = \"v5.0.3\"\n",
-            ),
+            ("pun.lock", "version = 1\n"),
         ]);
         let c = detect(&d).unwrap();
         assert_eq!(c.php.as_ref().map(|p| p.lowest), Some(Some(v(8, 5, 0))));
@@ -291,11 +270,9 @@ mod tests {
             c.locked("pestphp/pest").cloned(),
             Some(locked("v5.0.3", Some(v(5, 0, 3))))
         );
-        assert_eq!(c.sources, [d.join("pun.toml"), d.join("pun.lock")]);
-        std::fs::remove_file(d.join("pun.lock")).unwrap();
         assert_eq!(
-            detect(&d).unwrap().locked("laravel/framework").cloned(),
-            None
+            c.sources,
+            [d.join("composer.json"), d.join("composer.lock")]
         );
     }
 

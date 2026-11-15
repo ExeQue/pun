@@ -147,7 +147,7 @@ fn locked_packages(lock: &Lock, vendor: &str, no_dev: bool) -> Result<Vec<Instal
     for p in &packages {
         let name = p.name();
         if !NAME.is_match(name.as_bytes())? {
-            bail!("pun.lock has a package named `{name}`, which is not a valid package name");
+            bail!("composer.lock has a package named `{name}`, which is not a valid package name");
         }
     }
     Ok(packages)

@@ -36,7 +36,7 @@ $ pun init
   Add `pun check` to CI and your composer scripts.
 ```
 
-1. **Detect** from composer.json and composer.lock (pun.toml and pun.lock once they hold the dependencies): the PHP
+1. **Detect** from composer.json and composer.lock: the PHP
    version, Laravel, Pest, PHPUnit and their versions.
 2. **Ask three questions** with the detected defaults: `laravel` style for a Laravel app (otherwise `psr12`),
    dead-code + modernize, and `recommended`.

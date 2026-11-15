@@ -93,7 +93,7 @@ for symbols. `pun list-files` shows the result (§7).
   one, and migrate expands a pint.json that used them into explicit rules.
 - **Lint sets:** `dead-code`, `modernize`, `code-quality`, `types`, `early-return`, `privatization`, `naming`,
   `coding-style` (Rector's prepared sets). Sets are tags on rules, and a rule can be in several. The Laravel, Pest and
-  PHPUnit part of each set turns on by itself from pun.lock (composer.lock before migrate). Rules in no set are opt-in by name or group.
+  PHPUnit part of each set turns on by itself from composer.lock. Rules in no set are opt-in by name or group.
 - **Lint levels, as oxlint:** `"off"`, `"warn"`, `"error"` per rule or group. A rule enabled by a set is `error` unless
   set to `warn`. Only `error` fails. `--deny-warnings` makes warnings fail, `--max-warnings <n>` fails above n.
   `-A` / `-W` / `-D <rule or group>` set a level for one run. `[[lint.overrides]]` changes levels per path.
@@ -102,7 +102,7 @@ for symbols. `pun list-files` shows the result (§7).
 - **Analyse presets** by PHPStan level band, each including the one below: `basic` (0-1), `essential` (2-3),
   `recommended` (4-5, default), `strict` (6-8), `max` (9-10). The four type switches (`union-types`, `nullables`,
   `explicit-mixed`, `implicit-mixed`) come with the presets. Analyse rules are on or off; there is no `warn`.
-- **Ecosystems:** Laravel, Pest and PHPUnit turn on from pun.lock (composer.lock before migrate), with their versions gating version rules. A
+- **Ecosystems:** Laravel, Pest and PHPUnit turn on from composer.lock, with their versions gating version rules. A
   project switches one off with its group (`[lint.groups] laravel = "off"`, `[analyse.rules]` the same way).
 
 ## 6. Build
@@ -160,8 +160,7 @@ pun list-files [--command format|lint|analyse] [-0] [paths...]
 
 All from 2026-10-17 (Pushpak), recorded in ../PLAN.md §2: pun.toml only and stop without it; `group/name` with no
 aliases; three format presets; lint sets; oxlint levels; `--fix` applies all, `fix = "off"`; five analyse presets
-with `max` on top; analyse on or off; ecosystems from composer.lock; PHP version from composer.json (pun.lock and
-pun.toml's `[require] php` once the dependencies moved into pun.toml, 2026-11-14); no PHP fallback; `pun list-files` like Mago's. The `[files]` section with per-command `exclude` (Mago's model) and the
+with `max` on top; analyse on or off; ecosystems from composer.lock; PHP version from composer.json; no PHP fallback; `pun list-files` like Mago's. The `[files]` section with per-command `exclude` (Mago's model) and the
 `[analyse] preset` key (instead of a top-level `preset`) are the assistant's defaults for the schema above.
 
 Build 9, the shared problem type (crates/pun-problem, assistant's calls, 2026-10-17):
@@ -179,9 +178,8 @@ Build 5 (wf/composer, 2026-10-17), assistant's calls where the plan is silent:
 - `pun_config::composer::detect(root)` returns the `require.php` constraint with its lowest admitted version
   (`php_version()` gives it as `major.minor` for `[php] version`) and the locked Laravel (`laravel/framework`), Pest
   (`pestphp/pest`) and PHPUnit (`phpunit/phpunit`) versions, each marked `dev` when it comes from `packages-dev`.
-- Only the lock turns an ecosystem on: without one none is detected (no fallback to `require`). Since 2026-11-14
-  `detect` reads pun.toml's dependency sections and pun.lock, and composer.json and composer.lock only in a project
-  whose pun.toml has none. `laravel/laravel` and `illuminate/*` are not the framework.
+- Only the lock turns an ecosystem on: without one none is detected (no fallback to `require`). `detect` reads
+  composer.json and composer.lock only (2026-11-15). `laravel/laravel` and `illuminate/*` are not the framework.
 - A locked branch (`dev-main`, `3.x-dev`) keeps its raw version with no numbers; a pre-release (`5.0.0-RC1`) counts as
   its release. A constraint that admits nothing (`>=8.4 <8.3`) gives no PHP version. `>8.4` gives 8.4.1.
 - The PHP 8.4 gate in `load` now uses the same reader (`constraint::lowest`); `allows_below` is gone. Wiring the

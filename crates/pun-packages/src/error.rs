@@ -6,7 +6,6 @@ pub enum Error {
     Context { message: String, source: Box<Error> },
     Io(std::io::Error),
     Json(serde_json::Error),
-    Toml(toml::de::Error),
     Pcre(pcre2::Error),
     Http(ureq::Error),
     Zip(zip::result::ZipError),
@@ -20,24 +19,11 @@ impl Error {
         Error::Message(message.to_string())
     }
 
-    /// Another crate's error with each of its causes, so `{:#}` still prints the whole chain.
-    pub fn foreign(e: &(dyn std::error::Error + 'static)) -> Error {
-        let message = e.to_string();
-        match e.source() {
-            Some(cause) => Error::Context {
-                message,
-                source: Box::new(Error::foreign(cause)),
-            },
-            None => Error::Message(message),
-        }
-    }
-
     fn head(&self) -> &dyn Display {
         match self {
             Error::Message(m) | Error::Context { message: m, .. } => m,
             Error::Io(e) => e,
             Error::Json(e) => e,
-            Error::Toml(e) => e,
             Error::Pcre(e) => e,
             Error::Http(e) => e,
             Error::Zip(e) => e,
@@ -68,7 +54,6 @@ impl std::error::Error for Error {
             Error::Context { source, .. } => Some(source.as_ref()),
             Error::Io(e) => e.source(),
             Error::Json(e) => e.source(),
-            Error::Toml(e) => e.source(),
             Error::Pcre(e) => e.source(),
             Error::Http(e) => e.source(),
             Error::Zip(e) => e.source(),
@@ -90,7 +75,6 @@ macro_rules! from {
 from!(
     Io(std::io::Error),
     Json(serde_json::Error),
-    Toml(toml::de::Error),
     Pcre(pcre2::Error),
     Http(ureq::Error),
     Zip(zip::result::ZipError),
@@ -150,7 +134,6 @@ mod tests {
     fn wrapped_errors_print_as_themselves() {
         same(|| std::io::Error::other("gone"));
         same(|| serde_json::from_str::<i64>("x").unwrap_err());
-        same(|| toml::from_str::<toml::Table>("=").unwrap_err());
         same(|| pcre2::bytes::Regex::new("(").unwrap_err());
         same(|| ureq::Error::Io(std::io::Error::other("refused")));
         same(|| zip::ZipArchive::new(std::io::Cursor::new(b"")).unwrap_err());
@@ -163,9 +146,6 @@ mod tests {
         let err = io.context("reading").context("installing").unwrap_err();
         assert_eq!(err.to_string(), "installing");
         assert_eq!(format!("{err:#}"), "installing: reading: gone");
-        let foreign = Error::foreign(&err);
-        assert_eq!(format!("{foreign:#}"), "installing: reading: gone");
-        assert!(matches!(foreign, Error::Context { .. }));
         assert_eq!(format!("{:#}", Error::msg("plain")), "plain");
     }
 }

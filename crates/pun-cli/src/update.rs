@@ -4,7 +4,7 @@ use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
 use pun_packages::fetch::composer_dirs;
 use pun_packages::lock::Lock;
-use pun_packages::manifest_edit::{name_version_pairs, toml_remove, toml_set};
+use pun_packages::manifest_edit::{json_remove, json_set, name_version_pairs};
 use pun_packages::resolver::pool::Transitive;
 use pun_packages::resolver::{self, Options, Resolution, explain, locker, platform, repos};
 use pun_packages::scripts::Runner;
@@ -262,14 +262,13 @@ fn finish(
     if plan.dry_run {
         return Ok(Exit::Success);
     }
-    let lock_file = "pun.lock";
+    let lock_file = "composer.lock";
     let lock_path = project.root.join(lock_file);
     let lock_backup = std::fs::read_to_string(&lock_path).ok();
     if let Some(e) = &edit {
         write(&e.path, &e.text)?;
     }
-    let text = Lock::from_composer_lock(&lock.to_composer_lock())?.to_toml();
-    write(&lock_path, &text)?;
+    write(&lock_path, &lock.to_composer_lock())?;
     let result = if plan.resolve.no_install {
         (!a.no_scripts)
             .then(|| dispatch(project, a, "post-update-cmd"))
@@ -377,7 +376,7 @@ fn print_changes(old: Option<&Lock>, new: &Lock) {
     }
 }
 
-/// The pun.toml an edit changes: the project's own, or a workspace member's.
+/// The composer.json an edit changes: the project's own, or a workspace member's.
 struct Target {
     path: PathBuf,
     /// The file's text now; `None` when it doesn't exist yet.
@@ -394,9 +393,10 @@ impl Target {
     }
 
     fn parse(&self, text: &str) -> Result<Map<String, Value>> {
-        let table: toml::Table =
-            toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
-        Ok(pun_config::manifest::parse(&self.path, &table)?.map_or_default(|m| m.json))
+        if text.is_empty() {
+            return Ok(Map::new());
+        }
+        serde_json::from_str(text).with_context(|| format!("invalid {}", self.path.display()))
     }
 
     /// Makes the edit visible to the resolver: a member's file is written now, since the workspace's path
@@ -436,7 +436,7 @@ fn target(project: &Project, member: Option<&str>) -> Result<Target> {
         Some(m) => (m.dir.as_path(), Some(m.name.clone())),
         None => (project.root.as_path(), None),
     };
-    let path = dir.join("pun.toml");
+    let path = dir.join("composer.json");
     let original = std::fs::read_to_string(&path).ok();
     let mut target = Target {
         path,
@@ -484,10 +484,6 @@ fn required(manifest: &Map<String, Value>, section: &str, pattern: &str) -> Vec<
     .collect()
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "long; to be split (code audit: functions over 100 lines)"
-)]
 pub(crate) fn require(a: RequireArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), true)?;
@@ -515,12 +511,7 @@ pub(crate) fn require(a: RequireArgs) -> Result<Exit> {
     }
     let sort = a.sort_packages || sort_packages(&target.manifest);
     let set = |text: &str, name: &str, constraint: &str| -> Result<String> {
-        let text = toml_set(text, section, name, constraint, sort)?;
-        if required(&target.manifest, other, name).is_empty() {
-            Ok(text)
-        } else {
-            Ok(toml_remove(&text, other, name)?)
-        }
+        Ok(json_set(text, section, other, name, constraint, sort)?)
     };
     let mut text = target.original.clone().unwrap_or_default();
     for (name, version) in &pairs {
@@ -605,7 +596,7 @@ pub(crate) fn remove(a: RemoveArgs) -> Result<Exit> {
         let mut found = false;
         for section in ["require", "require-dev"] {
             for name in required(&target.manifest, section, pattern) {
-                text = toml_remove(&text, section, &name)?;
+                text = json_remove(&text, section, &name)?;
                 removed.push(name.to_ascii_lowercase());
                 found = true;
             }

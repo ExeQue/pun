@@ -5,7 +5,7 @@ use common::{read, write_files};
 use std::path::Path;
 
 fn lock(lib_version: &str) -> String {
-    let composer_lock = format!(
+    format!(
         r#"{{
     "content-hash": "0",
     "packages": [
@@ -21,10 +21,7 @@ fn lock(lib_version: &str) -> String {
     "aliases": [], "minimum-stability": "stable", "stability-flags": {{}}, "prefer-stable": false,
     "prefer-lowest": false, "platform": {{}}, "platform-dev": {{}}, "plugin-api-version": "2.6.0"
 }}"#
-    );
-    pun_packages::lock::Lock::from_composer_lock(&composer_lock)
-        .unwrap()
-        .to_toml()
+    )
 }
 
 fn vet(d: &Path, args: &[&str]) -> (String, String, Option<i32>) {
@@ -41,10 +38,10 @@ fn vets_the_lock() {
         &d,
         &[
             (
-                "pun.toml",
-                "[require]\n\"acme/lib\" = \"^1.0\"\n\"acme/local\" = \"*\"\n\n[require-dev]\n\"acme/dev\" = \"dev-main\"\n",
+                "composer.json",
+                r#"{"require": {"acme/lib": "^1.0", "acme/local": "*"}, "require-dev": {"acme/dev": "dev-main"}}"#,
             ),
-            ("pun.lock", lib.as_str()),
+            ("composer.lock", lib.as_str()),
         ],
     );
     let (out, err, code) = vet(&d, &[]);
@@ -67,7 +64,7 @@ fn vets_the_lock() {
         ("ok Vetted 2 packages: 0 audited, 2 exempted\n", Some(0))
     );
 
-    std::fs::write(d.join("pun.lock"), lock("v1.3.0")).unwrap();
+    std::fs::write(d.join("composer.lock"), lock("v1.3.0")).unwrap();
     let (out, _, code) = vet(&d, &[]);
     assert_eq!(code, Some(1), "{out}");
     assert!(

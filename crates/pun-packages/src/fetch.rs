@@ -309,7 +309,7 @@ impl Fetcher {
             let got = sha1(&bytes);
             if got != want {
                 bail!(
-                    "the {name} archive from {url} has sha1 {got}, but pun.lock expects {want}; it may have been tampered with"
+                    "the {name} archive from {url} has sha1 {got}, but composer.lock expects {want}; it may have been tampered with"
                 );
             }
         }
@@ -773,7 +773,7 @@ mod tests {
         let error = format!("{:#}", fetcher.archive(&package(&url, "0000")).unwrap_err());
         assert!(
             error.contains("has sha1")
-                && error.contains("pun.lock expects 0000; it may have been tampered with"),
+                && error.contains("composer.lock expects 0000; it may have been tampered with"),
             "{error}"
         );
         let error = format!(

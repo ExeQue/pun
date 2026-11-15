@@ -316,7 +316,7 @@ fn lock_changes_plugins_and_failures() {
         try_run(&tmp, &bad, &Options::default())
             .unwrap_err()
             .to_string(),
-        "pun.lock has a package named `acme/not valid`, which is not a valid package name"
+        "composer.lock has a package named `acme/not valid`, which is not a valid package name"
     );
 
     std::fs::write(

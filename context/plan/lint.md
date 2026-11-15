@@ -133,7 +133,7 @@ path), the rest of 7 and step 8 (PLAN.md §3 Track B). The steps, after config.m
    (analyse.md decisions).
 3. **Lint sets:** below.
 
-Laravel, Pest and PHPUnit are not questions. Pun reads pun.lock (composer.lock before migrate) and turns their rules on by itself, including the
+Laravel, Pest and PHPUnit are not questions. Pun reads composer.lock and turns their rules on by itself, including the
 rules for the locked versions (decided).
 
 **A project coming from Pint, Rector or PHPStan:** `pun migrate` writes the exact rules the old config runs. In
@@ -186,7 +186,7 @@ sets = ["dead-code", "modernize", "code-quality"]
 ```
 
 - **Sets are tags on rules**, separate from the topic group in the name. A rule can be in several sets.
-- **The Laravel, Pest and PHPUnit parts of each set turn on by themselves** when the lock (pun.lock, or composer.lock before migrate) has the package. For
+- **The Laravel, Pest and PHPUnit parts of each set turn on by themselves** when composer.lock has the package. For
   example, `code-quality` in a Laravel app includes rector-laravel's code-quality rules.
 - **Migrate maps 1:1:** `withPreparedSets(deadCode: true, codeQuality: true)` becomes
   `sets = ["dead-code", "code-quality"]`, and single rules become `[lint.rules]`.
@@ -212,7 +212,7 @@ Answered 2026-10-17 (Pushpak):
   setup ran; Rector's prepared sets migrate 1:1, and in interactive mode it offers the closest sets with a count of the
   new problems they would report.
 - **`pun init` asks three things:** the format preset (laravel / psr12), the lint sets and the analyse preset.
-- **Laravel, Pest and PHPUnit turn on automatically** from the lock (pun.lock, or composer.lock before migrate), version rules included; their group can be
+- **Laravel, Pest and PHPUnit turn on automatically** from composer.lock, version rules included; their group can be
   switched off in pun.toml. Nothing to install.
 - **`--fix` applies every fix of every enabled rule**, as Rector does. There is no `--unsafe` flag. Safe/unsafe
   stays as a label in the output (`[fix:unsafe]`) so reviewers know which changes to read closely. A rule that should

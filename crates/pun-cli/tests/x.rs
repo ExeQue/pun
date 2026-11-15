@@ -53,7 +53,10 @@ fn runs_a_packages_command() {
         "{err}"
     );
     assert!(err.contains("Installing acme/tool into "), "{err}");
-    assert!(home.join("cache/x/acme/tool/latest/pun.lock").is_file());
+    assert!(
+        home.join("cache/x/acme/tool/latest/composer.lock")
+            .is_file()
+    );
 
     let punx = home.join("punx");
     std::os::unix::fs::symlink(pun, &punx).unwrap();

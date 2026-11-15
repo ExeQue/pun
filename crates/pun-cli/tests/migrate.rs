@@ -630,7 +630,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(code, Some(0), "{out}{err}");
     let out = counts(&out);
     assert!(
-        out.starts_with(" ok rector.php     -> [lint] sets dead-code, modernize; N on, N off"),
+        out.starts_with(" ok rector.php  -> [lint] sets dead-code, modernize; N on, N off"),
         "{out}"
     );
     assert!(
@@ -663,7 +663,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     let (out, _, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        counts(&out).starts_with(" ok rector.php     -> [lint] no sets; N on, N off"),
+        counts(&out).starts_with(" ok rector.php  -> [lint] no sets; N on, N off"),
         "{out}"
     );
     assert!(!out.contains("excluded"), "{out}");
@@ -727,33 +727,8 @@ fn checklist_marks_unsupported_configs() {
     );
 }
 
-const DEPENDENCIES: &str = r#"[package]
-name = "acme/app"
-type = "project"
-
-[require]
-php = ">=8.4"
-"acme/lib" = "^1.2"
-
-[require-dev]
-"acme/tools" = "^0.3"
-
-[autoload]
-psr-4 = { 'App\' = "src/" }
-
-[autoload-dev]
-classmap = ["tests/"]
-
-[config]
-optimize-autoloader = true
-
-[[repositories]]
-type = "path"
-url = "packages/*"
-"#;
-
 #[test]
-fn moves_composer_dependencies() {
+fn leaves_composer_json_and_its_lock_alone() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../pun-packages/tests/fixtures");
     let d = project("composer", &[("pint.json", PINT)]);
     let copied = std::process::Command::new("cp")
@@ -763,48 +738,29 @@ fn moves_composer_dependencies() {
         .status()
         .unwrap();
     assert!(copied.success());
-    let json = read(&d, "composer.json").replacen(
-        '{',
-        "{\n    \"$schema\": \"https://getcomposer.org/schema.json\",",
-        1,
-    );
-    let json = json.replace(
-        "\"optimize-autoloader\": true",
-        "\"optimize-autoloader\": true,\n        \"github-oauth\": {\"github.com\": \"ghp_test\"}",
-    );
-    std::fs::write(d.join("composer.json"), json).unwrap();
+    let (json, lock) = (read(&d, "composer.json"), read(&d, "composer.lock"));
 
     let (out, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(0), "{out}{err}");
-    let lines = " ok pint.json      -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n ok composer.json  -> [require] 2, [require-dev] 1\n ok composer.lock  -> pun.lock, 2 packages (written)\n ! credentials    -> auth.json (github-oauth); add auth.json to .gitignore\n";
-    assert!(out.starts_with(lines), "{out}");
-    assert_eq!(read(&d, "pun.toml"), format!("{TOML}\n{DEPENDENCIES}"));
+    assert!(!out.contains("composer"), "{out}");
+    assert_eq!(read(&d, "pun.toml"), TOML);
     assert_eq!(
-        read(&d, "auth.json"),
-        "{\n    \"github-oauth\": {\n        \"github.com\": \"ghp_test\"\n    }\n}\n"
+        (read(&d, "composer.json"), read(&d, "composer.lock")),
+        (json, lock)
     );
-    assert!(
-        read(&d, "pun.lock").contains("\ncontent-hash = \"505e2931b9db2a3f50543bd9b4e608c1\"\n")
-    );
+    assert!(!d.join("pun.lock").exists() && !d.join("auth.json").exists());
 
     let (out, err, code) = pun(&d, &["install"]);
     assert_eq!(code, Some(0), "{out}{err}");
     assert!(
-        err.starts_with("Installing 2 packages from pun.lock\n") && !err.contains("older than"),
+        err.starts_with("Installing 2 packages from composer.lock\n")
+            && !err.contains("out of date"),
         "{err}"
     );
     let expected =
         std::fs::read_to_string(fixtures.join("project-expected/composer/installed.php")).unwrap();
     assert_eq!(read(&d, "vendor/composer/installed.php"), expected);
 
-    std::fs::write(d.join("pun.toml"), TOML).unwrap();
-    let (out, _, code) = pun(&d, &["migrate", "--yes"]);
-    assert_eq!(code, Some(0), "{out}");
-    assert!(
-        out.contains(" ok composer.lock  -> pun.lock, 2 packages (already up to date)\n"),
-        "{out}"
-    );
-    assert_eq!(read(&d, "pun.toml"), format!("{TOML}\n{DEPENDENCIES}"));
     std::fs::write(d.join("pun.toml"), format!("{TOML}# mine\n")).unwrap();
     let (_, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(2));

@@ -52,7 +52,7 @@ pub(crate) struct InstallArgs {
     pub(crate) working_dir: Option<PathBuf>,
 }
 
-/// A project's dependencies: pun.toml's dependency sections in composer.json's shape, and pun.lock when it exists.
+/// A project's dependencies: its composer.json, and composer.lock when it exists.
 pub(crate) struct Project {
     pub(crate) root: PathBuf,
     pub(crate) manifest: Map<String, Value>,
@@ -62,10 +62,6 @@ pub(crate) struct Project {
     /// The directory the command started in: the root, or a directory below it.
     pub(crate) here: PathBuf,
 }
-
-/// What a project not migrated yet is told.
-pub(crate) const MIGRATE: &str =
-    "run `pun migrate` to move composer.json and composer.lock into pun.toml and pun.lock";
 
 /// The downloader for a project: Composer's cache, the project's and the global auth.json, and `secure-http`.
 pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
@@ -80,7 +76,7 @@ pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
 }
 
 /// The project in `working_dir` (or the current directory). With `create`, a directory without dependencies is a
-/// new project whose dependencies go in pun.toml. In a workspace member, the project is the workspace's root.
+/// new project whose dependencies go in a new composer.json. In a workspace member, the project is the workspace's root.
 pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Project> {
     let here = match working_dir {
         Some(d) => d
@@ -94,19 +90,13 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         .map_or_else(|| here.clone(), |w| w.root.clone());
     let manifest = match pun_config::manifest::read(&root)? {
         Some(m) => m.json,
-        None if workspace.is_some() => Map::new(),
-        None if root.join("composer.json").is_file() => {
-            bail!("the dependencies are still in composer.json: {MIGRATE}")
-        }
-        None if create => Map::new(),
+        None if workspace.is_some() || create => Map::new(),
         None => bail!(
-            "no dependencies here: pun.toml has no [require]; add one with `pun require <package>`"
+            "no composer.json in {}: add a dependency with `pun require <package>`",
+            root.display()
         ),
     };
     let lock = Lock::read(&root)?;
-    if lock.is_none() && root.join("composer.lock").is_file() {
-        bail!("there is a composer.lock but no pun.lock: {MIGRATE}");
-    }
     let manifest = match &workspace {
         Some(w) => w.manifest(manifest),
         None => manifest,
@@ -124,7 +114,7 @@ pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.working_dir.as_ref(), false)?;
     if project.lock.is_none() {
-        eprintln!("No pun.lock yet: resolving the dependencies to their latest versions");
+        eprintln!("No composer.lock yet: resolving the dependencies to their latest versions");
         return crate::update::update_and_install(
             &mut project,
             &crate::update::Plan::default(),
@@ -185,7 +175,7 @@ pub(crate) fn install_locked(
     let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev, &env);
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };
     eprintln!(
-        "Installing {} from pun.lock",
+        "Installing {} from composer.lock",
         crate::agent::count(total, "package")
     );
     if !a.no_scripts && !update {
@@ -208,7 +198,7 @@ pub(crate) fn install_locked(
     let warn = look.paint(Role::Warning, look.glyph("⚠", "!"));
     if report.stale_lock {
         eprintln!(
-            " {warn} pun.lock is out of date with the dependencies it locks: they changed since it was written, so run `pun update` to refresh it"
+            " {warn} composer.lock is out of date with composer.json: the dependencies changed since it was written, so run `pun update` to refresh it"
         );
     }
     let mut changes = vec![];
