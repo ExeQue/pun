@@ -207,24 +207,22 @@ pub(crate) fn is_in_test_class(
     ancestors: &[Node<'_, '_>],
     method: Option<&Method<'_>>,
 ) -> bool {
-    let Some(scope) = class_scope(ancestors) else {
+    let Some(at) = ancestors.iter().rposition(|a| {
+        matches!(
+            a,
+            Node::Class(_)
+                | Node::AnonymousClass(_)
+                | Node::Interface(_)
+                | Node::Trait(_)
+                | Node::Enum(_)
+        )
+    }) else {
         return false;
     };
-    let at = ancestors
-        .iter()
-        .rposition(|a| {
-            matches!(
-                a,
-                Node::Class(_)
-                    | Node::AnonymousClass(_)
-                    | Node::Interface(_)
-                    | Node::Trait(_)
-                    | Node::Enum(_)
-            )
-        })
-        .unwrap();
     if matches!(ancestors[at], Node::Trait(_)) {
-        let name = scope.name.unwrap_or_default();
+        let name = class_scope(ancestors)
+            .and_then(|s| s.name)
+            .unwrap_or_default();
         let in_tests_namespace = name
             .rsplit_once('\\')
             .is_some_and(|(ns, _)| ns.split('\\').any(|part| part == "Test" || part == "Tests"));
@@ -245,6 +243,32 @@ pub(crate) fn is_in_test_class(
 }
 
 pub(super) fn class_is(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], targets: &[&str]) -> bool {
+    let class = ancestors.iter().rev().find(|a| {
+        matches!(
+            a,
+            Node::Class(_)
+                | Node::AnonymousClass(_)
+                | Node::Interface(_)
+                | Node::Trait(_)
+                | Node::Enum(_)
+        )
+    });
+    let key = (
+        class.map_or(u32::MAX, |c| mago_span::HasSpan::span(c).start.offset),
+        mago_span::HasSpan::span(ancestors.last().unwrap())
+            .start
+            .offset,
+        targets.join("|"),
+    );
+    if let Some(&found) = ctx.class_is.borrow().get(&key) {
+        return found;
+    }
+    let found = class_is_uncached(ctx, ancestors, targets);
+    ctx.class_is.borrow_mut().insert(key, found);
+    found
+}
+
+fn class_is_uncached(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], targets: &[&str]) -> bool {
     let scope = class_scope(ancestors).unwrap();
     if let Some(name) = &scope.name {
         return is_a(ctx, name, targets);

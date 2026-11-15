@@ -1,5 +1,6 @@
 use std::borrow::Cow;
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
+use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -25,6 +26,8 @@ pub struct Context<'a> {
     tokens: OnceCell<Vec<rules::support::statements::Token>>,
     facts: OnceCell<Rc<rules::types::facts::Facts>>,
     dead_code_facts: OnceCell<Rc<rules::types::facts::Facts>>,
+    /// `class_is` answers by class: many rules ask it at every node of a class.
+    class_is: RefCell<HashMap<(u32, u32, String), bool>>,
 }
 
 impl<'a> Context<'a> {
@@ -36,6 +39,7 @@ impl<'a> Context<'a> {
             tokens: OnceCell::new(),
             facts: OnceCell::new(),
             dead_code_facts: OnceCell::new(),
+            class_is: RefCell::default(),
         }
     }
 
