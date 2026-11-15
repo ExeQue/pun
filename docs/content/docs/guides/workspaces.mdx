@@ -29,7 +29,7 @@ A workspace is a repository that holds several packages, such as a monorepo of a
 
 The root's own requirements and repositories go in the root's `composer.json`. The root needs no `composer.json` and no requirements of its own. Pun requires every member at the root and installs each one as a path package, symlinked into `vendor/`. A member requires another member like any package, at `*` or the constraint you want.
 
-`*` and `?` in a glob match within one directory name. Directories without a `composer.json` are skipped. A member's `composer.json` without `name` is an error that asks you to set it. Two members can't have the same name.
+`*` and `?` in a glob match within one directory name. Directories without a `composer.json` are skipped, and a glob that matches no member, such as `apps/*` before `apps/` exists, adds none. A member's `composer.json` without `name` is an error that asks you to set it. Two members can't have the same name.
 
 ## Work in a member
 

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) struct Workspace {
     pub(crate) root: PathBuf,
+    /// The globs that match a member, each a path repository.
     globs: Vec<String>,
     pub(crate) members: Vec<Member>,
 }
@@ -54,11 +55,15 @@ fn globs(root: &Path) -> Result<Option<Vec<String>>> {
     }
 }
 
+/// The members the globs match. Only the globs that match a member become path repositories, since Composer's path
+/// repository fails on a glob whose directory doesn't exist.
 fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
-    let mut members: Vec<Member> = vec![];
-    for glob in &globs {
-        for dir in expand(root, glob) {
+    let (mut members, mut matching): (Vec<Member>, Vec<String>) = (vec![], vec![]);
+    for glob in globs {
+        let mut matches = false;
+        for dir in expand(root, &glob) {
             let Some(name) = name_of(&dir)? else { continue };
+            matches = true;
             if let Some(other) = members.iter().find(|m| m.name == name && m.dir != dir) {
                 bail!(
                     "two workspace members are named {name}: {} and {}",
@@ -70,11 +75,14 @@ fn load(root: &Path, globs: Vec<String>) -> Result<Workspace> {
                 members.push(Member { name, dir });
             }
         }
+        if matches {
+            matching.push(glob);
+        }
     }
     members.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(Workspace {
         root: root.to_path_buf(),
-        globs,
+        globs: matching,
         members,
     })
 }
@@ -178,9 +186,11 @@ impl Workspace {
         for member in &self.members {
             if !required(&manifest, &member.name) {
                 let require = manifest.entry("require").or_insert_with(|| json!({}));
-                if let Some(r) = require.as_object_mut() {
-                    r.insert(member.name.clone(), "*@dev".into());
+                if !require.is_object() {
+                    // Composer's schema rejects such a `require`, and Pun's resolver reads it as no requirements.
+                    *require = json!({});
                 }
+                require[member.name.as_str()] = "*@dev".into();
             }
         }
         manifest
