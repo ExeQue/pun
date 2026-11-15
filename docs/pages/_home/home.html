@@ -67,9 +67,9 @@
     <p class="sec-lede">pun check formats, lints and analyses your project in a single run. By the time you look back at the terminal, all three are finished.</p>
     <div class="term">
       <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>~/blog</span></div>
-<pre class="term-body" data-run-body><span class="cmdline"><span class="prompt">$</span> pun check</span><span class="step" style="--i:0"><span class="ok">✔</span> <b class="cmd-chip zap">format</b> All files formatted</span><span class="step" style="--i:1"><span class="bad">✖</span> <b class="cmd-chip gum">lint</b> 1 error in 1 file · 1 fixable</span><span class="step sub" style="--i:2">   <span class="path">app/Http/Controllers/PostController.php:24:9</span>  <span class="rule">lint/laravel/no-request-all</span>
-   Pass only validated input, not $request-&gt;all().</span><span class="step" style="--i:3"><span class="bad">✖</span> <b class="cmd-chip lilac">analyse</b> 1 error in 1 file</span><span class="step sub" style="--i:4">   <span class="path">app/Models/Post.php:18:16</span>  <span class="rule">analyse/undefined/method</span>
-   Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors · 1 fixable (run pun check --fix)</span></pre>
+<pre class="term-body" data-run-body><span class="cmdline"><span class="prompt">$</span> pun check</span><span class="step" style="--i:0"><span class="ok">✔</span> <b class="cmd-chip zap">format</b> All files formatted</span><span class="step" style="--i:1"><span class="bad">✖</span> <b class="cmd-chip gum">lint</b> 1 error in 1 file</span><span class="step sub" style="--i:2">   <span class="path">app/Http/Controllers/PostController.php:24:9</span>  <span class="rule">lint/laravel/no-request-all</span>
+   Avoid using `$request-&gt;all()` or `Request::all()`.</span><span class="step" style="--i:3"><span class="bad">✖</span> <b class="cmd-chip lilac">analyse</b> 1 error in 1 file</span><span class="step sub" style="--i:4">   <span class="path">app/Models/Post.php:18:16</span>  <span class="rule">analyse/undefined/method</span>
+   Call to an undefined method App\Models\Post::publsh().</span><span class="step total" style="--i:5"><span class="bad">✖</span> 2 errors</span></pre>
     </div>
     <p class="note">Example output from a small Laravel app.</p>
   </section>
@@ -130,27 +130,6 @@
     </ul>
   </section>
 
-  <!-- LARAVEL -->
-  <section class="wrap sec laravel-sec">
-    <div class="laravel-copy">
-      <h2>Built for Laravel. <span class="sticker">Not</span> bolted on.</h2>
-      <p class="sec-lede">Pun knows your app the way Larastan and rector-laravel do, without installing either. Nothing to turn on: it reads your lock file.</p>
-      <div class="code toml-mini">
-        <div class="code-bar"><span>pun.toml</span><span>TOML</span></div>
-<pre><span class="dim"># Laravel and Pest: found in composer.lock</span>
-[format]
-preset = <span class="str">"laravel"</span></pre>
-      </div>
-    </div>
-    <ul class="laravel-list">
-      <li><h3>Larastan, built in</h3><p>Models, relations, facades, macros, container bindings and config, understood natively by pun analyse.</p></li>
-      <li><h3>rector-laravel rules</h3><p>Laravel upgrades and code-quality rewrites in pun lint, applied only when you say so.</p></li>
-      <li><h3>Pint's laravel preset</h3><p>The default for pun format. Same bytes Pint writes on every Laravel project.</p></li>
-      <li><h3>Tests that read well</h3><p><code>assertStatus(404)</code> becomes <code>assertNotFound()</code>, <code>$this-&gt;faker</code> becomes <code>fake()</code>, and Pest expectations get specific.</p></li>
-      <li><h3>App rules</h3><p>Flags <code>$request-&gt;all()</code>, <code>$casts</code> properties, named migrations and middleware set in controllers.</p></li>
-    </ul>
-  </section>
-
   <!-- ONE CONFIG -->
   <section class="wrap sec config-sec" data-merge>
     <div>
@@ -198,9 +177,9 @@ baseline = <span class="str">"pun-baseline.toml"</span></pre>
     <div class="code agent">
       <div class="code-bar"><span>pun check · under Claude Code</span><span>agent</span></div>
 <pre><span class="cmdline"><span class="prompt">$</span> pun check</span>
-<span class="dim">app/Models/Post.php:</span>18:9 analyse/undefined/method ...
-<span class="dim">app/Http/Kernel.php:</span>42:5 lint/types/no-loose-comparison ...
-<span class="hot">2 problems</span></pre>
+<span class="hot">pun check: fail, 2 errors (48 checked, 0.31s)</span>
+<span class="dim">app/User.php:</span>42:13 lint/types/no-loose-comparison ...
+<span class="dim">app/Post.php:</span>18:16 analyse/undefined/method ...</pre>
     </div>
     <div>
       <h2>Fewer tokens. Same answers.</h2>

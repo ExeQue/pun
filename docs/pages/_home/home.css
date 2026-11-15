@@ -127,16 +127,7 @@
 .pun-home .code .add { color: #9bf0c9; } .pun-home .code .del { color: #ff9cc8; } .pun-home .code .dim { color: #8d85a0; }
 .pun-home .code .str { color: #9bf0c9; } .pun-home .code .kw { color: #ffe53d; } .pun-home .code .hot { color: #ffe53d; font-weight: 700; }
 
-/* ---------- laravel ---------- */
-.pun-home .laravel-sec { display: grid; grid-template-columns: .85fr 1.15fr; gap: 56px; align-items: start; }
-.pun-home .laravel-sec .sec-lede { margin-top: -16px; }
 .pun-home .toml-mini { max-width: 320px; }
-.pun-home .laravel-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; margin: 0; padding: 0; list-style: none; }
-.pun-home .laravel-list li { padding: 20px 0 22px; border-top: var(--pun-stroke) solid var(--pun-outline); }
-.pun-home .laravel-list li:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.pun-home .laravel-list h3 { font-weight: 600; font-size: 20px; line-height: 1.2; margin-bottom: 6px; }
-.pun-home .laravel-list p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--pun-ink-2); }
-.pun-home .laravel-list code { font: 500 .82em/1 var(--blume-font-mono); padding: 2px 5px; border-radius: 6px; background: var(--pun-paper-2); color: var(--pun-ink); }
 
 /* ---------- one config ---------- */
 .pun-home .config-sec, .pun-home .agents-sec { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
@@ -169,7 +160,7 @@
   .pun-home .hero { grid-template-columns: 1.4fr .6fr; gap: 40px; }
 }
 @media (max-width: 960px) {
-  .pun-home .hero, .pun-home .speed-sec, .pun-home .config-sec, .pun-home .agents-sec, .pun-home .laravel-sec { grid-template-columns: 1fr; gap: 40px; }
+  .pun-home .hero, .pun-home .speed-sec, .pun-home .config-sec, .pun-home .agents-sec { grid-template-columns: 1fr; gap: 40px; }
   .pun-home .stage { max-width: 460px; width: 100%; justify-self: center; }
   .pun-home .trio, .pun-home .trio.four { grid-template-columns: 1fr; }
   .pun-home .points.four { grid-template-columns: 1fr 1fr; }
@@ -178,7 +169,7 @@
   .pun-home .cta-mascot { left: 50%; top: -60px; bottom: auto; width: 240px; margin-left: -120px; }
 }
 @media (max-width: 560px) {
-  .pun-home .laravel-list, .pun-home .points.four { grid-template-columns: 1fr; }
+  .pun-home .points.four { grid-template-columns: 1fr; }
   .pun-home .strip { grid-template-columns: 1fr; } .pun-home .strip p, .pun-home .strip code { grid-column: 1; grid-row: auto; }
   .pun-home .term-body { font-size: 12.5px; padding: 18px 16px 22px; }
   .pun-home .cmd .nobr { white-space: normal; }
