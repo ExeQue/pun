@@ -26,7 +26,7 @@ use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 use pun_phpstan::types::Tri;
 
-use super::{Checker, assign, dead_code, variables};
+use super::{Checker, Switches, assign, dead_code, variables};
 
 #[path = "type_origins.rs"]
 mod origins;
@@ -115,38 +115,73 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for TypedExpressions<'_, 'arena> 
     }
 }
 
-pub(super) fn infer<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    program: &'arena Program<'arena>,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    level: u8,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    extra: Vec<Span>,
+/// One parsed file and the project settings that every analyser run over it reads.
+#[derive(Clone, Copy)]
+pub(super) struct Run<'a, 'arena> {
+    pub(super) arena: &'arena LocalArena,
+    pub(super) file: &'a File,
+    pub(super) program: &'arena Program<'arena>,
+    pub(super) names: &'a ResolvedNames<'arena>,
+    pub(super) codebase: &'a CodebaseMetadata,
+    pub(super) php_version: u32,
+    pub(super) switches: Switches,
+    pub(super) comments: &'a super::Comments,
+    pub(super) functions: &'a [(Span, origins::Function)],
+}
+
+/// What the checker's own run over a file asks for beyond [`analyse`]'s expression types.
+pub(super) struct Request<'a> {
+    pub(super) level: u8,
+    pub(super) extra: Vec<Span>,
+    pub(super) calls: Vec<CallScopeRequest>,
+    pub(super) larastan: Option<&'a super::Larastan>,
+    pub(super) trait_class: Option<&'a str>,
+}
+
+/// What an analyser run found, keyed by expression span.
+#[derive(Default)]
+pub(super) struct Inferred {
+    pub(super) types: HashMap<Span, TUnion>,
+    pub(super) defined: HashMap<Span, Tri>,
+    pub(super) origins: Origins,
+    pub(super) call_terminations: HashMap<(u32, u32), bool>,
+    pub(super) named_call_scopes: HashMap<Span, Vec<NamedCallScope>>,
+    pub(super) keep_void_types: HashMap<Span, TUnion>,
+    pub(super) native_types: HashMap<Span, TUnion>,
+    pub(super) nullsafe_method_receiver_types: HashMap<Span, TUnion>,
+    pub(super) property_offset_writes: HashMap<Span, TUnion>,
+    pub(super) variables: variables::Observations,
+    pub(super) variable_writes: HashMap<Span, mago_analyzer::variable_flow::VariableWritesNode>,
+    pub(super) property_initializations: HashMap<Span, PropertyInitializationCertainty>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Variables {
+    Observe,
+    Skip,
+}
+
+struct Observed<'a> {
+    wanted: Vec<Span>,
+    watched: Vec<Span>,
     calls: Vec<CallScopeRequest>,
-    variables: &mut variables::Observations,
-    variable_writes: &mut HashMap<Span, mago_analyzer::variable_flow::VariableWritesNode>,
-    property_initializations: &mut HashMap<Span, PropertyInitializationCertainty>,
-    larastan: Option<&super::Larastan>,
-    trait_class: Option<&str>,
-    comments: &super::Comments,
-    functions: &[(Span, origins::Function)],
+    variables: Variables,
+    initializations: Vec<(Span, PropertyInitializationRequest)>,
+    by_ref: Vec<(Span, Vec<Vec<u8>>)>,
+    larastan: Option<&'a super::Larastan>,
+    trait_class: Option<&'a str>,
     template_arguments: bool,
-) -> (
-    HashMap<Span, TUnion>,
-    HashMap<Span, Tri>,
-    Origins,
-    HashMap<(u32, u32), bool>,
-    HashMap<Span, Vec<NamedCallScope>>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-) {
+}
+
+pub(super) fn infer(run: &Run<'_, '_>, request: Request<'_>) -> Inferred {
+    let Run {
+        program,
+        names,
+        codebase,
+        php_version,
+        ..
+    } = *run;
+    let level = request.level;
     let mut wanted = TypedExpressions {
         spans: Vec::new(),
         names,
@@ -156,7 +191,7 @@ pub(super) fn infer<'arena>(
     };
     wanted.walk_program(program, &mut ());
     let mut wanted = wanted.spans;
-    wanted.extend(extra);
+    wanted.extend(request.extra);
     wanted.extend(super::unset::expressions(program).0);
     wanted.extend(dead_code::flow_types(program, level));
     let (typed, mut watched, initializations) = dead_code::coalesce_types(program, level);
@@ -171,96 +206,52 @@ pub(super) fn infer<'arena>(
     };
     wanted.extend(by_ref.iter().map(|(body, _)| *body));
     analyse_observed(
-        arena,
-        file,
-        program,
-        names,
-        codebase,
-        php_version,
-        pollute_scope_with_loop_initial_assignments,
-        pollute_scope_with_always_iterable_foreach,
-        pollute_scope_with_block,
-        wanted,
-        watched,
-        calls,
-        Some(variables),
-        Some(variable_writes),
-        initializations,
-        Some(property_initializations),
-        by_ref,
-        larastan,
-        trait_class,
-        comments,
-        functions,
-        template_arguments,
+        run,
+        Observed {
+            wanted,
+            watched,
+            calls: request.calls,
+            variables: Variables::Observe,
+            initializations,
+            by_ref,
+            larastan: request.larastan,
+            trait_class: request.trait_class,
+            template_arguments: run.switches.contains(Switches::TEMPLATE_ARGUMENTS),
+        },
     )
 }
 
-pub(super) fn analyse<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    program: &'arena Program<'arena>,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    wanted: Vec<Span>,
-    watched: Vec<Span>,
-    comments: &super::Comments,
-    functions: &[(Span, origins::Function)],
-) -> (
-    HashMap<Span, TUnion>,
-    HashMap<Span, Tri>,
-    Origins,
-    HashMap<(u32, u32), bool>,
-    HashMap<Span, Vec<NamedCallScope>>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-) {
+pub(super) fn analyse(run: &Run<'_, '_>, wanted: Vec<Span>, watched: Vec<Span>) -> Inferred {
     analyse_observed(
-        arena,
-        file,
-        program,
-        names,
-        codebase,
-        php_version,
-        pollute_scope_with_loop_initial_assignments,
-        pollute_scope_with_always_iterable_foreach,
-        pollute_scope_with_block,
-        wanted,
-        watched,
-        Vec::new(),
-        None,
-        None,
-        Vec::new(),
-        None,
-        Vec::new(),
-        None,
-        None,
-        comments,
-        functions,
-        false,
+        run,
+        Observed {
+            wanted,
+            watched,
+            calls: Vec::new(),
+            variables: Variables::Skip,
+            initializations: Vec::new(),
+            by_ref: Vec::new(),
+            larastan: None,
+            trait_class: None,
+            template_arguments: false,
+        },
     )
 }
 
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the analyser run's inputs, as analyse_observed() takes them"
-)]
 fn observe_template_arguments<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
+    run: &Run<'_, 'arena>,
     program: &'arena Program<'arena>,
     larastan: Option<&super::Larastan>,
-    php_version: u32,
     settings: &Settings,
 ) -> Resolutions {
+    let Run {
+        arena,
+        file,
+        names,
+        codebase,
+        php_version,
+        ..
+    } = *run;
     let mut registry = super::return_types::registry(&file.contents, names, larastan);
     super::regex_shapes::register(&mut registry, php_version);
     let mut settings = settings.clone();
@@ -280,47 +271,36 @@ fn observe_template_arguments<'arena>(
     }
 }
 
-fn analyse_observed<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    program: &'arena Program<'arena>,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    wanted: Vec<Span>,
-    watched: Vec<Span>,
-    mut calls: Vec<CallScopeRequest>,
-    variables: Option<&mut variables::Observations>,
-    variable_writes: Option<&mut HashMap<Span, mago_analyzer::variable_flow::VariableWritesNode>>,
-    initializations: Vec<(Span, PropertyInitializationRequest)>,
-    property_initializations: Option<&mut HashMap<Span, PropertyInitializationCertainty>>,
-    by_ref: Vec<(Span, Vec<Vec<u8>>)>,
-    larastan: Option<&super::Larastan>,
-    trait_class: Option<&str>,
-    comments: &super::Comments,
-    functions: &[(Span, origins::Function)],
-    template_arguments: bool,
-) -> (
-    HashMap<Span, TUnion>,
-    HashMap<Span, Tri>,
-    Origins,
-    HashMap<(u32, u32), bool>,
-    HashMap<Span, Vec<NamedCallScope>>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-    HashMap<Span, TUnion>,
-) {
-    let mut wanted = wanted;
+fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
+    let Run {
+        arena,
+        file,
+        program,
+        names,
+        codebase,
+        php_version,
+        switches,
+        comments,
+        functions,
+    } = *run;
+    let Observed {
+        mut wanted,
+        watched,
+        mut calls,
+        variables: observe_variables,
+        initializations,
+        by_ref,
+        larastan,
+        trait_class,
+        template_arguments,
+    } = observed;
+    let observe_variables = observe_variables == Variables::Observe;
     wanted.extend(
         calls
             .iter()
             .flat_map(|call| call.expressions.iter().copied()),
     );
-    let (compact_calls, offset_names) = if variables.is_some() {
+    let (compact_calls, offset_names) = if observe_variables {
         let (typed, compact_calls, offset_names) = variables::typed_expressions(program, names);
         wanted.extend(typed);
         (compact_calls, offset_names)
@@ -328,7 +308,7 @@ fn analyse_observed<'arena>(
         (HashSet::new(), HashSet::new())
     };
     if wanted.is_empty() {
-        return Default::default();
+        return Inferred::default();
     }
     let origins = origins::collect(file, comments, functions, program, names, codebase);
     for call in &mut calls {
@@ -347,13 +327,14 @@ fn analyse_observed<'arena>(
     let mut registry = super::return_types::registry(&file.contents, names, larastan);
     super::regex_shapes::register(&mut registry, php_version);
     let found = Arc::new(Mutex::new(Found {
-        allowed: variables
-            .as_ref()
-            .map(|_| variables::allowed_expressions(program))
-            .unwrap_or_default(),
+        allowed: if observe_variables {
+            variables::allowed_expressions(program)
+        } else {
+            HashSet::default()
+        },
         ..Found::default()
     }));
-    if !watched.is_empty() || variables.is_some() {
+    if !watched.is_empty() || observe_variables {
         let ids = watched
             .into_iter()
             .map(|s| {
@@ -392,12 +373,12 @@ fn analyse_observed<'arena>(
     }
     let mut settings = Settings::new(crate::codebase::php_version(php_version));
     settings.pollute_scope_with_loop_initial_assignments =
-        pollute_scope_with_loop_initial_assignments;
+        switches.contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS);
     settings.pollute_scope_with_always_iterable_foreach =
-        pollute_scope_with_always_iterable_foreach;
-    settings.pollute_scope_with_block = pollute_scope_with_block;
+        switches.contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH);
+    settings.pollute_scope_with_block = switches.contains(Switches::POLLUTE_SCOPE_WITH_BLOCK);
     settings.track_native_types = true;
-    settings.track_variable_flow = variable_writes.is_some();
+    settings.track_variable_flow = observe_variables;
     settings.call_scope_observations = calls;
     settings.trait_context_class = trait_class.map(|class| mago_word::word(class.as_bytes()));
     settings.mixin_receiver_binding = larastan.is_some();
@@ -416,17 +397,9 @@ fn analyse_observed<'arena>(
         ..program.clone()
     });
     if template_arguments {
-        settings.template_arguments =
-            TemplateArgumentMode::Resolve(Arc::new(observe_template_arguments(
-                arena,
-                file,
-                names,
-                codebase,
-                program,
-                larastan,
-                php_version,
-                &settings,
-            )));
+        settings.template_arguments = TemplateArgumentMode::Resolve(Arc::new(
+            observe_template_arguments(run, program, larastan, &settings),
+        ));
     }
     let analyzer = Analyzer::new(arena, file, names, codebase, &registry, settings);
     let mut result = AnalysisResult::new(SymbolReferences::new());
@@ -434,7 +407,7 @@ fn analyse_observed<'arena>(
         analyzer.analyze_with_artifacts(program, &mut result)
     }));
     let Ok(Ok(artifacts)) = analysed else {
-        return Default::default();
+        return Inferred::default();
     };
     let mut keep_void_types: HashMap<Span, TUnion> = wanted
         .iter()
@@ -465,24 +438,31 @@ fn analyse_observed<'arena>(
             native_types.remove(&span);
         }
     }
-    if let Some(variables) = variables {
-        *variables = std::mem::take(&mut found.variables);
-        variables.allowed = std::mem::take(&mut found.allowed);
+    let mut inferred = Inferred {
+        call_terminations: artifacts.call_terminations.into_iter().collect(),
+        named_call_scopes: artifacts.call_scope_observations.into_iter().collect(),
+        nullsafe_method_receiver_types: artifacts
+            .nullsafe_method_receiver_types
+            .into_iter()
+            .collect(),
+        property_offset_writes: artifacts.property_offset_writes.into_iter().collect(),
+        ..Inferred::default()
+    };
+    if observe_variables {
+        inferred.variables = std::mem::take(&mut found.variables);
+        inferred.variables.allowed = std::mem::take(&mut found.allowed);
         if let Some(o) = param_out {
-            variables.param_out = std::mem::take(
+            inferred.variables.param_out = std::mem::take(
                 &mut *o
                     .found
                     .lock()
                     .expect("no hook panics while holding the lock"),
             );
         }
-    }
-    if let Some(variable_writes) = variable_writes {
-        variable_writes.extend(artifacts.variable_writes);
-    }
-    if let Some(property_initializations) = property_initializations {
-        property_initializations.extend(initializations.into_iter().filter_map(
-            |(operand, request)| {
+        inferred.variable_writes = artifacts.variable_writes.into_iter().collect();
+        inferred.property_initializations = initializations
+            .into_iter()
+            .filter_map(|(operand, request)| {
                 Some((
                     operand,
                     *artifacts
@@ -490,23 +470,17 @@ fn analyse_observed<'arena>(
                         .get(&request.expression)?
                         .get(&request.property)?,
                 ))
-            },
-        ));
+            })
+            .collect();
     }
-    (
+    Inferred {
         types,
-        found.defined,
+        defined: found.defined,
         origins,
-        artifacts.call_terminations.into_iter().collect(),
-        artifacts.call_scope_observations.into_iter().collect(),
         keep_void_types,
         native_types,
-        artifacts
-            .nullsafe_method_receiver_types
-            .into_iter()
-            .collect(),
-        artifacts.property_offset_writes.into_iter().collect(),
-    )
+        ..inferred
+    }
 }
 
 #[derive(Default)]

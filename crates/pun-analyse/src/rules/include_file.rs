@@ -2,11 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
-use mago_allocator::LocalArena;
-use mago_codex::metadata::CodebaseMetadata;
 use mago_codex::ttype::union::TUnion;
 use mago_database::file::File;
-use mago_names::ResolvedNames;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
@@ -46,20 +43,8 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Wanted {
     }
 }
 
-pub(super) fn prepare<'arena>(
-    arena: &'arena LocalArena,
-    file: &File,
-    program: &'arena Program<'arena>,
-    names: &ResolvedNames<'arena>,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    settings: &Settings,
-    comments: &super::Comments,
-    functions: &[(Span, mago_codex::symbol::SymbolIdentifier)],
-) -> (Vec<Span>, State) {
+pub(super) fn prepare(run: &infer::Run<'_, '_>, settings: &Settings) -> (Vec<Span>, State) {
+    let program = run.program;
     let mut wanted = Wanted {
         spans: Vec::new(),
         in_include: 0,
@@ -74,26 +59,16 @@ pub(super) fn prepare<'arena>(
         );
     }
     let file = File::new(
-        file.name.clone(),
-        file.file_type,
+        run.file.name.clone(),
+        run.file.file_type,
         None,
-        file.contents.clone(),
+        run.file.contents.clone(),
     );
-    let (types, _, _, _, _, _, _, _, _) = infer::analyse(
-        arena,
-        &file,
-        program,
-        names,
-        codebase,
-        php_version,
-        pollute_scope_with_loop_initial_assignments,
-        pollute_scope_with_always_iterable_foreach,
-        pollute_scope_with_block,
-        wanted.spans,
-        Vec::new(),
-        comments,
-        functions,
-    );
+    let run = infer::Run {
+        file: &file,
+        ..*run
+    };
+    let types = infer::analyse(&run, wanted.spans, Vec::new()).types;
     (Vec::new(), State { types })
 }
 

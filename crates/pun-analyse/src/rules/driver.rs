@@ -553,36 +553,25 @@ fn checker<'a, 'arena>(
                 .checks
                 .contains(crate::ExceptionChecks::MISSING_CHECKED_EXCEPTION_IN_THROWS),
     ));
-    let (include_typed, include_state) = super::include_file::prepare(
+    let run = super::infer::Run {
         arena,
         file,
         program,
         names,
         codebase,
         php_version,
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-        &project.include_file,
-        &facts.comments,
+        switches: project.switches,
+        comments: &facts.comments,
         functions,
-    );
+    };
+    let (include_typed, include_state) = super::include_file::prepare(&run, &project.include_file);
     typed.extend(include_typed);
-    let mut variables = super::variables::Observations::default();
     let calls = if project.method_rules.call_methods {
         super::named_argument::requests(program)
     } else {
         Vec::new()
     };
-    let mut variable_writes = HashMap::new();
-    let mut property_initializations = HashMap::new();
-    let (
+    let super::infer::Inferred {
         mut types,
         defined,
         origins,
@@ -592,51 +581,21 @@ fn checker<'a, 'arena>(
         native_types,
         nullsafe_method_receiver_types,
         property_offset_writes,
-    ) = infer(
-        arena,
-        file,
-        program,
-        names,
-        codebase,
-        php_version,
-        project.level,
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-        project
-            .switches
-            .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-        typed,
-        calls,
-        &mut variables,
-        &mut variable_writes,
-        &mut property_initializations,
-        project.larastan.as_ref(),
-        trait_class,
-        &facts.comments,
-        functions,
-        project.switches.contains(Switches::TEMPLATE_ARGUMENTS),
+        variables,
+        variable_writes,
+        property_initializations,
+    } = infer(
+        &run,
+        super::infer::Request {
+            level: project.level,
+            extra: typed,
+            calls,
+            larastan: project.larastan.as_ref(),
+            trait_class,
+        },
     );
     if project.level >= 4 {
-        let (subjects, unknown) = super::dead_code::match_subject_types(
-            file,
-            program,
-            codebase,
-            php_version,
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-            project
-                .switches
-                .contains(Switches::POLLUTE_SCOPE_WITH_BLOCK),
-            functions,
-        );
+        let (subjects, unknown) = super::dead_code::match_subject_types(&run);
         types.extend(subjects);
         for span in unknown {
             types.remove(&span);

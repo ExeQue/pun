@@ -527,20 +527,20 @@ mod tests {
         let facts = super::super::Facts::of(&file.contents, program, true);
         let function_likes = std::collections::HashMap::new();
         let natives = super::super::driver::Natives::load(80400);
-        let (_, include_state) = include_file::prepare(
-            &arena,
-            &file,
+        let run = super::super::infer::Run {
+            arena: &arena,
+            file: &file,
             program,
-            &names,
-            &codebase,
-            80400,
-            true,
-            true,
-            true,
-            &settings,
-            &facts.comments,
-            &[],
-        );
+            names: &names,
+            codebase: &codebase,
+            php_version: 80400,
+            switches: super::super::Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS
+                | super::super::Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH
+                | super::super::Switches::POLLUTE_SCOPE_WITH_BLOCK,
+            comments: &facts.comments,
+            functions: &[],
+        };
+        let (_, include_state) = include_file::prepare(&run, &settings);
         let exceptions = crate::Exceptions::default();
         let c = Checker {
             file: &file,

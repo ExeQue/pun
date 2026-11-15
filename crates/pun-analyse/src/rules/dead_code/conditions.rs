@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use mago_allocator::LocalArena;
-use mago_codex::metadata::CodebaseMetadata;
 use mago_database::file::File;
 
 use mago_codex::assertion::Assertion;
@@ -2246,15 +2245,9 @@ pub(crate) fn conditions_in_traits(errors: Vec<Error>) -> Vec<Error> {
 }
 
 pub(in super::super) fn match_subject_types(
-    file: &File,
-    program: &Program,
-    codebase: &CodebaseMetadata,
-    php_version: u32,
-    pollute_scope_with_loop_initial_assignments: bool,
-    pollute_scope_with_always_iterable_foreach: bool,
-    pollute_scope_with_block: bool,
-    functions: &[(Span, mago_codex::symbol::SymbolIdentifier)],
+    run: &super::super::infer::Run<'_, '_>,
 ) -> (HashMap<Span, TUnion>, Vec<Span>) {
+    let (file, program) = (run.file, run.program);
     struct Matches(Vec<(Span, usize, usize, usize)>, usize);
     impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Matches {
         fn walk_in_match(&mut self, m: &'ast Match<'arena>, (): &mut ()) {
@@ -2316,24 +2309,18 @@ pub(in super::super) fn match_subject_types(
         let arena = LocalArena::new();
         let (program, names) = parse(&arena, &copy);
         let comments = super::super::Comments::of(&copy.contents, true);
-        types.extend(
-            super::super::infer::analyse(
-                &arena,
-                &copy,
-                program,
-                &names,
-                codebase,
-                php_version,
-                pollute_scope_with_loop_initial_assignments,
-                pollute_scope_with_always_iterable_foreach,
-                pollute_scope_with_block,
-                subjects,
-                Vec::new(),
-                &comments,
-                functions,
-            )
-            .0,
-        );
+        let copy_run = super::super::infer::Run {
+            arena: &arena,
+            file: &copy,
+            program,
+            names: &names,
+            codebase: run.codebase,
+            php_version: run.php_version,
+            switches: run.switches,
+            comments: &comments,
+            functions: run.functions,
+        };
+        types.extend(super::super::infer::analyse(&copy_run, subjects, Vec::new()).types);
     }
     (types, unknown)
 }

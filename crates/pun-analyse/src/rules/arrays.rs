@@ -981,27 +981,25 @@ fn copied_key(c: &Checker, at: Span) -> Option<Type> {
         .min_by_key(|k| k.span.end.offset - k.span.start.offset);
     let expression = find.value?;
     let value = key_type(c, expression, &names, context.map(Box::as_ref));
-    let value = super::infer::analyse(
-        &arena,
-        &file,
+    let run = super::infer::Run {
+        arena: &arena,
+        file: &file,
         program,
-        &names,
-        c.codebase,
-        c.php_version,
-        c.on(crate::rules::Switches::POLLUTE_SCOPE_WITH_LOOP_INITIAL_ASSIGNMENTS),
-        c.on(crate::rules::Switches::POLLUTE_SCOPE_WITH_ALWAYS_ITERABLE_FOREACH),
-        c.on(crate::rules::Switches::POLLUTE_SCOPE_WITH_BLOCK),
-        vec![expression.span()],
-        Vec::new(),
-        &c.file_facts(at.file_id)?.comments,
-        c.function_likes
+        names: &names,
+        codebase: c.codebase,
+        php_version: c.php_version,
+        switches: c.switches,
+        comments: &c.file_facts(at.file_id)?.comments,
+        functions: c
+            .function_likes
             .get(&at.file_id)
             .map_or(&[][..], Vec::as_slice),
-    )
-    .0
-    .get(&expression.span())
-    .map(|t| c.to_phpstan(t))
-    .or(value);
+    };
+    let value = super::infer::analyse(&run, vec![expression.span()], Vec::new())
+        .types
+        .get(&expression.span())
+        .map(|t| c.to_phpstan(t))
+        .or(value);
     c.arrays
         .constants
         .lock()
