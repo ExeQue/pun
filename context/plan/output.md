@@ -181,7 +181,7 @@ silent:
   older `>`-marker frame, so format and lint errors look alike. The message is PHP's without `Parse error: ` and the
   final ` on line N.`; the span is empty at the first non-blank column of the line PHP names (the last line when PHP
   names the one after it). A fixer that produced invalid code, or threw, is a run error naming the file, with the hint
-  "a rule failed on this file; please report it at https://github.com/punphp/pun/issues".
+  "a rule failed on this file; please report it at https://github.com/shipfastlabs/pun/issues".
 - **Layout:** file lines (sorted by path, `--fix`'s remaining fixes as ✖ lines), a blank line, the error blocks, then
   the summary. `-v` adds a dim ✔ line per unchanged (or empty) file.
 - **`-v` diff** under each changed file: `   <old> <new> │ <sign><line>`, both numbers right-aligned to the widest one

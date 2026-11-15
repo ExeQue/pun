@@ -7,7 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path};
 use std::process::Command;
 
-const REPO: &str = "punphp/pun";
+const REPO: &str = "shipfastlabs/pun";
 
 #[derive(clap::Args)]
 pub(crate) struct SelfUpdateArgs {

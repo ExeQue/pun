@@ -670,7 +670,7 @@ fn apply(root: &Path, edits: &[(PathBuf, Vec<u8>, Vec<u8>)], dry_run: bool) -> R
 }
 
 /// Where unsupported items are asked for (context/plan/migrate.md §3).
-const PR: &str = "https://github.com/punphp/pun";
+const PR: &str = "https://github.com/shipfastlabs/pun";
 
 /// A line's mark: ✔ moved or written, ⚠ named and skipped, · left alone.
 #[derive(Clone, Copy, PartialEq, Debug)]

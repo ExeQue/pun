@@ -465,7 +465,7 @@ fn migrate() {
     assert_eq!(code, Some(0));
     assert!(
         out.starts_with(&format!(
-            "pun migrate: dry-run, {} to rewrite in 1 file (from pint.json, Ts)\npint.json migrate\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n--- pun.toml\n+++ pun.toml\n",
+            "pun migrate: dry-run, {} to rewrite in 1 file (from pint.json, Ts)\npint.json migrate\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n--- pun.toml\n+++ pun.toml\n",
             summary.replacen("pun.toml", "pun.toml to write", 1)
         )),
         "{out}"
@@ -475,7 +475,7 @@ fn migrate() {
         agent(&d, &["migrate"]),
         (
             format!(
-                "pun migrate: ok, {} rewritten in 1 file (from pint.json, Ts)\npint.json migrated\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n",
+                "pun migrate: ok, {} rewritten in 1 file (from pint.json, Ts)\npint.json migrated\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n",
                 summary.replacen("pun.toml", "pun.toml written", 1)
             ),
             Some(0)
@@ -484,7 +484,7 @@ fn migrate() {
     assert_eq!(
         agent(&d, &["migrate"]).0,
         format!(
-            "pun migrate: ok, {} rewritten in 0 files (from pint.json, Ts)\npint.json migrated\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n",
+            "pun migrate: ok, {} rewritten in 0 files (from pint.json, Ts)\npint.json migrated\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n",
             summary.replacen("pun.toml", "pun.toml up to date", 1)
         )
     );
@@ -505,7 +505,7 @@ fn migrate() {
     assert_eq!(
         agent(&d, &["migrate"]),
         (
-            "pun migrate: ok, pun.toml written (preset empty, 0 format rules, 0 lint rules), ignore comments rewritten in 0 files (from pint.json, Ts)\npint.json migrated\npint.json unsupported Acme/x: not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set)\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n".into(),
+            "pun migrate: ok, pun.toml written (preset empty, 0 format rules, 0 lint rules), ignore comments rewritten in 0 files (from pint.json, Ts)\npint.json migrated\npint.json unsupported Acme/x: not a PHP-CS-Fixer or Pint rule Pun knows (a custom fixer or rule set)\napp/U.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n".into(),
             Some(0)
         )
     );

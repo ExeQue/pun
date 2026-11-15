@@ -683,7 +683,7 @@ fn fixer_error(r: &Renderer, f: &FileResult) -> String {
         line: None,
         message: console::lossy(&f.message),
         hint: Some(
-            "a rule failed on this file; please report it at https://github.com/punphp/pun/issues"
+            "a rule failed on this file; please report it at https://github.com/shipfastlabs/pun/issues"
                 .into(),
         ),
     })

@@ -59,7 +59,7 @@ $binary = "$binDir/pun-$version-$target";
 
 if (! is_file($binary)) {
     $archive = "punphp-$target.tar.gz";
-    $url = "https://github.com/punphp/pun/releases/download/v$version/$archive";
+    $url = "https://github.com/shipfastlabs/pun/releases/download/v$version/$archive";
     fwrite(STDERR, "pun: downloading $url\n");
     $data = pun_download($url);
     $expected = strtok(pun_download("$url.sha256"), " \n");

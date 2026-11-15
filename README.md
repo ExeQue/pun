@@ -35,7 +35,7 @@ Thank you for considering contributing to Pun! Read [AGENTS.md](AGENTS.md) for h
 
 ## Security Vulnerabilities
 
-Please review [our security policy](https://github.com/punphp/pun/security/policy) on how to report security vulnerabilities.
+Please review [our security policy](https://github.com/shipfastlabs/pun/security/policy) on how to report security vulnerabilities.
 
 ## Credits
 

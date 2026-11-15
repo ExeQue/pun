@@ -50,7 +50,7 @@ export default defineConfig({
     links: [
       { label: "Docs", href: "/docs" },
       { label: "Parity", href: "/docs/parity" },
-      { label: "Report an issue", href: "https://github.com/punphp/pun/issues" },
+      { label: "Report an issue", href: "https://github.com/shipfastlabs/pun/issues" },
     ],
   },
 
@@ -65,7 +65,7 @@ export default defineConfig({
     organization: {
       name: "Pun",
       logo: "/app-icon.svg",
-      sameAs: ["https://github.com/punphp/pun"],
+      sameAs: ["https://github.com/shipfastlabs/pun"],
     },
   },
 });

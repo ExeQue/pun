@@ -98,7 +98,7 @@ fn release(tag: &str, archive: &[u8], sum: Option<&str>) -> Vec<(String, Vec<u8>
     let name = format!("punphp-{}.tar.gz", target());
     let digest = sha256(archive);
     let sum = format!("{} *{name}\n\n", sum.unwrap_or(&digest));
-    let url = format!("/punphp/pun/releases/download/{tag}/{name}");
+    let url = format!("/shipfastlabs/pun/releases/download/{tag}/{name}");
     vec![
         (url.clone(), response("200 OK", archive)),
         (format!("{url}.sha256"), response("200 OK", sum.as_bytes())),
@@ -194,7 +194,7 @@ fn releases(home: &Path) -> (String, Vec<u8>) {
     // A response that ends before its Content-Length.
     routes.push((
         format!(
-            "/punphp/pun/releases/download/v9.9.4/punphp-{}.tar.gz",
+            "/shipfastlabs/pun/releases/download/v9.9.4/punphp-{}.tar.gz",
             target()
         ),
         b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\ncut short".to_vec(),
@@ -225,7 +225,7 @@ fn fails_without_a_release() {
     let (err, code) = run(&pun, Some(&server), &empty, &[], &[]);
     assert!(
         err.contains(&format!(
-            "download failed: {server}/punphp/pun/releases.atom"
+            "download failed: {server}/shipfastlabs/pun/releases.atom"
         )),
         "{err}"
     );
@@ -238,7 +238,7 @@ fn finds_the_latest_release() {
     let check = |routes: Vec<(String, Vec<u8>)>, args: &[&str]| {
         run(&pun, Some(&serve(routes)), &empty, &[], args)
     };
-    let api = "/repos/punphp/pun/releases";
+    let api = "/repos/shipfastlabs/pun/releases";
 
     let latest = format!(r#"{{"tag_name": "v{CURRENT}", "prerelease": false}}"#);
     let (err, code) = check(
@@ -273,14 +273,14 @@ fn finds_the_latest_release() {
     // When the API's rate limit is used up: the releases feed, in the shape github.com serves it.
     let head = r#"<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
-  <id>tag:github.com,2008:https://github.com/punphp/pun/releases</id>
-  <link type="text/html" rel="alternate" href="https://github.com/punphp/pun/releases"/>
-  <link type="application/atom+xml" rel="self" href="https://github.com/punphp/pun/releases.atom"/>
+  <id>tag:github.com,2008:https://github.com/shipfastlabs/pun/releases</id>
+  <link type="text/html" rel="alternate" href="https://github.com/shipfastlabs/pun/releases"/>
+  <link type="application/atom+xml" rel="self" href="https://github.com/shipfastlabs/pun/releases.atom"/>
   <title>Release notes from pun</title>
 "#;
     let entry = r#"  <entry>
     <id>tag:github.com,2008:Repository/1414552403/v99.1.0</id>
-    <link rel="alternate" type="text/html" href="https://github.com/punphp/pun/releases/tag/v99.1.0"/>
+    <link rel="alternate" type="text/html" href="https://github.com/shipfastlabs/pun/releases/tag/v99.1.0"/>
     <title>v99.1.0</title>
   </entry>
 "#;
@@ -291,7 +291,7 @@ fn finds_the_latest_release() {
                 response("403 rate limit exceeded", b"{}"),
             ),
             (
-                "/punphp/pun/releases.atom".into(),
+                "/shipfastlabs/pun/releases.atom".into(),
                 response("200 OK", body.as_bytes()),
             ),
         ]
@@ -326,7 +326,7 @@ fn rejects_a_download_that_does_not_verify() {
     let (err, code) = run(&pun, server, &empty, &[], &["9.9.4"]);
     assert!(
         err.contains(&format!(
-            "download failed: {url}/punphp/pun/releases/download/v9.9.4/{name}"
+            "download failed: {url}/shipfastlabs/pun/releases/download/v9.9.4/{name}"
         )),
         "{err}"
     );
@@ -445,7 +445,7 @@ fn installs_a_verified_release() {
     assert_eq!(
         log,
         format!(
-            "attestation\nverify\n{file}\n--repo\npunphp/pun\n--signer-workflow\ngithub.com/punphp/pun/.github/workflows/release.yml\n--source-ref\nrefs/tags/v9.9.9\n--deny-self-hosted-runners\n"
+            "attestation\nverify\n{file}\n--repo\nshipfastlabs/pun\n--signer-workflow\ngithub.com/shipfastlabs/pun/.github/workflows/release.yml\n--source-ref\nrefs/tags/v9.9.9\n--deny-self-hosted-runners\n"
         )
     );
     assert!(file.starts_with(&tmp.display().to_string()), "{file}");

@@ -39,7 +39,7 @@ result cache: every run checks every file (Pushpak, 2026-11-05).
 
 **Delegate mode (removed).** It ran a rule Pun hadn't ported through real PHP-CS-Fixer in long-lived `php`
 workers. Pun runs no upstream PHP (config.md Build 6). An unported rule in pun.toml is a config error; `pun migrate`
-names it, skips it, and asks for a PR to punphp/pun.
+names it, skips it, and asks for a PR to shipfastlabs/pun.
 
 **Blade.** With the `laravel-blade` rule on, `.blade.php` files go through Prettier and prettier-plugin-blade in Node
 (Bun in a project with a Bun lock file), exactly as Pint 1.32 does it. A few threads of their own format the
@@ -501,10 +501,10 @@ Answered 2026-10-17 (Pushpak), over three rounds:
 - **No pun.toml: stop**, with "Run `pun migrate`, or `pun init` for a new project".
 - **Blade stays on Node + Prettier** for now; native Blade after 1.0.
 - **No PHP fallback for unported rules.** Pun never runs PHP-CS-Fixer or Pint. `pun migrate` names each unsupported
-  rule, skips it, and asks for a PR to punphp/pun:
+  rule, skips it, and asks for a PR to shipfastlabs/pun:
   ```
   ⚠ phpdoc_tag_casing  not supported by Pun yet; skipped
-    Want it? Send a PR to https://github.com/punphp/pun
+    Want it? Send a PR to https://github.com/shipfastlabs/pun
   ```
   Delegate mode (pun-delegate, `--native-only`, `--explain`'s delegated part) and embedded PHP (pun-php) are removed.
   Custom fixer classes in `.php-cs-fixer.php` are unsupported the same way.

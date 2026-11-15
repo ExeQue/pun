@@ -4,7 +4,7 @@
     "type": "library",
     "license": "MIT",
     "keywords": ["php", "formatter", "linter", "static analysis", "pint", "rector", "phpstan", "laravel", "dev"],
-    "homepage": "https://github.com/punphp/pun",
+    "homepage": "https://github.com/shipfastlabs/pun",
     "require": {
         "php": ">=8.4"
     },

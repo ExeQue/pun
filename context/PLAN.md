@@ -65,7 +65,7 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 
 ### Product
 
-- **Home and licence:** github.com/punphp/pun, MIT (LICENSE, licenses/THIRD_PARTY_NOTICES.md). Not a shipfastlabs project. The
+- **Home and licence:** github.com/shipfastlabs/pun, MIT (LICENSE, licenses/THIRD_PARTY_NOTICES.md). Not a shipfastlabs project. The
   repo is public (2026-11-11). The docs site is https://pun.laravel.cloud.
 - **Positioning:** Pun is to PHP what Bun is to JavaScript. Laravel first, PHP 8.4+ projects only.
 - **1.0 ships everything at once.** Apart from the 0.1.0 betas and v0.1.0 (§0), nothing is published or tagged until `pun format`, `pun analyse`, `pun lint` and

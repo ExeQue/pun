@@ -1123,7 +1123,7 @@ fn fixer_exception_like_pint() {
     );
     let got = run(&[PUN[0], "lint"], &cx.dir, PLAIN);
     assert!(
-        got.stdout.contains(&format!("✖ app/U.php  {message}\n  a rule failed on this file; please report it at https://github.com/punphp/pun/issues\n")),
+        got.stdout.contains(&format!("✖ app/U.php  {message}\n  a rule failed on this file; please report it at https://github.com/shipfastlabs/pun/issues\n")),
         "{got:?}"
     );
     assert_eq!(got.code, Some(2));

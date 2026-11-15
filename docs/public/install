@@ -13,7 +13,7 @@
 
 set -eu
 
-PUN_REPO='punphp/pun'
+PUN_REPO='shipfastlabs/pun'
 
 say() {
     printf 'pun-installer: %s\n' "$1" >&2

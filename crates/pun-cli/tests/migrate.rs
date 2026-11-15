@@ -35,7 +35,7 @@ fn counts(out: &str) -> String {
 const PINT: &str = r#"{"preset":"empty","rules":{"array_syntax":true,"final_class":true}}"#;
 const TOML: &str = "# Written by `pun migrate` from pint.json.\n[format]\npreset = \"empty\"\n\n[format.rules]\n\"arrays/syntax\" = true\n\n[lint.rules]\n\"style/require-final-class\" = \"error\"\n";
 const MOVED: &str = " ok pint.json  -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n";
-const PR: &str = "   Want them? Send a PR to https://github.com/punphp/pun\n";
+const PR: &str = "   Want them? Send a PR to https://github.com/shipfastlabs/pun\n";
 const IGNORED: &str = "<?php\n\n// @php-cs-fixer-ignore array_syntax,final_class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
 const UNKNOWN: &str = " ! app/Unknown.php  `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it); skipped\n";
 const REWRITTEN: &str = "<?php\n\n// @pun-ignore-file format/arrays/syntax,lint/style/require-final-class\n$a = array(1);\n$s = '// @php-cs-fixer-ignore array_syntax';\n";
@@ -125,7 +125,7 @@ fn skips_unsupported_rules() {
     assert_eq!(
         (out.as_str(), err.as_str(), code),
         (
-            " ✔ pint.json  → [format] preset empty, 1 rule changed\n ⚠ braces  deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines; skipped\n   Want them? Send a PR to https://github.com/punphp/pun\n ✔ Wrote pun.toml\n",
+            " ✔ pint.json  → [format] preset empty, 1 rule changed\n ⚠ braces  deprecated upstream; successor: single_space_around_construct, control_structure_braces, control_structure_continuation_position, declare_parentheses, no_multiple_statements_per_line, braces_position, statement_indentation, no_extra_blank_lines; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ✔ Wrote pun.toml\n",
             "",
             Some(0)
         )
@@ -236,7 +236,7 @@ fn lists_every_detected_config() {
  ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
  ! format/whitespace/encoding  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
  ! mago.toml                   Mago config: not supported by Pun yet; left untouched
-   Want them? Send a PR to https://github.com/punphp/pun
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
  ok Wrote pun.toml
 ",
             "",
@@ -272,7 +272,7 @@ fn lists_every_detected_config() {
  - phpstan.dist.neon       not migrated: pun.toml needs the format config too
  - rector.php              not selected
  ! mago.toml  Mago config: not supported by Pun yet; left untouched
-   Want them? Send a PR to https://github.com/punphp/pun
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
  - No Pint or PHP-CS-Fixer config selected; pun.toml not written
 ",
             Some(0)
@@ -371,7 +371,7 @@ fn starter_beside_phpstan() {
     assert_eq!(
         (counts(&out).as_str(), code),
         (
-            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n   Want them? Send a PR to https://github.com/punphp/pun\n ok Wrote starter pun.toml (preset laravel)\n",
+            " ok phpstan.neon.dist  -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n   Want them? Send a PR to https://github.com/shipfastlabs/pun\n ok Wrote starter pun.toml (preset laravel)\n",
             Some(0)
         )
     );
@@ -458,7 +458,7 @@ fn agent_mode() {
         head.starts_with("pun migrate: dry-run, pun.toml to write (preset empty, 1 format rule, 9 lint rules), ignore comments to rewrite in 0 files (from pint.json, "),
         "{head}"
     );
-    assert!(rest.starts_with("pint.json migrate\nphpstan.neon migrate\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\nphpstan.neon unsupported format/casts/short-scalar: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/functions/backtick-to-shell-exec: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/whitespace/encoding: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\napp/Unknown.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/punphp/pun\n--- pun.toml\n"), "{rest}");
+    assert!(rest.starts_with("pint.json migrate\nphpstan.neon migrate\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\nphpstan.neon unsupported format/casts/short-scalar: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/functions/backtick-to-shell-exec: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/whitespace/encoding: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\napp/Unknown.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n--- pun.toml\n"), "{rest}");
     let out = agent(&["migrate", "--from=rector"]);
     assert!(
         out.starts_with(

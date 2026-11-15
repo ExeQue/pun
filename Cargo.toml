@@ -13,7 +13,7 @@ mago-phpdoc-syntax = { path = "third_party/mago-phpdoc-syntax" }
 version = "0.1.1"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/punphp/pun"
+repository = "https://github.com/shipfastlabs/pun"
 # Pun ships only as the punphp/pun Composer package (composer/), never to crates.io.
 publish = false
 # The Mago crates need rustc 1.99.
