@@ -7,13 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/dynamic-static-call" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.dynamicCallOnStaticMethod`.
-
-## Replaces
-
-- [`DynamicCallOnStaticMethodsRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`DynamicStaticMethodCall`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`staticMethod.dynamicCall`](https://phpstan.org/error-identifiers/staticMethod.dynamicCall) (phpstan-strict-rules).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.dynamicCallOnStaticMethod`.
 
 ## Configuration
 
@@ -22,13 +16,12 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "classes/dynamic-static-call" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/dynamic-static-call -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`DynamicCallOnStaticMethodsRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`DynamicStaticMethodCall`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`staticMethod.dynamicCall`](https://phpstan.org/error-identifiers/staticMethod.dynamicCall) (phpstan-strict-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

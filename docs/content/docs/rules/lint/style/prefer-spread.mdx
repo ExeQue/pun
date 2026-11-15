@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/prefer-spread" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour).
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`CallUserFuncArrayToVariadic`](https://getrector.com/rule-detail/call-user-func-array-to-variadic-rector) (rector).
+Replace `call_user_func_array()` with variadic
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 "style/prefer-spread" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/prefer-spread" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/prefer-spread -- explain the exception
-```
+- [`CallUserFuncArrayToVariadic`](https://getrector.com/rule-detail/call-user-func-array-to-variadic-rector) (rector)
 
-## What it does
-
-Replace `call_user_func_array()` with variadic
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,21 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-self-assignment" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour). Intent: correctness.
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix. Intent: correctness.
 
-## Replaces
+## What it does
 
-- [`Pun/no_self_assignment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
-- [`SimplifyMirrorAssign`](https://getrector.com/rule-detail/simplify-mirror-assign-rector) (rector).
-- [`no-self-assignment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-self-assignment) (mago-linter).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/dead-code/no-mirror-assignment`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Detects and removes self-assignments where a variable or property is assigned to itself.
 
 ## Configuration
 
@@ -30,24 +20,18 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "dead-code/no-self-assignment" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-self-assignment" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-self-assignment -- explain the exception
-```
+- [`Pun/no_self_assignment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun)
+- [`SimplifyMirrorAssign`](https://getrector.com/rule-detail/simplify-mirror-assign-rector) (rector)
+- [`no-self-assignment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-self-assignment) (mago-linter)
 
-## What it does
+## Merged rules
 
-Detects and removes self-assignments where a variable or property is assigned to itself.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/dead-code/no-mirror-assignment`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

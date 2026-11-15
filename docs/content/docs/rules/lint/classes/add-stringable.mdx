@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/classes/add-stringable" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: safe (keeps behaviour).
+In the [`modernize`](/docs/rules/sets/modernize) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`stringable_for_to_string`](https://cs.symfony.com/doc/rules/class_notation/stringable_for_to_string.html) (php-cs-fixer).
+A class that implements the `__toString()` method must explicitly implement the `Stringable` interface.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: safe (keeps b
 "classes/add-stringable" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "classes/add-stringable" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/classes/add-stringable -- explain the exception
-```
+- [`stringable_for_to_string`](https://cs.symfony.com/doc/rules/class_notation/stringable_for_to_string.html) (php-cs-fixer)
 
-## What it does
-
-A class that implements the `__toString()` method must explicitly implement the `Stringable` interface.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/classes rules](/docs/rules/lint/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/unary-spacing" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`unary_operator_spaces`](https://cs.symfony.com/doc/rules/operator/unary_operator_spaces.html) (php-cs-fixer).
+Unary operators should be placed adjacent to their operands.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "operators/unary-spacing" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/unary-spacing -- explain the exception
-```
-
-## What it does
-
-Unary operators should be placed adjacent to their operands.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `only-dec-inc` | `bool` | Any value of this type | `false` | `only_dec_inc` |
+| `only-dec-inc` | `bool` | Any | `false` | `only_dec_inc` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`unary_operator_spaces`](https://cs.symfony.com/doc/rules/operator/unary_operator_spaces.html) (php-cs-fixer)
+
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

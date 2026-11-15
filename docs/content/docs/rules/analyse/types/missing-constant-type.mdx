@@ -7,15 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/missing-constant-type" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`MissingClassConstantTypehintRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes).
-- [`checkMissingVarTagTypehint`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`missingType.callable`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan).
-- [`missingType.generics`](https://phpstan.org/error-identifiers/missingType.generics) (phpstan).
-- [`missingType.iterableValue`](https://phpstan.org/error-identifiers/missingType.iterableValue) (phpstan).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -24,13 +16,14 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "types/missing-constant-type" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/missing-constant-type -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MissingClassConstantTypehintRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes)
+- [`checkMissingVarTagTypehint`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`missingType.callable`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan)
+- [`missingType.generics`](https://phpstan.org/error-identifiers/missingType.generics) (phpstan)
+- [`missingType.iterableValue`](https://phpstan.org/error-identifiers/missingType.iterableValue) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

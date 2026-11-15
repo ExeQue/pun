@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/invalid-regex" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`RegularExpressionPatternRule`](https://phpstan.org/error-identifiers/regexp.pattern) (phpstan-classes).
-- [`regexp.pattern`](https://phpstan.org/error-identifiers/regexp.pattern) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/invalid-regex" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/invalid-regex -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`RegularExpressionPatternRule`](https://phpstan.org/error-identifiers/regexp.pattern) (phpstan-classes)
+- [`regexp.pattern`](https://phpstan.org/error-identifiers/regexp.pattern) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

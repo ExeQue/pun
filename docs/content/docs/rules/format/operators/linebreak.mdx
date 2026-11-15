@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/linebreak" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`operator_linebreak`](https://cs.symfony.com/doc/rules/operator/operator_linebreak.html) (php-cs-fixer).
+Operators - when multiline - must always be at the beginning or at the end of the line.
 
 ## Configuration
 
@@ -20,20 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "operators/linebreak" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/linebreak -- explain the exception
-```
-
-## What it does
-
-Operators - when multiline - must always be at the beginning or at the end of the line.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `only-booleans` | `bool` | Any value of this type | `false` | `only_booleans` |
+| `only-booleans` | `bool` | Any | `false` | `only_booleans` |
 | `position` | `enum` | `beginning`, `end` | `"beginning"` | `position` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`operator_linebreak`](https://cs.symfony.com/doc/rules/operator/operator_linebreak.html) (php-cs-fixer)
+
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

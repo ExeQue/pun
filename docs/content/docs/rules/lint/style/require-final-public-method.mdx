@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-final-public-method" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`final_public_method_for_abstract_class`](https://cs.symfony.com/doc/rules/class_notation/final_public_method_for_abstract_class.html) (php-cs-fixer, risky).
+All `public` methods of `abstract` classes should be `final`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/require-final-public-method" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-final-public-method" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/require-final-public-method -- explain the exception
-```
+- [`final_public_method_for_abstract_class`](https://cs.symfony.com/doc/rules/class_notation/final_public_method_for_abstract_class.html) (php-cs-fixer, risky)
 
-## What it does
-
-All `public` methods of `abstract` classes should be `final`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

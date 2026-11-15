@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/semicolon-after-instruction" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`semicolon_after_instruction`](https://cs.symfony.com/doc/rules/semicolon/semicolon_after_instruction.html) (php-cs-fixer).
+Instructions must be terminated with a semicolon.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "statements/semicolon-after-instruction" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/semicolon-after-instruction -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Instructions must be terminated with a semicolon.
+- [`semicolon_after_instruction`](https://cs.symfony.com/doc/rules/semicolon/semicolon_after_instruction.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

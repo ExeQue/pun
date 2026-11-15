@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/prefer-not-in-array" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RepeatedAndNotEqualToNotInArray`](https://getrector.com/rule-detail/repeated-and-not-equal-to-not-in-array-rector) (rector).
+Use `! in_array()` instead of repeated `!==`/`!=` comparisons of one value joined by `&&`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/prefer-not-in-array" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/prefer-not-in-array" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/prefer-not-in-array -- explain the exception
-```
+- [`RepeatedAndNotEqualToNotInArray`](https://getrector.com/rule-detail/repeated-and-not-equal-to-not-in-array-rector) (rector)
 
-## What it does
-
-Use `! in_array()` instead of repeated `!==`/`!=` comparisons of one value joined by `&&`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/refactor/remove-attribute" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`general_attribute_remove`](https://cs.symfony.com/doc/rules/attribute_notation/general_attribute_remove.html) (php-cs-fixer).
+Removes configured attributes by their respective FQN.
 
 ## Configuration
 
@@ -20,27 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "refactor/remove-attribute" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "refactor/remove-attribute" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/refactor/remove-attribute -- explain the exception
-```
-
-## What it does
-
-Removes configured attributes by their respective FQN.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `attributes` | `list` | Any value of this type | `[]` | `attributes` |
+| `attributes` | `list` | Any | `[]` | `attributes` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/refactor) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`general_attribute_remove`](https://cs.symfony.com/doc/rules/attribute_notation/general_attribute_remove.html) (php-cs-fixer)
+
+[More lint/refactor rules](/docs/rules/lint/refactor) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

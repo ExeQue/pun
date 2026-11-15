@@ -7,23 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/too-wide-arrow-function-return" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`TooWideArrowFunctionReturnTypehintRule`](https://phpstan.org/error-identifiers/paramOut.nestedUnusedType) (phpstan-classes).
-- [`OverlyWideReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`paramOut.nestedUnusedType`](https://phpstan.org/error-identifiers/paramOut.nestedUnusedType) (phpstan).
-- [`paramOut.tooWideBool`](https://phpstan.org/error-identifiers/paramOut.tooWideBool) (phpstan).
-- [`paramOut.unusedType`](https://phpstan.org/error-identifiers/paramOut.unusedType) (phpstan).
-- [`parameterByRef.nestedUnusedType`](https://phpstan.org/error-identifiers/parameterByRef.nestedUnusedType) (phpstan).
-- [`parameterByRef.tooWideBool`](https://phpstan.org/error-identifiers/parameterByRef.tooWideBool) (phpstan).
-- [`parameterByRef.unusedType`](https://phpstan.org/error-identifiers/parameterByRef.unusedType) (phpstan).
-- [`property.nestedUnusedType`](https://phpstan.org/error-identifiers/property.nestedUnusedType) (phpstan).
-- [`property.tooWideBool`](https://phpstan.org/error-identifiers/property.tooWideBool) (phpstan).
-- [`property.unusedType`](https://phpstan.org/error-identifiers/property.unusedType) (phpstan).
-- [`return.nestedUnusedType`](https://phpstan.org/error-identifiers/return.nestedUnusedType) (phpstan).
-- [`return.tooWideBool`](https://phpstan.org/error-identifiers/return.tooWideBool) (phpstan).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -32,13 +16,22 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "types/too-wide-arrow-function-return" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/too-wide-arrow-function-return -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`TooWideArrowFunctionReturnTypehintRule`](https://phpstan.org/error-identifiers/paramOut.nestedUnusedType) (phpstan-classes)
+- [`OverlyWideReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`paramOut.nestedUnusedType`](https://phpstan.org/error-identifiers/paramOut.nestedUnusedType) (phpstan)
+- [`paramOut.tooWideBool`](https://phpstan.org/error-identifiers/paramOut.tooWideBool) (phpstan)
+- [`paramOut.unusedType`](https://phpstan.org/error-identifiers/paramOut.unusedType) (phpstan)
+- [`parameterByRef.nestedUnusedType`](https://phpstan.org/error-identifiers/parameterByRef.nestedUnusedType) (phpstan)
+- [`parameterByRef.tooWideBool`](https://phpstan.org/error-identifiers/parameterByRef.tooWideBool) (phpstan)
+- [`parameterByRef.unusedType`](https://phpstan.org/error-identifiers/parameterByRef.unusedType) (phpstan)
+- [`property.nestedUnusedType`](https://phpstan.org/error-identifiers/property.nestedUnusedType) (phpstan)
+- [`property.tooWideBool`](https://phpstan.org/error-identifiers/property.tooWideBool) (phpstan)
+- [`property.unusedType`](https://phpstan.org/error-identifiers/property.unusedType) (phpstan)
+- [`return.nestedUnusedType`](https://phpstan.org/error-identifiers/return.nestedUnusedType) (phpstan)
+- [`return.tooWideBool`](https://phpstan.org/error-identifiers/return.tooWideBool) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

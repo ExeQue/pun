@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/no-useless-array-values" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`SimplifyInArrayValues`](https://getrector.com/rule-detail/simplify-in-array-values-rector) (rector).
+Removes unneeded array_values() in in_array() call
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/no-useless-array-values" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/no-useless-array-values" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/no-useless-array-values -- explain the exception
-```
+- [`SimplifyInArrayValues`](https://getrector.com/rule-detail/simplify-in-array-values-rector) (rector)
 
-## What it does
-
-Removes unneeded array_values() in in_array() call
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

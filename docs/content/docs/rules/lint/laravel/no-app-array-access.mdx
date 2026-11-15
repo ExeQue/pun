@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/no-app-array-access" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`CallOnAppArrayAccessToStandaloneAssign`](https://getrector.com/rule-detail/call-on-app-array-access-to-standalone-assign-rector) (rector-laravel).
+Replace magical call on $this->app["something"] to standalone type assign variable
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "laravel/no-app-array-access" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/no-app-array-access" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/no-app-array-access -- explain the exception
-```
+- [`CallOnAppArrayAccessToStandaloneAssign`](https://getrector.com/rule-detail/call-on-app-array-access-to-standalone-assign-rector) (rector-laravel)
 
-## What it does
-
-Replace magical call on $this->app["something"] to standalone type assign variable
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

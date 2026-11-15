@@ -7,14 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/throws-not-covariant" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `exceptions.check.throwTypeCovariance`.
-
-## Replaces
-
-- [`MethodThrowTypeCovarianceRule`](https://phpstan.org/error-identifiers/throws.notCovariant) (phpstan-classes).
-- [`throws.notCovariant`](https://phpstan.org/error-identifiers/throws.notCovariant) (phpstan).
-- [`throws.notCovariantWithImplicitVoid`](https://phpstan.org/error-identifiers/throws.notCovariantWithImplicitVoid) (phpstan).
-- [`throws.shouldBeVoid`](https://phpstan.org/error-identifiers/throws.shouldBeVoid) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only. Upstream gates: `exceptions.check.throwTypeCovariance`.
 
 ## Configuration
 
@@ -23,13 +16,13 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/throws-not-covariant" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/throws-not-covariant -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MethodThrowTypeCovarianceRule`](https://phpstan.org/error-identifiers/throws.notCovariant) (phpstan-classes)
+- [`throws.notCovariant`](https://phpstan.org/error-identifiers/throws.notCovariant) (phpstan)
+- [`throws.notCovariantWithImplicitVoid`](https://phpstan.org/error-identifiers/throws.notCovariantWithImplicitVoid) (phpstan)
+- [`throws.shouldBeVoid`](https://phpstan.org/error-identifiers/throws.shouldBeVoid) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

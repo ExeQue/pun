@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/security/no-debug-calls" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Intent: suspicious.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Unsafe fix: it can change behaviour. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`RemoveDebugExpectations`](https://pestphp.com/docs/rector#content-removedebugexpectationsrector) (pest-plugin-rector).
-- [`no-debug-symbols`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-debug-symbols) (mago-linter).
+Remove or report debug calls left in code: dd(), dump(), var_dump(), ray(), and ->dd()/->dump() in Pest expectations.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 "security/no-debug-calls" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "security/no-debug-calls" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/security/no-debug-calls -- explain the exception
-```
+- [`RemoveDebugExpectations`](https://pestphp.com/docs/rector#content-removedebugexpectationsrector) (pest-plugin-rector)
+- [`no-debug-symbols`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-debug-symbols) (mago-linter)
 
-## What it does
-
-Remove or report debug calls left in code: dd(), dump(), var_dump(), ray(), and ->dd()/->dump() in Pest expectations.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/security) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/security rules](/docs/rules/lint/security) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

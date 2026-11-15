@@ -7,19 +7,7 @@ pagination: false
 
 <RuleId id="analyse/operators/non-boolean-and-operand" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.booleansInConditions`.
-
-## Replaces
-
-- [`BooleanInBooleanAndRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`booleanAnd.leftNotBoolean`](https://phpstan.org/error-identifiers/booleanAnd.leftNotBoolean) (phpstan-strict-rules).
-- [`booleanAnd.rightNotBoolean`](https://phpstan.org/error-identifiers/booleanAnd.rightNotBoolean) (phpstan-strict-rules).
-- [`booleanOr.leftNotBoolean`](https://phpstan.org/error-identifiers/booleanOr.leftNotBoolean) (phpstan-strict-rules).
-- [`booleanOr.rightNotBoolean`](https://phpstan.org/error-identifiers/booleanOr.rightNotBoolean) (phpstan-strict-rules).
-- [`logicalAnd.leftNotBoolean`](https://phpstan.org/error-identifiers/logicalAnd.leftNotBoolean) (phpstan-strict-rules).
-- [`logicalAnd.rightNotBoolean`](https://phpstan.org/error-identifiers/logicalAnd.rightNotBoolean) (phpstan-strict-rules).
-- [`logicalOr.leftNotBoolean`](https://phpstan.org/error-identifiers/logicalOr.leftNotBoolean) (phpstan-strict-rules).
-- [`logicalOr.rightNotBoolean`](https://phpstan.org/error-identifiers/logicalOr.rightNotBoolean) (phpstan-strict-rules).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.booleansInConditions`.
 
 ## Configuration
 
@@ -28,13 +16,18 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "operators/non-boolean-and-operand" = "on"
 ```
 
-```php
-// @pun-ignore analyse/operators/non-boolean-and-operand -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`BooleanInBooleanAndRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`booleanAnd.leftNotBoolean`](https://phpstan.org/error-identifiers/booleanAnd.leftNotBoolean) (phpstan-strict-rules)
+- [`booleanAnd.rightNotBoolean`](https://phpstan.org/error-identifiers/booleanAnd.rightNotBoolean) (phpstan-strict-rules)
+- [`booleanOr.leftNotBoolean`](https://phpstan.org/error-identifiers/booleanOr.leftNotBoolean) (phpstan-strict-rules)
+- [`booleanOr.rightNotBoolean`](https://phpstan.org/error-identifiers/booleanOr.rightNotBoolean) (phpstan-strict-rules)
+- [`logicalAnd.leftNotBoolean`](https://phpstan.org/error-identifiers/logicalAnd.leftNotBoolean) (phpstan-strict-rules)
+- [`logicalAnd.rightNotBoolean`](https://phpstan.org/error-identifiers/logicalAnd.rightNotBoolean) (phpstan-strict-rules)
+- [`logicalOr.leftNotBoolean`](https://phpstan.org/error-identifiers/logicalOr.leftNotBoolean) (phpstan-strict-rules)
+- [`logicalOr.rightNotBoolean`](https://phpstan.org/error-identifiers/logicalOr.rightNotBoolean) (phpstan-strict-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/operators rules](/docs/rules/analyse/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

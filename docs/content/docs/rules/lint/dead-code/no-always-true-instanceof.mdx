@@ -7,21 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-always-true-instanceof" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RemoveDeadInstanceOf`](https://getrector.com/rule-detail/remove-dead-instance-of-rector) (rector).
-- [`RemoveDeadInstanceOfAssert`](https://getrector.com/rule-detail/remove-dead-instance-of-assert-rector) (rector).
-- [`instanceof.alwaysTrue`](https://phpstan.org/error-identifiers/instanceof.alwaysTrue) (phpstan).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/dead-code/no-always-true-instanceof-assert`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Remove instanceof checks and assert(instanceof) calls that are always true for the known type.
 
 ## Configuration
 
@@ -30,24 +20,18 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "dead-code/no-always-true-instanceof" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-always-true-instanceof" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-always-true-instanceof -- explain the exception
-```
+- [`RemoveDeadInstanceOf`](https://getrector.com/rule-detail/remove-dead-instance-of-rector) (rector)
+- [`RemoveDeadInstanceOfAssert`](https://getrector.com/rule-detail/remove-dead-instance-of-assert-rector) (rector)
+- [`instanceof.alwaysTrue`](https://phpstan.org/error-identifiers/instanceof.alwaysTrue) (phpstan)
 
-## What it does
+## Merged rules
 
-Remove instanceof checks and assert(instanceof) calls that are always true for the known type.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/dead-code/no-always-true-instanceof-assert`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

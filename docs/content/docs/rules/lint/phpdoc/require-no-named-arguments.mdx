@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpdoc/require-no-named-arguments" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_tag_no_named_arguments`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_no_named_arguments.html) (php-cs-fixer).
+There must be `@no-named-arguments` tag in PHPDoc of a class/enum/interface/trait.
 
 ## Configuration
 
@@ -20,29 +20,18 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpdoc/require-no-named-arguments" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpdoc/require-no-named-arguments" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpdoc/require-no-named-arguments -- explain the exception
-```
-
-## What it does
-
-There must be `@no-named-arguments` tag in PHPDoc of a class/enum/interface/trait.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `description` | `string` | Any value of this type | `""` | `description` |
-| `fix-attribute` | `bool` | Any value of this type | `true` | `fix_attribute` |
-| `fix-internal` | `bool` | Any value of this type | `true` | `fix_internal` |
+| `description` | `string` | Any | `""` | `description` |
+| `fix-attribute` | `bool` | Any | `true` | `fix_attribute` |
+| `fix-internal` | `bool` | Any | `true` | `fix_internal` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_tag_no_named_arguments`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_no_named_arguments.html) (php-cs-fixer)
+
+[More lint/phpdoc rules](/docs/rules/lint/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

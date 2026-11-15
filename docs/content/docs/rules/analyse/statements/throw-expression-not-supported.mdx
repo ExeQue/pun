@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/statements/throw-expression-not-supported" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ThrowExpressionRule`](https://phpstan.org/error-identifiers/throw.notSupported) (phpstan-classes).
-- [`throw.notSupported`](https://phpstan.org/error-identifiers/throw.notSupported) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "statements/throw-expression-not-supported" = "on"
 ```
 
-```php
-// @pun-ignore analyse/statements/throw-expression-not-supported -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ThrowExpressionRule`](https://phpstan.org/error-identifiers/throw.notSupported) (phpstan-classes)
+- [`throw.notSupported`](https://phpstan.org/error-identifiers/throw.notSupported) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/statements rules](/docs/rules/analyse/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

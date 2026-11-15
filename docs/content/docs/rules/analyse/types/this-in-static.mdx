@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/this-in-static" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ThisInStaticStatementRule`](https://phpstan.org/error-identifiers/static.this) (phpstan-classes).
-- [`static.this`](https://phpstan.org/error-identifiers/static.this) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/this-in-static" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/this-in-static -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ThisInStaticStatementRule`](https://phpstan.org/error-identifiers/static.this) (phpstan-classes)
+- [`static.this`](https://phpstan.org/error-identifiers/static.this) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

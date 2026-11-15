@@ -7,13 +7,7 @@ pagination: false
 
 <RuleId id="analyse/arrays/read-without-offset" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`OffsetAccessWithoutDimForReadingRule`](https://phpstan.org/error-identifiers/offsetAccess.noDim) (phpstan-classes).
-- [`ArrayAppendInReadContext`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`offsetAccess.noDim`](https://phpstan.org/error-identifiers/offsetAccess.noDim) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -22,13 +16,12 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "arrays/read-without-offset" = "on"
 ```
 
-```php
-// @pun-ignore analyse/arrays/read-without-offset -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`OffsetAccessWithoutDimForReadingRule`](https://phpstan.org/error-identifiers/offsetAccess.noDim) (phpstan-classes)
+- [`ArrayAppendInReadContext`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`offsetAccess.noDim`](https://phpstan.org/error-identifiers/offsetAccess.noDim) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/arrays rules](/docs/rules/analyse/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

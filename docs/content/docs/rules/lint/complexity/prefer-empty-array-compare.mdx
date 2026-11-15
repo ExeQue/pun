@@ -7,20 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/prefer-empty-array-compare" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`SimplifyEmptyArrayCheck`](https://getrector.com/rule-detail/simplify-empty-array-check-rector) (rector).
-- [`SimplifyEmptyCheckOnEmptyArray`](https://getrector.com/rule-detail/simplify-empty-check-on-empty-array-rector) (rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/complexity/prefer-empty-array-identical`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Compare with `[]` instead of empty()/is_array() on arrays.
 
 ## Configuration
 
@@ -29,24 +20,17 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "complexity/prefer-empty-array-compare" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/prefer-empty-array-compare" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/prefer-empty-array-compare -- explain the exception
-```
+- [`SimplifyEmptyArrayCheck`](https://getrector.com/rule-detail/simplify-empty-array-check-rector) (rector)
+- [`SimplifyEmptyCheckOnEmptyArray`](https://getrector.com/rule-detail/simplify-empty-check-on-empty-array-rector) (rector)
 
-## What it does
+## Merged rules
 
-Compare with `[]` instead of empty()/is_array() on arrays.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/complexity/prefer-empty-array-identical`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

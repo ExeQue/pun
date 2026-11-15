@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/prefer-to-be-alpha-numeric" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Unsafe fix: it can change behaviour. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`UseToBeAlphaNumeric`](https://pestphp.com/docs/rector#content-usetobealphanumericrector) (pest-plugin-rector).
+Converts ctype_alnum() checks to toBeAlphaNumeric() matcher
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 "pest/prefer-to-be-alpha-numeric" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/prefer-to-be-alpha-numeric" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/prefer-to-be-alpha-numeric -- explain the exception
-```
+- [`UseToBeAlphaNumeric`](https://pestphp.com/docs/rector#content-usetobealphanumericrector) (pest-plugin-rector)
 
-## What it does
-
-Converts ctype_alnum() checks to toBeAlphaNumeric() matcher
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="lint/functions/no-required-after-optional" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`OptionalParametersAfterRequired`](https://getrector.com/rule-detail/optional-parameters-after-required-rector) (rector).
-- [`optional-param-order`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#optional-param-order) (mago-linter).
-- [`parameter.requiredAfterOptional`](https://phpstan.org/error-identifiers/parameter.requiredAfterOptional) (phpstan).
+Report or fix optional parameters declared before required ones.
 
 ## Configuration
 
@@ -22,24 +20,12 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "functions/no-required-after-optional" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "functions/no-required-after-optional" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/functions/no-required-after-optional -- explain the exception
-```
+- [`OptionalParametersAfterRequired`](https://getrector.com/rule-detail/optional-parameters-after-required-rector) (rector)
+- [`optional-param-order`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#optional-param-order) (mago-linter)
+- [`parameter.requiredAfterOptional`](https://phpstan.org/error-identifiers/parameter.requiredAfterOptional) (phpstan)
 
-## What it does
-
-Report or fix optional parameters declared before required ones.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/functions rules](/docs/rules/lint/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

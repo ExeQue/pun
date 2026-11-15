@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/no-negated-boolean-literal" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`ReplaceConstantBooleanNot`](https://getrector.com/rule-detail/replace-constant-boolean-not-rector) (rector).
+Replace negated boolean literals (!false, !true) with their simplified equivalents (true, false)
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/no-negated-boolean-literal" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/no-negated-boolean-literal" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/no-negated-boolean-literal -- explain the exception
-```
+- [`ReplaceConstantBooleanNot`](https://getrector.com/rule-detail/replace-constant-boolean-not-rector) (rector)
 
-## What it does
-
-Replace negated boolean literals (!false, !true) with their simplified equivalents (true, false)
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

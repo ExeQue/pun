@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/tags/no-invalid-open-tag" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Intent: correctness.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix. Intent: correctness.
 
-## Replaces
+## What it does
 
-- [`invalid-open-tag`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#invalid-open-tag) (mago-linter).
+Detects misspelled PHP opening tags like `<php?` instead of `<?php`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "tags/no-invalid-open-tag" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "tags/no-invalid-open-tag" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/tags/no-invalid-open-tag -- explain the exception
-```
+- [`invalid-open-tag`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#invalid-open-tag) (mago-linter)
 
-## What it does
-
-Detects misspelled PHP opening tags like `<php?` instead of `<?php`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/tags) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/tags rules](/docs/rules/lint/tags) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

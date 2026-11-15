@@ -7,15 +7,7 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/invalid-param-callable-tag" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`IncompatibleParamImmediatelyInvokedCallableRule`](https://phpstan.org/error-identifiers/paramImmediatelyInvokedCallable.nonCallable) (phpstan-classes).
-- [`InvalidCallable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`paramImmediatelyInvokedCallable.nonCallable`](https://phpstan.org/error-identifiers/paramImmediatelyInvokedCallable.nonCallable) (phpstan).
-- [`paramLaterInvokedCallable.nonCallable`](https://phpstan.org/error-identifiers/paramLaterInvokedCallable.nonCallable) (phpstan).
-- [`parameter.notFound`](https://phpstan.org/error-identifiers/parameter.notFound) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -24,13 +16,14 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "phpdoc/invalid-param-callable-tag" = "on"
 ```
 
-```php
-// @pun-ignore analyse/phpdoc/invalid-param-callable-tag -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`IncompatibleParamImmediatelyInvokedCallableRule`](https://phpstan.org/error-identifiers/paramImmediatelyInvokedCallable.nonCallable) (phpstan-classes)
+- [`InvalidCallable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`paramImmediatelyInvokedCallable.nonCallable`](https://phpstan.org/error-identifiers/paramImmediatelyInvokedCallable.nonCallable) (phpstan)
+- [`paramLaterInvokedCallable.nonCallable`](https://phpstan.org/error-identifiers/paramLaterInvokedCallable.nonCallable) (phpstan)
+- [`parameter.notFound`](https://phpstan.org/error-identifiers/parameter.notFound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/phpdoc rules](/docs/rules/analyse/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/octal-notation" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`octal_notation`](https://cs.symfony.com/doc/rules/basic/octal_notation.html) (php-cs-fixer).
-- [`explicit-octal`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#explicit-octal) (mago-linter).
+Literal octal must be in `0o` notation.
 
 ## Configuration
 
@@ -21,16 +20,11 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "statements/octal-notation" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/octal-notation -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Literal octal must be in `0o` notation.
+- [`octal_notation`](https://cs.symfony.com/doc/rules/basic/octal_notation.html) (php-cs-fixer)
+- [`explicit-octal`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#explicit-octal) (mago-linter)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

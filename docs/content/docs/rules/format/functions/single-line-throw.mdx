@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/functions/single-line-throw" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`single_line_throw`](https://cs.symfony.com/doc/rules/function_notation/single_line_throw.html) (php-cs-fixer).
+Throwing exception must be done in single line.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "functions/single-line-throw" = true
 ```
 
-```php
-// @pun-ignore-file format/functions/single-line-throw -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Throwing exception must be done in single line.
+- [`single_line_throw`](https://cs.symfony.com/doc/rules/function_notation/single_line_throw.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/functions rules](/docs/rules/format/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

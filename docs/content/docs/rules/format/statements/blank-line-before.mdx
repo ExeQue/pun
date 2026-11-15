@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/blank-line-before" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`blank_line_before_statement`](https://cs.symfony.com/doc/rules/whitespace/blank_line_before_statement.html) (php-cs-fixer).
+An empty line feed must precede any configured statement.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "statements/blank-line-before" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/blank-line-before -- explain the exception
-```
-
-## What it does
-
-An empty line feed must precede any configured statement.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ An empty line feed must precede any configured statement.
 | --- | --- | --- | --- | --- |
 | `statements` | `list` | `break`, `case`, `continue`, `declare`, `default`, `do`, `exit`, `for`, `foreach`, `goto`, `if`, `include`, `include_once`, `phpdoc`, `require`, `require_once`, `return`, `switch`, `throw`, `try`, `while`, `yield`, `yield-from` | `["break", "continue", "declare", "return", "throw", "try"]` | `statements` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`blank_line_before_statement`](https://cs.symfony.com/doc/rules/whitespace/blank_line_before_statement.html) (php-cs-fixer)
+
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

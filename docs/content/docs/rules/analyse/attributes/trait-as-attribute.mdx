@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/attributes/trait-as-attribute" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`TraitAttributeClassRule`](https://phpstan.org/error-identifiers/attribute.trait) (phpstan-classes).
-- [`attribute.trait`](https://phpstan.org/error-identifiers/attribute.trait) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "attributes/trait-as-attribute" = "on"
 ```
 
-```php
-// @pun-ignore analyse/attributes/trait-as-attribute -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`TraitAttributeClassRule`](https://phpstan.org/error-identifiers/attribute.trait) (phpstan-classes)
+- [`attribute.trait`](https://phpstan.org/error-identifiers/attribute.trait) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/attributes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/attributes rules](/docs/rules/analyse/attributes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

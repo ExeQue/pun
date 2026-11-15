@@ -7,27 +7,27 @@ pagination: false
 
 ## Config translation
 
-`pun migrate` leaves source configs in place and reports skipped items. Planned rules are not implemented. Pun never falls back to PHP for missing rules.
+`pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
-Run `pun migrate --from rector` after `composer install`. The project's own Rector resolves `rector.php` with system PHP.
+Run `pun migrate --from rector` after `composer install`. It reads `rector.php` through the project's Rector, so it needs system PHP.
 
 | rector.php | pun.toml |
 | --- | --- |
 | `->withPreparedSets(deadCode: true)` | `[lint] sets = ["dead-code"]` |
 | `typeDeclarations: true` | The `types` lint set |
 | PHP upgrade sets from PHP 8.4 | The `modernize` set, gated by the target version |
-| Explicit rules and set differences | `[lint.rules]` at `"error"` or `"off"`, preserving the selected rules |
+| Explicit rules and set differences | `[lint.rules]` at `"error"` or `"off"` |
 | `->withConfiguredRule()` | Rule options with kebab-case keys; lists under `items` |
 | `->withPaths()`, path skips | `[lint] exclude` and `[[lint.overrides]]` |
 | Closures, null values, custom rules, excluded sets | Reported and skipped |
 
-Layout-only Rector rules map to format and are left to `[format]`. The migration reports when the format config does not run them.
+Layout-only Rector rules map to format rules. The migration reports any that `[format]` does not run.
 
 ## Rule mapping
 
 <MigrationTable tool="rector" />
 
-## Unsupported rules by reason
+## Unsupported rules
 
 ### Doctrine rules: out of scope (Laravel-first); migrate lists them
 
@@ -148,7 +148,6 @@ Layout-only Rector rules map to format and are left to `[format]`. The migration
 ### package upgrade set below the current major (livewire-30)
 
 [`LivewireComponentComputedMethodToComputedAttribute`](https://getrector.com/rule-detail/livewire-component-computed-method-to-computed-attribute-rector), [`LivewireComponentQueryStringToUrlAttribute`](https://getrector.com/rule-detail/livewire-component-query-string-to-url-attribute-rector).
-
 
 ## Pun-only rules
 

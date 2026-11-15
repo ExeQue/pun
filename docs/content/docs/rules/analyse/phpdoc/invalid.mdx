@@ -7,13 +7,7 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/invalid" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`InvalidPhpDocTagValueRule`](https://phpstan.org/error-identifiers/phpDoc.parseError) (phpstan-classes).
-- [`InvalidDocblock`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`phpDoc.parseError`](https://phpstan.org/error-identifiers/phpDoc.parseError) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -22,13 +16,12 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "phpdoc/invalid" = "on"
 ```
 
-```php
-// @pun-ignore analyse/phpdoc/invalid -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`InvalidPhpDocTagValueRule`](https://phpstan.org/error-identifiers/phpDoc.parseError) (phpstan-classes)
+- [`InvalidDocblock`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`phpDoc.parseError`](https://phpstan.org/error-identifiers/phpDoc.parseError) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/phpdoc rules](/docs/rules/analyse/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

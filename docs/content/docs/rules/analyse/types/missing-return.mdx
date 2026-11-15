@@ -7,16 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/missing-return" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`MissingReturnRule`](https://phpstan.org/error-identifiers/return.missing) (phpstan-classes).
-- [`checkPhpDocMissingReturn`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`MissingReturnStatement`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`NeverReturn`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`return.missing`](https://phpstan.org/error-identifiers/return.missing) (phpstan).
-- [`return.never`](https://phpstan.org/error-identifiers/return.never) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -25,13 +16,15 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/missing-return" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/missing-return -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MissingReturnRule`](https://phpstan.org/error-identifiers/return.missing) (phpstan-classes)
+- [`checkPhpDocMissingReturn`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`MissingReturnStatement`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`NeverReturn`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`return.missing`](https://phpstan.org/error-identifiers/return.missing) (phpstan)
+- [`return.never`](https://phpstan.org/error-identifiers/return.never) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

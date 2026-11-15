@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/attributes/no-block-spaces" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`attribute_block_no_spaces`](https://cs.symfony.com/doc/rules/attribute_notation/attribute_block_no_spaces.html) (php-cs-fixer).
+Remove spaces before and after the attributes block.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "attributes/no-block-spaces" = true
 ```
 
-```php
-// @pun-ignore-file format/attributes/no-block-spaces -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Remove spaces before and after the attributes block.
+- [`attribute_block_no_spaces`](https://cs.symfony.com/doc/rules/attribute_notation/attribute_block_no_spaces.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/attributes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/attributes rules](/docs/rules/format/attributes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

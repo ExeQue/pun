@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/functions/require-strict-array-search" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: mixed (safe where types prove it, unsafe otherwise). Intent: suspicious.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`StrictArraySearch`](https://getrector.com/rule-detail/strict-array-search-rector) (rector).
+Makes array_search search for identical elements
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: mixed (
 "functions/require-strict-array-search" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "functions/require-strict-array-search" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/functions/require-strict-array-search -- explain the exception
-```
+- [`StrictArraySearch`](https://getrector.com/rule-detail/strict-array-search-rector) (rector)
 
-## What it does
-
-Makes array_search search for identical elements
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/functions rules](/docs/rules/lint/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

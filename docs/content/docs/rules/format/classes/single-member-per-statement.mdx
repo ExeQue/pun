@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="format/classes/single-member-per-statement" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`single_class_element_per_statement`](https://cs.symfony.com/doc/rules/class_notation/single_class_element_per_statement.html) (php-cs-fixer).
-- [`SplitGroupedClassConstants`](https://getrector.com/rule-detail/split-grouped-class-constants-rector) (rector).
-- [`SplitGroupedProperties`](https://getrector.com/rule-detail/split-grouped-properties-rector) (rector).
+There MUST NOT be more than one property or constant declared per statement.
 
 ## Configuration
 
@@ -22,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "classes/single-member-per-statement" = true
 ```
 
-```php
-// @pun-ignore-file format/classes/single-member-per-statement -- explain the exception
-```
-
-## What it does
-
-There MUST NOT be more than one property or constant declared per statement.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -36,5 +28,10 @@ There MUST NOT be more than one property or constant declared per statement.
 | --- | --- | --- | --- | --- |
 | `elements` | `list` | `const`, `property` | `["const", "property"]` | `elements` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`single_class_element_per_statement`](https://cs.symfony.com/doc/rules/class_notation/single_class_element_per_statement.html) (php-cs-fixer)
+- [`SplitGroupedClassConstants`](https://getrector.com/rule-detail/split-grouped-class-constants-rector) (rector)
+- [`SplitGroupedProperties`](https://getrector.com/rule-detail/split-grouped-properties-rector) (rector)
+
+[More format/classes rules](/docs/rules/format/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

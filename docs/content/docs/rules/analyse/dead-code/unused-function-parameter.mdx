@@ -7,13 +7,7 @@ pagination: false
 
 <RuleId id="analyse/dead-code/unused-function-parameter" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `bleedingEdge (featureToggles.unusedParameters)`.
-
-## Replaces
-
-- [`UnusedFunctionParametersRule`](https://phpstan.org/error-identifiers/constructor.unusedParameter) (phpstan-classes).
-- [`function.unusedParameter`](https://phpstan.org/error-identifiers/function.unusedParameter) (phpstan).
-- [`function.unusedParameterFlow`](https://phpstan.org/error-identifiers/function.unusedParameterFlow) (phpstan).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only. Upstream gates: `bleedingEdge (featureToggles.unusedParameters)`.
 
 ## Configuration
 
@@ -22,13 +16,12 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "dead-code/unused-function-parameter" = "on"
 ```
 
-```php
-// @pun-ignore analyse/dead-code/unused-function-parameter -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`UnusedFunctionParametersRule`](https://phpstan.org/error-identifiers/constructor.unusedParameter) (phpstan-classes)
+- [`function.unusedParameter`](https://phpstan.org/error-identifiers/function.unusedParameter) (phpstan)
+- [`function.unusedParameterFlow`](https://phpstan.org/error-identifiers/function.unusedParameterFlow) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/dead-code rules](/docs/rules/analyse/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

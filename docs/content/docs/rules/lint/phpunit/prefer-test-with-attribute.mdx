@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-test-with-attribute" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+Not in any set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`TestWithAnnotationToAttribute`](https://getrector.com/rule-detail/test-with-annotation-to-attribute-rector) (rector-phpunit).
+Change @testWith() annotation to #[TestWith] attribute
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpunit/prefer-test-with-attribute" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-test-with-attribute" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/prefer-test-with-attribute -- explain the exception
-```
+- [`TestWithAnnotationToAttribute`](https://getrector.com/rule-detail/test-with-annotation-to-attribute-rector) (rector-phpunit)
 
-## What it does
-
-Change @testWith() annotation to #[TestWith] attribute
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

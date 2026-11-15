@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/laravel/no-auth-facade-in-request-scope" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Runs when laravel is installed. Additional upstream gates: `checkAuthCallsWhenInRequestScope (default false)`.
-
-## Replaces
-
-- [`NoAuthFacadeInRequestScopeRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#noauthfacadeinrequestscoperule-and-noauthhelperinrequestscoperule) (phpstan-classes).
-- [`larastan.noAuthFacadeInRequestScope`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Runs when laravel is installed. Upstream gates: `checkAuthCallsWhenInRequestScope (default false)`.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "laravel/no-auth-facade-in-request-scope" = "on"
 ```
 
-```php
-// @pun-ignore analyse/laravel/no-auth-facade-in-request-scope -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`NoAuthFacadeInRequestScopeRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#noauthfacadeinrequestscoperule-and-noauthhelperinrequestscoperule) (phpstan-classes)
+- [`larastan.noAuthFacadeInRequestScope`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/laravel rules](/docs/rules/analyse/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/refactor/rename-phpdoc-tag" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`general_phpdoc_tag_rename`](https://cs.symfony.com/doc/rules/phpdoc/general_phpdoc_tag_rename.html) (php-cs-fixer).
+Renames PHPDoc tags.
 
 ## Configuration
 
@@ -20,30 +20,19 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "refactor/rename-phpdoc-tag" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "refactor/rename-phpdoc-tag" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/refactor/rename-phpdoc-tag -- explain the exception
-```
-
-## What it does
-
-Renames PHPDoc tags.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `case-sensitive` | `bool` | Any value of this type | `false` | `case_sensitive` |
-| `fix-annotation` | `bool` | Any value of this type | `true` | `fix_annotation` |
-| `fix-inline` | `bool` | Any value of this type | `true` | `fix_inline` |
-| `replacements` | `map` | Any value of this type | `{  }` | `replacements` |
+| `case-sensitive` | `bool` | Any | `false` | `case_sensitive` |
+| `fix-annotation` | `bool` | Any | `true` | `fix_annotation` |
+| `fix-inline` | `bool` | Any | `true` | `fix_inline` |
+| `replacements` | `map` | Any | `{  }` | `replacements` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/refactor) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`general_phpdoc_tag_rename`](https://cs.symfony.com/doc/rules/phpdoc/general_phpdoc_tag_rename.html) (php-cs-fixer)
+
+[More lint/refactor rules](/docs/rules/lint/refactor) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

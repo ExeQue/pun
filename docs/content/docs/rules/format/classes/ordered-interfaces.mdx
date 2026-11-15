@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/classes/ordered-interfaces" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`ordered_interfaces`](https://cs.symfony.com/doc/rules/class_notation/ordered_interfaces.html) (php-cs-fixer).
+Orders the interfaces in an `implements` or `interface extends` clause.
 
 ## Configuration
 
@@ -20,21 +20,18 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "classes/ordered-interfaces" = true
 ```
 
-```php
-// @pun-ignore-file format/classes/ordered-interfaces -- explain the exception
-```
-
-## What it does
-
-Orders the interfaces in an `implements` or `interface extends` clause.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `case-sensitive` | `bool` | Any value of this type | `false` | `case_sensitive` |
+| `case-sensitive` | `bool` | Any | `false` | `case_sensitive` |
 | `direction` | `enum` | `ascending`, `descending` | `"ascending"` | `direction` |
 | `sort` | `enum` | `alphabetical`, `length` | `"alphabetical"` | `order` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`ordered_interfaces`](https://cs.symfony.com/doc/rules/class_notation/ordered_interfaces.html) (php-cs-fixer)
+
+[More format/classes rules](/docs/rules/format/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

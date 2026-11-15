@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/classes/no-protected-method-in-final" />
 
-Enabled by the [`privatization`](/docs/rules/sets/privatization) set. Fix: safe (keeps behaviour).
+In the [`privatization`](/docs/rules/sets/privatization) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`PrivatizeFinalClassMethod`](https://getrector.com/rule-detail/privatize-final-class-method-rector) (rector).
+Change protected class method to private if possible
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`privatization`](/docs/rules/sets/privatization) set. Fix: safe 
 "classes/no-protected-method-in-final" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "classes/no-protected-method-in-final" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/classes/no-protected-method-in-final -- explain the exception
-```
+- [`PrivatizeFinalClassMethod`](https://getrector.com/rule-detail/privatize-final-class-method-rector) (rector)
 
-## What it does
-
-Change protected class method to private if possible
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/classes rules](/docs/rules/lint/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

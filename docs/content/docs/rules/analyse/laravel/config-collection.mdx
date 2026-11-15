@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/laravel/config-collection" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Runs when laravel is installed. Additional upstream gates: `checkConfigTypes (default false)`.
-
-## Replaces
-
-- [`ConfigCollectionRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#configcollectionrule) (phpstan-classes).
-- [`larastan.configCollection`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Runs when laravel is installed. Upstream gates: `checkConfigTypes (default false)`.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "laravel/config-collection" = "on"
 ```
 
-```php
-// @pun-ignore analyse/laravel/config-collection -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ConfigCollectionRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#configcollectionrule) (phpstan-classes)
+- [`larastan.configCollection`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/laravel rules](/docs/rules/analyse/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

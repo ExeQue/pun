@@ -7,18 +7,7 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/invalid-type-alias" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`LocalTypeAliasesRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`typeAlias.circular`](https://phpstan.org/error-identifiers/typeAlias.circular) (phpstan).
-- [`typeAlias.duplicate`](https://phpstan.org/error-identifiers/typeAlias.duplicate) (phpstan).
-- [`typeAlias.invalidName`](https://phpstan.org/error-identifiers/typeAlias.invalidName) (phpstan).
-- [`typeAlias.invalidType`](https://phpstan.org/error-identifiers/typeAlias.invalidType) (phpstan).
-- [`typeAlias.notFound`](https://phpstan.org/error-identifiers/typeAlias.notFound) (phpstan).
-- [`typeAlias.trait`](https://phpstan.org/error-identifiers/typeAlias.trait) (phpstan).
-- [`typeAlias.unresolvableType`](https://phpstan.org/error-identifiers/typeAlias.unresolvableType) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -27,13 +16,17 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "phpdoc/invalid-type-alias" = "on"
 ```
 
-```php
-// @pun-ignore analyse/phpdoc/invalid-type-alias -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`LocalTypeAliasesRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`typeAlias.circular`](https://phpstan.org/error-identifiers/typeAlias.circular) (phpstan)
+- [`typeAlias.duplicate`](https://phpstan.org/error-identifiers/typeAlias.duplicate) (phpstan)
+- [`typeAlias.invalidName`](https://phpstan.org/error-identifiers/typeAlias.invalidName) (phpstan)
+- [`typeAlias.invalidType`](https://phpstan.org/error-identifiers/typeAlias.invalidType) (phpstan)
+- [`typeAlias.notFound`](https://phpstan.org/error-identifiers/typeAlias.notFound) (phpstan)
+- [`typeAlias.trait`](https://phpstan.org/error-identifiers/typeAlias.trait) (phpstan)
+- [`typeAlias.unresolvableType`](https://phpstan.org/error-identifiers/typeAlias.unresolvableType) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/phpdoc rules](/docs/rules/analyse/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

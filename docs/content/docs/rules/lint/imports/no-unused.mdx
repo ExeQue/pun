@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/imports/no-unused" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_unused_imports`](https://cs.symfony.com/doc/rules/import/no_unused_imports.html) (php-cs-fixer).
-- [`no-redundant-use`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-use) (mago-linter).
+Unused `use` statements must be removed.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "imports/no-unused" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "imports/no-unused" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/imports/no-unused -- explain the exception
-```
+- [`no_unused_imports`](https://cs.symfony.com/doc/rules/import/no_unused_imports.html) (php-cs-fixer)
+- [`no-redundant-use`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-use) (mago-linter)
 
-## What it does
-
-Unused `use` statements must be removed.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/imports rules](/docs/rules/lint/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

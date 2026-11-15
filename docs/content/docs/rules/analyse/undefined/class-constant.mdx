@@ -7,28 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/class-constant" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ClassConstantRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`NonExistentClassConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`classConstant.deprecatedClass`](https://phpstan.org/error-identifiers/classConstant.deprecatedClass) (phpstan).
-- [`classConstant.deprecatedEnum`](https://phpstan.org/error-identifiers/classConstant.deprecatedEnum) (phpstan).
-- [`classConstant.deprecatedInterface`](https://phpstan.org/error-identifiers/classConstant.deprecatedInterface) (phpstan).
-- [`classConstant.deprecatedTrait`](https://phpstan.org/error-identifiers/classConstant.deprecatedTrait) (phpstan).
-- [`classConstant.dynamicString`](https://phpstan.org/error-identifiers/classConstant.dynamicString) (phpstan).
-- [`classConstant.internalClass`](https://phpstan.org/error-identifiers/classConstant.internalClass) (phpstan).
-- [`classConstant.internalEnum`](https://phpstan.org/error-identifiers/classConstant.internalEnum) (phpstan).
-- [`classConstant.internalInterface`](https://phpstan.org/error-identifiers/classConstant.internalInterface) (phpstan).
-- [`classConstant.internalTrait`](https://phpstan.org/error-identifiers/classConstant.internalTrait) (phpstan).
-- [`classConstant.nameNotString`](https://phpstan.org/error-identifiers/classConstant.nameNotString) (phpstan).
-- [`classConstant.nonObject`](https://phpstan.org/error-identifiers/classConstant.nonObject) (phpstan).
-- [`classConstant.notFound`](https://phpstan.org/error-identifiers/classConstant.notFound) (phpstan).
-- [`classConstant.notSupported`](https://phpstan.org/error-identifiers/classConstant.notSupported) (phpstan).
-- [`classConstant.onTrait`](https://phpstan.org/error-identifiers/classConstant.onTrait) (phpstan).
-- [`classConstant.private`](https://phpstan.org/error-identifiers/classConstant.private) (phpstan).
-- [`classConstant.protected`](https://phpstan.org/error-identifiers/classConstant.protected) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -37,13 +16,27 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/class-constant" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/class-constant -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ClassConstantRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`NonExistentClassConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`classConstant.deprecatedClass`](https://phpstan.org/error-identifiers/classConstant.deprecatedClass) (phpstan)
+- [`classConstant.deprecatedEnum`](https://phpstan.org/error-identifiers/classConstant.deprecatedEnum) (phpstan)
+- [`classConstant.deprecatedInterface`](https://phpstan.org/error-identifiers/classConstant.deprecatedInterface) (phpstan)
+- [`classConstant.deprecatedTrait`](https://phpstan.org/error-identifiers/classConstant.deprecatedTrait) (phpstan)
+- [`classConstant.dynamicString`](https://phpstan.org/error-identifiers/classConstant.dynamicString) (phpstan)
+- [`classConstant.internalClass`](https://phpstan.org/error-identifiers/classConstant.internalClass) (phpstan)
+- [`classConstant.internalEnum`](https://phpstan.org/error-identifiers/classConstant.internalEnum) (phpstan)
+- [`classConstant.internalInterface`](https://phpstan.org/error-identifiers/classConstant.internalInterface) (phpstan)
+- [`classConstant.internalTrait`](https://phpstan.org/error-identifiers/classConstant.internalTrait) (phpstan)
+- [`classConstant.nameNotString`](https://phpstan.org/error-identifiers/classConstant.nameNotString) (phpstan)
+- [`classConstant.nonObject`](https://phpstan.org/error-identifiers/classConstant.nonObject) (phpstan)
+- [`classConstant.notFound`](https://phpstan.org/error-identifiers/classConstant.notFound) (phpstan)
+- [`classConstant.notSupported`](https://phpstan.org/error-identifiers/classConstant.notSupported) (phpstan)
+- [`classConstant.onTrait`](https://phpstan.org/error-identifiers/classConstant.onTrait) (phpstan)
+- [`classConstant.private`](https://phpstan.org/error-identifiers/classConstant.private) (phpstan)
+- [`classConstant.protected`](https://phpstan.org/error-identifiers/classConstant.protected) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

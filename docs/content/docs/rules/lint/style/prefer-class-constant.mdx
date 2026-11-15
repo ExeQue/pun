@@ -7,23 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/prefer-class-constant" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize), [`coding-style`](/docs/rules/sets/coding-style) sets. Fix: unsafe (can change behaviour).
+In the [`modernize`](/docs/rules/sets/modernize) and [`coding-style`](/docs/rules/sets/coding-style) sets. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`class_keyword`](https://cs.symfony.com/doc/rules/language_construct/class_keyword.html) (php-cs-fixer, risky).
-- [`StringClassNameToClassConstant`](https://getrector.com/rule-detail/string-class-name-to-class-constant-rector) (rector).
-- [`UseClassKeywordForClassNameResolution`](https://getrector.com/rule-detail/use-class-keyword-for-class-name-resolution-rector) (rector).
-- [`no-literal-namespace-string`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-literal-namespace-string) (mago-linter).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/style/prefer-class-keyword`
-- `lint/style/prefer-class-name-constant`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Use `Foo::class` instead of class-name strings.
 
 ## Configuration
 
@@ -32,24 +20,20 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "style/prefer-class-constant" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/prefer-class-constant" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/prefer-class-constant -- explain the exception
-```
+- [`class_keyword`](https://cs.symfony.com/doc/rules/language_construct/class_keyword.html) (php-cs-fixer, risky)
+- [`StringClassNameToClassConstant`](https://getrector.com/rule-detail/string-class-name-to-class-constant-rector) (rector)
+- [`UseClassKeywordForClassNameResolution`](https://getrector.com/rule-detail/use-class-keyword-for-class-name-resolution-rector) (rector)
+- [`no-literal-namespace-string`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-literal-namespace-string) (mago-linter)
 
-## What it does
+## Merged rules
 
-Use `Foo::class` instead of class-name strings.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/style/prefer-class-keyword`
+- `lint/style/prefer-class-name-constant`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

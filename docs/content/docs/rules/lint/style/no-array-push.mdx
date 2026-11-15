@@ -7,20 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-array-push" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`array_push`](https://cs.symfony.com/doc/rules/alias/array_push.html) (php-cs-fixer, risky).
-- [`ChangeArrayPushToArrayAssign`](https://getrector.com/rule-detail/change-array-push-to-array-assign-rector) (rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/arrays/prefer-array-append`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Converts simple usages of `array_push($x, $y);` to `$x[] = $y;`.
 
 ## Configuration
 
@@ -29,24 +20,17 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "style/no-array-push" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-array-push" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/no-array-push -- explain the exception
-```
+- [`array_push`](https://cs.symfony.com/doc/rules/alias/array_push.html) (php-cs-fixer, risky)
+- [`ChangeArrayPushToArrayAssign`](https://getrector.com/rule-detail/change-array-push-to-array-assign-rector) (rector)
 
-## What it does
+## Merged rules
 
-Converts simple usages of `array_push($x, $y);` to `$x[] = $y;`.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/arrays/prefer-array-append`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-attributes" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+Not in any set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_attributes`](https://cs.symfony.com/doc/rules/php_unit/php_unit_attributes.html) (php-cs-fixer).
+PHPUnit attributes must be used over their respective PHPDoc-based annotations.
 
 ## Configuration
 
@@ -20,27 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpunit/prefer-attributes" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-attributes" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/prefer-attributes -- explain the exception
-```
-
-## What it does
-
-PHPUnit attributes must be used over their respective PHPDoc-based annotations.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `keep-annotations` | `bool` | Any value of this type | `false` | `keep_annotations` |
+| `keep-annotations` | `bool` | Any | `false` | `keep_annotations` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_attributes`](https://cs.symfony.com/doc/rules/php_unit/php_unit_attributes.html) (php-cs-fixer)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

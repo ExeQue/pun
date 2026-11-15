@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/casts/spacing" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`cast_spaces`](https://cs.symfony.com/doc/rules/cast_notation/cast_spaces.html) (php-cs-fixer).
+A single space or none should be between cast and variable.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "casts/spacing" = true
 ```
 
-```php
-// @pun-ignore-file format/casts/spacing -- explain the exception
-```
-
-## What it does
-
-A single space or none should be between cast and variable.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ A single space or none should be between cast and variable.
 | --- | --- | --- | --- | --- |
 | `space` | `enum` | `none`, `single` | `"single"` | `space` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/casts) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`cast_spaces`](https://cs.symfony.com/doc/rules/cast_notation/cast_spaces.html) (php-cs-fixer)
+
+[More format/casts rules](/docs/rules/format/casts) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

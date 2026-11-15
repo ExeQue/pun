@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-redundant-final" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
+In the [`modernize`](/docs/rules/sets/modernize) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`no_unneeded_final_method`](https://cs.symfony.com/doc/rules/class_notation/no_unneeded_final_method.html) (php-cs-fixer, risky).
-- [`no-redundant-final`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-final) (mago-linter).
+Removes `final` from methods where possible.
 
 ## Configuration
 
@@ -21,27 +20,17 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can c
 "style/no-redundant-final" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-redundant-final" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/style/no-redundant-final -- explain the exception
-```
-
-## What it does
-
-Removes `final` from methods where possible.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `private-methods` | `bool` | Any value of this type | `true` | `private_methods` |
+| `private-methods` | `bool` | Any | `true` | `private_methods` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_unneeded_final_method`](https://cs.symfony.com/doc/rules/class_notation/no_unneeded_final_method.html) (php-cs-fixer, risky)
+- [`no-redundant-final`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-final) (mago-linter)
+
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/types/no-nullsafe-on-non-null" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`CleanupUnneededNullsafeOperator`](https://getrector.com/rule-detail/cleanup-unneeded-nullsafe-operator-rector) (rector).
+Cleanup unneeded nullsafe operator
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "types/no-nullsafe-on-non-null" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "types/no-nullsafe-on-non-null" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/types/no-nullsafe-on-non-null -- explain the exception
-```
+- [`CleanupUnneededNullsafeOperator`](https://getrector.com/rule-detail/cleanup-unneeded-nullsafe-operator-rector) (rector)
 
-## What it does
-
-Cleanup unneeded nullsafe operator
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/types rules](/docs/rules/lint/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

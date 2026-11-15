@@ -7,14 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/useless-array-filter" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ArrayFilterRule`](https://phpstan.org/error-identifiers/arrayFilter.alwaysEmpty) (phpstan-classes).
-- [`arrayFilter.alwaysEmpty`](https://phpstan.org/error-identifiers/arrayFilter.alwaysEmpty) (phpstan).
-- [`arrayFilter.empty`](https://phpstan.org/error-identifiers/arrayFilter.empty) (phpstan).
-- [`arrayFilter.same`](https://phpstan.org/error-identifiers/arrayFilter.same) (phpstan).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -23,13 +16,13 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "types/useless-array-filter" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/useless-array-filter -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ArrayFilterRule`](https://phpstan.org/error-identifiers/arrayFilter.alwaysEmpty) (phpstan-classes)
+- [`arrayFilter.alwaysEmpty`](https://phpstan.org/error-identifiers/arrayFilter.alwaysEmpty) (phpstan)
+- [`arrayFilter.empty`](https://phpstan.org/error-identifiers/arrayFilter.empty) (phpstan)
+- [`arrayFilter.same`](https://phpstan.org/error-identifiers/arrayFilter.same) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

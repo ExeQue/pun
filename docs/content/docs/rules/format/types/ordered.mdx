@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/types/ordered" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`ordered_types`](https://cs.symfony.com/doc/rules/class_notation/ordered_types.html) (php-cs-fixer).
+Sort union types and intersection types using configured order.
 
 ## Configuration
 
@@ -20,21 +20,18 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "types/ordered" = true
 ```
 
-```php
-// @pun-ignore-file format/types/ordered -- explain the exception
-```
-
-## What it does
-
-Sort union types and intersection types using configured order.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `case-sensitive` | `bool` | Any value of this type | `false` | `case_sensitive` |
+| `case-sensitive` | `bool` | Any | `false` | `case_sensitive` |
 | `null-position` | `enum` | `first`, `last`, `none` | `"first"` | `null_adjustment` |
 | `sort` | `enum` | `alphabetical`, `none` | `"alphabetical"` | `sort_algorithm` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`ordered_types`](https://cs.symfony.com/doc/rules/class_notation/ordered_types.html) (php-cs-fixer)
+
+[More format/types rules](/docs/rules/format/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

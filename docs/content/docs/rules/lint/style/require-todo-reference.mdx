@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-todo-reference" />
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
-## Replaces
+## What it does
 
-- [`tagged-fixme`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#tagged-fixme) (mago-linter).
-- [`tagged-todo`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#tagged-todo) (mago-linter).
+Require TODO and FIXME comments to reference a user or issue.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Not in any preset or set. Enable it by name or group. Fix: none (report only).
 "style/require-todo-reference" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-todo-reference" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/require-todo-reference -- explain the exception
-```
+- [`tagged-fixme`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#tagged-fixme) (mago-linter)
+- [`tagged-todo`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#tagged-todo) (mago-linter)
 
-## What it does
-
-Require TODO and FIXME comments to reference a user or issue.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/prefer-to-have-same-size" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Unsafe fix: it can change behaviour. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`UseToHaveSameSize`](https://pestphp.com/docs/rector#content-usetohavesamesizerector) (pest-plugin-rector).
+Converts expect(count($a))->toBe(count($b)) to expect($a)->toHaveSameSize($b)
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe 
 "pest/prefer-to-have-same-size" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/prefer-to-have-same-size" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/prefer-to-have-same-size -- explain the exception
-```
+- [`UseToHaveSameSize`](https://pestphp.com/docs/rector#content-usetohavesamesizerector) (pest-plugin-rector)
 
-## What it does
-
-Converts expect(count($a))->toBe(count($b)) to expect($a)->toHaveSameSize($b)
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

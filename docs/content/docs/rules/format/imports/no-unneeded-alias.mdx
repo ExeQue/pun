@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/imports/no-unneeded-alias" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_unneeded_import_alias`](https://cs.symfony.com/doc/rules/import/no_unneeded_import_alias.html) (php-cs-fixer).
-- [`RemoveUselessAliasInUseStatement`](https://getrector.com/rule-detail/remove-useless-alias-in-use-statement-rector) (rector).
+Imports should not be aliased as the same name.
 
 ## Configuration
 
@@ -21,16 +20,11 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "imports/no-unneeded-alias" = true
 ```
 
-```php
-// @pun-ignore-file format/imports/no-unneeded-alias -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Imports should not be aliased as the same name.
+- [`no_unneeded_import_alias`](https://cs.symfony.com/doc/rules/import/no_unneeded_import_alias.html) (php-cs-fixer)
+- [`RemoveUselessAliasInUseStatement`](https://getrector.com/rule-detail/remove-useless-alias-in-use-statement-rector) (rector)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/imports rules](/docs/rules/format/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

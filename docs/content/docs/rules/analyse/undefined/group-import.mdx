@@ -7,19 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/group-import" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ExistingNamesInGroupUseRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`checkClassCaseSensitivity`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`IncorrectClassLikeCasing`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`IncorrectFunctionCasing`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`class.nameCase`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan).
-- [`enum.nameCase`](https://phpstan.org/error-identifiers/enum.nameCase) (phpstan).
-- [`function.nameCase`](https://phpstan.org/error-identifiers/function.nameCase) (phpstan).
-- [`interface.nameCase`](https://phpstan.org/error-identifiers/interface.nameCase) (phpstan).
-- [`trait.nameCase`](https://phpstan.org/error-identifiers/trait.nameCase) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -28,13 +16,18 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/group-import" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/group-import -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ExistingNamesInGroupUseRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`checkClassCaseSensitivity`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`IncorrectClassLikeCasing`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`IncorrectFunctionCasing`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`class.nameCase`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan)
+- [`enum.nameCase`](https://phpstan.org/error-identifiers/enum.nameCase) (phpstan)
+- [`function.nameCase`](https://phpstan.org/error-identifiers/function.nameCase) (phpstan)
+- [`interface.nameCase`](https://phpstan.org/error-identifiers/interface.nameCase) (phpstan)
+- [`trait.nameCase`](https://phpstan.org/error-identifiers/trait.nameCase) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

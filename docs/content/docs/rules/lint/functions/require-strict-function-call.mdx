@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/functions/require-strict-function-call" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.strictFunctionCalls`.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Report only. Intent: suspicious. Upstream gates: `strictRules.strictFunctionCalls`.
 
-## Replaces
+## What it does
 
-- [`StrictFunctionCallsRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`function.strict`](https://phpstan.org/error-identifiers/function.strict) (phpstan-strict-rules).
+Requires the strict flag of `in_array()`, `array_search()`, `array_keys()` with a search value and `base64_decode()`.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (r
 "functions/require-strict-function-call" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "functions/require-strict-function-call" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/functions/require-strict-function-call -- explain the exception
-```
+- [`StrictFunctionCallsRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`function.strict`](https://phpstan.org/error-identifiers/function.strict) (phpstan-strict-rules)
 
-## What it does
-
-Requires the strict flag of `in_array()`, `array_search()`, `array_keys()` with a search value and `base64_decode()`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/functions rules](/docs/rules/lint/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

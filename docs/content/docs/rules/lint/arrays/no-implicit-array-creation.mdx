@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/arrays/no-implicit-array-creation" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.disallowedImplicitArrayCreation`.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: suspicious. Upstream gates: `strictRules.disallowedImplicitArrayCreation`.
 
-## Replaces
+## What it does
 
-- [`DisallowedImplicitArrayCreationRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`variable.implicitArray`](https://phpstan.org/error-identifiers/variable.implicitArray) (phpstan-strict-rules).
+Disallows implicit array creation: appending to or writing an offset of an undefined or `null` variable.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "arrays/no-implicit-array-creation" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "arrays/no-implicit-array-creation" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/arrays/no-implicit-array-creation -- explain the exception
-```
+- [`DisallowedImplicitArrayCreationRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`variable.implicitArray`](https://phpstan.org/error-identifiers/variable.implicitArray) (phpstan-strict-rules)
 
-## What it does
-
-Disallows implicit array creation: appending to or writing an offset of an undefined or `null` variable.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/arrays rules](/docs/rules/lint/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

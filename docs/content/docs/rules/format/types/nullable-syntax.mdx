@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/types/nullable-syntax" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`nullable_type_declaration`](https://cs.symfony.com/doc/rules/language_construct/nullable_type_declaration.html) (php-cs-fixer).
+Nullable single type declaration should be standardised using configured syntax.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "types/nullable-syntax" = true
 ```
 
-```php
-// @pun-ignore-file format/types/nullable-syntax -- explain the exception
-```
-
-## What it does
-
-Nullable single type declaration should be standardised using configured syntax.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Nullable single type declaration should be standardised using configured syntax.
 | --- | --- | --- | --- | --- |
 | `syntax` | `enum` | `union`, `question-mark` | `"question-mark"` | `syntax` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`nullable_type_declaration`](https://cs.symfony.com/doc/rules/language_construct/nullable_type_declaration.html) (php-cs-fixer)
+
+[More format/types rules](/docs/rules/format/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

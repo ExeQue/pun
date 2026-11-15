@@ -7,42 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/incompatible-property-override" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`OverridingPropertyRule`](https://phpstan.org/error-identifiers/property.abstractOverridingNonAbstractHook) (phpstan-classes).
-- [`IncompatiblePropertyAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`IncompatibleReadonlyModifier`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`IncompatibleStaticModifier`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidOverrideAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidStaticMethodCall`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidStaticPropertyAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`property.abstractOverridingNonAbstractHook`](https://phpstan.org/error-identifiers/property.abstractOverridingNonAbstractHook) (phpstan).
-- [`property.deprecatedClass`](https://phpstan.org/error-identifiers/property.deprecatedClass) (phpstan).
-- [`property.deprecatedEnum`](https://phpstan.org/error-identifiers/property.deprecatedEnum) (phpstan).
-- [`property.deprecatedInterface`](https://phpstan.org/error-identifiers/property.deprecatedInterface) (phpstan).
-- [`property.deprecatedTrait`](https://phpstan.org/error-identifiers/property.deprecatedTrait) (phpstan).
-- [`property.extraNativeType`](https://phpstan.org/error-identifiers/property.extraNativeType) (phpstan).
-- [`property.internal`](https://phpstan.org/error-identifiers/property.internal) (phpstan).
-- [`property.internalClass`](https://phpstan.org/error-identifiers/property.internalClass) (phpstan).
-- [`property.internalEnum`](https://phpstan.org/error-identifiers/property.internalEnum) (phpstan).
-- [`property.internalInterface`](https://phpstan.org/error-identifiers/property.internalInterface) (phpstan).
-- [`property.internalTrait`](https://phpstan.org/error-identifiers/property.internalTrait) (phpstan).
-- [`property.missingNativeType`](https://phpstan.org/error-identifiers/property.missingNativeType) (phpstan).
-- [`property.nativeType`](https://phpstan.org/error-identifiers/property.nativeType) (phpstan).
-- [`property.nonStatic`](https://phpstan.org/error-identifiers/property.nonStatic) (phpstan).
-- [`property.notReadable`](https://phpstan.org/error-identifiers/property.notReadable) (phpstan).
-- [`property.notWritable`](https://phpstan.org/error-identifiers/property.notWritable) (phpstan).
-- [`property.override`](https://phpstan.org/error-identifiers/property.override) (phpstan).
-- [`property.parentPropertyFinal`](https://phpstan.org/error-identifiers/property.parentPropertyFinal) (phpstan).
-- [`property.parentPropertyFinalByPhpDoc`](https://phpstan.org/error-identifiers/property.parentPropertyFinalByPhpDoc) (phpstan).
-- [`property.phpDocType`](https://phpstan.org/error-identifiers/property.phpDocType) (phpstan).
-- [`property.protected`](https://phpstan.org/error-identifiers/property.protected) (phpstan).
-- [`property.readOnly`](https://phpstan.org/error-identifiers/property.readOnly) (phpstan).
-- [`property.readWrite`](https://phpstan.org/error-identifiers/property.readWrite) (phpstan).
-- [`property.static`](https://phpstan.org/error-identifiers/property.static) (phpstan).
-- [`property.visibility`](https://phpstan.org/error-identifiers/property.visibility) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -51,13 +16,41 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/incompatible-property-override" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/incompatible-property-override -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`OverridingPropertyRule`](https://phpstan.org/error-identifiers/property.abstractOverridingNonAbstractHook) (phpstan-classes)
+- [`IncompatiblePropertyAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`IncompatibleReadonlyModifier`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`IncompatibleStaticModifier`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidOverrideAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidStaticMethodCall`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidStaticPropertyAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`property.abstractOverridingNonAbstractHook`](https://phpstan.org/error-identifiers/property.abstractOverridingNonAbstractHook) (phpstan)
+- [`property.deprecatedClass`](https://phpstan.org/error-identifiers/property.deprecatedClass) (phpstan)
+- [`property.deprecatedEnum`](https://phpstan.org/error-identifiers/property.deprecatedEnum) (phpstan)
+- [`property.deprecatedInterface`](https://phpstan.org/error-identifiers/property.deprecatedInterface) (phpstan)
+- [`property.deprecatedTrait`](https://phpstan.org/error-identifiers/property.deprecatedTrait) (phpstan)
+- [`property.extraNativeType`](https://phpstan.org/error-identifiers/property.extraNativeType) (phpstan)
+- [`property.internal`](https://phpstan.org/error-identifiers/property.internal) (phpstan)
+- [`property.internalClass`](https://phpstan.org/error-identifiers/property.internalClass) (phpstan)
+- [`property.internalEnum`](https://phpstan.org/error-identifiers/property.internalEnum) (phpstan)
+- [`property.internalInterface`](https://phpstan.org/error-identifiers/property.internalInterface) (phpstan)
+- [`property.internalTrait`](https://phpstan.org/error-identifiers/property.internalTrait) (phpstan)
+- [`property.missingNativeType`](https://phpstan.org/error-identifiers/property.missingNativeType) (phpstan)
+- [`property.nativeType`](https://phpstan.org/error-identifiers/property.nativeType) (phpstan)
+- [`property.nonStatic`](https://phpstan.org/error-identifiers/property.nonStatic) (phpstan)
+- [`property.notReadable`](https://phpstan.org/error-identifiers/property.notReadable) (phpstan)
+- [`property.notWritable`](https://phpstan.org/error-identifiers/property.notWritable) (phpstan)
+- [`property.override`](https://phpstan.org/error-identifiers/property.override) (phpstan)
+- [`property.parentPropertyFinal`](https://phpstan.org/error-identifiers/property.parentPropertyFinal) (phpstan)
+- [`property.parentPropertyFinalByPhpDoc`](https://phpstan.org/error-identifiers/property.parentPropertyFinalByPhpDoc) (phpstan)
+- [`property.phpDocType`](https://phpstan.org/error-identifiers/property.phpDocType) (phpstan)
+- [`property.protected`](https://phpstan.org/error-identifiers/property.protected) (phpstan)
+- [`property.readOnly`](https://phpstan.org/error-identifiers/property.readOnly) (phpstan)
+- [`property.readWrite`](https://phpstan.org/error-identifiers/property.readWrite) (phpstan)
+- [`property.static`](https://phpstan.org/error-identifiers/property.static) (phpstan)
+- [`property.visibility`](https://phpstan.org/error-identifiers/property.visibility) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

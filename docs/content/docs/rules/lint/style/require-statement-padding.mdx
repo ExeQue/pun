@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-statement-padding" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour).
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`NewlineAfterStatement`](https://getrector.com/rule-detail/newline-after-statement-rector) (rector).
+Add empty new line after different-type statements to improve code readability
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 "style/require-statement-padding" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-statement-padding" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/require-statement-padding -- explain the exception
-```
+- [`NewlineAfterStatement`](https://getrector.com/rule-detail/newline-after-statement-rector) (rector)
 
-## What it does
-
-Add empty new line after different-type statements to improve code readability
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

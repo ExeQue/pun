@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/unpack-non-iterable" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`UnpackIterableInArrayRule`](https://phpstan.org/error-identifiers/arrayUnpacking.nonIterable) (phpstan-classes).
-- [`arrayUnpacking.nonIterable`](https://phpstan.org/error-identifiers/arrayUnpacking.nonIterable) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "types/unpack-non-iterable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/unpack-non-iterable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`UnpackIterableInArrayRule`](https://phpstan.org/error-identifiers/arrayUnpacking.nonIterable) (phpstan-classes)
+- [`arrayUnpacking.nonIterable`](https://phpstan.org/error-identifiers/arrayUnpacking.nonIterable) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

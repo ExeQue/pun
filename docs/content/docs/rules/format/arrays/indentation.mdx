@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/arrays/indentation" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`array_indentation`](https://cs.symfony.com/doc/rules/whitespace/array_indentation.html) (php-cs-fixer).
+Each element of an array must be indented exactly once.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "arrays/indentation" = true
 ```
 
-```php
-// @pun-ignore-file format/arrays/indentation -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Each element of an array must be indented exactly once.
+- [`array_indentation`](https://cs.symfony.com/doc/rules/whitespace/array_indentation.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/arrays rules](/docs/rules/format/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

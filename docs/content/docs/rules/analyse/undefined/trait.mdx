@@ -7,17 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/trait" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ExistingClassInTraitUseRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`NonExistentClassLike`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`interface.traitUse`](https://phpstan.org/error-identifiers/interface.traitUse) (phpstan).
-- [`trait.notFound`](https://phpstan.org/error-identifiers/trait.notFound) (phpstan).
-- [`traitUse.class`](https://phpstan.org/error-identifiers/traitUse.class) (phpstan).
-- [`traitUse.enum`](https://phpstan.org/error-identifiers/traitUse.enum) (phpstan).
-- [`traitUse.interface`](https://phpstan.org/error-identifiers/traitUse.interface) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -26,13 +16,16 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/trait" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/trait -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ExistingClassInTraitUseRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`NonExistentClassLike`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`interface.traitUse`](https://phpstan.org/error-identifiers/interface.traitUse) (phpstan)
+- [`trait.notFound`](https://phpstan.org/error-identifiers/trait.notFound) (phpstan)
+- [`traitUse.class`](https://phpstan.org/error-identifiers/traitUse.class) (phpstan)
+- [`traitUse.enum`](https://phpstan.org/error-identifiers/traitUse.enum) (phpstan)
+- [`traitUse.interface`](https://phpstan.org/error-identifiers/traitUse.interface) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

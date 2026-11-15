@@ -7,20 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/prefer-to-throw" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`ConvertExpectExceptionToThrow`](https://pestphp.com/docs/rector#content-convertexpectexceptiontothrowrector) (pest-plugin-rector).
-- [`UseToThrow`](https://pestphp.com/docs/rector#content-usetothrowrector) (pest-plugin-rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/pest/no-expect-exception`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Use expect()->toThrow() instead of expectException() or try/catch in Pest tests.
 
 ## Configuration
 
@@ -29,24 +20,17 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "pest/prefer-to-throw" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/prefer-to-throw" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/prefer-to-throw -- explain the exception
-```
+- [`ConvertExpectExceptionToThrow`](https://pestphp.com/docs/rector#content-convertexpectexceptiontothrowrector) (pest-plugin-rector)
+- [`UseToThrow`](https://pestphp.com/docs/rector#content-usetothrowrector) (pest-plugin-rector)
 
-## What it does
+## Merged rules
 
-Use expect()->toThrow() instead of expectException() or try/catch in Pest tests.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/pest/no-expect-exception`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

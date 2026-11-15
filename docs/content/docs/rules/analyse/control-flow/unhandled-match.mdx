@@ -7,15 +7,7 @@ pagination: false
 
 <RuleId id="analyse/control-flow/unhandled-match" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`MatchExpressionRule`](https://phpstan.org/error-identifiers/match.alwaysFalse) (phpstan-classes).
-- [`MatchNotExhaustive`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`match.alwaysFalse`](https://phpstan.org/error-identifiers/match.alwaysFalse) (phpstan).
-- [`match.alwaysTrue`](https://phpstan.org/error-identifiers/match.alwaysTrue) (phpstan).
-- [`match.unhandled`](https://phpstan.org/error-identifiers/match.unhandled) (phpstan).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -24,13 +16,14 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "control-flow/unhandled-match" = "on"
 ```
 
-```php
-// @pun-ignore analyse/control-flow/unhandled-match -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MatchExpressionRule`](https://phpstan.org/error-identifiers/match.alwaysFalse) (phpstan-classes)
+- [`MatchNotExhaustive`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`match.alwaysFalse`](https://phpstan.org/error-identifiers/match.alwaysFalse) (phpstan)
+- [`match.alwaysTrue`](https://phpstan.org/error-identifiers/match.alwaysTrue) (phpstan)
+- [`match.unhandled`](https://phpstan.org/error-identifiers/match.unhandled) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/control-flow rules](/docs/rules/analyse/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

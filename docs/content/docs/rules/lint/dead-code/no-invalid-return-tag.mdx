@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-invalid-return-tag" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RemoveReturnTagIncompatibleWithNativeType`](https://getrector.com/rule-detail/remove-return-tag-incompatible-with-native-type-rector) (rector).
+Remove @return docblock that contradicts the declared native return type
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "dead-code/no-invalid-return-tag" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-invalid-return-tag" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-invalid-return-tag -- explain the exception
-```
+- [`RemoveReturnTagIncompatibleWithNativeType`](https://getrector.com/rule-detail/remove-return-tag-incompatible-with-native-type-rector) (rector)
 
-## What it does
-
-Remove @return docblock that contradicts the declared native return type
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

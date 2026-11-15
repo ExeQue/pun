@@ -7,14 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/missing-return-type" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`MissingFunctionReturnTypehintRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes).
-- [`checkMissingTypehints`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`MissingReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`missingType.return`](https://phpstan.org/error-identifiers/missingType.return) (phpstan).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -23,17 +16,17 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "types/missing-return-type" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/missing-return-type -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
-
-No configurable options.
+- [`MissingFunctionReturnTypehintRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes)
+- [`checkMissingTypehints`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`MissingReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`missingType.return`](https://phpstan.org/error-identifiers/missingType.return) (phpstan)
 
 ## Linked rules
 
 - Fixed by [`lint/types/add-void-return-type`](/docs/rules/lint/types/add-void-return-type).
 
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

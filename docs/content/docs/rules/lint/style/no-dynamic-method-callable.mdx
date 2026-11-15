@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-dynamic-method-callable" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (report only). Additional upstream gates: `strictRules.noVariableVariables`.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Report only. Upstream gates: `strictRules.noVariableVariables`.
 
-## Replaces
+## What it does
 
-- [`VariableMethodCallableRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
+Disallows a first-class callable of a method with a variable name (`$object->$method(...)`).
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (r
 "style/no-dynamic-method-callable" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-dynamic-method-callable" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/no-dynamic-method-callable -- explain the exception
-```
+- [`VariableMethodCallableRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
 
-## What it does
-
-Disallows a first-class callable of a method with a variable name (`$object->$method(...)`).
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

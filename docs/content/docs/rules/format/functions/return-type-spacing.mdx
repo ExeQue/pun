@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/functions/return-type-spacing" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`return_type_declaration`](https://cs.symfony.com/doc/rules/function_notation/return_type_declaration.html) (php-cs-fixer).
+Adjust spacing around colon in return type declarations and backed enum types.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "functions/return-type-spacing" = true
 ```
 
-```php
-// @pun-ignore-file format/functions/return-type-spacing -- explain the exception
-```
-
-## What it does
-
-Adjust spacing around colon in return type declarations and backed enum types.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Adjust spacing around colon in return type declarations and backed enum types.
 | --- | --- | --- | --- | --- |
 | `space-before` | `enum` | `one`, `none` | `"none"` | `space_before` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`return_type_declaration`](https://cs.symfony.com/doc/rules/function_notation/return_type_declaration.html) (php-cs-fixer)
+
+[More format/functions rules](/docs/rules/format/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

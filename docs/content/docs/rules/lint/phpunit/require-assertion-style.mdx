@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/require-assertion-style" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_test_case_static_method_calls`](https://cs.symfony.com/doc/rules/php_unit/php_unit_test_case_static_method_calls.html) (php-cs-fixer, risky).
-- [`assertion-style`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#assertion-style) (mago-linter).
+Calls to `PHPUnit\Framework\TestCase` static methods (like assertions) must all be of the same type, either `$this->`, `self::` or `static::`.
 
 ## Configuration
 
@@ -21,29 +20,19 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "phpunit/require-assertion-style" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/require-assertion-style" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/require-assertion-style -- explain the exception
-```
-
-## What it does
-
-Calls to `PHPUnit\Framework\TestCase` static methods (like assertions) must all be of the same type, either `$this->`, `self::` or `static::`.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
 | `call-type` | `enum` | `this`, `self`, `static` | `"static"` | `call_type` |
-| `methods` | `map` | Any value of this type | `{  }` | `methods` |
+| `methods` | `map` | Any | `{  }` | `methods` |
 | `target` | `enum` | `10.0`, `11.0`, `newest` | `"10.0"` | `target` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_test_case_static_method_calls`](https://cs.symfony.com/doc/rules/php_unit/php_unit_test_case_static_method_calls.html) (php-cs-fixer, risky)
+- [`assertion-style`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#assertion-style) (mago-linter)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

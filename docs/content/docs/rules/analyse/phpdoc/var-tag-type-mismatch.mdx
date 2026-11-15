@@ -7,28 +7,12 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/var-tag-type-mismatch" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). **Planned: not in Pun yet.** Enabling it in pun.toml is a config error.
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only. **Planned: not in Pun yet.** Enabling it is a config error.
 
 ## Replaces
 
-- [`VarTagChangedExpressionTypeRule`](https://phpstan.org/error-identifiers/phpstanApi.varTagAssumption) (phpstan-classes).
-- [`varTag.nativeType`](https://phpstan.org/error-identifiers/varTag.nativeType) (phpstan).
-- [`varTag.type`](https://phpstan.org/error-identifiers/varTag.type) (phpstan).
+- [`VarTagChangedExpressionTypeRule`](https://phpstan.org/error-identifiers/phpstanApi.varTagAssumption) (phpstan-classes)
+- [`varTag.nativeType`](https://phpstan.org/error-identifiers/varTag.nativeType) (phpstan)
+- [`varTag.type`](https://phpstan.org/error-identifiers/varTag.type) (phpstan)
 
-## Configuration
-
-```toml title="pun.toml"
-[analyse.rules]
-"phpdoc/var-tag-type-mismatch" = "on"
-```
-
-```php
-// @pun-ignore analyse/phpdoc/var-tag-type-mismatch -- explain the exception
-```
-
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/phpdoc rules](/docs/rules/analyse/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

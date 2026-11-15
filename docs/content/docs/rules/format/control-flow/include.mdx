@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/include" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`include`](https://cs.symfony.com/doc/rules/control_structure/include.html) (php-cs-fixer).
+Include/Require and file path should be divided with a single space. File path should not be placed within parentheses.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "control-flow/include" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/include -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Include/Require and file path should be divided with a single space. File path should not be placed within parentheses.
+- [`include`](https://cs.symfony.com/doc/rules/control_structure/include.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

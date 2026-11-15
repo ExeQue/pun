@@ -12,11 +12,11 @@ Missing typehints, union types and nullable values.
 preset = "strict"
 ```
 
-Ecosystem and target-version settings still apply. Planned rules are not implemented.
+Ecosystem and target-version gates still apply. Planned rules do not run.
 
-This preset covers PHPStan levels 6–8 and includes every lower preset (levels 0–8). Extension rules are included by their mapping preset, not by a PHPStan core level.
+Covers PHPStan levels 6–8, and every lower preset with them (levels 0–8). Extension rules join by their own preset, not by PHPStan level.
 
-Type switches resolved by config, but not yet applied by the analysis CLI:
+Type switches it turns on:
 
 ```toml
 [analyse]
@@ -25,7 +25,6 @@ nullables = true
 ```
 
 ### What each PHPStan level adds
-
 
 #### Level 0
 
@@ -374,7 +373,7 @@ Checks nullable values (`nullables = true`).
 
 ## Enabled rules (366)
 
-| Rule | Configuration applied | Status |
+| Rule | Configuration | Status |
 | --- | --- | --- |
 | [`analyse/arrays/invalid-array-key`](/docs/rules/analyse/arrays/invalid-array-key) | `true` | Ported |
 | [`analyse/arrays/invalid-destructuring`](/docs/rules/analyse/arrays/invalid-destructuring) | `true` | Ported |

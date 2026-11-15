@@ -7,16 +7,11 @@ pagination: false
 
 <RuleId id="analyse/classes/invalid-static-method-callable" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
-## Replaces
+## What it does
 
-- [`StaticMethodCallableRule`](https://phpstan.org/error-identifiers/callable.notSupported) (phpstan-classes).
-- [`method.callToAbstract`](https://phpstan.org/error-identifiers/method.callToAbstract) (phpstan).
-- [`method.staticCall`](https://phpstan.org/error-identifiers/method.staticCall) (phpstan).
-- [`staticMethod.callToAbstract`](https://phpstan.org/error-identifiers/staticMethod.callToAbstract) (phpstan).
-- [`staticMethod.nameCase`](https://phpstan.org/error-identifiers/staticMethod.nameCase) (phpstan).
-- [`staticMethod.nonObject`](https://phpstan.org/error-identifiers/staticMethod.nonObject) (phpstan).
+Checks class and method existence, visibility, static-call rules and abstract methods when creating a first-class static method callable. Callable creation does not pass arguments. The check-function-name-case option also checks method spelling.
 
 ## Configuration
 
@@ -25,16 +20,15 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/invalid-static-method-callable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/invalid-static-method-callable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
-## What it does
+## Replaces
 
-Checks class and method existence, visibility, static-call rules and abstract methods when creating a first-class static method callable. Callable creation does not pass arguments. The check-function-name-case option also checks method spelling.
+- [`StaticMethodCallableRule`](https://phpstan.org/error-identifiers/callable.notSupported) (phpstan-classes)
+- [`method.callToAbstract`](https://phpstan.org/error-identifiers/method.callToAbstract) (phpstan)
+- [`method.staticCall`](https://phpstan.org/error-identifiers/method.staticCall) (phpstan)
+- [`staticMethod.callToAbstract`](https://phpstan.org/error-identifiers/staticMethod.callToAbstract) (phpstan)
+- [`staticMethod.nameCase`](https://phpstan.org/error-identifiers/staticMethod.nameCase) (phpstan)
+- [`staticMethod.nonObject`](https://phpstan.org/error-identifiers/staticMethod.nonObject) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

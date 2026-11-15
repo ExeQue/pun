@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/doctrine/annotation-array-assignment" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when doctrine is installed.
+Not in any preset. Safe fix. Runs when doctrine is installed.
 
-## Replaces
+## What it does
 
-- [`doctrine_annotation_array_assignment`](https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html) (php-cs-fixer).
+Doctrine annotations must use configured operator for assignment in arrays.
 
 ## Configuration
 
@@ -20,20 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "doctrine/annotation-array-assignment" = true
 ```
 
-```php
-// @pun-ignore-file format/doctrine/annotation-array-assignment -- explain the exception
-```
-
-## What it does
-
-Doctrine annotations must use configured operator for assignment in arrays.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `ignored-tags` | `list` | Any value of this type | `["abstract", "access", "code", "deprec", "encode", "exception", "final", "ingroup", "inheritdoc", "inheritDoc", "magic", "name", "toc", "tutorial", "private", "static", "staticvar", "staticVar", "throw", "api", "author", "category", "copyright", "deprecated", "example", "filesource", "global", "ignore", "internal", "license", "link", "method", "package", "param", "property", "property-read", "property-write", "return", "see", "since", "source", "subpackage", "throws", "todo", "TODO", "usedBy", "uses", "var", "version", "after", "afterClass", "backupGlobals", "backupStaticAttributes", "before", "beforeClass", "codeCoverageIgnore", "codeCoverageIgnoreStart", "codeCoverageIgnoreEnd", "covers", "coversDefaultClass", "coversNothing", "dataProvider", "depends", "expectedException", "expectedExceptionCode", "expectedExceptionMessage", "expectedExceptionMessageRegExp", "group", "large", "medium", "preserveGlobalState", "requires", "runTestsInSeparateProcesses", "runInSeparateProcess", "small", "test", "testdox", "ticket", "uses", "SuppressWarnings", "noinspection", "package_version", "enduml", "startuml", "psalm", "phpstan", "template", "fix", "FIXME", "fixme", "override"]` | `ignored_tags` |
+| `ignored-tags` | `list` | Any | `["abstract", "access", "code", "deprec", "encode", "exception", "final", "ingroup", "inheritdoc", "inheritDoc", "magic", "name", "toc", "tutorial", "private", "static", "staticvar", "staticVar", "throw", "api", "author", "category", "copyright", "deprecated", "example", "filesource", "global", "ignore", "internal", "license", "link", "method", "package", "param", "property", "property-read", "property-write", "return", "see", "since", "source", "subpackage", "throws", "todo", "TODO", "usedBy", "uses", "var", "version", "after", "afterClass", "backupGlobals", "backupStaticAttributes", "before", "beforeClass", "codeCoverageIgnore", "codeCoverageIgnoreStart", "codeCoverageIgnoreEnd", "covers", "coversDefaultClass", "coversNothing", "dataProvider", "depends", "expectedException", "expectedExceptionCode", "expectedExceptionMessage", "expectedExceptionMessageRegExp", "group", "large", "medium", "preserveGlobalState", "requires", "runTestsInSeparateProcesses", "runInSeparateProcess", "small", "test", "testdox", "ticket", "uses", "SuppressWarnings", "noinspection", "package_version", "enduml", "startuml", "psalm", "phpstan", "template", "fix", "FIXME", "fixme", "override"]` | `ignored_tags` |
 | `operator` | `enum` | `=`, `:` | `"="` | `operator` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/doctrine) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`doctrine_annotation_array_assignment`](https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html) (php-cs-fixer)
+
+[More format/doctrine rules](/docs/rules/format/doctrine) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

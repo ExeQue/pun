@@ -7,24 +7,7 @@ pagination: false
 
 <RuleId id="format/casts/no-short-bool" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
-
-## Replaces
-
-- [`no_short_bool_cast`](https://cs.symfony.com/doc/rules/cast_notation/no_short_bool_cast.html) (php-cs-fixer).
-- [`ReplaceMultipleBooleanNot`](https://getrector.com/rule-detail/replace-multiple-boolean-not-rector) (rector).
-- [`no-short-bool-cast`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-short-bool-cast) (mago-linter).
-
-## Configuration
-
-```toml title="pun.toml"
-[format.rules]
-"casts/no-short-bool" = true
-```
-
-```php
-// @pun-ignore-file format/casts/no-short-bool -- explain the exception
-```
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
 ## What it does
 
@@ -34,8 +17,19 @@ Short cast `bool` using double exclamation mark should not be used.
 
 `(bool)` binds tighter than `instanceof`, but `!` does not. So `!!$a instanceof Foo` is true when `$a` is a `Foo`, while the rewritten `(bool) $a instanceof Foo` is always false. Pint rewrites it the same way. Write `!!($a instanceof Foo)` to keep the check.
 
-## Options
+## Configuration
 
-No configurable options.
+```toml title="pun.toml"
+[format.rules]
+"casts/no-short-bool" = true
+```
 
-[Group reference](/docs/rules/format/casts) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
+
+## Replaces
+
+- [`no_short_bool_cast`](https://cs.symfony.com/doc/rules/cast_notation/no_short_bool_cast.html) (php-cs-fixer)
+- [`ReplaceMultipleBooleanNot`](https://getrector.com/rule-detail/replace-multiple-boolean-not-rector) (rector)
+- [`no-short-bool-cast`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-short-bool-cast) (mago-linter)
+
+[More format/casts rules](/docs/rules/format/casts) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

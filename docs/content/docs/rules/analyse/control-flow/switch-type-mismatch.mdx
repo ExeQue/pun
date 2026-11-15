@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/control-flow/switch-type-mismatch" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.switchConditionsMatchingType`.
-
-## Replaces
-
-- [`MatchingTypeInSwitchCaseConditionRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`switch.type`](https://phpstan.org/error-identifiers/switch.type) (phpstan-strict-rules).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.switchConditionsMatchingType`.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "control-flow/switch-type-mismatch" = "on"
 ```
 
-```php
-// @pun-ignore analyse/control-flow/switch-type-mismatch -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MatchingTypeInSwitchCaseConditionRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`switch.type`](https://phpstan.org/error-identifiers/switch.type) (phpstan-strict-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/control-flow rules](/docs/rules/analyse/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

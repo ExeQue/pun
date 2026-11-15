@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/no-unneeded-braces" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_unneeded_braces`](https://cs.symfony.com/doc/rules/control_structure/no_unneeded_braces.html) (php-cs-fixer).
-- [`ReplaceBlockToItsStmts`](https://getrector.com/rule-detail/replace-block-to-its-stmts-rector) (rector).
-- [`no-redundant-block`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-block) (mago-linter).
+Removes unneeded braces that are superfluous and aren't part of a control structure's body.
 
 ## Configuration
 
@@ -22,19 +20,18 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "control-flow/no-unneeded-braces" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/no-unneeded-braces -- explain the exception
-```
-
-## What it does
-
-Removes unneeded braces that are superfluous and aren't part of a control structure's body.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `namespaces` | `bool` | Any value of this type | `false` | `namespaces` |
+| `namespaces` | `bool` | Any | `false` | `namespaces` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_unneeded_braces`](https://cs.symfony.com/doc/rules/control_structure/no_unneeded_braces.html) (php-cs-fixer)
+- [`ReplaceBlockToItsStmts`](https://getrector.com/rule-detail/replace-block-to-its-stmts-rector) (rector)
+- [`no-redundant-block`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-block) (mago-linter)
+
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

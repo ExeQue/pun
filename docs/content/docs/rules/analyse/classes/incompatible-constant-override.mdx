@@ -7,17 +7,11 @@ pagination: false
 
 <RuleId id="analyse/classes/incompatible-constant-override" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
-## Replaces
+## What it does
 
-- [`OverridingConstantRule`](https://phpstan.org/error-identifiers/classConstant.final) (phpstan-classes).
-- [`OverrideFinalConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`classConstant.final`](https://phpstan.org/error-identifiers/classConstant.final) (phpstan).
-- [`classConstant.missingNativeType`](https://phpstan.org/error-identifiers/classConstant.missingNativeType) (phpstan).
-- [`classConstant.nativeType`](https://phpstan.org/error-identifiers/classConstant.nativeType) (phpstan).
-- [`classConstant.type`](https://phpstan.org/error-identifiers/classConstant.type) (phpstan).
-- [`classConstant.visibility`](https://phpstan.org/error-identifiers/classConstant.visibility) (phpstan).
+Reports overrides of final constants, reduced constant visibility, and incompatible native or PHPDoc constant types. Native and PHPDoc covariance checks run with the essential preset and stricter presets.
 
 ## Configuration
 
@@ -26,16 +20,16 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/incompatible-constant-override" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/incompatible-constant-override -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
-## What it does
+## Replaces
 
-Reports overrides of final constants, reduced constant visibility, and incompatible native or PHPDoc constant types. Native and PHPDoc covariance checks run with the essential preset and stricter presets.
+- [`OverridingConstantRule`](https://phpstan.org/error-identifiers/classConstant.final) (phpstan-classes)
+- [`OverrideFinalConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`classConstant.final`](https://phpstan.org/error-identifiers/classConstant.final) (phpstan)
+- [`classConstant.missingNativeType`](https://phpstan.org/error-identifiers/classConstant.missingNativeType) (phpstan)
+- [`classConstant.nativeType`](https://phpstan.org/error-identifiers/classConstant.nativeType) (phpstan)
+- [`classConstant.type`](https://phpstan.org/error-identifiers/classConstant.type) (phpstan)
+- [`classConstant.visibility`](https://phpstan.org/error-identifiers/classConstant.visibility) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

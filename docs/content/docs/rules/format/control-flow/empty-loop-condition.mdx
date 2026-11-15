@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/empty-loop-condition" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`empty_loop_condition`](https://cs.symfony.com/doc/rules/control_structure/empty_loop_condition.html) (php-cs-fixer).
+Empty loop-condition must be in configured style.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "control-flow/empty-loop-condition" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/empty-loop-condition -- explain the exception
-```
-
-## What it does
-
-Empty loop-condition must be in configured style.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Empty loop-condition must be in configured style.
 | --- | --- | --- | --- | --- |
 | `style` | `enum` | `while`, `for` | `"while"` | `style` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`empty_loop_condition`](https://cs.symfony.com/doc/rules/control_structure/empty_loop_condition.html) (php-cs-fixer)
+
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

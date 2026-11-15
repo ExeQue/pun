@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/classes/require-class-matches-file" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Intent: correctness.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Intent: correctness.
 
-## Replaces
+## What it does
 
-- [`psr_autoloading`](https://cs.symfony.com/doc/rules/basic/psr_autoloading.html) (php-cs-fixer, risky).
-- [`file-name`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#file-name) (mago-linter).
+Classes must be in a path that matches their namespace, be at least one namespace deep and the class name should match the file name.
 
 ## Configuration
 
@@ -21,27 +20,17 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "classes/require-class-matches-file" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "classes/require-class-matches-file" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/classes/require-class-matches-file -- explain the exception
-```
-
-## What it does
-
-Classes must be in a path that matches their namespace, be at least one namespace deep and the class name should match the file name.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `dir` | `string` | Any value of this type | omit (upstream null) | `dir` |
+| `dir` | `string` | Any | Not set | `dir` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`psr_autoloading`](https://cs.symfony.com/doc/rules/basic/psr_autoloading.html) (php-cs-fixer, risky)
+- [`file-name`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#file-name) (mago-linter)
+
+[More lint/classes rules](/docs/rules/lint/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/new-parentheses" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`new_with_parentheses`](https://cs.symfony.com/doc/rules/operator/new_with_parentheses.html) (php-cs-fixer).
+All instances created with `new` keyword must (not) be followed by parentheses.
 
 ## Configuration
 
@@ -20,20 +20,17 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "operators/new-parentheses" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/new-parentheses -- explain the exception
-```
-
-## What it does
-
-All instances created with `new` keyword must (not) be followed by parentheses.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `anonymous-class` | `bool` | Any value of this type | `true` | `anonymous_class` |
-| `named-class` | `bool` | Any value of this type | `true` | `named_class` |
+| `anonymous-class` | `bool` | Any | `true` | `anonymous_class` |
+| `named-class` | `bool` | Any | `true` | `named_class` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`new_with_parentheses`](https://cs.symfony.com/doc/rules/operator/new_with_parentheses.html) (php-cs-fixer)
+
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

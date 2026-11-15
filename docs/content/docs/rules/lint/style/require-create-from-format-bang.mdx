@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-create-from-format-bang" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`date_time_create_from_format_call`](https://cs.symfony.com/doc/rules/function_notation/date_time_create_from_format_call.html) (php-cs-fixer, risky).
+The first argument of `DateTime::createFromFormat` method must start with `!`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/require-create-from-format-bang" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-create-from-format-bang" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/require-create-from-format-bang -- explain the exception
-```
+- [`date_time_create_from_format_call`](https://cs.symfony.com/doc/rules/function_notation/date_time_create_from_format_call.html) (php-cs-fixer, risky)
 
-## What it does
-
-The first argument of `DateTime::createFromFormat` method must start with `!`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

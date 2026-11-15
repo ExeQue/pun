@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="analyse/functions/invalid-first-class-callable" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
-## Replaces
+## What it does
 
-- [`FunctionCallableRule`](https://phpstan.org/error-identifiers/callable.nonCallable) (phpstan-classes).
-- [`callable.nonCallable`](https://phpstan.org/error-identifiers/callable.nonCallable) (phpstan).
+Reports unknown named functions and non-callable expressions used in first-class callable syntax.
 
 ## Configuration
 
@@ -21,16 +20,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "functions/invalid-first-class-callable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/functions/invalid-first-class-callable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
-## What it does
+## Replaces
 
-Reports unknown named functions and non-callable expressions used in first-class callable syntax.
+- [`FunctionCallableRule`](https://phpstan.org/error-identifiers/callable.nonCallable) (phpstan-classes)
+- [`callable.nonCallable`](https://phpstan.org/error-identifiers/callable.nonCallable) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/functions rules](/docs/rules/analyse/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

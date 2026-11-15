@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/prefer-protected-model-methods" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed. Additional upstream gates: `checkModelMethodVisibility (default false)`.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when laravel is installed. Upstream gates: `checkModelMethodVisibility (default false)`.
 
-## Replaces
+## What it does
 
-- [`MakeModelAttributesAndScopesProtected`](https://getrector.com/rule-detail/make-model-attributes-and-scopes-protected-rector) (rector-laravel).
-- [`NoPublicModelScopeAndAccessorRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#nopublicmodelscopeandaccessorrule) (phpstan-classes).
-- [`larastan.noPublicModelAccessorMethod`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan).
-- [`larastan.noPublicModelScopeMethod`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan).
+Makes Model attributes and scopes protected
 
 ## Configuration
 
@@ -23,24 +20,13 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "laravel/prefer-protected-model-methods" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/prefer-protected-model-methods" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/prefer-protected-model-methods -- explain the exception
-```
+- [`MakeModelAttributesAndScopesProtected`](https://getrector.com/rule-detail/make-model-attributes-and-scopes-protected-rector) (rector-laravel)
+- [`NoPublicModelScopeAndAccessorRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#nopublicmodelscopeandaccessorrule) (phpstan-classes)
+- [`larastan.noPublicModelAccessorMethod`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan)
+- [`larastan.noPublicModelScopeMethod`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan)
 
-## What it does
-
-Makes Model attributes and scopes protected
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

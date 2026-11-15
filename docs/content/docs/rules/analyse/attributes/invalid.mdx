@@ -7,21 +7,7 @@ pagination: false
 
 <RuleId id="analyse/attributes/invalid" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`NonClassAttributeClassRule`](https://phpstan.org/error-identifiers/attribute.abstract) (phpstan-classes).
-- [`AbstractClassUsedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`AttributeNotRepeatable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`ClassNotMarkedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidAttributeTarget`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`NonClassUsedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`attribute.abstract`](https://phpstan.org/error-identifiers/attribute.abstract) (phpstan).
-- [`attribute.class`](https://phpstan.org/error-identifiers/attribute.class) (phpstan).
-- [`attribute.constructorNotPublic`](https://phpstan.org/error-identifiers/attribute.constructorNotPublic) (phpstan).
-- [`attribute.enum`](https://phpstan.org/error-identifiers/attribute.enum) (phpstan).
-- [`attribute.interface`](https://phpstan.org/error-identifiers/attribute.interface) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -30,13 +16,20 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "attributes/invalid" = "on"
 ```
 
-```php
-// @pun-ignore analyse/attributes/invalid -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`NonClassAttributeClassRule`](https://phpstan.org/error-identifiers/attribute.abstract) (phpstan-classes)
+- [`AbstractClassUsedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`AttributeNotRepeatable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`ClassNotMarkedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidAttributeTarget`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`NonClassUsedAsAttribute`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`attribute.abstract`](https://phpstan.org/error-identifiers/attribute.abstract) (phpstan)
+- [`attribute.class`](https://phpstan.org/error-identifiers/attribute.class) (phpstan)
+- [`attribute.constructorNotPublic`](https://phpstan.org/error-identifiers/attribute.constructorNotPublic) (phpstan)
+- [`attribute.enum`](https://phpstan.org/error-identifiers/attribute.enum) (phpstan)
+- [`attribute.interface`](https://phpstan.org/error-identifiers/attribute.interface) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/attributes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/attributes rules](/docs/rules/analyse/attributes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/tags/linebreak-after-opening" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`linebreak_after_opening_tag`](https://cs.symfony.com/doc/rules/php_tag/linebreak_after_opening_tag.html) (php-cs-fixer).
+Ensure there is no code on the same line as the PHP open tag.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "tags/linebreak-after-opening" = true
 ```
 
-```php
-// @pun-ignore-file format/tags/linebreak-after-opening -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Ensure there is no code on the same line as the PHP open tag.
+- [`linebreak_after_opening_tag`](https://cs.symfony.com/doc/rules/php_tag/linebreak_after_opening_tag.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/tags) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/tags rules](/docs/rules/format/tags) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

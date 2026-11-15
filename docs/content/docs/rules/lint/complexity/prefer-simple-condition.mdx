@@ -7,22 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/prefer-simple-condition" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`BooleanNotIdenticalToNotIdentical`](https://getrector.com/rule-detail/boolean-not-identical-to-not-identical-rector) (rector).
-- [`SimplifyBoolIdenticalTrue`](https://getrector.com/rule-detail/simplify-bool-identical-true-rector) (rector).
-- [`SimplifyConditions`](https://getrector.com/rule-detail/simplify-conditions-rector) (rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/complexity/no-negated-comparison`
-- `lint/complexity/no-boolean-literal-compare`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Simplify a negated comparison or a comparison with a boolean
 
 ## Configuration
 
@@ -31,24 +20,19 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "complexity/prefer-simple-condition" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/prefer-simple-condition" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/prefer-simple-condition -- explain the exception
-```
+- [`BooleanNotIdenticalToNotIdentical`](https://getrector.com/rule-detail/boolean-not-identical-to-not-identical-rector) (rector)
+- [`SimplifyBoolIdenticalTrue`](https://getrector.com/rule-detail/simplify-bool-identical-true-rector) (rector)
+- [`SimplifyConditions`](https://getrector.com/rule-detail/simplify-conditions-rector) (rector)
 
-## What it does
+## Merged rules
 
-Simplify a negated comparison or a comparison with a boolean
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/complexity/no-negated-comparison`
+- `lint/complexity/no-boolean-literal-compare`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,19 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/invalid-interface-property" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`PropertiesInInterfaceRule`](https://phpstan.org/error-identifiers/property.abstractFinalHook) (phpstan-classes).
-- [`property.abstractFinalHook`](https://phpstan.org/error-identifiers/property.abstractFinalHook) (phpstan).
-- [`property.abstractInInterface`](https://phpstan.org/error-identifiers/property.abstractInInterface) (phpstan).
-- [`property.finalInInterface`](https://phpstan.org/error-identifiers/property.finalInInterface) (phpstan).
-- [`property.hookBodyInInterface`](https://phpstan.org/error-identifiers/property.hookBodyInInterface) (phpstan).
-- [`property.inInterface`](https://phpstan.org/error-identifiers/property.inInterface) (phpstan).
-- [`property.nonHookedInInterface`](https://phpstan.org/error-identifiers/property.nonHookedInInterface) (phpstan).
-- [`property.nonPublicInInterface`](https://phpstan.org/error-identifiers/property.nonPublicInInterface) (phpstan).
-- [`property.readOnlyInInterface`](https://phpstan.org/error-identifiers/property.readOnlyInInterface) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -28,13 +16,18 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/invalid-interface-property" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/invalid-interface-property -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`PropertiesInInterfaceRule`](https://phpstan.org/error-identifiers/property.abstractFinalHook) (phpstan-classes)
+- [`property.abstractFinalHook`](https://phpstan.org/error-identifiers/property.abstractFinalHook) (phpstan)
+- [`property.abstractInInterface`](https://phpstan.org/error-identifiers/property.abstractInInterface) (phpstan)
+- [`property.finalInInterface`](https://phpstan.org/error-identifiers/property.finalInInterface) (phpstan)
+- [`property.hookBodyInInterface`](https://phpstan.org/error-identifiers/property.hookBodyInInterface) (phpstan)
+- [`property.inInterface`](https://phpstan.org/error-identifiers/property.inInterface) (phpstan)
+- [`property.nonHookedInInterface`](https://phpstan.org/error-identifiers/property.nonHookedInInterface) (phpstan)
+- [`property.nonPublicInInterface`](https://phpstan.org/error-identifiers/property.nonPublicInInterface) (phpstan)
+- [`property.readOnlyInInterface`](https://phpstan.org/error-identifiers/property.readOnlyInInterface) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

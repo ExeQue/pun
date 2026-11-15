@@ -7,11 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/missing-self-out-type" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`MissingMethodSelfOutTypeRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -20,13 +16,10 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "types/missing-self-out-type" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/missing-self-out-type -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MissingMethodSelfOutTypeRule`](https://phpstan.org/error-identifiers/missingType.callable) (phpstan-classes)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,26 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/invalid-class-generics" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ClassAncestorsRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes).
-- [`function.variance`](https://phpstan.org/error-identifiers/function.variance) (phpstan).
-- [`generics.callSiteVarianceConflict`](https://phpstan.org/error-identifiers/generics.callSiteVarianceConflict) (phpstan).
-- [`generics.callSiteVarianceNotAllowed`](https://phpstan.org/error-identifiers/generics.callSiteVarianceNotAllowed) (phpstan).
-- [`generics.callSiteVarianceRedundant`](https://phpstan.org/error-identifiers/generics.callSiteVarianceRedundant) (phpstan).
-- [`generics.interfaceConflict`](https://phpstan.org/error-identifiers/generics.interfaceConflict) (phpstan).
-- [`generics.lessTypes`](https://phpstan.org/error-identifiers/generics.lessTypes) (phpstan).
-- [`generics.moreTypes`](https://phpstan.org/error-identifiers/generics.moreTypes) (phpstan).
-- [`generics.noParent`](https://phpstan.org/error-identifiers/generics.noParent) (phpstan).
-- [`generics.notCompatible`](https://phpstan.org/error-identifiers/generics.notCompatible) (phpstan).
-- [`generics.notGeneric`](https://phpstan.org/error-identifiers/generics.notGeneric) (phpstan).
-- [`generics.notSubtype`](https://phpstan.org/error-identifiers/generics.notSubtype) (phpstan).
-- [`generics.unresolvable`](https://phpstan.org/error-identifiers/generics.unresolvable) (phpstan).
-- [`generics.variance`](https://phpstan.org/error-identifiers/generics.variance) (phpstan).
-- [`generics.wrongParent`](https://phpstan.org/error-identifiers/generics.wrongParent) (phpstan).
-- [`method.variance`](https://phpstan.org/error-identifiers/method.variance) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -35,13 +16,25 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "types/invalid-class-generics" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/invalid-class-generics -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ClassAncestorsRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes)
+- [`function.variance`](https://phpstan.org/error-identifiers/function.variance) (phpstan)
+- [`generics.callSiteVarianceConflict`](https://phpstan.org/error-identifiers/generics.callSiteVarianceConflict) (phpstan)
+- [`generics.callSiteVarianceNotAllowed`](https://phpstan.org/error-identifiers/generics.callSiteVarianceNotAllowed) (phpstan)
+- [`generics.callSiteVarianceRedundant`](https://phpstan.org/error-identifiers/generics.callSiteVarianceRedundant) (phpstan)
+- [`generics.interfaceConflict`](https://phpstan.org/error-identifiers/generics.interfaceConflict) (phpstan)
+- [`generics.lessTypes`](https://phpstan.org/error-identifiers/generics.lessTypes) (phpstan)
+- [`generics.moreTypes`](https://phpstan.org/error-identifiers/generics.moreTypes) (phpstan)
+- [`generics.noParent`](https://phpstan.org/error-identifiers/generics.noParent) (phpstan)
+- [`generics.notCompatible`](https://phpstan.org/error-identifiers/generics.notCompatible) (phpstan)
+- [`generics.notGeneric`](https://phpstan.org/error-identifiers/generics.notGeneric) (phpstan)
+- [`generics.notSubtype`](https://phpstan.org/error-identifiers/generics.notSubtype) (phpstan)
+- [`generics.unresolvable`](https://phpstan.org/error-identifiers/generics.unresolvable) (phpstan)
+- [`generics.variance`](https://phpstan.org/error-identifiers/generics.variance) (phpstan)
+- [`generics.wrongParent`](https://phpstan.org/error-identifiers/generics.wrongParent) (phpstan)
+- [`method.variance`](https://phpstan.org/error-identifiers/method.variance) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

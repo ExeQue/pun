@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/types/add-return-type-from-new-array" />
 
-Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change behaviour).
+In the [`types`](/docs/rules/sets/types) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`ReturnTypeFromStrictNewArray`](https://getrector.com/rule-detail/return-type-from-strict-new-array-rector) (rector).
+Add strict return array type based on created empty array and returned
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change be
 "types/add-return-type-from-new-array" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "types/add-return-type-from-new-array" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/types/add-return-type-from-new-array -- explain the exception
-```
+- [`ReturnTypeFromStrictNewArray`](https://getrector.com/rule-detail/return-type-from-strict-new-array-rector) (rector)
 
-## What it does
-
-Add strict return array type based on created empty array and returned
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/types rules](/docs/rules/lint/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

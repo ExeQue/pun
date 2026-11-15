@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/prefer-early-return" />
 
-Enabled by the [`early-return`](/docs/rules/sets/early-return) set. Fix: safe (keeps behaviour).
+In the [`early-return`](/docs/rules/sets/early-return) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`ChangeIfElseValueAssignToEarlyReturn`](https://getrector.com/rule-detail/change-if-else-value-assign-to-early-return-rector) (rector).
-- [`prefer-early-return`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-early-return) (mago-linter).
+Return early instead of nesting the rest of the function in an if or else.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`early-return`](/docs/rules/sets/early-return) set. Fix: safe (k
 "style/prefer-early-return" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/prefer-early-return" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/prefer-early-return -- explain the exception
-```
+- [`ChangeIfElseValueAssignToEarlyReturn`](https://getrector.com/rule-detail/change-if-else-value-assign-to-early-return-rector) (rector)
+- [`prefer-early-return`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-early-return) (mago-linter)
 
-## What it does
-
-Return early instead of nesting the rest of the function in an if or else.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

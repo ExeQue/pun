@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/param-order" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_param_order`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_param_order.html) (php-cs-fixer).
+Orders all `@param` annotations in DocBlocks according to method signature.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpdoc/param-order" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/param-order -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Orders all `@param` annotations in DocBlocks according to method signature.
+- [`phpdoc_param_order`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_param_order.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

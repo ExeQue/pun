@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/annotation-without-dot" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_annotation_without_dot`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_annotation_without_dot.html) (php-cs-fixer).
+PHPDoc annotation descriptions should not be a sentence.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpdoc/annotation-without-dot" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/annotation-without-dot -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-PHPDoc annotation descriptions should not be a sentence.
+- [`phpdoc_annotation_without_dot`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_annotation_without_dot.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

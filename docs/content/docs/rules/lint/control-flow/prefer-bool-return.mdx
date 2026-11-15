@@ -7,20 +7,11 @@ pagination: false
 
 <RuleId id="lint/control-flow/prefer-bool-return" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`simplified_if_return`](https://cs.symfony.com/doc/rules/control_structure/simplified_if_return.html) (php-cs-fixer).
-- [`SimplifyIfReturnBool`](https://getrector.com/rule-detail/simplify-if-return-bool-rector) (rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/control-flow/prefer-returned-condition`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Simplify `if` control structures that return the boolean result of their condition.
 
 ## Configuration
 
@@ -29,24 +20,17 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "control-flow/prefer-bool-return" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "control-flow/prefer-bool-return" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/control-flow/prefer-bool-return -- explain the exception
-```
+- [`simplified_if_return`](https://cs.symfony.com/doc/rules/control_structure/simplified_if_return.html) (php-cs-fixer)
+- [`SimplifyIfReturnBool`](https://getrector.com/rule-detail/simplify-if-return-bool-rector) (rector)
 
-## What it does
+## Merged rules
 
-Simplify `if` control structures that return the boolean result of their condition.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/control-flow/prefer-returned-condition`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

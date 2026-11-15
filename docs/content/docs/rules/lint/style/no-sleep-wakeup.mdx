@@ -7,22 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-sleep-wakeup" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour). Gated by php-version.
+In the [`modernize`](/docs/rules/sets/modernize) set. Unsafe fix: it can change behaviour. Gated by php-version.
 
-## Replaces
+## What it does
 
-- [`modern_serialization_methods`](https://cs.symfony.com/doc/rules/class_notation/modern_serialization_methods.html) (php-cs-fixer, risky).
-- [`SleepToSerialize`](https://getrector.com/rule-detail/sleep-to-serialize-rector) (rector).
-- [`WakeupToUnserialize`](https://getrector.com/rule-detail/wakeup-to-unserialize-rector) (rector).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/classes/prefer-serialize-method`
-- `lint/classes/prefer-unserialize-method`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Replace __sleep()/__wakeup() with __serialize()/__unserialize().
 
 ## Configuration
 
@@ -31,24 +20,19 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "style/no-sleep-wakeup" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-sleep-wakeup" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/no-sleep-wakeup -- explain the exception
-```
+- [`modern_serialization_methods`](https://cs.symfony.com/doc/rules/class_notation/modern_serialization_methods.html) (php-cs-fixer, risky)
+- [`SleepToSerialize`](https://getrector.com/rule-detail/sleep-to-serialize-rector) (rector)
+- [`WakeupToUnserialize`](https://getrector.com/rule-detail/wakeup-to-unserialize-rector) (rector)
 
-## What it does
+## Merged rules
 
-Replace __sleep()/__wakeup() with __serialize()/__unserialize().
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/classes/prefer-serialize-method`
+- `lint/classes/prefer-unserialize-method`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,7 @@ pagination: false
 
 <RuleId id="analyse/strings/invalid-date-time" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`DateTimeInstantiationRule`](https://phpstan.org/error-identifiers/new.dateTime) (phpstan-classes).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -20,13 +16,10 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "strings/invalid-date-time" = "on"
 ```
 
-```php
-// @pun-ignore analyse/strings/invalid-date-time -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`DateTimeInstantiationRule`](https://phpstan.org/error-identifiers/new.dateTime) (phpstan-classes)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/strings rules](/docs/rules/analyse/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

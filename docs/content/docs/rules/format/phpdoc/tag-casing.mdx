@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/tag-casing" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_tag_casing`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_casing.html) (php-cs-fixer).
+Fixes casing of PHPDoc tags.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpdoc/tag-casing" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/tag-casing -- explain the exception
-```
-
-## What it does
-
-Fixes casing of PHPDoc tags.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `tags` | `list` | Any value of this type | `["inheritDoc"]` | `tags` |
+| `tags` | `list` | Any | `["inheritDoc"]` | `tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_tag_casing`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_casing.html) (php-cs-fixer)
+
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

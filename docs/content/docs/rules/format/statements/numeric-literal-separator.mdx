@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/numeric-literal-separator" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`numeric_literal_separator`](https://cs.symfony.com/doc/rules/basic/numeric_literal_separator.html) (php-cs-fixer).
-- [`readable-literal`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#readable-literal) (mago-linter).
+Adds separators to numeric literals of any kind.
 
 ## Configuration
 
@@ -21,20 +20,18 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "statements/numeric-literal-separator" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/numeric-literal-separator -- explain the exception
-```
-
-## What it does
-
-Adds separators to numeric literals of any kind.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `override-existing` | `bool` | Any value of this type | `false` | `override_existing` |
+| `override-existing` | `bool` | Any | `false` | `override_existing` |
 | `strategy` | `enum` | `use-separator`, `no-separator` | `"use-separator"` | `strategy` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`numeric_literal_separator`](https://cs.symfony.com/doc/rules/basic/numeric_literal_separator.html) (php-cs-fixer)
+- [`readable-literal`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#readable-literal) (mago-linter)
+
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

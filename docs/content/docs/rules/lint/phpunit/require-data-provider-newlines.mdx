@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/require-data-provider-newlines" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`DataProviderArrayItemsNewLined`](https://getrector.com/rule-detail/data-provider-array-items-new-lined-rector) (rector-phpunit).
+Change data provider in PHPUnit test case to newline per item
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "phpunit/require-data-provider-newlines" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/require-data-provider-newlines" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/require-data-provider-newlines -- explain the exception
-```
+- [`DataProviderArrayItemsNewLined`](https://getrector.com/rule-detail/data-provider-array-items-new-lined-rector) (rector-phpunit)
 
-## What it does
-
-Change data provider in PHPUnit test case to newline per item
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

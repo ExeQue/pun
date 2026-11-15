@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/strings/single-quote" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`single_quote`](https://cs.symfony.com/doc/rules/string_notation/single_quote.html) (php-cs-fixer).
+Convert double quotes to single quotes for simple strings.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "strings/single-quote" = true
 ```
 
-```php
-// @pun-ignore-file format/strings/single-quote -- explain the exception
-```
-
-## What it does
-
-Convert double quotes to single quotes for simple strings.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `strings-containing-single-quote-chars` | `bool` | Any value of this type | `false` | `strings_containing_single_quote_chars` |
+| `strings-containing-single-quote-chars` | `bool` | Any | `false` | `strings_containing_single_quote_chars` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`single_quote`](https://cs.symfony.com/doc/rules/string_notation/single_quote.html) (php-cs-fixer)
+
+[More format/strings rules](/docs/rules/format/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

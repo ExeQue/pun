@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/strings/multiline-to-heredoc" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`multiline_string_to_heredoc`](https://cs.symfony.com/doc/rules/string_notation/multiline_string_to_heredoc.html) (php-cs-fixer).
+Convert multiline string to `heredoc` or `nowdoc`.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "strings/multiline-to-heredoc" = true
 ```
 
-```php
-// @pun-ignore-file format/strings/multiline-to-heredoc -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Convert multiline string to `heredoc` or `nowdoc`.
+- [`multiline_string_to_heredoc`](https://cs.symfony.com/doc/rules/string_notation/multiline_string_to_heredoc.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/strings rules](/docs/rules/format/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

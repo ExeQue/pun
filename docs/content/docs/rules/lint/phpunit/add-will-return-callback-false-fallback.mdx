@@ -7,37 +7,14 @@ pagination: false
 
 <RuleId id="lint/phpunit/add-will-return-callback-false-fallback" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed. **Planned: not in Pun yet.** Enabling it in pun.toml is a config error.
-
-## Replaces
-
-- [`WillReturnCallbackFallbackToReturnFalse`](https://getrector.com/rule-detail/will-return-callback-fallback-to-return-false-rector) (rector-phpunit).
-
-## Configuration
-
-```toml title="pun.toml"
-[lint.rules]
-"phpunit/add-will-return-callback-false-fallback" = "error"
-```
-
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/add-will-return-callback-false-fallback" = "off" }
-```
-
-```php
-// @pun-ignore lint/phpunit/add-will-return-callback-false-fallback -- explain the exception
-```
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed. **Planned: not in Pun yet.** Enabling it is a config error.
 
 ## What it does
 
 Add a "return false" fallback to a willReturnCallback() closure that only returns booleans, but can fall through without a return
 
-## Options
+## Replaces
 
-No configurable options.
+- [`WillReturnCallbackFallbackToReturnFalse`](https://getrector.com/rule-detail/will-return-callback-fallback-to-return-false-rector) (rector-phpunit)
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

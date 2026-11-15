@@ -7,17 +7,11 @@ pagination: false
 
 <RuleId id="analyse/classes/invalid-method-callable" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
-## Replaces
+## What it does
 
-- [`MethodCallableRule`](https://phpstan.org/error-identifiers/callable.notSupported) (phpstan-classes).
-- [`MethodAccessOnNull`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`MixedMethodAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossibleMethodAccessOnNull`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`method.nameCase`](https://phpstan.org/error-identifiers/method.nameCase) (phpstan).
-- [`method.nonObject`](https://phpstan.org/error-identifiers/method.nonObject) (phpstan).
-- [`method.private`](https://phpstan.org/error-identifiers/method.private) (phpstan).
+Checks the receiver, method existence and visibility when creating a first-class instance method callable. Callable creation does not pass arguments to the method. The check-function-name-case option also checks method spelling.
 
 ## Configuration
 
@@ -26,16 +20,16 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/invalid-method-callable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/invalid-method-callable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
-## What it does
+## Replaces
 
-Checks the receiver, method existence and visibility when creating a first-class instance method callable. Callable creation does not pass arguments to the method. The check-function-name-case option also checks method spelling.
+- [`MethodCallableRule`](https://phpstan.org/error-identifiers/callable.notSupported) (phpstan-classes)
+- [`MethodAccessOnNull`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`MixedMethodAccess`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossibleMethodAccessOnNull`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`method.nameCase`](https://phpstan.org/error-identifiers/method.nameCase) (phpstan)
+- [`method.nonObject`](https://phpstan.org/error-identifiers/method.nonObject) (phpstan)
+- [`method.private`](https://phpstan.org/error-identifiers/method.private) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

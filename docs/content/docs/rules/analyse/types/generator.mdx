@@ -7,20 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/generator" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`YieldTypeRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes).
-- [`InvalidGeneratorReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidYieldKeyType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidYieldValueType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`YieldFromInvalidKeyType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`YieldFromInvalidSendType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`YieldFromInvalidValueType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`generator.keyType`](https://phpstan.org/error-identifiers/generator.keyType) (phpstan).
-- [`generator.valueType`](https://phpstan.org/error-identifiers/generator.valueType) (phpstan).
-- [`generator.void`](https://phpstan.org/error-identifiers/generator.void) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -29,13 +16,19 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "types/generator" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/generator -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`YieldTypeRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes)
+- [`InvalidGeneratorReturnType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidYieldKeyType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidYieldValueType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`YieldFromInvalidKeyType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`YieldFromInvalidSendType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`YieldFromInvalidValueType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`generator.keyType`](https://phpstan.org/error-identifiers/generator.keyType) (phpstan)
+- [`generator.valueType`](https://phpstan.org/error-identifiers/generator.valueType) (phpstan)
+- [`generator.void`](https://phpstan.org/error-identifiers/generator.void) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

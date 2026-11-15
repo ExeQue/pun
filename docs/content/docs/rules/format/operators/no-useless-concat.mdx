@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/no-useless-concat" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_useless_concat_operator`](https://cs.symfony.com/doc/rules/operator/no_useless_concat_operator.html) (php-cs-fixer).
-- [`no-redundant-string-concat`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-string-concat) (mago-linter).
+There should not be useless concat operations.
 
 ## Configuration
 
@@ -21,19 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "operators/no-useless-concat" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/no-useless-concat -- explain the exception
-```
-
-## What it does
-
-There should not be useless concat operations.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `juggle-simple-strings` | `bool` | Any value of this type | `false` | `juggle_simple_strings` |
+| `juggle-simple-strings` | `bool` | Any | `false` | `juggle_simple_strings` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_useless_concat_operator`](https://cs.symfony.com/doc/rules/operator/no_useless_concat_operator.html) (php-cs-fixer)
+- [`no-redundant-string-concat`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-string-concat) (mago-linter)
+
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

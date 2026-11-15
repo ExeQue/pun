@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/functions/no-missing-format-argument" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: correctness.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: correctness.
 
-## Replaces
+## What it does
 
-- [`no-missing-format-argument`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-missing-format-argument) (mago-linter).
+Detects `sprintf`-style format calls where the number of placeholders
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "functions/no-missing-format-argument" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "functions/no-missing-format-argument" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/functions/no-missing-format-argument -- explain the exception
-```
+- [`no-missing-format-argument`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-missing-format-argument) (mago-linter)
 
-## What it does
-
-Detects `sprintf`-style format calls where the number of placeholders
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/functions rules](/docs/rules/lint/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

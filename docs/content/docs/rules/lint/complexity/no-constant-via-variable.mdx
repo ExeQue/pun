@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/no-constant-via-variable" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`VariableConstFetchToClassConstFetch`](https://getrector.com/rule-detail/variable-const-fetch-to-class-const-fetch-rector) (rector).
+Change variable class constant fetch to direct class constant fetch when class or constant target is final
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/no-constant-via-variable" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/no-constant-via-variable" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/no-constant-via-variable -- explain the exception
-```
+- [`VariableConstFetchToClassConstFetch`](https://getrector.com/rule-detail/variable-const-fetch-to-class-const-fetch-rector) (rector)
 
-## What it does
-
-Change variable class constant fetch to direct class constant fetch when class or constant target is final
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

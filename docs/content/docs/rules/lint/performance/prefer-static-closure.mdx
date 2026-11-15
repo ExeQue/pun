@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/performance/prefer-static-closure" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`static_lambda`](https://cs.symfony.com/doc/rules/function_notation/static_lambda.html) (php-cs-fixer, risky).
-- [`prefer-static-closure`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-static-closure) (mago-linter).
+Lambdas not (indirectly) referencing `$this` must be declared `static`.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "performance/prefer-static-closure" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "performance/prefer-static-closure" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/performance/prefer-static-closure -- explain the exception
-```
+- [`static_lambda`](https://cs.symfony.com/doc/rules/function_notation/static_lambda.html) (php-cs-fixer, risky)
+- [`prefer-static-closure`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-static-closure) (mago-linter)
 
-## What it does
-
-Lambdas not (indirectly) referencing `$this` must be declared `static`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/performance) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/performance rules](/docs/rules/lint/performance) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

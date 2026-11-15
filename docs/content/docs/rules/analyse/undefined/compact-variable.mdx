@@ -7,26 +7,10 @@ pagination: false
 
 <RuleId id="analyse/undefined/compact-variable" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). **Planned: not in Pun yet.** Enabling it in pun.toml is a config error.
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only. **Planned: not in Pun yet.** Enabling it is a config error.
 
 ## Replaces
 
-- [`CompactVariablesRule`](https://phpstan.org/error-identifiers/variable.undefined) (phpstan-classes).
+- [`CompactVariablesRule`](https://phpstan.org/error-identifiers/variable.undefined) (phpstan-classes)
 
-## Configuration
-
-```toml title="pun.toml"
-[analyse.rules]
-"undefined/compact-variable" = "on"
-```
-
-```php
-// @pun-ignore analyse/undefined/compact-variable -- explain the exception
-```
-
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

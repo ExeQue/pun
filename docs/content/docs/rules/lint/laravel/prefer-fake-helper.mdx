@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/prefer-fake-helper" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`Pun/prefer_fake_helper`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
-- [`prefer-fake-helper`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-fake-helper) (mago-linter).
+Use the fake() helper instead of $this->faker.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "laravel/prefer-fake-helper" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/prefer-fake-helper" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/prefer-fake-helper -- explain the exception
-```
+- [`Pun/prefer_fake_helper`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun)
+- [`prefer-fake-helper`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#prefer-fake-helper) (mago-linter)
 
-## What it does
-
-Use the fake() helper instead of $this->faker.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

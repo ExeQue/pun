@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/space-around-construct" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`single_space_around_construct`](https://cs.symfony.com/doc/rules/language_construct/single_space_around_construct.html) (php-cs-fixer).
+Ensures a single space after language constructs.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "statements/space-around-construct" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/space-around-construct -- explain the exception
-```
-
-## What it does
-
-Ensures a single space after language constructs.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -36,5 +30,8 @@ Ensures a single space after language constructs.
 | `constructs-followed-by-a-single-space` | `list` | `abstract`, `as`, `attribute`, `break`, `case`, `catch`, `class`, `clone`, `comment`, `const`, `const-import`, `continue`, `do`, `echo`, `else`, `elseif`, `enum`, `extends`, `final`, `finally`, `for`, `foreach`, `function`, `function-import`, `global`, `goto`, `if`, `implements`, `include`, `include_once`, `instanceof`, `insteadof`, `interface`, `match`, `named-argument`, `namespace`, `new`, `open-tag-with-echo`, `php-doc`, `php-open`, `print`, `private`, `private-set`, `protected`, `protected-set`, `public`, `public-set`, `readonly`, `require`, `require_once`, `return`, `static`, `switch`, `throw`, `trait`, `try`, `type-colon`, `use`, `use-lambda`, `use-trait`, `var`, `while`, `yield`, `yield-from` | `["abstract", "as", "attribute", "break", "case", "catch", "class", "clone", "comment", "const", "const-import", "continue", "do", "echo", "else", "elseif", "enum", "extends", "final", "finally", "for", "foreach", "function", "function-import", "global", "goto", "if", "implements", "include", "include_once", "instanceof", "insteadof", "interface", "match", "named-argument", "namespace", "new", "open-tag-with-echo", "php-doc", "php-open", "print", "private", "private-set", "protected", "protected-set", "public", "public-set", "readonly", "require", "require_once", "return", "static", "switch", "throw", "trait", "try", "type-colon", "use", "use-lambda", "use-trait", "var", "while", "yield", "yield-from"]` | `constructs_followed_by_a_single_space` |
 | `constructs-preceded-by-a-single-space` | `list` | `as`, `else`, `elseif`, `use-lambda` | `["as", "use-lambda"]` | `constructs_preceded_by_a_single_space` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`single_space_around_construct`](https://cs.symfony.com/doc/rules/language_construct/single_space_around_construct.html) (php-cs-fixer)
+
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

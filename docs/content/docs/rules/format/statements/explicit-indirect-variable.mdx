@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/explicit-indirect-variable" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`explicit_indirect_variable`](https://cs.symfony.com/doc/rules/language_construct/explicit_indirect_variable.html) (php-cs-fixer).
+Add curly braces to indirect variables to make them clear to understand.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "statements/explicit-indirect-variable" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/explicit-indirect-variable -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Add curly braces to indirect variables to make them clear to understand.
+- [`explicit_indirect_variable`](https://cs.symfony.com/doc/rules/language_construct/explicit_indirect_variable.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/no-concat-assign-new-item" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`NewArrayItemConcatAssignToAssign`](https://getrector.com/rule-detail/new-array-item-concat-assign-to-assign-rector) (rector).
+Change concat assign on a new array item to plain assign, as the new item is always null
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/no-concat-assign-new-item" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/no-concat-assign-new-item" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/no-concat-assign-new-item -- explain the exception
-```
+- [`NewArrayItemConcatAssignToAssign`](https://getrector.com/rule-detail/new-array-item-concat-assign-to-assign-rector) (rector)
 
-## What it does
-
-Change concat assign on a new array item to plain assign, as the new item is always null
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

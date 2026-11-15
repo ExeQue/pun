@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/classes/definition" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`class_definition`](https://cs.symfony.com/doc/rules/class_notation/class_definition.html) (php-cs-fixer).
+Whitespace around the keywords of a class, trait, enum or interfaces definition should be one space.
 
 ## Configuration
 
@@ -20,23 +20,20 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "classes/definition" = true
 ```
 
-```php
-// @pun-ignore-file format/classes/definition -- explain the exception
-```
-
-## What it does
-
-Whitespace around the keywords of a class, trait, enum or interfaces definition should be one space.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `inline-constructor-arguments` | `bool` | Any value of this type | `true` | `inline_constructor_arguments` |
-| `multi-line-extends-each-single-line` | `bool` | Any value of this type | `false` | `multi_line_extends_each_single_line` |
-| `single-item-single-line` | `bool` | Any value of this type | `false` | `single_item_single_line` |
-| `single-line` | `bool` | Any value of this type | `false` | `single_line` |
-| `space-before-parenthesis` | `bool` | Any value of this type | `false` | `space_before_parenthesis` |
+| `inline-constructor-arguments` | `bool` | Any | `true` | `inline_constructor_arguments` |
+| `multi-line-extends-each-single-line` | `bool` | Any | `false` | `multi_line_extends_each_single_line` |
+| `single-item-single-line` | `bool` | Any | `false` | `single_item_single_line` |
+| `single-line` | `bool` | Any | `false` | `single_line` |
+| `space-before-parenthesis` | `bool` | Any | `false` | `space_before_parenthesis` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`class_definition`](https://cs.symfony.com/doc/rules/class_notation/class_definition.html) (php-cs-fixer)
+
+[More format/classes rules](/docs/rules/format/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

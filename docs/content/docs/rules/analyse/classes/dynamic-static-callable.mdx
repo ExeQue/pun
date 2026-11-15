@@ -7,11 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/dynamic-static-callable" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.dynamicCallOnStaticMethod`.
-
-## Replaces
-
-- [`DynamicCallOnStaticMethodsCallableRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.dynamicCallOnStaticMethod`.
 
 ## Configuration
 
@@ -20,13 +16,10 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "classes/dynamic-static-callable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/dynamic-static-callable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`DynamicCallOnStaticMethodsCallableRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/arrays/space-after-comma" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`whitespace_after_comma_in_array`](https://cs.symfony.com/doc/rules/array_notation/whitespace_after_comma_in_array.html) (php-cs-fixer).
+In array declaration, there MUST be a whitespace after each comma.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "arrays/space-after-comma" = true
 ```
 
-```php
-// @pun-ignore-file format/arrays/space-after-comma -- explain the exception
-```
-
-## What it does
-
-In array declaration, there MUST be a whitespace after each comma.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `ensure-single-space` | `bool` | Any value of this type | `false` | `ensure_single_space` |
+| `ensure-single-space` | `bool` | Any | `false` | `ensure_single_space` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`whitespace_after_comma_in_array`](https://cs.symfony.com/doc/rules/array_notation/whitespace_after_comma_in_array.html) (php-cs-fixer)
+
+[More format/arrays rules](/docs/rules/format/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

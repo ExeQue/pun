@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/imports/fully-qualified-strict-types" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`fully_qualified_strict_types`](https://cs.symfony.com/doc/rules/import/fully_qualified_strict_types.html) (php-cs-fixer).
+Removes the leading part of fully qualified symbol references if a given symbol is imported or belongs to the current namespace.
 
 ## Configuration
 
@@ -20,21 +20,18 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "imports/fully-qualified-strict-types" = true
 ```
 
-```php
-// @pun-ignore-file format/imports/fully-qualified-strict-types -- explain the exception
-```
-
-## What it does
-
-Removes the leading part of fully qualified symbol references if a given symbol is imported or belongs to the current namespace.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `import-symbols` | `bool` | Any value of this type | `false` | `import_symbols` |
-| `leading-backslash-in-global-namespace` | `bool` | Any value of this type | `false` | `leading_backslash_in_global_namespace` |
-| `phpdoc-tags` | `list` | Any value of this type | `["param", "phpstan-param", "phpstan-property", "phpstan-property-read", "phpstan-property-write", "phpstan-return", "phpstan-var", "property", "property-read", "property-write", "psalm-param", "psalm-property", "psalm-property-read", "psalm-property-write", "psalm-return", "psalm-var", "return", "see", "throws", "var"]` | `phpdoc_tags` |
+| `import-symbols` | `bool` | Any | `false` | `import_symbols` |
+| `leading-backslash-in-global-namespace` | `bool` | Any | `false` | `leading_backslash_in_global_namespace` |
+| `phpdoc-tags` | `list` | Any | `["param", "phpstan-param", "phpstan-property", "phpstan-property-read", "phpstan-property-write", "phpstan-return", "phpstan-var", "property", "property-read", "property-write", "psalm-param", "psalm-property", "psalm-property-read", "psalm-property-write", "psalm-return", "psalm-var", "return", "see", "throws", "var"]` | `phpdoc_tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`fully_qualified_strict_types`](https://cs.symfony.com/doc/rules/import/fully_qualified_strict_types.html) (php-cs-fixer)
+
+[More format/imports rules](/docs/rules/format/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

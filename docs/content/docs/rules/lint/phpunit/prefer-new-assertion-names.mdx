@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-new-assertion-names" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_assert_new_names`](https://cs.symfony.com/doc/rules/php_unit/php_unit_assert_new_names.html) (php-cs-fixer, risky).
+Rename deprecated PHPUnit assertions like `assertFileNotExists` to new methods like `assertFileDoesNotExist`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "phpunit/prefer-new-assertion-names" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-new-assertion-names" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/phpunit/prefer-new-assertion-names -- explain the exception
-```
+- [`php_unit_assert_new_names`](https://cs.symfony.com/doc/rules/php_unit/php_unit_assert_new_names.html) (php-cs-fixer, risky)
 
-## What it does
-
-Rename deprecated PHPUnit assertions like `assertFileNotExists` to new methods like `assertFileDoesNotExist`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

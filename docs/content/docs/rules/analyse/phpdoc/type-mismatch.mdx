@@ -7,17 +7,7 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/type-mismatch" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`IncompatiblePhpDocTypeRule`](https://phpstan.org/error-identifiers/callable.shadowTemplate) (phpstan-classes).
-- [`DocblockTypeMismatch`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`paramClosureThis.nonClosure`](https://phpstan.org/error-identifiers/paramClosureThis.nonClosure) (phpstan).
-- [`parameter.phpDocType`](https://phpstan.org/error-identifiers/parameter.phpDocType) (phpstan).
-- [`parameter.unresolvableType`](https://phpstan.org/error-identifiers/parameter.unresolvableType) (phpstan).
-- [`return.phpDocType`](https://phpstan.org/error-identifiers/return.phpDocType) (phpstan).
-- [`return.unresolvableType`](https://phpstan.org/error-identifiers/return.unresolvableType) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -26,13 +16,16 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "phpdoc/type-mismatch" = "on"
 ```
 
-```php
-// @pun-ignore analyse/phpdoc/type-mismatch -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`IncompatiblePhpDocTypeRule`](https://phpstan.org/error-identifiers/callable.shadowTemplate) (phpstan-classes)
+- [`DocblockTypeMismatch`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`paramClosureThis.nonClosure`](https://phpstan.org/error-identifiers/paramClosureThis.nonClosure) (phpstan)
+- [`parameter.phpDocType`](https://phpstan.org/error-identifiers/parameter.phpDocType) (phpstan)
+- [`parameter.unresolvableType`](https://phpstan.org/error-identifiers/parameter.unresolvableType) (phpstan)
+- [`return.phpDocType`](https://phpstan.org/error-identifiers/return.phpDocType) (phpstan)
+- [`return.unresolvableType`](https://phpstan.org/error-identifiers/return.unresolvableType) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/phpdoc rules](/docs/rules/analyse/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

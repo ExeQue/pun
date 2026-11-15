@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/no-alternative-syntax" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_alternative_syntax`](https://cs.symfony.com/doc/rules/control_structure/no_alternative_syntax.html) (php-cs-fixer).
-- [`AlternativeIfToBracket`](https://getrector.com/rule-detail/alternative-if-to-bracket-rector) (rector).
-- [`no-alternative-syntax`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-alternative-syntax) (mago-linter).
+Replace control structure alternative syntax to use braces.
 
 ## Configuration
 
@@ -22,19 +20,18 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "control-flow/no-alternative-syntax" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/no-alternative-syntax -- explain the exception
-```
-
-## What it does
-
-Replace control structure alternative syntax to use braces.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `fix-non-monolithic-code` | `bool` | Any value of this type | `true` | `fix_non_monolithic_code` |
+| `fix-non-monolithic-code` | `bool` | Any | `true` | `fix_non_monolithic_code` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_alternative_syntax`](https://cs.symfony.com/doc/rules/control_structure/no_alternative_syntax.html) (php-cs-fixer)
+- [`AlternativeIfToBracket`](https://getrector.com/rule-detail/alternative-if-to-bracket-rector) (rector)
+- [`no-alternative-syntax`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-alternative-syntax) (mago-linter)
+
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

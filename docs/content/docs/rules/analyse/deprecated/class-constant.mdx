@@ -7,14 +7,7 @@ pagination: false
 
 <RuleId id="analyse/deprecated/class-constant" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`RestrictedDeprecatedClassConstantUsageExtension`](https://github.com/phpstan/phpstan-deprecation-rules#readme) (phpstan-classes).
-- [`DeprecatedClassConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`classConstant.deprecated`](https://phpstan.org/error-identifiers/classConstant.deprecated) (phpstan-deprecation-rules).
-- [`enumCase.deprecated`](https://phpstan.org/error-identifiers/enumCase.deprecated) (phpstan-deprecation-rules).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -23,13 +16,13 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "deprecated/class-constant" = "on"
 ```
 
-```php
-// @pun-ignore analyse/deprecated/class-constant -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`RestrictedDeprecatedClassConstantUsageExtension`](https://github.com/phpstan/phpstan-deprecation-rules#readme) (phpstan-classes)
+- [`DeprecatedClassConstant`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`classConstant.deprecated`](https://phpstan.org/error-identifiers/classConstant.deprecated) (phpstan-deprecation-rules)
+- [`enumCase.deprecated`](https://phpstan.org/error-identifiers/enumCase.deprecated) (phpstan-deprecation-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/deprecated) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/deprecated rules](/docs/rules/analyse/deprecated) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

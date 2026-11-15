@@ -7,23 +7,23 @@ pagination: false
 
 ## Config translation
 
-`pun migrate` leaves source configs in place and reports skipped items. Planned rules are not implemented. Pun never falls back to PHP for missing rules.
+`pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
-Run `pun migrate --from php-cs-fixer`. System PHP reads `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` through PHP-CS-Fixer itself.
+Run `pun migrate --from php-cs-fixer`. It reads `.php-cs-fixer.php` or `.php-cs-fixer.dist.php` through PHP-CS-Fixer, so it needs system PHP.
 
 | PHP-CS-Fixer config | pun.toml |
 | --- | --- |
 | `setRules()` and rule sets such as `@PER-CS` | Expanded rules, split between `[format.rules]` and `[lint.rules]` |
 | `setRiskyAllowed(true)` | Enabled risky fixers become lint rules at `"error"` |
-| Configured options | Pun names and values on the linked rule pages |
+| Configured options | Pun names and values, on each rule page |
 | Finder `in()`, `exclude()`, `notName()`, `notPath()` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |
-| Custom fixer classes | Unsupported; reported and skipped |
+| Custom fixer classes | Reported and skipped |
 
 ## Rule mapping
 
 <MigrationTable tool="php-cs-fixer" />
 
-## Unsupported rules by reason
+## Unsupported rules
 
 ### deprecated upstream; successor: blank_lines_before_namespace
 
@@ -84,7 +84,6 @@ Run `pun migrate --from php-cs-fixer`. System PHP reads `.php-cs-fixer.php` or `
 ### deprecated upstream; successor: type_declaration_spaces
 
 [`function_typehint_space`](https://cs.symfony.com/doc/rules/function_notation/function_typehint_space.html).
-
 
 ## Pun-only rules
 

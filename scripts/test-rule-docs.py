@@ -28,27 +28,29 @@ def main() -> None:
     assert 'title: "lint/style/no-alias-function"' in lint
     assert "An alias hides `{intent}` and &lt;meaning>." in lint
     assert "<?php chop($value);" in lint and "<?php rtrim($value);" in lint
-    headings = ["## Replaces", "## Configuration", "## What it does", "### Why", "## Examples", "## Options"]
+    headings = ["## What it does", "### Why", "## Examples", "## Configuration", "## Options", "## Replaces"]
     positions = [lint.index(h) for h in headings]
     assert positions == sorted(positions)
-    assert "@pun-ignore-file lint/style/no-alias-function" in lint
+    assert "[`@pun-ignore-file`](/docs/configuration/ignore-comments)" in lint
     analyse = output[docs.CONTENT / "rules/analyse/undefined/method.mdx"]
     assert "**Planned: not in Pun yet.**" in analyse
     assert "Call to an undefined method X::missing()." in analyse
     assert "https://phpstan.org/error-identifiers/method.notFound" in analyse
-    assert '"undefined/method" = "on"' in analyse
-    assert "@pun-ignore analyse/undefined/method" in analyse
+    assert "## Configuration" not in analyse
+    assert '"lint/style/no-alias-function" = "error"' not in lint and '"style/no-alias-function" = "error"' in lint
+    assert "[ignore comment](/docs/configuration/ignore-comments)" in output[docs.CONTENT / "rules/analyse/undefined/function.mdx"]
     for name in ("dump-type", "dump-phpdoc-type"):
         dump = output[docs.CONTENT / f"rules/analyse/debug/{name}.mdx"]
-        assert "cannot be suppressed with ignore comments or baseline entries" in dump
-        assert "@pun-ignore" not in dump
+        assert "Ignore comments and baselines cannot suppress it." in dump
+        assert "ignore-comments" not in dump
         assert "Planned: not in Pun yet" not in dump
     ordered = output[docs.CONTENT / "rules/format/imports/ordered.mdx"]
     assert '`"alphabetical"` | `sort_algorithm`' in ordered
-    assert "@pun-ignore-file format/imports/ordered" in ordered
+    assert "[`@pun-ignore-file`](/docs/configuration/ignore-comments)" in ordered
+    assert "## Options" in ordered and "## Options" not in output[docs.CONTENT / "rules/lint/complexity/no-boolean-flag-parameter.mdx"]
     assert "## Examples" not in ordered and "not written yet" not in ordered
     assert "## Linked rules" not in ordered and "## Other rules" not in ordered
-    assert "[Group reference](/docs/rules/format/imports)" in ordered
+    assert "[More format/imports rules](/docs/rules/format/imports)" in ordered
     laravel = output[docs.CONTENT / "rules/presets/format-laravel.mdx"]
     assert '`{ "order" = ["const", "class", "function"], "sort" = "alphabetical" }`' in laravel
     empty = output[docs.CONTENT / "rules/presets/format-empty.mdx"]
@@ -87,7 +89,7 @@ def main() -> None:
     assert "getrector.com" not in analyse
     for tool in docs.TOOLS:
         migration = output[docs.CONTENT / f"migrate/from/{tool}.mdx"]
-        assert "## Config translation" in migration and "## Unsupported rules by reason" in migration
+        assert "## Config translation" in migration and "## Rule mapping" in migration
         assert docs.rule_link("lint/comments/no-unused-ignore") in migration
     for command, rules in data["rules"].items():
         for key in rules:

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/add-mock-intersection-type" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`AddIntersectionVarToMockObjectProperty`](https://getrector.com/rule-detail/add-intersection-var-to-mock-object-property-rector) (rector-phpunit).
+Add `MockObject&Foo` / `Stub&Foo` intersection types to PHPDoc of mock and stub properties, params and returns.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "phpunit/add-mock-intersection-type" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/add-mock-intersection-type" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/add-mock-intersection-type -- explain the exception
-```
+- [`AddIntersectionVarToMockObjectProperty`](https://getrector.com/rule-detail/add-intersection-var-to-mock-object-property-rector) (rector-phpunit)
 
-## What it does
-
-Add `MockObject&Foo` / `Stub&Foo` intersection types to PHPDoc of mock and stub properties, params and returns.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

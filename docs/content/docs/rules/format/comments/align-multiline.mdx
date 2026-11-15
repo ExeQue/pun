@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/comments/align-multiline" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`align_multiline_comment`](https://cs.symfony.com/doc/rules/phpdoc/align_multiline_comment.html) (php-cs-fixer).
+Each line of multi-line DocComments must have an asterisk [PSR-5] and must be aligned with the first one.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "comments/align-multiline" = true
 ```
 
-```php
-// @pun-ignore-file format/comments/align-multiline -- explain the exception
-```
-
-## What it does
-
-Each line of multi-line DocComments must have an asterisk [PSR-5] and must be aligned with the first one.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Each line of multi-line DocComments must have an asterisk [PSR-5] and must be al
 | --- | --- | --- | --- | --- |
 | `comment-type` | `enum` | `phpdocs-only`, `phpdocs-like`, `all-multiline` | `"phpdocs-only"` | `comment_type` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/comments) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`align_multiline_comment`](https://cs.symfony.com/doc/rules/phpdoc/align_multiline_comment.html) (php-cs-fixer)
+
+[More format/comments rules](/docs/rules/format/comments) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

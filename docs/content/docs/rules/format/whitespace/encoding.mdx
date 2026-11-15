@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="format/whitespace/encoding" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`encoding`](https://cs.symfony.com/doc/rules/basic/encoding.html) (php-cs-fixer).
-- [`FileWhitespaceRule`](https://phpstan.org/error-identifiers/whitespace.bom) (phpstan-classes).
-- [`whitespace.bom`](https://phpstan.org/error-identifiers/whitespace.bom) (phpstan).
+PHP code MUST use only UTF-8 without BOM (remove BOM).
 
 ## Configuration
 
@@ -22,16 +20,12 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "whitespace/encoding" = true
 ```
 
-```php
-// @pun-ignore-file format/whitespace/encoding -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-PHP code MUST use only UTF-8 without BOM (remove BOM).
+- [`encoding`](https://cs.symfony.com/doc/rules/basic/encoding.html) (php-cs-fixer)
+- [`FileWhitespaceRule`](https://phpstan.org/error-identifiers/whitespace.bom) (phpstan-classes)
+- [`whitespace.bom`](https://phpstan.org/error-identifiers/whitespace.bom) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/whitespace) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/whitespace rules](/docs/rules/format/whitespace) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

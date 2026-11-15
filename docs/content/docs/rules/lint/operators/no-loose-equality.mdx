@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="lint/operators/no-loose-equality" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.disallowedLooseComparison`.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: suspicious. Upstream gates: `strictRules.disallowedLooseComparison`.
 
-## Replaces
+## What it does
 
-- [`DisallowedLooseComparisonRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`equal.notAllowed`](https://phpstan.org/error-identifiers/equal.notAllowed) (phpstan-strict-rules).
-- [`notEqual.notAllowed`](https://phpstan.org/error-identifiers/notEqual.notAllowed) (phpstan-strict-rules).
+Disallows the loose comparison operators `==` and `!=`; use `===` and `!==`.
 
 ## Configuration
 
@@ -22,24 +20,12 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "operators/no-loose-equality" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "operators/no-loose-equality" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/operators/no-loose-equality -- explain the exception
-```
+- [`DisallowedLooseComparisonRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`equal.notAllowed`](https://phpstan.org/error-identifiers/equal.notAllowed) (phpstan-strict-rules)
+- [`notEqual.notAllowed`](https://phpstan.org/error-identifiers/notEqual.notAllowed) (phpstan-strict-rules)
 
-## What it does
-
-Disallows the loose comparison operators `==` and `!=`; use `===` and `!==`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/operators rules](/docs/rules/lint/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

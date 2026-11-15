@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/strings/require-string-line-ending" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Intent: suspicious.
+Not in any set. Unsafe fix: it can change behaviour. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`string_line_ending`](https://cs.symfony.com/doc/rules/string_notation/string_line_ending.html) (php-cs-fixer, risky).
+All multi-line strings must use correct line ending.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "strings/require-string-line-ending" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "strings/require-string-line-ending" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/strings/require-string-line-ending -- explain the exception
-```
+- [`string_line_ending`](https://cs.symfony.com/doc/rules/string_notation/string_line_ending.html) (php-cs-fixer, risky)
 
-## What it does
-
-All multi-line strings must use correct line ending.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/strings rules](/docs/rules/lint/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

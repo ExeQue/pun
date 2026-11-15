@@ -7,178 +7,138 @@ pagination: false
 
 Configurable codemods: they do nothing until configured.
 
-Across commands: format: 0, lint: 19, analyse: 0.
-
 <CardGroup cols={2}>
-<Card title="lint/refactor/add-override-attribute">
-
-[`lint/refactor/add-override-attribute`](/docs/rules/lint/refactor/add-override-attribute)
+<Card title="add-override-attribute" href="/docs/rules/lint/refactor/add-override-attribute">
 
 Add #[Override] to properties that override a parent class's property (PHP 8.5).
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/no-negated-condition">
-
-[`lint/refactor/no-negated-condition`](/docs/rules/lint/refactor/no-negated-condition)
+<Card title="no-negated-condition" href="/docs/rules/lint/refactor/no-negated-condition">
 
 Flip a ternary whose condition is negated: drop the `!` (or use `===` / `==`) and swap the branches.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour).
+In the `code-quality` set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/prefer-attribute-over-annotation">
-
-[`lint/refactor/prefer-attribute-over-annotation`](/docs/rules/lint/refactor/prefer-attribute-over-annotation)
+<Card title="prefer-attribute-over-annotation" href="/docs/rules/lint/refactor/prefer-attribute-over-annotation">
 
 Replace configured PHPDoc annotations (including nested ones) with attributes.
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/prefer-constant">
-
-[`lint/refactor/prefer-constant`](/docs/rules/lint/refactor/prefer-constant)
+<Card title="prefer-constant" href="/docs/rules/lint/refactor/prefer-constant">
 
 Replace function calls that return a constant (php_sapi_name(), pi(), ...) with the constant.
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour).
+In the `coding-style` set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/remove-attribute">
-
-[`lint/refactor/remove-attribute`](/docs/rules/lint/refactor/remove-attribute)
+<Card title="remove-attribute" href="/docs/rules/lint/refactor/remove-attribute">
 
 Removes configured attributes by their respective FQN.
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
 </Card>
-<Card title="lint/refactor/remove-function-argument">
-
-[`lint/refactor/remove-function-argument`](/docs/rules/lint/refactor/remove-function-argument)
+<Card title="remove-function-argument" href="/docs/rules/lint/refactor/remove-function-argument">
 
 Remove argument by position by function name
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/remove-function-call">
-
-[`lint/refactor/remove-function-call`](/docs/rules/lint/refactor/remove-function-call)
+<Card title="remove-function-call" href="/docs/rules/lint/refactor/remove-function-call">
 
 Remove defined function calls
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/remove-phpdoc-annotation">
-
-[`lint/refactor/remove-phpdoc-annotation`](/docs/rules/lint/refactor/remove-phpdoc-annotation)
+<Card title="remove-phpdoc-annotation" href="/docs/rules/lint/refactor/remove-phpdoc-annotation">
 
 Removes configured annotations from PHPDoc.
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
 </Card>
-<Card title="lint/refactor/rename-cast">
-
-[`lint/refactor/rename-cast`](/docs/rules/lint/refactor/rename-cast)
+<Card title="rename-cast" href="/docs/rules/lint/refactor/rename-cast">
 
 Renames casts
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/rename-class">
-
-[`lint/refactor/rename-class`](/docs/rules/lint/refactor/rename-class)
+<Card title="rename-class" href="/docs/rules/lint/refactor/rename-class">
 
 Replace defined classes by new ones
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Gated by laravel-version.
+Not in any set. Unsafe fix: it can change behaviour. Gated by laravel-version.
 
 </Card>
-<Card title="lint/refactor/rename-class-constant">
-
-[`lint/refactor/rename-class-constant`](/docs/rules/lint/refactor/rename-class-constant)
+<Card title="rename-class-constant" href="/docs/rules/lint/refactor/rename-class-constant">
 
 Replace defined class constants in their calls
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/rename-constant">
-
-[`lint/refactor/rename-constant`](/docs/rules/lint/refactor/rename-constant)
+<Card title="rename-constant" href="/docs/rules/lint/refactor/rename-constant">
 
 Replace constant by new ones
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/rename-function">
-
-[`lint/refactor/rename-function`](/docs/rules/lint/refactor/rename-function)
+<Card title="rename-function" href="/docs/rules/lint/refactor/rename-function">
 
 Turn defined function call new one
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Gated by laravel-version.
+Not in any set. Unsafe fix: it can change behaviour. Gated by laravel-version.
 
 </Card>
-<Card title="lint/refactor/rename-method">
-
-[`lint/refactor/rename-method`](/docs/rules/lint/refactor/rename-method)
+<Card title="rename-method" href="/docs/rules/lint/refactor/rename-method">
 
 Turn method names to new ones
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Gated by laravel-version.
+Not in any set. Unsafe fix: it can change behaviour. Gated by laravel-version.
 
 </Card>
-<Card title="lint/refactor/rename-phpdoc-tag">
-
-[`lint/refactor/rename-phpdoc-tag`](/docs/rules/lint/refactor/rename-phpdoc-tag)
+<Card title="rename-phpdoc-tag" href="/docs/rules/lint/refactor/rename-phpdoc-tag">
 
 Renames PHPDoc tags.
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any set. Safe fix.
 
 </Card>
-<Card title="lint/refactor/replace-function-with-constant">
-
-[`lint/refactor/replace-function-with-constant`](/docs/rules/lint/refactor/replace-function-with-constant)
+<Card title="replace-function-with-constant" href="/docs/rules/lint/refactor/replace-function-with-constant">
 
 Changes use of function calls to use constants
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/replace-function-with-new">
-
-[`lint/refactor/replace-function-with-new`](/docs/rules/lint/refactor/replace-function-with-new)
+<Card title="replace-function-with-new" href="/docs/rules/lint/refactor/replace-function-with-new">
 
 Change configured function calls to new Instance
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/replace-function-with-static">
-
-[`lint/refactor/replace-function-with-static`](/docs/rules/lint/refactor/replace-function-with-static)
+<Card title="replace-function-with-static" href="/docs/rules/lint/refactor/replace-function-with-static">
 
 Turn defined function call to static method call
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
-<Card title="lint/refactor/replace-static-with-method">
-
-[`lint/refactor/replace-static-with-method`](/docs/rules/lint/refactor/replace-static-with-method)
+<Card title="replace-static-with-method" href="/docs/rules/lint/refactor/replace-static-with-method">
 
 Change static call to service method via constructor injection
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
 </Card>
 </CardGroup>

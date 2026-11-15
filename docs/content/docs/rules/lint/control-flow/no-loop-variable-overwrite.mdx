@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="lint/control-flow/no-loop-variable-overwrite" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.overwriteVariablesWithLoop`.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: suspicious. Upstream gates: `strictRules.overwriteVariablesWithLoop`.
 
-## Replaces
+## What it does
 
-- [`OverwriteVariablesWithForeachRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`foreach.keyOverwrite`](https://phpstan.org/error-identifiers/foreach.keyOverwrite) (phpstan-strict-rules).
-- [`foreach.valueOverwrite`](https://phpstan.org/error-identifiers/foreach.valueOverwrite) (phpstan-strict-rules).
+Disallows a `foreach` key or value variable overwriting a variable that is already defined.
 
 ## Configuration
 
@@ -22,24 +20,12 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "control-flow/no-loop-variable-overwrite" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "control-flow/no-loop-variable-overwrite" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/control-flow/no-loop-variable-overwrite -- explain the exception
-```
+- [`OverwriteVariablesWithForeachRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`foreach.keyOverwrite`](https://phpstan.org/error-identifiers/foreach.keyOverwrite) (phpstan-strict-rules)
+- [`foreach.valueOverwrite`](https://phpstan.org/error-identifiers/foreach.valueOverwrite) (phpstan-strict-rules)
 
-## What it does
-
-Disallows a `foreach` key or value variable overwriting a variable that is already defined.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

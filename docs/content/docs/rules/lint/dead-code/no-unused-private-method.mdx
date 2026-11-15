@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-unused-private-method" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RemoveUnusedPrivateMethod`](https://getrector.com/rule-detail/remove-unused-private-method-rector) (rector).
-- [`UnusedPrivateMethodRule`](https://phpstan.org/error-identifiers/method.unused) (phpstan-classes).
-- [`UnusedMethod`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`method.unused`](https://phpstan.org/error-identifiers/method.unused) (phpstan).
+Remove unused private method
 
 ## Configuration
 
@@ -23,24 +20,13 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "dead-code/no-unused-private-method" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-unused-private-method" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-unused-private-method -- explain the exception
-```
+- [`RemoveUnusedPrivateMethod`](https://getrector.com/rule-detail/remove-unused-private-method-rector) (rector)
+- [`UnusedPrivateMethodRule`](https://phpstan.org/error-identifiers/method.unused) (phpstan-classes)
+- [`UnusedMethod`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`method.unused`](https://phpstan.org/error-identifiers/method.unused) (phpstan)
 
-## What it does
-
-Remove unused private method
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

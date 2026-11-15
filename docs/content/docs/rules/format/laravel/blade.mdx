@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/laravel/blade" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when laravel is installed.
+Not in any preset. Safe fix. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`Pint/laravel_blade`](https://laravel.com/docs/pint) (pint).
+Formats Blade templates (Pint 1.30, Prettier + prettier-plugin-blade).
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "laravel/blade" = true
 ```
 
-```php
-// @pun-ignore-file format/laravel/blade -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Formats Blade templates (Pint 1.30, Prettier + prettier-plugin-blade).
+- [`Pint/laravel_blade`](https://laravel.com/docs/pint) (pint)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/laravel rules](/docs/rules/format/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/prefer-phpdoc-comment" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`comment_to_phpdoc`](https://cs.symfony.com/doc/rules/comment/comment_to_phpdoc.html) (php-cs-fixer, risky).
+Comments with annotation should be docblock when used on structural elements.
 
 ## Configuration
 
@@ -20,27 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/prefer-phpdoc-comment" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/prefer-phpdoc-comment" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/style/prefer-phpdoc-comment -- explain the exception
-```
-
-## What it does
-
-Comments with annotation should be docblock when used on structural elements.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `ignored-tags` | `list` | Any value of this type | `[]` | `ignored_tags` |
+| `ignored-tags` | `list` | Any | `[]` | `ignored_tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`comment_to_phpdoc`](https://cs.symfony.com/doc/rules/comment/comment_to_phpdoc.html) (php-cs-fixer, risky)
+
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

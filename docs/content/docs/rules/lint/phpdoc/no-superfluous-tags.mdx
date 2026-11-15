@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpdoc/no-superfluous-tags" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_superfluous_phpdoc_tags`](https://cs.symfony.com/doc/rules/phpdoc/no_superfluous_phpdoc_tags.html) (php-cs-fixer).
+Removes `@param`, `@return` and `@var` tags that don't provide any useful information.
 
 ## Configuration
 
@@ -20,30 +20,19 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "phpdoc/no-superfluous-tags" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpdoc/no-superfluous-tags" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpdoc/no-superfluous-tags -- explain the exception
-```
-
-## What it does
-
-Removes `@param`, `@return` and `@var` tags that don't provide any useful information.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `allow-hidden-params` | `bool` | Any value of this type | `false` | `allow_hidden_params` |
-| `allow-mixed` | `bool` | Any value of this type | `false` | `allow_mixed` |
-| `allow-unused-params` | `bool` | Any value of this type | `false` | `allow_unused_params` |
-| `remove-inheritdoc` | `bool` | Any value of this type | `false` | `remove_inheritdoc` |
+| `allow-hidden-params` | `bool` | Any | `false` | `allow_hidden_params` |
+| `allow-mixed` | `bool` | Any | `false` | `allow_mixed` |
+| `allow-unused-params` | `bool` | Any | `false` | `allow_unused_params` |
+| `remove-inheritdoc` | `bool` | Any | `false` | `remove_inheritdoc` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_superfluous_phpdoc_tags`](https://cs.symfony.com/doc/rules/phpdoc/no_superfluous_phpdoc_tags.html) (php-cs-fixer)
+
+[More lint/phpdoc rules](/docs/rules/lint/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

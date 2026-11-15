@@ -7,32 +7,30 @@ pagination: false
 
 ## Config translation
 
-`pun migrate` leaves source configs in place and reports skipped items. Planned rules are not implemented. Pun never falls back to PHP for missing rules.
+`pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
-Run `pun migrate --from phpstan`. PHPStan config includes are resolved before migration.
+Run `pun migrate --from phpstan`. It follows the config's includes.
 
 | phpstan.neon | pun.toml |
 | --- | --- |
 | `level: 5` | `[analyse] preset = "recommended"`, plus explicit on/off lines for exactly level 5 |
-| `level: 0..10` | The containing analyse preset, with on/off differences; no numeric Pun levels |
+| `level: 0..10` | The analyse preset that contains the level, with on/off differences |
 | `paths`, `excludePaths`, `stubFiles` | `[analyse] paths`, `exclude`, `stubs` |
 | `ignoreErrors` identifiers, patterns, paths, count | `[[analyse.ignore]]` with Pun `rule`, original `identifier`, `message`, `paths`, `count` |
 | Changed rule parameters | Kebab-case options on each running rule that reads the parameter |
-| strict-rules or deprecation-rules includes | Their built-in Pun checks, only when their parameter enables them |
+| strict-rules or deprecation-rules includes | The matching Pun checks, when their parameter enables them |
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
 | Baselines | Not copied. Run `pun analyse --generate-baseline`. |
 | `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`; the rules it turns on get `"on"` lines |
 | Custom extensions | Reported and skipped |
 
-The table maps PHPStan identifiers. Exact identifiers take precedence over patterns.
-
-The analysis CLI does not yet apply migrated stubs, ignore tables, rule options, or preset type switches. See [analysis limitations](/docs/commands/analyse#configuration).
+The rule mapping lists PHPStan identifiers. An exact identifier wins over a pattern.
 
 ## Rule mapping
 
 <MigrationTable tool="phpstan" />
 
-## Unsupported rules by reason
+## Unsupported rules
 
 ### PHPStan extension-API checks; Pun has no PHP extension API
 
@@ -41,7 +39,6 @@ The analysis CLI does not yet apply migrated stubs, ignore tables, rule options,
 ### phpstan.org playground only
 
 [`phpstanPlayground.arrayDimFetchCast`](https://phpstan.org/error-identifiers/phpstanPlayground.arrayDimFetchCast), [`phpstanPlayground.arrayKeyCast`](https://phpstan.org/error-identifiers/phpstanPlayground.arrayKeyCast), [`phpstanPlayground.configParameter`](https://phpstan.org/error-identifiers/phpstanPlayground.configParameter), [`phpstanPlayground.never`](https://phpstan.org/error-identifiers/phpstanPlayground.never), [`phpstanPlayground.noPhp`](https://phpstan.org/error-identifiers/phpstanPlayground.noPhp), [`phpstanPlayground.phpDoc`](https://phpstan.org/error-identifiers/phpstanPlayground.phpDoc), [`phpstanPlayground.traitUnused`](https://phpstan.org/error-identifiers/phpstanPlayground.traitUnused).
-
 
 ## Pun-only rules
 

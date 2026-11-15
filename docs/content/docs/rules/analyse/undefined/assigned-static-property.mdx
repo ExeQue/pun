@@ -7,18 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/assigned-static-property" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`AccessStaticPropertiesInAssignRule`](https://phpstan.org/error-identifiers/assign.staticPropertyPrivateSet) (phpstan-classes).
-- [`NonExistentProperty`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`assign.staticPropertyPrivateSet`](https://phpstan.org/error-identifiers/assign.staticPropertyPrivateSet) (phpstan).
-- [`assign.staticPropertyProtectedSet`](https://phpstan.org/error-identifiers/assign.staticPropertyProtectedSet) (phpstan).
-- [`class.noParent`](https://phpstan.org/error-identifiers/class.noParent) (phpstan).
-- [`property.staticAccess`](https://phpstan.org/error-identifiers/property.staticAccess) (phpstan).
-- [`staticProperty.nonObject`](https://phpstan.org/error-identifiers/staticProperty.nonObject) (phpstan).
-- [`staticProperty.private`](https://phpstan.org/error-identifiers/staticProperty.private) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -27,13 +16,17 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/assigned-static-property" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/assigned-static-property -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`AccessStaticPropertiesInAssignRule`](https://phpstan.org/error-identifiers/assign.staticPropertyPrivateSet) (phpstan-classes)
+- [`NonExistentProperty`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`assign.staticPropertyPrivateSet`](https://phpstan.org/error-identifiers/assign.staticPropertyPrivateSet) (phpstan)
+- [`assign.staticPropertyProtectedSet`](https://phpstan.org/error-identifiers/assign.staticPropertyProtectedSet) (phpstan)
+- [`class.noParent`](https://phpstan.org/error-identifiers/class.noParent) (phpstan)
+- [`property.staticAccess`](https://phpstan.org/error-identifiers/property.staticAccess) (phpstan)
+- [`staticProperty.nonObject`](https://phpstan.org/error-identifiers/staticProperty.nonObject) (phpstan)
+- [`staticProperty.private`](https://phpstan.org/error-identifiers/staticProperty.private) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

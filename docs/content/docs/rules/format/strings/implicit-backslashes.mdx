@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/strings/implicit-backslashes" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`string_implicit_backslashes`](https://cs.symfony.com/doc/rules/string_notation/string_implicit_backslashes.html) (php-cs-fixer).
+Handles implicit backslashes in strings and heredocs. Depending on the chosen strategy, it can escape implicit backslashes to ease the understanding of which are special chars interpreted by PHP and which not (`escape`), or it can remove these additional backslashes if you find them superfluous (`unescape`). You can also leave them as-is using `ignore` strategy.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "strings/implicit-backslashes" = true
 ```
 
-```php
-// @pun-ignore-file format/strings/implicit-backslashes -- explain the exception
-```
-
-## What it does
-
-Handles implicit backslashes in strings and heredocs. Depending on the chosen strategy, it can escape implicit backslashes to ease the understanding of which are special chars interpreted by PHP and which not (`escape`), or it can remove these additional backslashes if you find them superfluous (`unescape`). You can also leave them as-is using `ignore` strategy.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -36,5 +30,8 @@ Handles implicit backslashes in strings and heredocs. Depending on the chosen st
 | `heredoc` | `enum` | `escape`, `unescape`, `ignore` | `"escape"` | `heredoc` |
 | `single-quoted` | `enum` | `escape`, `unescape`, `ignore` | `"unescape"` | `single_quoted` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`string_implicit_backslashes`](https://cs.symfony.com/doc/rules/string_notation/string_implicit_backslashes.html) (php-cs-fixer)
+
+[More format/strings rules](/docs/rules/format/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

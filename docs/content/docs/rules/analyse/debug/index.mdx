@@ -7,52 +7,36 @@ pagination: false
 
 Type debugging helpers (dumpType, assertType).
 
-Across commands: format: 0, lint: 0, analyse: 5.
-
 <CardGroup cols={2}>
-<Card title="analyse/debug/assert-type">
-
-[`analyse/debug/assert-type`](/docs/rules/analyse/debug/assert-type)
+<Card title="assert-type" href="/docs/rules/analyse/debug/assert-type">
 
 Reports each `assertType()`, `assertNativeType()`, `assertSuperType()` or `assertVariableCertainty()` call that does not hold. Ignore comments and baselines cannot suppress these diagnostics.
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the `analyse-basic` preset and every stricter one. Report only.
 
 </Card>
-<Card title="analyse/debug/dump-native-type">
+<Card title="dump-native-type" href="/docs/rules/analyse/debug/dump-native-type">
 
-[`analyse/debug/dump-native-type`](/docs/rules/analyse/debug/dump-native-type)
-
-
-
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). **Planned: not in Pun yet.** Enabling it in pun.toml is a config error.
+In the `analyse-basic` preset and every stricter one. Report only. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
-<Card title="analyse/debug/dump-phpdoc-type">
-
-[`analyse/debug/dump-phpdoc-type`](/docs/rules/analyse/debug/dump-phpdoc-type)
+<Card title="dump-phpdoc-type" href="/docs/rules/analyse/debug/dump-phpdoc-type">
 
 Reports each argument's inferred type as PHPDoc. Ignore comments and baselines cannot suppress these diagnostics.
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the `analyse-basic` preset and every stricter one. Report only.
 
 </Card>
-<Card title="analyse/debug/dump-scope">
+<Card title="dump-scope" href="/docs/rules/analyse/debug/dump-scope">
 
-[`analyse/debug/dump-scope`](/docs/rules/analyse/debug/dump-scope)
-
-
-
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). **Planned: not in Pun yet.** Enabling it in pun.toml is a config error.
+In the `analyse-basic` preset and every stricter one. Report only. **Planned: not in Pun yet.** Enabling it is a config error.
 
 </Card>
-<Card title="analyse/debug/dump-type">
-
-[`analyse/debug/dump-type`](/docs/rules/analyse/debug/dump-type)
+<Card title="dump-type" href="/docs/rules/analyse/debug/dump-type">
 
 Reports each argument's inferred type in PHPStan's precise notation. Ignore comments and baselines cannot suppress these diagnostics.
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the `analyse-basic` preset and every stricter one. Report only.
 
 </Card>
 </CardGroup>

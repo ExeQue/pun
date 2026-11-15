@@ -12,13 +12,12 @@ Unknown methods and properties, PHPDoc, return and property types.
 preset = "essential"
 ```
 
-Ecosystem and target-version settings still apply. Planned rules are not implemented.
+Ecosystem and target-version gates still apply. Planned rules do not run.
 
-This preset covers PHPStan levels 2–3 and includes every lower preset (levels 0–3). Extension rules are included by their mapping preset, not by a PHPStan core level.
+Covers PHPStan levels 2–3, and every lower preset with them (levels 0–3). Extension rules join by their own preset, not by PHPStan level.
 
 
 ### What each PHPStan level adds
-
 
 #### Level 0
 
@@ -282,7 +281,7 @@ This preset covers PHPStan levels 2–3 and includes every lower preset (levels 
 
 ## Enabled rules (256)
 
-| Rule | Configuration applied | Status |
+| Rule | Configuration | Status |
 | --- | --- | --- |
 | [`analyse/arrays/invalid-array-key`](/docs/rules/analyse/arrays/invalid-array-key) | `true` | Ported |
 | [`analyse/arrays/invalid-destructuring`](/docs/rules/analyse/arrays/invalid-destructuring) | `true` | Ported |

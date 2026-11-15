@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/control-flow/no-useless-else" />
 
-Enabled by the [`early-return`](/docs/rules/sets/early-return) set. Fix: safe (keeps behaviour).
+In the [`early-return`](/docs/rules/sets/early-return) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_useless_else`](https://cs.symfony.com/doc/rules/control_structure/no_useless_else.html) (php-cs-fixer).
-- [`no-redundant-else`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-else) (mago-linter).
+There should not be useless `else` cases.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`early-return`](/docs/rules/sets/early-return) set. Fix: safe (k
 "control-flow/no-useless-else" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "control-flow/no-useless-else" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/control-flow/no-useless-else -- explain the exception
-```
+- [`no_useless_else`](https://cs.symfony.com/doc/rules/control_structure/no_useless_else.html) (php-cs-fixer)
+- [`no-redundant-else`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-else) (mago-linter)
 
-## What it does
-
-There should not be useless `else` cases.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

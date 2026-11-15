@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/missing-parent-constructor-call" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.requireParentConstructorCall`.
-
-## Replaces
-
-- [`RequireParentConstructCallRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`constructor.missingParentCall`](https://phpstan.org/error-identifiers/constructor.missingParentCall) (phpstan-strict-rules).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.requireParentConstructorCall`.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "classes/missing-parent-constructor-call" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/missing-parent-constructor-call -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`RequireParentConstructCallRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`constructor.missingParentCall`](https://phpstan.org/error-identifiers/constructor.missingParentCall) (phpstan-strict-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

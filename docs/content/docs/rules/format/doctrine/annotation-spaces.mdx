@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/doctrine/annotation-spaces" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when doctrine is installed.
+Not in any preset. Safe fix. Runs when doctrine is installed.
 
-## Replaces
+## What it does
 
-- [`doctrine_annotation_spaces`](https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html) (php-cs-fixer).
+Fixes spaces in Doctrine annotations.
 
 ## Configuration
 
@@ -20,27 +20,24 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "doctrine/annotation-spaces" = true
 ```
 
-```php
-// @pun-ignore-file format/doctrine/annotation-spaces -- explain the exception
-```
-
-## What it does
-
-Fixes spaces in Doctrine annotations.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `after-argument-assignments` | `bool` | Any value of this type | `false` | `after_argument_assignments` |
-| `after-array-assignments-colon` | `bool` | Any value of this type | `true` | `after_array_assignments_colon` |
-| `after-array-assignments-equals` | `bool` | Any value of this type | `true` | `after_array_assignments_equals` |
-| `around-commas` | `bool` | Any value of this type | `true` | `around_commas` |
-| `around-parentheses` | `bool` | Any value of this type | `true` | `around_parentheses` |
-| `before-argument-assignments` | `bool` | Any value of this type | `false` | `before_argument_assignments` |
-| `before-array-assignments-colon` | `bool` | Any value of this type | `true` | `before_array_assignments_colon` |
-| `before-array-assignments-equals` | `bool` | Any value of this type | `true` | `before_array_assignments_equals` |
-| `ignored-tags` | `list` | Any value of this type | `["abstract", "access", "code", "deprec", "encode", "exception", "final", "ingroup", "inheritdoc", "inheritDoc", "magic", "name", "toc", "tutorial", "private", "static", "staticvar", "staticVar", "throw", "api", "author", "category", "copyright", "deprecated", "example", "filesource", "global", "ignore", "internal", "license", "link", "method", "package", "param", "property", "property-read", "property-write", "return", "see", "since", "source", "subpackage", "throws", "todo", "TODO", "usedBy", "uses", "var", "version", "after", "afterClass", "backupGlobals", "backupStaticAttributes", "before", "beforeClass", "codeCoverageIgnore", "codeCoverageIgnoreStart", "codeCoverageIgnoreEnd", "covers", "coversDefaultClass", "coversNothing", "dataProvider", "depends", "expectedException", "expectedExceptionCode", "expectedExceptionMessage", "expectedExceptionMessageRegExp", "group", "large", "medium", "preserveGlobalState", "requires", "runTestsInSeparateProcesses", "runInSeparateProcess", "small", "test", "testdox", "ticket", "uses", "SuppressWarnings", "noinspection", "package_version", "enduml", "startuml", "psalm", "phpstan", "template", "fix", "FIXME", "fixme", "override"]` | `ignored_tags` |
+| `after-argument-assignments` | `bool` | Any | `false` | `after_argument_assignments` |
+| `after-array-assignments-colon` | `bool` | Any | `true` | `after_array_assignments_colon` |
+| `after-array-assignments-equals` | `bool` | Any | `true` | `after_array_assignments_equals` |
+| `around-commas` | `bool` | Any | `true` | `around_commas` |
+| `around-parentheses` | `bool` | Any | `true` | `around_parentheses` |
+| `before-argument-assignments` | `bool` | Any | `false` | `before_argument_assignments` |
+| `before-array-assignments-colon` | `bool` | Any | `true` | `before_array_assignments_colon` |
+| `before-array-assignments-equals` | `bool` | Any | `true` | `before_array_assignments_equals` |
+| `ignored-tags` | `list` | Any | `["abstract", "access", "code", "deprec", "encode", "exception", "final", "ingroup", "inheritdoc", "inheritDoc", "magic", "name", "toc", "tutorial", "private", "static", "staticvar", "staticVar", "throw", "api", "author", "category", "copyright", "deprecated", "example", "filesource", "global", "ignore", "internal", "license", "link", "method", "package", "param", "property", "property-read", "property-write", "return", "see", "since", "source", "subpackage", "throws", "todo", "TODO", "usedBy", "uses", "var", "version", "after", "afterClass", "backupGlobals", "backupStaticAttributes", "before", "beforeClass", "codeCoverageIgnore", "codeCoverageIgnoreStart", "codeCoverageIgnoreEnd", "covers", "coversDefaultClass", "coversNothing", "dataProvider", "depends", "expectedException", "expectedExceptionCode", "expectedExceptionMessage", "expectedExceptionMessageRegExp", "group", "large", "medium", "preserveGlobalState", "requires", "runTestsInSeparateProcesses", "runInSeparateProcess", "small", "test", "testdox", "ticket", "uses", "SuppressWarnings", "noinspection", "package_version", "enduml", "startuml", "psalm", "phpstan", "template", "fix", "FIXME", "fixme", "override"]` | `ignored_tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/doctrine) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`doctrine_annotation_spaces`](https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html) (php-cs-fixer)
+
+[More format/doctrine rules](/docs/rules/format/doctrine) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

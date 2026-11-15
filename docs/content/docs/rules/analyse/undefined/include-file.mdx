@@ -7,15 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/include-file" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`RequireFileExistsRule`](https://phpstan.org/error-identifiers/include.fileNotFound) (phpstan-classes).
-- [`include.fileNotFound`](https://phpstan.org/error-identifiers/include.fileNotFound) (phpstan).
-- [`includeOnce.fileNotFound`](https://phpstan.org/error-identifiers/includeOnce.fileNotFound) (phpstan).
-- [`require.fileNotFound`](https://phpstan.org/error-identifiers/require.fileNotFound) (phpstan).
-- [`requireOnce.fileNotFound`](https://phpstan.org/error-identifiers/requireOnce.fileNotFound) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -24,13 +16,14 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/include-file" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/include-file -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`RequireFileExistsRule`](https://phpstan.org/error-identifiers/include.fileNotFound) (phpstan-classes)
+- [`include.fileNotFound`](https://phpstan.org/error-identifiers/include.fileNotFound) (phpstan)
+- [`includeOnce.fileNotFound`](https://phpstan.org/error-identifiers/includeOnce.fileNotFound) (phpstan)
+- [`require.fileNotFound`](https://phpstan.org/error-identifiers/require.fileNotFound) (phpstan)
+- [`requireOnce.fileNotFound`](https://phpstan.org/error-identifiers/requireOnce.fileNotFound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

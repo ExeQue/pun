@@ -7,15 +7,7 @@ pagination: false
 
 <RuleId id="analyse/classes/invalid-implements" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ExistingClassesInClassImplementsRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`classImplements.class`](https://phpstan.org/error-identifiers/classImplements.class) (phpstan).
-- [`classImplements.enum`](https://phpstan.org/error-identifiers/classImplements.enum) (phpstan).
-- [`classImplements.trait`](https://phpstan.org/error-identifiers/classImplements.trait) (phpstan).
-- [`interface.notFound`](https://phpstan.org/error-identifiers/interface.notFound) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -24,13 +16,14 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "classes/invalid-implements" = "on"
 ```
 
-```php
-// @pun-ignore analyse/classes/invalid-implements -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ExistingClassesInClassImplementsRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`classImplements.class`](https://phpstan.org/error-identifiers/classImplements.class) (phpstan)
+- [`classImplements.enum`](https://phpstan.org/error-identifiers/classImplements.enum) (phpstan)
+- [`classImplements.trait`](https://phpstan.org/error-identifiers/classImplements.trait) (phpstan)
+- [`interface.notFound`](https://phpstan.org/error-identifiers/interface.notFound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/classes rules](/docs/rules/analyse/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

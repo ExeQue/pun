@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-php4-constructor" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
+In the [`modernize`](/docs/rules/sets/modernize) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`no_php4_constructor`](https://cs.symfony.com/doc/rules/class_notation/no_php4_constructor.html) (php-cs-fixer, risky).
+Convert PHP4-style constructors to `__construct`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can c
 "style/no-php4-constructor" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-php4-constructor" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/no-php4-constructor -- explain the exception
-```
+- [`no_php4_constructor`](https://cs.symfony.com/doc/rules/class_notation/no_php4_constructor.html) (php-cs-fixer, risky)
 
-## What it does
-
-Convert PHP4-style constructors to `__construct`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

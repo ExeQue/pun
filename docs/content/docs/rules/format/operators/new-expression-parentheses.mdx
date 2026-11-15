@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/new-expression-parentheses" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`new_expression_parentheses`](https://cs.symfony.com/doc/rules/operator/new_expression_parentheses.html) (php-cs-fixer).
-- [`NewMethodCallWithoutParentheses`](https://getrector.com/rule-detail/new-method-call-without-parentheses-rector) (rector).
+All `new` expressions with a further call must (not) be wrapped in parentheses.
 
 ## Configuration
 
@@ -21,19 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "operators/new-expression-parentheses" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/new-expression-parentheses -- explain the exception
-```
-
-## What it does
-
-All `new` expressions with a further call must (not) be wrapped in parentheses.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `use-parentheses` | `bool` | Any value of this type | `false` | `use_parentheses` |
+| `use-parentheses` | `bool` | Any | `false` | `use_parentheses` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`new_expression_parentheses`](https://cs.symfony.com/doc/rules/operator/new_expression_parentheses.html) (php-cs-fixer)
+- [`NewMethodCallWithoutParentheses`](https://getrector.com/rule-detail/new-method-call-without-parentheses-rector) (rector)
+
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

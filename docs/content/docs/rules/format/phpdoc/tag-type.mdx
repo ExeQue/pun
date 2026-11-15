@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/tag-type" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_tag_type`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_type.html) (php-cs-fixer).
+Forces PHPDoc tags to be either regular annotations or inline.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "phpdoc/tag-type" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/tag-type -- explain the exception
-```
-
-## What it does
-
-Forces PHPDoc tags to be either regular annotations or inline.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Forces PHPDoc tags to be either regular annotations or inline.
 | --- | --- | --- | --- | --- |
 | `tags` | `map` | `annotation`, `inline` | `{ "api" = "annotation", "author" = "annotation", "copyright" = "annotation", "deprecated" = "annotation", "example" = "annotation", "global" = "annotation", "inheritDoc" = "annotation", "internal" = "annotation", "license" = "annotation", "method" = "annotation", "package" = "annotation", "param" = "annotation", "property" = "annotation", "return" = "annotation", "see" = "annotation", "since" = "annotation", "throws" = "annotation", "todo" = "annotation", "uses" = "annotation", "var" = "annotation", "version" = "annotation" }` | `tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_tag_type`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_tag_type.html) (php-cs-fixer)
+
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

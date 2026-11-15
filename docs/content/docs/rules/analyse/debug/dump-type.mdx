@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="analyse/debug/dump-type" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
-## Replaces
+## What it does
 
-- [`DumpTypeRule`](https://phpstan.org/error-identifiers/phpstan.dumpType) (phpstan-classes).
-- [`PsalmTrace`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`TypeInspection`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`phpstan.dumpType`](https://phpstan.org/error-identifiers/phpstan.dumpType) (phpstan).
+Reports each argument's inferred type in PHPStan's precise notation. Ignore comments and baselines cannot suppress these diagnostics.
 
 ## Configuration
 
@@ -23,14 +20,13 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "debug/dump-type" = "on"
 ```
 
-Findings from this rule cannot be suppressed with ignore comments or baseline entries.
+Ignore comments and baselines cannot suppress it.
 
-## What it does
+## Replaces
 
-Reports each argument's inferred type in PHPStan's precise notation. Ignore comments and baselines cannot suppress these diagnostics.
+- [`DumpTypeRule`](https://phpstan.org/error-identifiers/phpstan.dumpType) (phpstan-classes)
+- [`PsalmTrace`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`TypeInspection`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`phpstan.dumpType`](https://phpstan.org/error-identifiers/phpstan.dumpType) (phpstan)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/analyse/debug) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/debug rules](/docs/rules/analyse/debug) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

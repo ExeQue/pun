@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/deprecated/to-string" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`RestrictedUsageOfDeprecatedStringCastRule`](https://phpstan.org/error-identifiers/method.internal) (phpstan-classes).
-- [`class.toStringDeprecated`](https://phpstan.org/error-identifiers/class.toStringDeprecated) (phpstan-deprecation-rules).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "deprecated/to-string" = "on"
 ```
 
-```php
-// @pun-ignore analyse/deprecated/to-string -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`RestrictedUsageOfDeprecatedStringCastRule`](https://phpstan.org/error-identifiers/method.internal) (phpstan-classes)
+- [`class.toStringDeprecated`](https://phpstan.org/error-identifiers/class.toStringDeprecated) (phpstan-deprecation-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/deprecated) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/deprecated rules](/docs/rules/analyse/deprecated) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

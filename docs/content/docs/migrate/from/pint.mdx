@@ -7,16 +7,16 @@ pagination: false
 
 ## Config translation
 
-`pun migrate` leaves source configs in place and reports skipped items. Planned rules are not implemented. Pun never falls back to PHP for missing rules.
+`pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
 Run `pun migrate --from pint`. Pint's risky and code-deleting fixers become lint rules, not format rules.
 
 | pint.json | pun.toml |
 | --- | --- |
 | `preset: laravel` or `psr12` | `[format] preset = "laravel"` or `"psr12"` |
-| `preset: per` or `symfony`, and `@PER-CS` rule sets | Expanded explicit rules over the `empty` format preset |
+| `preset: per` or `symfony`, and `@PER-CS` rule sets | Explicit rules over the `empty` format preset |
 | `rules` | `[format.rules]` for layout; `[lint.rules]` at `"error"` for code edits |
-| Rule options | Pun option names and values, listed on each rule page |
+| Rule options | Pun option names and values, on each rule page |
 | `in`, `exclude`, `notName`, `notPath` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |
 | `@php-cs-fixer-ignore` | `@pun-ignore-file` with the full format rule ID |
 
@@ -24,7 +24,7 @@ Run `pun migrate --from pint`. Pint's risky and code-deleting fixers become lint
 
 <MigrationTable tool="pint" />
 
-## Unsupported rules by reason
+## Unsupported rules
 
 ### a no-op that carries Prettier package versions into Pint's cache signature; Pun has no cache
 
@@ -89,7 +89,6 @@ Run `pun migrate --from pint`. Pint's risky and code-deleting fixers become lint
 ### deprecated upstream; successor: type_declaration_spaces
 
 [`function_typehint_space`](https://cs.symfony.com/doc/rules/function_notation/function_typehint_space.html).
-
 
 ## Pun-only rules
 

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/strings/no-non-printable-character" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Intent: suspicious.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`non_printable_character`](https://cs.symfony.com/doc/rules/basic/non_printable_character.html) (php-cs-fixer, risky).
+Remove Zero-width space (ZWSP), Non-breaking space (NBSP) and other invisible unicode symbols.
 
 ## Configuration
 
@@ -20,27 +20,16 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "strings/no-non-printable-character" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "strings/no-non-printable-character" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/strings/no-non-printable-character -- explain the exception
-```
-
-## What it does
-
-Remove Zero-width space (ZWSP), Non-breaking space (NBSP) and other invisible unicode symbols.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `use-escape-sequences-in-strings` | `bool` | Any value of this type | `true` | `use_escape_sequences_in_strings` |
+| `use-escape-sequences-in-strings` | `bool` | Any | `true` | `use_escape_sequences_in_strings` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`non_printable_character`](https://cs.symfony.com/doc/rules/basic/non_printable_character.html) (php-cs-fixer, risky)
+
+[More lint/strings rules](/docs/rules/lint/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

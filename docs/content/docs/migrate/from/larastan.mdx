@@ -7,27 +7,23 @@ pagination: false
 
 ## Config translation
 
-`pun migrate` leaves source configs in place and reports skipped items. Planned rules are not implemented. Pun never falls back to PHP for missing rules.
+`pun migrate` keeps the old config and reports what it skips. Planned rules do not run.
 
-Larastan is part of the PHPStan migration: run `pun migrate --from phpstan` on the config that includes `larastan/larastan/extension.neon`.
+Run `pun migrate --from phpstan` on the config that includes `larastan/larastan/extension.neon`.
 
 | Larastan config | pun.toml |
 | --- | --- |
-| Larastan include | Built-in Laravel checks; no PHP extension dependency at runtime |
+| Larastan include | Built-in Laravel checks, with no PHP at runtime |
 | Laravel dependency in composer.lock | Automatic Laravel ecosystem gate |
 | Config without the Larastan include | The analyse `laravel` group is off |
-| Rule booleans and changed parameters | Rule on/off settings and kebab-case options for each running rule that reads them |
-| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs, retaining the original identifier in ignore tables |
+| Rule booleans and changed parameters | Rule on/off settings and kebab-case options |
+| `ignoreErrors` and `@phpstan-ignore larastan.*` | Pun rule IDs. Ignore tables keep the original identifier |
 
-Laravel analysis is incomplete. See [analysis limitations](/docs/commands/analyse#configuration).
+Laravel analysis is incomplete. See [`pun analyse`](/docs/commands/analyse#configuration).
 
 ## Rule mapping
 
 <MigrationTable tool="larastan" />
-
-## Unsupported rules by reason
-
-No dropped or out-of-scope entries in this mapping. Planned rules are marked separately.
 
 ## Pun-only rules
 

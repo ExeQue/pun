@@ -7,18 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/offset" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`NonexistentOffsetInArrayDimFetchRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes).
-- [`PossiblyUndefinedArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossiblyUndefinedIntArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossiblyUndefinedStringArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`UndefinedIntArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`UndefinedStringArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`offsetAccess.nonOffsetAccessible`](https://phpstan.org/error-identifiers/offsetAccess.nonOffsetAccessible) (phpstan).
-- [`offsetAccess.notFound`](https://phpstan.org/error-identifiers/offsetAccess.notFound) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -27,13 +16,17 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "undefined/offset" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/offset -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`NonexistentOffsetInArrayDimFetchRule`](https://phpstan.org/error-identifiers/class.notFound) (phpstan-classes)
+- [`PossiblyUndefinedArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossiblyUndefinedIntArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossiblyUndefinedStringArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`UndefinedIntArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`UndefinedStringArrayIndex`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`offsetAccess.nonOffsetAccessible`](https://phpstan.org/error-identifiers/offsetAccess.nonOffsetAccessible) (phpstan)
+- [`offsetAccess.notFound`](https://phpstan.org/error-identifiers/offsetAccess.notFound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

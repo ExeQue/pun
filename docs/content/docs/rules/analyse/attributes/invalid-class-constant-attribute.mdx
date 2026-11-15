@@ -7,17 +7,7 @@ pagination: false
 
 <RuleId id="analyse/attributes/invalid-class-constant-attribute" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ClassConstantAttributesRule`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan-classes).
-- [`NonExistentAttributeClass`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`attribute.deprecated`](https://phpstan.org/error-identifiers/attribute.deprecated) (phpstan).
-- [`attribute.noConstructor`](https://phpstan.org/error-identifiers/attribute.noConstructor) (phpstan).
-- [`attribute.nonRepeatable`](https://phpstan.org/error-identifiers/attribute.nonRepeatable) (phpstan).
-- [`attribute.notAttribute`](https://phpstan.org/error-identifiers/attribute.notAttribute) (phpstan).
-- [`attribute.notFound`](https://phpstan.org/error-identifiers/attribute.notFound) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -26,13 +16,16 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "attributes/invalid-class-constant-attribute" = "on"
 ```
 
-```php
-// @pun-ignore analyse/attributes/invalid-class-constant-attribute -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ClassConstantAttributesRule`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan-classes)
+- [`NonExistentAttributeClass`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`attribute.deprecated`](https://phpstan.org/error-identifiers/attribute.deprecated) (phpstan)
+- [`attribute.noConstructor`](https://phpstan.org/error-identifiers/attribute.noConstructor) (phpstan)
+- [`attribute.nonRepeatable`](https://phpstan.org/error-identifiers/attribute.nonRepeatable) (phpstan)
+- [`attribute.notAttribute`](https://phpstan.org/error-identifiers/attribute.notAttribute) (phpstan)
+- [`attribute.notFound`](https://phpstan.org/error-identifiers/attribute.notFound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/attributes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/attributes rules](/docs/rules/analyse/attributes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

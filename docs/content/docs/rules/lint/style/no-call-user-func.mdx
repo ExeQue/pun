@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-call-user-func" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality), [`coding-style`](/docs/rules/sets/coding-style) sets. Fix: unsafe (can change behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) and [`coding-style`](/docs/rules/sets/coding-style) sets. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`regular_callable_call`](https://cs.symfony.com/doc/rules/function_notation/regular_callable_call.html) (php-cs-fixer, risky).
+Call callables directly instead of through call_user_func().
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality), [`coding-style`]
 "style/no-call-user-func" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-call-user-func" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/no-call-user-func -- explain the exception
-```
+- [`regular_callable_call`](https://cs.symfony.com/doc/rules/function_notation/regular_callable_call.html) (php-cs-fixer, risky)
 
-## What it does
-
-Call callables directly instead of through call_user_func().
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

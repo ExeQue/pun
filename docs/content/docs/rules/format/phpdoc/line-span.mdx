@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/line-span" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_line_span`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_line_span.html) (php-cs-fixer).
+Changes doc blocks from single to multi line, or reversed.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpdoc/line-span" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/line-span -- explain the exception
-```
-
-## What it does
-
-Changes doc blocks from single to multi line, or reversed.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -41,5 +35,8 @@ Changes doc blocks from single to multi line, or reversed.
 | `property` | `enum` | `single`, `multi` | `"multi"` | `property` |
 | `trait-import` | `enum` | `single`, `multi` | `"ignore"` | `trait_import` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_line_span`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_line_span.html) (php-cs-fixer)
+
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

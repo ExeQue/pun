@@ -7,511 +7,397 @@ pagination: false
 
 Code that can be written more simply, and size and complexity limits.
 
-Across commands: format: 0, lint: 56, analyse: 0.
-
 <CardGroup cols={2}>
-<Card title="lint/complexity/no-and-assignment">
-
-[`lint/complexity/no-and-assignment`](/docs/rules/lint/complexity/no-and-assignment)
+<Card title="no-and-assignment" href="/docs/rules/lint/complexity/no-and-assignment">
 
 Split 2 assigns with "and" to separate lines
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-boolean-flag-parameter">
-
-[`lint/complexity/no-boolean-flag-parameter`](/docs/rules/lint/complexity/no-boolean-flag-parameter)
+<Card title="no-boolean-flag-parameter" href="/docs/rules/lint/complexity/no-boolean-flag-parameter">
 
 Flags function-like parameters that use a boolean type and drive the function's behaviour.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-compact">
-
-[`lint/complexity/no-compact`](/docs/rules/lint/complexity/no-compact)
+<Card title="no-compact" href="/docs/rules/lint/complexity/no-compact">
 
 Change `compact()` call to own array
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-concat-assign-new-item">
-
-[`lint/complexity/no-concat-assign-new-item`](/docs/rules/lint/complexity/no-concat-assign-new-item)
+<Card title="no-concat-assign-new-item" href="/docs/rules/lint/complexity/no-concat-assign-new-item">
 
 Change concat assign on a new array item to plain assign, as the new item is always null
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-constant-condition">
-
-[`lint/complexity/no-constant-condition`](/docs/rules/lint/complexity/no-constant-condition)
+<Card title="no-constant-condition" href="/docs/rules/lint/complexity/no-constant-condition">
 
 Detects `if` statements where the condition is a constant that always
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the `dead-code` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-constant-via-variable">
-
-[`lint/complexity/no-constant-via-variable`](/docs/rules/lint/complexity/no-constant-via-variable)
+<Card title="no-constant-via-variable" href="/docs/rules/lint/complexity/no-constant-via-variable">
 
 Change variable class constant fetch to direct class constant fetch when class or constant target is final
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-dirname-dir-concat">
-
-[`lint/complexity/no-dirname-dir-concat`](/docs/rules/lint/complexity/no-dirname-dir-concat)
+<Card title="no-dirname-dir-concat" href="/docs/rules/lint/complexity/no-dirname-dir-concat">
 
 Change dirname() and string concat, to __DIR__ and direct string path
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-duplicate-match-arm">
-
-[`lint/complexity/no-duplicate-match-arm`](/docs/rules/lint/complexity/no-duplicate-match-arm)
+<Card title="no-duplicate-match-arm" href="/docs/rules/lint/complexity/no-duplicate-match-arm">
 
 Detects `match` arms that produce the same result as an earlier arm.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only).
+In the `code-quality` set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-else-clause">
-
-[`lint/complexity/no-else-clause`](/docs/rules/lint/complexity/no-else-clause)
+<Card title="no-else-clause" href="/docs/rules/lint/complexity/no-else-clause">
 
 Flags `if` statements that include an `else` or `elseif` branch.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-empty-file">
-
-[`lint/complexity/no-empty-file`](/docs/rules/lint/complexity/no-empty-file)
+<Card title="no-empty-file" href="/docs/rules/lint/complexity/no-empty-file">
 
 Detects redundant files that contain no executable code or declarations.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-cyclomatic">
-
-[`lint/complexity/no-excessive-cyclomatic`](/docs/rules/lint/complexity/no-excessive-cyclomatic)
+<Card title="no-excessive-cyclomatic" href="/docs/rules/lint/complexity/no-excessive-cyclomatic">
 
 Checks the cyclomatic complexity of classes, traits, enums, interfaces, functions, and closures.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-enum-cases">
-
-[`lint/complexity/no-excessive-enum-cases`](/docs/rules/lint/complexity/no-excessive-enum-cases)
+<Card title="no-excessive-enum-cases" href="/docs/rules/lint/complexity/no-excessive-enum-cases">
 
 Detects enums with too many cases.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-halstead">
-
-[`lint/complexity/no-excessive-halstead`](/docs/rules/lint/complexity/no-excessive-halstead)
+<Card title="no-excessive-halstead" href="/docs/rules/lint/complexity/no-excessive-halstead">
 
 Computes Halstead metrics (volume, difficulty, effort) and reports if they exceed configured thresholds.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-kan-defect">
-
-[`lint/complexity/no-excessive-kan-defect`](/docs/rules/lint/complexity/no-excessive-kan-defect)
+<Card title="no-excessive-kan-defect" href="/docs/rules/lint/complexity/no-excessive-kan-defect">
 
 Detects classes, traits, interfaces, functions, and closures with high kan defect.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-methods">
-
-[`lint/complexity/no-excessive-methods`](/docs/rules/lint/complexity/no-excessive-methods)
+<Card title="no-excessive-methods" href="/docs/rules/lint/complexity/no-excessive-methods">
 
 Detects class-like structures with too many methods.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-nesting">
-
-[`lint/complexity/no-excessive-nesting`](/docs/rules/lint/complexity/no-excessive-nesting)
+<Card title="no-excessive-nesting" href="/docs/rules/lint/complexity/no-excessive-nesting">
 
 Checks if the nesting level in any block exceeds a configurable threshold.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-parameters">
-
-[`lint/complexity/no-excessive-parameters`](/docs/rules/lint/complexity/no-excessive-parameters)
+<Card title="no-excessive-parameters" href="/docs/rules/lint/complexity/no-excessive-parameters">
 
 Detects functions, closures, and methods with too many parameters.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-excessive-properties">
-
-[`lint/complexity/no-excessive-properties`](/docs/rules/lint/complexity/no-excessive-properties)
+<Card title="no-excessive-properties" href="/docs/rules/lint/complexity/no-excessive-properties">
 
 Detects class-like structures with too many properties.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-goto">
-
-[`lint/complexity/no-goto`](/docs/rules/lint/complexity/no-goto)
+<Card title="no-goto" href="/docs/rules/lint/complexity/no-goto">
 
 Detects the use of `goto` statements and labels.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-iterator-to-array-in-foreach">
-
-[`lint/complexity/no-iterator-to-array-in-foreach`](/docs/rules/lint/complexity/no-iterator-to-array-in-foreach)
+<Card title="no-iterator-to-array-in-foreach" href="/docs/rules/lint/complexity/no-iterator-to-array-in-foreach">
 
 Detects `iterator_to_array()` calls used directly as a `foreach` expression.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only).
+In the `code-quality` set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-negated-boolean-literal">
-
-[`lint/complexity/no-negated-boolean-literal`](/docs/rules/lint/complexity/no-negated-boolean-literal)
+<Card title="no-negated-boolean-literal" href="/docs/rules/lint/complexity/no-negated-boolean-literal">
 
 Replace negated boolean literals (!false, !true) with their simplified equivalents (true, false)
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-negated-group">
-
-[`lint/complexity/no-negated-group`](/docs/rules/lint/complexity/no-negated-group)
+<Card title="no-negated-group" href="/docs/rules/lint/complexity/no-negated-group">
 
 Simplify negated conditions with de Morgan theorem
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-negated-instanceof-ternary">
-
-[`lint/complexity/no-negated-instanceof-ternary`](/docs/rules/lint/complexity/no-negated-instanceof-ternary)
+<Card title="no-negated-instanceof-ternary" href="/docs/rules/lint/complexity/no-negated-instanceof-ternary">
 
 Flip negated ternary of `instanceof` to direct use of object
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-phpdoc-class-case-mismatch">
-
-[`lint/complexity/no-phpdoc-class-case-mismatch`](/docs/rules/lint/complexity/no-phpdoc-class-case-mismatch)
+<Card title="no-phpdoc-class-case-mismatch" href="/docs/rules/lint/complexity/no-phpdoc-class-case-mismatch">
 
 Fix a misspelled class name casing in a @var docblock to match the real class name
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-redundant-isset">
-
-[`lint/complexity/no-redundant-isset`](/docs/rules/lint/complexity/no-redundant-isset)
+<Card title="no-redundant-isset" href="/docs/rules/lint/complexity/no-redundant-isset">
 
 Detects redundant arguments in `isset()` calls where a nested access already implies the parent checks.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-redundant-literal-return">
-
-[`lint/complexity/no-redundant-literal-return`](/docs/rules/lint/complexity/no-redundant-literal-return)
+<Card title="no-redundant-literal-return" href="/docs/rules/lint/complexity/no-redundant-literal-return">
 
 Detects redundant literal guard patterns where an if statement checks if a variable equals a literal and returns that same literal, followed by returning the variable.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-redundant-null-check">
-
-[`lint/complexity/no-redundant-null-check`](/docs/rules/lint/complexity/no-redundant-null-check)
+<Card title="no-redundant-null-check" href="/docs/rules/lint/complexity/no-redundant-null-check">
 
 Return the value directly instead of checking it for null first.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-redundant-nullsafe">
-
-[`lint/complexity/no-redundant-nullsafe`](/docs/rules/lint/complexity/no-redundant-nullsafe)
+<Card title="no-redundant-nullsafe" href="/docs/rules/lint/complexity/no-redundant-nullsafe">
 
 Flags the use of the nullsafe operator (`?->`) in contexts where its null-checking behavior is redundant.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-redundant-write-visibility">
-
-[`lint/complexity/no-redundant-write-visibility`](/docs/rules/lint/complexity/no-redundant-write-visibility)
+<Card title="no-redundant-write-visibility" href="/docs/rules/lint/complexity/no-redundant-write-visibility">
 
 Detects redundant write visibility modifiers on properties.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only).
+In the `code-quality` set. Report only.
 
 </Card>
-<Card title="lint/complexity/no-single-case-switch">
-
-[`lint/complexity/no-single-case-switch`](/docs/rules/lint/complexity/no-single-case-switch)
+<Card title="no-single-case-switch" href="/docs/rules/lint/complexity/no-single-case-switch">
 
 Change `switch` with only 1 check to `if`
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-single-item-in-array">
-
-[`lint/complexity/no-single-item-in-array`](/docs/rules/lint/complexity/no-single-item-in-array)
+<Card title="no-single-item-in-array" href="/docs/rules/lint/complexity/no-single-item-in-array">
 
 Changes in_array() with single element to ===
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-sole-value-sprintf">
-
-[`lint/complexity/no-sole-value-sprintf`](/docs/rules/lint/complexity/no-sole-value-sprintf)
+<Card title="no-sole-value-sprintf" href="/docs/rules/lint/complexity/no-sole-value-sprintf">
 
 Remove `sprintf()` wrapper if not needed
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/no-unused-label">
-
-[`lint/complexity/no-unused-label`](/docs/rules/lint/complexity/no-unused-label)
+<Card title="no-unused-label" href="/docs/rules/lint/complexity/no-unused-label">
 
 Detects redundant `goto` labels that are declared but not used.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Additional upstream gates: `bleedingEdge (featureToggles.unusedLabel)`.
+In the `code-quality` set. Report only. Upstream gates: `bleedingEdge (featureToggles.unusedLabel)`.
 
 </Card>
-<Card title="lint/complexity/no-useless-array-values">
-
-[`lint/complexity/no-useless-array-values`](/docs/rules/lint/complexity/no-useless-array-values)
+<Card title="no-useless-array-values" href="/docs/rules/lint/complexity/no-useless-array-values">
 
 Removes unneeded array_values() in in_array() call
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-absolute-include">
-
-[`lint/complexity/prefer-absolute-include`](/docs/rules/lint/complexity/prefer-absolute-include)
+<Card title="prefer-absolute-include" href="/docs/rules/lint/complexity/prefer-absolute-include">
 
 Migrate include/require to absolute path. This Rector might introduce backwards incompatible code, when the include/require being changed depends on the current working directory.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-array-literal">
-
-[`lint/complexity/prefer-array-literal`](/docs/rules/lint/complexity/prefer-array-literal)
+<Card title="prefer-array-literal" href="/docs/rules/lint/complexity/prefer-array-literal">
 
 Change array_merge of non arrays to array directly
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-coalesce-over-empty-ternary">
-
-[`lint/complexity/prefer-coalesce-over-empty-ternary`](/docs/rules/lint/complexity/prefer-coalesce-over-empty-ternary)
+<Card title="prefer-coalesce-over-empty-ternary" href="/docs/rules/lint/complexity/prefer-coalesce-over-empty-ternary">
 
 Change ternary empty on array property with array dim fetch to coalesce operator
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-empty-array-compare">
-
-[`lint/complexity/prefer-empty-array-compare`](/docs/rules/lint/complexity/prefer-empty-array-compare)
+<Card title="prefer-empty-array-compare" href="/docs/rules/lint/complexity/prefer-empty-array-compare">
 
 Compare with `[]` instead of empty()/is_array() on arrays.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-explicit-array-comparison">
-
-[`lint/complexity/prefer-explicit-array-comparison`](/docs/rules/lint/complexity/prefer-explicit-array-comparison)
+<Card title="prefer-explicit-array-comparison" href="/docs/rules/lint/complexity/prefer-explicit-array-comparison">
 
 Make array if conditions more explicit
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-func-num-args">
-
-[`lint/complexity/prefer-func-num-args`](/docs/rules/lint/complexity/prefer-func-num-args)
+<Card title="prefer-func-num-args" href="/docs/rules/lint/complexity/prefer-func-num-args">
 
 Simplify count of func_get_args() to func_num_args()
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-if-statement">
-
-[`lint/complexity/prefer-if-statement`](/docs/rules/lint/complexity/prefer-if-statement)
+<Card title="prefer-if-statement" href="/docs/rules/lint/complexity/prefer-if-statement">
 
 Change inline if to explicit if
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-in-array">
-
-[`lint/complexity/prefer-in-array`](/docs/rules/lint/complexity/prefer-in-array)
+<Card title="prefer-in-array" href="/docs/rules/lint/complexity/prefer-in-array">
 
 Use in_array() instead of repeated `||`/`&&` comparisons, array_search() checks and foreach loops.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-inline-array-return">
-
-[`lint/complexity/prefer-inline-array-return`](/docs/rules/lint/complexity/prefer-inline-array-return)
+<Card title="prefer-inline-array-return" href="/docs/rules/lint/complexity/prefer-inline-array-return">
 
 Inline just in time array dim fetch assigns to direct return
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-instance-method">
-
-[`lint/complexity/prefer-instance-method`](/docs/rules/lint/complexity/prefer-instance-method)
+<Card title="prefer-instance-method" href="/docs/rules/lint/complexity/prefer-instance-method">
 
 Change static method and local-only calls to non-static
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-min-max">
-
-[`lint/complexity/prefer-min-max`](/docs/rules/lint/complexity/prefer-min-max)
+<Card title="prefer-min-max" href="/docs/rules/lint/complexity/prefer-min-max">
 
 Change ternary number compare to `max()` call
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-named-literal-argument">
-
-[`lint/complexity/prefer-named-literal-argument`](/docs/rules/lint/complexity/prefer-named-literal-argument)
+<Card title="prefer-named-literal-argument" href="/docs/rules/lint/complexity/prefer-named-literal-argument">
 
 Name literal arguments (true, false, null, numbers) in calls.
 
-Not in any preset or set. Enable it by name or group. Fix: none (report only).
+Not in any set. Report only.
 
 </Card>
-<Card title="lint/complexity/prefer-not-in-array">
-
-[`lint/complexity/prefer-not-in-array`](/docs/rules/lint/complexity/prefer-not-in-array)
+<Card title="prefer-not-in-array" href="/docs/rules/lint/complexity/prefer-not-in-array">
 
 Use `! in_array()` instead of repeated `!==`/`!=` comparisons of one value joined by `&&`.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-null-coalesce">
-
-[`lint/complexity/prefer-null-coalesce`](/docs/rules/lint/complexity/prefer-null-coalesce)
+<Card title="prefer-null-coalesce" href="/docs/rules/lint/complexity/prefer-null-coalesce">
 
 Use `??` instead of isset()/array_key_exists() ternaries, if/return chains and foreach lookups.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Gated by php-version.
+In the `code-quality` set. Safe fix. Gated by php-version.
 
 </Card>
-<Card title="lint/complexity/prefer-property-default">
-
-[`lint/complexity/prefer-property-default`](/docs/rules/lint/complexity/prefer-property-default)
+<Card title="prefer-property-default" href="/docs/rules/lint/complexity/prefer-property-default">
 
 Move property default from constructor to property default
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/prefer-property-exists">
-
-[`lint/complexity/prefer-property-exists`](/docs/rules/lint/complexity/prefer-property-exists)
+<Card title="prefer-property-exists" href="/docs/rules/lint/complexity/prefer-property-exists">
 
 Use property_exists() instead of array_key_exists() or isset() on object properties.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Gated by php-version.
+In the `code-quality` set. Safe fix. Gated by php-version.
 
 </Card>
-<Card title="lint/complexity/prefer-simple-condition">
-
-[`lint/complexity/prefer-simple-condition`](/docs/rules/lint/complexity/prefer-simple-condition)
+<Card title="prefer-simple-condition" href="/docs/rules/lint/complexity/prefer-simple-condition">
 
 Simplify a negated comparison or a comparison with a boolean
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/require-attribute-argument-order">
-
-[`lint/complexity/require-attribute-argument-order`](/docs/rules/lint/complexity/require-attribute-argument-order)
+<Card title="require-attribute-argument-order" href="/docs/rules/lint/complexity/require-attribute-argument-order">
 
 Sort named arguments in PHP 8 attributes to match their declaration order
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/require-consistent-return">
-
-[`lint/complexity/require-consistent-return`](/docs/rules/lint/complexity/require-consistent-return)
+<Card title="require-consistent-return" href="/docs/rules/lint/complexity/require-consistent-return">
 
 Add explicit return null to method/function that returns a value, but missed main return
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/require-is-a-allow-string">
-
-[`lint/complexity/require-is-a-allow-string`](/docs/rules/lint/complexity/require-is-a-allow-string)
+<Card title="require-is-a-allow-string" href="/docs/rules/lint/complexity/require-is-a-allow-string">
 
 Complete missing 3rd argument in case is_a() function in case of strings
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/require-named-argument-order">
-
-[`lint/complexity/require-named-argument-order`](/docs/rules/lint/complexity/require-named-argument-order)
+<Card title="require-named-argument-order" href="/docs/rules/lint/complexity/require-named-argument-order">
 
 Order named arguments as the parameters are declared.
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
-<Card title="lint/complexity/require-previous-exception">
-
-[`lint/complexity/require-previous-exception`](/docs/rules/lint/complexity/require-previous-exception)
+<Card title="require-previous-exception" href="/docs/rules/lint/complexity/require-previous-exception">
 
 When throwing into a catch block, checks that the previous exception is passed to the new throw clause
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the `code-quality` set. Safe fix.
 
 </Card>
 </CardGroup>

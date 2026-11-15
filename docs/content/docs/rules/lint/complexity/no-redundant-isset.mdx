@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/complexity/no-redundant-isset" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`Pun/no_redundant_isset`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
-- [`no-redundant-isset`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-isset) (mago-linter).
+Detects redundant arguments in `isset()` calls where a nested access already implies the parent checks.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "complexity/no-redundant-isset" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "complexity/no-redundant-isset" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/complexity/no-redundant-isset -- explain the exception
-```
+- [`Pun/no_redundant_isset`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun)
+- [`no-redundant-isset`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-redundant-isset) (mago-linter)
 
-## What it does
-
-Detects redundant arguments in `isset()` calls where a nested access already implies the parent checks.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/complexity) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/complexity rules](/docs/rules/lint/complexity) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

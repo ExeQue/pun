@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/functions/declaration" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-psr12`](/docs/rules/presets/format-psr12) presets. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) and [`format-psr12`](/docs/rules/presets/format-psr12) presets. Safe fix.
 
-## Replaces
+## What it does
 
-- [`function_declaration`](https://cs.symfony.com/doc/rules/function_notation/function_declaration.html) (php-cs-fixer).
+Spaces should be properly placed in a function declaration.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel), [`format-
 "functions/declaration" = true
 ```
 
-```php
-// @pun-ignore-file format/functions/declaration -- explain the exception
-```
-
-## What it does
-
-Spaces should be properly placed in a function declaration.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,7 +28,10 @@ Spaces should be properly placed in a function declaration.
 | --- | --- | --- | --- | --- |
 | `closure-fn-spacing` | `enum` | `none`, `one` | `"one"` | `closure_fn_spacing` |
 | `closure-function-spacing` | `enum` | `none`, `one` | `"one"` | `closure_function_spacing` |
-| `trailing-comma-single-line` | `bool` | Any value of this type | `false` | `trailing_comma_single_line` |
+| `trailing-comma-single-line` | `bool` | Any | `false` | `trailing_comma_single_line` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`function_declaration`](https://cs.symfony.com/doc/rules/function_notation/function_declaration.html) (php-cs-fixer)
+
+[More format/functions rules](/docs/rules/format/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

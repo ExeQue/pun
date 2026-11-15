@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/prefer-exception-class-string" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`ThrowIfAndThrowUnlessExceptionsToUseClassString`](https://getrector.com/rule-detail/throw-if-and-throw-unless-exceptions-to-use-class-string-rector) (rector-laravel).
+changes use of a new throw instance to class string
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "laravel/prefer-exception-class-string" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/prefer-exception-class-string" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/prefer-exception-class-string -- explain the exception
-```
+- [`ThrowIfAndThrowUnlessExceptionsToUseClassString`](https://getrector.com/rule-detail/throw-if-and-throw-unless-exceptions-to-use-class-string-rector) (rector-laravel)
 
-## What it does
-
-changes use of a new throw instance to class string
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,16 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/catch-non-throwable" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`CaughtExceptionExistenceRule`](https://phpstan.org/error-identifiers/catch.notThrowable) (phpstan-classes).
-- [`CatchTypeNotThrowable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidCatchType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidCatchTypeNotClassOrInterface`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`catch.notThrowable`](https://phpstan.org/error-identifiers/catch.notThrowable) (phpstan).
-- [`class.prefixed`](https://phpstan.org/error-identifiers/class.prefixed) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -25,13 +16,15 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/catch-non-throwable" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/catch-non-throwable -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`CaughtExceptionExistenceRule`](https://phpstan.org/error-identifiers/catch.notThrowable) (phpstan-classes)
+- [`CatchTypeNotThrowable`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidCatchType`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidCatchTypeNotClassOrInterface`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`catch.notThrowable`](https://phpstan.org/error-identifiers/catch.notThrowable) (phpstan)
+- [`class.prefixed`](https://phpstan.org/error-identifiers/class.prefixed) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

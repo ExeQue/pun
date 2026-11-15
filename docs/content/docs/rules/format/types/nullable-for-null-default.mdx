@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="format/types/nullable-for-null-default" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`nullable_type_declaration_for_default_null_value`](https://cs.symfony.com/doc/rules/function_notation/nullable_type_declaration_for_default_null_value.html) (php-cs-fixer).
-- [`ExplicitNullableParamType`](https://getrector.com/rule-detail/explicit-nullable-param-type-rector) (rector).
-- [`explicit-nullable-param`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#explicit-nullable-param) (mago-linter).
-- [`parameter.implicitlyNullable`](https://phpstan.org/error-identifiers/parameter.implicitlyNullable) (phpstan).
+Adds or removes `?` before single type declarations or `|null` at the end of union types when parameters have a default `null` value.
 
 ## Configuration
 
@@ -23,19 +20,19 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "types/nullable-for-null-default" = true
 ```
 
-```php
-// @pun-ignore-file format/types/nullable-for-null-default -- explain the exception
-```
-
-## What it does
-
-Adds or removes `?` before single type declarations or `|null` at the end of union types when parameters have a default `null` value.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `use-nullable-type-declaration` | `bool` | Any value of this type | `true` | `use_nullable_type_declaration` |
+| `use-nullable-type-declaration` | `bool` | Any | `true` | `use_nullable_type_declaration` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`nullable_type_declaration_for_default_null_value`](https://cs.symfony.com/doc/rules/function_notation/nullable_type_declaration_for_default_null_value.html) (php-cs-fixer)
+- [`ExplicitNullableParamType`](https://getrector.com/rule-detail/explicit-nullable-param-type-rector) (rector)
+- [`explicit-nullable-param`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#explicit-nullable-param) (mago-linter)
+- [`parameter.implicitlyNullable`](https://phpstan.org/error-identifiers/parameter.implicitlyNullable) (phpstan)
+
+[More format/types rules](/docs/rules/format/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

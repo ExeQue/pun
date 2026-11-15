@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/no-expected-exception-annotation" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_no_expectation_annotation`](https://cs.symfony.com/doc/rules/php_unit/php_unit_no_expectation_annotation.html) (php-cs-fixer, risky).
+Replace @expectedException annotations with expectException() calls.
 
 ## Configuration
 
@@ -20,28 +20,17 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "phpunit/no-expected-exception-annotation" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/no-expected-exception-annotation" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/no-expected-exception-annotation -- explain the exception
-```
-
-## What it does
-
-Replace @expectedException annotations with expectException() calls.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
 | `target` | `enum` | `3.2`, `4.3`, `newest` | `"newest"` | `target` |
-| `use-class-const` | `bool` | Any value of this type | `true` | `use_class_const` |
+| `use-class-const` | `bool` | Any | `true` | `use_class_const` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_no_expectation_annotation`](https://cs.symfony.com/doc/rules/php_unit/php_unit_no_expectation_annotation.html) (php-cs-fixer, risky)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/performance/require-qualified-native-constant" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`native_constant_invocation`](https://cs.symfony.com/doc/rules/constant_notation/native_constant_invocation.html) (php-cs-fixer, risky).
+Add leading `\` before constant invocation of internal constant to speed up resolving. Constant name match is case-sensitive, except for `null`, `false` and `true`.
 
 ## Configuration
 
@@ -20,31 +20,20 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "performance/require-qualified-native-constant" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "performance/require-qualified-native-constant" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/performance/require-qualified-native-constant -- explain the exception
-```
-
-## What it does
-
-Add leading `\` before constant invocation of internal constant to speed up resolving. Constant name match is case-sensitive, except for `null`, `false` and `true`.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `exclude` | `list` | Any value of this type | `["null", "false", "true"]` | `exclude` |
-| `fix-built-in` | `bool` | Any value of this type | `true` | `fix_built_in` |
-| `include` | `list` | Any value of this type | `[]` | `include` |
+| `exclude` | `list` | Any | `["null", "false", "true"]` | `exclude` |
+| `fix-built-in` | `bool` | Any | `true` | `fix_built_in` |
+| `include` | `list` | Any | `[]` | `include` |
 | `scope` | `enum` | `all`, `namespaced` | `"all"` | `scope` |
-| `strict` | `bool` | Any value of this type | `true` | `strict` |
+| `strict` | `bool` | Any | `true` | `strict` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/performance) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`native_constant_invocation`](https://cs.symfony.com/doc/rules/constant_notation/native_constant_invocation.html) (php-cs-fixer, risky)
+
+[More lint/performance rules](/docs/rules/lint/performance) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

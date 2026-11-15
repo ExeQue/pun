@@ -7,13 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-short-ternary" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (report only). Additional upstream gates: `strictRules.disallowedShortTernary`.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Report only. Upstream gates: `strictRules.disallowedShortTernary`.
 
-## Replaces
+## What it does
 
-- [`DisallowedShortTernaryRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`no-shorthand-ternary`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-shorthand-ternary) (mago-linter).
-- [`ternary.shortNotAllowed`](https://phpstan.org/error-identifiers/ternary.shortNotAllowed) (phpstan-strict-rules).
+Detects the use of the shorthand ternary and elvis operators.
 
 ## Configuration
 
@@ -22,29 +20,16 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: none (r
 "style/no-short-ternary" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-short-ternary" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/no-short-ternary -- explain the exception
-```
-
-## What it does
-
-Detects the use of the shorthand ternary and elvis operators.
-
-## Options
-
-No configurable options.
+- [`DisallowedShortTernaryRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`no-shorthand-ternary`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-shorthand-ternary) (mago-linter)
+- [`ternary.shortNotAllowed`](https://phpstan.org/error-identifiers/ternary.shortNotAllowed) (phpstan-strict-rules)
 
 ## Linked rules
 
+- Conflicts with [`lint/style/prefer-short-ternary`](/docs/rules/lint/style/prefer-short-ternary). You cannot enable both.
 
-- Conflicts with [`lint/style/prefer-short-ternary`](/docs/rules/lint/style/prefer-short-ternary). A config cannot enable both.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

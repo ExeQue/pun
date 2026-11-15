@@ -7,21 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/no-only" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: unsafe (can change behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Unsafe fix: it can change behaviour. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`Pun/no_only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
-- [`RemoveOnly`](https://pestphp.com/docs/rector#content-removeonlyrector) (pest-plugin-rector).
-- [`no-only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-only) (mago-linter).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/pest/no-focused-test`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Remove ->only() from Pest tests.
 
 ## Configuration
 
@@ -30,24 +20,18 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "pest/no-only" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/no-only" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/no-only -- explain the exception
-```
+- [`Pun/no_only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun)
+- [`RemoveOnly`](https://pestphp.com/docs/rector#content-removeonlyrector) (pest-plugin-rector)
+- [`no-only`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-only) (mago-linter)
 
-## What it does
+## Merged rules
 
-Remove ->only() from Pest tests.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/pest/no-focused-test`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

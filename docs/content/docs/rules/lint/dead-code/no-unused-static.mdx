@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-unused-static" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: correctness.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: correctness.
 
-## Replaces
+## What it does
 
-- [`no-unused-static`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-unused-static) (mago-linter).
+Flags `static $x;` declarations whose name is never read or written
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "dead-code/no-unused-static" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-unused-static" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-unused-static -- explain the exception
-```
+- [`no-unused-static`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-unused-static) (mago-linter)
 
-## What it does
-
-Flags `static $x;` declarations whose name is never read or written
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

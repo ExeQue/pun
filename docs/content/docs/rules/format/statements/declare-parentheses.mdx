@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/declare-parentheses" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`declare_parentheses`](https://cs.symfony.com/doc/rules/language_construct/declare_parentheses.html) (php-cs-fixer).
+There must not be spaces around `declare` statement parentheses.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "statements/declare-parentheses" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/declare-parentheses -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-There must not be spaces around `declare` statement parentheses.
+- [`declare_parentheses`](https://cs.symfony.com/doc/rules/language_construct/declare_parentheses.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

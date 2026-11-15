@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/statements/no-empty" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_empty_statement`](https://cs.symfony.com/doc/rules/semicolon/no_empty_statement.html) (php-cs-fixer).
-- [`no-noop`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-noop) (mago-linter).
+Remove useless (semicolon) statements.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "statements/no-empty" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "statements/no-empty" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/statements/no-empty -- explain the exception
-```
+- [`no_empty_statement`](https://cs.symfony.com/doc/rules/semicolon/no_empty_statement.html) (php-cs-fixer)
+- [`no-noop`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-noop) (mago-linter)
 
-## What it does
-
-Remove useless (semicolon) statements.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/statements rules](/docs/rules/lint/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

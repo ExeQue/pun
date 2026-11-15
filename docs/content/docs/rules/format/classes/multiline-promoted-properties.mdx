@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/classes/multiline-promoted-properties" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`multiline_promoted_properties`](https://cs.symfony.com/doc/rules/function_notation/multiline_promoted_properties.html) (php-cs-fixer).
+Promoted properties must be on separate lines.
 
 ## Configuration
 
@@ -20,20 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "classes/multiline-promoted-properties" = true
 ```
 
-```php
-// @pun-ignore-file format/classes/multiline-promoted-properties -- explain the exception
-```
-
-## What it does
-
-Promoted properties must be on separate lines.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `keep-blank-lines` | `bool` | Any value of this type | `false` | `keep_blank_lines` |
-| `minimum-number-of-parameters` | `int` | Any value of this type | `1` | `minimum_number_of_parameters` |
+| `keep-blank-lines` | `bool` | Any | `false` | `keep_blank_lines` |
+| `minimum-number-of-parameters` | `int` | Any | `1` | `minimum_number_of_parameters` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`multiline_promoted_properties`](https://cs.symfony.com/doc/rules/function_notation/multiline_promoted_properties.html) (php-cs-fixer)
+
+[More format/classes rules](/docs/rules/format/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

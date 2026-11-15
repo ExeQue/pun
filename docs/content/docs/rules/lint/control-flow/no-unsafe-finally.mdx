@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/control-flow/no-unsafe-finally" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`no-unsafe-finally`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-unsafe-finally) (mago-linter).
+Detects control flow statements in `finally` blocks.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "control-flow/no-unsafe-finally" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "control-flow/no-unsafe-finally" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/control-flow/no-unsafe-finally -- explain the exception
-```
+- [`no-unsafe-finally`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-unsafe-finally) (mago-linter)
 
-## What it does
-
-Detects control flow statements in `finally` blocks.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

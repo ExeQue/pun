@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/require-data-provider-naming" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+Not in any set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_data_provider_name`](https://cs.symfony.com/doc/rules/php_unit/php_unit_data_provider_name.html) (php-cs-fixer, risky).
+Data provider names must match the name of the test.
 
 ## Configuration
 
@@ -20,28 +20,17 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "phpunit/require-data-provider-naming" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/require-data-provider-naming" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/require-data-provider-naming -- explain the exception
-```
-
-## What it does
-
-Data provider names must match the name of the test.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `prefix` | `string` | Any value of this type | `"provide"` | `prefix` |
-| `suffix` | `string` | Any value of this type | `"Cases"` | `suffix` |
+| `prefix` | `string` | Any | `"provide"` | `prefix` |
+| `suffix` | `string` | Any | `"Cases"` | `suffix` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_data_provider_name`](https://cs.symfony.com/doc/rules/php_unit/php_unit_data_provider_name.html) (php-cs-fixer, risky)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

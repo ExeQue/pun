@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/arrays/no-space-in-empty" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_whitespace_in_empty_array`](https://cs.symfony.com/doc/rules/array_notation/no_whitespace_in_empty_array.html) (php-cs-fixer).
+Empty arrays should not contain only whitespace.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "arrays/no-space-in-empty" = true
 ```
 
-```php
-// @pun-ignore-file format/arrays/no-space-in-empty -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Empty arrays should not contain only whitespace.
+- [`no_whitespace_in_empty_array`](https://cs.symfony.com/doc/rules/array_notation/no_whitespace_in_empty_array.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/arrays rules](/docs/rules/format/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,70 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/argument" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`CallToFunctionParametersRule`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan-classes).
-- [`checkArgumentsPassedByReference`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`checkExtraArguments`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`checkFunctionArgumentTypes`](https://phpstan.org/config-reference) (phpstan-parameters).
-- [`DuplicateNamedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`FalseArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidNamedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`InvalidPassByReference`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`LessSpecificArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`MixedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`NamedArgumentNotAllowed`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`NamedArgumentOverridesPositional`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`NullArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossiblyFalseArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossiblyInvalidArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`PossiblyNullArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`TooFewArguments`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`TooManyArguments`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`argument.bitmaskNotAllowed`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan).
-- [`argument.byRef`](https://phpstan.org/error-identifiers/argument.byRef) (phpstan).
-- [`argument.duplicate`](https://phpstan.org/error-identifiers/argument.duplicate) (phpstan).
-- [`argument.exclusiveConstants`](https://phpstan.org/error-identifiers/argument.exclusiveConstants) (phpstan).
-- [`argument.fscanf`](https://phpstan.org/error-identifiers/argument.fscanf) (phpstan).
-- [`argument.invalidConstant`](https://phpstan.org/error-identifiers/argument.invalidConstant) (phpstan).
-- [`argument.missing`](https://phpstan.org/error-identifiers/argument.missing) (phpstan).
-- [`argument.named`](https://phpstan.org/error-identifiers/argument.named) (phpstan).
-- [`argument.namedNotSupported`](https://phpstan.org/error-identifiers/argument.namedNotSupported) (phpstan).
-- [`argument.nonUnpackAfterUnpacked`](https://phpstan.org/error-identifiers/argument.nonUnpackAfterUnpacked) (phpstan).
-- [`argument.positionalAfterNamed`](https://phpstan.org/error-identifiers/argument.positionalAfterNamed) (phpstan).
-- [`argument.printf`](https://phpstan.org/error-identifiers/argument.printf) (phpstan).
-- [`argument.sprintf`](https://phpstan.org/error-identifiers/argument.sprintf) (phpstan).
-- [`argument.sscanf`](https://phpstan.org/error-identifiers/argument.sscanf) (phpstan).
-- [`argument.staticClosure`](https://phpstan.org/error-identifiers/argument.staticClosure) (phpstan).
-- [`argument.templateType`](https://phpstan.org/error-identifiers/argument.templateType) (phpstan).
-- [`argument.type`](https://phpstan.org/error-identifiers/argument.type) (phpstan).
-- [`argument.unknown`](https://phpstan.org/error-identifiers/argument.unknown) (phpstan).
-- [`argument.unpackAfterNamed`](https://phpstan.org/error-identifiers/argument.unpackAfterNamed) (phpstan).
-- [`argument.unpackNonIterable`](https://phpstan.org/error-identifiers/argument.unpackNonIterable) (phpstan).
-- [`argument.unresolvableType`](https://phpstan.org/error-identifiers/argument.unresolvableType) (phpstan).
-- [`argument.vprintf`](https://phpstan.org/error-identifiers/argument.vprintf) (phpstan).
-- [`argument.vsprintf`](https://phpstan.org/error-identifiers/argument.vsprintf) (phpstan).
-- [`arguments.count`](https://phpstan.org/error-identifiers/arguments.count) (phpstan).
-- [`attribute.unresolvableReturnType`](https://phpstan.org/error-identifiers/attribute.unresolvableReturnType) (phpstan).
-- [`attribute.void`](https://phpstan.org/error-identifiers/attribute.void) (phpstan).
-- [`callable.unresolvableReturnType`](https://phpstan.org/error-identifiers/callable.unresolvableReturnType) (phpstan).
-- [`callable.void`](https://phpstan.org/error-identifiers/callable.void) (phpstan).
-- [`function.unresolvableReturnType`](https://phpstan.org/error-identifiers/function.unresolvableReturnType) (phpstan).
-- [`function.void`](https://phpstan.org/error-identifiers/function.void) (phpstan).
-- [`method.unresolvableReturnType`](https://phpstan.org/error-identifiers/method.unresolvableReturnType) (phpstan).
-- [`method.void`](https://phpstan.org/error-identifiers/method.void) (phpstan).
-- [`new.unresolvableReturnType`](https://phpstan.org/error-identifiers/new.unresolvableReturnType) (phpstan).
-- [`new.void`](https://phpstan.org/error-identifiers/new.void) (phpstan).
-- [`nullableType.void`](https://phpstan.org/error-identifiers/nullableType.void) (phpstan).
-- [`pureFunction.void`](https://phpstan.org/error-identifiers/pureFunction.void) (phpstan).
-- [`pureMethod.void`](https://phpstan.org/error-identifiers/pureMethod.void) (phpstan).
-- [`purePropertyHook.void`](https://phpstan.org/error-identifiers/purePropertyHook.void) (phpstan).
-- [`staticMethod.unresolvableReturnType`](https://phpstan.org/error-identifiers/staticMethod.unresolvableReturnType) (phpstan).
-- [`staticMethod.void`](https://phpstan.org/error-identifiers/staticMethod.void) (phpstan).
-- [`unionType.void`](https://phpstan.org/error-identifiers/unionType.void) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -79,13 +16,69 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/argument" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/argument -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`CallToFunctionParametersRule`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan-classes)
+- [`checkArgumentsPassedByReference`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`checkExtraArguments`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`checkFunctionArgumentTypes`](https://phpstan.org/config-reference) (phpstan-parameters)
+- [`DuplicateNamedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`FalseArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidNamedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`InvalidPassByReference`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`LessSpecificArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`MixedArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`NamedArgumentNotAllowed`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`NamedArgumentOverridesPositional`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`NullArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossiblyFalseArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossiblyInvalidArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`PossiblyNullArgument`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`TooFewArguments`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`TooManyArguments`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`argument.bitmaskNotAllowed`](https://phpstan.org/error-identifiers/argument.bitmaskNotAllowed) (phpstan)
+- [`argument.byRef`](https://phpstan.org/error-identifiers/argument.byRef) (phpstan)
+- [`argument.duplicate`](https://phpstan.org/error-identifiers/argument.duplicate) (phpstan)
+- [`argument.exclusiveConstants`](https://phpstan.org/error-identifiers/argument.exclusiveConstants) (phpstan)
+- [`argument.fscanf`](https://phpstan.org/error-identifiers/argument.fscanf) (phpstan)
+- [`argument.invalidConstant`](https://phpstan.org/error-identifiers/argument.invalidConstant) (phpstan)
+- [`argument.missing`](https://phpstan.org/error-identifiers/argument.missing) (phpstan)
+- [`argument.named`](https://phpstan.org/error-identifiers/argument.named) (phpstan)
+- [`argument.namedNotSupported`](https://phpstan.org/error-identifiers/argument.namedNotSupported) (phpstan)
+- [`argument.nonUnpackAfterUnpacked`](https://phpstan.org/error-identifiers/argument.nonUnpackAfterUnpacked) (phpstan)
+- [`argument.positionalAfterNamed`](https://phpstan.org/error-identifiers/argument.positionalAfterNamed) (phpstan)
+- [`argument.printf`](https://phpstan.org/error-identifiers/argument.printf) (phpstan)
+- [`argument.sprintf`](https://phpstan.org/error-identifiers/argument.sprintf) (phpstan)
+- [`argument.sscanf`](https://phpstan.org/error-identifiers/argument.sscanf) (phpstan)
+- [`argument.staticClosure`](https://phpstan.org/error-identifiers/argument.staticClosure) (phpstan)
+- [`argument.templateType`](https://phpstan.org/error-identifiers/argument.templateType) (phpstan)
+- [`argument.type`](https://phpstan.org/error-identifiers/argument.type) (phpstan)
+- [`argument.unknown`](https://phpstan.org/error-identifiers/argument.unknown) (phpstan)
+- [`argument.unpackAfterNamed`](https://phpstan.org/error-identifiers/argument.unpackAfterNamed) (phpstan)
+- [`argument.unpackNonIterable`](https://phpstan.org/error-identifiers/argument.unpackNonIterable) (phpstan)
+- [`argument.unresolvableType`](https://phpstan.org/error-identifiers/argument.unresolvableType) (phpstan)
+- [`argument.vprintf`](https://phpstan.org/error-identifiers/argument.vprintf) (phpstan)
+- [`argument.vsprintf`](https://phpstan.org/error-identifiers/argument.vsprintf) (phpstan)
+- [`arguments.count`](https://phpstan.org/error-identifiers/arguments.count) (phpstan)
+- [`attribute.unresolvableReturnType`](https://phpstan.org/error-identifiers/attribute.unresolvableReturnType) (phpstan)
+- [`attribute.void`](https://phpstan.org/error-identifiers/attribute.void) (phpstan)
+- [`callable.unresolvableReturnType`](https://phpstan.org/error-identifiers/callable.unresolvableReturnType) (phpstan)
+- [`callable.void`](https://phpstan.org/error-identifiers/callable.void) (phpstan)
+- [`function.unresolvableReturnType`](https://phpstan.org/error-identifiers/function.unresolvableReturnType) (phpstan)
+- [`function.void`](https://phpstan.org/error-identifiers/function.void) (phpstan)
+- [`method.unresolvableReturnType`](https://phpstan.org/error-identifiers/method.unresolvableReturnType) (phpstan)
+- [`method.void`](https://phpstan.org/error-identifiers/method.void) (phpstan)
+- [`new.unresolvableReturnType`](https://phpstan.org/error-identifiers/new.unresolvableReturnType) (phpstan)
+- [`new.void`](https://phpstan.org/error-identifiers/new.void) (phpstan)
+- [`nullableType.void`](https://phpstan.org/error-identifiers/nullableType.void) (phpstan)
+- [`pureFunction.void`](https://phpstan.org/error-identifiers/pureFunction.void) (phpstan)
+- [`pureMethod.void`](https://phpstan.org/error-identifiers/pureMethod.void) (phpstan)
+- [`purePropertyHook.void`](https://phpstan.org/error-identifiers/purePropertyHook.void) (phpstan)
+- [`staticMethod.unresolvableReturnType`](https://phpstan.org/error-identifiers/staticMethod.unresolvableReturnType) (phpstan)
+- [`staticMethod.void`](https://phpstan.org/error-identifiers/staticMethod.void) (phpstan)
+- [`unionType.void`](https://phpstan.org/error-identifiers/unionType.void) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

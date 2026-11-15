@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/control-flow/no-useless-return" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_useless_return`](https://cs.symfony.com/doc/rules/return_notation/no_useless_return.html) (php-cs-fixer).
+There should not be an empty `return` statement at the end of a function.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "control-flow/no-useless-return" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "control-flow/no-useless-return" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/control-flow/no-useless-return -- explain the exception
-```
+- [`no_useless_return`](https://cs.symfony.com/doc/rules/return_notation/no_useless_return.html) (php-cs-fixer)
 
-## What it does
-
-There should not be an empty `return` statement at the end of a function.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

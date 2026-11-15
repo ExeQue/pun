@@ -7,21 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/invalid-closure-signature" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ExistingClassesInClosureTypehintsRule`](https://phpstan.org/error-identifiers/attribute.target) (phpstan-classes).
-- [`TraitInstantiation`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`attribute.target`](https://phpstan.org/error-identifiers/attribute.target) (phpstan).
-- [`method.templateTypeNotInParameter`](https://phpstan.org/error-identifiers/method.templateTypeNotInParameter) (phpstan).
-- [`parameter.noParent`](https://phpstan.org/error-identifiers/parameter.noParent) (phpstan).
-- [`parameter.trait`](https://phpstan.org/error-identifiers/parameter.trait) (phpstan).
-- [`parameter.unresolvableNativeType`](https://phpstan.org/error-identifiers/parameter.unresolvableNativeType) (phpstan).
-- [`return.noParent`](https://phpstan.org/error-identifiers/return.noParent) (phpstan).
-- [`return.trait`](https://phpstan.org/error-identifiers/return.trait) (phpstan).
-- [`return.unresolvableNativeType`](https://phpstan.org/error-identifiers/return.unresolvableNativeType) (phpstan).
-- [`selfOut.trait`](https://phpstan.org/error-identifiers/selfOut.trait) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -30,13 +16,20 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/invalid-closure-signature" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/invalid-closure-signature -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ExistingClassesInClosureTypehintsRule`](https://phpstan.org/error-identifiers/attribute.target) (phpstan-classes)
+- [`TraitInstantiation`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`attribute.target`](https://phpstan.org/error-identifiers/attribute.target) (phpstan)
+- [`method.templateTypeNotInParameter`](https://phpstan.org/error-identifiers/method.templateTypeNotInParameter) (phpstan)
+- [`parameter.noParent`](https://phpstan.org/error-identifiers/parameter.noParent) (phpstan)
+- [`parameter.trait`](https://phpstan.org/error-identifiers/parameter.trait) (phpstan)
+- [`parameter.unresolvableNativeType`](https://phpstan.org/error-identifiers/parameter.unresolvableNativeType) (phpstan)
+- [`return.noParent`](https://phpstan.org/error-identifiers/return.noParent) (phpstan)
+- [`return.trait`](https://phpstan.org/error-identifiers/return.trait) (phpstan)
+- [`return.unresolvableNativeType`](https://phpstan.org/error-identifiers/return.unresolvableNativeType) (phpstan)
+- [`selfOut.trait`](https://phpstan.org/error-identifiers/selfOut.trait) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

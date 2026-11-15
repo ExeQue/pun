@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpunit/fqcn-annotation" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+Not in any preset. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_fqcn_annotation`](https://cs.symfony.com/doc/rules/php_unit/php_unit_fqcn_annotation.html) (php-cs-fixer).
+PHPUnit annotations should be a FQCNs including a root namespace.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpunit/fqcn-annotation" = true
 ```
 
-```php
-// @pun-ignore-file format/phpunit/fqcn-annotation -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-PHPUnit annotations should be a FQCNs including a root namespace.
+- [`php_unit_fqcn_annotation`](https://cs.symfony.com/doc/rules/php_unit/php_unit_fqcn_annotation.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/phpunit rules](/docs/rules/format/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

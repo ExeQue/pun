@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/classes/no-explicit-constructor-call" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (report only). Intent: suspicious. Additional upstream gates: `strictRules.illegalConstructorMethodCall`.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Report only. Intent: suspicious. Upstream gates: `strictRules.illegalConstructorMethodCall`.
 
-## Replaces
+## What it does
 
-- [`IllegalConstructorMethodCallRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`constructor.call`](https://phpstan.org/error-identifiers/constructor.call) (phpstan-strict-rules).
+Disallows calling `__construct()` on an existing object outside a constructor.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: none (r
 "classes/no-explicit-constructor-call" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "classes/no-explicit-constructor-call" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/classes/no-explicit-constructor-call -- explain the exception
-```
+- [`IllegalConstructorMethodCallRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`constructor.call`](https://phpstan.org/error-identifiers/constructor.call) (phpstan-strict-rules)
 
-## What it does
-
-Disallows calling `__construct()` on an existing object outside a constructor.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/classes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/classes rules](/docs/rules/lint/classes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

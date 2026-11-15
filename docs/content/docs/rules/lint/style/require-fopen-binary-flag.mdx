@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-fopen-binary-flag" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`fopen_flags`](https://cs.symfony.com/doc/rules/function_notation/fopen_flags.html) (php-cs-fixer, risky).
+The flags in `fopen` calls must omit `t`, and `b` must be omitted or included consistently.
 
 ## Configuration
 
@@ -20,27 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/require-fopen-binary-flag" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-fopen-binary-flag" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/style/require-fopen-binary-flag -- explain the exception
-```
-
-## What it does
-
-The flags in `fopen` calls must omit `t`, and `b` must be omitted or included consistently.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `b-mode` | `bool` | Any value of this type | `true` | `b_mode` |
+| `b-mode` | `bool` | Any | `true` | `b_mode` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`fopen_flags`](https://cs.symfony.com/doc/rules/function_notation/fopen_flags.html) (php-cs-fixer, risky)
+
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

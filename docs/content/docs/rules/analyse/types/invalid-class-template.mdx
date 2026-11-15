@@ -7,17 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/invalid-class-template" />
 
-Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ClassTemplateTypeRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`generics.existingClass`](https://phpstan.org/error-identifiers/generics.existingClass) (phpstan).
-- [`generics.existingTypeAlias`](https://phpstan.org/error-identifiers/generics.existingTypeAlias) (phpstan).
-- [`generics.notSupportedBound`](https://phpstan.org/error-identifiers/generics.notSupportedBound) (phpstan).
-- [`generics.requiredTypeAfterOptional`](https://phpstan.org/error-identifiers/generics.requiredTypeAfterOptional) (phpstan).
-- [`generics.templateDefaultOutOfBounds`](https://phpstan.org/error-identifiers/generics.templateDefaultOutOfBounds) (phpstan).
-- [`generics.traitBound`](https://phpstan.org/error-identifiers/generics.traitBound) (phpstan).
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -26,13 +16,16 @@ Enabled by the [`analyse-essential`](/docs/rules/presets/analyse-essential), [`a
 "types/invalid-class-template" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/invalid-class-template -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ClassTemplateTypeRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`generics.existingClass`](https://phpstan.org/error-identifiers/generics.existingClass) (phpstan)
+- [`generics.existingTypeAlias`](https://phpstan.org/error-identifiers/generics.existingTypeAlias) (phpstan)
+- [`generics.notSupportedBound`](https://phpstan.org/error-identifiers/generics.notSupportedBound) (phpstan)
+- [`generics.requiredTypeAfterOptional`](https://phpstan.org/error-identifiers/generics.requiredTypeAfterOptional) (phpstan)
+- [`generics.templateDefaultOutOfBounds`](https://phpstan.org/error-identifiers/generics.templateDefaultOutOfBounds) (phpstan)
+- [`generics.traitBound`](https://phpstan.org/error-identifiers/generics.traitBound) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

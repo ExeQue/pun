@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-ereg" />
 
-Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can change behaviour).
+In the [`modernize`](/docs/rules/sets/modernize) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`ereg_to_preg`](https://cs.symfony.com/doc/rules/alias/ereg_to_preg.html) (php-cs-fixer, risky).
+Replace deprecated `ereg` regular expression functions with `preg`.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`modernize`](/docs/rules/sets/modernize) set. Fix: unsafe (can c
 "style/no-ereg" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-ereg" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/no-ereg -- explain the exception
-```
+- [`ereg_to_preg`](https://cs.symfony.com/doc/rules/alias/ereg_to_preg.html) (php-cs-fixer, risky)
 
-## What it does
-
-Replace deprecated `ereg` regular expression functions with `preg`.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,13 +7,7 @@ pagination: false
 
 <RuleId id="analyse/operators/non-numeric-subtraction" />
 
-Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Additional upstream gates: `strictRules.numericOperandsInArithmeticOperators`.
-
-## Replaces
-
-- [`OperandsInArithmeticSubtractionRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes).
-- [`minus.leftNonNumeric`](https://phpstan.org/error-identifiers/minus.leftNonNumeric) (phpstan-strict-rules).
-- [`minus.rightNonNumeric`](https://phpstan.org/error-identifiers/minus.rightNonNumeric) (phpstan-strict-rules).
+In the [`analyse-strict`](/docs/rules/presets/analyse-strict) preset and every stricter one. Report only. Upstream gates: `strictRules.numericOperandsInArithmeticOperators`.
 
 ## Configuration
 
@@ -22,13 +16,12 @@ Enabled by the [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse
 "operators/non-numeric-subtraction" = "on"
 ```
 
-```php
-// @pun-ignore analyse/operators/non-numeric-subtraction -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`OperandsInArithmeticSubtractionRule`](https://github.com/phpstan/phpstan-strict-rules#readme) (phpstan-classes)
+- [`minus.leftNonNumeric`](https://phpstan.org/error-identifiers/minus.leftNonNumeric) (phpstan-strict-rules)
+- [`minus.rightNonNumeric`](https://phpstan.org/error-identifiers/minus.rightNonNumeric) (phpstan-strict-rules)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/operators rules](/docs/rules/analyse/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

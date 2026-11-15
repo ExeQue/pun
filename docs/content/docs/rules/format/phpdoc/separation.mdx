@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/separation" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_separation`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_separation.html) (php-cs-fixer).
+Annotations in PHPDoc should be grouped together so that annotations of the same type immediately follow each other. Annotations of a different type are separated by a single blank line.
 
 ## Configuration
 
@@ -20,20 +20,17 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "phpdoc/separation" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/separation -- explain the exception
-```
-
-## What it does
-
-Annotations in PHPDoc should be grouped together so that annotations of the same type immediately follow each other. Annotations of a different type are separated by a single blank line.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `groups` | `list-of-lists` | Any value of this type | `[["author", "copyright", "license"], ["category", "package", "subpackage"], ["property", "property-read", "property-write"], ["deprecated", "link", "see", "since"]]` | `groups` |
-| `skip-unlisted-annotations` | `bool` | Any value of this type | `false` | `skip_unlisted_annotations` |
+| `groups` | `list-of-lists` | Any | `[["author", "copyright", "license"], ["category", "package", "subpackage"], ["property", "property-read", "property-write"], ["deprecated", "link", "see", "since"]]` | `groups` |
+| `skip-unlisted-annotations` | `bool` | Any | `false` | `skip_unlisted_annotations` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_separation`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_separation.html) (php-cs-fixer)
+
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

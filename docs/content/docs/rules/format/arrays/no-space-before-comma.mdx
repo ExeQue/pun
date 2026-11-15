@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/arrays/no-space-before-comma" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_whitespace_before_comma_in_array`](https://cs.symfony.com/doc/rules/array_notation/no_whitespace_before_comma_in_array.html) (php-cs-fixer).
+In array declaration, there MUST NOT be a whitespace before each comma.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "arrays/no-space-before-comma" = true
 ```
 
-```php
-// @pun-ignore-file format/arrays/no-space-before-comma -- explain the exception
-```
-
-## What it does
-
-In array declaration, there MUST NOT be a whitespace before each comma.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `after-heredoc` | `bool` | Any value of this type | `false` | `after_heredoc` |
+| `after-heredoc` | `bool` | Any | `false` | `after_heredoc` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_whitespace_before_comma_in_array`](https://cs.symfony.com/doc/rules/array_notation/no_whitespace_before_comma_in_array.html) (php-cs-fixer)
+
+[More format/arrays rules](/docs/rules/format/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

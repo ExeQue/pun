@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/add-relation-generics" />
 
-Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
+In the [`types`](/docs/rules/sets/types) set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`AddGenericReturnTypeToRelations`](https://getrector.com/rule-detail/add-generic-return-type-to-relations-rector) (rector-laravel).
+Add generic return type to relations in child of Illuminate\Database\Eloquent\Model
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change be
 "laravel/add-relation-generics" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/add-relation-generics" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/add-relation-generics -- explain the exception
-```
+- [`AddGenericReturnTypeToRelations`](https://getrector.com/rule-detail/add-generic-return-type-to-relations-rector) (rector-laravel)
 
-## What it does
-
-Add generic return type to relations in child of Illuminate\Database\Eloquent\Model
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/no-empty-test" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`RemoveEmptyTestMethod`](https://getrector.com/rule-detail/remove-empty-test-method-rector) (rector-phpunit).
+Remove empty test methods
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "phpunit/no-empty-test" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/no-empty-test" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/no-empty-test -- explain the exception
-```
+- [`RemoveEmptyTestMethod`](https://getrector.com/rule-detail/remove-empty-test-method-rector) (rector-phpunit)
 
-## What it does
-
-Remove empty test methods
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/yoda" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`yoda_style`](https://cs.symfony.com/doc/rules/control_structure/yoda_style.html) (php-cs-fixer).
-- [`yoda-conditions`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#yoda-conditions) (mago-linter).
+Write conditions in Yoda style (`true`), non-Yoda style (`['equal' => false, 'identical' => false, 'less_and_greater' => false]`) or ignore those conditions (`null`) based on configuration.
 
 ## Configuration
 
@@ -21,22 +20,20 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "control-flow/yoda" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/yoda -- explain the exception
-```
-
-## What it does
-
-Write conditions in Yoda style (`true`), non-Yoda style (`['equal' => false, 'identical' => false, 'less_and_greater' => false]`) or ignore those conditions (`null`) based on configuration.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `always-move-variable` | `bool` | Any value of this type | `false` | `always_move_variable` |
-| `equal` | `bool` | Any value of this type | `true` | `equal` |
-| `identical` | `bool` | Any value of this type | `true` | `identical` |
-| `less-and-greater` | `bool` | Any value of this type | `"ignore"` | `less_and_greater` |
+| `always-move-variable` | `bool` | Any | `false` | `always_move_variable` |
+| `equal` | `bool` | Any | `true` | `equal` |
+| `identical` | `bool` | Any | `true` | `identical` |
+| `less-and-greater` | `bool` | Any | `"ignore"` | `less_and_greater` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`yoda_style`](https://cs.symfony.com/doc/rules/control_structure/yoda_style.html) (php-cs-fixer)
+- [`yoda-conditions`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#yoda-conditions) (mago-linter)
+
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

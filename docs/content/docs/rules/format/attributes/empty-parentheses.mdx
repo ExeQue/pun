@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/attributes/empty-parentheses" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`attribute_empty_parentheses`](https://cs.symfony.com/doc/rules/attribute_notation/attribute_empty_parentheses.html) (php-cs-fixer).
+PHP attributes declared without arguments must (not) be followed by empty parentheses.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "attributes/empty-parentheses" = true
 ```
 
-```php
-// @pun-ignore-file format/attributes/empty-parentheses -- explain the exception
-```
-
-## What it does
-
-PHP attributes declared without arguments must (not) be followed by empty parentheses.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `use-parentheses` | `bool` | Any value of this type | `false` | `use_parentheses` |
+| `use-parentheses` | `bool` | Any | `false` | `use_parentheses` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/attributes) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`attribute_empty_parentheses`](https://cs.symfony.com/doc/rules/attribute_notation/attribute_empty_parentheses.html) (php-cs-fixer)
+
+[More format/attributes rules](/docs/rules/format/attributes) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

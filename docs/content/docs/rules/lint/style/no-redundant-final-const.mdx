@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-redundant-final-const" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RemoveFinalFromConst`](https://getrector.com/rule-detail/remove-final-from-const-rector) (rector).
+Remove final from constants in classes defined as final
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "style/no-redundant-final-const" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-redundant-final-const" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/no-redundant-final-const -- explain the exception
-```
+- [`RemoveFinalFromConst`](https://getrector.com/rule-detail/remove-final-from-const-rector) (rector)
 
-## What it does
-
-Remove final from constants in classes defined as final
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

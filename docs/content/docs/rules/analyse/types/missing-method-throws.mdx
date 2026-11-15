@@ -7,11 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/missing-method-throws" />
 
-Enabled by the [`analyse-max`](/docs/rules/presets/analyse-max) preset. Fix: none (report only). Additional upstream gates: `exceptions.check.missingCheckedExceptionInThrows`.
-
-## Replaces
-
-- [`MissingCheckedExceptionInMethodThrowsRule`](https://phpstan.org/error-identifiers/missingType.checkedException) (phpstan-classes).
+In the [`analyse-max`](/docs/rules/presets/analyse-max) preset. Report only. Upstream gates: `exceptions.check.missingCheckedExceptionInThrows`.
 
 ## Configuration
 
@@ -20,13 +16,10 @@ Enabled by the [`analyse-max`](/docs/rules/presets/analyse-max) preset. Fix: non
 "types/missing-method-throws" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/missing-method-throws -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`MissingCheckedExceptionInMethodThrowsRule`](https://phpstan.org/error-identifiers/missingType.checkedException) (phpstan-classes)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

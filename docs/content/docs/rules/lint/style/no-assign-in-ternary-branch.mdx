@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/no-assign-in-ternary-branch" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour).
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`TernaryConditionVariableAssignment`](https://getrector.com/rule-detail/ternary-condition-variable-assignment-rector) (rector).
+Assign outcome of ternary condition to variable, where applicable
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "style/no-assign-in-ternary-branch" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/no-assign-in-ternary-branch" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/style/no-assign-in-ternary-branch -- explain the exception
-```
+- [`TernaryConditionVariableAssignment`](https://getrector.com/rule-detail/ternary-condition-variable-assignment-rector) (rector)
 
-## What it does
-
-Assign outcome of ternary condition to variable, where applicable
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

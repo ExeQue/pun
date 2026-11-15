@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/imports/group" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`group_import`](https://cs.symfony.com/doc/rules/import/group_import.html) (php-cs-fixer).
+There MUST be group use for the same namespaces.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "imports/group" = true
 ```
 
-```php
-// @pun-ignore-file format/imports/group -- explain the exception
-```
-
-## What it does
-
-There MUST be group use for the same namespaces.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,10 +28,12 @@ There MUST be group use for the same namespaces.
 | --- | --- | --- | --- | --- |
 | `group-types` | `list` | `classy`, `functions`, `constants` | `["classy", "functions", "constants"]` | `group_types` |
 
+## Replaces
+
+- [`group_import`](https://cs.symfony.com/doc/rules/import/group_import.html) (php-cs-fixer)
 
 ## Linked rules
 
+- Conflicts with [`format/imports/single-per-statement`](/docs/rules/format/imports/single-per-statement). You cannot enable both.
 
-- Conflicts with [`format/imports/single-per-statement`](/docs/rules/format/imports/single-per-statement). A config cannot enable both.
-
-[Group reference](/docs/rules/format/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/imports rules](/docs/rules/format/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

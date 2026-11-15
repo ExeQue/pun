@@ -7,18 +7,7 @@ pagination: false
 
 <RuleId id="analyse/types/invalid-unset" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`UnsetRule`](https://phpstan.org/error-identifiers/unset.hookedProperty) (phpstan-classes).
-- [`InvalidUnset`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`unset.hookedProperty`](https://phpstan.org/error-identifiers/unset.hookedProperty) (phpstan).
-- [`unset.offset`](https://phpstan.org/error-identifiers/unset.offset) (phpstan).
-- [`unset.possiblyHookedProperty`](https://phpstan.org/error-identifiers/unset.possiblyHookedProperty) (phpstan).
-- [`unset.readOnlyProperty`](https://phpstan.org/error-identifiers/unset.readOnlyProperty) (phpstan).
-- [`unset.readOnlyPropertyByPhpDoc`](https://phpstan.org/error-identifiers/unset.readOnlyPropertyByPhpDoc) (phpstan).
-- [`unset.variable`](https://phpstan.org/error-identifiers/unset.variable) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -27,13 +16,17 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "types/invalid-unset" = "on"
 ```
 
-```php
-// @pun-ignore analyse/types/invalid-unset -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`UnsetRule`](https://phpstan.org/error-identifiers/unset.hookedProperty) (phpstan-classes)
+- [`InvalidUnset`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`unset.hookedProperty`](https://phpstan.org/error-identifiers/unset.hookedProperty) (phpstan)
+- [`unset.offset`](https://phpstan.org/error-identifiers/unset.offset) (phpstan)
+- [`unset.possiblyHookedProperty`](https://phpstan.org/error-identifiers/unset.possiblyHookedProperty) (phpstan)
+- [`unset.readOnlyProperty`](https://phpstan.org/error-identifiers/unset.readOnlyProperty) (phpstan)
+- [`unset.readOnlyPropertyByPhpDoc`](https://phpstan.org/error-identifiers/unset.readOnlyPropertyByPhpDoc) (phpstan)
+- [`unset.variable`](https://phpstan.org/error-identifiers/unset.variable) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/types rules](/docs/rules/analyse/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

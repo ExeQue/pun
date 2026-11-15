@@ -7,18 +7,7 @@ pagination: false
 
 <RuleId id="analyse/undefined/instanceof-class" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`ExistingClassInInstanceOfRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes).
-- [`ParentOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`SelfOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`StaticOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`instanceof.trait`](https://phpstan.org/error-identifiers/instanceof.trait) (phpstan).
-- [`outOfClass.parent`](https://phpstan.org/error-identifiers/outOfClass.parent) (phpstan).
-- [`outOfClass.self`](https://phpstan.org/error-identifiers/outOfClass.self) (phpstan).
-- [`outOfClass.static`](https://phpstan.org/error-identifiers/outOfClass.static) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -27,13 +16,17 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "undefined/instanceof-class" = "on"
 ```
 
-```php
-// @pun-ignore analyse/undefined/instanceof-class -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`ExistingClassInInstanceOfRule`](https://phpstan.org/error-identifiers/class.nameCase) (phpstan-classes)
+- [`ParentOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`SelfOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`StaticOutsideClassScope`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`instanceof.trait`](https://phpstan.org/error-identifiers/instanceof.trait) (phpstan)
+- [`outOfClass.parent`](https://phpstan.org/error-identifiers/outOfClass.parent) (phpstan)
+- [`outOfClass.self`](https://phpstan.org/error-identifiers/outOfClass.self) (phpstan)
+- [`outOfClass.static`](https://phpstan.org/error-identifiers/outOfClass.static) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/undefined) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/undefined rules](/docs/rules/analyse/undefined) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/laravel/missing-translation" />
 
-Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only). Runs when laravel is installed. Additional upstream gates: `checkMissingTranslations (default false)`.
-
-## Replaces
-
-- [`NoMissingTranslationsRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#nomissingtranslationsrule) (phpstan-classes).
-- [`larastan.missingTranslations`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan).
+In the [`analyse-recommended`](/docs/rules/presets/analyse-recommended) preset and every stricter one. Report only. Runs when laravel is installed. Upstream gates: `checkMissingTranslations (default false)`.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-recommended`](/docs/rules/presets/analyse-recommended),
 "laravel/missing-translation" = "on"
 ```
 
-```php
-// @pun-ignore analyse/laravel/missing-translation -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`NoMissingTranslationsRule`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md#nomissingtranslationsrule) (phpstan-classes)
+- [`larastan.missingTranslations`](https://github.com/larastan/larastan/blob/v3.14.0/docs/rules.md) (larastan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/laravel rules](/docs/rules/analyse/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

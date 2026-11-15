@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/statements/no-mixed-echo-print" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_mixed_echo_print`](https://cs.symfony.com/doc/rules/alias/no_mixed_echo_print.html) (php-cs-fixer).
+Either language construct `print` or `echo` should be used.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "statements/no-mixed-echo-print" = true
 ```
 
-```php
-// @pun-ignore-file format/statements/no-mixed-echo-print -- explain the exception
-```
-
-## What it does
-
-Either language construct `print` or `echo` should be used.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ Either language construct `print` or `echo` should be used.
 | --- | --- | --- | --- | --- |
 | `use` | `enum` | `print`, `echo` | `"echo"` | `use` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/statements) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_mixed_echo_print`](https://cs.symfony.com/doc/rules/alias/no_mixed_echo_print.html) (php-cs-fixer)
+
+[More format/statements rules](/docs/rules/format/statements) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

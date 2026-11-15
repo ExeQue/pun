@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/comments/no-empty" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_empty_comment`](https://cs.symfony.com/doc/rules/comment/no_empty_comment.html) (php-cs-fixer).
-- [`no-empty-comment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-empty-comment) (mago-linter).
+There should not be any empty comments.
 
 ## Configuration
 
@@ -21,16 +20,11 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "comments/no-empty" = true
 ```
 
-```php
-// @pun-ignore-file format/comments/no-empty -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-There should not be any empty comments.
+- [`no_empty_comment`](https://cs.symfony.com/doc/rules/comment/no_empty_comment.html) (php-cs-fixer)
+- [`no-empty-comment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-empty-comment) (mago-linter)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/comments) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/comments rules](/docs/rules/format/comments) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

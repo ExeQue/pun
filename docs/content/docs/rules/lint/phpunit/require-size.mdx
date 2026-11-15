@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/require-size" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+Not in any set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_size_class`](https://cs.symfony.com/doc/rules/php_unit/php_unit_size_class.html) (php-cs-fixer).
+All PHPUnit test cases should have `@small`, `@medium` or `@large` annotation to enable run time limits.
 
 ## Configuration
 
@@ -20,21 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "phpunit/require-size" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/require-size" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/require-size -- explain the exception
-```
-
-## What it does
-
-All PHPUnit test cases should have `@small`, `@medium` or `@large` annotation to enable run time limits.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -42,5 +28,8 @@ All PHPUnit test cases should have `@small`, `@medium` or `@large` annotation to
 | --- | --- | --- | --- | --- |
 | `group` | `enum` | `small`, `medium`, `large` | `"small"` | `group` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_size_class`](https://cs.symfony.com/doc/rules/php_unit/php_unit_size_class.html) (php-cs-fixer)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

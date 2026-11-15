@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="lint/dead-code/no-duplicate-array-key" />
 
-Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps behaviour).
+In the [`dead-code`](/docs/rules/sets/dead-code) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`RemoveDuplicatedArrayKey`](https://getrector.com/rule-detail/remove-duplicated-array-key-rector) (rector).
-- [`DuplicateKeysInLiteralArraysRule`](https://phpstan.org/error-identifiers/array.duplicateKey) (phpstan-classes).
-- [`DuplicateArrayKey`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`array.duplicateKey`](https://phpstan.org/error-identifiers/array.duplicateKey) (phpstan).
+Remove duplicated key in defined arrays
 
 ## Configuration
 
@@ -23,24 +20,13 @@ Enabled by the [`dead-code`](/docs/rules/sets/dead-code) set. Fix: safe (keeps b
 "dead-code/no-duplicate-array-key" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "dead-code/no-duplicate-array-key" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/dead-code/no-duplicate-array-key -- explain the exception
-```
+- [`RemoveDuplicatedArrayKey`](https://getrector.com/rule-detail/remove-duplicated-array-key-rector) (rector)
+- [`DuplicateKeysInLiteralArraysRule`](https://phpstan.org/error-identifiers/array.duplicateKey) (phpstan-classes)
+- [`DuplicateArrayKey`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`array.duplicateKey`](https://phpstan.org/error-identifiers/array.duplicateKey) (phpstan)
 
-## What it does
-
-Remove duplicated key in defined arrays
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/dead-code rules](/docs/rules/lint/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

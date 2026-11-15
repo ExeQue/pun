@@ -7,17 +7,7 @@ pagination: false
 
 <RuleId id="analyse/imports/name-already-in-use" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`UsedNamesRule`](https://phpstan.org/error-identifiers/class.nameInUse) (phpstan-classes).
-- [`NameAlreadyInUse`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer).
-- [`class.nameInUse`](https://phpstan.org/error-identifiers/class.nameInUse) (phpstan).
-- [`enum.nameInUse`](https://phpstan.org/error-identifiers/enum.nameInUse) (phpstan).
-- [`interface.nameInUse`](https://phpstan.org/error-identifiers/interface.nameInUse) (phpstan).
-- [`trait.nameInUse`](https://phpstan.org/error-identifiers/trait.nameInUse) (phpstan).
-- [`use.nameInUse`](https://phpstan.org/error-identifiers/use.nameInUse) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -26,13 +16,16 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "imports/name-already-in-use" = "on"
 ```
 
-```php
-// @pun-ignore analyse/imports/name-already-in-use -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`UsedNamesRule`](https://phpstan.org/error-identifiers/class.nameInUse) (phpstan-classes)
+- [`NameAlreadyInUse`](https://mago.carthage.software/1.57.0/en/tools/analyzer/overview/) (mago-analyzer)
+- [`class.nameInUse`](https://phpstan.org/error-identifiers/class.nameInUse) (phpstan)
+- [`enum.nameInUse`](https://phpstan.org/error-identifiers/enum.nameInUse) (phpstan)
+- [`interface.nameInUse`](https://phpstan.org/error-identifiers/interface.nameInUse) (phpstan)
+- [`trait.nameInUse`](https://phpstan.org/error-identifiers/trait.nameInUse) (phpstan)
+- [`use.nameInUse`](https://phpstan.org/error-identifiers/use.nameInUse) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/imports rules](/docs/rules/analyse/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

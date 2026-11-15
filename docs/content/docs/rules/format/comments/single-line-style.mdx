@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="format/comments/single-line-style" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`single_line_comment_style`](https://cs.symfony.com/doc/rules/comment/single_line_comment_style.html) (php-cs-fixer).
-- [`no-hash-comment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-hash-comment) (mago-linter).
+Single-line comments and multi-line comments with only one line of actual content should use the `//` syntax.
 
 ## Configuration
 
@@ -21,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "comments/single-line-style" = true
 ```
 
-```php
-// @pun-ignore-file format/comments/single-line-style -- explain the exception
-```
-
-## What it does
-
-Single-line comments and multi-line comments with only one line of actual content should use the `//` syntax.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -35,5 +28,9 @@ Single-line comments and multi-line comments with only one line of actual conten
 | --- | --- | --- | --- | --- |
 | `comment-types` | `list` | `asterisk`, `hash` | `["asterisk", "hash"]` | `comment_types` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/comments) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`single_line_comment_style`](https://cs.symfony.com/doc/rules/comment/single_line_comment_style.html) (php-cs-fixer)
+- [`no-hash-comment`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-hash-comment) (mago-linter)
+
+[More format/comments rules](/docs/rules/format/comments) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

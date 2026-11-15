@@ -7,21 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/prefer-simpler-expectation" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`Pun/use_simpler_expectation`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun).
-- [`SimplifyComparisonExpectations`](https://pestphp.com/docs/rector#content-simplifycomparisonexpectationsrector) (pest-plugin-rector).
-- [`use-simpler-expectation`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#use-simpler-expectation) (mago-linter).
-
-## Merged rules
-
-This rule merges rules that used to be separate in Pun because each came from a different upstream tool:
-
-- `lint/pest/prefer-comparison-matchers`
-
-`pun migrate` maps every upstream name above to this rule, so a project that enabled several of them gets one rule. A pun.toml that still names an old ID stops with an error that names this rule, and `pun explain <old ID>` shows this page. See [merged rules](/docs/migrate/merged-rules).
+Simplify Pest expectations: expect($a > $b)->toBeTrue() becomes expect($a)->toBeGreaterThan($b), and similar.
 
 ## Configuration
 
@@ -30,24 +20,18 @@ This rule merges rules that used to be separate in Pun because each came from a 
 "pest/prefer-simpler-expectation" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/prefer-simpler-expectation" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/prefer-simpler-expectation -- explain the exception
-```
+- [`Pun/use_simpler_expectation`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/) (pun)
+- [`SimplifyComparisonExpectations`](https://pestphp.com/docs/rector#content-simplifycomparisonexpectationsrector) (pest-plugin-rector)
+- [`use-simpler-expectation`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#use-simpler-expectation) (mago-linter)
 
-## What it does
+## Merged rules
 
-Simplify Pest expectations: expect($a > $b)->toBeTrue() becomes expect($a)->toBeGreaterThan($b), and similar.
+These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
-## Options
+- `lint/pest/prefer-comparison-matchers`
 
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

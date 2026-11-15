@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/types/add-doctrine-repository-return-type" />
 
-Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change behaviour).
+In the [`types`](/docs/rules/sets/types) set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`ChildDoctrineRepositoryClassType`](https://getrector.com/rule-detail/child-doctrine-repository-class-type-rector) (rector).
+Add return type to classes that extend Doctrine\ORM\EntityRepository based on return Doctrine method names
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`types`](/docs/rules/sets/types) set. Fix: unsafe (can change be
 "types/add-doctrine-repository-return-type" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "types/add-doctrine-repository-return-type" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/types/add-doctrine-repository-return-type -- explain the exception
-```
+- [`ChildDoctrineRepositoryClassType`](https://getrector.com/rule-detail/child-doctrine-repository-class-type-rector) (rector)
 
-## What it does
-
-Add return type to classes that extend Doctrine\ORM\EntityRepository based on return Doctrine method names
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/types rules](/docs/rules/lint/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

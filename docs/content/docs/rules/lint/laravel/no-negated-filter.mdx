@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/laravel/no-negated-filter" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when laravel is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when laravel is installed.
 
-## Replaces
+## What it does
 
-- [`AvoidNegatedCollectionFilterOrReject`](https://getrector.com/rule-detail/avoid-negated-collection-filter-or-reject-rector) (rector-laravel).
+Avoid negated conditionals in `filter()` by using `reject()`, or vice versa.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "laravel/no-negated-filter" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "laravel/no-negated-filter" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/laravel/no-negated-filter -- explain the exception
-```
+- [`AvoidNegatedCollectionFilterOrReject`](https://getrector.com/rule-detail/avoid-negated-collection-filter-or-reject-rector) (rector-laravel)
 
-## What it does
-
-Avoid negated conditionals in `filter()` by using `reject()`, or vice versa.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/laravel) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/laravel rules](/docs/rules/lint/laravel) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

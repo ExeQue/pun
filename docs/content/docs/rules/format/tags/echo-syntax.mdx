@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/tags/echo-syntax" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`echo_tag_syntax`](https://cs.symfony.com/doc/rules/php_tag/echo_tag_syntax.html) (php-cs-fixer).
+Replaces short-echo `<?=` with long format `<?php echo`/`<?php print` syntax, or vice-versa.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "tags/echo-syntax" = true
 ```
 
-```php
-// @pun-ignore-file format/tags/echo-syntax -- explain the exception
-```
-
-## What it does
-
-Replaces short-echo `<?=` with long format `<?php echo`/`<?php print` syntax, or vice-versa.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,7 +28,10 @@ Replaces short-echo `<?=` with long format `<?php echo`/`<?php print` syntax, or
 | --- | --- | --- | --- | --- |
 | `format` | `enum` | `long`, `short` | `"long"` | `format` |
 | `long-function` | `enum` | `echo`, `print` | `"echo"` | `long_function` |
-| `shorten-simple-statements-only` | `bool` | Any value of this type | `true` | `shorten_simple_statements_only` |
+| `shorten-simple-statements-only` | `bool` | Any | `true` | `shorten_simple_statements_only` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/tags) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`echo_tag_syntax`](https://cs.symfony.com/doc/rules/php_tag/echo_tag_syntax.html) (php-cs-fixer)
+
+[More format/tags rules](/docs/rules/format/tags) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

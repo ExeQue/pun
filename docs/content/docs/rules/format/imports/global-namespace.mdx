@@ -7,14 +7,11 @@ pagination: false
 
 <RuleId id="format/imports/global-namespace" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`global_namespace_import`](https://cs.symfony.com/doc/rules/import/global_namespace_import.html) (php-cs-fixer).
-- [`no-fully-qualified-global-class-like`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-class-like) (mago-linter).
-- [`no-fully-qualified-global-constant`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-constant) (mago-linter).
-- [`no-fully-qualified-global-function`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-function) (mago-linter).
+Imports or fully qualifies global classes/functions/constants.
 
 ## Configuration
 
@@ -23,21 +20,21 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "imports/global-namespace" = true
 ```
 
-```php
-// @pun-ignore-file format/imports/global-namespace -- explain the exception
-```
-
-## What it does
-
-Imports or fully qualifies global classes/functions/constants.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `import-classes` | `bool` | Any value of this type | `true` | `import_classes` |
-| `import-constants` | `bool` | Any value of this type | `"ignore"` | `import_constants` |
-| `import-functions` | `bool` | Any value of this type | `"ignore"` | `import_functions` |
+| `import-classes` | `bool` | Any | `true` | `import_classes` |
+| `import-constants` | `bool` | Any | `"ignore"` | `import_constants` |
+| `import-functions` | `bool` | Any | `"ignore"` | `import_functions` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/imports) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`global_namespace_import`](https://cs.symfony.com/doc/rules/import/global_namespace_import.html) (php-cs-fixer)
+- [`no-fully-qualified-global-class-like`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-class-like) (mago-linter)
+- [`no-fully-qualified-global-constant`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-constant) (mago-linter)
+- [`no-fully-qualified-global-function`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#no-fully-qualified-global-function) (mago-linter)
+
+[More format/imports rules](/docs/rules/format/imports) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

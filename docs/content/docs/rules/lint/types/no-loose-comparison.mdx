@@ -7,12 +7,11 @@ pagination: false
 
 <RuleId id="lint/types/no-loose-comparison" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: mixed (safe where types prove it, unsafe otherwise). Intent: suspicious.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix where types prove it, unsafe otherwise. Intent: suspicious.
 
-## Replaces
+## What it does
 
-- [`strict_comparison`](https://cs.symfony.com/doc/rules/strict/strict_comparison.html) (php-cs-fixer, risky).
-- [`identity-comparison`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#identity-comparison) (mago-linter).
+Comparisons should be strict.
 
 ## Configuration
 
@@ -21,24 +20,11 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: mixed (
 "types/no-loose-comparison" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "types/no-loose-comparison" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/types/no-loose-comparison -- explain the exception
-```
+- [`strict_comparison`](https://cs.symfony.com/doc/rules/strict/strict_comparison.html) (php-cs-fixer, risky)
+- [`identity-comparison`](https://mago.carthage.software/1.57.0/en/tools/linter/rules/#identity-comparison) (mago-linter)
 
-## What it does
-
-Comparisons should be strict.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/types) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/types rules](/docs/rules/lint/types) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

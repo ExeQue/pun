@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/functions/chain-indentation" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`method_chaining_indentation`](https://cs.symfony.com/doc/rules/whitespace/method_chaining_indentation.html) (php-cs-fixer).
+Method chaining MUST be properly indented. Method chaining with different levels of indentation is not supported.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "functions/chain-indentation" = true
 ```
 
-```php
-// @pun-ignore-file format/functions/chain-indentation -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Method chaining MUST be properly indented. Method chaining with different levels of indentation is not supported.
+- [`method_chaining_indentation`](https://cs.symfony.com/doc/rules/whitespace/method_chaining_indentation.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/functions) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/functions rules](/docs/rules/format/functions) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

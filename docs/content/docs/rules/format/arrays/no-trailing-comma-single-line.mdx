@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/arrays/no-trailing-comma-single-line" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_trailing_comma_in_singleline`](https://cs.symfony.com/doc/rules/basic/no_trailing_comma_in_singleline.html) (php-cs-fixer).
+If a list of values separated by a comma is contained on a single line, then the last item MUST NOT have a trailing comma.
 
 ## Configuration
 
@@ -20,13 +20,7 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "arrays/no-trailing-comma-single-line" = true
 ```
 
-```php
-// @pun-ignore-file format/arrays/no-trailing-comma-single-line -- explain the exception
-```
-
-## What it does
-
-If a list of values separated by a comma is contained on a single line, then the last item MUST NOT have a trailing comma.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -34,5 +28,8 @@ If a list of values separated by a comma is contained on a single line, then the
 | --- | --- | --- | --- | --- |
 | `elements` | `list` | `arguments`, `array`, `array-destructuring`, `group-import` | `["arguments", "array", "array-destructuring", "group-import"]` | `elements` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/arrays) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_trailing_comma_in_singleline`](https://cs.symfony.com/doc/rules/basic/no_trailing_comma_in_singleline.html) (php-cs-fixer)
+
+[More format/arrays rules](/docs/rules/format/arrays) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

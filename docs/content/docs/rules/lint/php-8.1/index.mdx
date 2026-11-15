@@ -7,16 +7,12 @@ pagination: false
 
 Upgrade to PHP 8.1: code a newer PHP removes, deprecates or does better.
 
-Across commands: format: 0, lint: 1, analyse: 0.
-
 <CardGroup cols={2}>
-<Card title="lint/php-8.1/prefer-first-class-callable">
-
-[`lint/php-8.1/prefer-first-class-callable`](/docs/rules/lint/php-8.1/prefer-first-class-callable)
+<Card title="prefer-first-class-callable" href="/docs/rules/lint/php-8.1/prefer-first-class-callable">
 
 Use first-class callable syntax (`strlen(...)`) instead of closures, Closure::fromCallable() and string or array callables.
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour). Gated by php-8.1.
+Not in any set. Unsafe fix: it can change behaviour. Gated by php-8.1.
 
 </Card>
 </CardGroup>

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/pest/require-type-matcher-first" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour). Runs when pest is installed.
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix. Runs when pest is installed.
 
-## Replaces
+## What it does
 
-- [`EnsureTypeChecksFirst`](https://pestphp.com/docs/rector#content-ensuretypechecksfirstrector) (pest-plugin-rector).
+Ensure type-check matchers (e.g. toBeInt, toBeInstanceOf) appear before value assertions in expect() chains and consecutive expects
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 "pest/require-type-matcher-first" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "pest/require-type-matcher-first" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/pest/require-type-matcher-first -- explain the exception
-```
+- [`EnsureTypeChecksFirst`](https://pestphp.com/docs/rector#content-ensuretypechecksfirstrector) (pest-plugin-rector)
 
-## What it does
-
-Ensure type-check matchers (e.g. toBeInt, toBeInstanceOf) appear before value assertions in expect() chains and consecutive expects
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/pest) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/pest rules](/docs/rules/lint/pest) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

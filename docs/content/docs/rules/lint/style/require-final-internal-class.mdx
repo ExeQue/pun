@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/require-final-internal-class" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`final_internal_class`](https://cs.symfony.com/doc/rules/class_notation/final_internal_class.html) (php-cs-fixer, risky).
+Internal classes should be `final`.
 
 ## Configuration
 
@@ -20,31 +20,20 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/require-final-internal-class" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/require-final-internal-class" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/style/require-final-internal-class -- explain the exception
-```
-
-## What it does
-
-Internal classes should be `final`.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `annotation-exclude` | `list` | Any value of this type | `["@final", "@Entity", "@ORM\\Entity", "@ORM\\Mapping\\Entity", "@Mapping\\Entity", "@Document", "@ODM\\Document"]` | `annotation_exclude` |
-| `annotation-include` | `list` | Any value of this type | `["@internal"]` | `annotation_include` |
-| `consider-absent-docblock-as-internal-class` | `bool` | Any value of this type | `false` | `consider_absent_docblock_as_internal_class` |
-| `exclude` | `list` | Any value of this type | `["final", "Entity", "ORM\\Entity", "ORM\\Mapping\\Entity", "Mapping\\Entity", "Document", "ODM\\Document"]` | `exclude` |
-| `include` | `list` | Any value of this type | `["internal"]` | `include` |
+| `annotation-exclude` | `list` | Any | `["@final", "@Entity", "@ORM\\Entity", "@ORM\\Mapping\\Entity", "@Mapping\\Entity", "@Document", "@ODM\\Document"]` | `annotation_exclude` |
+| `annotation-include` | `list` | Any | `["@internal"]` | `annotation_include` |
+| `consider-absent-docblock-as-internal-class` | `bool` | Any | `false` | `consider_absent_docblock_as_internal_class` |
+| `exclude` | `list` | Any | `["final", "Entity", "ORM\\Entity", "ORM\\Mapping\\Entity", "Mapping\\Entity", "Document", "ODM\\Document"]` | `exclude` |
+| `include` | `list` | Any | `["internal"]` | `include` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`final_internal_class`](https://cs.symfony.com/doc/rules/class_notation/final_internal_class.html) (php-cs-fixer, risky)
+
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

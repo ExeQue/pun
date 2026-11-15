@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/operators/not-with-successor-space" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`not_operator_with_successor_space`](https://cs.symfony.com/doc/rules/operator/not_operator_with_successor_space.html) (php-cs-fixer).
+Logical NOT operators (`!`) should have one trailing whitespace.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "operators/not-with-successor-space" = true
 ```
 
-```php
-// @pun-ignore-file format/operators/not-with-successor-space -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-Logical NOT operators (`!`) should have one trailing whitespace.
+- [`not_operator_with_successor_space`](https://cs.symfony.com/doc/rules/operator/not_operator_with_successor_space.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/operators) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/operators rules](/docs/rules/format/operators) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

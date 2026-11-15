@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpdoc/no-misplaced" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour).
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_to_comment`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_to_comment.html) (php-cs-fixer).
+Docblocks should only be used on structural elements.
 
 ## Configuration
 
@@ -20,28 +20,17 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 "phpdoc/no-misplaced" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpdoc/no-misplaced" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpdoc/no-misplaced -- explain the exception
-```
-
-## What it does
-
-Docblocks should only be used on structural elements.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `allow-before-return-statement` | `bool` | Any value of this type | `false` | `allow_before_return_statement` |
-| `ignored-tags` | `list` | Any value of this type | `[]` | `ignored_tags` |
+| `allow-before-return-statement` | `bool` | Any | `false` | `allow_before_return_statement` |
+| `ignored-tags` | `list` | Any | `[]` | `ignored_tags` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`phpdoc_to_comment`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_to_comment.html) (php-cs-fixer)
+
+[More lint/phpdoc rules](/docs/rules/lint/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

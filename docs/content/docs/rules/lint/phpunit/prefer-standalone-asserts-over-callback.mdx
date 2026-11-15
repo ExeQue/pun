@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-standalone-asserts-over-callback" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (keeps behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Safe fix. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`WithCallbackIdenticalToStandaloneAsserts`](https://getrector.com/rule-detail/with-callback-identical-to-standalone-asserts-rector) (rector-phpunit).
+Replaces identical compare in $this->callable() sole return to standalone PHPUnit asserts that show more detailed failure messages
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: safe (k
 "phpunit/prefer-standalone-asserts-over-callback" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-standalone-asserts-over-callback" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/prefer-standalone-asserts-over-callback -- explain the exception
-```
+- [`WithCallbackIdenticalToStandaloneAsserts`](https://getrector.com/rule-detail/with-callback-identical-to-standalone-asserts-rector) (rector-phpunit)
 
-## What it does
-
-Replaces identical compare in $this->callable() sole return to standalone PHPUnit asserts that show more detailed failure messages
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/phpdoc/trim" />
 
-Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fix: safe (keeps behaviour).
+In the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_trim`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_trim.html) (php-cs-fixer).
+PHPDoc should start and end with content, excluding the very first and last line of the docblocks.
 
 ## Configuration
 
@@ -20,16 +20,10 @@ Enabled by the [`format-laravel`](/docs/rules/presets/format-laravel) preset. Fi
 "phpdoc/trim" = true
 ```
 
-```php
-// @pun-ignore-file format/phpdoc/trim -- explain the exception
-```
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-## What it does
+## Replaces
 
-PHPDoc should start and end with content, excluding the very first and last line of the docblocks.
+- [`phpdoc_trim`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_trim.html) (php-cs-fixer)
 
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/format/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More format/phpdoc rules](/docs/rules/format/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

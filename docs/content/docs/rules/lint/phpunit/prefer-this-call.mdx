@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-this-call" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`PreferPHPUnitThisCall`](https://getrector.com/rule-detail/prefer-p-h-p-unit-this-call-rector) (rector-phpunit).
+Changes PHPUnit calls from self::assert*() to $this->assert*()
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "phpunit/prefer-this-call" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-this-call" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore lint/phpunit/prefer-this-call -- explain the exception
-```
+- [`PreferPHPUnitThisCall`](https://getrector.com/rule-detail/prefer-p-h-p-unit-this-call-rector) (rector-phpunit)
 
-## What it does
-
-Changes PHPUnit calls from self::assert*() to $this->assert*()
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

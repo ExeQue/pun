@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpdoc/no-access" />
 
-Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (keeps behaviour).
+In the [`coding-style`](/docs/rules/sets/coding-style) set. Safe fix.
 
-## Replaces
+## What it does
 
-- [`phpdoc_no_access`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_no_access.html) (php-cs-fixer).
+`@access` annotations must be removed from PHPDoc.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Enabled by the [`coding-style`](/docs/rules/sets/coding-style) set. Fix: safe (k
 "phpdoc/no-access" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpdoc/no-access" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/phpdoc/no-access -- explain the exception
-```
+- [`phpdoc_no_access`](https://cs.symfony.com/doc/rules/phpdoc/phpdoc_no_access.html) (php-cs-fixer)
 
-## What it does
-
-`@access` annotations must be removed from PHPDoc.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/phpdoc) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/phpdoc rules](/docs/rules/lint/phpdoc) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

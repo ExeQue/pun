@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/phpunit/prefer-dedicated-assertion" />
 
-Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe (can change behaviour). Runs when phpunit is installed.
+In the [`code-quality`](/docs/rules/sets/code-quality) set. Unsafe fix: it can change behaviour. Runs when phpunit is installed.
 
-## Replaces
+## What it does
 
-- [`php_unit_dedicate_assert`](https://cs.symfony.com/doc/rules/php_unit/php_unit_dedicate_assert.html) (php-cs-fixer, risky).
+Use dedicated PHPUnit assertions such as assertFileExists() instead of assertTrue(file_exists()).
 
 ## Configuration
 
@@ -20,21 +20,7 @@ Enabled by the [`code-quality`](/docs/rules/sets/code-quality) set. Fix: unsafe 
 "phpunit/prefer-dedicated-assertion" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
-
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "phpunit/prefer-dedicated-assertion" = "off" }
-```
-
-```php
-// @pun-ignore-file lint/phpunit/prefer-dedicated-assertion -- explain the exception
-```
-
-## What it does
-
-Use dedicated PHPUnit assertions such as assertFileExists() instead of assertTrue(file_exists()).
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
@@ -42,5 +28,8 @@ Use dedicated PHPUnit assertions such as assertFileExists() instead of assertTru
 | --- | --- | --- | --- | --- |
 | `target` | `enum` | `3.0`, `3.5`, `5.0`, `5.6`, `newest` | `"newest"` | `target` |
 
+## Replaces
 
-[Group reference](/docs/rules/lint/phpunit) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`php_unit_dedicate_assert`](https://cs.symfony.com/doc/rules/php_unit/php_unit_dedicate_assert.html) (php-cs-fixer, risky)
+
+[More lint/phpunit rules](/docs/rules/lint/phpunit) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

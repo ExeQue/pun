@@ -7,12 +7,7 @@ pagination: false
 
 <RuleId id="analyse/dead-code/unused-argument" />
 
-Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-essential`](/docs/rules/presets/analyse-essential), [`analyse-recommended`](/docs/rules/presets/analyse-recommended), [`analyse-strict`](/docs/rules/presets/analyse-strict), [`analyse-max`](/docs/rules/presets/analyse-max) presets. Fix: none (report only).
-
-## Replaces
-
-- [`DefineParametersRule`](https://phpstan.org/error-identifiers/argument.unused) (phpstan-classes).
-- [`argument.unused`](https://phpstan.org/error-identifiers/argument.unused) (phpstan).
+In the [`analyse-basic`](/docs/rules/presets/analyse-basic) preset and every stricter one. Report only.
 
 ## Configuration
 
@@ -21,13 +16,11 @@ Enabled by the [`analyse-basic`](/docs/rules/presets/analyse-basic), [`analyse-e
 "dead-code/unused-argument" = "on"
 ```
 
-```php
-// @pun-ignore analyse/dead-code/unused-argument -- explain the exception
-```
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
+## Replaces
 
-## Options
+- [`DefineParametersRule`](https://phpstan.org/error-identifiers/argument.unused) (phpstan-classes)
+- [`argument.unused`](https://phpstan.org/error-identifiers/argument.unused) (phpstan)
 
-No configurable options.
-
-[Group reference](/docs/rules/analyse/dead-code) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More analyse/dead-code rules](/docs/rules/analyse/dead-code) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="lint/style/prefer-cast-over-intval" />
 
-Not in any preset or set. Enable it by name or group. Fix: unsafe (can change behaviour).
+Not in any set. Unsafe fix: it can change behaviour.
 
-## Replaces
+## What it does
 
-- [`modernize_types_casting`](https://cs.symfony.com/doc/rules/cast_notation/modernize_types_casting.html) (php-cs-fixer, risky).
+Replaces `intval`, `floatval`, `doubleval`, `strval` and `boolval` function calls with according type casting operator.
 
 ## Configuration
 
@@ -20,24 +20,10 @@ Not in any preset or set. Enable it by name or group. Fix: unsafe (can change be
 "style/prefer-cast-over-intval" = "error"
 ```
 
-To set it for some files only, add an [override](/docs/configuration/pun-toml#lint). When several match a file, the last one wins.
+To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
-```toml title="pun.toml"
-[[lint.overrides]]
-files = ["tests/**"]
-rules = { "style/prefer-cast-over-intval" = "off" }
-```
+## Replaces
 
-```php
-// @pun-ignore-file lint/style/prefer-cast-over-intval -- explain the exception
-```
+- [`modernize_types_casting`](https://cs.symfony.com/doc/rules/cast_notation/modernize_types_casting.html) (php-cs-fixer, risky)
 
-## What it does
-
-Replaces `intval`, `floatval`, `doubleval`, `strval` and `boolval` function calls with according type casting operator.
-
-## Options
-
-No configurable options.
-
-[Group reference](/docs/rules/lint/style) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+[More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

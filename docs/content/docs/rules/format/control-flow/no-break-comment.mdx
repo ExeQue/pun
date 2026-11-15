@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/control-flow/no-break-comment" />
 
-Enabled by the [`format-psr12`](/docs/rules/presets/format-psr12) preset. Fix: safe (keeps behaviour).
+In the [`format-psr12`](/docs/rules/presets/format-psr12) preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`no_break_comment`](https://cs.symfony.com/doc/rules/control_structure/no_break_comment.html) (php-cs-fixer).
+There must be a comment when fall-through is intentional in a non-empty case body.
 
 ## Configuration
 
@@ -20,19 +20,16 @@ Enabled by the [`format-psr12`](/docs/rules/presets/format-psr12) preset. Fix: s
 "control-flow/no-break-comment" = true
 ```
 
-```php
-// @pun-ignore-file format/control-flow/no-break-comment -- explain the exception
-```
-
-## What it does
-
-There must be a comment when fall-through is intentional in a non-empty case body.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `comment-text` | `string` | Any value of this type | `"no break"` | `comment_text` |
+| `comment-text` | `string` | Any | `"no break"` | `comment_text` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/control-flow) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`no_break_comment`](https://cs.symfony.com/doc/rules/control_structure/no_break_comment.html) (php-cs-fixer)
+
+[More format/control-flow rules](/docs/rules/format/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

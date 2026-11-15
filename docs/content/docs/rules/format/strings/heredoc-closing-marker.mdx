@@ -7,11 +7,11 @@ pagination: false
 
 <RuleId id="format/strings/heredoc-closing-marker" />
 
-Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour).
+Not in any preset. Safe fix.
 
-## Replaces
+## What it does
 
-- [`heredoc_closing_marker`](https://cs.symfony.com/doc/rules/string_notation/heredoc_closing_marker.html) (php-cs-fixer).
+Unify `heredoc` or `nowdoc` closing marker.
 
 ## Configuration
 
@@ -20,21 +20,18 @@ Not in any preset or set. Enable it by name or group. Fix: safe (keeps behaviour
 "strings/heredoc-closing-marker" = true
 ```
 
-```php
-// @pun-ignore-file format/strings/heredoc-closing-marker -- explain the exception
-```
-
-## What it does
-
-Unify `heredoc` or `nowdoc` closing marker.
+To skip it in some files, add a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
 ## Options
 
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
-| `closing-marker` | `string` | Any value of this type | `"EOD"` | `closing_marker` |
-| `explicit-heredoc-style` | `bool` | Any value of this type | `false` | `explicit_heredoc_style` |
-| `reserved-closing-markers` | `list` | Any value of this type | `["CSS", "DIFF", "HTML", "JS", "JSON", "MD", "PHP", "PYTHON", "RST", "TS", "SQL", "XML", "YAML"]` | `reserved_closing_markers` |
+| `closing-marker` | `string` | Any | `"EOD"` | `closing_marker` |
+| `explicit-heredoc-style` | `bool` | Any | `false` | `explicit_heredoc_style` |
+| `reserved-closing-markers` | `list` | Any | `["CSS", "DIFF", "HTML", "JS", "JSON", "MD", "PHP", "PYTHON", "RST", "TS", "SQL", "XML", "YAML"]` | `reserved_closing_markers` |
 
+## Replaces
 
-[Group reference](/docs/rules/format/strings) · [Source mapping](https://github.com/shipfastlabs/pun/blob/main/crates/pun-config/rules/mapping.toml) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
+- [`heredoc_closing_marker`](https://cs.symfony.com/doc/rules/string_notation/heredoc_closing_marker.html) (php-cs-fixer)
+
+[More format/strings rules](/docs/rules/format/strings) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
