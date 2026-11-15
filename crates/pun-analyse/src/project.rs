@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use serde_json::Value as Json;
 
 use crate::relative_path::{RelativePath, absolute};
-use crate::{display, php_files};
+use crate::{AnalyseExtension, display, php_files};
 
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -519,7 +519,7 @@ impl Project {
             ProjectOptions::PRECISE_UNUSED_PARAMETER_LINE,
             toggle("reportPreciseLineForUnusedFunctionParameter"),
         );
-        Project {
+        let mut project = Project {
             options,
             analysed,
             scanned,
@@ -576,14 +576,19 @@ impl Project {
             stubs: strings(params, "stubFiles")
                 .into_iter()
                 .map(PathBuf::from)
-                .chain(match params.get_str("noModelMake") {
-                    Some(_) => crate::larastan::stubs::files(root),
-                    None => Vec::new(),
-                })
                 .collect(),
             reported: None,
             method_rules: MethodRules::default(),
-        }
+        };
+        let stubs: Vec<_> = (project.extensions())
+            .flat_map(|e| e.stub_files(root))
+            .collect();
+        project.stubs.extend(stubs);
+        project
+    }
+
+    pub(crate) fn extensions(&self) -> impl Iterator<Item = &dyn AnalyseExtension> + Clone {
+        self.larastan.iter().map(|l| l as &dyn AnalyseExtension)
     }
 
     pub fn new(analysed: Vec<PathBuf>, scanned: Vec<PathBuf>) -> Project {

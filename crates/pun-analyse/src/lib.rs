@@ -1,6 +1,7 @@
 mod autoload;
 mod bitset;
 mod codebase;
+mod extension;
 mod larastan;
 mod laravel;
 mod mago;
@@ -15,6 +16,7 @@ use pun_phpstan::config::Resolved;
 use rayon::prelude::*;
 
 pub use codebase::CouldNotReadFile;
+pub use extension::AnalyseExtension;
 pub use laravel::Laravel;
 pub use mago::{Dumped, MagoIssue, MagoRun, run_mago};
 pub use project::{

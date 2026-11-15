@@ -305,6 +305,24 @@ impl Larastan {
     }
 }
 
+impl crate::AnalyseExtension for Larastan {
+    fn stub_files(&self, root: &Path) -> Vec<PathBuf> {
+        crate::larastan::stubs::files(root)
+    }
+
+    fn bundled_stub(&self, path: &Path) -> Option<&'static [u8]> {
+        crate::larastan::stubs::bundled(path)
+    }
+
+    fn class_aliases(&self) -> Vec<(String, String)> {
+        crate::larastan::aliases::load(&self.root)
+    }
+
+    fn prepare_codebase(&self, codebase: &mut mago_codex::metadata::CodebaseMetadata) {
+        crate::larastan::app::App::load(&self.root).contract_mixins(codebase);
+    }
+}
+
 fn app_root(root: &Path) -> PathBuf {
     let skeleton = root.join("vendor/orchestra/testbench-core/laravel");
     if !root.join("bootstrap/app.php").is_file() && skeleton.join("bootstrap/app.php").is_file() {

@@ -90,12 +90,7 @@ impl std::error::Error for CouldNotReadFile {
 pub(crate) fn read(path: &Path, file_type: FileType) -> Result<Option<File>, CouldNotReadFile> {
     let contents = match std::fs::read(path) {
         Ok(contents) => contents,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            match crate::larastan::stubs::bundled(path) {
-                Some(contents) => contents.to_vec(),
-                None => return Ok(None),
-            }
-        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(source) => {
             return Err(CouldNotReadFile {
                 path: path.to_path_buf(),
@@ -103,13 +98,17 @@ pub(crate) fn read(path: &Path, file_type: FileType) -> Result<Option<File>, Cou
             });
         }
     };
+    Ok(Some(from_contents(path, file_type, Cow::Owned(contents))))
+}
+
+fn from_contents(path: &Path, file_type: FileType, contents: Cow<'static, [u8]>) -> File {
     let name = path.to_string_lossy().into_owned().into_bytes();
-    Ok(Some(File::new(
+    File::new(
         Cow::Owned(name),
         file_type,
         Some(path.to_path_buf()),
-        Cow::Owned(contents),
-    )))
+        contents,
+    )
 }
 
 pub(crate) fn parse<'arena>(
@@ -551,10 +550,12 @@ pub(crate) fn build(
     let _ = mago_codex::ttype::expander::COLLECTION_OF_RESULT.set(crate::laravel::collection_of);
     let _ = mago_codex::ttype::expander::BUILDER_OF_RESULT.set(crate::rules::late_builder);
     let version = project.php_version.to_mago();
-    let aliases = laravel_root
-        .or_else(|| project.larastan.as_ref().map(|l| l.root.as_path()))
-        .map(crate::larastan::aliases::load)
-        .unwrap_or_default();
+    let aliases = match laravel_root {
+        Some(root) => crate::larastan::aliases::load(root),
+        None => (project.extensions())
+            .flat_map(|e| e.class_aliases())
+            .collect(),
+    };
     let mut seen = HashSet::new();
     let mut files: Vec<_> = project
         .analysed
@@ -607,8 +608,16 @@ pub(crate) fn build(
                         let mut declarations = Vec::new();
                         for &i in chunk {
                             let (path, file_type) = files[i];
-                            let Some(file) = read(path, file_type)? else {
-                                continue;
+                            let file = match read(path, file_type)? {
+                                Some(file) => file,
+                                None => {
+                                    match project.extensions().find_map(|e| e.bundled_stub(path)) {
+                                        Some(contents) => {
+                                            from_contents(path, file_type, Cow::Borrowed(contents))
+                                        }
+                                        None => continue,
+                                    }
+                                }
                             };
                             let (symbols, facts) = scan(
                                 arena,
@@ -698,8 +707,8 @@ pub(crate) fn build(
         .map(|(key, f)| (*key, f.clone()))
         .collect();
     metadata.function_likes.extend(pseudo);
-    if let Some(larastan) = &project.larastan {
-        crate::larastan::app::App::load(&larastan.root).contract_mixins(&mut metadata);
+    for extension in project.extensions() {
+        extension.prepare_codebase(&mut metadata);
     }
     populate_codebase_parallel(
         &mut metadata,
