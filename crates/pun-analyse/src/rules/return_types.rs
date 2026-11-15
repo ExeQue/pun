@@ -42,58 +42,11 @@ use pun_phpstan::types::Tri;
 pub(super) fn registry(
     contents: &[u8],
     names: &mago_names::ResolvedNames<'_>,
-    larastan: Option<&super::Larastan>,
+    extensions: &[&dyn crate::AnalyseExtension],
 ) -> PluginRegistry {
     let mut registry = PluginRegistry::new();
-    if let Some(larastan) = larastan {
-        registry.register_method_provider(super::larastan::Macros(
-            Arc::clone(&larastan.app),
-            Arc::clone(&larastan.macros),
-        ));
-        if larastan
-            .switches
-            .contains(crate::LarastanSwitches::CHECK_CONFIG_TYPES)
-        {
-            registry.register_function_provider(super::larastan::ConfigTypes(Arc::clone(
-                &larastan.configs,
-            )));
-            registry.register_method_provider(super::larastan::ConfigTypes(Arc::clone(
-                &larastan.configs,
-            )));
-        }
-        registry
-            .register_method_provider(super::larastan::HelperMethods(Arc::clone(&larastan.app)));
-        registry.register_method_provider(super::larastan::ModelForwards(contents.to_vec()));
-        registry.register_method_provider(super::larastan::ConsoleTypes(Arc::clone(
-            &larastan.commands,
-        )));
-        registry.register_method_provider(super::larastan::AppMethods(
-            Arc::clone(&larastan.app),
-            contents.to_vec(),
-        ));
-        registry.register_function_provider(super::larastan::AppFunctions(
-            Arc::clone(&larastan.app),
-            larastan
-                .switches
-                .contains(crate::LarastanSwitches::INFER_FROM_USAGE),
-        ));
-        registry.register_function_provider(super::larastan::Tap);
-        registry.register_function_assertion_provider(super::larastan::AbortIf);
-        registry.register_function_provider(super::larastan::HelperFunctions {
-            app: Arc::clone(&larastan.app),
-            generalize_env: larastan
-                .switches
-                .contains(crate::LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
-        });
-        registry
-            .register_expression_hook(super::larastan::ContainerOffsets(Arc::clone(&larastan.app)));
-        registry.register_expression_hook(super::larastan::ScopeStaticCalls(
-            names
-                .iter()
-                .map(|(start, _, name, _)| (start, name.to_vec()))
-                .collect(),
-        ));
-        crate::laravel::register_models(&mut registry, Arc::clone(&larastan.models));
+    for extension in extensions {
+        extension.register(&mut registry, contents, names);
     }
     registry.register_function_provider(Benevolent);
     registry.register_function_provider(ReplaceOfMixed);

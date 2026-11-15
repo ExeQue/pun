@@ -155,6 +155,12 @@ impl Checks {
             });
         }
     }
+
+    fn extensions(&self) -> impl Iterator<Item = &dyn crate::AnalyseExtension> {
+        self.larastan
+            .iter()
+            .map(|l| l as &dyn crate::AnalyseExtension)
+    }
 }
 
 impl Checks {
@@ -172,7 +178,7 @@ impl Checks {
         }
         let mut larastan = project.larastan.clone();
         if let Some(l) = &mut larastan {
-            l.load(project, codebase);
+            crate::AnalyseExtension::load(l, project, codebase);
         }
         let mut switches = Switches::empty();
         switches.set(
@@ -504,7 +510,10 @@ fn checker<'a, 'arena>(
         .function_likes
         .get(&file.id)
         .map_or(&[][..], Vec::as_slice);
-    let mut typed = super::larastan::typed_expressions(project.larastan.as_ref(), names, program);
+    let extensions: Vec<_> = project.extensions().collect();
+    let mut typed: Vec<_> = (extensions.iter())
+        .flat_map(|e| e.typed_expressions(names, program))
+        .collect();
     typed.extend(super::internal::typed_expressions(
         project.internal.as_ref(),
         program,
@@ -590,7 +599,7 @@ fn checker<'a, 'arena>(
             level: project.level,
             extra: typed,
             calls,
-            larastan: project.larastan.as_ref(),
+            extensions: &extensions,
             trait_class,
         },
     );
@@ -842,9 +851,9 @@ fn walk<'arena>(
     program: &'arena Program<'arena>,
     project: &Checks,
 ) {
-    let (codebase, larastan) = (checker.codebase, checker.larastan);
+    let codebase = checker.codebase;
     let nodes = |name: &str, args: &[pun_phpstan::types::Type]| {
-        larastan.and_then(|l| super::larastan::type_node(codebase, l, name, args))
+        (project.extensions()).find_map(|e| e.type_node(codebase, name, args))
     };
     pun_phpstan::resolve::with_type_aliases(&project.type_aliases, || {
         pun_phpstan::resolve::with_type_nodes(&nodes, || checker.walk_program(program, &mut ()));

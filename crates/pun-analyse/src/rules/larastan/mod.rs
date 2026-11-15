@@ -16,6 +16,7 @@ mod relations;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
@@ -157,39 +158,6 @@ impl Larastan {
         }
     }
 
-    pub(crate) fn load(
-        &mut self,
-        project: &crate::Project,
-        codebase: &mago_codex::metadata::CodebaseMetadata,
-    ) {
-        let app = crate::Laravel {
-            root: &self.root,
-            parse_casts_method: self
-                .switches
-                .contains(LarastanSwitches::PARSE_MODEL_CASTS_METHOD),
-        };
-        (self.database_properties, self.table_columns) =
-            crate::laravel::database_properties(app, project, codebase);
-        self.models = std::sync::Arc::new(crate::laravel::models(app, project, codebase));
-        self.commands = std::sync::Arc::new(crate::larastan::console::commands(project, codebase));
-        self.app = std::sync::Arc::new(crate::larastan::app::App::load(&self.root));
-        self.macros = std::sync::Arc::new(crate::larastan::macros::Macros::load(
-            &self.bootstrap_files,
-            &self.root,
-            codebase,
-            &self.app,
-        ));
-        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
-            self.configs = std::sync::Arc::new(crate::larastan::config::Configs::load(
-                &self.config_directories,
-                &self.root,
-                codebase,
-                self.switches
-                    .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
-            ));
-        }
-    }
-
     pub fn from_params(root: &Path, params: &Array) -> Option<Larastan> {
         params.get_str("noModelMake")?;
         let flag = |k: &str, default: bool| match params.get_str(k) {
@@ -320,6 +288,103 @@ impl crate::AnalyseExtension for Larastan {
 
     fn prepare_codebase(&self, codebase: &mut mago_codex::metadata::CodebaseMetadata) {
         crate::larastan::app::App::load(&self.root).contract_mixins(codebase);
+    }
+
+    fn load(
+        &mut self,
+        project: &crate::Project,
+        codebase: &mago_codex::metadata::CodebaseMetadata,
+    ) {
+        let app = crate::Laravel {
+            root: &self.root,
+            parse_casts_method: self
+                .switches
+                .contains(LarastanSwitches::PARSE_MODEL_CASTS_METHOD),
+        };
+        (self.database_properties, self.table_columns) =
+            crate::laravel::database_properties(app, project, codebase);
+        self.models = Arc::new(crate::laravel::models(app, project, codebase));
+        self.commands = Arc::new(crate::larastan::console::commands(project, codebase));
+        self.app = Arc::new(crate::larastan::app::App::load(&self.root));
+        self.macros = Arc::new(crate::larastan::macros::Macros::load(
+            &self.bootstrap_files,
+            &self.root,
+            codebase,
+            &self.app,
+        ));
+        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
+            self.configs = Arc::new(crate::larastan::config::Configs::load(
+                &self.config_directories,
+                &self.root,
+                codebase,
+                self.switches
+                    .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
+            ));
+        }
+    }
+
+    fn register(
+        &self,
+        registry: &mut mago_analyzer::plugin::PluginRegistry,
+        contents: &[u8],
+        names: &mago_names::ResolvedNames<'_>,
+    ) {
+        registry.register_method_provider(Macros(Arc::clone(&self.app), Arc::clone(&self.macros)));
+        if self.switches.contains(LarastanSwitches::CHECK_CONFIG_TYPES) {
+            registry.register_function_provider(ConfigTypes(Arc::clone(&self.configs)));
+            registry.register_method_provider(ConfigTypes(Arc::clone(&self.configs)));
+        }
+        registry.register_method_provider(HelperMethods(Arc::clone(&self.app)));
+        registry.register_method_provider(ModelForwards(contents.to_vec()));
+        registry.register_method_provider(ConsoleTypes(Arc::clone(&self.commands)));
+        registry.register_method_provider(AppMethods(Arc::clone(&self.app), contents.to_vec()));
+        registry.register_function_provider(AppFunctions(
+            Arc::clone(&self.app),
+            self.switches.contains(LarastanSwitches::INFER_FROM_USAGE),
+        ));
+        registry.register_function_provider(Tap);
+        registry.register_function_assertion_provider(AbortIf);
+        registry.register_function_provider(HelperFunctions {
+            app: Arc::clone(&self.app),
+            generalize_env: self
+                .switches
+                .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
+        });
+        registry.register_expression_hook(ContainerOffsets(Arc::clone(&self.app)));
+        registry.register_expression_hook(ScopeStaticCalls(
+            names
+                .iter()
+                .map(|(start, _, name, _)| (start, name.to_vec()))
+                .collect(),
+        ));
+        crate::laravel::register_models(registry, Arc::clone(&self.models));
+    }
+
+    fn settings(&self, settings: &mut mago_analyzer::settings::Settings) {
+        settings.mixin_receiver_binding = true;
+    }
+
+    fn typed_expressions<'arena>(
+        &self,
+        names: &mago_names::ResolvedNames<'arena>,
+        program: &Program<'arena>,
+    ) -> Vec<Span> {
+        let mut wanted = Wanted {
+            larastan: self,
+            names,
+            spans: Vec::new(),
+        };
+        wanted.walk_program(program, &mut ());
+        wanted.spans
+    }
+
+    fn type_node(
+        &self,
+        codebase: &mago_codex::metadata::CodebaseMetadata,
+        name: &str,
+        args: &[pun_phpstan::types::Type],
+    ) -> Option<pun_phpstan::types::Type> {
+        type_node(codebase, self, name, args)
     }
 }
 
@@ -515,23 +580,6 @@ impl Checker<'_, '_> {
     }
 }
 
-pub(crate) fn typed_expressions<'arena>(
-    larastan: Option<&Larastan>,
-    names: &mago_names::ResolvedNames<'arena>,
-    program: &Program<'arena>,
-) -> Vec<Span> {
-    let Some(larastan) = larastan else {
-        return Vec::new();
-    };
-    let mut wanted = Wanted {
-        larastan,
-        names,
-        spans: Vec::new(),
-    };
-    wanted.walk_program(program, &mut ());
-    wanted.spans
-}
-
 struct Wanted<'l, 'n, 'arena> {
     larastan: &'l Larastan,
     names: &'n mago_names::ResolvedNames<'arena>,
@@ -703,7 +751,7 @@ fn late_of(
         .map_or(Type::Never(NeverKind::Implicit), |t| from(&t))
 }
 
-pub(crate) fn type_node(
+fn type_node(
     codebase: &mago_codex::metadata::CodebaseMetadata,
     larastan: &Larastan,
     name: &str,

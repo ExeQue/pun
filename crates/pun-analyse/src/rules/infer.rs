@@ -134,7 +134,7 @@ pub(super) struct Request<'a> {
     pub(super) level: u8,
     pub(super) extra: Vec<Span>,
     pub(super) calls: Vec<CallScopeRequest>,
-    pub(super) larastan: Option<&'a super::Larastan>,
+    pub(super) extensions: &'a [&'a dyn crate::AnalyseExtension],
     pub(super) trait_class: Option<&'a str>,
 }
 
@@ -168,7 +168,7 @@ struct Observed<'a> {
     variables: Variables,
     initializations: Vec<(Span, PropertyInitializationRequest)>,
     by_ref: Vec<(Span, Vec<Vec<u8>>)>,
-    larastan: Option<&'a super::Larastan>,
+    extensions: &'a [&'a dyn crate::AnalyseExtension],
     trait_class: Option<&'a str>,
     template_arguments: bool,
 }
@@ -214,7 +214,7 @@ pub(super) fn infer(run: &Run<'_, '_>, request: Request<'_>) -> Inferred {
             variables: Variables::Observe,
             initializations,
             by_ref,
-            larastan: request.larastan,
+            extensions: request.extensions,
             trait_class: request.trait_class,
             template_arguments: run.switches.contains(Switches::TEMPLATE_ARGUMENTS),
         },
@@ -231,7 +231,7 @@ pub(super) fn analyse(run: &Run<'_, '_>, wanted: Vec<Span>, watched: Vec<Span>) 
             variables: Variables::Skip,
             initializations: Vec::new(),
             by_ref: Vec::new(),
-            larastan: None,
+            extensions: &[],
             trait_class: None,
             template_arguments: false,
         },
@@ -241,7 +241,7 @@ pub(super) fn analyse(run: &Run<'_, '_>, wanted: Vec<Span>, watched: Vec<Span>) 
 fn observe_template_arguments<'arena>(
     run: &Run<'_, 'arena>,
     program: &'arena Program<'arena>,
-    larastan: Option<&super::Larastan>,
+    extensions: &[&dyn crate::AnalyseExtension],
     settings: &Settings,
 ) -> Resolutions {
     let Run {
@@ -252,7 +252,7 @@ fn observe_template_arguments<'arena>(
         php_version,
         ..
     } = *run;
-    let mut registry = super::return_types::registry(&file.contents, names, larastan);
+    let mut registry = super::return_types::registry(&file.contents, names, extensions);
     super::regex_shapes::register(&mut registry, php_version);
     let mut settings = settings.clone();
     settings.template_arguments = TemplateArgumentMode::Observe;
@@ -290,7 +290,7 @@ fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
         variables: observe_variables,
         initializations,
         by_ref,
-        larastan,
+        extensions,
         trait_class,
         template_arguments,
     } = observed;
@@ -324,7 +324,7 @@ fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
     let children = children.spans;
     wanted.extend(children);
     wanted.extend(origins::dependencies(&origins, &wanted));
-    let mut registry = super::return_types::registry(&file.contents, names, larastan);
+    let mut registry = super::return_types::registry(&file.contents, names, extensions);
     super::regex_shapes::register(&mut registry, php_version);
     let found = Arc::new(Mutex::new(Found {
         allowed: if observe_variables {
@@ -381,7 +381,10 @@ fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
     settings.track_variable_flow = observe_variables;
     settings.call_scope_observations = calls;
     settings.trait_context_class = trait_class.map(|class| mago_word::word(class.as_bytes()));
-    settings.mixin_receiver_binding = larastan.is_some();
+    settings.mixin_receiver_binding = false;
+    for extension in extensions {
+        extension.settings(&mut settings);
+    }
     let retain_methods = !initializations.is_empty();
     settings.property_initialization_observations = initializations
         .iter()
@@ -398,7 +401,7 @@ fn analyse_observed(run: &Run<'_, '_>, observed: Observed<'_>) -> Inferred {
     });
     if template_arguments {
         settings.template_arguments = TemplateArgumentMode::Resolve(Arc::new(
-            observe_template_arguments(run, program, larastan, &settings),
+            observe_template_arguments(run, program, extensions, &settings),
         ));
     }
     let analyzer = Analyzer::new(arena, file, names, codebase, &registry, settings);
