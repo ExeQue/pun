@@ -4,6 +4,7 @@ mod common;
 
 use common::pty::{pun, pun_with};
 use common::read;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 fn pty(dir: &Path, keys: &str) -> String {
@@ -59,7 +60,10 @@ fn writes_pun_toml_and_rewrites_ignores() {
         out,
         format!(
             "--- pun.toml\n+++ pun.toml\n@@ -1,0 +1,9 @@\n{}--- app/Ignored.php\n+++ app/Ignored.php\n@@ -1,5 +1,5 @@\n <?php\n \n-// @php-cs-fixer-ignore array_syntax,final_class\n+// @pun-ignore-file format/arrays/syntax,lint/style/require-final-class\n $a = array(1);\n $s = '// @php-cs-fixer-ignore array_syntax';\n ok pint.json        -> [format] preset empty, 1 rule changed, 1 rule -> [lint]\n ok ignore comments  -> @pun-ignore-file in 1 file\n{UNKNOWN}{PR} - Dry run: would write pun.toml\n",
-            TOML.lines().map(|l| format!("+{l}\n")).collect::<String>()
+            TOML.lines().fold(String::new(), |mut out, l| {
+                let _ = writeln!(out, "+{l}");
+                out
+            })
         )
     );
     assert_eq!(err, "");

@@ -391,6 +391,10 @@ fn takes_phar_bleeding_edge() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn composes_the_level_extensions_and_parameters() {
     let at_in =
         |level: u8, ext: &[&str], strict: &[(&str, bool)], files: &[(&str, &str)], format: &str| {

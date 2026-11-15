@@ -1,4 +1,5 @@
 use super::{Renderer, Role, Step, Summary, plural};
+use std::fmt::Write as _;
 use std::path::PathBuf;
 
 #[derive(Clone, Debug, Default)]
@@ -49,7 +50,7 @@ impl Renderer {
                 plural(s.files, "file", "files")
             );
             if s.fixable > 0 {
-                text.push_str(&format!(" {dot} {} fixable", s.fixable));
+                let _ = write!(text, " {dot} {} fixable", s.fixable);
             }
             text
         });

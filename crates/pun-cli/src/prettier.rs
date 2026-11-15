@@ -1,15 +1,19 @@
 use crate::report::Abort;
 use std::path::Path;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn ensure(root: &Path, enabled: bool) -> Option<Abort> {
-    if !enabled {
-        return None;
-    }
     const REQUIRED: [(&str, &str); 3] = [
         ("prettier", "^3.9.6"),
         ("prettier-plugin-blade", "^3.3.3"),
         ("prettier-plugin-tailwindcss", "^0.8.1"),
     ];
+    if !enabled {
+        return None;
+    }
     let probes = pun_fixers::prettier::probe(&REQUIRED.map(|r| r.0));
     let Some(probes) = probes else {
         let mut abort = Abort::pint(

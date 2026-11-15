@@ -1,4 +1,4 @@
-//! GitHub Actions annotations (output.md Build 4): PHPStan's GithubErrorFormatter
+//! GitHub Actions annotations (output.md Build 4): PHPStan's `GithubErrorFormatter`
 //! (.oracle/phpstan-src/src/Command/ErrorFormatter/GithubErrorFormatter.php), one workflow command per line.
 //!
 //! `::error file=<path>,line=<n>,col=<c>,title=<rule>::<message>` for a finding, `::warning …` for a lint warning,

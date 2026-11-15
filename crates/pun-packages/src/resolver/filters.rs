@@ -209,7 +209,7 @@ fn duration(v: Option<&Value>) -> Result<Option<i64>> {
         "minute" => 60,
         "hour" => 3600,
         "day" => 86400,
-        "week" => 604800,
+        "week" => 604_800,
         _ => 0,
     };
     if digits.is_empty() || seconds == 0 {
@@ -242,6 +242,10 @@ fn env_bool(env: Env, name: &str) -> Result<Option<bool>> {
 }
 
 impl Filters {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "long; to be split (code audit: functions over 100 lines)"
+    )]
     pub fn from_config(config: Option<&Map<String, Value>>, env: Env) -> Result<Filters> {
         let get = |k: &str| config.and_then(|c| c.get(k));
         let policy = match env_bool(env, "COMPOSER_POLICY")? {
@@ -491,6 +495,10 @@ impl Filters {
     }
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "the date parts of the days-from-civil algorithm"
+)]
 pub fn timestamp(s: &str) -> Option<i64> {
     let s = s.trim();
     let num = |a: usize, b: usize| s.get(a..b)?.parse::<i64>().ok();
@@ -519,7 +527,7 @@ pub fn timestamp(s: &str) -> Option<i64> {
     let yoe = y - era * 400;
     let doy = (153 * m + 2) / 5 + d - 1;
     let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    let days = era * 146097 + doe - 719468;
+    let days = era * 146_097 + doe - 719_468;
     Some(days * 86400 + hh * 3600 + mm * 60 + ss - offset)
 }
 
@@ -530,12 +538,12 @@ mod tests {
     #[test]
     fn timestamps_match_php() {
         for (s, want) in [
-            ("2020-01-01T00:00:00+00:00", 1577836800),
-            ("2999-01-01T00:00:00+00:00", 32472144000),
-            ("2024-02-29 13:14:15", 1709212455),
-            ("2024-03-01T01:00:00+02:00", 1709247600),
-            ("1999-12-31", 946598400),
-            ("2024-07-01T00:00:00.123-05:30", 1719811800),
+            ("2020-01-01T00:00:00+00:00", 1_577_836_800),
+            ("2999-01-01T00:00:00+00:00", 32_472_144_000),
+            ("2024-02-29 13:14:15", 1_709_212_455),
+            ("2024-03-01T01:00:00+02:00", 1_709_247_600),
+            ("1999-12-31", 946_598_400),
+            ("2024-07-01T00:00:00.123-05:30", 1_719_811_800),
         ] {
             assert_eq!(timestamp(s), Some(want), "{s}");
         }
@@ -545,8 +553,8 @@ mod tests {
     #[test]
     fn durations_parse_as_composer() {
         let d = |s: &str| duration(Some(&Value::String(s.into())));
-        assert_eq!(d("1 week").unwrap(), Some(604800));
-        assert_eq!(d("3days").unwrap(), Some(259200));
+        assert_eq!(d("1 week").unwrap(), Some(604_800));
+        assert_eq!(d("3days").unwrap(), Some(259_200));
         assert_eq!(d("90").unwrap(), Some(90));
         assert_eq!(d("0").unwrap(), None);
         assert!(d("1 fortnight").is_err());
@@ -558,6 +566,10 @@ mod tests {
         assert_eq!(timestamp("2024x01x01"), None);
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn parse(env: &[(&str, &str)], config: Value) -> Result<Filters, String> {
         let env = |k: &str| {
             (env.iter())
@@ -585,6 +597,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn reads_policy_as_composer() {
         use serde_json::json;
         let base = json!({"advisories": true, "ignore": [], "abandoned": false, "ignore-abandoned": [], "malware": true, "cooldown": null, "lists": []});
@@ -686,7 +702,7 @@ mod tests {
             (
                 vec![("COMPOSER_POLICY_COOLDOWN_PERIOD", "2 days")],
                 json!({"policy": {"cooldown": false}}),
-                with(json!({"cooldown": 172800})),
+                with(json!({"cooldown": 172_800})),
             ),
             (
                 vec![("COMPOSER_POLICY_COOLDOWN_BLOCK", "false")],
@@ -777,7 +793,7 @@ mod tests {
 
     fn package(data: Value) -> Package {
         let mut arena = vec![];
-        let data = data.as_object().unwrap().clone();
+        let data = serde_json::from_value(data).unwrap();
         super::super::package::load(data, Origin::Repository(1), &mut arena).unwrap();
         arena.pop().unwrap()
     }

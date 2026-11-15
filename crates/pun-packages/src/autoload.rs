@@ -109,12 +109,6 @@ impl Pkg<'_> {
 }
 
 fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
-    let mut usage: HashMap<String, Vec<String>> = HashMap::new();
-    for p in &packages {
-        for (target, _) in p.links("require") {
-            usage.entry(target).or_default().push(p.name.clone());
-        }
-    }
     fn importance(
         name: &str,
         usage: &HashMap<String, Vec<String>>,
@@ -135,6 +129,12 @@ fn sort_packages(packages: Vec<Pkg<'_>>) -> Vec<Pkg<'_>> {
         computing.retain(|c| c != name);
         computed.insert(name.to_string(), weight);
         weight
+    }
+    let mut usage: HashMap<String, Vec<String>> = HashMap::new();
+    for p in &packages {
+        for (target, _) in p.links("require") {
+            usage.entry(target).or_default().push(p.name.clone());
+        }
     }
     let (mut computing, mut computed) = (vec![], HashMap::new());
     let mut weighted: Vec<(i64, Pkg)> = (packages.into_iter())
@@ -244,6 +244,7 @@ fn mapping(packages: &[&Pkg], kind: &str, dev_mode: bool) -> Vec<(String, Vec<St
 }
 
 fn path_code(base: &str, vendor: &str, path: &str) -> Result<(String, String)> {
+    static PHAR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\.phar([\\/]|$)").unwrap());
     let path = normalize(&if path.starts_with('/') {
         path.to_string()
     } else {
@@ -260,7 +261,6 @@ fn path_code(base: &str, vendor: &str, path: &str) -> Result<(String, String)> {
             ("$baseDir . ", format!("/{rel}"), format!("{base}/{rel}"))
         }
     };
-    static PHAR: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\.phar([\\/]|$)").unwrap());
     let phar = PHAR.is_match(rel.as_bytes())?;
     let code = format!(
         "{}{prefix}{}",
@@ -284,11 +284,7 @@ fn exclusions(packages: &[&Pkg], dev_mode: bool, cwd: &str) -> Result<Vec<String
     for p in packages {
         let Some(install) = &p.path else { continue };
         let a = autoload(p, dev_mode);
-        for path in a
-            .get("exclude-from-classmap")
-            .map(strings)
-            .unwrap_or_default()
-        {
+        for path in a.get("exclude-from-classmap").map_or_default(strings) {
             let trimmed = path.replace('\\', "/");
             let quoted =
                 String::from_utf8_lossy(&preg_quote(trimmed.trim_matches('/').as_bytes(), None))
@@ -355,6 +351,10 @@ fn exclusion_regex(dir: &str, excluded: &[String], vendor: &str) -> Result<Optio
     Ok(Some(Regex::new(&format!("({})", excluded.join("|")))?))
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn dump(
     base: &str,
     vendor: &str,
@@ -388,7 +388,7 @@ pub fn dump(
     let mut include = vec![];
     for p in std::iter::once(&root_pkg).chain(&packages) {
         let Some(install) = &p.path else { continue };
-        for path in p.json.get("include-path").map(strings).unwrap_or_default() {
+        for path in p.json.get("include-path").map_or_default(strings) {
             let path = path.trim_matches('/').to_string();
             include.push(if install.is_empty() {
                 path
@@ -405,8 +405,7 @@ pub fn dump(
     let mut psr4 = mapping(&reversed, "psr-4", o.dev_mode);
     let classmap = mapping(&reversed, "classmap", o.dev_mode)
         .pop()
-        .map(|e| e.1)
-        .unwrap_or_default();
+        .map_or_default(|e| e.1);
     psr0.sort_by(|a, b| b.0.as_bytes().cmp(a.0.as_bytes()));
     psr4.sort_by(|a, b| b.0.as_bytes().cmp(a.0.as_bytes()));
     let excluded = exclusions(&sorted_refs, o.dev_mode, base)?;
@@ -464,7 +463,7 @@ pub fn dump(
         });
     }
     if o.scan != Scan::Classmap {
-        let mut scan: Vec<(String, Vec<(Rule, Vec<String>)>)> = vec![];
+        let mut scan: Vec<(String, Vec<_>)> = vec![];
         for (rule, entries) in [(Rule::Psr4, &psr4), (Rule::Psr0, &psr0)] {
             for (ns, paths) in entries {
                 match scan.iter_mut().find(|s| s.0 == *ns) {
@@ -530,11 +529,7 @@ pub fn dump(
     let mut files: Vec<FileEntry> = vec![];
     for p in &sorted {
         let Some(install) = &p.path else { continue };
-        for path in autoload(p, o.dev_mode)
-            .get("files")
-            .map(strings)
-            .unwrap_or_default()
-        {
+        for path in autoload(p, o.dev_mode).get("files").map_or_default(strings) {
             let relative = if install.is_empty() {
                 path.clone()
             } else {
@@ -793,7 +788,15 @@ fn real_file(o: &Options, loads: &Loads) -> String {
     f
 }
 
+/// The entries of one PHP array literal in `autoload_static.php`.
+type Entries = Vec<(Key, Php)>;
+
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &StaticMaps) -> String {
+    static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^ *").unwrap());
     let StaticMaps {
         psr0,
         psr4,
@@ -802,18 +805,16 @@ fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &Stat
         files,
     } = *maps;
     let values = |paths: &[String]| -> Vec<(Key, Php)> {
-        (paths.iter().enumerate())
+        ((0..).zip(paths))
             .map(|(i, p)| {
                 (
-                    Key::Int(i as i64),
+                    Key::Int(i),
                     Php::Str(evaluated.get(p).cloned().unwrap_or_default()),
                 )
             })
             .collect()
     };
-    let group = |entries: &[(String, Vec<String>)],
-                 lengths: bool|
-     -> (Vec<(Key, Php)>, Vec<(Key, Php)>, Vec<(Key, Php)>) {
+    let group = |entries: &[(String, Vec<String>)], lengths: bool| -> (Entries, Entries, Entries) {
         let mut by_first: Vec<(Key, Vec<(Key, Php)>)> = vec![];
         let (mut dirs, mut fallback) = (vec![], vec![]);
         for (prefix, paths) in entries {
@@ -825,17 +826,14 @@ fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &Stat
             let first = Key::of(&prefix[..prefix.chars().next().map_or(0, char::len_utf8).max(1)]);
             let key = Key::Str(prefix.clone());
             let value = if lengths {
-                Php::Int(prefix.len() as i64)
+                Php::Int(i64::try_from(prefix.len()).expect("a prefix shorter than i64::MAX bytes"))
             } else {
                 Php::Array(list.clone())
             };
-            let at = match by_first.iter().position(|(k, _)| *k == first) {
-                Some(at) => at,
-                None => {
-                    by_first.push((first, vec![]));
-                    by_first.len() - 1
-                }
-            };
+            let at = (by_first.iter().position(|(k, _)| *k == first)).unwrap_or_else(|| {
+                by_first.push((first, vec![]));
+                by_first.len() - 1
+            });
             by_first[at].1.retain(|(k, _)| *k != key);
             by_first[at].1.push((key.clone(), value));
             if lengths {
@@ -890,7 +888,6 @@ fn static_file(suffix: &str, target: &str, vendor: &str, base: &str, maps: &Stat
         .iter()
         .map(|(a, b)| (a.as_str(), b.as_str()))
         .collect();
-    static LEADING: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?m)^ *").unwrap());
     let mut out = format!(
         "<?php\n\n// autoload_static.php @generated by Composer\n\nnamespace Composer\\Autoload;\n\nclass ComposerStaticInit{suffix}\n{{\n"
     );

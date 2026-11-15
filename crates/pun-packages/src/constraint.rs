@@ -305,7 +305,7 @@ pub fn lower_bound(constraints: &str) -> Result<Bound<'static>> {
 }
 
 fn bump(parts: [&str; 4], position: usize, increment: u128) -> String {
-    let mut out: Vec<String> = parts.iter().map(|p| p.to_string()).collect();
+    let mut out: Vec<String> = parts.iter().map(std::string::ToString::to_string).collect();
     for i in (1..=4).rev() {
         if i > position {
             out[i - 1] = "0".into();
@@ -330,6 +330,10 @@ fn empty(s: &str) -> bool {
     s.is_empty() || s == "0"
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn parse_one(constraint: &str) -> Result<Vec<Constraint>> {
     let ge = |v: String| Constraint::Single(Op::Ge, v);
     let lt = |v: String| Constraint::Single(Op::Lt, v);

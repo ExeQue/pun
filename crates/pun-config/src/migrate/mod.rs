@@ -34,10 +34,10 @@ pub(super) fn require_lint(parts: &mut Parts, id: &str, value: &str) -> bool {
 impl Parts {
     pub fn render(&self) -> String {
         let pairs = |rules: &[(String, String)]| -> String {
-            rules
-                .iter()
-                .map(|(k, v)| format!("\"{k}\" = {v}\n"))
-                .collect()
+            rules.iter().fold(String::new(), |mut out, (k, v)| {
+                let _ = writeln!(out, "\"{k}\" = {v}");
+                out
+            })
         };
         let sections = [
             ("[files]\n", self.files.clone()),

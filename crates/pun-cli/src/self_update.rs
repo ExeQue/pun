@@ -1,6 +1,7 @@
 use crate::Exit;
 use anyhow::{Context, Result, bail};
 use sha2::{Digest, Sha256};
+use std::fmt::Write as _;
 use std::io::Read;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path};
@@ -17,7 +18,7 @@ pub(crate) struct SelfUpdateArgs {
     check: bool,
 }
 
-pub(crate) fn run(a: SelfUpdateArgs) -> Result<Exit> {
+pub(crate) fn run(a: &SelfUpdateArgs) -> Result<Exit> {
     let exe = std::env::current_exe()?
         .canonicalize()
         .context("can't find the running pun")?;
@@ -146,7 +147,10 @@ fn get(agent: &ureq::Agent, url: &str) -> Result<Vec<u8>> {
 }
 
 fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
+    bytes.iter().fold(String::new(), |mut out, b| {
+        let _ = write!(out, "{b:02x}");
+        out
+    })
 }
 
 /// The release archive this machine runs; a shell under Rosetta still gets the Apple silicon build.

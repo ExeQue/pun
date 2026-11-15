@@ -62,7 +62,7 @@ fn every_rule_matches_pint() {
             std::os::unix::fs::symlink(modules, dir.join("node_modules")).unwrap();
         }
         let (code, stdout) = pun(&dir, &["check"]);
-        if code != case["test_exit"].as_i64().unwrap() as i32 {
+        if i64::from(code) != case["test_exit"].as_i64().unwrap() {
             failures.push(format!(
                 "{rule}: `check` exited {code}, `pint --test` {}\n{stdout}",
                 case["test_exit"]

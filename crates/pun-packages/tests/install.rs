@@ -244,6 +244,10 @@ fn autoloader_and_bin_corner_cases_match_composer() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn lock_changes_plugins_and_failures() {
     let tmp = std::env::temp_dir().join(format!("pun-install-changes-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);

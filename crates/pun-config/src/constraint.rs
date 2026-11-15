@@ -27,6 +27,10 @@ pub(crate) fn lowest(constraint: &str) -> Result<Option<V>> {
     Ok(low)
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "x, y and z are the parts of an x.y.z version"
+)]
 fn conjunction(s: &str) -> Result<Range> {
     if let Some((a, b)) = s.split_once(" - ") {
         let (a, b) = (parse(a.trim())?, parse(b.trim())?);
@@ -71,6 +75,10 @@ fn conjunction(s: &str) -> Result<Range> {
     Ok(r)
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "x, y and z are the parts of an x.y.z version"
+)]
 fn single(p: &str) -> Result<Range> {
     let any = Range {
         lo: (0, 0, 0),
@@ -131,6 +139,10 @@ fn single(p: &str) -> Result<Range> {
     })
 }
 
+#[expect(
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "a version wildcard, not a file extension"
+)]
 fn is_wild(ver: &str) -> bool {
     ver.ends_with(".*") || ver.ends_with(".x") || ver.ends_with(".X")
 }

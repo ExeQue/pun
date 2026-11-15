@@ -198,7 +198,7 @@ impl Lock {
     pub fn parse(text: &str) -> Result<Lock> {
         let table: toml::Table = toml::from_str(text)?;
         let mut json = toml_text::to_json(&toml::Value::Table(table));
-        let mut root = json.as_object_mut().map(std::mem::take).unwrap_or_default();
+        let mut root = json.as_object_mut().map_or_default(std::mem::take);
         match root.get("version").and_then(Value::as_i64) {
             Some(VERSION) => {}
             Some(v) => bail!(

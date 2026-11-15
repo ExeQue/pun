@@ -183,6 +183,10 @@ fn inside(root: &Path, path: &str) -> bool {
     real.starts_with(root)
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn parse(
     root: &Path,
     path: &Path,

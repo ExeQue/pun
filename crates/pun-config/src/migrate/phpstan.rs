@@ -107,6 +107,10 @@ fn strings(v: Option<&Value>) -> Vec<String> {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     let cwd = root.display().to_string();
     let mut o = Options::for_project(&cwd);
@@ -116,8 +120,8 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     o.phar.clone_from(&phar);
     let files = WithoutBaselines {
         files: ProjectFiles::new(&phar),
-        seen: Default::default(),
-        virtual_file: Default::default(),
+        seen: std::cell::RefCell::default(),
+        virtual_file: std::cell::RefCell::default(),
     };
     let resolved = resolve_with(&o, &files).map_err(|e| anyhow::anyhow!(e))?;
     let p = &resolved.parameters;
@@ -300,13 +304,11 @@ fn own_parameters(root: &Path, config: &Path, includes: &[String]) -> BTreeSet<S
             .cloned(),
     );
     own.flat_map(|file| {
-        (neon(&file).get_str("parameters").and_then(Value::as_array))
-            .map(|p| {
-                p.keys()
-                    .map(pun_phpstan::Key::as_string)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
+        (neon(&file).get_str("parameters").and_then(Value::as_array)).map_or_default(|p| {
+            p.keys()
+                .map(pun_phpstan::Key::as_string)
+                .collect::<Vec<_>>()
+        })
     })
     .collect()
 }
@@ -610,13 +612,10 @@ fn options(root: &Path, parts: &mut Parts, phpstan: &Phpstan, done: &mut Analyse
             .filter_map(toml::Value::as_str);
         let mut applied = false;
         for rule in rules.map(|r| &r[8..]).filter(|r| running.contains(r)) {
-            let at = match by_rule.iter().position(|(r, _)| r == rule) {
-                Some(at) => at,
-                None => {
-                    by_rule.push((rule.to_string(), toml::Table::new()));
-                    by_rule.len() - 1
-                }
-            };
+            let at = (by_rule.iter().position(|(r, _)| r == rule)).unwrap_or_else(|| {
+                by_rule.push((rule.to_string(), toml::Table::new()));
+                by_rule.len() - 1
+            });
             by_rule[at].1.insert(option.to_string(), value.clone());
             applied = true;
         }

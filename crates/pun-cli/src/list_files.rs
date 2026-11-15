@@ -4,6 +4,7 @@ use anyhow::{Result, bail};
 use clap::Args;
 use pun_config::Options;
 use pun_workspace::Command;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -59,9 +60,15 @@ pub(crate) fn run(a: ListFilesArgs) -> Result<Exit> {
     let out = if json {
         serde_json::to_string(&files)? + "\n"
     } else if a.zero_terminate {
-        files.iter().map(|f| format!("{f}\0")).collect()
+        files.iter().fold(String::new(), |mut out, f| {
+            let _ = write!(out, "{f}\0");
+            out
+        })
     } else {
-        let list: String = files.iter().map(|f| format!("{f}\n")).collect();
+        let list: String = files.iter().fold(String::new(), |mut out, f| {
+            let _ = writeln!(out, "{f}");
+            out
+        });
         if agent::enabled() {
             let detail: Vec<String> = command
                 .map(|c| format!("{} set", c.1))

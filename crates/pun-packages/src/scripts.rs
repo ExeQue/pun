@@ -70,14 +70,15 @@ impl<'a> Runner<'a> {
     }
 
     fn run(&mut self, event: &str, callable: &str, args: &[String]) -> Result<()> {
-        let (callable, args) = match callable.contains("@no_additional_args") {
-            true => (
+        let (callable, args) = if callable.contains("@no_additional_args") {
+            (
                 callable
                     .replace(" @no_additional_args", "")
                     .replace("@no_additional_args", ""),
                 &[][..],
-            ),
-            false => (callable.to_string(), args),
+            )
+        } else {
+            (callable.to_string(), args)
         };
         if callable.is_empty() {
             return Ok(());
@@ -241,6 +242,10 @@ mod tests {
         d
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn run(dir: &Path, scripts: Value, event: &str) -> Result<()> {
         let manifest = json!({"scripts": scripts}).as_object().unwrap().clone();
         let vendor = dir.join("vendor").to_string_lossy().into_owned();

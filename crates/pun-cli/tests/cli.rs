@@ -161,6 +161,10 @@ impl Ctx {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn matches_pint() {
     let Some(oracle) = oracle() else { return };
     let cx = Ctx { oracle };
@@ -363,19 +367,18 @@ fn blade_like_pint() {
         for pint in [true, false] {
             reset(&dir, &tree);
             std::os::unix::fs::symlink(&modules, dir.join("node_modules")).unwrap();
-            runs.push(match pint {
-                true => {
-                    run(
-                        Path::new("php"),
-                        &[oracle.to_str().unwrap()],
-                        &dir,
-                        &["--format=json"],
-                        &[],
-                        b"",
-                    )
-                    .0
-                }
-                false => pun_format(&dir, &["--format=json"], &[], b"").0,
+            runs.push(if pint {
+                run(
+                    Path::new("php"),
+                    &[oracle.to_str().unwrap()],
+                    &dir,
+                    &["--format=json"],
+                    &[],
+                    b"",
+                )
+                .0
+            } else {
+                pun_format(&dir, &["--format=json"], &[], b"").0
             });
         }
         assert_eq!(runs[1], runs[0], "preset {preset}");
@@ -527,6 +530,10 @@ fn list_files() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pun_only_behaviour() {
     let dir = scratch("cli", "own");
     reset(&dir, &files());

@@ -1,5 +1,6 @@
 use crate::paths::{shortest, shortest_code};
 use pcre2::bytes::Regex;
+use std::fmt::Write as _;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -56,9 +57,7 @@ pub fn proxies(
         }
         let name = bin.rsplit('/').next().unwrap_or(bin).to_string();
         let link = format!("{bin_dir}/{name}");
-        let head = std::fs::read(file)
-            .map(|b| b[..b.len().min(500)].to_vec())
-            .unwrap_or_default();
+        let head = std::fs::read(file).map_or_default(|b| b[..b.len().min(500)].to_vec());
         out.push(Proxy {
             bin: bin.clone(),
             text: proxy(&path, &link, &head, vendor),
@@ -93,16 +92,18 @@ fn proxy(bin: &str, link: &str, head: &[u8], vendor: &str) -> String {
     let mut globals = "$GLOBALS['_composer_bin_dir'] = __DIR__;\n".to_string();
     let autoload = std::fs::canonicalize(vendor)
         .map_or_else(|_| vendor.to_string(), |p| p.to_string_lossy().into_owned());
-    globals.push_str(&format!(
-        "$GLOBALS['_composer_autoload_path'] = {};\n",
+    let _ = writeln!(
+        globals,
+        "$GLOBALS['_composer_autoload_path'] = {};",
         shortest_code(link, &format!("{autoload}/autoload.php"), false, true)
-    ));
+    );
     let phpunit = crate::paths::normalize(bin)
         == crate::paths::normalize(&format!("{vendor}/phpunit/phpunit/phpunit"));
     if phpunit {
-        globals.push_str(&format!(
-            "$GLOBALS['__PHPUNIT_ISOLATION_EXCLUDE_LIST'] = $GLOBALS['__PHPUNIT_ISOLATION_BLACKLIST'] = array(realpath({exported}));\n"
-        ));
+        let _ = writeln!(
+            globals,
+            "$GLOBALS['__PHPUNIT_ISOLATION_EXCLUDE_LIST'] = $GLOBALS['__PHPUNIT_ISOLATION_BLACKLIST'] = array(realpath({exported}));"
+        );
     }
     let (mut hint, mut wrapper) = (String::new(), String::new());
     if String::from_utf8_lossy(found.get(0).map_or(&[][..], |m| m.as_bytes())).trim() != "<?php" {

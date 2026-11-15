@@ -4,6 +4,7 @@ use pcre2::bytes::Regex;
 use pun_config::toml_text;
 use pun_tokens::php_compat::strnatcmp;
 use std::cmp::Ordering;
+use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 pub fn sort_cmp(a: &str, b: &str) -> Ordering {
@@ -87,7 +88,7 @@ pub fn toml_set(
                 }
                 out.push('\n');
             }
-            out.push_str(&format!("[{section}]\n{entry}"));
+            let _ = write!(out, "[{section}]\n{entry}");
             out
         }
         Some((start, end)) => {

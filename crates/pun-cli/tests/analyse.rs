@@ -5,6 +5,7 @@
 mod common;
 
 use common::{PUN, clean_env, project};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -513,6 +514,7 @@ fn generate_baseline_to_a_named_file() {
 
 #[test]
 fn run_errors_exit_2() {
+    use std::os::unix::fs::PermissionsExt;
     let d = sample("bad-config", CLEAN);
     std::fs::write(d.join("pun.toml"), "[analyse]\nnope = 1\n").unwrap();
     let (out, err, code) = pun(&d, &[], &[]);
@@ -566,7 +568,6 @@ fn run_errors_exit_2() {
             Some(2)
         )
     );
-    use std::os::unix::fs::PermissionsExt;
     let d = sample("unreadable", CLEAN);
     let file = d.join("src/a.php");
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
@@ -586,6 +587,10 @@ fn table_and_teamcity_match_phpstan() {
     std::fs::write(outside.join("o.php"), "<?php\nnope2();\n").unwrap();
     let outside = outside.display();
     let long = "<?php\nthis_is_an_extremely_long_function_name_to_wrap();\n";
+    #[expect(
+        clippy::type_complexity,
+        reason = "a table of test cases: name, files, working directory, paths"
+    )]
     let cases: [(&str, &[(&str, &str)], &str, &str); 5] = [
         (
             "escapes",
@@ -627,7 +632,10 @@ fn table_and_teamcity_match_phpstan() {
     for (name, files, cwd, paths) in cases {
         let d = project("analyse", name, files).join(cwd);
         let list: Vec<&str> = paths.split("\", \"").collect();
-        let neon: String = list.iter().map(|p| format!("        - {p}\n")).collect();
+        let neon: String = list.iter().fold(String::new(), |mut out, p| {
+            let _ = writeln!(out, "        - {p}");
+            out
+        });
         std::fs::write(
             d.join("phpstan.neon"),
             format!("parameters:\n    level: 0\n    paths:\n{neon}"),
@@ -765,10 +773,10 @@ fn ignores_match_phpstan() {
 fn no_rules_detected() {
     let d = sample("no-rules", ERRORS);
     let groups = "arrays attributes casing casts classes comments control-flow dead-code debug deprecated functions imports laravel operators phpdoc statements strings types undefined";
-    let off: String = groups
-        .split(' ')
-        .map(|g| format!("{g} = \"off\"\n"))
-        .collect();
+    let off: String = groups.split(' ').fold(String::new(), |mut out, g| {
+        let _ = writeln!(out, "{g} = \"off\"");
+        out
+    });
     std::fs::write(
         d.join("pun.toml"),
         format!("[analyse]\npaths = [\"src\"]\n\n[analyse.rules]\n{off}"),

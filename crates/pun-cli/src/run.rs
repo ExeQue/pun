@@ -79,6 +79,7 @@ fn configure(cfg: &Config, rule: &mut dyn pun_lint::Rule) -> Result<()> {
     result.map_err(|e| config_error(anyhow::anyhow!("pun.toml: `{id}` {e}")))
 }
 
+#[expect(clippy::needless_pass_by_value, reason = "a `map_err` callback")]
 fn config_error(e: anyhow::Error) -> anyhow::Error {
     Abort::plain(format!("{e:#}"), None).into()
 }
@@ -130,21 +131,25 @@ struct Processed {
     remaining: Option<FileResult>,
 }
 
-pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit> {
-    let started = std::time::Instant::now();
-    let root = root()?;
-    let cfg = load_config(&a, &root)?;
-    let plan = ported_plan(&a, &cfg, &lint)?;
-    let lints = stage != Stage::Format;
-    let formats = !matches!(stage, Stage::Lint { .. });
-    let blade_on = formats
-        && (cfg.rules.iter()).any(|r| r.name == "Pint/laravel_blade" && r.options.is_null());
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
+pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exit> {
     struct StopProbe;
     impl Drop for StopProbe {
         fn drop(&mut self) {
             pun_fixers::prettier::stop();
         }
     }
+    let started = std::time::Instant::now();
+    let root = root()?;
+    let cfg = load_config(a, &root)?;
+    let plan = ported_plan(a, &cfg, lint)?;
+    let lints = stage != Stage::Format;
+    let formats = !matches!(stage, Stage::Lint { .. });
+    let blade_on = formats
+        && (cfg.rules.iter()).any(|r| r.name == "Pint/laravel_blade" && r.options.is_null());
     let _probe = StopProbe;
     if let Some(abort) = crate::prettier::ensure(&root, blade_on) {
         return Err(abort.into());
@@ -165,18 +170,18 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
         if !a.stdin_filename.as_ref().is_some_and(|f| is_blade(f)) || a.test || a.bail {
             pun_fixers::prettier::stop();
         }
-        return stdin(&a, &cfg, &base);
+        return stdin(a, &cfg, &base);
     }
 
     let dry_run = a.test || a.bail;
-    let selected = selected_files(&a, &cfg)?;
-    let (format_set, lint_set) = file_sets(&a, &cfg, formats, lints, selected.as_ref())?;
+    let selected = selected_files(a, &cfg)?;
+    let (format_set, lint_set) = file_sets(a, &cfg, formats, lints, selected.as_ref())?;
     let mut files = format_set.clone();
     let known: HashSet<&PathBuf> = format_set.iter().collect();
     files.extend(lint_set.iter().filter(|f| !known.contains(f)).cloned());
     drop(known);
     let natives = if lints {
-        native_rules(&a, &cfg, &plan, selected.as_ref(), &lint_set)?
+        native_rules(a, &cfg, &plan, selected.as_ref(), &lint_set)?
     } else {
         vec![]
     };
@@ -199,10 +204,10 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
     let look = Look::stdout(a.color());
     let human = a.format.is_none() && !a.quiet && !crate::agent::enabled();
     let spinner = human
-        .then(|| Spinner::stderr(files.len(), &look, std::io::stderr().is_terminal()))
+        .then(|| Spinner::stderr(files.len(), look, std::io::stderr().is_terminal()))
         .flatten();
     let process = |path: &PathBuf, code: std::io::Result<Vec<u8>>| -> Result<Processed> {
-        let r = process_file(&a, &engines, dry_run, path, code);
+        let r = process_file(a, &engines, dry_run, path, code);
         if let Some(s) = &spinner {
             s.tick();
         }
@@ -259,7 +264,7 @@ pub(crate) fn stage(a: FormatArgs, stage: Stage, lint: LintOpts) -> Result<Exit>
         a.output_to_file.as_deref(),
         a.output_format.as_deref(),
     )?;
-    let exit = exit(stage, &a, &lint, &ctx, &results);
+    let exit = exit(stage, a, lint, &ctx, &results);
     eprint!("{}", base.profile_report());
     Ok(exit)
 }
@@ -421,18 +426,15 @@ fn exit(
 ) -> Exit {
     let crashed = (results.iter()).any(|r| matches!(r.status, Status::Exception | Status::Lint));
     let changed = results.iter().any(|r| r.status == Status::Fixed);
-    let failed = match stage {
-        Stage::Format => {
-            ((ctx.dry_run || a.repair) && changed) || results.iter().any(FileResult::is_error)
-        }
-        _ => {
-            let c = report::counts(ctx, results);
-            c.errors > 0
-                || c.need_formatting > 0
-                || (a.repair && changed)
-                || (lint.deny_warnings && c.warnings > 0)
-                || lint.max_warnings.is_some_and(|m| c.warnings > m)
-        }
+    let failed = if stage == Stage::Format {
+        ((ctx.dry_run || a.repair) && changed) || results.iter().any(FileResult::is_error)
+    } else {
+        let c = report::counts(ctx, results);
+        c.errors > 0
+            || c.need_formatting > 0
+            || (a.repair && changed)
+            || (lint.deny_warnings && c.warnings > 0)
+            || lint.max_warnings.is_some_and(|m| c.warnings > m)
     };
     if crashed {
         Exit::RunError
@@ -649,6 +651,10 @@ fn filter_problems(
 
 const FIX_ROUNDS: usize = 10;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn process_file(
     a: &FormatArgs,
     e: &Engines,

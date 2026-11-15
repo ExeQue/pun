@@ -140,6 +140,7 @@ impl Cx {
     fn pint(&self, script: &str, sub: &str, args: &[&str], stdin: &[u8]) -> Run {
         run(&["php", &self.oracle], script, sub, args, stdin, None)
     }
+    #[expect(clippy::unused_self, reason = "called like `pint`, its counterpart")]
     fn ours(&self, script: &str, sub: &str, args: &[&str], stdin: &[u8]) -> Run {
         let config = |a: &&str| a.starts_with("--config=") || a.starts_with("--preset=");
         let pun = [env!("CARGO_BIN_EXE_pun"), "format"];

@@ -60,6 +60,10 @@ impl FileResult {
     }
 }
 
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent output switches, each set from its own flag"
+)]
 pub(crate) struct Ctx<'a> {
     pub(crate) total: usize,
     pub(crate) dry_run: bool,
@@ -179,6 +183,10 @@ impl std::fmt::Display for Abort {
 
 impl std::error::Error for Abort {}
 
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent output switches, each set from its own flag"
+)]
 pub(crate) struct Failure {
     pub(crate) pint: bool,
     pub(crate) machine: bool,
@@ -348,6 +356,10 @@ fn annotations(ctx: &Ctx, results: &[FileResult]) -> String {
     lines.into_iter().map(|l| l.1).collect()
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn human(ctx: &Ctx, results: &[FileResult]) -> String {
     let cmd = crate::agent::cmd();
     if cmd == "check" {
@@ -462,11 +474,11 @@ fn human(ctx: &Ctx, results: &[FileResult]) -> String {
     out
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
-    let mut r = Renderer::new(ctx.look, ctx.root);
-    r.concise = ctx.concise;
-    let mut sorted: Vec<&FileResult> = results.iter().collect();
-    sorted.sort_by(|a, b| a.rel.cmp(&b.rel));
     #[derive(Default)]
     struct Group {
         items: Vec<CheckItem>,
@@ -489,6 +501,22 @@ fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
             self.items.push(item);
         }
     }
+    fn step(step: Step, g: &Group, text: Option<String>, failed: bool) -> StepLine<'_> {
+        StepLine {
+            step,
+            errors: g.errors,
+            warnings: g.warnings,
+            fixable: g.fixable,
+            files: g.files.len(),
+            text,
+            failed,
+            items: &g.items,
+        }
+    }
+    let mut r = Renderer::new(ctx.look, ctx.root);
+    r.concise = ctx.concise;
+    let mut sorted: Vec<&FileResult> = results.iter().collect();
+    sorted.sort_by(|a, b| a.rel.cmp(&b.rel));
     let (mut format, mut lint, mut analyse) =
         (Group::default(), Group::default(), Group::default());
     let mut formatted = 0;
@@ -590,10 +618,11 @@ fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
             crate::render::plural(need, "file", "files")
         );
         if format.errors > 0 {
-            text.push_str(&format!(
+            let _ = write!(
+                text,
                 ", {}",
                 crate::render::plural(format.errors, "syntax error", "syntax errors")
-            ));
+            );
         }
         Some(text)
     } else if format.errors > 0 {
@@ -606,18 +635,6 @@ fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
     } else {
         Some("All files formatted".into())
     };
-    fn step(step: Step, g: &Group, text: Option<String>, failed: bool) -> StepLine<'_> {
-        StepLine {
-            step,
-            errors: g.errors,
-            warnings: g.warnings,
-            fixable: g.fixable,
-            files: g.files.len(),
-            text,
-            failed,
-            items: &g.items,
-        }
-    }
     let mut out = r.check_step(&step(Step::Format, &format, format_text, need > 0));
     out.push_str(&r.check_step(&step(Step::Lint, &lint, None, false)));
     out.push_str(&r.check_step(&step(Step::Analyse, &analyse, None, false)));
@@ -679,6 +696,10 @@ fn fixer_error(r: &Renderer, f: &FileResult) -> String {
     })
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn agent(ctx: &Ctx, results: &[FileResult]) -> String {
     use crate::agent::count;
     let mut sorted: Vec<(&FileResult, bool)> = (results.iter().map(|r| (r, false)))

@@ -12,6 +12,10 @@ type GroupKey<'a> = Vec<(bool, &'a Constraint)>;
 
 type Dependencies<'a> = Vec<(u8, &'a str, &'a Constraint)>;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
     let arena = &pool.arena;
 
@@ -55,7 +59,7 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
         }
     }
 
-    let grouped: Vec<(usize, Dependencies, Vec<(&str, GroupKey)>)> = (pool.ids.par_iter())
+    let grouped: Vec<(usize, Dependencies, Vec<_>)> = (pool.ids.par_iter())
         .filter(|p| !irremovable.contains(*p))
         .map(|&p| {
             let package = &arena[p];

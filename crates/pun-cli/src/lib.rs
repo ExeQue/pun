@@ -146,9 +146,13 @@ enum ConfigFormat {
     Json,
 }
 
-/// Pint's DefaultCommand flags, plus Pun's own.
+/// Pint's `DefaultCommand` flags, plus Pun's own.
 #[derive(Args, Default, Clone)]
 #[command(about = "Fix the coding style of the given path")]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct FormatArgs {
     /// The paths to run on (`-` reads stdin).
     paths: Vec<PathBuf>,
@@ -191,6 +195,10 @@ pub(crate) struct FormatArgs {
     /// File path context for stdin input.
     #[arg(long)]
     stdin_filename: Option<PathBuf>,
+    #[expect(
+        clippy::doc_markdown,
+        reason = "this doc comment is the --help text, printed as written"
+    )]
     /// The number of threads (default: one per core). Read like Pint's intval(), so any value is accepted.
     #[arg(long, value_parser = threads)]
     max_processes: Option<usize>,
@@ -200,6 +208,10 @@ pub(crate) struct FormatArgs {
     /// Print nothing; the exit code is the result.
     #[arg(short, long)]
     quiet: bool,
+    #[expect(
+        clippy::doc_markdown,
+        reason = "this doc comment is the --help text, printed as written"
+    )]
     /// Colour the output: auto (on for a terminal, off when piped or with NO_COLOR), always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
@@ -245,6 +257,10 @@ impl FormatArgs {
 
 /// `pun format`'s flags that Pint doesn't have.
 #[derive(Args, Default, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct PunArgs {
     /// Only fix files with staged changes (Pun).
     #[arg(long)]
@@ -281,6 +297,10 @@ impl From<Exit> for ExitCode {
 
 /// `--max-processes`, read like Pint's `intval()`: any value is accepted, and one that is not a positive number is 0,
 /// one thread per core.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "clap's `value_parser` takes a fallible function"
+)]
 pub(crate) fn threads(value: &str) -> Result<usize, std::convert::Infallible> {
     Ok(usize::try_from(pun_tokens::php_compat::intval(value)).unwrap_or(0))
 }
@@ -354,19 +374,19 @@ fn run() -> ExitCode {
         .build_global();
     let result = match cmd {
         Cmd::Format(a) if a.pun.watch => watch::run(*a),
-        Cmd::Format(a) => run::stage(*a, Stage::Format, LintOpts::default()),
+        Cmd::Format(a) => run::stage(&a, Stage::Format, &LintOpts::default()),
         Cmd::Lint(cmd) => lint_or_check(*cmd, |fix| Stage::Lint { fix }),
         Cmd::Check(cmd) => lint_or_check(*cmd, |fix| Stage::Check { fix }),
-        Cmd::Analyse(a) => analyse::run(*a),
-        Cmd::Migrate(a) => migrate::run(a),
+        Cmd::Analyse(a) => analyse::run(&a),
+        Cmd::Migrate(a) => migrate::run(&a),
         Cmd::Init(a) => init::run(a),
-        Cmd::Install(a) => install::run(a),
+        Cmd::Install(a) => install::run(&a),
         Cmd::Update(a) => update::run(a),
         Cmd::Require(a) => update::require(a),
         Cmd::Remove(a) => update::remove(a),
-        Cmd::X(a) => x::run(a),
+        Cmd::X(a) => x::run(&a),
         Cmd::Vet(a) => vet::run(a),
-        Cmd::SelfUpdate(a) => self_update::run(a),
+        Cmd::SelfUpdate(a) => self_update::run(&a),
         Cmd::ListFiles(a) => list_files::run(a),
         Cmd::Config {
             format,
@@ -396,7 +416,7 @@ fn lint_or_check(cmd: StageCmd, stage: fn(bool) -> Stage) -> Result<Exit> {
         max_warnings: cmd.max_warnings,
         concise: cmd.concise,
     };
-    run::stage(a, stage(cmd.fix), lint)
+    run::stage(&a, stage(cmd.fix), &lint)
 }
 
 /// `-A`, `-W` and `-D` in the order they were given: later ones win.

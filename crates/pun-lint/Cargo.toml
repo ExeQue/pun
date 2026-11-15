@@ -44,5 +44,74 @@ pun-config.workspace = true
 pun-format.workspace = true
 pun-fixers.workspace = true
 
-[lints]
-workspace = true
+# The root `[workspace.lints]` plus the allows for code that ports upstream PHP function by function. Cargo
+# cannot extend an inherited table, so this repeats the workspace lints: a change there goes here too.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unreachable_pub = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# Every crate is internal (`publish = false`), so no API attributes or doc sections for outside callers.
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# Conventions: upstream ports keep PHP's names, index loops and casts.
+doc_markdown = "allow"
+too_many_lines = "allow"
+many_single_char_names = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+similar_names = "allow"
+unused_self = "allow"
+enum_glob_use = "allow"
+# Port shape: rules mirror upstream PHP function by function (switches, flags, argument lists, early returns).
+wildcard_imports = "allow"
+items_after_statements = "allow"
+match_same_arms = "allow"
+single_match_else = "allow"
+match_bool = "allow"
+if_not_else = "allow"
+option_option = "allow"
+needless_pass_by_value = "allow"
+format_push_string = "allow"
+format_collect = "allow"
+struct_excessive_bools = "allow"
+fn_params_excessive_bools = "allow"
+struct_field_names = "allow"
+type_complexity = "allow"
+too_many_arguments = "allow"
+unreadable_literal = "allow"
+match_wildcard_for_single_variants = "allow"
+large_enum_variant = "allow"
+# Style only: `Default::default()` reads fine, and method-path closures need the full `Type::method` spelling.
+default_trait_access = "allow"
+redundant_closure_for_method_calls = "allow"
+# Port shape, continued: conditions, signatures and control flow copy upstream's.
+nonminimal_bool = "allow"
+needless_continue = "allow"
+unnecessary_wraps = "allow"
+manual_let_else = "allow"
+trivially_copy_pass_by_ref = "allow"
+ref_option = "allow"
+self_only_used_in_recursion = "allow"
+map_unwrap_or = "allow"
+float_cmp = "allow"
+return_self_not_must_use = "allow"
+# PHP compares extensions byte for byte, and token kinds are PHP's decimal constants.
+case_sensitive_file_extension_comparisons = "allow"
+decimal_bitwise_operands = "allow"
+# `assert_eq!(x, [])` prints the unexpected items; `assert!(x.is_empty())` does not.
+assert_is_empty = "allow"
+# Counting bytes with a filter is fine without the bytecount crate.
+naive_bytecount = "allow"
+# Restriction lints worth having:
+undocumented_unsafe_blocks = "warn"
+allow_attributes_without_reason = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+redundant_clone = "warn"
+needless_collect = "warn"

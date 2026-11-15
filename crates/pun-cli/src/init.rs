@@ -86,7 +86,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
             .default(true)
             .interact_on(&term)?;
         if migrate {
-            return migrate::run(migrate::MigrateArgs::default());
+            return migrate::run(&migrate::MigrateArgs::default());
         }
     }
     let (style, sets, analyse) = if interactive {

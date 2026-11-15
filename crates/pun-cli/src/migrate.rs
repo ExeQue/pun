@@ -27,13 +27,13 @@ pub(crate) struct MigrateArgs {
     yes: bool,
 }
 
-/// FixerAnnotationAnalyzer's pattern, applied inside comment tokens only. Exactly one space after the name: it
+/// `FixerAnnotationAnalyzer`'s pattern, applied inside comment tokens only. Exactly one space after the name: it
 /// splits there, so any other gap is an annotation upstream rejects, left for `pun format` to report.
 static IGNORE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?m)^(\h*[*\/]+\h+@)php-cs-fixer-ignore ((?:@?[\w\/,])+)").unwrap()
 });
 
-/// `@phpstan-ignore id (comment), id`, as PHPStan's IgnoreLexer reads it (identifiers, each with an optional
+/// `@phpstan-ignore id (comment), id`, as PHPStan's `IgnoreLexer` reads it (identifiers, each with an optional
 /// parenthesised comment, comma-separated), up to the end of the comment or its line. `-line` and `-next-line` are
 /// not this tag.
 static PHPSTAN_IGNORE: LazyLock<Regex> = LazyLock::new(|| {
@@ -169,7 +169,7 @@ fn ask(detected: &[(Source, String)]) -> Result<Vec<Source>> {
         .collect())
 }
 
-pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
+pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
     let root = root()?;
     let pint = a.config.as_deref().unwrap_or(Path::new("pint.json"));
     let detected = detect(&root, pint);
@@ -192,7 +192,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
     if detected.is_empty() && report.human {
         println!("N{}.", &nothing[1..]);
         if interactive && !starter()? {
-            report.finish(Mark::Skip, "Nothing written".into(), vec![], "");
+            report.finish(Mark::Skip, "Nothing written".into(), &[], "");
             return Ok(Exit::Success);
         }
     }
@@ -205,7 +205,7 @@ pub(crate) fn run(a: MigrateArgs) -> Result<Exit> {
     }
     let from = sources.format.as_ref().map(|s| rel(&root, &s.1));
     let arrow = report.look.glyph("→", "->");
-    let body = body(&root, &a, pint, &sources, interactive, &mut report)?;
+    let body = body(&root, a, pint, &sources, interactive, &mut report)?;
     let header = match &from {
         Some(f) => format!(" from {f}."),
         None if detected.is_empty() => format!(": {nothing}; starter config."),
@@ -327,11 +327,11 @@ fn hold(mut report: Report, rows: Vec<(Source, String, Action)>, pint: &Path, no
         })
         .collect();
     report.configs(&rows, pint, &["", "", ""]);
-    let detail = vec![format!("{why}, pun.toml not written")];
+    let detail = [format!("{why}, pun.toml not written")];
     report.finish(
         Mark::Skip,
         format!("N{}; pun.toml not written", &why[1..]),
-        detail,
+        &detail,
         "",
     );
 }
@@ -354,7 +354,7 @@ impl Body {
         );
         if m.lint_rules > 0 {
             let lint = agent::count(m.lint_rules, "rule");
-            moved += &format!(", {lint} {arrow} [lint]");
+            let _ = write!(moved, ", {lint} {arrow} [lint]");
         }
         [
             moved,
@@ -373,7 +373,7 @@ fn body(
     interactive: bool,
     report: &mut Report,
 ) -> Result<Body> {
-    let mut m = convert(root, a, pint, sources.format.clone(), report)?;
+    let mut m = convert(root, a, pint, sources.format.as_ref(), report)?;
     let mut lint = String::new();
     if let Some(r) = &sources.rector {
         lint = rector_lint(root, r, &mut m.parts, report)?;
@@ -406,10 +406,13 @@ struct Composer {
     lock_current: bool,
 }
 
+/// The files migrate couldn't read, each with why.
+type Unreadable = Vec<(&'static str, String)>;
+
 /// Reads composer.json and composer.lock; `None` without a composer.json. A file migrate can't read is a problem,
 /// (file, why), that leaves only that file out. A dry run leaves pun.lock out of the diffs, which would print every
 /// locked package.
-fn composer(root: &Path, dry_run: bool) -> Result<(Option<Composer>, Vec<(&'static str, String)>)> {
+fn composer(root: &Path, dry_run: bool) -> Result<(Option<Composer>, Unreadable)> {
     let Ok(text) = std::fs::read_to_string(root.join("composer.json")) else {
         return Ok((None, vec![]));
     };
@@ -519,13 +522,13 @@ fn convert(
     root: &Path,
     a: &MigrateArgs,
     pint: &Path,
-    source: Option<(Source, PathBuf)>,
+    source: Option<&(Source, PathBuf)>,
     report: &mut Report,
 ) -> Result<migrate::Migration> {
     let fixers: std::collections::HashSet<&str> =
         pun_fixers::all().iter().map(|f| f.name()).collect();
     let runs = |name: &str| fixers.contains(name);
-    let m = match &source {
+    let m = match source {
         Some((Source::PhpCsFixer, f)) => {
             let (rules, finder) = php_cs_fixer_config(root, f)?;
             migrate::from_rules(rules, &finder, &runs)?
@@ -533,7 +536,7 @@ fn convert(
         Some((_, f)) => migrate::from_pint(f, a.preset.as_deref(), &runs)?,
         None => migrate::from_pint(&root.join(pint), a.preset.as_deref(), &runs)?,
     };
-    let from = match &source {
+    let from = match source {
         Some((_, f)) => rel(root, f),
         None => format!("preset {}", a.preset.as_deref().unwrap_or("laravel")),
     };
@@ -618,13 +621,17 @@ fn rector_lint(
     };
     let mut text = format!("[lint] {sets}; {} on, {} off", done.on, done.off);
     if done.waiting > 0 {
-        text += &format!(" ({} more once Pun ports them)", done.waiting);
+        let _ = write!(text, " ({} more once Pun ports them)", done.waiting);
     }
     if !r.exclude.is_empty() {
-        text += &format!(", {} excluded", agent::count(r.exclude.len(), "path"));
+        let _ = write!(text, ", {} excluded", agent::count(r.exclude.len(), "path"));
     }
     if !r.overrides.is_empty() {
-        text += &format!(", {}", agent::count(r.overrides.len(), "per-path skip"));
+        let _ = write!(
+            text,
+            ", {}",
+            agent::count(r.overrides.len(), "per-path skip")
+        );
     }
     Ok(text)
 }
@@ -663,18 +670,18 @@ fn phpstan_analyse(
     }
     let mut text = format!("[analyse] preset {} (level {})", done.preset, p.level);
     if done.on + done.off > 0 {
-        text += &format!(", {} on, {} off", done.on, done.off);
+        let _ = write!(text, ", {} on, {} off", done.on, done.off);
     }
     if done.lint > 0 {
-        text += &format!(", {} {arrow} [lint]", agent::count(done.lint, "rule"));
+        let _ = write!(text, ", {} {arrow} [lint]", agent::count(done.lint, "rule"));
     }
     if done.options > 0 {
         let parameters = agent::count(done.options, "parameter");
-        text += &format!(", {parameters} {arrow} rule options");
+        let _ = write!(text, ", {parameters} {arrow} rule options");
     }
     let ignores = p.ignores.len();
     if ignores > 0 {
-        text += &format!(", {} ignored", agent::count(ignores, "error pattern"));
+        let _ = write!(text, ", {} ignored", agent::count(ignores, "error pattern"));
     }
     Ok((text, p.level))
 }
@@ -988,10 +995,10 @@ impl Report {
             (true, true) => (Mark::Skip, format!("Dry run: would write {toml}{preset}")),
             (true, false) => (Mark::Done, format!("Wrote {toml}{preset}")),
         };
-        self.finish(mark, last, detail, checked);
+        self.finish(mark, last, &detail, checked);
     }
 
-    fn finish(mut self, mark: Mark, last: String, detail: Vec<String>, checked: &str) {
+    fn finish(mut self, mark: Mark, last: String, detail: &[String], checked: &str) {
         if !self.items.is_empty() {
             self.findings
                 .1
@@ -1002,7 +1009,7 @@ impl Report {
             let findings = [&self.findings.0[..], &self.findings.1[..]].concat();
             print!(
                 "{}",
-                agent::render(result, &detail, checked, &findings, false)
+                agent::render(result, detail, checked, &findings, false)
             );
             print!("{}", self.diffs);
             return;
@@ -1014,7 +1021,7 @@ impl Report {
             .collect();
         out += &self.block(&items);
         if !items.is_empty() {
-            out += &format!("   Want them? Send a PR to {PR}\n");
+            let _ = writeln!(out, "   Want them? Send a PR to {PR}");
         }
         for (name, text) in &self.notes {
             let glyph = self.look.paint(Role::Warning, self.look.glyph("⚠", "!"));
@@ -1162,7 +1169,7 @@ fn phpstan_ignore(list: &str) -> Result<String, String> {
     }
     let mut out = format!("@pun-ignore {}", ids.join(","));
     if !comments.is_empty() {
-        out += &format!(" -- {}", comments.join("; "));
+        let _ = write!(out, " -- {}", comments.join("; "));
     }
     Ok(out)
 }

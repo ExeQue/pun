@@ -323,13 +323,13 @@ fn autoload_options(
     o: &Options,
     dev_mode: bool,
 ) -> Result<autoload::Options> {
+    static SUFFIX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"ComposerAutoloaderInit([^:\s]+)::").unwrap());
     let platform_check = match config.get("platform-check") {
         Some(Value::Bool(false)) => PlatformCheck::Off,
         Some(Value::Bool(true)) => PlatformCheck::Full,
         _ => PlatformCheck::PhpOnly,
     };
-    static SUFFIX: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"ComposerAutoloaderInit([^:\s]+)::").unwrap());
     let existing = match std::fs::read_to_string(format!("{vendor}/autoload.php")) {
         Ok(text) => (SUFFIX.captures(text.as_bytes())?)
             .map(|caps| String::from_utf8_lossy(&caps[1]).into_owned()),

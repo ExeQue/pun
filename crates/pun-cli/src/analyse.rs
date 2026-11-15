@@ -11,6 +11,7 @@ use pun_problem::{Level, LineIndex, Problem, Span};
 use pun_workspace::{Command, Exclusions};
 use rayon::prelude::*;
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -26,6 +27,10 @@ pub(crate) struct AnalyseArgs {
     format: Option<String>,
     /// Write every error to the baseline (`[analyse] baseline`, else pun-baseline.toml) and exit 0.
     #[arg(long, value_name = "FILE", num_args = 0..=1)]
+    #[expect(
+        clippy::option_option,
+        reason = "clap: the flag is absent, bare, or given a file"
+    )]
     generate_baseline: Option<Option<PathBuf>>,
     /// The number of threads (default: one per core).
     #[arg(long, value_parser = crate::threads)]
@@ -368,7 +373,7 @@ pub(crate) fn problem(f: &Finding, source: &str, index: &LineIndex) -> Problem {
     }
 }
 
-pub(crate) fn run(a: AnalyseArgs) -> Result<Exit> {
+pub(crate) fn run(a: &AnalyseArgs) -> Result<Exit> {
     let started = Instant::now();
     let root = root()?;
     let opts = Options {
@@ -382,10 +387,10 @@ pub(crate) fn run(a: AnalyseArgs) -> Result<Exit> {
         return Err(run_error("No rules detected".into(), Some(hint.into())));
     }
     if let Some(path) = &a.generate_baseline {
-        return generate_baseline(&a, &cfg, path.as_deref(), started);
+        return generate_baseline(a, &cfg, path.as_deref(), started);
     }
     let analysed = analyse(&cfg, &a.paths, true)?;
-    present(&a, &cfg, &analysed, started)
+    present(a, &cfg, &analysed, started)
 }
 
 fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant) -> Result<Exit> {
@@ -468,9 +473,10 @@ fn generate_baseline(
     let r = Renderer::new(look, &cfg.root);
     let mut message = format!("Baseline generated with {errors} in {shown}");
     if cfg.analyse.baseline.as_deref() != Some(path.to_string_lossy().as_ref()) {
-        message.push_str(&format!(
+        let _ = write!(
+            message,
             "; add `baseline = \"{shown}\"` under [analyse] in pun.toml to use it"
-        ));
+        );
     }
     print!(
         "{}",
@@ -495,7 +501,7 @@ pub(crate) fn human(
     let mut out = problem_blocks(&r, analysed);
     let glyph = r.look.paint(render::Role::Error, r.look.glyph("✖", "x"));
     for g in &analysed.general {
-        out.push_str(&format!("{glyph} {g}\n"));
+        let _ = writeln!(out, "{glyph} {g}");
     }
     if !out.is_empty() {
         out.push('\n');

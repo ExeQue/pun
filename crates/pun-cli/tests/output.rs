@@ -9,6 +9,7 @@ mod common;
 use common::{migrate, oracle, scratch, write_files};
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -83,7 +84,7 @@ fn run(cmd: &[&str], dir: &Path, o: Opts) -> Run {
         for chunk in b.utf8_chunks() {
             t.push_str(chunk.valid());
             for byte in chunk.invalid() {
-                t.push_str(&format!("\\x{byte:02x}"));
+                let _ = write!(t, "\\x{byte:02x}");
             }
         }
         let t = t.replace("\r\n", "\n");
@@ -768,6 +769,10 @@ fn error_messages_keep_the_source_bytes_like_pint() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn error_boxes_like_pint() {
     let Some(cx) = Cx::new("errors") else { return };
     let t = tree();
@@ -828,6 +833,9 @@ fn error_boxes_like_pint() {
         (0o000, &["--bail", "app/Clean.php"], &[]),
         (0o444, &["-v"], &[]),
     ] {
+        fn json<'a>(cmd: &[&'a str]) -> Vec<&'a str> {
+            [cmd, &["--format=json"]].concat()
+        }
         let pair = |cmd: &[&str]| {
             reset(&cx.dir, &t);
             if cmd[0] == PUN[0] {
@@ -855,9 +863,6 @@ fn error_boxes_like_pint() {
             "{want:?}"
         );
         let got = pair(&PUN);
-        fn json<'a>(cmd: &[&'a str]) -> Vec<&'a str> {
-            [cmd, &["--format=json"]].concat()
-        }
         let mut want_box = pair(&json(&[&which("php"), cx.oracle.to_str().unwrap()]));
         want_box.stdout = normalise_trace(&want_box.stdout, &cx.oracle);
         let got_box = pair(&json(&PUN));
@@ -914,6 +919,10 @@ fn gitlab_custom_rule() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn prettier_preflight_like_pint() {
     let Some(cx) = Cx::new("prettier") else {
         return;

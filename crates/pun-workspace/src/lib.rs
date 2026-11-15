@@ -109,8 +109,7 @@ impl Finder {
         let mut pats: Vec<String> = self
             .excluded_pattern
             .take()
-            .map(|r| vec![r.as_str().to_string()])
-            .unwrap_or_default();
+            .map_or_default(|r| vec![r.as_str().to_string()]);
         for d in dirs {
             let d = d.trim_end_matches('/');
             if d.contains('/') {
@@ -317,6 +316,13 @@ pub enum GitSelect {
 }
 
 pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
+    fn diff(rev: Option<&str>) -> Vec<&str> {
+        ["diff", "--name-only", "--diff-filter=AMR"]
+            .into_iter()
+            .chain(rev)
+            .chain(["--", "**.php"])
+            .collect()
+    }
     let lists = |cmds: &[&[&str]]| -> Option<Vec<String>> {
         let mut all = Vec::new();
         for args in cmds {
@@ -329,13 +335,6 @@ pub fn git_paths(cfg: &Config, sel: &GitSelect) -> Result<Vec<PathBuf>> {
         }
         Some(all)
     };
-    fn diff(rev: Option<&str>) -> Vec<&str> {
-        ["diff", "--name-only", "--diff-filter=AMR"]
-            .into_iter()
-            .chain(rev)
-            .chain(["--", "**.php"])
-            .collect()
-    }
     let untracked: &[&str] = &["ls-files", "--others", "--exclude-standard", "--", "**.php"];
     let names: Option<Vec<String>> = match sel {
         GitSelect::Dirty => git(&cfg.root, &["status", "--short", "--", "**.php"]).map(|out| {
@@ -406,8 +405,7 @@ pub fn is_path_excluded(cfg: &Config, file: &Path) -> bool {
         .to_string();
     let name = file
         .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
+        .map_or_default(|n| n.to_string_lossy().into_owned());
     let not_name = pint_not_name(cfg);
     let under = |d: &str| {
         let d = d.replace('\\', "/");

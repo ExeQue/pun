@@ -134,6 +134,10 @@ impl<'a> Generator<'a> {
         }
     }
 
+    #[expect(
+        clippy::unused_self,
+        reason = "ports Composer's RuleSetGenerator::createRequireRule, an instance method"
+    )]
     fn require(&self, package: i32, providers: &[i32], reason: Reason) -> Option<Rule> {
         let mut literals = vec![-package];
         for &p in providers {
@@ -269,7 +273,7 @@ impl<'a> Generator<'a> {
             );
             self.rules.add(rule, Type::Request);
         }
-        for id in 1..=pool.len() as i32 {
+        for id in (1..).take(pool.len()) {
             let package = pool.package(id);
             if let Some(of) = package.alias_of
                 && !self.added_set.contains(&id)
@@ -359,7 +363,7 @@ struct Watches {
 
 fn slot(literal: i32) -> usize {
     if literal > 0 {
-        2 * literal as usize
+        2 * literal.unsigned_abs() as usize
     } else {
         2 * literal.unsigned_abs() as usize + 1
     }
@@ -419,7 +423,16 @@ impl Watches {
             let node = self.chains[chain][i];
             let rule_id = self.nodes[node].rule;
             let rule = &rules.rules[rule_id];
-            if rule.kind != Kind::MultiConflict {
+            if rule.kind == Kind::MultiConflict {
+                for &other in &rule.literals {
+                    if other != literal && !decisions.satisfy(other) {
+                        if decisions.conflict(other) {
+                            return Some(rule_id);
+                        }
+                        decisions.decide(other, level, rule_id);
+                    }
+                }
+            } else {
                 let n = &self.nodes[node];
                 let other = if n.w1 == literal { n.w2 } else { n.w1 };
                 if !rule.disabled && !decisions.satisfy(other) {
@@ -441,15 +454,6 @@ impl Watches {
                         return Some(rule_id);
                     }
                     decisions.decide(other, level, rule_id);
-                }
-            } else {
-                for &other in &rule.literals {
-                    if other != literal && !decisions.satisfy(other) {
-                        if decisions.conflict(other) {
-                            return Some(rule_id);
-                        }
-                        decisions.decide(other, level, rule_id);
-                    }
                 }
             }
         }
@@ -768,6 +772,10 @@ impl<'a> Solver<'a> {
         self.problems.push(problem);
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "long; to be split (code audit: functions over 100 lines)"
+    )]
     fn run(&mut self) {
         self.propagate_index = 0;
         let mut level = 1;
@@ -820,7 +828,7 @@ impl<'a> Solver<'a> {
             }
             let mut count = self.rules.len();
             let (mut i, mut n) = (0usize, 0isize);
-            while n < count as isize {
+            while n < count.cast_signed() {
                 if i == count {
                     i = 0;
                 }

@@ -204,7 +204,7 @@ impl El {
     }
 }
 
-fn xml(root: El, decorated: bool) -> String {
+fn xml(root: &El, decorated: bool) -> String {
     let mut o = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     root.write(&mut o, 0);
     if decorated { escape(&o) } else { o }
@@ -226,7 +226,7 @@ pub(crate) fn checkstyle(changes: &[Change], decorated: bool) -> String {
         }
         root.children.push(file);
     }
-    xml(root, decorated)
+    xml(&root, decorated)
 }
 
 pub(crate) fn junit(changes: &[Change], verbose: bool, decorated: bool) -> String {
@@ -269,10 +269,10 @@ pub(crate) fn junit(changes: &[Change], verbose: bool, decorated: bool) -> Strin
             );
             let mut text = if verbose {
                 "applied fixers:\n---------------\n".to_string()
-                    + &c.fixers
-                        .iter()
-                        .map(|f| format!("* {f}\n"))
-                        .collect::<String>()
+                    + &c.fixers.iter().fold(String::new(), |mut out, f| {
+                        let _ = writeln!(out, "* {f}");
+                        out
+                    })
             } else {
                 "Wrong code style\n".to_string()
             };
@@ -302,7 +302,7 @@ pub(crate) fn junit(changes: &[Change], verbose: bool, decorated: bool) -> Strin
     }
     let mut root = el("testsuites", &[]);
     root.children.push(suite);
-    xml(root, decorated)
+    xml(&root, decorated)
 }
 
 pub(crate) fn xml_report(changes: &[Change], verbose: bool, decorated: bool) -> String {
@@ -326,10 +326,10 @@ pub(crate) fn xml_report(changes: &[Change], verbose: bool, decorated: bool) -> 
         files.children.push(file);
     }
     root.children.push(files);
-    xml(root, decorated)
+    xml(&root, decorated)
 }
 
-/// `name => [summary, docs path]` for GitlabReporter's FixerFactory (generated: scripts/fixer-metadata.php --gitlab).
+/// `name => [summary, docs path]` for `GitlabReporter`'s `FixerFactory` (generated: scripts/fixer-metadata.php --gitlab).
 static FIXERS: LazyLock<serde_json::Map<String, serde_json::Value>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("gitlab_fixers.json")).expect("gitlab_fixers.json")
 });
@@ -397,8 +397,10 @@ fn md5(input: &[u8]) -> String {
     use md5::Digest;
     md5::Md5::digest(input)
         .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
 #[cfg(test)]

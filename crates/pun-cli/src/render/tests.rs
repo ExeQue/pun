@@ -53,11 +53,11 @@ fn problem(
     }
 }
 
-fn safe_fix() -> Option<Fix> {
-    Some(Fix {
+fn safe_fix() -> Fix {
+    Fix {
         safety: Safety::Safe,
         edits: vec![Edit::new(Span::new(0, 0), "")],
-    })
+    }
 }
 
 fn post_controller() -> (String, Problem) {
@@ -72,7 +72,7 @@ fn post_controller() -> (String, Problem) {
         Some("remove the dd() call, or use Log::debug()"),
         Level::Error,
     );
-    p.fix = safe_fix();
+    p.fix = Some(safe_fix());
     (source, p)
 }
 
@@ -753,8 +753,8 @@ fn spinner_stays_hidden_for_a_short_run() {
     spinner.tick();
     drop(spinner);
     assert_eq!(out.text(), "");
-    assert!(Spinner::stderr(10, &Look::plain(), false).is_none());
-    drop(Spinner::stderr(10, &Look::plain(), true).expect("a spinner on a terminal"));
+    assert!(Spinner::stderr(10, Look::plain(), false).is_none());
+    drop(Spinner::stderr(10, Look::plain(), true).expect("a spinner on a terminal"));
 }
 
 #[test]

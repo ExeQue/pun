@@ -12,6 +12,10 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 #[derive(clap::Args, Clone, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct InstallArgs {
     /// Leave out the dev dependencies (`require-dev`).
     #[arg(long)]
@@ -116,24 +120,28 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
     })
 }
 
-pub(crate) fn run(a: InstallArgs) -> Result<Exit> {
+pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.working_dir.as_ref(), false)?;
     if project.lock.is_none() {
         eprintln!("No pun.lock yet: resolving the dependencies to their latest versions");
         return crate::update::update_and_install(
             &mut project,
-            crate::update::Plan::default(),
-            &a,
+            &crate::update::Plan::default(),
+            a,
             started,
         );
     }
     let lock = project.lock.take().expect("a lock");
-    install_locked(&project, &lock, &a, started, false)
+    install_locked(&project, &lock, a, started, false)
 }
 
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
 /// the install ones.
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn install_locked(
     project: &Project,
     lock: &Lock,

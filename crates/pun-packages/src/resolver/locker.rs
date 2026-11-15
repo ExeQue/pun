@@ -76,6 +76,10 @@ pub fn lock(resolution: &Resolution, manifest: &Map<String, Value>, options: &Op
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn dump(package: &Package) -> Map<String, Value> {
     let data = &package.data();
     let get = |k: &str| data.get(k).filter(|v| !v.is_null());
@@ -307,6 +311,12 @@ fn numeric(s: &str) -> Option<f64> {
 }
 
 fn rfc3339(v: &Value) -> Option<String> {
+    static DATE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)? *(Z|UTC|GMT|[+-]\d{2}:?\d{2})?$",
+        )
+        .expect("valid pattern")
+    });
     let raw = match v {
         Value::Number(n) => n.to_string(),
         Value::String(s) => s.clone(),
@@ -316,12 +326,6 @@ fn rfc3339(v: &Value) -> Option<String> {
         let secs: i64 = raw.parse().ok()?;
         return Some(from_unix(secs));
     }
-    static DATE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(
-            r"^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)? *(Z|UTC|GMT|[+-]\d{2}:?\d{2})?$",
-        )
-        .expect("valid pattern")
-    });
     let c = DATE.captures(raw.as_bytes()).ok()??;
     let g = |i: usize| {
         c.get(i)
@@ -448,14 +452,14 @@ mod tests {
     use serde_json::json;
 
     fn object(v: Value) -> Map<String, Value> {
-        v.as_object().unwrap().clone()
+        serde_json::from_value(v).unwrap()
     }
 
     #[test]
     fn dumps_as_composer() {
         for (data, want) in [
             (
-                json!({"name": "acme/empties", "version": "1.0.0", "time": false, "license": [], "authors": {}, "description": "0", "homepage": "", "keywords": "solo", "bin": [], "funding": [], "notification-url": "", "scripts": {"x": null}, "extra": [], "support": {}, "autoload": {}, "php-ext": {"extension-name": "acme"}, "transport-options": {"symlink": false}, "dist": {"type": "zip", "url": "https://d.test/e.zip", "reference": 123}, "source": {"type": "svn", "url": "https://s.test/e", "reference": false, "mirrors": null}, "published-time": 1700000000}),
+                json!({"name": "acme/empties", "version": "1.0.0", "time": false, "license": [], "authors": {}, "description": "0", "homepage": "", "keywords": "solo", "bin": [], "funding": [], "notification-url": "", "scripts": {"x": null}, "extra": [], "support": {}, "autoload": {}, "php-ext": {"extension-name": "acme"}, "transport-options": {"symlink": false}, "dist": {"type": "zip", "url": "https://d.test/e.zip", "reference": 123}, "source": {"type": "svn", "url": "https://s.test/e", "reference": false, "mirrors": null}, "published-time": 1_700_000_000}),
                 r#"{"name":"acme/empties","version":"1.0.0","source":{"type":"svn","url":"https://s.test/e","reference":""},"dist":{"type":"zip","url":"https://d.test/e.zip","reference":"123"},"type":"library","php-ext":{"extension-name":"acme"},"scripts":{"x":[]},"transport-options":{"symlink":false},"published-time":"2023-11-14T22:13:20+00:00"}"#,
             ),
             (
@@ -463,7 +467,7 @@ mod tests {
                 r#"{"name":"acme/zero","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/z.zip","reference":"1"},"type":"library","keywords":["a","b"],"published-time":"2024-01-02T03:04:05+00:00"}"#,
             ),
             (
-                json!({"name": "acme/stamp", "version": "1.0.0", "time": 1709210710, "published-time": "", "dist": {"type": "zip", "url": "https://d.test/s.zip"}}),
+                json!({"name": "acme/stamp", "version": "1.0.0", "time": 1_709_210_710, "published-time": "", "dist": {"type": "zip", "url": "https://d.test/s.zip"}}),
                 r#"{"name":"acme/stamp","version":"1.0.0","dist":{"type":"zip","url":"https://d.test/s.zip"},"type":"library","time":"2024-02-29T12:45:10+00:00"}"#,
             ),
             (

@@ -68,6 +68,10 @@ impl Policy {
         selected
     }
 
+    #[expect(
+        clippy::unused_self,
+        reason = "ports Composer's DefaultPolicy::compareByPriority, an instance method"
+    )]
     fn compare_by_priority(
         &self,
         pool: &Pool,
@@ -152,6 +156,10 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn selects_as_composer() {
         let mut arena = vec![];
         for data in [

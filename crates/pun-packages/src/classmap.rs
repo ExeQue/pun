@@ -38,6 +38,10 @@ static DECLARATIONS: LazyLock<Regex> = LazyLock::new(|| {
         )")
 });
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
     const REJECT: [bool; 256] = {
         let mut t = [false; 256];
@@ -157,9 +161,9 @@ fn clean(c: &[u8], max_matches: usize, raw: bool) -> Vec<u8> {
 
 fn heredoc_at(c: &[u8], i: usize) -> Option<(usize, Vec<u8>)> {
     let mut locs = HEREDOC.capture_locations();
-    let m = HEREDOC.captures_read_at(&mut locs, c, i).ok()??;
-    let (s, e) = locs.get(2)?;
-    Some((m.end(), c[s..e].to_vec()))
+    let found = HEREDOC.captures_read_at(&mut locs, c, i).ok()??;
+    let (start, end) = locs.get(2)?;
+    Some((found.end(), c[start..end].to_vec()))
 }
 
 fn skip_heredoc(c: &[u8], i: &mut usize, label: &[u8], to_newline: &dyn Fn(&mut usize, bool)) {

@@ -121,20 +121,19 @@ fn dirs_in(
     let env = |k: &str| env(k).filter(|v| !v.is_empty());
     let composer_home = env("COMPOSER_HOME");
     let user = || env("HOME").map(|h| h.trim_end_matches('/').to_string());
-    let home = match &composer_home {
-        Some(home) => home.clone(),
-        None => {
-            let user = user()?;
-            let mut dirs = vec![];
-            if xdg {
-                let config = env("XDG_CONFIG_HOME").unwrap_or_else(|| format!("{user}/.config"));
-                dirs.push(format!("{config}/composer"));
-            }
-            dirs.push(format!("{user}/.composer"));
-            (dirs.iter().find(|d| Path::new(d).is_dir()))
-                .unwrap_or(&dirs[0])
-                .clone()
+    let home = if let Some(home) = &composer_home {
+        home.clone()
+    } else {
+        let user = user()?;
+        let mut dirs = vec![];
+        if xdg {
+            let config = env("XDG_CONFIG_HOME").unwrap_or_else(|| format!("{user}/.config"));
+            dirs.push(format!("{config}/composer"));
         }
+        dirs.push(format!("{user}/.composer"));
+        (dirs.iter().find(|d| Path::new(d).is_dir()))
+            .unwrap_or(&dirs[0])
+            .clone()
     };
     let cache = if let Some(dir) = env("COMPOSER_CACHE_DIR") {
         dir
@@ -740,6 +739,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn archives_are_checked_cached_and_authorized() {
         const BODY: &[u8] = b"archive bytes";
         let dir = scratch("archive");

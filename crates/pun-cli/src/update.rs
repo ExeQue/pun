@@ -27,6 +27,10 @@ pub(crate) struct UpdateArgs {
 }
 
 #[derive(clap::Args, Clone, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one bool per command-line flag"
+)]
 pub(crate) struct ResolveArgs {
     /// Also update the named packages' dependencies, except those the project requires itself.
     #[arg(short = 'w', long)]
@@ -125,24 +129,24 @@ pub(crate) fn run(a: UpdateArgs) -> Result<Exit> {
         dry_run: a.dry_run,
         ..Plan::default()
     };
-    update_and_install(&mut project, plan, &a.install, started)
+    update_and_install(&mut project, &plan, &a.install, started)
 }
 
 /// Resolves the project, prints what changes, writes the lock and installs it.
 pub(crate) fn update_and_install(
     project: &mut Project,
-    plan: Plan,
+    plan: &Plan,
     a: &InstallArgs,
     started: Instant,
 ) -> Result<Exit> {
-    pre_update(project, a, &plan)?;
-    let (resolution, options) = match resolve(project, &plan, a)? {
+    pre_update(project, a, plan)?;
+    let (resolution, options) = match resolve(project, plan, a)? {
         Ok(r) => r,
         Err(problems) => return Ok(print_problems(&problems)),
     };
     let lock = locker::lock(&resolution, &project.manifest, &options);
     std::thread::spawn(move || drop(resolution));
-    finish(project, &plan, a, started, lock, None)
+    finish(project, plan, a, started, lock, None)
 }
 
 fn pre_update(project: &Project, a: &InstallArgs, plan: &Plan) -> Result<()> {
@@ -177,12 +181,11 @@ fn global_repositories() -> Option<Value> {
     config.get("repositories").cloned()
 }
 
-/// The project resolved: the packages and the options they were resolved with, or the problems in sentences.
-fn resolve(
-    project: &Project,
-    plan: &Plan,
-    a: &InstallArgs,
-) -> Result<std::result::Result<(Resolution, Options), Vec<Vec<String>>>> {
+/// The packages and the options they were resolved with, or the problems in sentences.
+type Resolved = std::result::Result<(Resolution, Options), Vec<Vec<String>>>;
+
+/// The project resolved.
+fn resolve(project: &Project, plan: &Plan, a: &InstallArgs) -> Result<Resolved> {
     let r = &plan.resolve;
     let transitive = if r.with_all_dependencies {
         Transitive::All
@@ -331,7 +334,7 @@ fn versions(lock: &Lock) -> Vec<(String, String, String)> {
 /// branch, `-` removed.
 fn print_changes(old: Option<&Lock>, new: &Lock) {
     let look = Look::stderr(ColorChoice::Auto);
-    let (old, new) = (old.map(versions).unwrap_or_default(), versions(new));
+    let (old, new) = (old.map_or_default(versions), versions(new));
     let arrow = look.glyph("→", "->");
     let mut lines = vec![];
     for (name, version, reference) in &new {
@@ -393,9 +396,7 @@ impl Target {
     fn parse(&self, text: &str) -> Result<Map<String, Value>> {
         let table: toml::Table =
             toml::from_str(text).with_context(|| format!("invalid {}", self.path.display()))?;
-        Ok(pun_config::manifest::parse(&self.path, &table)?
-            .map(|m| m.json)
-            .unwrap_or_default())
+        Ok(pun_config::manifest::parse(&self.path, &table)?.map_or_default(|m| m.json))
     }
 
     /// Makes the edit visible to the resolver: a member's file is written now, since the workspace's path
@@ -483,6 +484,10 @@ fn required(manifest: &Map<String, Value>, section: &str, pattern: &str) -> Vec<
     .collect()
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn require(a: RequireArgs) -> Result<Exit> {
     let started = Instant::now();
     let mut project = project(a.install.working_dir.as_ref(), true)?;

@@ -22,8 +22,8 @@ pub(crate) fn raw(text: &str) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
     let mut buf = [0; 4];
     for c in text.chars() {
-        match u32::from(c).checked_sub(CARRIED) {
-            Some(b) if b <= 0xFF => out.push(b as u8),
+        match (u32::from(c).checked_sub(CARRIED)).and_then(|b| u8::try_from(b).ok()) {
+            Some(b) => out.push(b),
             _ => out.extend_from_slice(c.encode_utf8(&mut buf).as_bytes()),
         }
     }
@@ -60,6 +60,9 @@ pub(crate) fn decorated(fd: i32, ansi: bool, no_ansi: bool) -> bool {
 }
 
 fn has_color_support(tty: bool, env: &dyn Fn(&str) -> Option<String>) -> bool {
+    static TERM_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^((screen|xterm|vt100|vt220|putty|rxvt|ansi|cygwin|linux).*)|(.*-256(color)?(-bce)?)$").unwrap()
+    });
     let set = |k: &str| env(k).is_some_and(|v| !v.is_empty());
     if set("NO_COLOR") {
         return false;
@@ -83,13 +86,13 @@ fn has_color_support(tty: bool, env: &dyn Fn(&str) -> Option<String>) -> bool {
     if term == "dumb" {
         return false;
     }
-    static TERM_RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"^((screen|xterm|vt100|vt220|putty|rxvt|ansi|cygwin|linux).*)|(.*-256(color)?(-bce)?)$").unwrap()
-    });
     TERM_RE.is_match(term.as_bytes()).unwrap_or(false)
 }
 
 pub(crate) fn width() -> usize {
+    static RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?is)rows.(\d+);.columns.(\d+);|;.(\d+).rows;.(\d+).columns").unwrap()
+    });
     if let Ok(c) = std::env::var("COLUMNS") {
         return php_int(c.trim());
     }
@@ -98,12 +101,7 @@ pub(crate) fn width() -> usize {
         .stdin(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::null())
         .output();
-    let text = stty
-        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
-        .unwrap_or_default();
-    static RE: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"(?is)rows.(\d+);.columns.(\d+);|;.(\d+).rows;.(\d+).columns").unwrap()
-    });
+    let text = stty.map_or_default(|o| String::from_utf8_lossy(&o.stdout).into_owned());
     let cols = RE.captures(text.as_bytes()).ok().flatten().and_then(|c| {
         c.get(2)
             .or(c.get(4))
@@ -210,6 +208,7 @@ impl Style {
     }
 
     fn parse(tag: &str) -> Option<Style> {
+        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([^=]+)=([^;]+)(;|$)").unwrap());
         match tag {
             "error" => return Style::new(Some("white"), Some("red"), &[]),
             "info" => return Style::new(Some("green"), None, &[]),
@@ -217,7 +216,6 @@ impl Style {
             "question" => return Style::new(Some("black"), Some("cyan"), &[]),
             _ => {}
         }
-        static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"([^=]+)=([^;]+)(;|$)").unwrap());
         let (mut fg, mut bg, mut options) = (None, None, String::new());
         let mut any = false;
         for c in RE.captures_iter(tag.as_bytes()).flatten() {

@@ -153,6 +153,10 @@ fn ignored_by(options: &Options) -> impl Fn(&str) -> bool + '_ {
     move |name: &str| is_platform(name) && options.ignore_platform.ignores(name)
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn resolve(
     manifest: &Map<String, Value>,
     platform: Vec<Map<String, Value>>,
@@ -312,7 +316,7 @@ pub fn resolve(
     let filters = filters::Filters::from_config(config, env)?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_secs() as i64);
+        .map_or(0, |d| d.as_secs().cast_signed());
     let builder = PoolBuilder::new(
         &stabilities,
         &root_alias_map,
@@ -483,7 +487,7 @@ mod tests {
         options: &Options,
         env: Env,
     ) -> Result<Value, String> {
-        let manifest = manifest.as_object().unwrap().clone();
+        let manifest = serde_json::from_value(manifest).unwrap();
         let fetcher = Fetcher::new(None, Auth::default(), false);
         let root = std::path::Path::new(".");
         let repositories = repos::open(root, &manifest, None, &fetcher, env).unwrap();
@@ -516,6 +520,10 @@ mod tests {
         Ok(json!([list(&r.packages), list(&r.packages_dev), flags]))
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn repositories(packages: Value) -> Value {
         json!([{"type": "package", "package": packages}, {"packagist.org": false}])
     }

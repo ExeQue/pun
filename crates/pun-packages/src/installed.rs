@@ -133,7 +133,19 @@ pub(crate) struct GitVersion {
     pub feature: Option<(String, String)>,
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<GitVersion> {
+    static CURRENT: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^(?:\* ) *(\(no branch\)|\(detached from \S+\)|\(HEAD detached at \S+\)|\S+) *([a-f0-9]+) .*$").unwrap()
+    });
+    static LISTED: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"^(?:\* )? *((?:remotes/(?:origin|upstream)/)?[^\s/]+) *([a-f0-9]+) .*$")
+            .unwrap()
+    });
+    static HEAD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^ *.+/HEAD ").unwrap());
     let git = |args: &[&str]| -> Option<String> {
         let out = Command::new("git")
             .args(args)
@@ -145,14 +157,6 @@ pub(crate) fn git_version(manifest: &Map<String, Value>, dir: &Path) -> Option<G
             .success()
             .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
     };
-    static CURRENT: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"^(?:\* ) *(\(no branch\)|\(detached from \S+\)|\(HEAD detached at \S+\)|\S+) *([a-f0-9]+) .*$").unwrap()
-    });
-    static LISTED: LazyLock<Regex> = LazyLock::new(|| {
-        Regex::new(r"^(?:\* )? *((?:remotes/(?:origin|upstream)/)?[^\s/]+) *([a-f0-9]+) .*$")
-            .unwrap()
-    });
-    static HEAD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^ *.+/HEAD ").unwrap());
     let text = |c: &pcre2::bytes::Captures, i: usize| String::from_utf8_lossy(&c[i]).into_owned();
     let output = git(&["branch", "-a", "--no-color", "--no-abbrev", "-v"])?;
     let (mut version, mut pretty, mut commit, mut feature, mut detached) =
@@ -332,6 +336,10 @@ enum Php {
     Path(Option<String>),
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn installed_php(
     root: &Root,
     packages: &[Installed],
@@ -524,7 +532,7 @@ mod tests {
 
     fn installed(p: Value, path: Option<&str>, dev: bool) -> Installed {
         Installed {
-            package: LockedPackage(p.as_object().unwrap().clone()),
+            package: LockedPackage(serde_json::from_value(p).unwrap()),
             path: path.map(String::from),
             dev,
         }
@@ -551,6 +559,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn root_version_matches_composer() {
         let d = std::env::temp_dir().join(format!("pun-root-version-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);

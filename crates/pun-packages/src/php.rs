@@ -6,16 +6,20 @@ pub fn md5(bytes: &[u8]) -> String {
     use md5::Digest;
     md5::Md5::digest(bytes)
         .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
 pub fn sha1(bytes: &[u8]) -> String {
     use sha1::Digest;
     sha1::Sha1::digest(bytes)
         .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
 }
 
 pub fn json_compact(v: &Value) -> String {

@@ -280,7 +280,7 @@ mod tests {
     fn loaded(data: Value) -> Result<Vec<Package>> {
         let mut arena = vec![];
         let ids = load(
-            data.as_object().unwrap().clone(),
+            serde_json::from_value(data).unwrap(),
             Origin::Locked,
             &mut arena,
         )?;

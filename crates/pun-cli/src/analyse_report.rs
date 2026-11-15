@@ -52,7 +52,7 @@ pub(crate) fn render(format: &str, findings: &[Finding], cx: &Context) -> Result
 }
 
 fn line(f: &Finding) -> String {
-    f.line().map(|l| l.to_string()).unwrap_or_default()
+    f.line().map_or_default(|l| l.to_string())
 }
 
 fn raw(findings: &[Finding], general: &[String], verbose: bool) -> String {
@@ -199,10 +199,10 @@ fn junit(findings: &[Finding], general: &[String]) -> String {
 
 fn gitlab(findings: &[Finding], general: &[String]) -> String {
     let sha = |s: String| -> String {
-        Sha256::digest(s)
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect()
+        Sha256::digest(s).iter().fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
     };
     let mut list: Vec<serde_json::Value> = findings
         .iter()
@@ -318,7 +318,7 @@ fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
                     message.push_str(" (non-ignorable)");
                 }
                 if let Some(tip) = &f.tip {
-                    message.push_str(&format!("\n💡  {tip}"));
+                    let _ = write!(message, "\n💡  {tip}");
                 }
                 [line(f), message]
             })
@@ -354,6 +354,10 @@ fn table(findings: &[Finding], cx: &Context, width: usize) -> String {
     out + &fixable_ignored
 }
 
+#[expect(
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "PHPStan's FuzzyRelativePathHelper compares `.php` byte for byte"
+)]
 fn fuzzy_relative(root: &Path, paths: &[PathBuf], file: &Path) -> String {
     let parts = |p: &Path| -> Vec<String> {
         let s = p.to_string_lossy();

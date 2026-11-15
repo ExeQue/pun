@@ -137,13 +137,13 @@ impl Look {
     }
 
     /// `text` in the colour of `role`, reset after it. Unchanged without colour.
-    pub(crate) fn paint(&self, role: Role, text: &str) -> String {
+    pub(crate) fn paint(self, role: Role, text: &str) -> String {
         let code = match self.depth {
             Depth::None => return text.to_string(),
             Depth::Ansi16 => ansi16(role, self.theme).to_string(),
             depth => match token(role, self.theme) {
                 None => ansi16(role, self.theme).to_string(),
-                Some(rgb) => self.colour(38, rgb, depth),
+                Some(rgb) => colour(38, rgb, depth),
             },
         };
         let code = if role == Role::Summary && !code.starts_with('1') {
@@ -156,7 +156,7 @@ impl Look {
 
     /// A step's label centred in [`PILL_WIDTH`] columns: bold dark ink on the step's brand colour. Without colour it
     /// is the plain label, padded the same, so the text after it starts in one column either way.
-    pub(crate) fn pill(&self, step: Step) -> String {
+    pub(crate) fn pill(self, step: Step) -> String {
         let label = step.label();
         let left = (PILL_WIDTH - label.len()) / 2;
         let text = format!(
@@ -180,25 +180,16 @@ impl Look {
                 let ink = named("code-bg", Theme::Light);
                 format!(
                     "1;{};{}",
-                    self.colour(38, ink, depth),
-                    self.colour(48, named(bg, self.theme), depth)
+                    colour(38, ink, depth),
+                    colour(48, named(bg, self.theme), depth)
                 )
             }
         };
         format!("\x1b[{code}m{text}\x1b[0m")
     }
 
-    /// The SGR parameters for `rgb` as a foreground (38) or background (48) at `depth` (24-bit or 256 colours).
-    fn colour(&self, layer: u8, (r, g, b): Rgb, depth: Depth) -> String {
-        if depth == Depth::TrueColor {
-            format!("{layer};2;{r};{g};{b}")
-        } else {
-            format!("{layer};5;{}", nearest_256((r, g, b)))
-        }
-    }
-
     /// `text` as an OSC 8 link to `url` when links are on.
-    pub(crate) fn link(&self, url: &str, text: &str) -> String {
+    pub(crate) fn link(self, url: &str, text: &str) -> String {
         if self.links {
             format!("\x1b]8;;{url}\x1b\\{text}\x1b]8;;\x1b\\")
         } else {
@@ -207,7 +198,7 @@ impl Look {
     }
 
     /// The Unicode glyph, or its ASCII fallback.
-    pub(crate) fn glyph<'a>(&self, unicode: &'a str, ascii: &'a str) -> &'a str {
+    pub(crate) fn glyph<'a>(self, unicode: &'a str, ascii: &'a str) -> &'a str {
         if self.unicode { unicode } else { ascii }
     }
 }
@@ -233,12 +224,11 @@ fn token(role: Role, theme: Theme) -> Option<Rgb> {
     let name = match (role, theme) {
         (Role::Error, Theme::Dark) => "gum",
         (Role::Error, Theme::Light) => "bad",
-        (Role::Warning, Theme::Dark) => "zap",
+        (Role::Warning | Role::Summary, Theme::Dark) => "zap",
         (Role::Ok, Theme::Dark) => "mint",
         (Role::Warning | Role::Ok | Role::Summary, Theme::Light) => return None,
         (Role::Rule, _) => "ok",
         (Role::Dim, _) => "ink-3",
-        (Role::Summary, Theme::Dark) => "zap",
     };
     Some(named(name, theme))
 }
@@ -261,8 +251,10 @@ static TOKENS: LazyLock<Vec<(String, Rgb, Rgb)>> = LazyLock::new(|| {
             .expect("tokens.json");
     let hex = |v: &serde_json::Value| {
         let s = v.as_str().expect("a colour");
-        let n = u32::from_str_radix(&s[1..], 16).expect("#RRGGBB");
-        ((n >> 16) as u8, (n >> 8) as u8, n as u8)
+        let [_, r, g, b] = u32::from_str_radix(&s[1..], 16)
+            .expect("#RRGGBB")
+            .to_be_bytes();
+        (r, g, b)
     };
     doc["color"]["tokens"]
         .as_array()
@@ -340,4 +332,13 @@ fn hyperlinks(var: &dyn Fn(&str) -> Option<String>, term: &str) -> bool {
         || var("KONSOLE_VERSION").is_some()
         || var("VTE_VERSION").is_some_and(|v| v.parse::<u32>().is_ok_and(|n| n >= 5000))
         || matches!(term, "xterm-kitty" | "xterm-ghostty" | "alacritty" | "foot")
+}
+
+/// The SGR parameters for `rgb` as a foreground (38) or background (48) at `depth` (24-bit or 256 colours).
+fn colour(layer: u8, (r, g, b): Rgb, depth: Depth) -> String {
+    if depth == Depth::TrueColor {
+        format!("{layer};2;{r};{g};{b}")
+    } else {
+        format!("{layer};5;{}", nearest_256((r, g, b)))
+    }
 }

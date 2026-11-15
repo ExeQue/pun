@@ -15,6 +15,7 @@ use pun_packages::resolver::{Options, locker, resolve};
 use pun_packages::version::{IgnorePlatform, normalize};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 fn options(args: &[Value]) -> Options {
     let mut o = Options::default();
@@ -162,7 +163,7 @@ fn pool_entry(arena: &[Package], ids: &HashMap<usize, String>, p: usize) -> Stri
         .and_then(Value::as_str)
         .filter(|r| !r.is_empty())
     {
-        out.push_str(&format!("#{r}"));
+        let _ = write!(out, "#{r}");
     }
     if package.origin == Origin::Locked {
         out.push_str(" (locked)");
@@ -172,7 +173,7 @@ fn pool_entry(arena: &[Package], ids: &HashMap<usize, String>, p: usize) -> Stri
             .get(&of)
             .cloned()
             .unwrap_or_else(|| arena[of].version.clone());
-        out.push_str(&format!(" (alias of {base})"));
+        let _ = write!(out, " (alias of {base})");
     }
     out
 }
@@ -422,6 +423,10 @@ const EXTRA_POOLS: &str = r#"[
 ]"#;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pools_as_composer() {
     let fixtures: Value =
         serde_json::from_str(include_str!("fixtures/poolbuilder.json")).expect("valid fixtures");

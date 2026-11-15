@@ -1,5 +1,6 @@
 use super::*;
 use serde_json::json;
+use std::fmt::Write as _;
 
 fn dir(files: &[(&str, &str)]) -> PathBuf {
     static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -13,6 +14,10 @@ fn dir(files: &[(&str, &str)]) -> PathBuf {
     d
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "a test helper called with temporaries"
+)]
 fn err(d: &Path, o: Options) -> String {
     format!("{:#}", load(d, &o).unwrap_err())
 }
@@ -77,7 +82,12 @@ fn ids(rules: &[LintRule]) -> Vec<&str> {
 const LARAVEL_LOCK: &str = r#"{"packages":[{"name":"laravel/framework","version":"v11.9.2"}]}"#;
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pun_toml() {
+    use Level::{Error, Warn};
     let d = dir(&[
         ("composer.json", r#"{"require":{"php":"^8.4"}}"#),
         (
@@ -136,7 +146,6 @@ not-path = ["p"]
         assert!(!n.contains(&risky), "{risky}");
     }
     assert!(c.blade);
-    use Level::{Error, Warn};
     assert_eq!(
         c.lint.rules,
         [
@@ -920,6 +929,10 @@ fn files_paths_stay_in_the_project() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pun_toml_errors() {
     let d = dir(&[]);
     let e = |toml: &str| {
@@ -1541,6 +1554,13 @@ fn php_version_id() {
 
 #[test]
 fn analyse_parameters() {
+    fn show(v: &V) -> String {
+        match v {
+            V::Array(a) => format!("[{}]", a.values().map(show).collect::<Vec<_>>().join(", ")),
+            V::Int(i) => i.to_string(),
+            v => v.as_str().unwrap().to_string(),
+        }
+    }
     use pun_phpstan::Value as V;
     let groups: std::collections::BTreeSet<&str> = (rules().iter())
         .filter_map(|(id, _)| id.strip_prefix("analyse/")?.split('/').next())
@@ -1550,7 +1570,7 @@ fn analyse_parameters() {
     );
     toml.push_str("\n[[analyse.ignore]]\nraw-message = \"r\"\npaths = [\"*/B.php\", \"app/../C.php\"]\n\n[analyse.rules]\n");
     for g in &groups {
-        toml.push_str(&format!("{g} = \"off\"\n"));
+        let _ = writeln!(toml, "{g} = \"off\"");
     }
     toml.push_str("\"undefined/constant\" = \"on\"\n\"types/by-ref-foreach-on-expression\" = \"on\"\n\"classes/uninitialized-property\" = { additional-constructors = [\"A::init\"] }\n\"undefined/property\" = { check-dynamic-properties = true }\n\"deprecated/constant\" = \"on\"\n");
     let d = dir(&[("pun.toml", &toml)]);
@@ -1575,13 +1595,6 @@ fn analyse_parameters() {
     assert_eq!(toggle("assignToByRefForeachExpr"), Some(V::Bool(true)));
     assert_eq!(toggle("unusedLabel"), Some(V::Bool(false)));
     assert_eq!(get("noModelMake"), None);
-    fn show(v: &V) -> String {
-        match v {
-            V::Array(a) => format!("[{}]", a.values().map(show).collect::<Vec<_>>().join(", ")),
-            V::Int(i) => i.to_string(),
-            v => v.as_str().unwrap().to_string(),
-        }
-    }
     let ignores: Vec<String> = (get("ignoreErrors").unwrap().as_array().unwrap().values())
         .map(|e| {
             let e = e.as_array().unwrap();
@@ -1627,7 +1640,7 @@ fn variable_parameters() {
         .filter_map(|(id, _)| id.strip_prefix("analyse/")?.split('/').next())
         .collect();
     for group in groups {
-        base.push_str(&format!("{group} = \"off\"\n"));
+        let _ = writeln!(base, "{group} = \"off\"");
     }
     for consumer in ["undefined/variable", "undefined/compact-variable"] {
         for level in [0, 1] {

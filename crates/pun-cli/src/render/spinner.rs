@@ -15,7 +15,7 @@ pub(crate) struct Spinner {
 }
 
 impl Spinner {
-    pub(crate) fn stderr(total: usize, look: &Look, tty: bool) -> Option<Spinner> {
+    pub(crate) fn stderr(total: usize, look: Look, tty: bool) -> Option<Spinner> {
         tty.then(|| Spinner::start(Box::new(std::io::stderr()), total, look.unicode, DELAY))
     }
 

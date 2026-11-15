@@ -1,4 +1,4 @@
-//! Runs the harness binary against a throwaway root (PUN_HARNESS_ROOT) that borrows the real
+//! Runs the harness binary against a throwaway root (`PUN_HARNESS_ROOT`) that borrows the real
 //! .oracle/ and scripts/ but has its own two-project corpus. Expected counts and diffs are
 //! hand-derived from the corpus below: Pint (laravel preset) turns `array(...)` into `[...]`.
 
@@ -24,7 +24,7 @@ fn script(path: &Path, body: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
-/// root/{.oracle,scripts} -> real ones; corpus a (pint.json with `exclude`, node_modules, a
+/// root/{.oracle,scripts} -> real ones; corpus a (pint.json with `exclude`, `node_modules`, a
 /// symlink) and b (no pint.json); a scoreboard with one foreign row and a stale row for `a`.
 fn root(name: &str) -> PathBuf {
     let r = std::env::temp_dir().join(format!("pun-harness-test-{}-{name}", std::process::id()));

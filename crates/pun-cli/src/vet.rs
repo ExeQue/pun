@@ -306,6 +306,10 @@ fn verdict(need: &Need, audits: &[&Audit], exemptions: &[Exemption]) -> Verdict 
     Verdict::Unvetted(below.or(above).map(|k| shown[k].clone()))
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn run(a: VetArgs) -> Result<Exit> {
     let project = project(None, false)?;
     let lock = (project.lock.as_ref())

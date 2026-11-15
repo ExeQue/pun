@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 const MAX_LINE_LENGTH: usize = 120;
 
 pub(crate) struct Style {
@@ -103,11 +105,7 @@ impl Style {
             if i == separator {
                 out.push_str(&border);
             }
-            out.push_str(&format!(
-                "  {}   {}  \n",
-                pad(a, widths[0]),
-                pad(b, widths[1])
-            ));
+            let _ = writeln!(out, "  {}   {}  ", pad(a, widths[0]), pad(b, widths[1]));
         }
         out.push_str(&border);
         out.push('\n');

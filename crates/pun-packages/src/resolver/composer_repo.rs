@@ -33,6 +33,10 @@ struct File {
     filter: Option<Value>,
 }
 
+#[expect(
+    clippy::option_option,
+    reason = "None: the cached file is not JSON; Some(None): it has no stamp"
+)]
 fn last_modified(text: &[u8]) -> Option<Option<String>> {
     #[derive(Deserialize)]
     struct Stamp {
@@ -203,7 +207,7 @@ fn fetch_all(
         .into_iter()
         .map(|j| std::sync::Mutex::new(Some(j)))
         .collect();
-    let results: Vec<std::sync::Mutex<Option<(String, Result<Option<File>>)>>> = (0..jobs.len())
+    let results: Vec<std::sync::Mutex<Option<_>>> = (0..jobs.len())
         .map(|_| std::sync::Mutex::new(None))
         .collect();
     std::thread::scope(|scope| {
@@ -314,7 +318,7 @@ impl Repository for ComposerRepository<'_> {
             self.files.insert(file, data?);
         }
         let (url, notify) = (&self.url, &self.notify);
-        let decoded: Vec<Option<Result<(Vec<Package>, Vec<usize>)>>> = (wanted.par_iter())
+        let decoded: Vec<Option<Result<_>>> = (wanted.par_iter())
             .map(|(file, name, constraint)| {
                 let data = self.files.get(file)?.as_ref()?;
                 let all: Value = serde_json::from_str(data.packages.as_ref()?.get()).ok()?;
@@ -548,6 +552,10 @@ mod tests {
         d
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn manifest(url: &str, require: Value) -> Map<String, Value> {
         let m = json!({
             "name": "acme/app",
@@ -670,6 +678,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one test walks every case of the behaviour it checks"
+    )]
     fn repository_errors() {
         const FILES: &[(&str, &str)] = &[
             ("/v1/packages.json", r#"{"packages": []}"#),

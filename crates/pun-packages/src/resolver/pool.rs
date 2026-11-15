@@ -288,12 +288,15 @@ impl Request {
     }
 }
 
+/// The package ids that provide a name, by the name and constraint asked for.
+type Providers = HashMap<(String, Option<Constraint>), Rc<[i32]>>;
+
 pub struct Pool {
     pub arena: Vec<Package>,
     pub ids: Vec<usize>,
     id_of: HashMap<usize, i32>,
     by_name: HashMap<String, Vec<i32>>,
-    cache: RefCell<HashMap<(String, Option<Constraint>), Rc<[i32]>>>,
+    cache: RefCell<Providers>,
     pub unacceptable: Vec<usize>,
     pub removed: Vec<(usize, String)>,
 }
@@ -302,8 +305,7 @@ impl Pool {
     pub fn new(arena: Vec<Package>, packages: Vec<usize>, unacceptable: Vec<usize>) -> Pool {
         let mut by_name: HashMap<String, Vec<i32>> = HashMap::new();
         let mut id_of = HashMap::new();
-        for (i, &p) in packages.iter().enumerate() {
-            let id = i as i32 + 1;
+        for (id, &p) in (1..).zip(&packages) {
             id_of.insert(p, id);
             for name in arena[p].names(true) {
                 by_name.entry(name.to_string()).or_default().push(id);
@@ -320,6 +322,7 @@ impl Pool {
         }
     }
 
+    #[must_use]
     pub fn with_packages(self, packages: Vec<usize>) -> Pool {
         let removed = self.removed;
         Pool {
@@ -486,7 +489,7 @@ impl<'a> PoolBuilder<'a> {
                 if data.get("dist").and_then(|d| d.get("type")) == Some(&Value::from("path"))
                     && (data.get("transport-options"))
                         .and_then(|o| o.get("symlink"))
-                        .and_then(|s| s.as_bool())
+                        .and_then(serde_json::Value::as_bool)
                         != Some(false)
                 {
                     self.path_unlocked.insert(package.name.clone());

@@ -1,5 +1,5 @@
 //! Format rule options under Pun names: mapping.toml's `[options]` against the pinned PHP-CS-Fixer's option
-//! definitions (tests/fixer_options.json, from scripts/export-fixer-options.php), and each kind of option translated
+//! definitions (`tests/fixer_options.json`, from scripts/export-fixer-options.php), and each kind of option translated
 //! both ways with expectations derived by hand from those definitions.
 
 use super::*;
@@ -15,6 +15,10 @@ fn read(rule: &str, value: &str) -> Result<Value, String> {
     to_fixer(rule, &id, v["x"].clone()).map_err(|e| e.to_string())
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "a test helper called with temporaries"
+)]
 fn write(fixer: &str, options: Value) -> Result<Value, String> {
     to_pun(fixer, rule_of(fixer).unwrap(), &options).map_err(|e| e.to_string())
 }
@@ -136,6 +140,10 @@ fn upstream_values_round_trip() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn each_kind_translates() {
     let cases: &[(&str, &str, &str, Value)] = &[
         (
@@ -302,6 +310,10 @@ fn each_kind_translates() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn pun_toml_errors() {
     let cases = [
         (
@@ -422,6 +434,10 @@ fn pun_toml_errors() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn migrate_errors() {
     let cases = [
         (
@@ -564,6 +580,10 @@ fn migrate_errors() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn migrate_entry_types() {
     let elements = |of: &str, types: &str, got: &str| {
         format!(

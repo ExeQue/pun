@@ -46,14 +46,13 @@ fn text(id: &str) -> String {
     let str = |k| e.get(k).and_then(toml::Value::as_str);
     let list = |k| -> Vec<&str> {
         (e.get(k).and_then(toml::Value::as_array))
-            .map(|a| a.iter().filter_map(toml::Value::as_str).collect())
-            .unwrap_or_default()
+            .map_or_default(|a| a.iter().filter_map(toml::Value::as_str).collect())
     };
     let (command, rest) = id.split_once('/').unwrap();
     let group = rest.split_once('/').unwrap().0;
     let mut out = format!("{id}\n");
     if let Some(s) = str("summary") {
-        out += &format!("{s}\n");
+        let _ = writeln!(out, "{s}");
     }
     out += "\n";
     let mut row = |label: &str, value: &str| writeln!(out, "{label:<10}{value}").unwrap();

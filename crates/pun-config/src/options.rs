@@ -117,16 +117,17 @@ pub(crate) fn to_fixer(rule: &str, id: &str, v: toml::Value) -> Result<Value> {
             );
         }
         toml::Value::Table(t) => t,
-        v => match shorthand(opts) {
-            Some(o) => toml::Table::from_iter([(o.name.clone(), v)]),
-            None => {
+        v => {
+            if let Some(o) = shorthand(opts) {
+                toml::Table::from_iter([(o.name.clone(), v)])
+            } else {
                 let one = match opts {
                     [] => "true or false".to_string(),
                     _ => "true, false or a table of options".to_string(),
                 };
                 bail!("`{rule}` must be {one}");
             }
-        },
+        }
     };
     let mut out = Map::new();
     for (k, v) in table {
@@ -179,6 +180,10 @@ fn expected(o: &RuleOption) -> String {
     }
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "each match arm binds the option value it checks under a one-letter name"
+)]
 fn fixer_value(o: &RuleOption, v: toml::Value) -> Option<Value> {
     use toml::Value as T;
     if let (T::String(s), Some(n)) = (&v, &o.null)
@@ -375,6 +380,10 @@ fn element_types(o: &RuleOption, v: &Value) -> Option<String> {
     ))
 }
 
+#[expect(
+    clippy::many_single_char_names,
+    reason = "each match arm binds the option value it checks under a one-letter name"
+)]
 fn rejected(fixer: &str, o: &RuleOption, v: &Value) -> String {
     let k = &o.upstream;
     let ups = |l: &[(String, String)]| natural_language_join(l.iter().map(|(_, u)| u));

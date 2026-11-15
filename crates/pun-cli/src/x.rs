@@ -2,6 +2,7 @@ use crate::Exit;
 use crate::install::{InstallArgs, project};
 use crate::update::{Plan, update_and_install};
 use anyhow::{Context, Result, bail};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -39,7 +40,7 @@ const ALIASES: [(&str, &str, &str); 12] = [
 /// How long a resolve stays current before a run looks for a newer release.
 const FRESH: Duration = Duration::from_hours(24);
 
-pub(crate) fn run(a: XArgs) -> Result<Exit> {
+pub(crate) fn run(a: &XArgs) -> Result<Exit> {
     let (spec, rest) = a.args.split_first().expect("clap requires the package");
     match spec.as_str() {
         "list" => return list(),
@@ -120,7 +121,7 @@ fn tool_dir(name: &str, constraint: &str) -> Result<PathBuf> {
         if b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_') {
             version.push(char::from(b));
         } else {
-            version.push_str(&format!("%{b:02X}"));
+            let _ = write!(version, "%{b:02X}");
         }
     }
     Ok(cache_dir()?.join("x").join(name).join(version))
@@ -280,7 +281,7 @@ fn ensure_installed(dir: &Path, name: &str, constraint: &str) -> Result<()> {
         ..InstallArgs::default()
     };
     let result = project(args.working_dir.as_ref(), false)
-        .and_then(|mut p| update_and_install(&mut p, Plan::default(), &args, Instant::now()));
+        .and_then(|mut p| update_and_install(&mut p, &Plan::default(), &args, Instant::now()));
     match result {
         Ok(Exit::Success) => {
             let _ = std::fs::File::options()

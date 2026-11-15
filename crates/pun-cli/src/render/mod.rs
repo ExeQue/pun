@@ -11,6 +11,7 @@ pub(crate) use look::{Depth, Theme, nearest_256};
 pub(crate) use spinner::Spinner;
 
 use pun_problem::{Level, LineIndex, Problem, Safety};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -101,7 +102,7 @@ impl Renderer {
         if !file.rules.is_empty() {
             let rules: Vec<String> = file.rules.iter().map(|r| self.rule(r)).collect();
             let pad = width - shown.chars().count();
-            out.push_str(&format!("{}{}", " ".repeat(pad), rules.join(", ")));
+            let _ = write!(out, "{}{}", " ".repeat(pad), rules.join(", "));
         }
         out.push('\n');
         out
@@ -155,7 +156,7 @@ impl Renderer {
         for row in rows {
             let Row::Line(o, n, sign, text) = row else {
                 let gap = self.look.glyph("…", "...");
-                out.push_str(&format!("   {}\n", self.look.paint(Role::Dim, gap)));
+                let _ = writeln!(out, "   {}", self.look.paint(Role::Dim, gap));
                 continue;
             };
             let numbers = self
@@ -168,7 +169,7 @@ impl Renderer {
                 _ => format!(" {}", self.look.paint(Role::Dim, text)),
             };
             let space = if code.is_empty() { "" } else { " " };
-            out.push_str(&format!("   {numbers} {bar}{space}{code}\n"));
+            let _ = writeln!(out, "   {numbers} {bar}{space}{code}");
         }
         out
     }
@@ -185,7 +186,7 @@ impl Renderer {
     }
 
     pub(crate) fn problem(&self, problem: &Problem, source: &str, index: &LineIndex) -> String {
-        let (glyph, role) = level(&self.look, problem.level);
+        let (glyph, role) = level(self.look, problem.level);
         let at = index.line_col(problem.span.start);
         let location = format!("{}:{}:{}", problem.path.display(), at.line, at.column);
         let label = problem.fix.as_ref().map(|fix| match fix.safety {
@@ -205,11 +206,12 @@ impl Renderer {
         if let Some(label) = label {
             let used = 5 + problem.rule.chars().count() + problem.message.chars().count();
             let pad = LABEL_COLUMN.saturating_sub(used).max(2);
-            out.push_str(&format!(
+            let _ = write!(
+                out,
                 "{}{}",
                 " ".repeat(pad),
                 self.look.paint(Role::Dim, label)
-            ));
+            );
         }
         out.push('\n');
         out.push_str(&self.frame(problem, &location, source, index, role));
@@ -267,10 +269,11 @@ impl Renderer {
         for line in lines {
             let Some(line) = line else {
                 let more = self.look.glyph("…", "...");
-                out.push_str(&format!(
-                    " {}\n",
+                let _ = writeln!(
+                    out,
+                    " {}",
                     self.look.paint(Role::Dim, &format!("{more:>width$}"))
-                ));
+                );
                 continue;
             };
             let (start, code) = text(line);
@@ -293,19 +296,20 @@ impl Renderer {
                 let pad = columns(&code[..from]) - strip;
                 let marks = columns(&code[from..to.max(from)]).max(1);
                 let marker = self.look.glyph("━", "^").repeat(marks);
-                out.push_str(&format!(
-                    " {:width$}{bar} {}{}\n",
+                let _ = writeln!(
+                    out,
+                    " {:width$}{bar} {}{}",
                     "",
                     " ".repeat(pad),
                     self.look.paint(role, &marker)
-                ));
+                );
             }
         }
         let corner = self.look.paint(Role::Dim, self.look.glyph("╰─", "`-"));
-        match &problem.help {
-            Some(help) => out.push_str(&format!(" {:width$}{corner} help: {help}\n", "")),
-            None => out.push_str(&format!(" {:width$}{corner}\n", "")),
-        }
+        let _ = match &problem.help {
+            Some(help) => writeln!(out, " {:width$}{corner} help: {help}", ""),
+            None => writeln!(out, " {:width$}{corner}", ""),
+        };
         out
     }
 
@@ -407,7 +411,7 @@ impl Renderer {
         let mut out = format!("{}\n", self.look.paint(Role::Error, &line));
         if let Some(hint) = &e.hint {
             for line in hint.lines() {
-                out.push_str(&format!("  {line}\n"));
+                let _ = writeln!(out, "  {line}");
             }
         }
         out
@@ -429,7 +433,7 @@ impl Renderer {
     }
 }
 
-fn level(look: &Look, level: Level) -> (&'static str, Role) {
+fn level(look: Look, level: Level) -> (&'static str, Role) {
     match level {
         Level::Error => (look.glyph("✖", "x"), Role::Error),
         Level::Warning => (look.glyph("⚠", "!"), Role::Warning),
@@ -456,7 +460,7 @@ pub(crate) fn file_url(path: &Path) -> String {
         if b.is_ascii_alphanumeric() || b"-._~/".contains(&b) {
             url.push(b as char);
         } else {
-            url.push_str(&format!("%{b:02X}"));
+            let _ = write!(url, "%{b:02X}");
         }
     }
     url

@@ -106,6 +106,10 @@ fn reads_sets_rules_and_skips() {
 /// keeps its keys, a value object list goes under `items` with its properties kebab-cased, Rector's option constant
 /// `exclude_methods` is kebab-cased. What TOML can't hold, or a key pun.toml keeps for the level, is named.
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn carries_rule_configurations() {
     let root = dir(&[]);
     let printed = json!({"Rector\\Renaming\\Rector\\FuncCall\\RenameFunctionRector": {"configuration": {"split": "explode", "join": "implode"}, "constants": []}, "Rector\\Removing\\Rector\\FuncCall\\RemoveFuncCallArgRector": {"configuration": [{"@props": {"function": "ldap_first_attribute", "argumentPosition": 2}}], "constants": []}, "RectorLaravel\\Rector\\PropertyFetch\\OptionalToNullsafeOperatorRector": {"configuration": {"exclude_methods": ["present"]}, "constants": ["exclude_methods"]}, "Rector\\Renaming\\Rector\\ConstFetch\\RenameConstantRector": {"configuration": {"OLD": "NEW"}, "constants": []}});
@@ -242,6 +246,10 @@ fn carries_rule_configurations() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn composes_the_difference_with_the_sets() {
     let root = dir(&[]);
     let id = |s: &str| s.to_string();

@@ -65,6 +65,10 @@ impl Drop for Scratch {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 fn main() -> Result<ExitCode> {
     // PUN_HARNESS_ROOT: run against another checkout layout (corpus/, .oracle/, scripts/, docs/).
     let root = std::env::var_os("PUN_HARNESS_ROOT")
@@ -183,9 +187,10 @@ fn main() -> Result<ExitCode> {
     if fixer.is_none() && preset.is_none() {
         write_scoreboard(&root.join("context/reports/scoreboard.md"), &outcomes)?;
     }
-    Ok(match outcomes.iter().any(|o| !o.differing.is_empty()) {
-        true => ExitCode::FAILURE,
-        false => ExitCode::SUCCESS,
+    Ok(if outcomes.iter().any(|o| !o.differing.is_empty()) {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     })
 }
 
@@ -276,29 +281,29 @@ fn list_files(dir: &Path, rel: &str, out: &mut BTreeSet<String>) -> Result<()> {
 }
 
 fn compare(name: &str, src: &Path, oracle: &Path, pun: &Path) -> Result<Outcome> {
-    let (mut a, mut b) = (BTreeSet::new(), BTreeSet::new());
-    list_files(oracle, "", &mut a)?;
-    list_files(pun, "", &mut b)?;
+    let (mut by_oracle, mut by_pun) = (BTreeSet::new(), BTreeSet::new());
+    list_files(oracle, "", &mut by_oracle)?;
+    list_files(pun, "", &mut by_pun)?;
     for written in ["pun.toml", "pun.lock", "auth.json"] {
-        b.remove(written);
+        by_pun.remove(written);
     }
     let mut o = Outcome {
         name: name.into(),
-        files: a.union(&b).count(),
+        files: by_oracle.union(&by_pun).count(),
         identical: 0,
         differing: vec![],
         oracle_changed: 0,
         pun_changed: 0,
     };
-    for rel in a.union(&b) {
-        let (x, y, s) = (
+    for rel in by_oracle.union(&by_pun) {
+        let (oracle_out, pun_out, source) = (
             fs::read(oracle.join(rel)).ok(),
             fs::read(pun.join(rel)).ok(),
             fs::read(src.join(rel)).ok(),
         );
-        o.oracle_changed += usize::from(x != s);
-        o.pun_changed += usize::from(y != s);
-        if x == y {
+        o.oracle_changed += usize::from(oracle_out != source);
+        o.pun_changed += usize::from(pun_out != source);
+        if oracle_out == pun_out {
             o.identical += 1;
         } else {
             o.differing.push(rel.clone());

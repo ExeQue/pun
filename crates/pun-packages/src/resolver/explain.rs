@@ -4,6 +4,7 @@ use super::solver::Reason;
 use crate::constraint::Constraint;
 use crate::version::is_platform;
 use serde_json::{Map, Value};
+use std::fmt::Write as _;
 
 const SHOWN: usize = 4;
 
@@ -103,7 +104,7 @@ fn found(arena: &[Package], pool: &[usize], name: &str, constraint: &Constraint)
     let list = |versions: &[&str]| {
         let mut s = versions[..versions.len().min(SHOWN)].join(", ");
         if versions.len() > SHOWN {
-            s.push_str(&format!(" and {} more", versions.len() - SHOWN));
+            let _ = write!(s, " and {} more", versions.len() - SHOWN);
         }
         s
     };
@@ -127,9 +128,13 @@ mod tests {
     use serde_json::json;
 
     fn object(v: Value) -> Map<String, Value> {
-        v.as_object().unwrap().clone()
+        serde_json::from_value(v).unwrap()
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "a test helper called with temporaries"
+    )]
     fn problems(
         require: Value,
         packages: Value,

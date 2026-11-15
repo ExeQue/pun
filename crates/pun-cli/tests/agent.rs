@@ -1,10 +1,11 @@
 //! Agent mode (context/PLAN.md "Agent-optimised output"): detection priority and the exact lines of every command.
 //! Expected rule IDs and summaries come from rules/mapping.toml, the fixers each input triggers from Pint
 //! (`php .oracle/pint/builds/pint --format=agent` on the same files), the env list from the agent-detector crate
-//! 0.2.1's src/agents.rs plus laravel/agent-detector's AgentDetector::AGENT_ENV_VARS (380e6e4). The run time in the summary line is replaced by `T`.
+//! 0.2.1's src/agents.rs plus laravel/agent-detector's `AgentDetector::AGENT_ENV_VARS` (380e6e4). The run time in the summary line is replaced by `T`.
 mod common;
 
 use common::{PUN, read};
+use std::fmt::Write as _;
 use std::path::Path;
 use std::process::Command;
 
@@ -42,6 +43,10 @@ const CLEAN: &str = "<?php\n$c = [1];\n";
 const ALIAS_LINE: &str = "app/B.php lint/style/no-alias-function [fix:unsafe] Master functions shall be used instead of aliases.";
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one test walks every case of the behaviour it checks"
+)]
 fn detection_priority() {
     let d = common::project("agent", "t", &[("pun.toml", TOML), ("app/A.php", ARRAY)]);
     let is_agent = |args: &[&str], env: &[(&str, &str)]| {
@@ -216,13 +221,8 @@ fn caps_long_lists() {
         format!("{head}{first}+3 more; run with -v for all\n")
     );
     let all: String = (1..=23)
-        .map(|n| {
-            format!(
-                "{}--- app/F{n:02}.php\n+++ app/F{n:02}.php\n@@ -1,2 +1,2 @@\n <?php\n-$a = array(1);\n+$a = [1];\n",
-                line(n)
-            )
-        })
-        .collect();
+        .fold(String::new(), |mut out, n| { let _ = write!(out, "{}--- app/F{n:02}.php\n+++ app/F{n:02}.php\n@@ -1,2 +1,2 @@\n <?php\n-$a = array(1);\n+$a = [1];\n",
+                line(n)); out });
     assert_eq!(
         agent(&d, &["format", "--test", "-v"]).0,
         format!("{head}{all}")
@@ -611,7 +611,10 @@ fn analyse_lines() {
 
 #[test]
 fn analyse_caps_long_lists() {
-    let calls: String = (1..=21).map(|n| format!("    nope{n}();\n")).collect();
+    let calls: String = (1..=21).fold(String::new(), |mut out, n| {
+        let _ = writeln!(out, "    nope{n}();");
+        out
+    });
     let d = common::project(
         "agent",
         "analyse-cap",

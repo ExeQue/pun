@@ -38,7 +38,7 @@ impl Analyse {
         let switches = (SWITCH_LEVELS.iter())
             .filter(|(s, _)| self.switches.contains(s))
             .map(|(_, l)| i64::from(*l));
-        rules.chain(switches).max().unwrap_or(0) as u8
+        u8::try_from(rules.chain(switches).max().unwrap_or(0)).expect("PHPStan levels are 0 to 10")
     }
 
     pub fn parameters(&self, root: &Path) -> Array {

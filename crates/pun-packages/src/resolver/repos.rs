@@ -18,8 +18,8 @@ pub fn configs(sources: &[&Value]) -> Result<Vec<Map<String, Value>>> {
     )];
     for source in sources {
         let new: Vec<(Key, Value)> = match source {
-            Value::Array(list) => (list.iter().enumerate())
-                .map(|(i, v)| (Key::Int(i as i64), v.clone()))
+            Value::Array(list) => ((0..).zip(list))
+                .map(|(i, v)| (Key::Int(i), v.clone()))
                 .collect(),
             Value::Object(m) if !m.is_empty() => {
                 m.iter().map(|(k, v)| (Key::of(k), v.clone())).collect()
@@ -152,14 +152,14 @@ pub fn open<'a>(
 }
 
 fn expand_path(path: &str, env: Env) -> String {
+    static VAR: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^(?:\$(\w++)|%(\w++)%)(.*)$").expect("valid pattern"));
     let env = |k: &str| env(k).unwrap_or_default();
     if let Some(rest) = path.strip_prefix('~')
         && (rest.starts_with('/') || rest.starts_with('\\'))
     {
         return format!("{}{rest}", env("HOME"));
     }
-    static VAR: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^(?:\$(\w++)|%(\w++)%)(.*)$").expect("valid pattern"));
     match VAR.captures(path.as_bytes()).ok().flatten() {
         Some(c) => {
             let text = |i: usize| c.get(i).map(|m| String::from_utf8_lossy(m.as_bytes()));
@@ -170,6 +170,10 @@ fn expand_path(path: &str, env: Env) -> String {
     }
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub fn path_packages(
     root: &Path,
     config: &Map<String, Value>,
@@ -213,15 +217,14 @@ pub fn path_packages(
     for dir in matches {
         let path = root.join(&dir);
         let file = path.join("composer.json");
-        let json = match std::fs::read_to_string(&file) {
-            Ok(json) => json,
-            Err(_) => {
-                let Some(m) = pun_config::manifest::read(&path).map_err(|e| Error::foreign(&*e))?
-                else {
-                    continue;
-                };
-                Value::Object(m.json).to_string()
-            }
+        let json = if let Ok(json) = std::fs::read_to_string(&file) {
+            json
+        } else {
+            let Some(m) = pun_config::manifest::read(&path).map_err(|e| Error::foreign(&*e))?
+            else {
+                continue;
+            };
+            Value::Object(m.json).to_string()
         };
         let Value::Object(mut package) = serde_json::from_str(&json)
             .with_context(|| format!("{} does not contain valid JSON", file.display()))?

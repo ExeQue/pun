@@ -1,4 +1,4 @@
-use crate::composer::{Composer, Version};
+use crate::composer::{Composer, Locked};
 use crate::{fixer_of, options, renamed, rules};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
@@ -359,14 +359,14 @@ pub(crate) struct Gates<'a> {
 }
 
 impl Gates<'_> {
-    fn locked(&self, ecosystem: Ecosystem) -> Option<Option<Version>> {
+    fn locked(&self, ecosystem: Ecosystem) -> Option<&Locked> {
         let l = match ecosystem {
             Ecosystem::Laravel => &self.composer.laravel,
             Ecosystem::Pest => &self.composer.pest,
             Ecosystem::Phpunit => &self.composer.phpunit,
             Ecosystem::Doctrine => return None,
         };
-        l.as_ref().map(|l| l.semver)
+        l.as_ref()
     }
 
     pub(crate) fn ecosystems(&self, off: impl Fn(&str) -> bool) -> Vec<Ecosystem> {
@@ -380,7 +380,7 @@ impl Gates<'_> {
             return v.parse().is_ok_and(|v: PhpVersion| self.php >= v);
         }
         if let Some(v) = group.strip_prefix("laravel-") {
-            let locked = self.locked(Ecosystem::Laravel).flatten();
+            let locked = self.locked(Ecosystem::Laravel).and_then(|l| l.semver);
             return on.contains(&Ecosystem::Laravel)
                 && version(v)
                     .zip(locked)
@@ -425,13 +425,11 @@ pub(crate) fn rule_id(path: &Path, command: &str, name: &str) -> Result<String> 
         "format"
     };
     let found = (fixer_of(other, name).and_then(crate::rule_of)).or_else(|| renamed(name));
-    match found {
-        Some(id) => bail!("{}: `{name}` is `{id}` in pun.toml", path.display()),
-        None => {
-            let a = if command == "analyse" { "an" } else { "a" };
-            bail!("{}: `{name}` is not {a} {command} rule", path.display())
-        }
+    if let Some(id) = found {
+        bail!("{}: `{name}` is `{id}` in pun.toml", path.display())
     }
+    let a = if command == "analyse" { "an" } else { "a" };
+    bail!("{}: `{name}` is not {a} {command} rule", path.display())
 }
 
 fn level(path: &Path, key: &str, s: &str) -> Result<Option<Level>> {
@@ -577,15 +575,14 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
             .filter(|(id, e)| id.starts_with("lint/") && ported(e))
         {
             let group = group_of(id);
-            let level = match groups.get(group) {
-                Some(l) => *l,
-                None => {
-                    let in_set = (e.get("sets").and_then(toml::Value::as_array)).is_some_and(|s| {
-                        s.iter()
-                            .any(|s| t.sets.iter().any(|t| s.as_str() == Some(t)))
-                    });
-                    (in_set && gates.allows(group, &ecosystems)).then_some(Level::Error)
-                }
+            let level = if let Some(l) = groups.get(group) {
+                *l
+            } else {
+                let in_set = (e.get("sets").and_then(toml::Value::as_array)).is_some_and(|s| {
+                    s.iter()
+                        .any(|s| t.sets.iter().any(|t| s.as_str() == Some(t)))
+                });
+                (in_set && gates.allows(group, &ecosystems)).then_some(Level::Error)
             };
             if let Some(level) = level {
                 on.insert(
@@ -619,6 +616,10 @@ fn list(items: &[&str]) -> String {
     quoted.join(", ")
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "long; to be split (code audit: functions over 100 lines)"
+)]
 pub(crate) fn analyse(
     path: &Path,
     t: AnalyseToml,
@@ -630,8 +631,9 @@ pub(crate) fn analyse(
             .as_integer()
             .and_then(|l| usize::try_from(l).ok())
             .filter(|l| *l <= 10)
-            .map(|l| format!(": level {l} is preset = \"{}\"", AnalysePreset::of_level(l)))
-            .unwrap_or_default();
+            .map_or_default(|l| {
+                format!(": level {l} is preset = \"{}\"", AnalysePreset::of_level(l))
+            });
         let presets: Vec<String> = (AnalysePreset::ALL.iter())
             .map(|p| format!("\"{p}\""))
             .collect();
@@ -644,10 +646,10 @@ pub(crate) fn analyse(
     let preset = match t.preset {
         None => AnalysePreset::Recommended,
         Some(v) if let Some(p) = v.as_str().and_then(AnalysePreset::parse) => p,
-        Some(toml::Value::Integer(l)) if (0..=10).contains(&l) => bail!(
+        Some(toml::Value::Integer(l)) if let Ok(level @ 0..=10) = usize::try_from(l) => bail!(
             "{}: [analyse] preset = {l}: PHPStan level {l} is preset = \"{}\"",
             path.display(),
-            AnalysePreset::of_level(l as usize)
+            AnalysePreset::of_level(level)
         ),
         Some(v) => bail!(
             "{}: [analyse] preset = {v}: expected {}",
