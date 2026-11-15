@@ -103,6 +103,11 @@ enum Cmd {
         #[arg(long)]
         preset: Option<String>,
     },
+    /// The extensions that add a framework's or tool's rules (`pun extension list`).
+    Extension {
+        #[command(subcommand)]
+        cmd: extensions::ExtensionCmd,
+    },
     /// Print a rule's summary, group, sets, fix safety, upstream names and docs link.
     Explain {
         /// A rule ID (`format/arrays/syntax`), or an upstream or old name, which is answered with its Pun ID.
@@ -395,6 +400,7 @@ fn run() -> ExitCode {
             preset,
             ..
         } => show_config(format, config, preset),
+        Cmd::Extension { cmd } => extensions::run(cmd),
         Cmd::Explain { rule } => pun_config::explain(&rule).map(|t| {
             print!("{t}");
             Exit::Success

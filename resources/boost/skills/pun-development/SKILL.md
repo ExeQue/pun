@@ -28,6 +28,7 @@ Pun is one binary that replaces Pint and PHP-CS-Fixer (`format`), Rector (`lint`
 
 - `pun config` prints the resolved configuration.
 - `pun explain <rule>` prints what a rule checks, whether its fix is safe, and its upstream name.
+- `pun extension list` shows which extensions (Laravel, Pest, PHPUnit) are on, and why. `[extensions]` in `pun.toml` turns one on or off.
 - `pun migrate` writes `pun.toml` from `pint.json`, `.php-cs-fixer.php`, `rector.php`, `phpstan.neon` and `composer.json`. It leaves those files in place.
 
 Change a rule in `pun.toml`, not in `pint.json` or `phpstan.neon`: Pun reads only `pun.toml`.

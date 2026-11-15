@@ -763,6 +763,68 @@ fn migrates_php_cs_fixer_config() {
 }
 
 #[test]
+fn extension_list_says_why_each_is_on() {
+    let dir = scratch("cli", "extensions");
+    write_files(
+        &dir,
+        &[
+            (
+                "composer.lock",
+                r#"{"packages":[{"name":"laravel/framework","version":"v12.4.1"}],"packages-dev":[{"name":"pestphp/pest","version":"v4.1.0"}]}"#,
+            ),
+            (
+                "pun.toml",
+                "[extensions]\npest = \"off\"\ndoctrine = \"on\"\n",
+            ),
+        ],
+    );
+    let want = r"laravel   on   Laravel's rules and Larastan's analysis: laravel/framework v12.4.1 is locked
+pest      off  Rules for Pest tests: off in pun.toml
+phpunit   off  Rules for PHPUnit tests: phpunit/phpunit is not locked
+doctrine  on   Rules for Doctrine annotations: on in pun.toml
+";
+    assert_eq!(
+        pun(&dir, &["extension", "list"]),
+        (want.into(), String::new(), Some(0))
+    );
+    let (out, _, code) = pun(&dir, &["extension", "list", "--format=json"]);
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let on: Vec<_> = (v.as_array().unwrap().iter())
+        .map(|e| {
+            (
+                e["id"].as_str().unwrap(),
+                e["on"].as_bool().unwrap(),
+                e["switch"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        (on, code),
+        (
+            vec![
+                ("laravel", true, "auto"),
+                ("pest", false, "off"),
+                ("phpunit", false, "auto"),
+                ("doctrine", true, "on"),
+            ],
+            Some(0)
+        )
+    );
+    std::fs::remove_file(dir.join("pun.toml")).unwrap();
+    let (out, _, code) = pun(&dir, &["extension", "list"]);
+    assert!(
+        out.starts_with("laravel   on ") && out.contains("\npest      on "),
+        "{out}"
+    );
+    assert_eq!(code, Some(0));
+    let (_, err, code) = pun(&dir, &["extension", "list", "--format=xml"]);
+    assert_eq!(
+        (err.as_str(), code),
+        ("x --format=xml: expected `json`\n", Some(2))
+    );
+}
+
+#[test]
 fn config_prints_resolved_schema() {
     let dir = scratch("cli", "config");
     let toml = r#"[php]

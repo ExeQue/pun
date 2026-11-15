@@ -127,9 +127,12 @@ No step changes output. Every step must keep these green: the parity tests, `pun
    At the end, `pun analyse` JSON on pinkary, larastan, pest and laravel-framework must be byte-identical to the
    base commit.
 6. **mapping.toml.** The ecosystem rows move into per-extension fragments.
+   Folded into step 7 (2026-11-15): the Rust section loader and eight scripts read the one file, and
+   `gen-phpstan-parameters.py` rewrites it in place, so the fragments move once each extension has a crate to hold
+   them.
 7. **Physical crates.** The extensions become `crates/pun-ext-{laravel,pest,phpunit}`, which makes the helpers they
    use public.
-8. **Discovery.** Add `pun extension list` and a docs page.
+8. **Discovery.** Add `pun extension list` and a docs page. Done: docs/content/docs/commands/extension.mdx.
 
 ## Risks
 

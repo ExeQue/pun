@@ -85,7 +85,9 @@ Each key takes one of these values:
 - `"on"`: on without the lock.
 - `"off"`: off for every command, as if each of its groups were `"off"`.
 
-A rule or group you name in `[lint.groups]`, `[lint.rules]` or `[analyse.rules]` still applies. A key that names no extension is a config error.
+A rule or group you name in `[lint.groups]`, `[lint.rules]` or `[analyse.rules]` still applies. Format rules don't depend on extensions: `[format]` alone turns them on. A key that names no extension is a config error.
+
+[`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
 
 ## [format]
 

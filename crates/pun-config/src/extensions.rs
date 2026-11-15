@@ -81,6 +81,16 @@ pub enum Switch {
     Off,
 }
 
+impl Switch {
+    pub fn name(self) -> &'static str {
+        match self {
+            Switch::Auto => "auto",
+            Switch::On => "on",
+            Switch::Off => "off",
+        }
+    }
+}
+
 /// The `[extensions]` table, keyed by extension ID.
 pub(crate) fn switches(at: &str, t: toml::Table) -> Result<BTreeMap<&'static str, Switch>> {
     (t.into_iter())
