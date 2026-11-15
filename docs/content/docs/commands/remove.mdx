@@ -19,7 +19,7 @@ Pun changes the manifest only after the new requirements resolve. If the install
 | `--no-update` | Edit the manifest without resolving or installing |
 | `-p`, `--package=MEMBER` | In a [workspace](/docs/guides/workspaces), edit this member's manifest |
 
-`pun remove` also takes the resolve options of [`pun update`](/docs/commands/update#options) and every [`pun install`](/docs/commands/install#options) option. Composer's `--dev` flag is accepted and changes nothing.
+`pun remove` also takes the resolve options of [`pun update`](/docs/commands/update#options) and every [`pun install`](/docs/commands/install#options) option. It has no `--dev` flag: the package leaves whichever section holds it.
 
 ## Exit codes
 

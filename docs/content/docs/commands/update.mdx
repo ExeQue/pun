@@ -16,7 +16,7 @@ Without package names, every package is resolved again. With names, only those p
 
 ## Files
 
-`pun update` reads the dependency sections of `pun.toml` and writes `pun.lock`. In a project that still keeps its dependencies in `composer.json`, it exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate).
+`pun update` reads the dependency sections of `pun.toml` and writes `pun.lock`. In a project that still keeps its dependencies in `composer.json`, or that has a `composer.lock` but no `pun.lock`, it exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate). `pun require` and `pun remove` check the same.
 
 ## What gets resolved
 

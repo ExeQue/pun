@@ -20,7 +20,7 @@ Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`,
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
 | `[extensions]` | Each extension as `"on"` or `"off"`, after `"auto"` reads the lock |
 | `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
-| `[analyse] switches` | Preset type switches resolved by config; not yet applied by the analysis CLI |
+| `[analyse] switches` | The preset's type switches. With the enabled rules, they set the PHPStan level `pun analyse` runs at |
 | `[php] version` | Explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
 
 Disabled rules are omitted. The TOML starts with a comment naming the configuration sources.

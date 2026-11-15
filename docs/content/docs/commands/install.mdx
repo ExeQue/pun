@@ -15,7 +15,12 @@ On pinkary, a Laravel app with 211 packages, a fresh install takes about 1.7 sec
 
 ## Where the dependencies come from
 
-`pun install` reads the dependency sections of `pun.toml` and installs `pun.lock`. It never reads `composer.json` or `composer.lock`: in a project that still keeps its dependencies there, it exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate), which moves `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`.
+`pun install` reads the dependency sections of `pun.toml` and installs `pun.lock`. It never reads `composer.json` or `composer.lock`. It exits 2 and tells you to run [`pun migrate`](/docs/commands/migrate), which copies `composer.json` into `pun.toml` and `composer.lock` into `pun.lock`, in two cases:
+
+- `pun.toml` has no dependency sections and the project has a `composer.json`.
+- The project has a `composer.lock` but no `pun.lock`.
+
+A `pun.toml` with no dependency sections and no `composer.json` beside it also exits 2. Add a first package with [`pun require`](/docs/commands/require).
 
 Without a `pun.lock`, `pun install` resolves the dependencies to their newest versions, writes `pun.lock`, and installs it, as [`pun update`](/docs/commands/update) does. When the dependencies changed after the lock was written, `pun install` installs the lock and warns that it is out of date. Run `pun update` to refresh it.
 
@@ -50,7 +55,7 @@ For any other allowed plugin, the install warns that its files are missing.
 | --- | --- |
 | `--no-dev` | Leave out `require-dev` packages, and remove them if installed |
 | `-o`, `--optimize-autoloader` | Add the PSR-0 and PSR-4 classes to the class map. `config.optimize-autoloader` turns it on too. |
-| `-a`, `--classmap-authoritative` | Load classes from the class map only |
+| `-a`, `--classmap-authoritative` | Load classes from the class map only. Turns on `--optimize-autoloader`. |
 | `--apcu-autoloader` | Cache class lookups in APCu. `config.apcu-autoloader` turns it on too. |
 | `--apcu-autoloader-prefix=PREFIX` | The APCu cache prefix. Turns on `--apcu-autoloader`. Without it, each install picks a random prefix. |
 | `--no-autoloader` | Skip the autoloader, its `pre-autoload-dump` and `post-autoload-dump` scripts, and the plugins |
