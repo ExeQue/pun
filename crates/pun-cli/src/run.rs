@@ -871,11 +871,9 @@ fn process_file(
 
 fn replace(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
-    let mode = std::fs::OpenOptions::new()
-        .write(true)
-        .open(path)?
-        .metadata()?
-        .permissions();
+    let target = std::fs::OpenOptions::new().write(true).open(path)?;
+    let mode = target.metadata()?.permissions();
+    drop(target);
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     let tmp = path.with_file_name(format!(".{name}.pun-{}", std::process::id()));
     let Ok(mut file) = std::fs::File::create(&tmp) else {
@@ -1046,6 +1044,12 @@ mod tests {
         assert_eq!(
             super::isolated(|| panic!("boom")),
             Err::<(), _>("boom".into())
+        );
+        // A formatted message (a `String` payload, as the Blade fixer's and the preg exceptions' are).
+        let n = 2;
+        assert_eq!(
+            super::isolated(|| panic!("boom {n}")),
+            Err::<(), _>("boom 2".into())
         );
     }
 

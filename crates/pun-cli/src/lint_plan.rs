@@ -87,10 +87,10 @@ impl Plan {
         let mut unported = vec![];
         let mut base = BTreeMap::new();
         for r in &cfg.lint.rules {
+            // Only a named rule can lack an engine: sets and groups bring in only `ported` rules, and
+            // `mapping_ported_matches_engine` keeps `ported` and the engines in step.
             if engine(&r.id).is_none() {
-                if r.named {
-                    unported.push(r.id.clone());
-                }
+                unported.push(r.id.clone());
                 continue;
             }
             let on = On {
@@ -239,13 +239,11 @@ mod tests {
                     "lint" => engine(&id).is_some(),
                     _ => pun_config::fixer_of("format", &id).is_some_and(|f| fixers.contains(f)),
                 };
-                let ported = e
-                    .get("ported")
-                    .and_then(toml::Value::as_bool)
-                    .unwrap_or(false);
-                if runs != ported {
-                    wrong.push(format!("{id}: ported = {ported}, runs = {runs}"));
-                }
+                // Read as the lint sets read it: only `ported = false` keeps a rule out.
+                let ported = e.get("ported").and_then(toml::Value::as_bool) != Some(false);
+                wrong.extend(
+                    (runs != ported).then_some(format!("{id}: ported = {ported}, runs = {runs}")),
+                );
             }
         }
         assert!(

@@ -426,9 +426,6 @@ impl Renderer {
     }
 
     pub(crate) fn path_link(&self, path: &Path, shown: &str) -> String {
-        if !self.look.links {
-            return shown.to_string();
-        }
         self.look.link(&file_url(&self.root.join(path)), shown)
     }
 }

@@ -76,8 +76,6 @@ impl Drop for Spinner {
         let (lock, cvar) = &*self.stop;
         *lock.lock().expect("spinner lock") = true;
         cvar.notify_all();
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
+        let _ = self.thread.take().map(JoinHandle::join);
     }
 }

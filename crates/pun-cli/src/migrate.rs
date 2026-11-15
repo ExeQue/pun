@@ -517,9 +517,6 @@ fn rector_lint(
         format!("sets {}", r.sets.join(", "))
     };
     let mut text = format!("[lint] {sets}; {} on, {} off", done.on, done.off);
-    if done.waiting > 0 {
-        let _ = write!(text, " ({} more once Pun ports them)", done.waiting);
-    }
     if !r.exclude.is_empty() {
         let _ = write!(text, ", {} excluded", agent::count(r.exclude.len(), "path"));
     }

@@ -457,9 +457,6 @@ fn human(ctx: &Ctx, results: &[FileResult]) -> String {
         }));
         return out;
     }
-    if ctx.unmatched_baseline > 0 {
-        out.push_str(&crate::analyse::baseline_note(&r, ctx.unmatched_baseline));
-    }
     let c = counts(ctx, results);
     let fix_command = format!("pun {cmd} --fix");
     out.push_str(&r.summary(&Summary {
@@ -534,11 +531,7 @@ fn check_human(ctx: &Ctx, results: &[FileResult]) -> String {
             let id = rule_id(n);
             let item = CheckItem {
                 path: f.rel.clone().into(),
-                at: if f.line > 0 {
-                    format!(":{}", f.line)
-                } else {
-                    String::new()
-                },
+                at: format!(":{}", f.line),
                 rules: vec![id.to_string()],
                 message: summary_of(id),
                 below: String::new(),
