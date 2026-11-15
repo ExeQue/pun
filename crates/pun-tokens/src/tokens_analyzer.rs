@@ -224,10 +224,9 @@ impl<'a> TokensAnalyzer<'a> {
                 break;
             }
             match Tokens::detect_block_type(&t[index]) {
-                None => continue,
+                None => {}
                 Some((bt, true)) => {
                     index = t.find_block_end(bt, index);
-                    continue;
                 }
                 Some(_) => break,
             }

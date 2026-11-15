@@ -1,5 +1,6 @@
 use mago_syntax::cst::Program;
 use pun_problem::Span;
+use std::fmt::Write as _;
 
 use crate::Context;
 use crate::rules::support::conditions::indentation;
@@ -526,6 +527,10 @@ impl<'s> Session<'s> {
     }
 
     fn should_skip_class(&mut self, class: &str, at: &At<'_>, options: Options) -> bool {
+        const RESERVED: &[&str] = &[
+            "bool", "false", "float", "int", "null", "parent", "self", "static", "string", "true",
+            "void", "never", "iterable", "object", "mixed", "array", "callable",
+        ];
         let short_lower = last(class).to_ascii_lowercase();
         let long_lower = class.to_ascii_lowercase();
         for aliased in self.aliased_uses() {
@@ -567,10 +572,6 @@ impl<'s> Session<'s> {
                 break;
             }
         }
-        const RESERVED: &[&str] = &[
-            "bool", "false", "float", "int", "null", "parent", "self", "static", "string", "true",
-            "void", "never", "iterable", "object", "mixed", "array", "callable",
-        ];
         if RESERVED.contains(&short_lower.as_str()) {
             return true;
         }
@@ -1360,7 +1361,7 @@ impl<'s> Session<'s> {
                                 Some(rest) => ("\n", rest),
                                 None => ("", html),
                             };
-                            text.push_str(&format!("?>{newline}{value}<?php "));
+                            let _ = write!(text, "?>{newline}{value}<?php ");
                         }
                         _ => {
                             let printed = render(self.source, edits, span.start, span.end);

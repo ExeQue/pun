@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -18,11 +19,11 @@ fn main() {
     let dir = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("src/fixers");
     for n in &names {
         let path = dir.join(format!("{n}.rs")).display().to_string();
-        out += &format!("#[path = {path:?}] mod {n};\n");
+        let _ = writeln!(out, "#[path = {path:?}] mod {n};");
     }
     out += "pub fn all() -> Vec<Box<dyn pun_format::Fixer>> { vec![";
     for n in &names {
-        out += &format!("{n}::fixer(),");
+        let _ = write!(out, "{n}::fixer(),");
     }
     out += "] }\n";
     fs::write(

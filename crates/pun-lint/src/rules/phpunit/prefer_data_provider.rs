@@ -1,6 +1,7 @@
 use mago_syntax::cst::{ClassLikeMember, LiteralStringKind, Node, NodeKind};
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
+use std::fmt::Write as _;
 
 use super::annotations::{Annotated, TagValue, named_tags};
 use super::prefer_test_with_attribute::php_trim;
@@ -228,7 +229,7 @@ fn json_string(s: &str) -> String {
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
             '\0'..='\u{1f}' | '\u{2028}' | '\u{2029}' => {
-                out.push_str(&format!("\\u{:04x}", c as u32));
+                let _ = write!(out, "\\u{:04x}", c as u32);
             }
             _ => out.push(c),
         }

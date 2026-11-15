@@ -78,9 +78,8 @@ impl Rule for PreferFilesystemMatchers {
             ));
             return;
         }
-        let outer = match identifier(&call.method) {
-            Some(o @ (b"toBeReadable" | b"toBeWritable")) => o,
-            _ => return,
+        let Some(outer @ (b"toBeReadable" | b"toBeWritable")) = identifier(&call.method) else {
+            return;
         };
         let Some(inner) = method_call(call.object) else {
             return;

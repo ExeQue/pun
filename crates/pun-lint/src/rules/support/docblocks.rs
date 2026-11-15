@@ -125,6 +125,12 @@ impl<'s> Doc<'s> {
     }
 
     pub(crate) fn print_appending(&self, removed: &[bool], appended: &[&str]) -> String {
+        enum Elem<'a> {
+            Keep(usize),
+            Remove(usize),
+            Replace(usize, &'a str),
+            Add(&'a str),
+        }
         let empty = |i: usize| self.children[i].0 >= self.children[i].1;
         let mut kept: Vec<usize> = (0..self.children.len()).filter(|&i| !removed[i]).collect();
         if appended.is_empty() && kept.iter().all(|&i| empty(i)) {
@@ -172,12 +178,6 @@ impl<'s> Doc<'s> {
             }
             &self.text[self.tokens[from].1..self.tokens[to].1]
         };
-        enum Elem<'a> {
-            Keep(usize),
-            Remove(usize),
-            Replace(usize, &'a str),
-            Add(&'a str),
-        }
         let mut diff: Vec<Elem<'_>> = (0..self.children.len())
             .map(|i| {
                 if kept.contains(&i) {

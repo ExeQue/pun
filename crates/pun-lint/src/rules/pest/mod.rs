@@ -68,6 +68,7 @@ use mago_syntax::cst::{
     Statement,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::types::facts::facts;
 use crate::rules::phpunit::expr_text;
@@ -610,13 +611,13 @@ pub(crate) fn shift(ctx: &Context<'_>, span: Span, delta: isize) -> String {
     let mut out = String::with_capacity(text.len());
     let mut at = span.start;
     for &t in crate::rules::support::statements::tokens(ctx) {
+        use mago_syntax::token::TokenKind as K;
         if t.end <= span.start || t.start >= span.end {
             continue;
         }
         let end = t.end.min(span.end);
         let token = &ctx.source[at..end];
         at = end;
-        use mago_syntax::token::TokenKind as K;
         if matches!(
             t.kind,
             K::LiteralString | K::PartialLiteralString | K::StringPart
@@ -1154,9 +1155,9 @@ pub(crate) fn rewrite_list(
     list: &crate::rules::support::statements::List<'_, '_>,
     items: &[Item<'_>],
 ) -> Option<Vec<Edit>> {
+    use crate::rules::support::statements::Frame;
     let parent = ancestors.last().copied();
     let grandparent = ancestors.len().checked_sub(2).map(|i| ancestors[i]);
-    use crate::rules::support::statements::Frame;
     let olds = old_statements(ctx, list);
     let braces = matches!(list.frame, Frame::Braces { .. });
     let program = matches!(holder, Node::Program(_));
@@ -1199,7 +1200,7 @@ pub(crate) fn rewrite_list(
             out.push(')');
             if let Some(uses) = &closure.use_clause {
                 let vars: Vec<&str> = uses.variables.iter().map(|v| text(ctx, v)).collect();
-                out.push_str(&format!(" use ({})", vars.join(", ")));
+                let _ = write!(out, " use ({})", vars.join(", "));
             }
             if let Some(hint) = &closure.return_type_hint {
                 out.push_str(": ");
@@ -1236,9 +1237,9 @@ pub(crate) fn rewrite_list(
             Some(vec![Edit::new(span, out)])
         }
         (Node::Block(_), Some(Node::Method(method))) => {
+            use mago_syntax::cst::Modifier as M;
             let span = node_span(method);
             let indent = indent_at(ctx, span.start);
-            use mago_syntax::cst::Modifier as M;
             let has = |f: fn(&M<'_>) -> bool| method.modifiers.iter().any(f);
             let mut head = String::new();
             for (present, word) in [
@@ -1270,8 +1271,8 @@ pub(crate) fn rewrite_list(
             Some(vec![Edit::new(span, out)])
         }
         (Node::Program(_), _) => {
-            let tokens = crate::rules::support::statements::tokens(ctx);
             use mago_syntax::token::TokenKind as K;
+            let tokens = crate::rules::support::statements::tokens(ctx);
             tokens
                 .first()
                 .filter(|t| t.kind == K::OpenTag && t.start == 0)?;

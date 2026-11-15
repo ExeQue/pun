@@ -1,5 +1,6 @@
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use crate::rules::support::class_members::member_from;
 use crate::rules::support::conditions::{indentation, reprint};
@@ -492,7 +493,7 @@ fn reprinted(
         Kind::Anonymous(c) => {
             if let Some(args) = c.argument_list.as_ref().filter(|a| !a.arguments.is_empty()) {
                 let args: Vec<&str> = args.arguments.iter().map(|a| text(node_span(a))).collect();
-                out.push_str(&format!("({})", args.join(", ")));
+                let _ = write!(out, "({})", args.join(", "));
             }
         }
     }

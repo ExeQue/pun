@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::Write as _;
 
 use crate::di::{
     self, Files, Loader, assert_list, dirname, escape, escape_percent, expand,
@@ -255,8 +256,8 @@ fn list(items: &[String]) -> Value {
     Value::Array(Array::list(items.iter().map(|i| s(i))))
 }
 
-fn opt(v: &Option<String>) -> Value {
-    v.as_deref().map_or(Value::Null, s)
+fn opt(v: Option<&str>) -> Value {
+    v.map_or(Value::Null, s)
 }
 
 fn arr(pairs: Vec<(&str, Value)>) -> Array {
@@ -447,8 +448,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, Error> {
     let expand_relative: Vec<String> = project_config
         .get_str("expandRelativePaths")
         .and_then(Value::as_array)
-        .map(|a| a.values().filter_map(Value::to_php_string).collect())
-        .unwrap_or_default();
+        .map_or_default(|a| a.values().filter_map(Value::to_php_string).collect());
 
     let static_params = arr(vec![
         ("debugMode", Value::Bool(true)),
@@ -467,9 +467,9 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, Error> {
             "composerAutoloaderProjectPaths",
             list(&o.composer_autoloader_project_paths),
         ),
-        ("generateBaselineFile", opt(&generate_baseline)),
+        ("generateBaselineFile", opt(generate_baseline.as_deref())),
         ("usedLevel", s(level.as_deref().unwrap_or("0"))),
-        ("cliAutoloadFile", opt(&o.autoload_file)),
+        ("cliAutoloadFile", opt(o.autoload_file.as_deref())),
         (
             "attributeServicesDirectories",
             list(&attribute_services_directories),
@@ -512,8 +512,7 @@ pub fn resolve_with(o: &Options, files: &dyn Files) -> Result<Resolved, Error> {
         sections
             .iter()
             .find(|(k, _)| *k == Key::from(name))
-            .map(|(_, l)| l.as_slice())
-            .unwrap_or(&[])
+            .map_or(&[][..], |(_, l)| l.as_slice())
     };
 
     let mut flat: Option<Value> = None;
@@ -753,8 +752,7 @@ fn validate_exclude_paths(
         for (key, paths) in new.iter() {
             for p in paths
                 .as_array()
-                .map(|a| a.values().cloned().collect::<Vec<_>>())
-                .unwrap_or_default()
+                .map_or_default(|a| a.values().cloned().collect::<Vec<_>>())
             {
                 let Value::Str(p) = p else { continue };
                 if let Some(e) = path_problem(&p) {
@@ -783,10 +781,10 @@ fn validate_exclude_paths(
         out.push_str("If the excluded path can sometimes exist, append (?)\nto its config entry to mark it as optional. Example:\n\n");
         out.push_str("parameters:\n\texcludePaths:\n");
         for (key, paths) in &suggest {
-            out.push_str(&format!("\t\t{key}:\n"));
+            let _ = writeln!(out, "\t\t{key}:");
             for p in paths {
                 let p = config.map_or_else(|| p.clone(), |c| parent_relative_path(&dirname(c), p));
-                out.push_str(&format!("\t\t\t- {p} (?)\n"));
+                let _ = writeln!(out, "\t\t\t- {p} (?)");
             }
         }
         return Err(Error::InvalidExcludePaths(out));

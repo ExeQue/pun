@@ -476,12 +476,10 @@ pub(super) fn callable_signatures(b: &Type) -> Vec<Signature> {
         Type::ConstString(name) => std::str::from_utf8(name)
             .ok()
             .and_then(|name| name.split_once("::"))
-            .map(|(c, m)| method(c, m))
-            .unwrap_or_default(),
-        Type::ConstArray(a) => a
-            .callable_parts()
-            .map(|(class, _, names)| names.into_iter().flat_map(|m| method(class, m)).collect())
-            .unwrap_or_default(),
+            .map_or_default(|(c, m)| method(c, m)),
+        Type::ConstArray(a) => a.callable_parts().map_or_default(|(class, _, names)| {
+            names.into_iter().flat_map(|m| method(class, m)).collect()
+        }),
         _ => Vec::new(),
     };
     if variants.is_empty() {

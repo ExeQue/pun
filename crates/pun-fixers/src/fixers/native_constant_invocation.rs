@@ -53,7 +53,7 @@ impl NativeConstantInvocationFixer {
         let use_constant_declarations: HashSet<Vec<u8>> = NamespaceUsesAnalyzer
             .get_declarations_from_tokens(tokens, false)
             .into_iter()
-            .filter(|u| u.is_constant())
+            .filter(super::analyzers::analysis::NamespaceUseAnalysis::is_constant)
             .map(|u| u.short_name)
             .collect();
         let mut index = end_index;

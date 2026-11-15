@@ -26,9 +26,8 @@ impl Rule for PreferStrictEqualityMatchers {
         let Node::MethodCall(call) = node else {
             return;
         };
-        let method = match identifier(&call.method) {
-            Some(m @ (b"toBeTrue" | b"toBeFalse")) => m,
-            _ => return,
+        let Some(method @ (b"toBeTrue" | b"toBeFalse")) = identifier(&call.method) else {
+            return;
         };
         let Some(expect) = expect_call(call) else {
             return;

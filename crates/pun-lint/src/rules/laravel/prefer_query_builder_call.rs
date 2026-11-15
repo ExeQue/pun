@@ -125,7 +125,7 @@ fn classes(ctx: &Context<'_>, ancestors: &[Node<'_, '_>], class: &Expression<'_>
             if let TAtomic::Scalar(TScalar::ClassLikeString(c)) = atomic {
                 match c.literal_value() {
                     Some(v) => names.push(v.to_string()),
-                    None => names.extend(c.constraint().map(object_names).unwrap_or_default()),
+                    None => names.extend(c.constraint().map_or_default(object_names)),
                 }
             } else if let TAtomic::Scalar(s) = atomic
                 && let Some(v) = s.get_known_literal_string_value()

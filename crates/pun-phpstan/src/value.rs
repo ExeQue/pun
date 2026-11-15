@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use pun_tokens::php_compat::float_to_string;
+use std::fmt::Write as _;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Key {
@@ -422,18 +423,21 @@ pub fn datetime_format(raw: &str, format: &str) -> String {
     let (oh, om) = (offset.abs() / 60, offset.abs() % 60);
     let mut out = String::new();
     for c in format.chars() {
-        match c {
-            'Y' => out.push_str(&format!("{yy:04}")),
-            'm' => out.push_str(&format!("{mm:02}")),
-            'd' => out.push_str(&format!("{dd:02}")),
-            'H' => out.push_str(&format!("{:02}", sod / 3600)),
-            'i' => out.push_str(&format!("{:02}", sod / 60 % 60)),
-            's' => out.push_str(&format!("{:02}", sod % 60)),
-            'u' => out.push_str(&format!("{micro:06}")),
-            'O' => out.push_str(&format!("{sign}{oh:02}{om:02}")),
-            'P' => out.push_str(&format!("{sign}{oh:02}:{om:02}")),
-            c => out.push(c),
-        }
+        let _ = match c {
+            'Y' => write!(out, "{yy:04}"),
+            'm' => write!(out, "{mm:02}"),
+            'd' => write!(out, "{dd:02}"),
+            'H' => write!(out, "{:02}", sod / 3600),
+            'i' => write!(out, "{:02}", sod / 60 % 60),
+            's' => write!(out, "{:02}", sod % 60),
+            'u' => write!(out, "{micro:06}"),
+            'O' => write!(out, "{sign}{oh:02}{om:02}"),
+            'P' => write!(out, "{sign}{oh:02}:{om:02}"),
+            c => {
+                out.push(c);
+                Ok(())
+            }
+        };
     }
     out
 }

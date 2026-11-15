@@ -97,6 +97,7 @@ use mago_syntax::cst::{
     Node, Variable,
 };
 use pun_problem::{Edit, Span};
+use std::fmt::Write as _;
 
 use crate::Context;
 use crate::rules::laravel::is_a;
@@ -588,7 +589,7 @@ pub(crate) fn rewrite_args(
                 for add in delayed.drain(..) {
                     result.push_str(&add);
                     if multiline {
-                        result.push_str(&format!(",\n{indent}"));
+                        let _ = write!(result, ",\n{indent}");
                     } else {
                         result.push_str(", ");
                     }
@@ -607,7 +608,7 @@ pub(crate) fn rewrite_args(
                     continue;
                 }
                 if multiline {
-                    result.push_str(&format!(",\n{indent}"));
+                    let _ = write!(result, ",\n{indent}");
                 } else {
                     result.push_str(", ");
                 }
@@ -728,8 +729,8 @@ pub(crate) fn method_anew(
     method: &Method<'_>,
     block: &mago_syntax::cst::Block<'_>,
 ) -> String {
-    let source = ctx.source;
     use crate::rules::support::statement_edits::{block_list, line_indent};
+    let source = ctx.source;
     let indent = line_indent(source, node_span(method).start);
     let mut out = crate::rules::support::class_members::modifiers_text(&method.modifiers);
     out.push_str("function ");
@@ -763,8 +764,8 @@ pub(crate) fn block_anew(
     list: &crate::rules::support::statement_edits::List<'_>,
     indent: &str,
 ) -> String {
-    let source = ctx.source;
     use crate::rules::support::statement_edits::{line_indent, reindent, tokens};
+    let source = ctx.source;
     let inner = format!("{indent}    ");
     let mut lines = Vec::new();
     let comments = |from: usize, to: usize, lines: &mut Vec<String>| {
@@ -804,8 +805,8 @@ pub(crate) fn maybe_multiline(
     items: &[Span],
     indent: &str,
 ) -> String {
-    let source = ctx.source;
     use crate::rules::support::statement_edits::{previous_token_end, tokens};
+    let source = ctx.source;
     let mut from = from;
     let mut printed = Vec::new();
     for span in items {
@@ -847,6 +848,12 @@ pub(crate) fn remove_class_members(
     node: Node<'_, '_>,
     removed: &[bool],
 ) -> Vec<Edit> {
+    type Parts<'n, 'a> = (
+        &'n Sequence<'a, AttributeList<'a>>,
+        String,
+        Option<&'n Extends<'a>>,
+        Option<&'n Implements<'a>>,
+    );
     use crate::rules::support::class_members::{modifiers_text, remove_members};
     use crate::rules::support::statement_edits::{first_comment, line_indent};
     use mago_span::HasSpan;
@@ -854,12 +861,6 @@ pub(crate) fn remove_class_members(
     let text = |s: mago_span::Span| &source[s.start.offset as usize..s.end.offset as usize];
     let span = node_span(&node);
     let indent = line_indent(source, span.start);
-    type Parts<'n, 'a> = (
-        &'n Sequence<'a, AttributeList<'a>>,
-        String,
-        Option<&'n Extends<'a>>,
-        Option<&'n Implements<'a>>,
-    );
     let (lists, head, extends, implements): Parts<'_, '_> = match node {
         Node::Class(c) => (
             &c.attribute_lists,
@@ -936,6 +937,6 @@ pub(crate) fn remove_class_members(
         out.push_str(" implements ");
         out.push_str(&names(&implements.types));
     }
-    out.push_str(&format!("\n{indent}{{\n{indent}}}"));
+    let _ = write!(out, "\n{indent}{{\n{indent}}}");
     vec![Edit::new(span, out)]
 }

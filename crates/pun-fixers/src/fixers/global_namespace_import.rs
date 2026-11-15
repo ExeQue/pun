@@ -51,7 +51,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_constant(), true);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_constant, true);
         let count = tokens.count();
         let mut index = 0;
         while index < count {
@@ -105,7 +105,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_function(), false);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_function, false);
         let mut declared = Vec::new();
         Self::find_function_declarations(tokens, 0, tokens.count() - 1, &mut declared);
         for name in declared {
@@ -142,7 +142,7 @@ impl GlobalNamespaceImportFixer {
         use_declarations: &[NamespaceUseAnalysis],
     ) -> Vec<Vec<u8>> {
         let (global, mut other) =
-            Self::filter_use_declarations(use_declarations, |d| d.is_class(), false);
+            Self::filter_use_declarations(use_declarations, super::analyzers::analysis::NamespaceUseAnalysis::is_class, false);
         let mut doc_blocks: Vec<(usize, DocBlock)> = Vec::new();
         let count = tokens.count();
         let mut index = 0;

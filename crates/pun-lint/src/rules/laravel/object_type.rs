@@ -198,7 +198,7 @@ pub(crate) fn is_hint_type(
             let facts = facts(ctx);
             let parents: Vec<String> = class_scope(ancestors)
                 .and_then(|s| s.name.zip(s.parent_class))
-                .map(|(own, parent)| {
+                .map_or_default(|(own, parent)| {
                     let all = facts.codebase.get_class_like(own.as_bytes());
                     all.map_or(vec![parent], |c| {
                         c.all_parent_classes
@@ -206,8 +206,7 @@ pub(crate) fn is_hint_type(
                             .map(std::string::ToString::to_string)
                             .collect()
                     })
-                })
-                .unwrap_or_default();
+                });
             !parents.is_empty() && parents.iter().all(|p| is_a(ctx, p, &[class]))
         }
         _ => false,

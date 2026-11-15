@@ -416,6 +416,15 @@ fn infer_template_types() {
     let rows = f.as_array().unwrap();
     let mut failures = Vec::new();
     for row in rows {
+        fn collect(t: &Type, out: &std::cell::RefCell<Vec<Template>>) {
+            if let Type::Template(tt) = t {
+                out.borrow_mut().push((**tt).clone());
+            }
+            t.traverse(&|i| {
+                collect(i, out);
+                i.clone()
+            });
+        }
         let (a, b) = (row[0].as_str().unwrap(), row[1].as_str().unwrap());
         let (at, bt) = (resolve_str(a, None), resolve_str(b, None));
         let map = infer_template_types(&at, &bt);
@@ -437,15 +446,6 @@ fn infer_template_types() {
             .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
             .collect();
         let templates = std::cell::RefCell::new(Vec::<Template>::new());
-        fn collect(t: &Type, out: &std::cell::RefCell<Vec<Template>>) {
-            if let Type::Template(tt) = t {
-                out.borrow_mut().push((**tt).clone());
-            }
-            t.traverse(&|i| {
-                collect(i, out);
-                i.clone()
-            });
-        }
         collect(&at, &templates);
         let templates = templates.into_inner();
         let resolved =
@@ -561,6 +561,22 @@ fn constant_float_identity() {
 
 #[test]
 fn exact_objects_keep_phpstan_equality_containment_and_union_metadata_distinct() {
+    fn observation(ty: &Type) -> serde_json::Value {
+        fn collect(ty: &Type, exact: &RefCell<Vec<(String, bool)>>) {
+            if let Type::Object(name, _, is_exact) = ty {
+                exact.borrow_mut().push((name.clone(), *is_exact));
+            }
+            ty.traverse(&|inner| {
+                collect(inner, exact);
+                inner.clone()
+            });
+        }
+        let exact = RefCell::new(Vec::new());
+        collect(ty, &exact);
+        let mut exact = exact.into_inner();
+        exact.sort();
+        json!([ty.describe(Level::Precise), exact])
+    }
     use pun_phpstan::types::{
         Template, Type, accepts, infer_template_types, intersect, mixed, to_phpdoc_fully_qualified,
         union,
@@ -601,22 +617,6 @@ fn exact_objects_keep_phpstan_equality_containment_and_union_metadata_distinct()
             ]),
         ),
     ]);
-    fn observation(ty: &Type) -> serde_json::Value {
-        fn collect(ty: &Type, exact: &RefCell<Vec<(String, bool)>>) {
-            if let Type::Object(name, _, is_exact) = ty {
-                exact.borrow_mut().push((name.clone(), *is_exact));
-            }
-            ty.traverse(&|inner| {
-                collect(inner, exact);
-                inner.clone()
-            });
-        }
-        let exact = RefCell::new(Vec::new());
-        collect(ty, &exact);
-        let mut exact = exact.into_inner();
-        exact.sort();
-        json!([ty.describe(Level::Precise), exact])
-    }
     let oracle = fixture("exact-objects.json");
     let mut failures = Vec::new();
     for row in oracle["pairs"].as_array().unwrap() {

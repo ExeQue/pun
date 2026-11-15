@@ -342,7 +342,7 @@ fn fix_depends(tokens: &Tokens, index: usize, matches: Option<Captures>) -> Vec<
             name_suffix = [b"External".as_slice(), &name_suffix].concat();
         }
     }
-    let mut attribute_tokens = class.map(to_class_constant).unwrap_or_default();
+    let mut attribute_tokens = class.map_or_default(to_class_constant);
     if let Some(method) = method {
         if !attribute_tokens.is_empty() {
             attribute_tokens.extend(separator());

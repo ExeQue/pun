@@ -36,7 +36,7 @@ scripts/coverage.sh punphp-tokens
 ```
 
 - Package `punphp-<x>` lives in `crates/pun-<x>` and is imported as `pun_<x>`.
-- `cargo clippy --workspace --all-targets -- -D warnings` must pass. Every crate uses the shared `[workspace.lints]`; silence a single hit with `#[expect(lint, reason = "...")]`.
+- `cargo clippy --workspace --all-targets -- -D warnings` must pass. The original crates use the shared `[workspace.lints]` (all of pedantic). The six crates that port upstream PHP (pun-tokens, pun-format, pun-fixers, pun-lint, pun-phpstan, pun-analyse) carry their own `[lints]` table: the same lints plus the allows the port shape needs. Silence a single hit with `#[expect(lint, reason = "...")]`.
 - `punphp-analyse`'s tests are one binary (`tests/main.rs` declares each file as a module). With `CARGO_PROFILE_DEV_OPT_LEVEL=1`, as CI sets it, it builds in about 5 minutes and runs in about 10 on 8 cores. `levels::` and `rules::` are the two slowest tests; leave them out with `-E 'not test(/^(levels|rules)::/)'` while you iterate. A new test file needs a `mod` line in `tests/main.rs`.
 - CI runs the tests with cargo-nextest, one process per test. Locally, `cargo nextest run` and `cargo test` both work.
 - `crates/pun-fixers/build.rs` registers every file in `src/fixers/` as a fixer, so a new fixer is one file with a `pub(crate) fn fixer()`.

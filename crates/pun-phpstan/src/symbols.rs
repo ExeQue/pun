@@ -328,7 +328,7 @@ fn read_function(v: RawFunction) -> Function {
 }
 
 fn read_class(v: RawClass) -> Class {
-    let variances = v.variances.map(|e| e.0).unwrap_or_default();
+    let variances = v.variances.map_or_default(|e| e.0);
     Class {
         name: v.name,
         ancestors: v.ancestors,
@@ -366,8 +366,8 @@ fn read_class(v: RawClass) -> Class {
             .0
             .into_iter()
             .map(|(k, m)| {
-                let mut f = read_function(m);
                 const PREFIX: &str = "ps_unreserve_prefix_";
+                let mut f = read_function(m);
                 if f.name.to_ascii_lowercase().starts_with(PREFIX) {
                     f.name = f.name[PREFIX.len()..].to_string();
                 }
@@ -379,14 +379,10 @@ fn read_class(v: RawClass) -> Class {
             })
             .collect(),
         iterable: v.iterable,
-        generics: v
-            .generics
-            .map(|g| g.0.into_iter().collect())
-            .unwrap_or_default(),
+        generics: v.generics.map_or_default(|g| g.0.into_iter().collect()),
         property_docs: v
             .property_docs
-            .map(|g| g.0.into_iter().collect())
-            .unwrap_or_default(),
+            .map_or_default(|g| g.0.into_iter().collect()),
     }
 }
 

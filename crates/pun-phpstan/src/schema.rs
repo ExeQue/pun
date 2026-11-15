@@ -343,8 +343,7 @@ impl Message {
                         .vars
                         .iter()
                         .find(|(k, _)| *k == n)
-                        .map(|(_, v)| v.clone())
-                        .unwrap_or_default(),
+                        .map_or_default(|(_, v)| v.clone()),
                 };
                 out.push_str(if space { " " } else { "" });
                 out.push_str(&val);
@@ -465,7 +464,7 @@ fn strip_prevent(v: &mut Value) -> bool {
 }
 
 fn range_text(r: (Option<f64>, Option<f64>)) -> String {
-    let f = |x: Option<f64>| x.map(float_to_string).unwrap_or_default();
+    let f = |x: Option<f64>| x.map_or_default(float_to_string);
     format!("{}..{}", f(r.0), f(r.1))
 }
 
@@ -652,8 +651,7 @@ impl Schema {
                                         e.vars
                                             .iter()
                                             .find(|(k, _)| *k == "expected")
-                                            .map(|(_, v)| v.clone())
-                                            .unwrap_or_default(),
+                                            .map_or_default(|(_, v)| v.clone()),
                                     );
                                 }
                             }

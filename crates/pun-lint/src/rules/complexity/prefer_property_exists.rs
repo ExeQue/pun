@@ -106,11 +106,9 @@ fn check(
         return None;
     }
     let classes = if this {
-        this_class.map(|c| vec![c.to_string()]).unwrap_or_default()
+        this_class.map_or_default(|c| vec![c.to_string()])
     } else {
-        let names = type_of(facts, fetch.object)
-            .map(object_class_names)
-            .unwrap_or_default();
+        let names = type_of(facts, fetch.object).map_or_default(object_class_names);
         names
             .iter()
             .filter(|n| {

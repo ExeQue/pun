@@ -94,12 +94,14 @@ impl Rule for AddNumericReturnFromScalar {
         };
         let r#type = if values
             .iter()
+            .copied()
             .map(unnegated)
             .all(|e| matches!(e, Expression::Literal(Literal::Float(_))))
         {
             "float"
         } else if values
             .iter()
+            .copied()
             .map(unnegated)
             .all(|e| matches!(e, Expression::Literal(Literal::Integer(_))))
         {
@@ -111,7 +113,7 @@ impl Rule for AddNumericReturnFromScalar {
     }
 }
 
-pub(super) fn unnegated<'a>(e: &&'a Expression<'a>) -> &'a Expression<'a> {
+pub(super) fn unnegated<'a>(e: &'a Expression<'a>) -> &'a Expression<'a> {
     match e {
         Expression::UnaryPrefix(p) if matches!(p.operator, UnaryPrefixOperator::Negation(_)) => {
             p.operand

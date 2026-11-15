@@ -3,6 +3,7 @@ use mago_syntax::cst::{
 };
 use pun_problem::{Edit, Safety, Span};
 use serde_json::Value;
+use std::fmt::Write as _;
 
 use super::is_a;
 use super::names::resolve_class_name;
@@ -168,8 +169,8 @@ fn header(ctx: &Context<'_>, node: Node<'_, '_>, parts: &Parts<'_>, start: usize
     ];
     for (keyword, types) in lists.into_iter().filter_map(|(k, t)| Some((k, t?))) {
         let names: Vec<&str> = types.iter().map(|t| text(node_span(t))).collect();
-        out.push_str(&format!("{keyword} {}", names.join(", ")));
+        let _ = write!(out, "{keyword} {}", names.join(", "));
     }
-    out.push_str(&format!("{nl}{{{nl}    {USE}{nl}}}"));
+    let _ = write!(out, "{nl}{{{nl}    {USE}{nl}}}");
     out
 }

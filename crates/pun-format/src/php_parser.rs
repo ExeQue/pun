@@ -162,7 +162,7 @@ impl Parser<'_> {
         &self.src[t.start..t.end]
     }
 
-    fn is_zval(&self, toks: &[ParseToken]) -> bool {
+    fn is_zval(toks: &[ParseToken]) -> bool {
         let is = |t: &ParseToken, c: u8| t.kind.is_none() && t.ch == c;
         let mut depth = 0;
         let mut parts = vec![0];
@@ -178,7 +178,7 @@ impl Parser<'_> {
             parts.push(toks.len() + 1);
             return parts
                 .windows(2)
-                .all(|w| self.is_zval(&toks[w[0]..w[1] - 1]));
+                .all(|w| Self::is_zval(&toks[w[0]..w[1] - 1]));
         }
         match toks {
             [t] => matches!(
@@ -190,7 +190,7 @@ impl Parser<'_> {
             {
                 toks.len() <= 3
             }
-            [o, inner @ .., c] if is(o, b'(') && is(c, b')') => self.is_zval(inner),
+            [o, inner @ .., c] if is(o, b'(') && is(c, b')') => Self::is_zval(inner),
             _ => false,
         }
     }
@@ -214,7 +214,7 @@ impl Parser<'_> {
         elems.push(&toks[start..]);
         if elems
             .iter()
-            .any(|e| self.text(&e[0]).eq_ignore_ascii_case(b"encoding") && !self.is_zval(&e[2..]))
+            .any(|e| self.text(&e[0]).eq_ignore_ascii_case(b"encoding") && !Self::is_zval(&e[2..]))
         {
             return Err("Encoding must be a literal".into());
         }

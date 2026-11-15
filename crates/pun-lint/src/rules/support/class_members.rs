@@ -3,6 +3,7 @@ use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Span};
+use std::fmt::Write as _;
 
 use crate::rules::support::docblocks::doc_comment;
 use crate::rules::support::expressions::named;
@@ -376,7 +377,7 @@ struct CallerType {
 impl CallerType {
     fn of(t: Option<&TUnion>) -> CallerType {
         CallerType {
-            names: t.map(object_class_names).unwrap_or_default(),
+            names: t.map_or_default(object_class_names),
             never: t.is_some_and(mago_codex::ttype::union::TUnion::is_never),
             mixed: t.is_none_or(mago_codex::ttype::union::TUnion::is_mixed),
         }
@@ -979,10 +980,7 @@ pub(crate) fn mapped_type_text(t: &TUnion) -> Option<String> {
                 let mut text = format!("\\{}", String::from_utf8_lossy(n.name.as_bytes()));
                 for t in n.intersection_types.iter().flat_map(|v| v.iter()) {
                     if let TAtomic::Object(TObject::Named(m)) = t {
-                        text.push_str(&format!(
-                            "&\\{}",
-                            String::from_utf8_lossy(m.name.as_bytes())
-                        ));
+                        let _ = write!(text, "&\\{}", String::from_utf8_lossy(m.name.as_bytes()));
                     }
                 }
                 text

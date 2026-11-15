@@ -49,7 +49,6 @@ impl Flags {
 }
 
 fn invariant_template(t: &Type) -> bool {
-    let found = Cell::new(false);
     fn go(t: &Type, found: &Cell<bool>) {
         if found.get() {
             return;
@@ -66,6 +65,7 @@ fn invariant_template(t: &Type) -> bool {
             i.clone()
         });
     }
+    let found = Cell::new(false);
     go(t, &found);
     found.get()
 }

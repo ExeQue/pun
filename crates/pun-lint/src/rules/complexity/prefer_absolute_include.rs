@@ -3,6 +3,7 @@ use mago_syntax::cst::{
     LiteralString, LiteralStringKind, Node, NodeKind, RequireConstruct, RequireOnceConstruct,
 };
 use pun_problem::{Edit, Fix, Safety};
+use std::fmt::Write as _;
 
 use crate::syntax::{node_span, unparenthesize};
 use crate::{Context, Report, Rule};
@@ -135,7 +136,9 @@ pub(crate) fn print_string(kind: LiteralStringKind, value: &[u8]) -> Option<Stri
                 out.push('\\');
                 out.push(c);
             }
-            '\0'..='\x08' | '\x0E'..='\x1F' => out.push_str(&format!("\\x{:02x}", c as u32)),
+            '\0'..='\x08' | '\x0E'..='\x1F' => {
+                let _ = write!(out, "\\x{:02x}", c as u32);
+            }
             _ => out.push(c),
         }
     }

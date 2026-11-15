@@ -1,6 +1,7 @@
 use mago_syntax::cst::LiteralStringKind;
 use pun_tokens::Kind;
 use pun_tokens::php_compat::intval;
+use std::fmt::Write as _;
 
 use crate::rules::phpunit::print_float;
 use crate::rules::support::rector_names::doc::{Annotation, is_class_name};
@@ -58,14 +59,11 @@ fn map_array(items: &[ArrayItem], nested: bool) -> Vec<Item> {
 }
 
 fn map_item(item: &ArrayItem, nested: bool) -> Item {
-    let value = match map_val(&item.value, nested) {
-        Some(expr) => expr,
-        None => {
-            return Item {
-                key: None,
-                value: Expr::Str(REMOVE_ARRAY.into(), Quote::Single),
-            };
-        }
+    let Some(value) = map_val(&item.value, nested) else {
+        return Item {
+            key: None,
+            value: Expr::Str(REMOVE_ARRAY.into(), Quote::Single),
+        };
     };
     let key = match &item.key {
         Some(Key::Val(key)) => map_val(key, nested),
@@ -427,7 +425,9 @@ pub(crate) fn resolve_value(value: &str, original: Option<&str>) -> (String, Str
             if !previous_end_slash && key > 0 {
                 match comment.is_empty() {
                     true => comment.push_str(line),
-                    false => comment.push_str(&format!("\n * {line}")),
+                    false => {
+                        let _ = write!(comment, "\n * {line}");
+                    }
                 }
             }
             keep_joining = false;

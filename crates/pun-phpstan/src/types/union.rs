@@ -207,7 +207,6 @@ pub fn union(types: Vec<Type>) -> Type {
                         types[i] = t;
                         items.remove(j);
                         j = 0;
-                        continue;
                     }
                     Some(Merge::B(t)) => {
                         items[j] = t;
@@ -233,7 +232,6 @@ pub fn union(types: Vec<Type>) -> Type {
                 Some(Merge::A(t)) => {
                     types[i] = t;
                     types.remove(j);
-                    continue;
                 }
                 Some(Merge::B(t)) => {
                     types[j] = t;
@@ -675,7 +673,6 @@ fn reduce_arrays(arrays: &[Type]) -> Vec<Type> {
             if overlap == b.keys.len() && a.is_keys_superset_of(b) {
                 to_process[*i] = Some(a.merge_with(b));
                 to_process[j] = None;
-                continue;
             }
         }
     }

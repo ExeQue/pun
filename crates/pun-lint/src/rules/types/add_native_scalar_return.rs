@@ -83,7 +83,8 @@ impl Rule for AddNumericReturn {
         let Some((f, values)) = returned(node, ancestors, ctx) else {
             return;
         };
-        let all = |kind: fn(&Expression<'_>) -> bool| values.iter().map(unnegated).all(kind);
+        let all =
+            |kind: fn(&Expression<'_>) -> bool| values.iter().copied().map(unnegated).all(kind);
         if all(|e| matches!(e, Expression::Literal(Literal::Float(_))))
             || all(|e| matches!(e, Expression::Literal(Literal::Integer(_))))
         {

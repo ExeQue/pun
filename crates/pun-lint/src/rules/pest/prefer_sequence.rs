@@ -1,5 +1,6 @@
 use mago_syntax::cst::{Expression, Literal, MethodCall, Node, NodeKind};
 use pun_problem::{Safety, Span};
+use std::fmt::Write as _;
 
 use super::{
     Item, STATEMENT_LISTS, comment_spans, expect_call, first_value, kept_text, method_call,
@@ -132,11 +133,12 @@ fn bottom<'a>(call: &'a MethodCall<'a>) -> (Vec<&'a MethodCall<'a>>, bool) {
 fn on_param(ctx: &Context<'_>, calls: &[&MethodCall<'_>], property: bool, indent: usize) -> String {
     let mut out = String::from(if property { "$e->not" } else { "$e" });
     for c in calls.iter().rev() {
-        out.push_str(&format!(
+        let _ = write!(
+            out,
             "->{}({})",
             print_member(ctx, &c.method, indent),
             print_args(ctx, &c.argument_list, indent)
-        ));
+        );
     }
     out
 }

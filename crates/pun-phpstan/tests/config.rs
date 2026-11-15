@@ -20,8 +20,7 @@ fn options(cwd: &Path, case: &J, base: Options) -> Options {
     };
     let args: Vec<String> = case["args"]
         .as_array()
-        .map(|a| a.iter().map(|x| x.as_str().unwrap().to_string()).collect())
-        .unwrap_or_default();
+        .map_or_default(|a| a.iter().map(|x| x.as_str().unwrap().to_string()).collect());
     let mut it = args.into_iter();
     while let Some(a) = it.next() {
         match a.as_str() {

@@ -43,7 +43,6 @@ impl Fixer for UnaryOperatorSpacesFixer {
             }
             if TokensAnalyzer::new(tokens).is_unary_predecessor_operator(index) {
                 tokens.remove_trailing_whitespace(index, None);
-                continue;
             }
         }
     }

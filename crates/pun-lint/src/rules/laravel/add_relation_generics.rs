@@ -119,9 +119,7 @@ impl Rule for AddRelationGenerics {
         let Some(call) = relation_call(body) else {
             return;
         };
-        let method_name = member_name(&call.method)
-            .map(String::from_utf8_lossy)
-            .unwrap_or_default();
+        let method_name = member_name(&call.method).map_or_default(String::from_utf8_lossy);
         let args: Vec<&Expression<'_>> = (call.argument_list.arguments.iter())
             .map(Argument::value)
             .collect();

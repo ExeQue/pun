@@ -108,8 +108,7 @@ fn refactor(
     let written: Vec<&Argument<'_>> = new
         .argument_list
         .as_ref()
-        .map(|l| l.arguments.iter().collect())
-        .unwrap_or_default();
+        .map_or_default(|l| l.arguments.iter().collect());
     if written.len() > position {
         return None;
     }

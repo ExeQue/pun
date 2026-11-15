@@ -71,7 +71,7 @@ impl Rule for AddParamTypeSplFixedArray {
                     {
                         replaced.push((tag.index, tag.print_with(&generic)));
                     }
-                    _ => continue,
+                    _ => {}
                 },
                 _ => appended.push(format!("@param {generic} {name}")),
             }

@@ -3,6 +3,7 @@ use mago_syntax::cst::{
     Access, ArgumentList, Expression, FunctionCall, MethodCall, Node, NodeKind,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::{
     function_name, indent_at, is_name, kept_text, method_call, print_args, print_member,
@@ -131,17 +132,18 @@ fn transform(
         None => "pest()".to_string(),
     };
     if !classes.is_empty() {
-        out.push_str(&format!("->extend({})", classes.join(", ")));
+        let _ = write!(out, "->extend({})", classes.join(", "));
     }
     if !traits.is_empty() {
-        out.push_str(&format!("->use({})", traits.join(", ")));
+        let _ = write!(out, "->use({})", traits.join(", "));
     }
     for m in methods {
-        out.push_str(&format!(
+        let _ = write!(
+            out,
             "->{}({})",
             print_member(ctx, &m.method, indent),
             print_args(ctx, &m.argument_list, indent)
-        ));
+        );
     }
     Some(out)
 }

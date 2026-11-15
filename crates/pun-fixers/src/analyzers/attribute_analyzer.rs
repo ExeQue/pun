@@ -40,7 +40,7 @@ impl AttributeAnalyzer {
         let uses: HashMap<Vec<u8>, Vec<u8>> = NamespaceUsesAnalyzer
             .get_declarations_in_namespace(tokens, &namespace_analysis, false)
             .into_iter()
-            .filter(|u| u.is_class())
+            .filter(super::analysis::NamespaceUseAnalysis::is_class)
             .map(|u| (u.short_name, u.full_name))
             .collect();
         let mut namespace = namespace_analysis.full_name;

@@ -207,8 +207,7 @@ fn namespace_and_imports(ancestors: &[Node<'_, '_>]) -> (String, Vec<(String, St
                 namespace = ns
                     .name
                     .as_ref()
-                    .map(|n| String::from_utf8_lossy(n.value()).into_owned())
-                    .unwrap_or_default();
+                    .map_or_default(|n| String::from_utf8_lossy(n.value()).into_owned());
                 statements = Some(match &ns.body {
                     NamespaceBody::Implicit(b) => b.statements.as_slice(),
                     NamespaceBody::BraceDelimited(b) => b.statements.as_slice(),

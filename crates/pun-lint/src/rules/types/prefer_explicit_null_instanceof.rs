@@ -195,9 +195,8 @@ fn bails(value: &Expression<'_>) -> bool {
 }
 
 fn nullable_object(t: &TUnion) -> Option<String> {
-    let object = match t.types.as_ref() {
-        [TAtomic::Null, object] | [object, TAtomic::Null] => object,
-        _ => return None,
+    let ([TAtomic::Null, object] | [object, TAtomic::Null]) = t.types.as_ref() else {
+        return None;
     };
     let name = match object {
         TAtomic::Object(TObject::Named(named))

@@ -1,5 +1,6 @@
 use crate::kind::Kind::{self, *};
 use crate::lexer::{Lexer, State};
+use std::fmt::Write as _;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParseToken {
@@ -178,10 +179,10 @@ impl<'a> ParseLexer<'a> {
     fn bad_nesting(&self, opening: u8, line: u32, closing: Option<u8>) -> LexError {
         let mut m = format!("Unclosed '{}'", opening as char);
         if line != self.lineno {
-            m += &format!(" on line {line}");
+            let _ = write!(m, " on line {line}");
         }
         if let Some(c) = closing {
-            m += &format!(" does not match '{}'", c as char);
+            let _ = write!(m, " does not match '{}'", c as char);
         }
         LexError {
             message: m,

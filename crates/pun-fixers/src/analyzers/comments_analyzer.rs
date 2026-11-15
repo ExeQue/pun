@@ -167,7 +167,7 @@ fn get_next_token_index(tokens: &Tokens, start_index: usize) -> Option<usize> {
             next_index = tokens.get_next_meaningful_token(end);
         }
         match next_index {
-            Some(i) if tokens[i].equals("(", true) => continue,
+            Some(i) if tokens[i].equals("(", true) => {}
             _ => return next_index,
         }
     }

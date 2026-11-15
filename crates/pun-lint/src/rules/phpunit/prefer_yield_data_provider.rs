@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Write as _;
 
 use mago_syntax::cst::{
     ArrayElement, ClassLikeMember, Expression, Literal, Method, MethodBody, Node, NodeKind,
@@ -359,9 +360,9 @@ fn transform(
             text.push_str(" => ");
         }
         if needs_parens(prec(value), 175, None) {
-            text.push_str(&format!("({});", print(value)));
+            let _ = write!(text, "({});", print(value));
         } else {
-            text.push_str(&format!("{};", print(value)));
+            let _ = write!(text, "{};", print(value));
         }
         yields.push(text);
     }

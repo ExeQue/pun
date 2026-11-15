@@ -45,7 +45,7 @@ pub fn normalize_path(original: &str) -> String {
     }
     format!(
         "{}{root}{}",
-        scheme.map(|s| s + "://").unwrap_or_default(),
+        scheme.map_or_default(|s| s + "://"),
         parts.join("/")
     )
 }

@@ -1026,6 +1026,7 @@ mod tests {
 
     #[test]
     fn derived_values_cached_until_changed() {
+        type Edit = Box<dyn Fn(&mut Tokens)>;
         let runs = std::cell::Cell::new(0);
         let colons = |t: &Tokens| {
             runs.set(runs.get() + 1);
@@ -1043,7 +1044,6 @@ mod tests {
         t.set(1, t[1].clone());
         t.switch_colon_indices(colons);
         assert_eq!(runs.get(), 1);
-        type Edit = Box<dyn Fn(&mut Tokens)>;
         let mut edits: Vec<Edit> = vec![
             Box::new(|t| t.set(1, Token::new(T_STRING, "bar"))),
             Box::new(|t| t.insert_at(1, vec![Token::new(T_WHITESPACE, " ")])),

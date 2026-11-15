@@ -1,5 +1,6 @@
 use mago_syntax::cst::{MethodBody, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety, Span};
+use std::fmt::Write as _;
 
 use crate::rules::support::class_members::modifiers_text;
 use crate::rules::support::serialize_methods::{
@@ -75,9 +76,10 @@ impl Rule for PreferUnserializeMethod {
                 code.push_str(", ");
             }
             let body = foreach(&format!("{indent}    "));
-            code.push_str(&format!(
+            let _ = write!(
+                code,
                 "array $data): void\n{indent}{{\n{indent}    {body}\n{indent}}}"
-            ));
+            );
             vec![Edit::new(Span::new(span.start, span.end), code)]
         };
         out.push(Report {

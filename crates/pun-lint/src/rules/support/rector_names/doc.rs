@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 use pun_phpstan::phpdoc::{self, Node, ShapeKey};
@@ -124,7 +125,7 @@ impl Other {
                     param.push_str(if p.variadic { "..." } else { "" });
                     param.push_str(&p.name);
                     if let Some(default) = &p.default {
-                        param.push_str(&format!(" = {}", const_expr(default, &mut quotes)?));
+                        let _ = write!(param, " = {}", const_expr(default, &mut quotes)?);
                     }
                     printed.push(param);
                 }
@@ -698,11 +699,11 @@ impl Doc {
                     }
                     let printed = print_child(child).unwrap_or_default();
                     if self.single_line {
-                        output.push_str(&format!(" {printed}"));
+                        let _ = write!(output, " {printed}");
                     } else {
                         output.push_str("\n *");
                         if !printed.is_empty() {
-                            output.push_str(&format!(" {printed}"));
+                            let _ = write!(output, " {printed}");
                         }
                     }
                 }

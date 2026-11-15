@@ -578,7 +578,7 @@ impl BinaryOperatorSpacesFixer {
             }
             let mut lines: Vec<Vec<u8>> = tmp_code
                 .split(|&b| b == b'\n')
-                .map(|l| l.to_vec())
+                .map(<[u8]>::to_vec)
                 .collect();
             let mut groups: Vec<Vec<usize>> = vec![Vec::new()];
             let by_scope = [

@@ -371,7 +371,7 @@ impl NoSuperfluousPhpdocTagsFixer {
         if matches.name_exists("description") {
             return false;
         }
-        if matches.name("types").is_none_or(|t| t.is_empty()) {
+        if matches.name("types").is_none_or(<[u8]>::is_empty) {
             return true;
         }
         let mut annotation_types = to_comparable_names(annotation.get_types(), ctx);

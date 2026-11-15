@@ -424,7 +424,7 @@ fn print_value(ctx: &Context<'_>, value: &Expression<'_>, indent: usize) -> Stri
         Expression::Instantiation(n) => format!(
             "new {}({})",
             lhs(n.class, new_operand_requires_parens),
-            n.argument_list.as_ref().map(args).unwrap_or_default()
+            n.argument_list.as_ref().map_or_default(args)
         ),
         Expression::Array(a) => format!(
             "[{}]",

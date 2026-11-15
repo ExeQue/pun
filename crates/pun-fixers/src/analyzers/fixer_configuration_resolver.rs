@@ -226,9 +226,11 @@ impl Resolved {
         default: &[&str],
         allowed: &[&str],
     ) -> Result<Vec<String>> {
-        let v = match self.map.get(key) {
-            None => return Ok(default.iter().map(|s| s.to_string()).collect()),
-            Some(v) => v,
+        let Some(v) = self.map.get(key) else {
+            return Ok(default
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect());
         };
         let items: Vec<&Value> = match v {
             Value::Array(a) => a.iter().collect(),

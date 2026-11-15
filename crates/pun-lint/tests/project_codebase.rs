@@ -103,11 +103,11 @@ fn a_changed_file_keeps_its_methods_called_on_this() {
 
 #[test]
 fn autoloaded_vendor_parents_guard_overrides() {
+    use pun_lint::rules::AddReturnTypeFromConstant;
+    use pun_lint::rules::facts::project_codebase_autoloaded;
     let _lock = crate::PROJECT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    use pun_lint::rules::AddReturnTypeFromConstant;
-    use pun_lint::rules::facts::project_codebase_autoloaded;
     let base = |ns: &str| {
         format!(
             "<?php\n\nnamespace {ns};\n\nclass {}\n{{\n    public function run()\n    {{\n        return 0;\n    }}\n}}\n",
@@ -152,11 +152,11 @@ fn autoloaded_vendor_parents_guard_overrides() {
 
 #[test]
 fn a_file_autoloaded_for_two_names_is_scanned_for_each() {
+    use pun_lint::rules::AddReturnTypeFromConstant;
+    use pun_lint::rules::facts::project_codebase_autoloaded;
     let _lock = crate::PROJECT
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    use pun_lint::rules::AddReturnTypeFromConstant;
-    use pun_lint::rules::facts::project_codebase_autoloaded;
     let commands = "<?php\n\nnamespace App;\n\nfinal class FromVendor extends \\Acme\\Base\n{\n    public const OK = 1;\n\n    public function run()\n    {\n        return self::OK;\n    }\n\n    public function take(\\Acme\\Missing $a, \\Acme\\Gone $b): void\n    {\n    }\n}\n";
     let base = "<?php\n\nnamespace Acme;\n\nclass Base\n{\n    public function run()\n    {\n        return 0;\n    }\n}\n";
     let files = [(

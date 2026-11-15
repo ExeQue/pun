@@ -71,8 +71,7 @@ fn needs_attribute(tokens: &Tokens, s: usize) -> bool {
             let lower = t.get_content()[1..].to_ascii_lowercase();
             let name = lower
                 .strip_prefix(b"get")
-                .map(|n| n.strip_prefix(b"_").unwrap_or(n))
-                .unwrap_or(&lower);
+                .map_or(&lower[..], |n| n.strip_prefix(b"_").unwrap_or(n));
             let sensitive = [&b"password"[..], b"token", b"secret", b"apikey", b"api_key"]
                 .iter()
                 .any(|w| name.ends_with(w));

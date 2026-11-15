@@ -1,5 +1,6 @@
 use mago_syntax::cst::{Node, NodeKind, Statement};
 use pun_problem::{Edit, Fix, Safety, Span};
+use std::fmt::Write as _;
 
 use crate::rules::classes::no_redundant_readonly_property::print_modifiers;
 use crate::rules::support::conditions::{
@@ -243,10 +244,10 @@ pub(crate) fn reprint_function_like(
     code.push(')');
     if let Some(uses) = uses {
         let printed: Vec<&str> = uses.variables.iter().map(|v| text(source, v)).collect();
-        code.push_str(&format!(" use ({})", printed.join(", ")));
+        let _ = write!(code, " use ({})", printed.join(", "));
     }
     if let Some(r) = return_type {
-        code.push_str(&format!(": {}", text(source, &r.hint)));
+        let _ = write!(code, ": {}", text(source, &r.hint));
     }
     code.push_str(if new_line { &nl } else { " " });
     code.push('{');

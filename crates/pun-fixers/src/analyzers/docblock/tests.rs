@@ -51,7 +51,10 @@ fn panics(f: impl FnOnce() + std::panic::UnwindSafe) -> String {
         Err(e) => e
             .downcast_ref::<String>()
             .cloned()
-            .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
+            .or_else(|| {
+                e.downcast_ref::<&str>()
+                    .map(std::string::ToString::to_string)
+            })
             .unwrap_or_default(),
     }
 }

@@ -484,7 +484,7 @@ impl StatementIndentationFixer {
                     tokens.clear_at(index);
                 }
 
-                if let Some(next_token) = next_token.filter(|t| t.is_comment()) {
+                if let Some(next_token) = next_token.filter(pun_tokens::Token::is_comment) {
                     let pattern = [
                         &b"/(\\R)"[..],
                         &preg_quote(&previous_line_initial_indent, Some(b'/')),

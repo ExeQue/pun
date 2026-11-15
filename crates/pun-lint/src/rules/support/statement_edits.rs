@@ -643,6 +643,19 @@ pub(crate) fn is_static_or_global(chain: &[Node<'_, '_>], name: &[u8]) -> bool {
 }
 
 pub(crate) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: usize) -> bool {
+    fn closures_before(node: Node<'_, '_>, name: &[u8], at: usize) -> bool {
+        if node_span(&node).start >= at {
+            return false;
+        }
+        if let Node::Closure(c) = node
+            && c.use_clause.as_ref().is_some_and(|u| by_ref_use(u, name))
+        {
+            return true;
+        }
+        let mut found = false;
+        node.visit_children(|child| found = found || closures_before(child, name, at));
+        found
+    }
     let mut outermost = None;
     for node in ancestors {
         let (params, uses) = match node {
@@ -661,19 +674,6 @@ pub(crate) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: 
         if by_ref_param || uses.is_some_and(|u| by_ref_use(u, name)) {
             return true;
         }
-    }
-    fn closures_before(node: Node<'_, '_>, name: &[u8], at: usize) -> bool {
-        if node_span(&node).start >= at {
-            return false;
-        }
-        if let Node::Closure(c) = node
-            && c.use_clause.as_ref().is_some_and(|u| by_ref_use(u, name))
-        {
-            return true;
-        }
-        let mut found = false;
-        node.visit_children(|child| found = found || closures_before(child, name, at));
-        found
     }
     let Some(outermost) = outermost else {
         return false;

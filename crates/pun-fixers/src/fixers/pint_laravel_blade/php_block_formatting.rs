@@ -38,7 +38,7 @@ impl PhpFragmentFormatter {
         }
         let mut tokens = Tokens::from_code(code);
         let file = Path::new("fragment.php");
-        for fixer in self.fixers(fragment).iter().flat_map(|p| p.fixers()) {
+        for fixer in self.fixers(fragment).into_iter().flat_map(Pipeline::fixers) {
             fixer.apply(file, &mut tokens);
             if tokens.is_changed() {
                 tokens.clear_empty_tokens();
@@ -48,7 +48,7 @@ impl PhpFragmentFormatter {
         tokens.generate_code()
     }
 
-    fn fixers(&self, fragment: bool) -> &'static Option<Pipeline> {
+    fn fixers(&self, fragment: bool) -> Option<&'static Pipeline> {
         let cell = if fragment { &self.fragment } else { &self.file };
         cell.get_or_init(|| {
             *PIPELINES
@@ -57,6 +57,7 @@ impl PhpFragmentFormatter {
                 .entry((self.preset.clone(), fragment))
                 .or_insert_with(|| Box::leak(Box::new(pipeline(&self.preset, fragment))))
         })
+        .as_ref()
     }
 }
 

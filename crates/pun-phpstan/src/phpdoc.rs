@@ -292,8 +292,7 @@ impl ParseError {
             self.expected.label(),
             self.expected_value
                 .as_ref()
-                .map(|v| format!(" ({})", json_string(v)))
-                .unwrap_or_default(),
+                .map_or_default(|v| format!(" ({})", json_string(v))),
             self.offset,
             self.line
         )

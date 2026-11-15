@@ -41,6 +41,11 @@ impl Fixer for OrderedInterfacesFixer {
     }
     fn fix(&self, _file: &Path, tokens: &mut Tokens) {
         for index in 0..tokens.count() {
+            struct I {
+                tokens: Vec<Token>,
+                normalized: Vec<u8>,
+                original_index: usize,
+            }
             if !tokens[index].is_kind(Kind::T_IMPLEMENTS) {
                 if !tokens[index].is_kind(Kind::T_EXTENDS) {
                     continue;
@@ -62,11 +67,6 @@ impl Fixer for OrderedInterfacesFixer {
             let interfaces_tokens = get_interfaces(tokens, implements_start, implements_end);
             if interfaces_tokens.len() == 1 {
                 continue;
-            }
-            struct I {
-                tokens: Vec<Token>,
-                normalized: Vec<u8>,
-                original_index: usize,
             }
             let mut interfaces: Vec<I> = interfaces_tokens
                 .into_iter()

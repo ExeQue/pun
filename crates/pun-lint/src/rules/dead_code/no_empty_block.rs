@@ -224,7 +224,6 @@ fn has_side_effect(expr: &Expression<'_>) -> bool {
 }
 
 fn variables(node: Node<'_, '_>) -> Vec<Vec<u8>> {
-    let mut out = Vec::new();
     fn walk(node: Node<'_, '_>, parent: Option<Node<'_, '_>>, out: &mut Vec<Vec<u8>>) {
         match node {
             Node::DirectVariable(v) => {
@@ -241,6 +240,7 @@ fn variables(node: Node<'_, '_>) -> Vec<Vec<u8>> {
         }
         node.visit_children(|child| walk(child, Some(node), out));
     }
+    let mut out = Vec::new();
     walk(node, None, &mut out);
     out
 }

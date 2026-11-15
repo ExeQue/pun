@@ -47,7 +47,7 @@ fn should_be_fixed(tokens: &Tokens, return_index: usize) -> bool {
     loop {
         function_end_index = tokens.get_next_meaningful_token(function_end_index.unwrap());
         match function_end_index {
-            Some(i) if tokens[i].equals(";", true) => continue,
+            Some(i) if tokens[i].equals(";", true) => {},
             _ => break,
         }
     }

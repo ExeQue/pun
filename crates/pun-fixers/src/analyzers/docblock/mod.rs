@@ -126,8 +126,7 @@ impl DocBlock {
             return;
         }
         let line_content = (useful.first())
-            .map(|l| single_line_doc_block_entry(l.borrow().get_content()))
-            .unwrap_or_default();
+            .map_or_default(|l| single_line_doc_block_entry(l.borrow().get_content()));
         self.set_lines(vec![[&b"/** "[..], &line_content, b" */"].concat()]);
     }
 

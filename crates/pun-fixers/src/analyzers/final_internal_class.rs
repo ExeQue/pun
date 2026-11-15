@@ -68,7 +68,7 @@ impl FinalInternalClassFixer {
                 .collect();
             let defaults: Vec<&str> = defaults.iter().map(String::as_str).collect();
             let values = c.strings(key, &defaults, &[])?;
-            if values.iter().any(|v| v.is_empty()) {
+            if values.iter().any(std::string::String::is_empty) {
                 return Err(c.invalid(key, c.get(key).unwrap(), &[]));
             }
             Ok(normalize(&values))

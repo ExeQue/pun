@@ -550,8 +550,7 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         let mut names: Vec<String> = match &self.ctor {
             Ctor::Own => self
                 .own
-                .map(params_of)
-                .unwrap_or_default()
+                .map_or_default(params_of)
                 .into_iter()
                 .map(|(n, _)| n)
                 .collect(),
@@ -621,8 +620,7 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
         let found = match &self.ctor {
             Ctor::Own => self
                 .own
-                .map(params_of)
-                .unwrap_or_default()
+                .map_or_default(params_of)
                 .into_iter()
                 .find(|(n, _)| n == name)
                 .map(|(_, p)| p),
@@ -664,7 +662,7 @@ impl<'c, 'ast, 'arena> Injector<'c, 'ast, 'arena> {
             return;
         }
         let existing: Vec<(String, bool)> = match &self.ctor {
-            Ctor::Own => self.own.map(params_of).unwrap_or_default(),
+            Ctor::Own => self.own.map_or_default(params_of),
             Ctor::FromParent(p) => p
                 .params
                 .iter()

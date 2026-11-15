@@ -3,6 +3,7 @@ use mago_syntax::cst::{
     NodeKind, Statement,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::{AnyCall, is_in_test_class, maybe_multiline, resolve};
 use crate::rules::support::statement_edits::{List, block_list, line_indent, reindent};
@@ -322,7 +323,7 @@ fn closure_edit(ctx: &crate::Context<'_>, closure: &Closure<'_>, asserts: &[Asse
                     )
                 })
                 .collect();
-            text.push_str(&format!(" use ({})", uses.join(", ")));
+            let _ = write!(text, " use ({})", uses.join(", "));
         }
         text.push_str(": void ");
         text.push_str(&body_anew(
@@ -398,7 +399,7 @@ fn arrow_edit(ctx: &crate::Context<'_>, arrow: &ArrowFunction<'_>, asserts: &[As
     let uses = resolve_from_arrow_function(arrow);
     if !uses.is_empty() {
         let uses: Vec<String> = uses.iter().map(|u| format!("${u}")).collect();
-        text.push_str(&format!(" use ({})", uses.join(", ")));
+        let _ = write!(text, " use ({})", uses.join(", "));
     }
     text.push_str(": void ");
     text.push_str(&body_anew(

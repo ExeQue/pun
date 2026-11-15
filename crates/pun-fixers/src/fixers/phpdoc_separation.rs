@@ -44,7 +44,7 @@ impl Fixer for PhpdocSeparationFixer {
         let groups: Vec<Vec<String>> = match r.get("groups") {
             None => OPTION_GROUPS_DEFAULT
                 .iter()
-                .map(|g| g.iter().map(|s| s.to_string()).collect())
+                .map(|g| g.iter().map(std::string::ToString::to_string).collect())
                 .collect(),
             Some(v) => php_array(v)
                 .into_iter()

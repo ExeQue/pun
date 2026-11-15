@@ -2,6 +2,7 @@ use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_syntax::cst::{Argument, Closure, Expression, Node, NodeKind, Variable};
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::object_type::{
     Tri, class_string_class, class_super_of, exact_class_super_of, is_object_type, object_class,
@@ -104,7 +105,7 @@ impl Rule for PreferClosureOnlyBind {
             } else {
                 span.start
             };
-            args.push_str(&format!(", {name}{}", &ctx.source[start..span.end]));
+            let _ = write!(args, ", {name}{}", &ctx.source[start..span.end]);
         }
         let all = Span::new(
             node_span(list.arguments.first().unwrap()).start,

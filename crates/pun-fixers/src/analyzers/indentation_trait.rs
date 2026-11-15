@@ -11,8 +11,7 @@ pub(crate) fn get_line_indentation(tokens: &Tokens, index: usize) -> Vec<u8> {
 pub(crate) fn extract_indent(content: &[u8]) -> Vec<u8> {
     if !content.is_ascii() {
         return Preg::match_groups("/\\R(\\h*)[^\\r\\n]*$/D", content)
-            .map(|m| m.str(1).to_vec())
-            .unwrap_or_default();
+            .map_or_default(|m| m.str(1).to_vec());
     }
     let after = match content.iter().rposition(|b| matches!(b, b'\r' | b'\n')) {
         Some(l) => l + 1,

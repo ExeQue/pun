@@ -138,7 +138,7 @@ fn ignored_error_helper() {
 fn phpstan_analyse_local_ignores() {
     let dir = format!("{}/tests/fixtures/local", env!("CARGO_MANIFEST_DIR"));
     let key = |j: &J| {
-        let s = |k: &str| j.get(k).map(J::to_string).unwrap_or_default();
+        let s = |k: &str| j.get(k).map_or_default(J::to_string);
         (
             j["line"].as_i64(),
             j["message"].as_str().unwrap().to_string(),

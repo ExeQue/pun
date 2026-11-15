@@ -188,7 +188,6 @@ impl YodaStyleFixer {
             match Tokens::detect_block_type(token) {
                 None => {
                     index += 1;
-                    continue;
                 }
                 Some((_, false)) => break,
                 Some((block_type, true)) => index = tokens.find_block_end(block_type, index) + 1,
@@ -221,7 +220,6 @@ impl YodaStyleFixer {
                 None => {
                     index -= 1;
                     non_block_found = true;
-                    continue;
                 }
                 Some((block_type, is_start)) => {
                     if is_start || (non_block_found && block_type == Tokens::BLOCK_TYPE_BRACE) {

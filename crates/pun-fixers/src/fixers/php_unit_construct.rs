@@ -21,7 +21,7 @@ struct PhpUnitConstructFixer {
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(PhpUnitConstructFixer {
-        assertions: ASSERT_METHODS.iter().map(|m| m.to_string()).collect(),
+        assertions: ASSERT_METHODS.iter().map(std::string::ToString::to_string).collect(),
     })
 }
 

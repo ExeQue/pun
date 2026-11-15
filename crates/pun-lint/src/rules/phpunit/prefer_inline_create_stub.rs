@@ -3,6 +3,7 @@ use mago_syntax::cst::{
     Hint, MethodBody, Node, NodeKind, PartialArgument, Property,
 };
 use pun_problem::{Edit, Safety, Span};
+use std::fmt::Write as _;
 
 use super::no_bare_mock_assign::scoped;
 use super::no_unused_mock_property::local_property_fetches;
@@ -183,7 +184,7 @@ impl Rule for PreferInlineCreateStub {
                 }) {
                     let start = node_span(list.stmts[i]).start;
                     let indent = line_indent(ctx.source, start);
-                    inserted[m][i].push_str(&format!("${variable} = {create_stub};\n{indent}"));
+                    let _ = write!(inserted[m][i], "${variable} = {create_stub};\n{indent}");
                 }
             }
         }

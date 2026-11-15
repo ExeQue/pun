@@ -60,7 +60,7 @@ fn in_refactored_chain(b: &Binary<'_>, ancestors: &[Node<'_, '_>]) -> bool {
     let mut child = node_span(b);
     for ancestor in ancestors.iter().rev() {
         match ancestor {
-            Node::Expression(_) | Node::Parenthesized(_) => continue,
+            Node::Expression(_) | Node::Parenthesized(_) => {}
             Node::Binary(parent)
                 if is_logical(&parent.operator)
                     && [parent.lhs, parent.rhs]

@@ -28,7 +28,10 @@ fn pun_rules_run_at_priority_zero() {
         .chain(["no_unused_imports"])
         .collect();
     assert_eq!(
-        pipeline.fixers().map(|f| f.name()).collect::<Vec<_>>(),
+        pipeline
+            .fixers()
+            .map(pun_format::Fixer::name)
+            .collect::<Vec<_>>(),
         want
     );
 }

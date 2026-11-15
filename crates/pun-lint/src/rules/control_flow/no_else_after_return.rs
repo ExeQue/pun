@@ -1,5 +1,6 @@
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety, Span};
+use std::fmt::Write as _;
 
 use crate::rules::support::statement_edits::{
     Frame, IfView, List, braced, comments, enclosing, if_view, inserted_statements,
@@ -71,12 +72,13 @@ impl Rule for NoElseAfterReturn {
                 if matches!(item, Item::ModifiedIf(..)) {
                     text.push_str(&source[before..start]);
                 } else {
-                    text.push_str(&format!("\n{indent}"));
+                    let _ = write!(text, "\n{indent}");
                     if matches!(item, Item::NewIf(0)) && start < node_span(r#if).start {
-                        text.push_str(&format!(
+                        let _ = write!(
+                            text,
                             "{}\n{indent}",
                             source[start..node_span(r#if).start].trim_end()
-                        ));
+                        );
                     }
                 }
                 text.push_str(&print(ctx, r#if, &clauses, item, indent, inserted));
@@ -189,8 +191,7 @@ fn print(
     let head = |clause: &Clause<'_, '_>| {
         clause
             .comments
-            .map(|c| format!("{}\n{indent}", &source[c.start..c.end]))
-            .unwrap_or_default()
+            .map_or_default(|c| format!("{}\n{indent}", &source[c.start..c.end]))
     };
     let condition = |clause: &Clause<'_, '_>| {
         let c = unparenthesize(clause.condition.unwrap());
@@ -243,8 +244,7 @@ fn print_clause(ctx: &Context<'_>, clause: &Clause<'_, '_>, indent: &str) -> Str
     let source = ctx.source;
     let head = clause
         .comments
-        .map(|c| format!("{}\n{indent}", &source[c.start..c.end]))
-        .unwrap_or_default();
+        .map_or_default(|c| format!("{}\n{indent}", &source[c.start..c.end]));
     match clause.condition {
         Some(condition) => {
             let s = node_span(unparenthesize(condition));

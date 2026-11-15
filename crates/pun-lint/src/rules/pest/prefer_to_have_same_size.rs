@@ -27,17 +27,17 @@ impl Rule for PreferToHaveSameSize {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        fn counted<'a>(e: Option<&'a Expression<'a>>) -> Option<Option<&'a Expression<'a>>> {
+            e.and_then(func_call)
+                .filter(|f| named(f, "count") || named(f, "sizeof"))
+                .map(|f| first_value(&f.argument_list))
+        }
         let Node::MethodCall(call) = node else {
             return;
         };
         let Some(holder) = subject_holder(call) else {
             return;
         };
-        fn counted<'a>(e: Option<&'a Expression<'a>>) -> Option<Option<&'a Expression<'a>>> {
-            e.and_then(func_call)
-                .filter(|f| named(f, "count") || named(f, "sizeof"))
-                .map(|f| first_value(&f.argument_list))
-        }
         let countable = |e: &Expression<'_>| {
             type_is(ctx, e, Is::Array) == Trinary::Yes
                 || type_is(ctx, e, Is::Iterable) == Trinary::Yes

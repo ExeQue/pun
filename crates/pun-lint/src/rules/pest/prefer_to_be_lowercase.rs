@@ -25,6 +25,11 @@ impl Rule for PreferToBeLowercase {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        fn case<'a>(e: &'a Expression<'a>) -> Option<Option<&'a Expression<'a>>> {
+            func_call(e)
+                .filter(|f| named(f, "strtolower"))
+                .map(|f| first_value(&f.argument_list))
+        }
         let Node::MethodCall(call) = node else {
             return;
         };
@@ -40,11 +45,6 @@ impl Rule for PreferToBeLowercase {
         };
         if !matches!(identical.operator, BinaryOperator::Identical(_)) {
             return;
-        }
-        fn case<'a>(e: &'a Expression<'a>) -> Option<Option<&'a Expression<'a>>> {
-            func_call(e)
-                .filter(|f| named(f, "strtolower"))
-                .map(|f| first_value(&f.argument_list))
         }
         let value = match (case(identical.lhs), case(identical.rhs)) {
             (Some(Some(inner)), _) if same_expression(ctx.source, inner, identical.rhs) => {

@@ -59,7 +59,7 @@ impl Rule for AddReturnTypeFromProperty {
                 return;
             };
             types.extend(t.types.iter());
-            order.extend(facts.text(declared).map(text_order).unwrap_or_default());
+            order.extend(facts.text(declared).map_or_default(text_order));
         }
         let place = Place {
             facts: &facts,

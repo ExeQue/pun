@@ -308,8 +308,7 @@ impl IgnoredErrors {
             parameters
                 .get_str(k)
                 .and_then(Value::as_array)
-                .map(|a| a.values().filter_map(Value::to_php_string).collect())
-                .unwrap_or_default()
+                .map_or_default(|a| a.values().filter_map(Value::to_php_string).collect())
         };
         let cwd = string("currentWorkingDirectory");
         let mut env = Array::new();

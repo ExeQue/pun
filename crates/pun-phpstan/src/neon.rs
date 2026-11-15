@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::sync::LazyLock;
 
 use pcre2::bytes::{Regex, RegexBuilder};
@@ -708,10 +709,12 @@ impl std::fmt::Display for Out {
                 let mut res = String::new();
                 for (k, v) in items {
                     let s = v.to_string();
-                    res.push_str(&match k {
-                        Some(k) => format!("{k}:"),
-                        None => "-".into(),
-                    });
+                    match k {
+                        Some(k) => {
+                            let _ = write!(res, "{k}:");
+                        }
+                        None => res.push('-'),
+                    }
                     if matches!(v, Out::Block(_, items) if !items.is_empty()) {
                         res.push('\n');
                         res.push_str(&s);
@@ -816,7 +819,9 @@ pub fn json_string(s: &str) -> String {
             '\t' => out.push_str("\\t"),
             '\x08' => out.push_str("\\b"),
             '\x0C' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
             '\u{2028}' => out.push_str("\\u2028"),
             '\u{2029}' => out.push_str("\\u2029"),
             c => out.push(c),
