@@ -99,13 +99,13 @@ pub(crate) fn cache_dir() -> Result<PathBuf> {
         return Ok(dir);
     }
     let home = env("HOME").context("HOME is not set; set PUN_CACHE_DIR")?;
-    Ok(if cfg!(target_os = "macos") {
-        home.join("Library/Caches/pun")
-    } else {
-        env("XDG_CACHE_HOME")
-            .unwrap_or_else(|| home.join(".cache"))
-            .join("pun")
-    })
+    #[cfg(target_os = "macos")]
+    let dir = home.join("Library/Caches/pun");
+    #[cfg(not(target_os = "macos"))]
+    let dir = env("XDG_CACHE_HOME")
+        .unwrap_or_else(|| home.join(".cache"))
+        .join("pun");
+    Ok(dir)
 }
 
 /// The directory a package installs into for one constraint, which is percent-encoded into the name.
