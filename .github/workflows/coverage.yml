@@ -32,7 +32,7 @@ jobs:
         with:
           toolchain: stable
           components: llvm-tools-preview
-      - uses: taiki-e/install-action@c2e5d2ce8920c881761c4cabb41434daa1f95687 # cargo-llvm-cov
+      - uses: taiki-e/install-action@e800962fea8b802cd1bd32c4e6f08fbda4bb0048 # cargo-llvm-cov
         with:
           tool: cargo-llvm-cov
       - uses: rui314/setup-mold@339e96b4ff1f3bd865856ba4cbbe8818a7acb038 # v1
