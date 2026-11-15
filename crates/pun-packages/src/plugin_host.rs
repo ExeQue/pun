@@ -67,6 +67,9 @@ impl Host {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn();
+        if child.is_err() {
+            let _ = std::fs::remove_file(&script);
+        }
         let mut child =
             child.with_context(|| format!("can't run {php} for the Composer plugins"))?;
         let pipes = child.stdin.take().zip(child.stdout.take());

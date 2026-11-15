@@ -558,5 +558,7 @@ fn composer_plugins_run_on_composers_classes() {
                 missing.display()
             ))
     );
+    let script = format!("pun-plugin-host-{}.php", std::process::id());
+    assert!(!std::env::temp_dir().join(script).exists());
     std::fs::remove_dir_all(&tmp).unwrap();
 }
