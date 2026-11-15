@@ -231,7 +231,7 @@ End
 
 ## mimalloc
 
-The Linux binaries link [mimalloc](https://github.com/microsoft/mimalloc) 3.3.2 statically (the copy in the
+The Linux and macOS binaries link [mimalloc](https://github.com/microsoft/mimalloc) 3.3.2 statically (the copy in the
 `libmimalloc-sys` crate) as their memory allocator.
 
 ```text
