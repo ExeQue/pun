@@ -3,34 +3,34 @@ title: pun config
 description: Print resolved settings and enabled rules as TOML or JSON.
 ---
 
+`pun config` prints the resolved configuration, in the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
+
 ```bash
 pun config
 pun config --format json
 pun config --preset psr12
 ```
 
-Output uses the same sections as `pun.toml`: `[php]`, `[files]`, `[extensions]`, `[format]`, `[lint]`, and `[analyse]`.
-
 ## Resolved values
 
 | Field | Contents |
 | --- | --- |
 | Command `rules` tables | Enabled rules after preset, set, group, and rule settings, with levels and options |
-| `[[lint.overrides]]` | Path overrides as configured, not applied to a particular file |
+| `[[lint.overrides]]` | Path overrides as configured, not applied to a file |
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
 | `[extensions]` | Each extension as `"on"` or `"off"`, after `"auto"` reads the lock |
 | `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
-| `[analyse] switches` | The preset's type switches. With the enabled rules, they set the PHPStan level `pun analyse` runs at |
-| `[php] version` | Explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
+| `[analyse] switches` | The preset's type switches, which with the enabled rules set the analysis level |
+| `[php] version` | The explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |
 
-Disabled rules are omitted. The TOML starts with a comment naming the configuration sources.
+Disabled rules are left out. The TOML output starts with a comment that names the configuration sources.
 
 ## Options
 
 | Flag | Meaning |
 | --- | --- |
-| `--format toml\|json` | Output format; default `toml` |
-| `--config <path>` | Read another config file |
-| `--preset <name>` | Resolve a built-in format preset without `pun.toml` |
+| `--format toml\|json` | Output format. Default `toml`. |
+| `--config <path>` | Read another config file. |
+| `--preset <name>` | Resolve a built-in format preset without `pun.toml`. |
 
-Resolution does not prove full runtime support for migrated analysis settings. See [analysis limitations](/docs/commands/analyse#configuration).
+A resolved setting isn't always supported at run time. See [analysis limitations](/docs/commands/analyse#configuration).

@@ -1,9 +1,9 @@
 ---
 title: pun format
-description: Format PHP layout, casing, and spelling without code refactors.
+description: Format PHP layout, casing, and spelling.
 ---
 
-`pun format` applies `[format]` rules from `pun.toml`. Risky and code-deleting Pint fixers belong to [`pun lint`](/docs/commands/lint). [`pun check --fix`](/docs/commands/check) runs both.
+`pun format` applies the `[format]` rules in `pun.toml`. Risky and code-deleting fixers are [`pun lint`](/docs/commands/lint) rules. [`pun check --fix`](/docs/commands/check) runs both.
 
 ```bash
 pun format
@@ -13,39 +13,35 @@ pun format app/Models
 
 ## Pint's flags
 
-These flags retain Pint's behavior unless noted:
-
 | Flag | What it does |
 | --- | --- |
-| `--test` (`--check`) | Test for style errors without fixing them. Exits 1 on any. |
-| `--bail` | Like `--test`, stopping at the first error. |
-| `--repair` | Fix errors, but exit 1 if anything changed. |
+| `--test` (`--check`) | Report style errors without fixing them. Exit 1 on any. |
+| `--bail` | Like `--test`, but stop at the first error. |
+| `--repair` | Fix errors, and exit 1 if anything changed. |
 | `--dirty` | Only files with uncommitted changes. |
 | `--diff=<branch>` | Only files changed since branching off `<branch>`. |
 | `--blade` | Also format Blade files. |
 | `--config=<path>` | Use this `pun.toml`. |
-| `--preset=<name>` | Use `laravel`, `psr12`, or `empty` instead of `pun.toml`. For `per` or `symfony`, use `pun migrate --preset <name>`. |
+| `--preset=<name>` | Use `laravel`, `psr12`, or `empty` instead of `pun.toml`. For `per` or `symfony`, run `pun migrate --preset <name>`. |
 | `--no-config` | Use the `laravel` preset and no config file. |
-| `--format=<fmt>` | Select `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
-| `--output-to-file=<path>` | Also write a report to a file. `--output-format=<fmt>` selects its format. |
-| `--stdin-filename=<path>` | Path context for code read from stdin (`-` as the path). |
-| `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` suppresses successful output. |
-| `--max-processes=N` | Cap threads and Prettier workers. Pun runs one thread per core by default. Invalid or nonpositive values keep the default. |
+| `--format=<fmt>` | `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
+| `--output-to-file=<path>` | Also write a report to a file, in `--output-format=<fmt>`. |
+| `--stdin-filename=<path>` | Path for code read from stdin (`-` as the path). |
+| `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` hides successful output. |
+| `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. Invalid or nonpositive values keep the default. |
 
 ## Pun's own flags
 
 | Flag | What it does |
 | --- | --- |
-| `--staged` | Select files with staged changes. Reads working-tree contents, not the index. |
+| `--staged` | Only files with staged changes. Reads the working tree, not the index. |
 | `--since=<ref>` | Only files changed since a commit, plus untracked files. |
 | `--watch` | Keep running and re-format files as they change. |
-| `--stdin` | Read code from stdin; `--stdin-filename` gives it a path for exclusion rules. |
+| `--stdin` | Read code from stdin. `--stdin-filename` gives it a path for exclusions. |
 | `--explain` | Print the fixers the run applies, in priority order. |
-| `--color=auto\|always\|never` | Select color mode. `auto` respects `NO_COLOR`. `--ansi` and `--no-ansi` also work. |
+| `--color=auto\|always\|never` | Color mode. `auto` respects `NO_COLOR`. `--ansi` and `--no-ansi` also work. |
 
 ## Output
-
-Default output lists changed files and rule IDs, followed by a summary:
 
 ```
 $ pun format
@@ -54,11 +50,7 @@ $ pun format
 Formatted 2 files, 482 unchanged · 484 files in 0.21s
 ```
 
-`--test` reports changes without writing them. Syntax errors include code frames. Unchanged files are hidden unless `-v` is set.
-
-Piped output has no spinner or automatic color. Non-UTF-8 terminals use ASCII status symbols.
-
-Machine reports retain Pint's formats. `--format=agent` is Pint's JSON reporter, not Pun's automatic [coding-agent output](/docs/guides/coding-agents).
+`--format=agent` is Pint's JSON reporter, not Pun's [coding-agent output](/docs/guides/coding-agents).
 
 ## Exit codes
 
@@ -68,21 +60,21 @@ Machine reports retain Pint's formats. `--format=agent` is Pint's JSON reporter,
 | 1 | Formatting changes in test or repair mode, or a syntax error |
 | 2 | Pun could not run: invalid config, unsupported rule, unreadable file, report error, or missing Blade dependency |
 
-Pint exits 1 for run errors. Pun exits 2 and prints an error with a hint on stderr. With `--format` or `-q`, it retains Pint's error box on stdout.
+Pun prints a run error with a hint on stderr. With `--format` or `-q`, it prints Pint's error box on stdout.
 
 ## GitHub Actions
 
-Under `GITHUB_ACTIONS=true`, default output includes an annotation for each file that needs formatting. `--format=github` prints only annotations:
+Under `GITHUB_ACTIONS=true`, the output includes an annotation for each file that needs formatting. `--format=github` prints only annotations:
 
 ```
 ::error file=app/Models/User.php,line=12,col=0,title=format/arrays/syntax::File needs formatting
 ::error file=app/Broken.php,line=3,col=1,title=syntax-error::Unclosed '(' on line 2
 ```
 
-Fixed files get no annotation. A run error uses `::error ::<message>`.
+A run error prints `::error ::<message>`.
 
 ## Configuration errors
 
-Without `pun.toml`, use `pun init`, `pun migrate`, `--preset`, or `--no-config`.
+Without `pun.toml`, run `pun init` or `pun migrate`, or pass `--preset` or `--no-config`.
 
-Enabling an unimplemented rule is a configuration error. Pun names the rule and exits 2 before editing files. It never runs PHP as a fallback.
+A rule that Pun doesn't implement is a configuration error. Pun names the rule and exits 2 before it edits any file.

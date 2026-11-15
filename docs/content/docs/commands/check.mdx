@@ -1,24 +1,20 @@
 ---
 title: pun check
-description: Report format, lint, and analysis findings. Apply format and lint fixes with --fix.
+description: Format, lint, and analyse in one run. Apply format and lint fixes with --fix.
 ---
+
+`pun check` reports findings without editing files. `--fix` applies formatting and lint fixes, except rules with `fix = "off"`. Analysis never edits files.
 
 ```bash
 pun check
 pun check --fix
 ```
 
-`pun check` reports findings without editing files. `--fix` applies formatting and available lint fixes, except rules with `fix = "off"`. Analysis never edits files.
-
-## Rule order
-
-Token-based format and lint fixers run in PHP-CS-Fixer's priority order to preserve Pint compatibility. Pun also runs native lint rules, then analyses the project. The combined command does not yet share one parse across all three stages.
-
-A migrated Pint configuration uses `pun check --fix`, not `pun format`: risky and code-deleting Pint fixers are lint rules. Review [migration warnings](/docs/commands/migrate) before relying on equivalent output.
+A migrated Pint config needs `pun check --fix`, not `pun format`, because Pint's risky and code-deleting fixers are lint rules.
 
 ## Options
 
-`pun check` accepts the [format flags](/docs/commands/format#pints-flags) and [lint level flags](/docs/commands/lint#levels-on-the-command-line). Analysis uses `[analyse]` settings, ignore comments, and the configured baseline.
+`pun check` takes the [format flags](/docs/commands/format#pints-flags) and the [lint level flags](/docs/commands/lint#levels-on-the-command-line). Analysis uses the `[analyse]` settings, ignore comments, and the configured baseline.
 
 ```bash
 pun check --dirty
@@ -27,11 +23,7 @@ pun check --deny-warnings
 pun check --format=github
 ```
 
-`--staged` selects files with staged changes but reads their working-tree contents. It does not read only the staged diff.
-
 ## Output
-
-Findings are grouped by command, with one summary line at the end:
 
 ```
 $ pun check
@@ -49,7 +41,7 @@ $ pun check
 ✖ 3 errors · 1 fixable (run pun check --fix)
 ```
 
-A command with nothing to report gets one line. `--concise` prints one line per problem.
+`--concise` prints one line per problem. For PHPStan-compatible reports, use [`pun analyse`](/docs/commands/analyse).
 
 ## Exit codes
 
@@ -58,5 +50,3 @@ A command with nothing to report gets one line. `--concise` prints one line per 
 | 0 | No remaining errors or format changes |
 | 1 | Format changes, lint errors, analysis errors, or a warning limit exceeded |
 | 2 | Pun could not run |
-
-Use the individual commands for editor integration or to run one stage. Use [`pun analyse`](/docs/commands/analyse) for PHPStan-compatible reports.

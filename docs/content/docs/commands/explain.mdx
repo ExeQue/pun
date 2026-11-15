@@ -9,7 +9,7 @@ pun explain style/no-alias-function
 pun explain no_alias_functions
 ```
 
-The command prefix is optional when the name identifies one rule. Upstream names are accepted for lookup, not as aliases in `pun.toml`.
+The command prefix is optional when the name matches one rule. `pun explain` accepts upstream names, but `pun.toml` doesn't. For an upstream or old name, Pun prints the current Pun ID first. An unknown or unsupported name exits 2 with a reason.
 
 ## Output fields
 
@@ -19,13 +19,9 @@ The command prefix is optional when the name identifies one rule. Upstream names
 | `group` | Group name and scope |
 | `presets`, `sets`, or `preset` | Selections that enable the rule |
 | `intent` | `correctness` or `suspicious`, when recorded |
-| `fix` | `safe`, `unsafe`, `mixed`, or `none` |
+| `fix` | `safe`, `unsafe`, `mixed` (safe only where types prove it), or `none` (report-only) |
 | `fixed by` | Lint rule that can fix an analyse finding |
 | `upstream` | Equivalent upstream names and tools |
 | `docs` | The rule's page on this site |
 
-`mixed` fixes are safe where type information proves them safe and unsafe otherwise. `none` means report-only.
-
-An upstream or earlier Pun name prints its current Pun ID before the explanation. Unknown or unsupported names exit 2 with a reason.
-
-The [rule reference](/docs/rules) also lists options and implementation status.
+The [rule reference](/docs/rules) also lists each rule's options.

@@ -3,21 +3,12 @@ title: pun extension
 description: List the built-in extensions and whether each is on for the project.
 ---
 
+An extension adds rules and analysis for a framework or test tool. `pun extension list` prints each one's ID, `on` or `off`, and why.
+
 ```bash
 pun extension list
 pun extension list --format json
 ```
-
-An extension adds the rules and analysis for a framework or test tool. Pun builds these in:
-
-| Extension | Adds |
-| --- | --- |
-| `laravel` | The `laravel` and `laravel-*` lint and analyse groups, the `format/laravel/blade` rule, and Larastan's analysis |
-| `pest` | The `pest` lint group |
-| `phpunit` | The `phpunit` lint group |
-| `doctrine` | No rules yet: PHP-CS-Fixer ships its `format/doctrine` rules in its core, so Pun keeps them there |
-
-`pun extension list` prints one line per extension: its ID, `on` or `off`, and why. For example:
 
 ```text
 laravel   on   Laravel's rules and Larastan's analysis: laravel/framework v12.4.1 is locked
@@ -26,11 +17,18 @@ phpunit   off  Rules for PHPUnit tests: phpunit/phpunit is not locked
 doctrine  off  Rules for Doctrine annotations: no package turns it on; set doctrine = "on" in [extensions]
 ```
 
-An extension is on when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`, or when it is `"auto"` (the default) and the project's [`composer.lock`](/docs/configuration/pun-toml#dependencies) locks its package. Format rules don't depend on extensions: `[format]` alone turns them on.
+| Extension | Adds |
+| --- | --- |
+| `laravel` | The `laravel` and `laravel-*` lint and analyse groups, the `format/laravel/blade` rule, and Larastan's analysis |
+| `pest` | The `pest` lint group |
+| `phpunit` | The `phpunit` lint group |
+| `doctrine` | No rules. The `format/doctrine` rules are core format rules and don't need it. |
+
+An extension is on when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`, or when it is `"auto"` (the default) and [`composer.lock`](/docs/configuration/pun-toml#dependencies) locks its package. Format rules don't depend on extensions.
 
 ## Options
 
 | Flag | Meaning |
 | --- | --- |
-| `--format json` | Print a JSON array: each extension's `id`, `name`, `description`, `on`, `switch` (`auto`, `on` or `off`), `packages` and `groups` |
-| `--config <path>` | Read another pun.toml. Without one, the command reads `pun.toml` if it exists |
+| `--format json` | Print a JSON array of each extension's `id`, `name`, `description`, `on`, `switch` (`auto`, `on`, or `off`), `packages`, and `groups`. |
+| `--config <path>` | Read another `pun.toml`. Default: `pun.toml`, if it exists. |

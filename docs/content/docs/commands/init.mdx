@@ -3,13 +3,13 @@ title: pun init
 description: Create pun.toml for a project without existing tool configs.
 ---
 
+`pun init` writes a new `pun.toml`. If the project has a Pint, PHP-CS-Fixer, PHPStan, Rector, or Mago config, use [`pun migrate`](/docs/commands/migrate) instead.
+
 ```bash
 pun init
 pun init --yes
 pun init --style psr12 --lint-sets dead-code,types --analyse strict
 ```
-
-For an existing Pint, PHP-CS-Fixer, PHPStan, Rector, or Mago config, use [`pun migrate`](/docs/commands/migrate).
 
 ## Choices and defaults
 
@@ -21,9 +21,7 @@ On a terminal, `pun init` asks three questions:
 | Lint sets | The eight [lint sets](/docs/configuration/presets#lint-sets) | `dead-code`, `modernize` | `--lint-sets a,b` |
 | Analyse preset | `basic`, `essential`, `recommended`, `strict`, `max` | `recommended` | `--analyse` |
 
-`--lint-sets ""` selects no lint sets. The `empty` format preset is valid in `pun.toml` but is not an init choice.
-
-Pun reads the PHP constraint and the locked Laravel, Pest, and PHPUnit versions from the project's [`composer.json` and `composer.lock`](/docs/configuration/pun-toml#dependencies). The generated config contains only the three choices:
+`--lint-sets ""` selects no lint sets. The generated config contains only the three choices:
 
 ```toml
 [format]
@@ -36,16 +34,16 @@ sets = ["dead-code", "modernize"]
 preset = "recommended"
 ```
 
-Init prints next steps but does not run checks, apply fixes, or generate a baseline. It does not edit Composer scripts, CI, Git hooks, or editor settings.
+Init doesn't run checks or edit Composer scripts, CI, Git hooks, or editor settings.
 
 ## Without a terminal
 
-`--yes`, agent mode, `CI`, or a non-terminal input or output disables prompts. Pun uses defaults and explicit flags.
+`--yes`, agent mode, `CI`, or a non-terminal input or output turns off the prompts. Pun uses the defaults and your flags.
 
 ## Existing configs
 
 - If `pun.toml` exists, init leaves it unchanged and exits 2.
-- If an upstream config exists, interactive init offers migration. Without prompts, it writes nothing and exits 2 with a migration hint.
+- If an upstream config exists, interactive init offers to migrate it. Without prompts, init writes nothing and exits 2 with a migration hint.
 
 ## Exit codes
 

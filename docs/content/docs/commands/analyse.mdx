@@ -1,14 +1,14 @@
 ---
 title: pun analyse
-description: Report type errors without editing files. PHPStan and Larastan support is incomplete.
+description: Report type errors without editing files.
 ---
+
+`pun analyse` (alias `pun analyze`) reports type errors. It doesn't cover every PHPStan or Larastan check yet. The [rule reference](/docs/rules/analyse) lists the implemented ones.
 
 ```bash
 pun analyse
 pun analyse app tests
 ```
-
-`pun analyze` is an alias. The [rule reference](/docs/rules/analyse) lists implemented and Planned checks. Pun does not yet replace every PHPStan or Larastan check.
 
 ## Configuration
 
@@ -21,20 +21,19 @@ paths = ["app", "tests"]
 "types/missing-return-type" = "off"
 ```
 
-The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. Individual rules use `"on"` or `"off"`.
+The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. A rule takes `"on"` or `"off"`. Pun analyses at the highest PHPStan level among the enabled core rules and the preset's type switches.
 
-The enabled rules set the PHPStan level Pun analyses at: the highest level of a core rule that is on, or of a preset type switch. `stubs`, `[[analyse.ignore]]` and the rule options `pun migrate` writes apply as PHPStan's `stubFiles`, `ignoreErrors` and parameters do. An ignore entry nothing matched is an error, with PHPStan's message. Larastan's knowledge and rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel that Larastan 3 does not support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
+`stubs`, `[[analyse.ignore]]`, and the rule options `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry that matches nothing is an error.
 
-Pun TOML cannot yet express independent overrides of `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly`.
-Migration reports these overrides as unsupported rather than changing the analysis level.
+Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel that Larastan 3 doesn't support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
 
-With every analyse rule off, `pun analyse` stops with "No rules detected", as PHPStan does without a level, and exits 2.
+`pun.toml` can't override `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly` on their own. `pun migrate` reports them as unsupported and keeps the level.
+
+With every analyse rule off, `pun analyse` prints "No rules detected" and exits 2.
 
 ## Rule names
 
-Human output uses Pun IDs such as `analyse/undefined/function`. Machine reports retain PHPStan identifiers such as `function.notFound`.
-
-An [ignore comment](/docs/configuration/ignore-comments) suppresses a matching ignorable finding:
+Human output uses Pun IDs such as `analyse/undefined/function`. Machine reports use PHPStan identifiers such as `function.notFound`. An [ignore comment](/docs/configuration/ignore-comments) suppresses an ignorable finding:
 
 ```php
 legacy_hook(); // @pun-ignore analyse/undefined/function -- provided at runtime
@@ -42,44 +41,53 @@ legacy_hook(); // @pun-ignore analyse/undefined/function -- provided at runtime
 
 ## Syntax errors
 
-A file PHP cannot parse fails the run with a `parser-error` problem (PHPStan's `phpstan.parse`). As in PHPStan, the run then reports only the syntax errors: fix them and run again for the rest. The message is usually PHP's own, so its wording can differ from PHPStan's.
+If PHP can't parse a file, the run fails with a `parser-error` problem and reports only syntax errors. Fix them and run again to see the rest.
 
 ## Files
 
-Path arguments replace `[analyse] paths`, which otherwise defaults to `[files] paths` or the project root. Analysis skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`.
+Path arguments replace `[analyse] paths`, which defaults to `[files] paths`, then the project root. Analysis skips Blade templates, `vendor/`, `bootstrap/cache`, `build`, `node_modules`, and `storage`. [`pun list-files --command analyse`](/docs/commands/list-files) shows the selection.
 
-`[analyse] exclude` removes matching files from analysis and the symbol scan. Pun still reads Composer dependencies for symbols. [`pun list-files --command analyse`](/docs/commands/list-files) shows the analysed files.
+`[analyse] exclude` removes files from analysis and from the symbol scan. Pun still reads Composer dependencies for symbols.
 
-Include-path checks recognize local files, `file://` URLs, and local `phar://` members in native PHAR, ZIP, TAR, and gzip-compressed archives.
-These checks model PHP's default `phar.require_hash=1`, with gzip but not bzip2.
-Runtime-registered wrappers, PHAR aliases and mounts, and OpenSSL signatures remain unsupported.
-PHP's `zip://` wrapper cannot answer file-existence checks, so it still reports a missing file.
+Include checks resolve local files, `file://` URLs, and local `phar://` members of PHAR, ZIP, TAR, and gzip archives. They don't support bzip2, OpenSSL signatures, PHAR aliases and mounts, or runtime-registered wrappers. A `zip://` include is always reported missing.
 
 ## Baseline
 
 ```bash
 pun analyse --generate-baseline
+pun analyse --generate-baseline old.toml
 ```
 
-This writes to `[analyse] baseline`, or `pun-baseline.toml` when unset, and exits 0. An optional path selects another file: `pun analyse --generate-baseline old.toml`.
-
-Configure the file to suppress its findings on later runs:
+The baseline goes to `[analyse] baseline`, or `pun-baseline.toml` when unset, and the run exits 0. Set `[analyse] baseline` to suppress its findings on later runs:
 
 ```toml
 [analyse]
 baseline = "pun-baseline.toml"
 ```
 
-Entries match by file, rule, message, and count, not line number. Pun notes entries that no longer match. PHPStan baselines are not read or copied.
+Entries match by file, rule, message, and count, not line number. Pun notes entries that no longer match. Pun doesn't read PHPStan baselines.
 
-Errors PHPStan marks as non-ignorable, such as a duplicate parameter, remain visible even when an ignore comment or baseline entry matches. Baseline generation omits these errors. JSON reports identify them with `"ignorable": false`.
+Non-ignorable errors, such as a duplicate parameter, stay visible even when an ignore comment or baseline entry matches. Generated baselines leave them out, and JSON reports mark them `"ignorable": false`.
 
-## Output and exit codes
+## Options
 
-Default output includes code frames and a summary. `--concise` prints one line per finding. `-q` prints only the machine format or the summary line. `--color=auto|always|never` selects color mode. `--max-processes` caps worker threads. `--config <path>` reads another `pun.toml`.
+| Flag | What it does |
+| --- | --- |
+| `--config <path>` | Read another `pun.toml`. |
+| `--format`, `--error-format` | `table`, `raw`, `json`, `prettyJson`, `checkstyle`, `junit`, `gitlab`, `github`, or `teamcity`. |
+| `--generate-baseline [<file>]` | Write every error to the baseline and exit 0. |
+| `--concise` | One line per finding. |
+| `-v` | Add identifiers to `raw` output. |
+| `-q` | Print only the machine format or the summary line. |
+| `--color=auto\|always\|never` | Color mode. |
+| `--max-processes=N` | Cap worker threads. |
 
-`--format`, also spelled `--error-format`, selects a PHPStan-compatible report: `table`, `raw`, `json`, `prettyJson`, `checkstyle`, `junit`, `gitlab`, `github`, or `teamcity`. `-v` adds identifiers to `raw` output.
+`json` and `prettyJson` add `"fixable": true` to errors that PHPStan's `--fix` can fix. `table` marks them with 🔧 and counts them, plus ignored errors that `--fix-ignored` can fix. Pun doesn't fix them.
 
-The `json` and `prettyJson` reports add `"fixable": true` to each error that PHPStan's `--fix` can fix. The `table` report marks these errors with 🔧 and counts them after the summary. It also counts the ignored errors that `--fix-ignored` can fix. Fixable errors include unmatched ignore comments, `@phpstan-ignore-line` comments without identifiers, unmatched or over-counted `[[analyse.ignore]]` entries, `#[\Override]` on a method or property that overrides nothing, backtick operators, and named arguments to a `@no-named-arguments` function. Pun reports these errors but does not fix them.
+## Exit codes
 
-Exit code 0 means no errors, 1 means errors, and 2 means Pun could not run.
+| Code | Meaning |
+| --- | --- |
+| 0 | No errors |
+| 1 | Errors |
+| 2 | Pun could not run |
