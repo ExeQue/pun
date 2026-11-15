@@ -499,12 +499,24 @@ fn generate_baseline_to_a_named_file() {
     let d = sample("baseline-path", ERRORS);
     let (out, _, code) = pun(&d, &["--generate-baseline", "b.toml", "--color=never"], &[]);
     assert!(
-        out.contains("Baseline generated with 3 errors in b.toml"),
+        out.contains("Baseline generated with 3 errors in b.toml; add `baseline = \"b.toml\"` under [analyse] in pun.toml to use it ("),
         "{out}"
     );
     assert_eq!(code, Some(0));
     assert!(d.join("b.toml").exists());
     assert!(!d.join("pun-baseline.toml").exists());
+    // The configured baseline is the default file, and needs no hint.
+    let toml = "[analyse]\npaths = [\"src\"]\nbaseline = \"b.toml\"\n";
+    std::fs::write(d.join("pun.toml"), toml).unwrap();
+    std::fs::remove_file(d.join("b.toml")).unwrap();
+    let (out, _, code) = pun(&d, &["--generate-baseline", "--color=never"], &[]);
+    assert!(
+        out.contains("Baseline generated with 3 errors in b.toml ("),
+        "{out}"
+    );
+    assert_eq!(code, Some(0));
+    assert!(d.join("b.toml").exists());
+    std::fs::write(d.join("pun.toml"), "[analyse]\npaths = [\"src\"]\n").unwrap();
     assert_eq!(
         pun(&d, &["--generate-baseline", "-q"], &[]),
         (String::new(), String::new(), Some(0))
@@ -568,6 +580,25 @@ fn run_errors_exit_2() {
             Some(2)
         )
     );
+    // PHPStan's "Invalid entries in ignoreErrors" (its output on the same entries as ignoreErrors) is a run error.
+    let d = sample("bad-ignores", CLEAN);
+    std::fs::write(
+        d.join("pun.toml"),
+        "[analyse]\npaths = [\"src\"]\n\n[[analyse.ignore]]\nmessage = \"#(#\"\npaths = [\"src/a.php\"]\n\n[[analyse.ignore]]\nmessage = \"#^Nope#\"\npaths = [\"src/nothere.php\"]\n",
+    )
+    .unwrap();
+    let (out, err, code) = pun(&d, &["--color=never"], &[]);
+    assert_eq!((out.as_str(), code), ("", Some(2)));
+    for line in [
+        "Invalid entries in ignoreErrors:".to_string(),
+        "Compilation failed: missing closing parenthesis at offset 1 in pattern: #(#".into(),
+        format!(
+            "Path \"{}\" is neither a directory, nor a file path, nor a fnmatch pattern.",
+            d.join("src/nothere.php").display()
+        ),
+    ] {
+        assert!(err.contains(&line), "{err}");
+    }
     let d = sample("unreadable", CLEAN);
     let file = d.join("src/a.php");
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
@@ -785,4 +816,94 @@ fn no_rules_detected() {
     let (out, err, code) = pun(&d, &["--color=never"], &[]);
     assert_eq!((out.as_str(), code), ("", Some(2)));
     assert!(err.starts_with("x No rules detected\n"), "{err}");
+}
+
+/// PHPStan's fixable errors (a named argument to a `@no-named-arguments` function, at level 5 and the
+/// `recommended` preset): the table's 🔧 lines for the reported and the ignored ones, byte for byte with PHPStan on
+/// the same ignoreErrors.
+#[test]
+fn fixable_ignored_errors_match_phpstan() {
+    let Some(phar) = phpstan() else { return };
+    let phar = phar.to_str().unwrap();
+    let named = |f: &str, n: &str| {
+        format!("<?php\n\n/** @no-named-arguments */\nfunction {f}(int $a): void {{}}\n\n{n}\n")
+    };
+    for (name, paths) in [("both", "src"), ("ignored-only", "src/sub")] {
+        let d = project(
+            "analyse",
+            &format!("fixable-{name}"),
+            &[
+                (
+                    "phpstan.neon",
+                    &format!(
+                        "parameters:\n    level: 5\n    paths: [{paths}]\n    ignoreErrors:\n        - identifier: argument.named\n          path: src/sub/b.php\n"
+                    ),
+                ),
+                (
+                    "pun.toml",
+                    &format!(
+                        "[analyse]\npaths = [\"{paths}\"]\n\n[[analyse.ignore]]\nidentifier = \"argument.named\"\npaths = [\"src/sub/b.php\"]\n"
+                    ),
+                ),
+                ("src/a.php", &named("f", "f(a: 1);\nf(a: 2);")),
+                ("src/sub/b.php", &named("g", "g(a: 3);")),
+            ],
+        );
+        let phpstan = [
+            "php",
+            phar,
+            "analyse",
+            "--no-progress",
+            "-c",
+            "phpstan.neon",
+        ];
+        let want = run(&d, &phpstan, &["--error-format=table"]);
+        assert!(want.0.contains("--fix-ignored"), "{}", want.0);
+        assert_eq!(
+            run(&d, &[PUN, "analyse"], &["--error-format=table"]),
+            want,
+            "{name}"
+        );
+    }
+}
+
+/// Composer's autoloaded classes are symbols (analyse.md §3): the class under the psr-4 directory is found, and
+/// an `[analyse] exclude` elsewhere leaves it alone. PHPStan at level 0, after `composer install`, reports only
+/// `Missing` too.
+#[test]
+fn composer_autoloaded_classes_are_symbols() {
+    let d = project(
+        "analyse",
+        "autoload",
+        &[
+            (
+                "composer.json",
+                r#"{"autoload":{"psr-4":{"App\\":"app/"}}}"#,
+            ),
+            (
+                "pun.toml",
+                "[analyse]\npreset = \"basic\"\npaths = [\"src\"]\nexclude = [\"app/Other.php\"]\n",
+            ),
+            ("app/Kept.php", "<?php\n\nnamespace App;\n\nclass Kept {}\n"),
+            (
+                "app/Other.php",
+                "<?php\n\nnamespace App;\n\nclass Other {}\n",
+            ),
+            (
+                "src/a.php",
+                "<?php\n\nnew \\App\\Kept();\nnew \\App\\Missing();\n",
+            ),
+        ],
+    );
+    let (out, code) = run(&d, &[PUN, "analyse"], &["--error-format=raw"]);
+    assert_eq!(
+        (out, code),
+        (
+            format!(
+                "{}:4:Instantiated class App\\Missing not found.\n",
+                d.join("src/a.php").display()
+            ),
+            Some(1)
+        )
+    );
 }
