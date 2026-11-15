@@ -344,6 +344,21 @@ fn errors_name_the_file() {
             Some(2)
         )
     );
+    // Reading a PHP config needs PHP; without it on PATH the error names the config.
+    let empty = d.join("no-php");
+    std::fs::create_dir(&empty).unwrap();
+    let (_, err, code) = pun_with(
+        &d,
+        &["migrate", "--yes"],
+        &[("PATH", empty.to_str().unwrap())],
+    );
+    assert_eq!(
+        (err.as_str(), code),
+        (
+            "x reading .php-cs-fixer.php needs `php` on PATH: No such file or directory (os error 2)\n",
+            Some(2)
+        )
+    );
 }
 
 #[test]
@@ -363,6 +378,30 @@ fn starter_beside_phpstan() {
     assert!(read(&d, "pun.toml").starts_with(
         "# Written by `pun migrate`: no pint.json or .php-cs-fixer.php found; starter config.\n[format]\npreset = \"laravel\"\n"
     ));
+}
+
+/// A phpstan.neon without a level runs no rules (PHPStan: "No rules detected"): every analyse group is turned
+/// off and no check moves to [lint], so `pun analyse` says the same.
+#[test]
+fn phpstan_without_a_level_runs_no_rules() {
+    let d = project(
+        "phpstan-no-level",
+        &[
+            ("phpstan.neon", "parameters:\n    paths: [app]\n"),
+            ("app/A.php", "<?php\n\nundefined_fn();\n"),
+        ],
+    );
+    let (out, _, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(
+        (counts(&out).lines().next(), code),
+        (
+            Some(" ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off"),
+            Some(0)
+        )
+    );
+    let (out, err, code) = pun(&d, &["analyse"]);
+    assert_eq!((out.as_str(), code), ("", Some(2)));
+    assert!(err.starts_with("x No rules detected\n"), "{err}");
 }
 
 #[test]
@@ -494,7 +533,7 @@ fn starter_on_a_terminal() {
 
 #[test]
 fn rewrites_phpstan_ignores() {
-    let php = "<?php\n\n$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n/** @phpstan-ignore acme.rule */\n$b = 1;\n// @phpstan-ignore-next-line\n$c = 2;\n";
+    let php = "<?php\n\n$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n/** @phpstan-ignore acme.rule */\n$b = 1;\n// @phpstan-ignore-next-line\n$c = 2;\ninclude 'x.php'; require 'y.php'; // @phpstan-ignore include.fileNotFound, require.fileNotFound\n";
     let d = project(
         "phpstan-ignores",
         &[
@@ -511,6 +550,13 @@ fn rewrites_phpstan_ignores() {
         out.contains("-$a->foo(); // @phpstan-ignore method.notFound (a macro adds it), function.notFound\n+$a->foo(); // @pun-ignore analyse/undefined/method,analyse/undefined/function -- a macro adds it\n"),
         "{out}"
     );
+    // Two identifiers of one Pun rule name it once.
+    assert!(
+        out.contains(
+            "+include 'x.php'; require 'y.php'; // @pun-ignore analyse/undefined/include-file\n"
+        ),
+        "{out}"
+    );
     assert!(
         counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n ! app/A.php  `@phpstan-ignore acme.rule` left as is (`acme.rule` is not a PHPStan identifier Pun knows); skipped\n ! app/A.php  `@phpstan-ignore-next-line` left as is (it names no identifier, and a Pun ignore names its rules); skipped\n"),
         "{out}"
@@ -525,7 +571,7 @@ fn offers_the_closest_preset() {
             "phpstan.neon",
             "parameters:\n    level: 5\n    paths: [app]\n",
         ),
-        ("app/A.php", "<?php\n"),
+        ("app/A.php", "<?php\n\nundefined_fn();\n"),
     ];
     let d = project("tty-preset", &files);
     let out = pty(&d, "\\ry");
@@ -623,6 +669,7 @@ fn rector_paths_skips_and_unsupported_rules() {
             ("src/Sub/b.php", "<?php\n"),
             ("scripts/x.php", "<?php\n"),
             ("tools/deep/y.php", "<?php\n"),
+            ("tools/z.php", "<?php\n"),
         ],
     );
     std::os::unix::fs::symlink(vendor, d.join("vendor")).unwrap();
