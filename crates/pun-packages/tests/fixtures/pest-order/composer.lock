@@ -1,0 +1,106 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "de6a97b222c4cba496e7cb88f37db3be",
+    "packages": [
+        {
+            "name": "acme/alpha",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/alpha",
+                "reference": "7f12cf88ab83fc20b7d3554def64fe72476b9ae9"
+            },
+            "require": {
+                "acme/zeta": "*"
+            },
+            "type": "library",
+            "extra": {
+                "pest": {
+                    "plugins": [
+                        "Acme\\Alpha"
+                    ]
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "acme/mid",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/mid",
+                "reference": "9da71a00b917dd03e8136f8822469ea267a7d74c"
+            },
+            "type": "library",
+            "extra": {
+                "pest": {
+                    "plugins": [
+                        "Acme\\Mid"
+                    ]
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "acme/zeta",
+            "version": "1.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/zeta",
+                "reference": "f608e66957274540d0e10be489ec07a7598d652f"
+            },
+            "type": "library",
+            "extra": {
+                "pest": {
+                    "plugins": [
+                        "Acme\\Zeta"
+                    ]
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "pestphp/pest-plugin",
+            "version": "4.0.0",
+            "dist": {
+                "type": "path",
+                "url": "packages/pest-plugin",
+                "reference": "911e6b7ea884d6cc11b37113177d607939f74abd"
+            },
+            "require": {
+                "composer-plugin-api": "^2.0"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Pest\\Plugin\\Manager"
+            },
+            "autoload": {
+                "psr-4": {
+                    "Pest\\Plugin\\": "src/"
+                }
+            },
+            "transport-options": {
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.11.0"
+}

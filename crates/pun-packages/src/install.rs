@@ -8,6 +8,7 @@ use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::paths::normalize;
 use crate::plugins;
 use crate::version::{IgnorePlatform, is_platform};
+use indexmap::IndexMap;
 use pcre2::bytes::Regex;
 use rayon::prelude::*;
 use serde_json::{Map, Value};
@@ -118,9 +119,26 @@ pub fn install(
     download(fetcher, &packages, &todo, base, env, &mut report)?;
     write_repository(&project, &packages, !o.no_dev, env)?;
     link_bins(&packages, &project.dirs, &mut report)?;
+    let repository: Vec<String> = (repository_order(&packages, &before, &todo).into_iter())
+        .map(|i| packages[i].name())
+        .collect();
     packages.sort_by_key(Installed::name);
     if !o.no_autoloader {
-        dump_autoloader(&project, lock, &packages, o, events, &mut report)?;
+        let repository: Vec<&Installed> = (repository.iter())
+            .filter_map(|n| {
+                let i = packages.binary_search_by(|p| p.name().cmp(n)).ok()?;
+                Some(&packages[i])
+            })
+            .collect();
+        dump_autoloader(
+            &project,
+            lock,
+            &packages,
+            &repository,
+            o,
+            events,
+            &mut report,
+        )?;
     }
     Ok(report)
 }
@@ -153,7 +171,8 @@ fn locked_packages(lock: &Lock, vendor: &str, no_dev: bool) -> Result<Vec<Instal
     Ok(packages)
 }
 
-fn previous(vendor: &Path) -> Result<HashMap<String, LockedPackage>> {
+/// installed.json's packages, in its order.
+fn previous(vendor: &Path) -> Result<IndexMap<String, LockedPackage>> {
     Ok((read_installed(vendor)?.into_iter())
         .filter(|p| p.get("name").is_some_and(Value::is_string))
         .map(|p| (p.name(), p))
@@ -163,7 +182,7 @@ fn previous(vendor: &Path) -> Result<HashMap<String, LockedPackage>> {
 /// Counts each package as kept, updated or added; the indexes of the ones to place.
 fn compare(
     packages: &[Installed],
-    before: &HashMap<String, LockedPackage>,
+    before: &IndexMap<String, LockedPackage>,
     report: &mut Report,
 ) -> Vec<usize> {
     let mut todo = vec![];
@@ -200,7 +219,7 @@ fn compare(
 
 /// Removes the binaries of the packages that change or go, and the directories of the ones that go.
 fn remove_stale(
-    before: &HashMap<String, LockedPackage>,
+    before: &IndexMap<String, LockedPackage>,
     packages: &[Installed],
     todo: &[usize],
     dirs: &Dirs,
@@ -363,11 +382,12 @@ fn autoload_options(
 }
 
 /// Writes the autoloader between the `pre-autoload-dump` and `post-autoload-dump` events, then the files of
-/// the plugins Pun runs.
+/// the plugins Pun runs, which see the packages in `repository`'s order.
 fn dump_autoloader(
     project: &Project,
     lock: &Lock,
     packages: &[Installed],
+    repository: &[&Installed],
     o: &Options,
     events: &mut dyn FnMut(&str) -> Result<()>,
     report: &mut Report,
@@ -396,8 +416,7 @@ fn dump_autoloader(
         }
     }
     if !o.no_plugins {
-        let refs: Vec<&Installed> = packages.iter().collect();
-        let out = plugins::after_dump(project.manifest, &refs);
+        let out = plugins::after_dump(project.manifest, repository);
         for (rel, bytes) in out.files {
             write_if_changed(Path::new(&format!("{vendor}/{rel}")), &bytes)?;
         }
@@ -421,7 +440,31 @@ fn names(p: &Installed) -> Vec<String> {
     out
 }
 
+/// Composer's operation order (`Transaction::calculateOperations`): dependencies first, plugins moved to the front.
 fn install_order(packages: &[Installed]) -> Vec<usize> {
+    plugins_first(packages, &dependency_order(packages))
+}
+
+/// The order Composer's local repository holds the packages in after an install, which is the order plugins read
+/// them in: the ones kept in installed.json's order, then the installed and updated ones in operation order, since
+/// each is added (an update removed first) as its operation runs. Composer moves plugins to the front among the
+/// operations only.
+fn repository_order(
+    packages: &[Installed],
+    before: &IndexMap<String, LockedPackage>,
+    todo: &[usize],
+) -> Vec<usize> {
+    let mut kept: Vec<usize> = (0..packages.len()).filter(|i| !todo.contains(i)).collect();
+    kept.sort_by_key(|&i| before.get_index_of(&packages[i].name()));
+    let operations: Vec<usize> = (dependency_order(packages).into_iter())
+        .filter(|i| todo.contains(i))
+        .collect();
+    kept.extend(plugins_first(packages, &operations));
+    kept
+}
+
+/// The packages in post-order of a depth-first walk from the root packages, as Composer's transaction visits them.
+fn dependency_order(packages: &[Installed]) -> Vec<usize> {
     let mut by_name: Vec<usize> = (0..packages.len()).collect();
     by_name.sort_by_key(|&i| std::cmp::Reverse(packages[i].name()));
     let mut providers: HashMap<String, Vec<usize>> = HashMap::new();
@@ -458,6 +501,11 @@ fn install_order(packages: &[Installed]) -> Vec<usize> {
             stack.extend(required(i));
         }
     }
+    order
+}
+
+/// `Transaction::movePluginsToFront` on `order`.
+fn plugins_first(packages: &[Installed], order: &[usize]) -> Vec<usize> {
     let (mut front, mut rest): ([Vec<usize>; 4], Vec<usize>) = (Default::default(), vec![]);
     let mut wanted: [Vec<String>; 2] = Default::default();
     for &i in order.iter().rev() {

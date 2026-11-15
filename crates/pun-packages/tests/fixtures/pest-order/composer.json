@@ -1,0 +1,18 @@
+{
+    "name": "acme/app",
+    "require": {
+        "acme/alpha": "*",
+        "acme/mid": "*",
+        "pestphp/pest-plugin": "*"
+    },
+    "repositories": [
+        {"type": "path", "url": "packages/*"},
+        {"packagist.org": false}
+    ],
+    "config": {
+        "allow-plugins": {"pestphp/pest-plugin": true}
+    },
+    "extra": {
+        "pest": {"plugins": ["Acme\\Root"]}
+    }
+}

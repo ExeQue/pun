@@ -420,3 +420,36 @@ fn lock_changes_plugins_and_failures() {
     assert!(!tmp.join("vendor/pest-plugins.json").exists() && report.warnings.is_empty());
     std::fs::remove_dir_all(&tmp).unwrap();
 }
+
+/// pest-plugins.json lists the plugins in the order Composer 2.11.2's local repository holds the packages: on a
+/// fresh install the operation order (acme/zeta before acme/alpha, which requires it), after an update the kept
+/// packages then the updated one, and with nothing to do installed.json's name order.
+#[test]
+fn pest_plugins_follow_composers_repository_order() {
+    let tmp = std::env::temp_dir().join(format!("pun-pest-order-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("pest-order"), &tmp);
+    let mut lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let plugins = |lock: &Lock| {
+        run(&tmp, lock, &Options::default());
+        std::fs::read_to_string(tmp.join("vendor/pest-plugins.json")).unwrap()
+    };
+    let list = |names: [&str; 4]| {
+        let items: Vec<String> = names
+            .iter()
+            .map(|n| format!("    \"Acme\\\\{n}\""))
+            .collect();
+        format!("[\n{}\n]", items.join(",\n"))
+    };
+    assert_eq!(plugins(&lock), list(["Zeta", "Alpha", "Mid", "Root"]));
+    let mid = (lock.packages.iter_mut())
+        .find(|p| p.name() == "acme/mid")
+        .unwrap();
+    mid.0.insert("version".into(), "1.1.0".into());
+    mid.0["dist"]["reference"] = "cf5881339893fa536b9c4d9194d36162dd9e76f3".into();
+    assert_eq!(plugins(&lock), list(["Alpha", "Zeta", "Mid", "Root"]));
+    assert_eq!(plugins(&lock), list(["Alpha", "Mid", "Zeta", "Root"]));
+    std::fs::remove_dir_all(&tmp).unwrap();
+}

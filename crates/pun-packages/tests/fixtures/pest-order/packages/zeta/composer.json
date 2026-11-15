@@ -1,0 +1,1 @@
+{"name": "acme/zeta", "version": "1.0.0", "extra": {"pest": {"plugins": ["Acme\\Zeta"]}}}

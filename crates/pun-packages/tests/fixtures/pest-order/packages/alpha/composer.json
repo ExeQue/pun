@@ -1,0 +1,1 @@
+{"name": "acme/alpha", "version": "1.0.0", "require": {"acme/zeta": "*"}, "extra": {"pest": {"plugins": ["Acme\\Alpha"]}}}
