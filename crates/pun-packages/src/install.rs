@@ -416,12 +416,8 @@ fn dump_autoloader(
         }
     }
     if !o.no_plugins {
-        let out = plugins::after_dump(project.manifest, repository);
-        for (rel, bytes) in out.files {
+        for (rel, bytes) in plugins::after_dump(project.manifest, repository) {
             write_if_changed(Path::new(&format!("{vendor}/{rel}")), &bytes)?;
-        }
-        for name in out.unsupported {
-            report.warnings.push(format!("pun does not run the Composer plugin {name} yet, so the files it writes on install are missing"));
         }
     }
     events("post-autoload-dump")

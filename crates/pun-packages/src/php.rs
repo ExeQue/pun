@@ -22,6 +22,16 @@ pub fn sha1(bytes: &[u8]) -> String {
         })
 }
 
+pub fn sha256(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes)
+        .iter()
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
+}
+
 pub fn json_compact(v: &Value) -> String {
     let mut out = String::new();
     json(&mut out, v, None, true);

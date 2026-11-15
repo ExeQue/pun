@@ -44,7 +44,7 @@ Pun prints each problem as a list of the requirements that clash, with the versi
 
 `pun update` also takes every [`pun install`](/docs/commands/install#options) option, such as `--no-dev`, `--no-scripts`, and `--ignore-platform-req`. A platform requirement that `--ignore-platform-req` names is left out of the resolve too.
 
-Pun runs the root package's `pre-update-cmd` and `post-update-cmd` scripts in place of the install ones.
+Pun runs the root package's `pre-update-cmd` and `post-update-cmd` scripts in place of the install ones, and sends the same events to the [Composer plugins](/docs/commands/install#scripts-and-plugins).
 
 ## Exit codes
 

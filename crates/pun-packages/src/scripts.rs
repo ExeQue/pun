@@ -6,14 +6,14 @@
 use crate::Env;
 use crate::error::{Context, Result, bail};
 use serde_json::{Map, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub struct Runner<'a> {
-    pub base: &'a Path,
-    pub vendor: &'a str,
-    pub bin_dir: &'a str,
-    pub manifest: &'a Map<String, Value>,
+pub struct Runner {
+    pub base: PathBuf,
+    pub vendor: String,
+    pub bin_dir: String,
+    pub manifest: Map<String, Value>,
     pub dev_mode: bool,
     pub php: String,
     path: String,
@@ -21,20 +21,20 @@ pub struct Runner<'a> {
     stack: Vec<String>,
 }
 
-impl<'a> Runner<'a> {
+impl Runner {
     pub fn new(
-        base: &'a Path,
-        vendor: &'a str,
-        bin_dir: &'a str,
-        manifest: &'a Map<String, Value>,
+        base: &Path,
+        vendor: &str,
+        bin_dir: &str,
+        manifest: &Map<String, Value>,
         dev_mode: bool,
         env: Env,
     ) -> Self {
         Runner {
-            base,
-            vendor,
-            bin_dir,
-            manifest,
+            base: base.to_path_buf(),
+            vendor: vendor.to_string(),
+            bin_dir: bin_dir.to_string(),
+            manifest: manifest.clone(),
             dev_mode,
             php: php_binary(env("PHP_BINARY")),
             path: env("PATH").unwrap_or_default(),
@@ -153,7 +153,7 @@ impl<'a> Runner<'a> {
         std::fs::write(&runner, include_str!("../assets/script-callback.php"))?;
         let status = (self.command(&self.php.clone()))
             .arg(&runner)
-            .arg(self.vendor)
+            .arg(&self.vendor)
             .arg(event)
             .arg(if self.dev_mode { "1" } else { "0" })
             .arg(callable)
@@ -176,9 +176,9 @@ impl<'a> Runner<'a> {
 
     fn command(&self, program: &str) -> Command {
         let mut c = Command::new(program);
-        c.current_dir(self.base);
+        c.current_dir(&self.base);
         let path = &self.path;
-        if Path::new(self.bin_dir).is_dir() && !path.split(':').any(|p| p == self.bin_dir) {
+        if Path::new(&self.bin_dir).is_dir() && !path.split(':').any(|p| p == self.bin_dir) {
             c.env("PATH", format!("{}:{path}", self.bin_dir));
         }
         c.env("COMPOSER_DEV_MODE", if self.dev_mode { "1" } else { "0" });

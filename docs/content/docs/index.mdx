@@ -28,7 +28,7 @@ Pun supports projects that target PHP 8.4 or later. Supporting current PHP only 
 
 - **Format** matches Pint byte for byte on every project in the [parity scoreboard](/docs/parity). It changes layout only. Pint's risky and code-deleting fixers are lint rules, so a migrated Pint configuration uses `pun check --fix`.
 - **Lint** and **analyse** port Rector, PHPStan, and Larastan rule by rule. The [rule reference](/docs/rules) marks the rules that are not ported yet as Planned.
-- **The package manager** resolves versions as Composer does and writes the lock and the `vendor/` tree Composer writes. It reads `composer`, `package`, and `path` repositories; `vcs` repositories and Composer plugins other than Pest's are not supported yet.
+- **The package manager** resolves versions as Composer does and writes the lock and the `vendor/` tree Composer writes. It reads `composer`, `package`, and `path` repositories, and runs the Composer plugins that `allow-plugins` allows. `vcs` repositories are not supported yet.
 
 PHP checks need no PHP runtime. Blade formatting requires Node.js (or Bun) and Prettier. Some config migrations require PHP and the original tool.
 

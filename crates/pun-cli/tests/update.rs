@@ -201,3 +201,72 @@ fn workspace_members_share_one_lock() {
         "{err}"
     );
 }
+
+/// An allowed Composer plugin runs through the plugin host, in the order Composer 2.11.2 logged on the same project
+/// (tests/fixtures/plugins): listeners at priority 0 and up before the project's scripts and negative ones after,
+/// `init` only for a plugin installed before the command started, `--no-scripts` keeping the plugins, a plugin
+/// update activating the new version mid-command, and the plugin `allow-plugins` denies never loading.
+#[test]
+fn composer_plugins_run_as_composer_runs_them() {
+    let d = common::scratch("update", "plugins");
+    let copied = std::process::Command::new("cp")
+        .arg("-R")
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../pun-packages/tests/fixtures/plugins/."))
+        .arg(&d)
+        .status()
+        .unwrap();
+    assert!(copied.success());
+    let cache = Path::new(env!("CARGO_TARGET_TMPDIR")).join("composer-cache");
+    let home = d.join(".composer");
+    let env = [
+        ("COMPOSER_CACHE_DIR", cache.to_str().unwrap()),
+        ("COMPOSER_HOME", home.to_str().unwrap()),
+    ];
+    let log = |args: &[&str]| {
+        let (out, err, code) = common::pty::pun_with(&d, args, &env);
+        assert_eq!(code, Some(0), "{out}{err}");
+        let log = std::fs::read_to_string(d.join("events.log")).unwrap_or_default();
+        let _ = std::fs::remove_file(d.join("events.log"));
+        log
+    };
+    let installed = "pre-autoload-dump plugin 0 1\npost-autoload-dump plugin 10 1\npost-autoload-dump plugin 0 1\npost-autoload-dump script 1\npost-autoload-dump plugin -10 1\n";
+    assert_eq!(
+        log(&["install"]),
+        format!(
+            "activate acme/app\n{installed}post-install-cmd plugin 0 1\npost-install-cmd script 1\n"
+        )
+    );
+    let started = "activate acme/app\ninit plugin 0 \n";
+    assert_eq!(
+        log(&["install"]),
+        format!(
+            "{started}pre-install-cmd plugin 0 1\n{installed}post-install-cmd plugin 0 1\npost-install-cmd script 1\n"
+        )
+    );
+    assert_eq!(
+        log(&["install", "--no-scripts"]),
+        format!(
+            "{started}pre-install-cmd plugin 0 1\n{}post-install-cmd plugin 0 1\n",
+            installed.replace("post-autoload-dump script 1\n", "")
+        )
+    );
+    assert_eq!(
+        log(&["install", "--no-plugins"]),
+        "post-autoload-dump script 1\npost-install-cmd script 1\n"
+    );
+    std::fs::write(d.join("fail"), "post-install-cmd echo").unwrap();
+    let (out, err, code) = common::pty::pun_with(&d, &["install"], &env);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(out.contains("the recorder says hello"), "{out}");
+    std::fs::remove_file(d.join("fail")).unwrap();
+    std::fs::remove_file(d.join("events.log")).unwrap();
+    let manifest = d.join("packages/recorder/composer.json");
+    let text = std::fs::read_to_string(&manifest).unwrap();
+    std::fs::write(&manifest, text.replace("\"1.0.0\"", "\"1.1.0\"")).unwrap();
+    assert_eq!(
+        log(&["update"]),
+        format!(
+            "{started}pre-update-cmd plugin 0 1\nactivate acme/app\n{installed}post-update-cmd plugin 0 1\n"
+        )
+    );
+}

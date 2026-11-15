@@ -7,7 +7,6 @@ use pun_packages::lock::Lock;
 use pun_packages::manifest_edit::{json_remove, json_set, name_version_pairs};
 use pun_packages::resolver::pool::Transitive;
 use pun_packages::resolver::{self, Options, Resolution, explain, locker, platform, repos};
-use pun_packages::scripts::Runner;
 use pun_packages::version::{IgnorePlatform, compare, is_platform, name_matches, normalize};
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -150,27 +149,10 @@ pub(crate) fn update_and_install(
 }
 
 fn pre_update(project: &Project, a: &InstallArgs, plan: &Plan) -> Result<()> {
-    if a.no_scripts || plan.dry_run {
+    if plan.dry_run {
         return Ok(());
     }
-    dispatch(project, a, "pre-update-cmd")
-}
-
-fn dispatch(project: &Project, a: &InstallArgs, event: &str) -> Result<()> {
-    let pun_packages::install::Dirs {
-        vendor,
-        bin: bin_dir,
-    } = pun_packages::install::dirs(&project.root.to_string_lossy(), &project.manifest);
-    Runner::new(
-        &project.root,
-        &vendor,
-        &bin_dir,
-        &project.manifest,
-        !a.no_dev,
-        &|k| std::env::var(k).ok(),
-    )
-    .dispatch(event, &[])?;
-    Ok(())
+    Ok(project.dispatch(a, "pre-update-cmd")?)
 }
 
 /// The global config.json's `repositories`.
@@ -270,13 +252,13 @@ fn finish(
     }
     write(&lock_path, &lock.to_composer_lock())?;
     let result = if plan.resolve.no_install {
-        (!a.no_scripts)
-            .then(|| dispatch(project, a, "post-update-cmd"))
-            .transpose()
-            .map(|_| {
-                eprintln!("Wrote {lock_file}; vendor/ is unchanged (--no-install)");
-                Exit::Success
-            })
+        (project
+            .dispatch(a, "post-update-cmd")
+            .map_err(anyhow::Error::from))
+        .map(|()| {
+            eprintln!("Wrote {lock_file}; vendor/ is unchanged (--no-install)");
+            Exit::Success
+        })
     } else {
         install_locked(project, &lock, a, started, true)
     };

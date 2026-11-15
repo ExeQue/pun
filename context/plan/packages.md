@@ -8,8 +8,13 @@ file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and 
 Composer's exact lock in 1.8 s against Composer's 9.4 s (`context/reports/scoreboard.md`). Left of steps 8 and 9: the other corpus projects, the 20
 recorded partial updates, `vcs` and `artifact` repositories, and the root `filter.summary-url`. Not built from steps 1-7: the
 `.oracle/composer` phar and `scripts/install-parity.sh` (the tests' expectations come from Composer 2.11.2 runs),
-`pun composer` and its commands (`validate`, `dump-autoload`, `run-script`), and the plugin host: `pestphp/pest-plugin`
-is ported, `php-http/discovery` is skipped as inert, and every other allowed plugin is reported and skipped. `pun x`,
+and `pun composer` and its commands (`validate`, `dump-autoload`, `run-script`). **The plugin host is built for the
+script events** (step 7, 2026-11-15): every allowed plugin other than the native `pestphp/pest-plugin` and
+`php-http/discovery` runs on Composer 2.11.2's classes, activated by its PluginManager, with its listeners around the
+scripts in Composer's priority order; a fixture plugin logs the same events as under Composer on install, `--no-scripts`,
+`--no-plugins` and an upgrade mid-command. Left of step 7: the package, installer, pool and download events, custom
+installer paths, plugin commands, the allow-plugins prompt, and the native ports of extension-installer and
+phpcodesniffer-composer-installer. `pun x`,
 `pun vet` and workspaces are built (§7). Decisions with dates: §6.
 Beyond Composer: §7. Open questions: §8.
 
@@ -123,8 +128,14 @@ Built as one crate, not the three planned (`pun-semver`, `pun-composer`, `pun-fe
   composer.lock (`composer.rs`).
 - `pun-cli`: the commands (`install.rs`, `update.rs` with `require` and `remove`, `x.rs`, `vet.rs`, `workspace.rs`,
   `self_update.rs`) and their output.
-- Not built: the plugin host (the PHP bootstrap on Composer's phar, the JSON protocol and the event dispatch), and
-  `vcs`, `git` and `artifact` repositories.
+- `pun-packages/src/plugin_host.rs` and `assets/plugin-host.php`: the plugin host. The PHP bootstrap loads the pinned
+  composer.phar (downloaded once into Composer's cache and checked against its SHA-256), builds Composer from the
+  project's files with scripts off, and answers JSON requests on a pipe: `dispatch` (one priority phase of a script
+  event) and `sync` (activate the plugins installed or upgraded since). The `Dispatcher` sends each event's
+  priority ≥ 0 phase, runs the scripts, then sends the negative phase. It starts the host only when installed.json
+  has an allowed plugin with no native port.
+- Not built: the package, installer, pool and download events through the host, custom installer paths, plugin
+  commands (`pun composer <command>`), and `vcs`, `git` and `artifact` repositories.
 
 ## 5. Build
 

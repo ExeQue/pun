@@ -366,7 +366,7 @@ impl Fetcher {
         }
     }
 
-    fn get(&self, url: &str) -> Result<Vec<u8>> {
+    pub(crate) fn get(&self, url: &str) -> Result<Vec<u8>> {
         let mut attempt = 0;
         loop {
             let mut req = self.agent.get(url);

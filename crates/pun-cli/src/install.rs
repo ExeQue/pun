@@ -3,9 +3,9 @@ use crate::render::{ColorChoice, Look, Role};
 use anyhow::{Context, Result, bail};
 use pun_packages::autoload::{Apcu, Scan};
 use pun_packages::fetch::{Auth, Fetcher, composer_dirs};
-use pun_packages::install::{Dirs, Options, dirs, install};
+use pun_packages::install::{Options, install};
 use pun_packages::lock::Lock;
-use pun_packages::scripts::Runner;
+use pun_packages::plugin_host::Dispatcher;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -38,7 +38,7 @@ pub(crate) struct InstallArgs {
     /// Skip the root package's scripts.
     #[arg(long)]
     pub(crate) no_scripts: bool,
-    /// Skip the Composer plugins Pun supports.
+    /// Skip the Composer plugins.
     #[arg(long)]
     pub(crate) no_plugins: bool,
     /// Leave this platform requirement out of the platform check (`php`, `ext-*`, globs with `*`); repeatable.
@@ -61,6 +61,27 @@ pub(crate) struct Project {
     pub(crate) workspace: Option<crate::workspace::Workspace>,
     /// The directory the command started in: the root, or a directory below it.
     pub(crate) here: PathBuf,
+    /// The command's events, with the plugin host they start; made at the first event.
+    events: std::cell::RefCell<Option<Dispatcher>>,
+}
+
+impl Project {
+    /// Dispatches `event` to the plugins and the scripts, as `a` allows them.
+    pub(crate) fn dispatch(&self, a: &InstallArgs, event: &str) -> pun_packages::error::Result<()> {
+        let mut events = self.events.borrow_mut();
+        let events = events.get_or_insert_with(|| {
+            Dispatcher::new(
+                &self.root,
+                &self.manifest,
+                !a.no_dev,
+                !a.no_scripts,
+                !a.no_plugins,
+                composer_dirs().map(|(_, cache)| cache).as_deref(),
+                &|k| std::env::var(k).ok(),
+            )
+        });
+        events.dispatch(event)
+    }
 }
 
 /// The downloader for a project: Composer's cache, the project's and the global auth.json, and `secure-http`.
@@ -107,6 +128,7 @@ pub(crate) fn project(working_dir: Option<&PathBuf>, create: bool) -> Result<Pro
         lock,
         workspace,
         here,
+        events: std::cell::RefCell::new(None),
     })
 }
 
@@ -128,10 +150,6 @@ pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
 
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
 /// the install ones.
-#[expect(
-    clippy::too_many_lines,
-    reason = "long; to be split (code audit: functions over 100 lines)"
-)]
 pub(crate) fn install_locked(
     project: &Project,
     lock: &Lock,
@@ -167,32 +185,18 @@ pub(crate) fn install_locked(
         ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
     let fetcher = fetcher(root, manifest);
-    let Dirs {
-        vendor,
-        bin: bin_dir,
-    } = dirs(&root.to_string_lossy(), manifest);
     let env = |k: &str| std::env::var(k).ok();
-    let mut scripts = Runner::new(root, &vendor, &bin_dir, manifest, !a.no_dev, &env);
     let total = lock.packages.len() + if a.no_dev { 0 } else { lock.packages_dev.len() };
     eprintln!(
         "Installing {} from composer.lock",
         crate::agent::count(total, "package")
     );
-    if !a.no_scripts && !update {
-        scripts.dispatch(pre, &[])?;
+    if !update {
+        project.dispatch(a, pre)?;
     }
-    let mut events = |event: &str| {
-        if a.no_scripts {
-            Ok(())
-        } else {
-            scripts.dispatch(event, &[])
-        }
-    };
+    let mut events = |event: &str| project.dispatch(a, event);
     let report = install(root, manifest, lock, &fetcher, &options, &env, &mut events)?;
-    drop(events);
-    if !a.no_scripts {
-        scripts.dispatch(post, &[])?;
-    }
+    project.dispatch(a, post)?;
 
     let ok = look.paint(Role::Ok, look.glyph("✔", "+"));
     let warn = look.paint(Role::Warning, look.glyph("⚠", "!"));

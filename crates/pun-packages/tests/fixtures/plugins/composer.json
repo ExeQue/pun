@@ -1,0 +1,21 @@
+{
+    "name": "acme/app",
+    "require": {
+        "acme/denied": "*",
+        "acme/recorder": "*"
+    },
+    "repositories": [
+        {"type": "path", "url": "packages/*"},
+        {"packagist.org": false}
+    ],
+    "config": {
+        "allow-plugins": {
+            "acme/recorder": true,
+            "acme/denied": false
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": "@php -r \"file_put_contents('events.log', 'post-autoload-dump script '.getenv('COMPOSER_DEV_MODE').PHP_EOL, FILE_APPEND);\"",
+        "post-install-cmd": "@php -r \"file_put_contents('events.log', 'post-install-cmd script '.getenv('COMPOSER_DEV_MODE').PHP_EOL, FILE_APPEND);\""
+    }
+}

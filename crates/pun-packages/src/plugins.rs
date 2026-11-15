@@ -3,12 +3,9 @@ use crate::php::json_pretty_escaped;
 use crate::version::name_matches;
 use serde_json::{Map, Value};
 
-pub struct Output {
-    pub files: Vec<(String, Vec<u8>)>,
-    pub unsupported: Vec<String>,
-}
-
-const INERT: &[&str] = &["php-http/discovery"];
+/// The plugins pun runs itself instead of in the plugin host: pest-plugin through its port, and php-http/discovery,
+/// which changes nothing on install.
+pub const NATIVE: &[&str] = &["pestphp/pest-plugin", "php-http/discovery"];
 
 pub fn allowed(config: &Map<String, Value>, name: &str) -> bool {
     match config.get("allow-plugins") {
@@ -20,30 +17,21 @@ pub fn allowed(config: &Map<String, Value>, name: &str) -> bool {
     }
 }
 
-pub fn after_dump(root: &Map<String, Value>, packages: &[&Installed]) -> Output {
+/// The files the native ports write after the autoload dump.
+pub fn after_dump(root: &Map<String, Value>, packages: &[&Installed]) -> Vec<(String, Vec<u8>)> {
     let config = root
         .get("config")
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
-    let mut out = Output {
-        files: vec![],
-        unsupported: vec![],
-    };
+    let mut out = vec![];
     for p in packages {
-        if p.package.get("type").and_then(Value::as_str) != Some("composer-plugin") {
-            continue;
-        }
         let name = p.name();
-        if !allowed(&config, &name) {
-            continue;
-        }
-        match name.as_str() {
-            "pestphp/pest-plugin" => out
-                .files
-                .push(("pest-plugins.json".into(), pest_plugins(root, packages))),
-            n if INERT.contains(&n) => {}
-            n => out.unsupported.push(n.to_string()),
+        if name == "pestphp/pest-plugin"
+            && p.package.get("type").and_then(Value::as_str) == Some("composer-plugin")
+            && allowed(&config, &name)
+        {
+            out.push(("pest-plugins.json".into(), pest_plugins(root, packages)));
         }
     }
     out
@@ -107,12 +95,11 @@ mod tests {
         let refs: Vec<&Installed> = packages.iter().collect();
         let out = after_dump(root.as_object().unwrap(), &refs);
         assert_eq!(
-            out.files,
+            out,
             [(
                 "pest-plugins.json".to_string(),
                 b"[\n    \"A\\\\B\",\n    \"Root\\\\P\"\n]".to_vec()
             )]
         );
-        assert_eq!(out.unsupported, ["acme/plugin"]);
     }
 }

@@ -10,6 +10,7 @@ pub mod lock;
 pub mod manifest_edit;
 pub mod paths;
 pub mod php;
+pub mod plugin_host;
 pub mod plugins;
 pub mod resolver;
 pub mod scripts;

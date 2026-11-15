@@ -401,10 +401,9 @@ fn lock_changes_plugins_and_failures() {
     for name in ["acme/plugin", "pestphp/pest-plugin"] {
         plugins.packages.push(package(serde_json::json!({"name": name, "version": "1.0.0", "type": "composer-plugin", "dist": {"type": "path", "url": "packages/lib", "reference": "x"}})));
     }
-    let report = run(&tmp, &plugins, &Options::default());
+    run(&tmp, &plugins, &Options::default());
     assert!(!tmp.join("vendor/composer/platform_check.php").exists());
     assert!(tmp.join("vendor/pest-plugins.json").exists());
-    assert!(report.warnings.contains(&"pun does not run the Composer plugin acme/plugin yet, so the files it writes on install are missing".to_string()));
     let classmap =
         std::fs::read_to_string(tmp.join("vendor/composer/autoload_classmap.php")).unwrap();
     assert!(
@@ -451,5 +450,113 @@ fn pest_plugins_follow_composers_repository_order() {
     mid.0["dist"]["reference"] = "cf5881339893fa536b9c4d9194d36162dd9e76f3".into();
     assert_eq!(plugins(&lock), list(["Alpha", "Zeta", "Mid", "Root"]));
     assert_eq!(plugins(&lock), list(["Alpha", "Mid", "Zeta", "Root"]));
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// The recorder plugin logs each event it hears with its listener priority, beside the root package's scripts. The
+/// expected logs are Composer 2.11.2's on the same fixture: a plugin installed by the command activates mid-command
+/// and never hears `init`, and an upgraded one is re-activated before the autoload dump.
+#[test]
+fn composer_plugins_run_on_composers_classes() {
+    use pun_packages::plugin_host::Dispatcher;
+    let tmp = std::env::temp_dir().join(format!("pun-plugin-host-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("plugins"), &tmp);
+    let manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    let mut lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let cache = tmp.join("cache");
+    std::fs::create_dir_all(cache.join("pun")).unwrap();
+    std::fs::write(cache.join("pun/composer-2.11.2.phar"), "not composer").unwrap();
+    let fetcher = Fetcher::new(Some(cache.clone()), Auth::default(), true);
+    let events = |lock: &Lock, command: &str| {
+        let mut d = Dispatcher::new(&tmp, &manifest, true, true, true, Some(&cache), &|_| None);
+        d.dispatch(&format!("pre-{command}-cmd")).unwrap();
+        let o = Options::default();
+        install(&tmp, &manifest, lock, &fetcher, &o, &|_| None, &mut |e| {
+            d.dispatch(e)
+        })
+        .unwrap();
+        d.dispatch(&format!("post-{command}-cmd")).unwrap();
+        let log = std::fs::read_to_string(tmp.join("events.log")).unwrap();
+        std::fs::remove_file(tmp.join("events.log")).unwrap();
+        log
+    };
+    let dumped = "pre-autoload-dump plugin 0 1\npost-autoload-dump plugin 10 1\npost-autoload-dump plugin 0 1\npost-autoload-dump script 1\npost-autoload-dump plugin -10 1\n";
+    assert_eq!(
+        events(&lock, "install"),
+        format!(
+            "activate acme/app\n{dumped}post-install-cmd plugin 0 1\npost-install-cmd script 1\n"
+        )
+    );
+    let recorder = (lock.packages.iter_mut())
+        .find(|p| p.name() == "acme/recorder")
+        .unwrap();
+    recorder.0.insert("version".into(), "1.1.0".into());
+    assert_eq!(
+        events(&lock, "update"),
+        format!(
+            "activate acme/app\ninit plugin 0 \npre-update-cmd plugin 0 1\nactivate acme/app\n{dumped}post-update-cmd plugin 0 1\n"
+        )
+    );
+
+    let post_install = |manifest: &Map<String, Value>, scripts, plugins| {
+        let mut d = Dispatcher::new(
+            &tmp,
+            manifest,
+            true,
+            scripts,
+            plugins,
+            Some(&cache),
+            &|_| None,
+        );
+        d.dispatch("post-install-cmd").unwrap();
+        std::fs::read_to_string(tmp.join("events.log")).map_or_else(
+            |_| String::new(),
+            |log| {
+                std::fs::remove_file(tmp.join("events.log")).unwrap();
+                log
+            },
+        )
+    };
+    let started = "activate acme/app\ninit plugin 0 \n";
+    assert_eq!(
+        post_install(&manifest, false, true),
+        format!("{started}post-install-cmd plugin 0 1\n")
+    );
+    assert_eq!(
+        post_install(&manifest, true, false),
+        "post-install-cmd script 1\n"
+    );
+    let mut denied = manifest.clone();
+    denied["config"]["allow-plugins"]["acme/recorder"] = false.into();
+    assert_eq!(post_install(&denied, false, true), "");
+
+    let failure = |fail: &str, php: Option<&str>| {
+        std::fs::write(tmp.join("fail"), fail).unwrap();
+        let env = |k: &str| (k == "PHP_BINARY").then(|| php.map(String::from)).flatten();
+        let mut d = Dispatcher::new(&tmp, &manifest, false, true, true, Some(&cache), &env);
+        d.dispatch("post-install-cmd").map_err(|e| format!("{e:#}"))
+    };
+    assert_eq!(failure("post-install-cmd echo", None), Ok(()));
+    assert_eq!(
+        failure("post-install-cmd throw", None).unwrap_err(),
+        "a Composer plugin failed on the post-install-cmd event: the recorder failed"
+    );
+    assert_eq!(
+        failure("post-install-cmd exit", None).unwrap_err(),
+        "a Composer plugin failed on the post-install-cmd event: the Composer plugin host stopped"
+    );
+    let missing = tmp.join("no-php");
+    assert!(
+        failure("", missing.to_str())
+            .unwrap_err()
+            .starts_with(&format!(
+                "can't run {} for the Composer plugins: ",
+                missing.display()
+            ))
+    );
     std::fs::remove_dir_all(&tmp).unwrap();
 }
