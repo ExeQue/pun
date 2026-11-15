@@ -634,6 +634,18 @@ fn ignore_annotations_like_pint() {
         cx.same_abort(&t, &["--test", "--format=json"], PLAIN, "");
         cx.same_trace(&t, &["--test", "-v", "--ansi", "--format=txt"]);
     }
+    // PHP-CS-Fixer's escape hatch: rules the annotation names that aren't enabled are no longer an error.
+    let mut t = base.clone();
+    t.push((
+        "app/Zbad.php",
+        "<?php\n// @php-cs-fixer-ignore nope,array_syntax\n$a = array(\"x\");\n",
+    ));
+    let ignore = Opts {
+        env: &[("PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS", "1")],
+        ..PLAIN
+    };
+    let r = cx.same(&t, &["--test", "--format=json"], ignore);
+    assert_eq!(r.code, Some(1), "{r:?}");
 }
 
 #[test]
@@ -1102,6 +1114,19 @@ fn fixer_exception_like_pint() {
         let r = cx.same_exit(&CHECK_FIX, &t, args, PLAIN, Some(2));
         assert_eq!(r.code, Some(2), "{args:?}");
     }
+    // `pun lint`'s own human output names the file the rule failed on, with Pint's message, as a run error.
+    let (want, _) = cx.pair(&t, &["--test"], PLAIN);
+    let message = "Must not add empty token to collection.";
+    assert!(
+        want.stdout.contains("! app/U.php  ") && want.stdout.contains(message),
+        "{want:?}"
+    );
+    let got = run(&[PUN[0], "lint"], &cx.dir, PLAIN);
+    assert!(
+        got.stdout.contains(&format!("✖ app/U.php  {message}\n  a rule failed on this file; please report it at https://github.com/punphp/pun/issues\n")),
+        "{got:?}"
+    );
+    assert_eq!(got.code, Some(2));
     t.push(("app/Bad.php", "<?php\nfunction (\n"));
     cx.same_exit(&CHECK_FIX, &t, &["--format=txt", "--test"], PLAIN, Some(2));
 }

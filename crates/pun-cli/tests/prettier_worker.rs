@@ -254,3 +254,39 @@ fn unused_probe_stops_for_unselected_blade() {
     drop(running);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// Blade files run largest first, on lanes of their own, but the report keeps the finder's order: Pint's JSON on
+/// the same files, byte for byte.
+#[test]
+fn blade_results_keep_the_finder_order() {
+    let Some(pint) = common::oracle() else { return };
+    let Some(dir) = project("order") else { return };
+    std::fs::write(
+        dir.join("pint.json"),
+        r#"{"preset":"empty","rules":{"Pint/laravel_blade":true}}"#,
+    )
+    .unwrap();
+    for (name, copies) in [("a", 1), ("b", 3), ("c", 2)] {
+        common::write_files(
+            &dir,
+            &[(
+                &format!("resources/{name}.blade.php"),
+                &"<div>\n<p>x</p></div>\n".repeat(copies),
+            )],
+        );
+    }
+    let args = ["--test", "--format=json", "resources"];
+    let want = common::clean_env(&mut Command::new("php"), &["HOME", "PATH"])
+        .arg(pint)
+        .args(args)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let got = start(&dir, &args).finish(b"");
+    assert_eq!(
+        (String::from_utf8_lossy(&got.stdout), got.status.code()),
+        (String::from_utf8_lossy(&want.stdout), Some(1))
+    );
+    assert_eq!(want.status.code(), Some(1));
+    std::fs::remove_dir_all(dir).unwrap();
+}
