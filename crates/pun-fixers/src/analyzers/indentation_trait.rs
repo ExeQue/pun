@@ -1,5 +1,6 @@
 use super::preg::Preg;
 use pun_tokens::{Kind::*, Tokens};
+use std::borrow::Cow;
 
 pub(crate) fn get_line_indentation(tokens: &Tokens, index: usize) -> Vec<u8> {
     match get_previous_newline_token_index(tokens, index) {
@@ -42,16 +43,17 @@ pub(crate) fn get_previous_newline_token_index(tokens: &Tokens, mut index: usize
     None
 }
 
-pub(crate) fn compute_new_line_content(tokens: &Tokens, index: usize) -> Vec<u8> {
+pub(crate) fn compute_new_line_content(tokens: &Tokens, index: usize) -> Cow<'_, [u8]> {
     let content = tokens[index].get_content();
     if index != 0 && tokens[index - 1].is_given_kind(&[T_OPEN_TAG, T_CLOSE_TAG]) {
         return [
             Preg::replace("/\\S/", "", tokens[index - 1].get_content()).as_slice(),
             content,
         ]
-        .concat();
+        .concat()
+        .into();
     }
-    content.to_vec()
+    content.into()
 }
 
 pub(crate) fn is_new_line_token(tokens: &Tokens, index: usize) -> bool {
