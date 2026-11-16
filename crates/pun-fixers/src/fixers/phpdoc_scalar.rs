@@ -33,9 +33,15 @@ impl PhpdocScalarFixer {
         let word = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b >= 0x80;
         self.types.iter().any(|t| {
             let t = t.as_bytes();
-            doc.windows(t.len())
-                .enumerate()
-                .any(|(i, w)| w == t && !doc.get(i + t.len()).is_some_and(word))
+            let mut from = 0;
+            while let Some(at) = memchr::memmem::find(&doc[from..], t) {
+                let at = from + at;
+                if !doc.get(at + t.len()).is_some_and(word) {
+                    return true;
+                }
+                from = at + 1;
+            }
+            false
         })
     }
     fn normalize(&self, t: &[u8]) -> Vec<u8> {

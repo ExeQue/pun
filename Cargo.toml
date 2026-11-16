@@ -59,7 +59,7 @@ mago-span = "=1.57.0"
 mago-syntax = "=1.57.0"
 mago-syntax-core = "=1.57.0"
 mago-word = "=1.57.0"
-# pun-format: the scan for fixer annotations
+# pun-format and pun-fixers: substring scans (fixer annotations, phpdoc type names)
 memchr = "2"
 # `pun format --format=gitlab`: PHP-CS-Fixer's md5 fingerprints.
 md-5 = "0.11"
