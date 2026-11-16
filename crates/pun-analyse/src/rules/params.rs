@@ -307,6 +307,18 @@ fn select_from_types(
     let variants: Vec<_> = variants
         .into_iter()
         .map(|mut v| {
+            if let (Some((_, Some(class))), Some(callee)) = (v.user(c), v.callee.as_ref()) {
+                let (accepts, bindings) = super::declared::reflected_named_and_closure_this(
+                    c,
+                    class,
+                    &callee.reflected_name,
+                );
+                v.accepts_named_arguments = if accepts { Tri::Yes } else { Tri::No };
+                v.closure_this = (v.names.iter())
+                    .map(|name| bindings.contains_key(name))
+                    .collect();
+                return v;
+            }
             v.accepts_named_arguments = v.accepts_named(c);
             if let (Some((f, class)), Some(callee)) = (v.user(c), v.callee.as_ref()) {
                 let bindings =

@@ -396,6 +396,21 @@ pub(super) fn reflected_closure_this(
     reflected_doc(c, f, declaring, name).closure_this
 }
 
+/// [`reflected_accepts_named`] and [`reflected_closure_this`] of a method, from one reading of its docblocks.
+pub(super) fn reflected_named_and_closure_this(
+    c: &Checker,
+    class: &ClassLikeMetadata,
+    name: &str,
+) -> (bool, HashMap<String, Type>) {
+    let doc = method_doc(c, class, name.as_bytes(), 0);
+    let accepts = !super::declarations::has_tag(&c.class_tags(class), &["@no-named-arguments"])
+        && doc
+            .as_ref()
+            .and_then(|doc| doc.accepts_named)
+            .unwrap_or(true);
+    (accepts, doc.unwrap_or_default().closure_this)
+}
+
 pub(super) fn reflected_accepts_named(c: &Checker, class: &ClassLikeMetadata, name: &str) -> bool {
     !super::declarations::has_tag(&c.class_tags(class), &["@no-named-arguments"])
         && method_doc(c, class, name.as_bytes(), 0)
