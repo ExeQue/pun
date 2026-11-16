@@ -252,6 +252,7 @@ pub(crate) struct Checker<'a, 'arena> {
     function_likes: &'a HashMap<FileId, Vec<(Span, mago_codex::symbol::SymbolIdentifier)>>,
     patched_docs: &'a HashMap<Span, Span>,
     class_cache: &'a declared::ClassCache,
+    anonymous_names: &'a anonymous::Cache,
     syntax: syntax::State,
     assign: assign::State,
     signatures: signatures::State,

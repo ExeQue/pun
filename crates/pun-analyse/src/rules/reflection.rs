@@ -5,10 +5,7 @@ use mago_word::word;
 use pun_phpstan::symbols::{self, PhpVersion, Symbols};
 use pun_phpstan::types::{Level, Type};
 
-use mago_allocator::LocalArena;
-
 use super::{Checker, anonymous, params};
-use crate::codebase::parse;
 
 pub(crate) fn builtins(php_version: u32) -> &'static Symbols {
     symbols::symbols(PhpVersion::from_id(php_version))
@@ -22,14 +19,16 @@ impl Checker<'_, '_> {
         }
         if name.starts_with(b"{anonymous-class:")
             && let Some(display) = self
-                .files
-                .get(&k.span.file_id)
-                .and_then(|p| self.sources.get(p))
-                .and_then(|file| {
-                    let arena = LocalArena::new();
-                    let (program, names) = parse(&arena, file);
-                    anonymous::names(file, program, &names, self.relative_path).remove(name)
-                })
+                .anonymous_names
+                .get(
+                    k.span.file_id,
+                    || {
+                        let path = self.files.get(&k.span.file_id)?;
+                        self.sources.get(path).cloned()
+                    },
+                    self.relative_path,
+                )
+                .and_then(|names| names.get(name).cloned())
         {
             return display;
         }

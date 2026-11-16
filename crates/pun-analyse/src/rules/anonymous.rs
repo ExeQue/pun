@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
+use mago_allocator::LocalArena;
 use mago_codex::get_anonymous_class_name;
-use mago_database::file::File;
+use mago_database::file::{File, FileId};
 use mago_names::ResolvedNames;
 use mago_span::HasSpan;
 use mago_syntax::cst::{AnonymousClass, Program};
@@ -71,6 +73,32 @@ pub(crate) fn names(
         );
     }
     out
+}
+
+/// Each file's [`names`], shared by every file's checker: naming an anonymous class declared in another file
+/// otherwise parses that file again on every call. The names depend only on the file and the project's
+/// relative path.
+#[derive(Default)]
+pub(crate) struct Cache(Mutex<HashMap<FileId, Option<Arc<HashMap<Vec<u8>, String>>>>>);
+
+impl Cache {
+    pub(super) fn get(
+        &self,
+        id: FileId,
+        file: impl FnOnce() -> Option<Arc<File>>,
+        relative: &RelativePath,
+    ) -> Option<Arc<HashMap<Vec<u8>, String>>> {
+        if let Some(found) = self.0.lock().expect("anonymous names").get(&id) {
+            return found.clone();
+        }
+        let found = file().map(|file| {
+            let arena = LocalArena::new();
+            let (program, resolved) = crate::codebase::parse(&arena, &file);
+            Arc::new(names(&file, program, &resolved, relative))
+        });
+        (self.0.lock().expect("anonymous names")).insert(id, found.clone());
+        found
+    }
 }
 
 pub(crate) fn internal_name(display: &str, file: &str, relative: &RelativePath) -> String {
