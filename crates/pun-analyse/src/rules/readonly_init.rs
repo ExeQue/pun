@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use mago_allocator::LocalArena;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::visibility::Visibility;
-use mago_database::file::File;
+use mago_database::file::{File, FileId};
 use mago_names::ResolvedNames;
 use mago_span::HasSpan;
 use mago_syntax::cst::*;
@@ -858,6 +858,42 @@ fn traits_in<'p>(program: &'p Program<'p>, spans: &[mago_span::Span]) -> Vec<&'p
     out
 }
 
+/// A member [`class`] can turn into a property node: a typed property, or a method with a typed promoted
+/// parameter (a constructor's, once the methods are known).
+fn may_add_nodes(member: &ClassLikeMember) -> bool {
+    match member {
+        ClassLikeMember::Property(p) => p.hint().is_some(),
+        ClassLikeMember::Method(m) => (m.parameter_list.parameters.iter())
+            .any(|p| p.is_promoted_property() && p.hint.is_some()),
+        _ => false,
+    }
+}
+
+/// Per trait file, whether any trait in it has a member that [`may_add_nodes`], so a class whose own members
+/// and traits add no property node skips parsing its trait files. The answer depends only on the file.
+#[derive(Default)]
+pub(crate) struct Cache(Mutex<HashMap<FileId, bool>>);
+
+impl Cache {
+    fn may_add_nodes(&self, file: &File) -> bool {
+        if let Some(&found) = self.0.lock().expect("trait property files").get(&file.id) {
+            return found;
+        }
+        fn any(statements: &[Statement]) -> bool {
+            statements.iter().any(|s| match s {
+                Statement::Trait(t) => t.members.iter().any(may_add_nodes),
+                Statement::Namespace(n) => any(n.statements().as_slice()),
+                _ => false,
+            })
+        }
+        let arena = LocalArena::new();
+        let (program, _) = parse(&arena, file);
+        let found = any(program.statements.as_slice());
+        (self.0.lock().expect("trait property files")).insert(file.id, found);
+        found
+    }
+}
+
 pub(super) fn class<'arena>(
     c: &mut Checker<'_, 'arena>,
     k: &ClassLikeMetadata,
@@ -890,6 +926,11 @@ pub(super) fn class<'arena>(
         {
             files.push(file.clone());
         }
+    }
+    if !members.iter().any(may_add_nodes)
+        && !files.iter().any(|f| c.trait_properties.may_add_nodes(f))
+    {
+        return;
     }
     let arenas: Vec<LocalArena> = files.iter().map(|_| LocalArena::new()).collect();
     let parsed: Vec<_> = files

@@ -253,6 +253,7 @@ pub(crate) struct Checker<'a, 'arena> {
     patched_docs: &'a HashMap<Span, Span>,
     class_cache: &'a declared::ClassCache,
     anonymous_names: &'a anonymous::Cache,
+    trait_properties: &'a readonly_init::Cache,
     syntax: syntax::State,
     assign: assign::State,
     signatures: signatures::State,

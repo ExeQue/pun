@@ -595,6 +595,7 @@ mod tests {
             patched_docs: &Default::default(),
             class_cache: &Default::default(),
             anonymous_names: &Default::default(),
+            trait_properties: &Default::default(),
             syntax: Default::default(),
             assign: Default::default(),
             signatures: Default::default(),
