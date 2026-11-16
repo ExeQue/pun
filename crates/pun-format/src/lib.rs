@@ -430,8 +430,8 @@ impl std::fmt::Display for AnnotationError {
 impl std::error::Error for AnnotationError {}
 
 fn has_annotation(code: &[u8]) -> bool {
-    code.windows(13)
-        .any(|w| w == b"php-cs-fixer-" || w == b"pun-ignore-fi")
+    memchr::memmem::find(code, b"php-cs-fixer-").is_some()
+        || memchr::memmem::find(code, b"pun-ignore-fi").is_some()
 }
 
 #[derive(Debug, Clone)]

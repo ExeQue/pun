@@ -1581,6 +1581,7 @@ name = "punphp-format"
 version = "0.1.2"
 dependencies = [
  "anyhow",
+ "memchr",
  "pcre2",
  "punphp-config",
  "punphp-tokens",

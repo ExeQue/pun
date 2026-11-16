@@ -59,6 +59,8 @@ mago-span = "=1.57.0"
 mago-syntax = "=1.57.0"
 mago-syntax-core = "=1.57.0"
 mago-word = "=1.57.0"
+# pun-format: the scan for fixer annotations
+memchr = "2"
 # `pun format --format=gitlab`: PHP-CS-Fixer's md5 fingerprints.
 md-5 = "0.11"
 # pun-cli's global allocator on musl. Without transparent huge pages a resolve peaks at 227 MB rather than 411 MB.
