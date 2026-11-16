@@ -89,7 +89,16 @@ impl Fixer for PhpdocOrderFixer {
     }
 }
 
+/// Whether `content` can hold an annotation of type `tag`: its tag line spells `@tag`, unless the type is `other`
+/// (the name of a line whose tag does not parse).
+fn may_hold(content: &[u8], tag: &str) -> bool {
+    tag == "other" || memchr::memmem::find(content, &[b"@", tag.as_bytes()].concat()).is_some()
+}
+
 fn move_annotations_before(mv: &str, before: &[&str], content: &[u8]) -> Vec<u8> {
+    if !may_hold(content, mv) || !before.iter().any(|t| may_hold(content, t)) {
+        return content.to_vec();
+    }
     let doc = DocBlock::new(content);
     let to_be_moved = doc.get_annotations_of_type(&[mv]);
     if to_be_moved.is_empty() {
@@ -112,6 +121,9 @@ fn move_annotations_before(mv: &str, before: &[&str], content: &[u8]) -> Vec<u8>
 }
 
 fn move_annotations_after(mv: &str, after: &[&str], content: &[u8]) -> Vec<u8> {
+    if !may_hold(content, mv) || !after.iter().any(|t| may_hold(content, t)) {
+        return content.to_vec();
+    }
     let doc = DocBlock::new(content);
     let to_be_moved = doc.get_annotations_of_type(&[mv]);
     if to_be_moved.is_empty() {
