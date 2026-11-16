@@ -1669,6 +1669,7 @@ dependencies = [
 name = "punphp-tokens"
 version = "0.1.2"
 dependencies = [
+ "foldhash",
  "libc",
  "mago-php-version",
  "pcre2",

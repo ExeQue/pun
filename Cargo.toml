@@ -42,7 +42,7 @@ clap = { version = "4", features = ["derive"] }
 # `pun migrate`'s checklist; no editor/password/fuzzy features.
 dialoguer = { version = "0.12", default-features = false }
 flate2 = "1"
-# pun-analyse: the on-demand autoload index
+# pun-analyse: the on-demand autoload index; pun-tokens: the token collection's lookup maps
 foldhash = "0.2"
 indexmap = "2"
 libc = "0.2"

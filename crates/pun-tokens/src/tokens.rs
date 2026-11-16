@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::ops::Index;
 use std::sync::Arc;
 
@@ -47,6 +47,10 @@ impl BlockType {
     ];
 }
 
+/// The maps a collection keeps for every lookup; their keys are token indices and contents, so a fast unkeyed hash
+/// does.
+type HashMap<K, V> = std::collections::HashMap<K, V, foldhash::fast::FixedState>;
+
 #[derive(Clone, Debug, Default)]
 struct BlockCache {
     start: HashMap<usize, usize>,
@@ -69,7 +73,7 @@ impl Default for Tokens {
         Tokens {
             tokens: Vec::new(),
             found_kinds: vec![0; Kind::ALL.len()],
-            found_contents: HashMap::new(),
+            found_contents: HashMap::default(),
             blocks: RefCell::default(),
             namespace_declarations: RefCell::default(),
             switch_colons: RefCell::default(),

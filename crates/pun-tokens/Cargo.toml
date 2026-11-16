@@ -10,6 +10,7 @@ publish.workspace = true
 name = "pun_tokens"
 
 [dependencies]
+foldhash.workspace = true
 libc.workspace = true
 pcre2.workspace = true
 mago-php-version = { workspace = true, optional = true }
