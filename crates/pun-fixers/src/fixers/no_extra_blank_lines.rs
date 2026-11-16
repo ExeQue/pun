@@ -104,7 +104,17 @@ impl Run<'_> {
     }
 
     fn remove_multiple_blank_lines(&mut self, index: usize) {
+        let content = self.tokens[index].get_content();
         let prev = &self.tokens[index - 1];
+        // Over spaces, tabs and LFs, `(.*\R)` splits one part per LF plus one for any text after the last LF. The
+        // split below changes nothing unless the parts exceed `expected`, which is 2 unless `prev` is an open tag.
+        if content.iter().all(|b| matches!(b, b' ' | b'\t' | b'\n')) {
+            let lf = content.iter().filter(|&&b| b == b'\n').count();
+            let parts = lf + usize::from(content.last().is_some_and(|&b| b != b'\n'));
+            if parts <= 1 || (parts == 2 && !prev.is_kind(T_OPEN_TAG)) {
+                return;
+            }
+        }
         let expected = if prev.is_kind(T_OPEN_TAG) && Preg::r#match("/\\R$/", prev.get_content()) {
             1
         } else {
