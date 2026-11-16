@@ -10,6 +10,7 @@ publish.workspace = true
 anyhow.workspace = true
 mago-database.workspace = true
 pcre2.workspace = true
+rayon.workspace = true
 walkdir.workspace = true
 pun-config.workspace = true
 pun-tokens.workspace = true

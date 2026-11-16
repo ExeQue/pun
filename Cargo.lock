@@ -1687,6 +1687,7 @@ dependencies = [
  "pcre2",
  "punphp-config",
  "punphp-tokens",
+ "rayon",
  "walkdir",
 ]
 

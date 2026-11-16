@@ -245,3 +245,26 @@ fn exclusions_test_absolute_paths() {
     assert!(!e.is_excluded(&root.join("tests/Unit/A.php")));
     assert!(e.is_excluded(&root.join("src/Generated.php")));
 }
+
+#[test]
+fn an_unreadable_directory_fails_the_walk() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = tree(&["a/A.php", "b/locked/L.php", "b/B.php", "c/C.php"]);
+    let locked = root.join("b/locked");
+    let mode = |m| std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(m)).unwrap();
+    mode(0o000);
+    // Root reads the directory anyway, so the walk has nothing to report.
+    let enforced = std::fs::read_dir(&locked).is_err();
+    let got = list(&root, "", Some(Command::Format), &[]);
+    mode(0o755);
+    std::fs::remove_dir_all(&root).unwrap();
+    if enforced {
+        assert_eq!(
+            got,
+            Err(format!(
+                "IO error for operation on {}: Permission denied (os error 13)",
+                locked.display()
+            ))
+        );
+    }
+}

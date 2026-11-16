@@ -4,6 +4,7 @@ use mago_database::matcher::{ExclusionMatcher, contains_glob_metacharacters};
 use pcre2::bytes::Regex;
 use pun_config::Config;
 use pun_tokens::php_compat::{fnmatch, preg_compile, preg_quote};
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 
 const PINT_NOT_NAME: [&str; 4] = [
@@ -58,6 +59,17 @@ impl std::fmt::Display for FinderError {
 }
 
 impl std::error::Error for FinderError {}
+
+struct Filters {
+    name: Regex,
+    dot: Regex,
+}
+
+enum Visit {
+    Descend,
+    File,
+    Skip,
+}
 
 struct Finder {
     dirs: Vec<PathBuf>,
@@ -149,54 +161,98 @@ impl Finder {
     }
 
     fn files(&self) -> Result<Vec<PathBuf>> {
-        let name = Regex::new(r"\.php$").unwrap();
-        let dot = Regex::new(r"(^|/)\..+(/|$)").unwrap();
+        let filters = Filters {
+            name: Regex::new(r"\.php$").unwrap(),
+            dot: Regex::new(r"(^|/)\..+(/|$)").unwrap(),
+        };
         let mut out = Vec::new();
         for dir in &self.dirs {
-            let mut it = walkdir::WalkDir::new(dir).min_depth(1).into_iter();
-            while let Some(entry) = it.next() {
-                let entry = entry?;
-                let rel = entry
-                    .path()
-                    .strip_prefix(dir)
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned();
-                let kind = entry.file_type();
-                if kind.is_dir() || (kind.is_symlink() && entry.path().is_dir()) {
-                    let fname = entry.file_name().to_string_lossy();
-                    let pruned = self.excluded_names.iter().any(|n| *n == fname)
-                        || (fname.len() > 1 && fname.starts_with('.'))
-                        || VCS.contains(&fname.as_ref())
-                        || self
-                            .excluded_pattern
-                            .as_ref()
-                            .is_some_and(|r| r.is_match(rel.as_bytes()).unwrap_or(false))
-                        || self.matched(entry.path());
-                    if pruned && entry.file_type().is_dir() {
-                        it.skip_current_dir();
-                    }
-                    continue;
-                }
-                if entry.path_is_symlink() && !entry.path().is_file() {
-                    continue;
-                }
-                let fname = entry.file_name().to_string_lossy();
-                let m = |r: &Regex, s: &str| r.is_match(s.as_bytes()).unwrap_or(false);
-                if !m(&name, &fname) || self.not_names.iter().any(|r| m(r, &fname)) {
-                    continue;
-                }
-                if m(&dot, &rel)
-                    || self.not_paths.iter().any(|r| m(r, &rel))
-                    || self.matched(entry.path())
-                {
-                    continue;
-                }
-                out.push(entry.into_path());
-            }
+            out.extend(self.walk(&filters, dir, dir)?);
         }
         out.extend(self.append.iter().cloned());
         Ok(out)
+    }
+
+    /// The files under `dir` in the order a single walk from `root` lists them: each subdirectory is walked on its own
+    /// thread and its files take its place in the listing. A listing error comes after the files and errors of the
+    /// entries before it, as in one walk.
+    fn walk(&self, filters: &Filters, root: &Path, dir: &Path) -> Result<Vec<PathBuf>> {
+        enum Part {
+            File(PathBuf),
+            Dir(PathBuf),
+        }
+        let mut parts = Vec::new();
+        let mut failed = None;
+        for entry in walkdir::WalkDir::new(dir).min_depth(1).max_depth(1) {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    failed = Some(e);
+                    break;
+                }
+            };
+            match self.visit(filters, root, &entry) {
+                Visit::Descend => parts.push(Part::Dir(entry.into_path())),
+                Visit::File => parts.push(Part::File(entry.into_path())),
+                Visit::Skip => {}
+            }
+        }
+        let walked: Vec<Result<Vec<PathBuf>>> = parts
+            .into_par_iter()
+            .map(|part| match part {
+                Part::File(file) => Ok(vec![file]),
+                Part::Dir(sub) => self.walk(filters, root, &sub),
+            })
+            .collect();
+        let mut out = Vec::new();
+        for files in walked {
+            out.extend(files?);
+        }
+        match failed {
+            Some(e) => Err(e.into()),
+            None => Ok(out),
+        }
+    }
+
+    fn visit(&self, filters: &Filters, root: &Path, entry: &walkdir::DirEntry) -> Visit {
+        let rel = entry
+            .path()
+            .strip_prefix(root)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let kind = entry.file_type();
+        if kind.is_dir() || (kind.is_symlink() && entry.path().is_dir()) {
+            let fname = entry.file_name().to_string_lossy();
+            let pruned = self.excluded_names.iter().any(|n| *n == fname)
+                || (fname.len() > 1 && fname.starts_with('.'))
+                || VCS.contains(&fname.as_ref())
+                || self
+                    .excluded_pattern
+                    .as_ref()
+                    .is_some_and(|r| r.is_match(rel.as_bytes()).unwrap_or(false))
+                || self.matched(entry.path());
+            return if !pruned && kind.is_dir() {
+                Visit::Descend
+            } else {
+                Visit::Skip
+            };
+        }
+        if entry.path_is_symlink() && !entry.path().is_file() {
+            return Visit::Skip;
+        }
+        let fname = entry.file_name().to_string_lossy();
+        let m = |r: &Regex, s: &str| r.is_match(s.as_bytes()).unwrap_or(false);
+        if !m(&filters.name, &fname) || self.not_names.iter().any(|r| m(r, &fname)) {
+            return Visit::Skip;
+        }
+        if m(&filters.dot, &rel)
+            || self.not_paths.iter().any(|r| m(r, &rel))
+            || self.matched(entry.path())
+        {
+            return Visit::Skip;
+        }
+        Visit::File
     }
 }
 
