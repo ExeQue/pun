@@ -39,6 +39,7 @@ process.stdin.setEncoding("utf-8");
 
 let buffer = "";
 let queue = Promise.resolve();
+let cacheFlushed = false;
 
 process.stdin.on("data", function (chunk) {
     buffer += chunk;
@@ -73,6 +74,15 @@ async function handleMessage(input) {
         process.stdout.write(
             `[PINT_PRETTIER_WORKER_START]${formatted}[PINT_PRETTIER_WORKER_END]`,
         );
+
+        // Pun kills its workers, so Node never writes the compile cache (NODE_COMPILE_CACHE) on exit. Writing it
+        // after the first file keeps the code compiled for Prettier and its plugins for the next run's workers.
+        if (!cacheFlushed) {
+            cacheFlushed = true;
+            try {
+                require("module").flushCompileCache?.();
+            } catch {}
+        }
     } catch (error) {
         process.stderr.write(`${error.stack || error.message}\n`);
     }

@@ -143,6 +143,9 @@ fn start(probe: Option<&[&str]>) -> Result<Worker> {
             .arg(dir.join("probe.cjs"))
             .env("PUN_PROBE", packages.join(","));
     }
+    if std::env::var_os("NODE_COMPILE_CACHE").is_none() {
+        node.env("NODE_COMPILE_CACHE", dir.join("compile-cache"));
+    }
     node.arg(dir.join("worker.cjs"))
         .arg(&project_root)
         .arg(dir.join("prettierrc.json"))
