@@ -236,7 +236,7 @@ To run without a file, pass `--preset <name>` (`laravel`, `psr12`, or `empty`) o
 | `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS` | Accepts an ignore comment that names a rule the run doesn't use |
 | `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: results on older syntax are unchecked |
 | `PUN_PROFILE` | Prints per-stage timings on stderr |
-| `PUN_CACHE_DIR` | Cache for [`pun x`](/docs/commands/x#manage-installs) installs and [`pun vet inspect`](/docs/commands/vet) |
+| `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs and [`pun vet inspect`](/docs/commands/vet) |
 | `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |
 | `COMPOSER_HOME`, `COMPOSER_CACHE_DIR` | Composer's home and download cache, shared with the [package commands](/docs/commands/install) |
 | `COMPOSER_AUTH`, `COMPOSER_MAX_PARALLEL_HTTP` | Download credentials and parallel download limit for [`pun install`](/docs/commands/install#what-an-install-does) |

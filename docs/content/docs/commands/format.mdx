@@ -49,7 +49,7 @@ Pun remembers each file's result, including its findings. The next run reuses th
 
 The cache is one file per project in `$PUN_CACHE_DIR/results`. The default cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns it off. Code from stdin never uses it. Deleting the file is safe.
 
-Blade formatting keeps Node's compile cache of Prettier and its plugins in `~/.cache/pun/blade-*` (`$XDG_CACHE_HOME/pun` when set), which makes later runs start faster. A `NODE_COMPILE_CACHE` you set yourself takes precedence.
+Blade formatting keeps its Prettier worker scripts and Node's compile cache in `$PUN_CACHE_DIR/blade-*` too, which makes later runs start faster. A `NODE_COMPILE_CACHE` you set yourself takes precedence.
 
 Lint results that use other files, such as a parent class, also depend on every file in the project and on `vendor/composer/installed.json`. A change to any of them makes lint check those files again.
 

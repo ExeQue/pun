@@ -24,6 +24,28 @@ use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+/// Pun's cache directory: `PUN_CACHE_DIR`, else the platform's user cache directory (`~/Library/Caches/pun` on
+/// macOS, `$XDG_CACHE_HOME/pun` or `~/.cache/pun` elsewhere). Nothing when neither `PUN_CACHE_DIR` nor `HOME` is set.
+pub fn cache_dir() -> Option<PathBuf> {
+    cache_dir_in(|k| std::env::var_os(k), cfg!(target_os = "macos"))
+}
+
+fn cache_dir_in(var: impl Fn(&str) -> Option<std::ffi::OsString>, macos: bool) -> Option<PathBuf> {
+    let env = |k: &str| var(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    if let Some(dir) = env("PUN_CACHE_DIR") {
+        return Some(dir);
+    }
+    let home = env("HOME")?;
+    if macos {
+        return Some(home.join("Library/Caches/pun"));
+    }
+    Some(
+        env("XDG_CACHE_HOME")
+            .unwrap_or_else(|| home.join(".cache"))
+            .join("pun"),
+    )
+}
+
 pub const PRESETS: [(&str, &str); 5] = [
     ("laravel", include_str!("../presets/laravel.json")),
     ("per", include_str!("../presets/per.json")),

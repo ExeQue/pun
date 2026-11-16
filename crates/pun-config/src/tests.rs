@@ -1782,3 +1782,36 @@ fn larastan_follows_the_locked_laravel() {
     let d = dir(&[("pun.toml", "[analyse]\n")]);
     assert!(!load(&d, &Options::default()).unwrap().analyse.larastan);
 }
+
+/// Every cache (results, `pun x`, Blade's scripts) lives in this one directory: `PUN_CACHE_DIR` wins over the
+/// platform's, an empty value counts as unset, and macOS ignores `XDG_CACHE_HOME`.
+#[test]
+fn cache_dir_follows_pun_cache_dir_then_the_platform() {
+    let env = |vars: &'static [(&'static str, &'static str)]| {
+        move |k: &str| {
+            (vars.iter())
+                .find(|(n, _)| *n == k)
+                .map(|(_, v)| std::ffi::OsString::from(v))
+        }
+    };
+    let all = env(&[
+        ("PUN_CACHE_DIR", "/p"),
+        ("HOME", "/h"),
+        ("XDG_CACHE_HOME", "/x"),
+    ]);
+    assert_eq!(cache_dir_in(all, false), Some("/p".into()));
+    assert_eq!(cache_dir_in(all, true), Some("/p".into()));
+    let platform = env(&[
+        ("PUN_CACHE_DIR", ""),
+        ("HOME", "/h"),
+        ("XDG_CACHE_HOME", "/x"),
+    ]);
+    assert_eq!(cache_dir_in(platform, false), Some("/x/pun".into()));
+    assert_eq!(
+        cache_dir_in(platform, true),
+        Some("/h/Library/Caches/pun".into())
+    );
+    let home = env(&[("HOME", "/h")]);
+    assert_eq!(cache_dir_in(home, false), Some("/h/.cache/pun".into()));
+    assert_eq!(cache_dir_in(env(&[("XDG_CACHE_HOME", "/x")]), false), None);
+}

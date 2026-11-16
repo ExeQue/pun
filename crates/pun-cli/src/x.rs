@@ -88,24 +88,9 @@ fn package(spec: &str) -> Result<(String, String, Option<&'static str>)> {
     Ok((name, constraint.to_string(), None))
 }
 
-/// Pun's cache directory: `PUN_CACHE_DIR`, else the platform's user cache directory.
+/// Pun's cache directory (`pun_config::cache_dir`).
 pub(crate) fn cache_dir() -> Result<PathBuf> {
-    let env = |k: &str| {
-        std::env::var_os(k)
-            .filter(|v| !v.is_empty())
-            .map(PathBuf::from)
-    };
-    if let Some(dir) = env("PUN_CACHE_DIR") {
-        return Ok(dir);
-    }
-    let home = env("HOME").context("HOME is not set; set PUN_CACHE_DIR")?;
-    #[cfg(target_os = "macos")]
-    let dir = home.join("Library/Caches/pun");
-    #[cfg(not(target_os = "macos"))]
-    let dir = env("XDG_CACHE_HOME")
-        .unwrap_or_else(|| home.join(".cache"))
-        .join("pun");
-    Ok(dir)
+    pun_config::cache_dir().context("HOME is not set; set PUN_CACHE_DIR")
 }
 
 /// The directory a package installs into for one constraint, which is percent-encoded into the name.

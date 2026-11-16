@@ -1,7 +1,6 @@
 use anyhow::{Result, bail};
 use pun_tokens::php_compat::strpos;
 use std::cell::RefCell;
-use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -82,11 +81,7 @@ static RESOURCES: LazyLock<Result<PathBuf, String>> = LazyLock::new(|| {
     std::hash::Hash::hash(&(WORKER, PROBE, PRETTIERRC), &mut hasher);
     let hash = std::hash::Hasher::finish(&hasher);
     let name = format!("blade-{hash:016x}");
-    let dir = scripts_dir(
-        std::env::var_os("XDG_CACHE_HOME"),
-        std::env::var_os("HOME"),
-        &name,
-    );
+    let dir = scripts_dir(pun_config::cache_dir(), &name);
     resources_in(&dir.map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 });
 
@@ -94,23 +89,14 @@ fn resources() -> Result<PathBuf> {
     RESOURCES.clone().map_err(anyhow::Error::msg)
 }
 
-fn scripts_dir(
-    xdg: Option<OsString>,
-    home: Option<OsString>,
-    name: &str,
-) -> std::io::Result<PathBuf> {
-    if let Some(cache) = cache_dir(xdg, home) {
-        return Ok(cache.join("pun").join(name));
+/// `<cache dir>/<name>` in Pun's cache directory, else a new private directory for this process.
+fn scripts_dir(cache: Option<PathBuf>, name: &str) -> std::io::Result<PathBuf> {
+    if let Some(cache) = cache {
+        return Ok(cache.join(name));
     }
     let dir = std::env::temp_dir().join(format!("pun-{name}-{}", std::process::id()));
     std::os::unix::fs::DirBuilderExt::mode(&mut std::fs::DirBuilder::new(), 0o700).create(&dir)?;
     Ok(dir)
-}
-
-fn cache_dir(xdg: Option<OsString>, home: Option<OsString>) -> Option<PathBuf> {
-    let absolute = |dir: OsString| Some(PathBuf::from(dir)).filter(|dir| dir.is_absolute());
-    xdg.and_then(absolute)
-        .or_else(|| Some(home.and_then(absolute)?.join(".cache")))
 }
 
 fn resources_in(dir: &Path) -> Result<PathBuf> {
@@ -342,33 +328,18 @@ mod tests {
     #[test]
     fn resources_are_shared() {
         let dir = resources().unwrap();
-        let cache = cache_dir(std::env::var_os("XDG_CACHE_HOME"), std::env::var_os("HOME"));
-        assert_eq!(dir.parent().unwrap(), cache.unwrap().join("pun"));
-        let os = |s: &str| Some(OsString::from(s));
-        assert_eq!(
-            cache_dir(os("/x/cache"), os("/home/u")),
-            Some("/x/cache".into())
-        );
-        assert_eq!(
-            cache_dir(os("relative"), os("/home/u")),
-            Some("/home/u/.cache".into())
-        );
-        assert_eq!(
-            cache_dir(None, os("/home/u")),
-            Some("/home/u/.cache".into())
-        );
-        assert_eq!(cache_dir(None, None), None);
+        assert_eq!(dir.parent(), pun_config::cache_dir().as_deref());
         let name = format!("test-private-{}", std::process::id());
-        let private = scripts_dir(None, None, &name).unwrap();
+        let private = scripts_dir(None, &name).unwrap();
         assert!(private.starts_with(std::env::temp_dir()));
         let mode =
             std::os::unix::fs::PermissionsExt::mode(&private.metadata().unwrap().permissions());
         assert_eq!(mode & 0o777, 0o700);
-        assert!(scripts_dir(None, None, &name).is_err());
+        assert!(scripts_dir(None, &name).is_err());
         std::fs::remove_dir(&private).unwrap();
         assert_eq!(
-            scripts_dir(None, os("/home/u"), "n").unwrap(),
-            PathBuf::from("/home/u/.cache/pun/n")
+            scripts_dir(Some("/x/pun".into()), "n").unwrap(),
+            PathBuf::from("/x/pun/n")
         );
         let dir = std::env::temp_dir().join(format!("pun-blade-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
