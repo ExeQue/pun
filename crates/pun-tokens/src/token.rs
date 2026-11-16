@@ -235,12 +235,12 @@ impl Token {
     pub fn equals<'a>(&self, other: impl Into<Proto<'a>>, case_sensitive: bool) -> bool {
         match other.into() {
             Proto::Char(b"&") => self.is_amp(),
-            Proto::Char(c) => self.id.is_none() && self.content == c,
+            Proto::Char(c) => self.id.is_none() && self.content.is(c),
             Proto::Kind(k) => self.id == Some(k),
             Proto::KindContent(k, c) => {
                 self.id == Some(k)
                     && if case_sensitive {
-                        self.content == c
+                        self.content.is(c)
                     } else {
                         self.content.eq_ignore_ascii_case(c)
                     }

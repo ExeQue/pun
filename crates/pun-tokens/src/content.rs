@@ -67,9 +67,22 @@ impl Hash for Content {
     }
 }
 
+impl Content {
+    /// `**self == *other`, comparing a one-byte `other` (most protos: `(`, `;`, `{`) without a `memcmp` call.
+    #[inline]
+    pub(crate) fn is(&self, other: &[u8]) -> bool {
+        let this: &[u8] = self;
+        this.len() == other.len()
+            && match other {
+                [b] => this[0] == *b,
+                _ => this == other,
+            }
+    }
+}
+
 impl PartialEq<&[u8]> for Content {
     fn eq(&self, other: &&[u8]) -> bool {
-        **self == **other
+        self.is(other)
     }
 }
 impl<const N: usize> PartialEq<[u8; N]> for Content {
