@@ -964,12 +964,48 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
                 .push(*class);
         }
     }
+    // Every file an initializer can be evaluated in, parsed up front in parallel: the resolver below is serial
+    // and would otherwise parse them one at a time. A parse depends only on the file.
+    let mut wanted: Vec<FileId> = (metadata.class_likes.values())
+        .flat_map(|class| {
+            class
+                .constants
+                .values()
+                .map(|constant| constant.span.file_id)
+        })
+        .chain(
+            metadata
+                .constants
+                .values()
+                .map(|constant| constant.span.file_id),
+        )
+        .chain(trait_sources.iter().map(|(_, at)| at.file_id))
+        .chain(arguments.iter().map(|(.., at)| at.file_id))
+        .filter(|id| initializer_sources.contains_key(id))
+        .collect();
+    wanted.sort_unstable();
+    wanted.dedup();
+    let mut arenas: Vec<LocalArena> = wanted.iter().map(|_| LocalArena::new()).collect();
+    let parsed: HashMap<FileId, ParsedSource<'_>> = arenas
+        .par_iter_mut()
+        .zip(&wanted)
+        .map(|(arena, id)| {
+            let arena: &LocalArena = arena;
+            let (program, names) = parse(arena, initializer_sources[id]);
+            let mut index = InitializerIndex::default();
+            index.walk_program(program, &mut ());
+            (*id, (program, names, index))
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|(id, (program, names, index))| (id, (program, Rc::new(names), Rc::new(index))))
+        .collect();
     let arena = LocalArena::new();
     let mut resolver = Initializers {
         metadata,
         sources: initializer_sources,
         arena: &arena,
-        parsed: HashMap::new(),
+        parsed,
         version: project.php_version.to_mago(),
         visited: HashSet::new(),
         requested: HashSet::new(),
