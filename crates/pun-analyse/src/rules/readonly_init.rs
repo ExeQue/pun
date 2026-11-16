@@ -858,11 +858,22 @@ fn traits_in<'p>(program: &'p Program<'p>, spans: &[mago_span::Span]) -> Vec<&'p
     out
 }
 
-/// A member [`class`] can turn into a property node: a typed property, or a method with a typed promoted
-/// parameter (a constructor's, once the methods are known).
+/// A member [`class`] can turn into a property node: a typed, non-static, non-abstract property with an item
+/// that has no default value, or a method with a typed promoted parameter (a constructor's, once the methods
+/// are known).
 fn may_add_nodes(member: &ClassLikeMember) -> bool {
     match member {
-        ClassLikeMember::Property(p) => p.hint().is_some(),
+        ClassLikeMember::Property(p) => {
+            p.hint().is_some()
+                && !(p.modifiers().iter())
+                    .any(|m| matches!(m, Modifier::Static(_) | Modifier::Abstract(_)))
+                && match p {
+                    Property::Plain(plain) => {
+                        (plain.items.iter()).any(|item| !matches!(item, PropertyItem::Concrete(_)))
+                    }
+                    Property::Hooked(h) => !matches!(h.item, PropertyItem::Concrete(_)),
+                }
+        }
         ClassLikeMember::Method(m) => (m.parameter_list.parameters.iter())
             .any(|p| p.is_promoted_property() && p.hint.is_some()),
         _ => false,
