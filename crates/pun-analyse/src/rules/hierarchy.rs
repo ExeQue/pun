@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_span::{HasSpan, Span};
@@ -289,7 +291,10 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
     } else {
         "Non-abstract class"
     };
-    let mut names: Vec<_> = k.declaring_method_ids.keys().collect();
+    let maybe_abstract = maybe_abstract(c, k);
+    let mut names: Vec<_> = (k.declaring_method_ids.keys())
+        .filter(|lower| maybe_abstract.contains(*lower))
+        .collect();
     names.sort_by_key(|lower| lower.as_bytes());
     for lower in names {
         let lower_name = lower.as_bytes();
@@ -350,6 +355,47 @@ pub(super) fn in_class(c: &mut Checker, at: Span, k: &ClassLikeMetadata) {
             );
         }
     }
+}
+
+/// The lowercase method names that [`members::method`] can resolve to an abstract method for `k`: every
+/// method of an interface or a built-in class, every abstract method and every trait alias, in `k` and
+/// everything it reaches through parents, traits and interfaces (a superset of where `members::method`
+/// looks). Any other name resolves to a concrete method or to none.
+fn maybe_abstract(c: &Checker, k: &ClassLikeMetadata) -> HashSet<mago_word::Word> {
+    let codebase = c.codebase;
+    let mut out = HashSet::new();
+    let mut pending = vec![k];
+    let mut seen = HashSet::from([k.name]);
+    while let Some(r) = pending.pop() {
+        let interface = r.kind == SymbolKind::Interface;
+        let builtin = r.flags.is_built_in();
+        out.extend(r.methods.iter().copied().filter(|name| {
+            interface
+                || builtin
+                || codebase
+                    .get_method(r.name.as_bytes(), name.as_bytes())
+                    .and_then(|f| f.method_metadata.as_ref())
+                    .is_some_and(|m| m.is_abstract)
+        }));
+        out.extend(r.trait_alias_map.keys().copied());
+        if builtin
+            && let Some(b) = (c.builtins.classes)
+                .get(&String::from_utf8_lossy(r.name.as_bytes()).to_ascii_lowercase())
+        {
+            out.extend(b.methods.keys().map(|m| mago_word::word(m.as_bytes())));
+        }
+        let next = (r.direct_parent_class.iter().copied())
+            .chain(r.direct_trait_names())
+            .chain(r.all_parent_interfaces.iter().copied());
+        for name in next {
+            if let Some(a) = codebase.get_class_like(name.as_bytes())
+                && seen.insert(a.name)
+            {
+                pending.push(a);
+            }
+        }
+    }
+    out
 }
 
 fn inherited_satisfies(
