@@ -803,21 +803,26 @@ fn show() {
 
 #[test]
 fn removed_presets() {
-    for p in ["per", "symfony"] {
-        let want = format!(
-            "--preset {p} was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset {p}` expands it)"
-        );
+    for (p, flag, toml) in [
+        (
+            "per",
+            "--preset per was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset per` expands it)",
+            "[format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
+        ),
+        (
+            "symfony",
+            "--preset symfony was removed: Pun supports the laravel, psr12 and empty presets",
+            "[format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets",
+        ),
+    ] {
         let none = dir(&[]);
-        assert_eq!(err(&none, preset(p)), want);
+        assert_eq!(err(&none, preset(p)), flag);
         let d = dir(&[("pun.toml", "[format]\npreset = \"psr12\"\n")]);
-        assert_eq!(err(&d, preset(p)), want);
+        assert_eq!(err(&d, preset(p)), flag);
         let d = dir(&[("pun.toml", &format!("[format]\npreset = \"{p}\"\n"))]);
         assert_eq!(
             err(&d, Options::default()),
-            format!(
-                "{}: [format] preset = \"{p}\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
-                d.join("pun.toml").display()
-            )
+            format!("{}: {toml}", d.join("pun.toml").display())
         );
     }
     assert_eq!(err(&dir(&[]), preset("nope")), "Preset not found.");
@@ -1024,7 +1029,7 @@ fn pun_toml_errors() {
         ),
         (
             "[format]\npreset = \"symfony\"\n",
-            "[format] preset = \"symfony\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)",
+            "[format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets",
         ),
         (
             "[lint.rules]\n\"style/require-final-class\" = { fix = \"apply\" }\n",
@@ -1449,7 +1454,7 @@ not-path = ["y"]
     }
 
     #[test]
-    fn expands_per_and_symfony() {
+    fn expands_per() {
         let m = pint(r#"{"preset":"per"}"#);
         assert_eq!(m.unsupported, [] as [std::string::String; 0]);
         let c = from_toml(&dir(&[]), &m.toml).unwrap();
@@ -1465,12 +1470,6 @@ not-path = ["y"]
         }
         let lint: Vec<_> = c.lint.rules.iter().map(|l| l.fixer.unwrap()).collect();
         assert_eq!(lint, ["ordered_class_elements", "no_unused_imports"]);
-        let m = pint(r#"{"preset":"symfony","rules":{"no_empty_comment":false}}"#);
-        let c = from_toml(&dir(&[]), &m.toml).unwrap();
-        assert!(
-            names(&c.rules).contains(&"phpdoc_align")
-                && !names(&c.rules).contains(&"no_empty_comment")
-        );
     }
 
     #[test]
@@ -1532,6 +1531,10 @@ not-path = ["y"]
         assert_eq!(
             e(&[("pint.json", r#"{"preset":"nope"}"#)]),
             "Preset not found."
+        );
+        assert_eq!(
+            e(&[("pint.json", r#"{"preset":"symfony"}"#)]),
+            "the symfony preset was removed: Pun supports the laravel, psr12, per and empty presets"
         );
         assert_eq!(pint("[1]").toml, pint("{}").toml);
         assert_eq!(

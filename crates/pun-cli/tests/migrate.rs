@@ -186,16 +186,27 @@ fn config_and_preset_flags() {
     assert_eq!(code, Some(0));
     assert!(!out.contains("Want them?"), "{out}");
     let s = project("symfony", &[("pint.json", r#"{"preset":"symfony"}"#)]);
-    let (out, _, code) = pun(&s, &["migrate", "--dry-run"]);
-    assert_eq!(code, Some(0));
-    for line in out.lines().filter(|l| l.starts_with(" ! ")) {
-        let name = line[3..].split_once("  ").unwrap().0;
-        let id = pun_config::rule_of(name).unwrap();
-        assert!(
-            line.ends_with("  not supported by Pun yet; skipped"),
-            "{line}"
+    for (dir, args) in [
+        (&s, &["migrate", "--dry-run"][..]),
+        (
+            &d,
+            &[
+                "migrate",
+                "--dry-run",
+                "--config=other.json",
+                "--preset=symfony",
+            ],
+        ),
+    ] {
+        assert_eq!(
+            pun(dir, args),
+            (
+                String::new(),
+                "x the symfony preset was removed: Pun supports the laravel, psr12, per and empty presets\n".into(),
+                Some(2)
+            ),
+            "{args:?}"
         );
-        assert!(id.starts_with("lint/"), "{line}");
     }
     let (out, _, _) = pun(&d, &["migrate"]);
     assert_eq!(

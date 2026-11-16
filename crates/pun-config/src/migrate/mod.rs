@@ -83,6 +83,11 @@ pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migrat
     let preset = preset
         .or_else(|| pint.get("preset").and_then(Value::as_str))
         .unwrap_or("laravel");
+    if preset == "symfony" {
+        bail!(
+            "the symfony preset was removed: Pun supports the laravel, psr12, per and empty presets"
+        );
+    }
     let mut rules = preset_rules(preset).context("Preset not found.")?;
     if let Some(r) = pint.get("rules").and_then(Value::as_object) {
         rules.extend(r.clone());

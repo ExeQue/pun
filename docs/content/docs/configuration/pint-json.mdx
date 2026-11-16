@@ -8,7 +8,8 @@ Pun reads `pun.toml`, not `pint.json`. [`pun migrate --from pint`](/docs/command
 | pint.json | pun.toml |
 | --- | --- |
 | `"preset": "laravel"` | `[format] preset = "laravel"` |
-| `"preset": "per"` or `"symfony"` | `preset = "empty"` and the preset's rules in `[format.rules]` |
+| `"preset": "per"` | `preset = "empty"` and the preset's rules in `[format.rules]` |
+| `"preset": "symfony"` | Not supported. `pun migrate` stops with an error |
 | `"rules"` that differ from the preset | `[format.rules]`, with Pun IDs and [option names](/docs/configuration/pun-toml#rule-options) |
 | Risky and code-deleting rules | `[lint.rules]` at `"error"` |
 | `"in"` | `[files] paths` |

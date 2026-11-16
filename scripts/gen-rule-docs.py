@@ -348,7 +348,8 @@ def translation(tool: str) -> str:
 | pint.json | pun.toml |
 | --- | --- |
 | `preset: laravel` or `psr12` | `[format] preset = \"laravel\"` or `\"psr12\"` |
-| `preset: per` or `symfony`, and `@PER-CS` rule sets | Explicit rules over the `empty` format preset |
+| `preset: per`, and `@PER-CS` rule sets | Explicit rules over the `empty` format preset |
+| `preset: symfony` | Not supported: `pun migrate` stops with an error |
 | `rules` | `[format.rules]` for layout; `[lint.rules]` at `\"error\"` for code edits |
 | Rule options | Pun option names and values, on each rule page |
 | `in`, `exclude`, `notName`, `notPath` | `[files] paths`, `exclude`; `[format] not-name`, `not-path` |

@@ -13,7 +13,7 @@ Each command picks its rules on its own. There is no top-level preset.
 | `psr12` | PSR-12 rules |
 | `empty` | Only the rules you turn on |
 
-`[format.rules]` overrides the preset. Pint's `per` and `symfony` are not Pun presets. `pun migrate` expands them into rules over `empty`.
+`[format.rules]` overrides the preset. Pint's `per` is not a Pun preset. `pun migrate` expands it into rules over `empty`. Pun has no `symfony` preset, and `pun migrate` stops with an error on a `pint.json` that uses it.
 
 ## Lint sets
 

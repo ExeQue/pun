@@ -46,11 +46,10 @@ fn cache_dir_in(var: impl Fn(&str) -> Option<std::ffi::OsString>, macos: bool) -
     )
 }
 
-pub const PRESETS: [(&str, &str); 5] = [
+pub const PRESETS: [(&str, &str); 4] = [
     ("laravel", include_str!("../presets/laravel.json")),
     ("per", include_str!("../presets/per.json")),
     ("psr12", include_str!("../presets/psr12.json")),
-    ("symfony", include_str!("../presets/symfony.json")),
     ("empty", include_str!("../presets/empty.json")),
 ];
 
@@ -254,8 +253,11 @@ fn parse(
         bail!("{at}: [format] paths moved to [files] paths, which every command shares");
     }
     match f.preset.as_deref() {
-        Some(p @ ("per" | "symfony")) => bail!(
-            "{at}: [format] preset = \"{p}\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)"
+        Some("per") => bail!(
+            "{at}: [format] preset = \"per\" was removed: use preset = \"empty\" with its rules under [format.rules] (`pun migrate` expands a pint.json that used it)"
+        ),
+        Some("symfony") => bail!(
+            "{at}: [format] preset = \"symfony\" was removed: Pun supports the laravel, psr12 and empty presets"
         ),
         Some(p) if FormatPreset::parse(p).is_none() => {
             bail!("{at}: [format] preset = \"{p}\": expected `laravel`, `psr12` or `empty`")
@@ -299,10 +301,14 @@ fn parse(
         bail!("{at}: [analyse] baseline: \"{b}\" is outside the project");
     }
 
-    if let Some(p @ ("per" | "symfony")) = opts.preset.as_deref() {
-        bail!(
-            "--preset {p} was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset {p}` expands it)"
-        );
+    match opts.preset.as_deref() {
+        Some("per") => bail!(
+            "--preset per was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset per` expands it)"
+        ),
+        Some("symfony") => {
+            bail!("--preset symfony was removed: Pun supports the laravel, psr12 and empty presets")
+        }
+        _ => {}
     }
     let preset = opts.preset.clone().or(f.preset);
     let preset = match preset.as_deref() {

@@ -675,15 +675,14 @@ fn pun_only_behaviour() {
     ] {
         let p = args.last().unwrap().strip_prefix("--preset=").unwrap();
         let (out, err, code) = pun(&dir, args);
+        let want = if p == "per" {
+            "x --preset per was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset per` expands it)\n"
+        } else {
+            "x --preset symfony was removed: Pun supports the laravel, psr12 and empty presets\n"
+        };
         assert_eq!(
-            (out.as_str(), err, code),
-            (
-                "",
-                format!(
-                    "x --preset {p} was removed: use --preset empty with its rules under [format.rules] in pun.toml (`pun migrate --preset {p}` expands it)\n"
-                ),
-                Some(2)
-            ),
+            (out.as_str(), err.as_str(), code),
+            ("", want, Some(2)),
             "{args:?}"
         );
     }
