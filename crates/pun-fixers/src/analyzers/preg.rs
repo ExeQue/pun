@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::ffi::{c_int, c_void};
 use std::hash::{BuildHasherDefault, Hasher};
 use std::rc::Rc;
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 
 pub(crate) const PREG_SPLIT_NO_EMPTY: u32 = 1;
 pub(crate) const PREG_SPLIT_DELIM_CAPTURE: u32 = 2;
@@ -12,14 +13,29 @@ const BACKTRACK_LIMIT: u32 = 1_000_000;
 const RECURSION_LIMIT: u32 = 100_000;
 
 struct Regex {
-    code: Code,
+    code: Arc<Compiled>,
     utf: bool,
     capture_count: usize,
     names: Rc<[(Vec<u8>, usize)]>,
     matcher: Matcher,
 }
 
+/// A compiled and JIT-compiled pattern. PCRE2 only reads it while matching, so every thread shares one copy and
+/// brings its own match data, match context and JIT stack (`Matcher`).
+struct Compiled {
+    code: Code,
+    utf: bool,
+    capture_count: usize,
+    names: Vec<(Vec<u8>, usize)>,
+}
+
 struct Code(*mut pcre2_code_8);
+
+// SAFETY: the pattern is never changed after `compile_code` returns (its JIT compile happens there), and pcre2api
+// allows one compiled pattern, JIT code included, to be matched on several threads at once.
+unsafe impl Send for Code {}
+// SAFETY: see `Send`; every use after compilation reads the pattern.
+unsafe impl Sync for Code {}
 
 impl Drop for Code {
     fn drop(&mut self) {
@@ -104,16 +120,48 @@ thread_local! {
     static JIT_STACK: *mut pcre2_jit_stack_8 = unsafe { pcre2_jit_stack_create_8(32 * 1024, 192 * 1024, std::ptr::null_mut()) };
 }
 
+type SharedSlot = Arc<OnceLock<Option<Arc<Compiled>>>>;
+
+/// Every cached pattern of the run, compiled once for all threads. Each thread keeps its own `Regex` in `CACHE`.
+static COMPILED: LazyLock<Mutex<PatternMap<SharedSlot>>> = LazyLock::new(Mutex::default);
+
 fn compile(pattern: &[u8]) -> Option<Rc<Regex>> {
     if let Some(r) = CACHE.with(|c| c.borrow().get(pattern).cloned()) {
         return r;
     }
-    let r = compile_uncached(pattern).ok().map(Rc::new);
+    let slot = {
+        let mut shared = COMPILED
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Arc::clone(shared.entry(pattern.to_vec()).or_default())
+    };
+    let compiled = slot.get_or_init(|| compile_code(pattern).ok().map(Arc::new));
+    let r = compiled
+        .as_ref()
+        .and_then(|c| Regex::new(Arc::clone(c)).ok())
+        .map(Rc::new);
     CACHE.with(|c| c.borrow_mut().insert(pattern.to_vec(), r.clone()));
     r
 }
 
 fn compile_uncached(pattern: &[u8]) -> Result<Regex, String> {
+    Regex::new(Arc::new(compile_code(pattern)?))
+}
+
+impl Regex {
+    fn new(code: Arc<Compiled>) -> Result<Regex, String> {
+        let matcher = Matcher::new(&code.code).ok_or_else(|| "Internal error".to_string())?;
+        Ok(Regex {
+            utf: code.utf,
+            capture_count: code.capture_count,
+            names: code.names.as_slice().into(),
+            code,
+            matcher,
+        })
+    }
+}
+
+fn compile_code(pattern: &[u8]) -> Result<Compiled, String> {
     let (body, m) = pun_tokens::php_compat::preg_parse(pattern)?;
     let options = [
         (m.caseless, PCRE2_CASELESS),
@@ -169,13 +217,11 @@ fn compile_uncached(pattern: &[u8]) -> Result<Regex, String> {
         })
         .collect();
     debug_assert!(names.is_sorted_by(|a, b| a.0 <= b.0));
-    let matcher = Matcher::new(&code).ok_or_else(|| "Internal error".to_string())?;
-    Ok(Regex {
+    Ok(Compiled {
         code,
         utf,
         capture_count,
-        names: names.into(),
-        matcher,
+        names,
     })
 }
 
@@ -207,7 +253,7 @@ impl Regex {
         // `exec_all`/`split_impl` move past an empty match by a whole character (`unit_len`).
         let rc = unsafe {
             pcre2_match_8(
-                self.code.0,
+                self.code.code.0,
                 subject.as_ptr(),
                 subject.len(),
                 offset,
