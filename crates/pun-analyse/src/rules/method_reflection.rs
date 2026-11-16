@@ -67,6 +67,25 @@ impl<'a> Method<'a> {
         }
     }
 
+    /// A found method with only its declaration and visibility, for a lookup that asks only whether one exists.
+    pub(super) fn shallow(declaring: members::Method<'a>) -> Self {
+        Self {
+            display: String::new(),
+            name: String::new(),
+            variants: params::Variants {
+                all: Vec::new(),
+                named: None,
+            },
+            variant_types: Vec::new(),
+            accepts: true,
+            private: declaring.visibility().is_private(),
+            public: declaring.visibility().is_public(),
+            final_class: false,
+            declaring,
+            compound: false,
+        }
+    }
+
     pub(super) fn union(c: &Checker, mut methods: Vec<Self>, name: &[u8]) -> Option<Self> {
         let mut combined = params::combine(
             &methods

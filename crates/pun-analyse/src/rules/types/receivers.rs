@@ -149,20 +149,29 @@ impl<'a> Checker<'a, '_> {
         t: &Type,
         name: &[u8],
     ) -> Result<Option<method_reflection::Method<'a>>, ()> {
-        self.extended_method(t, name, &mut HashSet::new())
+        self.extended_method(t, name, &mut HashSet::new(), false)
     }
 
+    /// Whether [`Self::reflected_method`] finds `name` on `t` (`Ok(Some(_))`), finds none (`Ok(None)`) or cannot
+    /// tell (`Err`), without building the found methods' parameters, which the answer does not depend on.
+    fn finds_method(&self, t: &Type, name: &[u8]) -> Result<Option<()>, ()> {
+        self.extended_method(t, name, &mut HashSet::new(), true)
+            .map(|m| m.map(|_| ()))
+    }
+
+    /// `shallow` leaves each found method's display, variants and types empty: only whether one is found.
     fn extended_method(
         &self,
         t: &Type,
         name: &[u8],
         active: &mut HashSet<String>,
+        shallow: bool,
     ) -> Result<Option<method_reflection::Method<'a>>, ()> {
         match t {
             Type::Union(ts) | Type::Benevolent(ts) => {
                 let mut methods = Vec::new();
                 for t in ts {
-                    let Some(method) = self.extended_method(t, name, active)? else {
+                    let Some(method) = self.extended_method(t, name, active, shallow)? else {
                         return Ok(None);
                     };
                     methods.push(method);
@@ -172,11 +181,15 @@ impl<'a> Checker<'a, '_> {
             Type::Intersection(ts) => {
                 let methods = ts
                     .iter()
-                    .filter_map(|t| self.extended_method(t, name, active).ok().flatten())
+                    .filter_map(|t| {
+                        self.extended_method(t, name, active, shallow)
+                            .ok()
+                            .flatten()
+                    })
                     .collect();
                 return Ok(method_reflection::Method::intersection(methods, name));
             }
-            Type::Template(t) => return self.extended_method(&t.bound, name, active),
+            Type::Template(t) => return self.extended_method(&t.bound, name, active, shallow),
             _ => {}
         }
         let Some(n) = Self::class_of(t) else {
@@ -199,6 +212,9 @@ impl<'a> Checker<'a, '_> {
             matches!(m, members::Method::User { declaring, .. } if declaring.kind.is_trait())
                 || nominal(&m.declaring_name())
         }) {
+            if shallow {
+                return Ok(Some(method_reflection::Method::shallow(m)));
+            }
             let mut method = method_reflection::Method::leaf(self, t, m);
             let own;
             let receiver_args = match t {
@@ -254,7 +270,7 @@ impl<'a> Checker<'a, '_> {
             return Ok(Some(method));
         }
         if let Some(method) =
-            self.extension_method(MethodPhase::BeforeMixins, t, k, name, active)?
+            self.extension_method(MethodPhase::BeforeMixins, t, k, name, active, shallow)?
         {
             return Ok(Some(method));
         }
@@ -266,7 +282,7 @@ impl<'a> Checker<'a, '_> {
             if !active.insert(key.clone()) {
                 continue;
             }
-            let method = self.extended_method(&mixin, name, active);
+            let method = self.extended_method(&mixin, name, active, shallow);
             active.remove(&key);
             if let Some(method) = method? {
                 return Ok(Some(method));
@@ -298,7 +314,7 @@ impl<'a> Checker<'a, '_> {
                 if !active.insert(key.clone()) {
                     continue;
                 }
-                let method = self.extended_method(&required, name, active);
+                let method = self.extended_method(&required, name, active, shallow);
                 active.remove(&key);
                 if let Some(method) = method? {
                     return Ok(Some(method));
@@ -310,7 +326,7 @@ impl<'a> Checker<'a, '_> {
                     .rev(),
             );
         }
-        self.extension_method(MethodPhase::Last, t, k, name, active)
+        self.extension_method(MethodPhase::Last, t, k, name, active, shallow)
     }
 
     /// The extensions' answer for `name` at `phase` of the lookup.
@@ -321,11 +337,12 @@ impl<'a> Checker<'a, '_> {
         k: &mago_codex::metadata::class_like::ClassLikeMetadata,
         name: &[u8],
         active: &mut HashSet<String>,
+        shallow: bool,
     ) -> Result<Option<method_reflection::Method<'a>>, ()> {
         for e in self.class_reflection_extensions() {
             match e.method(self, phase, t, k, name) {
                 Some(MethodAnswer::Forward(to)) => {
-                    let method = self.extended_method(&to, name, active)?;
+                    let method = self.extended_method(&to, name, active, shallow)?;
                     if method.is_some() || phase == MethodPhase::Last {
                         return Ok(method);
                     }
@@ -417,7 +434,7 @@ impl<'a> Checker<'a, '_> {
             }
             Type::ObjectWithoutClass | Type::Iterable(..) | Type::Callable(_) => Tri::Maybe,
             t => {
-                if matches!(self.method_of_type(t, name), Ok(None)) {
+                if matches!(self.finds_method(t, name), Ok(None)) {
                     Tri::No
                 } else {
                     Tri::Yes
@@ -432,7 +449,7 @@ impl<'a> Checker<'a, '_> {
                 ts.iter().map(|t| self.classes_with(t, name)).sum()
             }
             Type::Template(t) => self.classes_with(&t.bound, name),
-            t => usize::from(matches!(self.method_of_type(t, name), Ok(Some(_)))),
+            t => usize::from(matches!(self.finds_method(t, name), Ok(Some(())))),
         }
     }
 
