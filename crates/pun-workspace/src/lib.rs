@@ -162,8 +162,8 @@ impl Finder {
                     .unwrap()
                     .to_string_lossy()
                     .into_owned();
-                let is_dir = entry.path().is_dir();
-                if is_dir {
+                let kind = entry.file_type();
+                if kind.is_dir() || (kind.is_symlink() && entry.path().is_dir()) {
                     let fname = entry.file_name().to_string_lossy();
                     let pruned = self.excluded_names.iter().any(|n| *n == fname)
                         || (fname.len() > 1 && fname.starts_with('.'))
