@@ -596,6 +596,9 @@ struct Resolved {
 }
 
 pub(super) fn tagged_params(raw: &[u8], names: &[&str]) -> Vec<String> {
+    if !(names.iter()).any(|n| raw.windows(n.len()).any(|w| w == n.as_bytes())) {
+        return Vec::new();
+    }
     let raw = String::from_utf8_lossy(raw);
     raw.lines()
         .filter_map(|l| {

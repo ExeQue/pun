@@ -107,6 +107,9 @@ pub(super) fn parameters(tags: &[phpdoc::Tag]) -> Vec<String> {
 }
 
 fn asserts(tags: &[phpdoc::Tag]) -> Vec<Assert> {
+    if !(tags.iter()).any(|t| matches!(t.value, TagValue::Assert { .. })) {
+        return Vec::new();
+    }
     for prefix in ["@phpstan", "@psalm", "@phan"] {
         let mut found = Vec::new();
         for (suffix, name) in [
