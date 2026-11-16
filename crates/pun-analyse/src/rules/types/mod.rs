@@ -38,7 +38,7 @@ use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 
 pub(super) use access::{property_fetch, static_property_fetch};
-pub(super) use arguments::{arguments, declared_type, is_late};
+pub(super) use arguments::{arguments, declared_type, declared_types, is_late};
 pub(super) use binary_op::{
     assignment as assign_operation, binary as binary_operation, pipe as pipe_operation,
 };

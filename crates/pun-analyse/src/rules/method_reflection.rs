@@ -38,10 +38,9 @@ impl<'a> Method<'a> {
                 .all
                 .iter_mut()
                 .map(|v| {
-                    let types: Vec<_> = (0..v.names.len())
-                        .map(|i| {
-                            let ty = super::types::declared_type(c, v, i)
-                                .unwrap_or_else(pun_phpstan::types::mixed);
+                    let types: Vec<_> = (super::types::declared_types(c, v).into_iter())
+                        .map(|ty| {
+                            let ty = ty.unwrap_or_else(pun_phpstan::types::mixed);
                             called_on(
                                 &super::types::with_args(&ty, &scope, &names, &args),
                                 receiver,

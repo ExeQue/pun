@@ -256,10 +256,9 @@ impl<'a> Checker<'a, '_> {
                 let scope = format!("class {class}");
                 declared::with_classes(self, || {
                     for variant in &mut method.variants.all {
-                        variant.param_types = (0..variant.names.len())
-                            .map(|i| {
-                                let ty = super::declared_type(self, variant, i)
-                                    .unwrap_or_else(pun_phpstan::types::mixed);
+                        variant.param_types = (super::declared_types(self, variant).into_iter())
+                            .map(|ty| {
+                                let ty = ty.unwrap_or_else(pun_phpstan::types::mixed);
                                 let ty = super::properties::with_args(&ty, &scope, &names, &args);
                                 params::ParamType::Typed(method_reflection::called_on(&ty, t))
                             })

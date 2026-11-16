@@ -63,6 +63,26 @@ pub(in super::super) fn declared_type(c: &Checker, acceptor: &Acceptor, p: usize
     }
 }
 
+/// [`declared_type`] of every parameter, with a user function's parameters reflected once instead of once per
+/// parameter.
+pub(in super::super) fn declared_types(c: &Checker, acceptor: &Acceptor) -> Vec<Option<Type>> {
+    let mut user: Option<Option<Vec<Type>>> = None;
+    (0..acceptor.names.len())
+        .map(|p| match &acceptor.param_types[p] {
+            ParamType::User => user
+                .get_or_insert_with(|| {
+                    let (f, declaring) = acceptor.user(c)?;
+                    let name = &acceptor.callee.as_ref()?.reflected_name;
+                    Some(declared::reflected_params(c, f, declaring, name))
+                })
+                .as_ref()?
+                .get(p)
+                .cloned(),
+            _ => declared_type(c, acceptor, p),
+        })
+        .collect()
+}
+
 fn return_type(c: &Checker, acceptor: &Acceptor) -> Option<Type> {
     let (f, declaring) = acceptor.user(c)?;
     Some(declared::codex_return_type(
@@ -123,11 +143,7 @@ fn infer(
     args: &[Entry],
     parameters: &[Option<usize>],
 ) -> Inference {
-    let declared: Vec<Option<Type>> = declared::with_classes(c, || {
-        (0..acceptor.names.len())
-            .map(|p| declared_type(c, acceptor, p))
-            .collect()
-    });
+    let declared: Vec<Option<Type>> = declared::with_classes(c, || declared_types(c, acceptor));
     let templates = std::cell::RefCell::new(Vec::new());
     fn collect(t: &Type, out: &std::cell::RefCell<Vec<Template>>) {
         if let Type::Template(tt) = t
