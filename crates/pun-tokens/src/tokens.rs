@@ -239,6 +239,7 @@ impl Tokens {
         let mut raw = crate::lexer::tokenize(code);
         crate::parse_mode::apply_parse_mode(&mut raw);
         self.tokens.clear();
+        self.tokens.reserve(raw.len());
         self.found_kinds = vec![0; Kind::ALL.len()];
         self.found_contents.clear();
         for r in &raw {
