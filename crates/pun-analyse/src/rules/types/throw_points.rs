@@ -282,14 +282,28 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
     }
 
     fn call_point(&mut self, at: Span, callee: &Callee, function: bool, args: usize) {
-        let ty = match self.throw_type(callee) {
-            Ok(ty) => ty,
-            Err(()) => {
-                self.points.push(Point::unknown(at));
-                return;
+        let (ty, ret) = match callee {
+            Callee::User { f, declaring, name } if !f.flags.is_magic_method() => {
+                let (ty, ret) = self.with_classes(|| {
+                    declared::reflected_throws_and_return(self.c, f, *declaring, name)
+                });
+                if ty.as_ref().is_some_and(has_conditional) {
+                    self.points.push(Point::unknown(at));
+                    return;
+                }
+                (ty, ret)
+            }
+            _ => {
+                let ty = match self.throw_type(callee) {
+                    Ok(ty) => ty,
+                    Err(()) => {
+                        self.points.push(Point::unknown(at));
+                        return;
+                    }
+                };
+                (ty, self.return_type(callee))
             }
         };
-        let ret = self.return_type(callee);
         let ty = ty.or_else(|| {
             matches!(
                 ret,

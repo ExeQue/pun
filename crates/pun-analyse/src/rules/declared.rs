@@ -428,6 +428,25 @@ pub(super) fn codex_return_type(
     )
 }
 
+/// [`reflected_throws`] and [`codex_return_type`] from one reading of the method's docblocks.
+pub(super) fn reflected_throws_and_return(
+    c: &Checker,
+    f: &FunctionLikeMetadata,
+    declaring: Option<&ClassLikeMetadata>,
+    name: &str,
+) -> (Option<Type>, Type) {
+    let doc = reflected_doc(c, f, declaring, name);
+    let native = f
+        .return_type_declaration_metadata
+        .as_ref()
+        .map(|t| native_declaration(c, t, declaring))
+        .or_else(|| declaring.and_then(|_| magic_return(name.as_bytes())));
+    (
+        doc.throws,
+        decide_type(native.unwrap_or_else(mixed), doc.ret),
+    )
+}
+
 pub(super) fn reflected_throws(
     c: &Checker,
     f: &FunctionLikeMetadata,
