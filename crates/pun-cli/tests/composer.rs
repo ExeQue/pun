@@ -50,6 +50,9 @@ fn shim_runs_the_workspace_version_with_its_arguments() {
         assert_eq!(via_shim.stdout, direct.stdout, "stdout of {args:?}");
     }
 
+    // A new file at the same path, not a write into the old one: Linux refuses to write to a binary any process still
+    // executes (ETXTBSY), and a just-exited run can hold it for a moment.
+    std::fs::remove_file(&binary).unwrap();
     std::fs::write(&binary, "not a binary").unwrap();
     let broken = run(Command::new("php").arg(dir.join("pun")).current_dir(&dir));
     assert_eq!(broken.status.code(), Some(2));
