@@ -48,6 +48,20 @@ function punOptionInfosToSchemas(`,
             ],
         ],
     },
+    // prettier-plugin-tailwindcss resolves Tailwind from a file's directory up to three times per file, and caches the
+    // answer only for directories whose path is at least as long as Tailwind's package directory, which leaves out
+    // resources/views and its shorter subdirectories. Caching it for the file's own directory as well gives the same
+    // answer, from the same expiring cache, without resolving again.
+    {
+        matches: (href) => href.includes("/prettier-plugin-tailwindcss/dist/"),
+        edits: [
+            [
+                "\tif (pkgDir) cacheForDirs(resolvedModCache, baseDir, result, pkgDir, makeKey);\n",
+                "\tif (pkgDir) cacheForDirs(resolvedModCache, baseDir, result, pkgDir, makeKey);\n" +
+                    "\tif (pkgDir && resolvedModCache.get(makeKey(baseDir)) === void 0) resolvedModCache.set(makeKey(baseDir), result);\n",
+            ],
+        ],
+    },
 ]);
 
 const prettier = require(prettierEntry);
