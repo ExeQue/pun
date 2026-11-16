@@ -705,6 +705,32 @@ impl Tokens {
         self.tokens = tokens;
     }
 
+    /// Replaces every token `expand` returns tokens for with those tokens, building the collection once: the result
+    /// of `override_range(i, i, tokens)` at each such index, without moving the tail once per index.
+    pub(crate) fn expand_each(&mut self, expand: impl Fn(&Token) -> Option<Vec<Token>>) {
+        let old = std::mem::take(&mut self.tokens);
+        let mut tokens = Vec::with_capacity(old.len() + old.len() / 8);
+        let mut expanded = false;
+        for token in old {
+            let Some(new) = expand(&token) else {
+                tokens.push(token);
+                continue;
+            };
+            expanded = true;
+            self.unregister_found_token(&token);
+            for t in &new {
+                self.register_found_token(t);
+            }
+            tokens.extend(new);
+        }
+        self.tokens = tokens;
+        if expanded {
+            self.changed = true;
+            *self.blocks.get_mut() = BlockCache::default();
+            self.drop_derived();
+        }
+    }
+
     pub fn is_empty_at(&self, index: usize) -> bool {
         let t = &self.tokens[index];
         t.id.is_none() && t.content.is_empty()

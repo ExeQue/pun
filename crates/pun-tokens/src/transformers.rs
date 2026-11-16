@@ -1,38 +1,73 @@
 use crate::kind::Kind::{self, *};
-use crate::token::{Proto, Token, c, idx, k};
+use crate::token::{FoundKey, Proto, Token, c, idx, k};
 use crate::tokens::Tokens;
 
 type Process = fn(&mut Tokens, usize);
 
-const TRANSFORMERS: &[Process] = &[
-    attribute,
-    name_qualified,
-    first_class_callable,
-    class_constant,
-    return_ref,
-    namespace_operator,
-    whitespacy_comment,
-    brace,
-    array_typehint,
-    constructor_promotion,
-    square_brace,
-    import,
-    brace_class_instantiation,
-    use_,
-    type_colon,
-    type_alternation,
-    named_argument,
-    type_intersection,
-    dnf_type_parenthesis,
-    nullable_type,
+enum Pass {
+    /// A transformer run at every index in turn. The keys are what its first check needs: when the collection holds
+    /// none of them, no index gets past that check, so the pass is skipped. An empty list runs it always.
+    Each(Process, &'static [FoundKey<'static>]),
+    Names,
+}
+
+const fn kind(k: Kind) -> FoundKey<'static> {
+    FoundKey::Kind(k)
+}
+
+const fn content(s: &'static str) -> FoundKey<'static> {
+    FoundKey::Content(s.as_bytes())
+}
+
+const AMPERSAND: &[FoundKey<'static>] = &[
+    content("&"),
+    kind(T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG),
+    kind(T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG),
+];
+
+const TRANSFORMERS: &[Pass] = &[
+    Pass::Each(attribute, &[kind(T_ATTRIBUTE)]),
+    Pass::Names,
+    Pass::Each(first_class_callable, &[kind(T_ELLIPSIS)]),
+    Pass::Each(class_constant, &[]),
+    Pass::Each(return_ref, AMPERSAND),
+    Pass::Each(namespace_operator, &[kind(T_NAMESPACE)]),
+    Pass::Each(whitespacy_comment, &[kind(T_COMMENT), kind(T_DOC_COMMENT)]),
+    Pass::Each(brace, &[]),
+    Pass::Each(array_typehint, &[kind(T_ARRAY)]),
+    Pass::Each(constructor_promotion, &[kind(T_FUNCTION)]),
+    Pass::Each(square_brace, &[content("[")]),
+    Pass::Each(import, &[kind(T_CONST), kind(T_FUNCTION)]),
+    Pass::Each(brace_class_instantiation, &[]),
+    Pass::Each(
+        use_,
+        &[kind(T_USE), kind(T_CLASS), kind(T_TRAIT), kind(T_ENUM)],
+    ),
+    Pass::Each(type_colon, &[content(":")]),
+    Pass::Each(type_alternation, &[content("|")]),
+    Pass::Each(named_argument, &[content(":")]),
+    Pass::Each(
+        type_intersection,
+        &[kind(T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG)],
+    ),
+    Pass::Each(dnf_type_parenthesis, &[]),
+    Pass::Each(nullable_type, &[content("?")]),
 ];
 
 pub fn transform(tokens: &mut Tokens) {
-    for process in TRANSFORMERS {
-        let mut index = 0;
-        while index < tokens.len() {
-            process(tokens, index);
-            index += 1;
+    for pass in TRANSFORMERS {
+        match pass {
+            Pass::Names => name_qualified(tokens),
+            Pass::Each(process, keys) => {
+                if !keys.is_empty() && !keys.iter().any(|&k| tokens.is_token_kind_found(k)) {
+                    continue;
+                }
+                let mut index = 0;
+                while index < tokens.len() {
+                    process(tokens, index);
+                    index += 1;
+                }
+            }
         }
     }
 }
@@ -83,16 +118,24 @@ pub fn tokenize_name(name: &[u8]) -> Vec<Token> {
     out
 }
 
-fn name_qualified(tokens: &mut Tokens, index: usize) {
-    let t = &tokens[index];
-    if t.is_given_kind(&[T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED]) {
-        let new = tokenize_name(&t.content);
-        tokens.override_range(index, index, new);
-    } else if t.is_kind(T_NAME_RELATIVE) {
-        let mut new = tokenize_name(&t.content);
-        new[0] = Token::new(T_NAMESPACE, "namespace");
-        tokens.override_range(index, index, new);
+/// Splits each qualified name into its parts, like `override_range(i, i, parts)` at every name in turn.
+fn name_qualified(tokens: &mut Tokens) {
+    if !tokens.is_any_token_kinds_found(&[
+        T_NAME_QUALIFIED,
+        T_NAME_FULLY_QUALIFIED,
+        T_NAME_RELATIVE,
+    ]) {
+        return;
     }
+    tokens.expand_each(|t| match t.id {
+        Some(T_NAME_QUALIFIED | T_NAME_FULLY_QUALIFIED) => Some(tokenize_name(&t.content)),
+        Some(T_NAME_RELATIVE) => {
+            let mut new = tokenize_name(&t.content);
+            new[0] = Token::new(T_NAMESPACE, "namespace");
+            Some(new)
+        }
+        _ => None,
+    });
 }
 
 fn first_class_callable(tokens: &mut Tokens, index: usize) {
