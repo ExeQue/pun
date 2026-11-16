@@ -31,7 +31,8 @@ v0.1.0, the first stable release, is out (2026-11-14). CI runs on GitHub again a
   the plugin host on Composer 2.11.2 for the script events (plan/packages.md step 7).
 - **Green on main** (8e11612, 2026-11-14): every CI job passes (rule mapping and generated docs, rustfmt, clippy
   with `-D warnings`, the workspace tests, the harness on pinkary and laravel-framework, fuzz). CI's test jobs run
-  under cargo-nextest. The nightly Coverage workflow fails: five crates are under 100% (reports/COVERAGE.md).
+  under cargo-nextest. The Coverage workflow runs only on request (`gh workflow run coverage.yml`) and fails: five crates are under 100%
+  (reports/COVERAGE.md).
 - **Test time:** the 175 test files of `punphp-analyse` build as one test binary (`tests/main.rs`), so
   `cargo test -p punphp-analyse` (or `cargo nextest run -p punphp-analyse`) runs them in parallel; CI runs it in
   its own `analyse` job. `levels` and `rules` also run their cases in parallel, and test builds compile

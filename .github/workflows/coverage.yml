@@ -1,9 +1,7 @@
 name: Coverage
 
-# The instrumented run of every test takes over half an hour, so it runs each night and on request, not on a push.
+# The instrumented run of every test takes over half an hour, so it runs only on request, not on a push or a schedule.
 on:
-  schedule:
-    - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:

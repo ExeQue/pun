@@ -7,12 +7,12 @@ Status: housekeeping parts that every command depends on (old components C0, C10
 
 **Today.** Cargo workspace (12 crates, `punphp-<x>` packages, all `publish = false`, every one on the shared
 `[workspace.lints]`; Mago pinned at `=1.57.0`). CI runs the rule-mapping and docs checks, rustfmt, clippy with
-`-D warnings`, the tests under cargo-nextest (`punphp-analyse` in its own job), parity and fuzz; a nightly Coverage
-workflow runs `scripts/coverage.sh` (100% per crate); cargo-dist releases on tags. CI is enabled on GitHub and green
+`-D warnings`, the tests under cargo-nextest (`punphp-analyse` in its own job), parity and fuzz; a Coverage
+workflow, run on request, runs `scripts/coverage.sh` (100% per crate); cargo-dist releases on tags. CI is enabled on GitHub and green
 on main. The oracle is pinned in `.oracle/` (reference/oracle.md); 7 corpus projects (`corpus/manifest.toml`).
 
 **Build.**
-1. Get coverage green: the nightly Coverage workflow fails, with five crates under 100% (reports/COVERAGE.md).
+1. Get coverage green: the Coverage workflow (run on request) fails, with five crates under 100% (reports/COVERAGE.md).
 2. Update AGENTS.md when the new design lands: rule names, no delegate mode, and "output must match upstream" narrowed
    to exit codes and machine formats.
 
