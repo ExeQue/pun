@@ -984,27 +984,36 @@ fn ancestor_types(class: &ClassLikeMetadata, declaring: &ClassLikeMetadata, t: &
     ) else {
         return t.clone();
     };
-    let Some(args) = k.generics.get(&d.name) else {
+    let Some(written) = k.generics.get(&d.name) else {
         return t.clone();
     };
-    let args: Vec<Type> = args
-        .iter()
-        .map(|s| pun_phpstan::resolve::resolve_str(s, Some(&k.name)))
-        .collect();
+    // The arguments are resolved at the first template they replace: most types have none.
+    let resolve = || -> Vec<Type> {
+        (written.iter())
+            .map(|s| pun_phpstan::resolve::resolve_str(s, Some(&k.name)))
+            .collect()
+    };
+    let args = std::cell::OnceCell::new();
     let scope = format!("class {}", d.name);
-    fn map(t: &Type, scope: &str, d: &symbols::Class, args: &[Type]) -> Type {
+    fn map(
+        t: &Type,
+        scope: &str,
+        d: &symbols::Class,
+        args: &std::cell::OnceCell<Vec<Type>>,
+        resolve: &dyn Fn() -> Vec<Type>,
+    ) -> Type {
         match t {
             Type::Template(tpl) if tpl.scope == scope => d
                 .templates
                 .iter()
                 .position(|x| x.name == tpl.name)
-                .and_then(|i| args.get(i))
+                .and_then(|i| args.get_or_init(resolve).get(i))
                 .cloned()
                 .unwrap_or_else(|| t.clone()),
-            _ => t.traverse(&|i| map(i, scope, d, args)),
+            _ => t.traverse(&|i| map(i, scope, d, args, resolve)),
         }
     }
-    map(t, &scope, &d, &args)
+    map(t, &scope, &d, &args, &resolve)
 }
 
 fn merge(
