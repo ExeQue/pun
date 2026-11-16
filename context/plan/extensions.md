@@ -1,7 +1,7 @@
 # Extensions
 
-Laravel, Larastan, Pest, PHPUnit and Doctrine support moves out of Pun's core into extensions. Each extension uses the
-same API that a Symfony extension, or any other third-party extension, would use. The model is Mago's built-in Rust
+Laravel, Larastan, Pest and PHPUnit support moves out of Pun's core into extensions. Each extension uses the
+same API that any other extension would use. The model is Mago's built-in Rust
 plugins (`mago-analyzer`'s `Plugin` trait and `ALL_PLUGINS`), widened to every command. Extensions are Rust only for
 now (Pushpak, 2026-11-14).
 
@@ -35,7 +35,7 @@ pub trait Extension: Send + Sync {
     fn packages(&self, _: &mut pun_packages::PluginRegistry) {}
 }
 
-pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit, &Doctrine];
+pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit];
 ```
 
 `ExtensionMeta` lives in `pun-config` and holds only data:
@@ -72,11 +72,20 @@ pub static ALL: &[&dyn Extension] = &[&Laravel, &Pest, &Phpunit, &Doctrine];
 
 ```toml
 [extensions]
-laravel = "auto"   # the default: on when composer.lock locks one of the extension's packages
-pest = "off"
-symfony = "on"
+laravel = "on"
+pest = "on"
 ```
 
+Decided (Pushpak, 2026-11-16): an extension is on only when `[extensions]` says `"on"`. A locked package never turns
+one on by itself, so pun.toml alone shows what runs. `pun migrate` and `pun init` write `"on"` for each extension
+whose package composer.lock locks. `"auto"` is a config error that says so.
+
+- An extension that is on brings every rule of its groups that sits in some lint set, whatever `[lint] sets` lists;
+  its rules in no set (its upgrade groups, opinionated codemods) stay opt-in by name or group. Analyse rules still
+  follow the analyse preset.
+- Format rules don't depend on extensions: `format/laravel/blade` stays a `[format.rules]` entry, which migrate writes
+  only when pint.json turns it on, as Pint does.
+- Doctrine and Symfony support is removed; the built-in extensions are Laravel, Pest and PHPUnit.
 - The existing `[lint.groups]` and `[analyse.rules]` group switches keep working.
 - `pun config` prints the resolved `[extensions]` table.
 
@@ -115,7 +124,7 @@ No step changes output. Every step must keep these green: the parity tests, `pun
    extension's.
 4. **The format registry.**
    - `build.rs` emits `core()`, `laravel()` and `pest()`.
-   - The `php_unit_*` and Doctrine fixers stay core, because PHP-CS-Fixer ships them in its core.
+   - The `php_unit_*` fixers stay core, because PHP-CS-Fixer ships them in its core.
 5. **`AnalyseExtension`, one seam at a time.** Larastan implements it in place, in this order:
    1. stubs and codebase setup;
    2. providers and settings;

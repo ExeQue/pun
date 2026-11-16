@@ -78,6 +78,10 @@ PHPStan baselines aren't copied. Run `pun analyse --generate-baseline`, then set
 
 ## File changes and errors
 
+## Extensions
+
+Migration turns on each [extension](/docs/configuration/pun-toml#extensions) whose package `composer.lock` locks, in `[extensions]`: `laravel` for `laravel/framework`, `pest` for `pestphp/pest`, and `phpunit` for `phpunit/phpunit`. Each extension brings its own rules, so `pun.toml` lists only the rules your configs change. Nothing else turns an extension on: delete its line, or set it to `"off"`, to drop its rules. Blade formatting stays off unless `pint.json` turns it on.
+
 Migration leaves the source configs, `composer.json`, and `composer.lock` alone. The [package commands](/docs/commands/install) keep reading Composer's files. Migration may rewrite ignore comments in PHP files. It doesn't edit scripts, CI, hooks, or editor settings.
 
 A second run leaves an identical `pun.toml` alone and refuses to overwrite a different one.

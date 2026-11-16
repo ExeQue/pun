@@ -114,7 +114,8 @@ def bench_format() -> None:
             if (src / "node_modules").is_dir():
                 (work / "node_modules").symlink_to((src / "node_modules").resolve())
             # A phpstan include from vendor/ (the checkout has none) would make `pun migrate` fail; format needs neither.
-            for extra in [*work.glob("phpstan*.neon*"), work / "rector.php"]:
+            # Without composer.lock migrate turns on no extension, so `pun check` adds no lint rules Pint doesn't run.
+            for extra in [*work.glob("phpstan*.neon*"), work / "rector.php", work / "composer.lock"]:
                 extra.unlink(missing_ok=True)
             subprocess.run([pun, "migrate", "--yes"], cwd=work, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             cold_cache = scratch / f"{name}.pint.cache"

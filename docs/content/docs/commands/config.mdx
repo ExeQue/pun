@@ -18,7 +18,7 @@ pun config --preset psr12
 | Command `rules` tables | Enabled rules after preset, set, group, and rule settings, with levels and options |
 | `[[lint.overrides]]` | Path overrides as configured, not applied to a file |
 | Command `exclude` lists | Shared exclusions plus command-specific exclusions |
-| `[extensions]` | Each extension as `"on"` or `"off"`, after `"auto"` reads the lock |
+| `[extensions]` | Each extension as `"on"` or `"off"`; one pun.toml leaves out is `"off"` |
 | `ecosystems` | The extensions on for that command, minus those whose group is `"off"` |
 | `[analyse] switches` | The preset's type switches, which with the enabled rules set the analysis level |
 | `[php] version` | The explicit setting, otherwise the lowest version `require.php` allows, otherwise 8.4 |

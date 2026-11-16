@@ -95,8 +95,14 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         (style, sets, analyse)
     };
     let style = STYLES[style as usize];
+    let extensions = pun_config::migrate::extensions(&composer);
+    let extensions = if extensions.is_empty() {
+        String::new()
+    } else {
+        format!("[extensions]\n{extensions}\n")
+    };
     let toml = format!(
-        "# Written by `pun init`.\n[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{}]\n\n[analyse]\npreset = \"{analyse}\"\n",
+        "# Written by `pun init`.\n{extensions}[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{}]\n\n[analyse]\npreset = \"{analyse}\"\n",
         sets.iter()
             .map(|s| format!("\"{s}\""))
             .collect::<Vec<_>>()
@@ -110,6 +116,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
             format!("style {style}"),
             format!("lint sets {}", none_or(&sets.join(" "))),
             format!("analyse {analyse}"),
+            format!("extensions {}", none_or(&ids(&composer).join(" "))),
         ];
         let next = ["next: run `pun check`, `pun check --fix` before committing; add `pun check` to CI and composer scripts".to_string()];
         print!("{}", agent::render("ok", &detail, "", &next, false));
@@ -121,7 +128,7 @@ pub(crate) fn run(a: InitArgs) -> Result<Exit> {
         println!("Analysis preset: {analyse}");
     }
     if let Some(eco) = ecosystems(&composer) {
-        println!("\n  {eco} rules turn on by themselves (composer.lock).");
+        println!("\n  Extensions on from composer.lock: {eco}. See [extensions] in pun.toml.");
     }
     let r = Renderer::new(Look::stdout(ColorChoice::Auto), &root);
     println!("\n  {}", r.done("Wrote pun.toml").trim_end());
@@ -251,11 +258,16 @@ fn found(root: &Path, c: &Composer) -> String {
     format!("Found {} ({})", parts.join(", "), files.join(", "))
 }
 
-/// The ecosystems composer.lock turns on, as the line after the questions names them.
+/// The extensions init turns on, as the line after the questions names them.
 fn ecosystems(c: &Composer) -> Option<String> {
-    let names: Vec<String> = (pun_config::extensions::ALL.into_iter())
-        .filter(|e| e.packages.first().is_some_and(|p| c.locked(p).is_some()))
+    let names: Vec<String> = (pun_config::extensions::detected(c).into_iter())
         .map(|e| e.name.to_string())
         .collect();
     (!names.is_empty()).then(|| and(&names))
+}
+
+fn ids(c: &Composer) -> Vec<&'static str> {
+    (pun_config::extensions::detected(c).into_iter())
+        .map(|e| e.id)
+        .collect()
 }

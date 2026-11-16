@@ -146,6 +146,13 @@ fn main() -> Result<ExitCode> {
                     .current_dir(&pun_dir);
                 c
             };
+            // Pint reads no composer.lock. Hidden from migrate, it turns on no extension, whose lint rules
+            // `check --fix` would apply on top of what pint.json asks for; put back for the comparison.
+            let (lock, hidden) = (
+                pun_dir.join("composer.lock"),
+                tmp.join(&p.name).join("composer.lock"),
+            );
+            let had_lock = fs::rename(&lock, &hidden).is_ok();
             let mut migrate_args = args.clone();
             if fixer.is_none() && !src.join("pint.json").exists() {
                 let defaults = tmp.join(&p.name).join("pint-defaults.json");
@@ -156,6 +163,9 @@ fn main() -> Result<ExitCode> {
                 pun_cmd(&["migrate", "--from", "pint"]).args(&migrate_args),
                 "pun migrate",
             )?;
+            if had_lock {
+                fs::rename(&hidden, &lock)?;
+            }
             run(&mut pun_cmd(&["check", "--fix"]), "pun")?;
         }
 

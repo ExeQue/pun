@@ -14,7 +14,8 @@ paths = ["app", "tests"]
 exclude = ["build", "storage"]
 
 [extensions]
-pest = "off"
+laravel = "on"
+pest = "on"
 
 [format]
 preset = "laravel"
@@ -66,22 +67,22 @@ A plain entry is a path from the project root, except in format, which matches a
 
 ## [extensions]
 
-Extensions add the rules and analysis for a framework or test tool.
+Extensions add the rules and analysis for a framework or test tool. Each one is off until `[extensions]` turns it on, so `pun.toml` alone shows what runs. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) turn on each extension whose package [`composer.lock`](#dependencies) locks.
 
-| Extension | Default on when `composer.lock` has | Rule groups |
+| Extension | Package `pun migrate` looks for | What it turns on |
 | --- | --- | --- |
-| `laravel` | `laravel/framework` | `laravel`, `laravel-*`, and Larastan's analysis |
-| `pest` | `pestphp/pest` | `pest` |
-| `phpunit` | `phpunit/phpunit` | `phpunit` |
-| `doctrine` | never | `doctrine` |
+| `laravel` | `laravel/framework` | The `laravel` lint rules, the `laravel` analyse rules up to your preset, and Larastan's analysis |
+| `pest` | `pestphp/pest` | The `pest` lint rules |
+| `phpunit` | `phpunit/phpunit` | The `phpunit` lint rules |
 
 | Value | Effect |
 | --- | --- |
-| `"auto"` (default) | On when [`composer.lock`](#dependencies) locks the package |
-| `"on"` | Always on |
-| `"off"` | Off for every command, as if each group were `"off"` |
+| `"on"` | On for every command |
+| `"off"`, or left out | Off |
 
-A rule or group you name in `[lint.groups]`, `[lint.rules]`, or `[analyse.rules]` still applies. Format rules don't depend on extensions. An unknown extension name is a config error. [`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
+An extension that is on brings its lint rules whatever `[lint] sets` lists. Its opinionated rules and its upgrade groups, such as `laravel-12`, stay opt-in: name them in `[lint.rules]` or `[lint.groups]`. To turn part of an extension off, set its group to `"off"` in `[lint.groups]` or `[analyse.rules]`, or a single rule to `"off"`. A rule you name in `[lint.rules]` runs even when its extension is off.
+
+Format rules don't depend on extensions: Blade formatting is `"laravel/blade" = true` in `[format.rules]`, which `pun migrate` writes only when `pint.json` turns it on. An unknown extension name is a config error. [`pun extension list`](/docs/commands/extension) shows which extensions are on, and why.
 
 ## [format]
 
@@ -114,7 +115,7 @@ Later settings win, in this order:
 
 Warnings don't fail the run unless you set a warning limit. `--fix` skips rules with `fix = "off"`.
 
-Laravel, Pest, and PHPUnit rules in sets depend on [`[extensions]`](#extensions). PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` turn on only when you name them.
+Laravel, Pest, and PHPUnit rules come from [`[extensions]`](#extensions), not from sets. PHP upgrade rules depend on `[php] version`. Groups such as `laravel-12` turn on only when you name them.
 
 ## [analyse]
 

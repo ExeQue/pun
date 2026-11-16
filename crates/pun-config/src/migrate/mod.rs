@@ -12,6 +12,7 @@ use std::path::Path;
 #[derive(Debug, Clone, Default)]
 pub struct Parts {
     pub files: String,
+    pub extensions: String,
     pub format: String,
     pub format_rules: String,
     pub lint: String,
@@ -40,6 +41,7 @@ impl Parts {
         };
         let sections = [
             ("[files]\n", self.files.clone()),
+            ("[extensions]\n", self.extensions.clone()),
             ("[format]\n", self.format.clone()),
             ("[format.rules]\n", self.format_rules.clone()),
             ("[lint]\n", self.lint.clone()),
@@ -67,6 +69,14 @@ pub struct Migration {
 }
 
 pub type Runs<'a> = &'a dyn Fn(&str) -> bool;
+
+/// `[extensions]`'s body: each extension `composer` shows the project uses, turned on.
+pub fn extensions(composer: &crate::composer::Composer) -> String {
+    (crate::extensions::detected(composer).into_iter()).fold(String::new(), |mut out, e| {
+        let _ = writeln!(out, "{} = \"on\"", e.id);
+        out
+    })
+}
 
 pub fn from_pint(path: &Path, preset: Option<&str>, runs: Runs) -> Result<Migration> {
     let pint = read_pint_json(path)?;

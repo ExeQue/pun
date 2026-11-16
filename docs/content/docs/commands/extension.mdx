@@ -3,7 +3,7 @@ title: pun extension
 description: List the built-in extensions and whether each is on for the project.
 ---
 
-An extension adds rules and analysis for a framework or test tool. `pun extension list` prints each one's ID, `on` or `off`, and why.
+An extension adds the rules and analysis for a framework or test tool. `pun extension list` prints each one's ID, `on` or `off`, and why.
 
 ```bash
 pun extension list
@@ -11,24 +11,22 @@ pun extension list --format json
 ```
 
 ```text
-laravel   on   Laravel's rules and Larastan's analysis: laravel/framework v12.4.1 is locked
-pest      off  Rules for Pest tests: off in pun.toml
-phpunit   off  Rules for PHPUnit tests: phpunit/phpunit is not locked
-doctrine  off  Rules for Doctrine annotations: no package turns it on; set doctrine = "on" in [extensions]
+laravel  on   Laravel's rules and Larastan's analysis: on in pun.toml
+pest     off  Rules for Pest tests: pestphp/pest v4.1.0 is locked; turn it on with pest = "on" in [extensions]
+phpunit  off  Rules for PHPUnit tests: not in pun.toml
 ```
 
 | Extension | Adds |
 | --- | --- |
-| `laravel` | The `laravel` and `laravel-*` lint and analyse groups, the `format/laravel/blade` rule, and Larastan's analysis |
+| `laravel` | The `laravel` lint and analyse groups and Larastan's analysis. The `laravel-*` upgrade groups and `format/laravel/blade` stay opt-in |
 | `pest` | The `pest` lint group |
 | `phpunit` | The `phpunit` lint group |
-| `doctrine` | No rules. The `format/doctrine` rules are core format rules and don't need it. |
 
-An extension is on when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`, or when it is `"auto"` (the default) and [`composer.lock`](/docs/configuration/pun-toml#dependencies) locks its package. Format rules don't depend on extensions.
+An extension is on only when [`[extensions]`](/docs/configuration/pun-toml#extensions) sets it to `"on"`. A locked package never turns one on by itself. [`pun migrate`](/docs/commands/migrate) and [`pun init`](/docs/commands/init) write `"on"` for each extension whose package `composer.lock` locks.
 
 ## Options
 
 | Flag | Meaning |
 | --- | --- |
-| `--format json` | Print a JSON array of each extension's `id`, `name`, `description`, `on`, `switch` (`auto`, `on`, or `off`), `packages`, and `groups`. |
+| `--format json` | Print a JSON array of each extension's `id`, `name`, `description`, `on`, `switch` (`on`, `off`, or `null` when pun.toml leaves it out), `packages`, and `groups`. |
 | `--config <path>` | Read another `pun.toml`. Default: `pun.toml`, if it exists. |

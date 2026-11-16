@@ -21,9 +21,14 @@ On a terminal, `pun init` asks three questions:
 | Lint sets | The eight [lint sets](/docs/configuration/presets#lint-sets) | `dead-code`, `modernize` | `--lint-sets a,b` |
 | Analyse preset | `basic`, `essential`, `recommended`, `strict`, `max` | `recommended` | `--analyse` |
 
-`--lint-sets ""` selects no lint sets. The generated config contains only the three choices:
+`--lint-sets ""` selects no lint sets. Init also turns on each [extension](/docs/configuration/pun-toml#extensions) whose package `composer.lock` locks. For a Laravel app tested with Pest, the generated config is:
 
 ```toml
+[extensions]
+laravel = "on"
+pest = "on"
+phpunit = "on"
+
 [format]
 preset = "laravel"
 

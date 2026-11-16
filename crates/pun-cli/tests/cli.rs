@@ -828,17 +828,14 @@ fn extension_list_says_why_each_is_on() {
                 "composer.lock",
                 r#"{"packages":[{"name":"laravel/framework","version":"v12.4.1"}],"packages-dev":[{"name":"pestphp/pest","version":"v4.1.0"}]}"#,
             ),
-            (
-                "pun.toml",
-                "[extensions]\npest = \"off\"\ndoctrine = \"on\"\n",
-            ),
+            ("pun.toml", "[extensions]\nlaravel = \"on\"\n"),
         ],
     );
-    let want = r"laravel   on   Laravel's rules and Larastan's analysis: laravel/framework v12.4.1 is locked
-pest      off  Rules for Pest tests: off in pun.toml
-phpunit   off  Rules for PHPUnit tests: phpunit/phpunit is not locked
-doctrine  on   Rules for Doctrine annotations: on in pun.toml
-";
+    // A locked package alone turns nothing on: pest is off, and the list says how to turn it on.
+    let want = r#"laravel  on   Laravel's rules and Larastan's analysis: on in pun.toml
+pest     off  Rules for Pest tests: pestphp/pest v4.1.0 is locked; turn it on with pest = "on" in [extensions]
+phpunit  off  Rules for PHPUnit tests: not in pun.toml
+"#;
     assert_eq!(
         pun(&dir, &["extension", "list"]),
         (want.into(), String::new(), Some(0))
@@ -850,7 +847,7 @@ doctrine  on   Rules for Doctrine annotations: on in pun.toml
             (
                 e["id"].as_str().unwrap(),
                 e["on"].as_bool().unwrap(),
-                e["switch"].as_str().unwrap(),
+                e["switch"].as_str(),
             )
         })
         .collect();
@@ -858,10 +855,9 @@ doctrine  on   Rules for Doctrine annotations: on in pun.toml
         (on, code),
         (
             vec![
-                ("laravel", true, "auto"),
-                ("pest", false, "off"),
-                ("phpunit", false, "auto"),
-                ("doctrine", true, "on"),
+                ("laravel", true, Some("on")),
+                ("pest", false, None),
+                ("phpunit", false, None),
             ],
             Some(0)
         )
@@ -869,7 +865,7 @@ doctrine  on   Rules for Doctrine annotations: on in pun.toml
     std::fs::remove_file(dir.join("pun.toml")).unwrap();
     let (out, _, code) = pun(&dir, &["extension", "list"]);
     assert!(
-        out.starts_with("laravel   on ") && out.contains("\npest      on "),
+        out.starts_with("laravel  off ") && out.contains("\npest     off "),
         "{out}"
     );
     assert_eq!(code, Some(0));
@@ -954,7 +950,6 @@ exclude = ["storage/**"]
 laravel = "off"
 pest = "off"
 phpunit = "off"
-doctrine = "off"
 
 [format]
 preset = "empty"

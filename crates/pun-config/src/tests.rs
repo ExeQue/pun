@@ -346,13 +346,21 @@ fn lint_sets() {
     assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
     assert!(!ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
     assert!(!ids(&l.rules).contains(&"lint/types/no-phpstan-phpdoc-tag"));
+    // A locked laravel/framework alone turns nothing on: only pun.toml does.
     let l = lint(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]);
+    assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
+    // On, the extension brings its rules from every set (4 types, 36 code-quality, 1 coding-style), not only `types`;
+    // its rules in no set, such as no-controller-middleware, stay opt-in.
+    let laravel = format!("[extensions]\nlaravel = \"on\"\n{types}");
+    let l = lint(&[("pun.toml", &laravel), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!(
         (l.rules.len(), l.ecosystems),
-        (77, vec![&crate::extensions::LARAVEL])
+        (73 + 41, vec![&crate::extensions::LARAVEL])
     );
     assert!(ids(&l.rules).contains(&"lint/laravel/add-relation-generics"));
-    let off = format!("{types}[lint.groups]\nlaravel = \"off\"\n");
+    assert!(ids(&l.rules).contains(&"lint/laravel/no-app-array-access"));
+    assert!(!ids(&l.rules).contains(&"lint/laravel/no-controller-middleware"));
+    let off = format!("{laravel}[lint.groups]\nlaravel = \"off\"\n");
     let l = lint(&[("pun.toml", &off), ("composer.lock", LARAVEL_LOCK)]);
     assert_eq!((l.rules.len(), l.ecosystems.len()), (73, 0));
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
@@ -440,14 +448,14 @@ fn upgrade_gates() {
         let g = schema::Gates {
             php: crate::PhpVersion::FLOOR,
             composer,
-            switches: std::collections::BTreeMap::new(),
+            switches: [("laravel", crate::extensions::Switch::On)].into(),
         };
         g.allows(group, &g.ecosystems(|_| false))
     };
     let l11 = gates(Some(LARAVEL_LOCK));
     assert!(check(&l11, "laravel-11") && check(&l11, "laravel-10") && check(&l11, "laravel-5.7"));
     assert!(!check(&l11, "laravel-12"));
-    assert!(check(&l11, "laravel") && !check(&l11, "pest") && !check(&l11, "doctrine"));
+    assert!(check(&l11, "laravel") && !check(&l11, "pest"));
     assert!(check(&l11, "php-8.4") && !check(&l11, "php-8.5") && check(&l11, "style"));
     let branch = gates(Some(
         r#"{"packages":[{"name":"laravel/framework","version":"dev-main"}]}"#,
@@ -522,7 +530,12 @@ fn analyse() {
     assert_eq!(a.rules.len(), 150 + 106 + 75 - 11);
     assert!(has(&a, "analyse/undefined/method") && !has(&a, "analyse/types/missing-return-type"));
     let preset = |p: &str, lock: bool| {
-        let toml = format!("[analyse]\npreset = \"{p}\"\n");
+        let on = if lock {
+            "[extensions]\nlaravel = \"on\"\n"
+        } else {
+            ""
+        };
+        let toml = format!("{on}[analyse]\npreset = \"{p}\"\n");
         let mut files = vec![("pun.toml", toml.as_str())];
         if lock {
             files.push(("composer.lock", LARAVEL_LOCK));
@@ -611,27 +624,32 @@ fn extensions() {
     let c = load_(&[("pun.toml", &with("on"))]).unwrap();
     assert_eq!(
         (c.lint.rules.len(), &c.extensions),
-        (77, &vec![&crate::extensions::LARAVEL])
+        (73 + 41, &vec![&crate::extensions::LARAVEL])
     );
     assert!(c.analyse.larastan && c.analyse.ecosystems == [&crate::extensions::LARAVEL]);
     let shown = c.show();
     assert_eq!(
         shown["extensions"],
-        json!({"laravel": "on", "pest": "off", "phpunit": "off", "doctrine": "off"})
+        json!({"laravel": "on", "pest": "off", "phpunit": "off"})
     );
-    let c = load_(&[("pun.toml", &with("auto")), ("composer.lock", LARAVEL_LOCK)]).unwrap();
-    assert_eq!(c.lint.rules.len(), 77);
+    // Left out of [extensions], an extension is off even with its package locked.
+    let c = load_(&[("pun.toml", types), ("composer.lock", LARAVEL_LOCK)]).unwrap();
+    assert!(c.extensions.is_empty() && !c.analyse.larastan);
     let pest = "[extensions]\npest = \"off\"\n[lint.groups]\npest = \"error\"\n";
     let c = load_(&[("pun.toml", pest)]).unwrap();
     assert!(c.lint.rules.iter().any(|r| r.id.starts_with("lint/pest/")));
     let e = |toml: &str| format!("{:#}", load_(&[("pun.toml", toml)]).unwrap_err());
     assert!(
         e("[extensions]\nsymfony = \"on\"\n").ends_with(
-            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`, `doctrine`"
+            "pun.toml: [extensions] `symfony` is not an extension: expected `laravel`, `pest`, `phpunit`"
         )
     );
-    assert!(e("[extensions]\nlaravel = true\n").ends_with(
-        "pun.toml: [extensions] `laravel` = true: expected \"auto\", \"on\" or \"off\""
+    assert!(
+        e("[extensions]\nlaravel = true\n")
+            .ends_with("pun.toml: [extensions] `laravel` = true: expected \"on\" or \"off\"")
+    );
+    assert!(e("[extensions]\nlaravel = \"auto\"\n").contains(
+        "[extensions] `laravel` = \"auto\" was removed: an extension is on only when pun.toml says so"
     ));
 }
 
@@ -1770,7 +1788,8 @@ fn larastan_follows_the_locked_laravel() {
     let lock = |version: &str| {
         let lock =
             format!(r#"{{"packages":[{{"name":"laravel/framework","version":"{version}"}}]}}"#);
-        let d = dir(&[("pun.toml", "[analyse]\n"), ("composer.lock", &lock)]);
+        let toml = "[extensions]\nlaravel = \"on\"\n[analyse]\n";
+        let d = dir(&[("pun.toml", toml), ("composer.lock", &lock)]);
         let a = load(&d, &Options::default()).unwrap().analyse;
         (a.larastan, a.parameters(&d).get_str("noModelMake").cloned())
     };

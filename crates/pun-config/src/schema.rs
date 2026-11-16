@@ -343,14 +343,10 @@ impl Gates<'_> {
         self.composer.locked(e.packages.first()?)
     }
 
-    /// The extensions `[extensions]` and the lock turn on.
+    /// The extensions `[extensions]` turns on.
     pub(crate) fn extensions(&self) -> Vec<&'static ExtensionMeta> {
         (extensions::ALL.into_iter())
-            .filter(|e| match self.switches.get(e.id) {
-                Some(extensions::Switch::On) => true,
-                Some(extensions::Switch::Off) => false,
-                Some(extensions::Switch::Auto) | None => self.locked(e).is_some(),
-            })
+            .filter(|e| self.switches.get(e.id) == Some(&extensions::Switch::On))
             .collect()
     }
 
@@ -558,7 +554,7 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
         named,
     };
     let mut on: BTreeMap<String, LintRule> = BTreeMap::new();
-    if !t.sets.is_empty() || !groups.is_empty() {
+    if !t.sets.is_empty() || !groups.is_empty() || !ecosystems.is_empty() {
         let ported =
             |e: &toml::Value| e.get("ported").and_then(toml::Value::as_bool) != Some(false);
         for (id, e) in rules()
@@ -569,9 +565,15 @@ pub(crate) fn lint(path: &Path, t: LintToml, files: &Files, gates: &Gates) -> Re
             let level = if let Some(l) = groups.get(group) {
                 *l
             } else {
-                let in_set = (e.get("sets").and_then(toml::Value::as_array)).is_some_and(|s| {
-                    s.iter()
-                        .any(|s| t.sets.iter().any(|t| s.as_str() == Some(t)))
+                // An extension that is on brings its rules in any set: they are its defaults. The rules in no set,
+                // such as its upgrade groups', stay opt-in by name.
+                let sets = e.get("sets").and_then(toml::Value::as_array);
+                let own = extensions::owner(group).is_some();
+                let in_set = sets.is_some_and(|s| {
+                    !s.is_empty()
+                        && (own
+                            || s.iter()
+                                .any(|s| t.sets.iter().any(|t| s.as_str() == Some(t))))
                 });
                 (in_set && gates.allows(group, &ecosystems)).then_some(Level::Error)
             };

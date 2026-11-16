@@ -24,10 +24,23 @@ fn plain(name: &str) -> PathBuf {
 }
 
 fn toml(style: &str, sets: &str, analyse: &str) -> String {
+    toml_with(&[], style, sets, analyse)
+}
+
+/// What init writes, with `[extensions]` turning on the extensions composer.lock shows.
+fn toml_with(extensions: &[&str], style: &str, sets: &str, analyse: &str) -> String {
+    let on = extensions.join(" = \"on\"\n");
+    let on = if on.is_empty() {
+        on
+    } else {
+        format!("[extensions]\n{on} = \"on\"\n\n")
+    };
     format!(
-        "# Written by `pun init`.\n[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{sets}]\n\n[analyse]\npreset = \"{analyse}\"\n"
+        "# Written by `pun init`.\n{on}[format]\npreset = \"{style}\"\n\n[lint]\nsets = [{sets}]\n\n[analyse]\npreset = \"{analyse}\"\n"
     )
 }
+
+const ALL: &[&str] = &["laravel", "pest", "phpunit"];
 
 fn loaded(d: &Path) -> (String, Vec<String>, AnalysePreset) {
     let c = pun_config::load(d, &Options::default()).unwrap();
@@ -49,12 +62,17 @@ fn laravel_defaults_without_a_terminal() {
     assert_eq!(
         out,
         format!(
-            "\n  Pun · new project setup\n  Found Laravel 13, Pest 4, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: dead-code, modernize\nAnalysis preset: recommended\n\n  Laravel, Pest and PHPUnit rules turn on by themselves (composer.lock).\n{NEXT}"
+            "\n  Pun · new project setup\n  Found Laravel 13, Pest 4, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: dead-code, modernize\nAnalysis preset: recommended\n\n  Extensions on from composer.lock: Laravel, Pest and PHPUnit. See [extensions] in pun.toml.\n{NEXT}"
         )
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("laravel", "\"dead-code\", \"modernize\"", "recommended")
+        toml_with(
+            ALL,
+            "laravel",
+            "\"dead-code\", \"modernize\"",
+            "recommended"
+        )
     );
     let sets = vec!["dead-code".to_string(), "modernize".into()];
     assert_eq!(
@@ -112,12 +130,12 @@ fn flags_pick_the_choices() {
     let (out, _, code) = pun_with(&d, &args, ENV);
     assert_eq!(code, Some(0));
     assert!(
-        out.starts_with("\n  Pun · new project setup\n  Found PHPUnit dev-main, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: types, naming\nAnalysis preset: max\n\n  PHPUnit rules turn on by themselves (composer.lock).\n"),
+        out.starts_with("\n  Pun · new project setup\n  Found PHPUnit dev-main, PHP ^8.4 (composer.json, composer.lock)\n\nCode style: laravel\nLint sets: types, naming\nAnalysis preset: max\n\n  Extensions on from composer.lock: PHPUnit. See [extensions] in pun.toml.\n"),
         "{out}"
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("laravel", "\"types\", \"naming\"", "max")
+        toml_with(&["phpunit"], "laravel", "\"types\", \"naming\"", "max")
     );
     let sets = vec!["types".to_string(), "naming".into()];
     assert_eq!(loaded(&d), ("laravel".into(), sets, AnalysePreset::Max));
@@ -200,7 +218,12 @@ fn agent_mode() {
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("laravel", "\"dead-code\", \"modernize\"", "recommended")
+        toml_with(
+            ALL,
+            "laravel",
+            "\"dead-code\", \"modernize\"",
+            "recommended"
+        )
     );
 }
 
@@ -223,13 +246,18 @@ fn terminal_accepts_the_defaults() {
     }
     assert!(
         out.ends_with(&format!(
-            "\n  Laravel, Pest and PHPUnit rules turn on by themselves (composer.lock).\n{NEXT}"
+            "\n  Extensions on from composer.lock: Laravel, Pest and PHPUnit. See [extensions] in pun.toml.\n{NEXT}"
         )),
         "{out}"
     );
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("laravel", "\"dead-code\", \"modernize\"", "recommended")
+        toml_with(
+            ALL,
+            "laravel",
+            "\"dead-code\", \"modernize\"",
+            "recommended"
+        )
     );
 
     let d = plain("tty-pick");
@@ -275,6 +303,11 @@ fn terminal_offers_migrate() {
     assert!(out.ends_with(NEXT), "{out}");
     assert_eq!(
         read(&d, "pun.toml"),
-        toml("laravel", "\"dead-code\", \"modernize\"", "recommended")
+        toml_with(
+            ALL,
+            "laravel",
+            "\"dead-code\", \"modernize\"",
+            "recommended"
+        )
     );
 }

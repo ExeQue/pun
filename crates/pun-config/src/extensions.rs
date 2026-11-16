@@ -2,8 +2,8 @@ use anyhow::{Result, bail};
 use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
 
-/// What Pun knows about an extension before it runs: its name, the rule groups it owns and the locked packages that
-/// turn it on.
+/// What Pun knows about an extension before it runs: its name, the rule groups it owns and the locked packages
+/// `pun migrate` and `pun init` look for to turn it on.
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExtensionMeta {
     pub id: &'static str,
@@ -11,7 +11,7 @@ pub struct ExtensionMeta {
     pub description: &'static str,
     /// The rule groups it owns. Each also owns its version groups, such as `laravel-12`.
     pub groups: &'static [&'static str],
-    /// The locked packages that turn it on, the first of them also gating its version groups.
+    /// The locked packages that show a project uses it, the first of them also gating its version groups.
     pub packages: &'static [&'static str],
 }
 
@@ -45,15 +45,7 @@ pub static PHPUNIT: ExtensionMeta = ExtensionMeta {
     packages: &["phpunit/phpunit"],
 };
 
-pub static DOCTRINE: ExtensionMeta = ExtensionMeta {
-    id: "doctrine",
-    name: "Doctrine",
-    description: "Rules for Doctrine annotations",
-    groups: &["doctrine"],
-    packages: &[],
-};
-
-pub static ALL: [&ExtensionMeta; 4] = [&LARAVEL, &PEST, &PHPUNIT, &DOCTRINE];
+pub static ALL: [&ExtensionMeta; 3] = [&LARAVEL, &PEST, &PHPUNIT];
 
 /// The extension that owns `group`, and the version in the group's name when it is a version group.
 pub fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>)> {
@@ -68,15 +60,21 @@ pub fn owner(group: &str) -> Option<(&'static ExtensionMeta, Option<&str>)> {
     })
 }
 
-/// Every package some extension turns on for.
+/// Every package some extension looks for.
 pub(crate) fn packages() -> impl Iterator<Item = &'static str> {
     ALL.into_iter().flat_map(|e| e.packages.iter().copied())
 }
 
-/// An `[extensions]` value: `auto`, the default, turns an extension on when the lock has one of its packages.
+/// The extensions whose package `composer` locks: the ones `pun migrate` and `pun init` turn on.
+pub fn detected(composer: &crate::composer::Composer) -> Vec<&'static ExtensionMeta> {
+    (ALL.into_iter())
+        .filter(|e| e.packages.iter().any(|p| composer.locked(p).is_some()))
+        .collect()
+}
+
+/// An `[extensions]` value. An extension pun.toml leaves out is off: nothing turns one on but pun.toml.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Switch {
-    Auto,
     On,
     Off,
 }
@@ -84,7 +82,6 @@ pub enum Switch {
 impl Switch {
     pub fn name(self) -> &'static str {
         match self {
-            Switch::Auto => "auto",
             Switch::On => "on",
             Switch::Off => "off",
         }
@@ -103,12 +100,12 @@ pub(crate) fn switches(at: &str, t: toml::Table) -> Result<BTreeMap<&'static str
                 );
             };
             let s = match v.as_str() {
-                Some("auto") => Switch::Auto,
                 Some("on") => Switch::On,
                 Some("off") => Switch::Off,
-                _ => {
-                    bail!("{at}: [extensions] `{name}` = {v}: expected \"auto\", \"on\" or \"off\"")
-                }
+                Some("auto") => bail!(
+                    "{at}: [extensions] `{name}` = \"auto\" was removed: an extension is on only when pun.toml says so; use \"on\" or \"off\" (`pun migrate` writes the ones composer.lock shows)"
+                ),
+                _ => bail!("{at}: [extensions] `{name}` = {v}: expected \"on\" or \"off\""),
             };
             Ok((e.id, s))
         })

@@ -411,8 +411,10 @@ fn composes_the_level_extensions_and_parameters() {
             );
             p.ignores =
                 vec!["[[analyse.ignore]]\nrule = \"undefined/method\"\nmessage = \"#x#\"\n".into()];
+            // As `pun migrate` does: [extensions] from composer.lock first, then [analyse] from phpstan.neon.
             let mut parts = Parts {
                 format: format.into(),
+                extensions: crate::migrate::extensions(&crate::composer::detect(&d).unwrap()),
                 ..Parts::default()
             };
             let done = compose(&d, &mut parts, &p).unwrap();

@@ -10,7 +10,6 @@ use std::path::PathBuf;
 struct Laravel;
 struct Pest;
 struct Phpunit;
-struct Doctrine;
 
 impl Extension for Laravel {
     fn meta(&self) -> &'static ExtensionMeta {
@@ -46,13 +45,7 @@ impl Extension for Phpunit {
     }
 }
 
-impl Extension for Doctrine {
-    fn meta(&self) -> &'static ExtensionMeta {
-        &meta::DOCTRINE
-    }
-}
-
-pub(crate) static ALL: [&dyn Extension; 4] = [&Laravel, &Pest, &Phpunit, &Doctrine];
+pub(crate) static ALL: [&dyn Extension; 3] = [&Laravel, &Pest, &Phpunit];
 
 pub(crate) fn fixers() -> Vec<Box<dyn pun_format::Fixer>> {
     pun_extension::fixers(&ALL)
@@ -99,25 +92,18 @@ pub(crate) fn run(cmd: ExtensionCmd) -> Result<Exit> {
     let composer = pun_config::composer::detect(&root)?;
     let rows = ALL.map(|e| {
         let m = e.meta();
-        let switch = cfg
-            .extension_switches
-            .get(m.id)
-            .copied()
-            .unwrap_or(Switch::Auto);
+        let switch = cfg.extension_switches.get(m.id).copied();
         let locked = m
             .packages
             .first()
             .and_then(|p| Some((p, composer.locked(p)?)));
         let why = match (switch, locked) {
-            (Switch::On | Switch::Off, _) => format!("{} in pun.toml", switch.name()),
-            (Switch::Auto, Some((p, l))) => format!("{p} {} is locked", l.version),
-            (Switch::Auto, None) if m.packages.is_empty() => {
-                format!(
-                    "no package turns it on; set {} = \"on\" in [extensions]",
-                    m.id
-                )
-            }
-            (Switch::Auto, None) => format!("{} is not locked", m.packages.join(" or ")),
+            (Some(s), _) => format!("{} in pun.toml", s.name()),
+            (None, Some((p, l))) => format!(
+                "{p} {} is locked; turn it on with {} = \"on\" in [extensions]",
+                l.version, m.id
+            ),
+            (None, None) => "not in pun.toml".to_string(),
         };
         (m, switch, cfg.extensions.contains(&m), why)
     });
@@ -129,7 +115,7 @@ pub(crate) fn run(cmd: ExtensionCmd) -> Result<Exit> {
                     "name": m.name,
                     "description": m.description,
                     "on": on,
-                    "switch": switch.name(),
+                    "switch": switch.map(Switch::name),
                     "packages": m.packages,
                     "groups": m.groups,
                 })

@@ -23,7 +23,7 @@ $ pun init
                                   [ ] early-return  [ ] privatization  [ ] naming  [ ] coding-style
 ? Analysis preset               › recommended    basic | essential | recommended | strict | max
 
-  Laravel, Pest and PHPUnit rules turn on by themselves (composer.lock).
+  Extensions on from composer.lock: Laravel, Pest and PHPUnit. See [extensions] in pun.toml.
 
   ✔ Wrote pun.toml
   Checking the project with these settings…

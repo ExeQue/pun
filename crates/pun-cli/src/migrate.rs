@@ -358,6 +358,8 @@ fn body(
     report: &mut Report,
 ) -> Result<Body> {
     let mut m = convert(root, a, pint, sources.format.as_ref(), report)?;
+    m.parts.extensions = migrate::extensions(&pun_config::composer::detect(root)?);
+    m.toml = m.parts.render();
     let mut lint = String::new();
     if let Some(r) = &sources.rector {
         lint = rector_lint(root, r, &mut m.parts, report)?;
