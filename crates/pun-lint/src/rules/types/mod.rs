@@ -34,11 +34,9 @@ mod add_param_type_property;
 mod add_param_type_spl_fixed_array;
 mod add_param_type_variable_call;
 mod add_property_type_assigns;
-mod add_property_type_behat_context;
 mod add_property_type_constructor;
 // The PHPUnit extension registers its rule.
 pub(super) mod add_property_type_create_mock;
-mod add_property_type_jms;
 mod add_property_type_setter_getter;
 // The PHPUnit extension registers its rule.
 pub(super) mod add_property_type_setup;
@@ -58,7 +56,6 @@ mod add_return_type_from_new_array;
 mod add_return_type_from_param;
 mod add_return_type_from_parent;
 mod add_return_type_from_property;
-mod add_return_type_from_symfony_serializer;
 mod add_return_type_from_ternary;
 mod add_return_type_from_try_catch;
 mod add_return_type_from_typed_call;
@@ -121,7 +118,6 @@ rules! {
         add_array_return => AddArrayReturn,
         add_return_type_from_new => AddReturnTypeFromNew,
         add_return_type_from_cast => AddReturnTypeFromCast,
-        add_return_type_from_symfony_serializer => AddReturnTypeFromSymfonySerializer,
         add_method_void_return => AddMethodVoidReturn,
         add_return_type_from_property => AddReturnTypeFromProperty,
         add_union_return => AddNullableReturn,
@@ -144,11 +140,7 @@ rules! {
         add_property_type_constructor => AddPropertyTypeConstructor,
         add_property_type_assigns => AddPropertyTypeAssigns::default(),
         add_property_type_setter_getter => AddPropertyTypeSetterGetter,
-        add_property_type_jms => AddPropertyTypeJmsScalar,
-        add_property_type_jms => AddPropertyTypeJmsObject,
-        add_property_type_behat_context => AddPropertyTypeBehatContext,
         doctrine_repository => AddPropertyTypeGetRepository,
-        doctrine_repository => AddDoctrineRepositoryReturnType,
         add_return_type_from_get_repository => AddReturnTypeFromGetRepository,
         add_var_phpdoc_from_default => AddVarPhpdocFromDefault,
         add_param_phpdoc_from_dim_fetch => AddParamPhpdocFromDimFetch,

@@ -17,7 +17,6 @@ pub(crate) mod constant_invocation;
 pub(crate) mod control_case_structures_analyzer;
 pub(crate) mod data_provider_analyzer;
 pub(crate) mod docblock;
-pub(crate) mod doctrine_annotation;
 pub(crate) mod final_internal_class;
 pub(crate) mod fixer_configuration_resolver;
 pub(crate) mod fully_qualified_name_analyzer;

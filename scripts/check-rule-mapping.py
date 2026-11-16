@@ -54,6 +54,14 @@ PRIMARY = ("php-cs-fixer", "pint", "phpstan-classes") + RECTOR_TOOLS
 MAGO = ("pun", "mago-linter", "mago-analyzer")
 # Plan-level exclusions on top of the inventories' own scope (rules.md §2 O9): rector-symfony, PHPStan's extension API.
 EXCLUDED_PREFIXES = ("Rector\\Symfony\\", "PHPStan\\Rules\\Api\\")
+# Rector core's Doctrine, Symfony, Behat and JMS rules (rules.md §2 O9).
+EXCLUDED_CLASSES = {
+    "Rector\\TypeDeclaration\\Rector\\Class_\\ChildDoctrineRepositoryClassTypeRector",
+    "Rector\\TypeDeclaration\\Rector\\Class_\\ObjectTypedPropertyFromJMSSerializerAttributeTypeRector",
+    "Rector\\TypeDeclaration\\Rector\\Class_\\ScalarTypedPropertyFromJMSSerializerAttributeTypeRector",
+    "Rector\\TypeDeclaration\\Rector\\Class_\\TypedStaticPropertyInBehatContextRector",
+    "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromSymfonySerializerRector",
+}
 # Upgrade groups below the floor (PHP 8.4, Laravel 12): no rule with a Rector source may sit in one.
 BELOW_FLOOR = re.compile(r"php-([57]\.\d|8\.[0-3])|laravel-([5-9](\.\d)?|1[01])")
 
@@ -248,7 +256,8 @@ def inventory(directory=INVENTORY):
 
 
 def in_scope(r):
-    return r["in_scope"] and not r["deprecated"] and not r["fqcn"].startswith(EXCLUDED_PREFIXES)
+    return (r["in_scope"] and not r["deprecated"] and not r["fqcn"].startswith(EXCLUDED_PREFIXES)
+            and r["fqcn"] not in EXCLUDED_CLASSES)
 
 
 def why_out(r):

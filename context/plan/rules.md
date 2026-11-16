@@ -57,7 +57,7 @@ The mapping has 105 overlap clusters. Every cluster ends as one Pun rule in one 
 | O6 | A fixer whose safety depends on types (`strict_comparison`, Rector's `UseIdenticalOverEqualWithSameType`) | One lint rule | Labelled safe where analysis proves it, unsafe otherwise; `--fix` applies both |
 | O7 | Rules that contradict each other (§2 conflicts below) | Both stay | `[meta] conflicts`; config loading refuses a config that enables both |
 | O8 | Upstream deprecated or no-op rules | The successor | Mapped to it, or dropped with a note in migrate's output |
-| O9 | Out of scope: rector-symfony, rector-doctrine, rector-downgrade-php, Mago's WordPress, Psl, Symfony and Drupal rules, PHPStan's `phpstanApi.*` | None | `unsupported`: migrate names each one and skips it |
+| O9 | Out of scope: rector-symfony, rector-doctrine, rector-downgrade-php, Rector core's and PHP-CS-Fixer's Doctrine, Symfony, Behat and JMS rules, Mago's WordPress, Psl, Symfony and Drupal rules, PHPStan's `phpstanApi.*` | None | `unsupported`: migrate names each one and skips it |
 
 **Worked example: strict comparison.**
 

@@ -214,26 +214,6 @@
         "risky": true,
         "configurable": false
     },
-    "doctrine_annotation_array_assignment": {
-        "priority": 1,
-        "risky": false,
-        "configurable": true
-    },
-    "doctrine_annotation_braces": {
-        "priority": 0,
-        "risky": false,
-        "configurable": true
-    },
-    "doctrine_annotation_indentation": {
-        "priority": 0,
-        "risky": false,
-        "configurable": true
-    },
-    "doctrine_annotation_spaces": {
-        "priority": 0,
-        "risky": false,
-        "configurable": true
-    },
     "echo_tag_syntax": {
         "priority": 0,
         "risky": false,

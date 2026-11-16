@@ -75,7 +75,7 @@ pub(crate) fn run_class(rules: Vec<Box<dyn Rule>>, class: &str) {
 }
 
 pub(crate) fn run_class_at(rules: Vec<Box<dyn Rule>>, class: &str, php_version: u32) {
-    run_class_full(rules, class, php_version, &[], &[], true);
+    run_class_full(rules, class, php_version, &[], &[]);
 }
 
 pub(crate) fn run_class_with(
@@ -84,7 +84,7 @@ pub(crate) fn run_class_with(
     php_version: u32,
     preset_too: &[&str],
 ) {
-    run_class_full(rules, class, php_version, &[], preset_too, true);
+    run_class_full(rules, class, php_version, &[], preset_too);
 }
 
 pub(crate) fn run_class_stubs(
@@ -93,7 +93,7 @@ pub(crate) fn run_class_stubs(
     php_version: u32,
     stubs: &[&str],
 ) {
-    run_class_full(rules, class, php_version, stubs, &[], true);
+    run_class_full(rules, class, php_version, stubs, &[]);
 }
 
 pub(crate) fn run_class_paths(
@@ -102,7 +102,7 @@ pub(crate) fn run_class_paths(
     php_version: u32,
     stubs: &[&Path],
 ) {
-    check_dirs(class, true);
+    check_dirs(class);
     run_dirs(
         rules,
         class,
@@ -112,19 +112,14 @@ pub(crate) fn run_class_paths(
     );
 }
 
-pub(crate) fn run_oracle_class(rules: Vec<Box<dyn Rule>>, class: &str, php_version: u32) {
-    run_class_full(rules, class, php_version, &[], &[], false);
-}
-
 fn run_class_full(
     rules: Vec<Box<dyn Rule>>,
     class: &str,
     php_version: u32,
     stubs: &[&str],
     preset_too: &[&str],
-    fixture: bool,
 ) {
-    check_dirs(class, fixture);
+    check_dirs(class);
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let stubs: Vec<PathBuf> = stubs.iter().map(|d| tests.join(d)).collect();
     let stubs: Vec<&Path> = stubs.iter().map(PathBuf::as_path).collect();
@@ -138,17 +133,13 @@ fn run_class_full(
     );
 }
 
-fn check_dirs(class: &str, fixture: bool) {
+fn check_dirs(class: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/rector")
         .join(class);
     assert!(
-        root.join("Fixture").is_dir() == fixture || (fixture && root.join("Oracle").is_dir()),
-        "{class}: a Fixture directory where upstream has fixtures, and only there"
-    );
-    assert!(
-        root.join("Oracle").is_dir() || fixture,
-        "{class}: no Oracle directory"
+        root.join("Fixture").is_dir() || root.join("Oracle").is_dir(),
+        "{class}: no Fixture or Oracle directory"
     );
 }
 

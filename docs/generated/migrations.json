@@ -398,41 +398,33 @@
         "name": "doctrine_annotation_array_assignment",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html",
-        "rules": [
-          "format/doctrine/annotation-array-assignment"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-array-assignment\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_braces",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_braces.html",
-        "rules": [
-          "format/doctrine/annotation-braces"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-braces\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_indentation",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_indentation.html",
-        "rules": [
-          "format/doctrine/annotation-indentation"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-indentation\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_spaces",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html",
-        "rules": [
-          "format/doctrine/annotation-spaces"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-spaces\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "echo_tag_syntax",
@@ -3392,41 +3384,33 @@
         "name": "doctrine_annotation_array_assignment",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_array_assignment.html",
-        "rules": [
-          "format/doctrine/annotation-array-assignment"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-array-assignment\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_braces",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_braces.html",
-        "rules": [
-          "format/doctrine/annotation-braces"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-braces\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_indentation",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_indentation.html",
-        "rules": [
-          "format/doctrine/annotation-indentation"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-indentation\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "doctrine_annotation_spaces",
         "tool": "php-cs-fixer",
         "url": "https://cs.symfony.com/doc/rules/doctrine_annotation/doctrine_annotation_spaces.html",
-        "rules": [
-          "format/doctrine/annotation-spaces"
-        ],
-        "note": "Same. Options: renamed for TOML: [options.\"format/doctrine/annotation-spaces\"].",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "echo_tag_syntax",
@@ -6808,11 +6792,9 @@
         "name": "ChildDoctrineRepositoryClassType",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/child-doctrine-repository-class-type-rector",
-        "rules": [
-          "lint/types/add-doctrine-repository-return-type"
-        ],
-        "note": "Same.",
-        "unsupported": false
+        "rules": [],
+        "note": "Doctrine rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "ChrArgModulo",
@@ -8188,11 +8170,9 @@
         "name": "ObjectTypedPropertyFromJMSSerializerAttributeType",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/object-typed-property-from-j-m-s-serializer-attribute-type-rector",
-        "rules": [
-          "lint/types/add-property-type-jms-object"
-        ],
-        "note": "Same.",
-        "unsupported": false
+        "rules": [],
+        "note": "JMS rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "OptionalParametersAfterRequired",
@@ -9666,11 +9646,9 @@
         "name": "ReturnTypeFromSymfonySerializer",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/return-type-from-symfony-serializer-rector",
-        "rules": [
-          "lint/types/add-return-type-from-symfony-serializer"
-        ],
-        "note": "Same.",
-        "unsupported": false
+        "rules": [],
+        "note": "Symfony rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "ReturnUnionType",
@@ -9714,11 +9692,9 @@
         "name": "ScalarTypedPropertyFromJMSSerializerAttributeType",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/scalar-typed-property-from-j-m-s-serializer-attribute-type-rector",
-        "rules": [
-          "lint/types/add-property-type-jms-scalar"
-        ],
-        "note": "Same.",
-        "unsupported": false
+        "rules": [],
+        "note": "JMS rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "ScalarValueToConstFetch",
@@ -10504,11 +10480,9 @@
         "name": "TypedStaticPropertyInBehatContext",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/typed-static-property-in-behat-context-rector",
-        "rules": [
-          "lint/types/add-property-type-behat-context"
-        ],
-        "note": "Same.",
-        "unsupported": false
+        "rules": [],
+        "note": "Behat rules: out of scope (Laravel-first); migrate lists them",
+        "unsupported": true
       },
       {
         "name": "UnnecessaryTernaryExpression",

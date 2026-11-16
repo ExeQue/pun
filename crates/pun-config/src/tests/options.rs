@@ -84,7 +84,7 @@ fn every_option_is_mapped() {
             "{fixer}"
         );
     }
-    assert_eq!(seen, 156 + 81);
+    assert_eq!(seen, 141 + 81);
 }
 
 #[test]

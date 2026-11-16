@@ -1,7 +1,7 @@
 use std::fmt::Write as _;
 use std::{env, fs, path::Path};
 
-/// The fixers the Laravel extension registers. PHP-CS-Fixer's `php_unit_*` and Doctrine fixers ship in its core,
+/// The fixers the Laravel extension registers. PHP-CS-Fixer's `php_unit_*` fixers ship in its core,
 /// so they stay in Pun's.
 const LARAVEL: &[&str] = &["pint_laravel_blade"];
 

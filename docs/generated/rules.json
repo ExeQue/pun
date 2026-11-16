@@ -1161,74 +1161,6 @@
       "ported": true
     },
     {
-      "id": "format/doctrine/annotation-array-assignment",
-      "command": "format",
-      "group": "doctrine",
-      "summary": "Doctrine annotations must use configured operator for assignment in arrays.",
-      "enabled": [],
-      "fix": "safe",
-      "ecosystem": "doctrine",
-      "tools": [
-        "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "doctrine_annotation_array_assignment"
-      ],
-      "ported": true
-    },
-    {
-      "id": "format/doctrine/annotation-braces",
-      "command": "format",
-      "group": "doctrine",
-      "summary": "Doctrine annotations without arguments must use the configured syntax.",
-      "enabled": [],
-      "fix": "safe",
-      "ecosystem": "doctrine",
-      "tools": [
-        "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "doctrine_annotation_braces"
-      ],
-      "ported": true
-    },
-    {
-      "id": "format/doctrine/annotation-indentation",
-      "command": "format",
-      "group": "doctrine",
-      "summary": "Doctrine annotations must be indented with four spaces.",
-      "enabled": [],
-      "fix": "safe",
-      "ecosystem": "doctrine",
-      "tools": [
-        "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "doctrine_annotation_indentation"
-      ],
-      "ported": true
-    },
-    {
-      "id": "format/doctrine/annotation-spaces",
-      "command": "format",
-      "group": "doctrine",
-      "summary": "Fixes spaces in Doctrine annotations.",
-      "enabled": [],
-      "fix": "safe",
-      "ecosystem": "doctrine",
-      "tools": [
-        "php-cs-fixer",
-        "pint"
-      ],
-      "upstream": [
-        "doctrine_annotation_spaces"
-      ],
-      "ported": true
-    },
-    {
       "id": "format/functions/argument-spacing",
       "command": "format",
       "group": "functions",
@@ -15316,26 +15248,6 @@
       "ported": true
     },
     {
-      "id": "lint/types/add-doctrine-repository-return-type",
-      "command": "lint",
-      "group": "types",
-      "summary": "Add return type to classes that extend Doctrine\\ORM\\EntityRepository based on return Doctrine method names",
-      "enabled": [
-        "types"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ChildDoctrineRepositoryClassType",
-        "ChildDoctrineRepositoryClassTypeRector",
-        "Rector\\TypeDeclaration\\Rector\\Class_\\ChildDoctrineRepositoryClassTypeRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/types/add-fluent-return-type",
       "command": "lint",
       "group": "types",
@@ -15896,26 +15808,6 @@
       "ported": true
     },
     {
-      "id": "lint/types/add-property-type-behat-context",
-      "command": "lint",
-      "group": "types",
-      "summary": "Add known property types to Behat context static properties",
-      "enabled": [
-        "types"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\TypeDeclaration\\Rector\\Class_\\TypedStaticPropertyInBehatContextRector",
-        "TypedStaticPropertyInBehatContext",
-        "TypedStaticPropertyInBehatContextRector"
-      ],
-      "ported": true
-    },
-    {
       "id": "lint/types/add-property-type-constructor",
       "command": "lint",
       "group": "types",
@@ -15952,46 +15844,6 @@
         "Rector\\TypeDeclaration\\Rector\\Class_\\TypedPropertyFromGetRepositorySetUpRector",
         "TypedPropertyFromGetRepositorySetUp",
         "TypedPropertyFromGetRepositorySetUpRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/types/add-property-type-jms-object",
-      "command": "lint",
-      "group": "types",
-      "summary": "Add object typed property from JMS Serializer Type attribute",
-      "enabled": [
-        "types"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "ObjectTypedPropertyFromJMSSerializerAttributeType",
-        "ObjectTypedPropertyFromJMSSerializerAttributeTypeRector",
-        "Rector\\TypeDeclaration\\Rector\\Class_\\ObjectTypedPropertyFromJMSSerializerAttributeTypeRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/types/add-property-type-jms-scalar",
-      "command": "lint",
-      "group": "types",
-      "summary": "Add scalar typed property from JMS Serializer Type attribute",
-      "enabled": [
-        "types"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\TypeDeclaration\\Rector\\Class_\\ScalarTypedPropertyFromJMSSerializerAttributeTypeRector",
-        "ScalarTypedPropertyFromJMSSerializerAttributeType",
-        "ScalarTypedPropertyFromJMSSerializerAttributeTypeRector"
       ],
       "ported": true
     },
@@ -16292,26 +16144,6 @@
         "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromStrictTypedPropertyRector",
         "ReturnTypeFromStrictTypedProperty",
         "ReturnTypeFromStrictTypedPropertyRector"
-      ],
-      "ported": true
-    },
-    {
-      "id": "lint/types/add-return-type-from-symfony-serializer",
-      "command": "lint",
-      "group": "types",
-      "summary": "Add return type from symfony serializer",
-      "enabled": [
-        "types"
-      ],
-      "fix": "unsafe",
-      "ecosystem": "core",
-      "tools": [
-        "rector"
-      ],
-      "upstream": [
-        "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromSymfonySerializerRector",
-        "ReturnTypeFromSymfonySerializer",
-        "ReturnTypeFromSymfonySerializerRector"
       ],
       "ported": true
     },

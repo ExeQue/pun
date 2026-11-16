@@ -5,11 +5,6 @@
 //! must pass as `format(pun lint --fix) == format(expected)` with format being the laravel preset, and the text edits
 //! must give the expected bytes before format too.
 //!
-//! ReturnTypeFromSymfonySerializerRector/Pun/serializer_broken.php.inc holds the class arguments where Rector writes a
-//! return type that does not parse or names no class: `'\App\Holder'` (Rector: `\\App\Holder`), `Holder::CLASS`
-//! (`\App\Holder::CLASS`), `Holder::{$c}` (`\App\Holder::c`) and `self::class` in an anonymous class (Rector's
-//! internal `\AnonymousClass<hash>`). Pun writes `\App\Holder` for the first two and leaves the other two alone.
-//!
 //! ReturnTypeFromStrictNativeCallRector/Pun/unreachable_call.php.inc and ReturnTypeFromStrictTernaryRector/Pun/
 //! ternary_unreached.php.inc: Rector types a `return strlen($s)` or `return $x ? 1 : 2` after an `exit` with the
 //! scope before it and writes `int`; Mago's analysis does not reach it, so Pun leaves the method alone.
@@ -32,23 +27,21 @@
 //! `Countable&iterable` and Rector 2.8.4 writes `: \Countable` (`NativePhpTypeNodeHelper::intersection()` drops the
 //! `iterable`); Mago narrows it to `never`, so Pun leaves the closure alone.
 
-use crate::common::{run_class, run_class_at, run_class_stubs, run_oracle_class};
+use crate::common::{run_class, run_class_at, run_class_stubs};
 use pun_lint::Rule;
 use pun_lint::rules::{
     AddArrayReturn, AddArrowFunctionReturn, AddBoolReturn, AddBoolReturnFromConst,
-    AddClosureNeverReturn, AddClosureReturn, AddClosureVoidReturn, AddDoctrineRepositoryReturnType,
-    AddFluentReturn, AddFunctionVoidReturn, AddMagicMethodTypes, AddMethodVoidReturn,
-    AddNeverReturn, AddNullableReturn, AddNumericReturn, AddNumericReturnFromScalar,
-    AddPropertyTypeAssigns, AddPropertyTypeBehatContext, AddPropertyTypeConstructor,
-    AddPropertyTypeContainerGet, AddPropertyTypeCreateMock, AddPropertyTypeGetRepository,
-    AddPropertyTypeJmsObject, AddPropertyTypeJmsScalar, AddPropertyTypeSetterGetter,
-    AddPropertyTypeSetup, AddPropertyTypeSetupDocblock, AddReturnTypeFromCast,
-    AddReturnTypeFromConstant, AddReturnTypeFromNativeCall, AddReturnTypeFromNew,
-    AddReturnTypeFromParam, AddReturnTypeFromParent, AddReturnTypeFromProperty,
-    AddReturnTypeFromSymfonySerializer, AddReturnTypeFromTernary, AddReturnTypeFromTryCatch,
-    AddReturnTypeFromTypedCall, AddReturnTypeFromYield, AddStringReturn, AddStringReturnFromScalar,
-    AddUnionReturn, NoNullsafeOnNonNull, PreferExplicitNullInstanceof, PreferIdenticalSameType,
-    PreferInstanceof,
+    AddClosureNeverReturn, AddClosureReturn, AddClosureVoidReturn, AddFluentReturn,
+    AddFunctionVoidReturn, AddMagicMethodTypes, AddMethodVoidReturn, AddNeverReturn,
+    AddNullableReturn, AddNumericReturn, AddNumericReturnFromScalar, AddPropertyTypeAssigns,
+    AddPropertyTypeConstructor, AddPropertyTypeContainerGet, AddPropertyTypeCreateMock,
+    AddPropertyTypeGetRepository, AddPropertyTypeSetterGetter, AddPropertyTypeSetup,
+    AddPropertyTypeSetupDocblock, AddReturnTypeFromCast, AddReturnTypeFromConstant,
+    AddReturnTypeFromNativeCall, AddReturnTypeFromNew, AddReturnTypeFromParam,
+    AddReturnTypeFromParent, AddReturnTypeFromProperty, AddReturnTypeFromTernary,
+    AddReturnTypeFromTryCatch, AddReturnTypeFromTypedCall, AddReturnTypeFromYield, AddStringReturn,
+    AddStringReturnFromScalar, AddUnionReturn, NoNullsafeOnNonNull, PreferExplicitNullInstanceof,
+    PreferIdenticalSameType, PreferInstanceof,
 };
 
 fn check(rule: impl Rule + 'static, class: &str) {
@@ -335,15 +328,6 @@ fn add_return_type_declaration_based_on_parent_class_method() {
 }
 
 #[test]
-fn return_type_from_symfony_serializer() {
-    run_class_at(
-        vec![Box::new(AddReturnTypeFromSymfonySerializer)],
-        "ReturnTypeFromSymfonySerializerRector",
-        70000,
-    );
-}
-
-#[test]
 fn closure_return_type_intersection_below_dnf() {
     // Oracle/closure_dnf.php.inc below PHP 8.2: .oracle/rector-bin (ClosureReturnTypeRector alone) leaves the closure
     // alone at 8.1 (no DNF types) and at 8.0 (no intersection types).
@@ -490,33 +474,6 @@ fn property_type_from_strict_setter_getter() {
 }
 
 #[test]
-fn scalar_typed_property_from_jms_serializer_attribute_type() {
-    run_class_at(
-        vec![Box::new(AddPropertyTypeJmsScalar)],
-        "ScalarTypedPropertyFromJMSSerializerAttributeTypeRector",
-        80000,
-    );
-}
-
-#[test]
-fn object_typed_property_from_jms_serializer_attribute_type() {
-    run_class_at(
-        vec![Box::new(AddPropertyTypeJmsObject)],
-        "ObjectTypedPropertyFromJMSSerializerAttributeTypeRector",
-        80000,
-    );
-}
-
-#[test]
-fn typed_static_property_in_behat_context() {
-    run_oracle_class(
-        vec![Box::new(AddPropertyTypeBehatContext)],
-        "TypedStaticPropertyInBehatContextRector",
-        80000,
-    );
-}
-
-#[test]
 fn typed_property_from_get_repository_set_up() {
     run_class_stubs(
         vec![Box::new(AddPropertyTypeGetRepository)],
@@ -563,16 +520,6 @@ fn typed_property_from_docblock_set_up_defined() {
         "TypedPropertyFromDocblockSetUpDefinedRector",
         70400,
         &["phpunit-stubs"],
-    );
-}
-
-#[test]
-fn child_doctrine_repository_class_type() {
-    run_class_stubs(
-        vec![Box::new(AddDoctrineRepositoryReturnType)],
-        "ChildDoctrineRepositoryClassTypeRector",
-        80400,
-        &["doctrine-stubs"],
     );
 }
 
