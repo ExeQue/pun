@@ -101,10 +101,11 @@ All from Pushpak unless marked "assistant's call"; dated 2026-10-17 unless given
 - **`pun config`** prints the resolved config; **`pun explain <rule>`** a rule's docs and upstream names;
   **`pun list-files [--command format|lint|analyse] [-0]`** the files a command checks, like Mago's.
 - **A result cache for format, lint and check** (Pushpak, 2026-11-15, reversing "no caches" of 2026-11-05). `pun
-  format`, `lint` and the format and lint parts of `pun check` skip a file that was clean (no change, no problem, no
-  warning) in an earlier run with the same key: the file's path and content, the command, the resolved config, the
-  flags, the PHP version and the binary; a lint result that read the project's codebase also keys on a fingerprint of
-  the project. Files with findings, and files a fix run changed, are checked every run. One cache file per project
+  format`, `lint` and the format and lint parts of `pun check` reuse a file's result (clean, or its findings and
+  diff) from an earlier run with the same key: the file's path and content, the command, the resolved config, the
+  flags, the verbosity and agent mode, the PHP version and the binary; a lint result that read the project's codebase
+  also keys on a fingerprint of the project. A file a fix run wrote, a run error and a contained Mago panic are not
+  kept. A warm run with no change never scans the project, which keeping only clean files could not avoid. One cache file per project
   under `<cache dir>/results/`; `--no-cache` or `PUN_NO_CACHE=1` turns it off, and Pint's `--cache-file` picks the
   file. `pun analyse` (and check's analyse half) has no cache yet: every run analyses every file.
 - **No LSP** until after 1.0's commands; `pun lsp`, pun-lsp and PHPantom were removed (in git history).

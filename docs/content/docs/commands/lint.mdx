@@ -55,7 +55,7 @@ pun lint --max-warnings 10
 
 Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin`.
 
-Lint skips files that were clean in the last run, through the [result cache](/docs/commands/format#cache). `--no-cache` checks every file.
+Lint reuses each unchanged file's result from the last run, through the [result cache](/docs/commands/format#cache). `--no-cache` checks every file.
 
 ## Output
 

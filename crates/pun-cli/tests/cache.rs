@@ -1,5 +1,5 @@
-//! The result cache of `pun format`, `lint` and `check`: a file that was clean is skipped only while nothing its
-//! result depends on has changed. Each test's cache directory is its own (`common::clean_env`).
+//! The result cache of `pun format`, `lint` and `check`: a file's result is reused only while nothing it depends on
+//! has changed. Each test's cache directory is its own (`common::clean_env`).
 
 mod common;
 
@@ -54,10 +54,10 @@ fn a_clean_file_is_checked_again_when_the_config_or_its_content_changes() {
     assert_eq!(code(&d, &["check"]), Some(1));
 }
 
-/// A warning neither fails the run nor goes into the cache: the second run prints it again, and `--deny-warnings`
-/// still fails on it.
+/// A cached warning is still a warning: the second run prints it again without failing, and `--deny-warnings` still
+/// fails on it.
 #[test]
-fn a_file_with_a_warning_is_never_cached() {
+fn a_cached_warning_stays_a_warning() {
     let d = project(
         "cache",
         "warning",
@@ -75,6 +75,59 @@ fn a_file_with_a_warning_is_never_cached() {
         assert_eq!(code, Some(0));
     }
     assert_eq!(code(&d, &["lint", "--deny-warnings"]), Some(1));
+}
+
+/// The output without its timings (the last word of a line, such as `0.06s`).
+fn untimed(out: &str) -> String {
+    let line = |l: &'_ str| match l.rsplit_once(' ') {
+        Some((head, t))
+            if t.strip_suffix('s')
+                .is_some_and(|n| n.parse::<f64>().is_ok()) =>
+        {
+            head.to_string()
+        }
+        _ => l.to_string(),
+    };
+    out.lines().map(line).collect::<Vec<_>>().join("\n")
+}
+
+/// A file with findings comes back from the cache as its check reported it: the problems with their level, help,
+/// source and fix, and the formatting diff.
+#[test]
+fn a_cached_result_reports_what_the_check_found() {
+    let d = project(
+        "cache",
+        "found",
+        &[
+            (
+                "pun.toml",
+                "[format]\npreset = \"laravel\"\n\n[lint.rules]\n\"style/no-escaped-quotes\" = \"error\"\n\"style/require-todo-reference\" = \"warn\"\n",
+            ),
+            (
+                "a.php",
+                "<?php\n\n// TODO tidy\n$a = 'it\\'s';\n$b = array( 1 );\n",
+            ),
+            (
+                "b.php",
+                "<?php\n\n// TODO tidy\n$a = 'it\\'s';\n$b = array( 1 );\n",
+            ),
+        ],
+    );
+    // `--fix --test` reports the problems left in the fixed code, which the cache keeps besides the file's own.
+    for (args, shown) in [
+        (&["lint"][..], "help: Add a user tag"),
+        (&["lint"][..], "2 fixable"),
+        (&["lint", "--fix", "--test"][..], "help: Add a user tag"),
+        (&["check", "--test", "-v"][..], "+$b = [1];"),
+        (&["format", "--test"][..], "need formatting"),
+    ] {
+        let first = pun(&d, args, &[]);
+        assert!(first.0.contains(shown), "{}", first.0);
+        assert_eq!(first.1, Some(1));
+        let second = pun(&d, args, &[]);
+        assert_eq!(untimed(&second.0), untimed(&first.0));
+        assert_eq!(second.1, first.1);
+    }
 }
 
 /// `style/require-parent-visibility` wants a method's visibility to be its parent's, so Child.php's result depends

@@ -45,7 +45,7 @@ pun format app/Models
 
 ## Cache
 
-Pun remembers the files that were clean: nothing to change and no problem or warning. The next run skips such a file while its content, the config, the flags, and the Pun binary stay the same. Files with findings are checked on every run, and so is a file that `--fix` just changed.
+Pun remembers each file's result, including its findings. The next run reuses the result while the file's content, the config, the flags, and the Pun binary stay the same. A file that `--fix` just changed is checked again on the next run.
 
 The cache is one file per project in `$PUN_CACHE_DIR/results`. The default cache is `~/.cache/pun` (or `$XDG_CACHE_HOME/pun`) on Linux and `~/Library/Caches/pun` on macOS. `--no-cache` or `PUN_NO_CACHE=1` turns it off. Code from stdin never uses it. Deleting the file is safe.
 

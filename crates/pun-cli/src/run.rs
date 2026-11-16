@@ -405,6 +405,10 @@ fn open_cache(
         .add("stage", format!("{stage:?}"))
         .add("flags", format!("{flags:?}"))
         .add("levels", format!("{:?}", lint.levels))
+        .add(
+            "view",
+            format!("{:?}", (a.verbose > 0, crate::agent::enabled())),
+        )
         .add("config", format!("{cfg:?}"))
         .add("env", format!("{:?}", env.map(std::env::var_os)))
         .add("prettier", prettier);
@@ -825,8 +829,8 @@ fn scopes(e: &Engines, path: &PathBuf) -> (bool, bool) {
     (in_format, in_lint)
 }
 
-/// `process_file` through the result cache: a file the cache holds as clean is clean without checking it, and a
-/// file this check finds clean goes into the cache.
+/// `process_file` through the result cache: a file the cache holds has the cached result without a check, and the
+/// result of a check goes into the cache, unless the check wrote the file, failed to run or printed a note.
 fn process_cached(
     a: &FormatArgs,
     e: &Engines,
@@ -844,23 +848,36 @@ fn process_cached(
         .add("scopes", format!("{:?}", scopes(e, path)))
         .add("code", &code)
         .digest();
-    if cache.hit(&rel, &content) {
-        return Ok(Processed {
-            result: FileResult::new(path.clone(), rel.into_owned()),
-            remaining: None,
-        });
+    if let Some(found) = cache.hit(&rel, &content) {
+        let result = if found.is_empty() {
+            Some(FileResult::new(path.clone(), rel.to_string()))
+        } else {
+            cache::decode(&found, path.clone(), rel.to_string(), &code)
+        };
+        if let Some(result) = result {
+            return Ok(Processed {
+                result,
+                remaining: None,
+            });
+        }
     }
     let (processed, reads) =
-        pun_lint::rules::facts::tracking(|| process_file(a, e, dry_run, path, Ok(code)));
+        pun_lint::rules::facts::tracking(|| process_file(a, e, dry_run, path, Ok(code.clone())));
     if let Ok(p) = &processed {
         let r = &p.result;
-        let clean = r.status == Status::NoChanges
-            && r.problems.is_empty()
-            && r.applied.is_empty()
-            && r.message.is_empty()
-            && p.remaining.is_none();
-        if clean && !reads.noted {
-            cache.keep(&rel, &content, reads.project);
+        let kept = match r.status {
+            Status::NoChanges => true,
+            Status::Fixed => dry_run,
+            _ => false,
+        };
+        if kept && r.message.is_empty() && p.remaining.is_none() && !reads.noted {
+            let clean = r.status == Status::NoChanges && r.problems.is_empty();
+            let found = if clean {
+                vec![]
+            } else {
+                cache::encode(r, &code)
+            };
+            cache.keep(&rel, &content, reads.project, found);
         }
     }
     processed

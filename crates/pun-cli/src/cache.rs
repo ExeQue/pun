@@ -1,19 +1,22 @@
-//! The result cache of `pun format`, `lint` and `check`: the files whose last check found nothing to change and no
-//! problem, so the next run with the same key skips them. One file per project root under `<cache dir>/results/`.
+//! The result cache of `pun format`, `lint` and `check`: the result of each file's last check (nothing, for a clean
+//! file, or what `encode` keeps of its findings), so the next run with the same key skips the check. One file per
+//! project root under `<cache dir>/results/`.
 //!
 //! An entry's key covers the run (the binary, the command, the flags and the resolved config, `Key`), the file's
 //! path and content, and, when linting the file read the project's codebase, a fingerprint of the project.
 //!
 //! The file: `MAGIC`, the BLAKE3 hash of the rest, then sections, one per run key, most recent first. A section is
 //! the run key's digest, its body's length and the body: the entry count, then per entry the path's length and
-//! bytes, the entry's digest and whether it reads the project. A file that is missing, truncated, from another
-//! version or otherwise unreadable is an empty cache.
+//! bytes, the entry's digest, whether it reads the project, and the result's length and bytes. A file that is
+//! missing, truncated, from another version or otherwise unreadable is an empty cache.
 
+use crate::report::{FileResult, Status};
+use pun_problem::{Edit, Fix, Level, Problem, Safety, Span};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-const MAGIC: &[u8; 8] = b"PUNRC\0\0\x01";
+const MAGIC: &[u8; 8] = b"PUNRC\0\0\x02";
 /// The run keys a file keeps (format, lint and check, with and without `--fix`, and a few others).
 const RUNS: usize = 8;
 
@@ -67,10 +70,12 @@ pub(crate) fn stat(path: &Path) -> Vec<u8> {
     [m.len().to_le_bytes().as_slice(), &mtime.to_le_bytes()].concat()
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct Entry {
     digest: Digest,
     project: bool,
+    /// What `encode` kept of the file's findings; empty for a clean file.
+    result: Vec<u8>,
 }
 
 pub(crate) struct Cache {
@@ -84,7 +89,7 @@ pub(crate) struct Cache {
     old_body: Option<(Vec<u8>, bool)>,
     /// The other run keys' sections, most recent first.
     others: Vec<(Digest, Vec<u8>)>,
-    clean: Mutex<Vec<(String, Entry)>>,
+    kept: Mutex<Vec<(String, Entry)>>,
 }
 
 impl Cache {
@@ -98,7 +103,7 @@ impl Cache {
             old: HashMap::new(),
             old_body: None,
             others: vec![],
-            clean: Mutex::new(vec![]),
+            kept: Mutex::new(vec![]),
         };
         let sections = std::fs::read(&cache.file)
             .ok()
@@ -134,23 +139,27 @@ impl Cache {
         Some(key.digest())
     }
 
-    /// Whether `rel` with this content was clean in an earlier run with the same key; a hit stays in the cache.
-    pub(crate) fn hit(&self, rel: &str, content: &Digest) -> bool {
-        let Some(e) = self.old.get(rel) else {
-            return false;
-        };
-        let hit = self.entry_digest(rel, content, e.project) == Some(e.digest);
-        if hit {
-            (self.clean.lock().expect("the cache's entries")).push((rel.to_string(), *e));
+    /// The result `rel` with this content had in an earlier run with the same key (empty when it was clean); a hit
+    /// stays in the cache.
+    pub(crate) fn hit(&self, rel: &str, content: &Digest) -> Option<Vec<u8>> {
+        let e = self.old.get(rel)?;
+        if self.entry_digest(rel, content, e.project) != Some(e.digest) {
+            return None;
         }
-        hit
+        (self.kept.lock().expect("the cache's entries")).push((rel.to_string(), e.clone()));
+        Some(e.result.clone())
     }
 
-    /// Records that `rel` with this content was clean; `project` when linting it read the project's codebase.
-    pub(crate) fn keep(&self, rel: &str, content: &Digest, project: bool) {
+    /// Records the result of `rel` with this content (empty when it was clean); `project` when linting it read the
+    /// project's codebase.
+    pub(crate) fn keep(&self, rel: &str, content: &Digest, project: bool, result: Vec<u8>) {
         if let Some(digest) = self.entry_digest(rel, content, project) {
-            let entry = Entry { digest, project };
-            (self.clean.lock().expect("the cache's entries")).push((rel.to_string(), entry));
+            let entry = Entry {
+                digest,
+                project,
+                result,
+            };
+            (self.kept.lock().expect("the cache's entries")).push((rel.to_string(), entry));
         }
     }
 
@@ -158,7 +167,7 @@ impl Cache {
     /// a temporary file, so a concurrent run reads the old cache or the new one, never a mix.
     pub(crate) fn save(self, checked: &HashSet<&str>) {
         let mut entries: HashMap<String, Entry> =
-            (self.clean.into_inner().expect("the cache's entries"))
+            (self.kept.into_inner().expect("the cache's entries"))
                 .into_iter()
                 .collect();
         for (rel, e) in self.old {
@@ -180,6 +189,8 @@ impl Cache {
             body.extend_from_slice(rel.as_bytes());
             body.extend_from_slice(&e.digest);
             body.push(u8::from(e.project));
+            body.extend_from_slice(&(e.result.len() as u64).to_le_bytes());
+            body.extend_from_slice(&e.result);
         }
         if self.old_body == Some((body.clone(), true)) {
             return;
@@ -204,6 +215,137 @@ fn write(file: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::write(&tmp, bytes)
         .and_then(|()| std::fs::rename(&tmp, file))
         .inspect_err(|_| drop(std::fs::remove_file(&tmp)))
+}
+
+/// What a file's check found, for `Cache::keep`: its status, fixes, diff and problems. `code` is the file's content;
+/// the problems' source is kept only when it differs.
+pub(crate) fn encode(r: &FileResult, code: &[u8]) -> Vec<u8> {
+    fn str(out: &mut Vec<u8>, s: &str) {
+        num(out, s.len());
+        out.extend_from_slice(s.as_bytes());
+    }
+    fn num(out: &mut Vec<u8>, n: usize) {
+        out.extend_from_slice(&(n as u64).to_le_bytes());
+    }
+    let mut out = vec![u8::from(r.status == Status::Fixed)];
+    for names in [&r.applied, &r.warned] {
+        num(&mut out, names.len());
+        for n in names {
+            str(&mut out, n);
+        }
+    }
+    str(&mut out, &r.diff);
+    num(&mut out, r.line);
+    match &r.source {
+        s if s.is_empty() => out.push(0),
+        s if s.as_bytes() == code => out.push(1),
+        s => {
+            out.push(2);
+            str(&mut out, s);
+        }
+    }
+    num(&mut out, r.problems.len());
+    for p in &r.problems {
+        str(&mut out, &p.rule);
+        str(&mut out, &p.path.to_string_lossy());
+        num(&mut out, p.span.start);
+        num(&mut out, p.span.end);
+        str(&mut out, &p.message);
+        out.push(u8::from(p.help.is_some()));
+        str(&mut out, p.help.as_deref().unwrap_or_default());
+        out.push(u8::from(p.level == Level::Warning));
+        match &p.fix {
+            None => out.push(0),
+            Some(fix) => {
+                out.push(1 + u8::from(fix.safety == Safety::Unsafe));
+                num(&mut out, fix.edits.len());
+                for e in &fix.edits {
+                    num(&mut out, e.span.start);
+                    num(&mut out, e.span.end);
+                    str(&mut out, &e.text);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The result `encode` kept, for the file at `path` with this content.
+pub(crate) fn decode(mut b: &[u8], path: PathBuf, rel: String, code: &[u8]) -> Option<FileResult> {
+    fn str(b: &mut &[u8]) -> Option<String> {
+        let n = len(b)?;
+        String::from_utf8(take(b, n)?.to_vec()).ok()
+    }
+    fn byte(b: &mut &[u8]) -> Option<u8> {
+        Some(take(b, 1)?[0])
+    }
+    fn names(b: &mut &[u8]) -> Option<Vec<&'static str>> {
+        (0..len(b)?).map(|_| Some(intern(&str(b)?))).collect()
+    }
+    let b = &mut b;
+    let mut r = FileResult::new(path, rel);
+    if byte(b)? == 1 {
+        r.status = Status::Fixed;
+    }
+    r.applied = names(b)?;
+    r.warned = names(b)?;
+    r.diff = str(b)?;
+    r.line = len(b)?;
+    r.source = match byte(b)? {
+        0 => String::new(),
+        1 => String::from_utf8_lossy(code).into_owned(),
+        _ => str(b)?,
+    };
+    for _ in 0..len(b)? {
+        let rule = str(b)?;
+        let path = PathBuf::from(str(b)?);
+        let span = Span::new(len(b)?, len(b)?);
+        let message = str(b)?;
+        let help = (byte(b)? == 1, str(b)?);
+        let level = if byte(b)? == 1 {
+            Level::Warning
+        } else {
+            Level::Error
+        };
+        let fix = match byte(b)? {
+            0 => None,
+            safety => Some(Fix {
+                safety: if safety == 2 {
+                    Safety::Unsafe
+                } else {
+                    Safety::Safe
+                },
+                edits: (0..len(b)?)
+                    .map(|_| Some(Edit::new(Span::new(len(b)?, len(b)?), str(b)?)))
+                    .collect::<Option<_>>()?,
+            }),
+        };
+        r.problems.push(Problem {
+            rule,
+            path,
+            span,
+            message,
+            help: help.0.then_some(help.1),
+            level,
+            fix,
+        });
+    }
+    b.is_empty().then_some(r)
+}
+
+/// A rule's or fixer's name as the `&'static str` a `FileResult` holds, one copy per name for the process.
+fn intern(name: &str) -> &'static str {
+    static NAMES: Mutex<Option<HashSet<&'static str>>> = Mutex::new(None);
+    let mut names = NAMES
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let names = names.get_or_insert_default();
+    if let Some(n) = names.get(name) {
+        return n;
+    }
+    let n: &'static str = Box::leak(name.into());
+    names.insert(n);
+    n
 }
 
 /// Reads `n` bytes off the front of `bytes`.
@@ -241,7 +383,16 @@ fn entries(mut body: &[u8]) -> Option<HashMap<String, Entry>> {
         let rel = String::from_utf8(take(&mut body, n)?.to_vec()).ok()?;
         let digest = take(&mut body, 16)?.try_into().ok()?;
         let project = take(&mut body, 1)?[0] == 1;
-        out.insert(rel, Entry { digest, project });
+        let n = len(&mut body)?;
+        let result = take(&mut body, n)?.to_vec();
+        out.insert(
+            rel,
+            Entry {
+                digest,
+                project,
+                result,
+            },
+        );
     }
     body.is_empty().then_some(out)
 }
@@ -272,51 +423,66 @@ mod tests {
         let project = Some(hash(b"project"));
 
         let c = Cache::open(file.clone(), &d, run, project);
-        assert!(!c.hit("a.php", &a));
-        c.keep("a.php", &a, false);
-        c.keep("b.php", &b, true);
+        assert!(c.hit("a.php", &a).is_none());
+        c.keep("a.php", &a, false, vec![]);
+        c.keep("b.php", &b, true, b"found".to_vec());
         c.save(&HashSet::from(["a.php", "b.php"]));
 
         let c = Cache::open(file.clone(), &d, run, project);
-        assert!(c.hit("a.php", &a) && c.hit("b.php", &b));
+        assert_eq!(c.hit("a.php", &a), Some(vec![]), "clean");
+        assert_eq!(c.hit("b.php", &b), Some(b"found".to_vec()), "a result");
         c.save(&HashSet::from(["a.php", "b.php"]));
 
         let c = Cache::open(file.clone(), &d, run, project);
-        assert!(c.hit("a.php", &a), "a hit stays");
-        assert!(!c.hit("a.php", &b), "content");
-        assert!(!c.hit("b.php", &a), "path");
-        assert!(c.hit("b.php", &b));
+        assert!(c.hit("a.php", &a).is_some(), "a hit stays");
+        assert!(c.hit("a.php", &b).is_none(), "content");
+        assert!(c.hit("b.php", &a).is_none(), "path");
+        assert!(c.hit("b.php", &b).is_some());
         assert!(
-            !Cache::open(file.clone(), &d, other, project).hit("a.php", &a),
+            Cache::open(file.clone(), &d, other, project)
+                .hit("a.php", &a)
+                .is_none(),
             "run"
         );
         let changed = Cache::open(file.clone(), &d, run, Some(hash(b"changed")));
         assert!(
-            changed.hit("a.php", &a) && !changed.hit("b.php", &b),
+            changed.hit("a.php", &a).is_some() && changed.hit("b.php", &b).is_none(),
             "project"
         );
-        assert!(!Cache::open(file.clone(), &d, run, None).hit("b.php", &b));
+        assert!(
+            Cache::open(file.clone(), &d, run, None)
+                .hit("b.php", &b)
+                .is_none()
+        );
 
         // A save under another key keeps this one; a file this run didn't check stays while it exists.
         let c = Cache::open(file.clone(), &d, other, None);
-        c.keep("a.php", &a, false);
+        c.keep("a.php", &a, false, vec![]);
         c.save(&HashSet::new());
         Cache::open(file.clone(), &d, run, project).save(&HashSet::new());
         let c = Cache::open(file.clone(), &d, run, project);
-        assert!(c.hit("a.php", &a) && c.hit("b.php", &b));
+        assert!(c.hit("a.php", &a).is_some() && c.hit("b.php", &b).is_some());
         std::fs::remove_file(d.join("b.php")).unwrap();
         let c = Cache::open(file.clone(), &d, run, project);
-        assert!(c.hit("a.php", &a));
+        assert!(c.hit("a.php", &a).is_some());
         c.save(&HashSet::from(["a.php"]));
         let c = Cache::open(file.clone(), &d, run, project);
         assert!(
-            c.hit("a.php", &a) && !c.hit("b.php", &b),
+            c.hit("a.php", &a).is_some() && c.hit("b.php", &b).is_none(),
             "dropped when gone"
         );
         // Checked and not clean any more: dropped.
         Cache::open(file.clone(), &d, run, project).save(&HashSet::from(["a.php"]));
-        assert!(!Cache::open(file.clone(), &d, run, project).hit("a.php", &a));
-        assert!(Cache::open(file.clone(), &d, other, None).hit("a.php", &a));
+        assert!(
+            Cache::open(file.clone(), &d, run, project)
+                .hit("a.php", &a)
+                .is_none()
+        );
+        assert!(
+            Cache::open(file.clone(), &d, other, None)
+                .hit("a.php", &a)
+                .is_some()
+        );
 
         let bytes = std::fs::read(&file).unwrap();
         for damaged in [
@@ -325,7 +491,11 @@ mod tests {
             [&bytes[..bytes.len() - 1], b"x"].concat(),
         ] {
             std::fs::write(&file, damaged).unwrap();
-            assert!(!Cache::open(file.clone(), &d, other, None).hit("a.php", &a));
+            assert!(
+                Cache::open(file.clone(), &d, other, None)
+                    .hit("a.php", &a)
+                    .is_none()
+            );
         }
         std::fs::remove_dir_all(&d).unwrap();
     }
