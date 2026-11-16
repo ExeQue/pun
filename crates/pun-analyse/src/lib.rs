@@ -97,6 +97,7 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
     let errors = rules::impure_points(errors);
     let mut errors = rules::larastan_finish(project.larastan.as_ref(), errors);
     settings.keep_reported(&mut errors);
+    std::thread::spawn(move || drop(settings));
     let processed = project
         .ignore_errors
         .process(errors, false, &analysed, false);
