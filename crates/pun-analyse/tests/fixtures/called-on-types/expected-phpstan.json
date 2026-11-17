@@ -82,5 +82,23 @@
   "identifier": "phpstan.dumpType",
   "message": "Dumped type: DateTime|DateTimeZone",
   "tip": null
+ },
+ {
+  "line": 113,
+  "identifier": "missingType.iterableValue",
+  "message": "Method CalledOn\\GenericStatics::calls() has parameter $values with no value type specified in iterable type array.",
+  "tip": "See: https://phpstan.org/blog/solving-phpstan-no-value-type-specified-in-iterable-type"
+ },
+ {
+  "line": 115,
+  "identifier": "phpstan.dumpType",
+  "message": "Dumped type: CalledOn\\Stack<(int|string), mixed>",
+  "tip": null
+ },
+ {
+  "line": 116,
+  "identifier": "phpstan.dumpType",
+  "message": "Dumped type: CalledOn\\Stack<int, float>",
+  "tip": null
  }
 ]

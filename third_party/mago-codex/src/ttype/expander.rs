@@ -1169,12 +1169,9 @@ fn should_use_static_type_params(named: &TNamedObject, static_obj: &TNamedObject
 
     let templates = &class_metadata.template_types;
 
-    current_params.len() == templates.len()
-        && current_params.iter().zip(templates.values()).all(|(current, template)| {
-            current.from_template_fallback()
-                || current == &template.constraint
-                || template.default.as_ref().is_some_and(|default| current == default)
-        })
+    // GenericStaticType keeps the arguments a `static<...>` names; only arguments filled in for omitted ones give way
+    // to the receiver's. An argument that only equals the bound (a method template resolved to it) is still named.
+    current_params.len() == templates.len() && current_params.iter().all(TUnion::from_template_fallback)
 }
 
 /// Expands existing type parameters and fills omitted arguments.

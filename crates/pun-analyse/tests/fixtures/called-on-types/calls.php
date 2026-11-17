@@ -86,3 +86,33 @@ final class Unions
         });
     }
 }
+
+/**
+ * @template TKey of array-key
+ * @template TValue
+ */
+class Stack
+{
+    /**
+     * @template TFlatKey of array-key
+     * @template TFlatValue
+     * @param callable(TValue): array<TFlatKey, TFlatValue> $callback
+     * @return static<TFlatKey, TFlatValue>
+     */
+    public function flatMap(callable $callback)
+    {
+        throw new \LogicException();
+    }
+}
+
+final class GenericStatics
+{
+    /**
+     * @param Stack<string, float> $floats
+     */
+    public function calls(Stack $floats, array $values): void
+    {
+        dumpType($floats->flatMap(fn (float $value): array => $values));
+        dumpType($floats->flatMap(fn (float $value): array => [$value]));
+    }
+}

@@ -1230,3 +1230,11 @@ TypeCombinator::union() keeps a BenevolentUnionType that absorbs the other membe
 files, the one merged later wins. Upstream compared the spans, whose first field is a `FileId` hashed from the file's
 absolute path, so the winner depended on where the project was checked out. Pun merges scanned files in sorted path
 order, so the last file in that order wins. Two declarations in one file still compare by span.
+
+## Named `static<...>` arguments
+
+`ttype/expander.rs` `should_use_static_type_params()`: the receiver's type arguments replace a `static<...>`'s only when
+every argument was filled in for an omitted one (`from_template_fallback()`). Upstream also replaced arguments equal to
+the class template's bound or default, so a method template that resolved to its bound (`flatMap()` with a callback
+returning `array`, `static<TFlatMapKey, TFlatMapValue>`) gave the receiver's `Collection<int, string>` where PHPStan's
+GenericStaticType keeps `Collection<(int|string), mixed>`.
