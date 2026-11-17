@@ -954,3 +954,30 @@ fn composer_autoloaded_classes_are_symbols() {
         )
     );
 }
+
+/// `-q` prints nothing and keeps the exit code, as PHPStan 2.3.6's `analyse -q` (no output with the table and json
+/// formats, under `CLAUDECODE=1`, and with `--generate-baseline`, which exits 0). `--memory-limit`, which PHPStan
+/// scripts pass, is accepted and changes nothing.
+#[test]
+fn quiet_prints_nothing_and_memory_limit_is_accepted() {
+    let d = sample("quiet", ERRORS);
+    let none = (String::new(), String::new());
+    let agent: &[(&str, &str)] = &[("PUN_AGENT", "1")];
+    for (args, env) in [
+        (&["-q"][..], &[][..]),
+        (&["--quiet", "--format=json"], &[]),
+        (&["-q"], agent),
+        (&["-q", "--memory-limit=2G"], &[]),
+        (&["-q", "--memory-limit=-1"], &[]),
+    ] {
+        let (out, err, code) = pun(&d, args, env);
+        assert_eq!(((out, err), code), (none.clone(), Some(1)), "{args:?}");
+    }
+    let (out, err, code) = pun(&d, &["-q", "--generate-baseline"], agent);
+    assert_eq!(((out, err), code), (none, Some(0)));
+    assert!(d.join("pun-baseline.toml").exists());
+    std::fs::remove_file(d.join("pun-baseline.toml")).unwrap();
+    let raw = pun(&d, &["--format=raw"], &[]);
+    assert_eq!(raw.2, Some(1));
+    assert_eq!(pun(&d, &["--format=raw", "--memory-limit", "-1"], &[]), raw);
+}

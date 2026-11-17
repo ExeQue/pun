@@ -186,11 +186,8 @@ fn format() {
     );
     assert_eq!(
         agent(&d, &["format", "--repair", "-q"]),
-        (
-            "pun format: fixed, 1 file formatted (2 checked, Ts)\napp/A.php format/arrays/syntax\n"
-                .into(),
-            Some(1)
-        )
+        (String::new(), Some(1)),
+        "Pint under a coding agent prints nothing with -q, and exits 1 after fixing with --repair"
     );
     assert_eq!(
         std::fs::read_to_string(d.join("app/A.php")).unwrap(),

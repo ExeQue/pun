@@ -266,7 +266,7 @@ pub(crate) fn stage(a: &FormatArgs, stage: Stage, lint: &LintOpts) -> Result<Exi
         &ctx,
         &results,
         a.format.as_deref(),
-        a.quiet,
+        (a.quiet, !matches!(stage, Stage::Lint { .. })),
         a.output_to_file.as_deref(),
         a.output_format.as_deref(),
     )?;

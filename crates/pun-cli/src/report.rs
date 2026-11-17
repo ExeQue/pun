@@ -234,11 +234,14 @@ fn error_line(message: &str) -> usize {
         .unwrap_or(0)
 }
 
+/// Prints the run's report. `quiet` (`-q`) prints nothing, as PHP-CS-Fixer's `fix -q` (`pun lint`), and as Pint under
+/// a coding agent or with `--format`; with `pint_lines` (`pun format` and `pun check`, which match Pint) and neither,
+/// Pint's one stderr line per file.
 pub(crate) fn emit(
     ctx: &Ctx,
     results: &[FileResult],
     format: Option<&str>,
-    quiet: bool,
+    (quiet, pint_lines): (bool, bool),
     to_file: Option<&Path>,
     file_format: Option<&str>,
 ) -> Result<()> {
@@ -250,14 +253,13 @@ pub(crate) fn emit(
     let err_dec = console::decorated(2, ctx.ansi, ctx.no_ansi);
     let mut out = String::new();
     let parsed = (format.map(str::parse::<ReportFormat>).transpose()).map_err(unsupported)?;
-    if crate::agent::enabled() && format.is_none() {
-        out = agent(ctx, results);
-    } else if parsed == Some(ReportFormat::Github) {
-        print!("{}", annotations(ctx, results));
-    } else if let Some(f) = parsed {
-        out = reporter(ctx, results, f, out_dec)?;
-    } else if quiet {
-        for i in issues(results) {
+    if quiet {
+        let lines = if pint_lines && format.is_none() && !crate::agent::enabled() {
+            issues(results)
+        } else {
+            vec![]
+        };
+        for i in lines {
             console::eprintln_raw(&fmt(
                 &format!(
                     "  {} {}: {}",
@@ -268,6 +270,12 @@ pub(crate) fn emit(
                 err_dec,
             ))?;
         }
+    } else if crate::agent::enabled() && format.is_none() {
+        out = agent(ctx, results);
+    } else if parsed == Some(ReportFormat::Github) {
+        print!("{}", annotations(ctx, results));
+    } else if let Some(f) = parsed {
+        out = reporter(ctx, results, f, out_dec)?;
     } else {
         console::print_raw(&human(ctx, results))?;
         if ctx.github {

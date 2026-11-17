@@ -27,7 +27,7 @@ pun format app/Models
 | `--format=<fmt>` | `json`, `txt`, `agent`, `checkstyle`, `junit`, `xml`, `gitlab`, or `github`. |
 | `--output-to-file=<path>` | Also write a report to a file, in `--output-format=<fmt>`. |
 | `--stdin-filename=<path>` | Path for code read from stdin (`-` as the path). |
-| `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` hides successful output. |
+| `-v`, `-q` | `-v` adds unchanged files and diffs. `-q` prints only Pint's stderr line per changed file. With `--format` or under a coding agent, it prints nothing, as Pint does. |
 | `--max-processes=N` | Cap threads and Prettier workers. Default: one per core. Invalid or nonpositive values keep the default. |
 | `--cache-file=<path>` | Keep the [result cache](#cache) in this file. |
 

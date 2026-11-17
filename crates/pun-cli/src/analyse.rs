@@ -41,12 +41,15 @@ pub(crate) struct AnalyseArgs {
     /// `raw`: add each error's identifier, as PHPStan's `-v` does.
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
-    /// Print nothing but the machine format or the errors' summary line.
+    /// Print nothing; the exit code is the result.
     #[arg(short, long)]
     quiet: bool,
     /// Colour the output: auto, always or never.
     #[arg(long, value_enum, value_name = "WHEN")]
     color: Option<render::ColorChoice>,
+    /// Accepted and ignored, so `phpstan analyse --memory-limit=2G` scripts run: Pun has no PHP memory limit.
+    #[arg(long, value_name = "LIMIT", allow_hyphen_values = true)]
+    memory_limit: Option<String>,
     /// `GITHUB_ACTIONS=true`: human output gets GitHub annotations after it.
     #[arg(skip)]
     pub(crate) github_actions: bool,
@@ -410,6 +413,8 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
     let root = &cfg.root;
     let errors = analysed.findings.len() + analysed.malformed.len() + analysed.general.len();
     match a.format.as_deref() {
+        // `-q` prints nothing, as PHPStan's `--quiet` (with any error format, under a coding agent too).
+        _ if a.quiet => {}
         Some(format) => {
             let cx = analyse_report::Context {
                 verbose: a.verbose > 0 || agent::enabled(),
@@ -426,7 +431,6 @@ fn present(a: &AnalyseArgs, cfg: &Config, analysed: &Analysed, started: Instant)
             );
         }
         None if agent::enabled() => print!("{}", agent_report(analysed, a.verbose > 0)),
-        None if a.quiet => {}
         None => {
             let look = Look::stdout(a.color.unwrap_or(render::ColorChoice::Auto));
             print!(
@@ -474,12 +478,12 @@ fn generate_baseline(
     let n = analysed.findings.len();
     let errors = agent::count(n, "error");
     let shown = path.display();
+    if a.quiet {
+        return Ok(Exit::Success);
+    }
     if agent::enabled() {
         let detail = [format!("baseline {shown} written with {errors}")];
         print!("{}", agent::render("ok", &detail, "", &[], false));
-        return Ok(Exit::Success);
-    }
-    if a.quiet {
         return Ok(Exit::Success);
     }
     let look = Look::stdout(a.color.unwrap_or(render::ColorChoice::Auto));

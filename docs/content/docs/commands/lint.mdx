@@ -55,6 +55,8 @@ pun lint --max-warnings 10
 
 Lint also takes [`pun format`'s file-selection and output flags](/docs/commands/format#pints-flags), such as `--dirty`, `--diff`, `--staged`, `--format`, and `--stdin`.
 
+`-q` prints nothing, as PHP-CS-Fixer's `fix -q` does, and the exit code reports the result. `pun format -q` and `pun check -q` keep Pint's stderr line per file.
+
 Lint reuses each unchanged file's result from the last run, through the [result cache](/docs/commands/format#cache). `--no-cache` checks every file.
 
 ## Output

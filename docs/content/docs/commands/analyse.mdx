@@ -82,9 +82,10 @@ Non-ignorable errors, such as a duplicate parameter, stay visible even when an i
 | `--generate-baseline [<file>]` | Write every error to the baseline and exit 0. |
 | `--concise` | One line per finding. |
 | `-v` | Add identifiers to `raw` output. |
-| `-q` | Print only the machine format or the summary line. |
+| `-q`, `--quiet` | Print nothing, also with `--format` or under a coding agent. The exit code still reports the result, as PHPStan does. |
 | `--color=auto\|always\|never` | Color mode. |
 | `--max-processes=N` | Cap worker threads. |
+| `--memory-limit=<limit>` | Accepted and ignored, so `phpstan analyse --memory-limit=2G` scripts keep working. Pun has no PHP memory limit. |
 
 `json` and `prettyJson` add `"fixable": true` to errors that PHPStan's `--fix` can fix. `table` marks them with 🔧 and counts them, plus ignored errors that `--fix-ignored` can fix. Pun doesn't fix them.
 

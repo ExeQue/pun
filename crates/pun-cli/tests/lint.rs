@@ -875,3 +875,37 @@ fn check_formats_like_pint_beside_lint_fixes() {
         "{out}"
     );
 }
+
+/// `-q` prints nothing on either stream, with or without `--fix` and under a coding agent too, as PHP-CS-Fixer's
+/// `fix -q` (which prints nothing with or without `--dry-run`); the exit code is the one the run has without `-q`.
+#[test]
+fn quiet_prints_nothing() {
+    let toml = "[format]\npreset = \"empty\"\n\n[lint.rules]\n\"complexity/no-negated-boolean-literal\" = \"error\"\n";
+    let files = [("pun.toml", toml), ("a.php", "<?php\n$n = !true;\n")];
+    let d = project("lint", "quiet", &files);
+    let run = |args: &[&str], agent: &str| {
+        common::write_files(&d, &files);
+        let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+            .current_dir(&d)
+            .env("PUN_AGENT", agent)
+            .args(["lint", "--no-cache"])
+            .args(args)
+            .output()
+            .unwrap();
+        let s = |b: Vec<u8>| String::from_utf8(b).unwrap();
+        (s(out.stdout), s(out.stderr), out.status.code())
+    };
+    for agent in ["0", "1"] {
+        for args in [&[][..], &["--fix"]] {
+            let (out, _, code) = run(args, agent);
+            assert!(!out.is_empty(), "{args:?} {agent}");
+            let quiet = run(&[args, &["-q"]].concat(), agent);
+            assert_eq!(
+                quiet,
+                (String::new(), String::new(), code),
+                "{args:?} {agent}"
+            );
+        }
+    }
+    assert_eq!(read(&d, "a.php"), "<?php\n$n = false;\n");
+}
