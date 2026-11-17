@@ -191,7 +191,9 @@ silent:
   on a file is an error (and fixable without `--fix`), each file with format fixes needs formatting, and each
   remaining fix after `--fix` is an error.
 - **`--ansi` / `--no-ansi`** stay hidden aliases of `--color=always|never` (`--ansi` wins when both are given, as in
-  Symfony's configureIO), and they still decorate the machine reports as in Pint. `-q` keeps Pint's stderr lines.
+  Symfony's configureIO), and they still decorate the machine reports as in Pint. `-q` keeps Pint's stderr lines for
+  `pun format` and `pun check` outside agent mode and without `--format`, as Pint does; `pun lint` and `pun analyse`
+  print nothing under `-q` (PHP-CS-Fixer and PHPStan), in agent mode too.
 - **Pint's progress before an abort** (an unreadable file) is gone: the abort box prints alone.
 - **The spinner** runs during the file walk for human output only (no `--format`, no `-q`, no agent), and is dropped
   before the report prints.
