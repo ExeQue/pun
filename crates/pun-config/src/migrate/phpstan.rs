@@ -236,8 +236,9 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
     let ignore = (p.get_str("ignoreErrors").and_then(Value::as_array))
         .cloned()
         .unwrap_or_default();
+    let report_unmatched = p.get_str("reportUnmatchedIgnoredErrors") != Some(&Value::Bool(false));
     for e in ignore.values() {
-        ignore_entry(root, e, &mut out);
+        ignore_entry(root, e, report_unmatched, &mut out);
     }
     Ok(out)
 }
@@ -436,7 +437,9 @@ fn differences(name: &str, a: Option<&Value>, b: Option<&Value>, out: &mut Vec<(
     }
 }
 
-fn ignore_entry(root: &Path, e: &Value, out: &mut Phpstan) {
+/// One `ignoreErrors` entry as `[[analyse.ignore]]` tables. `report_unmatched` is `reportUnmatchedIgnoredErrors`,
+/// which the entry's own `reportUnmatched` overrides; pun.toml has no global, so a `false` goes on each entry.
+fn ignore_entry(root: &Path, e: &Value, report_unmatched: bool, out: &mut Phpstan) {
     let empty = Array::new();
     let a = e.as_array().unwrap_or(&empty);
     let mut messages: Vec<(&str, String)> = vec![];
@@ -459,6 +462,10 @@ fn ignore_entry(root: &Path, e: &Value, out: &mut Phpstan) {
         .map(|p| relative(root, &p))
         .collect();
     let count = a.get_str("count").and_then(Value::to_php_string);
+    let report_unmatched = match a.get_str("reportUnmatched") {
+        Some(Value::Bool(b)) => *b,
+        _ => report_unmatched,
+    };
     let messages = if messages.is_empty() {
         vec![None]
     } else {
@@ -521,6 +528,9 @@ fn ignore_entry(root: &Path, e: &Value, out: &mut Phpstan) {
             }
             if let Some(c) = &count {
                 writeln!(t, "count = {c}").unwrap();
+            }
+            if !report_unmatched {
+                t.push_str("report-unmatched = false\n");
             }
             out.ignores.push(t);
         }

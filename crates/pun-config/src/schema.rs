@@ -289,6 +289,9 @@ pub struct Ignore {
     pub paths: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub count: Option<u32>,
+    /// PHPStan's `reportUnmatched`: `false` doesn't report the entry when it matches nothing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report_unmatched: Option<bool>,
 }
 
 #[derive(Deserialize, Default)]

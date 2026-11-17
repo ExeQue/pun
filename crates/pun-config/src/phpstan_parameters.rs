@@ -163,6 +163,9 @@ fn ignore(root: &Path, i: &crate::Ignore) -> Array {
     if let Some(c) = i.count {
         e.set(Key::from("count"), Value::Int(i64::from(c)));
     }
+    if let Some(r) = i.report_unmatched {
+        e.set(Key::from("reportUnmatched"), Value::Bool(r));
+    }
     e
 }
 

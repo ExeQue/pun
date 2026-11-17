@@ -23,7 +23,7 @@ paths = ["app", "tests"]
 
 The five [analyse presets](/docs/configuration/presets#analyse-presets) group PHPStan levels. A rule takes `"on"` or `"off"`. Pun analyses at the highest PHPStan level among the enabled core rules and the preset's type switches.
 
-`stubs`, `[[analyse.ignore]]`, and the rule options `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry that matches nothing is an error.
+`stubs`, `[[analyse.ignore]]`, and the rule options `pun migrate` writes work like PHPStan's `stubFiles`, `ignoreErrors`, and parameters. An ignore entry that matches nothing is an error, unless it sets `report-unmatched = false`. When you pass files on the command line, entries for other files and entries without a path aren't reported.
 
 Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel that Larastan 3 doesn't support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
 

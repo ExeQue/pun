@@ -1647,6 +1647,7 @@ fn analyse_parameters() {
         match v {
             V::Array(a) => format!("[{}]", a.values().map(show).collect::<Vec<_>>().join(", ")),
             V::Int(i) => i.to_string(),
+            V::Bool(b) => b.to_string(),
             v => v.as_str().unwrap().to_string(),
         }
     }
@@ -1657,7 +1658,7 @@ fn analyse_parameters() {
     let mut toml = String::from(
         "[analyse]\nstubs = [\"stubs/a.stub\"]\n\n[[analyse.ignore]]\nrule = \"undefined/constant\"\npaths = [\"app/A.php\"]\ncount = 2\n\n[[analyse.ignore]]\nidentifier = \"x.y\"\nmessage = \"#m#\"\n",
     );
-    toml.push_str("\n[[analyse.ignore]]\nraw-message = \"r\"\npaths = [\"*/B.php\", \"app/../C.php\"]\n\n[analyse.rules]\n");
+    toml.push_str("\n[[analyse.ignore]]\nraw-message = \"r\"\npaths = [\"*/B.php\", \"app/../C.php\"]\nreport-unmatched = false\n\n[analyse.rules]\n");
     for g in &groups {
         let _ = writeln!(toml, "{g} = \"off\"");
     }
@@ -1699,7 +1700,7 @@ fn analyse_parameters() {
         [
             format!("rule=analyse/undefined/constant path={root}/app/A.php count=2"),
             "message=#m# identifier=x.y".to_string(),
-            format!("rawMessage=r paths=[*/B.php, {root}/C.php]"),
+            format!("rawMessage=r paths=[*/B.php, {root}/C.php] reportUnmatched=false"),
         ]
     );
 

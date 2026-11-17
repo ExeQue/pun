@@ -142,8 +142,9 @@ Each `[[analyse.ignore]]` entry takes these keys. An error is ignored when it ma
 | `raw-message` | The exact message |
 | `paths` | Paths or fnmatch patterns from the project root |
 | `count` | The number of matches, with one path |
+| `report-unmatched` | `false` doesn't report the entry when it matches nothing, as PHPStan's `reportUnmatched`. Default `true` |
 
-An entry that matches nothing, or a `count` that is wrong, is reported as an error.
+An entry that matches nothing, or a `count` that is wrong, is reported as an error. With `report-unmatched = false`, only a `count` that is exceeded is.
 
 ```toml pun.toml
 [[analyse.ignore]]

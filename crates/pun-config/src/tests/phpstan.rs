@@ -382,6 +382,40 @@ fn reads_max_and_rejects_bad_levels() {
     );
 }
 
+/// PHPStan 2.3.6 on these entries, none matching, reports A, B, D and E as unmatched, and with
+/// `reportUnmatchedIgnoredErrors: false` only B: an entry's own `reportUnmatched` wins, a bare pattern and each
+/// expanded `messages` item take the global.
+#[test]
+fn carries_report_unmatched() {
+    let entries = "    ignoreErrors:\n        - '#^A$#'\n        - message: '#^B$#'\n          reportUnmatched: true\n        - message: '#^C$#'\n          reportUnmatched: false\n        - messages: ['#^D$#', '#^E$#']\n";
+    let ignores = |global: &str| {
+        let neon = format!("parameters:\n    level: 0\n{global}{entries}");
+        let d = project(&neon, &[]);
+        from_phpstan(&d, &d.join("phpstan.neon")).unwrap().ignores
+    };
+    let off = "report-unmatched = false\n";
+    assert_eq!(
+        ignores(""),
+        [
+            "[[analyse.ignore]]\nmessage = \"#^A$#\"\n".to_string(),
+            "[[analyse.ignore]]\nmessage = \"#^B$#\"\n".to_string(),
+            format!("[[analyse.ignore]]\nmessage = \"#^C$#\"\n{off}"),
+            "[[analyse.ignore]]\nmessage = \"#^D$#\"\n".to_string(),
+            "[[analyse.ignore]]\nmessage = \"#^E$#\"\n".to_string(),
+        ]
+    );
+    assert_eq!(
+        ignores("    reportUnmatchedIgnoredErrors: false\n"),
+        [
+            format!("[[analyse.ignore]]\nmessage = \"#^A$#\"\n{off}"),
+            "[[analyse.ignore]]\nmessage = \"#^B$#\"\n".to_string(),
+            format!("[[analyse.ignore]]\nmessage = \"#^C$#\"\n{off}"),
+            format!("[[analyse.ignore]]\nmessage = \"#^D$#\"\n{off}"),
+            format!("[[analyse.ignore]]\nmessage = \"#^E$#\"\n{off}"),
+        ]
+    );
+}
+
 #[test]
 fn takes_phar_bleeding_edge() {
     let d = project(
