@@ -1537,7 +1537,7 @@ pub(super) fn property(
     }
 }
 
-fn inherited_property_doc(
+pub(super) fn inherited_property_doc(
     c: &Checker,
     class: &ClassLikeMetadata,
     name: &[u8],

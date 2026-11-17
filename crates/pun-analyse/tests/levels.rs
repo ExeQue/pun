@@ -683,6 +683,7 @@ fn phpstan_level_fixtures() {
                     || (id == "parameter.notFound"
                         && PARAMETER_NOT_FOUND.iter().any(|p| message.starts_with(p)))
                     || (id == "classConstant.phpDocType" && message.contains(" native type "))
+                    || (id == "property.phpDocType" && message.contains(" of overridden property "))
             };
             let mut want: BTreeSet<Key> = case["errors"]
                 .as_array()

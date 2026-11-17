@@ -3,7 +3,7 @@ use mago_codex::metadata::property::PropertyMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::visibility::Visibility;
 use mago_span::{Position, Span};
-use pun_phpstan::types::{Level, Type, is_super_type_of};
+use pun_phpstan::types::{Level, Type, decide_type, is_super_type_of, mixed, recommended_level};
 
 use super::Checker;
 use super::declarations::has_tag;
@@ -232,8 +232,20 @@ impl<'a> Checker<'a, '_> {
                         declaring,
                     )
                 });
+                // A trait's property is declared by the class that uses it.
+                let shown = if declaring.kind == SymbolKind::Trait {
+                    std::iter::successors(Some(u), |a| {
+                        a.direct_parent_class
+                            .and_then(|p| self.codebase.get_class_like(p.as_bytes()))
+                    })
+                    .take(ANCESTRY)
+                    .find(|a| a.used_traits.contains(&declaring.name))
+                    .unwrap_or(u)
+                } else {
+                    declaring
+                };
                 Some(Prototype {
-                    class: self.ancestor_display(k, &self.display(declaring)),
+                    class: self.ancestor_display(k, &self.display(shown)),
                     is_public: p.read_visibility == Visibility::Public,
                     is_private: p.read_visibility == Visibility::Private,
                     is_static,
@@ -269,22 +281,76 @@ pub(super) fn hook_names(p: &PropertyMetadata) -> (bool, bool) {
     (has(b"get"), has(b"set"))
 }
 
+const STUB_TIP: &str = "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files";
+
 pub(super) fn check(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
     let k = c
         .class_scope()
         .expect("a property is walked inside its class");
-    let errors = declared::with_classes(c, || errors(c, node, is_readonly, k));
+    let mut errors = declared::with_classes(c, || errors(c, node, is_readonly, k));
+    let type_errors = errors.iter().any(|(id, ..)| {
+        matches!(
+            *id,
+            "property.missingNativeType" | "property.nativeType" | "property.extraNativeType"
+        )
+    });
+    let phpdoc = (c.level >= 3 && !type_errors)
+        .then(|| declared::with_classes(c, || phpdoc_error(c, node, k)))
+        .flatten();
+    let tip = phpdoc.as_ref().map(|_| STUB_TIP);
+    errors.extend(phpdoc.map(|message| ("property.phpDocType", message, true)));
     for (identifier, message, ignorable) in errors {
         let count = c.errors.len();
+        let tip = (identifier == "property.phpDocType")
+            .then_some(tip)
+            .flatten();
         if ignorable {
-            c.report(node.at, identifier, message, None);
+            c.report(node.at, identifier, message, tip);
         } else {
-            c.report_non_ignorable(node.at, identifier, message, None);
+            c.report_non_ignorable(node.at, identifier, message, tip);
         }
         if identifier == "property.override" {
             c.fixable_since(count);
         }
     }
+}
+
+/// The PHPDoc half of OverridingPropertyRule (checkPhpDocMethodSignatures, level 3): the readable types of the
+/// property and its prototype, with reportMaybesInPropertyPhpDocTypes at its default (off), so only a type that is
+/// not covariant (or contravariant, for a write-only hooked prototype) is reported. ponytail: a promoted property's
+/// PHPDoc type (the constructor's `@param`) is not compared.
+fn phpdoc_error(c: &Checker, node: &PropertyNode, k: &ClassLikeMetadata) -> Option<String> {
+    let decl = node.decl?;
+    let name = String::from_utf8_lossy(&node.name[1..]).into_owned();
+    let prototype = c.property_prototype(k, &name)?;
+    let doc = declared::inherited_property_doc(c, k, name.as_bytes(), 0);
+    let theirs = match prototype.native {
+        Some(native) => decide_type(native, doc),
+        None => doc.unwrap_or_else(mixed),
+    };
+    let ours = declared::property(c, node.hint, decl, name.as_bytes(), k);
+    // A template the ancestors' `@extends`/`@use` would resolve is left in the type: no verdict.
+    if theirs == ours || declared::has_template(&theirs) {
+        return None;
+    }
+    let level = recommended_level(&theirs, Some(&ours));
+    let (variance, ok) = if c.php_version >= 80400
+        && (prototype.is_virtual || prototype.is_abstract)
+        && !prototype.readable
+    {
+        ("contravariant", is_super_type_of(&ours, &theirs).yes())
+    } else {
+        ("covariant", is_super_type_of(&theirs, &ours).yes())
+    };
+    (!ok).then(|| {
+        format!(
+            "PHPDoc type {} of property {}::${name} is not {variance} with PHPDoc type {} of overridden property {}::${name}.",
+            ours.describe(level),
+            c.display(k),
+            theirs.describe(level),
+            prototype.class
+        )
+    })
 }
 
 fn errors<'a>(

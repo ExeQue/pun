@@ -35,6 +35,13 @@ const GAPS: &[(&str, &str, i64, &str)] = &[
     ),
     ("max", "template-self-reference.php", 32, "return.type"),
     ("duplicate-classes", "a.php", 3, "missingType.return"),
+    // OverridingPropertyRule's PHPDoc check does not compare a promoted property.
+    (
+        "overriding-property-phpdoc",
+        "properties.php",
+        59,
+        "property.phpDocType",
+    ),
 ];
 
 const EXTRA: &[(&str, &str, i64, &str)] = &[

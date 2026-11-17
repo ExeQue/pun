@@ -1,0 +1,33 @@
+{
+ "general": [],
+ "errors": [
+  {
+   "file": "properties.php",
+   "line": 22,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<string, int> of property OverridingPropertyPhpDocCoverage\\IntChild::$items is not covariant with PHPDoc type array<int, int> of overridden property OverridingPropertyPhpDocCoverage\\GenericBase<int>::$items.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 28,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type float of property OverridingPropertyPhpDocCoverage\\RawChild::$value is not covariant with PHPDoc type int|string of overridden property OverridingPropertyPhpDocCoverage\\GenericBase<int|string>::$value.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 45,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<string>|bool of property OverridingPropertyPhpDocCoverage\\Pivot::$guarded is not covariant with PHPDoc type array<string> of overridden property OverridingPropertyPhpDocCoverage\\Model::$guarded.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 59,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<string> of property OverridingPropertyPhpDocCoverage\\Promoted::$hidden is not covariant with PHPDoc type list<string> of overridden property OverridingPropertyPhpDocCoverage\\Base::$hidden.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  }
+ ]
+}
