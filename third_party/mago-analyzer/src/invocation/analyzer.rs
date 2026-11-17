@@ -542,16 +542,29 @@ fn combine_walk_reflection<'ctx, A: Arena>(
     let mut parameters: Vec<TCallableParameter> = Vec::new();
     for candidate in targets {
         let method = candidate.get_method_context();
+        // UnionTypeUnresolvedMethodPrototypeReflection: each member's method is resolved on its own called-on
+        // type, so `Box<A>|Box<B>` combines `callable(A)` with `callable(B)`, not the shared receiver bounds' `A`
+        let mut class_templates = TemplateResult::default();
+        populate_template_result_from_invocation(
+            context,
+            &Invocation::new(candidate.clone(), InvocationArgumentsSource::None(candidate.span()), candidate.span()),
+            &mut class_templates,
+        );
         for (offset, parameter) in candidate.iter_parameters().enumerate() {
             let expand = |ty: &TUnion| {
-                resolve_type_in_class_context(
+                let ty = resolve_type_in_class_context(
                     context,
                     ty.clone(),
                     method.map(|method| method.class_like_metadata),
                     None,
                     None,
                     method.map(|method| &method.class_type),
-                )
+                );
+                if class_templates.lower_bounds.is_empty() {
+                    ty
+                } else {
+                    inferred_type_replacer::replace(&ty, &class_templates, context.codebase)
+                }
             };
             let ty = parameter.get_type().map_or_else(get_mixed, expand);
             let mut combined = TCallableParameter::new(

@@ -4014,3 +4014,11 @@ Each case was compared with PHPStan 2.3.5 on dev-null.sh, with and without bleed
 - `statement/loop/mod.rs`: a do-while's condition evaluated at the loop's head runs with observers off; PHPStan only
   evaluates it after the body.
 - `statement/loop/foreach.rs`: an empty array's key and value stay `never` (`getIterableValueType()` of `array{}`).
+
+## Callback parameters of a call on a union receiver
+
+`invocation/analyzer.rs` `combine_walk_reflection()`: each candidate's parameter types have its own receiver's class
+template arguments before they are combined, as UnionTypeUnresolvedMethodPrototypeReflection resolves every member's
+method on its own called-on type before ParametersAcceptorSelector::combineAcceptors(). The method resolution's shared
+template result binds a class template to one receiver member only, so a closure passed to
+`Collection<int, A>|Collection<int, B>` took `A` for its `TValue` parameter instead of `A|B`.

@@ -70,5 +70,17 @@
   "identifier": "phpstan.dumpType",
   "message": "Dumped type: ArrayObject<int, int>|SplStack<string>",
   "tip": null
+ },
+ {
+  "line": 80,
+  "identifier": "phpstan.dumpType",
+  "message": "Dumped type: DateTime|DateTimeZone",
+  "tip": null
+ },
+ {
+  "line": 84,
+  "identifier": "phpstan.dumpType",
+  "message": "Dumped type: DateTime|DateTimeZone",
+  "tip": null
  }
 ]

@@ -273,8 +273,6 @@ tests/Type/data/eloquent-collection-map.php:80
 tests/Type/data/eloquent-collection-map.php:83
 tests/Type/data/eloquent-collection-map.php:85
 tests/Type/data/eloquent-collection-map.php:87
-tests/Type/data/eloquent-collection-map.php:147
-tests/Type/data/eloquent-collection-map.php:148
 tests/Type/data/eloquent-collection-map.php:172
 tests/Type/data/eloquent-collection-map.php:186
 tests/Type/data/eloquent-collection-map.php:188

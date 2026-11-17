@@ -56,3 +56,33 @@ final class Calls
         });
     }
 }
+
+/**
+ * @template TKey of array-key
+ * @template TValue
+ */
+class Bag
+{
+    /**
+     * @param callable(TValue): bool $callback
+     */
+    public function reject(callable $callback): void {}
+}
+
+final class Unions
+{
+    /**
+     * @param Bag<int, \DateTime>|Bag<int, \DateTimeZone> $bags
+     */
+    public function calls(Bag $bags): void
+    {
+        $bags->reject(function (\DateTime|\DateTimeZone $value): bool {
+            dumpType($value);
+            return true;
+        });
+        $bags->reject(function ($value): bool {
+            dumpType($value);
+            return true;
+        });
+    }
+}
