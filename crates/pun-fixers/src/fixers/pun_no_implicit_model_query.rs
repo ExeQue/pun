@@ -121,6 +121,9 @@ fn import_aliases(tokens: &Tokens) -> HashMap<Vec<u8>, Vec<u8>> {
     map
 }
 
+// Public, non-static methods of the Eloquent or query builder that `Model` lacks, the ones
+// rector-laravel's EloquentMagicMethodToQueryBuilderRector rewrites: not `with` (a static `Model` method) or
+// SoftDeletes' `withTrashed`, `withoutTrashed` and `onlyTrashed` (builder macros).
 const QUERY_BUILDER_METHODS: &[&str] = &[
     "where",
     "orWhere",
@@ -146,16 +149,12 @@ const QUERY_BUILDER_METHODS: &[&str] = &[
     "inRandomOrder",
     "groupBy",
     "having",
-    "with",
     "withCount",
     "withSum",
     "withMax",
     "withMin",
     "withAvg",
     "withWhereHas",
-    "withTrashed",
-    "withoutTrashed",
-    "onlyTrashed",
     "has",
     "orHas",
     "doesntHave",
@@ -229,10 +228,6 @@ mod tests {
             fix("<?php\n\n$users = User::where('is_active', true)->get();\n"),
             "<?php\n\n$users = User::query()->where('is_active', true)->get();\n"
         );
-        assert_eq!(
-            fix("<?php\n\n$posts = Post::with('author')->latest()->get();\n"),
-            "<?php\n\n$posts = Post::query()->with('author')->latest()->get();\n"
-        );
         for same in [
             "<?php\n\n$users = User::query()->where('is_active', true)->get();\n",
             "<?php\n\n$user = User::find(1);\n$first = User::create(['name' => 'Jane']);\n",
@@ -240,6 +235,17 @@ mod tests {
         ] {
             assert_eq!(fix(same), same);
         }
+    }
+
+    #[test]
+    fn rector_cases() {
+        // rector-laravel 2.7.3's EloquentMagicMethodToQueryBuilderRector on Laravel 13's Model.
+        assert_eq!(
+            fix("<?php\n\nCommit::latest()->get();\nUser::inRandomOrder()->get();\nUser::has('profile')->get();\n"),
+            "<?php\n\nCommit::query()->latest()->get();\nUser::query()->inRandomOrder()->get();\nUser::query()->has('profile')->get();\n"
+        );
+        let same = "<?php\n\nCommit::withTrashed()->find(1);\nCommit::onlyTrashed()->get();\nCommit::withoutTrashed()->get();\nUser::with('profile')->get();\n";
+        assert_eq!(fix(same), same);
     }
 
     #[test]
