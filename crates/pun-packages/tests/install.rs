@@ -1,6 +1,6 @@
-use pun_packages::autoload::Apcu;
+use pun_packages::autoload::{Apcu, Scan};
 use pun_packages::fetch::{Auth, Fetcher};
-use pun_packages::install::{Added, Options, Report, Updated, install};
+use pun_packages::install::{Added, Options, Report, Updated, dump_autoload, install};
 use pun_packages::lock::Lock;
 use pun_packages::lock::LockedPackage;
 use pun_packages::version::IgnorePlatform;
@@ -661,5 +661,96 @@ fn an_incompatible_lock_installs_nothing() {
         ..o
     };
     assert!(run(&tmp, &lock, &ignored).incompatible.is_none());
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// `composer dump-autoload` on the fixture project after `composer install` (and then `composer install --no-dev`):
+/// `dump-expected/<case>` holds the files that differ from `default`, recorded from Composer 2.11.2 with
+/// `--no-scripts` and the flags each case is named after.
+#[test]
+fn dump_autoload_matches_composer() {
+    let tmp = std::env::temp_dir().join(format!("pun-dump-autoload-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    let expected = Path::new(FIXTURES).join("dump-expected");
+    let check = |case: &str, o: &Options, dev: Option<bool>, want_dev: bool| {
+        let mut events = vec![];
+        let report = dump_autoload(&tmp, &manifest, Some(&lock), o, dev, &mut |e, dev| {
+            events.push((e.to_string(), dev));
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(
+            events,
+            [
+                ("pre-autoload-dump".to_string(), want_dev),
+                ("post-autoload-dump".to_string(), want_dev)
+            ],
+            "{case}"
+        );
+        assert!(!report.missing);
+        let mut files = vec!["autoload.php".to_string()];
+        for e in std::fs::read_dir(expected.join("default/composer")).unwrap() {
+            files.push(format!(
+                "composer/{}",
+                e.unwrap().file_name().to_string_lossy()
+            ));
+        }
+        for f in files {
+            let want = [
+                expected.join(case).join(&f),
+                expected.join("default").join(&f),
+            ]
+            .into_iter()
+            .find(|p| p.exists())
+            .unwrap();
+            assert_eq!(
+                std::fs::read_to_string(tmp.join("vendor").join(&f)).unwrap(),
+                std::fs::read_to_string(want).unwrap(),
+                "{case}: vendor/{f}"
+            );
+        }
+        report.classes
+    };
+    run(&tmp, &lock, &Options::default());
+    assert_eq!(check("default", &Options::default(), None, true), 7);
+    let authoritative = Options {
+        scan: Scan::Authoritative,
+        ..Options::default()
+    };
+    assert_eq!(check("authoritative", &authoritative, None, true), 7);
+    assert_eq!(check("no-dev", &Options::default(), Some(false), false), 3);
+    let apcu = Options {
+        apcu: Apcu::Prefix("mine".into()),
+        ..Options::default()
+    };
+    check("apcu", &apcu, None, true);
+    let no_dev = Options {
+        no_dev: true,
+        ..Options::default()
+    };
+    run(&tmp, &lock, &no_dev);
+    assert_eq!(
+        check("installed-no-dev", &Options::default(), None, false),
+        3
+    );
+    assert_eq!(check("dev", &Options::default(), Some(true), true), 4);
+
+    std::fs::remove_dir_all(tmp.join("packages/lib")).unwrap();
+    let report = dump_autoload(
+        &tmp,
+        &manifest,
+        None,
+        &Options::default(),
+        None,
+        &mut |_, _| Ok(()),
+    )
+    .unwrap();
+    assert!(report.missing && !report.dev_mode);
     std::fs::remove_dir_all(&tmp).unwrap();
 }

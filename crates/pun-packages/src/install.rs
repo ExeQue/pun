@@ -7,7 +7,7 @@ use crate::fingerprint::{self, Pending, Recorded};
 use crate::installed::{Installed, installed_json, installed_php, read_installed, root};
 use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::paths::normalize;
-use crate::php::sha1;
+use crate::php::{md5, sha1};
 use crate::plugin_host;
 use crate::plugins;
 use crate::resolver::platform::probe_cached;
@@ -178,7 +178,7 @@ pub fn install(
             .collect();
         written = dump_autoloader(
             &project,
-            lock,
+            Some(&lock.content_hash),
             &packages,
             &repository,
             o,
@@ -198,6 +198,82 @@ pub fn install(
             },
         });
     }
+    Ok(report)
+}
+
+/// What `dump-autoload` reports.
+#[derive(Debug, Default)]
+pub struct DumpReport {
+    pub classes: usize,
+    pub warnings: Vec<String>,
+    pub dev_mode: bool,
+    /// A package installed.json lists is missing from `vendor/` (Composer then exits 1).
+    pub missing: bool,
+}
+
+/// `composer dump-autoload`: the autoloader of the packages installed.json lists, in dev mode when `dev` says so or,
+/// without it, when the last install was (installed.json's `dev`), between the dump events.
+pub fn dump_autoload(
+    base: &Path,
+    manifest: &Map<String, Value>,
+    lock: Option<&Lock>,
+    o: &Options,
+    dev: Option<bool>,
+    events: &mut dyn FnMut(&str, bool) -> Result<()>,
+) -> Result<DumpReport> {
+    let dir =
+        std::fs::canonicalize(base).with_context(|| format!("can't open {}", base.display()))?;
+    let dir_str = dir.to_string_lossy().into_owned();
+    let project = Project {
+        dirs: dirs(&dir_str, manifest),
+        dir,
+        dir_str,
+        manifest,
+    };
+    let vendor = &project.dirs.vendor;
+    let text = std::fs::read(format!("{vendor}/composer/installed.json")).unwrap_or_default();
+    let json: Value = serde_json::from_slice(&text).unwrap_or(Value::Null);
+    let dev_names: Vec<&str> = (json.get("dev-package-names").and_then(Value::as_array))
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    let dev_mode = dev.unwrap_or(json.get("dev") == Some(&Value::Bool(true)));
+    let mut report = DumpReport {
+        dev_mode,
+        ..DumpReport::default()
+    };
+    let mut repository: Vec<Installed> = vec![];
+    for p in read_installed(Path::new(vendor))? {
+        let path = (p.get("install-path").and_then(Value::as_str))
+            .map(|ip| normalize(&format!("{vendor}/composer/{ip}")));
+        report.missing |= path.as_ref().is_some_and(|p| !Path::new(p).exists());
+        repository.push(Installed {
+            dev: dev_names.contains(&p.name().as_str()),
+            package: p,
+            path,
+        });
+    }
+    let mut packages = repository.clone();
+    packages.sort_by_key(Installed::name);
+    let order: Vec<&Installed> = repository.iter().collect();
+    let o = Options {
+        no_dev: !dev_mode,
+        ..o.clone()
+    };
+    let mut install = Report::default();
+    let mut events = |event: &str| events(event, dev_mode);
+    dump_autoloader(
+        &project,
+        lock.map(|l| l.content_hash.as_str()),
+        &packages,
+        &order,
+        &o,
+        &mut events,
+        &mut install,
+    )?;
+    report.classes = install.classes;
+    report.warnings = install.warnings;
     Ok(report)
 }
 
@@ -507,7 +583,7 @@ fn link_bins(packages: &[Installed], dirs: &Dirs, report: &mut Report) -> Result
 fn autoload_options(
     config: &Map<String, Value>,
     vendor: &str,
-    lock: &Lock,
+    content_hash: Option<&str>,
     o: &Options,
     dev_mode: bool,
 ) -> Result<autoload::Options> {
@@ -526,7 +602,11 @@ fn autoload_options(
     let suffix = config_str(config, "autoloader-suffix")
         .map(String::from)
         .or(existing)
-        .unwrap_or_else(|| lock.content_hash.clone());
+        .or_else(|| content_hash.map(String::from))
+        .unwrap_or_else(|| {
+            // Composer's `bin2hex(random_bytes(16))` for a project without a lock.
+            md5(format!("{:?}{}", std::time::SystemTime::now(), std::process::id()).as_bytes())
+        });
     let configured = if config_bool(config, "classmap-authoritative") {
         Scan::Authoritative
     } else if config_bool(config, "optimize-autoloader") {
@@ -554,7 +634,7 @@ fn autoload_options(
 /// the plugins Pun runs, which see the packages in `repository`'s order.
 fn dump_autoloader(
     project: &Project,
-    lock: &Lock,
+    content_hash: Option<&str>,
     packages: &[Installed],
     repository: &[&Installed],
     o: &Options,
@@ -566,7 +646,7 @@ fn dump_autoloader(
         .and_then(Value::as_object)
         .unwrap_or(&empty);
     let vendor = &project.dirs.vendor;
-    let options = autoload_options(config, vendor, lock, o, !o.no_dev)?;
+    let options = autoload_options(config, vendor, content_hash, o, !o.no_dev)?;
     events("pre-autoload-dump")?;
     let dumped = autoload::dump(
         &project.dir_str,

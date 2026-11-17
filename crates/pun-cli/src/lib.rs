@@ -9,6 +9,7 @@ mod analyse;
 mod analyse_report;
 mod baseline;
 mod cache;
+mod composer;
 mod console;
 mod extensions;
 mod fix_report;
@@ -84,6 +85,8 @@ enum Cmd {
     Remove(update::RemoveArgs),
     /// Run a command from a Composer package without adding it to the project (`punx` for short).
     X(x::XArgs),
+    /// Composer's other commands: `dump-autoload`.
+    Composer(composer::ComposerArgs),
     /// Check that every locked package was reviewed or exempted (supply-chain/), and record reviews.
     Vet(vet::VetArgs),
     /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
@@ -398,6 +401,7 @@ fn run() -> ExitCode {
         Cmd::Require(a) => update::require(a),
         Cmd::Remove(a) => update::remove(a),
         Cmd::X(a) => x::run(&a),
+        Cmd::Composer(a) => composer::run(a),
         Cmd::Vet(a) => vet::run(a),
         Cmd::SelfUpdate(a) => self_update::run(&a),
         Cmd::ListFiles(a) => list_files::run(a),

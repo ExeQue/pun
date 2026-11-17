@@ -1,0 +1,39 @@
+---
+title: pun composer
+description: Composer's commands that have no top-level verb.
+---
+
+```bash
+pun composer dump-autoload
+pun composer dump-autoload -o --no-dev
+```
+
+`pun composer <command>` runs a Composer command natively. Only `dump-autoload` is built. Any other command exits 2 and names the command. Pun doesn't run the Composer CLI.
+
+## dump-autoload
+
+`pun composer dump-autoload` (alias `dumpautoload`) writes the autoloader again for the packages in `vendor/composer/installed.json`. The files in `vendor/composer/` and `vendor/autoload.php` are byte for byte the ones `composer dump-autoload` writes with the same flags. Pun runs the `pre-autoload-dump` and `post-autoload-dump` scripts and the plugins that `config.allow-plugins` allows, as [`pun install`](/docs/commands/install#scripts-and-plugins) does.
+
+Without `--dev` or `--no-dev`, the autoloader follows the last install: `--no-dev` if that install used it.
+
+| Option | Effect |
+| --- | --- |
+| `-o`, `--optimize` | Add PSR-0 and PSR-4 classes to the class map. Also `config.optimize-autoloader`. |
+| `-a`, `--classmap-authoritative` | Load classes from the class map only. Implies `-o`. |
+| `--apcu` | Cache class lookups in APCu. Also `config.apcu-autoloader`. |
+| `--apcu-prefix=PREFIX` | The APCu prefix (default: random). Implies `--apcu`. |
+| `--dev` | Use the `autoload-dev` rules |
+| `--no-dev` | Leave out the `autoload-dev` rules and the dev packages |
+| `--no-scripts` | Skip the root package's scripts. Plugins still run. |
+| `--no-plugins` | Skip the Composer plugins |
+| `--ignore-platform-req=REQ` | Leave `REQ` out of `platform_check.php`. Repeatable. |
+| `--ignore-platform-reqs` | Write no `platform_check.php` |
+| `-d`, `--working-dir=DIR` | Run in `DIR` |
+
+## Exit codes
+
+| Code | When |
+| --- | --- |
+| 0 | Written |
+| 1 | Written, but a package in `installed.json` is missing from `vendor/`, as in Composer |
+| 2 | A command Pun hasn't built, or another run error |

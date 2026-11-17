@@ -756,3 +756,50 @@ fn workspaces_follow_the_guide() {
         );
     }
 }
+
+/// `pun composer dump-autoload` writes Composer's files (the byte comparison is `pun-packages`'
+/// `dump_autoload_matches_composer`), exits 1 as Composer does when a package is missing from `vendor/`, and any
+/// other `pun composer` command is a run error that names it.
+#[test]
+fn composer_dump_autoload_and_unknown_commands() {
+    let d = fixture("dump-autoload");
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    std::fs::remove_file(d.join("vendor/composer/autoload_classmap.php")).unwrap();
+    let (out, err, code) = pun(&d, &["composer", "dumpautoload", "-a", "--no-dev"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(err.contains(" + autoloader: 3 classes\n"), "{err}");
+    assert!(d.join("vendor/composer/autoload_classmap.php").exists());
+    std::fs::remove_dir_all(d.join("packages/lib")).unwrap();
+    let (out, err, code) = pun(&d, &["composer", "dump-autoload", "--dev", "--no-scripts"]);
+    assert_eq!(code, Some(1), "{out}{err}");
+    assert!(err.contains("Not all dependencies are installed"), "{err}");
+    let (_, err, code) = pun(&d, &["composer", "show", "--all"]);
+    assert_eq!(code, Some(2));
+    assert!(
+        err.contains("`pun composer show` is not built yet"),
+        "{err}"
+    );
+}
+
+/// A lock this PHP can't install: Composer's report (`pun-packages/tests/fixtures/verify`), exit 2, no `vendor/`.
+#[test]
+fn install_refuses_a_lock_the_platform_cannot_run() {
+    let d = fixture("platform");
+    let json = read(&d, "composer.json").replace("\"php\": \">=8.4\"", "\"ext-nope\": \"^1.0\"");
+    std::fs::write(d.join("composer.json"), json).unwrap();
+    let lock = read(&d, "composer.lock").replace(
+        "\"platform\": {\n        \"php\": \">=8.4\"\n    }",
+        "\"platform\": {\n        \"ext-nope\": \"^1.0\"\n    }",
+    );
+    std::fs::write(d.join("composer.lock"), lock).unwrap();
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("Your lock file does not contain a compatible set of packages. Please run pun update.\n\n  Problem 1\n    - Root composer.json requires PHP extension ext-nope ^1.0 but it is missing from your system."),
+        "{err}"
+    );
+    assert!(!d.join("vendor").exists());
+    let (out, err, code) = pun(&d, &["install", "--ignore-platform-req=ext-nope"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+}

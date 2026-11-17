@@ -11,7 +11,8 @@ file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and 
 Composer's exact lock in 1.8 s against Composer's 9.4 s (`context/reports/scoreboard.md`). Left of steps 8 and 9: the other corpus projects, the 20
 recorded partial updates, `vcs` and `artifact` repositories, and the root `filter.summary-url`. Not built from steps 1-7: the
 `.oracle/composer` phar and `scripts/install-parity.sh` (the tests' expectations come from Composer 2.11.2 runs),
-and `pun composer` and its commands (`validate`, `dump-autoload`, `run-script`). **The plugin host is built for the
+and `pun composer`'s `validate` and `run-script` (`pun composer dump-autoload` is built, 2026-11-17, byte for byte
+Composer's with every flag on pinkary). **The plugin host is built for the
 script events** (step 7, 2026-11-15): every allowed plugin other than the native `pestphp/pest-plugin` and
 `php-http/discovery` runs on Composer 2.11.2's classes, activated by its PluginManager, with its listeners around the
 scripts in Composer's priority order; a fixture plugin logs the same events as under Composer on install, `--no-scripts`,
@@ -37,7 +38,7 @@ The everyday commands are top-level, with Composer's names and flags:
 | `pun update [packages]` | `composer update` | Resolves again, writes composer.lock, installs |
 | `pun require <pkg[:constraint]>` | `composer require` | Adds to composer.json, then a partial update |
 | `pun remove <pkg>` | `composer remove` | Removes from composer.json, then a partial update |
-| `pun composer <command>` | `composer <command>` | Every other Composer command: `dump-autoload`, `show`, `outdated`, `why`, `why-not`, `audit`, `validate`, `licenses`, `run-script`, `check-platform-reqs`, `config`, ... (not built yet) |
+| `pun composer <command>` | `composer <command>` | Every other Composer command: `dump-autoload` (built), `show`, `outdated`, `why`, `why-not`, `audit`, `validate`, `licenses`, `run-script`, `check-platform-reqs`, `config`, ... (not built yet) |
 
 `pun composer install` and `pun install` are the same command. A `pun composer` command Pun has not built yet is a
 run error (exit 2) that names it; Pun does not shell out to the Composer CLI.
