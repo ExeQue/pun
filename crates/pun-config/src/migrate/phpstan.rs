@@ -579,12 +579,15 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
             .iter()
             .any(|r| crate::rule_of(&r.name) == Some(id))
     };
+    let lint_on: BTreeSet<&str> = cfg.lint.rules.iter().map(|r| r.id.as_str()).collect();
+    let mut scoped = vec![];
     for id in run
         .iter()
         .filter(|id| !id.starts_with("analyse/") && !formats(id))
     {
-        let lint = id.starts_with("lint/");
-        let turned_on = lint && super::require_lint(parts, id, "\"error\"");
+        let (lint, on) = (id.starts_with("lint/"), lint_on.contains(id.as_str()));
+        let turned_on = lint && (on || super::rector::ported(id));
+        scoped.extend((turned_on && !on).then_some(id.as_str()));
         done.lint += usize::from(turned_on);
         let why = if lint {
             "a PHPStan check that is this lint rule in Pun, not supported yet"
@@ -594,9 +597,46 @@ pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Anal
         done.unsupported
             .extend((!turned_on).then(|| (id.clone(), why.to_string())));
     }
+    scope_to_paths(parts, phpstan, &scoped);
     options(root, parts, phpstan, &mut done)?;
     parts.analyse_ignores = phpstan.ignores.join("\n");
     Ok(done)
+}
+
+/// Turns on `scoped`, the lint rules PHPStan runs that nothing else turns on. PHPStan checks only its `paths`, so they
+/// run there alone: `[[lint.overrides]]` on in `paths` and off in `excludePaths` (a rule on already runs on every lint
+/// file and keeps its options).
+fn scope_to_paths(parts: &mut Parts, phpstan: &Phpstan, scoped: &[&str]) {
+    if phpstan.paths.is_empty() || phpstan.paths.iter().any(|p| p == ".") {
+        for id in scoped {
+            super::require_lint(parts, id, "\"error\"");
+        }
+        return;
+    }
+    if scoped.is_empty() {
+        return;
+    }
+    let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
+    let rules = |level: &str| {
+        (scoped
+            .iter()
+            .map(|id| format!("\"{}\" = \"{level}\"", &id[5..])))
+        .collect::<Vec<_>>()
+        .join(", ")
+    };
+    let mut add = |files: &[String], level: &str| {
+        let gap = if parts.overrides.is_empty() { "" } else { "\n" };
+        let (files, rules) = (list(files), rules(level));
+        write!(
+            parts.overrides,
+            "{gap}[[lint.overrides]]\nfiles = {files}\nrules = {{ {rules} }}\n"
+        )
+        .unwrap();
+    };
+    add(&phpstan.paths, "error");
+    if !phpstan.exclude.is_empty() {
+        add(&phpstan.exclude, "off");
+    }
 }
 
 fn options(root: &Path, parts: &mut Parts, phpstan: &Phpstan, done: &mut Analysed) -> Result<()> {

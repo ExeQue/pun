@@ -251,7 +251,9 @@ fn reads_level_paths_ignores_and_includes() {
     );
     assert!(
         parts.render().contains(
-            "\"dead-code/no-unused-private-method\" = \"error\"\n"
+            "[[lint.overrides]]\nfiles = [\"app\", \"tests\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"error\", "
+        ) && parts.render().contains(
+            "[[lint.overrides]]\nfiles = [\"app/Legacy\", \"/tmp\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"off\", "
         ) && parts.render().contains(
             "\n\n[analyse]\npreset = \"recommended\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nbleeding-edge = true\n"
         ),
@@ -553,4 +555,45 @@ fn no_level_runs_no_rules() {
     assert_eq!(cfg.analyse.rules, [] as [schema::AnalyseRule; 0]);
     let d = project("parameters:\n    level: 0\n", &[]);
     assert!(!from_phpstan(&d, &d.join("phpstan.neon")).unwrap().no_rules);
+}
+
+/// PHPStan reports `array.duplicateKey` (a level 0 check that is a lint rule in Pun) only in its `paths`, minus
+/// `excludePaths`: migrate turns the rule on there alone, in overrides, so `pun lint` does not report it in tests/ that
+/// PHPStan never reads (laravel-framework's phpstan.neon analyses src/ only).
+#[test]
+fn lint_rules_keep_to_the_phpstan_paths() {
+    let d = project(
+        "parameters:\n    level: 0\n    paths:\n        - src\n    excludePaths:\n        - src/Legacy\n",
+        &[("src/a.php", "<?php\n"), ("src/Legacy/b.php", "<?php\n")],
+    );
+    let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+    let mut parts = Parts {
+        format: "preset = \"empty\"\n".into(),
+        ..Parts::default()
+    };
+    let done = compose(&d, &mut parts, &p).unwrap();
+    assert_eq!(done.lint, 1);
+    assert!(parts.lint_rules.is_empty(), "{:?}", parts.lint_rules);
+    assert_eq!(
+        parts.overrides,
+        "[[lint.overrides]]\nfiles = [\"src\"]\nrules = { \"dead-code/no-duplicate-array-key\" = \"error\" }\n\n[[lint.overrides]]\nfiles = [\"src/Legacy\"]\nrules = { \"dead-code/no-duplicate-array-key\" = \"off\" }\n"
+    );
+    let cfg = crate::from_toml(&d, &parts.render()).unwrap();
+    assert!(cfg.lint.rules.is_empty());
+    assert_eq!(cfg.lint.overrides.len(), 2);
+
+    // A rule another config turns on everywhere stays on everywhere.
+    let mut parts = Parts {
+        format: "preset = \"empty\"\n".into(),
+        lint_rules: vec![(
+            "dead-code/no-duplicate-array-key".into(),
+            "\"error\"".into(),
+        )],
+        ..Parts::default()
+    };
+    let done = compose(&d, &mut parts, &p).unwrap();
+    assert_eq!(
+        (done.lint, parts.overrides.as_str(), parts.lint_rules.len()),
+        (1, "", 1)
+    );
 }
