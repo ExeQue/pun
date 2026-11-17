@@ -8,7 +8,8 @@
 //!   project. Where the filesystem can't clone, files are copied.
 //! - `hardlink`: one inode for the store and every project, so the second project costs no disk on any
 //!   filesystem. Writing to a file in `vendor/` in place writes the store and every project linked to it, so it is
-//!   opt-in, as `context/plan/packages.md` §7 decides.
+//!   opt-in, as `context/plan/packages.md` §7 decides. The store notices such an edit (`intact`) and extracts the
+//!   package again for the next install, but the projects already linked to the file keep sharing it.
 //! - `copy`: an ordinary copy.
 //!
 //! Modes are copied from the store, which was extracted as `vendor/` was before the store, so `vendor/` keeps
@@ -103,11 +104,21 @@ impl Store {
         fill: impl FnOnce(&Path) -> Result<()>,
     ) -> Result<bool> {
         let entry = self.root.join(&key[..2]).join(key);
-        let hit = entry.is_dir();
+        let hit = entry.is_dir() && intact(&entry);
         if !hit {
             std::fs::create_dir_all(entry.parent().unwrap_or(&self.root))?;
+            if entry.exists() {
+                // Edited since it was stored: set aside, then extracted again.
+                let aside = self.temp(&self.root);
+                std::fs::rename(&entry, &aside)?;
+                let _ = std::fs::remove_dir_all(&aside);
+            }
             let tmp = self.temp(&self.root);
-            let filled = fill(&tmp);
+            let filled = fill(&tmp).and_then(|()| {
+                // The entry's own modification time is when it was stored; see `intact`.
+                std::fs::File::open(&tmp)?.set_modified(std::time::SystemTime::now())?;
+                Ok(())
+            });
             if let Err(e) = filled {
                 let _ = std::fs::remove_dir_all(&tmp);
                 return Err(e);
@@ -137,7 +148,6 @@ impl Store {
 
     fn link_tree(&self, from: &Path, to: &Path) -> std::io::Result<()> {
         std::fs::create_dir(to)?;
-        same_mode(&std::fs::metadata(from)?, to)?;
         for e in std::fs::read_dir(from)? {
             let e = e?;
             let (src, dst) = (e.path(), to.join(e.file_name()));
@@ -150,7 +160,8 @@ impl Store {
                 self.link_file(&src, &dst)?;
             }
         }
-        Ok(())
+        // Last, so a read-only directory can still be filled.
+        same_mode(&std::fs::metadata(from)?, to)
     }
 
     fn link_file(&self, src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -165,6 +176,29 @@ impl Store {
         }
         std::fs::copy(src, dst).map(|_| ())
     }
+}
+
+/// Whether no file in the entry was modified after it was stored, as pnpm's `verify-store-integrity` checks a
+/// file's modification time against its index. Writing in place to a hardlinked file in a project's `vendor/`
+/// writes the entry too; such an entry is extracted again instead of being linked into the next project.
+fn intact(entry: &Path) -> bool {
+    fn walk(dir: &Path, stored: std::time::SystemTime) -> std::io::Result<bool> {
+        for e in std::fs::read_dir(dir)? {
+            let e = e?;
+            let kind = e.file_type()?;
+            let fine = if kind.is_dir() {
+                walk(&e.path(), stored)?
+            } else {
+                kind.is_symlink() || e.metadata()?.modified()? <= stored
+            };
+            if !fine {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+    let stored = std::fs::metadata(entry).and_then(|m| m.modified());
+    stored.and_then(|t| walk(entry, t)).unwrap_or(false)
 }
 
 fn same_mode(meta: &std::fs::Metadata, path: &Path) -> std::io::Result<()> {
@@ -290,6 +324,34 @@ mod tests {
             );
         }
         assert_eq!(filled, 1);
+
+        // An in-place edit through a hardlink reaches the store; the next install extracts the package again.
+        let edited = t.join("Hardlink/vendor/a/b/README");
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&edited)
+            .and_then(|mut f| std::io::Write::write_all(&mut f, b"HI"))
+            .unwrap();
+        let store = Store::new(&t.join("cache"), LinkMode::Hardlink);
+        let target = t.join("again/vendor/a/b");
+        let hit = store
+            .place("ab12", &target, |d| {
+                filled += 1;
+                fill(d)
+            })
+            .unwrap();
+        assert!(!hit);
+        assert_eq!(filled, 2);
+        assert_eq!(
+            std::fs::read_to_string(target.join("README")).unwrap(),
+            "hi"
+        );
+        assert_eq!(std::fs::read_to_string(&edited).unwrap(), "HI");
+        assert!(
+            store
+                .place("ab12", &t.join("third/a/b"), |_| unreachable!())
+                .unwrap()
+        );
         let store = Store::new(&t.join("cache"), LinkMode::Copy);
         let target = t.join("failed/a/b");
         let err = store
@@ -297,6 +359,93 @@ mod tests {
             .unwrap_err();
         assert_eq!(err.to_string(), "no archive");
         assert!(!target.exists() && !t.join("cache/store/v1/cd/cd34").exists());
+        std::fs::remove_dir_all(&t).unwrap();
+    }
+
+    /// A directory keeps the mode it was extracted with (a 0700 or a read-only 0555 one too); another
+    /// process storing the same entry first wins without an error; an entry that can't be read fails the install
+    /// and leaves no temporary directory in `vendor/`.
+    #[test]
+    fn modes_races_and_unreadable_entries() {
+        let t = std::env::temp_dir().join(format!("pun-store-race-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&t);
+        let store = Store::new(&t.join("cache"), LinkMode::Copy);
+        let entry = t.join("cache/store/v1/ef/ef56");
+        let vendor = t.join("vendor");
+        let hit = store
+            .place("ef56", &vendor.join("a/b"), |dir| {
+                // The other process: its entry is renamed in while this one is still extracting.
+                std::fs::create_dir_all(entry.join("private"))?;
+                std::fs::create_dir_all(entry.join("locked"))?;
+                std::fs::write(entry.join("locked/file"), "x")?;
+                std::fs::set_permissions(
+                    entry.join("locked"),
+                    std::fs::Permissions::from_mode(0o555),
+                )?;
+                std::fs::set_permissions(
+                    entry.join("private"),
+                    std::fs::Permissions::from_mode(0o700),
+                )?;
+                std::fs::create_dir_all(dir.join("mine"))?;
+                Ok(())
+            })
+            .unwrap();
+        assert!(!hit);
+        let mode = std::fs::metadata(vendor.join("a/b/private"))
+            .unwrap()
+            .mode();
+        assert_eq!(mode & 0o777, 0o700);
+        let mode = std::fs::metadata(vendor.join("a/b/locked")).unwrap().mode();
+        assert_eq!(mode & 0o777, 0o555);
+        assert_eq!(
+            std::fs::read_to_string(vendor.join("a/b/locked/file")).unwrap(),
+            "x"
+        );
+        assert!(!vendor.join("a/b/mine").exists());
+        let leftovers = |dir: &Path| {
+            (std::fs::read_dir(dir).unwrap())
+                .filter(|e| {
+                    e.as_ref()
+                        .unwrap()
+                        .file_name()
+                        .to_string_lossy()
+                        .ends_with(".tmp")
+                })
+                .count()
+        };
+        assert_eq!(leftovers(&t.join("cache/store/v1")), 0);
+
+        for dir in [entry.join("locked"), vendor.join("a/b/locked")] {
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        // An entry that can't be read is extracted again; a vendor/ that can't be written fails, leaving nothing.
+        let unreadable = t.join("cache/store/v1/gh/gh78/private");
+        std::fs::create_dir_all(&unreadable).unwrap();
+        std::fs::set_permissions(&unreadable, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let hit = store.place("gh78", &vendor.join("c/d"), |d| {
+            std::fs::create_dir_all(d.join("fresh"))?;
+            Ok(())
+        });
+        assert!(!hit.unwrap() && vendor.join("c/d/fresh").is_dir());
+        std::fs::set_permissions(vendor.join("c"), std::fs::Permissions::from_mode(0o555)).unwrap();
+        let err = store.place("gh78", &vendor.join("c/e"), |_| unreachable!());
+        assert_eq!(
+            err.unwrap_err().to_string(),
+            "Permission denied (os error 13)"
+        );
+        assert!(!vendor.join("c/e").exists() && leftovers(&vendor.join("c")) == 0);
+        std::fs::set_permissions(vendor.join("c"), std::fs::Permissions::from_mode(0o755)).unwrap();
+        for dir in std::fs::read_dir(t.join("cache/store/v1")).unwrap() {
+            let dir = dir.unwrap().path();
+            if dir.to_string_lossy().ends_with(".tmp") {
+                std::fs::set_permissions(
+                    dir.join("private"),
+                    std::fs::Permissions::from_mode(0o755),
+                )
+                .unwrap();
+            }
+        }
         std::fs::remove_dir_all(&t).unwrap();
     }
 }

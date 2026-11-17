@@ -44,7 +44,7 @@ Pun keeps every extracted package in a store in its cache (`PUN_CACHE_DIR`, unde
 | `hardlink` | One file for the store and every project | Shared on every filesystem | Changes the store and every project that uses the package |
 | `copy` | Ordinary copy | Not shared | Changes only this project |
 
-With `hardlink`, an editor or patch that writes a file in place also changes the store, so later installs of that package get the edited file. Use it only where `vendor/` is never edited, such as CI or containers. Tools that write a new file and rename it over the old one don't change the store.
+With `hardlink`, an editor or patch that writes a file in place also changes the store and every other project linked to that file. Pun checks a stored package's files against the time it stored them before it links them, as pnpm does, and extracts an edited package again, so later installs get Composer's files. Projects that already link the edited file keep sharing it. Use `hardlink` only where `vendor/` is never edited, such as CI or containers. Tools that write a new file and rename it over the old one don't change the store.
 
 Pun also caches the classes it finds in a stored package for the class map, so `pun install` and [`pun composer dump-autoload`](/docs/commands/composer) rescan only the root's autoload paths, path repositories, and packages installed from source. A class you add by hand to a package in `vendor/` reaches the class map only after that package is installed again.
 
