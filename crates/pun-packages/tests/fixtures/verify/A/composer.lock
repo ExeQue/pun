@@ -1,0 +1,19 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "2e7d85a732e7024e4436ece78c991e5f",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "ext-intl": ">=99",
+        "ext-nope": "^1.0"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

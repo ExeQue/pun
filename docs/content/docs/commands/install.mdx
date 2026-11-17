@@ -19,11 +19,12 @@ Without a lock, `pun install` resolves one first, as [`pun update`](/docs/comman
 
 ## What an install does
 
-1. Packages already at the locked reference stay. Packages no longer locked are removed.
-2. Other packages download in parallel, or come from Composer's download cache.
-3. Each archive must match its `shasum` in the lock, or the install stops.
-4. Path repositories become symlinks.
-5. Pun writes `vendor/composer`, the autoloader, and `vendor/bin`.
+1. Pun checks that the lock can be installed on this PHP, as `composer install` does: every platform requirement (`php`, `ext-*`, `lib-*`) of the root and of the locked packages, and every conflict between locked packages. If one fails, Pun prints Composer's problem report and exits 2 without touching `vendor/`. `--ignore-platform-req` and `--ignore-platform-reqs` leave requirements out, and `config.platform` overrides recorded in the lock apply. `REQ+` (for example `php+`) ignores only the upper bound.
+2. Packages already at the locked reference stay. Packages no longer locked are removed.
+3. Other packages download in parallel, or come from Composer's download cache.
+4. Each archive must match its `shasum` in the lock, or the install stops.
+5. Path repositories become symlinks.
+6. Pun writes `vendor/composer`, the autoloader, and `vendor/bin`.
 
 Pun installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
 
@@ -49,8 +50,8 @@ Plugins don't get the package events, `pre-operations-exec`, `pre-pool-create`, 
 | `--no-autoloader` | Skip the autoloader and its dump events |
 | `--no-scripts` | Skip the root package's scripts. Plugins still run. |
 | `--no-plugins` | Skip the Composer plugins |
-| `--ignore-platform-req=REQ` | Leave `REQ` out of the platform check. Repeatable. Accepts `*`. |
-| `--ignore-platform-reqs` | Write no platform check |
+| `--ignore-platform-req=REQ` | Leave `REQ` out of the install-time platform check and `platform_check.php`. Repeatable. Accepts `*`; `REQ+` ignores only the upper bound. |
+| `--ignore-platform-reqs` | Skip the install-time platform check and write no `platform_check.php` |
 | `-d`, `--working-dir=DIR` | Run in `DIR` |
 
 ## Exit codes
@@ -58,4 +59,4 @@ Plugins don't get the package events, `pre-operations-exec`, `pre-pool-create`, 
 | Code | When |
 | --- | --- |
 | 0 | Installed |
-| 2 | No `composer.json`, unresolvable requirements, a failed download, checksum, or script, or another run error |
+| 2 | No `composer.json`, a lock this PHP can't install, unresolvable requirements, a failed download, checksum, or script, or another run error |

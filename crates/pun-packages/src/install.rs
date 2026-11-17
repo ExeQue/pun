@@ -7,6 +7,8 @@ use crate::installed::{Installed, installed_json, installed_php, read_installed,
 use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::paths::normalize;
 use crate::plugins;
+use crate::resolver::platform::probe_cached;
+use crate::verify::verify;
 use crate::version::{IgnorePlatform, is_platform};
 use indexmap::IndexMap;
 use pcre2::bytes::Regex;
@@ -24,6 +26,11 @@ pub struct Options {
     pub no_autoloader: bool,
     pub no_plugins: bool,
     pub ignore_platform: IgnorePlatform,
+    /// The PHP the lock is checked against before anything is installed, as `composer install` checks it; `None`
+    /// skips the check (an update has just solved the lock on this platform).
+    pub php: Option<String>,
+    /// Pun's cache directory: the platform probe lives here.
+    pub cache: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,6 +56,8 @@ pub struct Report {
     pub classes: usize,
     pub stale_lock: bool,
     pub warnings: Vec<String>,
+    /// Composer's problem report when the lock can't be installed on this platform; nothing was installed.
+    pub incompatible: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +122,13 @@ pub fn install(
         ..Report::default()
     };
     let mut packages = locked_packages(lock, &project.dirs.vendor, o.no_dev)?;
+    if let Some(php) = &o.php {
+        let probe = probe_cached(php, o.cache.as_deref())?;
+        if let Some(problems) = verify(manifest, lock, &probe, !o.no_dev, &o.ignore_platform)? {
+            report.incompatible = Some(problems);
+            return Ok(report);
+        }
+    }
     let before = previous(Path::new(&project.dirs.vendor))?;
     let todo = compare(&packages, &before, &mut report);
     remove_stale(&before, &packages, &todo, &project.dirs, &mut report)?;

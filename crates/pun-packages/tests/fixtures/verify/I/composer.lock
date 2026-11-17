@@ -1,0 +1,74 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "52141c31d644e7a62075dc9da725e01c",
+    "packages": [
+        {
+            "name": "a/lib",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/a.zip"
+            },
+            "type": "library",
+            "conflict": {
+                "virt/thing": "^1",
+                "old/thing": ">=3"
+            }
+        },
+        {
+            "name": "q/prov",
+            "version": "2.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/q.zip"
+            },
+            "type": "library",
+            "provide": {
+                "virt/thing": "1.5.0"
+            }
+        },
+        {
+            "name": "r/repl",
+            "version": "3.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/r.zip"
+            },
+            "type": "library",
+            "replace": {
+                "old/thing": "3.0.0"
+            }
+        },
+        {
+            "name": "s/dev",
+            "version": "dev-main",
+            "version_normalized": "dev-main",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/s.zip"
+            },
+            "type": "library",
+            "require": {
+                "q/prov": "^9"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [
+        {
+            "package": "s/dev",
+            "version": "dev-main",
+            "alias": "1.0.0",
+            "alias_normalized": "1.0.0.0"
+        }
+    ],
+    "minimum-stability": "dev",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.9.0"
+}

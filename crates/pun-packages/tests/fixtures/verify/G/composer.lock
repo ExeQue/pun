@@ -1,0 +1,25 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "70932d99fab082762423142c9a2117c7",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": "^8.0",
+        "ext-nope": "^1.0",
+        "ext-zip": "^9"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.9.0",
+    "platform-overrides": {
+        "php": "7.4.1",
+        "ext-nope": "1.2.0",
+        "ext-zip": false
+    }
+}

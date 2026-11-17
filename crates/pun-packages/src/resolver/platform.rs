@@ -1,7 +1,9 @@
 use crate::error::{Context, Result, bail};
+use crate::php::sha1;
 use crate::version::normalize;
 use pcre2::bytes::Regex;
 use serde_json::{Map, Value, json};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::LazyLock;
 
@@ -164,6 +166,10 @@ foreach ($loaded as $name) {
             break;
     }
 }
+$dirs = array_merge([PHP_CONFIG_FILE_PATH, PHP_CONFIG_FILE_SCAN_DIR, (string) ini_get('extension_dir')], explode(PATH_SEPARATOR, (string) getenv('PHP_INI_SCAN_DIR')));
+$scanned = array_map('trim', explode(',', (string) php_ini_scanned_files()));
+$out['ini'] = array_values(array_filter(array_merge([(string) php_ini_loaded_file()], $scanned)));
+$out['inputs'] = array_values(array_unique(array_filter(array_merge([PHP_BINARY, (string) php_ini_loaded_file()], $dirs, $scanned))));
 echo json_encode($out);
 "#;
 
@@ -188,6 +194,11 @@ pub fn detect(
     php: &str,
     overrides: Option<&Map<String, Value>>,
 ) -> Result<Vec<Map<String, Value>>> {
+    from_probe(&probe(php)?, overrides)
+}
+
+/// What `php` reports about itself, as JSON.
+pub fn probe(php: &str) -> Result<Value> {
     let output = Command::new(php)
         .args(["-d", "display_errors=stderr", "-r", PROBE])
         .output()
@@ -198,9 +209,87 @@ pub fn detect(
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-    let probe: Value = serde_json::from_slice(&output.stdout)
-        .context("the platform probe printed invalid JSON")?;
-    from_probe(&probe, overrides)
+    serde_json::from_slice(&output.stdout).context("the platform probe printed invalid JSON")
+}
+
+/// `probe`, kept in `cache` as uv keeps an interpreter's facts: the answer is reused while the binary, its ini
+/// files, the ini and extension directories and `PHPRC`/`PHP_INI_SCAN_DIR` are what they were when PHP was asked.
+pub fn probe_cached(php: &str, cache: Option<&Path>) -> Result<Value> {
+    let Some(cache) = cache else {
+        return probe(php);
+    };
+    let resolved = which(php).unwrap_or_else(|| PathBuf::from(php));
+    let env = |k: &str| std::env::var(k).unwrap_or_default();
+    let key = format!(
+        "{}\0{}\0{}",
+        resolved.display(),
+        env("PHPRC"),
+        env("PHP_INI_SCAN_DIR")
+    );
+    let file = cache
+        .join("php")
+        .join(format!("{}.json", sha1(key.as_bytes())));
+    let stamps = |inputs: &Value| -> Value {
+        let mut paths: Vec<&str> = vec![];
+        paths.extend(
+            inputs
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str),
+        );
+        let resolved = resolved.to_string_lossy();
+        paths.push(&resolved);
+        Value::Array(
+            paths
+                .iter()
+                .map(|p| json!([p, stamp(Path::new(p))]))
+                .collect(),
+        )
+    };
+    if let Ok(text) = std::fs::read(&file)
+        && let Ok(cached) = serde_json::from_slice::<Value>(&text)
+        && cached["stamps"] == stamps(&cached["probe"]["inputs"])
+    {
+        return Ok(cached["probe"].clone());
+    }
+    let probed = probe(php)?;
+    let entry = json!({"stamps": stamps(&probed["inputs"]), "probe": probed});
+    // Best effort, as Composer's cache: a failed write only costs a probe next time.
+    let _ = crate::fetch::store(&file, entry.to_string().as_bytes());
+    Ok(probed)
+}
+
+/// A file's modification time in nanoseconds and its size, or `null` when it is missing.
+fn stamp(path: &Path) -> Value {
+    let Ok(m) = std::fs::metadata(path) else {
+        return Value::Null;
+    };
+    let mtime = m
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(0, |d| d.as_nanos());
+    json!([mtime.to_string(), m.len()])
+}
+
+/// The program `PATH` runs for `name`, resolved through symlinks.
+fn which(name: &str) -> Option<PathBuf> {
+    if name.contains('/') {
+        return std::fs::canonicalize(name).ok();
+    }
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| dir.join(name))
+        .find(|p| p.is_file())
+        .and_then(|p| std::fs::canonicalize(p).ok())
+}
+
+/// The php.ini files PHP loaded, as Composer's `IniHelper::getAll` lists them in its hints.
+pub fn ini_files(probe: &Value) -> Vec<String> {
+    (probe["ini"].as_array().into_iter().flatten())
+        .filter_map(Value::as_str)
+        .map(String::from)
+        .collect()
 }
 
 pub fn from_probe(

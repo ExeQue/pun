@@ -1,0 +1,36 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "2ea263811560b08c5db1fc225dca3b36",
+    "packages": [
+        {
+            "name": "a/lib",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/a.zip"
+            },
+            "type": "library",
+            "require": {
+                "acme/app": "^9"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "ext-nope": "^2",
+        "php-64bit": "<8"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.9.0",
+    "platform-overrides": {
+        "ext-nope": "1.2.0",
+        "php": "8.5.12"
+    }
+}

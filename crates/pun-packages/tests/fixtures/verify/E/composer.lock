@@ -1,0 +1,31 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "a6fdb422a0202fa83ec04aae1ee43dc4",
+    "packages": [
+        {
+            "name": "a/lib",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/a.zip"
+            },
+            "type": "library",
+            "conflict": {
+                "php": ">=8"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {
+        "ext-devonly": "*"
+    },
+    "plugin-api-version": "2.9.0"
+}

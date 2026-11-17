@@ -184,10 +184,7 @@ fn resolve(project: &Project, plan: &Plan, a: &InstallArgs) -> Result<Resolved> 
         minimal_changes: r.minimal_changes,
         ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
     };
-    let php = std::env::var("PHP_BINARY")
-        .ok()
-        .filter(|p| !p.is_empty())
-        .unwrap_or_else(|| "php".into());
+    let php = crate::install::php_binary();
     let overrides = (project.manifest.get("config"))
         .and_then(|c| c.get("platform"))
         .and_then(Value::as_object);

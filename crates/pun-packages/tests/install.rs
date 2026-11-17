@@ -558,3 +558,44 @@ fn composer_plugins_run_on_composers_classes() {
     assert!(!std::env::temp_dir().join(script).exists());
     std::fs::remove_dir_all(&tmp).unwrap();
 }
+
+/// `composer install` refuses a lock this PHP can't run (fixture `verify/A`, Composer exit 2) before it writes
+/// anything.
+#[test]
+fn an_incompatible_lock_installs_nothing() {
+    let tmp = std::env::temp_dir().join(format!("pun-install-platform-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("verify/A"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let o = Options {
+        php: Some("php".into()),
+        ..Options::default()
+    };
+    let manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    let fetcher = Fetcher::new(None, Auth::default(), true);
+    let report = install(
+        &tmp,
+        &manifest,
+        &lock,
+        &fetcher,
+        &o,
+        &|_| None,
+        &mut |e: &str| panic!("no event expected, got {e}"),
+    )
+    .unwrap();
+    let problems = report.incompatible.unwrap();
+    assert!(
+        problems.contains("requires PHP extension ext-nope ^1.0 but it is missing"),
+        "{problems}"
+    );
+    assert!(!tmp.join("vendor").exists());
+    let ignored = Options {
+        ignore_platform: IgnorePlatform::All,
+        ..o
+    };
+    assert!(run(&tmp, &lock, &ignored).incompatible.is_none());
+    std::fs::remove_dir_all(&tmp).unwrap();
+}

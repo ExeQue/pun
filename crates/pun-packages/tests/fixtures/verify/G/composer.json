@@ -1,0 +1,1 @@
+{"require":{"php":"^8.0","ext-nope":"^1.0","ext-zip":"^9"},"config":{"platform":{"php":"7.4.1","ext-nope":"1.2.0","ext-zip":false}}}

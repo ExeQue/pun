@@ -64,7 +64,7 @@ impl<'a> Bound<'a> {
         }
     }
 
-    fn infinity() -> Bound<'a> {
+    pub fn infinity() -> Bound<'a> {
         Bound {
             version: Cow::Borrowed(INFINITY),
             inclusive: false,

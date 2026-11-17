@@ -1,0 +1,1 @@
+{"name":"acme/app","require":{"lib-icu":">=999","lib-pcre":">=999","ext-nope":"^2","php-64bit":"<8","a/lib":"^1.0"},"config":{"platform":{"ext-nope":"1.2.0","php":"8.5.12"}}}

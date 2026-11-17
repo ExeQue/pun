@@ -84,6 +84,14 @@ impl Project {
     }
 }
 
+/// The PHP Composer runs on: `PHP_BINARY`, else the `php` on the PATH.
+pub(crate) fn php_binary() -> String {
+    std::env::var("PHP_BINARY")
+        .ok()
+        .filter(|p| !p.is_empty())
+        .unwrap_or_else(|| "php".into())
+}
+
 /// The downloader for a project: Composer's cache, the project's and the global auth.json, and `secure-http`.
 pub(crate) fn fetcher(root: &Path, manifest: &Map<String, Value>) -> Fetcher {
     let secure_http =
@@ -183,6 +191,8 @@ pub(crate) fn install_locked(
         no_autoloader: a.no_autoloader,
         no_plugins: a.no_plugins,
         ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
+        php: (!update).then(php_binary),
+        cache: pun_config::cache_dir(),
     };
     let fetcher = fetcher(root, manifest);
     let env = |k: &str| std::env::var(k).ok();
@@ -196,6 +206,13 @@ pub(crate) fn install_locked(
     }
     let mut events = |event: &str| project.dispatch(a, event);
     let report = install(root, manifest, lock, &fetcher, &options, &env, &mut events)?;
+    if let Some(problems) = &report.incompatible {
+        let cross = look.paint(Role::Error, look.glyph("✖", "x"));
+        eprintln!(
+            "{cross} Your lock file does not contain a compatible set of packages. Please run pun update.\n{problems}"
+        );
+        return Ok(Exit::RunError);
+    }
     project.dispatch(a, post)?;
 
     let ok = look.paint(Role::Ok, look.glyph("✔", "+"));

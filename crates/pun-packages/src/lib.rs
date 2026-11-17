@@ -14,6 +14,7 @@ pub mod plugin_host;
 pub mod plugins;
 pub mod resolver;
 pub mod scripts;
+pub mod verify;
 pub mod version;
 
 /// Looks up an environment variable. The binary passes `&|k| std::env::var(k).ok()`; tests pass fixed values.

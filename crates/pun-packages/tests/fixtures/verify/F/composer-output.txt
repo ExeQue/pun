@@ -1,0 +1,9 @@
+Installing dependencies from lock file (including require-dev)
+Verifying lock file contents can be installed on current platform.
+Your lock file does not contain a compatible set of packages. Please run composer update.
+
+  Problem 1
+    - a/lib is locked to version 1.0.0 and an update of this package was not requested.
+    - a/lib 1.0.0 requires b/x ^2.0 -> found b/x[1.0.0] but it does not match the constraint.
+
+Use the option --with-all-dependencies (-W) to allow upgrades, downgrades and removals for packages currently locked to specific versions.
