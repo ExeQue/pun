@@ -6,6 +6,7 @@ use pun_packages::fetch::{Auth, Fetcher, composer_dirs};
 use pun_packages::install::{Options, install};
 use pun_packages::lock::Lock;
 use pun_packages::plugin_host::Dispatcher;
+use pun_packages::store::LinkMode;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -47,6 +48,10 @@ pub(crate) struct InstallArgs {
     /// Leave every platform requirement out of the platform check.
     #[arg(long)]
     pub(crate) ignore_platform_reqs: bool,
+    /// How package files reach vendor/ from Pun's store: clone (copy-on-write, else copy), hardlink or copy.
+    /// Default: `PUN_LINK_MODE`, else clone.
+    #[arg(long, value_name = "MODE")]
+    pub(crate) link_mode: Option<String>,
     /// Run in this directory instead of the current one.
     #[arg(short = 'd', long, value_name = "DIR")]
     pub(crate) working_dir: Option<PathBuf>,
@@ -156,6 +161,17 @@ pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     install_locked(&project, &lock, a, started, false)
 }
 
+/// `--link-mode`, else `PUN_LINK_MODE`, else clone.
+fn link_mode(flag: Option<&str>) -> Result<LinkMode> {
+    let env = std::env::var("PUN_LINK_MODE")
+        .ok()
+        .filter(|v| !v.is_empty());
+    Ok(match flag.map(String::from).or(env) {
+        Some(name) => LinkMode::parse(&name)?,
+        None => LinkMode::default(),
+    })
+}
+
 /// The class map the autoloader flags ask for.
 pub(crate) fn scan(optimize: bool, authoritative: bool) -> Scan {
     if authoritative {
@@ -201,6 +217,7 @@ pub(crate) fn install_locked(
         ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
         php: (!update).then(php_binary),
         cache: pun_config::cache_dir(),
+        link: link_mode(a.link_mode.as_deref())?,
     };
     let fetcher = fetcher(root, manifest);
     let env = |k: &str| std::env::var(k).ok();

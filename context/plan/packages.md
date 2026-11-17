@@ -3,8 +3,8 @@
 Status: **`pun install` from a lock is built** (2026-11-14): composer.json and composer.lock (§3), the
 autoload dump, `vendor/bin`, scripts and the pest-plugin port. Since 2026-11-17 it runs Composer's install-time
 platform check ("Verifying lock file contents can be installed on current platform.", `verify.rs`) with Composer's
-problem texts, and a no-op install is skipped by a fingerprint of its inputs and outputs (`fingerprint.rs`, 0.04 s on
-pinkary). On pinkary every
+problem texts, a no-op install is skipped by a fingerprint of its inputs and outputs (`fingerprint.rs`, 0.04 s on
+pinkary), and packages are linked from a shared store of extracted archives (§7). On pinkary every
 file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and `pun update`, `pun require` and
 `pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
 158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
@@ -238,11 +238,15 @@ that Composer has no key for live in pun.toml (§6), as Bun keeps them in bunfig
    - `pun composer validate --workspace` reports what Cargo's `workspace.dependencies` would have prevented: two
      members requiring different constraints for one package, and a member requiring another member at a version it
      does not have.
-2. **A shared file store, as pnpm has.** After step 4. Every extracted file lives once in a content-addressed store
-   in Pun's cache, and `vendor/` gets copy-on-write clones of it (APFS, btrfs, XFS), so the second project that needs
-   `laravel/framework` 13.2.0 installs it without copying. The bytes and modes are Composer's, so install parity
-   holds. Where the filesystem cannot clone, files are copied; hardlinks (pnpm's default) are opt-in through
-   `extra.pun.link = "hardlink"`, because editing a hardlinked file in `vendor/` edits every project's copy.
+2. **A shared file store, as pnpm has.** Built (2026-11-17, `store.rs`). Each dist archive is extracted once into
+   `$PUN_CACHE_DIR/store/v1/`, keyed by its type, URL, reference, checksum and the umask, and `vendor/` gets
+   copy-on-write clones of it (`FICLONE` on btrfs and XFS, `clonefile` on APFS), so the second project that needs
+   `laravel/framework` 13.2.0 installs it without a download or an extraction. The bytes and modes are Composer's, so
+   install parity holds. Where the filesystem cannot clone, files are copied; hardlinks (pnpm's default) are opt-in
+   through `--link-mode=hardlink` or `PUN_LINK_MODE` (uv's names), because editing a hardlinked file in `vendor/`
+   edits the store and every project's copy. The classes scanned in a stored package are cached too
+   (`$PUN_CACHE_DIR/classes/v1/`), so the class map rescans only the root's paths, path repositories and source
+   installs. Not built: a pun.toml key for the link mode.
 3. **`--locked` and `--offline`, as Cargo has them.** After step 4, not built. `pun install --locked` fails when
    there is no composer.lock or its `content-hash` does not match composer.json (Composer only warns). It is the default when
    `CI` is set, as pnpm's `--frozen-lockfile` is. `--offline` resolves and installs from the cache only and names the

@@ -81,6 +81,7 @@ fn dump(d: &DumpArgs) -> Result<Exit> {
         apcu: apcu(d.apcu, d.apcu_prefix.as_ref()),
         no_plugins: d.no_plugins,
         ignore_platform: IgnorePlatform::new(d.ignore_platform_req.clone(), d.ignore_platform_reqs),
+        cache: pun_config::cache_dir(),
         ..Options::default()
     };
     let dev = if d.dev {

@@ -21,7 +21,7 @@ Without a lock, `pun install` resolves one first, as [`pun update`](/docs/comman
 
 1. Pun checks that the lock can be installed on this PHP, as `composer install` does: every platform requirement (`php`, `ext-*`, `lib-*`) of the root and of the locked packages, and every conflict between locked packages. If one fails, Pun prints Composer's problem report and exits 2 without touching `vendor/`. `--ignore-platform-req` and `--ignore-platform-reqs` leave requirements out, and `config.platform` overrides recorded in the lock apply. `REQ+` (for example `php+`) ignores only the upper bound.
 2. Packages already at the locked reference stay. Packages no longer locked are removed.
-3. Other packages download in parallel, or come from Composer's download cache.
+3. Other packages download in parallel, or come from Composer's download cache. Each archive is extracted once into Pun's package store, and `vendor/` gets its files from there (see [Package store](#package-store)).
 4. Each archive must match its `shasum` in the lock, or the install stops.
 5. Path repositories become symlinks.
 6. Pun writes `vendor/composer`, the autoloader, and `vendor/bin`.
@@ -31,6 +31,22 @@ After an install succeeds, Pun records what it read and what it wrote in its cac
 Pun installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
 
 Credentials come from `COMPOSER_AUTH`, the project's `auth.json`, then Composer's global `auth.json`. Pun supports `github-oauth`, `gitlab-token`, `bearer`, and `http-basic`. `COMPOSER_MAX_PARALLEL_HTTP` limits parallel downloads (default 48). Pun refuses `http://` URLs unless `config.secure-http` is `false`.
+
+## Package store
+
+Pun keeps every extracted package in a store in its cache (`PUN_CACHE_DIR`, under `store/`), keyed by the archive's URL, reference, and checksum. Installing a package the store already has needs no download and no extraction. Pun only links the package's files into `vendor/`. The files and their modes are the ones `composer install` writes. Pun writes `vendor/composer/`, `vendor/autoload.php`, and `vendor/bin` for each project, and doesn't link them.
+
+`--link-mode` (or `PUN_LINK_MODE`) sets how files reach `vendor/`:
+
+| Mode | How | Disk | Editing a file in `vendor/` |
+| --- | --- | --- | --- |
+| `clone` (default) | Copy-on-write clone (Btrfs, XFS, APFS). Copies where the filesystem can't clone. | Shared until written, where cloning works | Changes only this project |
+| `hardlink` | One file for the store and every project | Shared on every filesystem | Changes the store and every project that uses the package |
+| `copy` | Ordinary copy | Not shared | Changes only this project |
+
+With `hardlink`, an editor or patch that writes a file in place also changes the store, so later installs of that package get the edited file. Use it only where `vendor/` is never edited, such as CI or containers. Tools that write a new file and rename it over the old one don't change the store.
+
+Pun also caches the classes it finds in a stored package for the class map, so `pun install` and [`pun composer dump-autoload`](/docs/commands/composer) rescan only the root's autoload paths, path repositories, and packages installed from source. A class you add by hand to a package in `vendor/` reaches the class map only after that package is installed again.
 
 ## Scripts and plugins
 
@@ -54,6 +70,7 @@ Plugins don't get the package events, `pre-operations-exec`, `pre-pool-create`, 
 | `--no-plugins` | Skip the Composer plugins |
 | `--ignore-platform-req=REQ` | Leave `REQ` out of the install-time platform check and `platform_check.php`. Repeatable. Accepts `*`; `REQ+` ignores only the upper bound. |
 | `--ignore-platform-reqs` | Skip the install-time platform check and write no `platform_check.php` |
+| `--link-mode=MODE` | `clone`, `hardlink`, or `copy`: how files reach `vendor/` from the [store](#package-store). Also `PUN_LINK_MODE`. |
 | `-d`, `--working-dir=DIR` | Run in `DIR` |
 
 ## Exit codes

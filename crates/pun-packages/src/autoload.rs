@@ -49,6 +49,31 @@ pub struct Options {
     pub use_include_path: bool,
     pub prepend: bool,
     pub suffix: String,
+    /// Where the classes of packages from the store are kept between dumps (see `ClassCache`).
+    pub class_cache: Option<std::path::PathBuf>,
+}
+
+/// The class map cache: a package installed from a dist archive is taken not to change while it stays at one version
+/// and reference in one place (the store links the same files there), so the files a scan lists under it and the
+/// classes they declare are kept, keyed by the package, its install path, the directory scanned, the exclusions and
+/// the Pun binary. Root paths, path repositories and source installs are scanned every time. A hand edit to a
+/// package in `vendor/` is not seen until the package is installed again.
+struct ClassCache<'a> {
+    dir: &'a Path,
+    packages: Vec<(String, String)>,
+}
+
+impl ClassCache<'_> {
+    fn file(&self, dir: &str, exclude: Option<&Regex>) -> Option<std::path::PathBuf> {
+        let (install, id) = (self.packages.iter())
+            .find(|(install, _)| dir == install || dir.starts_with(&format!("{install}/")))?;
+        let key = format!(
+            "{id}\0{install}\0{dir}\0{}",
+            exclude.map_or("", Regex::as_str)
+        );
+        let key = crate::php::sha256(key.as_bytes());
+        Some(self.dir.join(&key[..2]).join(format!("{key}.json")))
+    }
 }
 
 /// A file of the autoloader, relative to the project when it is inside it.
@@ -444,6 +469,30 @@ pub fn dump(
     let namespaces = map_file("autoload_namespaces.php", &psr0)?;
     let psr4_text = map_file("autoload_psr4.php", &psr4)?;
 
+    // The scanner that found the classes is part of the key: another Pun build may find others.
+    let scanner = std::env::current_exe()
+        .map_or_default(|exe| crate::fingerprint::stamp(&exe, true).to_string());
+    let cache = o.class_cache.as_deref().map(|dir| ClassCache {
+        dir,
+        packages: (installed.iter())
+            // A source install is a checkout that may have moved on from its dist archive.
+            .filter(|p| {
+                p.package
+                    .0
+                    .get("installation-source")
+                    .is_none_or(|s| s == "dist")
+            })
+            .filter_map(|p| {
+                let id = crate::store::Store::key(&p.package)?;
+                Some((
+                    p.path.clone()?,
+                    format!("{}\0{}\0{id}\0{scanner}", p.name(), p.package.version()),
+                ))
+            })
+            .collect(),
+    });
+    let cached =
+        |dir: &str, exclude: Option<&Regex>| cache.as_ref().and_then(|c| c.file(dir, exclude));
     let mut map = ClassMap::default();
     let cwd = base.to_string();
     let mut jobs = vec![];
@@ -455,6 +504,7 @@ pub fn dump(
         });
         let exclude = exclusion_regex(&dir, &excluded, vendor)?;
         jobs.push(Job {
+            cache: cached(&dir, exclude.as_ref()),
             dir,
             given: given.clone(),
             exclude,
@@ -484,6 +534,7 @@ pub fn dump(
                     if Path::new(&dir).is_dir() {
                         let exclude = exclusion_regex(&dir, &excluded, vendor)?;
                         jobs.push(Job {
+                            cache: cached(&dir, exclude.as_ref()),
                             given: dir.clone(),
                             dir,
                             exclude,

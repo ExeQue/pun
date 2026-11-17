@@ -1,6 +1,6 @@
 mod common;
 
-use common::pty::pun;
+use common::pty::{pun, pun_with};
 use common::read;
 use std::path::{Path, PathBuf};
 
@@ -800,6 +800,24 @@ fn install_refuses_a_lock_the_platform_cannot_run() {
         "{err}"
     );
     assert!(!d.join("vendor").exists());
-    let (out, err, code) = pun(&d, &["install", "--ignore-platform-req=ext-nope"]);
+    let (out, err, code) = pun_with(
+        &d,
+        &["install", "--ignore-platform-req=ext-nope"],
+        &[("PUN_LINK_MODE", "symlink")],
+    );
+    assert_eq!(code, Some(2), "{out}{err}");
+    assert!(
+        err.contains("unknown link mode `symlink`: use clone, hardlink or copy"),
+        "{err}"
+    );
+    let (out, err, code) = pun_with(
+        &d,
+        &[
+            "install",
+            "--ignore-platform-req=ext-nope",
+            "--link-mode=copy",
+        ],
+        &[("PUN_LINK_MODE", "symlink")],
+    );
     assert_eq!(code, Some(0), "{out}{err}");
 }

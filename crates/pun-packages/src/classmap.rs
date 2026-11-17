@@ -341,11 +341,14 @@ impl ClassMap {
     }
 
     pub fn scan_all(&mut self, jobs: &[Job], cwd: &str) -> Result<()> {
-        let listed: Vec<Result<Vec<(String, PathBuf)>>> = jobs.par_iter().map(list).collect();
+        let listed: Vec<Result<Listing>> = jobs.par_iter().map(list).collect();
         let mut unique: HashMap<&Path, usize> = HashMap::new();
         let mut todo: Vec<&str> = vec![];
-        for files in listed.iter().flatten() {
-            for (path, real) in files {
+        for listing in listed.iter().flatten() {
+            if listing.cached.is_some() {
+                continue;
+            }
+            for (path, real) in &listing.files {
                 if !self.scanned.contains(real) && !unique.contains_key(real.as_path()) {
                     unique.insert(real, todo.len());
                     todo.push(path);
@@ -360,13 +363,22 @@ impl ClassMap {
                 )),
             })
             .collect();
-        for (job, files) in jobs.iter().zip(&listed) {
-            let files = files.as_ref().map_err(Error::msg)?;
-            for (path, real) in files {
+        let found = |listing: &Listing, i: usize, real: &Path| -> Result<Vec<String>> {
+            match &listing.cached {
+                Some(cached) => Ok(cached[i].clone()),
+                None => parsed[unique[real]].clone().map_err(Error::msg),
+            }
+        };
+        for (job, listing) in jobs.iter().zip(&listed) {
+            let listing = listing.as_ref().map_err(Error::msg)?;
+            if let (Some(file), None, true) = (&job.cache, &listing.cached, listing.cacheable) {
+                save(job, listing, file, &found);
+            }
+            for (i, (path, real)) in listing.files.iter().enumerate() {
                 if self.scanned.contains(real) {
                     continue;
                 }
-                let mut classes = parsed[unique[real.as_path()]].clone().map_err(Error::msg)?;
+                let mut classes = found(listing, i, real)?;
                 if job.rule == Rule::Classmap {
                     self.scanned.insert(real.clone());
                 } else {
@@ -442,14 +454,29 @@ pub struct Job {
     pub exclude: Option<Regex>,
     pub rule: Rule,
     pub namespace: String,
+    /// Where the files this job lists and their classes are kept, for a directory whose contents can't change:
+    /// a package from the store (see `autoload::ClassCache`).
+    pub cache: Option<PathBuf>,
 }
 
-fn list(job: &Job) -> Result<Vec<(String, PathBuf)>> {
+/// A job's files (as given and resolved), and their classes when they came from the job's cache.
+struct Listing {
+    files: Vec<(String, PathBuf)>,
+    cached: Option<Vec<Vec<String>>>,
+    /// No symlink below the job's directory, so the files can be found again from the cache.
+    cacheable: bool,
+}
+
+fn list(job: &Job) -> Result<Listing> {
+    if let Some(listing) = job.cache.as_deref().and_then(|file| cached(job, file)) {
+        return Ok(listing);
+    }
     let dir = Path::new(&job.dir);
     let mut files = vec![];
+    let mut cacheable = true;
     match std::fs::canonicalize(dir) {
         Ok(real) if dir.is_file() => files.push((job.dir.clone(), real)),
-        Ok(real) if dir.is_dir() => walk(&job.dir, &real, &mut files),
+        Ok(real) if dir.is_dir() => cacheable = walk(&job.dir, &real, &mut files),
         _ => bail!(
             "Could not scan for classes inside \"{}\" which does not appear to be a file nor a folder",
             job.given
@@ -467,11 +494,57 @@ fn list(job: &Job) -> Result<Vec<(String, PathBuf)>> {
         }
         kept.push((path, real));
     }
-    Ok(kept)
+    Ok(Listing {
+        files: kept,
+        cached: None,
+        cacheable,
+    })
 }
 
-fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {
+/// The listing kept in `file`: each file relative to the job's directory, with its classes.
+fn cached(job: &Job, file: &Path) -> Option<Listing> {
+    let entries: Vec<(String, Vec<String>)> =
+        serde_json::from_slice(&std::fs::read(file).ok()?).ok()?;
+    let real = std::fs::canonicalize(&job.dir).ok()?;
+    let (mut files, mut classes) = (vec![], vec![]);
+    for (rel, found) in entries {
+        if rel.is_empty() {
+            files.push((job.dir.clone(), real.clone()));
+        } else {
+            files.push((format!("{}/{rel}", job.dir), real.join(&rel)));
+        }
+        classes.push(found);
+    }
+    Some(Listing {
+        files,
+        cached: Some(classes),
+        cacheable: true,
+    })
+}
+
+/// The classes of a listing's file: from the cache or from this scan.
+type Found<'a> = dyn Fn(&Listing, usize, &Path) -> Result<Vec<String>> + 'a;
+
+/// Keeps a job's listing in `file`; a file that could not be read leaves nothing kept.
+fn save(job: &Job, listing: &Listing, file: &Path, found: &Found) {
+    let entries: Result<Vec<(&str, Vec<String>)>> = (listing.files.iter().enumerate())
+        .map(|(i, (path, real))| {
+            let rel = path.strip_prefix(&job.dir).unwrap_or(path);
+            Ok((rel.trim_start_matches('/'), found(listing, i, real)?))
+        })
+        .collect();
+    // Best effort: an unreadable file is reported by the scan, and a failed write only costs a scan next time.
+    if let Ok(entries) = entries
+        && let Ok(json) = serde_json::to_vec(&entries)
+    {
+        let _ = crate::fetch::store(file, &json);
+    }
+}
+
+/// Lists the files below `dir`; false when it went through a symlink.
+fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) -> bool {
     const VCS: [&str; 4] = ["_svn", "CVS", "_darcs", ".arch-params"];
+    let mut plain = true;
     for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
         let name = e.file_name();
         let name = name.to_string_lossy();
@@ -481,6 +554,7 @@ fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {
         let path = format!("{dir}/{name}");
         let Ok(kind) = e.file_type() else { continue };
         let (is_dir, real) = if kind.is_symlink() {
+            plain = false;
             match (std::fs::metadata(&path), std::fs::canonicalize(&path)) {
                 (Ok(m), Ok(target)) => (m.is_dir(), target),
                 _ => continue,
@@ -491,11 +565,12 @@ fn walk(dir: &str, real: &Path, out: &mut Vec<(String, PathBuf)>) {
             continue;
         };
         if is_dir {
-            walk(&path, &real, out);
+            plain &= walk(&path, &real, out);
         } else {
             out.push((path, real));
         }
     }
+    plain
 }
 
 #[cfg(test)]
@@ -609,6 +684,7 @@ $x = 'unterminated class Fake5 {}
             exclude: None,
             rule,
             namespace: namespace.into(),
+            cache: None,
         };
         let at = |p: &str| format!("{dir}/{p}");
         let mut map = ClassMap::default();

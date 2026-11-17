@@ -5,7 +5,7 @@ use pun_packages::lock::Lock;
 use pun_packages::lock::LockedPackage;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
@@ -752,5 +752,90 @@ fn dump_autoload_matches_composer() {
     )
     .unwrap();
     assert!(report.missing && !report.dev_mode);
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// A dist archive is extracted once into the store: a second project (here, the same one after `vendor/` is
+/// deleted and the download cache emptied) is linked from it, and the classes scanned under it are read back from the
+/// class cache instead of the files.
+#[test]
+fn packages_come_from_the_store_and_their_classes_from_the_class_cache() {
+    use std::io::Write;
+    let tmp = std::env::temp_dir().join(format!("pun-install-store-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let zip = {
+        let mut w = zip::ZipWriter::new(std::io::Cursor::new(vec![]));
+        let options = zip::write::SimpleFileOptions::default();
+        for (name, code) in [
+            ("acme-zipped-1/src/Z.php", "<?php class Z {}\n"),
+            ("acme-zipped-1/lib/One.php", "<?php class One {}\n"),
+        ] {
+            w.start_file(name, options).unwrap();
+            w.write_all(code.as_bytes()).unwrap();
+        }
+        w.finish().unwrap().into_inner()
+    };
+    let url = "https://repo.acme.test/zipped.zip";
+    let archive = tmp
+        .join("cache/files/acme/zipped")
+        .join(format!("{}.zip", pun_packages::php::sha1(url.as_bytes())));
+    std::fs::create_dir_all(archive.parent().unwrap()).unwrap();
+    std::fs::write(&archive, &zip).unwrap();
+    let mut zipped = lock;
+    zipped.packages.push(LockedPackage(
+        serde_json::json!({"name": "acme/zipped", "version": "1.0.0", "dist": {"type": "zip", "url": url, "shasum": pun_packages::php::sha1(&zip)}, "autoload": {"classmap": ["src/", "lib/One.php"]}})
+            .as_object()
+            .unwrap()
+            .clone(),
+    ));
+    let o = Options {
+        cache: Some(tmp.join("pun-cache")),
+        link: pun_packages::store::LinkMode::Hardlink,
+        ..Options::default()
+    };
+    let classmap =
+        || std::fs::read_to_string(tmp.join("vendor/composer/autoload_classmap.php")).unwrap();
+    // The archive comes from Composer's download cache the first time, from the store (it is deleted) the second.
+    let first = run(&tmp, &zipped, &o);
+    assert_eq!(first.cached, 1);
+    assert!(classmap().contains("'Z' => $vendorDir . '/acme/zipped/src/Z.php'"));
+    let z = tmp.join("vendor/acme/zipped/src/Z.php");
+    assert!(std::fs::metadata(&z).unwrap().nlink() > 1);
+
+    std::fs::remove_dir_all(tmp.join("vendor")).unwrap();
+    std::fs::remove_file(&archive).unwrap();
+    // The cached classes are what the next dump reads: change them, and the class map follows.
+    let mut cached = 0;
+    for dir in std::fs::read_dir(tmp.join("pun-cache/classes/v1")).unwrap() {
+        for file in std::fs::read_dir(dir.unwrap().path()).unwrap() {
+            let file = file.unwrap().path();
+            let text = std::fs::read_to_string(&file).unwrap();
+            std::fs::write(&file, text.replace("\"Z\"", "\"FromCache\"")).unwrap();
+            cached += 1;
+        }
+    }
+    assert_eq!(cached, 2);
+    let second = run(&tmp, &zipped, &o);
+    assert_eq!(second.cached, 1);
+    assert_eq!(std::fs::read_to_string(&z).unwrap(), "<?php class Z {}\n");
+    assert!(classmap().contains("'FromCache' => $vendorDir . '/acme/zipped/src/Z.php'"));
+    assert!(classmap().contains("'One' => $vendorDir . '/acme/zipped/lib/One.php'"));
+
+    // A source install is a checkout, which the class cache can't vouch for: it is scanned.
+    let installed = tmp.join("vendor/composer/installed.json");
+    let json = std::fs::read_to_string(&installed).unwrap().replace(
+        "\"installation-source\": \"dist\"",
+        "\"installation-source\": \"source\"",
+    );
+    std::fs::write(&installed, json).unwrap();
+    let manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    dump_autoload(&tmp, &manifest, None, &o, None, &mut |_, _| Ok(())).unwrap();
+    assert!(classmap().contains("'Z' => $vendorDir . '/acme/zipped/src/Z.php'"));
+    assert!(!classmap().contains("FromCache"));
     std::fs::remove_dir_all(&tmp).unwrap();
 }

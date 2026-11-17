@@ -15,6 +15,7 @@ pub mod plugin_host;
 pub mod plugins;
 pub mod resolver;
 pub mod scripts;
+pub mod store;
 pub mod verify;
 pub mod version;
 

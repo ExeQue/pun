@@ -11,6 +11,7 @@ use crate::php::{md5, sha1};
 use crate::plugin_host;
 use crate::plugins;
 use crate::resolver::platform::probe_cached;
+use crate::store::{LinkMode, Store};
 use crate::verify::verify;
 use crate::version::{IgnorePlatform, is_platform};
 use indexmap::IndexMap;
@@ -33,8 +34,10 @@ pub struct Options {
     /// The PHP the lock is checked against before anything is installed, as `composer install` checks it; `None`
     /// skips the check (an update has just solved the lock on this platform).
     pub php: Option<String>,
-    /// Pun's cache directory: the platform probe lives here.
+    /// Pun's cache directory: the platform probe, the no-op fingerprints and the package store live here.
     pub cache: Option<PathBuf>,
+    /// How files reach `vendor/` from the store.
+    pub link: LinkMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,7 +164,16 @@ pub fn install(
     let before = previous(Path::new(&project.dirs.vendor))?;
     let todo = compare(&packages, &before, &mut report);
     remove_stale(&before, &packages, &todo, &project.dirs, &mut report)?;
-    download(fetcher, &packages, &todo, base, env, &mut report)?;
+    let store = (o.cache.as_deref()).map(|c| Store::new(c, o.link));
+    download(
+        fetcher,
+        store.as_ref(),
+        &packages,
+        &todo,
+        base,
+        env,
+        &mut report,
+    )?;
     write_repository(&project, &packages, !o.no_dev, env)?;
     link_bins(&packages, &project.dirs, &mut report)?;
     let repository: Vec<String> = (repository_order(&packages, &before, &todo).into_iter())
@@ -494,6 +506,7 @@ fn remove_stale(
 
 fn download(
     fetcher: &Fetcher,
+    store: Option<&Store>,
     packages: &[Installed],
     todo: &[usize],
     base: &Path,
@@ -513,7 +526,7 @@ fn download(
                 let Some(path) = &p.path else {
                     return Ok(false);
                 };
-                place(fetcher, &p.package, base, Path::new(path))
+                place(fetcher, store, &p.package, base, Path::new(path))
                     .with_context(|| format!("installing {}", p.name()))
             })
             .collect()
@@ -627,6 +640,7 @@ fn autoload_options(
         use_include_path: config_bool(config, "use-include-path"),
         prepend: config.get("prepend-autoloader") != Some(&Value::Bool(false)),
         suffix,
+        class_cache: o.cache.as_ref().map(|c| c.join("classes").join("v1")),
     })
 }
 
@@ -786,7 +800,13 @@ fn plugins_first(packages: &[Installed], order: &[usize]) -> Vec<usize> {
     front.into_iter().flatten().chain(rest).collect()
 }
 
-fn place(fetcher: &Fetcher, package: &LockedPackage, base: &Path, target: &Path) -> Result<bool> {
+fn place(
+    fetcher: &Fetcher,
+    store: Option<&Store>,
+    package: &LockedPackage,
+    base: &Path,
+    target: &Path,
+) -> Result<bool> {
     let dist = package.dist();
     match dist.and_then(|d| d.get("type")).and_then(Value::as_str) {
         Some("path") => {
@@ -798,6 +818,15 @@ fn place(fetcher: &Fetcher, package: &LockedPackage, base: &Path, target: &Path)
             Ok(false)
         }
         Some(kind) => {
+            if let (Some(store), Some(key)) = (store, Store::key(package)) {
+                let mut cached = false;
+                let stored = store.place(&key, target, |dir| {
+                    let bytes;
+                    (bytes, cached) = fetcher.archive(package)?;
+                    unpack(kind, &bytes, dir)
+                })?;
+                return Ok(stored || cached);
+            }
             let (bytes, cached) = fetcher.archive(package)?;
             unpack(kind, &bytes, target)?;
             Ok(cached)
