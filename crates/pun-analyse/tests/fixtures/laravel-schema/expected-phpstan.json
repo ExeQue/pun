@@ -1,0 +1,1104 @@
+{
+ "scan": [
+  [
+   "app/Probe.php",
+   14,
+   "phpstan.dumpType",
+   "Dumped type: int<0, max>"
+  ],
+  [
+   "app/Probe.php",
+   15,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   16,
+   "phpstan.dumpType",
+   "Dumped type: int<0, max>"
+  ],
+  [
+   "app/Probe.php",
+   17,
+   "phpstan.dumpType",
+   "Dumped type: int|null"
+  ],
+  [
+   "app/Probe.php",
+   18,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   19,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   20,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   21,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   22,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   23,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   24,
+   "phpstan.dumpType",
+   "Dumped type: float"
+  ],
+  [
+   "app/Probe.php",
+   25,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   26,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   27,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   28,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   29,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   30,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   31,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   32,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   33,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   34,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   35,
+   "phpstan.dumpType",
+   "Dumped type: 'draft'|'it\\'s'"
+  ],
+  [
+   "app/Probe.php",
+   36,
+   "phpstan.dumpType",
+   "Dumped type: 'a'|null"
+  ],
+  [
+   "app/Probe.php",
+   37,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   38,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   39,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   40,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   41,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   42,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   43,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   44,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   45,
+   "phpstan.dumpType",
+   "Dumped type: bool"
+  ],
+  [
+   "app/Probe.php",
+   46,
+   "phpstan.dumpType",
+   "Dumped type: bool"
+  ],
+  [
+   "app/Probe.php",
+   47,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   48,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   49,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   50,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   56,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   57,
+   "phpstan.dumpType",
+   "Dumped type: string|null"
+  ],
+  [
+   "app/Probe.php",
+   58,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   58,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Gadget::$secret."
+  ],
+  [
+   "app/Probe.php",
+   59,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   60,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   60,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Part::$legacy_code."
+  ],
+  [
+   "app/Probe.php",
+   61,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   62,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   63,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   64,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   64,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\DupThing::$first."
+  ],
+  [
+   "app/Probe.php",
+   65,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   66,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   66,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\DupThing::$third."
+  ],
+  [
+   "app/Probe.php",
+   67,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   68,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   69,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   70,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   71,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   71,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\TextThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   77,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   77,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailOne::$count."
+  ],
+  [
+   "app/Probe.php",
+   78,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   78,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailTwo::$count."
+  ],
+  [
+   "app/Probe.php",
+   79,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   79,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailThree::$count."
+  ],
+  [
+   "app/Probe.php",
+   80,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   80,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailFour::$count."
+  ],
+  [
+   "app/Probe.php",
+   81,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   81,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailFive::$count."
+  ],
+  [
+   "app/Probe.php",
+   86,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ]
+ ],
+ "disabled": [
+  [
+   "app/Probe.php",
+   14,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   15,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   15,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$tiny."
+  ],
+  [
+   "app/Probe.php",
+   16,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   16,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$small."
+  ],
+  [
+   "app/Probe.php",
+   17,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   17,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$medium."
+  ],
+  [
+   "app/Probe.php",
+   18,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   18,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$whole."
+  ],
+  [
+   "app/Probe.php",
+   19,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   19,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$real_value."
+  ],
+  [
+   "app/Probe.php",
+   20,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   20,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$dbl."
+  ],
+  [
+   "app/Probe.php",
+   21,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   21,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$flt."
+  ],
+  [
+   "app/Probe.php",
+   22,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   22,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$dec_value."
+  ],
+  [
+   "app/Probe.php",
+   23,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   23,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$num."
+  ],
+  [
+   "app/Probe.php",
+   24,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   24,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$fixed_value."
+  ],
+  [
+   "app/Probe.php",
+   25,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   25,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$bits."
+  ],
+  [
+   "app/Probe.php",
+   26,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   26,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$bin."
+  ],
+  [
+   "app/Probe.php",
+   27,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   27,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$varbin."
+  ],
+  [
+   "app/Probe.php",
+   28,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   28,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$code."
+  ],
+  [
+   "app/Probe.php",
+   29,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   29,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$name."
+  ],
+  [
+   "app/Probe.php",
+   30,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   30,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$alias."
+  ],
+  [
+   "app/Probe.php",
+   31,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   31,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$body."
+  ],
+  [
+   "app/Probe.php",
+   32,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   32,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$summary."
+  ],
+  [
+   "app/Probe.php",
+   33,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   33,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$notes."
+  ],
+  [
+   "app/Probe.php",
+   34,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   34,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$plain."
+  ],
+  [
+   "app/Probe.php",
+   35,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   35,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$status."
+  ],
+  [
+   "app/Probe.php",
+   36,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   36,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$level."
+  ],
+  [
+   "app/Probe.php",
+   37,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   37,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$sizes."
+  ],
+  [
+   "app/Probe.php",
+   38,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   38,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$born_on."
+  ],
+  [
+   "app/Probe.php",
+   39,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   39,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$year_value."
+  ],
+  [
+   "app/Probe.php",
+   40,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   40,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$starts_at."
+  ],
+  [
+   "app/Probe.php",
+   41,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   41,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$seen_at."
+  ],
+  [
+   "app/Probe.php",
+   42,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   42,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$happened_at."
+  ],
+  [
+   "app/Probe.php",
+   43,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   43,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$payload."
+  ],
+  [
+   "app/Probe.php",
+   44,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   44,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$geo."
+  ],
+  [
+   "app/Probe.php",
+   45,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   45,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$flag."
+  ],
+  [
+   "app/Probe.php",
+   46,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   46,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$active."
+  ],
+  [
+   "app/Probe.php",
+   47,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   47,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$data."
+  ],
+  [
+   "app/Probe.php",
+   48,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   48,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$small_data."
+  ],
+  [
+   "app/Probe.php",
+   49,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   49,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$medium_data."
+  ],
+  [
+   "app/Probe.php",
+   50,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   50,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Widget::$long_data."
+  ],
+  [
+   "app/Probe.php",
+   56,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   56,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Gadget::$name."
+  ],
+  [
+   "app/Probe.php",
+   57,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   57,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Gadget::$color."
+  ],
+  [
+   "app/Probe.php",
+   58,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   58,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Gadget::$secret."
+  ],
+  [
+   "app/Probe.php",
+   59,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   59,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Part::$name."
+  ],
+  [
+   "app/Probe.php",
+   60,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   60,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\Part::$legacy_code."
+  ],
+  [
+   "app/Probe.php",
+   61,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   61,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\QualifiedThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   62,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   62,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\TempThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   63,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   63,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\LowerThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   64,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   64,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\DupThing::$first."
+  ],
+  [
+   "app/Probe.php",
+   65,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   65,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\DupThing::$second."
+  ],
+  [
+   "app/Probe.php",
+   66,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   66,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\DupThing::$third."
+  ],
+  [
+   "app/Probe.php",
+   67,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   67,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\LaterThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   68,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   69,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   70,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   70,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\NestedThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   71,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   71,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\TextThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   77,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   77,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailOne::$count."
+  ],
+  [
+   "app/Probe.php",
+   78,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   78,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailTwo::$count."
+  ],
+  [
+   "app/Probe.php",
+   79,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   79,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailThree::$count."
+  ],
+  [
+   "app/Probe.php",
+   80,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   80,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailFour::$count."
+  ],
+  [
+   "app/Probe.php",
+   81,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   81,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\FailFive::$count."
+  ],
+  [
+   "app/Probe.php",
+   86,
+   "phpstan.dumpType",
+   "Dumped type: string"
+  ]
+ ]
+}

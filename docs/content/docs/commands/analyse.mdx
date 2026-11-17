@@ -27,6 +27,10 @@ The five [analyse presets](/docs/configuration/presets#analyse-presets) group PH
 
 Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-toml#extensions) is on, unless the lock pins a Laravel that Larastan 3 doesn't support. Larastan 3 supports 11.44.2 and later 11.x, 12.4.1 and later 12.x, and 13.x.
 
+Pun reads model properties from the migrations in `database/migrations` and the schema dumps in `database/schema`, as Larastan does. The `database-migrations-path`, `squashed-migrations-path`, `disable-migration-scan`, and `disable-schema-scan` options that `pun migrate` writes from Larastan's parameters change those directories. Pun doesn't support `enableMigrationCache`. Schema dumps are read with Larastan's MySQL-style parser.
+
+Larastan boots your app to learn its macros. Pun doesn't run PHP, so it collects the macros from `X::macro('name', ...)` calls. It reads these calls in your bootstrap files, in `app/Providers`, in the Laravel and package service providers, and in every analysed file. Pun misses a macro whose name isn't a constant string, a macro added in a loop or through `mixin()`, and a macro that a vendor file outside those providers registers.
+
 `pun.toml` can't override `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly` on their own. `pun migrate` reports them as unsupported and keeps the level.
 
 With every analyse rule off, `pun analyse` prints "No rules detected" and exits 2.

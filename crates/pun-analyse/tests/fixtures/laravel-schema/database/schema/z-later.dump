@@ -1,0 +1,3 @@
+CREATE TABLE `dup_things` (`third` int NOT NULL);
+CREATE TABLE `later_things` (`count` int NOT NULL);
+CREATE

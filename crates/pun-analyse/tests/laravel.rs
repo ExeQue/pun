@@ -52,6 +52,8 @@ fn dumped(parse_casts_method: bool) -> BTreeMap<u64, String> {
         Some(Laravel {
             root: &root,
             parse_casts_method,
+            migrations: &[root.join("database/migrations")],
+            schemas: &[],
         }),
     )
     .unwrap();

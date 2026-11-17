@@ -129,6 +129,21 @@ impl<'a> SchemaAggregator<'a> {
         }
     }
 
+    /// SquashedMigrationHelper::initializeTables(): a schema dump's tables, except a table an earlier dump defined.
+    pub(super) fn add_schema_dump(&mut self, tables: Vec<super::sql::Table>) {
+        for definition in tables {
+            if self.tables.contains_key(&definition.name) {
+                continue;
+            }
+            let mut table = Table::default();
+            for c in definition.columns {
+                let options = (c.readable_type == "enum").then_some(c.values);
+                table.set_column(&c.name, &c.readable_type, c.nullable, options);
+            }
+            self.tables.insert(definition.name, table);
+        }
+    }
+
     fn is_a(&self, class: &str, parent: &str) -> bool {
         class.eq_ignore_ascii_case(parent)
             || self

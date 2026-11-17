@@ -132,6 +132,9 @@ pub struct Larastan {
     pub(crate) models: std::sync::Arc<crate::laravel::Models>,
     pub(crate) app: std::sync::Arc<crate::larastan::app::App>,
     pub bootstrap_files: Vec<PathBuf>,
+    /// MigrationHelper's and SquashedMigrationHelper's directories
+    pub migration_directories: Vec<PathBuf>,
+    pub schema_directories: Vec<PathBuf>,
     pub(crate) macros: std::sync::Arc<crate::larastan::macros::Macros>,
     pub(crate) commands: std::sync::Arc<Vec<crate::larastan::console::Command>>,
 }
@@ -153,6 +156,8 @@ impl Larastan {
             no_unnecessary_collection_call_methods: collections::should_handle(&[], &[]),
             configs: Default::default(),
             bootstrap_files: Vec::new(),
+            migration_directories: vec![root.join("database/migrations")],
+            schema_directories: vec![root.join("database/schema")],
             macros: Default::default(),
             app: Default::default(),
             models: Default::default(),
@@ -254,6 +259,33 @@ impl Larastan {
                 })
                 .unwrap_or_default()
         };
+        // MigrationHelper::getMigrationDirectories() and SquashedMigrationHelper::getSchemaDirectories(): the
+        // configured paths, else the app's `database_path()` directory, none when the scan is off
+        let scanned = |paths: &str, default: &[PathBuf], disabled: &str| {
+            if flag(disabled, false) {
+                return Vec::new();
+            }
+            let paths = names(paths);
+            let paths = if paths.is_empty() {
+                default
+                    .iter()
+                    .map(|d| d.to_string_lossy().into_owned())
+                    .collect()
+            } else {
+                paths
+            };
+            crate::laravel::resolve_directories(root, &paths)
+        };
+        larastan.migration_directories = scanned(
+            "databaseMigrationsPath",
+            &larastan.migration_directories,
+            "disableMigrationScan",
+        );
+        larastan.schema_directories = scanned(
+            "squashedMigrationsPath",
+            &larastan.schema_directories,
+            "disableSchemaScan",
+        );
         larastan.bootstrap_files = names("bootstrapFiles")
             .iter()
             .map(|f| root.join(f))
@@ -302,6 +334,8 @@ impl crate::AnalyseExtension for Larastan {
             parse_casts_method: self
                 .switches
                 .contains(LarastanSwitches::PARSE_MODEL_CASTS_METHOD),
+            migrations: &self.migration_directories,
+            schemas: &self.schema_directories,
         };
         (self.database_properties, self.table_columns) =
             crate::laravel::database_properties(app, project, codebase);

@@ -1,9 +1,10 @@
 mod collections;
 mod schema;
+mod sql;
 mod strings;
 
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use mago_allocator::LocalArena;
 use mago_analyzer::plugin::{
@@ -25,8 +26,8 @@ use mago_syntax::parser::parse_file;
 use mago_syntax::walker::MutWalker;
 use mago_word::Word;
 
+use crate::Project;
 use crate::codebase::read;
-use crate::{Project, php_files};
 pub(crate) use collections::{
     collection_class, collection_of, proxy_result, references_collection, replace_collections,
 };
@@ -43,6 +44,86 @@ const PROXY: &str = "Illuminate\\Support\\HigherOrderCollectionProxy";
 pub struct Laravel<'a> {
     pub root: &'a Path,
     pub parse_casts_method: bool,
+    /// MigrationHelper's directories (`databaseMigrationsPath`, none with `disableMigrationScan`)
+    pub migrations: &'a [PathBuf],
+    /// SquashedMigrationHelper's directories (`squashedMigrationsPath`, none with `disableSchemaScan`)
+    pub schemas: &'a [PathBuf],
+}
+
+/// `DirectoryResolver::resolve()`: each path absolute from `cwd`; an existing directory or a path without glob
+/// characters is kept as it is, a glob is the directories it matches.
+pub(crate) fn resolve_directories(cwd: &Path, paths: &[String]) -> Vec<PathBuf> {
+    let mut directories: Vec<PathBuf> = Vec::new();
+    for path in paths {
+        let path = pun_phpstan::php::absolutize_path(&cwd.to_string_lossy(), path);
+        let matches = if Path::new(&path).is_dir() || !path.contains(['*', '?', '[']) {
+            vec![path]
+        } else {
+            glob_directories(&path)
+        };
+        for directory in matches {
+            let directory = pun_phpstan::php::normalize_path(&directory);
+            let directory = PathBuf::from(directory.trim_end_matches(['/', '\\']));
+            if !directories.contains(&directory) {
+                directories.push(directory);
+            }
+        }
+    }
+    directories
+}
+
+/// `glob($pattern, GLOB_ONLYDIR)`: the directories an absolute pattern matches, sorted, with `fnmatch()` per path
+/// component (a leading dot is matched only by a dot).
+fn glob_directories(pattern: &str) -> Vec<String> {
+    let mut found = vec![String::new()];
+    for component in pattern.split('/').filter(|c| !c.is_empty()) {
+        let mut next = Vec::new();
+        for base in &found {
+            if !component.contains(['*', '?', '[']) {
+                next.push(format!("{base}/{component}"));
+                continue;
+            }
+            let mut names: Vec<String> =
+                std::fs::read_dir(if base.is_empty() { "/" } else { base })
+                    .into_iter()
+                    .flatten()
+                    .flatten()
+                    .filter_map(|e| e.file_name().into_string().ok())
+                    .filter(|n| !n.starts_with('.') || component.starts_with('.'))
+                    .filter(|n| pun_tokens::php_compat::fnmatch(component.as_bytes(), n.as_bytes()))
+                    .collect();
+            names.sort();
+            next.extend(names.into_iter().map(|n| format!("{base}/{n}")));
+        }
+        found = next;
+    }
+    found.retain(|d| Path::new(d).is_dir());
+    found
+}
+
+/// The files below `directories` whose path `matches`, by path; RecursiveDirectoryIterator does not enter a linked
+/// directory.
+fn files_below(directories: &[PathBuf], matches: &dyn Fn(&str) -> bool) -> Vec<PathBuf> {
+    fn walk(dir: &Path, matches: &dyn Fn(&str) -> bool, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if entry.file_type().is_ok_and(|t| t.is_dir()) {
+                walk(&path, matches, out);
+            } else if matches(&path.to_string_lossy()) {
+                out.push(path);
+            }
+        }
+    }
+    let mut files = Vec::new();
+    for directory in directories {
+        let mut found = Vec::new();
+        walk(directory, matches, &mut found);
+        found.sort();
+        // `$files += iterator_to_array(...)`: a path an earlier directory gave is kept once
+        found.retain(|f| !files.contains(f));
+        files.extend(found);
+    }
+    files
 }
 
 pub(crate) fn register(
@@ -362,7 +443,24 @@ fn scan_tables(
     }
     let model_key = |class: &str| model(&scan, codebase, class).map(|m| (m.table, m.key));
     let mut schema = SchemaAggregator::new(codebase, &model_key);
-    let mut migrations = php_files(&app.root.join("database/migrations"), &["php".to_string()]);
+    // SquashedMigrationHelper::initializeTables(): the schema dumps first, by path (`ksort`)
+    let mut dumps = files_below(app.schemas, &|path| {
+        let path = path.to_ascii_lowercase();
+        path.contains(".dump") || path.contains(".sql")
+    });
+    dumps.sort();
+    for dump in dumps {
+        if let Some(tables) = std::fs::read(&dump)
+            .ok()
+            .and_then(|sql| sql::parse_tables(&sql))
+        {
+            schema.add_schema_dump(tables);
+        }
+    }
+    // MigrationHelper::initializeTables(): the migrations on top, by file name (a stable `uasort`)
+    let mut migrations = files_below(app.migrations, &|path| {
+        path.to_ascii_lowercase().ends_with(".php")
+    });
     migrations.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
     for file in migrations
         .iter()

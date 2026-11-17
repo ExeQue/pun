@@ -409,6 +409,8 @@ fn explicit_laravel_context_uses_the_same_alias_registry() {
         Some(Laravel {
             root: Path::new(&app.0),
             parse_casts_method: false,
+            migrations: &[],
+            schemas: &[],
         }),
     )
     .unwrap();

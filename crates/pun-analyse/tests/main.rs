@@ -99,6 +99,7 @@ mod larastan_app;
 mod larastan_types;
 mod laravel;
 mod laravel_aliases;
+mod laravel_schema;
 mod levels;
 mod local_coalesce_declaration_effects;
 mod mago;
