@@ -2,6 +2,7 @@
 //! codebase is populated: the IDE-helper union `Builder|User` is `Builder<User>`.
 
 use mago_codex::metadata::CodebaseMetadata;
+use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::ttype::TypeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::reference::TReference;
@@ -44,9 +45,8 @@ pub(crate) fn generic_eloquent_builders(codebase: &mut CodebaseMetadata) {
             t.type_union = ret;
         }
         for (i, union) in params {
-            if let Some(t) = f.parameters[i].type_metadata.as_mut() {
-                t.type_union = union;
-            }
+            let t = f.parameters[i].type_metadata.as_mut();
+            t.expect("collected above").type_union = union;
         }
     }
     for (key, magic, name, read, write) in properties {
@@ -113,15 +113,10 @@ fn resolve(codebase: &CodebaseMetadata, t: &TypeMetadata) -> Option<TUnion> {
 
 /// `ClassReflection::is()` on the scanned, not yet populated, classes: the class or one of its parents.
 fn is_a(codebase: &CodebaseMetadata, name: Word, target: &[u8]) -> bool {
-    let mut current = codebase.get_class_like(name.as_bytes());
-    for _ in 0..64 {
-        let Some(k) = current else {
-            return false;
-        };
-        if k.name.as_bytes().eq_ignore_ascii_case(target) {
-            return true;
-        }
-        current = (k.direct_parent_class).and_then(|p| codebase.get_class_like(p.as_bytes()));
-    }
-    false
+    let parent = |k: &&ClassLikeMetadata| {
+        (k.direct_parent_class).and_then(|p| codebase.get_class_like(p.as_bytes()))
+    };
+    std::iter::successors(codebase.get_class_like(name.as_bytes()), parent)
+        .take(64)
+        .any(|k| k.name.as_bytes().eq_ignore_ascii_case(target))
 }

@@ -1367,13 +1367,11 @@ impl mago_analyzer::plugin::ExpressionHook for LateBuilders {
         let mago_syntax::cst::Expression::Call(_) = expr else {
             return Ok(());
         };
-        let Some(ty) = context.get_expression_type(expr) else {
+        let late = |t: &TAtomic| matches!(t, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes() == BUILDER_OF);
+        let Some(ty) = (context.get_expression_type(expr)).filter(|ty| ty.types.iter().any(late))
+        else {
             return Ok(());
         };
-        let late = |t: &TAtomic| matches!(t, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes() == BUILDER_OF);
-        if !ty.types.iter().any(late) {
-            return Ok(());
-        }
         let mut types = Vec::new();
         for t in ty.types.iter() {
             match t {

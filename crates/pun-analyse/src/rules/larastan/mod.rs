@@ -844,6 +844,23 @@ fn type_node(
             Type::String,
             Type::Accessory(Accessory::ViewString),
         ])),
+        // BuilderOfType::getResult() while the type holds a template (the return rules resolve it so): the builder of
+        // the template's bound, generic in the template itself
+        ("builder-of", [t @ Type::Template(template)])
+            if RESOLVE_UNRESOLVABLE.with(std::cell::Cell::get)
+                && template.bound.object_class_names().len() == 1 =>
+        {
+            let model = &template.bound.object_class_names()[0];
+            let builder = forwards::builder_name(codebase, model.as_bytes());
+            let generic = (codebase.get_class_like(builder.as_bytes()))
+                .is_some_and(|k| !k.template_types.is_empty());
+            let arguments = if generic { vec![t.clone()] } else { vec![] };
+            Some(Type::Object(
+                crate::text(builder.as_bytes()),
+                arguments,
+                false,
+            ))
+        }
         ("builder-of", [_] | [_, _]) | ("relation-of", [_, _]) => {
             Some(late_of(codebase, name, args))
         }

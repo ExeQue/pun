@@ -60,3 +60,29 @@ function test(Item $item): void
     assertType('PunGenericEloquentUnions\Item|null', $item->children->first());
     assertType('array<PunGenericEloquentUnions\Item>|Illuminate\Database\Eloquent\Collection', $item->generic);
 }
+
+class Holder
+{
+    /** @var Builder|Item */
+    public $query;
+}
+
+/**
+ * @template TModel of Model
+ * @param class-string<TModel> $class
+ * @return builder-of<TModel>|null
+ */
+function maybeQuery(string $class, bool $none)
+{
+    return $none ? null : $class::query();
+}
+
+/**
+ * @template TModel of Model
+ * @param class-string<TModel> $class
+ */
+function maybeGeneric(string $class, Holder $holder): void
+{
+    assertType('Illuminate\Database\Eloquent\Builder<PunGenericEloquentUnions\Item>', $holder->query);
+    assertType('Illuminate\Database\Eloquent\Builder<TModel of Illuminate\Database\Eloquent\Model (function PunGenericEloquentUnions\maybeGeneric(), argument)>|null', maybeQuery($class, false));
+}

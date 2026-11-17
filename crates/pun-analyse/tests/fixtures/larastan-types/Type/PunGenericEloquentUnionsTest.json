@@ -9,8 +9,11 @@
             "declares": [
                 "pungenericeloquentunions\\builder",
                 "pungenericeloquentunions\\generic",
+                "pungenericeloquentunions\\holder",
                 "pungenericeloquentunions\\item",
                 "pungenericeloquentunions\\itembuilder",
+                "pungenericeloquentunions\\maybegeneric",
+                "pungenericeloquentunions\\maybequery",
                 "pungenericeloquentunions\\test"
             ],
             "asserts": [
@@ -26,7 +29,9 @@
                 58,
                 59,
                 60,
-                61
+                61,
+                86,
+                87
             ],
             "errors": [
                 {
