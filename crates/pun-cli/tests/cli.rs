@@ -717,11 +717,9 @@ fn pun_only_behaviour() {
     assert_eq!((err.as_str(), code), ("x Preset not found.\n", Some(2)));
 }
 
-#[test]
-fn migrates_php_cs_fixer_config() {
-    let Some(oracle) = oracle() else { return };
+/// The custom-fixer fixture, loading the real PHP-CS-Fixer (`.oracle/php-cs-fixer`) through its autoloader.
+fn php_cs_fixer_tree(oracle: &Path) -> Vec<(&'static str, String)> {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/php-cs-fixer-custom");
-    let dir = scratch("cli", "pcf");
     let read = |f: &str| std::fs::read_to_string(src.join(f)).unwrap();
     let real = oracle
         .parent()
@@ -732,14 +730,47 @@ fn migrates_php_cs_fixer_config() {
         .unwrap()
         .join("php-cs-fixer/vendor/autoload.php");
     let autoload = format!("<?php\nreturn require '{}';\n", real.display());
-    let tree: Vec<(&str, String)> = vec![
+    vec![
         ("composer.json", r#"{"require":{"php":"^8.4"}}"#.into()),
         (".php-cs-fixer.php", read(".php-cs-fixer.php")),
         ("UpperTodoFixer.php", read("UpperTodoFixer.php")),
         ("app/A.php", "<?php\n$a = \"x\";\n$b = sizeof([]);\n".into()),
         ("vendor/autoload.php", autoload),
         ("vendor/friendsofphp/php-cs-fixer/.keep", String::new()),
-    ];
+    ]
+}
+
+/// A notice the config writes straight to STDOUT (past the helper's output buffer) comes before the helper's JSON:
+/// migrate writes the same pun.toml as without it.
+#[test]
+fn migrates_php_cs_fixer_config_past_stdout_notices() {
+    let Some(oracle) = oracle() else { return };
+    let dir = scratch("cli", "pcf-notice");
+    let tree = php_cs_fixer_tree(&oracle);
+    let tree: Vec<(&str, &str)> = tree.iter().map(|(a, b)| (*a, b.as_str())).collect();
+    reset(&dir, &tree);
+    let (_, _, code) = pun(&dir, &["migrate"]);
+    assert_eq!(code, Some(0));
+    let toml = std::fs::read_to_string(dir.join("pun.toml")).unwrap();
+    reset(&dir, &tree);
+    let noisy = std::fs::read_to_string(dir.join(".php-cs-fixer.php"))
+        .unwrap()
+        .replacen(
+            "<?php\n",
+            "<?php\nfwrite(STDOUT, \"Deprecated: a notice on stdout\\n\");\n",
+            1,
+        );
+    std::fs::write(dir.join(".php-cs-fixer.php"), noisy).unwrap();
+    let (_, err, code) = pun(&dir, &["migrate"]);
+    assert_eq!((err.as_str(), code), ("", Some(0)));
+    assert_eq!(std::fs::read_to_string(dir.join("pun.toml")).unwrap(), toml);
+}
+
+#[test]
+fn migrates_php_cs_fixer_config() {
+    let Some(oracle) = oracle() else { return };
+    let dir = scratch("cli", "pcf");
+    let tree = php_cs_fixer_tree(&oracle);
     let tree: Vec<(&str, &str)> = tree.iter().map(|(a, b)| (*a, b.as_str())).collect();
     reset(&dir, &tree);
     std::fs::write(
@@ -748,8 +779,13 @@ fn migrates_php_cs_fixer_config() {
     )
     .unwrap();
     let (_, err, code) = pun(&dir, &["migrate"]);
-    assert_eq!(code, Some(2));
-    assert!(err.contains("bad config"), "{err}");
+    assert_eq!(
+        (err.as_str(), code),
+        (
+            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: bad config\n",
+            Some(2)
+        )
+    );
     assert!(!dir.join("pun.toml").exists());
     reset(&dir, &tree);
     std::fs::remove_dir_all(dir.join("vendor/friendsofphp")).unwrap();
@@ -757,7 +793,7 @@ fn migrates_php_cs_fixer_config() {
     assert_eq!(
         (err.as_str(), code),
         (
-            "x no vendor/friendsofphp/php-cs-fixer: run `composer install` so Pun can read the config\n",
+            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: no vendor/friendsofphp/php-cs-fixer: run `composer install` first\n",
             Some(2)
         )
     );

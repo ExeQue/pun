@@ -105,8 +105,6 @@ enum Action {
     Covered,
     /// rector.php selected without `vendor/rector/rector`: Rector's config is PHP that only Rector can read.
     NoVendor,
-    /// Selected, but pun.toml is not written: the Pint or PHP-CS-Fixer config was left out.
-    Held,
 }
 
 /// The detected configs (tool, file) and the chosen tools (a subset of them) → what happens to each, in detection order.
@@ -198,16 +196,32 @@ pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
     }
     let rows = without_vendor(&root, plan(&detected, &chosen));
     let sources = Sources::of(&root, &rows);
-    let has_format = detected.iter().any(|d| d.0.format());
-    if (chosen.is_empty() && !detected.is_empty()) || (sources.format.is_none() && has_format) {
-        hold(report, rows, pint, chosen.is_empty());
+    let formats: Vec<&str> = (detected.iter())
+        .filter(|d| d.0.format())
+        .map(|d| d.1.as_str())
+        .collect();
+    // A format config left out (the project keeps its formatter): pun.toml gets no [format], which means Pint's
+    // defaults, as Pint without a pint.json.
+    let no_format = sources.format.is_none() && !formats.is_empty();
+    let migrates = rows.iter().any(|r| r.2 == Action::Migrate);
+    if (chosen.is_empty() && !detected.is_empty()) || (no_format && !migrates) {
+        hold(report, &rows, pint, chosen.is_empty());
         return Ok(Exit::Success);
     }
     let from = sources.format.as_ref().map(|s| rel(&root, &s.1));
     let arrow = report.look.glyph("→", "->");
-    let body = body(&root, a, pint, &sources, interactive, &mut report)?;
+    let body = body(
+        &root,
+        a,
+        pint,
+        &sources,
+        no_format,
+        interactive,
+        &mut report,
+    )?;
     let header = match &from {
         Some(f) => format!(" from {f}."),
+        None if no_format => format!(" without [format]: {} not selected.", formats.join(", ")),
         None if detected.is_empty() => format!(": {nothing}; starter config."),
         None => format!(
             ": no {} or .php-cs-fixer.php found; starter config.",
@@ -226,7 +240,8 @@ pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
         );
     }
     let cfg = pun_config::from_toml(&root, &toml)?;
-    let mut edits = ignore_rewrites(&root, &cfg, sources.phpstan.is_some(), &mut report);
+    let phpstan = sources.phpstan.is_some();
+    let mut edits = ignore_rewrites(&root, &cfg, !no_format, phpstan, &mut report);
     let rewritten = edits.len();
     let written = old.as_deref() != Some(&toml);
     if written {
@@ -252,7 +267,8 @@ pub(crate) fn run(a: &MigrateArgs) -> Result<Exit> {
         None if detected.is_empty() => nothing,
         None => String::new(),
     };
-    report.summary(&cfg, from.is_none(), written, rewritten, &checked);
+    let starter = from.is_none() && !no_format;
+    report.summary(&cfg, starter, written, rewritten, &checked);
     Ok(Exit::Success)
 }
 
@@ -297,20 +313,14 @@ impl Sources {
     }
 }
 
-/// Nothing is written: nothing was selected, or no Pint or PHP-CS-Fixer config among what was.
-fn hold(mut report: Report, rows: Vec<(Source, String, Action)>, pint: &Path, nothing: bool) {
+/// Nothing is written: nothing was selected, or nothing selected can be migrated.
+fn hold(mut report: Report, rows: &[(Source, String, Action)], pint: &Path, nothing: bool) {
     let why = if nothing {
         "nothing selected"
     } else {
-        "no Pint or PHP-CS-Fixer config selected"
+        "nothing to migrate"
     };
-    let rows: Vec<_> = (rows.into_iter())
-        .map(|(s, f, a)| match a {
-            Action::Migrate => (s, f, Action::Held),
-            a => (s, f, a),
-        })
-        .collect();
-    report.configs(&rows, pint, &["", "", ""]);
+    report.configs(rows, pint, &["", "", ""]);
     let detail = [format!("{why}, pun.toml not written")];
     report.finish(
         Mark::Skip,
@@ -348,16 +358,29 @@ impl Body {
     }
 }
 
-/// `[format]` from the format config, then `[lint]` from rector.php and `[analyse]` from phpstan.neon.
+/// `[format]` from the format config (none with `no_format`), then `[lint]` from rector.php and `[analyse]` from
+/// phpstan.neon.
 fn body(
     root: &Path,
     a: &MigrateArgs,
     pint: &Path,
     sources: &Sources,
+    no_format: bool,
     interactive: bool,
     report: &mut Report,
 ) -> Result<Body> {
-    let mut m = convert(root, a, pint, sources.format.as_ref(), report)?;
+    let mut m = if no_format {
+        migrate::Migration {
+            toml: String::new(),
+            parts: migrate::Parts::default(),
+            unsupported: vec![],
+            preset: "laravel",
+            format_rules: 0,
+            lint_rules: 0,
+        }
+    } else {
+        convert(root, a, pint, sources.format.as_ref(), report)?
+    };
     m.parts.extensions = migrate::extensions(&pun_config::composer::detect(root)?);
     m.toml = m.parts.render();
     let mut lint = String::new();
@@ -446,12 +469,13 @@ fn convert(
     Ok(m)
 }
 
-/// Each project file whose `@php-cs-fixer-ignore` comments (and, when the PHPStan config is migrated,
-/// `@phpstan-ignore` comments, in the files `pun analyse` checks too) [`rewrite`] changes: (path, old, new). An
-/// annotation Pun has no rule for is reported.
+/// Each project file whose `@php-cs-fixer-ignore` comments (when the format config is migrated: a project that keeps
+/// PHP-CS-Fixer keeps them), and, when the PHPStan config is migrated, `@phpstan-ignore` comments, in the files
+/// `pun analyse` checks too, [`rewrite`] changes: (path, old, new). An annotation Pun has no rule for is reported.
 fn ignore_rewrites(
     root: &Path,
     cfg: &pun_config::Config,
+    fixer: bool,
     phpstan: bool,
     report: &mut Report,
 ) -> Vec<(PathBuf, Vec<u8>, Vec<u8>)> {
@@ -468,7 +492,7 @@ fn ignore_rewrites(
         let Ok(code) = std::fs::read(&f) else {
             continue;
         };
-        if let Some(new) = rewrite(&code, &rel(root, &f), phpstan, &mut unknown) {
+        if let Some(new) = rewrite(&code, &rel(root, &f), fixer, phpstan, &mut unknown) {
             edits.push((f, code, new));
         }
     }
@@ -550,10 +574,11 @@ fn phpstan_analyse(
     parts: &mut migrate::Parts,
     report: &mut Report,
 ) -> Result<(String, u8)> {
-    let p = migrate::phpstan::from_phpstan(root, config)?;
+    let from = rel(root, config);
+    let p = migrate::phpstan::from_phpstan(root, config)
+        .with_context(|| format!("can't read {from} as a PHPStan config"))?;
     let arrow = report.look.glyph("→", "->");
     let done = migrate::phpstan::compose(root, parts, &p)?;
-    let from = rel(root, config);
     for (name, why) in p.unsupported.iter().chain(&done.unsupported) {
         report.unsupported(name, why, format!("{from} unsupported {name}: {why}"));
     }
@@ -574,6 +599,9 @@ fn phpstan_analyse(
     if done.options > 0 {
         let parameters = agent::count(done.options, "parameter");
         let _ = write!(text, ", {parameters} {arrow} rule options");
+    }
+    if let Some(v) = &p.php_version {
+        let _ = write!(text, ", phpVersion {arrow} [php] version {v}");
     }
     let ignores = p.ignores.len();
     if ignores > 0 {
@@ -648,13 +676,8 @@ fn outside(root: &Path, files: &[PathBuf], paths: &[String]) -> Vec<String> {
 /// A rector.php as Rector resolves it, read through the project's own Rector (the config is PHP code). Like
 /// [`php_cs_fixer_config`], migrate is the only place Pun runs PHP.
 fn rector_config(root: &Path, config: &Path) -> Result<migrate::RectorConfig> {
-    let out = read_php(
-        root,
-        config,
-        include_str!("rector_config.php"),
-        "rector.php",
-    )?;
-    Ok(serde_json::from_slice(&out)?)
+    read_php(root, config, include_str!("rector_config.php"))
+        .with_context(|| format!("can't read {} with Rector", rel(root, config)))
 }
 
 /// Writes the edits, or with `--dry-run` returns their diffs instead.
@@ -751,11 +774,6 @@ impl Report {
                         _ => "not read: run `composer install` so Pun can read it with Rector; left untouched",
                     }
                     .into(),
-                ),
-                Action::Held => (
-                    Mark::Skip,
-                    "not-migrated",
-                    "not migrated: pun.toml needs the format config too".into(),
                 ),
             };
             self.findings.0.push(match action {
@@ -895,18 +913,21 @@ impl Report {
     }
 }
 
-/// `code` with each `@php-cs-fixer-ignore a,b` in a comment turned into `@pun-ignore-file format/x/a,lint/y/b`, and
-/// with `phpstan`, each `@phpstan-ignore` into [`phpstan_ignore`]'s `@pun-ignore`; `None` when nothing changes. One
-/// naming a rule Pun has no rule for stays as it is, reported in `unknown` as (path, note).
+/// `code` with, when `fixer`, each `@php-cs-fixer-ignore a,b` in a comment turned into
+/// `@pun-ignore-file format/x/a,lint/y/b`, and with `phpstan`, each `@phpstan-ignore` into [`phpstan_ignore`]'s
+/// `@pun-ignore`; `None` when nothing changes. One naming a rule Pun has no rule for stays as it is, reported in
+/// `unknown` as (path, note).
 fn rewrite(
     code: &[u8],
     path: &str,
+    fixer: bool,
     phpstan: bool,
     unknown: &mut Vec<(String, String)>,
 ) -> Option<Vec<u8>> {
     let has = |needle: &[u8]| code.windows(needle.len()).any(|w| w == needle);
     let phpstan = phpstan && has(b"@phpstan-ignore");
-    if !has(b"php-cs-fixer-ignore") && !phpstan {
+    let fixer = fixer && has(b"php-cs-fixer-ignore");
+    if !fixer && !phpstan {
         return None;
     }
     let mut out = Vec::with_capacity(code.len());
@@ -918,7 +939,7 @@ fn rewrite(
         let mut text = t.get_content().to_vec();
         let mut done = Vec::with_capacity(text.len());
         let mut last = 0;
-        for c in IGNORE.captures_iter(&text).flatten() {
+        for c in IGNORE.captures_iter(&text).flatten().filter(|_| fixer) {
             let ids: Option<Vec<&str>> = (c[2].split(|&b| b == b','))
                 .map(|r| std::str::from_utf8(r).ok().and_then(pun_config::rule_of))
                 .collect();
@@ -1019,25 +1040,22 @@ type Object = serde_json::Map<String, serde_json::Value>;
 /// A `.php-cs-fixer.php`'s rules and Finder, read through the project's own PHP-CS-Fixer (the config is PHP code and
 /// may register custom fixers). Migrate is the only place Pun runs PHP, and only to read the old config.
 fn php_cs_fixer_config(root: &Path, config: &Path) -> Result<(Object, Object)> {
-    if !root.join("vendor/friendsofphp/php-cs-fixer").is_dir() {
-        bail!(
-            "no vendor/friendsofphp/php-cs-fixer: run `composer install` so Pun can read the config"
-        );
-    }
-    let out = read_php(
-        root,
-        config,
-        include_str!("php_cs_fixer_rules.php"),
-        ".php-cs-fixer.php",
-    )?;
-    let mut v: Object = serde_json::from_slice(&out)?;
-    let mut take = |k: &str| serde_json::from_value(v.remove(k).unwrap_or_default());
-    Ok((take("rules")?, take("finder")?))
+    let read = || -> Result<(Object, Object)> {
+        if !root.join("vendor/friendsofphp/php-cs-fixer").is_dir() {
+            bail!("no vendor/friendsofphp/php-cs-fixer: run `composer install` first");
+        }
+        let mut v: Object = read_php(root, config, include_str!("php_cs_fixer_rules.php"))?;
+        let mut take = |k: &str| serde_json::from_value(v.remove(k).unwrap_or_default());
+        Ok((take("rules")?, take("finder")?))
+    };
+    read().with_context(|| format!("can't read {} with PHP-CS-Fixer", rel(root, config)))
 }
 
-/// Runs `script` on `config` with the project's autoloader and returns its stdout (JSON). `what` names the config in
-/// the error when `php` is missing.
-fn read_php(root: &Path, config: &Path, script: &str, what: &str) -> Result<Vec<u8>> {
+/// What the PHP helpers print before their JSON or error message; anything before it (a tool's warning) is not theirs.
+const MARKER: &[u8] = b"\0pun-migrate\0";
+
+/// Runs `script` on `config` with the project's autoloader and reads the JSON it prints after [`MARKER`].
+fn read_php<T: serde::de::DeserializeOwned>(root: &Path, config: &Path, script: &str) -> Result<T> {
     let out = std::process::Command::new("php")
         .args([
             "-d",
@@ -1054,14 +1072,20 @@ fn read_php(root: &Path, config: &Path, script: &str, what: &str) -> Result<Vec<
         .arg(config)
         .current_dir(root)
         .output()
-        .with_context(|| format!("reading {what} needs `php` on PATH"))?;
-    if !out.status.success() {
-        if out.stdout.is_empty() {
-            bail!("{}", String::from_utf8_lossy(&out.stderr).trim());
+        .context("it needs `php` on PATH")?;
+    let at = (out.stdout.windows(MARKER.len())).rposition(|w| w == MARKER);
+    let own = at.map(|at| &out.stdout[at + MARKER.len()..]);
+    match own {
+        _ if !out.status.success() && own.is_none_or(<[u8]>::is_empty) => {
+            bail!("{}", String::from_utf8_lossy(&out.stderr).trim())
         }
-        bail!("{}", String::from_utf8_lossy(&out.stdout));
+        Some(own) if !out.status.success() => bail!("{}", String::from_utf8_lossy(own)),
+        Some(own) => {
+            let mut json = serde_json::Deserializer::from_slice(own);
+            Ok(serde::Deserialize::deserialize(&mut json)?)
+        }
+        None => bail!("the config ended the PHP process before Pun could read it"),
     }
-    Ok(out.stdout)
 }
 
 #[cfg(test)]

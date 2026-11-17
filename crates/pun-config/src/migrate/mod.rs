@@ -11,6 +11,7 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Default)]
 pub struct Parts {
+    pub php: String,
     pub files: String,
     pub extensions: String,
     pub format: String,
@@ -40,6 +41,7 @@ impl Parts {
             })
         };
         let sections = [
+            ("[php]\n", self.php.clone()),
             ("[files]\n", self.files.clone()),
             ("[extensions]\n", self.extensions.clone()),
             ("[format]\n", self.format.clone()),

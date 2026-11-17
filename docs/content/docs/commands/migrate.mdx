@@ -14,6 +14,8 @@ pun migrate --dry-run
 
 Reading `.php-cs-fixer.php` or `rector.php` runs project code, and Pun loads `vendor/autoload.php` first. Run `pun migrate` only on a checkout you trust.
 
+If a config can't be read, the error names the file and the tool that read it, for example `can't read rector.php with Rector: ...`. Warnings that Rector or the config print, such as a deprecated set, don't stop migration.
+
 ## Options
 
 | Flag | What it does |
@@ -35,6 +37,8 @@ Reading `.php-cs-fixer.php` or `rector.php` runs project code, and Pun loads `ve
 | Mago | `mago.toml` | Detected, not translated |
 
 On a terminal, you pick configs from a checklist. Otherwise, under an agent, or with `--yes`, Pun migrates every detected config that `--from` allows. If you select both Pint and PHP-CS-Fixer, Pint supplies the format config.
+
+If you leave Pint and PHP-CS-Fixer out (for example, `--from phpstan,rector` because you keep PHP-CS-Fixer as your formatter), `pun.toml` gets no `[format]` section. `pun format` then uses Pint's defaults, as Pint does without a `pint.json`. `@php-cs-fixer-ignore` comments stay as they are.
 
 With no source config, Pun offers a starter based on the `laravel` preset or `--preset`. The starter puts the preset's risky and code-deleting rules under lint, so run `pun check --fix` to apply everything.
 
@@ -68,7 +72,7 @@ See the [Rector mapping](/docs/migrate/from/rector).
 
 Run `composer install` first if an include is under `vendor/`, such as Larastan's `extension.neon`. If it's missing, Pun skips `phpstan.neon` with a warning and migrates the rest. A missing include outside `vendor/` stops migration with exit code 2.
 
-The level becomes an analyse preset plus rule differences. Paths, exclusions, stubs, ignore entries, and supported extension settings carry over. Some PHPStan parameters have no Pun setting. See [analysis limitations](/docs/commands/analyse#configuration), the [PHPStan mapping](/docs/migrate/from/phpstan), and the [Larastan mapping](/docs/migrate/from/larastan).
+The level becomes an analyse preset plus rule differences. Paths, exclusions, stubs, ignore entries, and supported extension settings carry over. `phpVersion` becomes `[php] version`. The range form uses `min`, because `[php] version` holds one version. Custom rules under `rules:`, services tagged `phpstan.rules.rule` or another `phpstan.*` tag, and your own included configs are reported and skipped. Some PHPStan parameters have no Pun setting. See [analysis limitations](/docs/commands/analyse#configuration), the [PHPStan mapping](/docs/migrate/from/phpstan), and the [Larastan mapping](/docs/migrate/from/larastan).
 
 PHPStan baselines aren't copied. Run `pun analyse --generate-baseline`, then set `[analyse] baseline`.
 

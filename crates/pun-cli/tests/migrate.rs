@@ -276,15 +276,35 @@ fn lists_every_detected_config() {
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let (out, _, code) = pun(&d, &["migrate", "--from", "phpstan,mago"]);
     assert_eq!(
+        (counts(&out).as_str(), code),
+        (
+            " - pint.json               not selected
+ - .php-cs-fixer.dist.php  not selected
+ ok phpstan.dist.neon       -> [analyse] preset recommended (level 5), N on, N off, 8 rules -> [lint]
+ - rector.php              not selected
+ ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
+ ! mago.toml  Mago config: not supported by Pun yet; left untouched
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
+ ok Wrote pun.toml
+",
+            Some(0)
+        )
+    );
+    assert!(read(&d, "pun.toml").starts_with(
+        "# Written by `pun migrate` without [format]: pint.json, .php-cs-fixer.dist.php not selected.\n"
+    ));
+    std::fs::remove_file(d.join("pun.toml")).unwrap();
+    let (out, _, code) = pun(&d, &["migrate", "--from", "mago"]);
+    assert_eq!(
         (out.as_str(), code),
         (
             " - pint.json               not selected
  - .php-cs-fixer.dist.php  not selected
- - phpstan.dist.neon       not migrated: pun.toml needs the format config too
+ - phpstan.dist.neon       not selected
  - rector.php              not selected
  ! mago.toml  Mago config: not supported by Pun yet; left untouched
    Want them? Send a PR to https://github.com/shipfastlabs/pun
- - No Pint or PHP-CS-Fixer config selected; pun.toml not written
+ - Nothing to migrate; pun.toml not written
 ",
             Some(0)
         )
@@ -351,7 +371,17 @@ fn errors_name_the_file() {
     assert_eq!(
         (err.as_str(), code),
         (
-            format!("x Fatal error: Cannot redeclare function f() (previously declared in {autoload}:2) in {autoload} on line 3\n").as_str(),
+            format!("x can't read .php-cs-fixer.php with PHP-CS-Fixer: Fatal error: Cannot redeclare function f() (previously declared in {autoload}:2) in {autoload} on line 3\n").as_str(),
+            Some(2)
+        )
+    );
+    // A config (here the autoloader it loads) that exits before the helper prints its result.
+    std::fs::write(d.join("vendor/autoload.php"), "<?php\nexit(0);\n").unwrap();
+    let (_, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(
+        (err.as_str(), code),
+        (
+            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: the config ended the PHP process before Pun could read it\n",
             Some(2)
         )
     );
@@ -366,7 +396,7 @@ fn errors_name_the_file() {
     assert_eq!(
         (err.as_str(), code),
         (
-            "x reading .php-cs-fixer.php needs `php` on PATH: No such file or directory (os error 2)\n",
+            "x can't read .php-cs-fixer.php with PHP-CS-Fixer: it needs `php` on PATH: No such file or directory (os error 2)\n",
             Some(2)
         )
     );
@@ -445,7 +475,7 @@ fn phpstan_without_vendor_is_left() {
     );
     let (_, err, code) = pun(&d, &["migrate", "--yes"]);
     let missing = format!(
-        "x File '{}' is missing or is not readable.\n",
+        "x can't read phpstan.neon as a PHPStan config: File '{}' is missing or is not readable.\n",
         d.join("nope.neon").display()
     );
     assert_eq!((err, code), (missing, Some(2)));
@@ -472,9 +502,7 @@ fn agent_mode() {
     assert!(rest.starts_with("pint.json migrate\nphpstan.neon migrate\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\nphpstan.neon unsupported format/casts/short-scalar: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/functions/backtick-to-shell-exec: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\nphpstan.neon unsupported format/whitespace/encoding: a PHPStan check that is this format rule in Pun; turn it on in [format.rules]\napp/Unknown.php ignore-not-migrated `@php-cs-fixer-ignore Acme/rule` left as is (no Pun rule for it)\nsend a PR for what is skipped: https://github.com/shipfastlabs/pun\n--- pun.toml\n"), "{rest}");
     let out = agent(&["migrate", "--from=rector"]);
     assert!(
-        out.starts_with(
-            "pun migrate: ok, no Pint or PHP-CS-Fixer config selected, pun.toml not written ("
-        ),
+        out.starts_with("pun migrate: ok, nothing to migrate, pun.toml not written ("),
         "{out}"
     );
     assert!(out.ends_with("s)\npint.json not-selected\nphpstan.neon not-selected\nrector.php not-read not read: run `composer install` so Pun can read it with Rector; left untouched\n"), "{out}");
@@ -735,7 +763,7 @@ fn rector_paths_skips_and_unsupported_rules() {
     assert_eq!(
         (err.as_str(), code),
         (
-            "x rector.php must return RectorConfig::configure() or a closure taking RectorConfig\n",
+            "x can't read rector.php with Rector: rector.php must return RectorConfig::configure() or a closure taking RectorConfig\n",
             Some(2)
         )
     );
@@ -751,7 +779,7 @@ fn rector_paths_skips_and_unsupported_rules() {
         (err, code),
         (
             format!(
-                "x Fatal error: Cannot redeclare function f() (previously declared in {file}:2) in {file} on line 3\n"
+                "x can't read rector.php with Rector: Fatal error: Cannot redeclare function f() (previously declared in {file}:2) in {file} on line 3\n"
             ),
             Some(2)
         )
@@ -827,4 +855,84 @@ fn leaves_composer_json_and_its_lock_alone() {
     let (_, err, code) = pun(&d, &["migrate", "--yes"]);
     assert_eq!(code, Some(2));
     assert!(err.contains("pun.toml exists and differs"), "{err}");
+}
+
+/// Rector prints "The per-version PHP set ... is deprecated" to stdout for each `SetList::PHP_8x` (2.8.4 in
+/// `.oracle/rector-bin`, and 2.8.5, the latest, alike); migrate reads its own JSON after the warnings.
+#[test]
+fn rector_warnings_on_stdout() {
+    let Some(vendor) = oracle("rector-bin/vendor") else {
+        return;
+    };
+    let rector = "<?php\n\nuse Rector\\Config\\RectorConfig;\nuse Rector\\Set\\ValueObject\\SetList;\n\nreturn RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withSets([SetList::PHP_82, SetList::PHP_83, SetList::PHP_84]);\n";
+    let d = project(
+        "rector-deprecated-sets",
+        &[
+            ("composer.json", "{\"require\":{\"php\":\"^8.4\"}}"),
+            ("rector.php", rector),
+            ("src/a.php", "<?php\n"),
+        ],
+    );
+    std::os::unix::fs::symlink(vendor, d.join("vendor")).unwrap();
+    let (out, err, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!((err.as_str(), code), ("", Some(0)), "{out}");
+    assert!(
+        counts(&out).starts_with(" ok rector.php  -> [lint] no sets; N on, N off"),
+        "{out}"
+    );
+    assert!(read(&d, "pun.toml").contains("\n[lint.rules]\n"));
+}
+
+/// phpstan.neon alone, beside a pint.json the project keeps: pun.toml gets no [format] (Pint's defaults, as Pint
+/// without a pint.json), `phpVersion` becomes [php] version, and the custom rule is named, for humans and agents.
+#[test]
+fn phpstan_alone_beside_a_format_config() {
+    let neon = "parameters:\n    level: 0\n    paths: [app]\n    phpVersion: 80400\nrules:\n    - Support\\Lint\\NoSeederDataCreationInMigration\n";
+    let ignored = "<?php\n\n// @php-cs-fixer-ignore array_syntax\n$a = array(1);\n";
+    let files = [
+        ("composer.json", "{\"require\":{\"php\":\"^8.4\"}}"),
+        ("pint.json", PINT),
+        ("phpstan.neon", neon),
+        ("app/A.php", ignored),
+    ];
+    let d = project("phpstan-alone", &files);
+    let (out, err, code) = pun(&d, &["migrate", "--from", "phpstan"]);
+    let rule = "rule Support\\Lint\\NoSeederDataCreationInMigration";
+    assert_eq!(
+        (counts(&out).as_str(), err.as_str(), code),
+        (
+            format!(
+                " - pint.json     not selected
+ ok phpstan.neon  -> [analyse] preset basic (level 0), N on, N off, 1 rule -> [lint], phpVersion -> [php] version 8.4
+ ! {rule}  a custom PHPStan rule; Pun runs no PHP rules; skipped
+ ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped
+   Want them? Send a PR to https://github.com/shipfastlabs/pun
+ ok Wrote pun.toml
+"
+            )
+            .as_str(),
+            "",
+            Some(0)
+        )
+    );
+    let toml = read(&d, "pun.toml");
+    assert!(
+        toml.starts_with("# Written by `pun migrate` without [format]: pint.json not selected.\n[php]\nversion = \"8.4\"\n\n"),
+        "{toml}"
+    );
+    assert!(!toml.lines().any(|l| l.starts_with("[format")), "{toml}");
+    assert_eq!(read(&d, "app/A.php"), ignored);
+    let (out, _, code) = pun(&d, &["config", "--format=json"]);
+    assert_eq!(code, Some(0), "{out}");
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["format"]["preset"], "laravel");
+    std::fs::remove_file(d.join("pun.toml")).unwrap();
+    let (out, _, code) = pun(&d, &["migrate", "--from", "phpstan", "--agent"]);
+    assert_eq!(code, Some(0));
+    assert!(
+        out.contains(&format!(
+            "\nphpstan.neon unsupported {rule}: a custom PHPStan rule; Pun runs no PHP rules\n"
+        )),
+        "{out}"
+    );
 }

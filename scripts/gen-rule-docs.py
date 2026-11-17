@@ -396,7 +396,8 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
 | Baselines | Not copied. Run `pun analyse --generate-baseline`. |
 | `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`; the rules it turns on get `"on"` lines |
-| Custom extensions | Reported and skipped |
+| `phpVersion: 80400`, or `{min, max}` | `[php] version = "8.4"`, from `min`; a different `max` is reported and skipped |
+| Custom extensions, `rules:` classes, services tagged `phpstan.*` | Reported and skipped, one line each |
 
 The rule mapping lists PHPStan identifiers. An exact identifier wins over a pattern.
 """,

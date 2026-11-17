@@ -162,6 +162,7 @@ fn reads_level_paths_ignores_and_includes() {
         ["larastan/larastan", "phpstan/phpstan-strict-rules"]
     );
     assert!(p.bleeding_edge);
+    assert_eq!(p.php_version.as_deref(), Some("8.4"));
     let names: Vec<&str> = p.unsupported.iter().map(|u| u.0.as_str()).collect();
     assert_eq!(
         names,
@@ -170,7 +171,6 @@ fn reads_level_paths_ignores_and_includes() {
             "foo/bar",
             "phpstan/phpstan-mockery",
             "parameter checkMissingTypehints",
-            "parameter phpVersion",
             "parameter universalObjectCratesClasses",
             "ignoreErrors no.suchIdentifier",
             "ignoreErrors whitespace.bom",
@@ -254,7 +254,8 @@ fn reads_level_paths_ignores_and_includes() {
             "[[lint.overrides]]\nfiles = [\"app\", \"tests\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"error\", "
         ) && parts.render().contains(
             "[[lint.overrides]]\nfiles = [\"app/Legacy\", \"/tmp\"]\nrules = { \"complexity/no-redundant-nullsafe\" = \"off\", "
-        ) && parts.render().contains(
+        ) && parts.render().starts_with("[php]\nversion = \"8.4\"\n\n")
+            && parts.render().contains(
             "\n\n[analyse]\npreset = \"recommended\"\npaths = [\"app\", \"tests\"]\nexclude = [\"app/Legacy\", \"/tmp\"]\nstubs = [\"stubs/Foo.stub\"]\nbleeding-edge = true\n"
         ),
         "{}",
@@ -596,4 +597,66 @@ fn lint_rules_keep_to_the_phpstan_paths() {
         (done.lint, parts.overrides.as_str(), parts.lint_rules.len()),
         (1, "", 1)
     );
+}
+
+/// What the project's own configs register with PHPStan is named, once each: a `rules:` entry and a service tagged
+/// `phpstan.rules.rule` as a rule, a service with another `phpstan.*` tag as an extension, an untagged service not at
+/// all. `phpVersion`'s range becomes `[php] version` from its `min` (80200 is PHP 8.2), its `max` is named.
+#[test]
+fn names_custom_rules_and_takes_the_php_version_range() {
+    let neon = "includes:
+    - build/rules.neon
+parameters:
+    level: 0
+    phpVersion:
+        min: 80200
+        max: 80400
+rules:
+    - Support\\Lint\\NoSeederDataCreationInMigration
+services:
+    -
+        class: App\\PHPStan\\TaggedRule
+        tags: [phpstan.rules.rule]
+    - { class: App\\PHPStan\\ReturnType, tags: [phpstan.broker.dynamicMethodReturnTypeExtension] }
+    - { factory: App\\PHPStan\\Made(1), tags: [phpstan.rules.rule] }
+    - App\\PHPStan\\Helper
+";
+    let included = "rules:\n    - App\\PHPStan\\TaggedRule\n    - App\\PHPStan\\Included\n";
+    let d = project(neon, &[("build/rules.neon", included)]);
+    let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+    let rule = "a custom PHPStan rule; Pun runs no PHP rules";
+    let want = [
+        (
+            "build/rules.neon",
+            "the project's own PHPStan config (services, rules, parameters)",
+        ),
+        ("rule Support\\Lint\\NoSeederDataCreationInMigration", rule),
+        ("rule App\\PHPStan\\TaggedRule", rule),
+        (
+            "extension App\\PHPStan\\ReturnType",
+            "a custom PHPStan extension (phpstan.broker.dynamicMethodReturnTypeExtension); Pun runs no PHP extensions",
+        ),
+        ("rule App\\PHPStan\\Made", rule),
+        ("rule App\\PHPStan\\Included", rule),
+        (
+            "parameter phpVersion.max (8.4)",
+            "[php] version is one version; it takes phpVersion.min",
+        ),
+    ];
+    let got: Vec<(&str, &str)> = (p.unsupported.iter())
+        .map(|(n, w)| (n.as_str(), w.as_str()))
+        .collect();
+    assert_eq!(got, want);
+    assert_eq!(p.php_version.as_deref(), Some("8.2"));
+    let mut parts = Parts::default();
+    compose(&d, &mut parts, &p).unwrap();
+    let cfg = crate::from_toml(&d, &parts.render()).unwrap();
+    assert_eq!(cfg.php.to_string(), "8.2");
+    assert_eq!(cfg.analyse_php_version.to_string(), "8.2");
+    std::fs::remove_dir_all(d).unwrap();
+    // `null` is PHPStan's default (the running PHP): nothing to carry, nothing to report.
+    let d = project("parameters:\n    level: 0\n    phpVersion: null\n", &[]);
+    let p = from_phpstan(&d, &d.join("phpstan.neon")).unwrap();
+    assert_eq!((p.php_version, p.unsupported), (None, vec![]));
+    std::fs::remove_dir_all(d).unwrap();
 }

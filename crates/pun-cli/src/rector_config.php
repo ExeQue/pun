@@ -2,7 +2,8 @@
 // it runs (sets included), the configured ones with their configuration and the rule class's string constants (its
 // option names), withSkip() split into rules (class => null or paths) and paths, the
 // paths, the set files and whether withPhpSets()/withPhpLevel() was used. Run as `php -r <this> -- <autoload> <config>`
-// in the project root (withPhpSets() reads composer.json there). Errors print their message and exit 1.
+// in the project root (withPhpSets() reads composer.json there). Errors print their message and exit 1. The JSON or the
+// message follows the marker "\0pun-migrate\0": Rector's own warnings (a deprecated set) go to stdout before it.
 error_reporting(E_ALL & ~E_DEPRECATED);
 try {
     require $argv[1];
@@ -61,7 +62,7 @@ try {
             'constants' => array_values(array_filter($constants, 'is_string')),
         ];
     }
-    echo json_encode([
+    echo "\0pun-migrate\0", json_encode([
         'rules' => array_values($rector->getMainRectorClasses()),
         'configured' => (object) $configured,
         'skip_rules' => (object) $skipRules,
@@ -71,6 +72,6 @@ try {
         'php_sets' => (bool) ($field('isWithPhpSetsUsed') || $field('isWithPhpLevelUsed')),
     ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 } catch (\Throwable $e) {
-    echo $e->getMessage();
+    echo "\0pun-migrate\0", $e->getMessage();
     exit(1);
 }

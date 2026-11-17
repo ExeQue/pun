@@ -21,6 +21,8 @@ pub struct Phpstan {
     pub unsupported: Vec<(String, String)>,
     pub extensions: BTreeSet<String>,
     pub bleeding_edge: bool,
+    /// `phpVersion` (its `min` in the range form) as `[php] version`'s `major.minor`.
+    pub php_version: Option<String>,
     pub parameters: Array,
     pub changed: Vec<(String, Value)>,
 }
@@ -178,6 +180,8 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
                 .push((pkg, "a PHPStan extension Pun doesn't have built in".into()));
         }
     }
+    out.unsupported
+        .extend(custom_classes(root, config, &includes));
     let packages: Vec<&String> = (includes.iter())
         .filter(|i| package(&relative(root, i)).is_some())
         .collect();
@@ -198,6 +202,10 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
         if HANDLED.contains(&key.as_str()) {
             continue;
         }
+        if key == "phpVersion" {
+            php_version(p.get_str(&key), &mut out);
+            continue;
+        }
         let mut leaves = vec![];
         differences(&key, p.get_str(&key), defaults.get_str(&key), &mut leaves);
         for (name, value) in leaves {
@@ -214,9 +222,6 @@ pub fn from_phpstan(root: &Path, config: &Path) -> Result<Phpstan> {
                     continue;
                 }
                 _ if level => "the level sets it; Pun's analyse presets decide it",
-                "phpVersion" => {
-                    "Pun reads the PHP version from composer.json; [php] version overrides it"
-                }
                 _ => "no pun.toml setting for this parameter yet",
             };
             out.unsupported
@@ -292,6 +297,81 @@ fn installer_extensions(root: &Path) -> Vec<String> {
             && !name.contains(' ')
         {
             out.push(name.to_string());
+        }
+    }
+    out
+}
+
+/// `phpVersion` (`80400`, or `{min: 80200, max: 80400}`) into `out.php_version`, as `[php] version` holds it:
+/// `major.minor`, one version. The range's `max` has no pun.toml key and is reported. `null` (PHP's own version) is
+/// the default.
+fn php_version(v: Option<&Value>, out: &mut Phpstan) {
+    let version = |v: Option<&Value>| match v {
+        Some(Value::Int(id)) => u32::try_from(*id).ok().map(crate::PhpVersion::from_id),
+        _ => None,
+    };
+    let (min, max) = match v {
+        Some(Value::Array(r)) => (version(r.get_str("min")), version(r.get_str("max"))),
+        v => (version(v), None),
+    };
+    out.php_version = min.map(|m| m.to_string());
+    if let Some(max) = max.filter(|max| Some(max.to_string()) != out.php_version) {
+        out.unsupported.push((
+            format!("parameter phpVersion.max ({max})"),
+            "[php] version is one version; it takes phpVersion.min".into(),
+        ));
+    }
+}
+
+/// The classes the project's own configs register with PHPStan, which Pun can't run: each `rules:` entry, and each
+/// service with a `phpstan.*` tag (a rule tagged `phpstan.rules.rule`, a collector, a type extension), as (name, why).
+fn custom_classes(root: &Path, config: &Path, includes: &[String]) -> Vec<(String, String)> {
+    fn class(v: &Value) -> Option<String> {
+        match v {
+            Value::Entity(e) => class(&e.value),
+            Value::Array(a) => class(a.get_str("class").or(a.get_str("factory"))?),
+            v => v.as_str().map(|s| s.trim_start_matches('\\').to_string()),
+        }
+    }
+    let own = std::iter::once(config.display().to_string()).chain(
+        (includes.iter())
+            .filter(|i| package(&relative(root, i)).is_none() && !is_baseline(i))
+            .cloned(),
+    );
+    let mut out: Vec<(String, String)> = vec![];
+    let mut add = |name: String, why: String| {
+        if !out.iter().any(|o| o.0 == name) {
+            out.push((name, why));
+        }
+    };
+    let rule = "a custom PHPStan rule; Pun runs no PHP rules";
+    for file in own {
+        let neon = neon(&file);
+        let rules = neon.get_str("rules").and_then(Value::as_array);
+        for c in rules.into_iter().flat_map(Array::values).filter_map(class) {
+            add(format!("rule {c}"), rule.into());
+        }
+        let services = neon.get_str("services").and_then(Value::as_array);
+        for s in services.into_iter().flat_map(Array::values) {
+            let tags = (s
+                .as_array()
+                .and_then(|a| a.get_str("tags"))
+                .and_then(Value::as_array))
+            .map_or_default(|t| {
+                (t.iter())
+                    .map(|(k, v)| v.as_str().map_or_else(|| k.as_string(), str::to_string))
+                    .collect::<Vec<_>>()
+            });
+            let Some(tag) = tags.iter().find(|t| t.starts_with("phpstan.")) else {
+                continue;
+            };
+            let Some(c) = class(s) else { continue };
+            if tag == "phpstan.rules.rule" {
+                add(format!("rule {c}"), rule.into());
+            } else {
+                let why = format!("a custom PHPStan extension ({tag}); Pun runs no PHP extensions");
+                add(format!("extension {c}"), why);
+            }
         }
     }
     out
@@ -507,6 +587,9 @@ pub struct Analysed {
 
 pub fn compose(root: &Path, parts: &mut Parts, phpstan: &Phpstan) -> Result<Analysed> {
     let preset = AnalysePreset::of_level(phpstan.level as usize);
+    if let Some(v) = &phpstan.php_version {
+        parts.php = format!("version = \"{v}\"\n");
+    }
     writeln!(parts.analyse, "preset = \"{preset}\"").unwrap();
     let list = |v: &[String]| toml::Value::try_from(v).unwrap().to_string();
     if !phpstan.paths.is_empty() {

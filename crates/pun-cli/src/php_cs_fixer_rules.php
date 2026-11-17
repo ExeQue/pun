@@ -2,7 +2,8 @@
 // resolves them (rule validation, custom fixers), and its Finder, printed as one JSON object:
 // {"rules": {...}, "finder": {"in": [...], "exclude": [...], "notName": [...], "notPath": [...], "unsupported": [...]}}.
 // The Finder keys are pint.json's; `in` is relative to the project when inside it; `unsupported` names each Finder
-// setting pun.toml has no key for. On failure, its message and exit 1.
+// setting pun.toml has no key for. On failure, its message and exit 1. The JSON or the message follows the marker
+// "\0pun-migrate\0", as output written straight to STDOUT (a deprecation notice) gets past the buffer below.
 // argv: the project's vendor/autoload.php, the config path.
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ob_start(static fn () => '', 4096); // the config's own output must not reach stdout
@@ -45,8 +46,8 @@ try {
             $out['unsupported'][] = 'ignoreVCSIgnored()';
         }
     }
-    fwrite(STDOUT, json_encode(['rules' => (object) $resolver->getRules(), 'finder' => $out], JSON_UNESCAPED_SLASHES));
+    fwrite(STDOUT, "\0pun-migrate\0".json_encode(['rules' => (object) $resolver->getRules(), 'finder' => $out], JSON_UNESCAPED_SLASHES));
 } catch (Throwable $e) {
-    fwrite(STDOUT, $e->getMessage());
+    fwrite(STDOUT, "\0pun-migrate\0".$e->getMessage());
     exit(1);
 }
