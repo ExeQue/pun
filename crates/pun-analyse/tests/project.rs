@@ -307,6 +307,8 @@ fn reported_identifiers_and_general_errors() {
     let file = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/project/reported/a.php");
     let mut project = Project::new(vec![file], Vec::new());
     project.reported = Some(std::sync::Arc::new(|id: &str| id != "function.notFound"));
+    // PHPStan analysed a directory, so it reports the unmatched entry (only files on the command line would skip it).
+    project.only_files = false;
     let mut entry = Array::new();
     entry.set(Key::from("message"), Value::str("#^Nothing$#"));
     let paths = Array::list([Value::str("/a/*"), Value::str("/b/*")]);

@@ -840,6 +840,10 @@ fn ignores_match_phpstan() {
         want.0 = want.0.replace("file='phpstan.neon'", "file='pun.toml'");
         let got = run(&d, &[PUN, "analyse"], &[&format, "-v"]);
         assert_eq!(got, want, "{f}");
+        // Only files on the command line: PHPStan reports no unmatched entries then.
+        let want = run(&d, &phpstan, &[&format, "src/a.php"]);
+        let got = run(&d, &[PUN, "analyse"], &[&format, "src/a.php"]);
+        assert_eq!(got, want, "{f} src/a.php");
     }
 }
 

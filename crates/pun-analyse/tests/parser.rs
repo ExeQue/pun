@@ -120,6 +120,8 @@ fn parser_errors_survive_rule_filters_and_configured_ignores() {
     );
     let valid = root.write("valid", "function duplicate($x, $x) {} missing_control();");
     let mut project = Project::new(vec![invalid, valid], Vec::new());
+    // PHPStan analysed a directory, so it reports the unmatched entry (only files on the command line would skip it).
+    project.only_files = false;
     project.reported = Some(std::sync::Arc::new(|_| false));
     project.options.set(
         pun_analyse::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS,
@@ -872,6 +874,8 @@ fn entry_brace_errors_survive_configured_ignores_and_rule_filters() {
     );
     let mut project = Project::new(vec![file], Vec::new());
     project.reported = Some(std::sync::Arc::new(|_| false));
+    // PHPStan analysed a directory, so it reports the unmatched entry (only files on the command line would skip it).
+    project.only_files = false;
     project.options.set(
         pun_analyse::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS,
         true,
@@ -1744,6 +1748,8 @@ fn numeric_admission_collects_literal_reductions_before_enclosing_checks() {
         let root = Inputs::new();
         let file = root.write_source("input", source.as_str().unwrap());
         let mut project = Project::new(vec![file], Vec::new());
+        // PHPStan analysed a directory, so it reports the unmatched entry (only files on the command line would skip it).
+        project.only_files = false;
         project.php_version = pun_analyse::PhpVersion::from_id(80500);
         let mut entry = Array::new();
         entry.set(Key::from("identifier"), Php::str("phpstan.parse"));

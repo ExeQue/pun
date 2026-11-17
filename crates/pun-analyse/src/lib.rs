@@ -100,7 +100,7 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
     std::thread::spawn(move || drop(settings));
     let processed = project
         .ignore_errors
-        .process(errors, false, &analysed, false);
+        .process(errors, project.only_files, &analysed, false);
     fixable_ignored += processed.ignored.iter().filter(|(e, _)| e.fixable).count();
     let mut errors: Vec<Error> = processed
         .errors
