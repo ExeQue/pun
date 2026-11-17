@@ -1,0 +1,19 @@
+Installing dependencies from lock file (including require-dev)
+Verifying lock file contents can be installed on current platform.
+Your lock file does not contain a compatible set of packages. Please run composer update.
+
+  Problem 1
+    - a/lib is locked to version 1.0.0 and an update of this package was not requested.
+    - a/lib 1.0.0 requires c/d ^1.0 -> could not be found in any version, there may be a typo in the package name.
+  Problem 2
+    - a/lib is locked to version 1.1.0 and an update of this package was not requested.
+    - a/lib 1.0.0 requires c/d ^1.0 -> could not be found in any version, there may be a typo in the package name.
+    - a/lib 1.1.0 is an alias of a/lib 1.0.0 and thus requires it to be installed too.
+
+Potential causes:
+ - A typo in the package name
+ - The package is not available in a stable-enough version according to your minimum-stability setting
+   see <https://getcomposer.org/doc/04-schema.md#minimum-stability-root-only> for more details.
+ - It's a private package and you forgot to add a custom repository to find it
+
+Read <https://getcomposer.org/doc/articles/troubleshooting.md> for further common problems.

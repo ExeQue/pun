@@ -1,0 +1,1 @@
+{"require":{"php-ipv6":"*", "php-zts": "*"},"config":{"platform":{"php-ipv6":false}}}

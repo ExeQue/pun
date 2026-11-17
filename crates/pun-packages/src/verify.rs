@@ -8,7 +8,7 @@ use crate::error::Result;
 use crate::lock::Lock;
 use crate::resolver::package::{Link, Origin, Package, alias_package, load};
 use crate::resolver::platform::{from_probe, ini_files};
-use crate::version::{IgnorePlatform, compare, is_platform, normalize};
+use crate::version::{IgnorePlatform, is_platform, normalize};
 use serde_json::{Map, Value};
 use std::fmt::Write as _;
 
@@ -182,9 +182,35 @@ impl Check<'_> {
         // The solver decides a locked package false at its first requirement nothing fixed provides, so each package
         // gets one problem, and its conflicts no longer count.
         let mut failed = vec![];
+        // Each failed package with the index of its problem.
+        let mut problem_of: Vec<(usize, usize)> = vec![];
         for &p in locked {
             let package = &check.arena[p];
-            if package.alias_of.is_some() {
+            if let Some(of) = package.alias_of {
+                // A locked alias needs its package (`RULE_PACKAGE_ALIAS`), so it fails with it, as its own problem.
+                // Composer 2.11.2 reports none for the alias of a branch (fixture I, `dev-main as 1.0.0`), so neither
+                // does Pun; the alias of a release gets one (fixture Q).
+                let release = !check.arena[of].version.starts_with("dev-")
+                    && !check.arena[of].version.ends_with("-dev");
+                if let Some(&(_, i)) = problem_of.iter().find(|(f, _)| *f == of && release) {
+                    let original = &problems[i];
+                    let lines = vec![
+                        check.fixed_line(p),
+                        original.lines[1].clone(),
+                        format!(
+                            "{} is an alias of {} and thus requires it to be installed too.",
+                            at(package),
+                            at(&check.arena[of])
+                        ),
+                    ];
+                    let (required, by_lock) = (original.required.clone(), original.by_lock);
+                    problems.push(Problem {
+                        lines,
+                        required,
+                        by_lock,
+                    });
+                    failed.push(p);
+                }
                 continue;
             }
             for link in &package.requires {
@@ -213,6 +239,7 @@ impl Check<'_> {
                             }),
                     });
                     failed.push(p);
+                    problem_of.push((p, problems.len() - 1));
                     break;
                 }
             }
@@ -297,8 +324,15 @@ impl Check<'_> {
     }
 
     fn conflict_line(&self, source: usize, other: usize, link: &Link) -> String {
+        // `Rule::getPrettyString` names the target by the conflict's constraint only when the source comes later in
+        // the pool (root, platform, then the lock), and else by its version.
+        let later = source > other;
         let other = &self.arena[other];
-        let mut target = format!("{} {}", other.pretty_name, link.pretty);
+        let mut target = if later {
+            format!("{} {}", other.pretty_name, link.pretty)
+        } else {
+            at(other)
+        };
         if link.target != other.name {
             for (kind, links) in [("provides", &other.provides), ("replaces", &other.replaces)] {
                 if let Some(l) = links.iter().find(|l| l.target == link.target) {
@@ -396,33 +430,19 @@ impl Check<'_> {
                 reason.into(),
             );
         }
-        let mut found: Vec<&Package> = (self.fixed.iter())
+        // Only platform names get here (Composer's install from a lock requires no other root package), and the
+        // platform has one package of each name, so Composer's list of versions and their aliases is one version.
+        let Some(found) = (self.fixed.iter())
             .map(|&p| &self.arena[p])
-            .filter(|p| p.name == name)
-            .collect();
-        if found.is_empty() {
+            .find(|p| p.name == name)
+        else {
             return (
                 format!("Root composer.json requires {name}, it "),
                 "could not be found in any version, there may be a typo in the package name."
                     .into(),
             );
-        }
-        found.sort_by(|a, b| compare(&a.version, &b.version).cmp(&0));
-        let versions: Vec<String> = (found.iter())
-            .map(|p| match p.alias_of {
-                Some(of) => format!(
-                    "{} (alias of {})",
-                    p.pretty_version, self.arena[of].pretty_version
-                ),
-                None => p.pretty_version.clone(),
-            })
-            .collect();
-        let verb = if found.len() > 1 {
-            "these do"
-        } else {
-            "it does"
         };
-        let root = if found[0].origin == Origin::Root {
+        let root = if found.origin == Origin::Root {
             " See https://getcomposer.org/dep-on-root for details and assistance."
         } else {
             ""
@@ -430,9 +450,8 @@ impl Check<'_> {
         (
             format!("Root composer.json requires {name} {pretty}, "),
             format!(
-                "found {}[{}] but {verb} not match the constraint.{root}",
-                found[0].pretty_name,
-                versions.join(", ")
+                "found {}[{}] but it does not match the constraint.{root}",
+                found.pretty_name, found.pretty_version
             ),
         )
     }
@@ -441,13 +460,14 @@ impl Check<'_> {
 /// `SolverProblemsException::getPrettyString`.
 fn report(problems: &[Problem], ini: &[String]) -> String {
     let mut text = String::from("\n");
-    let mut seen: Vec<String> = vec![];
-    for p in problems {
-        let body = format!("\n    - {}\n", p.lines.join("\n    - "));
-        if !seen.contains(&body) {
-            let _ = write!(text, "  Problem {}{body}", seen.len() + 1);
-            seen.push(body);
-        }
+    // `array_unique` over the problems' texts.
+    let mut bodies: Vec<String> = (problems.iter())
+        .map(|p| format!("\n    - {}\n", p.lines.join("\n    - ")))
+        .collect();
+    let mut seen = std::collections::HashSet::new();
+    bodies.retain(|b| seen.insert(b.clone()));
+    for (i, body) in bodies.iter().enumerate() {
+        let _ = write!(text, "  Problem {}{body}", i + 1);
     }
     let mut hints = vec![];
     if text.contains("could not be found") {

@@ -1,0 +1,7 @@
+Installing dependencies from lock file (including require-dev)
+Verifying lock file contents can be installed on current platform.
+Your lock file does not contain a compatible set of packages. Please run composer update.
+
+  Problem 1
+    - Root composer.json requires linked library lib-icu * but it is missing from your system, make sure the intl extension is loaded.
+

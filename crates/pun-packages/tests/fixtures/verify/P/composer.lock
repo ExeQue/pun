@@ -1,0 +1,19 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "a49c9bb2175c23e9479e6d8874140fb7",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php-ipv6": "*",
+        "php-zts": "*"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

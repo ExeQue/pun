@@ -1,0 +1,41 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "f7fbd47de5bdad4e9506541c4074c60d",
+    "packages": [
+        {
+            "name": "a/x",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/x.zip"
+            },
+            "type": "library",
+            "conflict": {
+                "b/y": "*"
+            }
+        },
+        {
+            "name": "b/y",
+            "version": "1.0.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://example.invalid/y.zip"
+            },
+            "type": "library",
+            "conflict": {
+                "a/x": "*"
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

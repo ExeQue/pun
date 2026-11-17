@@ -1,6 +1,8 @@
 //! `composer install`'s platform check. Each fixture is a project Composer 2.11.2 refused to install on this PHP
 //! 8.5.12 (`composer install --no-scripts`, exit 2), with its output in `composer-output*.txt` and the platform
-//! probe of the same PHP in `probe.json`.
+//! probe of the same PHP in `probe.json`. `R` and `S` ran on `php -n` with only
+//! the extensions Composer needs (iconv, ctype, tokenizer, mbstring), which loads no ini file and no intl; their
+//! probe, `probe-n.json`, is Pun's probe of that same command.
 
 use pun_packages::lock::Lock;
 use pun_packages::verify::verify;
@@ -11,14 +13,17 @@ use std::path::Path;
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/verify");
 
 fn check(case: &str, ignore: &IgnorePlatform) -> Option<String> {
+    check_on(case, "probe.json", ignore)
+}
+
+fn check_on(case: &str, probe: &str, ignore: &IgnorePlatform) -> Option<String> {
     let dir = Path::new(FIXTURES).join(case);
     let read = |f: &str| std::fs::read_to_string(dir.join(f)).unwrap();
     let manifest: Map<String, Value> = serde_json::from_str(&read("composer.json")).unwrap();
     let lock = Lock::from_composer_lock(&read("composer.lock")).unwrap();
-    let probe: Value = serde_json::from_str(
-        &std::fs::read_to_string(Path::new(FIXTURES).join("probe.json")).unwrap(),
-    )
-    .unwrap();
+    let probe: Value =
+        serde_json::from_str(&std::fs::read_to_string(Path::new(FIXTURES).join(probe)).unwrap())
+            .unwrap();
     verify(&manifest, &lock, &probe, true, ignore).unwrap()
 }
 
@@ -37,9 +42,24 @@ fn composer(case: &str, file: &str) -> String {
 #[test]
 fn reports_what_composer_reports() {
     let none = IgnorePlatform::default();
-    for case in ["A", "B", "C", "D", "E", "F", "G", "H", "I"] {
+    // J: the root provides a platform package. K: an alias of a package the lock doesn't have. L: an upper bound
+    // that is infinite. M: a platform requirement only the lock has. N: two packages that conflict both ways (one
+    // problem, the target named by its version). O: a `false` override of php-64bit, which Composer ignores. P: a
+    // php-* package this PHP doesn't have. Q: an alias that needs its missing requirement too.
+    let cases = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q",
+    ];
+    for case in cases {
         assert_eq!(
             check(case, &none).as_deref(),
+            Some(composer(case, "composer-output.txt").as_str()),
+            "{case}"
+        );
+    }
+    // R: no ini file loaded, so no extension hint but its empty line. S: lib-icu without intl.
+    for case in ["R", "S"] {
+        assert_eq!(
+            check_on(case, "probe-n.json", &none).as_deref(),
             Some(composer(case, "composer-output.txt").as_str()),
             "{case}"
         );
@@ -57,6 +77,11 @@ fn ignored_requirements_are_left_out() {
     // Composer installs these (exit 0): `--ignore-platform-reqs`, and `php+` lifting the upper bound only.
     assert_eq!(check("A", &IgnorePlatform::All), None);
     assert_eq!(check("D", &listed(&["php+"])), None);
+    // `php+` with no upper bound to lift leaves the requirement as it is.
+    assert_eq!(
+        check("L", &listed(&["php+"])).as_deref(),
+        Some(composer("L", "composer-output-ignore-php+.txt").as_str())
+    );
     assert_eq!(
         check("B", &listed(&["ext-foo"])).as_deref(),
         Some(composer("B", "composer-output-ignore-ext-foo.txt").as_str())

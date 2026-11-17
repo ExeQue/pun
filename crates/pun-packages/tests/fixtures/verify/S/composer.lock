@@ -1,0 +1,16 @@
+{
+    "_readme": [
+        "x"
+    ],
+    "content-hash": "b4e0300d19a65c26710cb402770789a7",
+    "packages": [],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

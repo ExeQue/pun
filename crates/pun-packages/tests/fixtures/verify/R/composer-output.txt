@@ -1,0 +1,8 @@
+Installing dependencies from lock file (including require-dev)
+Verifying lock file contents can be installed on current platform.
+Your lock file does not contain a compatible set of packages. Please run composer update.
+
+  Problem 1
+    - Root composer.json requires PHP extension ext-nope ^1.0 but it is missing from your system. Install or enable PHP's nope extension.
+
+
