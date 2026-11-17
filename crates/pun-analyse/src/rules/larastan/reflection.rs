@@ -185,10 +185,13 @@ impl ClassReflectionExtension for Larastan {
             let builder = Type::Object(builder, vec![related], false);
             return Some(MethodAnswer::Forward(builder));
         }
+        // A contract that is its key's first alias (`'queue.connection' => [Queue::class]`) resolves to itself.
+        // Larastan's container builds a concrete class there; forwarding to the contract would never end.
         if k.kind.is_interface()
             && original.starts_with("Illuminate\\Contracts")
             && let Some(concrete) = self.app.resolve(&original)
             && let Lookup::Found(class) = c.class_like(concrete)
+            && class.name != k.name
         {
             let concrete = Type::Object(declared::original_name(class), vec![], false);
             return Some(MethodAnswer::Forward(concrete));
