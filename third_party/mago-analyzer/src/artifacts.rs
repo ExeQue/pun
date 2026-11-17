@@ -179,6 +179,10 @@ pub struct AnalysisArtifacts {
     /// Types an expression takes after its own analysis, by span: an argument-less generic `new` sent to an
     /// unconstraining parameter (its templates' defaults or bounds), a returned expression under a `@var` tag.
     pub late_expression_types: HashMap<Span, TUnion>,
+    /// The method-call assertions the full walk applied to a call's return, by the call's span, and whether every
+    /// target declares no native return (or `mixed`). The native lane consumes them right after the call:
+    /// MutatingScope::addTypeToExpression() specifies the native type of the narrowed call too.
+    pub(crate) native_method_call_assertions: HashMap<Span, (Vec<AssertionSet>, bool)>,
     pub(crate) editor: Option<EditorArtifacts>,
     pub(crate) variable_definedness: HashMap<(u32, u32), WordMap<VariableDefinedness>>,
     pub(crate) variable_throw_scopes: HashMap<(Span, VariableThrowKind), WordMap<VariableScope>>,
@@ -237,6 +241,7 @@ impl AnalysisArtifacts {
             variable_writes: HashMap::default(),
             template_arguments: crate::template_arguments::Observed::default(),
             late_expression_types: HashMap::default(),
+            native_method_call_assertions: HashMap::default(),
             editor: None,
             variable_definedness: HashMap::default(),
             variable_throw_scopes: HashMap::default(),
@@ -269,6 +274,10 @@ impl AnalysisArtifacts {
     pub(crate) fn with_retained_expression_types(mut self, retain: bool) -> Self {
         self.retain_completed_expression_types = retain;
         self
+    }
+
+    pub(crate) fn tracks_native_types(&self) -> bool {
+        self.native_expression_types.is_some()
     }
 
     pub(crate) fn with_native_types(mut self, enabled: bool) -> Self {

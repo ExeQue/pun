@@ -3,8 +3,10 @@
 use std::cmp::Ordering;
 use std::rc::Rc;
 
+use mago_algebra::assertion_set::AssertionSet;
 use mago_allocator::Arena;
 use mago_codex::metadata::CodebaseMetadata;
+use mago_codex::metadata::flags::MetadataFlags;
 use mago_codex::metadata::function_like::{FunctionLikeKind, FunctionLikeMetadata};
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::{TObject, named::TNamedObject};
@@ -19,6 +21,7 @@ use mago_codex::ttype::{
     get_literal_int, get_literal_string, get_mixed, get_never, get_null, get_string, get_string_with_props,
     get_true, wrap_atomic,
 };
+use mago_span::HasSpan;
 use mago_syntax::cst::{
     Access, ArgumentList, AssignmentOperator, Binary, BinaryOperator, Call, ClassLikeMemberSelector, Construct, Expression,
     Literal, Statement, UnaryPrefix, UnaryPrefixOperator, Variable,
@@ -30,6 +33,7 @@ use crate::artifacts::AnalysisArtifacts;
 use crate::context::Context;
 use crate::context::block::BlockContext;
 use crate::context::scope::{var_has_root, var_references_dynamic};
+use crate::reconciler::assertion_reconciler;
 use crate::resolver::property::resolve_declared_property;
 use crate::utils::expression::{get_block_expression_id, get_root_expression_id};
 use crate::utils::php_emulation::string_to_int;
@@ -63,6 +67,21 @@ fn supported_function(function: &FunctionLikeMetadata) -> bool {
             !parameter.flags.is_by_reference()
                 && !parameter.flags.is_variadic()
                 && parameter.out_type.is_none()
+        })
+}
+
+/// A method whose native signature is its source's: analysed (Host) or scanned (Vendored) code, not a stub,
+/// patch or external declaration.
+fn supported_method(method: &FunctionLikeMetadata) -> bool {
+    !method.flags.contains(MetadataFlags::BUILTIN)
+        && !method.flags.is_patch()
+        && !method.flags.is_external()
+        && !method.flags.is_by_reference()
+        && !method.flags.has_yield()
+        && method.assertions.is_empty()
+        && method.globals_accessed.is_empty()
+        && method.parameters.iter().all(|parameter| {
+            !parameter.flags.is_by_reference() && !parameter.flags.is_variadic() && parameter.out_type.is_none()
         })
 }
 
@@ -120,6 +139,13 @@ pub(crate) fn parameter_types(
         let mut ty = parameter.type_declaration_metadata.as_ref()
             .map_or_else(get_mixed, |ty| ty.type_union.clone());
         expand_union(codebase, &mut ty, &TypeExpansionOptions::default());
+        // A native hint names a class: the expansion fills a generic class's template parameters, which
+        // the native ObjectType does not have.
+        for atomic in ty.types.to_mut() {
+            if let TAtomic::Object(TObject::Named(object)) = atomic {
+                object.type_parameters = None;
+            }
+        }
         (ty.types.iter().all(|atomic| matches!(atomic,
             TAtomic::Scalar(_) | TAtomic::Null | TAtomic::Mixed(_) | TAtomic::Array(_)))
             || named_object(&ty.to_non_nullable()).is_some())
@@ -235,10 +261,15 @@ pub(crate) fn before_expression(expression: &Expression<'_>, block: &mut BlockCo
 
 pub(crate) fn after_expression<A: Arena>(
     expression: &Expression<'_>,
-    context: &Context<'_, '_, A>,
+    context: &mut Context<'_, '_, A>,
     block: &mut BlockContext<'_>,
     artifacts: &mut AnalysisArtifacts,
 ) {
+    let asserted = if matches!(expression, Expression::Call(_)) {
+        artifacts.native_method_call_assertions.remove(&expression.span())
+    } else {
+        None
+    };
     // A ternary value can be unavailable while its full-selected continuation is supported.
     // The conditional analyzer owns both transfers independently.
     if matches!(expression, Expression::Conditional(_) | Expression::Closure(_) | Expression::ArrowFunction(_))
@@ -257,8 +288,16 @@ pub(crate) fn after_expression<A: Arena>(
         locals.retain(|name, _| *name == root || (!var_has_root(*name, root) && !var_references_dynamic(*name, root)));
     }
     let Some(locals) = &block.native_locals else {
+        // MutatingScope::addTypeToExpression() intersects the call's native type with the asserted type. A method
+        // without a native return has a mixed native return on every receiver its full receiver narrows
+        // (returns are covariant), so the narrowed native type needs no native receiver.
+        if let (Expression::Call(Call::Method(_)), Some((assertions, true))) = (expression, &asserted) {
+            let ty = narrow(context, block, assertions, get_mixed());
+            artifacts.set_resolved_native_expression_type(expression, Rc::new(ty));
+        }
         return;
     };
+    let mut unknown_return = false;
     let ty = match expression {
         // Literals have no PHPDoc or contextual type input. Share the value computed on this walk.
         Expression::Literal(_) => artifacts.get_rc_expression_type(expression).cloned(),
@@ -307,7 +346,15 @@ pub(crate) fn after_expression<A: Arena>(
                 .or_else(|| crate::expression::array_access::native_value(access, context.codebase, artifacts).map(Rc::new))
         }
         Expression::Call(Call::Method(call)) => {
-            method_type(call.object, &call.method, context, block, artifacts).map(Rc::new)
+            let ty = method_type(call.object, &call.method, context, block, artifacts);
+            // Only the narrowed value is known without a native return; the call's continuation is not.
+            unknown_return = ty.is_none();
+            match &asserted {
+                Some((assertions, declared_mixed)) => ty
+                    .or_else(|| declared_mixed.then(get_mixed))
+                    .map(|ty| Rc::new(narrow(context, block, assertions, ty))),
+                None => ty.map(Rc::new),
+            }
         }
         Expression::Instantiation(new) => {
             let Expression::Identifier(identifier) = new.class else { return };
@@ -325,11 +372,38 @@ pub(crate) fn after_expression<A: Arena>(
         } else {
             artifacts.set_rc_native_expression_type(expression, ty);
         }
+        if unknown_return {
+            block.native_locals = None;
+        }
     } else if !matches!(expression, Expression::Call(Call::Function(_)) | Expression::Parenthesized(_)) {
         // The call analyzer owns its continuation independently of return availability.
         // Parentheses add no effects; their child already owns any invalidation.
         block.native_locals = None;
     }
+}
+
+/// Reconciles a method call's native type with the method-call assertions the full walk applied to its value.
+fn narrow<A: Arena>(
+    context: &mut Context<'_, '_, A>,
+    block: &BlockContext<'_>,
+    assertions: &[AssertionSet],
+    mut ty: TUnion,
+) -> TUnion {
+    for clause in assertions.iter().flatten() {
+        for assertion in clause {
+            ty = assertion_reconciler::reconcile(
+                context,
+                assertion,
+                Some(&ty),
+                None,
+                block.flags.inside_loop(),
+                None,
+                false,
+                false,
+            );
+        }
+    }
+    ty
 }
 
 // A memoized full property read need not visit its receiver again. Read only the native holder
@@ -391,7 +465,9 @@ fn method_type<A: Arena>(
     let object = named_object(receiver)?;
     let ClassLikeMemberSelector::Identifier(name) = selector else { return None };
     let method = context.codebase.get_declaring_method(object.name.as_bytes(), name.value)?;
-    if !supported_function(method) || !method.parameters.is_empty() {
+    // The call has no arguments (before_expression), so only optional parameters are left. Conditional
+    // assertions narrow only a branch's state, which branch() handles.
+    if !supported_method(method) || !method.parameters.iter().all(|parameter| parameter.flags.has_default()) {
         return None;
     }
     let mut ty = method.return_type_declaration_metadata.as_ref()
@@ -404,7 +480,12 @@ fn method_type<A: Arena>(
     {
         ty = full.type_union.clone();
     }
-    (scalar_type(&ty) || ty.is_void()).then_some(ty)
+    // A declared class return is its ObjectType, without the PHPDoc's generics; `static` is the receiver's class.
+    if named_object(&ty).is_some_and(|returned| returned.is_static) {
+        return Some(wrap_atomic(TAtomic::Object(TObject::Named(TNamedObject::new(object.name)))));
+    }
+    (scalar_type(&ty) || ty.is_void() || named_object(&ty.to_non_nullable()).is_some_and(|object| !object.is_static))
+        .then_some(ty)
 }
 
 pub(crate) type Locals = WordMap<Rc<TUnion>>;
@@ -414,6 +495,11 @@ pub(crate) type Locals = WordMap<Rc<TUnion>>;
 pub(crate) fn condition_shape(expression: &Expression<'_>, assignment: bool) -> bool {
     match expression {
         Expression::Literal(_) | Expression::Variable(Variable::Direct(_)) => true,
+        // An argument-less call on a local: its own value and its method-call assertions are read back from the
+        // call (stable method calls); branch() leaves the locals unless the method asserts on anything else.
+        Expression::Call(Call::Method(call)) => {
+            direct_local(call.object).is_some() && call.method.is_identifier() && call.argument_list.arguments.is_empty()
+        }
         Expression::Parenthesized(value) => condition_shape(value.expression, false),
         Expression::UnaryPrefix(value) if value.operator.is_not() => {
             condition_shape(value.operand, false)
@@ -544,6 +630,22 @@ pub(crate) fn branch(
                 }
             };
             locals.insert(name, Rc::new(narrowed));
+        }
+        Expression::Call(Call::Method(_)) => {
+            let range = (condition.span().start.offset, condition.span().end.offset);
+            let only_method_calls = [
+                &artifacts.if_true_assertions,
+                &artifacts.if_false_assertions,
+                &artifacts.true_branch_only_assertions,
+            ]
+            .into_iter()
+            .filter_map(|assertions| assertions.get(&range))
+            .flat_map(|assertions| assertions.keys())
+            .all(|key| key.as_bytes().ends_with(b"()"));
+            // TypeSpecifier's specifications of a variable, a property or an argument are not ported here.
+            if !only_method_calls {
+                return None;
+            }
         }
         _ => {} // Literal conditions do not constrain a local.
     }

@@ -171,6 +171,12 @@ where
         }
     });
 
+    let declared_mixed_return = !invocation_targets.is_empty()
+        && invocation_targets.iter().all(|target| {
+            matches!(target, InvocationTarget::FunctionLike { metadata, method_context: Some(_), .. }
+                if metadata.return_type_declaration_metadata.as_ref().is_none_or(|ty| ty.type_union.is_mixed()))
+        });
+
     let method_call_is_stable = matches!(
         invocation_arguments,
         InvocationArgumentsSource::ArgumentList(arguments)
@@ -382,6 +388,7 @@ where
         block_context.stable_method_calls.insert(concat_word!(this_variable, "->", method_name, "()"));
     }
 
+    let mut applied = Vec::new();
     let resulting_type = apply_method_call_assertions(
         context,
         block_context,
@@ -389,7 +396,11 @@ where
         method_name_for_assertions,
         method_call_is_stable,
         resulting_type,
+        &mut applied,
     );
+    if !applied.is_empty() && artifacts.tracks_native_types() {
+        artifacts.native_method_call_assertions.insert(call_span, (applied, declared_mixed_return));
+    }
 
     artifacts.set_resolved_expression_type(&call_span, resulting_type);
     artifacts.set_call_termination(&call_span, always_terminates);
@@ -413,6 +424,7 @@ fn apply_method_call_assertions<'ctx, A>(
     method_name: Option<Word>,
     method_is_stable: bool,
     mut return_type: TUnion,
+    applied: &mut Vec<AssertionSet>,
 ) -> TUnion
 where
     A: Arena,
@@ -452,10 +464,12 @@ where
 
     if method_is_stable && let Some(assertions) = block_context.stable_method_call_assertions.get(&method_call_key) {
         apply_assertions(assertions);
+        applied.push(assertions.clone());
     }
 
     if let Some(assertions) = block_context.active_method_call_assertions.get(&method_call_key) {
         apply_assertions(assertions);
+        applied.push(assertions.clone());
     }
 
     return_type

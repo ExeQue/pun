@@ -324,3 +324,91 @@ final class NativeTypes
         $n = $this->holder;
     }
 }
+
+/** @template T */
+class Box
+{
+    /** @return ?T */
+    public function first()
+    {
+        return null;
+    }
+
+    /** @phpstan-assert-if-true T $this->first() */
+    public function has(): bool
+    {
+        return true;
+    }
+
+    public function plain(): Plain
+    {
+        return new Plain();
+    }
+
+    public function maybe(?int $x = null): ?Plain
+    {
+        return null;
+    }
+
+    public function same(): self
+    {
+        return $this;
+    }
+
+    public function late(): static
+    {
+        return $this;
+    }
+
+    public function flag(): bool
+    {
+        return true;
+    }
+}
+
+final class MethodNativeTypes
+{
+    /** @param Box<Plain> $box */
+    public function returns(Box $box): void
+    {
+        /** @var Holder|Plain $a */
+        $a = $box->plain();
+        /** @var Plain $b */
+        $b = $box->maybe();
+        /** @var Holder $c */
+        $c = $box->same();
+        /** @var Holder $d */
+        $d = $box->late();
+        /** @var Holder $e */
+        $e = $box->first();
+        if ($box->has()) {
+            /** @var Holder|Plain $f */
+            $f = $box->first();
+        } else {
+            /** @var Holder $g */
+            $g = $box->first();
+        }
+        if ($box->flag()) {
+            /** @var int $h */
+            $h = $box->flag();
+        } else {
+            /** @var int $i */
+            $i = $box->flag();
+        }
+        /** @var Holder $j */
+        $j = $box->plain();
+    }
+
+    /** @param Box<Plain> $box */
+    public function withoutNativeScope(Box $box): void
+    {
+        foreach ([1] as $_) {
+        }
+        /** @var Holder $a */
+        $a = $box->plain();
+        if ($box->has()) {
+            /** @var Holder|Plain $b */
+            $b = $box->first();
+        }
+    }
+}

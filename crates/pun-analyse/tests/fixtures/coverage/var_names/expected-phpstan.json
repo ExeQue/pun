@@ -427,6 +427,69 @@
    "identifier": "varTag.nativeType",
    "message": "PHPDoc tag @var with type VarNames\\Plain is not subtype of native type VarNames\\Holder.",
    "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 375,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder|VarNames\\Plain is not subtype of native type VarNames\\Plain.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 379,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder is not subtype of native type VarNames\\Box.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 381,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder is not subtype of native type VarNames\\Box.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 386,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder|VarNames\\Plain is not subtype of native type VarNames\\Plain.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 393,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type int is not subtype of native type true.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 396,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type int is not subtype of native type false.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 399,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder is not subtype of native type VarNames\\Plain.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 408,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder is not subtype of native type VarNames\\Plain.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 411,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder|VarNames\\Plain is not subtype of native type VarNames\\Plain.",
+   "tip": null
   }
  ]
 }

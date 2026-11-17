@@ -17,8 +17,10 @@ const GAPS: &[(&str, &str, i64, &str)] = &[
     ("var_names", "vars.php", 52, "varTag.nativeType"),
     ("var_names", "vars.php", 155, "varTag.nativeType"),
     ("var_names", "vars.php", 213, "varTag.nativeType"),
-    // Mago's native lane has no native type for an object-typed property fetch, nor after a call condition.
+    // Mago's native lane has no native type for an object-typed property fetch, after a loop, or after a function
+    // call condition.
     ("var_names", "vars.php", 324, "varTag.nativeType"),
+    ("var_names", "vars.php", 408, "varTag.nativeType"),
     ("level2", "class_tags.php", 60, "varTag.nativeType"),
     ("level4-unused", "src/labels.php", 5, "void.pure"),
     ("strict-operators", "operators.php", 95, "void.pure"),

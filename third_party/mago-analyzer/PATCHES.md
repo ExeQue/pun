@@ -4022,3 +4022,31 @@ template arguments before they are combined, as UnionTypeUnresolvedMethodPrototy
 method on its own called-on type before ParametersAcceptorSelector::combineAcceptors(). The method resolution's shared
 template result binds a class template to one receiver member only, so a closure passed to
 `Collection<int, A>|Collection<int, B>` took `A` for its `TValue` parameter instead of `A|B`.
+
+## Native types of method calls (varTag.nativeType)
+
+VarTagTypeRuleHelper compares a `@var` type with the assigned expression's native type, so a method call needs one.
+The references are PHPStan 2.3.5's `MutatingScope::addTypeToExpression()` (the specified native type of an expression
+is `TypeCombinator::intersect($type, $nativeType)`) and MethodCallHandler's native return (the declared return on the
+native receiver, without PHPDoc).
+
+- `native.rs` `method_type()`: an argument-less call returns the declared native return of a method from analysed or
+  scanned source (`supported_method()`: not a stub, patch or external declaration) whose parameters are all optional.
+  A class return (`Foo`, `?Foo`, `self`) is its plain ObjectType; `static` is the receiver's class. A method's
+  conditional assertions no longer exclude it; a plain `@phpstan-assert` still does.
+- `native.rs` `parameter_types()`: a generic class hint drops the template parameters the expansion fills, as a native
+  ObjectType has none, so a function with such a parameter keeps its native scope.
+- `native.rs` `condition_shape()` / `branch()`: an argument-less method call on a local is a supported condition.
+  Its branches keep the locals: the call's own truthiness and its method-call assertions are read back by the calls
+  they narrow (below). When the call's if-true, if-false or true-branch-only assertions name anything else (a
+  variable, a property, an argument), the branch's native scope is unavailable.
+- `expression/call/mod.rs` `apply_method_call_assertions()` records the stable and active method-call assertions it
+  applies, with whether every target declares no native return (`artifacts.rs` `native_method_call_assertions`).
+  `native.rs` `after_expression()` consumes them and reconciles the call's native type with them. When the native
+  scope is unavailable but no target declares a native return, the native type is still `mixed` on whatever native
+  receiver the full one narrows (returns are covariant), so the narrowed native type is published; the scope stays
+  unavailable. `after_expression()` takes `&mut Context` for the reconciler.
+
+Checked against PHPStan 2.3.5 on pinkary: a `Collection::first()` after `isNotEmpty()` (`app/Jobs/IncrementViews.php`),
+calls returning classes, `self` and `static`, and truthy and falsy call conditions. pinkary, laravel-framework and
+dev-null report the same errors as before apart from IncrementViews.php:79.
