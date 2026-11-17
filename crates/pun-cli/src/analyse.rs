@@ -92,6 +92,19 @@ impl Finding {
         self.can_be_ignored
     }
 
+    /// The file that holds the error: `file` without the ` (in context of class …)` of an error in a trait.
+    pub(crate) fn source(&self) -> &Path {
+        let label = self.file.to_str().unwrap_or_default();
+        label
+            .split_once(" (in context of ")
+            .map_or(&self.file, |(path, _)| Path::new(path))
+    }
+
+    /// `rel` without the ` (in context of class …)` of an error in a trait.
+    pub(crate) fn source_rel(&self) -> &str {
+        (self.rel.split_once(" (in context of ")).map_or(&self.rel, |(path, _)| path)
+    }
+
     /// PHPStan's `getLine()`: none (0 here) for an `ignoreErrors` entry nothing matched.
     pub(crate) fn line(&self) -> Option<u32> {
         (self.line > 0).then_some(self.line)
@@ -323,7 +336,7 @@ fn relative(root: &Path, file: &Path) -> String {
 fn apply_ignores(findings: &mut Vec<Finding>, root: &Path) -> Vec<Problem> {
     let mut by_file: BTreeMap<PathBuf, Vec<Finding>> = BTreeMap::new();
     for f in findings.drain(..) {
-        by_file.entry(f.file.clone()).or_default().push(f);
+        by_file.entry(f.source().to_path_buf()).or_default().push(f);
     }
     let mut malformed = vec![];
     for (file, mut list) in by_file {
@@ -364,7 +377,7 @@ pub(crate) fn problem(f: &Finding, source: &str, index: &LineIndex) -> Problem {
     });
     Problem {
         rule: f.rule.clone(),
-        path: f.rel.clone().into(),
+        path: f.source_rel().into(),
         span: Span::new(at, at),
         message: f.message.clone(),
         help: f.tip.clone(),
@@ -526,7 +539,7 @@ pub(crate) fn problem_blocks(r: &Renderer, analysed: &Analysed) -> String {
     let sources = sources(analysed);
     let mut problems: Vec<(Problem, &str, &LineIndex)> = vec![];
     for f in &analysed.findings {
-        let (source, index) = &sources[&f.file];
+        let (source, index) = &sources[f.source()];
         problems.push((problem(f, source, index), source, index));
     }
     for m in &analysed.malformed {
@@ -540,14 +553,14 @@ pub(crate) fn problem_blocks(r: &Renderer, analysed: &Analysed) -> String {
 /// The absolute path of a malformed comment's file: the findings carry absolute paths, malformed ones relative.
 fn root_join(analysed: &Analysed, rel: &Path) -> PathBuf {
     (analysed.findings.iter())
-        .find(|f| Path::new(&f.rel) == rel)
-        .map_or_else(|| rel.to_path_buf(), |f| f.file.clone())
+        .find(|f| Path::new(f.source_rel()) == rel)
+        .map_or_else(|| rel.to_path_buf(), |f| f.source().to_path_buf())
 }
 
 /// Each file with a finding or a malformed comment, read once: its source and line index.
 fn sources(analysed: &Analysed) -> BTreeMap<PathBuf, (String, LineIndex)> {
     let mut out = BTreeMap::new();
-    let files = (analysed.findings.iter().map(|f| f.file.clone())).chain(
+    let files = (analysed.findings.iter().map(|f| f.source().to_path_buf())).chain(
         analysed
             .malformed
             .iter()
@@ -580,7 +593,7 @@ pub(crate) fn annotations(analysed: &Analysed) -> String {
     let sources = sources(analysed);
     let mut out = String::new();
     for f in &analysed.findings {
-        let (source, index) = &sources[&f.file];
+        let (source, index) = &sources[f.source()];
         out.push_str(&github::problem(&problem(f, source, index), index));
     }
     for m in &analysed.malformed {

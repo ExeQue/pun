@@ -453,6 +453,17 @@ fn ignore_comments_drop_errors() {
     assert_eq!(code, Some(1));
 }
 
+#[test]
+fn ignore_comments_drop_errors_in_traits() {
+    // PHPStan reports `a.php (in context of class App\C):9:Call to an undefined method App\C::nope().`
+    let source = "<?php\n\nnamespace App;\n\ntrait T\n{\n    public function f(): void\n    {\n        $this->nope(); // @pun-ignore analyse/undefined/method\n    }\n}\n\nclass C\n{\n    use T;\n}\n";
+    let d = sample("trait-ignores", source);
+    assert_eq!(
+        run(&d, &[PUN, "analyse"], &["--format=raw"]),
+        (String::new(), Some(0))
+    );
+}
+
 fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)
