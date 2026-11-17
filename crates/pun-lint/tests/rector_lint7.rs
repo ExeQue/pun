@@ -91,7 +91,7 @@ fn only(rule: impl Rule + 'static) -> Linter {
 
 #[test]
 fn boolean_not_identical_to_not_identical() {
-    let linter = only(NoNegatedComparison);
+    let linter = only(NoNegatedComparison::default());
     run(&linter, "BooleanNotIdenticalToNotIdenticalRector/Fixture");
     run(&linter, "BooleanNotIdenticalToNotIdenticalRector/Oracle");
 }
@@ -440,7 +440,7 @@ fn remove_unused_promoted_property() {
 fn rules_ignore_nodes_outside_their_targets() {
     let cases: Vec<(fn() -> Box<dyn Rule>, &[&str])> = vec![
         (
-            || Box::new(NoNegatedComparison),
+            || Box::new(NoNegatedComparison::default()),
             &["rector/BooleanNotIdenticalToNotIdenticalRector"],
         ),
         (

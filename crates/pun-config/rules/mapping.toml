@@ -1608,9 +1608,15 @@ case-sensitive = { upstream = "case_sensitive", type = "bool" }
 order = { upstream = "order", type = "list" }
 sort-algorithm = { upstream = "sort_algorithm", type = "enum", values = { none = "none", alpha = "alpha" } }
 
+[options."lint/complexity/prefer-simple-condition"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["conditions", "identical-true", "not-identical"], values = { conditions = "SimplifyConditions", identical-true = "SimplifyBoolIdenticalTrue", not-identical = "BooleanNotIdenticalToNotIdentical" } }
+
 [options."lint/control-flow/no-return-assignment"]
 skip-named-var-tags = { upstream = "skip_named_var_tags", type = "bool" }
 skip-commented = { upstream = "skip_commented", type = "bool", origin = "pun", default = false }
+
+[options."lint/dead-code/no-useless-ternary"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["bool", "tautology", "useless"], values = { bool = "UnnecessaryTernaryExpression", tautology = "SimplifyTautologyTernary", useless = "RemoveUselessTernary" } }
 
 [options."lint/operators/no-error-suppression"]
 mute-deprecation-error = { upstream = "mute_deprecation_error", type = "bool" }
@@ -1629,6 +1635,9 @@ exclude = { upstream = "exclude", type = "list" }
 include = { upstream = "include", type = "list" }
 scope = { upstream = "scope", type = "enum", values = { all = "all", namespaced = "namespaced" } }
 strict = { upstream = "strict", type = "bool" }
+
+[options."lint/php-8.4/prefer-array-find"]
+functions = { upstream = "functions", type = "list", origin = "pun", default = ["array-all", "array-any", "array-find", "array-find-key"], values = { array-all = "ForeachToArrayAll", array-any = "ForeachToArrayAny", array-find = "ForeachToArrayFind", array-find-key = "ForeachToArrayFindKey" } }
 
 [options."lint/phpdoc/add-missing-param"]
 only-untyped = { upstream = "only_untyped", type = "bool" }

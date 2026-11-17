@@ -3,13 +3,22 @@ use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::syntax_types::is_bool;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoBooleanLiteralCompare;
+#[derive(Default)]
+pub struct NoBooleanLiteralCompare {
+    /// `identical-true` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoBooleanLiteralCompare {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-simple-condition"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_simple_condition::checks(options, "identical-true")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +32,9 @@ impl Rule for NoBooleanLiteralCompare {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Binary(binary) = node else {
             return;
         };

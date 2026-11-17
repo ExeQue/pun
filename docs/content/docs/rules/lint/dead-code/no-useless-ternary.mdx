@@ -22,6 +22,12 @@ Simplify ternaries whose result does not depend on the condition, or that equal 
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `bool`, `tautology`, `useless` | `["bool", "tautology", "useless"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveUselessTernary`](https://getrector.com/rule-detail/remove-useless-ternary-rector) (rector)

@@ -1,11 +1,16 @@
 use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
+use crate::rules::support::options::part_on;
 use crate::rules::support::syntax_types::{is_bool, parameter_hint};
 use crate::syntax::{node_span, same_expression, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoUselessTernary;
+#[derive(Default)]
+pub struct NoUselessTernary {
+    /// `useless` is left out of the rule's `checks`.
+    off: bool,
+}
 
 #[derive(PartialEq)]
 enum Native {
@@ -20,6 +25,11 @@ impl Rule for NoUselessTernary {
         "lint/dead-code/no-useless-ternary"
     }
 
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "useless")?;
+        Ok(())
+    }
+
     fn targets(&self) -> Option<&'static [NodeKind]> {
         Some(&[NodeKind::Conditional])
     }
@@ -31,6 +41,9 @@ impl Rule for NoUselessTernary {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Conditional(ternary) = node else {
             return;
         };
@@ -96,4 +109,12 @@ fn native(ancestors: &[Node<'_, '_>], expr: &Expression<'_>) -> Native {
         Some(Hint::Integer(_)) => Native::Int,
         _ => Native::Other,
     }
+}
+
+const CHECKS: [&str; 3] = ["bool", "tautology", "useless"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's three rules (`useless` is `RemoveUselessTernaryRector`,
+/// in its dead-code set; `tautology` and `bool` are in its code-quality set).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

@@ -3,13 +3,22 @@ use pun_problem::{Fix, Safety};
 
 use crate::rules::support::foreach_search::{Kind, refactor};
 use crate::rules::support::statement_edits::{HOLDERS, holder_list};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferArrayAll;
+#[derive(Default)]
+pub struct PreferArrayAll {
+    /// `array-all` is left out of the rule's `functions`.
+    off: bool,
+}
 
 impl Rule for PreferArrayAll {
     fn id(&self) -> &'static str {
         "lint/php-8.4/prefer-array-find"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_array_find::functions(options, "array-all")?;
+        Ok(())
     }
 
     fn min_php_version(&self) -> crate::PhpVersion {
@@ -27,6 +36,9 @@ impl Rule for PreferArrayAll {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         if !crate::syntax::statements(node)
             .iter()
             .any(|s| matches!(s, Statement::Foreach(_)))

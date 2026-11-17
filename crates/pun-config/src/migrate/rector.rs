@@ -133,6 +133,21 @@ const AS_RECTOR: [(&str, &str); 3] = [
     ),
 ];
 
+/// A rule merged from several Rector rules runs only the rewrites of the ones rector.php runs (`classes`, short names):
+/// the rule's Pun-only list option whose values name its Rector rules, set to those, when it leaves one out.
+fn only_these(id: &str, classes: &HashSet<String>) -> Option<(String, toml::Value)> {
+    let option = crate::options::rule_options(id).iter().find(|o| {
+        o.pun
+            && o.kind == crate::options::Kind::List
+            && (o.values.iter()).any(|(_, rector)| classes.contains(&format!("{rector}Rector")))
+    })?;
+    let parts: Vec<toml::Value> = (option.values.iter())
+        .filter(|(_, rector)| classes.contains(&format!("{rector}Rector")))
+        .map(|(pun, _)| toml::Value::String(pun.clone()))
+        .collect();
+    (parts.len() < option.values.len()).then(|| (option.name.clone(), toml::Value::Array(parts)))
+}
+
 fn by_class() -> &'static BTreeMap<String, toml::Value> {
     static T: std::sync::LazyLock<BTreeMap<String, toml::Value>> = std::sync::LazyLock::new(|| {
         let mut out = BTreeMap::new();
@@ -179,6 +194,7 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
         out.sets.push("modernize");
     }
     let mut seen = HashSet::new();
+    let mut runs: BTreeMap<String, HashSet<String>> = BTreeMap::new();
     for class in &r.rules {
         let skip = r.skip_rules.get(class);
         if skip.is_some_and(Value::is_null) {
@@ -224,8 +240,14 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
                 .collect();
             out.overrides.push((paths, id.clone()));
         }
+        (runs.entry(id.clone()).or_default()).insert(short(class));
         if seen.insert(id.clone()) {
             out.want.push((id, short(class)));
+        }
+    }
+    for (id, classes) in &runs {
+        if let Some((key, parts)) = only_these(id, classes) {
+            (out.options.entry(id.clone()).or_default()).insert(key, parts);
         }
     }
     out.exclude = r.skip_paths.iter().map(|p| relative(root, p)).collect();

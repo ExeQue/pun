@@ -6,8 +6,8 @@
 use std::path::{Path, PathBuf};
 
 use pun_format::Pipeline;
-use pun_lint::Linter;
 use pun_lint::rules;
+use pun_lint::{Linter, Rule};
 
 fn fixtures(dir: &str) -> Vec<(PathBuf, String, String)> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -356,7 +356,7 @@ fn is_a_with_string_with_third_argument() {
 
 #[test]
 fn unnecessary_ternary_expression() {
-    let linter = only(rules::NoBoolTernary, 80400);
+    let linter = only(rules::NoBoolTernary::default(), 80400);
     run(&linter, "UnnecessaryTernaryExpressionRector/Fixture");
     run(&linter, "UnnecessaryTernaryExpressionRector/Oracle");
     run(&linter, "UnnecessaryTernaryExpressionRector/Pun");
@@ -364,9 +364,45 @@ fn unnecessary_ternary_expression() {
 
 #[test]
 fn remove_useless_ternary() {
-    let linter = only(rules::NoUselessTernary, 80400);
+    let linter = only(rules::NoUselessTernary::default(), 80400);
     run(&linter, "RemoveUselessTernaryRector/Fixture");
     run(&linter, "RemoveUselessTernaryRector/Oracle");
+}
+
+/// `checks` keeps the rule to the Rector rules rector.php runs. The expectations are what Rector 2.8.5 wrote with
+/// `withPreparedSets(deadCode: true)` (`RemoveUselessTernaryRector`, which also drops `? true : false`) and with
+/// `SimplifyTautologyTernaryRector` and `UnnecessaryTernaryExpressionRector` alone.
+#[test]
+fn no_useless_ternary_checks() {
+    let dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/no-useless-ternary-checks");
+    let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap();
+    let input = read("input.php");
+    for (checks, expected) in [
+        (serde_json::json!(["useless"]), "useless.php"),
+        (
+            serde_json::json!(["bool", "tautology"]),
+            "bool-and-tautology.php",
+        ),
+    ] {
+        let mut rules: Vec<Box<dyn Rule>> = vec![
+            Box::new(rules::NoBoolTernary::default()),
+            Box::new(rules::NoTautologyTernary::default()),
+            Box::new(rules::NoUselessTernary::default()),
+        ];
+        for rule in &mut rules {
+            rule.configure(&serde_json::json!({ "checks": checks }))
+                .unwrap();
+        }
+        let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
+        let fixed = linter.fix(Path::new("Ternaries.php"), &input).unwrap();
+        assert_eq!(fixed.source, read(expected), "{checks}");
+    }
+    let mut rule = rules::NoUselessTernary::default();
+    assert!(
+        rule.configure(&serde_json::json!({ "checks": ["all"] }))
+            .is_err()
+    );
 }
 
 #[test]
@@ -379,10 +415,41 @@ fn ternary_to_boolean_or_false_to_boolean_and() {
 
 #[test]
 fn simplify_bool_identical_true() {
-    let linter = only(rules::NoBooleanLiteralCompare, 80400);
+    let linter = only(rules::NoBooleanLiteralCompare::default(), 80400);
     run(&linter, "SimplifyBoolIdenticalTrueRector/Fixture");
     run(&linter, "SimplifyBoolIdenticalTrueRector/Oracle");
     run(&linter, "SimplifyBoolIdenticalTrueRector/Pun");
+}
+
+/// `checks` keeps the rule to the Rector rules rector.php runs. The expectations are what Rector 2.8.5 wrote with
+/// `withPreparedSets(deadCode: true)` (`SimplifyBoolIdenticalTrueRector`) and with `SimplifyConditionsRector` and
+/// `BooleanNotIdenticalToNotIdenticalRector` alone (both in its code-quality set).
+#[test]
+fn prefer_simple_condition_checks() {
+    let dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prefer-simple-condition-checks");
+    let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap();
+    let input = read("input.php");
+    for (checks, expected) in [
+        (serde_json::json!(["identical-true"]), "identical-true.php"),
+        (
+            serde_json::json!(["conditions", "not-identical"]),
+            "conditions-and-not-identical.php",
+        ),
+    ] {
+        let mut rules: Vec<Box<dyn Rule>> = vec![
+            Box::new(rules::NoBooleanLiteralCompare::default()),
+            Box::new(rules::NoNegatedComparison::default()),
+            Box::new(rules::PreferSimpleCondition::default()),
+        ];
+        for rule in &mut rules {
+            rule.configure(&serde_json::json!({ "checks": checks }))
+                .unwrap();
+        }
+        let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
+        let fixed = linter.fix(Path::new("Conditions.php"), &input).unwrap();
+        assert_eq!(fixed.source, read(expected), "{checks}");
+    }
 }
 
 #[test]

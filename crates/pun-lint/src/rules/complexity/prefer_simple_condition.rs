@@ -5,14 +5,24 @@ use crate::rules::support::conditions::{is_binary_op, match_first_and_second};
 use crate::rules::support::expressions::{
     Prec, binary, in_parent, infix, inverse, is_constant, moved,
 };
+use crate::rules::support::options::part_on;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferSimpleCondition;
+#[derive(Default)]
+pub struct PreferSimpleCondition {
+    /// `conditions` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferSimpleCondition {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-simple-condition"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "conditions")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -26,6 +36,9 @@ impl Rule for PreferSimpleCondition {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let (span, code) = match node {
             Node::UnaryPrefix(not) if not.operator.is_not() => {
                 let Some(code) = boolean_not(ctx, not.operand) else {
@@ -98,4 +111,13 @@ fn inversed(
     let inverse = inverse(op)?;
     let (p, l, r) = binary(op);
     Some((infix(ctx, lhs, inverse, rhs, (l, r)), Prec::Infix(p, l, r)))
+}
+
+const CHECKS: [&str; 3] = ["conditions", "identical-true", "not-identical"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's three rules (`identical-true` is
+/// `SimplifyBoolIdenticalTrueRector`, in its dead-code set; `conditions` and `not-identical` are in its code-quality
+/// set).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

@@ -27,3 +27,24 @@ pub(crate) fn uint(value: &serde_json::Value, max: u64) -> Option<usize> {
 pub(crate) fn boolean(value: &serde_json::Value) -> Option<bool> {
     value.as_bool()
 }
+
+/// A Pun-only list option of a rule merged from several Rector rules, naming the parts that run (one per Rector rule),
+/// so `pun migrate` can keep the rule to the Rector rules rector.php runs: whether `part` is listed under `key`. Every
+/// part runs when the option is not set; another key, or a name not in `parts`, is an error.
+pub(crate) fn part_on(
+    options: &serde_json::Value,
+    key: &str,
+    parts: &[&str],
+    part: &str,
+) -> Result<bool, OptionsError> {
+    let mut on = true;
+    configure(options, |k, value| {
+        let list = value.as_array().filter(|_| k == key)?;
+        let names = (list.iter())
+            .map(|v| v.as_str().filter(|s| parts.contains(s)))
+            .collect::<Option<Vec<&str>>>()?;
+        on = names.contains(&part);
+        Some(())
+    })?;
+    Ok(on)
+}

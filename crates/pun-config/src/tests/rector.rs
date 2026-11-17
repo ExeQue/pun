@@ -139,6 +139,61 @@ fn rector_rules_merged_with_a_fixer_keep_to_rector() {
     );
 }
 
+/// A rule merged from several Rector rules keeps to the ones rector.php runs. The input is what
+/// crates/pun-cli/src/rector_config.php printed, on Rector 2.8.5, for `withPhpSets(php84: true)` with three of the four
+/// `ForeachToArray` rules in `withSkip()`; Rector then rewrites only the `array_find()` loop of a file with all four.
+#[test]
+fn merged_rector_rules_keep_to_the_ones_rector_runs() {
+    let class = |name: &str| format!("Rector\\Php84\\Rector\\Foreach_\\ForeachToArray{name}Rector");
+    let rules: Vec<String> = ["Find", "FindKey", "All", "Any"].map(class).into();
+    let options = |skipped: &[&str]| {
+        let config = RectorConfig {
+            rules: rules.clone(),
+            skip_rules: skipped.iter().map(|s| (class(s), Value::Null)).collect(),
+            php_sets: true,
+            ..RectorConfig::default()
+        };
+        let r = from_rector(&dir(&[]), &config);
+        (r.options.get("lint/php-8.4/prefer-array-find")).map(|t| t.to_string().trim().to_string())
+    };
+    assert_eq!(
+        options(&["All", "Any", "FindKey"]).as_deref(),
+        Some("functions = [\"array-find\"]")
+    );
+    assert_eq!(
+        options(&["Any", "Find"]).as_deref(),
+        Some("functions = [\"array-all\", \"array-find-key\"]")
+    );
+    assert_eq!(options(&[]), None);
+    // `withPreparedSets(deadCode: true)`: of no-useless-ternary's and prefer-simple-condition's three Rector rules
+    // each, Rector 2.8.5 resolves only RemoveUselessTernaryRector and SimplifyBoolIdenticalTrueRector; the others are
+    // in its code-quality set.
+    let config = RectorConfig {
+        rules: strings(&[
+            "Rector\\DeadCode\\Rector\\Ternary\\RemoveUselessTernaryRector",
+            "Rector\\CodeQuality\\Rector\\Identical\\SimplifyBoolIdenticalTrueRector",
+        ]),
+        sets: vec![
+            "/p/vendor/rector/rector/src/Set/ValueObject/../../../config/set/dead-code.php".into(),
+        ],
+        ..RectorConfig::default()
+    };
+    let r = from_rector(&dir(&[]), &config);
+    assert_eq!(r.sets, ["dead-code"]);
+    assert_eq!(
+        r.options["lint/dead-code/no-useless-ternary"]
+            .to_string()
+            .trim(),
+        "checks = [\"useless\"]"
+    );
+    assert_eq!(
+        r.options["lint/complexity/prefer-simple-condition"]
+            .to_string()
+            .trim(),
+        "checks = [\"identical-true\"]"
+    );
+}
+
 /// A configured rule's configuration becomes its options. The input is what crates/pun-cli/src/rector_config.php printed
 /// for a rector.php with these four `withConfiguredRule()` calls, run on .oracle/rector-ecosystem's Rector: a data map
 /// keeps its keys, a value object list goes under `items` with its properties kebab-cased, Rector's option constant

@@ -3,13 +3,22 @@ use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{equal, moved};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoTautologyTernary;
+#[derive(Default)]
+pub struct NoTautologyTernary {
+    /// `tautology` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoTautologyTernary {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-useless-ternary"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_useless_ternary::checks(options, "tautology")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +32,9 @@ impl Rule for NoTautologyTernary {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Conditional(t) = node else { return };
         let Expression::Binary(compare) = unparenthesize(t.condition) else {
             return;

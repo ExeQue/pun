@@ -4,13 +4,22 @@ use pun_problem::{Edit, Fix, Safety};
 use crate::rules::support::expressions::{Prec, in_parent, infix};
 use crate::rules::support::syntax_types::is_bool;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoNegatedComparison;
+#[derive(Default)]
+pub struct NoNegatedComparison {
+    /// `not-identical` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoNegatedComparison {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-simple-condition"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_simple_condition::checks(options, "not-identical")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -24,6 +33,9 @@ impl Rule for NoNegatedComparison {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let (left, right) = match node {
             Node::UnaryPrefix(not) if not.operator.is_not() => {
                 let Expression::Binary(identical) = unparenthesize(not.operand) else {

@@ -210,7 +210,7 @@ fn simplify_in_array_values() {
 #[test]
 fn simplify_tautology_ternary() {
     let linter = Linter::new(
-        vec![Box::new(NoTautologyTernary)],
+        vec![Box::new(NoTautologyTernary::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(&linter, "SimplifyTautologyTernaryRector/Fixture");
@@ -491,7 +491,7 @@ fn simplify_if_not_null_return() {
 
 #[test]
 fn simplify_conditions() {
-    let linter = only(rules::PreferSimpleCondition, 80400);
+    let linter = only(rules::PreferSimpleCondition::default(), 80400);
     run(&linter, "SimplifyConditionsRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyConditionsRector/Oracle");

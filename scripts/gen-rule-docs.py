@@ -377,6 +377,7 @@ def translation(tool: str) -> str:
 | PHP upgrade sets from PHP 8.4 | The `modernize` set, gated by the target version |
 | Explicit rules and set differences | `[lint.rules]` at `\"error\"` or `\"off\"` |
 | `->withConfiguredRule()` | Rule options with kebab-case keys; lists under `items` |
+| Some of the Rector rules of one Pun rule, such as `ForeachToArrayFindRector` without the other `ForeachToArray*Rector` rules | The Pun rule with its option that limits it to those rewrites, such as `functions = [\"array-find\"]` |
 | `->withPaths()`, path skips | `[lint] exclude` and `[[lint.overrides]]` |
 | Closures, null values, custom rules, excluded sets | Reported and skipped |
 

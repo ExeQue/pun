@@ -22,6 +22,12 @@ Replace foreach loops with array_find(), array_find_key(), array_any() or array_
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `functions` | `list` | `array-all`, `array-any`, `array-find`, `array-find-key` | `["array-all", "array-any", "array-find", "array-find-key"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`ForeachToArrayAll`](https://getrector.com/rule-detail/foreach-to-array-all-rector) (rector)

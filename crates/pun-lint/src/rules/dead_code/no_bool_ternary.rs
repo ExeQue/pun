@@ -5,13 +5,22 @@ use crate::rules::complexity::no_boolean_literal_compare::truth;
 use crate::rules::support::expressions::inverse;
 use crate::rules::support::syntax_types::is_bool;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoBoolTernary;
+#[derive(Default)]
+pub struct NoBoolTernary {
+    /// `bool` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoBoolTernary {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-useless-ternary"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_useless_ternary::checks(options, "bool")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -25,6 +34,9 @@ impl Rule for NoBoolTernary {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Conditional(ternary) = node else {
             return;
         };

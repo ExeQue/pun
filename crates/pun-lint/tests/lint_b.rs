@@ -173,26 +173,79 @@ fn min_max_to_clamp() {
 
 #[test]
 fn foreach_to_array_all() {
-    run(rules::PreferArrayAll, 80400, "ForeachToArrayAllRector");
+    run(
+        rules::PreferArrayAll::default(),
+        80400,
+        "ForeachToArrayAllRector",
+    );
 }
 
 #[test]
 fn foreach_to_array_any() {
-    run(rules::PreferArrayAny, 80400, "ForeachToArrayAnyRector");
+    run(
+        rules::PreferArrayAny::default(),
+        80400,
+        "ForeachToArrayAnyRector",
+    );
 }
 
 #[test]
 fn foreach_to_array_find() {
-    run(rules::PreferArrayFind, 80400, "ForeachToArrayFindRector");
+    run(
+        rules::PreferArrayFind::default(),
+        80400,
+        "ForeachToArrayFindRector",
+    );
 }
 
 #[test]
 fn foreach_to_array_find_key() {
     run(
-        rules::PreferArrayFindKey,
+        rules::PreferArrayFindKey::default(),
         80400,
         "ForeachToArrayFindKeyRector",
     );
+}
+
+/// `functions` keeps the rule to the rewrites of the Rector rules rector.php runs. The expectations are what Rector
+/// 2.8.5 wrote with `withPhpSets(php84: true)` and two of its `ForeachToArray` rules in `withSkip()`.
+#[test]
+fn prefer_array_find_functions() {
+    let dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prefer-array-find-functions");
+    let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap();
+    let input = read("input.php");
+    for (functions, expected) in [
+        (serde_json::json!(["array-find"]), "array-find.php"),
+        (
+            serde_json::json!(["array-all", "array-find-key"]),
+            "array-all-and-find-key.php",
+        ),
+    ] {
+        let mut rules: Vec<Box<dyn Rule>> = vec![
+            Box::new(rules::PreferArrayAll::default()),
+            Box::new(rules::PreferArrayAny::default()),
+            Box::new(rules::PreferArrayFind::default()),
+            Box::new(rules::PreferArrayFindKey::default()),
+        ];
+        for rule in &mut rules {
+            rule.configure(&serde_json::json!({ "functions": functions }))
+                .unwrap();
+        }
+        let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
+        let fixed = linter.fix(Path::new("Search.php"), &input).unwrap();
+        assert_eq!(fixed.source, read(expected), "{functions}");
+    }
+    for bad in [
+        serde_json::json!(["array-map"]),
+        serde_json::json!("array-find"),
+    ] {
+        let mut rule = rules::PreferArrayFind::default();
+        assert!(
+            rule.configure(&serde_json::json!({ "functions": bad }))
+                .is_err()
+        );
+    }
 }
 
 #[test]
