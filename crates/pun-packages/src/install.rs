@@ -315,9 +315,8 @@ fn fingerprint_inputs(
         return None;
     }
     let mut s = format!("pun {}\n", env!("CARGO_PKG_VERSION"));
-    if let Ok(exe) = std::env::current_exe() {
-        let _ = writeln!(s, "{}", fingerprint::stamp(&exe, true));
-    }
+    let exe = std::env::current_exe().unwrap_or_default();
+    let _ = writeln!(s, "{}", fingerprint::stamp(&exe, true));
     let _ = writeln!(
         s,
         "{}\n{}\n{}",
@@ -356,10 +355,13 @@ fn fingerprint_inputs(
             roots.push(project.dir.join(path));
         });
     }
+    // A path repository's source: what a symlinked package's classes are read from. The directory in vendor/ is an
+    // output, and doesn't exist yet before the first install.
     for p in packages {
-        let dist = p.package.dist().and_then(|d| d.get("type"));
-        if let (Some("path"), Some(path)) = (dist.and_then(Value::as_str), &p.path) {
-            roots.push(PathBuf::from(path));
+        let dist = p.package.dist();
+        let get = |k: &str| dist.and_then(|d| d.get(k)).and_then(Value::as_str);
+        if let (Some("path"), Some(url)) = (get("type"), get("url")) {
+            roots.push(project.dir.join(url));
         }
     }
     for root in roots {

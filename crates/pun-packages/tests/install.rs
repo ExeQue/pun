@@ -609,6 +609,16 @@ fn a_no_op_install_is_skipped_until_an_input_changes() {
     assert_eq!(std::fs::read(&classmap).unwrap(), want);
     repaired.fingerprint.unwrap().save();
 
+    // A path repository's source is an input, so a class added there (seen through a symlinked package) is found.
+    std::fs::write(
+        tmp.join("packages/lib/src/Extra.php"),
+        "<?php class Extra {}\n",
+    )
+    .unwrap();
+    let edited = run(&tmp, &lock, &o);
+    assert!(!edited.fresh);
+    edited.fingerprint.unwrap().save();
+
     // Other options are other inputs; a random APCu prefix changes every dump, so it is never skipped.
     let no_dev = Options {
         no_dev: true,
@@ -837,5 +847,126 @@ fn packages_come_from_the_store_and_their_classes_from_the_class_cache() {
     dump_autoload(&tmp, &manifest, None, &o, None, &mut |_, _| Ok(())).unwrap();
     assert!(classmap().contains("'Z' => $vendorDir . '/acme/zipped/src/Z.php'"));
     assert!(!classmap().contains("FromCache"));
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// What else the no-op fingerprint covers: the git refs the root version comes from (a new commit is a new
+/// `reference` in installed.php), no record at all when `.git` is a file (a worktree, whose refs live elsewhere), a
+/// root with its own `version`, and `--no-autoloader`, whose no-op runs no dump events.
+#[test]
+fn the_fingerprint_follows_git_and_the_root_version() {
+    let tmp = std::env::temp_dir().join(format!("pun-install-git-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .current_dir(&tmp)
+            .env_remove("GIT_DIR")
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{out:?}");
+        String::from_utf8(out.stdout).unwrap().trim().to_string()
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "one"]);
+    let o = Options {
+        cache: Some(tmp.join("pun-cache")),
+        ..Options::default()
+    };
+    let installed_php =
+        || std::fs::read_to_string(tmp.join("vendor/composer/installed.php")).unwrap();
+    // The first install makes the path packages' bins executable in their sources, as Composer does: an input.
+    run(&tmp, &lock, &o);
+    run(&tmp, &lock, &o).fingerprint.unwrap().save();
+    assert!(run(&tmp, &lock, &o).fresh);
+    git(&["commit", "-q", "--allow-empty", "-m", "two"]);
+    let head = git(&["rev-parse", "HEAD"]);
+    assert!(!installed_php().contains(&head));
+    let moved = run(&tmp, &lock, &o);
+    assert!(!moved.fresh);
+    assert!(installed_php().contains(&format!("'reference' => '{head}'")));
+
+    std::fs::remove_dir_all(tmp.join(".git")).unwrap();
+    std::fs::write(tmp.join(".git"), "gitdir: /elsewhere\n").unwrap();
+    assert!(run(&tmp, &lock, &o).fingerprint.is_none());
+
+    let json = std::fs::read_to_string(tmp.join("composer.json")).unwrap();
+    let versioned = json.replacen('{', "{\n    \"version\": \"2.0.0\",", 1);
+    std::fs::write(tmp.join("composer.json"), versioned).unwrap();
+    run(&tmp, &lock, &o).fingerprint.unwrap().save();
+    assert!(run(&tmp, &lock, &o).fresh);
+
+    let no_autoloader = Options {
+        no_autoloader: true,
+        ..o
+    };
+    run(&tmp, &lock, &no_autoloader).fingerprint.unwrap().save();
+    assert!(run(&tmp, &lock, &no_autoloader).fresh);
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
+/// `composer dump-autoload` without a lock and without `vendor/autoload.php` names the autoloader with
+/// `bin2hex(random_bytes(16))`, 32 hex digits; a root classmap path that does not exist is Composer's error.
+#[test]
+fn dump_autoload_without_a_lock() {
+    let tmp = std::env::temp_dir().join(format!("pun-dump-nolock-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    run(&tmp, &lock, &Options::default());
+    std::fs::remove_file(tmp.join("vendor/autoload.php")).unwrap();
+    let mut manifest: Map<String, Value> =
+        serde_json::from_str(&std::fs::read_to_string(tmp.join("composer.json")).unwrap()).unwrap();
+    dump_autoload(
+        &tmp,
+        &manifest,
+        None,
+        &Options::default(),
+        None,
+        &mut |_, _| Ok(()),
+    )
+    .unwrap();
+    let autoload = std::fs::read_to_string(tmp.join("vendor/autoload.php")).unwrap();
+    let suffix = autoload
+        .split("ComposerAutoloaderInit")
+        .nth(1)
+        .unwrap()
+        .split("::")
+        .next()
+        .unwrap();
+    assert_eq!(suffix.len(), 32, "{suffix}");
+    assert!(suffix.bytes().all(|b| b.is_ascii_hexdigit()) && suffix != lock.content_hash);
+
+    manifest.insert(
+        "autoload".into(),
+        serde_json::json!({"classmap": ["missing/"]}),
+    );
+    let err = dump_autoload(
+        &tmp,
+        &manifest,
+        None,
+        &Options::default(),
+        None,
+        &mut |_, _| Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Could not scan for classes inside \"missing/\" which does not appear to be a file nor a folder"
+    );
     std::fs::remove_dir_all(&tmp).unwrap();
 }
