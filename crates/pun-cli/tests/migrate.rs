@@ -597,10 +597,119 @@ fn rewrites_phpstan_ignores() {
         "{out}"
     );
     assert!(
-        counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n ! app/A.php  `@phpstan-ignore acme.rule` left as is (`acme.rule` is not a PHPStan identifier Pun knows); skipped\n ! app/A.php  `@phpstan-ignore-next-line` left as is (it names no identifier, and a Pun ignore names its rules); skipped\n"),
+        counts(&out).contains(" ok ignore comments  -> @pun-ignore in 1 file\n ! format/functions/backtick-to-shell-exec  a PHPStan check that is this format rule in Pun; turn it on in [format.rules]; skipped\n ! app/A.php:4  `@phpstan-ignore acme.rule` left as is (`acme.rule` is not a PHPStan identifier Pun knows); skipped\n ! app/A.php:6  `@phpstan-ignore-next-line` left as is (`pun analyse` reports no error on line 7 for it to name); skipped\n"),
         "{out}"
     );
     assert_eq!(read(&d, "app/A.php"), php);
+}
+
+/// `@phpstan-ignore-line` and `-next-line` name the rules of what they hid. PHPStan 2.3.6 at level 5 with
+/// `reportIgnoresWithoutComments: true` reports, beside `ignore.allLineErrors`, `function.notFound` on lines 8, 9, 11,
+/// 20, 24, 30 and 35, `method.nonObject` and `function.notFound` on 27, `array.invalidKey` on 29, and nothing on 13, 16
+/// or 32; mapping.toml maps those to the IDs below. Line 16 is the one after the tag, inside the docblock, where no Pun
+/// comment points. Without that parameter PHPStan reports lines 13, 16 and 32 as unmatched and the errors on 18, 21 and
+/// 23, as `pun analyse` does after the migration. In C.php PHPStan reports `function.notFound` on 7, 9 and 10 with the
+/// parameter, and without it line 8 as unmatched and the error on 9: the tag left on 7 still hides its error.
+#[test]
+fn names_what_blanket_phpstan_ignores_hid() {
+    const C: &str = "<?php\n\n/**\n * @php-cs-fixer-ignore array_syntax\n * @phpstan-ignore-next-line\n */\nundefined_c();\n/** @phpstan-ignore-line */\nundefined_d();\nundefined_e(); // @phpstan-ignore-line -- generated */\n";
+    let php = "<?php\n\nnamespace App;\n\nfunction f(): void\n{\n    // @phpstan-ignore-next-line\n    undefined_one();\n    undefined_two(); // @phpstan-ignore-line\n    /** @phpstan-ignore-next-line */\n    undefined_three();\n    // @phpstan-ignore-next-line\n    $x = 1;\n    /**\n     * @phpstan-ignore-next-line\n     * @var int $y\n     */\n    $y = undefined_four();\n    // @phpstan-ignore-next-line because it is generated\n    undefined_five(\n        undefined_six()\n    );\n    undefined_seven(\n        undefined_eight() // @phpstan-ignore-line\n    );\n    // @phpstan-ignore-next-line\n    (new \\stdClass())->nope(undefined_nine());\n    // @phpstan-ignore-next-line\n    $a = [[] => 1];\n    /* @phpstan-ignore-line */ undefined_ten();\n    /**\n     * @phpstan-ignore-line\n     * @phpstan-ignore-next-line\n     */\n    undefined_eleven();\n}\n";
+    let d = project(
+        "phpstan-line-ignores",
+        &[
+            (
+                "phpstan.neon",
+                "parameters:\n    level: 5\n    paths: [app]\n",
+            ),
+            ("app/A.php", php),
+            ("app/C.php", C),
+            (
+                "lib/B.php",
+                "<?php\n\nundefined_b(); // @phpstan-ignore-line\n",
+            ),
+        ],
+    );
+    let (out, _, code) = pun(&d, &["migrate", "--yes"]);
+    assert_eq!(code, Some(0), "{out}");
+    let f = "analyse/undefined/function";
+    let want = php
+        .replacen(
+            "// @phpstan-ignore-next-line\n",
+            &format!("// @pun-ignore-next-line {f}\n"),
+            1,
+        )
+        .replace(
+            "// @phpstan-ignore-line\n    /**",
+            &format!("// @pun-ignore {f}\n    /**"),
+        )
+        .replace(
+            "/** @phpstan-ignore-next-line */",
+            &format!("/** @pun-ignore-next-line {f} */"),
+        )
+        .replace(
+            "@phpstan-ignore-next-line because",
+            &format!("@pun-ignore-next-line {f} -- because"),
+        )
+        .replace(
+            "undefined_eight() // @phpstan-ignore-line",
+            &format!("undefined_eight() // @pun-ignore {f}"),
+        )
+        .replace(
+            "// @phpstan-ignore-next-line\n    (new",
+            &format!(
+                "// @pun-ignore-next-line analyse/classes/invalid-method-callable,{f}\n    (new"
+            ),
+        )
+        .replace(
+            "// @phpstan-ignore-next-line\n    $a",
+            "// @pun-ignore-next-line analyse/arrays/invalid-array-key\n    $a",
+        )
+        .replace(
+            "/* @phpstan-ignore-line */",
+            &format!("/* @pun-ignore {f} */"),
+        );
+    assert_eq!(read(&d, "app/A.php"), want);
+    assert_eq!(
+        read(&d, "app/C.php"),
+        C.replace(
+            "@php-cs-fixer-ignore array_syntax",
+            "@pun-ignore-file format/arrays/syntax"
+        )
+        .replace("// @phpstan-ignore-line", &format!("// @pun-ignore {f}"))
+    );
+    assert_eq!(
+        read(&d, "lib/B.php"),
+        "<?php\n\nundefined_b(); // @phpstan-ignore-line\n"
+    );
+    for line in [
+        " ! app/A.php:12  `@phpstan-ignore-next-line` left as is (`pun analyse` reports no error on line 13 for it to name); skipped\n",
+        " ! app/A.php:15  `@phpstan-ignore-next-line` left as is (it ignores line 16, where a Pun comment here can't point); skipped\n",
+        " ! app/A.php:32  `@phpstan-ignore-line` left as is (a Pun comment holds one ignore); skipped\n",
+        " ! app/A.php:33  `@phpstan-ignore-next-line` left as is (a Pun comment holds one ignore); skipped\n",
+        " ! lib/B.php:3   `@phpstan-ignore-line` left as is (`pun analyse` doesn't check this file); skipped\n",
+        " ! app/C.php:5   `@phpstan-ignore-next-line` left as is (the comment has a `@pun-ignore` already, and a Pun comment holds one ignore); skipped\n",
+        " ! app/C.php:8   `@phpstan-ignore-line` left as is (it ignores line 8, where a Pun comment here can't point); skipped\n",
+    ] {
+        assert!(out.contains(line), "{line}{out}");
+    }
+    let (out, _, code) = pun(&d, &["analyse", "--format=raw"]);
+    assert_eq!(code, Some(1), "{out}");
+    let root = d.canonicalize().unwrap();
+    let at = |line: &str| format!("{}/app/A.php:{line}", root.display());
+    let c = |line: &str| format!("{}/app/C.php:{line}", root.display());
+    assert_eq!(
+        out.lines().collect::<Vec<_>>(),
+        [
+            format!("{}:No error to ignore is reported on line 13.", at("13")),
+            format!("{}:No error to ignore is reported on line 16.", at("16")),
+            format!("{}:Function undefined_four not found.", at("18")),
+            format!("{}:Function undefined_six not found.", at("21")),
+            format!("{}:Function undefined_seven not found.", at("23")),
+            format!("{}:No error to ignore is reported on line 32.", at("32")),
+            format!("{}:No error to ignore is reported on line 8.", c("8")),
+            format!("{}:Function undefined_d not found.", c("9")),
+        ]
+    );
 }
 
 #[test]
@@ -802,7 +911,7 @@ fn phpstan_ignore_of_a_format_check_is_left() {
     let (out, _, code) = pun(&d, &["migrate", "--dry-run", "--yes"]);
     assert_eq!(code, Some(0), "{out}");
     assert!(
-        out.contains(" ! app/A.php  `@phpstan-ignore whitespace.fileEnd` left as is (`whitespace.fileEnd` is the format rule `format/tags/no-closing`, ignored per file); skipped\n"),
+        out.contains(" ! app/A.php:3  `@phpstan-ignore whitespace.fileEnd` left as is (`whitespace.fileEnd` is the format rule `format/tags/no-closing`, ignored per file); skipped\n"),
         "{out}"
     );
 }

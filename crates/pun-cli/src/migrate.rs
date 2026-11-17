@@ -48,6 +48,15 @@ static PHPSTAN_IGNORE: LazyLock<Regex> = LazyLock::new(|| {
 static PHPSTAN_IGNORE_LINE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"@phpstan-ignore-(?:next-)?line\b").unwrap());
 
+/// A docblock tag, as PHPStan finds the last one in a docblock: `@phpstan-ignore-next-line` ignores the line after the
+/// docblock only when no tag follows it.
+static PHPDOC_TAG: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)@(?:[a-z][a-z0-9-\\]+:)?[a-z][a-z0-9-\\]*|@[a-z_\\][a-z0-9_:\\]*[a-z_][a-z0-9_]*",
+    )
+    .unwrap()
+});
+
 #[derive(Clone, Copy, PartialEq, Debug, clap::ValueEnum)]
 pub(crate) enum Source {
     Pint,
@@ -482,17 +491,43 @@ fn ignore_rewrites(
     let mut edits = vec![];
     let mut unknown = vec![];
     let mut files = pun_workspace::discover(cfg, &[]).unwrap_or_default();
-    if phpstan {
+    let analysed: std::collections::HashSet<PathBuf> = if phpstan {
         let analysed = pun_workspace::files(cfg, Some(pun_workspace::Command::Analyse), &[]);
-        files.extend(analysed.unwrap_or_default());
-        files.sort();
-        files.dedup();
-    }
-    for f in files {
-        let Ok(code) = std::fs::read(&f) else {
-            continue;
-        };
-        if let Some(new) = rewrite(&code, &rel(root, &f), fixer, phpstan, &mut unknown) {
+        analysed.unwrap_or_default().into_iter().collect()
+    } else {
+        std::collections::HashSet::new()
+    };
+    files.extend(analysed.iter().cloned());
+    files.sort();
+    files.dedup();
+    let read: Vec<(PathBuf, Vec<u8>)> = (files.into_iter())
+        .filter_map(|f| Some((std::fs::read(&f).ok()?, f)))
+        .map(|(code, f)| (f, code))
+        .collect();
+    let blanket = |code: &[u8]| PHPSTAN_IGNORE_LINE.is_match(code).unwrap_or(false);
+    let covered: Vec<PathBuf> = (read.iter())
+        .filter(|(f, code)| phpstan && analysed.contains(f) && blanket(code))
+        .map(|(f, _)| f.clone())
+        .collect();
+    let hidden = if covered.is_empty() {
+        Ok(std::collections::HashMap::new())
+    } else {
+        crate::analyse::hidden_by_line_ignores(cfg, covered)
+            .map_err(|e| format!("`pun analyse` couldn't run: {e}"))
+    };
+    for (f, code) in read {
+        let lines: Hidden = phpstan.then(|| {
+            if !analysed.contains(&f) {
+                return Err("`pun analyse` doesn't check this file".to_string());
+            }
+            let path = pun_phpstan::php::normalize_path(&f.to_string_lossy());
+            let all = hidden.as_ref().map_err(Clone::clone)?;
+            let mine = (all.iter()).filter(|((p, _), _)| *p == path);
+            Ok(mine
+                .map(|((_, line), rules)| (*line, rules.clone()))
+                .collect())
+        });
+        if let Some(new) = rewrite(&code, &rel(root, &f), fixer, lines.as_ref(), &mut unknown) {
             edits.push((f, code, new));
         }
     }
@@ -913,25 +948,34 @@ impl Report {
     }
 }
 
+/// For the `@phpstan-ignore-line` and `-next-line` comments of a file whose PHPStan config is migrated: the rules of
+/// the errors each line they cover had ([`crate::analyse::hidden_by_line_ignores`]), or why they are not known.
+type Hidden = Option<Result<std::collections::HashMap<i64, Vec<&'static str>>, String>>;
+
 /// `code` with, when `fixer`, each `@php-cs-fixer-ignore a,b` in a comment turned into
-/// `@pun-ignore-file format/x/a,lint/y/b`, and with `phpstan`, each `@phpstan-ignore` into [`phpstan_ignore`]'s
-/// `@pun-ignore`; `None` when nothing changes. One naming a rule Pun has no rule for stays as it is, reported in
-/// `unknown` as (path, note).
+/// `@pun-ignore-file format/x/a,lint/y/b`, and with `phpstan` (`Some`), each `@phpstan-ignore` into
+/// [`phpstan_ignore`]'s `@pun-ignore` and each `@phpstan-ignore-line` or `-next-line` into [`line_ignore`]'s; `None`
+/// when nothing changes. One naming a rule Pun has no rule for, or that can't be converted, stays as it is, reported
+/// in `unknown` as (path, note).
 fn rewrite(
     code: &[u8],
     path: &str,
     fixer: bool,
-    phpstan: bool,
+    phpstan: Option<&Result<std::collections::HashMap<i64, Vec<&'static str>>, String>>,
     unknown: &mut Vec<(String, String)>,
 ) -> Option<Vec<u8>> {
     let has = |needle: &[u8]| code.windows(needle.len()).any(|w| w == needle);
-    let phpstan = phpstan && has(b"@phpstan-ignore");
+    let phpstan = phpstan.filter(|_| has(b"@phpstan-ignore"));
     let fixer = fixer && has(b"php-cs-fixer-ignore");
-    if !fixer && !phpstan {
+    if !fixer && phpstan.is_none() {
         return None;
     }
     let mut out = Vec::with_capacity(code.len());
+    let (mut line, mut offset) = (1, 0);
     for t in pun_tokens::Tokens::from_code(code).as_slice() {
+        let (first, at) = (line, offset);
+        line += newlines(t.get_content());
+        offset += t.get_content().len();
         if !t.is_comment() {
             out.extend_from_slice(t.get_content());
             continue;
@@ -958,7 +1002,7 @@ fn rewrite(
             last = m.end();
         }
         done.extend_from_slice(&text[last..]);
-        if phpstan {
+        if let Some(hidden) = phpstan {
             text = done;
             done = Vec::with_capacity(text.len());
             last = 0;
@@ -972,21 +1016,123 @@ fn rewrite(
                         last = m.end();
                     }
                     Err(why) => {
+                        let at = format!("{path}:{}", first + newlines(&text[..m.start()]));
                         let note = format!("`@phpstan-ignore {list}` left as is ({why})");
-                        unknown.push((path.to_string(), note));
+                        unknown.push((at, note));
                     }
                 }
             }
             done.extend_from_slice(&text[last..]);
-            for m in PHPSTAN_IGNORE_LINE.find_iter(&done).flatten() {
-                let tag = String::from_utf8_lossy(m.as_bytes());
-                let why = "it names no identifier, and a Pun ignore names its rules";
-                unknown.push((path.to_string(), format!("`{tag}` left as is ({why})")));
-            }
+            let comment = at..at + t.get_content().len();
+            let own_line = own_line(code, comment);
+            done = line_ignore(done, first, own_line, hidden, path, unknown);
         }
         out.extend_from_slice(&done);
     }
     (out != code).then_some(out)
+}
+
+fn newlines(text: &[u8]) -> i64 {
+    i64::try_from(pun_tokens::php_compat::substr_count(text, b"\n")).unwrap_or(i64::MAX)
+}
+
+/// Whether the comment at `span` of `code` has nothing but blanks before it on its first line and after it on its last,
+/// as crates/pun-problem/src/ignore.rs decides where a plain `@pun-ignore` points.
+fn own_line(code: &[u8], span: std::ops::Range<usize>) -> bool {
+    let start = code[..span.start]
+        .iter()
+        .rposition(|&b| b == b'\n')
+        .map_or(0, |i| i + 1);
+    let end =
+        (code[span.end..].iter().position(|&b| b == b'\n')).map_or(code.len(), |i| span.end + i);
+    let blank = |b: &[u8]| b.iter().all(u8::is_ascii_whitespace);
+    blank(&code[start..span.start]) && blank(&code[span.end..end])
+}
+
+/// `text`, a comment starting on line `first`, with its `@phpstan-ignore-line` turned into `@pun-ignore` and its
+/// `@phpstan-ignore-next-line` into `@pun-ignore-next-line`, naming the rules of the errors on the line PHPStan ignores
+/// (`hidden`), with any text after the tag as the reason. It stays as it is, noted in `unknown`, when that line has
+/// none, when the Pun comment would cover another line (crates/pun-problem/src/ignore.rs), or with two tags in one
+/// comment, which Pun reads only the first of.
+fn line_ignore(
+    text: Vec<u8>,
+    first: i64,
+    own_line: bool,
+    hidden: &Result<std::collections::HashMap<i64, Vec<&'static str>>, String>,
+    path: &str,
+    unknown: &mut Vec<(String, String)>,
+) -> Vec<u8> {
+    let tags: Vec<_> = PHPSTAN_IGNORE_LINE.find_iter(&text).flatten().collect();
+    let [m] = tags.as_slice() else {
+        for m in &tags {
+            let tag = String::from_utf8_lossy(m.as_bytes());
+            let at = format!("{path}:{}", first + newlines(&text[..m.start()]));
+            let why = "a Pun comment holds one ignore";
+            unknown.push((at, format!("`{tag}` left as is ({why})")));
+        }
+        return text;
+    };
+    let tag = String::from_utf8_lossy(m.as_bytes()).into_owned();
+    let next = tag.ends_with("next-line");
+    let tag_line = first + newlines(&text[..m.start()]);
+    let last = first + newlines(&text);
+    let doc = text.starts_with(b"/**");
+    // The line PHPStan ignores (crates/pun-phpstan/src/comments.rs) and the one the Pun comment would.
+    let ignored = match (doc, next) {
+        (false, true) => last + 1,
+        (false, false) => last,
+        (true, true) if !PHPDOC_TAG.is_match(&text[m.end()..]).unwrap_or(true) => last + 1,
+        (true, true) => tag_line + 1,
+        (true, false) => tag_line,
+    };
+    let pun = match (next, own_line) {
+        (true, _) | (false, true) => last + 1,
+        (false, false) => first,
+    };
+    let why = match hidden {
+        _ if text.windows(11).any(|w| w == b"@pun-ignore") => {
+            "the comment has a `@pun-ignore` already, and a Pun comment holds one ignore"
+                .to_string()
+        }
+        _ if ignored != pun => {
+            format!("it ignores line {ignored}, where a Pun comment here can't point")
+        }
+        Err(why) => why.clone(),
+        Ok(lines) => match lines.get(&ignored).filter(|r| !r.is_empty()) {
+            Some(rules) => {
+                let end = text[m.end()..]
+                    .iter()
+                    .position(|&b| b == b'\n')
+                    .map_or(text.len(), |i| m.end() + i);
+                let rest = &text[m.end()..end];
+                let kept = rest.strip_suffix(b"*/").unwrap_or(rest).trim_ascii_end();
+                let after = end - (rest.len() - kept.len());
+                let reason = kept.trim_ascii_start();
+                let reason = reason.strip_prefix(b"--").unwrap_or(reason).trim_ascii();
+                let mut out = text[..m.start()].to_vec();
+                out.extend_from_slice(if next {
+                    b"@pun-ignore-next-line "
+                } else {
+                    b"@pun-ignore "
+                });
+                out.extend_from_slice(rules.join(",").as_bytes());
+                if !reason.is_empty() {
+                    out.extend_from_slice(b" -- ");
+                    out.extend_from_slice(reason);
+                    out.extend_from_slice(&text[after..]);
+                    return out;
+                }
+                out.extend_from_slice(&text[m.end()..]);
+                return out;
+            }
+            None => format!("`pun analyse` reports no error on line {ignored} for it to name"),
+        },
+    };
+    unknown.push((
+        format!("{path}:{tag_line}"),
+        format!("`{tag}` left as is ({why})"),
+    ));
+    text
 }
 
 /// `@phpstan-ignore`'s list (`a.b (why), c.d`) as `@pun-ignore <rule IDs> -- <comments>`: each identifier's Pun rule

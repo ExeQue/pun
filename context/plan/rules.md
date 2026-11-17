@@ -157,8 +157,11 @@ them (§5).
 - `/* */` and `/** */` forms work too, so PHPDoc-placed `@phpstan-ignore` ports one to one.
 - Unused ignores are reported by `no-unused-ignore` (safe fix: delete); malformed ones by `invalid-ignore-comment`.
 - Migrate rewrites `@phpstan-ignore <id>` to `@pun-ignore <pun id>` through the mapping, deduplicating ids that map to
-  one rule; `@phpstan-ignore-next-line` (no id) becomes `@pun-ignore-next-line` with the ids PHPStan reported there;
-  `@php-cs-fixer-ignore <rule>` becomes `@pun-ignore-file <format id>`.
+  one rule; `@phpstan-ignore-next-line` (no id) becomes `@pun-ignore-next-line`, and `@phpstan-ignore-line`
+  `@pun-ignore`, with the rules of the errors `pun analyse` reports on the line it covers (migrate runs no PHP for
+  rules, so Pun's analyser stands in for PHPStan's report). One stays, named with its line and reason, when that line
+  has no error, the Pun comment would cover another line, or one comment holds two tags; `pun analyse` still honours
+  it as PHPStan does. `@php-cs-fixer-ignore <rule>` becomes `@pun-ignore-file <format id>`.
 
 ## 5. The mapping data
 

@@ -328,6 +328,37 @@ pub(crate) fn analyse(cfg: &Config, paths: &[PathBuf], use_baseline: bool) -> Re
     })
 }
 
+/// The rules of the errors that the `@phpstan-ignore-line` and `@phpstan-ignore-next-line` comments of `files` hide,
+/// by (normalized path, line), for `pun migrate` to name in `@pun-ignore`. PHPStan's `reportIgnoresWithoutComments`
+/// stops those comments ignoring: each line they cover gets `ignore.allLineErrors` beside the errors it had hidden.
+pub(crate) fn hidden_by_line_ignores(
+    cfg: &Config,
+    files: Vec<PathBuf>,
+) -> Result<std::collections::HashMap<(String, i64), Vec<&'static str>>> {
+    let paths = files.clone();
+    let mut project = project(cfg, files, &paths)?;
+    project.options.set(
+        pun_analyse::ProjectOptions::REPORT_IGNORES_WITHOUT_COMMENTS,
+        true,
+    );
+    let errors = pun_analyse::analyse_project(&project)
+        .map_err(|e| run_error(e.to_string(), None))?
+        .errors;
+    let at = |e: &pun_analyse::Error| (normalize_path(&e.file), e.line);
+    let mut out: std::collections::HashMap<_, Vec<&str>> = (errors.iter())
+        .filter(|e| e.identifier == "ignore.allLineErrors")
+        .map(|e| (at(e), Vec::new()))
+        .collect();
+    for e in &errors {
+        if let (Some(rules), Some(rule)) = (out.get_mut(&at(e)), rule_of_identifier(&e.identifier))
+            && !rules.contains(&rule)
+        {
+            rules.push(rule);
+        }
+    }
+    Ok(out)
+}
+
 fn relative(root: &Path, file: &Path) -> String {
     file.strip_prefix(root)
         .unwrap_or(file)

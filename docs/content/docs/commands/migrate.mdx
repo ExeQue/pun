@@ -78,7 +78,16 @@ PHPStan baselines aren't copied. Run `pun analyse --generate-baseline`, then set
 
 ## Ignore comments
 
-`@php-cs-fixer-ignore` becomes `@pun-ignore-file`. Known `@phpstan-ignore` identifiers become Pun rule IDs. Unknown identifiers and blanket PHPStan ignores stay as they are and are reported. See [ignore comments](/docs/configuration/ignore-comments).
+`@php-cs-fixer-ignore` becomes `@pun-ignore-file`. Known `@phpstan-ignore` identifiers become Pun rule IDs. `@phpstan-ignore-next-line` becomes `@pun-ignore-next-line`, and `@phpstan-ignore-line` becomes `@pun-ignore`, naming the rules of the errors `pun analyse` reports on the line they cover. Text after the tag becomes the reason.
+
+A comment stays as it is, and migration names its file, line and reason, when:
+
+- an identifier is unknown or belongs to a format rule,
+- `pun analyse` reports no error on the covered line, or doesn't check the file,
+- the Pun comment would cover a different line, as a `@phpstan-ignore-next-line` followed by more tags in a docblock does,
+- one comment holds two ignore tags.
+
+`pun analyse` still reads a PHPStan comment that stays, as PHPStan does. See [ignore comments](/docs/configuration/ignore-comments).
 
 ## File changes and errors
 
