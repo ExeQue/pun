@@ -549,6 +549,12 @@ fn checker<'a, 'arena>(
         project.switches.contains(Switches::CHECK_THIS_ONLY),
     ));
     typed.extend(super::strict::typed_expressions(project, codebase, program));
+    typed.extend(super::var_tags::typed_expressions(
+        program,
+        &file.contents,
+        &facts.comments,
+        project.level,
+    ));
     typed.extend(super::dead_code::bodies(
         program,
         project.level,

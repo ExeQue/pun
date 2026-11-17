@@ -262,6 +262,7 @@ const PORTED: &[&str] = &[
     "mixin.trait",
     "varTag.unresolvableType",
     "varTag.trait",
+    "varTag.nativeType",
     "conditionalType.subjectNotFound",
     "conditionalType.alwaysTrue",
     "conditionalType.alwaysFalse",

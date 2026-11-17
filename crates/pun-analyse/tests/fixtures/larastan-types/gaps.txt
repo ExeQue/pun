@@ -346,3 +346,6 @@ tests/Type/data/redis-driver-phpredis.php:33
 tests/Type/data/redis-driver-predis.php:12
 tests/Type/data/redis-driver-predis.php:13
 tests/Type/data/redis-driver-predis.php:16
+# a `@var` above a statement that is not an assignment (VarTagChangedExpressionTypeRule's varTag.nativeType) is not ported
+tests/Type/data/abort.php
+tests/Type/data/throw.php

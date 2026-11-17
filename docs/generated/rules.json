@@ -22426,7 +22426,7 @@
         "varTag.nativeType",
         "varTag.type"
       ],
-      "ported": false
+      "ported": true
     },
     {
       "id": "analyse/statements/invalid-declare-strict-types",

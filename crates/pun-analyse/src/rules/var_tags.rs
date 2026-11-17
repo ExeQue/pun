@@ -1,9 +1,18 @@
-use mago_span::{Position, Span};
-use pun_phpstan::types::{Template, Type};
+use mago_span::{HasSpan, Position, Span};
+use mago_syntax::cst::*;
+use mago_syntax::walker::MutWalker;
+use pun_phpstan::resolve::{resolve_late, resolve_str};
+use pun_phpstan::types::{
+    Template, Tri, Type, is_super_type_of, mixed, recommended_level, to_phpdoc_fully_qualified,
+};
 
 use super::{Checker, DISCOVERING_SYMBOLS_TIP, FunctionScopeKind, declared, generics};
 
-pub(super) const IDENTIFIERS: &[&str] = &["varTag.unresolvableType", "varTag.trait"];
+pub(super) const IDENTIFIERS: &[&str] = &[
+    "varTag.unresolvableType",
+    "varTag.trait",
+    "varTag.nativeType",
+];
 
 pub(super) fn scope(c: &Checker, at: Span) -> super::doc::NameScope {
     let k = c.class_scope();
@@ -130,5 +139,229 @@ pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
     super::class_names::check(c, &pairs, case);
     for (at, identifier, message, tip) in errors {
         c.report(at, identifier, message, tip);
+    }
+}
+
+/// The right-hand sides of the assignments that sit under a doc comment: `assignment()` prices their native type.
+pub(super) fn typed_expressions(
+    program: &Program,
+    contents: &[u8],
+    comments: &super::Comments,
+    level: u8,
+) -> Vec<Span> {
+    if level < 2 {
+        return Vec::new();
+    }
+    let mut w = Assigned {
+        contents,
+        comments,
+        spans: Vec::new(),
+    };
+    w.walk_program(program, &mut ());
+    w.spans
+}
+
+struct Assigned<'c> {
+    contents: &'c [u8],
+    comments: &'c super::Comments,
+    spans: Vec<Span>,
+}
+
+impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Assigned<'_> {
+    fn walk_in_statement_expression(&mut self, s: &'ast ExpressionStatement<'arena>, (): &mut ()) {
+        if let Expression::Assignment(a) = s.expression
+            && self
+                .comments
+                .doc_before(self.contents, s.span().start.offset as usize)
+                .is_some()
+        {
+            self.spans.push(assigned_expression(a.rhs).span());
+        }
+    }
+}
+
+/// php-parser's `Assign::$expr` and `AssignRef::$expr`: without parentheses and the `&`.
+fn assigned_expression<'e, 'arena>(e: &'e Expression<'arena>) -> &'e Expression<'arena> {
+    match e {
+        Expression::Parenthesized(p) => assigned_expression(p.expression),
+        Expression::UnaryPrefix(u) if u.operator.is_reference() => assigned_expression(u.operand),
+        e => e,
+    }
+}
+
+/// The `@var` types above the statement at `at`, keyed as `ResolvedPhpDoc::getVarTags()` merges every doc
+/// comment's tags: by variable name, and by position for the tags without one. A later doc comment wins.
+fn var_tag_types(c: &Checker, at: Span) -> (Vec<(String, Type)>, Vec<Type>) {
+    let contents = &c.file.contents;
+    let mut docs = Vec::new();
+    let mut offset = at.start.offset;
+    while let Some((raw, entry)) = c.doc_before(c.file.id, offset) {
+        offset = (raw.as_ptr() as usize - contents.as_ptr() as usize) as u32;
+        docs.push(entry);
+    }
+    let (mut named, mut unnamed) = (Vec::<(String, Type)>::new(), Vec::<Type>::new());
+    if docs.is_empty() {
+        return (named, unnamed);
+    }
+    let scope = scope(c, at);
+    for doc in docs.into_iter().rev() {
+        let vars = declared::with_classes(c, || doc.doc.var_types(&scope));
+        let mut position = 0;
+        for (name, ty) in vars {
+            if name.is_empty() {
+                if position < unnamed.len() {
+                    unnamed[position] = ty;
+                } else {
+                    unnamed.push(ty);
+                }
+                position += 1;
+            } else if let Some(entry) = named.iter_mut().find(|(n, _)| *n == name) {
+                entry.1 = ty;
+            } else {
+                named.push((name, ty));
+            }
+        }
+    }
+    (named, unnamed)
+}
+
+/// VarTagTypeRuleHelper::checkVarType() for an assignment to a variable (`WrongVariableNameInVarTagRule`'s
+/// `processAssign()` once its variable-name checks pass): the `@var` type has to be a subtype of the
+/// assigned expression's native type.
+pub(super) fn assignment(c: &mut Checker, at: Span, lhs: &Expression, rhs: &Expression) {
+    let Expression::Variable(Variable::Direct(v)) = lhs else {
+        return;
+    };
+    let name = String::from_utf8_lossy(&v.name[1..]);
+    let (named, unnamed) = var_tag_types(c, at);
+    let var_tag = match named.into_iter().find(|(n, _)| *n == name) {
+        Some((_, ty)) => ty,
+        None => match unnamed.into_iter().next() {
+            Some(ty) => ty,
+            None => return,
+        },
+    };
+    let expr = assigned_expression(rhs);
+    let Some(native) = c.native_types.get(&expr.span()) else {
+        return;
+    };
+    let native = c.phpstan_type_from_in(expr, native, &c.native_types);
+    let class = c.class_scope().map(declared::original_name);
+    let message = declared::with_classes(c, || {
+        if valid_super_type_of_expr(expr, &native, &resolve_late(&var_tag), class.as_deref()).yes()
+        {
+            return None;
+        }
+        let level = recommended_level(&native, Some(&var_tag));
+        Some(format!(
+            "PHPDoc tag @var with type {} is not subtype of native type {}.",
+            var_tag.describe(level),
+            native.describe(level)
+        ))
+    });
+    if let Some(message) = message {
+        c.report(at, "varTag.nativeType", message, None);
+    }
+}
+
+fn valid_super_type_of_expr(
+    expr: &Expression,
+    ty: &Type,
+    var_tag: &Type,
+    class: Option<&str>,
+) -> Tri {
+    match expr {
+        Expression::Array(Array { elements, .. })
+        | Expression::LegacyArray(LegacyArray { elements, .. })
+            if elements.is_empty() =>
+        {
+            at_least_maybe_super_type(
+                &Type::Array(Box::new(mixed()), Box::new(mixed())),
+                var_tag,
+                class,
+            )
+        }
+        Expression::Array(_)
+        | Expression::LegacyArray(_)
+        | Expression::ConstantAccess(_)
+        | Expression::Literal(_)
+        | Expression::CompositeString(_)
+        | Expression::MagicConstant(_) => at_least_maybe_super_type(ty, var_tag, class),
+        Expression::Instantiation(_) => match ty {
+            Type::Object(name, args, generic) if !args.is_empty() => valid_super_type(
+                &Type::Object(name.clone(), Vec::new(), *generic),
+                var_tag,
+                class,
+                0,
+            ),
+            ty => valid_super_type(ty, var_tag, class, 0),
+        },
+        _ => valid_super_type(ty, var_tag, class, 0),
+    }
+}
+
+/// `reportAnyTypeWideningInVarTag` off: a generic object's invariant type arguments are compared covariantly.
+fn covariant(t: &Type) -> Type {
+    match t {
+        Type::Object(name, args, generic) if !args.is_empty() => Type::Object(
+            name.clone(),
+            args.iter()
+                .map(|a| match a {
+                    Type::Projection(..) | Type::Wildcard => covariant(a),
+                    a => Type::Projection(true, Box::new(covariant(a))),
+                })
+                .collect(),
+            *generic,
+        ),
+        t => t.traverse(&covariant),
+    }
+}
+
+fn valid_super_type(ty: &Type, var_tag: &Type, class: Option<&str>, depth: usize) -> Tri {
+    let ty = covariant(ty);
+    if ty.is_constant_array().yes() && ty.is_iterable_at_least_once().no() {
+        return at_least_maybe_super_type(
+            &Type::Array(Box::new(mixed()), Box::new(mixed())),
+            var_tag,
+            class,
+        );
+    }
+    if ty.is_iterable().yes() && var_tag.is_iterable().yes() {
+        let is = at_least_maybe_super_type(&ty, var_tag, class);
+        if is.no() {
+            return is;
+        }
+        let (inner, inner_var_tag) = (ty.iterable_value_type(), var_tag.iterable_value_type());
+        if ty == inner || *var_tag == inner_var_tag {
+            return super_type_of_var_type(&inner, &inner_var_tag, class);
+        }
+        return valid_super_type(&inner, &inner_var_tag, class, depth + 1);
+    }
+    if depth == 0 && ty.is_constant_value().yes() {
+        return at_least_maybe_super_type(&ty, var_tag, class);
+    }
+    super_type_of_var_type(&ty, var_tag, class)
+}
+
+/// The type as its PHPDoc, resolved again (`$type->toPhpDocNode()` through the TypeNodeResolver).
+fn through_phpdoc(ty: &Type, class: Option<&str>) -> Type {
+    resolve_str(&to_phpdoc_fully_qualified(ty), class)
+}
+
+fn super_type_of_var_type(ty: &Type, var_tag: &Type, class: Option<&str>) -> Tri {
+    if is_super_type_of(ty, var_tag).yes() {
+        return Tri::Yes;
+    }
+    is_super_type_of(&through_phpdoc(ty, class), var_tag)
+}
+
+fn at_least_maybe_super_type(ty: &Type, var_tag: &Type, class: Option<&str>) -> Tri {
+    if !is_super_type_of(ty, var_tag).no() {
+        return Tri::Yes;
+    }
+    if is_super_type_of(&through_phpdoc(ty, class), var_tag).no() {
+        Tri::No
+    } else {
+        Tri::Yes
     }
 }

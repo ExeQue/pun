@@ -371,6 +371,62 @@
    "identifier": "varTag.variableNotFound",
    "message": "Variable $anything in PHPDoc tag @var does not exist.",
    "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 296,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type int is not subtype of native type 'a'.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 298,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type float is not subtype of native type int.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 300,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type bool is not subtype of native type null.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 302,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Holder|VarNames\\Plain is not subtype of native type VarNames\\Plain.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 306,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type string is not subtype of native type 1.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 310,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type string is not subtype of native type int.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 312,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type list<string> is not subtype of native type array{1, 2}.",
+   "tip": null
+  },
+  {
+   "file": "vars.php",
+   "line": 324,
+   "identifier": "varTag.nativeType",
+   "message": "PHPDoc tag @var with type VarNames\\Plain is not subtype of native type VarNames\\Holder.",
+   "tip": null
   }
  ]
 }

@@ -315,7 +315,7 @@ impl Type {
         })
     }
 
-    pub(super) fn is_constant_value(&self) -> Tri {
+    pub fn is_constant_value(&self) -> Tri {
         self.query(&|t| {
             Tri::from(matches!(
                 t,

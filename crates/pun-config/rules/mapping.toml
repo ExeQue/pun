@@ -1144,7 +1144,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "phpdoc/property-type-mismatch" = { preset = "essential", ported = true, status = "decided" }
 "phpdoc/sealed-on-trait" = { preset = "basic", ported = true, status = "decided" }
 "phpdoc/type-mismatch" = { preset = "essential", ported = true, status = "decided" }
-"phpdoc/var-tag-type-mismatch" = { preset = "essential", status = "decided" }
+"phpdoc/var-tag-type-mismatch" = { preset = "essential", ported = true, status = "decided" }
 "statements/invalid-declare-strict-types" = { preset = "basic", ported = true, status = "decided" }
 "statements/invalid-empty" = { preset = "basic", ported = true, status = "decided" }
 "statements/invalid-isset" = { preset = "basic", ported = true, status = "decided" }

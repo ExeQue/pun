@@ -735,3 +735,27 @@
 # PHPStan 2.3.5: template types as object shape keys (9aaeccb14, with its "cannot be used as an object shape key"
 # unresolvable-type tips); not ported
 9 Methods/CallMethodsRuleTest::testObjectShapeTemplateKey
+# varTag.nativeType (VarTagTypeRuleHelper) is ported for assignments only: the foreach, static, list() and
+# VarTagChangedExpressionTypeRule paths are not, and Mago's native lane has no native type for most object, generic
+# and file-scope expressions (it stops at declare(), loops, try, object method returns), so these errors are missing
+2 Cast/EchoRuleTest::testEchoRule
+2 Operators/InvalidBinaryOperationRuleTest::testBug3515
+2 PhpDoc/InvalidPhpDocVarTagTypeRuleTest::testRule
+2 PhpDoc/VarTagChangedExpressionTypeRuleTest::testRule
+2 PhpDoc/VarTagChangedExpressionTypeRuleTest::testAssignOfDifferentVariable
+2 PhpDoc/VarTagChangedExpressionTypeRuleTest::testBug12708
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testBug11535
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testEmptyArrayInitWithWiderPhpDoc#0
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testEmptyArrayInitWithWiderPhpDoc#1
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testReportWrongType#0
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testReportWrongType#1
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testReportWrongType#2
+2 PhpDoc/WrongVariableNameInVarTagRuleTest::testReportWrongType#3
+3 Arrays/NonexistentOffsetInArrayDimFetchRuleTest::testRule
+3 Arrays/NonexistentOffsetInArrayDimFetchRuleTest::testAssignOp
+3 Arrays/OffsetAccessAssignOpRuleTest::testRule
+3 Arrays/OffsetAccessAssignOpRuleTest::testRuleWithoutUnions
+3 Arrays/OffsetAccessAssignmentRuleTest::testOffsetAccessAssignmentToScalar
+3 Arrays/OffsetAccessAssignmentRuleTest::testOffsetAccessAssignmentToScalarWithoutMaybes
+3 Methods/ReturnTypeRuleTest::testBug5065
+3 Methods/ReturnTypeRuleTest::testBug5065ExplicitMixed

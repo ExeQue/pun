@@ -458,7 +458,12 @@ pub(super) fn statement(c: &mut Checker, s: &Statement) {
             );
         }
         Statement::Expression(e) => match e.expression {
-            Expression::Assignment(a) => assignment(c, at, a.lhs, &named, unnamed, &mut errors),
+            Expression::Assignment(a) => {
+                assignment(c, at, a.lhs, &named, unnamed, &mut errors);
+                if errors.is_empty() {
+                    super::var_tags::assignment(c, s.span(), a.lhs, a.rhs);
+                }
+            }
             Expression::Throw(_) => other(c, at, &named, unnamed, true, &mut errors),
             _ => other(c, at, &named, unnamed, false, &mut errors),
         },

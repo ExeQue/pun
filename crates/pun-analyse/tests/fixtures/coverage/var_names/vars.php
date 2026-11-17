@@ -283,3 +283,44 @@ abstract class WithHooks
         }
     }
 }
+
+final class NativeTypes
+{
+    public function __construct(private Holder $holder)
+    {
+    }
+
+    public function assigned(int $i, ?string $s): void
+    {
+        /** @var int $a */
+        $a = 'a';
+        /** @var float $b */
+        $b = $i + 1;
+        /** @var bool $c */
+        $c = null;
+        /** @var Holder|Plain $d */
+        $d = new Plain();
+        /** @var positive-int $g */
+        $g = $i;
+        /** @var string $h */
+        $h = (1);
+        /** @var non-empty-string $j */
+        $j = $s;
+        /** @var string $k */
+        $k = $i;
+        /** @var list<string> $l */
+        $l = [1, 2];
+        /** @var array<string, int> $m */
+        $m = [];
+        /** @var int $f */
+        $f = rand(0, 1) ? 1 : 2;
+        /** @var 'a'|'b' */
+        $e = 'a';
+    }
+
+    public function unknownNativeType(): void
+    {
+        /** @var Plain $n */
+        $n = $this->holder;
+    }
+}

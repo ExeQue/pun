@@ -7,7 +7,16 @@ pagination: false
 
 <RuleId id="analyse/phpdoc/var-tag-type-mismatch" />
 
-In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only. **Planned: not in Pun yet.** Enabling it is a config error.
+In the [`analyse-essential`](/docs/rules/presets/analyse-essential) preset and every stricter one. Report only.
+
+## Configuration
+
+```toml title="pun.toml"
+[analyse.rules]
+"phpdoc/var-tag-type-mismatch" = "on"
+```
+
+To skip it in some files or lines, add an [ignore comment](/docs/configuration/ignore-comments).
 
 ## Replaces
 

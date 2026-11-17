@@ -25571,7 +25571,7 @@
         "rules": [
           "analyse/phpdoc/var-tag-type-mismatch"
         ],
-        "note": "Merged with VarTagChangedExpressionTypeRule, varTag.type. Planned: not ported yet.",
+        "note": "Merged with VarTagChangedExpressionTypeRule, varTag.type.",
         "unsupported": false
       },
       {
@@ -25601,7 +25601,7 @@
         "rules": [
           "analyse/phpdoc/var-tag-type-mismatch"
         ],
-        "note": "Merged with VarTagChangedExpressionTypeRule, varTag.nativeType. Planned: not ported yet.",
+        "note": "Merged with VarTagChangedExpressionTypeRule, varTag.nativeType.",
         "unsupported": false
       },
       {
