@@ -177,6 +177,14 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
             {
                 return t;
             }
+            // `X|Y[]` with plain names, the shape GenericEloquentCollectionTypeNodeResolverExtension reads
+            if let [identifier @ Node::Ident(_), Node::Array(item)]
+            | [Node::Array(item), identifier @ Node::Ident(_)] = members.as_slice()
+                && let Node::Ident(_) = item.as_ref()
+                && let Some(t) = type_node("|[]", &[r(identifier), r(item)])
+            {
+                return t;
+            }
             let mut iterable = Vec::new();
             let mut others = Vec::new();
             for m in members {

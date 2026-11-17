@@ -77,6 +77,24 @@ fn get_union_from_union_type(
         Join,
     }
 
+    // Larastan's GenericEloquentCollectionTypeNodeResolverExtension: a union of exactly two members, the class
+    // `Illuminate\Database\Eloquent\Collection` and `X[]` with a plain name X, is `Collection<int, X>`.
+    if let Type::Union(UnionType { left, right, .. }) = ttype
+        && let (Type::Slice(slice), collection) | (collection, Type::Slice(slice)) = (*left, *right)
+        && let Type::Reference(ReferenceType { kind: ReferenceKind::Identifier(collection), parameters: None }) =
+            collection
+        && let Type::Reference(ReferenceType { kind: ReferenceKind::Identifier(_), parameters: None }) = slice.inner
+        && scope.resolve(NameKind::Default, collection.value).0.as_slice() == b"Illuminate\\Database\\Eloquent\\Collection"
+    {
+        let value = get_union_from_type(slice.inner, scope, type_context, classname)?;
+        return Ok(wrap_atomic(TAtomic::Reference(TReference::Symbol {
+            name: word(b"Illuminate\\Database\\Eloquent\\Collection"),
+            parameters: Some(vec![get_int(), value]),
+            variances: None,
+            intersection_types: None,
+        })));
+    }
+
     // Keep each binary reduction, not just its atoms: nullable operations preserve
     // union metadata, whereas ordinary joins normalize atoms and reset that metadata.
     let mut pending = vec![Task::Build(ttype)];

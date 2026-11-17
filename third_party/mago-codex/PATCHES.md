@@ -1238,3 +1238,13 @@ every argument was filled in for an omitted one (`from_template_fallback()`). Up
 the class template's bound or default, so a method template that resolved to its bound (`flatMap()` with a callback
 returning `array`, `static<TFlatMapKey, TFlatMapValue>`) gave the receiver's `Collection<int, string>` where PHPStan's
 GenericStaticType keeps `Collection<(int|string), mixed>`.
+
+## Larastan's `Collection|Model[]` union
+
+`ttype/builder.rs` `get_union_from_union_type()`: a PHPDoc union of exactly two members, the plain class
+`Illuminate\Database\Eloquent\Collection` (as the scope resolves it) and `X[]` with a plain class name `X`, is
+`Collection<int, X>`, as Larastan's GenericEloquentCollectionTypeNodeResolverExtension resolves it. The
+`@property Collection|Comment[] $comments` that IDE-helper writes then has a known item type, so
+`$post->comments->first()->id` reads `Comment::$id` instead of an undefined property of `Model`. Unions with a third
+member, generic arrays (`array<X>`) and other collection classes are unchanged. Type/PunGenericEloquentUnionsTest.json in
+pun-analyse's larastan-types fixtures checks it against PHPStan 2.3.6 with Larastan 3.15.0.

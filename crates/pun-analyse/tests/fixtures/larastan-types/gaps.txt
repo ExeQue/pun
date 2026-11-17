@@ -21,11 +21,9 @@ tests/Type/data/builder-of-type.php:108
 tests/Type/data/builder-of-type.php:293
 tests/Type/data/builder-of-type.php:322
 tests/Type/data/custom-eloquent-builder.php
-tests/Type/data/custom-eloquent-builder.php:51
 tests/Type/data/custom-eloquent-builder.php:59
 tests/Type/data/custom-eloquent-builder.php:66
 tests/Type/data/custom-eloquent-builder.php:74
-tests/Type/data/custom-eloquent-builder.php:94
 tests/Type/data/custom-eloquent-builder.php:157
 tests/Type/data/custom-eloquent-builder.php:192
 tests/Type/data/custom-eloquent-builder.php:260

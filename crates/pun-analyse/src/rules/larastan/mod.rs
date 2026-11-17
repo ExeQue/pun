@@ -289,6 +289,7 @@ impl crate::AnalyseExtension for Larastan {
 
     fn prepare_codebase(&self, codebase: &mut mago_codex::metadata::CodebaseMetadata) {
         crate::larastan::app::App::load(&self.root).contract_mixins(codebase);
+        crate::larastan::types::generic_eloquent_builders(codebase);
     }
 
     fn load(
@@ -352,6 +353,7 @@ impl crate::AnalyseExtension for Larastan {
                 .contains(LarastanSwitches::GENERALIZE_ENV_RETURN_TYPE),
         });
         registry.register_expression_hook(ContainerOffsets(Arc::clone(&self.app)));
+        registry.register_expression_hook(forwards::LateBuilders);
         registry.register_expression_hook(ScopeStaticCalls(
             names
                 .iter()
@@ -784,10 +786,24 @@ fn type_node(
             };
             let model = [a, b].into_iter().rfind(|t| is_model(t))?;
             let builder = [a, b].into_iter().rfind(|t| is_builder(t))?;
-            let Type::Object(builder, ..) = builder else {
+            let Type::Object(builder_name, ..) = builder else {
                 return None;
             };
-            Some(Type::Object(builder.clone(), vec![model.clone()], false))
+            // `$this->provider->getClass($builderTypeName)->isGeneric()`: a builder without templates stays plain
+            let generic = class(builder).is_some_and(|k| !k.template_types.is_empty());
+            let arguments = if generic { vec![model.clone()] } else { vec![] };
+            Some(Type::Object(builder_name.clone(), arguments, false))
+        }
+        // GenericEloquentCollectionTypeNodeResolverExtension: `Collection|Item[]` is `Collection<int, Item>`
+        ("|[]", [Type::Object(collection, arguments, _), item])
+            if arguments.is_empty()
+                && collection == "Illuminate\\Database\\Eloquent\\Collection" =>
+        {
+            Some(Type::Object(
+                collection.clone(),
+                vec![Type::Int, item.clone()],
+                false,
+            ))
         }
         ("view-string", []) => Some(Type::Intersection(vec![
             Type::String,

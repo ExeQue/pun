@@ -1345,6 +1345,54 @@ pub(crate) fn with_method_class(
         .then_some(k.original_name)
 }
 
+/// `MutatingScope::getType()` resolves late-resolvable types even while they hold a template
+/// (`TypeUtils::resolveLateResolvableTypes($type, true)`): a call that returns `builder-of<TModel>` in the body of a
+/// function generic in `TModel` is `Builder<TModel>`. Mago's expander keeps the placeholder until the template is
+/// gone, so the call's type resolves it here.
+pub(crate) struct LateBuilders;
+
+impl Provider for LateBuilders {
+    fn meta() -> &'static ProviderMeta {
+        &META
+    }
+}
+
+impl mago_analyzer::plugin::ExpressionHook for LateBuilders {
+    fn after_expression(
+        &self,
+        expr: &mago_syntax::cst::Expression<'_>,
+        context: &mut mago_analyzer::plugin::HookContext<'_, '_>,
+    ) -> mago_analyzer::plugin::HookResult<()> {
+        use mago_codex::ttype::expander::BUILDER_OF;
+        let mago_syntax::cst::Expression::Call(_) = expr else {
+            return Ok(());
+        };
+        let Some(ty) = context.get_expression_type(expr) else {
+            return Ok(());
+        };
+        let late = |t: &TAtomic| matches!(t, TAtomic::Object(TObject::Named(n)) if n.name.as_bytes() == BUILDER_OF);
+        if !ty.types.iter().any(late) {
+            return Ok(());
+        }
+        let mut types = Vec::new();
+        for t in ty.types.iter() {
+            match t {
+                TAtomic::Object(TObject::Named(n)) if late(t) => {
+                    let arguments = n.type_parameters.as_deref().unwrap_or_default();
+                    let Some(resolved) = late_builder(context.codebase(), BUILDER_OF, arguments)
+                    else {
+                        return Ok(());
+                    };
+                    types.extend(resolved.types.iter().cloned());
+                }
+                t => types.push(t.clone()),
+            }
+        }
+        context.set_expression_type(expr, TUnion::from_vec(types));
+        Ok(())
+    }
+}
+
 pub(crate) fn late_builder(
     codebase: &CodebaseMetadata,
     name: &[u8],
@@ -1362,10 +1410,17 @@ pub(crate) fn late_builder(
                 ))),
                 None => model.clone(),
             };
+            // `$modelType->getObjectClassNames()`: a template's are its bound's, and the builder keeps the template
             let builders: Vec<TAtomic> = related
                 .types
                 .iter()
-                .filter_map(|t| match t {
+                .flat_map(|t| match t {
+                    TAtomic::GenericParameter(p) => {
+                        p.constraint.types.iter().map(|b| (t, b)).collect()
+                    }
+                    _ => vec![(t, t)],
+                })
+                .filter_map(|(t, class)| match class {
                     TAtomic::Object(TObject::Named(n)) if is_model(codebase, n.name.as_bytes()) => {
                         let builder = builder_name(codebase, n.name.as_bytes());
                         let generic = codebase

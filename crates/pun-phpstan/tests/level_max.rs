@@ -84,6 +84,33 @@ fn inherited_iterator_takes_the_ancestor_arguments() {
     });
 }
 
+/// Larastan's union resolvers read the type nodes: two plain names (`Builder|User`), or a plain name and an array of a
+/// plain name in either order (`Collection|User[]`). Any other union never reaches them.
+#[test]
+fn extension_type_node_reads_two_member_unions() {
+    let extension = |name: &str, args: &[Type]| {
+        matches!(name, "|" | "|[]").then(|| Type::Object(name.into(), args.to_vec(), false))
+    };
+    let resolve = |input: &str| {
+        with_type_nodes(&extension, || resolve_str(input, None)).describe(Level::Precise)
+    };
+    assert_eq!(resolve("Foo|Bar"), "|<Foo, Bar>");
+    assert_eq!(resolve("Foo|Bar[]"), "|[]<Foo, Bar>");
+    assert_eq!(resolve("Bar[]|Foo"), "|[]<Foo, Bar>");
+    for other in [
+        "Foo|Bar[][]",
+        "Foo|array<Bar>",
+        "Foo|Bar|Baz[]",
+        "Foo[]|Bar[]",
+    ] {
+        assert_eq!(
+            resolve(other),
+            resolve_str(other, None).describe(Level::Precise),
+            "{other}"
+        );
+    }
+}
+
 #[test]
 fn extension_type_node_resolves_with_its_template() {
     let t = Type::Template(Box::new(Template {

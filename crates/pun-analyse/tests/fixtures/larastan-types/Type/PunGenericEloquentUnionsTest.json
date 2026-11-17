@@ -1,0 +1,47 @@
+{
+    "test": "Type/PunGenericEloquentUnionsTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-generic-eloquent-unions.php",
+            "declares": [
+                "pungenericeloquentunions\\builder",
+                "pungenericeloquentunions\\generic",
+                "pungenericeloquentunions\\item",
+                "pungenericeloquentunions\\itembuilder",
+                "pungenericeloquentunions\\test"
+            ],
+            "asserts": [
+                25,
+                40,
+                41,
+                52,
+                53,
+                54,
+                55,
+                56,
+                57,
+                58,
+                59,
+                60,
+                61
+            ],
+            "errors": [
+                {
+                    "line": 20,
+                    "identifier": "missingType.generics",
+                    "message": "PHPDoc tag @method for method PunGenericEloquentUnions\\Item::unpopular() return type contains generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types: TModel",
+                    "tip": null
+                },
+                {
+                    "line": 20,
+                    "identifier": "missingType.generics",
+                    "message": "PHPDoc tag @property-read for property PunGenericEloquentUnions\\Item::$generic contains generic class Illuminate\\Database\\Eloquent\\Collection but does not specify its types: TKey, TModel",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}
