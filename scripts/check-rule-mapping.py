@@ -371,6 +371,30 @@ def check_upstream(data, inv):
     return errors
 
 
+def check_emitted(data, identifiers):
+    """Every identifier pun-analyse emits resolves to a rule as pun-config's `rule_of_identifier` does (an exact
+    [upstream.phpstan*] key, else a `%s` pattern), so `pun analyse` reports it instead of dropping it. The ignore
+    errors and parse errors have rules of their own."""
+    up = data["upstream"]
+    sections = [up.get(t, {}) for t in ("phpstan", "larastan", "phpstan-strict-rules", "phpstan-deprecation-rules")]
+    patterns = [(re.compile(re.escape(k).replace("%s", "[A-Za-z0-9_]+")), e)
+                for t in sections for k, e in t.items() if "%s" in k]
+    errors = []
+    for i in identifiers:
+        if i.startswith("ignore.") or i == "phpstan.parse":
+            continue
+        e = next((t[i] for t in sections if i in t), None)
+        e = e or next((e for p, e in patterns if p.fullmatch(i)), None)
+        if not (e or {}).get("pun"):
+            errors.append(f"identifier {i}: pun-analyse emits it but no [upstream.phpstan*] entry maps it to a rule")
+    return errors
+
+
+def emitted(path=DEFAULT.parents[2] / "pun-analyse/src/rules/identifiers.rs"):
+    """The identifiers pun-analyse emits: its `IDENTIFIERS` list."""
+    return re.findall(r'^\s*"([A-Za-z0-9_.]+)",$', path.read_text(), re.M)
+
+
 def enabled(data, cmd, test):
     return {f"{cmd}/{k}" for k, r in data["rules"].get(cmd, {}).items() if test(r)}
 
@@ -563,6 +587,7 @@ if __name__ == "__main__":
         sys.exit(1)
     data = tomllib.loads(text)
     errors = check(data) + check_upstream(data, inventory(path.parent / "upstream"))
+    errors += check_emitted(data, emitted())
     for e in errors:
         print(e)
     for c in COMMANDS:

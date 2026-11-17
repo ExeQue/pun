@@ -16119,6 +16119,36 @@
         "unsupported": false
       },
       {
+        "name": "array.offsetOverwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/array.offsetOverwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.unusedOffset, array.unusedOffsetFlow and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "array.unusedOffset",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/array.unusedOffset",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffsetFlow and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "array.unusedOffsetFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/array.unusedOffsetFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "arrayFilter.alwaysEmpty",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/arrayFilter.alwaysEmpty",
@@ -16269,6 +16299,16 @@
         "unsupported": false
       },
       {
+        "name": "assign.overwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/assign.overwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "assign.propertyPrivateSet",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/assign.propertyPrivateSet",
@@ -16335,7 +16375,7 @@
         "rules": [
           "analyse/dead-code/unused-variable"
         ],
-        "note": "Merged with UnusedVariableRule.",
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -16366,6 +16406,26 @@
           "analyse/types/assign-to-this"
         ],
         "note": "Merged with InvalidVariableAssignRule, AssignmentToThis.",
+        "unsupported": false
+      },
+      {
+        "name": "assign.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/assign.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "assign.unusedFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/assign.unusedFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -16949,6 +17009,86 @@
         "unsupported": false
       },
       {
+        "name": "catch.deprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/catch.deprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedEnum and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.deprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/catch.deprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.deprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/catch.deprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.deprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/catch.deprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.internalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/catch.internalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalEnum, catch.internalInterface and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.internalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/catch.internalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalInterface and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.internalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/catch.internalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "catch.internalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/catch.internalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "catch.neverThrown",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/catch.neverThrown",
@@ -16979,6 +17119,16 @@
         "unsupported": false
       },
       {
+        "name": "catch.unusedVariableFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/catch.unusedVariableFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "class.allowDynamicPropertiesReadonly",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/class.allowDynamicPropertiesReadonly",
@@ -16995,7 +17145,7 @@
         "rules": [
           "analyse/deprecated/class"
         ],
-        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass.",
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -17069,6 +17219,46 @@
         "unsupported": false
       },
       {
+        "name": "class.extendsDeprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.extendsDeprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsDeprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.extendsDeprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsDeprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.extendsDeprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsDeprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.extendsDeprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "class.extendsEnum",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/class.extendsEnum",
@@ -17109,6 +17299,46 @@
         "unsupported": false
       },
       {
+        "name": "class.extendsInternalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.extendsInternalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsInternalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.extendsInternalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsInternalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.extendsInternalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.extendsInternalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.extendsInternalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "class.extendsTrait",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/class.extendsTrait",
@@ -17116,6 +17346,86 @@
           "analyse/classes/invalid-extends"
         ],
         "note": "Merged with ExistingClassInClassExtendsRule, ExtendFinalClass, InvalidExtend and 11 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsDeprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.implementsDeprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsDeprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.implementsDeprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsDeprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.implementsDeprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsDeprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/class.implementsDeprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsInternalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.implementsInternalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsInternalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.implementsInternalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsInternalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.implementsInternalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "class.implementsInternalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/class.implementsInternalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -18179,6 +18489,86 @@
         "unsupported": false
       },
       {
+        "name": "enum.implementsDeprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsDeprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsDeprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsDeprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsDeprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsDeprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsDeprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsDeprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsInternalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsInternalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsInternalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsInternalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsInternalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsInternalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "enum.implementsInternalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/enum.implementsInternalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "enum.magicMethod",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/enum.magicMethod",
@@ -18379,6 +18769,16 @@
         "unsupported": false
       },
       {
+        "name": "foreach.keyOverwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.keyOverwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "foreach.nonIterable",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/foreach.nonIterable",
@@ -18389,6 +18789,46 @@
         "unsupported": false
       },
       {
+        "name": "foreach.unusedKey",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.unusedKey",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "foreach.unusedKeyFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.unusedKeyFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "foreach.unusedValue",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.unusedValue",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "foreach.unusedValueFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.unusedValueFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "foreach.valueOverwrite",
         "tool": "phpstan-strict-rules",
         "url": "https://phpstan.org/error-identifiers/foreach.valueOverwrite",
@@ -18396,6 +18836,16 @@
           "lint/control-flow/no-loop-variable-overwrite"
         ],
         "note": "Merged with OverwriteVariablesWithForeachRule, foreach.keyOverwrite.",
+        "unsupported": false
+      },
+      {
+        "name": "foreach.valueOverwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/foreach.valueOverwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -19269,6 +19719,86 @@
         "unsupported": false
       },
       {
+        "name": "instanceof.deprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/instanceof.deprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.deprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/instanceof.deprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.deprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/instanceof.deprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.deprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/instanceof.deprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.internalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/instanceof.internalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.internalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/instanceof.internalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.internalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/instanceof.internalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "instanceof.internalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/instanceof.internalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "instanceof.invalidExprType",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/instanceof.invalidExprType",
@@ -19366,6 +19896,86 @@
           "analyse/classes/duplicate-declaration"
         ],
         "note": "Merged with DuplicateDeclarationRule, DuplicateDefinition, class.duplicate and 19 others (see the rule's Replaces section). Expanded from %s.duplicateProperty.",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsDeprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsDeprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsDeprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsDeprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsDeprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsDeprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsDeprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsDeprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsInternalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsInternalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsInternalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsInternalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsInternalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsInternalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "interface.extendsInternalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/interface.extendsInternalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -21029,6 +21639,46 @@
         "unsupported": false
       },
       {
+        "name": "parameter.deprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/parameter.deprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.deprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/parameter.deprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.deprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/parameter.deprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.deprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/parameter.deprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "parameter.duplicate",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/parameter.duplicate",
@@ -21046,6 +21696,46 @@
           "format/types/nullable-for-null-default"
         ],
         "note": "Merged with nullable_type_declaration_for_default_null_value, ExplicitNullableParamType, explicit-nullable-param.",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.internalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/parameter.internalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.internalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/parameter.internalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.internalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/parameter.internalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "parameter.internalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/parameter.internalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -21785,6 +22475,16 @@
         "unsupported": false
       },
       {
+        "name": "postDec.overwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postDec.overwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "postDec.type",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/postDec.type",
@@ -21792,6 +22492,26 @@
           "analyse/types/invalid-inc-dec"
         ],
         "note": "Merged with InvalidIncDecOperationRule, parameterByRef.type, postInc.type and 2 others (see the rule's Replaces section). Expanded from %s.type.",
+        "unsupported": false
+      },
+      {
+        "name": "postDec.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postDec.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "postDec.unusedFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postDec.unusedFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -21815,6 +22535,16 @@
         "unsupported": false
       },
       {
+        "name": "postInc.overwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postInc.overwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "postInc.type",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/postInc.type",
@@ -21822,6 +22552,26 @@
           "analyse/types/invalid-inc-dec"
         ],
         "note": "Merged with InvalidIncDecOperationRule, parameterByRef.type, postDec.type and 2 others (see the rule's Replaces section). Expanded from %s.type.",
+        "unsupported": false
+      },
+      {
+        "name": "postInc.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postInc.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "postInc.unusedFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/postInc.unusedFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -21865,6 +22615,16 @@
         "unsupported": false
       },
       {
+        "name": "preDec.overwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preDec.overwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "preDec.type",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/preDec.type",
@@ -21872,6 +22632,26 @@
           "analyse/types/invalid-inc-dec"
         ],
         "note": "Merged with InvalidIncDecOperationRule, parameterByRef.type, postDec.type and 2 others (see the rule's Replaces section). Expanded from %s.type.",
+        "unsupported": false
+      },
+      {
+        "name": "preDec.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preDec.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "preDec.unusedFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preDec.unusedFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -21895,6 +22675,16 @@
         "unsupported": false
       },
       {
+        "name": "preInc.overwritten",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preInc.overwritten",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "preInc.type",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/preInc.type",
@@ -21902,6 +22692,26 @@
           "analyse/types/invalid-inc-dec"
         ],
         "note": "Merged with InvalidIncDecOperationRule, parameterByRef.type, postDec.type and 2 others (see the rule's Replaces section). Expanded from %s.type.",
+        "unsupported": false
+      },
+      {
+        "name": "preInc.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preInc.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "preInc.unusedFlow",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/preInc.unusedFlow",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -23255,6 +24065,46 @@
         "unsupported": false
       },
       {
+        "name": "return.deprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/return.deprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.deprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/return.deprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.deprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/return.deprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.deprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/return.deprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "return.empty",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/return.empty",
@@ -23262,6 +24112,46 @@
           "analyse/types/arrow-function-return"
         ],
         "note": "Merged with ArrowFunctionReturnTypeRule, return.void.",
+        "unsupported": false
+      },
+      {
+        "name": "return.internalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/return.internalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.internalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/return.internalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.internalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/return.internalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "return.internalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/return.internalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -24345,6 +25235,46 @@
         "unsupported": false
       },
       {
+        "name": "traitUse.deprecatedClass",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/traitUse.deprecatedClass",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.deprecatedEnum",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/traitUse.deprecatedEnum",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.deprecatedInterface",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/traitUse.deprecatedInterface",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.deprecatedTrait",
+        "tool": "phpstan-deprecation-rules",
+        "url": "https://phpstan.org/error-identifiers/traitUse.deprecatedTrait",
+        "rules": [
+          "analyse/deprecated/class"
+        ],
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, DeprecatedClass, catch.deprecatedClass and 35 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
         "name": "traitUse.enum",
         "tool": "phpstan",
         "url": "https://phpstan.org/error-identifiers/traitUse.enum",
@@ -24362,6 +25292,46 @@
           "analyse/undefined/trait"
         ],
         "note": "Merged with ExistingClassInTraitUseRule, interface.traitUse, trait.notFound and 2 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.internalClass",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/traitUse.internalClass",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.internalEnum",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/traitUse.internalEnum",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.internalInterface",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/traitUse.internalInterface",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
+        "unsupported": false
+      },
+      {
+        "name": "traitUse.internalTrait",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/traitUse.internalTrait",
+        "rules": [
+          "analyse/classes/internal-class-usage"
+        ],
+        "note": "Merged with RestrictedInternalClassNameUsageExtension, catch.internalClass, catch.internalEnum and 33 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -24692,6 +25662,16 @@
           "analyse/undefined/variable"
         ],
         "note": "Merged with DefinedVariableRule, checkMaybeUndefinedVariables, PossiblyUndefinedVariable and 4 others (see the rule's Replaces section). Planned: not ported yet.",
+        "unsupported": false
+      },
+      {
+        "name": "variable.unused",
+        "tool": "phpstan",
+        "url": "https://phpstan.org/error-identifiers/variable.unused",
+        "rules": [
+          "analyse/dead-code/unused-variable"
+        ],
+        "note": "Merged with UnusedVariableRule, array.offsetOverwritten, array.unusedOffset and 24 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {
@@ -27193,7 +28173,7 @@
         "rules": [
           "analyse/deprecated/class"
         ],
-        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, class.deprecated.",
+        "note": "Merged with RestrictedDeprecatedClassNameUsageExtension, catch.deprecatedClass, catch.deprecatedEnum and 35 others (see the rule's Replaces section).",
         "unsupported": false
       },
       {

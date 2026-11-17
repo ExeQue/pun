@@ -962,6 +962,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "classes/incompatible-override" = { preset = "basic", ported = true, status = "decided" }
 "classes/incompatible-property-override" = { preset = "basic", ported = true, status = "decided" }
 "classes/inconsistent-constructor" = { preset = "basic", ported = true, status = "decided" }
+"classes/internal-class-usage" = { preset = "basic", ported = true, status = "decided" }
 "classes/internal-constant-access" = { preset = "basic", ported = true, status = "decided" }
 "classes/internal-method-call" = { preset = "basic", ported = true, status = "decided" }
 "classes/internal-method-callable" = { preset = "basic", ported = true, status = "decided" }
@@ -3560,6 +3561,7 @@ RequireImplementsDefinitionTraitRule = { class = "PHPStan\\Rules\\PhpDoc\\Requir
 RequireImplementsRule = { class = "PHPStan\\Rules\\Classes\\RequireImplementsRule", pun = "analyse/classes/missing-required-interface", package = "phpstan", identifiers = ["class.missingImplements"], level = 2, status = "decided" }
 RequireParentConstructCallRule = { class = "PHPStan\\Rules\\Classes\\RequireParentConstructCallRule", pun = "analyse/classes/missing-parent-constructor-call", package = "phpstan-strict-rules", identifiers = ["constructor.missingParentCall"], gated_by = "strictRules.requireParentConstructorCall", status = "decided" }
 RestrictedClassConstantUsageRule = { class = "PHPStan\\Rules\\RestrictedUsage\\RestrictedClassConstantUsageRule", pun = "analyse/classes/internal-constant-access", package = "phpstan", identifiers = ["class.notFound", "classConstant.internal", "classConstant.internalClass", "classConstant.internalEnum", "classConstant.internalInterface", "classConstant.internalTrait"], level = 0, status = "decided", ported = true }
+RestrictedInternalClassNameUsageExtension = { class = "PHPStan\\Rules\\InternalTag\\RestrictedInternalClassNameUsageExtension", pun = "analyse/classes/internal-class-usage", package = "phpstan", identifiers = ["<location>.internalClass", "<location>.internalInterface", "<location>.internalTrait", "<location>.internalEnum"], level = 0, status = "decided", ported = true }
 RestrictedDeprecatedClassConstantUsageExtension = { class = "PHPStan\\Rules\\Deprecations\\RestrictedDeprecatedClassConstantUsageExtension", pun = "analyse/deprecated/class-constant", package = "phpstan-deprecation-rules", identifiers = ["classConstant.deprecated", "classConstant.deprecatedClass", "classConstant.deprecatedInterface", "classConstant.deprecatedTrait", "classConstant.deprecatedEnum"], status = "decided" }
 RestrictedDeprecatedClassNameUsageExtension = { class = "PHPStan\\Rules\\Deprecations\\RestrictedDeprecatedClassNameUsageExtension", pun = "analyse/deprecated/class", package = "phpstan-deprecation-rules", identifiers = ["<location>.deprecatedClass", "<location>.deprecatedInterface", "<location>.deprecatedTrait", "<location>.deprecatedEnum"], status = "decided" }
 RestrictedDeprecatedFunctionUsageExtension = { class = "PHPStan\\Rules\\Deprecations\\RestrictedDeprecatedFunctionUsageExtension", pun = "analyse/deprecated/function", package = "phpstan-deprecation-rules", identifiers = ["function.deprecated"], status = "decided" }
@@ -3709,6 +3711,9 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "arguments.count" = { pun = "analyse/types/argument", variant = "arguments.count", level = "0", options = "none", status = "decided" }
 "array.duplicateKey" = { pun = "lint/dead-code/no-duplicate-array-key", variant = "array.duplicateKey", level = "0", options = "none", status = "decided" }
 "array.invalidKey" = { pun = "analyse/arrays/invalid-array-key", variant = "array.invalidKey", level = "3", options = "none", status = "decided" }
+"array.offsetOverwritten" = { pun = "analyse/dead-code/unused-variable", variant = "array.offsetOverwritten", level = "4", options = "none", status = "decided" }
+"array.unusedOffset" = { pun = "analyse/dead-code/unused-variable", variant = "array.unusedOffset", level = "4", options = "none", status = "decided" }
+"array.unusedOffsetFlow" = { pun = "analyse/dead-code/unused-variable", variant = "array.unusedOffsetFlow", level = "4", options = "none", status = "decided" }
 "arrayFilter.alwaysEmpty" = { pun = "analyse/types/useless-array-filter", variant = "arrayFilter.alwaysEmpty", level = "5", options = "none", status = "decided" }
 "arrayFilter.empty" = { pun = "analyse/types/useless-array-filter", variant = "arrayFilter.empty", level = "5", options = "none", status = "decided" }
 "arrayFilter.same" = { pun = "analyse/types/useless-array-filter", variant = "arrayFilter.same", level = "5", options = "none", status = "decided" }
@@ -3723,6 +3728,7 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "assert.unresolvableType" = { pun = "analyse/phpdoc/invalid-assert-tag", variant = "assert.unresolvableType", level = "2", options = "none", status = "decided" }
 "assign.byRefForeachExpr" = { pun = "analyse/types/by-ref-foreach-on-expression", variant = "assign.byRefForeachExpr", level = "1", options = "none", status = "decided" }
 "assign.invalidExpr" = { pun = "analyse/types/invalid-assignment-target", variant = "assign.invalidExpr", level = "0", options = "none", status = "decided" }
+"assign.overwritten" = { pun = "analyse/dead-code/unused-variable", variant = "assign.overwritten", level = "4", options = "none", status = "decided" }
 "assign.property%s" = { pun = "analyse/types/invalid-property-assignment", variant = "assign.property%s", level = "0", pattern = true, options = "none", status = "decided" }
 "assign.propertyReadOnly" = { pun = "analyse/types/write-to-readonly-property", variant = "assign.propertyReadOnly", level = "0", options = "none", status = "decided" }
 "assign.propertyType" = { pun = "analyse/types/property-assign", variant = "assign.propertyType", level = "3", options = "none", status = "decided" }
@@ -3731,6 +3737,8 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "assign.redundant" = { pun = "analyse/dead-code/unused-variable", variant = "assign.redundant", level = "4", options = "none", status = "decided" }
 "assign.staticProperty%s" = { pun = "analyse/undefined/assigned-static-property", variant = "assign.staticProperty%s", level = "0", pattern = true, options = "none", status = "decided" }
 "assign.this" = { pun = "analyse/types/assign-to-this", variant = "assign.this", level = "0", options = "none", status = "decided" }
+"assign.unused" = { pun = "analyse/dead-code/unused-variable", variant = "assign.unused", level = "4", options = "none", status = "decided" }
+"assign.unusedFlow" = { pun = "analyse/dead-code/unused-variable", variant = "assign.unusedFlow", level = "4", options = "none", status = "decided" }
 "attribute.%s" = { pun = "analyse/attributes/invalid", variant = "attribute.%s", level = "0", pattern = true, options = "none", status = "decided" }
 "attribute.abstract" = { pun = "analyse/attributes/invalid", variant = "attribute.abstract", level = "0", options = "none", status = "decided" }
 "attribute.constructorNotPublic" = { pun = "analyse/attributes/invalid", variant = "attribute.constructorNotPublic", level = "0", options = "none", status = "decided" }
@@ -3755,15 +3763,28 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "cast.void" = { pun = "analyse/types/invalid-void-cast", variant = "cast.void", level = "0", options = "none", status = "decided" }
 "cast.voidNotSupported" = { pun = "analyse/types/invalid-void-cast", variant = "cast.voidNotSupported", level = "0", options = "none", status = "decided" }
 "catch.alreadyCaught" = { pun = "analyse/types/dead-catch", variant = "catch.alreadyCaught", level = "4", options = "none", status = "decided" }
+"catch.internalClass" = { pun = "analyse/classes/internal-class-usage", variant = "catch.internalClass", level = "opt-in", options = "none", status = "decided" }
+"catch.internalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "catch.internalEnum", level = "opt-in", options = "none", status = "decided" }
+"catch.internalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "catch.internalInterface", level = "opt-in", options = "none", status = "decided" }
+"catch.internalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "catch.internalTrait", level = "opt-in", options = "none", status = "decided" }
 "catch.neverThrown" = { pun = "analyse/types/dead-catch", variant = "catch.neverThrown", level = "4", options = "none", status = "decided" }
 "catch.nonCapturingNotSupported" = { pun = "analyse/statements/non-capturing-catch-not-supported", variant = "catch.nonCapturingNotSupported", level = "0", options = "none", status = "decided" }
 "catch.notThrowable" = { pun = "analyse/types/catch-non-throwable", variant = "catch.notThrowable", level = "0", options = "none", status = "decided" }
+"catch.unusedVariableFlow" = { pun = "analyse/dead-code/unused-variable", variant = "catch.unusedVariableFlow", level = "4", options = "none", status = "decided" }
 "class.allowDynamicPropertiesReadonly" = { pun = "analyse/attributes/invalid-class-attribute", variant = "class.allowDynamicPropertiesReadonly", level = "0", options = "none", status = "decided" }
 "class.extendsEnum" = { pun = "analyse/classes/invalid-extends", variant = "class.extendsEnum", level = "0", options = "none", status = "decided" }
 "class.extendsFinal" = { pun = "analyse/classes/invalid-extends", variant = "class.extendsFinal", level = "0", options = "none", status = "decided" }
 "class.extendsFinalByPhpDoc" = { pun = "analyse/classes/invalid-extends", variant = "class.extendsFinalByPhpDoc", level = "0", options = "none", status = "decided" }
 "class.extendsInterface" = { pun = "analyse/classes/invalid-extends", variant = "class.extendsInterface", level = "0", options = "none", status = "decided" }
+"class.extendsInternalClass" = { pun = "analyse/classes/internal-class-usage", variant = "class.extendsInternalClass", level = "opt-in", options = "none", status = "decided" }
+"class.extendsInternalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "class.extendsInternalEnum", level = "opt-in", options = "none", status = "decided" }
+"class.extendsInternalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "class.extendsInternalInterface", level = "opt-in", options = "none", status = "decided" }
+"class.extendsInternalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "class.extendsInternalTrait", level = "opt-in", options = "none", status = "decided" }
 "class.extendsTrait" = { pun = "analyse/classes/invalid-extends", variant = "class.extendsTrait", level = "0", options = "none", status = "decided" }
+"class.implementsInternalClass" = { pun = "analyse/classes/internal-class-usage", variant = "class.implementsInternalClass", level = "opt-in", options = "none", status = "decided" }
+"class.implementsInternalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "class.implementsInternalEnum", level = "opt-in", options = "none", status = "decided" }
+"class.implementsInternalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "class.implementsInternalInterface", level = "opt-in", options = "none", status = "decided" }
+"class.implementsInternalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "class.implementsInternalTrait", level = "opt-in", options = "none", status = "decided" }
 "class.missingExtends" = { pun = "analyse/classes/missing-required-parent", variant = "class.missingExtends", level = "2", options = "none", status = "decided" }
 "class.missingImplements" = { pun = "analyse/classes/missing-required-interface", variant = "class.missingImplements", level = "2", options = "none", status = "decided" }
 "class.noParent" = { pun = "analyse/undefined/assigned-static-property", variant = "class.noParent", level = "0", options = "none", status = "decided" }
@@ -3835,6 +3856,10 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "enum.destructor" = { pun = "analyse/classes/invalid-enum", variant = "enum.destructor", level = "0", options = "none", status = "decided" }
 "enum.duplicateValue" = { pun = "analyse/classes/invalid-enum", variant = "enum.duplicateValue", level = "0", options = "none", status = "decided" }
 "enum.generic" = { pun = "analyse/types/enum-template-not-allowed", variant = "enum.generic", level = "2", options = "none", status = "decided" }
+"enum.implementsInternalClass" = { pun = "analyse/classes/internal-class-usage", variant = "enum.implementsInternalClass", level = "opt-in", options = "none", status = "decided" }
+"enum.implementsInternalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "enum.implementsInternalEnum", level = "opt-in", options = "none", status = "decided" }
+"enum.implementsInternalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "enum.implementsInternalInterface", level = "opt-in", options = "none", status = "decided" }
+"enum.implementsInternalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "enum.implementsInternalTrait", level = "opt-in", options = "none", status = "decided" }
 "enum.magicMethod" = { pun = "analyse/classes/invalid-enum", variant = "enum.magicMethod", level = "0", options = "none", status = "decided" }
 "enum.methodRedeclaration" = { pun = "analyse/classes/invalid-enum", variant = "enum.methodRedeclaration", level = "0", options = "none", status = "decided" }
 "enum.missingCase" = { pun = "analyse/classes/invalid-enum", variant = "enum.missingCase", level = "0", options = "none", status = "decided" }
@@ -3846,7 +3871,13 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "filterVar.nullOnFailureAndThrowOnFailure" = { pun = "analyse/functions/conflicting-filter-var-flags", variant = "filterVar.nullOnFailureAndThrowOnFailure", level = "0", options = "none", status = "decided" }
 "finally.exitPoint" = { pun = "analyse/dead-code/finally-overrides-exit", variant = "finally.exitPoint", level = "4", options = "none", status = "decided" }
 "foreach.emptyArray" = { pun = "analyse/types/foreach-on-empty-array", variant = "foreach.emptyArray", level = "4", options = "none", status = "decided" }
+"foreach.keyOverwritten" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.keyOverwritten", level = "4", options = "none", status = "decided" }
 "foreach.nonIterable" = { pun = "analyse/types/foreach-non-iterable", variant = "foreach.nonIterable", level = "3", options = "none", status = "decided" }
+"foreach.unusedKey" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.unusedKey", level = "4", options = "none", status = "decided" }
+"foreach.unusedKeyFlow" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.unusedKeyFlow", level = "4", options = "none", status = "decided" }
+"foreach.unusedValue" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.unusedValue", level = "4", options = "none", status = "decided" }
+"foreach.unusedValueFlow" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.unusedValueFlow", level = "4", options = "none", status = "decided" }
+"foreach.valueOverwritten" = { pun = "analyse/dead-code/unused-variable", variant = "foreach.valueOverwritten", level = "4", options = "none", status = "decided" }
 "function.alreadyNarrowedType" = { pun = "analyse/dead-code/impossible-type-check", variant = "function.alreadyNarrowedType", level = "4", options = "none", status = "decided" }
 "function.duplicate" = { pun = "analyse/classes/duplicate-declaration", variant = "function.duplicate", level = "opt-in", options = "none", status = "decided" }
 "function.impossibleHaystackValue" = { pun = "analyse/dead-code/impossible-in-array", variant = "function.impossibleHaystackValue", level = "4", options = "none", status = "decided" }
@@ -3920,9 +3951,17 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "includeOnce.fileNotFound" = { pun = "analyse/undefined/include-file", variant = "includeOnce.fileNotFound", level = "0", options = "none", status = "decided" }
 "instanceof.alwaysFalse" = { pun = "analyse/dead-code/impossible-instanceof", variant = "instanceof.alwaysFalse", level = "4", options = "none", status = "decided" }
 "instanceof.alwaysTrue" = { pun = "lint/dead-code/no-always-true-instanceof", variant = "instanceof.alwaysTrue", level = "4", options = "none", status = "decided" }
+"instanceof.internalClass" = { pun = "analyse/classes/internal-class-usage", variant = "instanceof.internalClass", level = "opt-in", options = "none", status = "decided" }
+"instanceof.internalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "instanceof.internalEnum", level = "opt-in", options = "none", status = "decided" }
+"instanceof.internalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "instanceof.internalInterface", level = "opt-in", options = "none", status = "decided" }
+"instanceof.internalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "instanceof.internalTrait", level = "opt-in", options = "none", status = "decided" }
 "instanceof.invalidExprType" = { pun = "analyse/dead-code/impossible-instanceof", variant = "instanceof.invalidExprType", level = "4", options = "none", status = "decided" }
 "instanceof.trait" = { pun = "analyse/undefined/instanceof-class", variant = "instanceof.trait", level = "0", options = "none", status = "decided" }
 "interface.allowDynamicProperties" = { pun = "analyse/attributes/invalid-class-attribute", variant = "interface.allowDynamicProperties", level = "0", options = "none", status = "decided" }
+"interface.extendsInternalClass" = { pun = "analyse/classes/internal-class-usage", variant = "interface.extendsInternalClass", level = "opt-in", options = "none", status = "decided" }
+"interface.extendsInternalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "interface.extendsInternalEnum", level = "opt-in", options = "none", status = "decided" }
+"interface.extendsInternalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "interface.extendsInternalInterface", level = "opt-in", options = "none", status = "decided" }
+"interface.extendsInternalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "interface.extendsInternalTrait", level = "opt-in", options = "none", status = "decided" }
 "interface.notFound" = { pun = "analyse/classes/invalid-implements", variant = "interface.notFound", level = "0", options = "none", status = "decided" }
 "interface.traitUse" = { pun = "analyse/undefined/trait", variant = "interface.traitUse", level = "0", options = "none", status = "decided" }
 "interfaceExtends.class" = { pun = "analyse/classes/invalid-interface-extends", variant = "interfaceExtends.class", level = "0", options = "none", status = "decided" }
@@ -4026,6 +4065,10 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "parameter.defaultValue" = { pun = "analyse/types/param-default", variant = "parameter.defaultValue", level = "2", options = "none", status = "decided" }
 "parameter.duplicate" = { pun = "analyse/functions/duplicate-parameter", variant = "parameter.duplicate", level = "0", options = "none", status = "decided" }
 "parameter.implicitlyNullable" = { pun = "format/types/nullable-for-null-default", variant = "parameter.implicitlyNullable", level = "0", options = "none", status = "decided" }
+"parameter.internalClass" = { pun = "analyse/classes/internal-class-usage", variant = "parameter.internalClass", level = "opt-in", options = "none", status = "decided" }
+"parameter.internalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "parameter.internalEnum", level = "opt-in", options = "none", status = "decided" }
+"parameter.internalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "parameter.internalInterface", level = "opt-in", options = "none", status = "decided" }
+"parameter.internalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "parameter.internalTrait", level = "opt-in", options = "none", status = "decided" }
 "parameter.missing" = { pun = "analyse/classes/incompatible-override", variant = "parameter.missing", level = "0", options = "none", status = "decided" }
 "parameter.noParent" = { pun = "analyse/types/invalid-closure-signature", variant = "parameter.noParent", level = "0", options = "none", status = "decided" }
 "parameter.notByRef" = { pun = "analyse/classes/incompatible-override", variant = "parameter.notByRef", level = "0", options = "none", status = "decided" }
@@ -4096,6 +4139,18 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "possiblyImpure.superglobal" = { pun = "analyse/functions/invalid-pure", variant = "possiblyImpure.superglobal", level = "2", options = "none", status = "decided" }
 "possiblyImpure.yield" = { pun = "analyse/functions/invalid-pure", variant = "possiblyImpure.yield", level = "2", options = "none", status = "decided" }
 "possiblyImpure.yieldFrom" = { pun = "analyse/functions/invalid-pure", variant = "possiblyImpure.yieldFrom", level = "2", options = "none", status = "decided" }
+"postDec.overwritten" = { pun = "analyse/dead-code/unused-variable", variant = "postDec.overwritten", level = "4", options = "none", status = "decided" }
+"postDec.unused" = { pun = "analyse/dead-code/unused-variable", variant = "postDec.unused", level = "4", options = "none", status = "decided" }
+"postDec.unusedFlow" = { pun = "analyse/dead-code/unused-variable", variant = "postDec.unusedFlow", level = "4", options = "none", status = "decided" }
+"postInc.overwritten" = { pun = "analyse/dead-code/unused-variable", variant = "postInc.overwritten", level = "4", options = "none", status = "decided" }
+"postInc.unused" = { pun = "analyse/dead-code/unused-variable", variant = "postInc.unused", level = "4", options = "none", status = "decided" }
+"postInc.unusedFlow" = { pun = "analyse/dead-code/unused-variable", variant = "postInc.unusedFlow", level = "4", options = "none", status = "decided" }
+"preDec.overwritten" = { pun = "analyse/dead-code/unused-variable", variant = "preDec.overwritten", level = "4", options = "none", status = "decided" }
+"preDec.unused" = { pun = "analyse/dead-code/unused-variable", variant = "preDec.unused", level = "4", options = "none", status = "decided" }
+"preDec.unusedFlow" = { pun = "analyse/dead-code/unused-variable", variant = "preDec.unusedFlow", level = "4", options = "none", status = "decided" }
+"preInc.overwritten" = { pun = "analyse/dead-code/unused-variable", variant = "preInc.overwritten", level = "4", options = "none", status = "decided" }
+"preInc.unused" = { pun = "analyse/dead-code/unused-variable", variant = "preInc.unused", level = "4", options = "none", status = "decided" }
+"preInc.unusedFlow" = { pun = "analyse/dead-code/unused-variable", variant = "preInc.unusedFlow", level = "4", options = "none", status = "decided" }
 "print.nonString" = { pun = "analyse/types/print-non-string", variant = "print.nonString", level = "2", options = "none", status = "decided" }
 "property.%s" = { pun = "analyse/classes/incompatible-property-override", variant = "property.%s", level = "0", pattern = true, options = "none", status = "decided" }
 "property.abstract" = { pun = "analyse/classes/invalid-property-declaration", variant = "property.abstract", level = "0", options = "none", status = "decided" }
@@ -4198,6 +4253,10 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "requireOnce.fileNotFound" = { pun = "analyse/undefined/include-file", variant = "requireOnce.fileNotFound", level = "0", options = "none", status = "decided" }
 "return.byRefFinally" = { pun = "analyse/types/return-by-ref-finally", variant = "return.byRefFinally", level = "3", options = "none", status = "decided" }
 "return.empty" = { pun = "analyse/types/arrow-function-return", variant = "return.empty", level = "3", options = "none", status = "decided" }
+"return.internalClass" = { pun = "analyse/classes/internal-class-usage", variant = "return.internalClass", level = "opt-in", options = "none", status = "decided" }
+"return.internalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "return.internalEnum", level = "opt-in", options = "none", status = "decided" }
+"return.internalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "return.internalInterface", level = "opt-in", options = "none", status = "decided" }
+"return.internalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "return.internalTrait", level = "opt-in", options = "none", status = "decided" }
 "return.missing" = { pun = "analyse/types/missing-return", variant = "return.missing", level = "0", options = "none", status = "decided" }
 "return.nestedUnusedType" = { pun = "analyse/types/too-wide-arrow-function-return", variant = "return.nestedUnusedType", level = "4", options = "none", status = "decided" }
 "return.never" = { pun = "analyse/types/missing-return", variant = "return.never", level = "0", options = "none", status = "decided" }
@@ -4259,6 +4318,10 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "traitUse.class" = { pun = "analyse/undefined/trait", variant = "traitUse.class", level = "0", options = "none", status = "decided" }
 "traitUse.enum" = { pun = "analyse/undefined/trait", variant = "traitUse.enum", level = "0", options = "none", status = "decided" }
 "traitUse.interface" = { pun = "analyse/undefined/trait", variant = "traitUse.interface", level = "0", options = "none", status = "decided" }
+"traitUse.internalClass" = { pun = "analyse/classes/internal-class-usage", variant = "traitUse.internalClass", level = "opt-in", options = "none", status = "decided" }
+"traitUse.internalEnum" = { pun = "analyse/classes/internal-class-usage", variant = "traitUse.internalEnum", level = "opt-in", options = "none", status = "decided" }
+"traitUse.internalInterface" = { pun = "analyse/classes/internal-class-usage", variant = "traitUse.internalInterface", level = "opt-in", options = "none", status = "decided" }
+"traitUse.internalTrait" = { pun = "analyse/classes/internal-class-usage", variant = "traitUse.internalTrait", level = "opt-in", options = "none", status = "decided" }
 "typeAlias.circular" = { pun = "analyse/phpdoc/invalid-type-alias", variant = "typeAlias.circular", level = "0", options = "none", status = "decided" }
 "typeAlias.duplicate" = { pun = "analyse/phpdoc/invalid-type-alias", variant = "typeAlias.duplicate", level = "0", options = "none", status = "decided" }
 "typeAlias.invalidName" = { pun = "analyse/phpdoc/invalid-type-alias", variant = "typeAlias.invalidName", level = "0", options = "none", status = "decided" }
@@ -4286,6 +4349,7 @@ YieldTypeRule = { class = "PHPStan\\Rules\\Generators\\YieldTypeRule", pun = "an
 "varTag.variableNotFound" = { pun = "lint/dead-code/no-invalid-var-tag", variant = "varTag.variableNotFound", level = "2", options = "none", status = "decided" }
 "variable.nameNotString" = { pun = "analyse/undefined/variable", variant = "variable.nameNotString", level = "0", options = "none", status = "decided" }
 "variable.undefined" = { pun = "analyse/undefined/variable", variant = "variable.undefined", level = "0", options = "none", status = "decided" }
+"variable.unused" = { pun = "analyse/dead-code/unused-variable", variant = "variable.unused", level = "4", options = "none", status = "decided" }
 "void.pure" = { pun = "analyse/functions/invalid-pure", variant = "void.pure", level = "2", options = "none", status = "decided" }
 "while.alwaysFalse" = { pun = "analyse/dead-code/while-always-false", variant = "while.alwaysFalse", level = "4", options = "none", status = "decided" }
 "while.alwaysTrue" = { pun = "analyse/dead-code/while-always-true", variant = "while.alwaysTrue", level = "4", options = "none", status = "decided" }
@@ -4359,16 +4423,52 @@ reportMaybes = { pun = "[analyse] union-types = true", level = 7, options = "swi
 "while.condNotBoolean" = { pun = "analyse/control-flow/non-boolean-while", variant = "while.condNotBoolean", level = "extension", options = "none", status = "decided" }
 
 [upstream.phpstan-deprecation-rules]
+"catch.deprecatedClass" = { pun = "analyse/deprecated/class", variant = "catch.deprecatedClass", level = "extension", options = "none", status = "decided" }
+"catch.deprecatedEnum" = { pun = "analyse/deprecated/class", variant = "catch.deprecatedEnum", level = "extension", options = "none", status = "decided" }
+"catch.deprecatedInterface" = { pun = "analyse/deprecated/class", variant = "catch.deprecatedInterface", level = "extension", options = "none", status = "decided" }
+"catch.deprecatedTrait" = { pun = "analyse/deprecated/class", variant = "catch.deprecatedTrait", level = "extension", options = "none", status = "decided" }
 "class.deprecated" = { pun = "analyse/deprecated/class", variant = "class.deprecated", level = "extension", options = "none", status = "decided" }
+"class.extendsDeprecatedClass" = { pun = "analyse/deprecated/class", variant = "class.extendsDeprecatedClass", level = "extension", options = "none", status = "decided" }
+"class.extendsDeprecatedEnum" = { pun = "analyse/deprecated/class", variant = "class.extendsDeprecatedEnum", level = "extension", options = "none", status = "decided" }
+"class.extendsDeprecatedInterface" = { pun = "analyse/deprecated/class", variant = "class.extendsDeprecatedInterface", level = "extension", options = "none", status = "decided" }
+"class.extendsDeprecatedTrait" = { pun = "analyse/deprecated/class", variant = "class.extendsDeprecatedTrait", level = "extension", options = "none", status = "decided" }
+"class.implementsDeprecatedClass" = { pun = "analyse/deprecated/class", variant = "class.implementsDeprecatedClass", level = "extension", options = "none", status = "decided" }
+"class.implementsDeprecatedEnum" = { pun = "analyse/deprecated/class", variant = "class.implementsDeprecatedEnum", level = "extension", options = "none", status = "decided" }
+"class.implementsDeprecatedInterface" = { pun = "analyse/deprecated/class", variant = "class.implementsDeprecatedInterface", level = "extension", options = "none", status = "decided" }
+"class.implementsDeprecatedTrait" = { pun = "analyse/deprecated/class", variant = "class.implementsDeprecatedTrait", level = "extension", options = "none", status = "decided" }
 "class.toStringDeprecated" = { pun = "analyse/deprecated/to-string", variant = "class.toStringDeprecated", level = "extension", options = "none", status = "decided" }
 "classConstant.deprecated" = { pun = "analyse/deprecated/class-constant", variant = "classConstant.deprecated", level = "extension", options = "none", status = "decided" }
 "constant.deprecated" = { pun = "analyse/deprecated/constant", variant = "constant.deprecated", level = "extension", options = "none", status = "decided" }
+"enum.implementsDeprecatedClass" = { pun = "analyse/deprecated/class", variant = "enum.implementsDeprecatedClass", level = "extension", options = "none", status = "decided" }
+"enum.implementsDeprecatedEnum" = { pun = "analyse/deprecated/class", variant = "enum.implementsDeprecatedEnum", level = "extension", options = "none", status = "decided" }
+"enum.implementsDeprecatedInterface" = { pun = "analyse/deprecated/class", variant = "enum.implementsDeprecatedInterface", level = "extension", options = "none", status = "decided" }
+"enum.implementsDeprecatedTrait" = { pun = "analyse/deprecated/class", variant = "enum.implementsDeprecatedTrait", level = "extension", options = "none", status = "decided" }
 "enumCase.deprecated" = { pun = "analyse/deprecated/class-constant", variant = "enumCase.deprecated", level = "extension", options = "none", status = "decided" }
 "function.deprecated" = { pun = "analyse/deprecated/function", variant = "function.deprecated", level = "extension", options = "none", status = "decided" }
+"instanceof.deprecatedClass" = { pun = "analyse/deprecated/class", variant = "instanceof.deprecatedClass", level = "extension", options = "none", status = "decided" }
+"instanceof.deprecatedEnum" = { pun = "analyse/deprecated/class", variant = "instanceof.deprecatedEnum", level = "extension", options = "none", status = "decided" }
+"instanceof.deprecatedInterface" = { pun = "analyse/deprecated/class", variant = "instanceof.deprecatedInterface", level = "extension", options = "none", status = "decided" }
+"instanceof.deprecatedTrait" = { pun = "analyse/deprecated/class", variant = "instanceof.deprecatedTrait", level = "extension", options = "none", status = "decided" }
+"interface.extendsDeprecatedClass" = { pun = "analyse/deprecated/class", variant = "interface.extendsDeprecatedClass", level = "extension", options = "none", status = "decided" }
+"interface.extendsDeprecatedEnum" = { pun = "analyse/deprecated/class", variant = "interface.extendsDeprecatedEnum", level = "extension", options = "none", status = "decided" }
+"interface.extendsDeprecatedInterface" = { pun = "analyse/deprecated/class", variant = "interface.extendsDeprecatedInterface", level = "extension", options = "none", status = "decided" }
+"interface.extendsDeprecatedTrait" = { pun = "analyse/deprecated/class", variant = "interface.extendsDeprecatedTrait", level = "extension", options = "none", status = "decided" }
 "method.deprecated" = { pun = "analyse/deprecated/method", variant = "method.deprecated", level = "extension", options = "none", status = "decided" }
+"parameter.deprecatedClass" = { pun = "analyse/deprecated/class", variant = "parameter.deprecatedClass", level = "extension", options = "none", status = "decided" }
+"parameter.deprecatedEnum" = { pun = "analyse/deprecated/class", variant = "parameter.deprecatedEnum", level = "extension", options = "none", status = "decided" }
+"parameter.deprecatedInterface" = { pun = "analyse/deprecated/class", variant = "parameter.deprecatedInterface", level = "extension", options = "none", status = "decided" }
+"parameter.deprecatedTrait" = { pun = "analyse/deprecated/class", variant = "parameter.deprecatedTrait", level = "extension", options = "none", status = "decided" }
 "property.deprecated" = { pun = "analyse/deprecated/property", variant = "property.deprecated", level = "extension", options = "none", status = "decided" }
+"return.deprecatedClass" = { pun = "analyse/deprecated/class", variant = "return.deprecatedClass", level = "extension", options = "none", status = "decided" }
+"return.deprecatedEnum" = { pun = "analyse/deprecated/class", variant = "return.deprecatedEnum", level = "extension", options = "none", status = "decided" }
+"return.deprecatedInterface" = { pun = "analyse/deprecated/class", variant = "return.deprecatedInterface", level = "extension", options = "none", status = "decided" }
+"return.deprecatedTrait" = { pun = "analyse/deprecated/class", variant = "return.deprecatedTrait", level = "extension", options = "none", status = "decided" }
 "staticMethod.deprecated" = { pun = "analyse/deprecated/method", variant = "staticMethod.deprecated", level = "extension", options = "none", status = "decided" }
 "staticProperty.deprecated" = { pun = "analyse/deprecated/property", variant = "staticProperty.deprecated", level = "extension", options = "none", status = "decided" }
+"traitUse.deprecatedClass" = { pun = "analyse/deprecated/class", variant = "traitUse.deprecatedClass", level = "extension", options = "none", status = "decided" }
+"traitUse.deprecatedEnum" = { pun = "analyse/deprecated/class", variant = "traitUse.deprecatedEnum", level = "extension", options = "none", status = "decided" }
+"traitUse.deprecatedInterface" = { pun = "analyse/deprecated/class", variant = "traitUse.deprecatedInterface", level = "extension", options = "none", status = "decided" }
+"traitUse.deprecatedTrait" = { pun = "analyse/deprecated/class", variant = "traitUse.deprecatedTrait", level = "extension", options = "none", status = "decided" }
 
 [upstream.larastan]
 "larastan.%s.noConstructor" = { pun = "analyse/laravel/unexpected-dispatch-arguments", variant = "larastan.%s.noConstructor", options = "Larastan parameters carry as rule options", status = "decided" }

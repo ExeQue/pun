@@ -464,6 +464,38 @@ fn ignore_comments_drop_errors_in_traits() {
     );
 }
 
+#[test]
+fn unused_variables_are_reported() {
+    // PHPStan 2.3.5, level max with bleedingEdge (featureToggles.unusedVariable), on the same file.
+    let d = project(
+        "analyse",
+        "unused-variables",
+        &[
+            (
+                "pun.toml",
+                "[analyse]\npreset = \"max\"\npaths = [\"src\"]\nbleeding-edge = true\n",
+            ),
+            (
+                "src/a.php",
+                "<?php\n\nfunction f(string $value): string\n{\n    $account = 'x';\n    [$a, $b] = explode('@', $value);\n\n    return $value . $b;\n}\n",
+            ),
+        ],
+    );
+    let (out, code) = run(&d, &[PUN, "analyse"], &["--format=raw"]);
+    let lines: Vec<&str> = out
+        .lines()
+        .map(|l| l.rsplit_once("/src/").unwrap().1)
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            "a.php:5:Variable $account is never read.",
+            "a.php:6:Variable $a is never read.",
+        ]
+    );
+    assert_eq!(code, Some(1));
+}
+
 fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)

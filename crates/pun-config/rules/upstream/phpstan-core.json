@@ -6874,6 +6874,33 @@
  {
   "deprecated": false,
   "deprecation_evidence": null,
+  "docs_url": "https://phpstan.org/error-identifiers/new.internalClass",
+  "fqcn": "PHPStan\\Rules\\InternalTag\\RestrictedInternalClassNameUsageExtension",
+  "gated_by": null,
+  "helper_parameters": [],
+  "identifiers": [
+   "<location>.internalClass",
+   "<location>.internalInterface",
+   "<location>.internalTrait",
+   "<location>.internalEnum"
+  ],
+  "in_scope": true,
+  "kind": "phpstan-rule",
+  "level": 0,
+  "notes": [
+   "A RestrictedClassNameUsageExtension, not a rule: ClassNameCheck runs it for every class-name location, so the identifier prefix comes from ClassNameUsageLocation::createIdentifier (new., catch., instanceof., parameter., return., traitUse., class.extends..., class.implements..., enum.implements..., interface.extends...). Listed here like phpstan-deprecation-rules' RestrictedDeprecatedClassNameUsageExtension in phpstan-extensions.json"
+  ],
+  "out_of_scope_reason": null,
+  "package": "phpstan/phpstan",
+  "parameters": [],
+  "registered_by": "conf/config.level0.neon:12 conditionalTags phpstan.restrictedClassNameUsageExtension: %featureToggles.internalTag%",
+  "registration_kind": "conditionalTags",
+  "source_file": "src/Rules/InternalTag/RestrictedInternalClassNameUsageExtension.php",
+  "version": "2.3.5"
+ },
+ {
+  "deprecated": false,
+  "deprecation_evidence": null,
   "docs_url": "https://phpstan.org/error-identifiers/break.outOfLoop",
   "fqcn": "PHPStan\\Rules\\Keywords\\ContinueBreakInLoopRule",
   "gated_by": null,

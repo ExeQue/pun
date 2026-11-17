@@ -527,7 +527,7 @@ fn analyse() {
             bleeding_edge: false,
         }
     );
-    assert_eq!(a.rules.len(), 150 + 106 + 75 - 11);
+    assert_eq!(a.rules.len(), 151 + 106 + 75 - 11);
     assert!(has(&a, "analyse/undefined/method") && !has(&a, "analyse/types/missing-return-type"));
     let preset = |p: &str, lock: bool| {
         let on = if lock {
@@ -543,17 +543,17 @@ fn analyse() {
         let a = an(&files);
         (a.rules.len(), a.switches)
     };
-    assert_eq!(preset("basic", false), (150, vec![]));
-    assert_eq!(preset("essential", true), (150 + 106, vec![]));
-    assert_eq!(preset("recommended", true), (150 + 106 + 75, vec![]));
+    assert_eq!(preset("basic", false), (151, vec![]));
+    assert_eq!(preset("essential", true), (151 + 106, vec![]));
+    assert_eq!(preset("recommended", true), (151 + 106 + 75, vec![]));
     assert_eq!(
         preset("strict", true),
-        (150 + 106 + 75 + 35, vec!["union-types", "nullables"])
+        (151 + 106 + 75 + 35, vec!["union-types", "nullables"])
     );
     assert_eq!(
         preset("max", false),
         (
-            369 - 15,
+            370 - 15,
             vec![
                 "union-types",
                 "nullables",
@@ -589,7 +589,7 @@ laravel = "on"
             Some("pun-baseline.toml".into())
         )
     );
-    assert_eq!(a.rules.len(), 150 + 2 + 14 - 1);
+    assert_eq!(a.rules.len(), 151 + 2 + 14 - 1);
     let rule = |id: &str| {
         a.rules
             .iter()
@@ -609,7 +609,7 @@ laravel = "on"
     ]);
     assert_eq!(
         (a.rules.len(), a.ecosystems.len()),
-        (150 + 106 + 75 - 11, 0)
+        (151 + 106 + 75 - 11, 0)
     );
 }
 #[test]
