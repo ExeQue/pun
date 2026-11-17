@@ -101,6 +101,38 @@ fn reads_sets_rules_and_skips() {
     assert_eq!(from_rector(&root, &whole).paths, [".", "/elsewhere/src"]);
 }
 
+/// A rule merged with a PHP-CS-Fixer fixer keeps to its Rector rules' checks when rector.php brings it in: Rector
+/// 2.8.4's `SimplifyUselessVariableRector` skips a commented assignment and `StringClassNameToClassConstantRector` a
+/// global name (`'Throwable'`), where `return_assignment` and `class_keyword` change both.
+#[test]
+fn rector_rules_merged_with_a_fixer_keep_to_rector() {
+    let config = RectorConfig {
+        rules: strings(&[
+            "Rector\\CodeQuality\\Rector\\FunctionLike\\SimplifyUselessVariableRector",
+            "Rector\\Php55\\Rector\\String_\\StringClassNameToClassConstantRector",
+            FOREACH,
+        ]),
+        ..RectorConfig::default()
+    };
+    let r = from_rector(&dir(&[]), &config);
+    let options: Vec<(&str, String)> = (r.options.iter())
+        .map(|(id, t)| (id.as_str(), t.to_string().trim().to_string()))
+        .collect();
+    assert_eq!(
+        options,
+        [
+            (
+                "lint/control-flow/no-return-assignment",
+                "skip-commented = true".to_string()
+            ),
+            (
+                "lint/style/prefer-class-constant",
+                "namespaced-only = true".to_string()
+            ),
+        ]
+    );
+}
+
 /// A configured rule's configuration becomes its options. The input is what crates/pun-cli/src/rector_config.php printed
 /// for a rector.php with these four `withConfiguredRule()` calls, run on .oracle/rector-ecosystem's Rector: a data map
 /// keeps its keys, a value object list goes under `items` with its properties kebab-cased, Rector's option constant

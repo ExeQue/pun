@@ -1,17 +1,33 @@
 use mago_syntax::cst::{Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
+use crate::rules::support::options::{boolean, configure};
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const ZEND_SERVER: [&str; 4] = ["ZendAPI_Queue", "ZendAPI_Job", "java", "JavaException"];
 
-pub struct PreferClassConstant;
+/// PHP-CS-Fixer's `class_keyword`. `namespaced-only` turns it off, leaving the rule's Rector checks
+/// ([`super::prefer_class_name_constant`], [`super::prefer_class_keyword`]), which skip global names.
+#[derive(Default)]
+pub struct PreferClassConstant {
+    pub namespaced_only: bool,
+}
 
 impl Rule for PreferClassConstant {
     fn id(&self) -> &'static str {
         "lint/style/prefer-class-constant"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        configure(options, |key, value| {
+            match key {
+                "namespaced-only" => self.namespaced_only = boolean(value)?,
+                _ => return None,
+            }
+            Some(())
+        })
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -28,6 +44,9 @@ impl Rule for PreferClassConstant {
         let Node::Literal(Literal::String(string)) = node else {
             return;
         };
+        if self.namespaced_only {
+            return;
+        }
         let span = node_span(string);
         let raw = &ctx.source[span.start..span.end];
         let Some(inner) = raw.get(1..raw.len().saturating_sub(1)) else {

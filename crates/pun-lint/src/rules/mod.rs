@@ -234,7 +234,7 @@ rules! {
         types::add_datetime_property_type => AddDatetimePropertyType,
         style::prefer_class_keyword => PreferClassKeyword,
         arrays::no_implicit_array_creation => NoImplicitArrayCreation,
-        style::prefer_class_constant => PreferClassConstant,
+        style::prefer_class_constant => PreferClassConstant::default(),
         style::require_parent_visibility => RequireParentVisibility,
         dead_code::no_unused_promoted_property => NoUnusedPromotedProperty,
         complexity::no_boolean_flag_parameter => NoBooleanFlagParameter::default(),

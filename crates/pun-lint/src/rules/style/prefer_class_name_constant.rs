@@ -90,7 +90,14 @@ impl Rule for PreferClassNameConstant {
     }
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
-        self.skip = items(options)?
+        let mut options = options.clone();
+        if let Some(o) = options.as_object_mut() {
+            o.remove("namespaced-only");
+            if o.is_empty() {
+                options = serde_json::Value::Null;
+            }
+        }
+        self.skip = items(&options)?
             .into_iter()
             .map(|v| {
                 v.as_str()

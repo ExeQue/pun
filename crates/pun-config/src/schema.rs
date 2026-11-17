@@ -3,7 +3,7 @@ use crate::extensions::{self, ExtensionMeta};
 use crate::{fixer_of, options, renamed, rules};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -201,8 +201,27 @@ fn lint_value(id: &str, level: Option<Level>, fix: bool, options: &Value) -> Val
     if !fix {
         t.insert("fix".into(), "off".into());
     }
-    let options = match fixer_of("lint", id) {
-        Some(f) if options.is_object() => options::to_pun(f, id, options).unwrap(),
+    let options = match (fixer_of("lint", id), options) {
+        (Some(f), Value::Object(o)) => {
+            // Pun's own options (`origin = "pun"`) are not the fixer's, so they skip its translation.
+            let own = |k: &String| {
+                options::rule_options(id)
+                    .iter()
+                    .find(|r| r.pun && r.upstream == *k)
+            };
+            let (pun, upstream): (Map<String, Value>, Map<String, Value>) =
+                o.clone().into_iter().partition(|(k, _)| own(k).is_some());
+            let mut out = Map::new();
+            if !upstream.is_empty() {
+                let translated = options::to_pun(f, id, &Value::Object(upstream)).unwrap();
+                out.extend(translated.as_object().cloned().unwrap_or_default());
+            }
+            out.extend(
+                pun.into_iter()
+                    .map(|(k, v)| (own(&k).unwrap().name.clone(), v)),
+            );
+            Value::Object(out)
+        }
         _ => options.clone(),
     };
     if let Value::Object(o) = options {

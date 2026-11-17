@@ -712,6 +712,10 @@ fn rector_paths_skips_and_unsupported_rules() {
         toml.contains("[[lint.overrides]]\nfiles = [\"src/Sub\"]\nrules = { \"phpdoc/no-useless-param\" = \"off\" }\n"),
         "{toml}"
     );
+    assert!(
+        toml.contains("\n\"control-flow/no-return-assignment\" = { skip-commented = true }\n"),
+        "{toml}"
+    );
     std::fs::remove_file(d.join("pun.toml")).unwrap();
     let whole = (rector.replace("__DIR__.'/src'", "__DIR__")).replace(
         "    ->withPreparedSets(deadCode: true)\n    ->withPhpSets(php53: true)\n",

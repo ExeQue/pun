@@ -39,7 +39,9 @@ fn every_option_is_mapped() {
             .map(|d| d["name"].as_str().unwrap())
             .collect();
         names.sort_unstable();
-        let mut mapped: Vec<&str> = opts.iter().map(|o| o.upstream.as_str()).collect();
+        let mut mapped: Vec<&str> = (opts.iter().filter(|o| !o.pun))
+            .map(|o| o.upstream.as_str())
+            .collect();
         mapped.sort_unstable();
         assert_eq!(mapped, names, "{id}");
         for d in defs.as_array().unwrap() {
@@ -79,7 +81,7 @@ fn every_option_is_mapped() {
     for (fixer, e) in fixer_entries() {
         let id = e.get("pun").and_then(toml::Value::as_str).unwrap_or("");
         assert_eq!(
-            !rule_options(id).is_empty(),
+            rule_options(id).iter().any(|o| !o.pun),
             !id.starts_with("analyse/") && !id.is_empty() && fixers.contains(&fixer.as_str()),
             "{fixer}"
         );
@@ -732,6 +734,26 @@ fn lint_rule_options() {
     assert_eq!(
         shown["lint"]["rules"]["phpdoc/no-superfluous-tags"],
         json!({ "level": "warn", "allow-mixed": true })
+    );
+    // Pun's own options of a rule a fixer runs reach it, and show under their names beside the fixer's.
+    let d = dir(&[(
+        "pun.toml",
+        "[lint.rules]\n\"control-flow/no-return-assignment\" = { skip-commented = true, skip-named-var-tags = true }\n\"style/prefer-class-constant\" = { namespaced-only = true }\n",
+    )]);
+    let cfg = load(&d, &Options::default()).unwrap();
+    let rule = |id: &str| cfg.lint.rules.iter().find(|r| r.id == id).unwrap();
+    assert_eq!(
+        rule("lint/control-flow/no-return-assignment").options,
+        json!({ "skip_commented": true, "skip_named_var_tags": true })
+    );
+    let shown = &cfg.show()["lint"]["rules"];
+    assert_eq!(
+        shown["control-flow/no-return-assignment"],
+        json!({ "skip-commented": true, "skip-named-var-tags": true })
+    );
+    assert_eq!(
+        shown["style/prefer-class-constant"],
+        json!({ "namespaced-only": true })
     );
     let d = dir(&[(
         "pun.toml",

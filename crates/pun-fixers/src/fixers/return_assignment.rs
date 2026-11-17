@@ -8,11 +8,13 @@ use std::path::Path;
 
 struct ReturnAssignmentFixer {
     skip_named_var_tags: bool,
+    skip_commented: bool,
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
     crate::configured(ReturnAssignmentFixer {
         skip_named_var_tags: false,
+        skip_commented: false,
     })
 }
 
@@ -151,6 +153,9 @@ impl ReturnAssignmentFixer {
             if self.skip_named_var_tags
                 && has_named_var_tag(tokens, assign_var_index, function_open_index)
             {
+                continue;
+            }
+            if self.skip_commented && is_commented(tokens, assign_var_index, index, return_var_index) {
                 continue;
             }
             if is_used_in_catch_or_finally(
@@ -319,6 +324,26 @@ fn has_named_var_tag(tokens: &Tokens, assign_var_index: usize, function_open_ind
         .any(|a| a.get_variable_name().is_some())
 }
 
+/// Pun's `skip_commented`: what Rector's `SimplifyUselessVariableRector` leaves alone. A comment or docblock before the
+/// assignment (php-parser attaches it to that statement), or comments before the return that mention the variable or
+/// carry a `@var`.
+fn is_commented(tokens: &Tokens, assign_var_index: usize, return_index: usize, return_var_index: usize) -> bool {
+    if tokens.get_prev_non_whitespace(assign_var_index, None).is_some_and(|i| tokens[i].is_comment()) {
+        return true;
+    }
+    let name = tokens[return_var_index].get_content();
+    (prev(tokens, return_index) + 1..return_index)
+        .filter(|&i| tokens[i].is_comment())
+        .any(|i| {
+            let content = tokens[i].get_content();
+            content.windows(name.len()).any(|w| w == name)
+                || (tokens[i].is_kind(T_DOC_COMMENT)
+                    && !DocBlock::new(content)
+                        .get_annotations_of_type(&["var", "psalm-var", "phpstan-var"])
+                        .is_empty())
+        })
+}
+
 fn is_used_in_catch_or_finally(
     tokens: &Tokens,
     return_var_index: usize,
@@ -373,8 +398,19 @@ impl Fixer for ReturnAssignmentFixer {
         -15
     }
     fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
-        let c = resolve(self.name(), options, &["skip_named_var_tags"])?;
+        // `skip_commented` is Pun's own option, so PHP-CS-Fixer's errors keep naming only its option.
+        let mut upstream = options.clone();
+        let commented = (upstream.as_object_mut()).and_then(|o| o.remove("skip_commented"));
+        if commented.is_some() && upstream.as_object().is_some_and(serde_json::Map::is_empty) {
+            upstream = Value::Null;
+        }
+        let c = resolve(self.name(), &upstream, &["skip_named_var_tags"])?;
         self.skip_named_var_tags = c.bool("skip_named_var_tags", false)?;
+        self.skip_commented = match commented {
+            None => false,
+            Some(Value::Bool(b)) => b,
+            Some(v) => anyhow::bail!("[{}] skip_commented must be a bool, not {v}", self.name()),
+        };
         Ok(())
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -412,5 +448,34 @@ impl Fixer for ReturnAssignmentFixer {
             index = function_close_index + 1;
             token_count += total_tokens_added;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    fn fix(options: serde_json::Value, code: &str) -> String {
+        let mut fixer = super::fixer();
+        fixer.configure(&options).unwrap();
+        crate::fix_with(&*fixer, code)
+    }
+
+    /// Rector 2.8.4's `SimplifyUselessVariableRector` skips `a`, `b`, `g` and `i` and changes `c` and `j`; the changed
+    /// bodies are PHP-CS-Fixer's `return_assignment` output.
+    #[test]
+    fn skip_commented_skips_what_rector_skips() {
+        let skipped = "<?php\n\nfunction a()\n{\n    /** @var list<string> $d */\n    $d = h();\n\n    return $d;\n}\n\nfunction b()\n{\n    // comment\n    $d = h();\n\n    return $d;\n}\n\nfunction g()\n{\n    $d = h();\n    // keep $d for debugging\n    return $d;\n}\n\nfunction i()\n{\n    $d = h();\n    /** @var int */\n    return $d;\n}\n";
+        let changed = "\nfunction c()\n{\n    $d = h(); // trailing\n\n    return $d;\n}\n\nfunction j()\n{\n    $d = h();\n    // unrelated\n    return $d;\n}\n";
+        let fixed = "\nfunction c()\n{\n    return h(); // trailing\n}\n\nfunction j()\n{\n    return h();\n    // unrelated\n}\n";
+        let options = serde_json::json!({ "skip_commented": true });
+        assert_eq!(
+            fix(options, &format!("{skipped}{changed}")),
+            format!("{skipped}{fixed}")
+        );
+        let mut fixer = super::fixer();
+        let error = fixer.configure(&serde_json::json!({ "skip_commented": 1 }));
+        assert_eq!(
+            error.unwrap_err().to_string(),
+            "[return_assignment] skip_commented must be a bool, not 1"
+        );
     }
 }

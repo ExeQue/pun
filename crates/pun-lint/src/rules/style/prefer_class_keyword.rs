@@ -3,15 +3,25 @@ use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::complexity::prefer_absolute_include::print_string;
 use crate::rules::support::expressions::{Prec, in_parent};
+use crate::rules::support::options::{boolean, configure};
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 pub struct PreferClassKeyword;
 
 impl Rule for PreferClassKeyword {
     fn id(&self) -> &'static str {
         "lint/style/prefer-class-constant"
+    }
+
+    /// Takes the rule's `namespaced-only`, which it keeps to anyway (Rector's checks).
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        configure(options, |key, value| {
+            boolean(value)
+                .filter(|_| key == "namespaced-only")
+                .map(drop)
+        })
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {

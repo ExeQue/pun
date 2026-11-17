@@ -170,7 +170,29 @@ fn class_keyword() {
     // PHP-CS-Fixer's `class_keyword` (.oracle/php-cs-fixer, `--allow-risky=yes`) on PHP's own classes: a quoted string
     // that is a class name spelt as declared, with or without a leading `\`. Classes only the fixer's own process
     // knows (`PhpCsFixer\...`) are not known to Pun.
-    check_rule_oracle(rules::PreferClassConstant, "prefer_class_constant.php.inc");
+    check_rule_oracle(
+        rules::PreferClassConstant::default(),
+        "prefer_class_constant.php.inc",
+    );
+}
+
+#[test]
+fn class_keyword_namespaced_only() {
+    // Rector 2.8.4's StringClassNameToClassConstantRector and UseClassKeywordForClassNameResolutionRector change none of
+    // class_keyword's input above: every name in it is global.
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/oracle/prefer_class_constant.php.inc");
+    let content = std::fs::read_to_string(path).unwrap();
+    let (input, _) = content.split_once("-----\n").unwrap();
+    let mut rule = rules::PreferClassConstant::default();
+    rule.configure(&serde_json::json!({ "namespaced-only": true }))
+        .unwrap();
+    assert_eq!(fix_with(rule, input), input);
+    let mut rule = rules::PreferClassConstant::default();
+    assert!(
+        rule.configure(&serde_json::json!({ "namespaced-only": "yes" }))
+            .is_err()
+    );
 }
 
 #[test]

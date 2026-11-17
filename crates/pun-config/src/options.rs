@@ -24,6 +24,8 @@ pub struct RuleOption {
     pub keys: Vec<(String, String)>,
     pub null: Option<String>,
     pub nullable: bool,
+    /// Pun's own option (`origin = "pun"`), which no upstream tool has.
+    pub pun: bool,
 }
 
 const KINDS: [(&str, Kind); 8] = [
@@ -64,6 +66,7 @@ fn all() -> &'static Vec<(String, Vec<RuleOption>)> {
                             keys: pairs(e, "keys"),
                             null: s("null"),
                             nullable: e.get("nullable").is_some(),
+                            pun: s("origin").as_deref() == Some("pun"),
                         }
                     })
                     .collect();
@@ -247,7 +250,7 @@ pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
     let Value::Object(m) = options else {
         return Ok(Value::Bool(true));
     };
-    let opts = rule_options(id);
+    let opts: Vec<&RuleOption> = rule_options(id).iter().filter(|o| !o.pun).collect();
     if opts.is_empty() {
         bail!("[{fixer}] Is not configurable.");
     }
@@ -272,7 +275,7 @@ pub fn to_pun(fixer: &str, id: &str, options: &Value) -> Result<Value> {
             out.insert(o.name.clone(), p);
         }
     }
-    let short = shorthand(opts).filter(|_| id.starts_with("format/"));
+    let short = shorthand(rule_options(id)).filter(|_| id.starts_with("format/"));
     Ok(match short {
         Some(o) if out.len() == 1 && out.contains_key(&o.name) => out.remove(&o.name).unwrap(),
         _ => Value::Object(out),

@@ -214,11 +214,14 @@ def rule_page(data: dict, rid: str, rule: dict, sources: list[dict], urls: dict,
         body += "\n\n## Options\n\n| Name | Type | Allowed values | Default | Upstream name |\n| --- | --- | --- | --- | --- |\n"
         fixer = next((s["name"] for s in sources if s["tool"] in ("php-cs-fixer", "pint")), "")
         for key, option in options.items():
+            own = option.get("origin") == "pun"
             default = next((o for o in defaults.get(fixer, []) if o["name"] == option["upstream"]), None)
+            default = {"default": option["default"]} if own else default
             value = pun_value(default["default"], option) if default else None
             shown = table_code(toml_value(value)) if value is not None else "Not set" if default else "Unknown"
             allowed = ", ".join(table_code(v) for v in option.get("values", {})) or "Any"
-            body += f"| `{key}` | `{option['type']}` | {allowed} | {shown} | `{option['upstream']}` |\n"
+            upstream = "None (Pun's own)" if own else f"`{option['upstream']}`"
+            body += f"| `{key}` | `{option['type']}` | {allowed} | {shown} | {upstream} |\n"
     if sources:
         body = body.rstrip() + "\n\n## Replaces\n\n"
         body += "\n".join(f"- {upstream_link(s, urls)} ({s['tool']}{', risky' if s.get('risky') else ''})" for s in sources)

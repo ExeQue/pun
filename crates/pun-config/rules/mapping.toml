@@ -328,7 +328,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "control-flow/no-empty-catch" = { fix = "none", intent = "correctness", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Report an empty `catch` block, which swallows the exception." }
 "control-flow/no-for-init-overwrite" = { fix = "none", intent = "suspicious", sets = ["code-quality"], ported = true, status = "decided", summary = "Disallows a `for` loop's init expression overwriting a variable that is already defined." }
 "control-flow/no-loop-variable-overwrite" = { fix = "none", intent = "suspicious", sets = ["code-quality"], ported = true, status = "decided", summary = "Disallows a `foreach` key or value variable overwriting a variable that is already defined." }
-"control-flow/no-return-assignment" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", merged = ["php-cs-fixer:return_assignment", "rector:SimplifyUselessVariable"], replaces = ["lint/dead-code/no-useless-variable"], summary = "Local, dynamic and directly referenced variables should not be assigned and directly returned by a function or method." }
+"control-flow/no-return-assignment" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", merged = ["php-cs-fixer:return_assignment", "rector:SimplifyUselessVariable"], replaces = ["lint/dead-code/no-useless-variable"], note = "Rector's SimplifyUselessVariableRector leaves an assignment alone when a comment is before it, or when a comment before the return names the variable or has `@var`. `skip-commented = true` does the same; `pun migrate` sets it when the rule comes from rector.php and not from PHP-CS-Fixer's return_assignment.", summary = "Local, dynamic and directly referenced variables should not be assigned and directly returned by a function or method." }
 "control-flow/no-superfluous-elseif" = { fix = "safe", sets = ["dead-code"], ported = true, status = "decided", summary = "Replaces superfluous `elseif` with `if`." }
 "control-flow/no-switch-continue" = { fix = "safe", sets = ["modernize"], ported = true, status = "decided", summary = "Switch case must not be ended with `continue` but with `break`." }
 "control-flow/no-unsafe-finally" = { fix = "none", intent = "suspicious", sets = ["code-quality"], ported = true, origin = "mago", status = "decided", summary = "Detects control flow statements in `finally` blocks." }
@@ -796,7 +796,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "style/prefer-cast-over-intval" = { fix = "unsafe", ported = true, status = "decided", summary = "Replaces `intval`, `floatval`, `doubleval`, `strval` and `boolval` function calls with according type casting operator." }
 "style/prefer-cast-over-settype" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", summary = "Cast shall be used, not `settype`." }
 "style/prefer-catch-name-from-type" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Type and name of catch exception should match" }
-"style/prefer-class-constant" = { fix = "unsafe", sets = ["modernize", "coding-style"], ported = true, status = "decided", merged = ["php-cs-fixer:class_keyword", "rector:StringClassNameToClassConstant", "rector:UseClassKeywordForClassNameResolution"], replaces = ["lint/style/prefer-class-keyword", "lint/style/prefer-class-name-constant"], summary = "Use `Foo::class` instead of class-name strings." }
+"style/prefer-class-constant" = { fix = "unsafe", sets = ["modernize", "coding-style"], ported = true, status = "decided", merged = ["php-cs-fixer:class_keyword", "rector:StringClassNameToClassConstant", "rector:UseClassKeywordForClassNameResolution"], replaces = ["lint/style/prefer-class-keyword", "lint/style/prefer-class-name-constant"], note = "Rector converts only names with a namespace, such as `'App\\Models\\User'`; PHP-CS-Fixer's class_keyword also converts global names such as `'Throwable'`. `namespaced-only = true` keeps to Rector's checks; `pun migrate` sets it when the rule comes from rector.php and not from class_keyword.", summary = "Use `Foo::class` instead of class-name strings." }
 "style/prefer-class-keyword-on-object" = { fix = "unsafe", sets = ["modernize"], ported = true, status = "decided", summary = "Replace `get_class` calls on object variables with class keyword syntax." }
 "style/prefer-compound-assignment" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:long_to_shorthand_operator", "rector:CombinedAssign"], replaces = ["lint/operators/prefer-shorthand-operator"], summary = "Shorthand notation for operators should be used if possible." }
 "style/prefer-create-from-timestamp" = { fix = "none", ported = true, origin = "mago", status = "decided", summary = "Suggests `DateTimeImmutable::createFromTimestamp()` when a Unix timestamp is converted" }
@@ -1610,6 +1610,7 @@ sort-algorithm = { upstream = "sort_algorithm", type = "enum", values = { none =
 
 [options."lint/control-flow/no-return-assignment"]
 skip-named-var-tags = { upstream = "skip_named_var_tags", type = "bool" }
+skip-commented = { upstream = "skip_commented", type = "bool", origin = "pun", default = false }
 
 [options."lint/operators/no-error-suppression"]
 mute-deprecation-error = { upstream = "mute_deprecation_error", type = "bool" }
@@ -1748,6 +1749,9 @@ private-methods = { upstream = "private_methods", type = "bool" }
 
 [options."lint/style/prefer-phpdoc-comment"]
 ignored-tags = { upstream = "ignored_tags", type = "list" }
+
+[options."lint/style/prefer-class-constant"]
+namespaced-only = { upstream = "namespaced-only", type = "bool", origin = "pun", default = false }
 
 [options."lint/style/prefer-random-int"]
 replacements = { upstream = "replacements", type = "map" }

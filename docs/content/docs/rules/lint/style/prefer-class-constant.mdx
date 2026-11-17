@@ -22,6 +22,12 @@ Use `Foo::class` instead of class-name strings.
 
 To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `namespaced-only` | `bool` | Any | `false` | None (Pun's own) |
+
 ## Replaces
 
 - [`class_keyword`](https://cs.symfony.com/doc/rules/language_construct/class_keyword.html) (php-cs-fixer, risky)
@@ -35,5 +41,7 @@ These old IDs are now this rule. A config that still names one stops with an err
 
 - `lint/style/prefer-class-keyword`
 - `lint/style/prefer-class-name-constant`
+
+Rector converts only names with a namespace, such as `'App\Models\User'`; PHP-CS-Fixer's class_keyword also converts global names such as `'Throwable'`. `namespaced-only = true` keeps to Rector's checks; `pun migrate` sets it when the rule comes from rector.php and not from class_keyword.
 
 [More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)

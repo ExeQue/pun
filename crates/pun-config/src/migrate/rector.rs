@@ -122,6 +122,13 @@ const PREPARED: [(&str, &str); 7] = [
     ("early-return.php", "early-return"),
 ];
 
+/// The Pun options that keep a rule merged with a PHP-CS-Fixer fixer to what its Rector rules check, so a project
+/// clean under Rector is clean under Pun. The fixer's own checks run only when it is named in pint.json.
+const AS_RECTOR: [(&str, &str); 2] = [
+    ("lint/control-flow/no-return-assignment", "skip-commented"),
+    ("lint/style/prefer-class-constant", "namespaced-only"),
+];
+
 fn by_class() -> &'static BTreeMap<String, toml::Value> {
     static T: std::sync::LazyLock<BTreeMap<String, toml::Value>> = std::sync::LazyLock::new(|| {
         let mut out = BTreeMap::new();
@@ -200,6 +207,10 @@ pub fn from_rector(root: &Path, r: &RectorConfig) -> Rector {
                 out.options.insert(id.clone(), options);
             }
             None => {}
+        }
+        if let Some((_, key)) = AS_RECTOR.iter().find(|(r, _)| *r == id) {
+            (out.options.entry(id.clone()).or_default())
+                .insert((*key).to_string(), toml::Value::Boolean(true));
         }
         if let Some(paths) = skip.and_then(Value::as_array)
             && id.starts_with("lint/")

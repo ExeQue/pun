@@ -27,6 +27,7 @@ To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) o
 | Name | Type | Allowed values | Default | Upstream name |
 | --- | --- | --- | --- | --- |
 | `skip-named-var-tags` | `bool` | Any | `false` | `skip_named_var_tags` |
+| `skip-commented` | `bool` | Any | `false` | None (Pun's own) |
 
 ## Replaces
 
@@ -39,5 +40,7 @@ To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) o
 These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
 - `lint/dead-code/no-useless-variable`
+
+Rector's SimplifyUselessVariableRector leaves an assignment alone when a comment is before it, or when a comment before the return names the variable or has `@var`. `skip-commented = true` does the same; `pun migrate` sets it when the rule comes from rector.php and not from PHP-CS-Fixer's return_assignment.
 
 [More lint/control-flow rules](/docs/rules/lint/control-flow) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
