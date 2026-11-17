@@ -245,3 +245,29 @@ impl Dispatcher {
         phase(&mut host, "after")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Both shapes of installed.json Composer reads (2's `{"packages": [...]}` and 1's list), and none at all.
+    #[test]
+    fn needs_the_host_for_an_allowed_plugin_in_either_shape() {
+        let vendor = std::env::temp_dir().join(format!("pun-needs-host-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&vendor);
+        let config = serde_json::json!({"allow-plugins": {"acme/*": true}});
+        let config = config.as_object().unwrap();
+        assert!(!needs_host(&vendor, config));
+        std::fs::create_dir_all(vendor.join("composer")).unwrap();
+        let entry = r#"{"name": "acme/plugin", "type": "composer-plugin"}"#;
+        for json in [
+            format!(r#"{{"packages": [{entry}]}}"#),
+            format!("[{entry}]"),
+        ] {
+            std::fs::write(vendor.join("composer/installed.json"), json).unwrap();
+            assert!(needs_host(&vendor, config));
+            assert!(!needs_host(&vendor, &Map::new()));
+        }
+        std::fs::remove_dir_all(&vendor).unwrap();
+    }
+}

@@ -70,9 +70,7 @@ pub fn fresh(file: &Path, inputs: &str) -> Option<Recorded> {
     Some(Recorded {
         kept: usize::try_from(record["kept"].as_u64()?).ok()?,
         classes: usize::try_from(record["classes"].as_u64()?).ok()?,
-        warnings: (record["warnings"].as_array()?.iter())
-            .map(|w| w.as_str().map(String::from))
-            .collect::<Option<_>>()?,
+        warnings: serde_json::from_value(record["warnings"].clone()).ok()?,
     })
 }
 

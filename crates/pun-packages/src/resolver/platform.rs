@@ -462,6 +462,42 @@ mod tests {
         assert!(from_probe(&probe, json!({"laravel/x": "1"}).as_object()).is_err());
     }
 
+    /// The cached probe is reused until one of its inputs changes, and a directory PHP is told to scan for ini files
+    /// that doesn't exist yet is an input too: creating it re-probes.
+    #[test]
+    fn the_probe_is_cached_until_an_input_changes() {
+        use std::os::unix::fs::PermissionsExt;
+        let t = std::env::temp_dir().join(format!("pun-probe-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&t);
+        std::fs::create_dir_all(&t).unwrap();
+        let scan = t.join("conf.d");
+        let php = t.join("php");
+        let script = format!(
+            "#!/bin/sh\nPHP_INI_SCAN_DIR={} exec php \"$@\"\n",
+            scan.display()
+        );
+        std::fs::write(&php, script).unwrap();
+        std::fs::set_permissions(&php, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let (php, cache) = (php.to_str().unwrap(), t.join("cache"));
+        let first = probe_cached(php, Some(&cache)).unwrap();
+        let file = std::fs::read_dir(cache.join("php"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let mut entry: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+        entry["probe"]["php"] = "0.0.1".into();
+        std::fs::write(&file, entry.to_string()).unwrap();
+        assert_eq!(probe_cached(php, Some(&cache)).unwrap()["php"], "0.0.1");
+        std::fs::create_dir(&scan).unwrap();
+        assert_eq!(
+            probe_cached(php, Some(&cache)).unwrap()["php"],
+            first["php"]
+        );
+        std::fs::remove_dir_all(&t).unwrap();
+    }
+
     #[test]
     fn reads_the_system_php() {
         let got = detect("php", None).unwrap();

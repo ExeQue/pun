@@ -13,7 +13,7 @@ sections after it are kept by hand. The gate notes that used to open this file a
 | punphp-format | 1022 | 1022 | 100.00% | ok |
 | punphp-harness | 235 | 235 | 100.00% | ok |
 | punphp-lint | 71573 | 70512 | 98.52% | ok |
-| punphp-packages | 11206 | 11206 | 100.00% | ok |
+| punphp-packages | 12420 | 12420 | 100.00% | ok |
 | punphp-phpstan | 11723 | 11463 | 97.78% | ok |
 | punphp-problem | 290 | 290 | 100.00% | ok |
 | punphp-tokens | 3958 | 3892 | 98.33% | ok |
@@ -271,7 +271,9 @@ Uncovered lines:
 - `crates/pun-cli/src/migrate.rs:596` closest_preset's "nothing to switch" return: every PHPStan level leaves some rules of its closest Pun preset off (level 0: the basic preset's 9-10 non-level-0 rules, with or without bleedingEdge; a neon without a level turns every group off), so a migrated `[analyse]` always has on/off lines.
 - `crates/pun-cli/src/migrate.rs:568` the same: the `[analyse]` line without on/off counts.
 - `crates/pun-cli/src/update.rs:549` `require -p`'s second resolution failing: it resolves the member again with the constraints picked from the first resolution's versions, which those versions satisfy, so the first solution still holds.
-- `crates/pun-packages/src/plugin_host.rs:37` the downloaded composer.phar's checksum mismatch: getcomposer.org serves the pinned release, so only a tampered or truncated download reaches it, and the tests download from the real server.
+- `crates/pun-packages/src/store.rs:172` a copy-on-write clone that succeeds: `FICLONE` works only on btrfs, XFS and bcachefs, and the orbs and CI run on overlayfs and ext4, which refuse it (`cp --reflink=always` fails there too); the refusal and the copy after it are covered.
+- `crates/pun-packages/src/store.rs:223` the same: the `FICLONE` ioctl's success.
+- `crates/pun-packages/src/plugin_host.rs:36` the downloaded composer.phar's checksum mismatch: getcomposer.org serves the pinned release, so only a tampered or truncated download reaches it, and the tests download from the real server.
 - `crates/pun-analyse/src/rules/return_types.rs:77-79` `Provider::meta()` of the built-in return provider: as for the Laravel hook, `PluginRegistry` reads `meta()` only for its own library plugins.
 - `crates/pun-analyse/src/rules/return_types.rs:1275-1277` the same for the benevolent-return provider.
 - `crates/pun-analyse/src/rules/return_types.rs:1316-1318` the same for the Closure method return provider.

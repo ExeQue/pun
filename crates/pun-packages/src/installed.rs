@@ -517,14 +517,8 @@ pub fn read_installed(vendor: &Path) -> Result<Vec<LockedPackage>> {
         Value::Object(mut m) => m.remove("packages").unwrap_or(Value::Null),
         v => v,
     };
-    let Value::Array(list) = list else {
-        return Ok(vec![]);
-    };
-    Ok((list.into_iter())
-        .filter_map(|p| match p {
-            Value::Object(m) => Some(LockedPackage(m)),
-            _ => None,
-        })
+    Ok((list.as_array().into_iter().flatten())
+        .filter_map(|p| p.as_object().cloned().map(LockedPackage))
         .collect())
 }
 

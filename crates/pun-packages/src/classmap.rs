@@ -372,7 +372,7 @@ impl ClassMap {
         for (job, listing) in jobs.iter().zip(&listed) {
             let listing = listing.as_ref().map_err(Error::msg)?;
             if let (Some(file), None, true) = (&job.cache, &listing.cached, listing.cacheable) {
-                save(job, listing, file, &found);
+                save(job, listing, file, &found)?;
             }
             for (i, (path, real)) in listing.files.iter().enumerate() {
                 if self.scanned.contains(real) {
@@ -525,20 +525,17 @@ fn cached(job: &Job, file: &Path) -> Option<Listing> {
 /// The classes of a listing's file: from the cache or from this scan.
 type Found<'a> = dyn Fn(&Listing, usize, &Path) -> Result<Vec<String>> + 'a;
 
-/// Keeps a job's listing in `file`; a file that could not be read leaves nothing kept.
-fn save(job: &Job, listing: &Listing, file: &Path, found: &Found) {
-    let entries: Result<Vec<(&str, Vec<String>)>> = (listing.files.iter().enumerate())
+/// Keeps a job's listing in `file`. A file that could not be read is the scan's error, as it is without the cache.
+fn save(job: &Job, listing: &Listing, file: &Path, found: &Found) -> Result<()> {
+    let entries: Vec<(&str, Vec<String>)> = (listing.files.iter().enumerate())
         .map(|(i, (path, real))| {
             let rel = path.strip_prefix(&job.dir).unwrap_or(path);
             Ok((rel.trim_start_matches('/'), found(listing, i, real)?))
         })
-        .collect();
-    // Best effort: an unreadable file is reported by the scan, and a failed write only costs a scan next time.
-    if let Ok(entries) = entries
-        && let Ok(json) = serde_json::to_vec(&entries)
-    {
-        let _ = crate::fetch::store(file, &json);
-    }
+        .collect::<Result<_>>()?;
+    // Best effort: a failed write only costs a scan next time.
+    let _ = crate::fetch::store(file, &serde_json::to_vec(&entries)?);
+    Ok(())
 }
 
 /// Lists the files below `dir`; false when it went through a symlink.
@@ -637,6 +634,39 @@ $x = 'unterminated class Fake5 {}
             find_classes(b"<?php\nclass C {}\n/* never closed class Fake6 {}\n"),
             ["C"]
         );
+    }
+
+    /// A file the scan can't read is the same error with the class cache as without it, and nothing is kept.
+    #[test]
+    fn an_unreadable_file_is_not_cached() {
+        use std::os::unix::fs::PermissionsExt;
+        let t =
+            std::env::temp_dir().join(format!("pun-classmap-unreadable-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&t);
+        std::fs::create_dir_all(t.join("d")).unwrap();
+        let file = t.join("d/A.php");
+        std::fs::write(&file, "<?php class A {}\n").unwrap();
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let dir = t.join("d").to_string_lossy().into_owned();
+        let job = Job {
+            dir: dir.clone(),
+            given: dir,
+            exclude: None,
+            rule: Rule::Classmap,
+            namespace: String::new(),
+            cache: Some(t.join("cache.json")),
+        };
+        let err = ClassMap::default().scan_all(&[job], "/usr").unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            format!(
+                "File at \"{}\" is not readable, check its permissions",
+                file.display()
+            )
+        );
+        assert!(!t.join("cache.json").exists());
+        std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+        std::fs::remove_dir_all(&t).unwrap();
     }
 
     #[test]
