@@ -12,7 +12,10 @@
 //! `PUN_LARASTAN_TYPES_REPORT=1` prints every failing case's difference.
 //!
 //! Type/PunEloquentBuildersTest.json is Pun's own reduced case (root/tests/Type/data/pun-eloquent-builders.php), its
-//! assertions PHPStan's types for it with GeneralTypeTest's config.
+//! assertions PHPStan's types for it with GeneralTypeTest's config. Type/PunGenericEloquentUnionsTest.json (IDE-helper
+//! `Builder|Model` and `Collection|Model[]` unions, `builder-of` of a template) and Type/PunMacroClosureThisTest.json
+//! (`$this` in a `macro()` closure) are reduced cases too, their assertions and errors from PHPStan 2.3.6 with
+//! Larastan 3.15.0 at level 8 in a Laravel 13 app.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

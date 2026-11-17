@@ -1,0 +1,21 @@
+{
+    "test": "Type/PunMacroClosureThisTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-macro-closure-this.php",
+            "declares": [
+                "punmacroclosurethis\\provider",
+                "punmacroclosurethis\\registry"
+            ],
+            "asserts": [
+                31,
+                36,
+                49
+            ],
+            "errors": []
+        }
+    ]
+}

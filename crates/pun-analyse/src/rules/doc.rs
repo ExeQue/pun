@@ -38,7 +38,15 @@ pub(super) fn tags(doc: &[u8]) -> Vec<(String, Vec<u8>)> {
 }
 
 fn param_value(value: &[u8]) -> Option<(Node, bool, String)> {
-    if matches!(value.first(), Some(b'$' | b'&')) || value.starts_with(b"...") {
+    // the lexer's TOKEN_THIS_VARIABLE: `$this` is a type, any other `$name` starts a typeless tag
+    let this = value.starts_with(b"$this")
+        && !value
+            .get(5)
+            .is_some_and(|ch| ch.is_ascii_alphanumeric() || *ch == b'_' || !ch.is_ascii());
+    if matches!(value.first(), Some(b'$') if !this)
+        || value.first() == Some(&b'&')
+        || value.starts_with(b"...")
+    {
         return None;
     }
     let (node, offset) = phpdoc::parse_prefix(value).ok()?;

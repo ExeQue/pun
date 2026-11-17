@@ -85,13 +85,23 @@ fn discovered_providers(root: &Path) -> Vec<PathBuf> {
 }
 
 impl Macros {
+    /// Larastan boots the application and reads the macros its providers registered. Pun cannot run PHP, so it reads
+    /// the `macro()` calls of the bootstrap files, the app's providers, the framework's and the discovered packages'
+    /// providers, and of every analysed file that calls `::macro(`, wherever the call sits (a provider registered in
+    /// `bootstrap/providers.php`, or a helper class a provider calls).
     pub(crate) fn load(
-        files: &[PathBuf],
+        bootstrap: &[PathBuf],
+        analysed: &[PathBuf],
         root: &Path,
         codebase: &CodebaseMetadata,
         app: &App,
     ) -> Macros {
-        let mut files: Vec<PathBuf> = files.to_vec();
+        let registers = |path: &&PathBuf| {
+            std::fs::read(path)
+                .is_ok_and(|b| b.windows(7).any(|w| w.eq_ignore_ascii_case(b"::macro")))
+        };
+        let mut files: Vec<PathBuf> = analysed.iter().filter(registers).cloned().collect();
+        files.extend_from_slice(bootstrap);
         let php = ["php".to_string()];
         files.extend(crate::php_files(&root.join("app/Providers"), &php));
         let framework = root.join("vendor/laravel/framework/src/Illuminate");
