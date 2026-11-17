@@ -85,4 +85,14 @@ final class Probe
     {
         dumpType(Str::shout('a'));
     }
+
+    /** @param array{Models\OddThing, Models\OpenThing} $m */
+    public function oddEnums(array $m): void
+    {
+        dumpType($m[0]->bare);
+        dumpType($m[0]->empty_list);
+        dumpType($m[0]->count);
+        dumpType($m[1]->count);
+        dumpType($m[1]->open);
+    }
 }

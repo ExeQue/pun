@@ -413,6 +413,36 @@
    86,
    "phpstan.dumpType",
    "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   92,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   93,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
+  ],
+  [
+   "app/Probe.php",
+   94,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   95,
+   "phpstan.dumpType",
+   "Dumped type: int"
+  ],
+  [
+   "app/Probe.php",
+   96,
+   "phpstan.dumpType",
+   "Dumped type: mixed"
   ]
  ],
  "disabled": [
@@ -1099,6 +1129,66 @@
    86,
    "phpstan.dumpType",
    "Dumped type: string"
+  ],
+  [
+   "app/Probe.php",
+   92,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   92,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\OddThing::$bare."
+  ],
+  [
+   "app/Probe.php",
+   93,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   93,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\OddThing::$empty_list."
+  ],
+  [
+   "app/Probe.php",
+   94,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   94,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\OddThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   95,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   95,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\OpenThing::$count."
+  ],
+  [
+   "app/Probe.php",
+   96,
+   "phpstan.dumpType",
+   "Dumped type: *ERROR*"
+  ],
+  [
+   "app/Probe.php",
+   96,
+   "property.notFound",
+   "Access to an undefined property App\\Models\\OpenThing::$open."
   ]
  ]
 }
