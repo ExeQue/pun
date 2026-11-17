@@ -5,12 +5,24 @@ use crate::analyzers::arguments_analyzer::ArgumentsAnalyzer;
 use pun_format::Fixer;
 use pun_tokens::Kind::{self, *};
 use pun_tokens::{Proto, Token, Tokens};
+use serde_json::Value;
 use std::path::Path;
 
-struct StringLengthToEmptyFixer;
+#[derive(Default)]
+struct StringLengthToEmptyFixer {
+    /// Pun's `identical_or_greater_only`: only `strlen($x) === 0` and `strlen($x) > 0` (either side), the forms
+    /// Rector's `StrlenZeroToIdenticalEmptyStringRector` changes.
+    identical_or_greater_only: bool,
+}
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
-    Box::new(StringLengthToEmptyFixer)
+    Box::new(StringLengthToEmptyFixer::default())
+}
+
+/// Whether Rector changes this comparison: `0` with `===`, or `>` towards `0` (`strlen($x) > 0`, `0 < strlen($x)`).
+fn is_rector_form(operator: &Token, operand: &Token, yoda: bool) -> bool {
+    operand.get_content() == b"0"
+        && (operator.is_kind(T_IS_IDENTICAL) || operator.equals(if yoda { "<" } else { ">" }, true))
 }
 
 fn get_replacement_yoda(operator: &Token, operand: &Token) -> Option<Kind> {
@@ -134,6 +146,23 @@ impl Fixer for StringLengthToEmptyFixer {
     fn is_risky(&self) -> bool {
         IS_RISKY
     }
+    fn configure(&mut self, options: &Value) -> anyhow::Result<()> {
+        let only = match options {
+            Value::Null => None,
+            Value::Object(o) if o.len() == 1 => o.get("identical_or_greater_only"),
+            _ => anyhow::bail!("[{}] Is not configurable.", self.name()),
+        };
+        self.identical_or_greater_only = match only {
+            None if !options.is_null() => anyhow::bail!("[{}] Is not configurable.", self.name()),
+            None => false,
+            Some(Value::Bool(b)) => *b,
+            Some(v) => anyhow::bail!(
+                "[{}] identical_or_greater_only must be a bool, not {v}",
+                self.name()
+            ),
+        };
+        Ok(())
+    }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
         is_candidate(tokens)
     }
@@ -161,7 +190,10 @@ impl Fixer for StringLengthToEmptyFixer {
             if is_operator_of_interest(&tokens[previous_index]) {
                 operator_index = previous_index;
                 operand_index = tokens.prev_meaningful(previous_index);
-                if !is_operand_of_interest(&tokens[operand_index]) {
+                if !is_operand_of_interest(&tokens[operand_index])
+                    || (self.identical_or_greater_only
+                        && !is_rector_form(&tokens[operator_index], &tokens[operand_index], true))
+                {
                     continue;
                 }
                 let Some(r) = get_replacement_yoda(&tokens[operator_index], &tokens[operand_index])
@@ -179,7 +211,10 @@ impl Fixer for StringLengthToEmptyFixer {
             } else if is_operator_of_interest(&tokens[next_index]) {
                 operator_index = next_index;
                 operand_index = tokens.next_meaningful(next_index);
-                if !is_operand_of_interest(&tokens[operand_index]) {
+                if !is_operand_of_interest(&tokens[operand_index])
+                    || (self.identical_or_greater_only
+                        && !is_rector_form(&tokens[operator_index], &tokens[operand_index], false))
+                {
                     continue;
                 }
                 let Some(r) =
@@ -214,6 +249,55 @@ impl Fixer for StringLengthToEmptyFixer {
             if let Some(ns) = namespace_separator_index {
                 tokens.clear_token_and_merge_surrounding_whitespace(ns);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    fn fix(options: &serde_json::Value, code: &str) -> String {
+        let mut fixer = super::fixer();
+        fixer.configure(options).unwrap();
+        crate::fix_with(&*fixer, code)
+    }
+
+    /// Rector 2.8.4's `StrlenZeroToIdenticalEmptyStringRector` changes `$a` to `$d` only; PHP-CS-Fixer's
+    /// `string_length_to_empty` changes all twelve (its output is the expectation for the four).
+    #[test]
+    fn identical_or_greater_only_changes_what_rector_changes() {
+        let forms = [
+            ("strlen($s) === 0", "$s === ''"),
+            ("0 === strlen($s)", "'' === $s"),
+            ("strlen($s) > 0", "$s !== ''"),
+            ("0 < strlen($s)", "'' !== $s"),
+        ];
+        let left = [
+            "strlen($s) !== 0",
+            "0 !== strlen($s)",
+            "strlen($s) <= 0",
+            "0 >= strlen($s)",
+            "strlen($s) < 1",
+            "strlen($s) >= 1",
+            "1 > strlen($s)",
+            "1 <= strlen($s)",
+        ];
+        let code = |v: &[&str]| -> String {
+            let lines: String = v.iter().map(|e| format!("$x = {e};\n")).collect();
+            format!("<?php\n{lines}")
+        };
+        let before: Vec<&str> = forms.iter().map(|f| f.0).chain(left).collect();
+        let after: Vec<&str> = forms.iter().map(|f| f.1).chain(left).collect();
+        let options = serde_json::json!({ "identical_or_greater_only": true });
+        assert_eq!(fix(&options, &code(&before)), code(&after));
+        let mut fixer = super::fixer();
+        for (options, error) in [
+            (serde_json::json!({ "foo": true }), "[string_length_to_empty] Is not configurable."),
+            (
+                serde_json::json!({ "identical_or_greater_only": 1 }),
+                "[string_length_to_empty] identical_or_greater_only must be a bool, not 1",
+            ),
+        ] {
+            assert_eq!(fixer.configure(&options).unwrap_err().to_string(), error);
         }
     }
 }

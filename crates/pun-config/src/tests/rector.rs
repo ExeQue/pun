@@ -103,13 +103,15 @@ fn reads_sets_rules_and_skips() {
 
 /// A rule merged with a PHP-CS-Fixer fixer keeps to its Rector rules' checks when rector.php brings it in: Rector
 /// 2.8.4's `SimplifyUselessVariableRector` skips a commented assignment and `StringClassNameToClassConstantRector` a
-/// global name (`'Throwable'`), where `return_assignment` and `class_keyword` change both.
+/// global name (`'Throwable'`), and `StrlenZeroToIdenticalEmptyStringRector` changes only `=== 0` and `> 0`, where
+/// `return_assignment`, `class_keyword` and `string_length_to_empty` change all of them.
 #[test]
 fn rector_rules_merged_with_a_fixer_keep_to_rector() {
     let config = RectorConfig {
         rules: strings(&[
             "Rector\\CodeQuality\\Rector\\FunctionLike\\SimplifyUselessVariableRector",
             "Rector\\Php55\\Rector\\String_\\StringClassNameToClassConstantRector",
+            "Rector\\CodeQuality\\Rector\\Identical\\StrlenZeroToIdenticalEmptyStringRector",
             FOREACH,
         ]),
         ..RectorConfig::default()
@@ -128,6 +130,10 @@ fn rector_rules_merged_with_a_fixer_keep_to_rector() {
             (
                 "lint/style/prefer-class-constant",
                 "namespaced-only = true".to_string()
+            ),
+            (
+                "lint/style/prefer-empty-string-compare",
+                "identical-or-greater-only = true".to_string()
             ),
         ]
     );

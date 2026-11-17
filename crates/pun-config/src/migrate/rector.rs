@@ -124,9 +124,13 @@ const PREPARED: [(&str, &str); 7] = [
 
 /// The Pun options that keep a rule merged with a PHP-CS-Fixer fixer to what its Rector rules check, so a project
 /// clean under Rector is clean under Pun. The fixer's own checks run only when it is named in pint.json.
-const AS_RECTOR: [(&str, &str); 2] = [
+const AS_RECTOR: [(&str, &str); 3] = [
     ("lint/control-flow/no-return-assignment", "skip-commented"),
     ("lint/style/prefer-class-constant", "namespaced-only"),
+    (
+        "lint/style/prefer-empty-string-compare",
+        "identical-or-greater-only",
+    ),
 ];
 
 fn by_class() -> &'static BTreeMap<String, toml::Value> {

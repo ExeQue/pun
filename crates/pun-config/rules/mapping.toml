@@ -806,7 +806,7 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "style/prefer-early-continue" = { fix = "safe", sets = ["early-return"], ported = true, origin = "mago", status = "decided", summary = "Continue early instead of nesting the loop body in an if." }
 "style/prefer-early-return" = { fix = "safe", sets = ["early-return"], ported = true, status = "decided", summary = "Return early instead of nesting the rest of the function in an if or else." }
 "style/prefer-early-return-over-prepared-value" = { fix = "safe", sets = ["early-return"], ported = true, status = "decided", summary = "Return early from each if instead of preparing a variable that is returned at the end." }
-"style/prefer-empty-string-compare" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:string_length_to_empty", "rector:StrlenZeroToIdenticalEmptyString"], replaces = ["lint/strings/prefer-empty-string-identical"], summary = "Compare with `''` instead of strlen() === 0." }
+"style/prefer-empty-string-compare" = { fix = "unsafe", sets = ["code-quality"], ported = true, status = "decided", merged = ["php-cs-fixer:string_length_to_empty", "rector:StrlenZeroToIdenticalEmptyString"], replaces = ["lint/strings/prefer-empty-string-identical"], note = "Rector's StrlenZeroToIdenticalEmptyStringRector changes only `strlen($x) === 0` and `strlen($x) > 0` (either side); PHP-CS-Fixer's string_length_to_empty also changes `!== 0`, `<= 0` and the comparisons with `1`. `identical-or-greater-only = true` keeps to Rector's forms; `pun migrate` sets it when the rule comes from rector.php and not from string_length_to_empty. Rector also writes the string first and casts a value whose native type is not a string, which Pun does not.", summary = "Compare with `''` instead of strlen() === 0." }
 "style/prefer-generic-array-phpdoc" = { fix = "unsafe", ported = true, status = "decided", summary = "PHPDoc `array<T>` type must be used instead of `T[]`." }
 "style/prefer-instanceof-stringable" = { fix = "none", sets = ["coding-style"], ported = true, origin = "mago", status = "decided", summary = "Detects the legacy pattern `is_object($x) && method_exists($x, '__toString')` and suggests" }
 "style/prefer-list-phpdoc" = { fix = "unsafe", ported = true, status = "decided", summary = "PHPDoc `list` type must be used instead of `array` without a key." }
@@ -1746,6 +1746,9 @@ sets = { upstream = "sets", type = "list", values = { "@all" = "@all", "@exif" =
 
 [options."lint/style/no-redundant-final"]
 private-methods = { upstream = "private_methods", type = "bool" }
+
+[options."lint/style/prefer-empty-string-compare"]
+identical-or-greater-only = { upstream = "identical_or_greater_only", type = "bool", origin = "pun", default = false }
 
 [options."lint/style/prefer-phpdoc-comment"]
 ignored-tags = { upstream = "ignored_tags", type = "list" }

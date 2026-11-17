@@ -22,6 +22,12 @@ Compare with `''` instead of strlen() === 0.
 
 To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `identical-or-greater-only` | `bool` | Any | `false` | None (Pun's own) |
+
 ## Replaces
 
 - [`string_length_to_empty`](https://cs.symfony.com/doc/rules/string_notation/string_length_to_empty.html) (php-cs-fixer, risky)
@@ -32,5 +38,7 @@ To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) o
 These old IDs are now this rule. A config that still names one stops with an error. See [merged rules](/docs/migrate/merged-rules).
 
 - `lint/strings/prefer-empty-string-identical`
+
+Rector's StrlenZeroToIdenticalEmptyStringRector changes only `strlen($x) === 0` and `strlen($x) > 0` (either side); PHP-CS-Fixer's string_length_to_empty also changes `!== 0`, `<= 0` and the comparisons with `1`. `identical-or-greater-only = true` keeps to Rector's forms; `pun migrate` sets it when the rule comes from rector.php and not from string_length_to_empty. Rector also writes the string first and casts a value whose native type is not a string, which Pun does not.
 
 [More lint/style rules](/docs/rules/lint/style) · [Edit this page](https://github.com/shipfastlabs/pun/edit/main/crates/pun-config/rules/mapping.toml)
