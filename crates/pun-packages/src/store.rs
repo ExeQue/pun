@@ -8,7 +8,7 @@
 //!   project. Where the filesystem can't clone, files are copied.
 //! - `hardlink`: one inode for the store and every project, so the second project costs no disk on any
 //!   filesystem. Writing to a file in `vendor/` in place writes the store and every project linked to it, so it is
-//!   opt-in, as `context/plan/packages.md` §7 decides. The store notices such an edit (`intact`) and extracts the
+//!   opt-in, as `context/plan/packages.md` §7 decides. The store notices such an edit (`place`) and extracts the
 //!   package again for the next install, but the projects already linked to the file keep sharing it.
 //! - `copy`: an ordinary copy.
 //!
@@ -18,6 +18,7 @@
 use crate::error::{Context, Result, bail};
 use crate::lock::LockedPackage;
 use crate::php::sha256;
+use rayon::prelude::*;
 use serde_json::Value;
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
@@ -104,41 +105,51 @@ impl Store {
         fill: impl FnOnce(&Path) -> Result<()>,
     ) -> Result<bool> {
         let entry = self.root.join(&key[..2]).join(key);
-        let hit = entry.is_dir() && intact(&entry);
-        if !hit {
-            std::fs::create_dir_all(entry.parent().unwrap_or(&self.root))?;
-            if entry.exists() {
-                // Edited since it was stored: set aside, then extracted again.
-                let aside = self.temp(&self.root);
-                std::fs::rename(&entry, &aside)?;
-                let _ = std::fs::remove_dir_all(&aside);
-            }
-            let tmp = self.temp(&self.root);
-            let filled = fill(&tmp).and_then(|()| {
-                // The entry's own modification time is when it was stored; see `intact`.
-                std::fs::File::open(&tmp)?.set_modified(std::time::SystemTime::now())?;
-                Ok(())
-            });
-            if let Err(e) = filled {
-                let _ = std::fs::remove_dir_all(&tmp);
-                return Err(e);
-            }
-            // Another process may have stored it meanwhile; either copy is the same.
-            if std::fs::rename(&tmp, &entry).is_err() {
-                let _ = std::fs::remove_dir_all(&tmp);
-            }
-        }
         let parent = target.parent().context("target without a parent")?;
         std::fs::create_dir_all(parent)?;
         let tmp = self.temp(parent);
-        let linked = self.link_tree(&entry, &tmp);
-        if let Err(e) = linked {
+        std::fs::create_dir(&tmp)?;
+        // The entry's own modification time is when it was stored: a file modified later was edited through a
+        // hardlink in some project's vendor/, as pnpm's `verify-store-integrity` finds it. Such an entry, or one
+        // that can't be read, is extracted again.
+        let stored = std::fs::metadata(&entry).and_then(|m| m.modified());
+        let hit = stored.is_ok_and(|t| matches!(self.link_tree(&entry, &tmp, Some(t)), Ok(true)));
+        if !hit {
             let _ = std::fs::remove_dir_all(&tmp);
-            return Err(e.into());
+            std::fs::create_dir(&tmp)?;
+            self.fill(&entry, fill)?;
+            if let Err(e) = self.link_tree(&entry, &tmp, None) {
+                let _ = std::fs::remove_dir_all(&tmp);
+                return Err(e.into());
+            }
         }
         crate::fetch::remove(target)?;
         std::fs::rename(&tmp, target)?;
         Ok(hit)
+    }
+
+    /// Extracts the entry with `fill`, setting aside the one there.
+    fn fill(&self, entry: &Path, fill: impl FnOnce(&Path) -> Result<()>) -> Result<()> {
+        std::fs::create_dir_all(entry.parent().unwrap_or(&self.root))?;
+        if entry.exists() {
+            let aside = self.temp(&self.root);
+            std::fs::rename(entry, &aside)?;
+            let _ = std::fs::remove_dir_all(&aside);
+        }
+        let tmp = self.temp(&self.root);
+        let filled = fill(&tmp).and_then(|()| {
+            std::fs::File::open(&tmp)?.set_modified(std::time::SystemTime::now())?;
+            Ok(())
+        });
+        if let Err(e) = filled {
+            let _ = std::fs::remove_dir_all(&tmp);
+            return Err(e);
+        }
+        // Another process may have stored it meanwhile; either copy is the same.
+        if std::fs::rename(&tmp, entry).is_err() {
+            let _ = std::fs::remove_dir_all(&tmp);
+        }
+        Ok(())
     }
 
     fn temp(&self, dir: &Path) -> PathBuf {
@@ -146,22 +157,38 @@ impl Store {
         dir.join(format!(".pun-{}-{n}.tmp", std::process::id()))
     }
 
-    fn link_tree(&self, from: &Path, to: &Path) -> std::io::Result<()> {
-        std::fs::create_dir(to)?;
-        for e in std::fs::read_dir(from)? {
-            let e = e?;
-            let (src, dst) = (e.path(), to.join(e.file_name()));
-            let kind = e.file_type()?;
-            if kind.is_dir() {
-                self.link_tree(&src, &dst)?;
-            } else if kind.is_symlink() {
-                std::os::unix::fs::symlink(std::fs::read_link(&src)?, &dst)?;
-            } else {
-                self.link_file(&src, &dst)?;
-            }
-        }
+    /// Links the files below `from` into the directory `to`, the entries of each directory in parallel (one
+    /// package can hold thousands of files). With `stored`, false as soon as a file was modified after it.
+    fn link_tree(
+        &self,
+        from: &Path,
+        to: &Path,
+        stored: Option<std::time::SystemTime>,
+    ) -> std::io::Result<bool> {
+        let entries: Vec<std::fs::DirEntry> = std::fs::read_dir(from)?.collect::<Result<_, _>>()?;
+        let intact = (entries.par_iter())
+            .map(|e| {
+                let (src, dst) = (e.path(), to.join(e.file_name()));
+                let kind = e.file_type()?;
+                if kind.is_dir() {
+                    std::fs::create_dir(&dst)?;
+                    return self.link_tree(&src, &dst, stored);
+                }
+                if kind.is_symlink() {
+                    std::os::unix::fs::symlink(std::fs::read_link(&src)?, &dst)?;
+                } else if stored
+                    .is_some_and(|t| e.metadata().and_then(|m| m.modified()).is_ok_and(|m| m > t))
+                {
+                    return Ok(false);
+                } else {
+                    self.link_file(&src, &dst)?;
+                }
+                Ok(true)
+            })
+            .try_reduce(|| true, |a, b| Ok(a && b))?;
         // Last, so a read-only directory can still be filled.
-        same_mode(&std::fs::metadata(from)?, to)
+        same_mode(&std::fs::metadata(from)?, to)?;
+        Ok(intact)
     }
 
     fn link_file(&self, src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -176,29 +203,6 @@ impl Store {
         }
         std::fs::copy(src, dst).map(|_| ())
     }
-}
-
-/// Whether no file in the entry was modified after it was stored, as pnpm's `verify-store-integrity` checks a
-/// file's modification time against its index. Writing in place to a hardlinked file in a project's `vendor/`
-/// writes the entry too; such an entry is extracted again instead of being linked into the next project.
-fn intact(entry: &Path) -> bool {
-    fn walk(dir: &Path, stored: std::time::SystemTime) -> std::io::Result<bool> {
-        for e in std::fs::read_dir(dir)? {
-            let e = e?;
-            let kind = e.file_type()?;
-            let fine = if kind.is_dir() {
-                walk(&e.path(), stored)?
-            } else {
-                kind.is_symlink() || e.metadata()?.modified()? <= stored
-            };
-            if !fine {
-                return Ok(false);
-            }
-        }
-        Ok(true)
-    }
-    let stored = std::fs::metadata(entry).and_then(|m| m.modified());
-    stored.and_then(|t| walk(entry, t)).unwrap_or(false)
 }
 
 fn same_mode(meta: &std::fs::Metadata, path: &Path) -> std::io::Result<()> {
@@ -428,6 +432,19 @@ mod tests {
             Ok(())
         });
         assert!(!hit.unwrap() && vendor.join("c/d/fresh").is_dir());
+        // A fresh extraction that can't be read back fails too.
+        let err = store.place("ij90", &vendor.join("c/f"), |d| {
+            std::fs::create_dir_all(d.join("closed"))?;
+            std::fs::set_permissions(d.join("closed"), std::fs::Permissions::from_mode(0o000))?;
+            Ok(())
+        });
+        assert_eq!(
+            err.unwrap_err().to_string(),
+            "Permission denied (os error 13)"
+        );
+        assert!(!vendor.join("c/f").exists() && leftovers(&vendor.join("c")) == 0);
+        let closed = t.join("cache/store/v1/ij/ij90/closed");
+        std::fs::set_permissions(closed, std::fs::Permissions::from_mode(0o755)).unwrap();
         std::fs::set_permissions(vendor.join("c"), std::fs::Permissions::from_mode(0o555)).unwrap();
         let err = store.place("gh78", &vendor.join("c/e"), |_| unreachable!());
         assert_eq!(
