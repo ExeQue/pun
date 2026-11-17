@@ -1038,6 +1038,30 @@ fn process_file(
         .collect();
     r.warned.clone_from(&warned);
 
+    let is_format = |n: &&str| pun_config::rule_of(n).unwrap_or(n).starts_with("format/");
+    if dry_run
+        && in_format
+        && matches!(e.stage, Stage::Check { .. })
+        && now != code
+        && applied.iter().any(|n| !is_format(n))
+    {
+        // A fixer that undoes another's no-op change (unary spacing, then the space after `!`) counts as applied
+        // once a lint fix changes the file, so the file needs formatting only if the format rules alone change it.
+        let p = e.pipelines.get(true, &[])?;
+        let formatted = isolated(|| run_file(&p, path, &code))
+            .ok()
+            .transpose()?
+            .and_then(Result::ok)
+            .flatten();
+        let formatted: Vec<&str> = formatted.into_iter().flat_map(|(_, f)| f).collect();
+        applied.retain(|n| !is_format(n) || formatted.contains(n));
+        for n in formatted {
+            if !applied.contains(&n) {
+                applied.push(n);
+            }
+        }
+    }
+
     let diff = |old: &[u8], new: &[u8]| {
         if a.verbose == 0 {
             return String::new();

@@ -840,3 +840,38 @@ fn rules_that_undo_each_other_settle_and_are_named_once() {
         .count();
     assert_eq!((named, code), (1, Some(0)), "{lines:?}");
 }
+
+/// `pun check` reports the files Pint would format, with Pint's fixers, though a lint fix changed them too: Pint 1.32
+/// (laravel preset) on these two files flags only `B.php`, for `not_operator_with_successor_space`. Before, a lint fix
+/// in `A.php` made `unary_operator_spaces` and the space after `!` count as applied there.
+#[test]
+fn check_formats_like_pint_beside_lint_fixes() {
+    let toml = "[format]\npreset = \"laravel\"\n\n[lint.rules]\n\"laravel/no-implicit-model-query\" = \"error\"\n\n[analyse]\npaths = [\"Clean.php\"]\n";
+    let d = project(
+        "lint",
+        "check-format-beside-lint",
+        &[
+            ("pun.toml", toml),
+            (
+                "A.php",
+                "<?php\n\n$a = User::where(1)->first();\nif (! $a) {\n    echo 1;\n}\n",
+            ),
+            (
+                "B.php",
+                "<?php\n\n$b = User::where(1)->first();\nif (!$b) {\n    echo 1;\n}\n",
+            ),
+            ("Clean.php", "<?php\n\n$c = [1];\n"),
+        ],
+    );
+    let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
+        .current_dir(&d)
+        .env("PUN_AGENT", "0")
+        .args(["check", "--test", "--no-cache", "--color=never"])
+        .output()
+        .unwrap();
+    let out = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        out.starts_with("x  format    1 file needs formatting\n   B.php  format/operators/not-with-successor-space\n\nx   lint     2 errors in 2 files"),
+        "{out}"
+    );
+}
