@@ -108,6 +108,16 @@ pub(crate) fn note_project_read() {
     });
 }
 
+/// Mago's analyser settings for the lint facts. Rector runs PHPStan without Larastan, so a method found on a named
+/// `@mixin` binds `$this`/`static` to the mixin object, as MixinMethodsClassReflectionExtension does
+/// (`Model::query()->whereExists(...)` is a query builder there, not an Eloquent one).
+fn settings(version: PHPVersion) -> Settings {
+    Settings {
+        mixin_receiver_binding: false,
+        ..Settings::new(version)
+    }
+}
+
 fn note_stderr() {
     READS.set(Reads {
         noted: true,
@@ -433,7 +443,7 @@ impl Facts {
             &names,
             &self.codebase,
             &registry,
-            Settings::new(self.version),
+            settings(self.version),
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
         // An analysis error only ends the walk early, so what the observer saw until then stands; after a panic the
@@ -588,7 +598,7 @@ impl Facts {
         let arena = LocalArena::new();
         let program = parse_file(&arena, &file);
         let names = NameResolver::new(&arena).resolve(program);
-        let settings = Settings::new(self.version);
+        let settings = settings(self.version);
         let analyzer = Analyzer::new(&arena, &file, &names, &self.documented, &PLUGINS, settings);
         let mut result = AnalysisResult::new(SymbolReferences::new());
         contained("analyser", &file, || {
@@ -790,7 +800,7 @@ impl Facts {
             &PLUGINS,
             Settings {
                 analyze_dead_code: self.dead_code,
-                ..Settings::new(self.version)
+                ..settings(self.version)
             },
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
