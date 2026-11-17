@@ -7,7 +7,6 @@ use crate::Env;
 use crate::error::{Context, Error, Result, bail};
 use crate::fetch::{Auth, Fetcher, store};
 use crate::install::dirs;
-use crate::installed::read_installed;
 use crate::php::sha256;
 use crate::plugins::{NATIVE, allowed};
 use crate::scripts::Runner;
@@ -125,13 +124,31 @@ impl Drop for Host {
 
 /// The plugins the host has to run: allowed `composer-plugin` packages in installed.json that pun doesn't run
 /// itself.
-fn needs_host(vendor: &Path, config: &Map<String, Value>) -> Result<bool> {
-    Ok(read_installed(vendor)?.iter().any(|p| {
-        let name = p.name();
-        p.kind() == Some("composer-plugin")
-            && !NATIVE.contains(&name.as_str())
-            && allowed(config, &name)
-    }))
+/// installed.json is read for the two fields it needs, not into maps: it runs before every command's first event.
+fn needs_host(vendor: &Path, config: &Map<String, Value>) -> bool {
+    #[derive(serde::Deserialize)]
+    struct Entry {
+        name: String,
+        #[serde(rename = "type")]
+        kind: Option<String>,
+    }
+    #[derive(serde::Deserialize)]
+    struct Repository {
+        packages: Vec<Entry>,
+    }
+    let Ok(bytes) = std::fs::read(vendor.join("composer/installed.json")) else {
+        return false;
+    };
+    let entries = (serde_json::from_slice::<Repository>(&bytes).map(|r| r.packages))
+        .or_else(|_| serde_json::from_slice::<Vec<Entry>>(&bytes))
+        .unwrap_or_default();
+    (entries.iter()).any(|e| hosted(&e.name, e.kind.as_deref(), config))
+}
+
+/// Whether the package is an allowed plugin that only the host can run.
+pub(crate) fn hosted(name: &str, kind: Option<&str>, config: &Map<String, Value>) -> bool {
+    let name = name.to_ascii_lowercase();
+    kind == Some("composer-plugin") && !NATIVE.contains(&name.as_str()) && allowed(config, &name)
 }
 
 /// Dispatches a command's events: each one's plugin listeners at priority 0 and up, then the project's scripts,
@@ -168,7 +185,7 @@ impl Plugins {
             self.seen = state;
             if let Some(host) = &mut self.host {
                 host.request(&json!({"op": "sync"}))?;
-            } else if needs_host(&self.vendor, &self.config)? {
+            } else if needs_host(&self.vendor, &self.config) {
                 let phar = phar(self.cache.as_deref())?;
                 let late = state != self.initial;
                 self.host = Some(Host::start(&self.root, php, &phar, late)?);

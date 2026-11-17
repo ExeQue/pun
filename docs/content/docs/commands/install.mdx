@@ -26,6 +26,8 @@ Without a lock, `pun install` resolves one first, as [`pun update`](/docs/comman
 5. Path repositories become symlinks.
 6. Pun writes `vendor/composer`, the autoloader, and `vendor/bin`.
 
+After an install succeeds, Pun records what it read and what it wrote in its cache (`PUN_CACHE_DIR`). The next `pun install` with the same flags skips steps 2 to 6 when nothing on either list changed. The lists cover `composer.json`, `composer.lock`, the PHP platform, the files and directories under the root's autoload paths and path repositories, the git refs the root version comes from, `vendor/autoload.php`, `vendor/composer/`, the bin directory, and each package's directory. The `pre-install-cmd`, `pre-autoload-dump`, `post-autoload-dump`, and `post-install-cmd` events still run, as on Composer's no-op install. Pun always runs the full install for a random APCu prefix, a `pre-autoload-dump` script, or an allowed plugin that runs on PHP.
+
 Pun installs `zip` and `tar` archives and path repositories. A package locked with only a VCS source fails.
 
 Credentials come from `COMPOSER_AUTH`, the project's `auth.json`, then Composer's global `auth.json`. Pun supports `github-oauth`, `gitlab-token`, `bearer`, and `http-basic`. `COMPOSER_MAX_PARALLEL_HTTP` limits parallel downloads (default 48). Pun refuses `http://` URLs unless `config.secure-http` is `false`.

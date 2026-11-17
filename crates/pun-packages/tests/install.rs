@@ -559,6 +559,70 @@ fn composer_plugins_run_on_composers_classes() {
     std::fs::remove_dir_all(&tmp).unwrap();
 }
 
+/// The no-op fast path: a recorded install with the same inputs and untouched outputs writes nothing, and any
+/// change to what the autoloader reads or to what it wrote falls back to a full install.
+#[test]
+fn a_no_op_install_is_skipped_until_an_input_changes() {
+    let tmp = std::env::temp_dir().join(format!("pun-install-noop-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy(&Path::new(FIXTURES).join("project"), &tmp);
+    let lock =
+        Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
+            .unwrap();
+    let o = Options {
+        php: Some("php".into()),
+        cache: Some(tmp.join("pun-cache")),
+        ..Options::default()
+    };
+    let full = run(&tmp, &lock, &o);
+    assert!(!full.fresh);
+    // Nothing is recorded until the command has succeeded, scripts included.
+    assert!(!run(&tmp, &lock, &o).fresh);
+    let saved = run(&tmp, &lock, &o);
+    saved.fingerprint.as_ref().unwrap().save();
+    let fresh = run(&tmp, &lock, &o);
+    assert!(fresh.fresh && fresh.fingerprint.is_none());
+    assert_eq!(
+        (fresh.kept, fresh.classes, &fresh.warnings),
+        (2, saved.classes, &saved.warnings)
+    );
+    same_as_composer(&tmp, "project-expected");
+
+    // A new root class: the dump runs again and finds it.
+    std::fs::write(
+        tmp.join("src/Added.php"),
+        "<?php\nnamespace App;\nclass Added {}\n",
+    )
+    .unwrap();
+    let rescanned = run(&tmp, &lock, &o);
+    assert!(!rescanned.fresh);
+    assert_eq!(rescanned.classes, saved.classes + 1);
+    rescanned.fingerprint.unwrap().save();
+    assert!(run(&tmp, &lock, &o).fresh);
+
+    // An edited output is written again.
+    let classmap = tmp.join("vendor/composer/autoload_classmap.php");
+    let want = std::fs::read(&classmap).unwrap();
+    std::fs::write(&classmap, "<?php return [];\n").unwrap();
+    let repaired = run(&tmp, &lock, &o);
+    assert!(!repaired.fresh);
+    assert_eq!(std::fs::read(&classmap).unwrap(), want);
+    repaired.fingerprint.unwrap().save();
+
+    // Other options are other inputs; a random APCu prefix changes every dump, so it is never skipped.
+    let no_dev = Options {
+        no_dev: true,
+        ..o.clone()
+    };
+    assert!(!run(&tmp, &lock, &no_dev).fresh);
+    let apcu = Options {
+        apcu: Apcu::RandomPrefix,
+        ..o
+    };
+    assert!(run(&tmp, &lock, &apcu).fingerprint.is_none());
+    std::fs::remove_dir_all(&tmp).unwrap();
+}
+
 /// `composer install` refuses a lock this PHP can't run (fixture `verify/A`, Composer exit 2) before it writes
 /// anything.
 #[test]

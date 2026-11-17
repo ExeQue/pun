@@ -3,9 +3,12 @@ use crate::autoload::{self, Apcu, PlatformCheck, Scan};
 use crate::bins;
 use crate::error::{Context, Error, Result, bail};
 use crate::fetch::{Fetcher, link_path, remove, unpack};
+use crate::fingerprint::{self, Pending, Recorded};
 use crate::installed::{Installed, installed_json, installed_php, read_installed, root};
 use crate::lock::{Lock, LockedPackage, content_hash};
 use crate::paths::normalize;
+use crate::php::sha1;
+use crate::plugin_host;
 use crate::plugins;
 use crate::resolver::platform::probe_cached;
 use crate::verify::verify;
@@ -15,6 +18,7 @@ use pcre2::bytes::Regex;
 use rayon::prelude::*;
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
@@ -56,8 +60,12 @@ pub struct Report {
     pub classes: usize,
     pub stale_lock: bool,
     pub warnings: Vec<String>,
+    /// The fingerprint matched: nothing was written.
+    pub fresh: bool,
     /// Composer's problem report when the lock can't be installed on this platform; nothing was installed.
     pub incompatible: Option<String>,
+    /// The record to save once the command's scripts have run.
+    pub fingerprint: Option<Pending>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,12 +130,33 @@ pub fn install(
         ..Report::default()
     };
     let mut packages = locked_packages(lock, &project.dirs.vendor, o.no_dev)?;
-    if let Some(php) = &o.php {
-        let probe = probe_cached(php, o.cache.as_deref())?;
-        if let Some(problems) = verify(manifest, lock, &probe, !o.no_dev, &o.ignore_platform)? {
-            report.incompatible = Some(problems);
-            return Ok(report);
+    let probe = match &o.php {
+        Some(php) => Some(probe_cached(php, o.cache.as_deref())?),
+        None => None,
+    };
+    let inputs = fingerprint_inputs(&project, &packages, o, probe.as_ref(), env);
+    let record = (o.cache.as_deref()).map(|c| fingerprint::file(c, &project.dirs.vendor));
+    if let (Some(file), Some(inputs)) = (&record, &inputs)
+        && let Some(recorded) = fingerprint::fresh(file, inputs)
+    {
+        if !o.no_autoloader {
+            events("pre-autoload-dump")?;
+            events("post-autoload-dump")?;
         }
+        report.kept = recorded.kept;
+        report.classes = recorded.classes;
+        report.warnings = recorded.warnings;
+        report.fresh = true;
+        return Ok(report);
+    }
+    if let Some(file) = &record {
+        fingerprint::forget(file);
+    }
+    if let Some(probe) = &probe
+        && let Some(problems) = verify(manifest, lock, probe, !o.no_dev, &o.ignore_platform)?
+    {
+        report.incompatible = Some(problems);
+        return Ok(report);
     }
     let before = previous(Path::new(&project.dirs.vendor))?;
     let todo = compare(&packages, &before, &mut report);
@@ -139,6 +168,7 @@ pub fn install(
         .map(|i| packages[i].name())
         .collect();
     packages.sort_by_key(Installed::name);
+    let mut written = vec![];
     if !o.no_autoloader {
         let repository: Vec<&Installed> = (repository.iter())
             .filter_map(|n| {
@@ -146,7 +176,7 @@ pub fn install(
                 Some(&packages[i])
             })
             .collect();
-        dump_autoloader(
+        written = dump_autoloader(
             &project,
             lock,
             &packages,
@@ -156,7 +186,130 @@ pub fn install(
             &mut report,
         )?;
     }
+    if let (Some(file), Some(inputs)) = (record, inputs) {
+        report.fingerprint = Some(Pending {
+            file,
+            inputs,
+            outputs: outputs(&project.dirs, &packages, written),
+            recorded: Recorded {
+                kept: packages.len(),
+                classes: report.classes,
+                warnings: report.warnings.clone(),
+            },
+        });
+    }
     Ok(report)
+}
+
+/// The no-op fingerprint's inputs (see `fingerprint`), or `None` when the next install can't be skipped: a random
+/// APCu prefix changes on every dump, a `pre-autoload-dump` script could change what the dump reads after the
+/// check, a plugin the host runs could listen to anything, and a `.git` file (a worktree or submodule) keeps its
+/// refs elsewhere.
+fn fingerprint_inputs(
+    project: &Project,
+    packages: &[Installed],
+    o: &Options,
+    probe: Option<&Value>,
+    env: Env,
+) -> Option<String> {
+    let manifest = project.manifest;
+    let empty = Map::new();
+    let config = (manifest.get("config").and_then(Value::as_object)).unwrap_or(&empty);
+    let random_apcu = match o.apcu {
+        Apcu::RandomPrefix => true,
+        Apcu::Off => config_bool(config, "apcu-autoloader"),
+        Apcu::Prefix(_) => false,
+    };
+    let pre_dump = (manifest.get("scripts")).is_some_and(|s| s.get("pre-autoload-dump").is_some());
+    let hosted = !o.no_plugins
+        && (packages.iter()).any(|p| plugin_host::hosted(&p.name(), p.package.kind(), config));
+    if random_apcu || pre_dump || hosted {
+        return None;
+    }
+    let mut s = format!("pun {}\n", env!("CARGO_PKG_VERSION"));
+    if let Ok(exe) = std::env::current_exe() {
+        let _ = writeln!(s, "{}", fingerprint::stamp(&exe, true));
+    }
+    let _ = writeln!(
+        s,
+        "{}\n{}\n{}",
+        project.dir_str,
+        Value::Object(manifest.clone()),
+        fingerprint::stamp(&project.dir.join("composer.lock"), true)
+    );
+    let _ = writeln!(
+        s,
+        "{} {:?} {:?} {} {} {:?}",
+        o.no_dev, o.scan, o.apcu, o.no_autoloader, o.no_plugins, o.ignore_platform
+    );
+    let _ = writeln!(s, "{}", probe.map_or_else(String::new, Value::to_string));
+    let root_version = env("COMPOSER_ROOT_VERSION");
+    let _ = writeln!(s, "{root_version:?}");
+    let mut seen = vec![];
+    if manifest.get("version").is_none() && root_version.is_none_or(|v| v.is_empty()) {
+        let git = project
+            .dir
+            .ancestors()
+            .map(|d| d.join(".git"))
+            .find(|g| g.exists());
+        if let Some(git) = git {
+            if !git.is_dir() {
+                return None;
+            }
+            for name in ["HEAD", "packed-refs", "refs"] {
+                fingerprint::tree(&git.join(name), &mut s, &mut seen);
+            }
+        }
+    }
+    let mut roots: Vec<PathBuf> = vec![];
+    let kinds = ["autoload", "autoload-dev"];
+    for kind in &kinds[..if o.no_dev { 1 } else { 2 }] {
+        leaves(manifest.get(*kind), &mut |path| {
+            roots.push(project.dir.join(path));
+        });
+    }
+    for p in packages {
+        let dist = p.package.dist().and_then(|d| d.get("type"));
+        if let (Some("path"), Some(path)) = (dist.and_then(Value::as_str), &p.path) {
+            roots.push(PathBuf::from(path));
+        }
+    }
+    for root in roots {
+        fingerprint::tree(&root, &mut s, &mut seen);
+    }
+    Some(sha1(s.as_bytes()))
+}
+
+/// Calls `f` with every string in `value`, however deep.
+fn leaves(value: Option<&Value>, f: &mut dyn FnMut(&str)) {
+    match value {
+        Some(Value::String(s)) => f(s),
+        Some(Value::Array(items)) => items.iter().for_each(|v| leaves(Some(v), f)),
+        Some(Value::Object(m)) => m.values().for_each(|v| leaves(Some(v), f)),
+        _ => {}
+    }
+}
+
+/// What an install writes, for the fingerprint: vendor/autoload.php, vendor/composer and the bin directory with
+/// each of their entries, each package's directory, and the files in `written`.
+fn outputs(dirs: &Dirs, packages: &[Installed], written: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut out = vec![PathBuf::from(format!("{}/autoload.php", dirs.vendor))];
+    for dir in [format!("{}/composer", dirs.vendor), dirs.bin.clone()] {
+        let dir = PathBuf::from(dir);
+        let mut entries: Vec<PathBuf> = (std::fs::read_dir(&dir).into_iter().flatten().flatten())
+            .map(|e| e.path())
+            .collect();
+        entries.sort();
+        out.push(dir);
+        out.extend(entries);
+    }
+    out.extend(
+        packages
+            .iter()
+            .filter_map(|p| p.path.as_ref().map(PathBuf::from)),
+    );
+    out.extend(written);
+    out
 }
 
 /// The lock's packages, and the dev ones unless `no_dev`, each with the directory it installs in.
@@ -407,7 +560,7 @@ fn dump_autoloader(
     o: &Options,
     events: &mut dyn FnMut(&str) -> Result<()>,
     report: &mut Report,
-) -> Result<()> {
+) -> Result<Vec<PathBuf>> {
     let empty = Map::new();
     let config = (project.manifest.get("config"))
         .and_then(Value::as_object)
@@ -431,12 +584,16 @@ fn dump_autoloader(
             None => remove_file(Path::new(&path))?,
         }
     }
+    let mut written = vec![];
     if !o.no_plugins {
         for (rel, bytes) in plugins::after_dump(project.manifest, repository) {
-            write_if_changed(Path::new(&format!("{vendor}/{rel}")), &bytes)?;
+            let path = PathBuf::from(format!("{vendor}/{rel}"));
+            write_if_changed(&path, &bytes)?;
+            written.push(path);
         }
     }
-    events("post-autoload-dump")
+    events("post-autoload-dump")?;
+    Ok(written)
 }
 
 fn download_threads(env: Option<String>, cores: usize) -> usize {

@@ -4,6 +4,7 @@ pub mod classmap;
 pub mod constraint;
 pub mod error;
 pub mod fetch;
+pub mod fingerprint;
 pub mod install;
 pub mod installed;
 pub mod lock;

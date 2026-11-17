@@ -156,6 +156,26 @@ pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     install_locked(&project, &lock, a, started, false)
 }
 
+/// The class map the autoloader flags ask for.
+pub(crate) fn scan(optimize: bool, authoritative: bool) -> Scan {
+    if authoritative {
+        Scan::Authoritative
+    } else if optimize {
+        Scan::Optimized
+    } else {
+        Scan::Classmap
+    }
+}
+
+/// The APCu cache the flags ask for: a prefix implies the cache, as in Composer.
+pub(crate) fn apcu(enabled: bool, prefix: Option<&String>) -> Apcu {
+    match prefix {
+        Some(prefix) => Apcu::Prefix(prefix.clone()),
+        None if enabled => Apcu::RandomPrefix,
+        None => Apcu::Off,
+    }
+}
+
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
 /// the install ones.
 pub(crate) fn install_locked(
@@ -172,22 +192,10 @@ pub(crate) fn install_locked(
     } else {
         ("pre-install-cmd", "post-install-cmd")
     };
-    let scan = if a.classmap_authoritative {
-        Scan::Authoritative
-    } else if a.optimize_autoloader {
-        Scan::Optimized
-    } else {
-        Scan::Classmap
-    };
-    let apcu = match &a.apcu_autoloader_prefix {
-        Some(prefix) => Apcu::Prefix(prefix.clone()),
-        None if a.apcu_autoloader => Apcu::RandomPrefix,
-        None => Apcu::Off,
-    };
     let options = Options {
         no_dev: a.no_dev,
-        scan,
-        apcu,
+        scan: scan(a.optimize_autoloader, a.classmap_authoritative),
+        apcu: apcu(a.apcu_autoloader, a.apcu_autoloader_prefix.as_ref()),
         no_autoloader: a.no_autoloader,
         no_plugins: a.no_plugins,
         ignore_platform: IgnorePlatform::new(a.ignore_platform_req.clone(), a.ignore_platform_reqs),
@@ -214,6 +222,9 @@ pub(crate) fn install_locked(
         return Ok(Exit::RunError);
     }
     project.dispatch(a, post)?;
+    if let Some(pending) = &report.fingerprint {
+        pending.save();
+    }
 
     let ok = look.paint(Role::Ok, look.glyph("✔", "+"));
     let warn = look.paint(Role::Warning, look.glyph("⚠", "!"));

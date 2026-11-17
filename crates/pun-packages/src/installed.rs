@@ -513,15 +513,18 @@ pub fn read_installed(vendor: &Path) -> Result<Vec<LockedPackage>> {
         return Ok(vec![]);
     };
     let json: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
-    let list = match &json {
-        Value::Object(m) => m.get("packages").cloned().unwrap_or(Value::Null),
-        v => v.clone(),
+    let list = match json {
+        Value::Object(mut m) => m.remove("packages").unwrap_or(Value::Null),
+        v => v,
     };
-    Ok(list
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|p| p.as_object().cloned().map(LockedPackage))
+    let Value::Array(list) = list else {
+        return Ok(vec![]);
+    };
+    Ok((list.into_iter())
+        .filter_map(|p| match p {
+            Value::Object(m) => Some(LockedPackage(m)),
+            _ => None,
+        })
         .collect())
 }
 

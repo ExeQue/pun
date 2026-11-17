@@ -207,8 +207,12 @@ pub fn write(proxy: &Proxy, bin_dir: &Path) -> std::io::Result<()> {
     if std::fs::read(&link).ok().as_deref() != Some(proxy.text.as_bytes()) {
         std::fs::write(&link, &proxy.text)?;
     }
+    // Only a mode that differs is changed, so an unchanged install leaves the files' change times alone (the
+    // no-op fingerprint reads them).
     for path in [link.as_path(), Path::new(&proxy.target)] {
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))?;
+        if std::fs::metadata(path)?.permissions().mode() & 0o7777 != 0o755 {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))?;
+        }
     }
     Ok(())
 }

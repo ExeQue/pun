@@ -3,7 +3,8 @@
 Status: **`pun install` from a lock is built** (2026-11-14): composer.json and composer.lock (§3), the
 autoload dump, `vendor/bin`, scripts and the pest-plugin port. Since 2026-11-17 it runs Composer's install-time
 platform check ("Verifying lock file contents can be installed on current platform.", `verify.rs`) with Composer's
-problem texts. On pinkary every
+problem texts, and a no-op install is skipped by a fingerprint of its inputs and outputs (`fingerprint.rs`, 0.04 s on
+pinkary). On pinkary every
 file in `vendor/` matches Composer 2.11.2's, modes included. **The resolver and `pun update`, `pun require` and
 `pun remove` are built** (steps 8 and 9, 2026-11-14): a port of Composer's pool builder and SAT solver that passes
 158 of Composer's installer fixtures (102 of them compared on the whole composer.lock), and on pinkary writes
