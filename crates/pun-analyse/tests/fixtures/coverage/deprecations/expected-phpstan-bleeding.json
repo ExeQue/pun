@@ -856,6 +856,41 @@
    "tip": null
   },
   {
+   "file": "pun-extra5.php",
+   "line": 33,
+   "identifier": "parameter.deprecatedClass",
+   "message": "Parameter $f of function DeprecationsExtra5\\uses() has typehint with deprecated class DeprecationsExtra5\\Fluent:\nUse Column instead.",
+   "tip": null
+  },
+  {
+   "file": "pun-extra5.php",
+   "line": 35,
+   "identifier": "method.deprecatedClass",
+   "message": "Call to method label() of deprecated class DeprecationsExtra5\\Fluent:\nUse Column instead.",
+   "tip": null
+  },
+  {
+   "file": "pun-extra5.php",
+   "line": 36,
+   "identifier": "property.deprecatedClass",
+   "message": "Access to property $labelText of deprecated class DeprecationsExtra5\\Fluent:\nUse Column instead.",
+   "tip": null
+  },
+  {
+   "file": "pun-extra5.php",
+   "line": 37,
+   "identifier": "staticProperty.deprecatedClass",
+   "message": "Access to static property $staticLabel of deprecated class DeprecationsExtra5\\Fluent:\nUse Column instead.",
+   "tip": null
+  },
+  {
+   "file": "pun-extra5.php",
+   "line": 38,
+   "identifier": "staticMethod.deprecatedClass",
+   "message": "Call to method staticLabel() of deprecated class DeprecationsExtra5\\Fluent:\nUse Column instead.",
+   "tip": null
+  },
+  {
    "file": "typehint-anonymous-function-deprecated-class.php",
    "line": 6,
    "identifier": "parameter.deprecatedClass",

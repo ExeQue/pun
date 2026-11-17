@@ -41,6 +41,18 @@ impl Names {
             })
             .map(|((_, method), _)| method.as_bytes().to_ascii_lowercase())
             .collect();
+        // A trait's method in a restricted class is declared by that class (PHPStan's getDeclaringClass()).
+        methods.extend(
+            (codebase.class_likes.values())
+                .filter(|k| restricted(k.flags))
+                .flat_map(|k| {
+                    (k.appearing_method_ids.iter())
+                        .filter(move |(_, id)| {
+                            (id.get_class_name().as_bytes()).eq_ignore_ascii_case(k.name.as_bytes())
+                        })
+                        .map(|(method, _)| method.as_bytes().to_ascii_lowercase())
+                }),
+        );
         if deprecated {
             let builtins = super::reflection::builtins(php_version);
             methods.extend(
