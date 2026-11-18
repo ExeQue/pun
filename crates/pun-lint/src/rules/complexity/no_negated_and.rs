@@ -3,13 +3,22 @@ use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{Prec, de_morgan, in_parent};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoNegatedAnd;
+#[derive(Default)]
+pub struct NoNegatedAnd {
+    /// `ands` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoNegatedAnd {
     fn id(&self) -> &'static str {
         "lint/complexity/no-negated-group"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_negated_group::checks(options, "ands")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +32,9 @@ impl Rule for NoNegatedAnd {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::UnaryPrefix(not) = node else { return };
         if !not.operator.is_not() {
             return;

@@ -22,6 +22,12 @@ Replace __sleep()/__wakeup() with __serialize()/__unserialize().
 
 To skip it in some files, add an [override](/docs/configuration/pun-toml#lint) or a [`@pun-ignore-file`](/docs/configuration/ignore-comments) comment.
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `sleep`, `wakeup` | `["sleep", "wakeup"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`modern_serialization_methods`](https://cs.symfony.com/doc/rules/class_notation/modern_serialization_methods.html) (php-cs-fixer, risky)

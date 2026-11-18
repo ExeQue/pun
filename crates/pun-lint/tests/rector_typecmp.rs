@@ -108,10 +108,16 @@ fn remove_useless_union_return_docblock() {
 
 #[test]
 fn simplify_if_nullable_return() {
-    check(NoRedundantNullableCheck, "SimplifyIfNullableReturnRector");
+    check(
+        NoRedundantNullableCheck::default(),
+        "SimplifyIfNullableReturnRector",
+    );
 }
 
 #[test]
 fn remove_unused_variable_assign() {
-    check(NoUnusedAssignment, "RemoveUnusedVariableAssignRector");
+    check(
+        NoUnusedAssignment::default(),
+        "RemoveUnusedVariableAssignRector",
+    );
 }

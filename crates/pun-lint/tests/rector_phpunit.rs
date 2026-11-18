@@ -388,7 +388,7 @@ fn assert_func_call_to_p_h_p_unit_assert() {
 #[test]
 fn merge_with_callable_and_will_return() {
     check(
-        PreferMergedWillReturnCallback,
+        PreferMergedWillReturnCallback::default(),
         "MergeWithCallableAndWillReturnRector",
     );
 }
@@ -700,7 +700,7 @@ fn create_stub_over_create_mock_arg() {
 #[test]
 fn void_method_with_callback_to_will_return_callback() {
     check(
-        PreferWillReturnCallback,
+        PreferWillReturnCallback::default(),
         "VoidMethodWithCallbackToWillReturnCallbackRector",
     );
 }

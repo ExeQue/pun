@@ -2,17 +2,27 @@ use mago_syntax::cst::*;
 use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::equal;
+use crate::rules::support::options::part_on;
 use crate::rules::support::statement_edits::{
     compared_values, has_binary, is_in_constant_expression, is_safe_to_evaluate_eagerly,
 };
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferInArray;
+#[derive(Default)]
+pub struct PreferInArray {
+    /// `repeated-or` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferInArray {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-in-array"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "repeated-or")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -26,6 +36,9 @@ impl Rule for PreferInArray {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Binary(binary) = node else { return };
         if !matches!(binary.operator, BinaryOperator::Or(_)) {
             return;
@@ -73,4 +86,12 @@ impl Rule for PreferInArray {
             }),
         });
     }
+}
+
+const CHECKS: [&str; 3] = ["array-search", "foreach", "repeated-or"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 3 rules (`array-search` is `SimplifyArraySearchRector`,
+/// `foreach` is `ForeachToInArrayRector`, `repeated-or` is `RepeatedOrEqualToInArrayRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

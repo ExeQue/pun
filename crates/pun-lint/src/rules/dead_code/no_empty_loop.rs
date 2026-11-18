@@ -7,13 +7,22 @@ use crate::rules::support::statement_edits::{
     HOLDERS, List, block_list, body_list, holder_list, is_plain_assign, open_list, remove,
 };
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoEmptyLoop;
+#[derive(Default)]
+pub struct NoEmptyLoop {
+    /// `loop` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoEmptyLoop {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-empty-block"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_empty_block::checks(options, "loop")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -32,6 +41,9 @@ impl Rule for NoEmptyLoop {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let source = ctx.source;
         let [.., grand, Node::Statement(stmt)] = ancestors else {
             return;

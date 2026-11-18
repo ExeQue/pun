@@ -22,6 +22,12 @@ Simplify negated conditions with de Morgan theorem
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `ands`, `de-morgan` | `["ands", "de-morgan"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`NegatedAndsToPositiveOrs`](https://getrector.com/rule-detail/negated-ands-to-positive-ors-rector) (rector)

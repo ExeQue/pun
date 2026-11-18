@@ -22,6 +22,12 @@ Return the value directly instead of checking it for null first.
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `not-null`, `nullable` | `["not-null", "nullable"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`SimplifyIfNotNullReturn`](https://getrector.com/rule-detail/simplify-if-not-null-return-rector) (rector)

@@ -76,7 +76,7 @@ use crate::{Context, Report};
 rules! {
     pub(super) fn all {
         no_before_all_in_describe => NoBeforeAllInDescribe,
-        no_expect_exception => NoExpectException,
+        no_expect_exception => NoExpectException::default(),
         no_invalid_repeat => NoInvalidRepeat,
         no_negated_boolean_matcher => NoNegatedBooleanMatcher,
         no_redundant_type_expectation => NoRedundantTypeExpectation,
@@ -126,7 +126,7 @@ rules! {
         prefer_to_match_array => PreferToMatchArray,
         prefer_to_match_object => PreferToMatchObject,
         prefer_to_start_with => PreferToStartWith,
-        prefer_to_throw => PreferToThrow,
+        prefer_to_throw => PreferToThrow::default(),
         prefer_type_matchers => PreferTypeMatchers,
         prefer_chained_expect => PreferChainedExpect::default(),
         require_type_matcher_first => RequireTypeMatcherFirst,

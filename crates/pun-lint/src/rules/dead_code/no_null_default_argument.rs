@@ -8,7 +8,7 @@ use crate::rules::support::arguments::{unpacked, value};
 use crate::rules::support::expressions::is_constant;
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const TARGETS: &[NodeKind] = &[
     NodeKind::MethodCall,
@@ -17,11 +17,20 @@ const TARGETS: &[NodeKind] = &[
     NodeKind::FunctionCall,
 ];
 
-pub struct NoNullDefaultArgument;
+#[derive(Default)]
+pub struct NoNullDefaultArgument {
+    /// `null` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoNullDefaultArgument {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-redundant-default-argument"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_redundant_default_argument::checks(options, "null")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -35,6 +44,9 @@ impl Rule for NoNullDefaultArgument {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Some((list, target)) = call(node) else {
             return;
         };
@@ -63,11 +75,20 @@ impl Rule for NoNullDefaultArgument {
     }
 }
 
-pub struct NoNullDefaultNamedArgument;
+#[derive(Default)]
+pub struct NoNullDefaultNamedArgument {
+    /// `null-named` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoNullDefaultNamedArgument {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-redundant-default-argument"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_redundant_default_argument::checks(options, "null-named")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -81,6 +102,9 @@ impl Rule for NoNullDefaultNamedArgument {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Some((list, target)) = call(node) else {
             return;
         };

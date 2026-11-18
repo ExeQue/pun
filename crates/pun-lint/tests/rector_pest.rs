@@ -363,12 +363,15 @@ fn use_each_modifier() {
 
 #[test]
 fn convert_expect_exception_to_throw() {
-    check(NoExpectException, "ConvertExpectExceptionToThrowRector");
+    check(
+        NoExpectException::default(),
+        "ConvertExpectExceptionToThrowRector",
+    );
 }
 
 #[test]
 fn use_to_throw() {
-    check(PreferToThrow, "UseToThrowRector");
+    check(PreferToThrow::default(), "UseToThrowRector");
 }
 
 #[test]

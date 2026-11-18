@@ -334,12 +334,12 @@ fn mago_prefer_anonymous_migration() {
 #[test]
 fn remove_null_arg_on_null_default_param() {
     run_with_sources(
-        &only(NoNullDefaultArgument),
+        &only(NoNullDefaultArgument::default()),
         "RemoveNullArgOnNullDefaultParamRector/Fixture",
         &["RemoveNullArgOnNullDefaultParamRector/Source/SomeExternalClass.php"],
     );
     run(
-        &only(NoNullDefaultArgument),
+        &only(NoNullDefaultArgument::default()),
         "RemoveNullArgOnNullDefaultParamRector/Oracle",
     );
 }
@@ -347,12 +347,12 @@ fn remove_null_arg_on_null_default_param() {
 #[test]
 fn remove_null_named_arg_on_null_default_param() {
     run_with_sources(
-        &only(NoNullDefaultNamedArgument),
+        &only(NoNullDefaultNamedArgument::default()),
         "RemoveNullNamedArgOnNullDefaultParamRector/Fixture",
         &["RemoveNullNamedArgOnNullDefaultParamRector/Source/SomeExternalClass.php"],
     );
     run(
-        &only(NoNullDefaultNamedArgument),
+        &only(NoNullDefaultNamedArgument::default()),
         "RemoveNullNamedArgOnNullDefaultParamRector/Oracle",
     );
 }
@@ -519,11 +519,11 @@ fn rules_ignore_nodes_outside_their_targets() {
             &["lint7_report/laravel/prefer-anonymous-migration"],
         ),
         (
-            || Box::new(NoNullDefaultArgument),
+            || Box::new(NoNullDefaultArgument::default()),
             &["rector/RemoveNullArgOnNullDefaultParamRector"],
         ),
         (
-            || Box::new(NoNullDefaultNamedArgument),
+            || Box::new(NoNullDefaultNamedArgument::default()),
             &["rector/RemoveNullNamedArgOnNullDefaultParamRector"],
         ),
         (
@@ -588,7 +588,7 @@ fn rules_ignore_nodes_outside_their_targets() {
             &["rector/RemoveParentDelegatingClassMethodRector/Fixture"],
         ),
         (
-            || Box::new(NoRedundantDefaultArgument),
+            || Box::new(NoRedundantDefaultArgument::default()),
             &["rector/RemoveArgumentFromDefaultParentCallRector/Fixture"],
         ),
         (

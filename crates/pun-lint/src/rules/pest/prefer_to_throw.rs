@@ -8,11 +8,16 @@ use super::{
     Item, comments_start, expect_argument, function_name, indent_at, is_expect_chain, is_name,
     kept_text, method_call, old_statements, p_stmts, statement_expression,
 };
+use crate::rules::support::options::part_on;
 use crate::rules::support::statements::{block_list, tokens};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferToThrow;
+#[derive(Default)]
+pub struct PreferToThrow {
+    /// `try-catch` is left out of the rule's `checks`.
+    off: bool,
+}
 
 const TEST_FUNCTIONS: [&[u8]; 7] = [
     b"test",
@@ -41,6 +46,11 @@ impl Rule for PreferToThrow {
         "lint/pest/prefer-to-throw"
     }
 
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "try-catch")?;
+        Ok(())
+    }
+
     fn targets(&self) -> Option<&'static [NodeKind]> {
         Some(&[NodeKind::FunctionCall])
     }
@@ -52,6 +62,9 @@ impl Rule for PreferToThrow {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::FunctionCall(call) = node else {
             return;
         };
@@ -250,4 +263,12 @@ fn collect<'a>(
     for child in node.children() {
         collect(child, assigned, variables);
     }
+}
+
+const CHECKS: [&str; 2] = ["expect-exception", "try-catch"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`expect-exception` is
+/// `ConvertExpectExceptionToThrowRector`, `try-catch` is `UseToThrowRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

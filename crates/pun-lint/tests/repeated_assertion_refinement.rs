@@ -34,7 +34,7 @@ fn asserted_impossible_repeated_call_does_not_declare_a_callback_return() {
         "../../pun-analyse/tests/fixtures/repeated-assertion-expressions/lint-expected.php.inc"
     );
     let linter = Linter::new(
-        vec![Box::new(PreferMergedWillReturnCallback)],
+        vec![Box::new(PreferMergedWillReturnCallback::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     let fixed = with_sources(extra.clone(), || linter.fix(Path::new("input.php"), input)).unwrap();

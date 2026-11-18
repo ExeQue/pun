@@ -5,13 +5,22 @@ use crate::rules::support::rewrites::remove_statements;
 use crate::rules::support::side_effects::{any_node, call_has_side_effect};
 use crate::rules::support::statement_edits::{HOLDERS, assign, expression, holder_list};
 use crate::syntax::{node_span, same_expression, same_node, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoOverwrittenAssignment;
+#[derive(Default)]
+pub struct NoOverwrittenAssignment {
+    /// `double` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoOverwrittenAssignment {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-unused-assignment"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_unused_assignment::checks(options, "double")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -25,6 +34,9 @@ impl Rule for NoOverwrittenAssignment {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let raw = crate::syntax::statements(node);
         if !raw.windows(2).any(|w| {
             matches!(

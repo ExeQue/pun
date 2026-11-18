@@ -8,15 +8,25 @@ use crate::rules::support::conditions::{
     print_comments, reprint,
 };
 use crate::rules::support::expressions::is_constant;
+use crate::rules::support::options::part_on;
 use crate::rules::support::statements::{Token, enclosing, previous_token_end, tokens};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoRedundantNullCheck;
+#[derive(Default)]
+pub struct NoRedundantNullCheck {
+    /// `not-null` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoRedundantNullCheck {
     fn id(&self) -> &'static str {
         "lint/complexity/no-redundant-null-check"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "not-null")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -30,6 +40,9 @@ impl Rule for NoRedundantNullCheck {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::If(r#if) = node else { return };
         let n = ancestors.len();
         if !is_stmts_aware(ancestors[n - 2], &ancestors[..n - 2]) {
@@ -260,4 +273,12 @@ pub(crate) fn reprint_function_like(
 fn text<'s>(source: &'s str, node: &impl mago_span::HasSpan) -> &'s str {
     let s = node_span(node);
     &source[s.start..s.end]
+}
+
+const CHECKS: [&str; 2] = ["not-null", "nullable"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`not-null` is `SimplifyIfNotNullReturnRector`,
+/// `nullable` is `SimplifyIfNullableReturnRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

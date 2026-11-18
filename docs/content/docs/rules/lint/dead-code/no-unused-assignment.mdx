@@ -22,6 +22,12 @@ Remove assignments whose value is never read, including stores overwritten befor
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `double`, `unused` | `["double", "unused"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveDoubleAssign`](https://getrector.com/rule-detail/remove-double-assign-rector) (rector)

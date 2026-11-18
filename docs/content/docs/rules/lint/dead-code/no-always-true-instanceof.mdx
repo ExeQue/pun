@@ -22,6 +22,12 @@ Remove instanceof checks and assert(instanceof) calls that are always true for t
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `assert`, `if` | `["assert", "if"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveDeadInstanceOf`](https://getrector.com/rule-detail/remove-dead-instance-of-rector) (rector)

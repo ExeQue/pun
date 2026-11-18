@@ -4,19 +4,29 @@ use mago_syntax::cst::{
 };
 use pun_problem::{Edit, Fix, Safety, Span};
 
+use crate::rules::support::options::part_on;
 use crate::rules::support::statements::{
     body_list, enclosing, keeps_parentheses, line_indent, moved_text, open_list, precedence,
     remove, tokens,
 };
 use crate::rules::support::variable_usage::{try_of, used_in_next};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoEmptyBlock;
+#[derive(Default)]
+pub struct NoEmptyBlock {
+    /// `if-foreach-for` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoEmptyBlock {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-empty-block"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "if-foreach-for")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -30,6 +40,9 @@ impl Rule for NoEmptyBlock {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Some(body) = body_of(node) else { return };
         let looks_empty = match body {
             Body::One(Statement::Block(b)) => b.statements.iter().all(dropped),
@@ -307,4 +320,12 @@ fn inverted_operator(binary: &Binary<'_>) -> Option<&'static str> {
         BinaryOperator::LessThanOrEqual(_) => ">",
         _ => return None,
     })
+}
+
+const CHECKS: [&str; 2] = ["if-foreach-for", "loop"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`if-foreach-for` is
+/// `RemoveDeadIfForeachForRector`, `loop` is `RemoveDeadLoopRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

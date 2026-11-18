@@ -90,7 +90,7 @@ fn remove_parent_delegating_class_method() {
 #[test]
 fn remove_argument_from_default_parent_call() {
     check(
-        NoRedundantDefaultArgument,
+        NoRedundantDefaultArgument::default(),
         "RemoveArgumentFromDefaultParentCallRector",
     );
 }

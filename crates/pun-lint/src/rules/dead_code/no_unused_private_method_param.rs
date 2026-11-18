@@ -3,16 +3,26 @@ use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::class_members::{member_from, param_used};
 use crate::rules::support::names::resolve_class_name;
+use crate::rules::support::options::part_on;
 use crate::rules::support::rewrites::{list_removal, merge, remove_params};
 use crate::syntax::is_this;
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoUnusedPrivateMethodParam;
+#[derive(Default)]
+pub struct NoUnusedPrivateMethodParam {
+    /// `unused` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoUnusedPrivateMethodParam {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-unused-private-method-param"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "unused")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -26,6 +36,9 @@ impl Rule for NoUnusedPrivateMethodParam {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let (members, left_brace, name) = match node {
             Node::Class(class) => (&class.members, class.left_brace, Some(&class.name)),
             Node::AnonymousClass(class) => (&class.members, class.left_brace, None),
@@ -223,4 +236,12 @@ fn receiver(class: &ClassScope<'_, '_>, expr: &Expression<'_>) -> Option<bool> {
         e if is_this(e) => Some(true),
         _ => None,
     }
+}
+
+const CHECKS: [&str; 2] = ["overridden-in-tests", "unused"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`overridden-in-tests` is
+/// `RemoveTestsOverriddenPrivateMethodParameterRector`, `unused` is `RemoveUnusedPrivateMethodParameterRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

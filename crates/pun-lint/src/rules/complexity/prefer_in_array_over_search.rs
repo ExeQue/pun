@@ -4,13 +4,22 @@ use pun_problem::{Edit, Fix, Safety};
 use crate::rules::support::conditions::match_first_and_second;
 use crate::rules::support::expressions::{Prec, args, call_to, in_parent, is_constant, text};
 use crate::syntax::node_span;
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferInArrayOverSearch;
+#[derive(Default)]
+pub struct PreferInArrayOverSearch {
+    /// `array-search` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferInArrayOverSearch {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-in-array"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_in_array::checks(options, "array-search")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -24,6 +33,9 @@ impl Rule for PreferInArrayOverSearch {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Binary(b) = node else { return };
         let negated = match b.operator {
             BinaryOperator::Identical(_) => true,

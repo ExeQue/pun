@@ -15,13 +15,22 @@ use crate::rules::types::compare::mapper::{TypeScope, expr_type};
 use crate::rules::types::facts::facts;
 use crate::rules::types::names::resolve_class_name;
 use crate::syntax::{node_span, same_expression, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoRedundantNullableCheck;
+#[derive(Default)]
+pub struct NoRedundantNullableCheck {
+    /// `nullable` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoRedundantNullableCheck {
     fn id(&self) -> &'static str {
         "lint/complexity/no-redundant-null-check"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_redundant_null_check::checks(options, "nullable")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -35,6 +44,9 @@ impl Rule for NoRedundantNullableCheck {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Statement(Statement::Return(stmt)) = node else {
             return;
         };

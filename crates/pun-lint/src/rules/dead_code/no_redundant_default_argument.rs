@@ -4,16 +4,26 @@ use pun_problem::{Edit, Fix, Safety, Span};
 use crate::rules::support::class_members::{
     default_value, element_parts, expr_value, is_private, with_class_info,
 };
+use crate::rules::support::options::part_on;
 use crate::rules::support::rewrites::list_removal;
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoRedundantDefaultArgument;
+#[derive(Default)]
+pub struct NoRedundantDefaultArgument {
+    /// `parent-call` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoRedundantDefaultArgument {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-redundant-default-argument"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "parent-call")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -27,6 +37,9 @@ impl Rule for NoRedundantDefaultArgument {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let facts = facts(ctx);
         with_class_info(node, ancestors, &facts, |class| {
             let codebase = &facts.codebase;
@@ -171,4 +184,13 @@ fn is_dynamic_array(elements: &TokenSeparatedSequence<'_, ArrayElement<'_>>) -> 
                 )
             }) || is_dynamic_expr(value)
         })
+}
+
+const CHECKS: [&str; 3] = ["null", "null-named", "parent-call"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 3 rules (`null` is
+/// `RemoveNullArgOnNullDefaultParamRector`, `null-named` is `RemoveNullNamedArgOnNullDefaultParamRector`, `parent-call`
+/// is `RemoveArgumentFromDefaultParentCallRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

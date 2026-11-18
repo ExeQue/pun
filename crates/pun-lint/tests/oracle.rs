@@ -66,14 +66,14 @@ fn useless_continue() {
 
 #[test]
 fn empty_block() {
-    check_rule_oracle(rules::NoEmptyBlock, "no_empty_block.php.inc");
+    check_rule_oracle(rules::NoEmptyBlock::default(), "no_empty_block.php.inc");
 }
 
 #[test]
 fn empty_block_keeps_parentheses_around_an_inverted_ternary() {
     assert_eq!(
         fix_with(
-            rules::NoEmptyBlock,
+            rules::NoEmptyBlock::default(),
             "<?php\nif ($a ? $b : $c) {} else { x(); }\n"
         ),
         "<?php\nif (!($a ? $b : $c)) {\n    x();\n}\n"
@@ -84,7 +84,7 @@ fn empty_block_keeps_parentheses_around_an_inverted_ternary() {
 fn empty_block_keeps_parentheses_around_an_assignment_in_a_comparison() {
     assert_eq!(
         fix_with(
-            rules::NoEmptyBlock,
+            rules::NoEmptyBlock::default(),
             "<?php\nif (($a = 1) === $b) {} else { x(); }\n"
         ),
         "<?php\nif (($a = 1) !== $b) {\n    x();\n}\n"
@@ -144,7 +144,7 @@ fn return_in_constructor_in_parentheses() {
 #[test]
 fn empty_array_identical_on_a_parameter_written_later() {
     check_rule_oracle(
-        rules::PreferEmptyArrayIdentical,
+        rules::PreferEmptyArrayIdentical::default(),
         "prefer_empty_array_identical.php.inc",
     );
 }

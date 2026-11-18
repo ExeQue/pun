@@ -22,6 +22,12 @@ Merge ->with($this->callback()) and ->willReturn() into willReturnCallback().
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `merge-with-callable`, `void-method` | `["merge-with-callable", "void-method"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`MergeWithCallableAndWillReturn`](https://getrector.com/rule-detail/merge-with-callable-and-will-return-rector) (rector-phpunit)

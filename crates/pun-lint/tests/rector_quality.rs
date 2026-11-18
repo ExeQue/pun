@@ -82,7 +82,7 @@ fn locally_called_static_method_to_non_static() {
 #[test]
 fn remove_tests_overridden_private_method_parameter() {
     check(
-        NoUnusedTestMethodParam,
+        NoUnusedTestMethodParam::default(),
         "RemoveTestsOverriddenPrivateMethodParameterRector",
     );
 }
@@ -109,7 +109,10 @@ fn recasting_removal() {
 
 #[test]
 fn remove_dead_instance_of() {
-    check(NoAlwaysTrueInstanceof, "RemoveDeadInstanceOfRector");
+    check(
+        NoAlwaysTrueInstanceof::default(),
+        "RemoveDeadInstanceOfRector",
+    );
 }
 
 #[test]
@@ -141,7 +144,7 @@ fn remove_always_true_if_condition() {
 #[test]
 fn remove_dead_instance_of_assert() {
     check(
-        NoAlwaysTrueInstanceofAssert,
+        NoAlwaysTrueInstanceofAssert::default(),
         "RemoveDeadInstanceOfAssertRector",
     );
 }
@@ -242,7 +245,7 @@ fn rules_ignore_nodes_outside_their_targets() {
             "LocallyCalledStaticMethodToNonStaticRector",
         ),
         (
-            || Box::new(NoUnusedTestMethodParam),
+            || Box::new(NoUnusedTestMethodParam::default()),
             "RemoveTestsOverriddenPrivateMethodParameterRector",
         ),
         (
@@ -259,7 +262,7 @@ fn rules_ignore_nodes_outside_their_targets() {
         ),
         (|| Box::new(NoUselessCast), "RecastingRemovalRector"),
         (
-            || Box::new(NoAlwaysTrueInstanceof),
+            || Box::new(NoAlwaysTrueInstanceof::default()),
             "RemoveDeadInstanceOfRector",
         ),
         (
@@ -303,7 +306,7 @@ fn rules_ignore_nodes_outside_their_targets() {
             "InlineArrayReturnAssignRector",
         ),
         (
-            || Box::new(NoAlwaysTrueInstanceofAssert),
+            || Box::new(NoAlwaysTrueInstanceofAssert::default()),
             "RemoveDeadInstanceOfAssertRector",
         ),
     ];

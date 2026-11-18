@@ -1620,12 +1620,42 @@ case-sensitive = { upstream = "case_sensitive", type = "bool" }
 order = { upstream = "order", type = "list" }
 sort-algorithm = { upstream = "sort_algorithm", type = "enum", values = { none = "none", alpha = "alpha" } }
 
+[options."lint/complexity/no-negated-group"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["ands", "de-morgan"], values = { ands = "NegatedAndsToPositiveOrs", de-morgan = "SimplifyDeMorganBinary" } }
+
+[options."lint/complexity/no-redundant-null-check"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["not-null", "nullable"], values = { not-null = "SimplifyIfNotNullReturn", nullable = "SimplifyIfNullableReturn" } }
+
+[options."lint/complexity/prefer-empty-array-compare"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["empty", "is-array"], values = { empty = "SimplifyEmptyCheckOnEmptyArray", is-array = "SimplifyEmptyArrayCheck" } }
+
+[options."lint/complexity/prefer-in-array"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["array-search", "foreach", "repeated-or"], values = { array-search = "SimplifyArraySearch", foreach = "ForeachToInArray", repeated-or = "RepeatedOrEqualToInArray" } }
+
+[options."lint/complexity/prefer-null-coalesce"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["array-key-exists", "consecutive-returns", "foreach"], values = { array-key-exists = "ArrayKeyExistsTernaryThenValueToCoalescing", consecutive-returns = "ConsecutiveNullCompareReturnsToNullCoalesceQueue", foreach = "SimplifyForeachToCoalescing" } }
+
 [options."lint/complexity/prefer-simple-condition"]
 checks = { upstream = "checks", type = "list", origin = "pun", default = ["conditions", "identical-true", "not-identical"], values = { conditions = "SimplifyConditions", identical-true = "SimplifyBoolIdenticalTrue", not-identical = "BooleanNotIdenticalToNotIdentical" } }
 
 [options."lint/control-flow/no-return-assignment"]
 skip-named-var-tags = { upstream = "skip_named_var_tags", type = "bool" }
 skip-commented = { upstream = "skip_commented", type = "bool", origin = "pun", default = false }
+
+[options."lint/dead-code/no-always-true-instanceof"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["assert", "if"], values = { assert = "RemoveDeadInstanceOfAssert", if = "RemoveDeadInstanceOf" } }
+
+[options."lint/dead-code/no-empty-block"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["if-foreach-for", "loop"], values = { if-foreach-for = "RemoveDeadIfForeachFor", loop = "RemoveDeadLoop" } }
+
+[options."lint/dead-code/no-redundant-default-argument"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["null", "null-named", "parent-call"], values = { null = "RemoveNullArgOnNullDefaultParam", null-named = "RemoveNullNamedArgOnNullDefaultParam", parent-call = "RemoveArgumentFromDefaultParentCall" } }
+
+[options."lint/dead-code/no-unused-assignment"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["double", "unused"], values = { double = "RemoveDoubleAssign", unused = "RemoveUnusedVariableAssign" } }
+
+[options."lint/dead-code/no-unused-private-method-param"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["overridden-in-tests", "unused"], values = { overridden-in-tests = "RemoveTestsOverriddenPrivateMethodParameter", unused = "RemoveUnusedPrivateMethodParameter" } }
 
 [options."lint/dead-code/no-useless-ternary"]
 checks = { upstream = "checks", type = "list", origin = "pun", default = ["bool", "tautology", "useless"], values = { bool = "UnnecessaryTernaryExpression", tautology = "SimplifyTautologyTernary", useless = "RemoveUselessTernary" } }
@@ -1647,6 +1677,9 @@ exclude = { upstream = "exclude", type = "list" }
 include = { upstream = "include", type = "list" }
 scope = { upstream = "scope", type = "enum", values = { all = "all", namespaced = "namespaced" } }
 strict = { upstream = "strict", type = "bool" }
+
+[options."lint/pest/prefer-to-throw"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["expect-exception", "try-catch"], values = { expect-exception = "ConvertExpectExceptionToThrow", try-catch = "UseToThrow" } }
 
 [options."lint/php-8.3/add-const-type"]
 treat-classes-as-final = { upstream = "treatClassesAsFinal", type = "bool" }
@@ -1699,6 +1732,9 @@ target = { upstream = "target", type = "enum", values = { "4.8" = "4.8", "5.7" =
 
 [options."lint/phpunit/prefer-specific-assertions"]
 assertions = { upstream = "assertions", type = "list", values = { assertEquals = "assertEquals", assertNotEquals = "assertNotEquals", assertNotSame = "assertNotSame", assertSame = "assertSame" } }
+
+[options."lint/phpunit/prefer-will-return-callback"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["merge-with-callable", "void-method"], values = { merge-with-callable = "MergeWithCallableAndWillReturn", void-method = "VoidMethodWithCallbackToWillReturnCallback" } }
 
 [options."lint/phpunit/require-assertion-style"]
 call-type = { upstream = "call_type", type = "enum", values = { this = "this", self = "self", static = "static" } }
@@ -1776,6 +1812,9 @@ identical-or-greater-only = { upstream = "identical_or_greater_only", type = "bo
 
 [options."lint/style/prefer-phpdoc-comment"]
 ignored-tags = { upstream = "ignored_tags", type = "list" }
+
+[options."lint/style/no-sleep-wakeup"]
+checks = { upstream = "checks", type = "list", origin = "pun", default = ["sleep", "wakeup"], values = { sleep = "SleepToSerialize", wakeup = "WakeupToUnserialize" } }
 
 [options."lint/style/prefer-class-constant"]
 namespaced-only = { upstream = "namespaced-only", type = "bool", origin = "pun", default = false }

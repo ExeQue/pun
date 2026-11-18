@@ -194,6 +194,109 @@ fn merged_rector_rules_keep_to_the_ones_rector_runs() {
     );
 }
 
+/// The rules merged from several Rector rules, each with its Rector rules (under `Rector\`, or a full name after
+/// `@`) and the `checks` that keep it to all of them but the first.
+const MERGED: [(&str, &str, &str); 13] = [
+    (
+        "lint/complexity/no-negated-group",
+        "CodeQuality\\Rector\\BooleanNot\\NegatedAndsToPositiveOrs CodeQuality\\Rector\\BooleanNot\\SimplifyDeMorganBinary",
+        "[\"de-morgan\"]",
+    ),
+    (
+        "lint/complexity/no-redundant-null-check",
+        "CodeQuality\\Rector\\If_\\SimplifyIfNotNullReturn CodeQuality\\Rector\\If_\\SimplifyIfNullableReturn",
+        "[\"nullable\"]",
+    ),
+    (
+        "lint/complexity/prefer-empty-array-compare",
+        "CodeQuality\\Rector\\Empty_\\SimplifyEmptyCheckOnEmptyArray CodeQuality\\Rector\\BooleanAnd\\SimplifyEmptyArrayCheck",
+        "[\"is-array\"]",
+    ),
+    (
+        "lint/complexity/prefer-in-array",
+        "CodeQuality\\Rector\\Identical\\SimplifyArraySearch CodeQuality\\Rector\\Foreach_\\ForeachToInArray CodeQuality\\Rector\\BooleanOr\\RepeatedOrEqualToInArray",
+        "[\"foreach\", \"repeated-or\"]",
+    ),
+    (
+        "lint/complexity/prefer-null-coalesce",
+        "CodeQuality\\Rector\\Ternary\\ArrayKeyExistsTernaryThenValueToCoalescing CodeQuality\\Rector\\If_\\ConsecutiveNullCompareReturnsToNullCoalesceQueue CodeQuality\\Rector\\Foreach_\\SimplifyForeachToCoalescing",
+        "[\"consecutive-returns\", \"foreach\"]",
+    ),
+    (
+        "lint/dead-code/no-always-true-instanceof",
+        "DeadCode\\Rector\\StmtsAwareInterface\\RemoveDeadInstanceOfAssert DeadCode\\Rector\\If_\\RemoveDeadInstanceOf",
+        "[\"if\"]",
+    ),
+    (
+        "lint/dead-code/no-empty-block",
+        "DeadCode\\Rector\\For_\\RemoveDeadIfForeachFor DeadCode\\Rector\\For_\\RemoveDeadLoop",
+        "[\"loop\"]",
+    ),
+    (
+        "lint/dead-code/no-redundant-default-argument",
+        "DeadCode\\Rector\\MethodCall\\RemoveNullArgOnNullDefaultParam DeadCode\\Rector\\MethodCall\\RemoveNullNamedArgOnNullDefaultParam DeadCode\\Rector\\ClassMethod\\RemoveArgumentFromDefaultParentCall",
+        "[\"null-named\", \"parent-call\"]",
+    ),
+    (
+        "lint/dead-code/no-unused-assignment",
+        "DeadCode\\Rector\\Assign\\RemoveDoubleAssign DeadCode\\Rector\\Assign\\RemoveUnusedVariableAssign",
+        "[\"unused\"]",
+    ),
+    (
+        "lint/dead-code/no-unused-private-method-param",
+        "DeadCode\\Rector\\ClassMethod\\RemoveTestsOverriddenPrivateMethodParameter DeadCode\\Rector\\ClassMethod\\RemoveUnusedPrivateMethodParameter",
+        "[\"unused\"]",
+    ),
+    (
+        "lint/phpunit/prefer-will-return-callback",
+        "PHPUnit\\CodeQuality\\Rector\\MethodCall\\MergeWithCallableAndWillReturn PHPUnit\\CodeQuality\\Rector\\Class_\\VoidMethodWithCallbackToWillReturnCallback",
+        "[\"void-method\"]",
+    ),
+    (
+        "lint/style/no-sleep-wakeup",
+        "Php85\\Rector\\Class_\\SleepToSerialize Php85\\Rector\\Class_\\WakeupToUnserialize",
+        "[\"wakeup\"]",
+    ),
+    (
+        "lint/pest/prefer-to-throw",
+        "@Pest\\Rector\\Rules\\ConvertExpectExceptionToThrow @Pest\\Rector\\Rules\\UseToThrow",
+        "[\"try-catch\"]",
+    ),
+];
+
+/// Every other rule merged from several Rector rules keeps to the ones rector.php runs, as its `checks`: rector.php has
+/// the rule's Rector rules in `withRules()` and the first in `withSkip()`, which crates/pun-cli/src/rector_config.php
+/// prints as a skip with no paths. The tests of pun-lint (`tests/merged_checks.rs`) hold what Rector 2.8.4 writes then.
+#[test]
+fn every_merged_rector_rule_keeps_to_the_ones_rector_runs() {
+    for (id, classes, checks) in MERGED {
+        let class = |c: &str| match c.strip_prefix('@') {
+            Some(c) => format!("{c}Rector"),
+            None => format!("Rector\\{c}Rector"),
+        };
+        let rules: Vec<String> = classes.split(' ').map(class).collect();
+        let config = RectorConfig {
+            skip_rules: [(rules[0].clone(), Value::Null)].into_iter().collect(),
+            rules,
+            ..RectorConfig::default()
+        };
+        let r = from_rector(&dir(&[]), &config);
+        assert_eq!(
+            r.options[id].to_string().trim(),
+            format!("checks = {checks}"),
+            "{id}"
+        );
+        let all = RectorConfig {
+            rules: classes.split(' ').map(class).collect(),
+            ..RectorConfig::default()
+        };
+        assert!(
+            !from_rector(&dir(&[]), &all).options.contains_key(id),
+            "{id}"
+        );
+    }
+}
+
 /// A configured rule's configuration becomes its options. The input is what crates/pun-cli/src/rector_config.php printed
 /// for a rector.php with these four `withConfiguredRule()` calls, run on .oracle/rector-ecosystem's Rector: a data map
 /// keeps its keys, a value object list goes under `items` with its properties kebab-cased, Rector's option constant

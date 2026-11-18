@@ -2,14 +2,24 @@ use mago_syntax::cst::{BinaryOperator, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{Prec, de_morgan, in_parent};
+use crate::rules::support::options::part_on;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoNegatedGroup;
+#[derive(Default)]
+pub struct NoNegatedGroup {
+    /// `de-morgan` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoNegatedGroup {
     fn id(&self) -> &'static str {
         "lint/complexity/no-negated-group"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "de-morgan")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +33,9 @@ impl Rule for NoNegatedGroup {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::UnaryPrefix(not) = node else { return };
         if !not.operator.is_not() {
             return;
@@ -53,4 +66,12 @@ impl Rule for NoNegatedGroup {
             }),
         });
     }
+}
+
+const CHECKS: [&str; 2] = ["ands", "de-morgan"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`ands` is `NegatedAndsToPositiveOrsRector`,
+/// `de-morgan` is `SimplifyDeMorganBinaryRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

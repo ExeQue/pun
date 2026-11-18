@@ -4,6 +4,7 @@ mod lint_b;
 mod lint_b_report;
 mod mago_a;
 mod mago_b;
+mod merged_checks;
 mod numeric_admission;
 mod oracle;
 mod rector;

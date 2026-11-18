@@ -6,9 +6,13 @@ use super::{
     statement_expression, statement_list,
 };
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoExpectException;
+#[derive(Default)]
+pub struct NoExpectException {
+    /// `expect-exception` is left out of the rule's `checks`.
+    off: bool,
+}
 
 const SUPPORTED_METHODS: [&[u8]; 3] = [
     b"expectException",
@@ -36,6 +40,11 @@ impl Rule for NoExpectException {
         "lint/pest/prefer-to-throw"
     }
 
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_to_throw::checks(options, "expect-exception")?;
+        Ok(())
+    }
+
     fn targets(&self) -> Option<&'static [NodeKind]> {
         Some(STATEMENT_LISTS)
     }
@@ -47,6 +56,9 @@ impl Rule for NoExpectException {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Some(list) = statement_list(ctx, node) else {
             return;
         };

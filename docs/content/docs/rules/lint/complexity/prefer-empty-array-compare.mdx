@@ -22,6 +22,12 @@ Compare with `[]` instead of empty()/is_array() on arrays.
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `empty`, `is-array` | `["empty", "is-array"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`SimplifyEmptyArrayCheck`](https://getrector.com/rule-detail/simplify-empty-array-check-rector) (rector)

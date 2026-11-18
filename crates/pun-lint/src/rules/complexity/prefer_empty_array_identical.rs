@@ -5,13 +5,22 @@ use crate::rules::support::side_effects::any_node;
 use crate::rules::support::syntax_types::is_array_property;
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferEmptyArrayIdentical;
+#[derive(Default)]
+pub struct PreferEmptyArrayIdentical {
+    /// `empty` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferEmptyArrayIdentical {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-empty-array-compare"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_empty_array_compare::checks(options, "empty")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -25,6 +34,9 @@ impl Rule for PreferEmptyArrayIdentical {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let (span, empty, negated) = match node {
             Node::UnaryPrefix(u) if matches!(u.operator, UnaryPrefixOperator::Not(_)) => {
                 let Expression::Construct(Construct::Empty(empty)) = unparenthesize(u.operand)

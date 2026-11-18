@@ -7,17 +7,27 @@ use pun_problem::{Edit, Fix, Safety, Span};
 
 use crate::rules::support::conditions::if_parts;
 use crate::rules::support::names::resolve_class_name;
+use crate::rules::support::options::part_on;
 use crate::rules::support::statement_splice::{Change, Code, NewStatement, run_edits};
 use crate::rules::support::statements::{Token, tokens};
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoAlwaysTrueInstanceof;
+#[derive(Default)]
+pub struct NoAlwaysTrueInstanceof {
+    /// `if` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoAlwaysTrueInstanceof {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-always-true-instanceof"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "if")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -31,6 +41,9 @@ impl Rule for NoAlwaysTrueInstanceof {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         if !matches!(node, Node::If(_)) {
             return;
         }
@@ -144,4 +157,12 @@ fn is_same_type(
         && facts
             .codebase
             .is_instance_of(own.as_bytes(), wanted.as_bytes())
+}
+
+const CHECKS: [&str; 2] = ["assert", "if"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`assert` is `RemoveDeadInstanceOfAssertRector`,
+/// `if` is `RemoveDeadInstanceOfRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

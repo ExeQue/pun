@@ -22,6 +22,12 @@ Use expect()->toThrow() instead of expectException() or try/catch in Pest tests.
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `expect-exception`, `try-catch` | `["expect-exception", "try-catch"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`ConvertExpectExceptionToThrow`](https://pestphp.com/docs/rector#content-convertexpectexceptiontothrowrector) (pest-plugin-rector)

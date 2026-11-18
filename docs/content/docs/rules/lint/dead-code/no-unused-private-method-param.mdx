@@ -22,6 +22,12 @@ Remove unused parameters of private methods, including test-method parameters ov
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `overridden-in-tests`, `unused` | `["overridden-in-tests", "unused"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveTestsOverriddenPrivateMethodParameter`](https://getrector.com/rule-detail/remove-tests-overridden-private-method-parameter-rector) (rector)

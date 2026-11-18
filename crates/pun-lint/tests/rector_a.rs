@@ -161,16 +161,16 @@ fn remove_unused_public_method_parameter() {
 #[test]
 fn remove_unused_private_method_parameter() {
     run(
-        &only(rules::NoUnusedPrivateMethodParam, 80400),
+        &only(rules::NoUnusedPrivateMethodParam::default(), 80400),
         "RemoveUnusedPrivateMethodParameterRector/Fixture",
     );
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
     run(
-        &only(rules::NoUnusedPrivateMethodParam, 80400),
+        &only(rules::NoUnusedPrivateMethodParam::default(), 80400),
         "RemoveUnusedPrivateMethodParameterRector/Oracle",
     );
     run(
-        &only(rules::NoUnusedPrivateMethodParam, 80400),
+        &only(rules::NoUnusedPrivateMethodParam::default(), 80400),
         "RemoveUnusedPrivateMethodParameterRector/Pun",
     );
 }
@@ -231,16 +231,16 @@ fn inline_constructor_default_to_property() {
 #[test]
 fn foreach_to_in_array() {
     run(
-        &only(rules::PreferInArrayOverForeach, 80400),
+        &only(rules::PreferInArrayOverForeach::default(), 80400),
         "ForeachToInArrayRector/Fixture",
     );
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
     run(
-        &only(rules::PreferInArrayOverForeach, 80400),
+        &only(rules::PreferInArrayOverForeach::default(), 80400),
         "ForeachToInArrayRector/Oracle",
     );
     run(
-        &only(rules::PreferInArrayOverForeach, 80400),
+        &only(rules::PreferInArrayOverForeach::default(), 80400),
         "ForeachToInArrayRector/Pun",
     );
 }
@@ -248,16 +248,16 @@ fn foreach_to_in_array() {
 #[test]
 fn consecutive_null_compare_returns_to_null_coalesce_queue() {
     run(
-        &only(rules::PreferCoalesceChain, 80400),
+        &only(rules::PreferCoalesceChain::default(), 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Fixture",
     );
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
     run(
-        &only(rules::PreferCoalesceChain, 80400),
+        &only(rules::PreferCoalesceChain::default(), 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Oracle",
     );
     run(
-        &only(rules::PreferCoalesceChain, 80400),
+        &only(rules::PreferCoalesceChain::default(), 80400),
         "ConsecutiveNullCompareReturnsToNullCoalesceQueueRector/Pun",
     );
 }
@@ -265,12 +265,12 @@ fn consecutive_null_compare_returns_to_null_coalesce_queue() {
 #[test]
 fn simplify_foreach_to_coalescing() {
     run(
-        &only(rules::PreferCoalesceOverForeach, 80400),
+        &only(rules::PreferCoalesceOverForeach::default(), 80400),
         "SimplifyForeachToCoalescingRector/Fixture",
     );
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone, PHP 8.4).
     run(
-        &only(rules::PreferCoalesceOverForeach, 80400),
+        &only(rules::PreferCoalesceOverForeach::default(), 80400),
         "SimplifyForeachToCoalescingRector/Oracle",
     );
 }
@@ -291,7 +291,7 @@ fn remove_condition_exact_return() {
 
 #[test]
 fn remove_double_assign() {
-    let linter = only(rules::NoOverwrittenAssignment, 80400);
+    let linter = only(rules::NoOverwrittenAssignment::default(), 80400);
     run(&linter, "RemoveDoubleAssignRector/Fixture");
     run(&linter, "RemoveDoubleAssignRector/Oracle");
 }
@@ -305,7 +305,7 @@ fn remove_next_same_value_condition() {
 
 #[test]
 fn remove_dead_loop() {
-    let linter = only(rules::NoEmptyLoop, 80400);
+    let linter = only(rules::NoEmptyLoop::default(), 80400);
     run(&linter, "RemoveDeadLoopRector/Fixture");
     run_with_whitespace_exceptions(
         &linter,
@@ -454,7 +454,7 @@ fn prefer_simple_condition_checks() {
 
 #[test]
 fn simplify_empty_check_on_empty_array() {
-    let linter = only(rules::PreferEmptyArrayIdentical, 80400);
+    let linter = only(rules::PreferEmptyArrayIdentical::default(), 80400);
     run(&linter, "SimplifyEmptyCheckOnEmptyArrayRector/Fixture");
     run(&linter, "SimplifyEmptyCheckOnEmptyArrayRector/Oracle");
     run(&linter, "SimplifyEmptyCheckOnEmptyArrayRector/Pun");

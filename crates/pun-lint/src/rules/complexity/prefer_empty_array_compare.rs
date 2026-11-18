@@ -2,14 +2,24 @@ use mago_syntax::cst::{BinaryOperator, Construct, Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{Prec, args, call_to, equal, in_parent, text};
+use crate::rules::support::options::part_on;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferEmptyArrayCompare;
+#[derive(Default)]
+pub struct PreferEmptyArrayCompare {
+    /// `is-array` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferEmptyArrayCompare {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-empty-array-compare"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "is-array")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +33,9 @@ impl Rule for PreferEmptyArrayCompare {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Binary(and) = node else { return };
         if !matches!(and.operator, BinaryOperator::And(_)) {
             return;
@@ -62,4 +75,12 @@ fn empty_arg<'a>(expr: &'a Expression<'a>) -> Option<&'a Expression<'a>> {
         return None;
     };
     matches!(unparenthesize(empty.value), Expression::Variable(_)).then_some(empty.value)
+}
+
+const CHECKS: [&str; 2] = ["empty", "is-array"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`empty` is
+/// `SimplifyEmptyCheckOnEmptyArrayRector`, `is-array` is `SimplifyEmptyArrayCheckRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

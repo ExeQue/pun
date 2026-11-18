@@ -10,13 +10,22 @@ use crate::rules::support::names::resolve_class_name;
 use crate::rules::support::rewrites::{list_removal, merge, remove_params};
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoUnusedTestMethodParam;
+#[derive(Default)]
+pub struct NoUnusedTestMethodParam {
+    /// `overridden-in-tests` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoUnusedTestMethodParam {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-unused-private-method-param"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_unused_private_method_param::checks(options, "overridden-in-tests")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -30,6 +39,9 @@ impl Rule for NoUnusedTestMethodParam {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let facts = facts(ctx);
         let Some(class) = class_info(node, ancestors, &facts) else {
             return;

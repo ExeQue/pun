@@ -22,6 +22,12 @@ Remove arguments that equal the parameter default value.
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `null`, `null-named`, `parent-call` | `["null", "null-named", "parent-call"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveArgumentFromDefaultParentCall`](https://getrector.com/rule-detail/remove-argument-from-default-parent-call-rector) (rector)

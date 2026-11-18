@@ -7,6 +7,7 @@ use pun_problem::{Fix, Safety};
 use crate::rules::support::conditions::comments_between;
 use crate::rules::support::expressions::is_constant;
 use crate::rules::support::names::called_function_name;
+use crate::rules::support::options::part_on;
 use crate::rules::support::side_effects::{any_node, call_has_side_effect};
 use crate::rules::support::statement_edits::{
     expression, is_plain_assign, is_static_or_global, is_used_by_reference, variable_name,
@@ -17,13 +18,22 @@ use crate::rules::support::variable_usage::used_in;
 use crate::rules::types::facts::{Facts, facts};
 use crate::rules::types::names::{class_imports, resolve_class_name};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoUnusedAssignment;
+#[derive(Default)]
+pub struct NoUnusedAssignment {
+    /// `unused` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoUnusedAssignment {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-unused-assignment"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "unused")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -37,6 +47,9 @@ impl Rule for NoUnusedAssignment {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         if !matches!(node, Node::ExpressionStatement(_)) || body(ancestors).is_none() {
             return;
         }
@@ -430,4 +443,12 @@ pub(crate) fn find_last(
         }
         find_last(child, name, before, found);
     });
+}
+
+const CHECKS: [&str; 2] = ["double", "unused"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`double` is `RemoveDoubleAssignRector`,
+/// `unused` is `RemoveUnusedVariableAssignRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

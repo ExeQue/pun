@@ -7,13 +7,22 @@ use crate::rules::support::statement_edits::block_list;
 use crate::rules::types::declare::{expression_order, return_declaration};
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferMergedWillReturnCallback;
+#[derive(Default)]
+pub struct PreferMergedWillReturnCallback {
+    /// `merge-with-callable` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferMergedWillReturnCallback {
     fn id(&self) -> &'static str {
         "lint/phpunit/prefer-will-return-callback"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_will_return_callback::checks(options, "merge-with-callable")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -27,6 +36,9 @@ impl Rule for PreferMergedWillReturnCallback {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let call = AnyCall::of(node).unwrap();
         if !is_in_test_class(ctx, ancestors, None) || !call.is_name(&["willReturn"]) {
             return;

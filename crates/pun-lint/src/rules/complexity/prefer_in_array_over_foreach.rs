@@ -6,13 +6,22 @@ use crate::rules::support::rewrites::{foreach_list, replace_run};
 use crate::rules::support::statement_edits::{HOLDERS, has_equal_variable, holder_list, if_view};
 use crate::rules::support::values::native_array;
 use crate::syntax::{node_span, same_code, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferInArrayOverForeach;
+#[derive(Default)]
+pub struct PreferInArrayOverForeach {
+    /// `foreach` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferInArrayOverForeach {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-in-array"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_in_array::checks(options, "foreach")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -26,6 +35,9 @@ impl Rule for PreferInArrayOverForeach {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let source = ctx.source;
         let Some(list) = holder_list(source, node, ancestors) else {
             return;

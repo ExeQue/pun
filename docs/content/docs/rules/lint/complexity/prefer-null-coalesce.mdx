@@ -22,6 +22,12 @@ Use `??` instead of isset()/array_key_exists() ternaries, if/return chains and f
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `array-key-exists`, `consecutive-returns`, `foreach` | `["array-key-exists", "consecutive-returns", "foreach"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`ArrayKeyExistsTernaryThenValueToCoalescing`](https://getrector.com/rule-detail/array-key-exists-ternary-then-value-to-coalescing-rector) (rector)

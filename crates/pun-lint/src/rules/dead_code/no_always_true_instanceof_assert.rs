@@ -10,13 +10,22 @@ use crate::rules::support::statement_splice::{Change, Code, NewStatement, run_ed
 use crate::rules::support::statements::{Token, previous_token_end, tokens};
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct NoAlwaysTrueInstanceofAssert;
+#[derive(Default)]
+pub struct NoAlwaysTrueInstanceofAssert {
+    /// `assert` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for NoAlwaysTrueInstanceofAssert {
     fn id(&self) -> &'static str {
         "lint/dead-code/no-always-true-instanceof"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::no_always_true_instanceof::checks(options, "assert")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -30,6 +39,9 @@ impl Rule for NoAlwaysTrueInstanceofAssert {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         if !matches!(node, Node::ExpressionStatement(_)) {
             return;
         }

@@ -22,6 +22,12 @@ Use in_array() instead of repeated `||`/`&&` comparisons, array_search() checks 
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `array-search`, `foreach`, `repeated-or` | `["array-search", "foreach", "repeated-or"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`ForeachToInArray`](https://getrector.com/rule-detail/foreach-to-in-array-rector) (rector)

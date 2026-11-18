@@ -22,6 +22,12 @@ Remove or report if/for/foreach/while statements with an empty body.
 
 To skip it in some files or lines, add an [override](/docs/configuration/pun-toml#lint) or an [ignore comment](/docs/configuration/ignore-comments).
 
+## Options
+
+| Name | Type | Allowed values | Default | Upstream name |
+| --- | --- | --- | --- | --- |
+| `checks` | `list` | `if-foreach-for`, `loop` | `["if-foreach-for", "loop"]` | None (Pun's own) |
+
 ## Replaces
 
 - [`RemoveDeadIfForeachFor`](https://getrector.com/rule-detail/remove-dead-if-foreach-for-rector) (rector)

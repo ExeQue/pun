@@ -12,13 +12,14 @@ use mago_syntax::token::TokenKind;
 use pun_problem::{Edit, Safety, Span};
 
 use super::{TEST_CASE, TEST_CASE_LEGACY, class_body, class_is, resolve, string_value};
+use crate::rules::support::options::part_on;
 use crate::rules::support::statement_edits::{
     assign, block_list, expression, first_comment, line_indent, previous_token_end, reindent,
     tokens,
 };
 use crate::rules::types::facts::facts;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
 const MOCK_OBJECT: &str = "PHPUnit\\Framework\\MockObject\\MockObject";
 
@@ -28,11 +29,20 @@ const INVOCATION_MOCKERS: [&str; 3] = [
     "PHPUnit\\Framework\\MockObject\\InvocationStubber",
 ];
 
-pub struct PreferWillReturnCallback;
+#[derive(Default)]
+pub struct PreferWillReturnCallback {
+    /// `void-method` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferWillReturnCallback {
     fn id(&self) -> &'static str {
         "lint/phpunit/prefer-will-return-callback"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "void-method")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -46,6 +56,9 @@ impl Rule for PreferWillReturnCallback {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::MethodCall(call) = node else { return };
         if !is_named(&call.method, "with") {
             return;
@@ -580,4 +593,12 @@ fn pretty_closure(source: &str, closure: &Closure<'_>, indent: &str) -> Option<S
         if closure.ampersand.is_some() { "&" } else { "" },
         params.join(", "),
     ))
+}
+
+const CHECKS: [&str; 2] = ["merge-with-callable", "void-method"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 2 rules (`merge-with-callable` is
+/// `MergeWithCallableAndWillReturnRector`, `void-method` is `VoidMethodWithCallbackToWillReturnCallbackRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }

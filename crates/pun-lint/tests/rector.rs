@@ -113,7 +113,7 @@ fn and_assigns_to_separate_lines() {
 #[test]
 fn array_key_exists_ternary_then_value_to_coalescing() {
     let linter = Linter::new(
-        vec![Box::new(PreferNullCoalesce)],
+        vec![Box::new(PreferNullCoalesce::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(
@@ -130,7 +130,7 @@ fn array_key_exists_ternary_then_value_to_coalescing() {
 #[test]
 fn negated_ands_to_positive_ors() {
     let linter = Linter::new(
-        vec![Box::new(NoNegatedAnd)],
+        vec![Box::new(NoNegatedAnd::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(&linter, "NegatedAndsToPositiveOrsRector/Fixture");
@@ -164,7 +164,7 @@ fn replace_constant_boolean_not() {
 #[test]
 fn simplify_de_morgan_binary() {
     let linter = Linter::new(
-        vec![Box::new(NoNegatedGroup)],
+        vec![Box::new(NoNegatedGroup::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(&linter, "SimplifyDeMorganBinaryRector/Fixture");
@@ -176,7 +176,7 @@ fn simplify_de_morgan_binary() {
 #[test]
 fn simplify_empty_array_check() {
     let linter = Linter::new(
-        vec![Box::new(PreferEmptyArrayCompare)],
+        vec![Box::new(PreferEmptyArrayCompare::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(&linter, "SimplifyEmptyArrayCheckRector/Fixture");
@@ -303,7 +303,7 @@ fn remove_dead_continue() {
 #[test]
 fn remove_dead_if_foreach_for() {
     run(
-        &only(rules::NoEmptyBlock, 80400),
+        &only(rules::NoEmptyBlock::default(), 80400),
         "RemoveDeadIfForeachForRector/Fixture",
     );
 }
@@ -462,7 +462,7 @@ fn prepared_value_to_early_return() {
 #[test]
 fn repeated_or_equal_to_in_array() {
     let linter = Linter::new(
-        vec![Box::new(PreferInArray)],
+        vec![Box::new(PreferInArray::default())],
         pun_lint::PhpVersion::from_id(80400),
     );
     run(&linter, "RepeatedOrEqualToInArrayRector/Fixture");
@@ -483,7 +483,7 @@ fn repeated_and_not_equal_to_not_in_array() {
 
 #[test]
 fn simplify_if_not_null_return() {
-    let linter = only(rules::NoRedundantNullCheck, 80400);
+    let linter = only(rules::NoRedundantNullCheck::default(), 80400);
     run(&linter, "SimplifyIfNotNullReturnRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyIfNotNullReturnRector/Oracle");
@@ -500,7 +500,7 @@ fn simplify_conditions() {
 
 #[test]
 fn simplify_array_search() {
-    let linter = only(rules::PreferInArrayOverSearch, 80400);
+    let linter = only(rules::PreferInArrayOverSearch::default(), 80400);
     run(&linter, "SimplifyArraySearchRector/Fixture");
     // Pun's own cases; the expected code is the oracle's (.oracle/rector-bin, this rule alone).
     run(&linter, "SimplifyArraySearchRector/Oracle");

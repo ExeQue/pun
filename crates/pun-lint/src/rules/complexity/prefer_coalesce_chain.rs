@@ -5,13 +5,22 @@ use crate::rules::support::expressions::{Prec, equal, is_constant, operand, wrap
 use crate::rules::support::rewrites::replace_run;
 use crate::rules::support::statement_edits::{HOLDERS, holder_list, if_view};
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferCoalesceChain;
+#[derive(Default)]
+pub struct PreferCoalesceChain {
+    /// `consecutive-returns` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferCoalesceChain {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-null-coalesce"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_null_coalesce::checks(options, "consecutive-returns")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -25,6 +34,9 @@ impl Rule for PreferCoalesceChain {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let source = ctx.source;
         let Some(list) = holder_list(source, node, ancestors) else {
             return;

@@ -2,14 +2,24 @@ use mago_syntax::cst::{Expression, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
 use crate::rules::support::expressions::{args, call_to, equal, is_constant, text};
+use crate::rules::support::options::part_on;
 use crate::syntax::{node_span, unparenthesize};
-use crate::{Context, Report, Rule};
+use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferNullCoalesce;
+#[derive(Default)]
+pub struct PreferNullCoalesce {
+    /// `array-key-exists` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferNullCoalesce {
     fn id(&self) -> &'static str {
         "lint/complexity/prefer-null-coalesce"
+    }
+
+    fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !checks(options, "array-key-exists")?;
+        Ok(())
     }
 
     fn targets(&self) -> Option<&'static [NodeKind]> {
@@ -23,6 +33,9 @@ impl Rule for PreferNullCoalesce {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Conditional(t) = node else { return };
         let Some(call) = call_to(t.condition, "array_key_exists") else {
             return;
@@ -55,4 +68,13 @@ impl Rule for PreferNullCoalesce {
             }),
         });
     }
+}
+
+const CHECKS: [&str; 3] = ["array-key-exists", "consecutive-returns", "foreach"];
+
+/// Pun's `checks`: the ones that run, one for each of Rector's 3 rules (`array-key-exists` is
+/// `ArrayKeyExistsTernaryThenValueToCoalescingRector`, `consecutive-returns` is
+/// `ConsecutiveNullCompareReturnsToNullCoalesceQueueRector`, `foreach` is `SimplifyForeachToCoalescingRector`).
+pub(super) fn checks(options: &serde_json::Value, check: &str) -> Result<bool, OptionsError> {
+    part_on(options, "checks", &CHECKS, check)
 }
