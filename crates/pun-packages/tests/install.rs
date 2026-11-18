@@ -197,7 +197,9 @@ fn autoloader_and_bin_corner_cases_match_composer() {
         "{real}"
     );
     run(&tmp, &lock, &o);
-    let at = tmp.to_string_lossy();
+    // The warnings name real paths, as Composer's realpath() does; macOS's temp dir is behind /var -> /private/var.
+    let at = tmp.canonicalize().unwrap();
+    let at = at.to_string_lossy();
     let mut warnings: Vec<String> = report
         .warnings
         .iter()
