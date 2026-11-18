@@ -2,7 +2,7 @@ use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::property::PropertyMetadata;
 use mago_codex::symbol::SymbolKind;
 use mago_codex::visibility::Visibility;
-use mago_span::{Position, Span};
+use mago_span::{HasSpan, Position, Span};
 use pun_phpstan::types::{Level, Type, decide_type, is_super_type_of, mixed, recommended_level};
 
 use super::Checker;
@@ -25,6 +25,8 @@ struct Prototype {
     readable: bool,
     writable: bool,
     native: Option<Type>,
+    /// A promoted property's PHPDoc type: the `@var` above its parameter, else its constructor's `@param`.
+    promoted_doc: Option<Type>,
 }
 
 fn accessible(is_static: bool, is_virtual: bool, hook: bool) -> bool {
@@ -196,6 +198,7 @@ impl<'a> Checker<'a, '_> {
                         readable: p.readable,
                         writable: p.writable,
                         native: p.native.clone(),
+                        promoted_doc: None,
                     });
                 }
                 b = self
@@ -232,6 +235,24 @@ impl<'a> Checker<'a, '_> {
                         declaring,
                     )
                 });
+                let promoted_doc = (p.flags.is_promoted_property())
+                    .then(|| {
+                        declared::own_property_doc(self, declaring, p, name.as_bytes()).or_else(
+                            || {
+                                let constructor = self
+                                    .codebase
+                                    .get_method(declaring.name.as_bytes(), b"__construct")?;
+                                let (mut params, _) = declared::reflected_phpdoc_signature(
+                                    self,
+                                    constructor,
+                                    declaring,
+                                    "__construct",
+                                );
+                                params.remove(name)
+                            },
+                        )
+                    })
+                    .flatten();
                 // A trait's property is declared by the class that uses it.
                 let shown = if declaring.kind == SymbolKind::Trait {
                     std::iter::successors(Some(u), |a| {
@@ -258,6 +279,7 @@ impl<'a> Checker<'a, '_> {
                     readable: accessible(is_static, is_virtual, hooks.0),
                     writable: accessible(is_static, is_virtual, hooks.1),
                     native,
+                    promoted_doc,
                 })
             }
         }
@@ -317,18 +339,25 @@ pub(super) fn check(c: &mut Checker, node: &PropertyNode, is_readonly: bool) {
 
 /// The PHPDoc half of OverridingPropertyRule (checkPhpDocMethodSignatures, level 3): the readable types of the
 /// property and its prototype, with reportMaybesInPropertyPhpDocTypes at its default (off), so only a type that is
-/// not covariant (or contravariant, for a write-only hooked prototype) is reported. ponytail: a promoted property's
-/// PHPDoc type (the constructor's `@param`) is not compared.
+/// not covariant (or contravariant, for a write-only hooked prototype) is reported. A promoted property's type is its
+/// parameter's in the constructor's signature: the `@var` above the parameter, else the constructor's `@param`, which
+/// PhpClassReflectionExtension takes for the property.
 fn phpdoc_error(c: &Checker, node: &PropertyNode, k: &ClassLikeMetadata) -> Option<String> {
-    let decl = node.decl?;
     let name = String::from_utf8_lossy(&node.name[1..]).into_owned();
     let prototype = c.property_prototype(k, &name)?;
-    let doc = declared::inherited_property_doc(c, k, name.as_bytes(), 0);
+    let doc = (prototype.promoted_doc.clone())
+        .or_else(|| declared::inherited_property_doc(c, k, name.as_bytes(), 0));
     let theirs = match prototype.native {
         Some(native) => decide_type(native, doc),
         None => doc.unwrap_or_else(mixed),
     };
-    let ours = declared::property(c, node.hint, decl, name.as_bytes(), k);
+    let ours = match node.promoted {
+        Some((m, i)) => {
+            let declaring = super::missing_types::declaring(c, m.span())?;
+            declared::method(c, m, declaring, k).params.swap_remove(i).1
+        }
+        None => declared::property(c, node.hint, node.decl?, name.as_bytes(), k),
+    };
     // A template the ancestors' `@extends`/`@use` would resolve is left in the type: no verdict.
     if theirs == ours || declared::has_template(&theirs) {
         return None;

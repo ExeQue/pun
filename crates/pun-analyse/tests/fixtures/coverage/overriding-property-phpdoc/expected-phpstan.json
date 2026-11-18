@@ -28,6 +28,27 @@
    "identifier": "property.phpDocType",
    "message": "PHPDoc type array<string> of property OverridingPropertyPhpDocCoverage\\Promoted::$hidden is not covariant with PHPDoc type list<string> of overridden property OverridingPropertyPhpDocCoverage\\Base::$hidden.",
    "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 112,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<int>|null of property OverridingPropertyPhpDocCoverage\\PromotedChild::$nullable is not covariant with PHPDoc type list<int>|null of overridden property OverridingPropertyPhpDocCoverage\\PromotedBase::$nullable.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 128,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<string> of property OverridingPropertyPhpDocCoverage\\ConstructorChild::$a is not covariant with PHPDoc type list<string> of overridden property OverridingPropertyPhpDocCoverage\\ConstructorBase::$a.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
+  },
+  {
+   "file": "properties.php",
+   "line": 143,
+   "identifier": "property.phpDocType",
+   "message": "PHPDoc type array<string> of property OverridingPropertyPhpDocCoverage\\PlainOverride::$a is not covariant with PHPDoc type list<string> of overridden property OverridingPropertyPhpDocCoverage\\ConstructorBase::$a.",
+   "tip": "You can fix 3rd party PHPDoc types with stub files:\n   https://phpstan.org/user-guide/stub-files"
   }
  ]
 }

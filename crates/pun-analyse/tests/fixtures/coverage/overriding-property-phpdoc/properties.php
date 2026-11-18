@@ -85,3 +85,60 @@ final class SubOwner extends Owner
 	/** @use HasItems<\ArrayObject<int, int>> */
 	use HasItems;
 }
+
+class PromotedBase
+{
+	/** @var list<int> */
+	protected array $same = [];
+
+	/** @var list<int> */
+	protected array $byVar = [];
+
+	/** @var list<int>|null */
+	protected ?array $nullable = null;
+}
+
+final class PromotedChild extends PromotedBase
+{
+	/**
+	 * @param list<int> $same
+	 * @param array<int> $byVar
+	 * @param array<int>|null $nullable
+	 */
+	public function __construct(
+		protected array $same = [],
+		/** @var list<int> */
+		protected array $byVar = [],
+		protected ?array $nullable = null,
+	) {
+	}
+}
+
+class ConstructorBase
+{
+	/** @param list<string> $a */
+	public function __construct(protected array $a)
+	{
+	}
+}
+
+final class ConstructorChild extends ConstructorBase
+{
+	/** @param array<string> $a */
+	public function __construct(protected array $a)
+	{
+	}
+}
+
+class InheritedConstructor extends ConstructorBase
+{
+	public function __construct(protected array $a)
+	{
+	}
+}
+
+final class PlainOverride extends ConstructorBase
+{
+	/** @var array<string> */
+	protected array $a = [];
+}

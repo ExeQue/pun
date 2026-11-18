@@ -17,6 +17,8 @@ pub(super) struct PropertyNode<'n, 'arena> {
     pub readonly_by_phpdoc: bool,
     pub allowed_private_mutation: bool,
     pub decl: Option<Span>,
+    /// A promoted property's constructor and parameter position.
+    pub promoted: Option<(&'n Method<'arena>, usize)>,
 }
 
 const ALLOW_PRIVATE_MUTATION_TAGS: &[&str] = &[
@@ -70,16 +72,14 @@ pub(super) fn property<'arena>(c: &mut Checker<'_, 'arena>, p: &Property<'arena>
             readonly_by_phpdoc,
             allowed_private_mutation,
             decl: Some(p.span()),
+            promoted: None,
         };
         check(c, &node);
     }
 }
 
-pub(super) fn promoted<'arena>(
-    c: &mut Checker<'_, 'arena>,
-    parameters: &FunctionLikeParameterList<'arena>,
-) {
-    for p in &parameters.parameters {
+pub(super) fn promoted<'arena>(c: &mut Checker<'_, 'arena>, m: &Method<'arena>) {
+    for (i, p) in m.parameter_list.parameters.iter().enumerate() {
         let hooks = p.hooks.as_ref().map_or(&[][..], |h| h.hooks.as_slice());
         if p.modifiers.is_empty() && hooks.is_empty() {
             continue;
@@ -95,6 +95,7 @@ pub(super) fn promoted<'arena>(
             readonly_by_phpdoc: false,
             allowed_private_mutation: false,
             decl: None,
+            promoted: Some((m, i)),
         };
         check(c, &node);
     }

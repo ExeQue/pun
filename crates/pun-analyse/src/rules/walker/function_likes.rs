@@ -177,7 +177,7 @@ impl<'arena> Checker<'_, 'arena> {
         if method.eq_ignore_ascii_case("__construct")
             || m.name.value.eq_ignore_ascii_case(b"__construct")
         {
-            properties::promoted(self, &m.parameter_list);
+            properties::promoted(self, m);
             variance::promoted(self, m);
             for p in m
                 .parameter_list

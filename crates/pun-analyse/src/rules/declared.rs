@@ -1626,7 +1626,7 @@ pub(super) fn property_span(
     })
 }
 
-fn own_property_doc(
+pub(super) fn own_property_doc(
     c: &Checker,
     declaring: &ClassLikeMetadata,
     p: &mago_codex::metadata::property::PropertyMetadata,
