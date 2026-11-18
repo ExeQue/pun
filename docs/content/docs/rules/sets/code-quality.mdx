@@ -14,13 +14,12 @@ sets = ["code-quality"]
 
 Ecosystem and target-version gates still apply. Planned rules do not run.
 
-## Enabled rules (223)
+## Enabled rules (224)
 
 | Rule | Configuration | Status |
 | --- | --- | --- |
 | [`lint/arrays/no-implicit-array-creation`](/docs/rules/lint/arrays/no-implicit-array-creation) | `"error"` | Ported |
 | [`lint/classes/no-explicit-constructor-call`](/docs/rules/lint/classes/no-explicit-constructor-call) | `"error"` | Ported |
-| [`lint/classes/no-redundant-readonly`](/docs/rules/lint/classes/no-redundant-readonly) | `"error"` | Ported |
 | [`lint/classes/no-static-constructor-call`](/docs/rules/lint/classes/no-static-constructor-call) | `"error"` | Ported |
 | [`lint/classes/no-unset-on-property`](/docs/rules/lint/classes/no-unset-on-property) | `"error"` | Ported |
 | [`lint/classes/prefer-new-self`](/docs/rules/lint/classes/prefer-new-self) | `"error"` | Ported |
@@ -70,6 +69,7 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 | [`lint/complexity/require-named-argument-order`](/docs/rules/lint/complexity/require-named-argument-order) | `"error"` | Ported |
 | [`lint/complexity/require-previous-exception`](/docs/rules/lint/complexity/require-previous-exception) | `"error"` | Ported |
 | [`lint/control-flow/no-assign-in-condition`](/docs/rules/lint/control-flow/no-assign-in-condition) | `"error"` | Ported |
+| [`lint/control-flow/no-else-after-return`](/docs/rules/lint/control-flow/no-else-after-return) | `"error"` | Ported |
 | [`lint/control-flow/no-empty-catch`](/docs/rules/lint/control-flow/no-empty-catch) | `"error"` | Ported |
 | [`lint/control-flow/no-for-init-overwrite`](/docs/rules/lint/control-flow/no-for-init-overwrite) | `"error"` | Ported |
 | [`lint/control-flow/no-loop-variable-overwrite`](/docs/rules/lint/control-flow/no-loop-variable-overwrite) | `"error"` | Ported |
@@ -231,9 +231,10 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 | [`lint/style/no-assign-in-ternary-branch`](/docs/rules/lint/style/no-assign-in-ternary-branch) | `"error"` | Ported |
 | [`lint/style/no-call-user-func`](/docs/rules/lint/style/no-call-user-func) | `"error"` | Ported |
 | [`lint/style/no-empty`](/docs/rules/lint/style/no-empty) | `"error"` | Ported |
-| [`lint/style/no-useless-sprintf`](/docs/rules/lint/style/no-useless-sprintf) | `"error"` | Ported |
 | [`lint/style/prefer-cast-over-settype`](/docs/rules/lint/style/prefer-cast-over-settype) | `"error"` | Ported |
 | [`lint/style/prefer-compound-assignment`](/docs/rules/lint/style/prefer-compound-assignment) | `"error"` | Ported |
+| [`lint/style/prefer-early-return`](/docs/rules/lint/style/prefer-early-return) | `"error"` | Ported |
+| [`lint/style/prefer-early-return-over-prepared-value`](/docs/rules/lint/style/prefer-early-return-over-prepared-value) | `"error"` | Ported |
 | [`lint/style/prefer-empty-string-compare`](/docs/rules/lint/style/prefer-empty-string-compare) | `"error"` | Ported |
 | [`lint/tags/no-invalid-open-tag`](/docs/rules/lint/tags/no-invalid-open-tag) | `"error"` | Ported |
 | [`lint/types/no-loose-comparison`](/docs/rules/lint/types/no-loose-comparison) | `"error"` | Ported |
@@ -242,7 +243,7 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 | [`lint/types/prefer-identical-same-type`](/docs/rules/lint/types/prefer-identical-same-type) | `"error"` | Ported |
 | [`lint/types/prefer-instanceof`](/docs/rules/lint/types/prefer-instanceof) | `"error"` | Ported |
 
-## Rules left off (455)
+## Rules left off (454)
 
 - [`lint/arrays/prefer-array-spread`](/docs/rules/lint/arrays/prefer-array-spread)
 - [`lint/classes/add-stringable`](/docs/rules/lint/classes/add-stringable)
@@ -251,6 +252,7 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/classes/no-protected-in-final`](/docs/rules/lint/classes/no-protected-in-final)
 - [`lint/classes/no-protected-method-in-final`](/docs/rules/lint/classes/no-protected-method-in-final)
 - [`lint/classes/no-protected-property-in-final`](/docs/rules/lint/classes/no-protected-property-in-final)
+- [`lint/classes/no-redundant-readonly`](/docs/rules/lint/classes/no-redundant-readonly)
 - [`lint/classes/no-underscore-class`](/docs/rules/lint/classes/no-underscore-class)
 - [`lint/classes/require-member-order`](/docs/rules/lint/classes/require-member-order)
 - [`lint/complexity/no-boolean-flag-parameter`](/docs/rules/lint/complexity/no-boolean-flag-parameter)
@@ -267,7 +269,6 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/complexity/no-excessive-properties`](/docs/rules/lint/complexity/no-excessive-properties)
 - [`lint/complexity/no-goto`](/docs/rules/lint/complexity/no-goto)
 - [`lint/complexity/prefer-named-literal-argument`](/docs/rules/lint/complexity/prefer-named-literal-argument)
-- [`lint/control-flow/no-else-after-return`](/docs/rules/lint/control-flow/no-else-after-return)
 - [`lint/control-flow/no-return-assignment`](/docs/rules/lint/control-flow/no-return-assignment)
 - [`lint/control-flow/no-superfluous-elseif`](/docs/rules/lint/control-flow/no-superfluous-elseif)
 - [`lint/control-flow/no-switch-continue`](/docs/rules/lint/control-flow/no-switch-continue)
@@ -582,6 +583,7 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/style/no-sprintf-concat`](/docs/rules/lint/style/no-sprintf-concat)
 - [`lint/style/no-unreachable-loop`](/docs/rules/lint/style/no-unreachable-loop)
 - [`lint/style/no-useless-printf`](/docs/rules/lint/style/no-useless-printf)
+- [`lint/style/no-useless-sprintf`](/docs/rules/lint/style/no-useless-sprintf)
 - [`lint/style/no-variable-variable`](/docs/rules/lint/style/no-variable-variable)
 - [`lint/style/prefer-arrow-function`](/docs/rules/lint/style/prefer-arrow-function)
 - [`lint/style/prefer-cast-over-intval`](/docs/rules/lint/style/prefer-cast-over-intval)
@@ -593,8 +595,6 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/style/prefer-dir-constant`](/docs/rules/lint/style/prefer-dir-constant)
 - [`lint/style/prefer-dirname-levels`](/docs/rules/lint/style/prefer-dirname-levels)
 - [`lint/style/prefer-early-continue`](/docs/rules/lint/style/prefer-early-continue)
-- [`lint/style/prefer-early-return`](/docs/rules/lint/style/prefer-early-return)
-- [`lint/style/prefer-early-return-over-prepared-value`](/docs/rules/lint/style/prefer-early-return-over-prepared-value)
 - [`lint/style/prefer-generic-array-phpdoc`](/docs/rules/lint/style/prefer-generic-array-phpdoc)
 - [`lint/style/prefer-instanceof-stringable`](/docs/rules/lint/style/prefer-instanceof-stringable)
 - [`lint/style/prefer-list-phpdoc`](/docs/rules/lint/style/prefer-list-phpdoc)

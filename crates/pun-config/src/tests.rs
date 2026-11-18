@@ -327,12 +327,10 @@ fn lint_sets() {
     let lint = |files: &[(&str, &str)]| load(&dir(files), &Options::default()).unwrap().lint;
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\"]\n")]);
     assert_eq!(l.sets, ["early-return"]);
+    // Rector 2.8.4's early-return set is empty: its rules moved to the code-quality set.
     let early = [
-        ("lint/control-flow/no-else-after-return", None),
         ("lint/control-flow/no-useless-else", Some("no_useless_else")),
         ("lint/style/prefer-early-continue", None),
-        ("lint/style/prefer-early-return", None),
-        ("lint/style/prefer-early-return-over-prepared-value", None),
     ];
     assert_eq!(
         l.rules,
@@ -378,7 +376,7 @@ fn lint_sets() {
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);
-    assert_eq!(l.rules.len(), 73);
+    assert_eq!(l.rules.len(), 70);
 }
 
 #[test]
@@ -390,7 +388,7 @@ fn lint_groups() {
     };
     let level = |l: &Lint, id: &str| l.rules.iter().find(|r| r.id == id).map(|r| r.level);
     let l = lint("[lint]\nsets = [\"early-return\"]\n[lint.groups]\nstyle = \"warn\"\n");
-    assert_eq!(l.rules.len(), 90);
+    assert_eq!(l.rules.len(), 89);
     assert!(
         l.rules
             .iter()
@@ -406,7 +404,6 @@ fn lint_groups() {
     assert_eq!(
         ids(&l.rules),
         [
-            "lint/control-flow/no-else-after-return",
             "lint/control-flow/no-useless-else",
             "lint/style/prefer-early-return"
         ]
@@ -418,7 +415,7 @@ fn lint_groups() {
     let l = lint(
         "[lint]\nsets = [\"early-return\"]\n[lint.rules]\n\"control-flow/no-useless-else\" = \"off\"\n",
     );
-    assert_eq!(l.rules.len(), 4);
+    assert_eq!(l.rules.len(), 1);
     let l =
         lint("[lint.rules]\n\"style/prefer-early-return\" = { level = \"warn\", max-depth = 2 }\n");
     assert_eq!(

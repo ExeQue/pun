@@ -14,12 +14,14 @@ sets = ["dead-code"]
 
 Ecosystem and target-version gates still apply. Planned rules do not run.
 
-## Enabled rules (68)
+## Enabled rules (71)
 
 | Rule | Configuration | Status |
 | --- | --- | --- |
 | [`lint/classes/no-null-property-default`](/docs/rules/lint/classes/no-null-property-default) | `"error"` | Ported |
+| [`lint/classes/no-redundant-readonly`](/docs/rules/lint/classes/no-redundant-readonly) | `"error"` | Ported |
 | [`lint/complexity/no-constant-condition`](/docs/rules/lint/complexity/no-constant-condition) | `"error"` | Ported |
+| [`lint/complexity/prefer-simple-condition`](/docs/rules/lint/complexity/prefer-simple-condition) | `"error"` | Ported |
 | [`lint/control-flow/no-return-assignment`](/docs/rules/lint/control-flow/no-return-assignment) | `"error"` | Ported |
 | [`lint/control-flow/no-superfluous-elseif`](/docs/rules/lint/control-flow/no-superfluous-elseif) | `"error"` | Ported |
 | [`lint/control-flow/no-useless-return`](/docs/rules/lint/control-flow/no-useless-return) | `"error"` | Ported |
@@ -86,8 +88,9 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 | [`lint/phpdoc/no-void-on-magic-method`](/docs/rules/lint/phpdoc/no-void-on-magic-method) | `"error"` | Ported |
 | [`lint/statements/no-empty`](/docs/rules/lint/statements/no-empty) | `"error"` | Ported |
 | [`lint/style/no-redundant-final-const`](/docs/rules/lint/style/no-redundant-final-const) | `"error"` | Ported |
+| [`lint/style/no-useless-sprintf`](/docs/rules/lint/style/no-useless-sprintf) | `"error"` | Ported |
 
-## Rules left off (610)
+## Rules left off (607)
 
 - [`lint/arrays/no-implicit-array-creation`](/docs/rules/lint/arrays/no-implicit-array-creation)
 - [`lint/arrays/prefer-array-spread`](/docs/rules/lint/arrays/prefer-array-spread)
@@ -97,7 +100,6 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/classes/no-protected-in-final`](/docs/rules/lint/classes/no-protected-in-final)
 - [`lint/classes/no-protected-method-in-final`](/docs/rules/lint/classes/no-protected-method-in-final)
 - [`lint/classes/no-protected-property-in-final`](/docs/rules/lint/classes/no-protected-property-in-final)
-- [`lint/classes/no-redundant-readonly`](/docs/rules/lint/classes/no-redundant-readonly)
 - [`lint/classes/no-static-constructor-call`](/docs/rules/lint/classes/no-static-constructor-call)
 - [`lint/classes/no-underscore-class`](/docs/rules/lint/classes/no-underscore-class)
 - [`lint/classes/no-unset-on-property`](/docs/rules/lint/classes/no-unset-on-property)
@@ -155,7 +157,6 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/complexity/prefer-null-coalesce`](/docs/rules/lint/complexity/prefer-null-coalesce)
 - [`lint/complexity/prefer-property-default`](/docs/rules/lint/complexity/prefer-property-default)
 - [`lint/complexity/prefer-property-exists`](/docs/rules/lint/complexity/prefer-property-exists)
-- [`lint/complexity/prefer-simple-condition`](/docs/rules/lint/complexity/prefer-simple-condition)
 - [`lint/complexity/require-attribute-argument-order`](/docs/rules/lint/complexity/require-attribute-argument-order)
 - [`lint/complexity/require-consistent-return`](/docs/rules/lint/complexity/require-consistent-return)
 - [`lint/complexity/require-is-a-allow-string`](/docs/rules/lint/complexity/require-is-a-allow-string)
@@ -572,7 +573,6 @@ Ecosystem and target-version gates still apply. Planned rules do not run.
 - [`lint/style/no-sprintf-concat`](/docs/rules/lint/style/no-sprintf-concat)
 - [`lint/style/no-unreachable-loop`](/docs/rules/lint/style/no-unreachable-loop)
 - [`lint/style/no-useless-printf`](/docs/rules/lint/style/no-useless-printf)
-- [`lint/style/no-useless-sprintf`](/docs/rules/lint/style/no-useless-sprintf)
 - [`lint/style/no-variable-variable`](/docs/rules/lint/style/no-variable-variable)
 - [`lint/style/prefer-arrow-function`](/docs/rules/lint/style/prefer-arrow-function)
 - [`lint/style/prefer-cast-over-intval`](/docs/rules/lint/style/prefer-cast-over-intval)

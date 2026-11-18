@@ -3413,7 +3413,7 @@
       "group": "classes",
       "summary": "Removes redundant readonly from properties in readonly classes.",
       "enabled": [
-        "code-quality"
+        "dead-code"
       ],
       "fix": "safe",
       "ecosystem": "core",
@@ -4566,7 +4566,8 @@
       "group": "complexity",
       "summary": "Simplify a negated comparison or a comparison with a boolean",
       "enabled": [
-        "code-quality"
+        "code-quality",
+        "dead-code"
       ],
       "fix": "safe",
       "ecosystem": "core",
@@ -4710,7 +4711,7 @@
       "group": "control-flow",
       "summary": "Drop the else after a branch that always returns, throws or exits, and move its body after the if.",
       "enabled": [
-        "early-return"
+        "code-quality"
       ],
       "fix": "safe",
       "ecosystem": "core",
@@ -14321,7 +14322,7 @@
       "group": "style",
       "summary": "Remove sprintf() calls with only the format argument.",
       "enabled": [
-        "code-quality"
+        "dead-code"
       ],
       "fix": "unsafe",
       "ecosystem": "core",
@@ -14606,7 +14607,7 @@
       "group": "style",
       "summary": "Return early instead of nesting the rest of the function in an if or else.",
       "enabled": [
-        "early-return"
+        "code-quality"
       ],
       "fix": "safe",
       "ecosystem": "core",
@@ -14628,7 +14629,7 @@
       "group": "style",
       "summary": "Return early from each if instead of preparing a variable that is returned at the end.",
       "enabled": [
-        "early-return"
+        "code-quality"
       ],
       "fix": "safe",
       "ecosystem": "core",
