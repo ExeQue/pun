@@ -244,7 +244,7 @@ rules! {
         dead_code::no_unused_constructor_param => NoUnusedConstructorParam,
         dead_code::no_dead_catch => NoDeadCatch,
         types::add_datetime_property_type => AddDatetimePropertyType,
-        style::prefer_class_keyword => PreferClassKeyword,
+        style::prefer_class_keyword => PreferClassKeyword::default(),
         arrays::no_implicit_array_creation => NoImplicitArrayCreation,
         style::prefer_class_constant => PreferClassConstant::default(),
         style::require_parent_visibility => RequireParentVisibility,

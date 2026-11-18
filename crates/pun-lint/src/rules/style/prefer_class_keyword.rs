@@ -8,19 +8,26 @@ use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, OptionsError, Report, Rule};
 
-pub struct PreferClassKeyword;
+#[derive(Default)]
+pub struct PreferClassKeyword {
+    /// `class-name-resolution` is left out of the rule's `checks`.
+    off: bool,
+}
 
 impl Rule for PreferClassKeyword {
     fn id(&self) -> &'static str {
         "lint/style/prefer-class-constant"
     }
 
-    /// Takes the rule's `namespaced-only`, which it keeps to anyway (Rector's checks).
+    /// Takes the rule's `namespaced-only`, which it keeps to anyway (Rector's checks), and its `checks`.
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off = !super::prefer_class_constant::checks(
+            options,
+            "UseClassKeywordForClassNameResolution",
+        )?;
         configure(options, |key, value| {
-            boolean(value)
-                .filter(|_| key == "namespaced-only")
-                .map(drop)
+            (key == "checks" || (key == "namespaced-only" && boolean(value).is_some()))
+                .then_some(())
         })
     }
 
@@ -35,6 +42,9 @@ impl Rule for PreferClassKeyword {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let Node::Literal(Literal::String(string)) = node else {
             return;
         };

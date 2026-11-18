@@ -181,3 +181,53 @@ fn prefer_will_return_callback() {
         ]
     });
 }
+
+/// `lint/style/prefer-class-constant` is also PHP-CS-Fixer's `class_keyword`, so pun-config hands it `checks` under its
+/// values' upstream names, the Rector rules (`namespaced-only`, which `pun migrate` sets beside it, turns
+/// `class_keyword`'s own check off). The expected files are what Rector 2.8.4 wrote with
+/// `StringClassNameToClassConstantRector` (`string-class-name`) and `UseClassKeywordForClassNameResolutionRector`
+/// (`class-name-resolution`) in `withRules()` and the ones not named in the file in `withSkip()`.
+#[test]
+fn prefer_class_constant() {
+    let dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/prefer-class-constant-checks");
+    let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap();
+    let input = read("input.php");
+    let rules = || -> Vec<Box<dyn Rule>> {
+        vec![
+            Box::new(PreferClassConstant::default()),
+            Box::new(PreferClassKeyword::default()),
+            Box::new(PreferClassNameConstant::default()),
+        ]
+    };
+    for (checks, expected) in [
+        (
+            vec!["StringClassNameToClassConstant"],
+            "string-class-name.php",
+        ),
+        (
+            vec!["UseClassKeywordForClassNameResolution"],
+            "class-name-resolution.php",
+        ),
+        (
+            vec![
+                "StringClassNameToClassConstant",
+                "UseClassKeywordForClassNameResolution",
+            ],
+            "class-name-resolution+string-class-name.php",
+        ),
+    ] {
+        let mut rules = rules();
+        for rule in &mut rules {
+            let options = serde_json::json!({ "namespaced-only": true, "checks": checks });
+            rule.configure(&options).unwrap();
+        }
+        let linter = Linter::new(rules, pun_lint::PhpVersion::from_id(80400));
+        let fixed = linter.fix(&dir.join("input.php"), &input).unwrap();
+        assert_eq!(fixed.source, read(expected), "{checks:?}");
+    }
+    for mut rule in rules() {
+        let options = serde_json::json!({ "checks": ["string-class-name"] });
+        assert!(rule.configure(&options).is_err());
+    }
+}

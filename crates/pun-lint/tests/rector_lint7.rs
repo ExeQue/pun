@@ -370,7 +370,7 @@ fn remove_unused_constructor_param() {
 
 #[test]
 fn use_class_keyword_for_class_name_resolution() {
-    let linter = only(PreferClassKeyword);
+    let linter = only(PreferClassKeyword::default());
     run_with_sources(
         &linter,
         "UseClassKeywordForClassNameResolutionRector/Fixture",
@@ -531,7 +531,7 @@ fn rules_ignore_nodes_outside_their_targets() {
             &["rector/RemoveUnusedConstructorParamRector"],
         ),
         (
-            || Box::new(PreferClassKeyword),
+            || Box::new(PreferClassKeyword::default()),
             &["rector/UseClassKeywordForClassNameResolutionRector"],
         ),
         (|| Box::new(NoDeadCatch), &["rector/RemoveDeadCatchRector"]),

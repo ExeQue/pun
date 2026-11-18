@@ -1,7 +1,7 @@
 use mago_syntax::cst::{Literal, Node, NodeKind};
 use pun_problem::{Edit, Fix, Safety};
 
-use crate::rules::support::options::{boolean, configure};
+use crate::rules::support::options::{boolean, configure, part_on};
 use crate::rules::types::facts::facts;
 use crate::syntax::node_span;
 use crate::{Context, OptionsError, Report, Rule};
@@ -21,9 +21,11 @@ impl Rule for PreferClassConstant {
     }
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        checks(options, "")?;
         configure(options, |key, value| {
             match key {
                 "namespaced-only" => self.namespaced_only = boolean(value)?,
+                "checks" => {}
                 _ => return None,
             }
             Some(())
@@ -73,4 +75,21 @@ impl Rule for PreferClassConstant {
             }),
         });
     }
+}
+
+const CHECKS: [&str; 2] = [
+    "StringClassNameToClassConstant",
+    "UseClassKeywordForClassNameResolution",
+];
+
+/// Pun's `checks`, one for each of Rector's two rules, which pun-config hands to the rule (a PHP-CS-Fixer fixer's)
+/// under its values' upstream names, the Rector rules: `string-class-name` is `StringClassNameToClassConstantRector`
+/// (Rector's php55 and coding-style sets) and `class-name-resolution` `UseClassKeywordForClassNameResolutionRector`
+/// (its coding-style set only). Only `checks` is read: the rule's other options are each part's.
+pub(super) fn checks(options: &serde_json::Value, rector: &str) -> Result<bool, OptionsError> {
+    let own = (options.get("checks")).map_or(
+        serde_json::Value::Null,
+        |c| serde_json::json!({ "checks": c }),
+    );
+    part_on(&own, "checks", &CHECKS, rector)
 }

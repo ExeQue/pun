@@ -129,7 +129,7 @@ fn rector_rules_merged_with_a_fixer_keep_to_rector() {
             ),
             (
                 "lint/style/prefer-class-constant",
-                "namespaced-only = true".to_string()
+                "namespaced-only = true\nchecks = [\"string-class-name\"]".to_string()
             ),
             (
                 "lint/style/prefer-empty-string-compare",
@@ -295,6 +295,38 @@ fn every_merged_rector_rule_keeps_to_the_ones_rector_runs() {
             "{id}"
         );
     }
+}
+
+/// `withPhpSets()` brings in `StringClassNameToClassConstantRector` (Rector's php55 set) but not
+/// `UseClassKeywordForClassNameResolutionRector` (its coding-style set only): crates/pun-cli/src/rector_config.php
+/// prints the first and not the second for a rector.php with only `withPhpSets()` on Rector 2.8.4, which then rewrites
+/// `'App\User'` and leaves `'App\User::method'` alone. The coding-style set and `withRules()` with both run both.
+#[test]
+fn prefer_class_constant_keeps_to_the_rector_rules_that_run() {
+    const STRING: &str = "Rector\\Php55\\Rector\\String_\\StringClassNameToClassConstantRector";
+    const KEYWORD: &str =
+        "Rector\\CodingStyle\\Rector\\String_\\UseClassKeywordForClassNameResolutionRector";
+    let options = |rules: &[&str], php_sets: bool| {
+        let config = RectorConfig {
+            rules: strings(rules),
+            php_sets,
+            ..RectorConfig::default()
+        };
+        let r = from_rector(&dir(&[]), &config);
+        r.options["lint/style/prefer-class-constant"].to_string()
+    };
+    assert_eq!(
+        options(&[STRING], true),
+        "namespaced-only = true\nchecks = [\"string-class-name\"]\n"
+    );
+    assert_eq!(
+        options(&[KEYWORD], false),
+        "namespaced-only = true\nchecks = [\"class-name-resolution\"]\n"
+    );
+    assert_eq!(
+        options(&[STRING, KEYWORD], false),
+        "namespaced-only = true\n"
+    );
 }
 
 /// A configured rule's configuration becomes its options. The input is what crates/pun-cli/src/rector_config.php printed

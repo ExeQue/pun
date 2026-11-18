@@ -11,6 +11,8 @@ use crate::{Context, OptionsError, Report, Rule};
 #[derive(Default)]
 pub struct PreferClassNameConstant {
     pub skip: Vec<String>,
+    /// `string-class-name` is left out of the rule's `checks`.
+    off: bool,
 }
 
 fn document_value(doc: &mago_syntax::cst::DocumentString<'_>) -> Option<Vec<u8>> {
@@ -90,9 +92,12 @@ impl Rule for PreferClassNameConstant {
     }
 
     fn configure(&mut self, options: &serde_json::Value) -> Result<(), OptionsError> {
+        self.off =
+            !super::prefer_class_constant::checks(options, "StringClassNameToClassConstant")?;
         let mut options = options.clone();
         if let Some(o) = options.as_object_mut() {
             o.remove("namespaced-only");
+            o.remove("checks");
             if o.is_empty() {
                 options = serde_json::Value::Null;
             }
@@ -119,6 +124,9 @@ impl Rule for PreferClassNameConstant {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        if self.off {
+            return;
+        }
         let (span, value) = match node {
             Node::Literal(Literal::String(s)) => {
                 (node_span(s), s.value.unwrap_or_default().to_vec())
