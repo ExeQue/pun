@@ -1,0 +1,30 @@
+{
+    "test": "Type/PunModelSelfQueryTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-model-self-query.php",
+            "declares": [
+                "punmodelselfquery\\base",
+                "punmodelselfquery\\finds",
+                "punmodelselfquery\\post"
+            ],
+            "asserts": [
+                13,
+                14,
+                15,
+                16,
+                21,
+                22,
+                23,
+                31,
+                32,
+                37,
+                47
+            ],
+            "errors": []
+        }
+    ]
+}

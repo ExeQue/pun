@@ -328,15 +328,33 @@ impl ModelForwards {
             .return_type_metadata
             .as_ref()?
             .type_union;
-        if !references(returned, BUILDER) {
+        // Model.stub's `builder-of<static>` resolves to a builder (`EloquentBuilder::isSuperTypeOf()` is yes); a class
+        // name already reads it as its own builder, `self`, `parent` and an object do not
+        let relative = static_class.is_some_and(|c| {
+            c.starts_with(b"$")
+                || c.eq_ignore_ascii_case(b"self")
+                || c.eq_ignore_ascii_case(b"parent")
+        });
+        let never = (codebase.get_declaring_method(class, method))
+            .and_then(|m| m.return_type_metadata.as_ref())
+            .is_some_and(|t| t.type_union.is_never());
+        if never
+            || !references(returned, BUILDER)
+                && !(relative && references(returned, mago_codex::ttype::expander::BUILDER_OF))
+        {
             return None;
         }
         let is_static = static_class.is_some_and(|c| c.eq_ignore_ascii_case(b"static"));
+        // `resolveTypeByName()`: `parent` is the parent class, `self` and a class name the class itself
+        let is_parent = static_class.is_some_and(|c| c.eq_ignore_ascii_case(b"parent"));
         let types: Vec<TAtomic> = models()
             .map(|m| {
-                let name = codebase
-                    .get_class_like(m.name.as_bytes())
-                    .map_or(m.name, |k| k.original_name);
+                let k = codebase.get_class_like(m.name.as_bytes());
+                let k = match k.and_then(|k| k.direct_parent_class) {
+                    Some(parent) if is_parent => codebase.get_class_like(parent.as_bytes()),
+                    _ => k,
+                };
+                let name = k.map_or(m.name, |k| k.original_name);
                 let model = if is_static {
                     TNamedObject {
                         is_this: false,

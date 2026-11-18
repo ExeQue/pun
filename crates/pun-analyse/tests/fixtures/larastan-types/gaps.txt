@@ -56,9 +56,6 @@ tests/Type/data/model-l11-42.php:30
 tests/Type/data/model-l11-42.php:31
 tests/Type/data/model-l11-42.php:32
 tests/Type/data/model-l11-42.php:33
-tests/Type/data/model-l11-42.php:53
-tests/Type/data/model-l11-42.php:63
-tests/Type/data/model-l11-42.php:66
 tests/Type/data/model-l11-42.php:165
 tests/Type/data/model-l11-42.php:168
 tests/Type/data/model-l11-42.php:250

@@ -15,8 +15,9 @@
 //! assertions PHPStan's types for it with GeneralTypeTest's config. Type/PunGenericEloquentUnionsTest.json (IDE-helper
 //! `Builder|Model` and `Collection|Model[]` unions, `builder-of` of a template) and Type/PunMacroClosureThisTest.json
 //! (`$this` in a `macro()` closure) are reduced cases too, their assertions and errors from PHPStan 2.3.6 with
-//! Larastan 3.15.0 at level 8 in a Laravel 13 app. So is Type/PunBuilderMacrosTest.json (Query\Builder macros called
-//! through an Eloquent builder), the oracle app's provider calling the fixture's `Macros::register()`.
+//! Larastan 3.15.0 at level 8 in a Laravel 13 app. So are Type/PunBuilderMacrosTest.json (Query\Builder macros called
+//! through an Eloquent builder) and Type/PunModelSelfQueryTest.json (`self::query()` and `$model::query()` in a base
+//! model and a trait), the oracle app's provider calling each fixture's `Macros::register()`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
