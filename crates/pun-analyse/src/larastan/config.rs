@@ -527,6 +527,19 @@ fn generalize(t: &TUnion) -> Option<TUnion> {
 }
 
 pub(crate) fn type_from_text(ty: &[u8]) -> Option<TUnion> {
+    type_from_text_in(ty, None).filter(|t| {
+        t.types.iter().all(|a| {
+            !matches!(
+                a,
+                TAtomic::GenericParameter(_) | TAtomic::Alias(_) | TAtomic::Reference(_)
+            )
+        })
+    })
+}
+
+/// The type text as Mago reads a PHPDoc type: a class name stays a symbol reference, and `self` and `static` name
+/// `class` (`static` marked static) when it is given.
+pub(crate) fn type_from_text_in(ty: &[u8], class: Option<&str>) -> Option<TUnion> {
     let arena = LocalArena::new();
     let content = arena.alloc_slice_copy(ty);
     let span = mago_span::Span::new(
@@ -539,17 +552,9 @@ pub(crate) fn type_from_text(ty: &[u8]) -> Option<TUnion> {
         &parsed,
         &mago_names::scope::NamespaceScope::default(),
         &mago_codex::ttype::resolution::TypeResolutionContext::new(),
-        None,
+        class.map(mago_word::word),
     )
     .ok()
-    .filter(|t| {
-        t.types.iter().all(|a| {
-            !matches!(
-                a,
-                TAtomic::GenericParameter(_) | TAtomic::Alias(_) | TAtomic::Reference(_)
-            )
-        })
-    })
 }
 
 struct FirstReturn<'ast, 'arena>(Option<&'ast Return<'arena>>);

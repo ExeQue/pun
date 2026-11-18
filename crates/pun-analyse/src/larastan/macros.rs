@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use mago_allocator::LocalArena;
 use mago_codex::metadata::CodebaseMetadata;
+use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::get_mixed;
 use mago_codex::ttype::union::TUnion;
 use mago_database::file::FileType;
@@ -26,8 +27,12 @@ pub(crate) struct Macros {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Macro {
+    /// The return type; a `static` in it is the class the macro is called on.
     pub(crate) ty: TUnion,
     pub(crate) instance: Option<(String, String)>,
+    /// A method callable (`[Foo::class, 'bar']`, `'Foo::bar'`): Larastan reflects it as the native method, not as a
+    /// `Macro`, so EloquentBuilderForwardsCallsExtension types its call on an Eloquent builder as the builder.
+    pub(crate) native: bool,
 }
 
 enum Definition {
@@ -120,6 +125,7 @@ impl Macros {
             accessors: std::mem::take(&mut read_files.accessors),
             ..Macros::default()
         };
+        let populated = |ty: Option<TUnion>| populated(codebase, ty);
         for (class, name, definition) in read_files.registrations {
             let Some(home) = home(codebase, &class).or_else(|| {
                 let root = macros.facade_root(app, &class)?;
@@ -141,8 +147,9 @@ impl Macros {
             };
             let found = match definition {
                 Definition::Closure(ty) => Macro {
-                    ty: ty.unwrap_or_else(get_mixed),
+                    ty: populated(ty),
                     instance: None,
+                    native: false,
                 },
                 Definition::Function(function) => {
                     let Some(f) =
@@ -153,6 +160,7 @@ impl Macros {
                     Macro {
                         ty: return_type(f.return_type_metadata.as_ref()),
                         instance: Some((holder, name.clone())),
+                        native: false,
                     }
                 }
                 Definition::Method(class, method) => {
@@ -186,11 +194,13 @@ impl Macros {
                                         name,
                                     )
                                 }),
+                                native: true,
                             }
                         }
                         (None, Some(local)) => Macro {
-                            ty: local.ty.clone().unwrap_or_else(get_mixed),
+                            ty: populated(local.ty.clone()),
                             instance: local.instance.clone(),
+                            native: true,
                         },
                         (None, None) => continue,
                     }
@@ -282,6 +292,25 @@ fn macroable(codebase: &CodebaseMetadata, class: &[u8]) -> bool {
         || [BUILDER, QUERY_BUILDER]
             .iter()
             .any(|b| class.eq_ignore_ascii_case(b) || codebase.is_instance_of(class, b))
+}
+
+/// A type read from a closure's or method's native return type, with its class names looked up (`populate`); a
+/// class Mago does not know leaves it `mixed`.
+fn populated(codebase: &CodebaseMetadata, ty: Option<TUnion>) -> TUnion {
+    let Some(mut ty) = ty else {
+        return get_mixed();
+    };
+    mago_codex::ttype::union::populate_union_type(
+        &mut ty,
+        &codebase.symbols,
+        None,
+        &mut mago_codex::reference::SymbolReferences::new(),
+        false,
+    );
+    if ty.types.iter().any(|t| matches!(t, TAtomic::Reference(_))) {
+        return get_mixed();
+    }
+    ty
 }
 
 pub(crate) fn home(codebase: &CodebaseMetadata, class: &str) -> Option<String> {
@@ -446,8 +475,13 @@ impl Walker<'_, '_, '_> {
         ))
     }
 
+    /// The native type, unpopulated: `self` is the class the closure or method is declared in, and `static` is
+    /// marked static, for the class the macro is called on.
     fn hint(&self, hint: &Hint) -> Option<TUnion> {
-        crate::larastan::config::type_from_text(self.hint_text(hint)?.as_bytes())
+        crate::larastan::config::type_from_text_in(
+            self.hint_text(hint)?.as_bytes(),
+            self.class.as_deref(),
+        )
     }
 
     fn hint_text(&self, hint: &Hint) -> Option<String> {
@@ -458,6 +492,9 @@ impl Walker<'_, '_, '_> {
             Hint::Union(u) => format!("{}|{}", self.hint_text(u.left)?, self.hint_text(u.right)?),
             Hint::Intersection(i) => {
                 format!("{}&{}", self.hint_text(i.left)?, self.hint_text(i.right)?)
+            }
+            Hint::Static(k) | Hint::Self_(k) if self.class.is_some() => {
+                String::from_utf8_lossy(k.value).to_ascii_lowercase()
             }
             Hint::Static(_) | Hint::Self_(_) | Hint::Parent(_) => return None,
             Hint::Null(k) | Hint::True(k) | Hint::False(k) | Hint::Array(k) | Hint::Callable(k) => {
