@@ -1,4 +1,4 @@
-use mago_syntax::cst::{ClassLikeMember, Expression, Hint, Node, NodeKind, Statement};
+use mago_syntax::cst::{ClassLikeMember, Expression, Hint, Node, NodeKind, Property, Statement};
 use pun_problem::{Fix, Safety};
 
 use crate::rules::support::docblocks::Doc;
@@ -40,7 +40,18 @@ impl Rule for NoUselessVarTag {
             },
             _ => return,
         };
-        let start = node_span(&node).start;
+        // The docblock comes before the attributes, which a member's span leaves out.
+        let attributes = match node {
+            Node::ClassLikeMember(ClassLikeMember::Property(Property::Plain(p))) => {
+                p.attribute_lists.first()
+            }
+            Node::ClassLikeMember(ClassLikeMember::Property(Property::Hooked(p))) => {
+                p.attribute_lists.first()
+            }
+            Node::ClassLikeMember(ClassLikeMember::Constant(c)) => c.attribute_lists.first(),
+            _ => None,
+        };
+        let start = attributes.map_or(node_span(&node), node_span).start;
         let Some(doc) = Doc::last_of(ctx, ancestors, start) else {
             return;
         };
