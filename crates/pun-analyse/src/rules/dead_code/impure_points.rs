@@ -118,6 +118,28 @@ pub(super) fn statement(c: &mut Checker, s: &ExpressionStatement) {
     c.report(s, identifier, message, None);
 }
 
+/// The keys of the declarations an entry depends on, and whether the entry is a call: what is reported in the file of
+/// a call depends on its callees' declarations (PossiblyPure*CallCollector), what is collected about a declaration on
+/// those of its own calls (PossiblyPureCallTransitivePurityResolver). `None` for any other error.
+pub(crate) fn dependency_keys(e: &Error) -> Option<(bool, Vec<&str>)> {
+    let mut fields = e.message.strip_prefix(ENTRY)?.split('\u{1f}');
+    let kind = fields.next()?;
+    let keys = fields.nth(if kind == "call" { 1 } else { 2 })?;
+    Some((
+        kind == "call",
+        keys.split('\u{1d}').filter(|k| !k.is_empty()).collect(),
+    ))
+}
+
+/// The function or the class of a key.
+pub(crate) fn key_symbol(key: &str) -> Option<(bool, &str)> {
+    let mut parts = key.split('\0');
+    match (parts.next()?, parts.next()?) {
+        ("f", name) => Some((true, name)),
+        (_, class) => Some((false, class)),
+    }
+}
+
 pub(crate) fn resolve(errors: Vec<Error>) -> Vec<Error> {
     let (entries, mut errors): (Vec<Error>, Vec<Error>) = errors
         .into_iter()

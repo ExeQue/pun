@@ -1,0 +1,19 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    scanFiles:
+        - lib/lib.php
+    ignoreErrors:
+        - message: '#^Never$#'
+          path: src/plain.php
+        - message: '#^Never$#'
+          path: src/uses_lib_trait.php
+        - message: '#^Never$#'
+          path: src/uses_src_trait.php
+        - message: '#^Never$#'
+          path: src/calls_pure.php
+        - message: '#^Never$#'
+          path: src/pure.php
+        - message: '#^Never$#'
+          path: src/named.php

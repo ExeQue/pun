@@ -110,6 +110,7 @@ use statements::{Frame, FrameKind};
 
 pub(crate) use dead_code::conditions_in_traits;
 pub(crate) use dead_code::impure_points;
+pub(crate) use dead_code::{dependency_keys, key_symbol};
 pub(crate) use driver::Switches;
 pub(crate) use driver::{Checks, check_file};
 pub(crate) use facts::Comments;
@@ -118,6 +119,7 @@ pub(crate) use identifiers::IDENTIFIERS;
 pub(crate) use larastan::finish as larastan_finish;
 pub(crate) use larastan::late_builder;
 pub use larastan::{Larastan, LarastanSwitches};
+pub(crate) use named_argument::is_call_record as is_named_argument_call;
 pub(crate) use named_argument::resolve as renamed_named_arguments;
 pub(crate) use reflection::builtins;
 pub(crate) use unused_trait::unused_traits;

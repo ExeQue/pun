@@ -309,6 +309,14 @@ pub(super) fn deferred_local_ignores(
     (kept, ignored)
 }
 
+/// A named argument of a method call that a subtype may rename: whether it is reported depends on the subclasses,
+/// which can be anywhere in the project (FunctionCallParametersCheck's AnalysedFileDependencyCollector data).
+pub(crate) fn is_call_record(e: &Error) -> bool {
+    e.message
+        .strip_prefix(ENTRY)
+        .is_some_and(|m| m.starts_with("call\u{1f}"))
+}
+
 pub(crate) fn resolve(
     errors: Vec<Error>,
     sources: &crate::codebase::Sources,

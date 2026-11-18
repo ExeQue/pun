@@ -1,0 +1,1174 @@
+{
+    "ignoreErrors": {
+        "array": [
+            [
+                0,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverA$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/a.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                1,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverB$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/b.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                2,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverC$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/sub/c.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                3,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverSub$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/sub"
+                        ]
+                    ]
+                }
+            ],
+            [
+                4,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverPattern$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/sub/*.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                5,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverWild$#"
+                        ],
+                        [
+                            "path",
+                            "*.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                6,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverMissing$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/sub/missing.php"
+                        ]
+                    ]
+                }
+            ],
+            [
+                7,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverPaths$#"
+                        ],
+                        [
+                            "paths",
+                            {
+                                "array": [
+                                    [
+                                        0,
+                                        "{dir}/a.php"
+                                    ],
+                                    [
+                                        1,
+                                        "{dir}/nowhere/*"
+                                    ],
+                                    [
+                                        2,
+                                        "{dir}/sub/c.php"
+                                    ]
+                                ]
+                            }
+                        ]
+                    ]
+                }
+            ],
+            [
+                8,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NeverNowhere$#"
+                        ],
+                        [
+                            "paths",
+                            {
+                                "array": [
+                                    [
+                                        0,
+                                        "{dir}/nowhere/*"
+                                    ]
+                                ]
+                            }
+                        ]
+                    ]
+                }
+            ],
+            [
+                9,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^Foo$#"
+                        ],
+                        [
+                            "path",
+                            "{dir}/a.php"
+                        ],
+                        [
+                            "count",
+                            2
+                        ]
+                    ]
+                }
+            ],
+            [
+                10,
+                {
+                    "array": [
+                        [
+                            "message",
+                            "#^NoPath$#"
+                        ]
+                    ]
+                }
+            ],
+            [
+                11,
+                "#^String$#"
+            ]
+        ]
+    },
+    "errors": [
+        [
+            "Foo",
+            "a.php",
+            1
+        ],
+        [
+            "Bar",
+            "b.php",
+            2
+        ]
+    ],
+    "cases": [
+        {
+            "name": "whole project",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php",
+                "{dir}/trait.php"
+            ],
+            "analysedPaths": [
+                "{dir}"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": null,
+            "onlyFiles": false,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/sub/c.php",
+                        null,
+                        "Ignored error pattern #^NeverC$# in path {dir}/sub/c.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverSub$# in path {dir}/sub was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPattern$# in path {dir}/sub/*.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverWild$# in path *.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverMissing$# in path {dir}/sub/missing.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPaths$# in paths: {dir}/a.php, {dir}/nowhere/*, {dir}/sub/c.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverNowhere$# in path {dir}/nowhere/* was not matched in reported errors.",
+                    "Ignored error pattern #^NoPath$# was not matched in reported errors.",
+                    "Ignored error pattern #^String$# was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "configured files",
+            "analysedFiles": [
+                "{dir}/a.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}/a.php"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverSub$# in path {dir}/sub was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPattern$# in path {dir}/sub/*.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverWild$# in path *.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverMissing$# in path {dir}/sub/missing.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPaths$# in paths: {dir}/a.php, {dir}/nowhere/*, {dir}/sub/c.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverNowhere$# in path {dir}/nowhere/* was not matched in reported errors.",
+                    "Ignored error pattern #^NoPath$# was not matched in reported errors.",
+                    "Ignored error pattern #^String$# was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "without collected data",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": null,
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "no dependencies",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": false,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/sub/c.php",
+                        null,
+                        "Ignored error pattern #^NeverC$# in path {dir}/sub/c.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverSub$# in path {dir}/sub was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPattern$# in path {dir}/sub/*.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverMissing$# in path {dir}/sub/missing.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPaths$# in paths: {dir}/a.php, {dir}/sub/c.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "only files",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/sub/c.php",
+                        null,
+                        "Ignored error pattern #^NeverC$# in path {dir}/sub/c.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverPaths$# in paths: {dir}/a.php, {dir}/sub/c.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "rule skipped",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": true,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "trait declarations",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [
+                        [
+                            "T",
+                            3
+                        ]
+                    ],
+                    "files": [],
+                    "declarations": []
+                },
+                "{dir}/sub/c.php": {
+                    "traits": [],
+                    "files": [],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/sub/c.php",
+                        null,
+                        "Ignored error pattern #^NeverC$# in path {dir}/sub/c.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverPaths$# in path {dir}/sub/c.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "not analysed dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php",
+                "{dir}/sub/c.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/other.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/sub/c.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/trait.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "vendor dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{root}/vendor/lib.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverPaths$# in path {dir}/a.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "excluded dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [
+                "{dir}/other.php"
+            ],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/other.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "project dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        null
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "without configured paths",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{root}/vendor/lib.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "analysed dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php",
+                        "{dir}/a.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/a.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverPaths$# in path {dir}/a.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "dependency of a dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/other.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "declarations of a dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [],
+                    "declarations": [
+                        "{dir}/other.php"
+                    ]
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "own declarations",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [],
+                    "declarations": [
+                        "{dir}/other.php"
+                    ]
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverPaths$# in path {dir}/a.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "project dependency of a dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [
+                        null
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "dependency judged before",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/other.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "judged dependency",
+            "analysedFiles": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPaths": [
+                "{dir}/a.php",
+                "{dir}/b.php"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": {
+                "{dir}/a.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                },
+                "{dir}/b.php": {
+                    "traits": [],
+                    "files": [],
+                    "declarations": [
+                        "{dir}/other.php"
+                    ]
+                },
+                "{dir}/sub/c.php": {
+                    "traits": [],
+                    "files": [
+                        "{dir}/b.php"
+                    ],
+                    "declarations": []
+                }
+            },
+            "onlyFiles": true,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/b.php",
+                        null,
+                        "Ignored error pattern #^NeverB$# in path {dir}/b.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        },
+        {
+            "name": "directory analysed",
+            "analysedFiles": [
+                "{dir}/sub/c.php"
+            ],
+            "analysedPaths": [
+                "{dir}/sub"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": false,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/sub/c.php",
+                        null,
+                        "Ignored error pattern #^NeverC$# in path {dir}/sub/c.php was not matched in reported errors."
+                    ]
+                ],
+                "stringErrors": [
+                    "Ignored error pattern #^NeverSub$# in path {dir}/sub was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPattern$# in path {dir}/sub/*.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverMissing$# in path {dir}/sub/missing.php was not matched in reported errors.",
+                    "Ignored error pattern #^NeverPaths$# in path {dir}/sub/c.php was not matched in reported errors."
+                ]
+            }
+        },
+        {
+            "name": "sibling directory",
+            "analysedFiles": [
+                "{dir}/a.php"
+            ],
+            "analysedPaths": [
+                "{dir}/su"
+            ],
+            "analysedPathsFromConfig": [
+                "{dir}"
+            ],
+            "excludePaths": [],
+            "collected": [],
+            "onlyFiles": false,
+            "collectedDataRuleSkipped": false,
+            "expected": {
+                "errors": [
+                    [
+                        "{dir}/b.php",
+                        2,
+                        "Bar"
+                    ],
+                    [
+                        "{dir}/a.php",
+                        null,
+                        "Ignored error pattern #^NeverA$# in path {dir}/a.php was not matched in reported errors."
+                    ],
+                    [
+                        "{dir}/a.php",
+                        1,
+                        "Ignored error pattern #^Foo$# in path {dir}/a.php is expected to occur 2 times, but occurred only 1 time."
+                    ]
+                ],
+                "stringErrors": []
+            }
+        }
+    ]
+}

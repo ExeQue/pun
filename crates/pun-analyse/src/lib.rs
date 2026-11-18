@@ -1,6 +1,7 @@
 mod autoload;
 mod bitset;
 mod codebase;
+mod dependencies;
 mod extension;
 mod larastan;
 mod laravel;
@@ -83,6 +84,14 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
     let errors: Vec<_> = (checked.into_iter().flat_map(|(errors, _)| errors))
         .chain(rules::unused_traits(project, &codebase, &sources))
         .collect();
+    let analysed_ids = (project.analysed.iter())
+        .map(|p| mago_database::file::FileId::new(display(p).as_bytes()))
+        .collect();
+    let dependencies = dependencies::collect(&codebase, &files, &analysed_ids, &errors);
+    // NotAnalysedTraitRule (level 4) asks whether only files are analysed when an analysed file declares a trait, so
+    // it may have skipped the errors an entry ignores: no entry is reported as unmatched then.
+    let collected_data_rule_skipped =
+        project.only_files && project.level >= 4 && !dependencies.trait_declaring_files.is_empty();
     let errors = rules::renamed_named_arguments(
         errors,
         &sources,
@@ -98,9 +107,14 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
     let mut errors = rules::larastan_finish(project.larastan.as_ref(), errors);
     settings.keep_reported(&mut errors);
     std::thread::spawn(move || drop(settings));
-    let processed = project
-        .ignore_errors
-        .process(errors, project.only_files, &analysed, false);
+    let processed = project.ignore_errors.process(
+        errors,
+        project.only_files,
+        &analysed,
+        false,
+        collected_data_rule_skipped,
+        Some(&dependencies),
+    );
     fixable_ignored += processed.ignored.iter().filter(|(e, _)| e.fixable).count();
     let mut errors: Vec<Error> = processed
         .errors

@@ -168,6 +168,7 @@ mod terminated_statement_scopes;
 mod trait_constant_initializers;
 mod try_certainty;
 mod unmatched_catch_observation;
+mod unmatched_ignores;
 mod unpacked_overloads;
 mod unsealed_shape_parameters;
 mod unset;

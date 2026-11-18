@@ -1,10 +1,13 @@
 use crate::comments::{Identifier, LinesToIgnore};
 use crate::neon::json_string;
-use crate::php::{FileExcluder, absolutize_path, is_match, normalize_path, preg, preg_quote};
+use crate::php::{
+    FileExcluder, absolutize_path, is_fnmatch_pattern, is_match, normalize_path, preg, preg_quote,
+};
 use crate::value::{Array, Key, Value};
 use indexmap::IndexMap;
 use pcre2::bytes::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Error {
@@ -128,6 +131,221 @@ pub struct IgnoredErrors {
     rule_of: fn(&str) -> Option<&'static str>,
     config_entries: HashMap<String, Vec<ConfigEntry>>,
     current_working_directory: String,
+    analysed_paths: Vec<String>,
+    analysed_paths_from_config: Vec<String>,
+    analyse_excluded: Option<Excluded>,
+}
+
+/// `excludePaths` for analysing (PHPStan's `fileExcluderAnalyse`), by normalized path.
+pub type Excluded = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+
+/// What PHPStan 2.3.6's collected data says about the analysed files, which UnmatchedIgnoredErrorJudge reads in an
+/// analysis of only some files. Paths are normalized.
+#[derive(Debug, Default)]
+pub struct AnalysedDependencies {
+    /// The analysed files that declare a trait (TraitDeclarationCollector).
+    pub trait_declaring_files: HashSet<String>,
+    /// Analysed file => the files what is reported in it depends on, `None` for the whole project
+    /// (AnalysedFileDependencyCollector).
+    pub files: HashMap<String, Vec<Option<String>>>,
+    /// Analysed file => the files what is collected about its declarations depends on
+    /// (AnalysedDeclarationDependencyCollector).
+    pub declarations: HashMap<String, Vec<String>>,
+}
+
+/// PHPStan 2.3.6's UnmatchedIgnoredErrorJudge: which ignoreErrors entries that matched nothing can be reported as
+/// unmatched when the analysed paths do not cover the configured ones. Only the part of an entry about analysed files
+/// that are analysed entirely: no trait declaration, and nothing reported in them depends on a file that is not
+/// analysed. Without collected data no file is taken as analysed entirely.
+struct Judge<'a> {
+    analysed_list: &'a [String],
+    analysed_files: HashSet<&'a str>,
+    analysed_paths: &'a [String],
+    analysed_paths_from_config: &'a [String],
+    excluded: Option<&'a Excluded>,
+    collected: Option<&'a AnalysedDependencies>,
+    partial: bool,
+    entirely_analysed: HashMap<String, bool>,
+    judgeable_paths: HashMap<String, bool>,
+}
+
+/// Compares whole path segments: src/Foo.php is not under srcc/.
+fn is_under(path: &str, directories: &[String]) -> bool {
+    let path = path.trim_end_matches('/');
+    directories.iter().any(|d| {
+        let d = d.trim_end_matches('/');
+        path == d
+            || path
+                .strip_prefix(d)
+                .is_some_and(|rest| rest.starts_with('/'))
+    })
+}
+
+impl<'a> Judge<'a> {
+    fn new(
+        ignored: &'a IgnoredErrors,
+        analysed_files: &'a [String],
+        collected: Option<&'a AnalysedDependencies>,
+        only_files: bool,
+    ) -> Judge<'a> {
+        let from_config = &ignored.analysed_paths_from_config;
+        Judge {
+            analysed_list: analysed_files,
+            analysed_files: analysed_files.iter().map(String::as_str).collect(),
+            analysed_paths: &ignored.analysed_paths,
+            analysed_paths_from_config: from_config,
+            excluded: ignored.analyse_excluded.as_ref(),
+            collected,
+            partial: (only_files && from_config.is_empty())
+                || from_config
+                    .iter()
+                    .any(|p| !is_under(p, &ignored.analysed_paths)),
+            entirely_analysed: HashMap::new(),
+            judgeable_paths: HashMap::new(),
+        }
+    }
+
+    /// The entry to report as unmatched, of an entry with `paths` only with the paths whose errors are known; `None`
+    /// when it is not known whether the entry is unmatched.
+    fn judgeable_part(&mut self, ignore: &Value) -> Option<Value> {
+        if !self.partial {
+            return Some(ignore.clone());
+        }
+        let Value::Array(entry) = ignore else {
+            return None;
+        };
+        if let Some(real_path) = str_of(isset(ignore, "realPath")) {
+            return (self.analysed_files.contains(real_path.as_str())
+                && self.is_entirely_analysed(&real_path))
+            .then(|| ignore.clone());
+        }
+        if let Some(path) = str_of(isset(ignore, "path")) {
+            return self.can_judge_path(&path).then(|| ignore.clone());
+        }
+        let Some(Value::Array(paths)) = isset(ignore, "paths") else {
+            return None;
+        };
+        let mut kept = Array::new();
+        for (j, path) in paths.iter() {
+            if self.can_judge_path(&path.to_php_string().unwrap_or_default()) {
+                kept.set(j.clone(), path.clone());
+            }
+        }
+        if kept.is_empty() {
+            return None;
+        }
+        let mut entry = entry.clone();
+        entry.set("paths".into(), Value::Array(kept));
+        Some(Value::Array(entry))
+    }
+
+    /// A directory, a fnmatch pattern, or a path that does not exist.
+    fn can_judge_path(&mut self, path: &str) -> bool {
+        let path = normalize_path(path);
+        if let Some(&known) = self.judgeable_paths.get(&path) {
+            return known;
+        }
+        let judgeable = self.do_can_judge_path(&path);
+        self.judgeable_paths.insert(path, judgeable);
+        judgeable
+    }
+
+    fn do_can_judge_path(&mut self, path: &str) -> bool {
+        let mut literal = path;
+        if is_fnmatch_pattern(path) {
+            // the pattern matches only files under the directory before its first wildcard
+            let wildcard = path.find(['*', '?', '[', ']']).unwrap_or(path.len());
+            let Some(separator) = path[..wildcard].rfind('/') else {
+                return false;
+            };
+            literal = &path[..separator];
+        }
+        if !is_under(literal, self.analysed_paths) {
+            return false;
+        }
+        let excluder = FileExcluder::new([path]);
+        let analysed = self.analysed_list;
+        (analysed.iter())
+            .filter(|f| excluder.is_excluded(f))
+            .all(|f| self.is_entirely_analysed(f))
+    }
+
+    fn is_entirely_analysed(&mut self, file: &str) -> bool {
+        let Some(collected) = self.collected else {
+            return false;
+        };
+        if collected.trait_declaring_files.contains(file) {
+            return false;
+        }
+        if let Some(&known) = self.entirely_analysed.get(file) {
+            return known;
+        }
+        let entirely = self.are_dependencies_analysed(collected, file);
+        self.entirely_analysed.insert(file.to_string(), entirely);
+        entirely
+    }
+
+    /// What is reported in the file depends on its dependencies, and on everything their collected data depends on:
+    /// their own dependencies and the dependencies of their declarations. The dependencies of the declarations in the
+    /// file itself count only when the file is reached as a dependency, like when it calls its own function.
+    fn are_dependencies_analysed(&self, collected: &'a AnalysedDependencies, file: &str) -> bool {
+        let project_dependent =
+            |f: &str| (collected.files.get(f)).is_some_and(|d| d.iter().any(Option::is_none));
+        let files =
+            |f: &str| (collected.files.get(f).into_iter().flatten()).filter_map(|d| d.as_deref());
+        if project_dependent(file) {
+            return false;
+        }
+        let mut visited: HashSet<&str> = HashSet::new();
+        let mut queue: Vec<&str> = Vec::new();
+        if !self.visit_dependencies(files(file), &mut visited, &mut queue) {
+            return false;
+        }
+        while let Some(current) = queue.pop() {
+            // even when what is reported in it was judged, the dependencies of its declarations were not followed
+            if self.entirely_analysed.get(current) == Some(&false) || project_dependent(current) {
+                return false;
+            }
+            let declarations = collected.declarations.get(current).into_iter().flatten();
+            if !self.visit_dependencies(files(current), &mut visited, &mut queue)
+                || !self.visit_dependencies(
+                    declarations.map(String::as_str),
+                    &mut visited,
+                    &mut queue,
+                )
+            {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Queues the analysed dependencies that were not visited yet; false when a dependency is not analysed.
+    fn visit_dependencies<'d>(
+        &self,
+        dependencies: impl Iterator<Item = &'d str>,
+        visited: &mut HashSet<&'d str>,
+        queue: &mut Vec<&'d str>,
+    ) -> bool {
+        for dependency in dependencies {
+            if !visited.insert(dependency) {
+                continue;
+            }
+            if self.analysed_files.contains(dependency) {
+                queue.push(dependency);
+                continue;
+            }
+            // a file that is not analysed even when the whole project is, like one in vendor, reports no errors
+            // either way; without paths in the configuration, the project is not known and every file counts
+            if (self.analysed_paths_from_config.is_empty()
+                || is_under(dependency, self.analysed_paths_from_config))
+                && !self.excluded.is_some_and(|e| e(dependency))
+            {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 struct ConfigEntry {
@@ -299,7 +517,27 @@ impl IgnoredErrors {
             rule_of: |_| None,
             config_entries: HashMap::new(),
             current_working_directory: String::new(),
+            analysed_paths: Vec::new(),
+            analysed_paths_from_config: Vec::new(),
+            analyse_excluded: None,
         }
+    }
+
+    /// PHPStan's `analysedPaths` (the paths on the command line, or else the configured ones), its
+    /// `analysedPathsFromConfig` (the configured `paths`) and `fileExcluderAnalyse`, which decide in an analysis of
+    /// only some files which unmatched entries are reported.
+    pub fn with_analysed_paths(
+        mut self,
+        analysed_paths: &[String],
+        analysed_paths_from_config: &[String],
+        analyse_excluded: Option<Excluded>,
+    ) -> IgnoredErrors {
+        self.analysed_paths = analysed_paths.iter().map(|p| normalize_path(p)).collect();
+        self.analysed_paths_from_config = (analysed_paths_from_config.iter())
+            .map(|p| normalize_path(p))
+            .collect();
+        self.analyse_excluded = analyse_excluded;
+        self
     }
 
     pub fn with_config_files(mut self, parameters: &Array) -> IgnoredErrors {
@@ -561,12 +799,17 @@ impl IgnoredErrors {
         true
     }
 
+    /// `collected_data_rule_skipped`: a rule on collected data asked whether only files are analysed and got true, so
+    /// it may have skipped the errors an entry ignores. `collected`: what the analysed files depend on, for the
+    /// entries of an analysis that does not cover the configured paths.
     pub fn process(
         &self,
         errors: Vec<Error>,
         only_files: bool,
         analysed_files: &[String],
         has_internal_errors: bool,
+        collected_data_rule_skipped: bool,
+        collected: Option<&AnalysedDependencies>,
     ) -> Processed {
         let mut unmatched: Vec<Option<Value>> =
             self.entries.iter().map(|(_, r)| Some(r.clone())).collect();
@@ -683,9 +926,10 @@ impl IgnoredErrors {
                 ));
             }
         }
-        if has_internal_errors {
+        if has_internal_errors || collected_data_rule_skipped {
             return out;
         }
+        let mut judge = Judge::new(self, analysed_files, collected, only_files);
         for (i, u) in unmatched.iter().enumerate() {
             let Some(u) = u else { continue };
             let report = isset(u, "reportUnmatched")
@@ -695,7 +939,7 @@ impl IgnoredErrors {
                 continue;
             }
             let real_path = str_of(isset(u, "realPath"));
-            let not_matched = || {
+            let not_matched = |u: &Value| {
                 format!(
                     "{} {} was not matched in reported errors.",
                     label(u),
@@ -703,8 +947,8 @@ impl IgnoredErrors {
                 )
             };
             match real_counts.get(&i) {
-                Some(&(real, count)) if real_path.is_some() || !only_files => {
-                    if real < count {
+                Some(&(real, count)) => {
+                    if real < count && judge.judgeable_part(u).is_some() {
                         let mut error = count_error(
                             i,
                             format!(
@@ -720,22 +964,26 @@ impl IgnoredErrors {
                 }
                 _ => match real_path {
                     Some(p) => {
-                        if analysed_files.contains(&p) && !only_files {
-                            let mut error = Error::new(not_matched(), p, None)
+                        if analysed_files.contains(&p) && judge.judgeable_part(u).is_some() {
+                            let mut error = Error::new(not_matched(u), p, None)
                                 .non_ignorable("ignore.unmatched");
                             error.fixable = self.removes_unmatched(u);
                             out.errors.push(error);
                         }
                     }
-                    None if !only_files => match self.entry_location(u) {
-                        Some((file, line)) => out.errors.push(Error {
-                            fixable: self.removes_unmatched(u),
-                            ..Error::new(not_matched(), file, Some(line))
-                                .non_ignorable("ignore.unmatched")
-                        }),
-                        None => out.string_errors.push(not_matched()),
-                    },
-                    None => {}
+                    None => {
+                        let Some(u) = judge.judgeable_part(u) else {
+                            continue;
+                        };
+                        match self.entry_location(&u) {
+                            Some((file, line)) => out.errors.push(Error {
+                                fixable: self.removes_unmatched(&u),
+                                ..Error::new(not_matched(&u), file, Some(line))
+                                    .non_ignorable("ignore.unmatched")
+                            }),
+                            None => out.string_errors.push(not_matched(&u)),
+                        }
+                    }
                 },
             }
         }

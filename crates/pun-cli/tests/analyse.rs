@@ -860,6 +860,19 @@ fn ignores_match_phpstan() {
     assert!(out.contains("Baseline generated with 1 error in"), "{out}");
     assert_eq!(code, Some(0));
     std::fs::remove_file(d.join("pun-baseline.toml")).unwrap();
+    // Only a file on the command line: PHPStan 2.3.6's UnmatchedIgnoredErrorJudge still reports the unmatched entries
+    // of src/a.php, which declares no trait and depends on no file left out; the entry for `src/*, lib/*` is not
+    // judged. This is 2.3.6's output (`phpstan analyse -c phpstan.neon --error-format=raw src/a.php`); the oracle,
+    // 2.3.5, reports no `ignore.unmatched` when only files are analysed.
+    let a = d.join("src/a.php");
+    let a = a.display();
+    let want = format!(
+        "{a}:?:Ignored error pattern #^Never$# in path {a} was not matched in reported errors.\n\
+         {a}:8:Instantiated class App\\Missing not found.\n\
+         {a}:15:Ignored error pattern method.notFound in path {a} is expected to occur 2 times, but occurred only 1 time.\n"
+    );
+    let got = run(&d, &[PUN, "analyse"], &["--error-format=raw", "src/a.php"]);
+    assert_eq!(got, (want, Some(1)));
     let Some(phar) = phpstan() else { return };
     let phar = phar.to_str().unwrap();
     for f in FORMATS {
@@ -876,11 +889,39 @@ fn ignores_match_phpstan() {
         want.0 = want.0.replace("file='phpstan.neon'", "file='pun.toml'");
         let got = run(&d, &[PUN, "analyse"], &[&format, "-v"]);
         assert_eq!(got, want, "{f}");
-        // Only files on the command line: PHPStan reports no unmatched entries then.
-        let want = run(&d, &phpstan, &[&format, "src/a.php"]);
-        let got = run(&d, &[PUN, "analyse"], &[&format, "src/a.php"]);
-        assert_eq!(got, want, "{f} src/a.php");
     }
+}
+
+/// Only some files of the configured paths: PHPStan 2.3.6 reports the unmatched entry of src/a.php but not the one of
+/// src/b.php, whose class uses a trait in src/t.php, which is not analysed (`phpstan analyse -c phpstan.neon
+/// --error-format=raw src/a.php src/b.php` with the same entries; 2.3.5 reports neither).
+#[test]
+fn unmatched_ignores_of_files_left_out() {
+    let toml = "[analyse]\npaths = [\"src\"]\npreset = \"basic\"\n\n[[analyse.ignore]]\nmessage = \"#^Never$#\"\npaths = [\"src/a.php\"]\n\n[[analyse.ignore]]\nmessage = \"#^Never$#\"\npaths = [\"src/b.php\"]\n";
+    let d = project(
+        "analyse",
+        "ignores-files-left-out",
+        &[
+            ("pun.toml", toml),
+            ("src/a.php", CLEAN),
+            (
+                "src/b.php",
+                "<?php\n\nnamespace App;\n\nclass B\n{\n    use T;\n}\n",
+            ),
+            ("src/t.php", "<?php\n\nnamespace App;\n\ntrait T\n{\n}\n"),
+        ],
+    );
+    let a = d.join("src/a.php");
+    let a = a.display();
+    let got = run(
+        &d,
+        &[PUN, "analyse"],
+        &["--error-format=raw", "src/a.php", "src/b.php"],
+    );
+    let want = format!(
+        "{a}:?:Ignored error pattern #^Never$# in path {a} was not matched in reported errors.\n"
+    );
+    assert_eq!(got, (want, Some(1)));
 }
 
 #[test]

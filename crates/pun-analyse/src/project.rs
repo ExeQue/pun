@@ -528,7 +528,9 @@ impl Project {
             current_working_directory: root.to_path_buf(),
             include_paths: vec![PathBuf::from(".")],
             ignore_errors: IgnoredErrors::new(ignore_errors, report_unmatched_ignores)
-                .with_config_files(params),
+                .with_config_files(params)
+                // The configured paths are the analysed ones, so the judge never asks about excludePaths.
+                .with_analysed_paths(&paths, &paths, None),
             level,
             check_function_argument_types: optional_flag("checkFunctionArgumentTypes"),
             check_arguments_passed_by_reference: optional_flag("checkArgumentsPassedByReference"),

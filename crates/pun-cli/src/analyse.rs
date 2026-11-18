@@ -191,22 +191,37 @@ fn project(
         Value::Int(i64::from(cfg.analyse_php_version.id())),
     );
     let mut project = pun_analyse::Project::from_config(&cfg.root, &params);
+    // PHPStan's analysedPathsFromConfig: the configured paths. Their files that are not analysed still declare
+    // symbols, as PHPStan's source locator finds them, and decide with the analysed paths which unmatched entries an
+    // analysis of only some paths reports.
+    let from_config: Vec<String> = (cfg.analyse.paths.iter())
+        .map(|p| normalize_path(&cfg.root.join(p).to_string_lossy()))
+        .collect();
+    let analysed_paths: Vec<String> = analysed_paths
+        .iter()
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+    if !from_config.is_empty() && analysed_paths != from_config {
+        let analysing: std::collections::HashSet<&PathBuf> = analysed.iter().collect();
+        let configured = pun_workspace::files(cfg, Some(Command::Analyse), &[])?;
+        (project.scanned).extend(configured.into_iter().filter(|f| !analysing.contains(f)));
+    }
     let excluded = Exclusions::new(cfg, Command::Analyse)?;
     project.scanned.retain(|p| !excluded.is_excluded(p));
     project
         .autoloaded
         .retain(|a| !excluded.is_excluded(&a.path));
     project.analysed = analysed;
-    project.only_files = analysed_paths.iter().all(|p| p.is_file());
-    let analysed_paths: Vec<String> = analysed_paths
-        .iter()
-        .map(|p| p.to_string_lossy().into_owned())
-        .collect();
+    project.only_files = analysed_paths.iter().all(|p| Path::new(p).is_file());
     project.relative_path = pun_analyse::RelativePath::of(&analysed_paths);
     let ignores = (params.get_str("ignoreErrors").and_then(Value::as_array)).cloned();
     let ignores = ignores.unwrap_or_default();
     let pun_toml = cfg.pun_toml();
-    let mut ignore_errors = IgnoredErrors::new(&ignores, true).with_rules(rule_of_identifier);
+    let analyse_excluded: pun_phpstan::ignore::Excluded =
+        std::sync::Arc::new(move |f: &str| excluded.is_excluded(Path::new(f)));
+    let mut ignore_errors = IgnoredErrors::new(&ignores, true)
+        .with_rules(rule_of_identifier)
+        .with_analysed_paths(&analysed_paths, &from_config, Some(analyse_excluded));
     if let Some(file) = pun_toml {
         ignore_errors = ignore_errors.with_config_entries(
             &file.to_string_lossy(),

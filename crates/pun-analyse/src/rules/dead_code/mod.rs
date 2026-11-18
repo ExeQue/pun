@@ -21,6 +21,7 @@ pub(super) mod sort;
 pub(crate) use conditions::conditions_in_traits;
 pub(super) use haystack::call as haystack_call;
 pub(crate) use impure_points::resolve as impure_points;
+pub(crate) use impure_points::{dependency_keys, key_symbol};
 pub(super) use impure_points::{function as impure_function, method as impure_method};
 pub(super) use noop::{FLIP, Function, PURE_UNLESS_CALLABLE_IS_IMPURE, function_of};
 pub(super) use sort::call as sort_call;
