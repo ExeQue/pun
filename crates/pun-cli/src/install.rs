@@ -48,8 +48,8 @@ pub(crate) struct InstallArgs {
     /// Leave every platform requirement out of the platform check.
     #[arg(long)]
     pub(crate) ignore_platform_reqs: bool,
-    /// How package files reach vendor/ from Pun's store: clone (copy-on-write, else copy), hardlink or copy.
-    /// Default: `PUN_LINK_MODE`, else clone.
+    /// How package files reach vendor/ from Pun's store: hardlink, clone (copy-on-write, else copy) or copy.
+    /// Default: `PUN_LINK_MODE`, else hardlink.
     #[arg(long, value_name = "MODE")]
     pub(crate) link_mode: Option<String>,
     /// Run in this directory instead of the current one.
@@ -161,7 +161,7 @@ pub(crate) fn run(a: &InstallArgs) -> Result<Exit> {
     install_locked(&project, &lock, a, started, false)
 }
 
-/// `--link-mode`, else `PUN_LINK_MODE`, else clone.
+/// `--link-mode`, else `PUN_LINK_MODE`, else hardlink.
 fn link_mode(flag: Option<&str>) -> Result<LinkMode> {
     let env = std::env::var("PUN_LINK_MODE")
         .ok()

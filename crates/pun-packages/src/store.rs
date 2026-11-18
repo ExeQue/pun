@@ -3,13 +3,14 @@
 //! under, since that sets their modes as it sets Composer's), and `vendor/` gets the files linked from there.
 //!
 //! The link mode decides how a file reaches `vendor/` (uv's `link-mode` names):
-//! - `clone`, the default: a copy-on-write clone (`FICLONE` on Linux for btrfs, XFS and bcachefs; `clonefile` on
+//! - `hardlink`, the default, as in pnpm and Bun on Linux: one inode for the store and every project, so the second
+//!   project costs no disk on any filesystem. Writing to a file in `vendor/` in place writes the store and every
+//!   project linked to it. The store notices such an edit (`place`) and extracts the package again for the next
+//!   install, but the projects already linked to the file keep sharing it. Across filesystems (or past the link
+//!   limit) files are copied.
+//! - `clone`: a copy-on-write clone (`FICLONE` on Linux for btrfs, XFS and bcachefs; `clonefile` on
 //!   macOS for APFS). The blocks are shared until either side writes, so an edit in `vendor/` stays in that
 //!   project. Where the filesystem can't clone, files are copied.
-//! - `hardlink`: one inode for the store and every project, so the second project costs no disk on any
-//!   filesystem. Writing to a file in `vendor/` in place writes the store and every project linked to it, so it is
-//!   opt-in, as `context/plan/packages.md` §7 decides. The store notices such an edit (`place`) and extracts the
-//!   package again for the next install, but the projects already linked to the file keep sharing it.
 //! - `copy`: an ordinary copy.
 //!
 //! Modes are copied from the store, which was extracted as `vendor/` was before the store, so `vendor/` keeps
@@ -27,8 +28,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LinkMode {
-    #[default]
     Clone,
+    #[default]
     Hardlink,
     Copy,
 }
@@ -274,9 +275,9 @@ mod tests {
             None
         );
         assert_eq!(Store::key(&package(&json!({"type": "tar"}))), None);
-        assert_eq!(LinkMode::parse("hardlink").unwrap(), LinkMode::Hardlink);
+        assert_eq!(LinkMode::parse("hardlink").unwrap(), LinkMode::default());
         assert_eq!(LinkMode::parse("copy").unwrap(), LinkMode::Copy);
-        assert_eq!(LinkMode::parse("clone").unwrap(), LinkMode::default());
+        assert_eq!(LinkMode::parse("clone").unwrap(), LinkMode::Clone);
         assert_eq!(
             LinkMode::parse("symlink").unwrap_err().to_string(),
             "unknown link mode `symlink`: use clone, hardlink or copy"

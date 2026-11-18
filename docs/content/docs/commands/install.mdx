@@ -40,11 +40,11 @@ Pun keeps every extracted package in a store in its cache (`PUN_CACHE_DIR`, unde
 
 | Mode | How | Disk | Editing a file in `vendor/` |
 | --- | --- | --- | --- |
-| `clone` (default) | Copy-on-write clone (Btrfs, XFS, APFS). Copies where the filesystem can't clone. | Shared until written, where cloning works | Changes only this project |
-| `hardlink` | One file for the store and every project | Shared on every filesystem | Changes the store and every project that uses the package |
+| `hardlink` (default, as in pnpm) | One file for the store and every project. Copies across filesystems. | Shared on every filesystem | Changes the store and every project that uses the package |
+| `clone` | Copy-on-write clone (Btrfs, XFS, APFS). Copies where the filesystem can't clone. | Shared until written, where cloning works | Changes only this project |
 | `copy` | Ordinary copy | Not shared | Changes only this project |
 
-With `hardlink`, an editor or patch that writes a file in place also changes the store and every other project linked to that file. Pun checks a stored package's files against the time it stored them before it links them, as pnpm does, and extracts an edited package again, so later installs get Composer's files. Projects that already link the edited file keep sharing it. Use `hardlink` only where `vendor/` is never edited, such as CI or containers. Tools that write a new file and rename it over the old one don't change the store.
+With `hardlink`, an editor or patch that writes a file in place also changes the store and every other project linked to that file. Pun checks a stored package's files against the time it stored them before it links them, as pnpm does, and extracts an edited package again, so later installs get Composer's files. Projects that already link the edited file keep sharing it. If you edit files in `vendor/` by hand, use `clone` (on Btrfs, XFS or APFS) or `copy`, for example with `PUN_LINK_MODE=clone` in your shell profile. Tools that write a new file and rename it over the old one don't change the store.
 
 Pun also caches the classes it finds in a stored package for the class map, so `pun install` and [`pun composer dump-autoload`](/docs/commands/composer) rescan only the root's autoload paths, path repositories, and packages installed from source. A class you add by hand to a package in `vendor/` reaches the class map only after that package is installed again.
 
@@ -70,7 +70,7 @@ Plugins don't get the package events, `pre-operations-exec`, `pre-pool-create`, 
 | `--no-plugins` | Skip the Composer plugins |
 | `--ignore-platform-req=REQ` | Leave `REQ` out of the install-time platform check and `platform_check.php`. Repeatable. Accepts `*`; `REQ+` ignores only the upper bound. |
 | `--ignore-platform-reqs` | Skip the install-time platform check and write no `platform_check.php` |
-| `--link-mode=MODE` | `clone`, `hardlink`, or `copy`: how files reach `vendor/` from the [store](#package-store). Also `PUN_LINK_MODE`. |
+| `--link-mode=MODE` | `hardlink` (default), `clone`, or `copy`: how files reach `vendor/` from the [store](#package-store). Also `PUN_LINK_MODE`. |
 | `-d`, `--working-dir=DIR` | Run in `DIR` |
 
 ## Exit codes

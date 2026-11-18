@@ -240,11 +240,12 @@ that Composer has no key for live in pun.toml (§6), as Bun keeps them in bunfig
      does not have.
 2. **A shared file store, as pnpm has.** Built (2026-11-17, `store.rs`). Each dist archive is extracted once into
    `$PUN_CACHE_DIR/store/v1/`, keyed by its type, URL, reference, checksum and the umask, and `vendor/` gets
-   copy-on-write clones of it (`FICLONE` on btrfs and XFS, `clonefile` on APFS), so the second project that needs
-   `laravel/framework` 13.2.0 installs it without a download or an extraction. The bytes and modes are Composer's, so
-   install parity holds. Where the filesystem cannot clone, files are copied; hardlinks (pnpm's default) are opt-in
-   through `--link-mode=hardlink` or `PUN_LINK_MODE` (uv's names), because editing a hardlinked file in `vendor/`
-   edits the store and every project's copy. The classes scanned in a stored package are cached too
+   hardlinks to it (pnpm's default; decided by Pushpak 2026-11-18), so the second project that needs
+   `laravel/framework` 13.2.0 installs it without a download, an extraction or more disk. The bytes and modes are
+   Composer's, so install parity holds. Editing a hardlinked file in `vendor/` in place edits the store and every
+   project's copy; the store notices and extracts the package again for later installs. `--link-mode=clone` (FICLONE
+   on btrfs and XFS, `clonefile` on APFS, copies elsewhere) and `copy` avoid that, through the flag or
+   `PUN_LINK_MODE` (uv's names). The classes scanned in a stored package are cached too
    (`$PUN_CACHE_DIR/classes/v1/`), so the class map rescans only the root's paths, path repositories and source
    installs. Not built: a pun.toml key for the link mode.
 3. **`--locked` and `--offline`, as Cargo has them.** After step 4, not built. `pun install --locked` fails when
