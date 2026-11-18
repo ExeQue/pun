@@ -177,6 +177,8 @@ fn autoloader_and_bin_corner_cases_match_composer() {
     let tmp = std::env::temp_dir().join(format!("pun-install-edge-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp);
     copy(&Path::new(FIXTURES).join("edge"), &tmp);
+    // Messages name real paths, as Composer's realpath() does; macOS's temp dir is behind /var -> /private/var.
+    let tmp = tmp.canonicalize().unwrap();
     let lock =
         Lock::from_composer_lock(&std::fs::read_to_string(tmp.join("composer.lock")).unwrap())
             .unwrap();
@@ -197,9 +199,7 @@ fn autoloader_and_bin_corner_cases_match_composer() {
         "{real}"
     );
     run(&tmp, &lock, &o);
-    // The warnings name real paths, as Composer's realpath() does; macOS's temp dir is behind /var -> /private/var.
-    let at = tmp.canonicalize().unwrap();
-    let at = at.to_string_lossy();
+    let at = tmp.to_string_lossy();
     let mut warnings: Vec<String> = report
         .warnings
         .iter()
