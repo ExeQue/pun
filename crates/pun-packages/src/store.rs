@@ -236,11 +236,13 @@ fn clone(src: &Path, dst: &Path) -> std::io::Result<()> {
 #[cfg(target_os = "macos")]
 fn clone(src: &Path, dst: &Path) -> std::io::Result<()> {
     use std::os::unix::ffi::OsStrExt;
+    // <sys/clonefile.h>; the libc crate declares clonefile but not its flags.
+    const CLONE_NOFOLLOW: u32 = 0x0001;
     let c =
         |p: &Path| std::ffi::CString::new(p.as_os_str().as_bytes()).map_err(std::io::Error::other);
     let (s, d) = (c(src)?, c(dst)?);
     // SAFETY: both are valid NUL-terminated paths.
-    if unsafe { libc::clonefile(s.as_ptr(), d.as_ptr(), libc::CLONE_NOFOLLOW) } == 0 {
+    if unsafe { libc::clonefile(s.as_ptr(), d.as_ptr(), CLONE_NOFOLLOW) } == 0 {
         return Ok(());
     }
     Err(std::io::Error::last_os_error())
