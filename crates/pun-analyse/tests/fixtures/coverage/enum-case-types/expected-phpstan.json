@@ -1,0 +1,187 @@
+{
+ "general": [],
+ "errors": [
+  {
+   "file": "enums.php",
+   "line": 33,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 34,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 35,
+   "identifier": "property.notFound",
+   "message": "Access to an undefined property EnumCaseTypesCoverage\\Suit::Hearts::$prop.",
+   "tip": "Learn more: https://phpstan.org/blog/solving-phpstan-access-to-undefined-property"
+  },
+  {
+   "file": "enums.php",
+   "line": 37,
+   "identifier": "staticMethod.nonObject",
+   "message": "Cannot call static method nope() on null.",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 39,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Spades::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 41,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Num::Two::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 43,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Suit::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 45,
+   "identifier": "method.nonObject",
+   "message": "Cannot call method nope() on EnumCaseTypesCoverage\\Num|null.",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 47,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 49,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Plain::A::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 53,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Suit::Hearts|EnumCaseTypesCoverage\\Suit::Spades::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 55,
+   "identifier": "method.nonObject",
+   "message": "Cannot call method nope() on EnumCaseTypesCoverage\\Suit::Hearts|null.",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 57,
+   "identifier": "staticMethod.notFound",
+   "message": "Call to an undefined static method EnumCaseTypesCoverage\\Suit::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 59,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 61,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 63,
+   "identifier": "method.nonObject",
+   "message": "Cannot call method nope() on string.",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 65,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 67,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts|EnumCaseTypesCoverage\\Suit::Spades::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 69,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Spades::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 75,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Hearts::nope().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 78,
+   "identifier": "method.notFound",
+   "message": "Call to an undefined method EnumCaseTypesCoverage\\Suit::Spades::nope2().",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 87,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: array{EnumCaseTypesCoverage\\Suit::Hearts, EnumCaseTypesCoverage\\Suit::Spades}",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 88,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: array{}",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 89,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: null",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 90,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: array{EnumCaseTypesCoverage\\Plain::A, EnumCaseTypesCoverage\\Plain::B}",
+   "tip": null
+  },
+  {
+   "file": "enums.php",
+   "line": 104,
+   "identifier": "phpstan.dumpType",
+   "message": "Dumped type: list<int>",
+   "tip": null
+  }
+ ]
+}

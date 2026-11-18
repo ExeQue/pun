@@ -28,6 +28,7 @@ mod deprecations;
 mod doc;
 mod driver;
 mod dynamic_fetch;
+mod enum_methods;
 mod enums;
 mod facts;
 mod flip_intersect;
