@@ -365,14 +365,15 @@ fn lint_sets() {
     assert_eq!((l.rules.len(), l.ecosystems.len()), (68, 0));
     let modernize = "[lint]\nsets = [\"modernize\"]\n";
     let l = lint(&[("pun.toml", modernize)]);
-    assert_eq!(l.rules.len(), 26);
+    assert_eq!(l.rules.len(), 30);
+    assert!(ids(&l.rules).contains(&"lint/php-8.3/prefer-json-validate"));
     assert!(ids(&l.rules).contains(&"lint/php-8.4/prefer-array-find"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     let l = lint(&[(
         "pun.toml",
         &format!("[php]\nversion = \"8.5\"\n{modernize}"),
     )]);
-    assert_eq!(l.rules.len(), 32);
+    assert_eq!(l.rules.len(), 36);
     assert!(ids(&l.rules).contains(&"lint/php-8.5/no-null-array-key"));
     assert!(!ids(&l.rules).contains(&"lint/php-8.1/prefer-first-class-callable"));
     let l = lint(&[("pun.toml", "[lint]\nsets = [\"early-return\", \"types\"]\n")]);

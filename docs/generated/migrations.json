@@ -6934,9 +6934,11 @@
         "name": "CombineHostPortLdapUri",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/combine-host-port-ldap-uri-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/prefer-ldap-uri"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "CombineIf",
@@ -7208,9 +7210,11 @@
         "name": "DynamicClassConstFetch",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/dynamic-class-const-fetch-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/prefer-dynamic-class-constant"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "DynamicDocBlockPropertyToNativeProperty",
@@ -7702,9 +7706,11 @@
         "name": "JsonValidate",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/json-validate-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/prefer-json-validate"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "KnownMagicClassMethodType",
@@ -8726,9 +8732,11 @@
         "name": "RemoveGetClassGetParentClassNoArgs",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-get-class-get-parent-class-no-args-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/prefer-self-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "RemoveInterfaces",

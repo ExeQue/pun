@@ -15,6 +15,7 @@ mod rector_laravel_attributes;
 mod rector_laravel_b;
 mod rector_lint7;
 mod rector_pest;
+mod rector_php83_calls;
 mod rector_phpunit;
 mod rector_quality;
 mod rector_refactor;

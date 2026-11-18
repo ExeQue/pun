@@ -7929,13 +7929,13 @@
   "fqcn": "Rector\\Php83\\Rector\\BooleanAnd\\JsonValidateRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
   "old_php_sets": [
    "php83"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -8029,13 +8029,13 @@
   "fqcn": "Rector\\Php83\\Rector\\FuncCall\\CombineHostPortLdapUriRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
   "old_php_sets": [
    "php83"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php83"
@@ -8054,13 +8054,13 @@
   "fqcn": "Rector\\Php83\\Rector\\FuncCall\\DynamicClassConstFetchRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
   "old_php_sets": [
    "php83"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php83"
@@ -8079,13 +8079,13 @@
   "fqcn": "Rector\\Php83\\Rector\\FuncCall\\RemoveGetClassGetParentClassNoArgsRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
   "old_php_sets": [
    "php83"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php83"

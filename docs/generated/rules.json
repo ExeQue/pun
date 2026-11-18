@@ -9913,6 +9913,66 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.3/prefer-dynamic-class-constant",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "constant(Example::class . '::' . $constName) to dynamic class const fetch Example::{$constName}",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "DynamicClassConstFetch",
+        "DynamicClassConstFetchRector",
+        "Rector\\Php83\\Rector\\FuncCall\\DynamicClassConstFetchRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.3/prefer-json-validate",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "Replace json_decode($json, true) !== null && json_last_error() === JSON_ERROR_NONE  with json_validate()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "JsonValidate",
+        "JsonValidateRector",
+        "Rector\\Php83\\Rector\\BooleanAnd\\JsonValidateRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.3/prefer-ldap-uri",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "Combine separated host and port on ldap_connect() args",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "CombineHostPortLdapUri",
+        "CombineHostPortLdapUriRector",
+        "Rector\\Php83\\Rector\\FuncCall\\CombineHostPortLdapUriRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.3/prefer-readonly-anonymous-class",
       "command": "lint",
       "group": "php-8.3",
@@ -9929,6 +9989,26 @@
         "ReadOnlyAnonymousClass",
         "ReadOnlyAnonymousClassRector",
         "Rector\\Php83\\Rector\\Class_\\ReadOnlyAnonymousClassRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.3/prefer-self-class",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "Replace calls to get_class() and get_parent_class() without arguments with self::class and parent::class",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php83\\Rector\\FuncCall\\RemoveGetClassGetParentClassNoArgsRector",
+        "RemoveGetClassGetParentClassNoArgs",
+        "RemoveGetClassGetParentClassNoArgsRector"
       ],
       "ported": true
     },
