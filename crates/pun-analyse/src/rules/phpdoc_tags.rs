@@ -66,6 +66,7 @@ pub(super) fn statement(c: &mut Checker, s: &Statement) {
     ) {
         super::var_tags::node(c, mago_span::HasSpan::span(s));
         super::var_names::statement(c, s);
+        super::var_tags::this_tag(c, s);
     }
     match s {
         Statement::Expression(e) if !matches!(e.expression, Expression::Assignment(_)) => {}

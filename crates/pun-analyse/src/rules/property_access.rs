@@ -22,6 +22,8 @@ pub(super) struct State {
     expression_assign: HashSet<(u32, u32)>,
     dim_assigned: HashSet<(u32, u32)>,
     this: crate::bitset::BitSet,
+    /// Per function-like: the type the last `@var` tag above a statement gave `$this` (None: its native type).
+    this_tags: Vec<Option<pun_phpstan::types::Type>>,
 }
 
 pub(super) fn undefined_allowed(c: &Checker, span: Span) -> bool {
@@ -381,11 +383,33 @@ fn property_exists(f: &FunctionCall, resolve: &dyn Fn(&Identifier) -> String) ->
 impl Checker<'_, '_> {
     pub(super) fn enter_this(&mut self, defined: bool) {
         self.property_access.this.push(defined);
+        self.property_access.this_tags.push(None);
     }
 
+    /// A closure takes `$this` with its type from the enclosing scope (`enterAnonymousFunction()`).
     pub(super) fn enter_closure_this(&mut self, is_static: bool) {
         let parent = self.property_access.this.last().unwrap_or(false);
         self.property_access.this.push(parent && !is_static);
+        let tag = self.property_access.this_tags.last().cloned().flatten();
+        self.property_access
+            .this_tags
+            .push(tag.filter(|_| !is_static));
+    }
+
+    /// Whether a `@var` tag above an earlier statement of this function-like gave `$this` a type.
+    pub(super) fn this_tagged(&self) -> bool {
+        self.property_access
+            .this_tags
+            .last()
+            .is_some_and(Option::is_some)
+    }
+
+    /// Records the type a `@var` tag gives `$this`, and returns the type it had.
+    pub(super) fn retype_this(
+        &mut self,
+        tag: pun_phpstan::types::Type,
+    ) -> Option<pun_phpstan::types::Type> {
+        self.property_access.this_tags.last_mut()?.replace(tag)
     }
 
     pub(super) fn incremented(&mut self, operand: &Expression) {
@@ -409,6 +433,7 @@ impl Checker<'_, '_> {
 
     pub(super) fn leave_this(&mut self) {
         self.property_access.this.pop();
+        self.property_access.this_tags.pop();
     }
 
     fn has_expression_type(&self, name: &[u8]) -> bool {

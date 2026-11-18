@@ -1023,6 +1023,26 @@ impl Checker<'_, '_> {
         self.types.get(&expr.span())
     }
 
+    /// A `$this` that a `@var` tag gave another class than the class's own `$this`, on every path or on some
+    /// (var_tags::typed_expressions asks for its type only after such a tag).
+    pub(super) fn this_retyped(&self, this: &Expression) -> bool {
+        use mago_codex::ttype::atomic::TAtomic;
+        use mago_codex::ttype::atomic::object::TObject;
+        let named = |a: &TAtomic| match a {
+            TAtomic::Object(TObject::Named(n)) => {
+                Some(!n.is_this && self.codebase.class_like_exists(n.name.as_bytes()))
+            }
+            _ => None,
+        };
+        self.this_tagged()
+            && self.type_of(this).is_some_and(|t| {
+                t.types
+                    .iter()
+                    .all(|a| a.is_null() || named(a).is_some_and(|known| known || a.is_this()))
+                    && t.types.iter().any(|a| named(a) == Some(true))
+            })
+    }
+
     pub(super) fn keep_void_type_at(&self, span: Span) -> Option<&TUnion> {
         let value = self.types.get(&span)?;
         if value

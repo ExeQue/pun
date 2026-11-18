@@ -562,7 +562,7 @@ pub(in super::super) fn check_method<'arena>(
     }
     let dynamic = match selector {
         ClassLikeMemberSelector::Identifier(name) => {
-            if arguments.is_some() && is_this(object) {
+            if arguments.is_some() && is_this(object) && !c.this_retyped(object) {
                 return;
             }
             check_single_method(c, object, name, arguments, nullsafe, None, false);

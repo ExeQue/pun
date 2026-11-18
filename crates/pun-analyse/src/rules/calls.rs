@@ -126,7 +126,8 @@ pub(super) fn check_this_method<'arena>(
     let ClassLikeMemberSelector::Identifier(name) = selector else {
         return;
     };
-    if v.name != b"$this" {
+    // a `@var` tag retyped `$this`: the call is checked on its type (types::receivers)
+    if v.name != b"$this" || c.this_retyped(object) {
         return;
     }
     let Some(class) = c.class_scope() else {

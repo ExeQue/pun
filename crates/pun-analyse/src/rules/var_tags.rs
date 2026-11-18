@@ -143,18 +143,20 @@ pub(super) fn check(c: &mut Checker, at: Span, names: Span) {
 }
 
 /// The right-hand sides of the assignments that sit under a doc comment: `assignment()` prices their native type.
+/// And the `$this` of each method call after a `@var` tag retypes `$this` in the same function-like
+/// (`StatementsHandler::processStmtVarAnnotation()` assigns the tag's type to it), so the call is checked on that
+/// type, not on the class.
 pub(super) fn typed_expressions(
     program: &Program,
     contents: &[u8],
     comments: &super::Comments,
     level: u8,
 ) -> Vec<Span> {
-    if level < 2 {
-        return Vec::new();
-    }
     let mut w = Assigned {
         contents,
         comments,
+        level,
+        retyped: vec![None],
         spans: Vec::new(),
     };
     w.walk_program(program, &mut ());
@@ -164,12 +166,45 @@ pub(super) fn typed_expressions(
 struct Assigned<'c> {
     contents: &'c [u8],
     comments: &'c super::Comments,
+    level: u8,
+    /// Per function-like: whether a `@var` tag has retyped `$this` above an earlier statement, None where there is
+    /// no `$this`.
+    retyped: Vec<Option<bool>>,
     spans: Vec<Span>,
 }
 
+impl Assigned<'_> {
+    /// A closure takes `$this`, retyped or not, from the enclosing scope; a static one has none.
+    fn closure(&mut self, is_static: bool) {
+        let parent = self.retyped.last().copied().flatten();
+        self.retyped.push(parent.filter(|_| !is_static));
+    }
+
+    fn this_object(&mut self, object: &Expression) {
+        if self.retyped.last() == Some(&Some(true)) && super::types::flow::is_this(object) {
+            self.spans.push(object.span());
+        }
+    }
+}
+
 impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Assigned<'_> {
+    fn walk_in_statement(&mut self, s: &'ast Statement<'arena>, (): &mut ()) {
+        if !matches!(
+            s,
+            Statement::Foreach(_) | Statement::Static(_) | Statement::Global(_)
+        ) && let Some((_, entry)) = self
+            .comments
+            .doc_before(self.contents, s.span().start.offset as usize)
+            && entry.doc.vars.iter().any(|(_, name, _)| name == "this")
+            && let Some(Some(last)) = self.retyped.last_mut()
+        {
+            *last = true;
+        }
+    }
+
     fn walk_in_statement_expression(&mut self, s: &'ast ExpressionStatement<'arena>, (): &mut ()) {
-        if let Expression::Assignment(a) = s.expression
+        if self.level >= 2
+            && let Expression::Assignment(a) = s.expression
             && self
                 .comments
                 .doc_before(self.contents, s.span().start.offset as usize)
@@ -177,6 +212,51 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Assigned<'_> {
         {
             self.spans.push(assigned_expression(a.rhs).span());
         }
+    }
+
+    fn walk_in_closure(&mut self, f: &'ast Closure<'arena>, (): &mut ()) {
+        self.closure(f.r#static.is_some());
+    }
+
+    fn walk_out_closure(&mut self, _: &'ast Closure<'arena>, (): &mut ()) {
+        self.retyped.pop();
+    }
+
+    fn walk_in_arrow_function(&mut self, f: &'ast ArrowFunction<'arena>, (): &mut ()) {
+        self.closure(f.r#static.is_some());
+    }
+
+    fn walk_out_arrow_function(&mut self, _: &'ast ArrowFunction<'arena>, (): &mut ()) {
+        self.retyped.pop();
+    }
+
+    fn walk_in_method(&mut self, m: &'ast Method<'arena>, (): &mut ()) {
+        self.retyped
+            .push((!m.modifiers.contains_static()).then_some(false));
+    }
+
+    fn walk_out_method(&mut self, _: &'ast Method<'arena>, (): &mut ()) {
+        self.retyped.pop();
+    }
+
+    fn walk_in_function(&mut self, _: &'ast Function<'arena>, (): &mut ()) {
+        self.retyped.push(None);
+    }
+
+    fn walk_out_function(&mut self, _: &'ast Function<'arena>, (): &mut ()) {
+        self.retyped.pop();
+    }
+
+    fn walk_in_method_call(&mut self, call: &'ast MethodCall<'arena>, (): &mut ()) {
+        self.this_object(call.object);
+    }
+
+    fn walk_in_null_safe_method_call(
+        &mut self,
+        call: &'ast NullSafeMethodCall<'arena>,
+        (): &mut (),
+    ) {
+        self.this_object(call.object);
     }
 }
 
@@ -261,6 +341,50 @@ pub(super) fn assignment(c: &mut Checker, at: Span, lhs: &Expression, rhs: &Expr
     });
     if let Some(message) = message {
         c.report(at, "varTag.nativeType", message, None);
+    }
+}
+
+/// `StatementsHandler::processStmtVarAnnotation()` for a `@var` tag that names `$this` above a statement other than
+/// a foreach, static or global: the tag retypes `$this`, and when that changes its type, VarTagChangedExpressionTypeRule
+/// checks the tag against `$this`'s native type, `$this(Class)`.
+pub(super) fn this_tag(c: &mut Checker, s: &Statement) {
+    if matches!(
+        s,
+        Statement::Foreach(_) | Statement::Static(_) | Statement::Global(_)
+    ) || !c.this_defined()
+    {
+        return;
+    }
+    let (named, _) = var_tag_types(c, s.span());
+    let Some((_, tag)) = named.into_iter().find(|(name, _)| name == "this") else {
+        return;
+    };
+    let previous = c.retype_this(tag.clone());
+    // a closure bound elsewhere (`Closure::bind()`, `@param-closure-this`, a macro) has that class's `$this`
+    let bound = c.classes.last().is_some_and(|k| k.bound);
+    let Some(k) = c.class_scope().filter(|_| c.level >= 2 && !bound) else {
+        return;
+    };
+    let class = declared::original_name(k);
+    let native = Type::This(class.clone());
+    if previous.as_ref().unwrap_or(&native) == &tag {
+        return;
+    }
+    // an anonymous class shows as `class@anonymous/file.php:line`
+    let shown = Type::This(c.display(k));
+    let message = declared::with_classes(c, || {
+        if valid_super_type(&native, &resolve_late(&tag), Some(&class), 0).yes() {
+            return None;
+        }
+        let level = recommended_level(&native, Some(&tag));
+        Some(format!(
+            "PHPDoc tag @var with type {} is not subtype of native type {}.",
+            tag.describe(level),
+            shown.describe(level)
+        ))
+    });
+    if let Some(message) = message {
+        c.report(s.span(), "varTag.nativeType", message, None);
     }
 }
 

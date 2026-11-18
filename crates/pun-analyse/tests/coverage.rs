@@ -12,9 +12,9 @@ type Key = (String, i64, String, String, Option<String>);
 
 const GAPS: &[(&str, &str, i64, &str)] = &[
     ("var_names", "vars.php", 84, "varTag.variableNotFound"),
-    // VarTagChangedExpressionTypeRule and the foreach/static paths of VarTagTypeRuleHelper are not ported.
+    // VarTagChangedExpressionTypeRule (but for `$this`) and the foreach/static paths of VarTagTypeRuleHelper are not
+    // ported.
     ("var_names", "vars.php", 49, "varTag.nativeType"),
-    ("var_names", "vars.php", 52, "varTag.nativeType"),
     ("var_names", "vars.php", 155, "varTag.nativeType"),
     ("var_names", "vars.php", 213, "varTag.nativeType"),
     // Mago's native lane has no native type for an object-typed property fetch, after a loop, or after a function

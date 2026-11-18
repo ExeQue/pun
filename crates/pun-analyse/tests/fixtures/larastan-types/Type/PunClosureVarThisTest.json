@@ -1,0 +1,78 @@
+{
+    "test": "Type/PunClosureVarThisTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-closure-var-this.php",
+            "declares": [
+                "punclosurevarthis\\other",
+                "punclosurevarthis\\probe"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 19,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 20,
+                    "identifier": "method.notFound",
+                    "message": "Call to an undefined method PunClosureVarThis\\Other::unknown().",
+                    "tip": null
+                },
+                {
+                    "line": 24,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 28,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Probe is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 35,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 37,
+                    "identifier": "method.notFound",
+                    "message": "Call to an undefined method $this(PunClosureVarThis\\Probe)|PunClosureVarThis\\Other::closures().",
+                    "tip": null
+                },
+                {
+                    "line": 41,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 47,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                },
+                {
+                    "line": 55,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(class@anonymous/pun-closure-var-this.php:51).",
+                    "tip": null
+                },
+                {
+                    "line": 59,
+                    "identifier": "varTag.nativeType",
+                    "message": "PHPDoc tag @var with type PunClosureVarThis\\Other is not subtype of native type $this(PunClosureVarThis\\Probe).",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}

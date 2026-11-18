@@ -156,6 +156,8 @@ pub(crate) const DISCOVERING_SYMBOLS_TIP: &str =
 struct ClassScope {
     name: Option<String>,
     constructor_guards: Vec<Guard>,
+    /// A closure's `Closure::bind()`, `@param-closure-this` or macro binding, not a class declaration.
+    bound: bool,
 }
 
 fn out_of_class(e: &Expression) -> &'static str {
@@ -558,6 +560,7 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         self.classes.push(ClassScope {
             name,
             constructor_guards,
+            bound: false,
         });
     }
 

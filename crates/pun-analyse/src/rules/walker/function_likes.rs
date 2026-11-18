@@ -319,6 +319,7 @@ impl<'arena> Checker<'_, 'arena> {
             self.classes.push(ClassScope {
                 name: binding.class.clone(),
                 constructor_guards: Vec::new(),
+                bound: true,
             });
         }
         names::typehints(
@@ -376,6 +377,7 @@ impl<'arena> Checker<'_, 'arena> {
             self.classes.push(ClassScope {
                 name: binding.class.clone(),
                 constructor_guards: Vec::new(),
+                bound: true,
             });
         }
         names::typehints(

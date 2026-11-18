@@ -17,12 +17,13 @@
 //! (`$this` in a `macro()` closure) are reduced cases too, their assertions and errors from PHPStan 2.3.6 with
 //! Larastan 3.15.0 at level 8 in a Laravel 13 app. So are Type/PunBuilderMacrosTest.json (Query\Builder macros called
 //! through an Eloquent builder) and Type/PunModelSelfQueryTest.json (`self::query()` and `$model::query()` in a base
-//! model and a trait), the oracle app's provider calling each fixture's `Macros::register()`.
+//! model and a trait) and Type/PunClosureVarThisTest.json (`/** @var X $this */` in a plain closure), the oracle app's
+//! provider calling each fixture's `Macros::register()`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use pun_analyse::{Project, reports, run};
+use pun_analyse::{Project, RelativePath, reports, run};
 use pun_phpstan::config::{Options, resolve};
 use pun_phpstan::{Key, Value as Parameter};
 use serde_json::Value;
@@ -98,6 +99,12 @@ fn analyse(root: &Path, test: &Value) -> BTreeMap<String, Found> {
     let mut by_file: BTreeMap<String, Found> = BTreeMap::new();
     for (files, _) in runs {
         project.analysed = files;
+        // PHPStan ran on the case files, so an anonymous class shows relative to them
+        let paths: Vec<String> = files
+            .iter()
+            .map(|f| f.to_string_lossy().into_owned())
+            .collect();
+        project.relative_path = RelativePath::new(&root.to_string_lossy(), &paths);
         for e in run(&project).unwrap() {
             let file = e.file.strip_prefix(&prefix).unwrap_or(&e.file).to_string();
             by_file
