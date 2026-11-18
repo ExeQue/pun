@@ -6187,7 +6187,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-param-based-on-parent-class-method-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6463,7 +6463,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/argument-adder-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6517,7 +6517,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-key-exists-on-property-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6535,7 +6535,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-key-first-last-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6543,7 +6543,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-keys-to-array-key-first-last-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6577,7 +6577,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/array-to-first-class-callable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6585,7 +6585,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/arrow-function-delegating-call-to-first-class-callable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6593,7 +6593,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/assign-array-to-string-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6609,7 +6609,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/binary-op-between-number-and-string-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6673,7 +6673,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/break-not-in-loop-or-switch-to-return-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6709,7 +6709,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/call-user-method-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6787,7 +6787,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/change-switch-to-match-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6813,7 +6813,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-constant-to-self-class-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6831,7 +6831,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-on-object-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6839,7 +6839,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-on-this-variable-object-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6847,7 +6847,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/class-property-assign-to-constructor-promotion-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6873,7 +6873,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/closure-delegating-call-to-first-class-callable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6881,7 +6881,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/closure-from-callable-to-first-class-callable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -6909,7 +6909,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/closure-to-arrow-function-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7011,7 +7011,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/consistent-implode-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7045,7 +7045,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/continue-to-break-in-switch-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7071,7 +7071,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/create-function-to-anonymous-function-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7079,7 +7079,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/curly-to-square-bracket-array-string-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7127,7 +7127,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/dir-name-file-constant-to-dir-constant-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7229,7 +7229,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/empty-list-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7261,7 +7261,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ereg-to-preg-match-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7269,7 +7269,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/exception-handler-typehint-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7313,7 +7313,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/explicit-public-class-method-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7331,23 +7331,25 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/export-to-reflection-function-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
         "name": "FilesystemIteratorSkipDots",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/filesystem-iterator-skip-dots-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.2/add-skip-dots-flag"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "FilterVarToAddSlashes",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/filter-var-to-add-slashes-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7355,7 +7357,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/final-private-to-private-visibility-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7519,7 +7521,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7527,7 +7529,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/function-first-class-callable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7535,7 +7537,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-called-class-to-self-class-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7543,7 +7545,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-called-class-to-static-class-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7551,7 +7553,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-class-on-null-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7559,7 +7561,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-debug-type-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7567,7 +7569,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/get-headers-argument-format-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7575,7 +7577,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/hebrevc-to-nl2br-hebrev-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7583,7 +7585,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-isset-to-coalescing-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7591,7 +7593,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-to-null-coalescing-assign-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7599,7 +7601,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/if-to-spaceship-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7665,7 +7667,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/is-countable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7673,7 +7675,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/is-iterable-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7727,7 +7729,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-each-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7735,7 +7737,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-split-string-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7751,7 +7753,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/list-to-array-destruct-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7779,7 +7781,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/long-array-to-short-array-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7805,7 +7807,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/mb-strrpos-encoding-argument-position-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7867,7 +7869,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/money-format-to-number-format-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7883,7 +7885,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/multi-dirname-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7891,7 +7893,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/multi-exception-catch-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7899,7 +7901,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/my-c-labs-class-to-enum-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7907,7 +7909,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/my-c-labs-constructor-call-to-enum-from-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -7915,7 +7917,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/my-c-labs-method-call-to-enum-const-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8091,7 +8093,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/null-coalescing-operator-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8109,7 +8111,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/null-to-strict-int-preg-slit-func-call-limit-arg-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8223,7 +8225,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/parenthesize-nested-ternary-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8231,7 +8233,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/parse-str-with-result-argument-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8239,7 +8241,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/php4-constructor-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8255,7 +8257,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/pow-to-exp-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8263,7 +8265,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/preg-replace-e-modifier-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8349,7 +8351,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/random-function-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8366,16 +8368,18 @@
         "name": "ReadOnlyClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/read-only-class-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.2/prefer-readonly-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReadOnlyProperty",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/read-only-property-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8403,7 +8407,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/reduce-multiple-default-switch-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8411,7 +8415,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/regex-dash-escape-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8905,7 +8909,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-reference-from-call-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -8913,7 +8917,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-reflection-set-accessible-calls-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9105,7 +9109,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-unused-variable-in-catch-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9221,7 +9225,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/remove-zero-break-continue-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9329,7 +9333,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/rename-mktime-without-args-to-time-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9441,7 +9445,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/replace-each-assignment-with-key-current-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9449,7 +9453,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/replace-http-server-vars-by-server-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9467,7 +9471,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/restore-default-null-to-nullable-type-property-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9475,7 +9479,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/restore-include-path-to-ini-restore-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9721,7 +9725,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-constant-name-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9729,7 +9733,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-define-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9737,7 +9741,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/sensitive-here-now-doc-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9763,7 +9767,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/set-cookie-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -9771,7 +9775,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/set-state-to-static-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10049,7 +10053,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/spatie-enum-class-to-enum-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10057,7 +10061,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/spatie-enum-method-call-to-enum-const-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10111,7 +10115,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/static-call-to-func-call-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10143,7 +10147,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/static-to-self-on-final-class-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10151,7 +10155,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-contains-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10159,7 +10163,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-ends-with-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10167,7 +10171,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/str-starts-with-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10251,7 +10255,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringable-for-to-string-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10259,7 +10263,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringify-define-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10267,7 +10271,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/stringify-str-needles-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10275,7 +10279,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/strings-assert-naked-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10365,7 +10369,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-elvis-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10373,7 +10377,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-null-coalescing-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10381,7 +10385,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-nullsafe-coalesce-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10389,7 +10393,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/ternary-to-spaceship-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10397,7 +10401,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/this-call-on-static-method-to-static-call-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10511,7 +10515,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/unset-cast-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10582,9 +10586,11 @@
         "name": "Utf8DecodeEncodeToMbConvertEncoding",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/utf8-decode-encode-to-mb-convert-encoding-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.2/no-utf8-encode-decode"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "UtilsJsonStaticCallNamedArg",
@@ -10618,16 +10624,18 @@
         "name": "VariableInStringInterpolationFixer",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/variable-in-string-interpolation-fixer-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.2/no-dollar-brace-interpolation"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "VersionCompareFuncCallArgument",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/version-compare-func-call-argument-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10655,7 +10663,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/while-each-to-foreach-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {
@@ -10687,7 +10695,7 @@
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/wrap-variable-variable-name-in-curly-braces-rector",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "only in php52..php81 upgrade sets (below php82)",
         "unsupported": true
       },
       {

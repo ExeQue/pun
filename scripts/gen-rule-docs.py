@@ -374,7 +374,7 @@ def translation(tool: str) -> str:
 | --- | --- |
 | `->withPreparedSets(deadCode: true)` | `[lint] sets = [\"dead-code\"]` |
 | `typeDeclarations: true` | The `types` lint set |
-| PHP upgrade sets from PHP 8.4 | The `modernize` set, gated by the target version |
+| PHP upgrade sets from PHP 8.2 | The `modernize` set, gated by the target version |
 | Explicit rules and set differences | `[lint.rules]` at `\"error\"` or `\"off\"` |
 | `->withConfiguredRule()` | Rule options with kebab-case keys; lists under `items` |
 | Some of the Rector rules of one Pun rule, such as `ForeachToArrayFindRector` without the other `ForeachToArray*Rector` rules | The Pun rule with its option that limits it to those rewrites, such as `functions = [\"array-find\"]` |

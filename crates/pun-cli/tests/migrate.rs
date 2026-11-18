@@ -833,10 +833,8 @@ fn rector_paths_skips_and_unsupported_rules() {
         "{out}"
     );
     assert!(
-        out.lines().any(|l| l.starts_with(" ! 107 Rector rules ")
-            && l.ends_with(
-                "  only in php52..php83 upgrade sets (below the PHP 8.4 floor); skipped"
-            )),
+        out.lines().any(|l| l.starts_with(" ! 97 Rector rules ")
+            && l.ends_with("  only in php52..php81 upgrade sets (below php82); skipped")),
         "{out}"
     );
     assert!(out.contains(PR), "{out}");
@@ -990,6 +988,62 @@ fn rector_warnings_on_stdout() {
         "{out}"
     );
     assert!(read(&d, "pun.toml").contains("\n[lint.rules]\n"));
+}
+
+/// The PHP 8.2 set read through Rector 2.8.4 (`.oracle/rector-bin`): `SetList::PHP_82` lists the set's four rules
+/// (`rector list-rules`), which become `[lint.rules]`, and `->withPhpSets(php82: true)` the `modernize` set, which
+/// runs them. `pun lint --fix` then writes what `rector process` with `SetList::PHP_82` wrote for the same file.
+#[test]
+fn rector_php82_set_turns_on_the_php_8_2_rules() {
+    let Some(vendor) = oracle("rector-bin/vendor") else {
+        return;
+    };
+    let code = "<?php\n\nfinal class Money\n{\n    public function __construct(public readonly int $amount)\n    {\n    }\n\n    public function decode(string $s): string\n    {\n        new \\FilesystemIterator(__DIR__, \\FilesystemIterator::KEY_AS_FILENAME);\n\n        return utf8_decode(\"${s}\");\n    }\n}\n";
+    let rector = "<?php\n\nfinal readonly class Money\n{\n    public function __construct(public int $amount)\n    {\n    }\n\n    public function decode(string $s): string\n    {\n        new \\FilesystemIterator(__DIR__, \\FilesystemIterator::KEY_AS_FILENAME | \\FilesystemIterator::SKIP_DOTS);\n\n        return mb_convert_encoding(\"{$s}\", 'ISO-8859-1');\n    }\n}\n";
+    for (name, config, summary) in [
+        (
+            "rector-php82-set-list",
+            "use Rector\\Set\\ValueObject\\SetList;\n\nreturn RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withSets([SetList::PHP_82]);\n",
+            " ok rector.php  -> [lint] no sets; N on, N off",
+        ),
+        (
+            "rector-php82-php-sets",
+            "return RectorConfig::configure()\n    ->withPaths([__DIR__.'/src'])\n    ->withPhpSets(php82: true);\n",
+            " ok rector.php  -> [lint] sets modernize; N on, N off",
+        ),
+    ] {
+        let d = project(
+            name,
+            &[
+                ("composer.json", "{\"require\":{\"php\":\"^8.4\"}}"),
+                (
+                    "rector.php",
+                    &format!("<?php\n\nuse Rector\\Config\\RectorConfig;\n{config}"),
+                ),
+                ("src/a.php", code),
+            ],
+        );
+        std::os::unix::fs::symlink(&vendor, d.join("vendor")).unwrap();
+        let (out, err, status) = pun(&d, &["migrate", "--yes"]);
+        assert_eq!((err.as_str(), status), ("", Some(0)), "{out}");
+        assert!(counts(&out).starts_with(summary), "{out}");
+        let toml = read(&d, "pun.toml");
+        for id in [
+            "prefer-readonly-class",
+            "no-utf8-encode-decode",
+            "add-skip-dots-flag",
+            "no-dollar-brace-interpolation",
+        ] {
+            let on = format!("\"php-8.2/{id}\" = \"error\"\n");
+            assert_eq!(
+                toml.contains(&on),
+                name.ends_with("set-list"),
+                "{name}: {toml}"
+            );
+        }
+        pun(&d, &["lint", "--fix"]);
+        assert_eq!(read(&d, "src/a.php"), rector, "{name}");
+    }
 }
 
 /// phpstan.neon alone, beside a pint.json the project keeps: pun.toml gets no [format] (Pint's defaults, as Pint

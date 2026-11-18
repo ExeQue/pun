@@ -18,7 +18,7 @@ out-of-scope upstream rule (old PHP or Laravel upgrade set, no set, outside the 
 analyse rule with no or several primary sources (one Rector rule, CS-Fixer fixer, Pint fixer or PHPStan-family rule
 class) unless it is Mago-derived (`origin = "mago"`, Mago sources only) or `pun_only`; `merged` on a lint or analyse
 rule; a class entry whose identifiers differ from the inventory; an emitted identifier with no entry, or one whose rule
-is not the rule of a class that emits it; and a rule with a Rector source in an upgrade group below the floor (PHP 8.4,
+is not the rule of a class that emits it; and a rule with a Rector source in an upgrade group below the floor (PHP 8.2,
 Laravel 12). Prints rule counts per command, set, preset and source.
 
 Usage: scripts/check-rule-mapping.py [path/to/mapping.toml]
@@ -62,8 +62,9 @@ EXCLUDED_CLASSES = {
     "Rector\\TypeDeclaration\\Rector\\Class_\\TypedStaticPropertyInBehatContextRector",
     "Rector\\TypeDeclaration\\Rector\\ClassMethod\\ReturnTypeFromSymfonySerializerRector",
 }
-# Upgrade groups below the floor (PHP 8.4, Laravel 12): no rule with a Rector source may sit in one.
-BELOW_FLOOR = re.compile(r"php-([57]\.\d|8\.[0-3])|laravel-([5-9](\.\d)?|1[01])")
+# Upgrade groups below the floor (PHP 8.2, Laravel 12): no rule with a Rector source may sit in one. Rector's PHP sets
+# are in scope from php82 up, below Pun's PHP 8.4 floor, because their rules still change 8.4 code (rules.md §7).
+BELOW_FLOOR = re.compile(r"php-([57]\.\d|8\.[01])|laravel-([5-9](\.\d)?|1[01])")
 
 
 def duplicates(text):
@@ -346,7 +347,7 @@ def check_upstream(data, inv):
                     err(f"{rid}: replaces {old!r}, which is still a rule")
             g = key.split("/")[0]
             if BELOW_FLOOR.fullmatch(g) and any(s.split(":")[0] in RECTOR_TOOLS for s in primary[rid]):
-                err(f"{rid}: group {g} is an upgrade below the floor (PHP 8.4, Laravel 12)")
+                err(f"{rid}: group {g} is an upgrade below the floor (PHP 8.2, Laravel 12)")
 
     # Every emitted identifier has an entry, and it points at the rule of a class that emits it.
     rule_of = {u.get("class"): u["pun"] for u in classes.values() if "pun" in u}

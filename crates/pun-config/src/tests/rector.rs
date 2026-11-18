@@ -81,7 +81,7 @@ fn reads_sets_rules_and_skips() {
             ),
             (
                 "ClassPropertyAssignToConstructorPromotionRector",
-                "only in php52..php83 upgrade sets (below the PHP 8.4 floor)"
+                "only in php52..php81 upgrade sets (below php82)"
             ),
         ]
     );

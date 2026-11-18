@@ -62,7 +62,7 @@ impl Rule for Everywhere {
     }
 }
 
-fn everywhere(make: impl Fn() -> Box<dyn Rule>, class: &str, php_version: u32) {
+pub(crate) fn everywhere(make: impl Fn() -> Box<dyn Rule>, class: &str, php_version: u32) {
     let targeted = Linter::new(vec![make()], pun_lint::PhpVersion::from_id(php_version));
     let everywhere = Linter::new(
         vec![Box::new(Everywhere(make()))],

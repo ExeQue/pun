@@ -19,6 +19,7 @@ mod functions;
 mod laravel;
 mod operators;
 mod pest;
+mod php_8_2;
 mod php_8_3;
 mod php_8_4;
 mod php_8_5;
@@ -153,6 +154,10 @@ rules! {
         complexity::no_sole_value_sprintf => NoSoleValueSprintf,
         complexity::no_compact => NoCompact,
         complexity::require_is_a_allow_string => RequireIsAAllowString,
+        php_8_2::add_skip_dots_flag => AddSkipDotsFlag,
+        php_8_2::no_dollar_brace_interpolation => NoDollarBraceInterpolation,
+        php_8_2::no_utf8_encode_decode => NoUtf8EncodeDecode,
+        php_8_2::prefer_readonly_class => PreferReadonlyClass,
         php_8_3::add_const_type => AddConstType::default(),
         php_8_3::prefer_readonly_anonymous_class => PreferReadonlyAnonymousClass,
         php_8_3::prefer_json_validate => PreferJsonValidate,

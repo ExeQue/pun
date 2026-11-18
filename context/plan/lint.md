@@ -228,7 +228,8 @@ Answered 2026-10-17 (Pushpak):
   - `-A` / `-W` / `-D <rule or group>` (allow / warn / deny) set a level for one run from the command line.
   - `[[lint.overrides]]` with `files = ["tests/**"]` changes levels for some paths, like oxlint's `overrides`.
 - **Every lint rule for 1.0 runs natively before 1.0** (all 719; Symfony, Doctrine and downgrade sets, upgrade sets below PHP
-  8.4 and Laravel 12, and rules Rector deprecated stay unsupported).
+  8.2 and Laravel 12, and rules Rector deprecated stay unsupported; the `php82` and `php83` sets are in, Pushpak
+  2026-11-18, rules.md §7).
   Porting order follows usage (§7 item 7), but 1.0 waits for all of them.
 - **Mago's rules become normal lint rules** and `pun lint --mago` goes away (assistant's default, not objected to).
 - **`pun lint --fix` doesn't format**; `pun check --fix` does lint, then format (commands.md §3).

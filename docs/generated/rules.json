@@ -9893,6 +9893,86 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.2/add-skip-dots-flag",
+      "command": "lint",
+      "group": "php-8.2",
+      "summary": "Prior PHP 8.2 FilesystemIterator::SKIP_DOTS was always set and could not be removed, therefore FilesystemIterator::SKIP_DOTS is added in order to keep this behaviour",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "FilesystemIteratorSkipDots",
+        "FilesystemIteratorSkipDotsRector",
+        "Rector\\Php82\\Rector\\New_\\FilesystemIteratorSkipDotsRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.2/no-dollar-brace-interpolation",
+      "command": "lint",
+      "group": "php-8.2",
+      "summary": "Replace deprecated ${var} to {$var}",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php82\\Rector\\Encapsed\\VariableInStringInterpolationFixerRector",
+        "VariableInStringInterpolationFixer",
+        "VariableInStringInterpolationFixerRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.2/no-utf8-encode-decode",
+      "command": "lint",
+      "group": "php-8.2",
+      "summary": "Change deprecated utf8_decode() and utf8_encode() to mb_convert_encoding()",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "Rector\\Php82\\Rector\\FuncCall\\Utf8DecodeEncodeToMbConvertEncodingRector",
+        "Utf8DecodeEncodeToMbConvertEncoding",
+        "Utf8DecodeEncodeToMbConvertEncodingRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.2/prefer-readonly-class",
+      "command": "lint",
+      "group": "php-8.2",
+      "summary": "Decorate read-only class with readonly attribute",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "unsafe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ReadOnlyClass",
+        "ReadOnlyClassRector",
+        "Rector\\Php82\\Rector\\Class_\\ReadOnlyClassRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.3/add-const-type",
       "command": "lint",
       "group": "php-8.3",

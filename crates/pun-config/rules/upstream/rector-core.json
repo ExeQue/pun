@@ -15,7 +15,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -2373,7 +2373,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -2654,7 +2654,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -2845,7 +2845,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -2870,7 +2870,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -2919,7 +2919,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -5315,7 +5315,7 @@
   "old_php_sets": [
    "php52"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php52"
@@ -5340,7 +5340,7 @@
   "old_php_sets": [
    "php53"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php53"
@@ -5365,7 +5365,7 @@
   "old_php_sets": [
    "php53"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php53"
@@ -5390,7 +5390,7 @@
   "old_php_sets": [
    "php53"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php53"
@@ -5415,7 +5415,7 @@
   "old_php_sets": [
    "php54"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php54"
@@ -5440,7 +5440,7 @@
   "old_php_sets": [
    "php54"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php54"
@@ -5465,7 +5465,7 @@
   "old_php_sets": [
    "php54"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php54"
@@ -5490,7 +5490,7 @@
   "old_php_sets": [
    "php55"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php55"
@@ -5515,7 +5515,7 @@
   "old_php_sets": [
    "php55"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php55"
@@ -5540,7 +5540,7 @@
   "old_php_sets": [
    "php55"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php55"
@@ -5565,7 +5565,7 @@
   "old_php_sets": [
    "php55"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php55"
@@ -5590,7 +5590,7 @@
   "old_php_sets": [
    "php55"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php55"
@@ -5641,7 +5641,7 @@
   "old_php_sets": [
    "php56"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php56"
@@ -5666,7 +5666,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5715,7 +5715,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5740,7 +5740,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5765,7 +5765,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5790,7 +5790,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5815,7 +5815,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5840,7 +5840,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5865,7 +5865,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5890,7 +5890,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5915,7 +5915,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5940,7 +5940,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -5965,7 +5965,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6014,7 +6014,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6039,7 +6039,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6064,7 +6064,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6089,7 +6089,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6114,7 +6114,7 @@
   "old_php_sets": [
    "php70"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php70"
@@ -6139,7 +6139,7 @@
   "old_php_sets": [
    "php71"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php71"
@@ -6164,7 +6164,7 @@
   "old_php_sets": [
    "php71"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php71"
@@ -6189,7 +6189,7 @@
   "old_php_sets": [
    "php71"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php71"
@@ -6240,7 +6240,7 @@
   "old_php_sets": [
    "php71"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php71"
@@ -6265,7 +6265,7 @@
   "old_php_sets": [
    "php71"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php71"
@@ -6290,7 +6290,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6315,7 +6315,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6340,7 +6340,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6365,7 +6365,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6390,7 +6390,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6415,7 +6415,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6440,7 +6440,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6465,7 +6465,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6490,7 +6490,7 @@
   "old_php_sets": [
    "php72"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php72"
@@ -6515,7 +6515,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -6541,7 +6541,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6566,7 +6566,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -6592,7 +6592,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -6642,7 +6642,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6667,7 +6667,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6692,7 +6692,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6717,7 +6717,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6742,7 +6742,7 @@
   "old_php_sets": [
    "php73"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php73"
@@ -6767,7 +6767,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6792,7 +6792,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6817,7 +6817,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6842,7 +6842,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6867,7 +6867,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6892,7 +6892,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6917,7 +6917,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6942,7 +6942,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6967,7 +6967,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -6992,7 +6992,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -7017,7 +7017,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -7042,7 +7042,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -7067,7 +7067,7 @@
   "old_php_sets": [
    "php74"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php74"
@@ -7092,7 +7092,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7117,7 +7117,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7142,7 +7142,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7167,7 +7167,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7192,7 +7192,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7242,7 +7242,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7267,7 +7267,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7292,7 +7292,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7317,7 +7317,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7342,7 +7342,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7367,7 +7367,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -7393,7 +7393,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -7442,7 +7442,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -7489,7 +7489,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7514,7 +7514,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php-polyfills",
@@ -7540,7 +7540,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -7565,7 +7565,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7590,7 +7590,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7615,7 +7615,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7640,7 +7640,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7686,7 +7686,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7711,7 +7711,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7736,7 +7736,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7761,7 +7761,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7786,7 +7786,7 @@
   "old_php_sets": [
    "php81"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php81"
@@ -7796,7 +7796,7 @@
   "website_status": 200
  },
  {
-  "also_in_old_php_set": true,
+  "also_in_old_php_set": false,
   "deprecated": false,
   "deprecated_in": [],
   "deprecation_evidence": null,
@@ -7805,13 +7805,11 @@
   "fqcn": "Rector\\Php82\\Rector\\Class_\\ReadOnlyClassRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
-  "old_php_sets": [
-   "php82"
-  ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "old_php_sets": [],
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php82"
@@ -7821,7 +7819,7 @@
   "website_status": 200
  },
  {
-  "also_in_old_php_set": true,
+  "also_in_old_php_set": false,
   "deprecated": false,
   "deprecated_in": [],
   "deprecation_evidence": null,
@@ -7830,13 +7828,11 @@
   "fqcn": "Rector\\Php82\\Rector\\Encapsed\\VariableInStringInterpolationFixerRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
-  "old_php_sets": [
-   "php82"
-  ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "old_php_sets": [],
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php82"
@@ -7846,7 +7842,7 @@
   "website_status": 200
  },
  {
-  "also_in_old_php_set": true,
+  "also_in_old_php_set": false,
   "deprecated": false,
   "deprecated_in": [],
   "deprecation_evidence": null,
@@ -7855,13 +7851,11 @@
   "fqcn": "Rector\\Php82\\Rector\\FuncCall\\Utf8DecodeEncodeToMbConvertEncodingRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
-  "old_php_sets": [
-   "php82"
-  ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "old_php_sets": [],
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php82"
@@ -7871,7 +7865,7 @@
   "website_status": 200
  },
  {
-  "also_in_old_php_set": true,
+  "also_in_old_php_set": false,
   "deprecated": false,
   "deprecated_in": [],
   "deprecation_evidence": null,
@@ -7880,13 +7874,11 @@
   "fqcn": "Rector\\Php82\\Rector\\New_\\FilesystemIteratorSkipDotsRector",
   "gated_by": null,
   "identifiers": [],
-  "in_scope": false,
+  "in_scope": true,
   "kind": "rector-rule",
   "level": null,
-  "old_php_sets": [
-   "php82"
-  ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "old_php_sets": [],
+  "out_of_scope_reason": null,
   "package": "rector/rector",
   "sets": [
    "php82"
@@ -9570,7 +9562,7 @@
   "old_php_sets": [
    "php80"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php80"
@@ -12173,7 +12165,7 @@
   "old_php_sets": [
    "php53"
   ],
-  "out_of_scope_reason": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+  "out_of_scope_reason": "only in php52..php81 upgrade sets (below php82)",
   "package": "rector/rector",
   "sets": [
    "php53"
