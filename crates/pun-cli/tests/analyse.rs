@@ -496,6 +496,42 @@ fn unused_variables_are_reported() {
     assert_eq!(code, Some(1));
 }
 
+#[test]
+fn identifiers_lint_owns_are_reported_too() {
+    // PHPStan 2.3.6 at level 5 (`--error-format=raw`) on the same file. Lint rules own these identifiers (rules.md
+    // O5) but see no types, so analyse still reports them.
+    let source = "<?php\n\nnamespace App;\n\nfinal class Probe\n{\n    private int $unused = 1;\n\n    private int $written = 0;\n\n    public function __construct(private Probe $next) {}\n\n    public function nullsafe(): int\n    {\n        $this->written = 5;\n\n        return $this->next?->count();\n    }\n\n    public function count(): int\n    {\n        return 1;\n    }\n\n    public function conditions(int $a): int\n    {\n        $b = 1;\n        if ($b === 1) {\n            return 2;\n        }\n\n        return $a;\n    }\n\n    public function both(int $a): bool\n    {\n        $t = true;\n\n        return $t && $a > 1;\n    }\n\n    private function wide(): int|string\n    {\n        return 1;\n    }\n\n    public function callWide(): int|string\n    {\n        return $this->wide();\n    }\n}\n";
+    let d = project(
+        "analyse",
+        "lint-owned",
+        &[
+            (
+                "pun.toml",
+                "[analyse]\npreset = \"recommended\"\npaths = [\"src\"]\n\n[lint.rules]\n\"complexity/no-redundant-nullsafe\" = \"error\"\n\"dead-code/no-unreachable-code\" = \"error\"\n",
+            ),
+            ("src/Probe.php", source),
+        ],
+    );
+    let (out, code) = run(&d, &[PUN, "analyse"], &["--format=raw"]);
+    let lines: Vec<&str> = out
+        .lines()
+        .map(|l| l.rsplit_once("/src/").unwrap().1)
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            "Probe.php:7:Property App\\Probe::$unused is never read, only written.",
+            "Probe.php:9:Property App\\Probe::$written is never read, only written.",
+            "Probe.php:17:Using nullsafe method call on non-nullable type App\\Probe. Use -> instead.",
+            "Probe.php:28:Strict comparison using === between 1 and 1 will always evaluate to true.",
+            "Probe.php:32:Unreachable statement - code above always terminates.",
+            "Probe.php:39:Left side of && is always true.",
+            "Probe.php:42:Method App\\Probe::wide() never returns string so it can be removed from the return type.",
+        ]
+    );
+    assert_eq!(code, Some(1));
+}
+
 fn pun(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> (String, String, Option<i32>) {
     let out = clean_env(&mut Command::new(PUN), &["PATH", "HOME"])
         .current_dir(dir)

@@ -11,7 +11,7 @@ mod phpstan_parameters;
 mod schema;
 
 pub use explain::{RULE_DOCS_URL, explain};
-pub use identifiers::rule_of_identifier;
+pub use identifiers::{identifiers_of_rules, rule_of_identifier};
 pub use schema::{
     Analyse, AnalysePreset, AnalyseRule, Files, FixSafety, FormatPreset, Ignore, LINT_SETS, Level,
     Lint, LintRule, LintSetting, Override, PhpVersion, groups,

@@ -224,6 +224,17 @@ fn project(
         renamed_named_arguments: on.contains("analyse/types/renamed-parameter-in-subtype"),
     };
     project.method_rules = method_rules;
+    // An identifier a lint rule owns (O5) is still reported here when a rule class that reports it runs: the lint
+    // rules see no types, so they miss most of what PHPStan reports, and an error must show in lint or analyse.
+    let lint_on: std::collections::HashSet<String> = (cfg.lint.rules.iter().map(|r| &r.id))
+        .chain(
+            (cfg.lint.overrides.iter().flat_map(|o| &o.rules))
+                .filter(|s| s.level.is_some())
+                .map(|s| &s.id),
+        )
+        .map(|id| format!("lint/{}", id.strip_prefix("lint/").unwrap_or(id)))
+        .collect();
+    let routed = pun_config::identifiers_of_rules(|r| on.contains(r) || lint_on.contains(r));
     project.reported = Some(std::sync::Arc::new(move |id| {
         if method_rules.consistent_constructor
             && matches!(
@@ -242,7 +253,7 @@ fn project(
         }
         rule_of_identifier(id).map_or_else(
             || id == "phpstan.parse" || id.starts_with("ignore."),
-            |r| on.contains(r),
+            |r| on.contains(r) || (r.starts_with("lint/") && routed.contains(id)),
         )
     }));
     Ok(project)

@@ -394,7 +394,7 @@ Layout-only Rector rules map to format rules. The migration reports any that `[f
 | `reportUnmatchedIgnoredErrors: false` | `report-unmatched = false` on each entry that doesn't set `reportUnmatched` |
 | Changed rule parameters | Kebab-case options on each running rule that reads the parameter |
 | strict-rules or deprecation-rules includes | The matching Pun checks, when their parameter enables them |
-| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere |
+| A check that is a lint rule in Pun (`array.duplicateKey`) | The lint rule, on in `[[lint.overrides]]` for `paths` and off for `excludePaths`, unless another config turns it on everywhere. `pun analyse` also reports the check's errors under the lint rule's ID, since the lint rule sees no types and can miss them |
 | `@phpstan-ignore method.notFound` | `@pun-ignore analyse/undefined/method` |
 | Baselines | Not copied. Run `pun analyse --generate-baseline`. |
 | `bleedingEdge.neon` include | `[analyse] bleeding-edge = true`; the rules it turns on get `"on"` lines |

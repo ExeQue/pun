@@ -24,6 +24,18 @@ pub fn rule_of_identifier(identifier: &str) -> Option<&'static str> {
     entry(identifier)?.get("pun")?.as_str()
 }
 
+/// The identifiers the upstream rule classes whose Pun rule `on` accepts can report (each class's `identifiers` in
+/// mapping.toml).
+pub fn identifiers_of_rules(on: impl Fn(&str) -> bool) -> std::collections::HashSet<&'static str> {
+    (SECTIONS.iter().chain(&["phpstan-classes"]))
+        .flat_map(|s| mapping::section(&["upstream", s]).table().values())
+        .filter(|e| (e.get("pun").and_then(toml::Value::as_str)).is_some_and(&on))
+        .filter_map(|e| e.get("identifiers")?.as_array())
+        .flatten()
+        .filter_map(toml::Value::as_str)
+        .collect()
+}
+
 fn glob(parts: &[&str], s: &str) -> bool {
     let Some(rest) = s.strip_prefix(parts[0]) else {
         return false;
