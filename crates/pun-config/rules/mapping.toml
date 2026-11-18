@@ -78,6 +78,7 @@ pest = "Pest (ecosystem: on when composer.lock has pestphp/pest)"
 phpunit = "PHPUnit (ecosystem: on when composer.lock has phpunit/phpunit)"
 laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or does better"
 "php-8.1" = "Upgrade to PHP 8.1: code a newer PHP removes, deprecates or does better"
+"php-8.3" = "Upgrade to PHP 8.3: code a newer PHP removes, deprecates or does better"
 "php-8.4" = "Upgrade to PHP 8.4: code a newer PHP removes, deprecates or does better"
 "php-8.5" = "Upgrade to PHP 8.5: code a newer PHP removes, deprecates or does better"
 "php-8.6" = "Upgrade to PHP 8.6: code a newer PHP removes, deprecates or does better"
@@ -575,6 +576,8 @@ laravel-12 = "Upgrade to Laravel 12: code a newer Laravel removes, deprecates or
 "pest/prefer-type-matchers" = { fix = "unsafe", sets = ["coding-style"], ported = true, status = "decided", summary = "Converts expect(is_array($x))->toBeTrue() to expect($x)->toBeArray()" }
 "pest/require-type-matcher-first" = { fix = "safe", sets = ["coding-style"], ported = true, status = "decided", summary = "Ensure type-check matchers (e.g. toBeInt, toBeInstanceOf) appear before value assertions in expect() chains and consecutive expects" }
 "php-8.1/prefer-first-class-callable" = { fix = "unsafe", ported = true, origin = "mago", status = "decided", summary = "Use first-class callable syntax (`strlen(...)`) instead of closures, Closure::fromCallable() and string or array callables." }
+"php-8.3/add-const-type" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Add type to constants based on their value" }
+"php-8.3/prefer-readonly-anonymous-class" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Decorate read-only anonymous class with `readonly` attribute" }
 "php-8.4/add-csv-escape-argument" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Add escape argument on CSV function calls" }
 "php-8.4/prefer-array-find" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", merged = ["rector:ForeachToArrayAll", "rector:ForeachToArrayAny", "rector:ForeachToArrayFind", "rector:ForeachToArrayFindKey"], replaces = ["lint/php-8.4/prefer-array-all", "lint/php-8.4/prefer-array-any", "lint/php-8.4/prefer-array-find-key"], summary = "Replace foreach loops with array_find(), array_find_key(), array_any() or array_all() (PHP 8.4)." }
 "php-8.4/prefer-round-mode-enum" = { fix = "safe", sets = ["modernize"], gated_by = "php-version", ported = true, status = "decided", summary = "Replace rounding mode constant to RoundMode enum in `round()`" }
@@ -1636,6 +1639,9 @@ include = { upstream = "include", type = "list" }
 scope = { upstream = "scope", type = "enum", values = { all = "all", namespaced = "namespaced" } }
 strict = { upstream = "strict", type = "bool" }
 
+[options."lint/php-8.3/add-const-type"]
+treat-classes-as-final = { upstream = "treatClassesAsFinal", type = "bool" }
+
 [options."lint/php-8.4/prefer-array-find"]
 functions = { upstream = "functions", type = "list", origin = "pun", default = ["array-all", "array-any", "array-find", "array-find-key"], values = { array-all = "ForeachToArrayAll", array-any = "ForeachToArrayAny", array-find = "ForeachToArrayFind", array-find-key = "ForeachToArrayFindKey" } }
 
@@ -2135,7 +2141,7 @@ AddInterfaceByTrait = { class = "Rector\\Transform\\Rector\\Class_\\AddInterface
 AddMethodCallBasedStrictParamType = { class = "Rector\\TypeDeclaration\\Rector\\ClassMethod\\AddMethodCallBasedStrictParamTypeRector", pun = "lint/types/add-param-type-method-call", sets = ["type-declaration"], options = "renamed for TOML: [options.\"lint/types/add-param-type-method-call\"] (Rector's treatClassesAsFinal() feature flag)", status = "decided" }
 AddNameToBooleanArgument = { class = "Rector\\CodeQuality\\Rector\\CallLike\\AddNameToBooleanArgumentRector", unsupported = "only in sets outside the eight prepared sets: named-args", sets = ["named-args"], status = "decided" }
 AddNameToNullArgument = { class = "Rector\\CodeQuality\\Rector\\CallLike\\AddNameToNullArgumentRector", unsupported = "only in sets outside the eight prepared sets: named-args", sets = ["named-args"], status = "decided" }
-AddOverrideAttributeToOverriddenMethods = { class = "Rector\\Php83\\Rector\\ClassMethod\\AddOverrideAttributeToOverriddenMethodsRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php-polyfills", "php83"], status = "decided" }
+AddOverrideAttributeToOverriddenMethods = { class = "Rector\\Php83\\Rector\\ClassMethod\\AddOverrideAttributeToOverriddenMethodsRector", unsupported = "deprecated upstream (2.8.4, main)", status = "decided" }
 AddOverrideAttributeToOverriddenProperties = { class = "Rector\\Php85\\Rector\\Property\\AddOverrideAttributeToOverriddenPropertiesRector", pun = "lint/refactor/add-override-attribute", sets = ["php85"], options = "none", status = "decided" }
 AddParamArrayDocblockBasedOnArrayMap = { class = "Rector\\TypeDeclarationDocblocks\\Rector\\ClassMethod\\AddParamArrayDocblockBasedOnArrayMapRector", unsupported = "deprecated upstream (2.7.0, main)", sets = ["type-declaration-docblocks"], status = "decided" }
 AddParamArrayDocblockBasedOnCallableNativeFuncCall = { class = "Rector\\TypeDeclaration\\Rector\\ClassMethod\\AddParamArrayDocblockBasedOnCallableNativeFuncCallRector", pun = "lint/types/add-param-phpdoc-from-callable-call", sets = ["type-declaration-docblocks"], options = "none", status = "decided" }
@@ -2166,7 +2172,7 @@ AddReturnTypeDeclarationFromYields = { class = "Rector\\TypeDeclaration\\Rector\
 AddReturnTypeFromTryCatchType = { class = "Rector\\TypeDeclaration\\Rector\\ClassMethod\\AddReturnTypeFromTryCatchTypeRector", pun = "lint/types/add-return-type-from-try-catch", sets = ["type-declaration"], options = "none", status = "decided" }
 AddSensitiveParameterAttribute = { class = "Rector\\Php82\\Rector\\Param\\AddSensitiveParameterAttributeRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 AddTestsVoidReturnTypeWhereNoReturn = { class = "Rector\\TypeDeclaration\\Rector\\Class_\\AddTestsVoidReturnTypeWhereNoReturnRector", pun = "lint/phpunit/add-test-void-return", sets = ["type-declaration"], options = "none", status = "decided" }
-AddTypeToConst = { class = "Rector\\Php83\\Rector\\ClassConst\\AddTypeToConstRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php83"], status = "decided" }
+AddTypeToConst = { class = "Rector\\Php83\\Rector\\ClassConst\\AddTypeToConstRector", pun = "lint/php-8.3/add-const-type", sets = ["php83"], options = "renamed for TOML: [options.\"lint/php-8.3/add-const-type\"] (Rector's treatClassesAsFinal() feature flag)", status = "decided" }
 AddVarArrayDocblockFromDimFetchAssign = { class = "Rector\\TypeDeclarationDocblocks\\Rector\\Class_\\AddVarArrayDocblockFromDimFetchAssignRector", pun = "lint/types/add-var-phpdoc-from-dim-fetch", sets = ["type-declaration-docblocks"], options = "none", status = "decided" }
 AddVoidReturnTypeWhereNoReturn = { class = "Rector\\TypeDeclaration\\Rector\\ClassLike\\AddVoidReturnTypeWhereNoReturnRector", pun = "lint/types/add-method-void-return", sets = ["type-declaration"], options = "none", status = "decided" }
 AlternativeIfToBracket = { class = "Rector\\CodingStyle\\Rector\\If_\\AlternativeIfToBracketRector", pun = "format/control-flow/no-alternative-syntax", sets = ["coding-style"], options = "none", status = "decided" }
@@ -2387,7 +2393,7 @@ PrivatizeLocalGetterToProperty = { class = "Rector\\Privatization\\Rector\\Metho
 PropertyHook = { class = "Rector\\Php84\\Rector\\Class_\\PropertyHookRector", unsupported = "deprecated upstream (2.7.0, main)", status = "decided" }
 PropertyTypeFromStrictSetterGetter = { class = "Rector\\TypeDeclaration\\Rector\\Class_\\PropertyTypeFromStrictSetterGetterRector", pun = "lint/types/add-property-type-setter-getter", sets = ["type-declaration"], options = "none", status = "decided" }
 RandomFunction = { class = "Rector\\Php70\\Rector\\FuncCall\\RandomFunctionRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php70"], status = "decided" }
-ReadOnlyAnonymousClass = { class = "Rector\\Php83\\Rector\\Class_\\ReadOnlyAnonymousClassRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php83"], status = "decided" }
+ReadOnlyAnonymousClass = { class = "Rector\\Php83\\Rector\\Class_\\ReadOnlyAnonymousClassRector", pun = "lint/php-8.3/prefer-readonly-anonymous-class", sets = ["php83"], options = "none", status = "decided" }
 ReadOnlyClass = { class = "Rector\\Php82\\Rector\\Class_\\ReadOnlyClassRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php82"], status = "decided" }
 ReadOnlyProperty = { class = "Rector\\Php81\\Rector\\Property\\ReadOnlyPropertyRector", unsupported = "only in php52..php83 upgrade sets (below the PHP 8.4 floor)", sets = ["php81"], status = "decided" }
 RecastingRemoval = { class = "Rector\\DeadCode\\Rector\\Cast\\RecastingRemovalRector", pun = "lint/dead-code/no-useless-cast", sets = ["dead-code"], options = "none", status = "decided" }

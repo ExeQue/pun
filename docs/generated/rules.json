@@ -9893,6 +9893,46 @@
       "ported": true
     },
     {
+      "id": "lint/php-8.3/add-const-type",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "Add type to constants based on their value",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "AddTypeToConst",
+        "AddTypeToConstRector",
+        "Rector\\Php83\\Rector\\ClassConst\\AddTypeToConstRector"
+      ],
+      "ported": true
+    },
+    {
+      "id": "lint/php-8.3/prefer-readonly-anonymous-class",
+      "command": "lint",
+      "group": "php-8.3",
+      "summary": "Decorate read-only anonymous class with readonly attribute",
+      "enabled": [
+        "modernize"
+      ],
+      "fix": "safe",
+      "ecosystem": "core",
+      "tools": [
+        "rector"
+      ],
+      "upstream": [
+        "ReadOnlyAnonymousClass",
+        "ReadOnlyAnonymousClassRector",
+        "Rector\\Php83\\Rector\\Class_\\ReadOnlyAnonymousClassRector"
+      ],
+      "ported": true
+    },
+    {
       "id": "lint/php-8.4/add-csv-escape-argument",
       "command": "lint",
       "group": "php-8.4",

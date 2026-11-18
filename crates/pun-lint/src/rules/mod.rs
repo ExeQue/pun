@@ -19,6 +19,7 @@ mod functions;
 mod laravel;
 mod operators;
 mod pest;
+mod php_8_3;
 mod php_8_4;
 mod php_8_5;
 mod php_8_6;
@@ -152,6 +153,8 @@ rules! {
         complexity::no_sole_value_sprintf => NoSoleValueSprintf,
         complexity::no_compact => NoCompact,
         complexity::require_is_a_allow_string => RequireIsAAllowString,
+        php_8_3::add_const_type => AddConstType::default(),
+        php_8_3::prefer_readonly_anonymous_class => PreferReadonlyAnonymousClass,
         php_8_4::add_csv_escape_argument => AddCsvEscapeArgument,
         php_8_4::prefer_round_mode_enum => PreferRoundModeEnum,
         php_8_5::no_finfo_buffer_context => NoFinfoBufferContext,

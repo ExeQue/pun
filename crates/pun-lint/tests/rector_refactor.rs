@@ -24,10 +24,11 @@
 use crate::common::{run_class, run_class_at, run_class_with, run_dirs};
 use mago_syntax::cst::Node;
 use pun_lint::rules::{
-    AddOverrideAttribute, AnnotationToAttribute, NoExtraArguments, PreferClassNameConstant,
-    RemoveFunctionArgument, RemoveFunctionCall, RenameCast, RenameClass, RenameClassConstant,
-    RenameConstant, RenameFunction, RenameMethod, ReplaceFunctionWithConstant,
-    ReplaceFunctionWithNew, ReplaceFunctionWithStatic, RequireStrictInArray,
+    AddConstType, AddOverrideAttribute, AnnotationToAttribute, NoExtraArguments,
+    PreferClassNameConstant, PreferReadonlyAnonymousClass, RemoveFunctionArgument,
+    RemoveFunctionCall, RenameCast, RenameClass, RenameClassConstant, RenameConstant,
+    RenameFunction, RenameMethod, ReplaceFunctionWithConstant, ReplaceFunctionWithNew,
+    ReplaceFunctionWithStatic, RequireStrictInArray,
 };
 use pun_lint::{Linter, Rule};
 use serde_json::{Value, json};
@@ -326,6 +327,53 @@ fn string_class_name_to_class_constant() {
     rejects(
         PreferClassNameConstant::default(),
         &[(json!({"items": [1]}), "each of `items` must be a string")],
+    );
+}
+
+fn below_php_83(rule: Box<dyn Rule>, code: &str) {
+    let found = Linter::new(vec![rule], pun_lint::PhpVersion::from_id(80200))
+        .check(Path::new("f.php"), code)
+        .unwrap();
+    assert_eq!(found, [] as [pun_problem::Problem; 0]);
+}
+
+#[test]
+fn add_type_to_const() {
+    check(AddConstType::default, Value::Null, "AddTypeToConstRector");
+    check(
+        AddConstType::default,
+        json!({"treat-classes-as-final": true}),
+        "AddTypeToConstRectorTreatClassesAsFinal",
+    );
+    rejects(
+        AddConstType::default(),
+        &[
+            (
+                json!({"treatClassesAsFinal": true}),
+                "unknown option `treatClassesAsFinal` or a value of the wrong type",
+            ),
+            (
+                json!({"treat-classes-as-final": "yes"}),
+                "unknown option `treat-classes-as-final` or a value of the wrong type",
+            ),
+        ],
+    );
+    below_php_83(
+        Box::new(AddConstType::default()),
+        "<?php\n\nfinal class A\n{\n    public const B = 1;\n}\n",
+    );
+}
+
+#[test]
+fn read_only_anonymous_class() {
+    check(
+        || PreferReadonlyAnonymousClass,
+        Value::Null,
+        "ReadOnlyAnonymousClassRector",
+    );
+    below_php_83(
+        Box::new(PreferReadonlyAnonymousClass),
+        "<?php\n\n$a = new class {\n    private readonly int $b;\n};\n",
     );
 }
 

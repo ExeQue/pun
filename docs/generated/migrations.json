@@ -6123,7 +6123,7 @@
         "tool": "rector",
         "url": "https://getrector.com/find-rule",
         "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
+        "note": "deprecated upstream (2.8.4, main)",
         "unsupported": true
       },
       {
@@ -6402,9 +6402,11 @@
         "name": "AddTypeToConst",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/add-type-to-const-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/add-const-type"
+        ],
+        "note": "Same. Options: renamed for TOML: [options.\"lint/php-8.3/add-const-type\"] (Rector's treatClassesAsFinal() feature flag).",
+        "unsupported": false
       },
       {
         "name": "AddVarArrayDocblockFromDimFetchAssign",
@@ -8348,9 +8350,11 @@
         "name": "ReadOnlyAnonymousClass",
         "tool": "rector",
         "url": "https://getrector.com/rule-detail/read-only-anonymous-class-rector",
-        "rules": [],
-        "note": "only in php52..php83 upgrade sets (below the PHP 8.4 floor)",
-        "unsupported": true
+        "rules": [
+          "lint/php-8.3/prefer-readonly-anonymous-class"
+        ],
+        "note": "Same.",
+        "unsupported": false
       },
       {
         "name": "ReadOnlyClass",
