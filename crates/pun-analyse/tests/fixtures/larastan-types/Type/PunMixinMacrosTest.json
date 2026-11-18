@@ -1,0 +1,65 @@
+{
+    "test": "Type/PunMixinMacrosTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-mixin-macros.php",
+            "declares": [
+                "punmixinmacros\\abstractmixin",
+                "punmixinmacros\\hasnames",
+                "punmixinmacros\\macros",
+                "punmixinmacros\\names",
+                "punmixinmacros\\othermixin",
+                "punmixinmacros\\querymixin",
+                "punmixinmacros\\test"
+            ],
+            "asserts": [
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115
+            ],
+            "errors": [
+                {
+                    "line": 80,
+                    "identifier": "class.notFound",
+                    "message": "Anonymous function has invalid return type PunMixinMacros\\Nope.",
+                    "tip": null
+                }
+            ]
+        },
+        {
+            "file": "tests/Type/data/PunStrMixin.php",
+            "declares": [
+                "punmixinmacros\\punstrmixin"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 14,
+                    "identifier": "missingType.return",
+                    "message": "Method PunMixinMacros\\PunStrMixin::punWhisper() has no return type specified.",
+                    "tip": null
+                },
+                {
+                    "line": 24,
+                    "identifier": "method.unused",
+                    "message": "Method PunMixinMacros\\PunStrMixin::punPrivate() is unused.",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}

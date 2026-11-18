@@ -35,10 +35,13 @@ pub(crate) struct Macro {
     pub(crate) native: bool,
 }
 
+#[derive(Clone)]
 enum Definition {
     Closure(Option<TUnion>),
     Function(String),
     Method(String, String),
+    /// `X::mixin(new Mixin)`: Macroable::mixin() registers each public and protected method's returned closure.
+    Mixin(String),
 }
 
 fn discovered_providers(root: &Path) -> Vec<PathBuf> {
@@ -91,19 +94,23 @@ fn discovered_providers(root: &Path) -> Vec<PathBuf> {
 
 impl Macros {
     /// Larastan boots the application and reads the macros its providers registered. Pun cannot run PHP, so it reads
-    /// the `macro()` calls of the bootstrap files, the app's providers, the framework's and the discovered packages'
-    /// providers, and of every analysed file that calls `::macro(`, wherever the call sits (a provider registered in
-    /// `bootstrap/providers.php`, or a helper class a provider calls).
+    /// the `macro()` and `mixin()` calls of the bootstrap files, the app's providers, the framework's and the
+    /// discovered packages' providers, and of every analysed file that calls `::macro(` or `::mixin(`, wherever the
+    /// call sits (a provider registered in `bootstrap/providers.php`, or a helper class a provider calls).
     pub(crate) fn load(
         bootstrap: &[PathBuf],
         analysed: &[PathBuf],
+        scanned: &[PathBuf],
         root: &Path,
         codebase: &CodebaseMetadata,
         app: &App,
     ) -> Macros {
         let registers = |path: &&PathBuf| {
-            std::fs::read(path)
-                .is_ok_and(|b| b.windows(7).any(|w| w.eq_ignore_ascii_case(b"::macro")))
+            std::fs::read(path).is_ok_and(|b| {
+                b.windows(7).any(|w| {
+                    w.eq_ignore_ascii_case(b"::macro") || w.eq_ignore_ascii_case(b"::mixin")
+                })
+            })
         };
         let mut files: Vec<PathBuf> = analysed.iter().filter(registers).cloned().collect();
         files.extend_from_slice(bootstrap);
@@ -121,12 +128,37 @@ impl Macros {
             }
             files.extend(read_files.read(&path));
         }
+        // A mixin class Pun has not read yet sits in the file named after it, as PSR-4 autoloading wants.
+        let mixins: HashSet<String> = (read_files.registrations.iter())
+            .filter_map(|(_, _, definition)| match definition {
+                Definition::Mixin(class)
+                    if !read_files.classes.contains(&class.to_ascii_lowercase()) =>
+                {
+                    Some(
+                        class
+                            .rsplit('\\')
+                            .next()
+                            .unwrap_or(class)
+                            .to_ascii_lowercase(),
+                    )
+                }
+                _ => None,
+            })
+            .collect();
+        for path in analysed.iter().chain(scanned) {
+            let stem = path
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_ascii_lowercase());
+            if stem.is_some_and(|stem| mixins.contains(&stem)) && seen.insert(path.clone()) {
+                read_files.read(path);
+            }
+        }
         let mut macros = Macros {
             accessors: std::mem::take(&mut read_files.accessors),
             ..Macros::default()
         };
         let populated = |ty: Option<TUnion>| populated(codebase, ty);
-        for (class, name, definition) in read_files.registrations {
+        for (class, name, definition) in std::mem::take(&mut read_files.registrations) {
             let Some(home) = home(codebase, &class).or_else(|| {
                 let root = macros.facade_root(app, &class)?;
                 let root = if root.eq_ignore_ascii_case("Illuminate\\Cache\\CacheManager") {
@@ -151,6 +183,19 @@ impl Macros {
                     instance: None,
                     native: false,
                 },
+                Definition::Mixin(mixin) => {
+                    let methods = read_files.mixin_methods.get(&mixin.to_ascii_lowercase());
+                    let defined = macros.macros.entry(home).or_default();
+                    for (method, returned) in methods.into_iter().flatten() {
+                        let found = Macro {
+                            ty: populated(returned.clone()),
+                            instance: None,
+                            native: false,
+                        };
+                        defined.insert(method.to_ascii_lowercase(), found);
+                    }
+                    continue;
+                }
                 Definition::Function(function) => {
                     let Some(f) =
                         codebase.get_function(function.trim_start_matches('\\').as_bytes())
@@ -294,6 +339,33 @@ fn macroable(codebase: &CodebaseMetadata, class: &[u8]) -> bool {
             .any(|b| class.eq_ignore_ascii_case(b) || codebase.is_instance_of(class, b))
 }
 
+/// A literal array's string keys and string values.
+fn literal_array(e: &Expression) -> Option<(Vec<String>, Vec<String>)> {
+    let elements = match e {
+        Expression::Array(a) => &a.elements,
+        Expression::LegacyArray(a) => &a.elements,
+        _ => return None,
+    };
+    let literal = |e: &Expression| match e {
+        Expression::Literal(Literal::String(s)) => {
+            Some(String::from_utf8_lossy(s.value?).into_owned())
+        }
+        _ => None,
+    };
+    let (mut keys, mut values) = (Vec::new(), Vec::new());
+    for element in elements {
+        match element {
+            ArrayElement::KeyValue(kv) => {
+                keys.extend(literal(kv.key));
+                values.extend(literal(kv.value));
+            }
+            ArrayElement::Value(v) => values.extend(literal(v.value)),
+            ArrayElement::Variadic(_) | ArrayElement::Missing(_) => {}
+        }
+    }
+    Some((keys, values))
+}
+
 /// A type read from a closure's or method's native return type, with its class names looked up (`populate`); a
 /// class Mago does not know leaves it `mixed`.
 fn populated(codebase: &CodebaseMetadata, ty: Option<TUnion>) -> TUnion {
@@ -338,6 +410,13 @@ struct Reader {
     registrations: Vec<(String, String, Definition)>,
     methods: HashMap<(String, String), Local>,
     accessors: HashMap<String, String>,
+    /// The classes read, lowercased.
+    classes: HashSet<String>,
+    /// The class constants whose value is a literal array (lowercased class and name): its keys and values.
+    constants: HashMap<(String, String), (Vec<String>, Vec<String>)>,
+    /// A mixin class's public and protected methods (lowercased class), each with the native return type of the
+    /// closure it returns.
+    mixin_methods: HashMap<String, Vec<(String, Option<TUnion>)>>,
 }
 
 impl Reader {
@@ -354,6 +433,7 @@ impl Reader {
             namespace: String::new(),
             class: None,
             includes: Vec::new(),
+            loops: Vec::new(),
         };
         walker.walk_program(program, &mut ());
         walker.includes
@@ -367,6 +447,8 @@ struct Walker<'r, 'n, 'arena> {
     namespace: String,
     class: Option<String>,
     includes: Vec<PathBuf>,
+    /// The macro names each enclosing `foreach` over a literal array gives its key and value variables.
+    loops: Vec<Vec<(Vec<u8>, Vec<String>)>>,
 }
 
 impl Walker<'_, '_, '_> {
@@ -527,6 +609,9 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Walker<'_, '_, 'arena> {
         } else {
             format!("{}\\{name}", self.namespace)
         });
+        self.reader
+            .classes
+            .extend(self.class.as_ref().map(|c| c.to_ascii_lowercase()));
     }
 
     fn walk_out_class(&mut self, _: &'ast Class<'arena>, (): &mut ()) {
@@ -560,6 +645,32 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Walker<'_, '_, 'arena> {
                     String::from_utf8_lossy(m.name.value).into_owned(),
                 )
             });
+            let private = m
+                .modifiers
+                .iter()
+                .any(|m| matches!(m, Modifier::Private(_)));
+            if !private && !m.name.value.starts_with(b"__") {
+                let returned = match &m.body {
+                    MethodBody::Concrete(body) => body.statements.iter().find_map(|s| match s {
+                        Statement::Return(Return { value, .. }) => Some(*value),
+                        _ => None,
+                    }),
+                    MethodBody::Abstract(_) => None,
+                };
+                let ty = match returned.flatten() {
+                    Some(Expression::Closure(c)) => {
+                        c.return_type_hint.as_ref().and_then(|h| self.hint(&h.hint))
+                    }
+                    Some(Expression::ArrowFunction(f)) => {
+                        f.return_type_hint.as_ref().and_then(|h| self.hint(&h.hint))
+                    }
+                    _ => None,
+                };
+                let name = String::from_utf8_lossy(m.name.value).into_owned();
+                (self.reader.mixin_methods.entry(class.to_ascii_lowercase()))
+                    .or_default()
+                    .push((name, ty));
+            }
             self.reader.methods.insert(key, Local { ty, instance });
         }
     }
@@ -588,6 +699,58 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Walker<'_, '_, 'arena> {
         self.include(c.value);
     }
 
+    fn walk_in_class_like_constant(&mut self, k: &'ast ClassLikeConstant<'arena>, (): &mut ()) {
+        let Some(class) = self.class.as_ref().map(|c| c.to_ascii_lowercase()) else {
+            return;
+        };
+        for item in &k.items {
+            if let Some(literals) = literal_array(item.value) {
+                let name = String::from_utf8_lossy(item.name.value).to_ascii_lowercase();
+                self.reader
+                    .constants
+                    .insert((class.clone(), name), literals);
+            }
+        }
+    }
+
+    fn walk_in_foreach(&mut self, f: &'ast Foreach<'arena>, (): &mut ()) {
+        let literals = match f.expression {
+            Expression::Access(Access::ClassConstant(c)) => match (&c.class, &c.constant) {
+                (class, ClassLikeConstantSelector::Identifier(name)) => {
+                    let class = match class {
+                        Expression::Self_(_) | Expression::Static(_) => self.class.clone(),
+                        Expression::Identifier(id) => Some(self.name(id)),
+                        _ => None,
+                    };
+                    class.and_then(|class| {
+                        let name = String::from_utf8_lossy(name.value).to_ascii_lowercase();
+                        (self.reader.constants)
+                            .get(&(class.to_ascii_lowercase(), name))
+                            .cloned()
+                    })
+                }
+                _ => None,
+            },
+            e => literal_array(e),
+        };
+        let variable = |e: &Expression| match e {
+            Expression::Variable(Variable::Direct(v)) => Some(v.name.to_vec()),
+            _ => None,
+        };
+        let mut bound = Vec::new();
+        if let Some((keys, values)) = literals {
+            if let ForeachTarget::KeyValue(kv) = &f.target {
+                bound.extend(variable(kv.key).map(|name| (name, keys)));
+            }
+            bound.extend(variable(f.target.value()).map(|name| (name, values)));
+        }
+        self.loops.push(bound);
+    }
+
+    fn walk_out_foreach(&mut self, _: &'ast Foreach<'arena>, (): &mut ()) {
+        self.loops.pop();
+    }
+
     fn walk_in_static_method_call(&mut self, call: &'ast StaticMethodCall<'arena>, (): &mut ()) {
         let ClassLikeMemberSelector::Identifier(method) = &call.method else {
             return;
@@ -595,25 +758,46 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Walker<'_, '_, 'arena> {
         let Expression::Identifier(class) = call.class else {
             return;
         };
+        let arguments = &call.argument_list.arguments;
+        if method.value.eq_ignore_ascii_case(b"mixin") {
+            let mixin = match arguments.get(0).map(|a| a.value()) {
+                Some(Expression::Instantiation(Instantiation {
+                    class: Expression::Identifier(id),
+                    ..
+                })) => Some(self.name(id)),
+                _ => None,
+            };
+            if let Some(mixin) = mixin {
+                let class = self.name(class);
+                (self.reader.registrations).push((class, String::new(), Definition::Mixin(mixin)));
+            }
+            return;
+        }
         if !method.value.eq_ignore_ascii_case(b"macro") {
             return;
         }
-        let arguments = &call.argument_list.arguments;
         let (Some(name), Some(definition)) = (arguments.get(0), arguments.get(1)) else {
             return;
         };
-        let Expression::Literal(Literal::String(name)) = name.value() else {
-            return;
+        let names = match name.value() {
+            Expression::Literal(Literal::String(LiteralString {
+                value: Some(name), ..
+            })) => vec![String::from_utf8_lossy(name).into_owned()],
+            // `foreach (['a', 'b'] as $name) { X::macro($name, ...) }`: one macro per literal
+            Expression::Variable(Variable::Direct(v)) => {
+                match (self.loops.iter().rev().flatten()).find(|(name, _)| name == v.name) {
+                    Some((_, names)) => names.clone(),
+                    None => return,
+                }
+            }
+            _ => return,
         };
-        let Some(name) = name.value else { return };
         let Some(definition) = self.definition(definition.value()) else {
             return;
         };
         let class = self.name(class);
-        self.reader.registrations.push((
-            class,
-            String::from_utf8_lossy(name).into_owned(),
-            definition,
-        ));
+        for name in names {
+            (self.reader.registrations).push((class.clone(), name, definition.clone()));
+        }
     }
 }

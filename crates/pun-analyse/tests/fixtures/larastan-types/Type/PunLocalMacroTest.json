@@ -1,0 +1,18 @@
+{
+    "test": "Type/PunLocalMacroTest",
+    "configs": [
+        "tests/Type/data/config-with-migrations.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-local-macro.php",
+            "declares": [
+                "punlocalmacro\\test"
+            ],
+            "asserts": [
+                11
+            ],
+            "errors": []
+        }
+    ]
+}

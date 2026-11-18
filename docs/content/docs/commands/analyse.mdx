@@ -29,7 +29,15 @@ Larastan's rules are on when the `laravel` [extension](/docs/configuration/pun-t
 
 Pun reads model properties from the migrations in `database/migrations` and the schema dumps in `database/schema`, as Larastan does. The `database-migrations-path`, `squashed-migrations-path`, `disable-migration-scan`, and `disable-schema-scan` options that `pun migrate` writes from Larastan's parameters change those directories. Pun doesn't support `enableMigrationCache`. Schema dumps are read with Larastan's MySQL-style parser.
 
-Larastan boots your app to learn its macros. Pun doesn't run PHP, so it collects the macros from `X::macro('name', ...)` calls. It reads these calls in your bootstrap files, in `app/Providers`, in the Laravel and package service providers, and in every analysed file. Pun misses a macro whose name isn't a constant string, a macro added in a loop or through `mixin()`, and a macro that a vendor file outside those providers registers.
+Larastan boots your app to learn its macros. Pun doesn't run PHP, so it reads the `X::macro('name', ...)` and `X::mixin(new Mixin())` calls in your bootstrap files, in `app/Providers`, in the Laravel and package service providers, and in every analysed file. For `mixin()`, every public and protected method of the mixin class becomes a macro, typed by the native return type of the closure the method returns. Pun looks for the mixin class in the files it has already read, then in the analysed or scanned file named after the class. A macro registered in a `foreach` over a literal array, or over a class constant that holds one, gets one macro per string in the array: per value for the loop's value variable, per key for its key variable.
+
+Pun misses these macros:
+
+- A macro whose name is computed in any other way, such as a variable from a function call or a concatenation.
+- A `mixin()` whose argument isn't `new` with a class name (such as `new self()` or a variable), and a mixin class Pun can't find.
+- A macro that a vendor file outside those providers registers.
+
+A closure macro's type is its native return type, so a closure without one gives `mixed`, as it does in Larastan.
 
 `pun.toml` can't override `checkFunctionArgumentTypes`, `checkArgumentsPassedByReference`, or `checkThisOnly` on their own. `pun migrate` reports them as unsupported and keeps the level.
 

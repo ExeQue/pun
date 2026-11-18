@@ -345,6 +345,7 @@ impl crate::AnalyseExtension for Larastan {
         self.macros = Arc::new(crate::larastan::macros::Macros::load(
             &self.bootstrap_files,
             &project.analysed,
+            &project.scanned,
             &self.root,
             codebase,
             &self.app,
