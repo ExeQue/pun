@@ -277,10 +277,10 @@ Uncovered lines:
 - `crates/pun-analyse/src/rules/return_types.rs:77-79` `Provider::meta()` of the built-in return provider: as for the Laravel hook, `PluginRegistry` reads `meta()` only for its own library plugins.
 - `crates/pun-analyse/src/rules/return_types.rs:1275-1277` the same for the benevolent-return provider.
 - `crates/pun-analyse/src/rules/return_types.rs:1316-1318` the same for the Closure method return provider.
-- `crates/pun-analyse/src/rules/larastan/relations.rs:180` RelationExistenceRule's relation method declared by one of PHP's own classes: a model extends Eloquent's Model, which extends none of them, so its methods are always the user's.
-- `crates/pun-analyse/src/laravel/mod.rs:506-513` `Provider::meta()` of the model-attribute hook: Mago's `Provider` trait requires it, but `PluginRegistry` reads `meta()` only for its own library plugins, never for a registered expression hook, and the hook struct is private.
-- `crates/pun-analyse/src/rules/infer.rs:434-437` `Provider::meta()` of the definedness hook: as for the model-attribute hook's above, `PluginRegistry` never reads it for a registered expression hook.
-- `crates/pun-analyse/src/rules/larastan/forwards.rs:1355-1357` `Provider::meta()` of the `builder-of` call hook (LateBuilders): the same, `PluginRegistry` never reads it for a registered expression hook.
+- `crates/pun-analyse/src/rules/larastan/relations.rs:168` RelationExistenceRule's relation method declared by one of PHP's own classes: a model extends Eloquent's Model, which extends none of them, so its methods are always the user's.
+- `crates/pun-analyse/src/laravel/mod.rs:761-768` `Provider::meta()` of the model-attribute hook: Mago's `Provider` trait requires it, but `PluginRegistry` reads `meta()` only for its own library plugins, never for a registered expression hook, and the hook struct is private.
+- `crates/pun-analyse/src/rules/infer.rs:584-588` `Provider::meta()` of the definedness hook: as for the model-attribute hook's above, `PluginRegistry` never reads it for a registered expression hook.
+- `crates/pun-analyse/src/rules/larastan/forwards.rs:1373-1375` `Provider::meta()` of the `builder-of` call hook (LateBuilders): the same, `PluginRegistry` never reads it for a registered expression hook.
 - `crates/pun-analyse/src/rules/regex_shapes/mod.rs:39-41` `Provider::meta()` of the preg_replace_callback() closure-type provider: as for the built-in return provider, `PluginRegistry` reads `meta()` only for its own library plugins.
 - `crates/pun-analyse/src/rules/regex_shapes/mod.rs:106-108` the same for the preg_match() shape provider.
 - `crates/pun-analyse/src/rules/enum_methods.rs:34-36` the same for the enum `cases()`/`from()`/`tryFrom()` return provider.
