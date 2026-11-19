@@ -47,6 +47,52 @@ impl BlockType {
     ];
 }
 
+/// A cheap check that rules out most tokens before `Token::equals_any` against `protos`: the kinds a token with an
+/// id can equal, and the first bytes of the contents a token without one can.
+struct Candidates {
+    kinds: [u64; Kind::ALL.len().div_ceil(64)],
+    first_bytes: [u64; 4],
+    empty: bool,
+}
+
+impl Candidates {
+    fn new(protos: &[Proto<'_>]) -> Candidates {
+        let mut c = Candidates {
+            kinds: Default::default(),
+            first_bytes: [0; 4],
+            empty: false,
+        };
+        let mut kind = |k: Kind| c.kinds[k as usize / 64] |= 1 << (k as usize % 64);
+        for p in protos {
+            match *p {
+                Proto::Kind(k) | Proto::KindContent(k, _) => kind(k),
+                Proto::Char(content) => {
+                    if content == b"&" {
+                        kind(T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG);
+                        kind(T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG);
+                    }
+                    match content.first() {
+                        Some(&b) => c.first_bytes[usize::from(b / 64)] |= 1 << (b % 64),
+                        None => c.empty = true,
+                    }
+                }
+            }
+        }
+        c
+    }
+
+    #[inline]
+    fn may_equal(&self, token: &Token) -> bool {
+        match token.id {
+            Some(k) => self.kinds[k as usize / 64] & 1 << (k as usize % 64) != 0,
+            None => match token.content.first() {
+                Some(&b) => self.first_bytes[usize::from(b / 64)] & 1 << (b % 64) != 0,
+                None => self.empty,
+            },
+        }
+    }
+}
+
 /// The maps a collection keeps for every lookup; their keys are token indices and contents, so a fast unkeyed hash
 /// does.
 type HashMap<K, V> = std::collections::HashMap<K, V, foldhash::fast::FixedState>;
@@ -55,7 +101,14 @@ type HashMap<K, V> = std::collections::HashMap<K, V, foldhash::fast::FixedState>
 struct BlockCache {
     start: HashMap<usize, usize>,
     end: HashMap<usize, usize>,
+    /// Every block edge's partner (`NO_PAIR` when it has none), from one pass over the tokens: what a scan from that
+    /// edge finds. A change to an edge of one block type can move the partners of that type's other edges, so it
+    /// marks the type in `stale` (bit `BlockType as u8`), whose edges are scanned for until the pairs are built again.
+    pairs: Option<Vec<u32>>,
+    stale: u32,
 }
+
+const NO_PAIR: u32 = u32::MAX;
 
 #[derive(Clone, Debug)]
 pub struct Tokens {
@@ -84,6 +137,7 @@ impl Default for Tokens {
 
 impl Index<usize> for Tokens {
     type Output = Token;
+    #[inline]
     fn index(&self, i: usize) -> &Token {
         &self.tokens[i]
     }
@@ -256,9 +310,11 @@ impl Tokens {
         *self.blocks.get_mut() = BlockCache::default();
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.tokens.len()
     }
+    #[inline]
     pub fn count(&self) -> usize {
         self.tokens.len()
     }
@@ -285,6 +341,11 @@ impl Tokens {
     pub fn set(&mut self, index: usize, token: Token) {
         self.invalidate_block_cache_at(index);
         if !self.tokens[index].equals_token(&token, true) {
+            for t in [&self.tokens[index], &token] {
+                if let Some((t, _)) = Self::detect_block_type(t) {
+                    self.blocks.get_mut().stale |= 1 << t as u8;
+                }
+            }
             let old = std::mem::replace(&mut self.tokens[index], Token::char(""));
             self.unregister_found_token(&old);
             self.changed = true;
@@ -333,6 +394,7 @@ impl Tokens {
             return;
         }
         let limit = self.tokens.len();
+        self.blocks.get_mut().pairs = None;
         let mut index = (0..limit).find(|&i| self.is_empty_at(i)).unwrap_or(limit);
         let mut count = index;
         while index < limit {
@@ -410,10 +472,12 @@ impl Tokens {
         true
     }
 
+    #[inline]
     pub fn find_block_end(&self, t: BlockType, search_index: usize) -> usize {
         self.find_opposite_block_edge(t, search_index, true)
     }
 
+    #[inline]
     pub fn find_block_start(&self, t: BlockType, search_index: usize) -> usize {
         self.find_opposite_block_edge(t, search_index, false)
     }
@@ -464,6 +528,7 @@ impl Tokens {
         code
     }
 
+    #[inline]
     fn step(&self, index: usize, direction: isize) -> Option<usize> {
         index
             .checked_add_signed(direction)
@@ -500,6 +565,7 @@ impl Tokens {
         }
     }
 
+    #[inline]
     pub fn get_next_token_of_kind(
         &self,
         index: usize,
@@ -509,6 +575,7 @@ impl Tokens {
         self.get_token_of_kind_sibling(index, 1, tokens, case_sensitive)
     }
 
+    #[inline]
     pub fn get_prev_token_of_kind(
         &self,
         index: usize,
@@ -542,9 +609,11 @@ impl Tokens {
         if tokens.is_empty() {
             return None;
         }
+        let candidates = Candidates::new(tokens);
         loop {
             index = self.step(index, direction)?;
-            if self.tokens[index].equals_any(tokens, case_sensitive) {
+            let token = &self.tokens[index];
+            if candidates.may_equal(token) && token.equals_any(tokens, case_sensitive) {
                 return Some(index);
             }
         }
@@ -583,15 +652,18 @@ impl Tokens {
         }
     }
 
+    #[inline]
     pub fn get_next_meaningful_token(&self, index: usize) -> Option<usize> {
         self.get_meaningful_token_sibling(index, 1)
     }
 
+    #[inline]
     pub fn get_prev_meaningful_token(&self, index: usize) -> Option<usize> {
         self.get_meaningful_token_sibling(index, -1)
     }
 
     #[track_caller]
+    #[inline]
     pub fn next_meaningful(&self, index: usize) -> usize {
         let Some(next) = self.get_next_meaningful_token(index) else {
             panic!("no meaningful token after index {index}");
@@ -600,6 +672,7 @@ impl Tokens {
     }
 
     #[track_caller]
+    #[inline]
     pub fn prev_meaningful(&self, index: usize) -> usize {
         let Some(prev) = self.get_prev_meaningful_token(index) else {
             panic!("no meaningful token before index {index}");
@@ -736,6 +809,7 @@ impl Tokens {
         }
     }
 
+    #[inline]
     pub fn is_empty_at(&self, index: usize) -> bool {
         let t = &self.tokens[index];
         t.id.is_none() && t.content.is_empty()
@@ -780,6 +854,7 @@ impl Tokens {
         kinds.iter().any(|&k| self.is_token_kind_found(k))
     }
 
+    #[inline]
     pub fn is_token_kind_found<'a>(&self, key: impl Into<FoundKey<'a>>) -> bool {
         self.count_token_kind(key) != 0
     }
@@ -915,20 +990,23 @@ impl Tokens {
             "Invalid param $startIndex - not a proper block \"{}\".",
             if find_end { "start" } else { "end" }
         );
-        let mut level = 0;
-        let mut index = start_index;
-        while index != end_index {
-            let token = &self.tokens[index];
-            if token.equals(start_edge, true) {
-                level += 1;
-            } else if token.equals(end_edge, true) {
-                level -= 1;
-                if level == 0 {
-                    break;
+        let index = self.paired(t, start_index).unwrap_or_else(|| {
+            let mut level = 0;
+            let mut index = start_index;
+            while index != end_index {
+                let token = &self.tokens[index];
+                if token.equals(start_edge, true) {
+                    level += 1;
+                } else if token.equals(end_edge, true) {
+                    level -= 1;
+                    if level == 0 {
+                        break;
+                    }
                 }
+                index = if find_end { index + 1 } else { index - 1 };
             }
-            index = if find_end { index + 1 } else { index - 1 };
-        }
+            index
+        });
         assert!(
             self.tokens[index].equals(end_edge, true),
             "Missing block \"{}\".",
@@ -943,6 +1021,42 @@ impl Tokens {
         c.start.insert(a, b);
         c.end.insert(b, a);
         index
+    }
+
+    /// The partner of the `t` edge at `index`, from the pairs of one pass over the tokens (built when there are none),
+    /// or `None` when an edge of type `t` changed since or the edge has none.
+    fn paired(&self, t: BlockType, index: usize) -> Option<usize> {
+        let c = &mut *self.blocks.borrow_mut();
+        if c.pairs.is_none() {
+            c.pairs = Some(self.block_pairs());
+            c.stale = 0;
+        }
+        let partner = c.pairs.as_ref()?[index];
+        (c.stale & 1 << t as u8 == 0 && partner != NO_PAIR).then_some(partner as usize)
+    }
+
+    /// Each block edge's partner: per block type, an end closes the latest start still open, which is the edge a
+    /// scan counting that type's starts and ends stops at.
+    fn block_pairs(&self) -> Vec<u32> {
+        let mut pairs = vec![NO_PAIR; self.tokens.len()];
+        let mut open: [Vec<u32>; BlockType::ALL.len()] = Default::default();
+        for (i, token) in self.tokens.iter().enumerate() {
+            let Some((t, is_start)) = Self::detect_block_type(token) else {
+                continue;
+            };
+            let (start, end) = Self::block_edges(t);
+            let stack = &mut open[t as usize - 1];
+            if is_start && token.equals(start, true) {
+                stack.push(i as u32);
+            } else if !is_start
+                && token.equals(end, true)
+                && let Some(s) = stack.pop()
+            {
+                pairs[s as usize] = i as u32;
+                pairs[i] = s;
+            }
+        }
+        pairs
     }
 
     fn register_found_token(&mut self, token: &Token) {

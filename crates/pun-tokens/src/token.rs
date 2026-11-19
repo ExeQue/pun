@@ -205,14 +205,17 @@ impl Token {
         }
     }
 
+    #[inline]
     pub fn is_array(&self) -> bool {
         self.id.is_some()
     }
 
+    #[inline]
     pub fn get_id(&self) -> Option<Kind> {
         self.id
     }
 
+    #[inline]
     pub fn get_content(&self) -> &[u8] {
         &self.content
     }
@@ -221,6 +224,7 @@ impl Token {
         self.id.map(Kind::name)
     }
 
+    #[inline]
     fn is_amp(&self) -> bool {
         self.content == b"&"
             && matches!(
@@ -232,6 +236,7 @@ impl Token {
             )
     }
 
+    #[inline]
     pub fn equals<'a>(&self, other: impl Into<Proto<'a>>, case_sensitive: bool) -> bool {
         match other.into() {
             Proto::Char(b"&") => self.is_amp(),
@@ -248,6 +253,7 @@ impl Token {
         }
     }
 
+    #[inline]
     pub fn equals_token(&self, other: &Token, case_sensitive: bool) -> bool {
         if self.id.is_none() && self.content == b"&" {
             return other.is_amp();
@@ -265,36 +271,46 @@ impl Token {
         }
     }
 
+    #[inline]
     pub fn equals_any(&self, others: &[Proto<'_>], case_sensitive: bool) -> bool {
         others.iter().any(|&o| self.equals(o, case_sensitive))
     }
 
+    #[inline]
     pub fn is_kind(&self, kind: Kind) -> bool {
         self.id == Some(kind)
     }
 
+    #[inline]
     pub fn is_given_kind(&self, kinds: &[Kind]) -> bool {
         self.id.is_some_and(|id| kinds.contains(&id))
     }
 
+    #[inline]
     pub fn is_cast(&self) -> bool {
         self.is_given_kind(CAST_KINDS)
     }
+    #[inline]
     pub fn is_classy(&self) -> bool {
         self.is_given_kind(CLASSY_KINDS)
     }
+    #[inline]
     pub fn is_comment(&self) -> bool {
         self.is_given_kind(&[T_COMMENT, T_DOC_COMMENT])
     }
+    #[inline]
     pub fn is_object_operator(&self) -> bool {
         self.is_given_kind(OBJECT_OPERATOR_KINDS)
     }
+    #[inline]
     pub fn is_keyword(&self) -> bool {
         self.is_given_kind(KEYWORDS)
     }
+    #[inline]
     pub fn is_magic_constant(&self) -> bool {
         self.is_given_kind(MAGIC_CONSTANTS)
     }
+    #[inline]
     pub fn is_whitespace(&self, whitespaces: Option<&[u8]>) -> bool {
         if self.id.is_some() && self.id != Some(T_WHITESPACE) {
             return false;

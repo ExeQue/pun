@@ -34,6 +34,7 @@ impl Default for Content {
 
 impl Deref for Content {
     type Target = [u8];
+    #[inline]
     fn deref(&self) -> &[u8] {
         match self {
             Content::Inline { len, buf } => &buf[..*len as usize],

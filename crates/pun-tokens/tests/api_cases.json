@@ -191,5 +191,6 @@
 {"code":"<?php $a;","ops":[["clearAt",2],["clearMerge",1],["code"],["contents"]]},
 {"code":"<?php $a = [1]; f(...);","ops":[["found","["],["found",["CT::T_ARRAY_BRACKET_OPEN"]],["found",["CT::T_FIRST_CLASS_CALLABLE"]],["countKind","="],["each","equalsProto",3]]},
 {"code":"<?php (new Foo())->bar();","ops":[["each","blocks"],["each","detect"]]},
-{"code":"<?php","ops":[["fromArray",[["T_OPEN_TAG","<?php "],["T_VARIABLE","$a"],["CT::T_ARRAY_INDEX_BRACE_OPEN","{"],["T_LNUMBER","1"],["CT::T_ARRAY_INDEX_BRACE_CLOSE","}"],";"]],["each","blocks"],["each","detect"]]}
+{"code":"<?php","ops":[["fromArray",[["T_OPEN_TAG","<?php "],["T_VARIABLE","$a"],["CT::T_ARRAY_INDEX_BRACE_OPEN","{"],["T_LNUMBER","1"],["CT::T_ARRAY_INDEX_BRACE_CLOSE","}"],";"]],["each","blocks"],["each","detect"]]},
+{"code":"<?php\n$a = &$b; function &f(&$x, &...$y) {} $c = $d & $e; $f = !$g;\n","ops":[["set",7,"&"],["each","nextOfKind",["&"]],["each","prevOfKind",["&","!"]],["clearAt",3],["each","nextOfKind",[""]],["each","prevOfKind",["",["T_VARIABLE"]]]]}
 ]
