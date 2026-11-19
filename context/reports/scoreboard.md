@@ -389,6 +389,37 @@ resolve.
 - Pun is 2.5-3.9x faster than a cold PHPStan but slower than a warm result cache and than Mago's analyser. Against the
   2026-10-17 table it runs the full level 0 rule set instead of 54 identifiers, and takes 4-15x longer.
 
+### Analyse against Mago (Linux, 2026-11-19)
+
+8-core / 15 GB orb with a host load of 2-5, profiling builds of
+[`516b388`](https://github.com/shipfastlabs/pun/commit/516b3880acee15201fdb9df14ffbd8b458a6fcd1) (before) and of the
+analyse perf commits on top of main (after), Mago 1.57.0. `BENCH=analyse TOOLS=pun,mago scripts/bench.py`, median of 3
+runs after 1 warm-up. `pun analyse --format=json` is byte-identical before and after on the four projects, and on
+Pinkary (6 errors), dev-null.sh (0) and laravel-framework (2) with their own configs.
+
+| project | files | pun analyse before | pun analyse after | mago analyze |
+|---|---:|---:|---:|---:|
+| pinkary | 160 | 3.49 s, 1282 MB | 2.34 s, 821 MB | 2.65 s, 1021 MB |
+| larastan | 176 | 2.73 s, 897 MB | 1.95 s, 559 MB | 0.71 s, 488 MB |
+| laravel-framework | 1664 | 8.17 s, 1407 MB | 5.79 s, 867 MB | 2.92 s, 1035 MB |
+| laravel-pint | 58 | 1.95 s, 726 MB | 1.23 s, 454 MB | 0.67 s, 481 MB |
+
+- Pun now uses less memory than Mago on pinkary, laravel-framework and laravel-pint, and is faster on pinkary. Mago's
+  pinkary time is 1.6 s on a quiet host, so that row's time is close. laravel-pint's memory is within Mago's spread
+  (439-481 MB over the runs).
+- Still lost: time on larastan, laravel-framework and laravel-pint, and memory on larastan. On laravel-framework about
+  57% of the rules phase is Mago's analyser, which Pun runs on each file and again on each trait in the context of every
+  class that uses it, as PHPStan does. The small projects' floor is the scan of the vendor classes a name reaches,
+  PHPStan's symbols (about 30 MB) and Mago's prelude (about 40 MB).
+- What changed: Mago's prelude is built and encoded at compile time and decoded at run time, as Mago's binary does,
+  instead of parsed and populated from the stubs on every run; doc comments are parsed the first time a rule reads
+  them; data/native-methods.json's classes are built on first lookup, on a thread beside the codebase build; PHPStan's
+  API stub loads one class at a time when a name reaches it; the files an initializer is evaluated in are parsed with
+  their methods and doc comments blanked; the autoload lookup skips a name whose last segment no class has; the
+  comment index finds `/*` and `*/` with memchr; the phpdoc lexer matches whitespace, names, line ends and punctuation
+  without PCRE2; Mago's type combiner merges a literal string with its equal in constant time; mimalloc purges freed
+  memory after 100 ms instead of 1 s during analyse.
+
 ## Lint benchmark
 
 2026-10-17, `BENCH=lint scripts/bench.py <project>`, same machine and method as the analyse benchmark. Every tool
