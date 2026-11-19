@@ -548,9 +548,13 @@ fn process_in_parallel(
     blade_on: bool,
     process: impl Fn(&PathBuf, std::io::Result<Vec<u8>>) -> Result<Processed> + Sync,
 ) -> Vec<Result<Processed>> {
-    let (mut blade, php): (Vec<_>, Vec<_>) =
+    let (mut blade, mut php): (Vec<_>, Vec<_>) =
         (files.iter().cloned().enumerate()).partition(|(_, f)| blade_on && is_blade(f));
     blade.sort_by_cached_key(|(_, f)| {
+        std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len()))
+    });
+    // Largest first too, so the last files to start are small ones and the threads finish together.
+    php.par_sort_by_cached_key(|(_, f)| {
         std::cmp::Reverse(std::fs::metadata(f).map_or(0, |m| m.len()))
     });
     let lanes = (blade.len() / 32)
