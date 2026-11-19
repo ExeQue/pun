@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 use mago_names::kind::NameKind;
 use mago_span::{HasSpan, Span};
@@ -13,6 +14,10 @@ pub(crate) struct Facts {
     pub comments: Comments,
     pub declarations: Declarations,
     pub strict_types: bool,
+    /// The doc comments, and the functions and methods declared at the top level, in namespaces and in class-likes,
+    /// merged where only whitespace separates them: the parts of a file that hold no constant or attribute
+    /// initializer unless one is inside them.
+    pub blankable: Vec<(u32, u32)>,
 }
 
 impl Facts {
@@ -39,8 +44,62 @@ impl Facts {
             comments,
             declarations,
             strict_types,
+            blankable: blankable(contents, program),
         }
     }
+}
+
+fn blankable(contents: &[u8], program: &Program) -> Vec<(u32, u32)> {
+    fn whole(span: Span) -> (u32, u32) {
+        (span.start.offset, span.end.offset)
+    }
+    fn members<'a>(
+        members: impl Iterator<Item = &'a ClassLikeMember<'a>>,
+        out: &mut Vec<(u32, u32)>,
+    ) {
+        for member in members {
+            if let ClassLikeMember::Method(method) = member {
+                out.push(whole(method.span()));
+            }
+        }
+    }
+    fn statements<'a>(list: impl Iterator<Item = &'a Statement<'a>>, out: &mut Vec<(u32, u32)>) {
+        for statement in list {
+            match statement {
+                Statement::Namespace(n) => statements(n.statements().iter(), out),
+                Statement::Function(f) => out.push(whole(f.span())),
+                Statement::Class(k) => members(k.members.iter(), out),
+                Statement::Interface(k) => members(k.members.iter(), out),
+                Statement::Trait(k) => members(k.members.iter(), out),
+                Statement::Enum(k) => members(k.members.iter(), out),
+                _ => {}
+            }
+        }
+    }
+    let mut found: Vec<_> = (program.trivia.iter())
+        .filter(|t| t.kind.is_docblock())
+        .map(|t| whole(t.span))
+        .collect();
+    statements(program.statements.iter(), &mut found);
+    found.sort_unstable();
+    // A doc comment and the method after it, and the methods of a class, are one range: whitespace apart. The doc
+    // comments inside a function are in its range.
+    let mut out: Vec<(u32, u32)> = Vec::new();
+    for (start, end) in found {
+        match out.last_mut() {
+            Some(last)
+                if start <= last.1
+                    || contents[last.1 as usize..start as usize]
+                        .iter()
+                        .all(u8::is_ascii_whitespace) =>
+            {
+                last.1 = last.1.max(end);
+            }
+            _ => out.push((start, end)),
+        }
+    }
+    out.shrink_to_fit();
+    out
 }
 
 fn strict_types(contents: &[u8]) -> bool {
@@ -154,14 +213,28 @@ pub(crate) struct Comments {
     ends: Vec<u32>,
     doc: Vec<u32>,
     plain: Vec<u32>,
-    docs: Vec<(u32, u32, DocEntry)>,
+    docs: Vec<LazyDoc>,
+    analysed: bool,
+}
+
+/// A doc comment, parsed the first time a rule asks for it: most docs of the scanned files never are.
+struct LazyDoc {
+    start: u32,
+    end: u32,
+    /// False for a scanned file's doc that is not a trait's own: it drops the trait tags.
+    trait_tags: bool,
+    entry: OnceLock<Box<DocEntry>>,
 }
 
 impl Comments {
     pub(crate) fn of(contents: &[u8], analysed: bool) -> Comments {
-        let mut out = Comments::default();
+        let mut out = Comments {
+            analysed,
+            ..Comments::default()
+        };
         let (mut doc_opens, mut opens, mut last_close) = ([None; 2], [None; 2], None);
-        for p in 0..contents.len().saturating_sub(1) {
+        let last = contents.len().saturating_sub(1);
+        for p in memchr::memchr2_iter(b'/', b'*', &contents[..last]) {
             match &contents[p..p + 2] {
                 b"/*" => {
                     if contents.get(p + 2) == Some(&b'*') {
@@ -181,12 +254,12 @@ impl Comments {
                     out.plain.push(plain_start.map_or(NONE, |s| s as u32));
                     out.doc.push(match doc {
                         Some(start) => {
-                            let raw = &contents[start..end];
-                            out.docs.push((
-                                start as u32,
-                                end as u32,
-                                DocEntry::parse(raw, analysed),
-                            ));
+                            out.docs.push(LazyDoc {
+                                start: start as u32,
+                                end: end as u32,
+                                trait_tags: true,
+                                entry: OnceLock::new(),
+                            });
                             (out.docs.len() - 1) as u32
                         }
                         None => NONE,
@@ -201,21 +274,28 @@ impl Comments {
     }
 
     fn keep_trait_tags(&mut self, contents: &[u8], traits: &[u32]) {
-        let kept: Vec<u32> = traits
-            .iter()
-            .filter_map(|&at| {
-                let (raw, _) = self.doc_before(contents, at as usize)?;
-                Some((raw.as_ptr() as usize - contents.as_ptr() as usize) as u32)
-            })
+        let kept: Vec<usize> = (traits.iter())
+            .filter_map(|&at| self.doc_index(contents, at as usize))
             .collect();
-        for (start, _, entry) in &mut self.docs {
-            if !kept.contains(start) {
+        for (i, doc) in self.docs.iter_mut().enumerate() {
+            doc.trait_tags = kept.contains(&i);
+        }
+    }
+
+    fn parsed<'c>(&'c self, contents: &'c [u8], d: usize) -> (&'c [u8], &'c DocEntry) {
+        let doc = &self.docs[d];
+        let raw = &contents[doc.start as usize..doc.end as usize];
+        let entry = doc.entry.get_or_init(|| {
+            let mut entry = DocEntry::parse(raw, self.analysed);
+            if !doc.trait_tags {
                 entry
                     .phpdoc
                     .retain(|t| !TRAIT_TAGS.contains(&t.name.as_str()));
                 entry.phpdoc.shrink_to_fit();
             }
-        }
+            Box::new(entry)
+        });
+        (raw, entry)
     }
 
     fn closing(&self, end: usize) -> Option<usize> {
@@ -227,6 +307,10 @@ impl Comments {
         contents: &'c [u8],
         offset: usize,
     ) -> Option<(&'c [u8], &'c DocEntry)> {
+        Some(self.parsed(contents, self.doc_index(contents, offset)?))
+    }
+
+    fn doc_index(&self, contents: &[u8], offset: usize) -> Option<usize> {
         let mut end = offset.min(contents.len());
         loop {
             end -= contents[..end]
@@ -240,21 +324,19 @@ impl Comments {
             let i = self.closing(end)?;
             match self.doc[i] {
                 NONE => end = Some(self.plain[i]).filter(|&s| s != NONE)? as usize,
-                d => {
-                    let (start, end, entry) = &self.docs[d as usize];
-                    return Some((&contents[*start as usize..*end as usize], entry));
-                }
+                d => return Some(d as usize),
             }
         }
     }
 
-    pub(crate) fn entry(&self, start: u32, end: u32) -> Option<&DocEntry> {
-        let i = self
-            .docs
-            .binary_search_by_key(&end, |(_, end, _)| *end)
-            .ok()?;
-        let (found, _, entry) = &self.docs[i];
-        (*found == start).then_some(entry)
+    pub(crate) fn entry<'c>(
+        &'c self,
+        contents: &'c [u8],
+        start: u32,
+        end: u32,
+    ) -> Option<&'c DocEntry> {
+        let i = self.docs.binary_search_by_key(&end, |doc| doc.end).ok()?;
+        (self.docs[i].start == start).then(|| self.parsed(contents, i).1)
     }
 
     pub(crate) fn php_doc_comment<'c>(

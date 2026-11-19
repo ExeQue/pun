@@ -44,11 +44,10 @@ use mago_names::ResolvedNames;
 use mago_names::resolver::NameResolver;
 use mago_names::scope::NamespaceScope;
 use mago_php_version::PHPVersion;
-use mago_prelude::Prelude;
 use mago_span::HasSpan;
 use mago_span::Span;
 use mago_syntax::cst::{self, ConstantAccess, Expression, Program};
-use mago_syntax::parser::parse_file_with_settings;
+use mago_syntax::parser::parse_file_content_with_settings;
 use mago_syntax::settings::{LexerSettings, ParserSettings};
 use mago_syntax::walker::MutWalker;
 use rayon::prelude::*;
@@ -115,9 +114,18 @@ pub(crate) fn parse<'arena>(
     arena: &'arena LocalArena,
     file: &File,
 ) -> (&'arena Program<'arena>, ResolvedNames<'arena>) {
-    let program = parse_file_with_settings(
+    parse_contents(arena, file.id, &file.contents)
+}
+
+fn parse_contents<'arena>(
+    arena: &'arena LocalArena,
+    id: FileId,
+    contents: &[u8],
+) -> (&'arena Program<'arena>, ResolvedNames<'arena>) {
+    let program = parse_file_content_with_settings(
         arena,
-        file,
+        id,
+        contents,
         ParserSettings {
             lexer: LexerSettings {
                 retain_invalid_legacy_octal: true,
@@ -186,12 +194,14 @@ fn prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     }
 }
 
+/// Mago's prelude, encoded by build.rs.
+static PRELUDE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/prelude.bin"));
+
 fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
-    let Prelude {
-        mut metadata,
-        symbol_references,
-        ..
-    } = Prelude::build();
+    let (mut metadata, symbol_references): (CodebaseMetadata, SymbolReferences) =
+        bincode::serde::decode_from_slice(PRELUDE, bincode::config::standard())
+            .expect("build.rs encoded the prelude")
+            .0;
     let builtins = crate::rules::builtins(php_version);
     metadata.class_likes.retain(|name, k| {
         !k.flags.is_built_in()
@@ -490,21 +500,40 @@ fn build_prelude(php_version: u32) -> (CodebaseMetadata, SymbolReferences) {
     (metadata, symbol_references)
 }
 
-fn scan_api(version: PHPVersion) -> (CodebaseMetadata, Scanned) {
-    let stub = File::new(
-        Cow::Borrowed(b"phpstan-api.php"),
-        FileType::Vendored,
-        None,
-        Cow::Borrowed(PHPSTAN_API),
-    );
-    let (metadata, facts) = scan(&mut LocalArena::new(), &stub, version, None, false);
-    (
-        metadata,
-        Scanned {
-            file: Arc::new(stub),
-            facts,
-        },
-    )
+/// The declarations of [`PHPSTAN_API`], one per `namespace` block, with the lowercase names of the class-likes each
+/// declares. A block that declares a function has no class name and is loaded with the API, as PHPStan's bootstrap
+/// loads its functions; the class-likes are loaded as PHPStan's autoloader loads them, when a name reaches them.
+fn api_blocks() -> Vec<(std::ops::Range<usize>, Vec<Vec<u8>>, bool)> {
+    let mut starts: Vec<usize> = memchr::memmem::find_iter(PHPSTAN_API, b"\nnamespace ")
+        .map(|at| at + 1)
+        .collect();
+    starts.push(PHPSTAN_API.len());
+    (starts.windows(2))
+        .filter_map(|w| {
+            let block = &PHPSTAN_API[w[0]..w[1]];
+            let namespace = block[b"namespace ".len()..].split(|&b| b == b';').next()?;
+            let mut classes = Vec::new();
+            let mut function = false;
+            for line in block.split(|&b| b == b'\n') {
+                let mut words = line
+                    .split(|&b| b == b' ')
+                    .skip_while(|w| matches!(*w, b"final" | b"abstract" | b"readonly"));
+                match words.next() {
+                    Some(b"class" | b"interface" | b"trait" | b"enum") => {
+                        let name = words.next()?;
+                        let name = name.split(|&b| b == b':').next()?;
+                        let mut class = namespace.to_ascii_lowercase();
+                        class.push(b'\\');
+                        class.extend(name.iter().map(u8::to_ascii_lowercase));
+                        classes.push(class);
+                    }
+                    Some(b"function") => function = true,
+                    _ => {}
+                }
+            }
+            (function || !classes.is_empty()).then_some((w[0]..w[1], classes, function))
+        })
+        .collect()
 }
 
 const CHUNK: usize = 32;
@@ -518,14 +547,12 @@ pub(crate) struct Scanned {
 pub(crate) struct Sources {
     files: HashMap<PathBuf, Arc<File>>,
     scanned: HashMap<FileId, Scanned>,
-    api: Option<Scanned>,
+    api: HashMap<FileId, Scanned>,
 }
 
 impl Sources {
     pub(crate) fn scanned(&self, id: FileId) -> Option<&Scanned> {
-        self.scanned
-            .get(&id)
-            .or_else(|| self.api.as_ref().filter(|api| api.file.id == id))
+        self.scanned.get(&id).or_else(|| self.api.get(&id))
     }
 }
 
@@ -578,14 +605,41 @@ pub(crate) fn build(
         });
         classes.push((i, a));
     }
-    let index = autoload::Index::new(classes.into_iter(), &aliases);
+    // PHPStan's API blocks come last. Their names reach only other blocks: before, the whole API was scanned
+    // without following its names into the vendor directory.
+    let blocks = api_blocks();
+    let api_start = files.len();
+    let api_paths: Vec<PathBuf> = (0..blocks.len())
+        .map(|i| PathBuf::from(format!("phpstan-api-{i}.php")))
+        .collect();
+    files.extend(api_paths.iter().map(|p| (p, FileType::Vendored)));
+    let api_classes: Vec<_> = (blocks.iter().enumerate())
+        .flat_map(|(i, (_, classes, _))| {
+            classes.iter().map(move |class| {
+                (
+                    api_start + i,
+                    crate::project::Autoloaded {
+                        path: PathBuf::new(),
+                        class: class.clone(),
+                        psr0: false,
+                    },
+                )
+            })
+        })
+        .collect();
+    let api_index = autoload::Index::new(api_classes.iter().map(|(i, a)| (*i, a)), &[]);
+    let index = autoload::Index::new(
+        classes
+            .into_iter()
+            .chain(api_classes.iter().map(|(i, a)| (*i, a))),
+        &aliases,
+    );
     let php_version = project.php_version.id();
     let builtins = move || {
         crate::rules::builtins(php_version);
         pun_phpstan::symbols::symbols(pun_phpstan::symbols::PhpVersion::new(8, 4))
     };
-    let (names_phpstan_tx, names_phpstan_rx) = std::sync::mpsc::channel::<()>();
-    let api = std::thread::spawn(move || names_phpstan_rx.recv().ok().map(|()| scan_api(version)));
+    let names_phpstan = AtomicBool::new(false);
     let (((mut metadata, mut references), _), scanned) = rayon::join(
         || rayon::join(move || prelude(php_version), builtins),
         || {
@@ -595,8 +649,10 @@ pub(crate) fn build(
             }
             let mut round: Vec<usize> = (0..eager).collect();
             let mut scanned = Vec::new();
+            let mut api = Vec::new();
             let mut sources = Sources::default();
             let mut used_aliases = Vec::new();
+            let mut first = true;
             while !round.is_empty() {
                 let size = (round.len() / (rayon::current_num_threads() * 4)).clamp(1, CHUNK);
                 let chunks = round
@@ -606,8 +662,31 @@ pub(crate) fn build(
                         let mut sources = Vec::new();
                         let mut wanted = Vec::new();
                         let mut declarations = Vec::new();
+                        let mut api = Vec::new();
                         for &i in chunk {
                             let (path, file_type) = files[i];
+                            if let Some((block, ..)) = i.checked_sub(api_start).map(|b| &blocks[b])
+                            {
+                                let mut contents = b"<?php\n".to_vec();
+                                contents.extend_from_slice(&PHPSTAN_API[block.clone()]);
+                                let stub = File::new(
+                                    Cow::Owned(path.to_string_lossy().into_owned().into_bytes()),
+                                    FileType::Vendored,
+                                    None,
+                                    Cow::Owned(contents),
+                                );
+                                let (symbols, facts) = scan(
+                                    arena,
+                                    &stub,
+                                    version,
+                                    Some((&api_index, &mut wanted, &mut declarations)),
+                                    false,
+                                );
+                                wanted.retain(|&w| !loaded.get(w));
+                                let file = Arc::new(stub);
+                                api.push((i, symbols, Scanned { file, facts }));
+                                continue;
+                            }
                             let file = match read(path, file_type)? {
                                 Some(file) => file,
                                 None => {
@@ -629,8 +708,8 @@ pub(crate) fn build(
                             let has_constants = !symbols.constants.is_empty();
                             metadata.extend(symbols);
                             wanted.retain(|&w| !loaded.get(w));
-                            if file_type == FileType::Host && names_phpstan(&file.contents) {
-                                let _ = names_phpstan_tx.send(());
+                            if file_type == FileType::Host && self::names_phpstan(&file.contents) {
+                                names_phpstan.store(true, Ordering::Relaxed);
                             }
                             let by_path = file_type == FileType::Host || has_constants;
                             sources.push((
@@ -642,11 +721,11 @@ pub(crate) fn build(
                                 by_path,
                             ));
                         }
-                        Ok((metadata, sources, wanted, declarations))
+                        Ok((metadata, sources, wanted, declarations, api))
                     })
                     .collect::<Result<Vec<_>, CouldNotReadFile>>()?;
                 round.clear();
-                for (chunk, files, wanted, declarations) in chunks {
+                for (chunk, files, wanted, declarations, blocks) in chunks {
                     scanned.push(chunk);
                     for (path, file, by_path) in files {
                         if by_path {
@@ -656,6 +735,19 @@ pub(crate) fn build(
                     }
                     round.extend(wanted);
                     used_aliases.extend(declarations);
+                    api.extend(blocks);
+                }
+                // The analysed files are the first round: the API is loaded only if one of them names PHPStan.
+                let with_api = names_phpstan.load(Ordering::Relaxed);
+                if std::mem::take(&mut first) && with_api {
+                    round.extend(
+                        (blocks.iter().enumerate())
+                            .filter(|(_, b)| b.2)
+                            .map(|(b, _)| api_start + b),
+                    );
+                }
+                if !with_api {
+                    round.retain(|&i| i < api_start);
                 }
                 round.sort_unstable();
                 round.dedup();
@@ -663,11 +755,10 @@ pub(crate) fn build(
                     loaded.set(i, true);
                 }
             }
-            drop(names_phpstan_tx);
-            Ok((scanned, sources, used_aliases))
+            Ok((scanned, sources, used_aliases, api))
         },
     );
-    let (scanned, mut sources, mut used_aliases) = scanned?;
+    let (scanned, mut sources, mut used_aliases, mut api) = scanned?;
     for chunk in scanned {
         metadata.extend(chunk);
     }
@@ -692,9 +783,10 @@ pub(crate) fn build(
         );
         metadata.extend(scan(&mut LocalArena::new(), &file, version, None, true).0);
     }
-    if let Some((api, stub)) = api.join().expect("the API stub scan never panics") {
-        metadata.extend(api);
-        sources.api = Some(stub);
+    api.sort_unstable_by_key(|(i, ..)| *i);
+    for (_, symbols, stub) in api {
+        metadata.extend(symbols);
+        sources.api.insert(stub.file.id, stub);
     }
     metadata.apply_patches_pass();
     let pseudo: Vec<_> = (metadata.patch_function_likes.iter())
@@ -965,35 +1057,47 @@ fn resolve_initializers(metadata: &mut CodebaseMetadata, sources: &Sources, proj
         }
     }
     // Every file an initializer can be evaluated in, parsed up front in parallel: the resolver below is serial
-    // and would otherwise parse them one at a time. A parse depends only on the file.
-    let mut wanted: Vec<FileId> = (metadata.class_likes.values())
-        .flat_map(|class| {
-            class
-                .constants
-                .values()
-                .map(|constant| constant.span.file_id)
-        })
-        .chain(
-            metadata
-                .constants
-                .values()
-                .map(|constant| constant.span.file_id),
-        )
-        .chain(trait_sources.iter().map(|(_, at)| at.file_id))
-        .chain(arguments.iter().map(|(.., at)| at.file_id))
-        .filter(|id| initializer_sources.contains_key(id))
-        .collect();
-    wanted.sort_unstable();
-    wanted.dedup();
+    // and would otherwise parse them one at a time. A parse depends only on the file and the initializers in it, so
+    // the functions, methods and doc comments that hold none are blanked first: they are most of a file and are
+    // never read.
+    let mut wanted: HashMap<FileId, HashSet<Span>> = HashMap::new();
+    for at in (metadata.class_likes.values())
+        .flat_map(|class| class.constants.values().map(|constant| constant.span))
+        .chain(metadata.constants.values().map(|constant| constant.span))
+        .chain(trait_sources.iter().map(|(_, at)| *at))
+        .chain(arguments.iter().map(|(.., at)| *at))
+        .filter(|at| initializer_sources.contains_key(&at.file_id))
+    {
+        wanted.entry(at.file_id).or_default().insert(at);
+    }
+    let wanted: Vec<(FileId, HashSet<Span>)> = wanted.into_iter().collect();
     let mut arenas: Vec<LocalArena> = wanted.iter().map(|_| LocalArena::new()).collect();
     let parsed: HashMap<FileId, ParsedSource<'_>> = arenas
         .par_iter_mut()
         .zip(&wanted)
-        .map(|(arena, id)| {
+        .map(|(arena, (id, spans))| {
             let arena: &LocalArena = arena;
-            let (program, names) = parse(arena, initializer_sources[id]);
+            let file = initializer_sources[id];
+            let mut contents = file.contents.to_vec();
+            for &(start, end) in
+                (sources.scanned(*id).map(|s| &s.facts.blankable[..])).unwrap_or_default()
+            {
+                if spans
+                    .iter()
+                    .all(|at| at.end.offset <= start || end <= at.start.offset)
+                {
+                    for b in &mut contents[start as usize..end as usize] {
+                        if !matches!(b, b'\n' | b'\r') {
+                            *b = b' ';
+                        }
+                    }
+                }
+            }
+            let (program, names) = parse_contents(arena, *id, &contents);
             let mut index = InitializerIndex::default();
             index.walk_program(program, &mut ());
+            index.at.retain(|at, _| spans.contains(at));
+            index.at.shrink_to_fit();
             (*id, (program, names, index))
         })
         .collect::<Vec<_>>()

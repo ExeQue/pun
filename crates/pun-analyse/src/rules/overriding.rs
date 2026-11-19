@@ -7,6 +7,7 @@
 //! types or abstract trait methods) are left out; the trait walk still breaks competing declarations by name.
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::OnceLock;
 
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::flags::MetadataFlags;
@@ -22,6 +23,7 @@ use pun_phpstan::types::{
     resolve_template_types, union,
 };
 use serde_json::Value;
+use serde_json::value::RawValue;
 
 use super::declarations::has_tag;
 use super::declared::{self, default_is_null, original_name};
@@ -172,20 +174,39 @@ fn native_class(v: &Value) -> NativeClass {
     }
 }
 
-pub(super) fn natives(php_version: u32) -> HashMap<String, NativeClass> {
-    let data: Value = serde_json::from_str(include_str!("../../data/native-methods.json"))
-        .expect("data/native-methods.json");
-    let mut classes = data["classes"].as_object().cloned().unwrap_or_default();
-    if php_version < 80500 {
-        for (k, v) in data["php84"].as_object().into_iter().flatten() {
-            classes.insert(k.clone(), v.clone());
-        }
+/// data/native-methods.json's classes for the PHP version, each built on first use: a run reads a few dozen of them,
+/// and building all of them up front cost about 7% of a small project's time and a large share of its peak memory.
+pub(super) struct NativeClasses(HashMap<String, (&'static RawValue, OnceLock<NativeClass>)>);
+
+impl NativeClasses {
+    pub(super) fn get(&self, lower: &str) -> Option<&NativeClass> {
+        let (raw, class) = self.0.get(lower)?;
+        Some(class.get_or_init(|| {
+            native_class(&serde_json::from_str(raw.get()).expect("data/native-methods.json"))
+        }))
     }
-    classes
-        .iter()
-        .filter(|(_, v)| !v.is_null())
-        .map(|(k, v)| (k.clone(), native_class(v)))
-        .collect()
+}
+
+pub(super) fn natives(php_version: u32) -> NativeClasses {
+    #[derive(serde::Deserialize)]
+    struct Data {
+        #[serde(borrow)]
+        classes: HashMap<String, &'static RawValue>,
+        #[serde(borrow)]
+        php84: HashMap<String, &'static RawValue>,
+    }
+    let mut data: Data = serde_json::from_str(include_str!("../../data/native-methods.json"))
+        .expect("data/native-methods.json");
+    if php_version < 80500 {
+        data.classes.extend(data.php84);
+    }
+    NativeClasses(
+        data.classes
+            .into_iter()
+            .filter(|(_, v)| v.get() != "null")
+            .map(|(k, v)| (k, (v, OnceLock::new())))
+            .collect(),
+    )
 }
 
 #[derive(Clone, Copy)]

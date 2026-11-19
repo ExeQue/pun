@@ -112,7 +112,7 @@ pub(crate) use dead_code::conditions_in_traits;
 pub(crate) use dead_code::impure_points;
 pub(crate) use dead_code::{dependency_keys, key_symbol};
 pub(crate) use driver::Switches;
-pub(crate) use driver::{Checks, check_file};
+pub(crate) use driver::{Checks, Natives, check_file};
 pub(crate) use facts::Comments;
 pub(crate) use facts::Facts;
 pub(crate) use identifiers::IDENTIFIERS;
@@ -312,10 +312,11 @@ impl<'a, 'arena> Checker<'a, 'arena> {
     ) -> Option<(&'a [u8], std::borrow::Cow<'a, facts::DocEntry>)> {
         let raw = self.php_doc_comment(id, offset)?;
         let start = raw.as_ptr() as usize - self.file_contents(id)?.as_ptr() as usize;
-        let entry = self
-            .file_facts(id)?
-            .comments
-            .entry(start as u32, (start + raw.len()) as u32);
+        let entry = self.file_facts(id)?.comments.entry(
+            self.file_contents(id)?,
+            start as u32,
+            (start + raw.len()) as u32,
+        );
         Some((
             raw,
             entry.map_or_else(

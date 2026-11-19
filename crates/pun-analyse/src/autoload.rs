@@ -13,6 +13,9 @@ pub(crate) struct Index {
     psr4: Map<Box<[u8]>, Vec<usize>>,
     psr0: Map<Box<[u8]>, Vec<usize>>,
     aliases: Map<Box<[u8]>, Alias>,
+    /// The last segment of every `psr4` and `psr0` key: a name can be a key only if its last segment is one of
+    /// them, which rules out most of a file's words before any full name is built and looked up.
+    tails: HashSet<Box<[u8]>, FixedState>,
 }
 
 struct Alias {
@@ -33,6 +36,7 @@ impl Index {
             psr4: Map::default(),
             psr0: Map::default(),
             aliases: Map::default(),
+            tails: HashSet::default(),
         };
         for (i, file) in files {
             let map = if file.psr0 {
@@ -44,6 +48,9 @@ impl Index {
                 .or_default()
                 .push(i);
         }
+        index.tails = (index.psr4.keys().chain(index.psr0.keys()))
+            .map(|key| tail(key, b'\\').into())
+            .collect();
         let by_name: Map<&str, usize> = aliases
             .iter()
             .enumerate()
@@ -162,6 +169,7 @@ impl Index {
             }
         }
         let mut first_segment = Vec::new();
+        let mut last = Vec::new();
         let mut seen: HashSet<(bool, &[u8]), FixedState> =
             HashSet::with_capacity_and_hasher(names.tokens.len(), FixedState::default());
         let mut name = Vec::new();
@@ -175,18 +183,26 @@ impl Index {
             if !seen.insert((fq, token)) {
                 continue;
             }
-            name.clear();
-            push_name(&mut name, token);
-            self.look(&mut name, out);
-            if fq {
-                continue;
-            }
-            for &ns in &names.namespaces {
+            // The token and the namespaced names end with its last segment, which the psr-0 lookup also splits at
+            // underscores.
+            last.clear();
+            last.extend(tail(token, b'\\').iter().map(u8::to_ascii_lowercase));
+            if self.tails.contains(&last[..]) || self.tails.contains(tail(&last, b'_')) {
                 name.clear();
-                push_name(&mut name, &code[ns.0..ns.1]);
-                name.push(b'\\');
                 push_name(&mut name, token);
                 self.look(&mut name, out);
+                if !fq {
+                    for &ns in &names.namespaces {
+                        name.clear();
+                        push_name(&mut name, &code[ns.0..ns.1]);
+                        name.push(b'\\');
+                        push_name(&mut name, token);
+                        self.look(&mut name, out);
+                    }
+                }
+            }
+            if fq {
+                continue;
             }
             let first = token
                 .iter()
@@ -231,6 +247,14 @@ impl Index {
             out.extend(files);
         }
     }
+}
+
+/// What follows the last `separator` in `name`, or all of it.
+fn tail(name: &[u8], separator: u8) -> &[u8] {
+    &name[name
+        .iter()
+        .rposition(|&b| b == separator)
+        .map_or(0, |i| i + 1)..]
 }
 
 fn push_name(name: &mut Vec<u8>, token: &[u8]) {

@@ -1938,7 +1938,11 @@ mod never_identity_tests {
                 oracle["types"][kind]["description"].as_str().unwrap()
             ));
         }
-        let checks = crate::rules::Checks::of(&project, &codebase);
+        let checks = crate::rules::Checks::of(
+            &project,
+            &codebase,
+            crate::rules::Natives::load(project.php_version.id()),
+        );
         let (errors, _) =
             crate::rules::check_file(&file, &codebase, &checks, &HashMap::new(), &sources);
         let actual: Vec<_> = errors

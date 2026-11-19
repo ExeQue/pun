@@ -24,26 +24,18 @@ use crate::codebase::{Sources, parse};
 use crate::relative_path::RelativePath;
 
 pub(crate) struct Natives {
-    pub(super) classes: HashMap<String, super::overriding::NativeClass>,
+    pub(super) classes: super::overriding::NativeClasses,
     pub(super) throws: super::types::throw_points::ThrowData,
     pub(super) curl_options: Vec<(u32, HashMap<i64, String>)>,
 }
 
 impl Natives {
+    /// Loaded on its own thread while the codebase is built: it needs only the PHP version.
     pub(crate) fn load(php_version: u32) -> Natives {
-        let (classes, (throws, curl_options)) = rayon::join(
-            || super::overriding::natives(php_version),
-            || {
-                (
-                    super::types::throw_points::ThrowData::load(),
-                    super::selector::curl_options(),
-                )
-            },
-        );
         Natives {
-            classes,
-            throws,
-            curl_options,
+            classes: super::overriding::natives(php_version),
+            throws: super::types::throw_points::ThrowData::load(),
+            curl_options: super::selector::curl_options(),
         }
     }
 }
@@ -166,7 +158,7 @@ impl Checks {
 }
 
 impl Checks {
-    pub(crate) fn of(project: &Project, codebase: &CodebaseMetadata) -> Checks {
+    pub(crate) fn of(project: &Project, codebase: &CodebaseMetadata, natives: Natives) -> Checks {
         let internal_members = project.level >= 2
             && project
                 .options
@@ -369,7 +361,7 @@ impl Checks {
         );
         Checks {
             switches,
-            natives: Natives::load(project.php_version.id()),
+            natives,
             level: project.level,
             php_version: project.php_version.id(),
             relative_path: project.relative_path.clone(),

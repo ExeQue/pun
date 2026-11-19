@@ -1510,6 +1510,7 @@ dependencies = [
 name = "punphp-analyse"
 version = "0.2.4"
 dependencies = [
+ "bincode",
  "bitflags 2.13.2",
  "flate2",
  "foldhash",
@@ -1528,11 +1529,13 @@ dependencies = [
  "mago-syntax",
  "mago-word",
  "md-5",
+ "memchr",
  "pcre2",
  "punphp-phpstan",
  "punphp-tokens",
  "rayon",
  "regex-automata",
+ "serde",
  "serde_json",
  "sha1",
  "sha2",

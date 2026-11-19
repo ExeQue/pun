@@ -60,6 +60,8 @@ pub struct Analysis {
 }
 
 pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> {
+    let php_version = project.php_version.id();
+    let natives = std::thread::spawn(move || rules::Natives::load(php_version));
     let (codebase, sources) = codebase::build(project, None)?;
     let files: std::collections::HashMap<_, _> = project
         .analysed
@@ -74,7 +76,8 @@ pub fn analyse_project(project: &Project) -> Result<Analysis, CouldNotReadFile> 
             )
         })
         .collect();
-    let settings = rules::Checks::of(project, &codebase);
+    let natives = natives.join().expect("loading the natives never panics");
+    let settings = rules::Checks::of(project, &codebase, natives);
     let checked: Vec<_> = project
         .analysed
         .par_iter()
