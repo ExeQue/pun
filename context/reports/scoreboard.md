@@ -174,6 +174,47 @@ writes; median of 3 `/usr/bin/time` runs (one for v0.1.0's `check`), same orb.
 The same build on Pinkary's packages: `pun update --no-install` 10.0 s with musl's allocator, 2.05 s with glibc's and
 1.8 s with mimalloc.
 
+### Format against Mago (Linux, 2026-11-19)
+
+8-core / 15 GB orb with a host load of 14-26, profiling builds of
+[`516b388`](https://github.com/shipfastlabs/pun/commit/516b3880acee15201fdb9df14ffbd8b458a6fcd1) (before) and of the format perf commits on top of it
+(after), Mago 1.57.0. `TOOLS=pun-format,mago scripts/bench.py`, median of 3 runs after 1 warm-up, before and after run
+back to back per project. Output is byte-identical: the harness shows 0 differing on pinkary, pinkary-dirty, dev-null
+and laravel-framework, and cli-parity and fuzz-parity pass.
+
+| project | files | pun format before | pun format after | mago fmt |
+|---|---:|---:|---:|---:|
+| laravel-framework | 3158 | 3.33 s, 123 MB | 2.48 s, 138 MB | 1.73 s, 517 MB |
+| pinkary | 484 | 3.29 s, 591 MB | 3.17 s, 581 MB | 0.13 s, 199 MB |
+| pinkary-dirty | 484 | 3.28 s, 598 MB | 3.15 s, 593 MB | 0.14 s, 220 MB |
+| laravel-laravel | 27 | 0.15 s, 29 MB | 0.15 s, 27 MB | 0.14 s, 86 MB |
+| laravel-pint | 336 | 0.38 s, 39 MB | 0.25 s, 35 MB | 0.16 s, 162 MB |
+| larastan | 579 | 0.60 s, 45 MB | 0.51 s, 43 MB | 0.22 s, 218 MB |
+| pest | 633 | 0.65 s, 51 MB | 0.54 s, 46 MB | 0.31 s, 198 MB |
+
+The host's load moves wall times, so CPU time (user + sys, median of 5 interleaved `/usr/bin/time` runs of
+`pun format --test --no-cache` and `mago fmt --check .`) is the steadier comparison:
+
+| project | before | after | mago |
+|---|---:|---:|---:|
+| laravel-framework | 10.46 s | 7.93 s | 5.25 s |
+| laravel-laravel | 0.11 s | 0.07 s | 0.05 s |
+| laravel-pint | 0.41 s | 0.29 s | 0.14 s |
+| larastan | 1.29 s | 0.98 s | 0.38 s |
+| pest | 1.33 s | 1.00 s | 0.42 s |
+
+- Pun uses less memory than Mago on every project except Pinkary, and 24-36% less CPU than before. Mago still takes
+  1.5-2.6x less CPU: it formats in one pretty-printing pass, while Pint parity means running PHP-CS-Fixer's 60-odd
+  fixers in priority order, each over the whole token list. After this work no fixer is above 5% of the PHP pass.
+- Pinkary is Prettier's Node workers formatting the 137 Blade templates (with `laravel/blade` off, Pinkary formats in
+  0.5 s and 45 MB). Mago formats no Blade.
+- What changed: block edges are paired in one pass over the tokens instead of a scan per lookup, and sibling searches
+  skip tokens by kind and first byte before comparing; doc block type parses, phpdoc_align line matches and
+  ordered_imports' re-tokenized declarations are shared by every thread; phpdoc_separation globs, phpdoc_trim and
+  unary_operator_spaces skip work that cannot match; a pattern's plain fallback compiles only for a subject that needs
+  it (half the PCRE2 JIT compiles); rules/mapping.toml is split and converted to JSON at build time (startup config
+  load 55M to 23M instructions); the largest PHP files start first.
+
 ## Package manager benchmark
 
 Pinkary (214 locked packages), Composer 2.11.2 against the musl + mimalloc profiling build of the commit after
