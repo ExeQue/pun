@@ -1473,7 +1473,7 @@ dependencies = [
 
 [[package]]
 name = "punphp"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "agent-detector",
  "anyhow",
@@ -1508,7 +1508,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-analyse"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "bitflags 2.13.2",
  "flate2",
@@ -1542,7 +1542,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-config"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "punphp-phpstan",
@@ -1554,7 +1554,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-extension"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "punphp-config",
  "punphp-fixers",
@@ -1564,7 +1564,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-fixers"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-format"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "memchr",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-harness"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-lint"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "mago-allocator",
  "mago-analyzer",
@@ -1631,7 +1631,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-packages"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "flate2",
  "indexmap",
@@ -1651,7 +1651,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-phpstan"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "indexmap",
  "pcre2",
@@ -1662,14 +1662,14 @@ dependencies = [
 
 [[package]]
 name = "punphp-problem"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "punphp-tokens",
 ]
 
 [[package]]
 name = "punphp-tokens"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "foldhash",
  "libc",
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "punphp-workspace"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "mago-database",
