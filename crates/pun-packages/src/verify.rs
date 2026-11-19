@@ -125,8 +125,12 @@ pub fn missing_requirements(
         ("require", "Required", false),
         ("require-dev", "Required (in require-dev)", true),
     ];
+    let sets = &sets[..if dev_mode { 2 } else { 1 }];
+    if met_by_name(manifest, lock, sets) {
+        return Ok(vec![]);
+    }
     let mut lines = vec![];
-    for (key, description, dev) in &sets[..if dev_mode { 2 } else { 1 }] {
+    for (key, description, dev) in sets {
         let mut arena = vec![];
         let mut repo = locked_repository(lock, *dev, &mut arena)?;
         repo.extend(root_package(manifest, &mut arena)?);
@@ -163,6 +167,42 @@ pub fn missing_requirements(
         ].map(String::from));
     }
     Ok(lines)
+}
+
+/// Whether a locked package of each requirement's own name meets it, so Composer finds it before any alias,
+/// provider or replacer: an install's usual case, settled without loading the locked packages. A version or
+/// constraint that doesn't parse is left to the full check, which reports it.
+fn met_by_name(manifest: &Map<String, Value>, lock: &Lock, sets: &[(&str, &str, bool)]) -> bool {
+    sets.iter().all(|(key, _, dev)| {
+        let packages = lock
+            .packages
+            .iter()
+            .chain(lock.packages_dev.iter().filter(|_| *dev));
+        let mut versions: std::collections::HashMap<String, Vec<Constraint>> =
+            std::collections::HashMap::new();
+        for p in packages {
+            let pretty = p.get("version").and_then(Value::as_str).unwrap_or_default();
+            let version = (p.get("version_normalized").and_then(Value::as_str))
+                .filter(|v| *v != "9999999-dev")
+                .map(String::from)
+                .or_else(|| normalize(pretty).ok());
+            (versions.entry(p.name().to_ascii_lowercase()).or_default())
+                .extend(version.map(|v| Constraint::exact(&v)));
+        }
+        let links = (manifest
+            .get(*key)
+            .and_then(Value::as_object)
+            .into_iter()
+            .flatten())
+        .filter_map(|(k, v)| Some((k.to_ascii_lowercase(), v.as_str()?)));
+        links.into_iter().all(|(target, pretty)| {
+            is_platform(&target)
+                || pretty == "self.version"
+                || constraint::parse(pretty).is_ok_and(|c| {
+                    (versions.get(&target).into_iter().flatten()).any(|v| c.matches(v))
+                })
+        })
+    })
 }
 
 /// `InstalledRepository::findPackagesWithReplacersAndProviders`, first match: the package `name` at a version
