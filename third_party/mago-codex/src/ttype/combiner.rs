@@ -1329,15 +1329,29 @@ fn scrape_type_properties(
                 }
                 true
             });
-            combination.literal_strings.retain(|literal| {
-                if let Some(combined) = combine_string_scalars(TString::known_literal(*literal), string_scalar, codebase) {
+            if let Some(atom) = string_scalar.get_known_literal_atom() {
+                // A literal contains, and is contained by, only a literal with the same value, and the empty and
+                // zero-string simplifications need a nonliteral side: only the same literal can merge.
+                if combination.literal_strings.contains(&atom)
+                    && let Some(combined) = combine_string_scalars(TString::known_literal(atom), string_scalar, codebase)
+                {
+                    combination.literal_strings.remove(&atom);
                     string_scalar = combined;
                     merged = true;
-                    false
-                } else {
-                    true
                 }
-            });
+            } else {
+                combination.literal_strings.retain(|literal| {
+                    if let Some(combined) =
+                        combine_string_scalars(TString::known_literal(*literal), string_scalar, codebase)
+                    {
+                        string_scalar = combined;
+                        merged = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+            }
             if !merged {
                 break;
             }

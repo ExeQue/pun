@@ -1248,3 +1248,13 @@ GenericStaticType keeps `Collection<(int|string), mixed>`.
 `$post->comments->first()->id` reads `Comment::$id` instead of an undefined property of `Model`. Unions with a third
 member, generic arrays (`array<X>`) and other collection classes are unchanged. Type/PunGenericEloquentUnionsTest.json in
 pun-analyse's larastan-types fixtures checks it against PHPStan 2.3.6 with Larastan 3.15.0.
+
+## Literal strings combine in linear time
+
+`ttype/combiner.rs` `scrape_type_properties()`: a known literal string merges only with the same literal from
+`literal_strings` (looked up, not scanned). Two different literals never contain each other, and the empty-string and
+`'0'` simplifications in `combine_string_scalars()` need a side that is not a literal, so the result is the same.
+Upstream ran `retain()` over every collected literal for each new one, which is quadratic: Laravel's
+`Illuminate\Translation\MessageSelector` (the locale lists of its plural rules) spent about three quarters of its
+analysis time there.
+Nonliteral strings still go through `retain()`.
