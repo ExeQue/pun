@@ -166,25 +166,91 @@ static LEXER: LazyLock<pcre2::bytes::Regex> = LazyLock::new(|| {
         .expect("phpdoc lexer regex")
 });
 
+/// The token [`LEXER`] matches at `offset` when it starts with a byte that only one alternative can match first:
+/// whitespace, a name, an end of line or a single-byte punctuator, most of a docblock. `None` leaves the rest to the
+/// regex, whose PCRE2 call per token was most of the lexer's time.
+fn common_token(input: &[u8], offset: usize) -> Option<(Tok, usize)> {
+    let start = |b: u8| b.is_ascii_alphabetic() || b == b'_' || b >= 0x80;
+    let at = |i: usize| input.get(i).copied();
+    let single = match input[offset] {
+        b'\t' | b' ' => {
+            let end = offset
+                + input[offset..]
+                    .iter()
+                    .take_while(|&&b| b == b'\t' || b == b' ')
+                    .count();
+            return Some((Tok::Ws, end));
+        }
+        b'\n' | b'\r' => {
+            let mut end = offset + usize::from(input[offset] == b'\r');
+            if at(end) != Some(b'\n') {
+                return None;
+            }
+            end += 1;
+            end += input[end..]
+                .iter()
+                .take_while(|&&b| b == b'\t' || b == b' ')
+                .count();
+            if at(end) == Some(b'*') && at(end + 1) != Some(b'/') {
+                end += 1 + usize::from(at(end + 1) == Some(b' '));
+            }
+            return Some((Tok::Eol, end));
+        }
+        b'|' => Tok::Union,
+        b'?' => Tok::Nullable,
+        b'!' => Tok::Negated,
+        b'(' => Tok::OpenParen,
+        b')' => Tok::CloseParen,
+        b'<' => Tok::OpenAngle,
+        b'>' => Tok::CloseAngle,
+        b'[' => Tok::OpenSquare,
+        b']' => Tok::CloseSquare,
+        b'{' => Tok::OpenCurly,
+        b'}' => Tok::CloseCurly,
+        b',' => Tok::Comma,
+        _ => {
+            let mut end = offset;
+            loop {
+                let name = end + usize::from(at(end) == Some(b'\\'));
+                if !at(name).is_some_and(start) {
+                    break;
+                }
+                end = name
+                    + 1
+                    + input[name + 1..]
+                        .iter()
+                        .take_while(|&&b| start(b) || b.is_ascii_digit() || b == b'-')
+                        .count();
+            }
+            return (end > offset).then_some((Tok::Ident, end));
+        }
+    };
+    Some((single, offset + 1))
+}
+
 fn tokenize(input: &[u8]) -> Vec<(Tok, usize, usize, usize)> {
     let re = &*LEXER;
     let mut tokens = Vec::new();
     let mut offset = 0;
     let mut line = 1;
     let mut locs = re.capture_locations();
-    while offset < input.len()
-        && re
+    while offset < input.len() {
+        let (kind, end) = if let Some(token) = common_token(input, offset) {
+            token
+        } else if re
             .captures_read_at(&mut locs, input, offset)
             .ok()
             .flatten()
             .is_some()
-    {
-        let (start, end) = locs.get(0).expect("whole match");
-        let group = (1..=PATTERNS.len())
-            .find(|&g| locs.get(g).is_some())
-            .expect("one alternative");
-        let kind = PATTERNS[group - 1].0;
-        tokens.push((kind, start, end, line));
+        {
+            let group = (1..=PATTERNS.len())
+                .find(|&g| locs.get(g).is_some())
+                .expect("one alternative");
+            (PATTERNS[group - 1].0, locs.get(0).expect("whole match").1)
+        } else {
+            break;
+        };
+        tokens.push((kind, offset, end, line));
         if kind == Tok::Eol {
             line += 1;
         }
