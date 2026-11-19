@@ -181,13 +181,10 @@ fn met_by_name(manifest: &Map<String, Value>, lock: &Lock, sets: &[(&str, &str, 
         let mut versions: std::collections::HashMap<String, Vec<Constraint>> =
             std::collections::HashMap::new();
         for p in packages {
+            // Composer's Locker writes no `version_normalized`.
             let pretty = p.get("version").and_then(Value::as_str).unwrap_or_default();
-            let version = (p.get("version_normalized").and_then(Value::as_str))
-                .filter(|v| *v != "9999999-dev")
-                .map(String::from)
-                .or_else(|| normalize(pretty).ok());
             (versions.entry(p.name().to_ascii_lowercase()).or_default())
-                .extend(version.map(|v| Constraint::exact(&v)));
+                .extend(normalize(pretty).ok().map(|v| Constraint::exact(&v)));
         }
         let links = (manifest
             .get(*key)

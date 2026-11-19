@@ -123,5 +123,8 @@ fn reports_missing_requirements_as_composer() {
         lines("U", true),
         composer("U", "composer-output-strict.txt")
     );
+    // V: met only through the branch alias, a replacer and a provider; Composer printed no line and went on.
+    assert_eq!(lines("V", true), composer("V", "composer-output.txt"));
+    assert_eq!(lines("V", true), Vec::<String>::new());
     assert_eq!(lines("A", true), Vec::<String>::new());
 }

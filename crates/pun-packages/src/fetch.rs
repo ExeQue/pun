@@ -721,6 +721,15 @@ mod tests {
                     false
                 }
                 "10.0.0.9" => false,
+                // Slow: fails after the next attempt has started, which connects later still.
+                "2001:db8::3" => {
+                    std::thread::sleep(Duration::from_millis(300));
+                    false
+                }
+                "10.0.0.2" => {
+                    std::thread::sleep(Duration::from_millis(500));
+                    true
+                }
                 _ => true,
             }
         }
@@ -737,6 +746,10 @@ mod tests {
         let mut addrs = [v4(9), v4(1)];
         prefer_reachable(&mut addrs, delay, give_up, connect);
         assert_eq!(addrs, [v4(1), v4(9)]);
+        // Every attempt started and one failed: the race waits on for the last.
+        let mut addrs = [v6(3), v4(2)];
+        prefer_reachable(&mut addrs, delay, give_up, connect);
+        assert_eq!(addrs, [v4(2), v6(3)]);
 
         // Nothing connects: the order stays, after every attempt failed or the race gave up.
         let mut addrs = [v4(9), v6(1)];

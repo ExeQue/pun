@@ -353,27 +353,10 @@ impl<'de> Deserialize<'de> for RawVersion<'de> {
     }
 }
 
-/// A `Key` as serde reads it: borrowed when it can be.
-struct KeyOf<'a>(Key<'a>);
-
-impl<'de> Deserialize<'de> for KeyOf<'de> {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
-        struct Name;
-        impl<'de> serde::de::Visitor<'de> for Name {
-            type Value = KeyOf<'de>;
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("a field name")
-            }
-            fn visit_borrowed_str<E>(self, v: &'de str) -> std::result::Result<Self::Value, E> {
-                Ok(KeyOf(Key::Borrowed(v)))
-            }
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E> {
-                Ok(KeyOf(Key::Owned(v.to_string())))
-            }
-        }
-        d.deserialize_str(Name)
-    }
-}
+/// A `Key` as serde reads it: borrowed when it can be (serde's `borrow` on a `Cow`).
+#[derive(Deserialize)]
+#[serde(transparent)]
+struct KeyOf<'a>(#[serde(borrow)] std::borrow::Cow<'a, str>);
 
 /// Calls `each` with the versions of `name` in a metadata file's `packages`, expanded from Composer's minified format
 /// (each version lists only the fields that changed, `__unset` removing one) as `expand` does, in place. Entries that
@@ -443,27 +426,17 @@ fn materialize(version: &RawVersion<'_>, fields: &[&str]) -> Result<Map<String, 
 /// `transport-options`, and the repository's `notification-url` when the version has none, each value as the
 /// metadata wrote it.
 fn version_text(version: &RawVersion<'_>, notify: Option<&str>) -> Result<std::sync::Arc<str>> {
-    let mut text = String::from("{");
-    for (k, v) in &version.0 {
-        if k == "transport-options" {
-            continue;
-        }
-        if text.len() > 1 {
-            text.push(',');
-        }
-        text.push_str(&serde_json::to_string(k)?);
-        text.push(':');
-        text.push_str(v.get());
+    let mut fields = vec![];
+    for (k, v) in version.0.iter().filter(|(k, _)| k != "transport-options") {
+        fields.push(format!("{}:{}", serde_json::to_string(k)?, v.get()));
     }
     if let Some(n) = notify.filter(|_| version.get("notification-url").is_none()) {
-        if text.len() > 1 {
-            text.push(',');
-        }
-        text.push_str("\"notification-url\":");
-        text.push_str(&serde_json::to_string(n)?);
+        fields.push(format!(
+            "\"notification-url\":{}",
+            serde_json::to_string(n)?
+        ));
     }
-    text.push('}');
-    Ok(std::sync::Arc::from(text))
+    Ok(std::sync::Arc::from(format!("{{{}}}", fields.join(","))))
 }
 
 impl Repository for ComposerRepository<'_> {
@@ -519,16 +492,14 @@ impl Repository for ComposerRepository<'_> {
                         Some(v) if v != "9999999-dev" => v,
                         _ => normalize(&pretty)?,
                     };
-                    if loaded.get(name).is_some_and(|l| l.contains(&normalized)) {
-                        return Ok(());
-                    }
+                    let known = loaded.get(name).is_some_and(|l| l.contains(&normalized));
                     let branch = pretty.starts_with("dev-") || pretty.ends_with("-dev");
-                    let alias = if branch {
+                    let alias = if branch && !known {
                         branch_alias(&materialize(raw, &["version", "extra"])?).map(|a| a.0)
                     } else {
                         None
                     };
-                    if !acceptable(constraint, name, &normalized, alias, stabilities) {
+                    if known || !acceptable(constraint, name, &normalized, alias, stabilities) {
                         return Ok(());
                     }
                     // The fields `load` reads; the rest stays text.
@@ -642,6 +613,35 @@ mod tests {
         );
     }
 
+    /// `raw_versions` reads what `expands_as_composer` expands: the same versions, an entry that is not an object
+    /// skipped, and a field name with an escape read as its text.
+    #[test]
+    fn raw_versions_expand_as_composer() {
+        let packages = RawValue::from_string(
+            r#"{"a/a": [{"name": "a/a", "version": "2.0", "require": {"php": ">=8"}, "extra": {"x": 1}}, "oops", {"version": "1.0", "extra": "__unset"}, {"version": "0.9", "requir\u0065": {"php": ">=7"}}]}"#
+                .to_string(),
+        )
+        .unwrap();
+        let mut got = vec![];
+        let expanded = raw_versions(&packages, "a/a", true, |v| {
+            let fields: Vec<String> = (v.0.iter())
+                .map(|(k, val)| format!("{k}={}", val.get()))
+                .collect();
+            got.push(fields.join(" "));
+            Ok(())
+        });
+        assert!(matches!(expanded, Some(Ok(()))));
+        assert_eq!(
+            got,
+            [
+                r#"name="a/a" version="2.0" require={"php": ">=8"} extra={"x": 1}"#,
+                r#"name="a/a" version="1.0" require={"php": ">=8"}"#,
+                r#"name="a/a" version="0.9" require={"php": ">=7"}"#,
+            ]
+        );
+        assert!(raw_versions(&packages, "b/b", true, |_| Ok(())).is_none());
+    }
+
     /// The cached copy of a download keeps the body's text and adds the stamp once, as the document would hold it.
     #[test]
     fn stamps_a_download_for_the_cache() {
@@ -662,6 +662,10 @@ mod tests {
             r#"{"last-modified":"Tue, 01 Sep 2026 10:00:00 GMT","x":1}"#
         );
         assert_eq!(stamp(r#"{"x": 1}"#, None), r#"{"x": 1}"#);
+        assert_eq!(
+            stamp(r#"{"last-modified": "old"}"#, None),
+            r#"{"last-modified":"old"}"#
+        );
         assert_eq!(
             stamped(b"[1]".to_vec(), m(), "u").unwrap_err().to_string(),
             "u does not hold a JSON object"

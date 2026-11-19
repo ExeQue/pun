@@ -1,0 +1,9 @@
+{
+    "name": "acme/app",
+    "version": "1.0.0",
+    "require": {
+        "a/lib": "^1.0",
+        "d/part": "1.*",
+        "g/api": "^1.0"
+    }
+}
