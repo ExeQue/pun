@@ -5,7 +5,6 @@ use crate::constraint::Constraint;
 use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetched, Fetcher};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
-use indexmap::IndexMap;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -279,10 +278,29 @@ fn acceptable(
 /// One version's fields in their order, each still JSON text: most versions in a metadata file fail the constraint,
 /// and only their `version`, `version_normalized` and (for a branch) `extra` are read before that.
 #[derive(Clone)]
-struct RawVersion<'a>(IndexMap<Key<'a>, &'a RawValue>);
+struct RawVersion<'a>(Vec<(Key<'a>, &'a RawValue)>);
 
 /// A field name, borrowed from the metadata unless it has escapes.
 type Key<'a> = std::borrow::Cow<'a, str>;
+
+/// A version holds a few dozen fields at most: a list searched in order beats a hash map here.
+impl<'a> RawVersion<'a> {
+    fn get(&self, key: &str) -> Option<&'a RawValue> {
+        self.0.iter().find(|(k, _)| k == key).map(|f| f.1)
+    }
+
+    /// A repeated key keeps its first place and its last value, as `serde_json::Map` keeps it.
+    fn set(&mut self, key: Key<'a>, value: &'a RawValue) {
+        match self.0.iter_mut().find(|(k, _)| *k == key) {
+            Some(field) => field.1 = value,
+            None => self.0.push((key, value)),
+        }
+    }
+
+    fn remove(&mut self, key: &str) {
+        self.0.retain(|(k, _)| k != key);
+    }
+}
 
 impl<'de> Deserialize<'de> for RawVersion<'de> {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
@@ -296,12 +314,11 @@ impl<'de> Deserialize<'de> for RawVersion<'de> {
                 self,
                 mut map: A,
             ) -> std::result::Result<Self::Value, A::Error> {
-                // A repeated key keeps its first place and its last value, as `serde_json::Map` keeps it.
-                let mut fields = IndexMap::new();
+                let mut fields = RawVersion(Vec::with_capacity(map.size_hint().unwrap_or(16)));
                 while let Some((k, v)) = map.next_entry::<KeyOf<'de>, &'de RawValue>()? {
-                    fields.insert(k.0, v);
+                    fields.set(k.0, v);
                 }
-                Ok(RawVersion(fields))
+                Ok(fields)
             }
         }
         d.deserialize_map(Fields)
@@ -330,43 +347,45 @@ impl<'de> Deserialize<'de> for KeyOf<'de> {
     }
 }
 
-/// The versions of `name` in a metadata file's `packages`, expanded from Composer's minified format (each version
-/// lists only the fields that changed, `__unset` removing one) as `expand` does. Entries that are not objects are
-/// skipped.
+/// Calls `each` with the versions of `name` in a metadata file's `packages`, expanded from Composer's minified format
+/// (each version lists only the fields that changed, `__unset` removing one) as `expand` does, in place. Entries that
+/// are not objects are skipped. `None` when the file has no list for `name`.
 fn raw_versions<'a>(
     packages: &'a RawValue,
     name: &str,
     minified: bool,
-) -> Option<Vec<RawVersion<'a>>> {
+    mut each: impl FnMut(&RawVersion<'a>) -> Result<()>,
+) -> Option<Result<()>> {
     let all: HashMap<String, &'a RawValue> = serde_json::from_str(packages.get()).ok()?;
     let listed: Vec<&'a RawValue> = serde_json::from_str(all.get(name)?.get()).ok()?;
-    let mut out: Vec<RawVersion<'a>> = vec![];
+    let mut current: Option<RawVersion<'a>> = None;
     for v in listed {
         let Ok(v) = serde_json::from_str::<RawVersion<'a>>(v.get()) else {
             continue;
         };
-        let next = match out.last() {
+        let next = match current.as_mut() {
             Some(previous) if minified => {
-                let mut next = previous.clone();
                 for (k, val) in v.0 {
                     if val.get() == "\"__unset\"" {
-                        next.0.shift_remove(k.as_ref());
+                        previous.remove(&k);
                     } else {
-                        next.0.insert(k, val);
+                        previous.set(k, val);
                     }
                 }
-                next
+                previous
             }
-            _ => v,
+            _ => current.insert(v),
         };
-        out.push(next);
+        if let Err(e) = each(next) {
+            return Some(Err(e));
+        }
     }
-    Some(out)
+    Some(Ok(()))
 }
 
 /// A field of a raw version as a string; `None` when it is missing or not a string.
 fn raw_str(version: &RawVersion<'_>, key: &str) -> Option<String> {
-    serde_json::from_str(version.0.get(key)?.get()).ok()
+    serde_json::from_str(version.get(key)?.get()).ok()
 }
 
 /// The fields of a version `load` reads.
@@ -408,7 +427,7 @@ fn version_text(version: &RawVersion<'_>, notify: Option<&str>) -> Result<std::s
         text.push(':');
         text.push_str(v.get());
     }
-    if let Some(n) = notify.filter(|_| !version.0.contains_key("notification-url")) {
+    if let Some(n) = notify.filter(|_| version.get("notification-url").is_none()) {
         if text.len() > 1 {
             text.push(',');
         }
@@ -464,7 +483,7 @@ impl Repository for ComposerRepository<'_> {
             .map(|(file, name, constraint)| {
                 let data = self.files.get(file)?.as_ref()?;
                 let minified = data.minified.as_deref() == Some("composer/2.0");
-                let versions = raw_versions(data.packages.as_ref()?, name, minified)?;
+
                 let (mut local, mut order) = (vec![], vec![]);
                 let mut take = |raw: &RawVersion<'_>| -> Result<()> {
                     let pretty = raw_str(raw, "version").unwrap_or_default();
@@ -492,7 +511,7 @@ impl Repository for ComposerRepository<'_> {
                     order.extend(loaded);
                     Ok(())
                 };
-                let expanded = versions.iter().try_for_each(&mut take);
+                let expanded = raw_versions(data.packages.as_ref()?, name, minified, &mut take)?;
                 Some(expanded.map(|()| (local, order)))
             })
             .collect();

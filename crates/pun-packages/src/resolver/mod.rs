@@ -1,6 +1,7 @@
 pub mod composer_repo;
 pub mod explain;
 pub mod filters;
+mod fx;
 pub mod locker;
 pub mod optimizer;
 pub mod package;

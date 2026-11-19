@@ -1,4 +1,5 @@
 use super::filters::{Advisory, Filters, ListEntry};
+use super::fx;
 use super::package::{Origin, Package, alias_package, load};
 use crate::constraint::{Bound, Constraint, Op};
 use crate::error::{Result, bail};
@@ -423,16 +424,16 @@ pub struct PoolBuilder<'a> {
     pub ignored_types: &'a [&'a str],
     pub filters: &'a Filters,
     pub now: i64,
-    alias_map: HashMap<usize, Vec<(usize, usize)>>,
-    to_load: IndexMap<String, Constraint>,
-    loaded: HashMap<String, Constraint>,
+    alias_map: fx::HashMap<usize, Vec<(usize, usize)>>,
+    to_load: fx::IndexMap<String, Constraint>,
+    loaded: fx::HashMap<String, Constraint>,
     loaded_per_repo: HashMap<usize, Loaded>,
-    packages: IndexMap<usize, usize>,
+    packages: fx::IndexMap<usize, usize>,
     unacceptable: Vec<usize>,
-    skipped: HashMap<String, Vec<usize>>,
+    skipped: fx::HashMap<String, Vec<usize>>,
     path_unlocked: HashSet<String>,
-    max_extended: HashSet<String>,
-    covered: HashMap<String, HashSet<Constraint>>,
+    max_extended: fx::HashSet<String>,
+    covered: fx::HashMap<String, fx::HashSet<Constraint>>,
     counter: usize,
 }
 
@@ -452,16 +453,16 @@ impl<'a> PoolBuilder<'a> {
             ignored_types,
             filters,
             now,
-            alias_map: HashMap::new(),
-            to_load: IndexMap::new(),
-            loaded: HashMap::new(),
+            alias_map: fx::HashMap::default(),
+            to_load: fx::IndexMap::default(),
+            loaded: fx::HashMap::default(),
             loaded_per_repo: HashMap::new(),
-            packages: IndexMap::new(),
+            packages: fx::IndexMap::default(),
             unacceptable: vec![],
-            skipped: HashMap::new(),
+            skipped: fx::HashMap::default(),
             path_unlocked: HashSet::new(),
-            max_extended: HashSet::new(),
-            covered: HashMap::new(),
+            max_extended: fx::HashSet::default(),
+            covered: fx::HashMap::default(),
             counter: 0,
         }
     }
@@ -698,21 +699,29 @@ impl<'a> PoolBuilder<'a> {
             self.packages.insert(index, alias);
             self.alias_map.entry(base).or_default().push((index, alias));
         }
-        let requires = arena[p].requires.clone();
-        for link in &requires {
-            if self.skipped.contains_key(&link.target) {
-                if propagate && request.transitive != Transitive::OnlyListed {
-                    let skipped_roots = self.skipped_root_requires(arena, request, &link.target);
-                    if request.transitive == Transitive::All || skipped_roots.is_empty() {
-                        self.unlock(arena, request, &link.target);
+        // A link to a skipped package can unlock it, which changes the arena; any other only marks its target.
+        if (arena[p].requires.iter()).any(|l| self.skipped.contains_key(&l.target)) {
+            let requires = arena[p].requires.clone();
+            for link in &requires {
+                if self.skipped.contains_key(&link.target) {
+                    if propagate && request.transitive != Transitive::OnlyListed {
+                        let skipped_roots =
+                            self.skipped_root_requires(arena, request, &link.target);
+                        if request.transitive == Transitive::All || skipped_roots.is_empty() {
+                            self.unlock(arena, request, &link.target);
+                            self.mark(request, &link.target, &link.constraint);
+                        }
+                    } else if self.path_unlocked.contains(&link.target)
+                        && !self.loaded.contains_key(&link.target)
+                    {
                         self.mark(request, &link.target, &link.constraint);
                     }
-                } else if self.path_unlocked.contains(&link.target)
-                    && !self.loaded.contains_key(&link.target)
-                {
+                } else {
                     self.mark(request, &link.target, &link.constraint);
                 }
-            } else {
+            }
+        } else {
+            for link in &arena[p].requires {
                 self.mark(request, &link.target, &link.constraint);
             }
         }

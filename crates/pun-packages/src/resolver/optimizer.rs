@@ -1,10 +1,9 @@
+use super::fx::{HashMap, HashSet, IndexMap, IndexSet};
 use super::package::{Link, Package};
 use super::policy::Policy;
 use super::pool::{Pool, Request};
 use crate::constraint::Constraint;
-use indexmap::{IndexMap, IndexSet};
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
 
 type ByName<'a> = HashMap<&'a str, IndexSet<&'a Constraint>>;
 
@@ -19,12 +18,12 @@ type Dependencies<'a> = Vec<(u8, &'a str, &'a Constraint)>;
 pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
     let arena = &pool.arena;
 
-    let mut requires = ByName::new();
-    let mut conflicts = ByName::new();
+    let mut requires = ByName::default();
+    let mut conflicts = ByName::default();
     for (name, c) in &request.requires {
         add(&mut requires, name, c);
     }
-    let mut aliases: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut aliases: HashMap<usize, Vec<usize>> = HashMap::default();
     for &p in &pool.ids {
         let package = &arena[p];
         for link in &package.requires {
@@ -38,12 +37,12 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
         }
     }
 
-    let mut pinned: HashMap<&str, Vec<Constraint>> = HashMap::new();
+    let mut pinned: HashMap<&str, Vec<Constraint>> = HashMap::default();
     for &p in request.fixed.iter().chain(&request.locked) {
         let package = &arena[p];
         (pinned.entry(&package.name).or_default()).push(Constraint::exact(&package.version));
     }
-    let mut irremovable = HashSet::new();
+    let mut irremovable = HashSet::default();
     for &p in &pool.ids {
         let Some(versions) = pinned.get(arena[p].name.as_str()) else {
             continue;
@@ -97,10 +96,10 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
             (p, dependencies(package), keys)
         })
         .collect();
-    let mut remove: HashSet<usize> = HashSet::new();
-    let mut same_dependencies: HashMap<Dependencies, usize> = HashMap::new();
+    let mut remove: HashSet<usize> = HashSet::default();
+    let mut same_dependencies: HashMap<Dependencies, usize> = HashMap::default();
     let mut groups: IndexMap<&str, IndexMap<GroupKey, IndexMap<usize, Vec<usize>>>> =
-        IndexMap::new();
+        IndexMap::default();
     for (p, dependencies, keys) in grouped {
         remove.insert(p);
         let next = same_dependencies.len();
@@ -139,7 +138,7 @@ pub fn optimize(pool: &Pool, request: &Request, policy: &Policy) -> Vec<usize> {
     }
 
     if !request.locked.is_empty() {
-        let mut candidates: HashMap<&str, Vec<usize>> = HashMap::new();
+        let mut candidates: HashMap<&str, Vec<usize>> = HashMap::default();
         for &p in &pool.ids {
             let package = &arena[p];
             if irremovable.contains(&p)
