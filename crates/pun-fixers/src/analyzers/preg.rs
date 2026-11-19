@@ -1,5 +1,5 @@
 use pcre2_sys::*;
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::ffi::{c_int, c_void};
 use std::hash::{BuildHasherDefault, Hasher};
@@ -113,7 +113,7 @@ type PatternMap<V> = HashMap<Vec<u8>, V, BuildHasherDefault<EndsHasher>>;
 
 thread_local! {
     static CACHE: RefCell<PatternMap<Option<Rc<Regex>>>> = RefCell::default();
-    static VARIANTS: RefCell<PatternMap<[Option<Rc<Regex>>; 2]>> = RefCell::default();
+    static VARIANTS: RefCell<PatternMap<Variants>> = RefCell::default();
     /// Never freed, so it outlives every match context on this thread that points at it. NULL (out of memory) makes
     /// `pcre2_jit_stack_assign` fall back to PCRE2's 32 KB machine-stack default.
     // SAFETY: a plain allocation with the default (malloc) general context.
@@ -481,27 +481,34 @@ fn remove_utf8_modifier(pattern: &[u8]) -> Vec<u8> {
     out
 }
 
-fn variants(pattern: &[u8], cached: bool) -> [Option<Rc<Regex>>; 2] {
+/// The `u` and the plain form of `pattern`, each compiled the first time `with_fallback` reaches it: the plain one
+/// only runs on a subject the `u` one refuses, so most patterns never compile it.
+type Variants = Rc<[OnceCell<Option<Rc<Regex>>>; 2]>;
+
+fn variants(pattern: &[u8], cached: bool) -> Variants {
     if !cached {
-        return [
-            compile_uncached(&add_utf8_modifier(pattern))
-                .ok()
-                .map(Rc::new),
-            compile_uncached(&remove_utf8_modifier(pattern))
-                .ok()
-                .map(Rc::new),
-        ];
+        return Variants::default();
     }
     VARIANTS
         .with(|v| v.borrow().get(pattern).cloned())
         .unwrap_or_else(|| {
-            let v = [
-                compile(&add_utf8_modifier(pattern)),
-                compile(&remove_utf8_modifier(pattern)),
-            ];
-            VARIANTS.with(|m| m.borrow_mut().insert(pattern.to_vec(), v.clone()));
+            let v = Variants::default();
+            VARIANTS.with(|m| m.borrow_mut().insert(pattern.to_vec(), Rc::clone(&v)));
             v
         })
+}
+
+fn variant(pattern: &[u8], utf: bool, cached: bool) -> Option<Rc<Regex>> {
+    let pattern = if utf {
+        add_utf8_modifier(pattern)
+    } else {
+        remove_utf8_modifier(pattern)
+    };
+    if cached {
+        compile(&pattern)
+    } else {
+        compile_uncached(&pattern).ok().map(Rc::new)
+    }
 }
 
 fn with_fallback<T>(
@@ -513,8 +520,9 @@ fn with_fallback<T>(
     f: impl Fn(&Regex) -> Result<T, i32>,
 ) -> T {
     let mut error = None;
-    for re in variants(pattern, cached) {
-        let Some(re) = re else {
+    let variants = variants(pattern, cached);
+    for (slot, utf) in variants.iter().zip([true, false]) {
+        let Some(re) = slot.get_or_init(|| variant(pattern, utf, cached)) else {
             error = None;
             continue;
         };
@@ -524,7 +532,7 @@ fn with_fallback<T>(
         {
             continue;
         }
-        match f(&re) {
+        match f(re) {
             Ok(r) => return r,
             Err(rc) => error = Some(rc),
         }
@@ -1183,6 +1191,9 @@ mod tests {
         );
         assert_eq!(sizes(), before);
         Preg::match_groups(r"/@param\s+(?<v>\$\w+)/", b" * @param $x");
+        // The plain form compiles only for a subject the `u` form refuses.
+        assert_eq!(sizes(), (before.0 + 1, before.1 + 1));
+        Preg::match_groups(r"/@param\s+(?<v>\$\w+)/", b" * @param $\xff");
         assert_eq!(sizes(), (before.0 + 2, before.1 + 1));
     }
 
