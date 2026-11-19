@@ -664,13 +664,29 @@ fn dump_autoloader(
     let vendor = &project.dirs.vendor;
     let options = autoload_options(config, vendor, content_hash, o, !o.no_dev)?;
     events("pre-autoload-dump")?;
-    let dumped = autoload::dump(
-        &project.dir_str,
-        vendor,
-        project.manifest,
-        packages,
-        &options,
-    )?;
+    let kept = (o.cache.as_deref()).zip(dump_key(project, packages, &options));
+    let kept = kept.map(|(cache, key)| {
+        let file =
+            (cache.join("autoload").join("v1")).join(format!("{}.txt", sha1(vendor.as_bytes())));
+        (file, key)
+    });
+    let dumped = if let Some(dumped) =
+        (kept.as_ref()).and_then(|(file, key)| autoload::Dumped::load(file, key))
+    {
+        dumped
+    } else {
+        let dumped = autoload::dump(
+            &project.dir_str,
+            vendor,
+            project.manifest,
+            packages,
+            &options,
+        )?;
+        if let Some((file, key)) = &kept {
+            dumped.save(file, key);
+        }
+        dumped
+    };
     report.classes = dumped.classes;
     report.warnings.extend(dumped.warnings);
     for file in dumped.files {
@@ -690,6 +706,56 @@ fn dump_autoloader(
     }
     events("post-autoload-dump")?;
     Ok(written)
+}
+
+/// What the autoloader's files are made of, after the no-op fingerprint, so a dump with the same inputs is the one
+/// kept from the last dump of this vendor directory: the options, composer.json, every package's metadata and
+/// install path, and the files under the root's autoload paths. A package from the store is taken not to change at
+/// one version (as the class map cache takes it); the directory of any other is stamped like the root's paths.
+/// `None` when the dump is not the same twice: an APCu prefix picked at random.
+fn dump_key(
+    project: &Project,
+    packages: &[Installed],
+    options: &autoload::Options,
+) -> Option<String> {
+    if options.apcu == Apcu::RandomPrefix {
+        return None;
+    }
+    let mut s = format!("pun {}\n", env!("CARGO_PKG_VERSION"));
+    let exe = std::env::current_exe().unwrap_or_default();
+    let _ = writeln!(s, "{}", fingerprint::stamp(&exe, true));
+    let _ = writeln!(
+        s,
+        "{}\n{}\n{options:?}",
+        project.dir_str, project.dirs.vendor
+    );
+    let _ = writeln!(s, "{}", Value::Object(project.manifest.clone()));
+    let mut seen = vec![];
+    let mut trees: Vec<PathBuf> = vec![];
+    for p in packages {
+        let _ = writeln!(
+            s,
+            "{:?} {} {}",
+            p.path,
+            p.dev,
+            Value::Object(p.package.0.clone())
+        );
+        let from_store = Store::key(&p.package).is_some()
+            && (p.package.0.get("installation-source")).is_none_or(|s| s == "dist");
+        if let (Some(path), false) = (&p.path, from_store) {
+            trees.push(PathBuf::from(path));
+        }
+    }
+    let kinds = ["autoload", "autoload-dev"];
+    for kind in &kinds[..if options.dev_mode { 2 } else { 1 }] {
+        leaves(project.manifest.get(*kind), &mut |path| {
+            trees.push(project.dir.join(path));
+        });
+    }
+    for tree in trees {
+        fingerprint::tree(&tree, &mut s, &mut seen);
+    }
+    Some(sha1(s.as_bytes()))
 }
 
 fn download_threads(env: Option<String>, cores: usize) -> usize {

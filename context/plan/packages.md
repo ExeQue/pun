@@ -247,7 +247,9 @@ that Composer has no key for live in pun.toml (§6), as Bun keeps them in bunfig
    on btrfs and XFS, `clonefile` on APFS, copies elsewhere) and `copy` avoid that, through the flag or
    `PUN_LINK_MODE` (uv's names). The classes scanned in a stored package are cached too
    (`$PUN_CACHE_DIR/classes/v1/`), so the class map rescans only the root's paths, path repositories and source
-   installs. Not built: a pun.toml key for the link mode.
+   installs. The last generated autoloader of each vendor directory is kept (`$PUN_CACHE_DIR/autoload/v1/`, keyed by
+   the options, composer.json, the packages' metadata and paths, and the stamps of the root's autoload paths and of
+   every package not from the store), so a warm install or a repeated `dump-autoload` writes it without a scan. Not built: a pun.toml key for the link mode.
 3. **`--locked` and `--offline`, as Cargo has them.** After step 4, not built. `pun install --locked` fails when
    there is no composer.lock or its `content-hash` does not match composer.json (Composer only warns). It is the default when
    `CI` is set, as pnpm's `--frozen-lockfile` is. `--offline` resolves and installs from the cache only and names the

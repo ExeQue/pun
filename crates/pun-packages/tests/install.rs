@@ -6,7 +6,7 @@ use pun_packages::lock::LockedPackage;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
 
@@ -611,14 +611,31 @@ fn a_no_op_install_is_skipped_until_an_input_changes() {
     assert_eq!(std::fs::read(&classmap).unwrap(), want);
     repaired.fingerprint.unwrap().save();
 
+    // With the same inputs, the dump is the one kept from the last: what was kept is what gets written.
+    let kept_dir = tmp.join("pun-cache/autoload/v1");
+    let kept: Vec<PathBuf> = (std::fs::read_dir(&kept_dir).unwrap())
+        .map(|e| e.unwrap().path())
+        .collect();
+    assert_eq!(kept.len(), 1);
+    let text = std::fs::read_to_string(&kept[0]).unwrap();
+    std::fs::write(&kept[0], text.replace("/src/Added.php", "/src/Kept.php")).unwrap();
+    std::fs::remove_file(&classmap).unwrap();
+    run(&tmp, &lock, &o).fingerprint.unwrap().save();
+    assert!(
+        String::from_utf8(std::fs::read(&classmap).unwrap())
+            .unwrap()
+            .contains("/src/Kept.php")
+    );
+
     // A path repository's source is an input, so a class added there (seen through a symlinked package) is found.
     std::fs::write(
         tmp.join("packages/lib/src/Extra.php"),
-        "<?php class Extra {}\n",
+        "<?php\nnamespace Acme\\Lib;\nclass Extra {}\n",
     )
     .unwrap();
     let edited = run(&tmp, &lock, &o);
     assert!(!edited.fresh);
+    assert_eq!(edited.classes, rescanned.classes + 1);
     edited.fingerprint.unwrap().save();
 
     // Other options are other inputs; a random APCu prefix changes every dump, so it is never skipped.
@@ -820,7 +837,9 @@ fn packages_come_from_the_store_and_their_classes_from_the_class_cache() {
 
     std::fs::remove_dir_all(tmp.join("vendor")).unwrap();
     std::fs::remove_file(&archive).unwrap();
-    // The cached classes are what the next dump reads: change them, and the class map follows.
+    // The cached classes are what the next dump reads (once the dump kept from this one is gone): change them, and
+    // the class map follows.
+    std::fs::remove_dir_all(tmp.join("pun-cache/autoload")).unwrap();
     let mut cached = 0;
     for dir in std::fs::read_dir(tmp.join("pun-cache/classes/v1")).unwrap() {
         for file in std::fs::read_dir(dir.unwrap().path()).unwrap() {

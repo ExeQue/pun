@@ -8,6 +8,7 @@ use crate::version::IgnorePlatform;
 use pcre2::bytes::Regex;
 use pun_tokens::php_compat::{preg_quote, strnatcasecmp};
 use serde_json::{Map, Value};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::Path;
@@ -40,6 +41,7 @@ pub enum Apcu {
     Prefix(String),
 }
 
+#[derive(Debug)]
 pub struct Options {
     pub scan: Scan,
     pub apcu: Apcu,
@@ -89,6 +91,51 @@ pub struct Dumped {
     pub files: Vec<DumpedFile>,
     pub classes: usize,
     pub warnings: Vec<String>,
+}
+
+/// A dump as `Dumped::save` keeps it.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Kept<'a> {
+    #[serde(borrow)]
+    files: Vec<(Cow<'a, str>, Option<Cow<'a, str>>)>,
+    classes: usize,
+    warnings: Vec<String>,
+}
+
+impl Dumped {
+    /// Keeps the dump in `file` under `key` (the first line). Best effort: a failed write only costs a dump next time.
+    pub fn save(&self, file: &Path, key: &str) {
+        let kept = Kept {
+            files: (self.files.iter())
+                .map(|f| {
+                    let text = f.bytes.as_deref().map(String::from_utf8_lossy);
+                    (Cow::from(f.path.as_str()), text)
+                })
+                .collect(),
+            classes: self.classes,
+            warnings: self.warnings.clone(),
+        };
+        let mut text = format!("{key}\n").into_bytes();
+        serde_json::to_writer(&mut text, &kept).expect("a dump serializes");
+        let _ = crate::fetch::store(file, &text);
+    }
+
+    /// The dump `save` kept in `file`, when it was kept under `key`.
+    pub fn load(file: &Path, key: &str) -> Option<Dumped> {
+        let text = std::fs::read(file).ok()?;
+        let rest = text.strip_prefix(key.as_bytes())?.strip_prefix(b"\n")?;
+        let kept: Kept = serde_json::from_slice(rest).ok()?;
+        Some(Dumped {
+            files: (kept.files.into_iter())
+                .map(|(path, text)| DumpedFile {
+                    path: path.into_owned(),
+                    bytes: text.map(|t| t.into_owned().into_bytes()),
+                })
+                .collect(),
+            classes: kept.classes,
+            warnings: kept.warnings,
+        })
+    }
 }
 
 struct FileEntry {
