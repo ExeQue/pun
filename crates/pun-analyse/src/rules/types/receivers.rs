@@ -8,13 +8,17 @@ use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use pun_phpstan::types::{Accessory, Level, Tri, Type, intersect, is_super_type_of};
 
-use super::super::class_reflection::{MethodAnswer, MethodPhase};
+use super::super::class_reflection::{MethodAnswer, MethodPhase, Reflected};
 use super::super::overriding::Class;
 use super::super::reflection::Lookup;
 use super::super::{Checker, calls, declared, members, method_reflection, params};
 use super::flow::is_this;
 
 pub(super) const IDENTIFIERS: &[&str] = &["method.nonObject", "staticMethod.nonObject"];
+
+/// A method lookup that cannot tell which method it finds. `Some` is the declaring class of the static method an
+/// extension says exists there.
+pub(super) struct Unknown(Option<String>);
 
 impl<'a> Checker<'a, '_> {
     pub(in super::super) fn refine_method_guards(&self, e: &Expression, ty: Type) -> Type {
@@ -150,6 +154,21 @@ impl<'a> Checker<'a, '_> {
         name: &[u8],
     ) -> Result<Option<method_reflection::Method<'a>>, ()> {
         self.extended_method(t, name, &mut HashSet::new(), false)
+            .map_err(|_| ())
+    }
+
+    /// The declaring class and name strict-rules' `staticMethod.dynamicCall` reports for a call to `name` on `t`,
+    /// when PHPStan reflects the method it finds as static.
+    pub(in super::super) fn static_call(&self, t: &Type, name: &[u8]) -> Option<(String, String)> {
+        let call = || String::from_utf8_lossy(name).into_owned();
+        match self.extended_method(t, name, &mut HashSet::new(), false) {
+            Ok(Some(m)) if m.is_static => Some(match m.static_display {
+                Some(display) => (display, call()),
+                None => (m.display, m.name),
+            }),
+            Ok(_) => None,
+            Err(Unknown(declaring)) => declaring.map(|d| (d, call())),
+        }
     }
 
     /// Whether [`Self::reflected_method`] finds `name` on `t` (`Ok(Some(_))`), finds none (`Ok(None)`) or cannot
@@ -157,6 +176,7 @@ impl<'a> Checker<'a, '_> {
     fn finds_method(&self, t: &Type, name: &[u8]) -> Result<Option<()>, ()> {
         self.extended_method(t, name, &mut HashSet::new(), true)
             .map(|m| m.map(|_| ()))
+            .map_err(|_| ())
     }
 
     /// `shallow` leaves each found method's display, variants and types empty: only whether one is found.
@@ -166,7 +186,7 @@ impl<'a> Checker<'a, '_> {
         name: &[u8],
         active: &mut HashSet<String>,
         shallow: bool,
-    ) -> Result<Option<method_reflection::Method<'a>>, ()> {
+    ) -> Result<Option<method_reflection::Method<'a>>, Unknown> {
         match t {
             Type::Union(ts) | Type::Benevolent(ts) => {
                 let mut methods = Vec::new();
@@ -196,7 +216,11 @@ impl<'a> Checker<'a, '_> {
             return Ok(None);
         };
         let Lookup::Found(k) = self.class_like(n) else {
-            return if active.is_empty() { Err(()) } else { Ok(None) };
+            return if active.is_empty() {
+                Err(Unknown(None))
+            } else {
+                Ok(None)
+            };
         };
         let nominal = |class: &str| {
             declared::with_classes(self, || {
@@ -275,7 +299,7 @@ impl<'a> Checker<'a, '_> {
         }
         for mixin in self.method_mixins(k, t) {
             if matches!(mixin.resolve_to_bounds(), Type::Mixed { .. } | Type::Error) {
-                return Err(());
+                return Err(Unknown(None));
             }
             let key = declared::with_classes(self, || mixin.describe(Level::TypeOnly));
             if !active.insert(key.clone()) {
@@ -283,7 +307,11 @@ impl<'a> Checker<'a, '_> {
             }
             let method = self.extended_method(&mixin, name, active, shallow);
             active.remove(&key);
-            if let Some(method) = method? {
+            if let Some(mut method) = method? {
+                // PHPStan's MixinMethodReflection: static when the class has a native __callStatic.
+                if members::method(self, k, b"__callStatic").is_some() {
+                    method.reflect(&Reflected::StaticDeclared);
+                }
                 return Ok(Some(method));
             }
         }
@@ -305,7 +333,7 @@ impl<'a> Checker<'a, '_> {
                     required.resolve_to_bounds(),
                     Type::Mixed { .. } | Type::Error
                 ) {
-                    return Err(());
+                    return Err(Unknown(None));
                 }
                 let key = declared::with_classes(self, || {
                     format!("require-extends {}", required.describe(Level::TypeOnly))
@@ -337,16 +365,28 @@ impl<'a> Checker<'a, '_> {
         name: &[u8],
         active: &mut HashSet<String>,
         shallow: bool,
-    ) -> Result<Option<method_reflection::Method<'a>>, ()> {
+    ) -> Result<Option<method_reflection::Method<'a>>, Unknown> {
         for e in self.class_reflection_extensions() {
             match e.method(self, phase, t, k, name) {
-                Some(MethodAnswer::Forward(to)) => {
-                    let method = self.extended_method(&to, name, active, shallow)?;
+                Some(MethodAnswer::Forward(to, reflected)) => {
+                    let method = match self.extended_method(&to, name, active, shallow) {
+                        Ok(method) => method.map(|mut m| {
+                            m.reflect(&reflected);
+                            m
+                        }),
+                        Err(Unknown(declaring)) => {
+                            return Err(Unknown(match reflected {
+                                Reflected::Declared | Reflected::StaticDeclared => declaring,
+                                Reflected::Static(display) => Some(display),
+                                Reflected::Instance => None,
+                            }));
+                        }
+                    };
                     if method.is_some() || phase == MethodPhase::Last {
                         return Ok(method);
                     }
                 }
-                Some(MethodAnswer::Exists) => return Err(()),
+                Some(MethodAnswer::Exists(declaring)) => return Err(Unknown(declaring)),
                 None => {}
             }
         }

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use mago_codex::metadata::CodebaseMetadata;
-use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_span::{HasSpan, Span};
@@ -332,11 +331,14 @@ fn calls_in_expression(mut e: &Expression) -> bool {
     }
 }
 
+/// strict-rules' DynamicCallOnStaticMethodsRule and DynamicCallOnStaticMethodsCallableRule: a call through an
+/// object to a method that PHPStan reflects as static, including the methods Larastan forwards.
 pub(super) fn dynamic_call(
     c: &mut Checker,
     span: Span,
     object: &Expression,
     method: &ClassLikeMemberSelector,
+    nullsafe: bool,
 ) {
     if !c
         .strict
@@ -348,39 +350,24 @@ pub(super) fn dynamic_call(
         return;
     };
     let is_this = matches!(object, Expression::Variable(Variable::Direct(v)) if v.name == b"$this");
-    let classes: Vec<Option<&ClassLikeMetadata>> = if is_this {
-        if !c.this_defined() {
-            return;
-        }
-        vec![c.class_scope()]
-    } else if c.level >= 2 {
-        c.type_of(object)
-            .into_iter()
-            .flat_map(|t| t.types.iter())
-            .filter(|a| c.level >= 8 || !matches!(a, TAtomic::Null))
-            .map(|a| match a {
-                TAtomic::Object(TObject::Named(o)) => c.codebase.get_class_like(o.name.as_bytes()),
-                TAtomic::Object(TObject::Enum(o)) => c.codebase.get_class_like(o.name.as_bytes()),
-                _ => None,
-            })
-            .collect()
-    } else {
+    if (is_this && !c.this_defined()) || !c.checks_expression(object) {
+        return;
+    }
+    let name = id.value;
+    let found = declared::with_classes(c, || {
+        let ty = c
+            .phpstan_type(object)
+            .map(|t| if nullsafe { t.remove_null() } else { t });
+        c.find_type_to_check_of(ty, &|t| {
+            c.can_call_methods(t).yes() && c.has_method(t, name).yes()
+        })
+    });
+    let Some(t) = found.filter(|t| c.can_call_methods(t).yes() && c.has_method(t, name).yes())
+    else {
         return;
     };
-    let found: Vec<Option<members::Method>> = classes
-        .iter()
-        .map(|k| k.and_then(|k| members::method(c, k, id.value)))
-        .collect();
-    let with: Vec<&members::Method> = found.iter().flatten().collect();
-    let Some(m) = with.first() else {
-        return;
-    };
-    if (c.level < 7 || with.len() == found.len()) && m.is_static() {
-        let message = format!(
-            "Dynamic call to static method {}::{}().",
-            m.declaring_display(c),
-            m.name()
-        );
+    if let Some((declaring, method)) = c.static_call(&t, name) {
+        let message = format!("Dynamic call to static method {declaring}::{method}().");
         c.report(span, "staticMethod.dynamicCall", message, None);
     }
 }

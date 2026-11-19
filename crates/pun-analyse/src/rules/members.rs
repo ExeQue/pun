@@ -17,6 +17,8 @@ pub(super) enum Method<'a> {
         original_name: mago_word::Word,
         visibility: Visibility,
         storage: Option<mago_word::Word>,
+        /// Found through an `@method static` tag.
+        static_tag: bool,
     },
     Builtin {
         declaring: &'static symbols::Class,
@@ -52,7 +54,11 @@ impl Method<'_> {
 
     pub(super) fn is_static(&self) -> bool {
         match self {
-            Method::User { f, .. } => f.method_metadata.as_ref().is_some_and(|m| m.is_static),
+            // An `@method static` tag over a native method of the same name (Larastan's `SoftDeletes` stub tags
+            // `restore()`) shares that method's metadata, so the tag's own flag counts too.
+            Method::User { f, static_tag, .. } => {
+                *static_tag || f.method_metadata.as_ref().is_some_and(|m| m.is_static)
+            }
             Method::Builtin { f, .. } => f.is_static,
         }
     }
@@ -264,8 +270,17 @@ pub(super) fn annotation_method<'a>(
                 .map(Box::as_ref)
         {
             let mut found = user(c, declaring, f, lower);
-            if let Method::User { storage, .. } = &mut found {
+            if let Method::User {
+                storage,
+                static_tag,
+                ..
+            } = &mut found
+            {
                 *storage = Some(k.name);
+                // A stub's tag over a native method of the same name keeps its metadata only in the patch.
+                *static_tag = (codebase.patch_function_likes.get(&(k.name, lower)))
+                    .and_then(|f| f.method_metadata.as_ref())
+                    .is_some_and(|m| m.is_static);
             }
             return Some(found);
         }
@@ -407,5 +422,6 @@ fn user<'a>(
         original_name,
         visibility,
         storage: None,
+        static_tag: false,
     }
 }

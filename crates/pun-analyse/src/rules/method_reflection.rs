@@ -1,6 +1,7 @@
 use mago_codex::visibility::Visibility;
 use pun_phpstan::types::{Level, Tri, Type};
 
+use super::class_reflection::Reflected;
 use super::{Checker, declared, members, params};
 
 pub(super) struct Method<'a> {
@@ -14,6 +15,10 @@ pub(super) struct Method<'a> {
     pub public: bool,
     pub final_class: bool,
     pub compound: bool,
+    /// PHPStan's `isStatic()` for this reflection, which an extension can answer differently from the declaration.
+    pub is_static: bool,
+    /// `getDeclaringClass()`'s display name when an extension's reflection gives its own.
+    pub static_display: Option<String>,
 }
 
 impl<'a> Method<'a> {
@@ -61,6 +66,8 @@ impl<'a> Method<'a> {
             private: declaring.visibility().is_private(),
             public: declaring.visibility().is_public(),
             final_class,
+            is_static: declaring.is_static(),
+            static_display: None,
             declaring,
             compound: false,
         }
@@ -80,6 +87,8 @@ impl<'a> Method<'a> {
             private: declaring.visibility().is_private(),
             public: declaring.visibility().is_public(),
             final_class: false,
+            is_static: declaring.is_static(),
+            static_display: None,
             declaring,
             compound: false,
         }
@@ -116,7 +125,9 @@ impl<'a> Method<'a> {
         let accepts = methods.iter().all(|m| m.accepts);
         let private = methods.iter().any(|m| m.private);
         let public = methods.iter().all(|m| m.public);
+        let is_static = methods.iter().all(|m| m.is_static);
         let mut first = methods.drain(..).next()?;
+        first.is_static = is_static;
         first.variants = params::Variants {
             all: vec![combined],
             named: None,
@@ -148,10 +159,12 @@ impl<'a> Method<'a> {
         let accepts = methods.iter().any(|m| m.accepts);
         let private = methods.iter().all(|m| m.private);
         let public = methods.iter().any(|m| m.public);
+        let is_static = methods.iter().any(|m| m.is_static);
         if methods.is_empty() {
             return None;
         }
         let mut method = methods.swap_remove(selected);
+        method.is_static = is_static;
         method.variants.named = None;
         method.name = String::from_utf8_lossy(name).into_owned();
         method.accepts = accepts;
@@ -159,6 +172,19 @@ impl<'a> Method<'a> {
         method.public = public;
         method.compound = true;
         Some(method)
+    }
+
+    /// Applies the reflection an extension wraps this method in.
+    pub(super) fn reflect(&mut self, r: &Reflected) {
+        match r {
+            Reflected::Declared => {}
+            Reflected::Static(display) => {
+                self.is_static = true;
+                self.static_display = Some(display.clone());
+            }
+            Reflected::StaticDeclared => self.is_static = true,
+            Reflected::Instance => self.is_static = false,
+        }
     }
 
     pub(super) fn builtin(&self) -> bool {
@@ -199,6 +225,47 @@ pub(super) fn called_on(t: &Type, receiver: &Type) -> Type {
         }
         _ => t.traverse(&|i| called_on(i, receiver)),
     }
+}
+
+/// `k`'s display name as PHPStan's `ClassReflection::getDisplayName()` gives it for the type `t`, with its template
+/// arguments.
+pub(super) fn class_display(
+    c: &Checker,
+    t: &Type,
+    k: &mago_codex::metadata::class_like::ClassLikeMetadata,
+) -> String {
+    let display = c.display(k);
+    let templates = declared::class_templates(c, k);
+    if templates.is_empty() {
+        return display;
+    }
+    // `$this` keeps the class's own templates, as PHPStan's active template map does.
+    let own: Vec<Type>;
+    let actual = match t {
+        Type::Object(_, args, _) | Type::Static(_, args) => args.as_slice(),
+        _ => {
+            own = (templates.iter())
+                .map(|tt| {
+                    Type::Template(Box::new(pun_phpstan::types::Template {
+                        argument: true,
+                        ..tt.clone()
+                    }))
+                })
+                .collect();
+            &own
+        }
+    };
+    declared::with_classes(c, || {
+        let args: Vec<_> = (templates.iter().enumerate())
+            .map(|(i, t)| {
+                actual
+                    .get(i)
+                    .unwrap_or_else(|| t.default.as_ref().unwrap_or(&t.bound))
+                    .describe(Level::TypeOnly)
+            })
+            .collect();
+        format!("{display}<{}>", args.join(","))
+    })
 }
 
 fn context(

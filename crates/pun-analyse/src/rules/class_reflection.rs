@@ -17,10 +17,25 @@ pub(super) enum MethodPhase {
 
 /// An extension's answer to a method lookup.
 pub(super) enum MethodAnswer {
-    /// The method is the one this type has.
-    Forward(Type),
-    /// The method exists, with a signature Pun doesn't know.
-    Exists,
+    /// The method is the one this type has, reflected as the second field says.
+    Forward(Type, Reflected),
+    /// The method exists, with a signature Pun doesn't know; `Some` names its declaring class when PHPStan's
+    /// reflection of it is static.
+    Exists(Option<String>),
+}
+
+/// What the extension's method reflection answers for `isStatic()` and `getDeclaringClass()`, which
+/// strict-rules' `staticMethod.dynamicCall` reports.
+#[derive(Clone)]
+pub(super) enum Reflected {
+    /// As the method found says.
+    Declared,
+    /// Static, declared in this class (its display name).
+    Static(String),
+    /// Static, declared in the class the method found names.
+    StaticDeclared,
+    /// Not static.
+    Instance,
 }
 
 /// PHPStan's `MethodsClassReflectionExtension` and `PropertiesClassReflectionExtension`.

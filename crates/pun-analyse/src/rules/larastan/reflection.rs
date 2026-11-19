@@ -4,7 +4,10 @@
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use pun_phpstan::types::Type;
 
-use super::super::class_reflection::{ClassReflectionExtension, MethodAnswer, MethodPhase};
+use super::super::class_reflection::{
+    ClassReflectionExtension, MethodAnswer, MethodPhase, Reflected,
+};
+use super::super::method_reflection::class_display;
 use super::super::reflection::Lookup;
 use super::super::{Checker, declared, members};
 use super::Larastan;
@@ -19,19 +22,26 @@ impl ClassReflectionExtension for Larastan {
         name: &[u8],
     ) -> Option<MethodAnswer> {
         if super::is_model(c, k) {
-            return Some(MethodAnswer::Forward(model_builder(c, k)));
+            // ModelForwardsCallsExtension: an EloquentBuilderMethodReflection of the model's builder, which is static.
+            let builder = model_builder(c, k);
+            let name = builder.object_class_names().concat();
+            let display = (c.class_like(&name).found())
+                .map_or(name.clone(), |b| class_display(c, &builder, b));
+            return Some(MethodAnswer::Forward(builder, Reflected::Static(display)));
         }
         let original = declared::original_name(k);
-        if phase == MethodPhase::BeforeMixins {
-            return None;
-        }
-        if !super::is_a(
+        let builder = super::is_a(
             c,
             k.name.as_bytes(),
             b"illuminate\\database\\eloquent\\builder",
-        ) && super::macro_method(c, k, name).is_some()
-        {
-            return Some(MethodAnswer::Exists);
+        );
+        // Larastan's stub drops the builder's `@mixin Query\Builder`, so PHPStan finds the query builder's methods
+        // through EloquentBuilderForwardsCallsExtension, not through the mixin.
+        if phase == MethodPhase::BeforeMixins && !builder {
+            return None;
+        }
+        if !builder && let Some(m) = super::macro_method(c, k, name) {
+            return Some(self.macro_answer(c, k, &m));
         }
         let args = match receiver {
             Type::Object(_, args, _) | Type::Static(_, args) => args.clone(),
@@ -47,13 +57,12 @@ impl ClassReflectionExtension for Larastan {
                     .unwrap_or_default()
             })
         };
-        if super::is_a(
-            c,
-            k.name.as_bytes(),
-            b"illuminate\\database\\eloquent\\builder",
-        ) {
-            if super::macro_method(c, k, name).is_some() {
-                return Some(MethodAnswer::Exists);
+        if builder {
+            // EloquentBuilderForwardsCallsExtension reflects every method it finds, except a macro, as an
+            // EloquentBuilderMethodReflection of this builder, which is static.
+            let here = || class_display(c, receiver, k);
+            if let Some(m) = super::macro_method(c, k, name) {
+                return Some(self.macro_answer(c, k, &m));
             }
             let model = ancestor_args("Illuminate\\Database\\Eloquent\\Builder")
                 .into_iter()
@@ -70,21 +79,17 @@ impl ClassReflectionExtension for Larastan {
                 );
             for class in model.object_class_names() {
                 if super::has_scope(c, &class, name) {
-                    return Some(MethodAnswer::Exists);
+                    return Some(MethodAnswer::Exists(Some(here())));
                 }
             }
             let query = "Illuminate\\Database\\Query\\Builder";
-            if let Lookup::Found(q) = c.class_like(query) {
-                if members::method(c, q, name).is_some() {
-                    return Some(MethodAnswer::Forward(Type::Object(
-                        query.into(),
-                        vec![],
-                        false,
-                    )));
-                }
-                if super::macro_method(c, q, name).is_some() {
-                    return Some(MethodAnswer::Exists);
-                }
+            if let Lookup::Found(q) = c.class_like(query)
+                && members::method(c, q, name).is_some()
+            {
+                return Some(MethodAnswer::Forward(
+                    Type::Object(query.into(), vec![], false),
+                    Reflected::Static(here()),
+                ));
             }
             if let Some(finder) = name.strip_prefix(b"where") {
                 let finder = String::from_utf8_lossy(finder);
@@ -97,7 +102,7 @@ impl ClassReflectionExtension for Larastan {
                         c.has_property(&model, property.as_bytes(), false).yes()
                     })
                 {
-                    return Some(MethodAnswer::Exists);
+                    return Some(MethodAnswer::Exists(Some(here())));
                 }
             }
             let soft_deletes = model.object_class_names().iter().any(|m| {
@@ -115,7 +120,7 @@ impl ClassReflectionExtension for Larastan {
                 ]
                 .contains(&name)
             {
-                return Some(MethodAnswer::Exists);
+                return Some(MethodAnswer::Exists(Some(here())));
             }
             return None;
         }
@@ -128,10 +133,10 @@ impl ClassReflectionExtension for Larastan {
             &mago_codex::ttype::atomic::object::named::TNamedObject::new(k.name),
             &String::from_utf8_lossy(name),
         ) {
-            return Some(MethodAnswer::Exists);
+            return Some(MethodAnswer::Exists(None));
         }
         if super::with_method_class(c.codebase, k.name.as_bytes(), name).is_some() {
-            return Some(MethodAnswer::Exists);
+            return Some(MethodAnswer::Exists(None));
         }
         if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderCollectionProxy") {
             let [proxied, value, _] = args.as_slice() else {
@@ -143,7 +148,7 @@ impl ClassReflectionExtension for Larastan {
             {
                 return None;
             }
-            return Some(MethodAnswer::Forward(value.clone()));
+            return Some(MethodAnswer::Forward(value.clone(), Reflected::Instance));
         }
         if original.eq_ignore_ascii_case("Illuminate\\Support\\HigherOrderTapProxy") {
             let [target] = args.as_slice() else {
@@ -152,7 +157,7 @@ impl ClassReflectionExtension for Larastan {
             if target.object_class_names().is_empty() || !c.has_method(target, name).yes() {
                 return None;
             }
-            return Some(MethodAnswer::Forward(target.clone()));
+            return Some(MethodAnswer::Forward(target.clone(), Reflected::Declared));
         }
         if super::is_a(
             c,
@@ -183,7 +188,8 @@ impl ClassReflectionExtension for Larastan {
                 _ => "Illuminate\\Database\\Eloquent\\Builder".into(),
             };
             let builder = Type::Object(builder, vec![related], false);
-            return Some(MethodAnswer::Forward(builder));
+            // RelationForwardsCallsExtension wraps the builder's method in a static EloquentBuilderMethodReflection.
+            return Some(MethodAnswer::Forward(builder, Reflected::StaticDeclared));
         }
         // A contract that is its key's first alias (`'queue.connection' => [Queue::class]`) resolves to itself.
         // Larastan's container builds a concrete class there; forwarding to the contract would never end.
@@ -194,7 +200,8 @@ impl ClassReflectionExtension for Larastan {
             && class.name != k.name
         {
             let concrete = Type::Object(declared::original_name(class), vec![], false);
-            return Some(MethodAnswer::Forward(concrete));
+            // ContractsMethodsExtension wraps the concrete class's method in a StaticMethodReflection.
+            return Some(MethodAnswer::Forward(concrete, Reflected::StaticDeclared));
         }
         None
     }
@@ -222,6 +229,27 @@ impl ClassReflectionExtension for Larastan {
         (super::is_model(c, class)
             && !(c.codebase).is_instance_of(class.name.as_bytes(), declaring.as_bytes()))
         .then(|| model_builder(c, class))
+    }
+}
+
+impl Larastan {
+    /// MacroMethodsClassReflectionExtension's reflection of a macro on `k`: a closure (or a mixin's closure) is a
+    /// static `Macro` of the class whose macros were read, which is the contract's concrete class or `k` itself; a
+    /// function is a `Macro` that isn't static. A method callable is the native method, whose class Pun doesn't keep,
+    /// so it reports nothing.
+    fn macro_answer(
+        &self,
+        c: &Checker,
+        k: &ClassLikeMetadata,
+        m: &crate::larastan::macros::Macro,
+    ) -> MethodAnswer {
+        MethodAnswer::Exists((!m.native && m.instance.is_none()).then(|| {
+            let original = declared::original_name(k);
+            match self.app.resolve(&original) {
+                Some(concrete) if k.kind.is_interface() => concrete.to_string(),
+                _ => c.display(k),
+            }
+        }))
     }
 }
 

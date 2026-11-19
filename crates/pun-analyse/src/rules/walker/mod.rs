@@ -242,7 +242,7 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         }
         internal::method_callable(self, m);
         if internal::is_callable(&m.argument_list) {
-            strict::dynamic_call(self, m.span(), m.object, &m.method);
+            strict::dynamic_call(self, m.span(), m.object, &m.method, false);
         }
     }
     fn walk_in_static_method_partial_application(

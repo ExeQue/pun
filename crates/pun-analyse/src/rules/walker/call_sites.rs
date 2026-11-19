@@ -33,7 +33,7 @@ impl<'arena> Checker<'_, 'arena> {
             named_argument::call(self, call.span(), call.object, &call.argument_list, true);
         }
         internal::method_call(self, call.span(), call.object, &call.method);
-        strict::dynamic_call(self, call.span(), call.object, &call.method);
+        strict::dynamic_call(self, call.span(), call.object, &call.method, true);
         if self.method_rules.call_methods {
             types::method_call(
                 self,
@@ -65,7 +65,7 @@ impl<'arena> Checker<'_, 'arena> {
         }
         dead_code::method_check(self, call);
         internal::method_call(self, call.span(), call.object, &call.method);
-        strict::dynamic_call(self, call.span(), call.object, &call.method);
+        strict::dynamic_call(self, call.span(), call.object, &call.method, false);
         larastan::method_call(self, call);
         if let ClassLikeMemberSelector::Identifier(m) = &call.method
             && m.value.eq_ignore_ascii_case(b"call")

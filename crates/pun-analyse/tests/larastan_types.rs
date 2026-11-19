@@ -22,6 +22,9 @@
 //! provider calling each fixture's `Macros::register()`, and Type/PunLocalMacroTest.json (a method-callable macro
 //! whose class sits in a file a provider requires, in the testbench skeleton Larastan boots:
 //! root/vendor/orchestra/testbench-core/laravel/app/Providers/PunLocalServiceProvider.php).
+//! Type/PunDynamicStaticCallsTest.json (strict-rules' `staticMethod.dynamicCall` on the methods Larastan forwards,
+//! `__callStatic` mixins and SoftDeletes' `@method static restore()`) runs with strict-rules' rules.neon and only
+//! `dynamicCallOnStaticMethod` on, as its PHPStan run did.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

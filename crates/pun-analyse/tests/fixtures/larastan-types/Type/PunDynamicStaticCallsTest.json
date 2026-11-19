@@ -1,0 +1,137 @@
+{
+    "test": "Type/PunDynamicStaticCallsTest",
+    "configs": [
+        "tests/Type/data/config-dynamic-static-calls.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-dynamic-static-calls.php",
+            "declares": [
+                "pundynamicstaticcalls\\author",
+                "pundynamicstaticcalls\\comment",
+                "pundynamicstaticcalls\\genericbuilder",
+                "pundynamicstaticcalls\\plainproxy",
+                "pundynamicstaticcalls\\post",
+                "pundynamicstaticcalls\\postbuilder",
+                "pundynamicstaticcalls\\staticproxy"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 15,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::whereNotNull().",
+                    "tip": null
+                },
+                {
+                    "line": 27,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\GenericBuilder<TModel of Illuminate\\Database\\Eloquent\\Model>::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 103,
+                    "identifier": "missingType.generics",
+                    "message": "Function PunDynamicStaticCalls\\calls() has parameter $raw with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types: TModel",
+                    "tip": null
+                },
+                {
+                    "line": 105,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 107,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::whereTitle().",
+                    "tip": null
+                },
+                {
+                    "line": 108,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::recent().",
+                    "tip": null
+                },
+                {
+                    "line": 109,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 111,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::withTrashed().",
+                    "tip": null
+                },
+                {
+                    "line": 112,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::published().",
+                    "tip": null
+                },
+                {
+                    "line": 113,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::where().",
+                    "tip": null
+                },
+                {
+                    "line": 114,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\Post::restore().",
+                    "tip": null
+                },
+                {
+                    "line": 115,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 116,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Post>::where().",
+                    "tip": null
+                },
+                {
+                    "line": 118,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\Post::title().",
+                    "tip": null
+                },
+                {
+                    "line": 119,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 121,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::whereIn().",
+                    "tip": null
+                },
+                {
+                    "line": 123,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method PunDynamicStaticCalls\\PostBuilder::whereTitle().",
+                    "tip": null
+                },
+                {
+                    "line": 124,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<PunDynamicStaticCalls\\Comment>::recent().",
+                    "tip": null
+                },
+                {
+                    "line": 126,
+                    "identifier": "staticMethod.dynamicCall",
+                    "message": "Dynamic call to static method Illuminate\\Database\\Eloquent\\Builder<Illuminate\\Database\\Eloquent\\Model>::whereIn().",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}
