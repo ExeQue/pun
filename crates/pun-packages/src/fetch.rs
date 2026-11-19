@@ -4,8 +4,10 @@ use pcre2::bytes::Regex;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::io::Read;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use std::time::Duration;
 
 #[derive(Debug, Default, Clone)]
 pub struct Auth {
@@ -223,10 +225,71 @@ impl ureq::unversioned::resolver::Resolver for OnceResolver {
         if let Some(addrs) = resolved.get(&key) {
             return Ok(addrs.clone());
         }
-        let addrs = ureq::unversioned::resolver::DefaultResolver::default()
+        let mut addrs = ureq::unversioned::resolver::DefaultResolver::default()
             .resolve(uri, config, timeout)?;
+        prefer_reachable(&mut addrs, ATTEMPT_DELAY, GIVE_UP, |addr, limit| {
+            std::net::TcpStream::connect_timeout(&addr, limit).is_ok()
+        });
         resolved.insert(key, addrs.clone());
         Ok(addrs)
+    }
+}
+
+/// RFC 8305's connection attempt delay: how long one address has before the next is tried as well.
+const ATTEMPT_DELAY: Duration = Duration::from_millis(250);
+/// How long the race waits for any address; after it, ureq tries them in the resolver's order.
+const GIVE_UP: Duration = Duration::from_secs(10);
+
+/// Moves the first of `addrs` that accepts a TCP connection to the front, racing them as happy eyeballs (RFC 8305)
+/// does: the families interleaved, a new attempt every `delay` or as soon as one fails. ureq tries a host's
+/// addresses one after another without a connect timeout, so on a network whose IPv6 route drops packets every
+/// connection to a host with an AAAA record (repo.packagist.org) waited out the kernel's SYN timeout (31 s at
+/// `tcp_syn_retries=4`) before it tried IPv4. curl, and so Composer, races the families.
+fn prefer_reachable(
+    addrs: &mut [SocketAddr],
+    delay: Duration,
+    give_up: Duration,
+    connect: fn(SocketAddr, Duration) -> bool,
+) {
+    if addrs.len() < 2 {
+        return;
+    }
+    let (v6, v4): (Vec<usize>, Vec<usize>) = (0..addrs.len()).partition(|&i| addrs[i].is_ipv6());
+    let first_v6 = addrs[0].is_ipv6();
+    let (a, b) = if first_v6 { (v6, v4) } else { (v4, v6) };
+    let mut order = vec![];
+    for i in 0..a.len().max(b.len()) {
+        order.extend(a.get(i));
+        order.extend(b.get(i));
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    let deadline = std::time::Instant::now() + give_up;
+    let (mut started, mut failed) = (0, 0);
+    let won = loop {
+        if let Some(&i) = order.get(started) {
+            let (tx, addr) = (tx.clone(), addrs[i]);
+            // Detached: an attempt into a black hole outlives the race, until `give_up`.
+            std::thread::spawn(move || tx.send((i, connect(addr, give_up))));
+            started += 1;
+        }
+        let left = deadline.saturating_duration_since(std::time::Instant::now());
+        let wait = if started < order.len() {
+            delay.min(left)
+        } else {
+            left
+        };
+        match rx.recv_timeout(wait) {
+            Ok((i, true)) => break Some(i),
+            Ok(_) => failed += 1,
+            Err(_) if started < order.len() => {}
+            Err(_) => break None,
+        }
+        if failed == order.len() {
+            break None;
+        }
+    };
+    if let Some(i) = won {
+        addrs[..=i].rotate_right(1);
     }
 }
 
@@ -644,6 +707,47 @@ mod tests {
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    /// A black hole (an attempt that never connects within the race) costs one attempt delay, not a connect
+    /// timeout per address; a refused address costs nothing; IPv4 and IPv6 take turns.
+    #[test]
+    fn the_first_reachable_address_goes_first() {
+        // 2001:db8::1 is the black hole, 10.0.0.9 refuses, the rest connect.
+        fn connect(addr: SocketAddr, _: Duration) -> bool {
+            match addr.ip().to_string().as_str() {
+                "2001:db8::1" => {
+                    std::thread::sleep(Duration::from_secs(2));
+                    false
+                }
+                "10.0.0.9" => false,
+                _ => true,
+            }
+        }
+        let v4 = |n: u8| SocketAddr::from(([10, 0, 0, n], 443));
+        let v6 = |n: u16| SocketAddr::from(([0x2001, 0xdb8, 0, 0, 0, 0, 0, n], 443));
+        let delay = Duration::from_millis(200);
+        let give_up = Duration::from_secs(5);
+        let mut addrs = [v6(1), v6(2), v4(9), v4(1)];
+        let t = std::time::Instant::now();
+        prefer_reachable(&mut addrs, delay, give_up, connect);
+        assert!(t.elapsed() < Duration::from_secs(1), "{:?}", t.elapsed());
+        // Tried 2001:db8::1, then 10.0.0.9 (refused at once), then 2001:db8::2.
+        assert_eq!(addrs, [v6(2), v6(1), v4(9), v4(1)]);
+        let mut addrs = [v4(9), v4(1)];
+        prefer_reachable(&mut addrs, delay, give_up, connect);
+        assert_eq!(addrs, [v4(1), v4(9)]);
+
+        // Nothing connects: the order stays, after every attempt failed or the race gave up.
+        let mut addrs = [v4(9), v6(1)];
+        prefer_reachable(&mut addrs, delay, Duration::from_millis(200), connect);
+        assert_eq!(addrs, [v4(9), v6(1)]);
+        let mut addrs = [v4(9), v4(9)];
+        prefer_reachable(&mut addrs, delay, give_up, connect);
+        assert_eq!(addrs, [v4(9), v4(9)]);
+        let mut one = [v6(1)];
+        prefer_reachable(&mut one, delay, give_up, |_, _| unreachable!());
+        assert_eq!(one, [v6(1)]);
     }
 
     #[test]
