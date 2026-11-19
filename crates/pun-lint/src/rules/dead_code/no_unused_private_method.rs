@@ -27,6 +27,11 @@ impl Rule for NoUnusedPrivateMethod {
         ctx: &Context<'_>,
         out: &mut Vec<Report>,
     ) {
+        // Only a private method can be removed: a class without one needs no more work.
+        let Node::Class(c) = node else { return };
+        if !(c.members.iter()).any(|m| matches!(m, ClassLikeMember::Method(m) if is_private(m))) {
+            return;
+        }
         let facts = facts(ctx);
         with_class_info(node, ancestors, &facts, |class| {
             let mut nested = false;

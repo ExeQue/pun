@@ -41,6 +41,9 @@ impl Rule for NoUselessParamTag {
         let Some(doc) = Doc::last_of(ctx, ancestors, start) else {
             return;
         };
+        if !(0..doc.len()).any(|i| tag_name(doc.text(i)) == "@param") {
+            return;
+        }
         let facts = facts(ctx);
         let mut chain = ancestors.to_vec();
         chain.push(node);

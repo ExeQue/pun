@@ -55,7 +55,7 @@ impl Rule for NoOverriddenAssignBeforeIf {
             if !view.elseifs.is_empty() {
                 continue;
             }
-            let Some(name) = overridable_assign_variable_name(&scope, stmt) else {
+            let Some(name) = overridable_assign_variable_name(ctx, &scope, stmt) else {
                 continue;
             };
             if is_variable_used(Node::Expression(view.condition), name) {
@@ -80,6 +80,7 @@ impl Rule for NoOverriddenAssignBeforeIf {
 }
 
 fn overridable_assign_variable_name<'a>(
+    ctx: &Context<'_>,
     scope: &[Node<'a, 'a>],
     stmt: &'a Statement<'a>,
 ) -> Option<&'a [u8]> {
@@ -91,7 +92,7 @@ fn overridable_assign_variable_name<'a>(
     let mut chain = scope.to_vec();
     chain.push(Node::Statement(stmt));
     if is_static_or_global(&chain, name)
-        || is_used_by_reference(scope, name, node_span(assign.lhs).start)
+        || is_used_by_reference(ctx, scope, name, node_span(assign.lhs).start)
         || is_native_variable(name)
     {
         return None;

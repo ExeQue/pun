@@ -57,7 +57,10 @@ impl Rule for NoTypedPropertyInstanceof {
         let source = ctx.source;
         let tokens = tokens(ctx);
         let facts = facts(ctx);
-        let visited = visited_ifs(ctx, tokens, &facts, &class);
+        // The class's ifs are found once, not at each of them.
+        let visited = ctx.memo((self.id(), node_span(&class.node).start), || {
+            visited_ifs(ctx, tokens, &facts, &class)
+        });
         if !visited.contains(&node_span(r#if).start) {
             return;
         }

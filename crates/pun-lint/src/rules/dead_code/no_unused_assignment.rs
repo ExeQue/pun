@@ -57,7 +57,7 @@ impl Rule for NoUnusedAssignment {
         let tokens = tokens(ctx);
         let facts = facts(ctx);
         let edits = run_edits(source, tokens, ancestors, &|chain| {
-            change(source, tokens, &facts, chain)
+            change(ctx, tokens, &facts, chain)
         });
         if let Some(edits) = edits {
             out.push(Report {
@@ -86,19 +86,34 @@ fn body<'ast, 'arena>(chain: &[Node<'ast, 'arena>]) -> Option<&'ast Block<'arena
     is_body.then_some(block)
 }
 
-fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>]) -> Option<Change> {
+fn change(
+    ctx: &Context<'_>,
+    tokens: &[Token],
+    facts: &Facts,
+    chain: &[Node<'_, '_>],
+) -> Option<Change> {
+    let source = ctx.source;
     let n = chain.len();
     let Node::Statement(statement) = chain[n - 1] else {
         return None;
     };
-    let stmts: Vec<&Statement<'_>> = body(chain)?.statements.iter().collect();
+    // Only an assignment to a variable can be removed: rule out the other statements before scanning the body.
+    let assign = match expression(statement)? {
+        Expression::Assignment(a) if is_plain_assign(a) => a,
+        _ => return None,
+    };
+    let name = variable_name(assign.lhs)?;
+    let block = body(chain)?;
+    let stmts: Vec<&Statement<'_>> = block.statements.iter().collect();
     let key = stmts
         .iter()
         .position(|s| node_span(*s) == node_span(statement))?;
-    if stmts
-        .iter()
-        .any(|s| any_node(Node::Statement(s), &skips_body))
-    {
+    // The answer is the body's, so it is worked out once per body.
+    if *ctx.memo(("unused-assignment-skips", node_span(block).start), || {
+        stmts
+            .iter()
+            .any(|s| any_node(Node::Statement(s), &skips_body))
+    }) {
         return None;
     }
     let mut refs: Vec<Vec<u8>> = Vec::new();
@@ -106,14 +121,9 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
         collect_refs(s, &mut refs);
     }
     collect_refs(statement, &mut refs);
-    let assign = match expression(statement)? {
-        Expression::Assignment(a) if is_plain_assign(a) => a,
-        _ => return None,
-    };
-    let name = variable_name(assign.lhs)?;
     if is_native_variable(name)
         || is_static_or_global(chain, name)
-        || is_used_by_reference(chain, name, node_span(assign.lhs).start)
+        || is_used_by_reference(ctx, chain, name, node_span(assign.lhs).start)
         || refs.iter().any(|r| r == name)
         || is_no_discard_call(facts, chain, unparenthesize(assign.rhs))
     {

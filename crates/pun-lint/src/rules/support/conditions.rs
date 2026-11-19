@@ -135,9 +135,9 @@ pub(crate) fn reprint(source: &str, tokens: &[Token], span: Span, adjust: isize)
 }
 
 pub(crate) fn comments_between(tokens: &[Token], from: usize, to: usize) -> Vec<Span> {
-    tokens
+    crate::rules::support::statements::within(tokens, from, to)
         .iter()
-        .filter(|t| t.start >= from && t.end <= to && t.kind.is_comment())
+        .filter(|t| t.kind.is_comment())
         .map(|t| Span::new(t.start, t.end))
         .collect()
 }

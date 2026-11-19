@@ -33,9 +33,19 @@ impl Rule for AddReturnPhpdocDirectArray {
         let Some(f) = FunctionLike::of(node) else {
             return;
         };
-        if f.body.is_none() {
+        let Some(body) = f.body else {
             return;
-        }
+        };
+        // Only a single returned array literal gets a tag: rule the rest out before the doc block and the types.
+        let returns = super::returns_scoped(body);
+        let (value, empty) = match returns.as_slice() {
+            [r] => match r.value {
+                Some(value @ Expression::Array(a)) => (value, a.elements.is_empty()),
+                Some(value @ Expression::LegacyArray(a)) => (value, a.elements.is_empty()),
+                _ => return,
+            },
+            _ => return,
+        };
         let facts = facts(ctx);
         let scope = class_scope(ancestors);
         if f.method.is_some()
@@ -56,14 +66,9 @@ impl Rule for AddReturnPhpdocDirectArray {
             ancestors,
             scope: scope.as_ref(),
         };
-        let Some(value) = f.only_return_with_expr(&place).and_then(|r| r.value) else {
+        if !super::has_only_return_with_expr(&place, body, &returns) {
             return;
-        };
-        let empty = match value {
-            Expression::Array(a) => a.elements.is_empty(),
-            Expression::LegacyArray(a) => a.elements.is_empty(),
-            _ => return,
-        };
+        }
         if empty {
             if !matches!(info.return_tag().map(|t| &t.ty), Some(TypeNode::Identifier(name)) if name == "array")
             {

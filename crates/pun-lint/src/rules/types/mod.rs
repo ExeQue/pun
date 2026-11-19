@@ -261,8 +261,12 @@ pub(crate) fn untyped<'ast, 'arena>(
             let MethodBody::Concrete(body) = &m.body else {
                 return None;
             };
-            let scope = class_scope(ancestors);
-            if never::should_skip_class_method(&facts::facts(ctx), scope.as_ref(), m) {
+            // Every return type rule asks this of the same method, so it is answered once.
+            let skip = ctx.memo(("untyped-method", node_span(m).start), || {
+                let scope = class_scope(ancestors);
+                never::should_skip_class_method(&facts::facts(ctx), scope.as_ref(), m)
+            });
+            if *skip {
                 return None;
             }
             Some(Untyped {

@@ -50,11 +50,14 @@ impl Rule for PreferRequestValidate {
         if is_class != Some(true) {
             return;
         }
-        let own_prototype = !overrides(ctx, ancestors, method);
+        // Whether the method overrides a parent's matters only once it calls `request()`.
+        let own_prototype = std::cell::OnceCell::new();
         let mut found = Vec::new();
         collect(Node::Block(body), &mut |n| match n {
             Node::FunctionCall(f)
-                if own_prototype && named(f, "request") && !namespaced(ctx, ancestors, f) =>
+                if named(f, "request")
+                    && !namespaced(ctx, ancestors, f)
+                    && *own_prototype.get_or_init(|| !overrides(ctx, ancestors, method)) =>
             {
                 found.push(Found::Helper(f));
                 true

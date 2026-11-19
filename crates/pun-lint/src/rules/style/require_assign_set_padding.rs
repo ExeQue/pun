@@ -57,7 +57,7 @@ impl Rule for RequireAssignSetPadding {
         let Some(first) = edits.first().map(|e| e.span) else {
             return;
         };
-        if contains_html(node, ancestors) {
+        if contains_html(ctx, node, ancestors) {
             return;
         }
         out.push(Report {

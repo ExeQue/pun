@@ -642,20 +642,12 @@ pub(crate) fn is_static_or_global(chain: &[Node<'_, '_>], name: &[u8]) -> bool {
     false
 }
 
-pub(crate) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: usize) -> bool {
-    fn closures_before(node: Node<'_, '_>, name: &[u8], at: usize) -> bool {
-        if node_span(&node).start >= at {
-            return false;
-        }
-        if let Node::Closure(c) = node
-            && c.use_clause.as_ref().is_some_and(|u| by_ref_use(u, name))
-        {
-            return true;
-        }
-        let mut found = false;
-        node.visit_children(|child| found = found || closures_before(child, name, at));
-        found
-    }
+pub(crate) fn is_used_by_reference(
+    ctx: &Context<'_>,
+    ancestors: &[Node<'_, '_>],
+    name: &[u8],
+    at: usize,
+) -> bool {
     let mut outermost = None;
     for node in ancestors {
         let (params, uses) = match node {
@@ -678,9 +670,31 @@ pub(crate) fn is_used_by_reference(ancestors: &[Node<'_, '_>], name: &[u8], at: 
     let Some(outermost) = outermost else {
         return false;
     };
-    let mut found = false;
-    outermost.visit_children(|child| found = found || closures_before(child, name, at));
-    found
+    // The closures inside the outermost function and the variables they `use` by reference, found once per function.
+    let closures = ctx.memo(
+        ("closures-by-reference", node_span(&outermost).start),
+        || {
+            let mut closures: Vec<(usize, Vec<Vec<u8>>)> = Vec::new();
+            let mut stack = Vec::new();
+            outermost.visit_children(|child| stack.push(child));
+            while let Some(node) = stack.pop() {
+                if let Node::Closure(c) = node
+                    && let Some(clause) = &c.use_clause
+                {
+                    let names: Vec<Vec<u8>> = (clause.variables.iter())
+                        .filter(|v| v.ampersand.is_some())
+                        .map(|v| v.variable.name[1..].to_vec())
+                        .collect();
+                    if !names.is_empty() {
+                        closures.push((node_span(&node).start, names));
+                    }
+                }
+                node.visit_children(|child| stack.push(child));
+            }
+            closures
+        },
+    );
+    (closures.iter()).any(|(start, names)| *start < at && names.iter().any(|n| n == name))
 }
 
 fn by_ref_use(clause: &ClosureUseClause<'_>, name: &[u8]) -> bool {
@@ -769,17 +783,25 @@ pub(crate) fn replace_run(
     }
 }
 
-pub(crate) fn contains_html(node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> bool {
-    let mut stack = vec![ancestors.first().copied().unwrap_or(node)];
-    while let Some(node) = stack.pop() {
-        if let Node::Statement(Statement::Inline(inline)) = node
-            && !(matches!(inline.value, b"\n" | b"\r\n") && inline.span.start.offset > 0)
-        {
-            return true;
+/// Whether the file has inline HTML. The answer is the file's, so it is worked out once per file.
+pub(crate) fn contains_html(
+    ctx: &Context<'_>,
+    node: Node<'_, '_>,
+    ancestors: &[Node<'_, '_>],
+) -> bool {
+    let root = ancestors.first().copied().unwrap_or(node);
+    *ctx.memo(("contains-html", node_span(&root).start), || {
+        let mut stack = vec![root];
+        while let Some(node) = stack.pop() {
+            if let Node::Statement(Statement::Inline(inline)) = node
+                && !(matches!(inline.value, b"\n" | b"\r\n") && inline.span.start.offset > 0)
+            {
+                return true;
+            }
+            node.visit_children(|child| stack.push(child));
         }
-        node.visit_children(|child| stack.push(child));
-    }
-    false
+        false
+    })
 }
 
 pub(crate) fn lines_between(source: &str, from: usize, to: usize) -> usize {

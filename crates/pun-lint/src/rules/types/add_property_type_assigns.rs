@@ -78,7 +78,7 @@ impl Rule for AddPropertyTypeAssigns {
             if is_doctrine_mapped(ctx, plain, &view.path) {
                 continue;
             }
-            if !is_legal(&facts, &view, prop, self.inline_public) {
+            if !is_legal(ctx, &facts, &view, prop, self.inline_public) {
                 continue;
             }
             let assigned = is_property_assigned(ctx, &view, test_case, prop.name());

@@ -29,7 +29,7 @@ impl Rule for RequireStrictTypesInTests {
     ) {
         let Node::Program(program) = node else { return };
         if has_strict_types(&program.statements)
-            || contains_html(node, ancestors)
+            || contains_html(ctx, node, ancestors)
             || !first_class_is_test(ctx, node)
         {
             return;

@@ -93,6 +93,10 @@ impl Rule for NoExtraArguments {
                 let ClassLikeMemberSelector::Identifier(method) = &call.method else {
                     return;
                 };
+                // A call without arguments has none too many: skip the object's type.
+                if call.argument_list.arguments.is_empty() {
+                    return;
+                }
                 let maximum = object_class_name(ctx, call.object)
                     .and_then(|class| method_maximum(codebase, &class, method.value));
                 (&call.argument_list, maximum)

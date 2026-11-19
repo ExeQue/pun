@@ -12,7 +12,8 @@ use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Access, AnonymousClass, Argument, Assignment, Call, Class, ClassLikeMember,
     ClassLikeMemberSelector, Expression, Hint, Literal, Method, Modifier, Node, PlainProperty,
-    Property, PropertyItem, Sequence, UnaryPrefixOperator, Variable,
+    Property, PropertyAccess, PropertyItem, Sequence, StaticPropertyAccess, UnaryPrefixOperator,
+    Variable,
 };
 use pun_problem::{Edit, Span};
 
@@ -779,6 +780,7 @@ impl<'ast, 'arena> Prop<'ast, 'arena> {
 }
 
 pub(crate) fn is_legal(
+    ctx: &crate::Context<'_>,
     facts: &Facts,
     view: &ClassView<'_, '_>,
     prop: &Prop<'_, '_>,
@@ -788,7 +790,7 @@ pub(crate) fn is_legal(
         return false;
     }
     let name = prop.name();
-    if has_trait_with_same_property_or_written(facts, view, name)
+    if has_trait_with_same_property_or_written(ctx, facts, view, name)
         || has_forbidden_type(facts, view, name)
     {
         return false;
@@ -864,7 +866,7 @@ pub(crate) fn is_safe_protected_property(
     };
     if trait_names
         .iter()
-        .any(|t| source_of(t).is_some_and(|text| fetches(&text, name, None, false)))
+        .any(|t| source_of(t).is_some_and(|text| fetches(&text, name, None)))
     {
         return false;
     }
@@ -888,15 +890,23 @@ pub(crate) fn is_safe_protected_property(
             .codebase
             .get_declaring_property(parent.as_bytes(), &dollar(name))
             .is_some()
-            || source_of(parent).is_some_and(|text| fetches(&text, name, Some(&view.name), false))
+            || source_of(parent).is_some_and(|text| fetches(&text, name, Some(&view.name)))
     })
 }
 
 fn has_trait_with_same_property_or_written(
+    ctx: &crate::Context<'_>,
     facts: &Facts,
     view: &ClassView<'_, '_>,
     name: &[u8],
 ) -> bool {
+    // The properties each trait writes, parsed once per class rather than once per property and trait.
+    let written: std::rc::Rc<
+        std::cell::RefCell<std::collections::HashMap<String, std::collections::HashSet<Vec<u8>>>>,
+    > = ctx.memo(
+        ("trait-writes", node_span(&view.node).start),
+        Default::default,
+    );
     let traits: Vec<String> = view
         .members
         .iter()
@@ -928,17 +938,55 @@ fn has_trait_with_same_property_or_written(
             class.span.start.offset as usize,
             class.span.end.offset as usize,
         );
-        source
-            .get(start..end)
-            .is_some_and(|text| trait_writes(text, name))
+        (written.borrow_mut().entry(t.clone()))
+            .or_insert_with(|| {
+                source
+                    .get(start..end)
+                    .map_or_else(Default::default, trait_writes)
+            })
+            .contains(name)
     })
 }
 
-fn trait_writes(trait_text: &str, name: &[u8]) -> bool {
-    fetches(trait_text, name, None, true)
+/// The properties the trait writes through `$this->` or `self::`/`static::`: `fetches` with `written_only`, for
+/// every name at once.
+fn trait_writes(trait_text: &str) -> std::collections::HashSet<Vec<u8>> {
+    let code = format!("<?php {trait_text}");
+    let arena = mago_allocator::LocalArena::new();
+    let file = mago_database::file::File::ephemeral(
+        std::borrow::Cow::Borrowed(b"trait.php"),
+        std::borrow::Cow::Owned(code.into_bytes()),
+    );
+    let program = mago_syntax::parser::parse_file(&arena, &file);
+    let mut names = std::collections::HashSet::new();
+    let mut stack = vec![Node::Program(program)];
+    while let Some(node) = stack.pop() {
+        for e in written_operands(node) {
+            match unparenthesize(e) {
+                Expression::Access(Access::Property(PropertyAccess {
+                    object,
+                    property: ClassLikeMemberSelector::Identifier(id),
+                    ..
+                })) if matches!(unparenthesize(object), Expression::Variable(Variable::Direct(v)) if v.name == b"$this") =>
+                {
+                    names.insert(id.value.to_vec());
+                }
+                Expression::Access(Access::StaticProperty(StaticPropertyAccess {
+                    class: Expression::Self_(_) | Expression::Static(_),
+                    property: Variable::Direct(v),
+                    ..
+                })) => {
+                    names.insert(v.name[1..].to_vec());
+                }
+                _ => {}
+            }
+        }
+        node.visit_children(|child| stack.push(child));
+    }
+    names
 }
 
-fn fetches(trait_text: &str, name: &[u8], class: Option<&str>, written_only: bool) -> bool {
+fn fetches(trait_text: &str, name: &[u8], class: Option<&str>) -> bool {
     let code = format!("<?php {trait_text}");
     let arena = mago_allocator::LocalArena::new();
     let file = mago_database::file::File::ephemeral(
@@ -952,35 +1000,11 @@ fn fetches(trait_text: &str, name: &[u8], class: Option<&str>, written_only: boo
         if found {
             break;
         }
-        let written: Vec<&Expression<'_>> = match node {
-            Node::Assignment(a) => {
-                let mut out = vec![a.lhs];
-                if let Expression::UnaryPrefix(u) = a.rhs
-                    && matches!(u.operator, UnaryPrefixOperator::Reference(_))
-                {
-                    out.push(u.operand);
-                }
-                out
-            }
-            Node::Unset(u) => u.values.iter().copied().collect(),
-            Node::UnaryPrefix(u)
-                if matches!(
-                    u.operator,
-                    UnaryPrefixOperator::PreIncrement(_) | UnaryPrefixOperator::PreDecrement(_)
-                ) =>
-            {
-                vec![u.operand]
-            }
-            Node::UnaryPostfix(u) => vec![u.operand],
-            Node::ArrayAccess(a) => vec![a.array],
-            Node::ArrayAppend(a) => vec![a.array],
-            _ => Vec::new(),
-        };
+        let written = written_operands(node);
         if written.iter().any(|e| is_trait_local_fetch(e, name, class)) {
             found = true;
         }
-        if !written_only
-            && let Node::Expression(e) = node
+        if let Node::Expression(e) = node
             && is_trait_local_fetch(e, name, class)
         {
             found = true;
@@ -988,6 +1012,34 @@ fn fetches(trait_text: &str, name: &[u8], class: Option<&str>, written_only: boo
         node.visit_children(|child| stack.push(child));
     }
     found
+}
+
+/// The expressions `node` writes to.
+fn written_operands<'a>(node: Node<'a, 'a>) -> Vec<&'a Expression<'a>> {
+    match node {
+        Node::Assignment(a) => {
+            let mut out = vec![a.lhs];
+            if let Expression::UnaryPrefix(u) = a.rhs
+                && matches!(u.operator, UnaryPrefixOperator::Reference(_))
+            {
+                out.push(u.operand);
+            }
+            out
+        }
+        Node::Unset(u) => u.values.iter().copied().collect(),
+        Node::UnaryPrefix(u)
+            if matches!(
+                u.operator,
+                UnaryPrefixOperator::PreIncrement(_) | UnaryPrefixOperator::PreDecrement(_)
+            ) =>
+        {
+            vec![u.operand]
+        }
+        Node::UnaryPostfix(u) => vec![u.operand],
+        Node::ArrayAccess(a) => vec![a.array],
+        Node::ArrayAppend(a) => vec![a.array],
+        _ => Vec::new(),
+    }
 }
 
 fn is_trait_local_fetch(expr: &Expression<'_>, name: &[u8], class: Option<&str>) -> bool {

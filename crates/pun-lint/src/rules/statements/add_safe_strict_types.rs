@@ -6,8 +6,8 @@ use mago_codex::ttype::atomic::scalar::TScalar;
 use mago_codex::ttype::union::TUnion;
 use mago_syntax::cst::{
     Access, Argument, ArgumentList, AssignmentOperator, ClassLikeMemberSelector, Expression,
-    FunctionLikeReturnTypeHint, MethodBody, Node, NodeKind, PartialArgument, PartialArgumentList,
-    Variable,
+    FunctionCall, FunctionLikeReturnTypeHint, MethodBody, MethodCall, Node, NodeKind,
+    PartialArgument, PartialArgumentList, StaticMethodCall, Variable,
 };
 use pun_phpstan::resolve::resolve_str;
 use pun_phpstan::types::{
@@ -51,7 +51,10 @@ impl Rule for AddSafeStrictTypes {
         out: &mut Vec<Report>,
     ) {
         let Node::Program(program) = node else { return };
-        if has_strict_types(&program.statements) || contains_html(node, ancestors) {
+        if has_strict_types(&program.statements)
+            || contains_html(ctx, node, ancestors)
+            || has_dynamic_call(node)
+        {
             return;
         }
         let facts = facts(ctx);
@@ -76,6 +79,28 @@ impl Rule for AddSafeStrictTypes {
     }
 }
 
+/// A call that `is_node_safe` rejects without types (a nullsafe or dynamic
+/// call), checked first so such a file skips type analysis.
+fn has_dynamic_call(program: Node<'_, '_>) -> bool {
+    let mut stack = vec![program];
+    while let Some(node) = stack.pop() {
+        let dynamic = match node {
+            Node::FunctionCall(c) => !matches!(c.function, Expression::Identifier(_)),
+            Node::MethodCall(c) => !matches!(c.method, ClassLikeMemberSelector::Identifier(_)),
+            Node::StaticMethodCall(c) => {
+                !matches!(c.method, ClassLikeMemberSelector::Identifier(_))
+            }
+            Node::NullSafeMethodCall(_) => true,
+            _ => false,
+        };
+        if dynamic {
+            return true;
+        }
+        node.visit_children(|child| stack.push(child));
+    }
+    false
+}
+
 fn is_file_strict_type_safe(facts: &Facts, program: Node<'_, '_>) -> bool {
     let mut stack = vec![(program, 0usize)];
     let mut path: Vec<Node<'_, '_>> = Vec::new();
@@ -94,31 +119,30 @@ fn is_file_strict_type_safe(facts: &Facts, program: Node<'_, '_>) -> bool {
 
 fn is_node_safe(facts: &Facts, node: Node<'_, '_>, ancestors: &[Node<'_, '_>]) -> bool {
     let at = At { facts, ancestors };
+    // `has_dynamic_call` has ruled out the calls these patterns leave out.
     match node {
-        Node::FunctionCall(c) => {
-            let Expression::Identifier(id) = c.function else {
-                return false;
-            };
-            at.function_parameters(id)
-                .is_some_and(|p| at.are_args_safe(&args(&c.argument_list), &p))
-        }
-        Node::MethodCall(c) => {
-            let ClassLikeMemberSelector::Identifier(name) = &c.method else {
-                return false;
-            };
-            (at.single_class(c.object))
-                .and_then(|class| at.method_parameters(&class, name.value))
-                .is_some_and(|p| at.are_args_safe(&args(&c.argument_list), &p))
-        }
-        Node::NullSafeMethodCall(_) => false,
-        Node::StaticMethodCall(c) => {
-            let ClassLikeMemberSelector::Identifier(name) = &c.method else {
-                return false;
-            };
-            (at.class_of_reference(c.class))
-                .and_then(|class| at.method_parameters(&class, name.value))
-                .is_some_and(|p| at.are_args_safe(&args(&c.argument_list), &p))
-        }
+        Node::FunctionCall(FunctionCall {
+            function: Expression::Identifier(id),
+            argument_list,
+        }) => at
+            .function_parameters(id)
+            .is_some_and(|p| at.are_args_safe(&args(argument_list), &p)),
+        Node::MethodCall(MethodCall {
+            object,
+            method: ClassLikeMemberSelector::Identifier(name),
+            argument_list,
+            ..
+        }) => (at.single_class(object))
+            .and_then(|class| at.method_parameters(&class, name.value))
+            .is_some_and(|p| at.are_args_safe(&args(argument_list), &p)),
+        Node::StaticMethodCall(StaticMethodCall {
+            class,
+            method: ClassLikeMemberSelector::Identifier(name),
+            argument_list,
+            ..
+        }) => (at.class_of_reference(class))
+            .and_then(|class| at.method_parameters(&class, name.value))
+            .is_some_and(|p| at.are_args_safe(&args(argument_list), &p)),
         Node::Instantiation(new) => {
             let arguments = new.argument_list.as_ref().map_or_else(Vec::new, args);
             (at.class_of_reference(new.class))

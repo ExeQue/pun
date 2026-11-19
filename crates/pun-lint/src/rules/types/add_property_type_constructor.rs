@@ -55,7 +55,7 @@ impl Rule for AddPropertyTypeConstructor {
         let test_case = is_test_case(&facts, &view);
         let mut edits: Vec<Edit> = Vec::new();
         for prop in &props {
-            if !is_legal(&facts, &view, prop, true)
+            if !is_legal(ctx, &facts, &view, prop, true)
                 || (prop.is_protected() && !is_safe_protected_property(&facts, &view, prop.name()))
                 || !parent_allows(&facts, &view, prop.name())
             {

@@ -28,6 +28,8 @@ pub struct Context<'a> {
     dead_code_facts: OnceCell<Rc<rules::types::facts::Facts>>,
     /// `class_is` answers by class: many rules ask it at every node of a class.
     class_is: RefCell<HashMap<(u32, u32, String), bool>>,
+    /// What `memo` computed, by the asking rule's key and the node's offset.
+    memo: RefCell<HashMap<(&'static str, usize), Rc<dyn std::any::Any>>>,
 }
 
 impl<'a> Context<'a> {
@@ -40,7 +42,23 @@ impl<'a> Context<'a> {
             facts: OnceCell::new(),
             dead_code_facts: OnceCell::new(),
             class_is: RefCell::default(),
+            memo: RefCell::default(),
         }
+    }
+
+    /// `compute`'s value for `key`, computed once per file: for a fact about an enclosing node (a class, a function
+    /// body) that a rule would otherwise recompute at each node inside it.
+    pub(crate) fn memo<T: 'static>(
+        &self,
+        key: (&'static str, usize),
+        compute: impl FnOnce() -> T,
+    ) -> Rc<T> {
+        if let Some(found) = self.memo.borrow().get(&key) {
+            return Rc::clone(found).downcast().expect("one type per key");
+        }
+        let value = Rc::new(compute());
+        self.memo.borrow_mut().insert(key, value.clone());
+        value
     }
 
     pub(crate) fn tokens(&self) -> &[rules::support::statements::Token] {

@@ -51,7 +51,8 @@ impl Rule for NoNullDefaultArgument {
             return;
         };
         let args = list.arguments.as_slice();
-        if args.is_empty()
+        // Only trailing `null`s can go, so a call that does not end in one needs no callee.
+        if args.last().is_none_or(|a| !is_constant(value(a), "null"))
             || args
                 .iter()
                 .any(|a| matches!(a, Argument::Named(_)) || unpacked(a))
@@ -109,7 +110,11 @@ impl Rule for NoNullDefaultNamedArgument {
             return;
         };
         let args = list.arguments.as_slice();
-        if args.iter().any(unpacked) || !args.iter().any(|a| matches!(a, Argument::Named(_))) {
+        // Only a named `null` can go, so a call without one needs no callee.
+        if args.iter().any(unpacked)
+            || !(args.iter())
+                .any(|a| matches!(a, Argument::Named(n) if is_constant(n.value, "null")))
+        {
             return;
         }
         let facts = facts(ctx);

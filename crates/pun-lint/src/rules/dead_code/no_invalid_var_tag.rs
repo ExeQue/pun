@@ -16,7 +16,9 @@ use crate::rules::support::conditions::comments_between;
 use crate::rules::support::docblocks::Doc;
 use crate::rules::support::names::{called_function_name, resolve_class_name};
 use crate::rules::support::phpdoc_tags::{is_valid, named, with_tag};
-use crate::rules::support::statements::{List, enclosing, holder_list, previous_token_end, tokens};
+use crate::rules::support::statements::{
+    List, enclosing, holder_list, previous_token_end, tokens, try_previous_token_end,
+};
 use crate::rules::support::variable_usage::{same_name, try_of, used_in_next};
 use crate::rules::types::facts::{Facts, facts};
 use crate::syntax::{node_span, unparenthesize};
@@ -89,6 +91,25 @@ impl Rule for NoInvalidVarTag {
                 (list, At::Nop, chain.len() - 1)
             }
         };
+        // Only a statement with one comment before it can have a tag to remove: rule the others out before the types.
+        let comments_from = match at {
+            At::Statement(i) => {
+                let start = node_span(list.stmts[i]).start;
+                try_previous_token_end(source, tokens, start)
+                    .map(|end| (start, end.max(list.inner.start)))
+            }
+            At::Nop => Some((
+                list.inner.end,
+                list.stmts
+                    .last()
+                    .map_or(list.inner.start, |s| node_span(*s).end),
+            )),
+        };
+        if comments_from
+            .is_some_and(|(start, from)| comments_between(tokens, from, start).len() != 1)
+        {
+            return;
+        }
         let facts = facts(ctx);
         let Some(defined) = defined_before(&facts, &chain[..=holder], &list, at) else {
             return;

@@ -38,23 +38,34 @@ pub(crate) fn lex(source: &str) -> Vec<Token> {
 }
 
 pub(crate) fn previous_token_end(source: &str, tokens: &[Token], pos: usize) -> usize {
+    try_previous_token_end(source, tokens, pos).expect("the open tag")
+}
+
+/// `previous_token_end`, or `None` when no token comes before `pos`.
+pub(crate) fn try_previous_token_end(source: &str, tokens: &[Token], pos: usize) -> Option<usize> {
     let before = tokens.partition_point(|t| t.end <= pos);
     let token = tokens[..before]
         .iter()
         .rev()
-        .find(|t| !t.kind.is_trivia())
-        .expect("the open tag");
+        .find(|t| !t.kind.is_trivia())?;
     let mut end = token.end;
     if token.kind == TokenKind::OpenTag && source.as_bytes().get(end) == Some(&b'\n') && end < pos {
         end += 1;
     }
-    end
+    Some(end)
+}
+
+/// The tokens that start at or after `from` and end at or before `to`. The tokens are in source order and do not
+/// overlap, so they are one run.
+pub(crate) fn within(tokens: &[Token], from: usize, to: usize) -> &[Token] {
+    let first = tokens.partition_point(|t| t.start < from);
+    let rest = &tokens[first..];
+    &rest[..rest.partition_point(|t| t.end <= to)]
 }
 
 pub(crate) fn trailing_comment(tokens: &[Token], from: usize, to: usize) -> bool {
-    let inside = tokens.iter().filter(|t| t.start >= from && t.end <= to);
     let mut found = false;
-    for token in inside {
+    for token in within(tokens, from, to) {
         if token.kind.is_comment() {
             found = true;
         } else if !token.kind.is_trivia() {
@@ -300,9 +311,9 @@ pub(crate) fn remove(
             if i > 0 {
                 return Edit::new(Span::new(before, span.end), "");
             }
-            let start = tokens
+            let start = within(tokens, before, span.start)
                 .iter()
-                .find(|t| t.start >= before && t.end <= span.start && t.kind.is_comment())
+                .find(|t| t.kind.is_comment())
                 .map_or(span.start, |t| t.start);
             let rest = &source[span.end..list.inner.end];
             let blanks = rest.len() - rest.trim_start().len();
@@ -333,9 +344,9 @@ pub(crate) fn statement_lines(
     let mut spans: Vec<Span> = Vec::new();
     let mut previous = list.inner.start;
     let comment_after = |from: usize, to: usize| {
-        tokens
+        within(tokens, from, to)
             .iter()
-            .find(|t| t.start >= from && t.end <= to && t.kind.is_comment())
+            .find(|t| t.kind.is_comment())
             .map(|t| t.start)
     };
     for statement in &list.stmts {

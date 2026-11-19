@@ -480,6 +480,24 @@ fn is_call_of(
     site: &CallSite<'_, '_>,
     method: &[u8],
 ) -> bool {
+    // Each way below to a use names the method, in the call or in its chain of calls: a call that names it nowhere
+    // needs no types.
+    let (CallSite::Object(_, selector) | CallSite::Static(_, selector)) = site;
+    let in_chain = |object: &Expression<'_>| {
+        let mut current = unparenthesize(object);
+        while let Expression::Call(Call::Method(call)) = current {
+            if selector_name(&call.method).unwrap_or(b"") == method {
+                return true;
+            }
+            current = unparenthesize(call.object);
+        }
+        false
+    };
+    if !should_skip(selector, method)
+        && !matches!(site, CallSite::Object(object, _) if in_chain(object))
+    {
+        return false;
+    }
     let (selector, caller, root, self_static) = match site {
         CallSite::Object(object, selector) => {
             let t = type_of(facts, object);

@@ -31,19 +31,20 @@ impl Rule for AddBoolReturnFromConst {
             return;
         };
         let returns = returns_scoped(f.body);
+        let boolean = |e: &Expression<'_>| {
+            matches!(e, Expression::Literal(Literal::True(_) | Literal::False(_)))
+        };
+        // The literals are checked first: the check of the body's paths needs the types.
+        if !returns.iter().all(|r| r.value.is_some_and(boolean)) {
+            return;
+        }
         let scope = class_scope(ancestors);
         let place = Place {
             facts: &facts(ctx),
             ancestors,
             scope: scope.as_ref(),
         };
-        if !has_only_return_with_expr(&place, f.body, &returns) {
-            return;
-        }
-        let boolean = |e: &Expression<'_>| {
-            matches!(e, Expression::Literal(Literal::True(_) | Literal::False(_)))
-        };
-        if returns.iter().all(|r| r.value.is_some_and(boolean)) {
+        if has_only_return_with_expr(&place, f.body, &returns) {
             out.push(add_return_type(f.span, f.at, "bool"));
         }
     }

@@ -77,26 +77,27 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
     if parts.has_else || parts.has_elseifs {
         return None;
     }
-    if any_node(chain[0], &|n| match n {
-        Node::Inline(inline) | Node::Statement(Statement::Inline(inline)) => {
-            let value = inline.value;
-            let value = value
-                .strip_prefix(b"\r\n".as_slice())
-                .or_else(|| value.strip_prefix(b"\n".as_slice()))
-                .unwrap_or(value);
-            !value.is_empty()
-        }
-        _ => false,
-    }) {
-        return None;
-    }
+    // A file with inline HTML is left alone. That walks the whole file, so it runs after the cheaper checks.
+    let has_inline = || {
+        any_node(chain[0], &|n| match n {
+            Node::Inline(inline) | Node::Statement(Statement::Inline(inline)) => {
+                let value = inline.value;
+                let value = value
+                    .strip_prefix(b"\r\n".as_slice())
+                    .or_else(|| value.strip_prefix(b"\n".as_slice()))
+                    .unwrap_or(value);
+                !value.is_empty()
+            }
+            _ => false,
+        })
+    };
     let cond = unparenthesize(r#if.condition);
     if let Expression::Binary(and) = cond
         && matches!(and.operator, BinaryOperator::And(_))
     {
         let left = unparenthesize(and.lhs);
         let is_true = facts.full_type(node_span(left)).is_some_and(is_true);
-        if !is_true || !is_safe(facts, chain, left) {
+        if !is_true || !is_safe(facts, chain, left) || has_inline() {
             return None;
         }
         let right = node_span(unparenthesize(and.rhs));
@@ -108,6 +109,7 @@ fn change(source: &str, tokens: &[Token], facts: &Facts, chain: &[Node<'_, '_>])
         || should_skip_from_variable(facts, cond)
         || writes_variable_variable(chain, node_span(r#if).start)
         || chain.iter().any(|a| matches!(a, Node::Trait(_)))
+        || has_inline()
     {
         return None;
     }

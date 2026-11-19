@@ -68,7 +68,7 @@ impl Rule for AddPropertyTypeSetterGetter {
             {
                 continue;
             }
-            if !is_legal(&facts, &view, prop, false) {
+            if !is_legal(ctx, &facts, &view, prop, false) {
                 continue;
             }
             let Some(declaration) = property_declaration(&t, &facts.codebase, ctx.php_version.id())
