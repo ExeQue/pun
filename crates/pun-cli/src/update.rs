@@ -188,7 +188,7 @@ fn resolve(project: &Project, plan: &Plan, a: &InstallArgs) -> Result<Resolved> 
     let overrides = (project.manifest.get("config"))
         .and_then(|c| c.get("platform"))
         .and_then(Value::as_object);
-    let platform = platform::detect(&php, overrides)?;
+    let platform = platform::detect(&php, overrides, pun_config::cache_dir().as_deref())?;
     let fetcher = fetcher(&project.root, &project.manifest);
     let global = global_repositories();
     let env = |k: &str| std::env::var(k).ok();

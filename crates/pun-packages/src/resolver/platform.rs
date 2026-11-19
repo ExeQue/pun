@@ -193,8 +193,9 @@ fn package(name: &str, version: &str) -> Map<String, Value> {
 pub fn detect(
     php: &str,
     overrides: Option<&Map<String, Value>>,
+    cache: Option<&Path>,
 ) -> Result<Vec<Map<String, Value>>> {
-    from_probe(&probe(php)?, overrides)
+    from_probe(&probe_cached(php, cache)?, overrides)
 }
 
 /// What `php` reports about itself, as JSON.
@@ -500,15 +501,15 @@ mod tests {
 
     #[test]
     fn reads_the_system_php() {
-        let got = detect("php", None).unwrap();
+        let got = detect("php", None, None).unwrap();
         assert!(
             names(&got).iter().any(|n| n.starts_with("php 8.")),
             "{:?}",
             names(&got)
         );
-        assert!(detect("/nonexistent/php", None).is_err());
+        assert!(detect("/nonexistent/php", None, None).is_err());
         assert_eq!(
-            detect("false", None).unwrap_err().to_string(),
+            detect("false", None, None).unwrap_err().to_string(),
             "false failed to report the platform: "
         );
     }
