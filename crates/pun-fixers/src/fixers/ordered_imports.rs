@@ -1,5 +1,6 @@
 use crate::analyzers::analysis::NamespaceUseType;
 use crate::analyzers::fixer_configuration_resolver::resolve;
+use crate::analyzers::memo::Memo;
 use crate::analyzers::preg::Preg;
 use crate::analyzers::utils::natural_language_join;
 use anyhow::{Result, bail};
@@ -374,6 +375,8 @@ impl OrderedImportsFixer {
     }
 
     fn set_new_order(&self, tokens: &mut Tokens, uses_order: Vec<(usize, Item)>) {
+        /// The tokens of each rewritten declaration: one import recurs across a project's files.
+        static DECLS: Memo<(Vec<u8>, usize), Vec<Token>> = Memo::new();
         let map_start_to_end: Vec<(usize, usize)> = uses_order
             .iter()
             .map(|(_, u)| (u.start_index, u.end_index))
@@ -397,17 +400,20 @@ impl OrderedImportsFixer {
             {
                 n = 5;
             }
-            let mut decl = Tokens::from_code(&code);
-            decl.clear_range(0, n - 1);
-            let last = decl.count() - 1;
-            decl.clear_at(last);
-            decl.clear_empty_tokens();
+            let decl = DECLS.get_or(&(code, n), |(code, n)| {
+                let mut decl = Tokens::from_code(code);
+                decl.clear_range(0, n - 1);
+                let last = decl.count() - 1;
+                decl.clear_at(last);
+                decl.clear_empty_tokens();
+                decl.as_slice().to_vec()
+            });
             let end = map_start_to_end
                 .iter()
                 .find(|(s, _)| *s == index)
                 .unwrap()
                 .1;
-            tokens.override_range(index, end, decl.as_slice().to_vec());
+            tokens.override_range(index, end, decl);
             if u.group {
                 let prev = tokens.prev_meaningful(index);
                 fix_comma_to_use(tokens, prev);

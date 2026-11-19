@@ -1,9 +1,13 @@
 use super::line::LineRef;
 use super::tag::Tag;
 use super::type_expression::{REGEX_IDENTIFIER, REGEX_TYPES, TypeExpression};
+use crate::analyzers::memo::Memo;
 use crate::analyzers::preg::{PREG_SPLIT_DELIM_CAPTURE, PREG_SPLIT_NO_EMPTY, Preg, preg_quote};
 use pun_tokens::php_compat::isspace;
 use std::cell::{OnceCell, RefCell};
+
+/// `get_types_content` by tag name and content.
+static TYPES_CONTENT: Memo<(Vec<u8>, Vec<u8>), Option<Vec<u8>>> = Memo::new();
 
 pub(crate) const TAGS_WITH_TYPES: &[&str] = &[
     "extends",
@@ -173,18 +177,20 @@ impl Annotation {
         if self.types_content.borrow().is_none() {
             let name = self.get_tag().get_name();
             assert!(self.support_types(), "This tag does not support types.");
-            let pattern = [
-                &br"{^(?:\h*\*|/\*\*)[\h*]*@"[..],
-                name,
-                br"\h+",
-                REGEX_TYPES.as_bytes(),
-                br"(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is",
-            ]
-            .concat();
-            let content = self.get_content();
-            if let Some(m) = Preg::match_groups(&pattern, &content) {
-                *self.types_content.borrow_mut() = Some(m.name_str("types").to_vec());
-            }
+            // A pure function of the tag and the content, and annotations repeat across a project's doc blocks.
+            let found =
+                TYPES_CONTENT.get_or(&(name.to_vec(), self.get_content()), |(name, content)| {
+                    let pattern = [
+                        &br"{^(?:\h*\*|/\*\*)[\h*]*@"[..],
+                        name,
+                        br"\h+",
+                        REGEX_TYPES.as_bytes(),
+                        br"(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is",
+                    ]
+                    .concat();
+                    Preg::match_groups(&pattern, content).map(|m| m.name_str("types").to_vec())
+                });
+            *self.types_content.borrow_mut() = found;
         }
         self.types_content.borrow().clone()
     }

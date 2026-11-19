@@ -1567,6 +1567,7 @@ name = "punphp-fixers"
 version = "0.2.4"
 dependencies = [
  "anyhow",
+ "foldhash",
  "indexmap",
  "memchr",
  "pcre2",

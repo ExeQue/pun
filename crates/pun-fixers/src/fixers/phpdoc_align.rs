@@ -6,6 +6,7 @@ use pun_format::{Fixer, WhitespacesFixerConfig};
 use pun_tokens::php_compat::trim;
 use pun_tokens::{Kind, Token, Tokens};
 use serde_json::Value;
+use crate::analyzers::memo::Memo;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -47,6 +48,8 @@ struct PhpdocAlignFixer {
     align_left: bool,
     spacing: Spacing,
     line_ending: Vec<u8>,
+    /// `get_matches` by line, for tag lines and for comment lines: doc block lines repeat across a project.
+    matches: [Memo<Vec<u8>, Option<Item>>; 2],
 }
 
 pub(crate) fn fixer() -> Box<dyn Fixer> {
@@ -56,6 +59,7 @@ pub(crate) fn fixer() -> Box<dyn Fixer> {
         align_left: false,
         spacing: Spacing::Int(1),
         line_ending: b"\n".to_vec(),
+        matches: Default::default(),
     })
 }
 
@@ -156,6 +160,7 @@ impl Fixer for PhpdocAlignFixer {
             format!(r"/{indent_regex}\*(?!\h?+@)(?:\s+(?P<desc>\V+))(?<!\*\/)\r?$/");
         self.align_left = align == "left";
         self.spacing = spacing;
+        self.matches = Default::default();
         Ok(())
     }
     fn is_candidate(&self, tokens: &Tokens) -> bool {
@@ -184,7 +189,7 @@ impl PhpdocAlignFixer {
         let l = doc.get_lines().len();
         let mut i = 0;
         'outer: while i < l {
-            let Some(m) = self.get_matches(doc.get_line(i).unwrap().borrow().get_content(), false)
+            let Some(m) = self.memo_matches(doc.get_line(i).unwrap().borrow().get_content(), false)
             else {
                 i += 1;
                 continue;
@@ -196,7 +201,7 @@ impl PhpdocAlignFixer {
                 let Some(line) = doc.get_line(i) else {
                     break 'outer;
                 };
-                let Some(m) = self.get_matches(line.borrow().get_content(), true) else {
+                let Some(m) = self.memo_matches(line.borrow().get_content(), true) else {
                     break;
                 };
                 items.push(m);
@@ -315,6 +320,11 @@ impl PhpdocAlignFixer {
                 .copied()
                 .unwrap_or(DEFAULT_SPACING),
         }
+    }
+
+    fn memo_matches(&self, line: &[u8], match_comment_only: bool) -> Option<Item> {
+        self.matches[usize::from(match_comment_only)]
+            .get_or(line, |line| self.get_matches(line, match_comment_only))
     }
 
     fn get_matches(&self, line: &[u8], match_comment_only: bool) -> Option<Item> {

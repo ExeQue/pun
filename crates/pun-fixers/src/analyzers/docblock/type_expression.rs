@@ -1,3 +1,4 @@
+use crate::analyzers::memo::Memo;
 use crate::analyzers::preg::{Captures, Preg};
 use std::cmp::Ordering;
 use std::sync::LazyLock;
@@ -47,7 +48,7 @@ static CALLABLE_ARGUMENT: LazyLock<Prefixed> =
 static ARRAY_SHAPE_INNER: LazyLock<Prefixed> =
     LazyLock::new(|| Prefixed::new("array_shape_inner", r"(?:\h*,[\h\v*]*|$)"));
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct ParseError(pub Vec<u8>);
 
 impl std::fmt::Display for ParseError {
@@ -73,15 +74,18 @@ impl TypeExpression {
         Self::try_new(value).unwrap_or_else(|e| panic!("{e}"))
     }
 
+    /// The parse of `value`, a pure function of it: the same types recur across a project's doc blocks.
     pub(crate) fn try_new(value: &[u8]) -> Result<Self, ParseError> {
-        let mut t = TypeExpression {
-            value: value.to_vec(),
-            is_composite_type: false,
-            types_glue: None,
-            inner_type_expressions: vec![],
-        };
-        t.parse()?;
-        Ok(t)
+        static PARSED: Memo<Vec<u8>, Result<TypeExpression, ParseError>> = Memo::new();
+        PARSED.get_or(value, |value| {
+            let mut t = TypeExpression {
+                value: value.to_vec(),
+                is_composite_type: false,
+                types_glue: None,
+                inner_type_expressions: vec![],
+            };
+            t.parse().map(|()| t)
+        })
     }
 
     pub(crate) fn to_string(&self) -> &[u8] {

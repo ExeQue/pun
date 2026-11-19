@@ -27,6 +27,7 @@ pub(crate) mod goto_label_analyzer;
 pub(crate) mod helpers;
 pub(crate) mod import_processor;
 pub(crate) mod indentation_trait;
+pub(crate) mod memo;
 pub(crate) mod namespace_uses_analyzer;
 pub(crate) mod ordered_class_elements;
 pub(crate) mod pest;
