@@ -303,6 +303,8 @@ pub(crate) enum Exit {
     /// Problems found, or files changed under `--test` or `--repair`.
     Failure = 1,
     RunError = 2,
+    /// The lock doesn't meet composer.json's requirements (Composer's `Installer::ERROR_LOCK_FILE_INVALID`).
+    LockInvalid = 4,
 }
 
 impl From<Exit> for ExitCode {

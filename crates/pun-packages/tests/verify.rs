@@ -5,7 +5,7 @@
 //! probe, `probe-n.json`, is Pun's probe of that same command.
 
 use pun_packages::lock::Lock;
-use pun_packages::verify::verify;
+use pun_packages::verify::{missing_requirements, verify};
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::Path;
@@ -88,4 +88,40 @@ fn ignored_requirements_are_left_out() {
     );
     // With both ignored Composer goes on to download the package.
     assert_eq!(check("B", &listed(&["ext-foo", "php"])), None);
+}
+
+/// `composer install`'s check that the lock meets composer.json: fixture `T` (exit 4, with and without
+/// `--no-dev`) has a branch alias, a missing package, a replaced and a provided one, and requirements that are met
+/// (by a locked version, by the root's `provide`, by `self.version`, and in `require-dev` by a dev package `require`
+/// can't see). `U` sets `allow-missing-requirements`: Composer prints the same lines and installs (exit 0); without
+/// it, exit 4. Composer prints the lines after its stale-lock warning.
+#[test]
+fn reports_missing_requirements_as_composer() {
+    let lines = |case: &str, dev: bool| {
+        let dir = Path::new(FIXTURES).join(case);
+        let read = |f: &str| std::fs::read_to_string(dir.join(f)).unwrap();
+        let manifest: Map<String, Value> = serde_json::from_str(&read("composer.json")).unwrap();
+        let lock = Lock::from_composer_lock(&read("composer.lock")).unwrap();
+        missing_requirements(&manifest, &lock, dev).unwrap()
+    };
+    let composer = |case: &str, file: &str| -> Vec<String> {
+        let text = std::fs::read_to_string(Path::new(FIXTURES).join(case).join(file)).unwrap();
+        (text.lines())
+            .skip_while(|l| !l.starts_with("Warning: The lock file is not up to date"))
+            .skip(1)
+            .take_while(|l| !l.starts_with("Package operations:"))
+            .map(String::from)
+            .collect()
+    };
+    assert_eq!(lines("T", true), composer("T", "composer-output.txt"));
+    assert_eq!(
+        lines("T", false),
+        composer("T", "composer-output-no-dev.txt")
+    );
+    assert_eq!(lines("U", true), composer("U", "composer-output.txt"));
+    assert_eq!(
+        lines("U", true),
+        composer("U", "composer-output-strict.txt")
+    );
+    assert_eq!(lines("A", true), Vec::<String>::new());
 }

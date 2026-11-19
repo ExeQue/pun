@@ -540,7 +540,8 @@ fn install_options_match_composer() {
 fn install_reports_like_composer() {
     let d = fixture("reports");
     let manifest = read(&d, "composer.json");
-    std::fs::write(d.join("composer.json"), manifest.replace("^0.3", "^0.4")).unwrap();
+    // A changed constraint the locked 0.3.1 still meets: a stale lock, not a missing requirement (exit 4).
+    std::fs::write(d.join("composer.json"), manifest.replace("^0.3", "^0.3.1")).unwrap();
     let lock = read(&d, "composer.lock");
     let missing = lock.replace(
         "\"bin/lib\"\n",
@@ -820,4 +821,36 @@ fn install_refuses_a_lock_the_platform_cannot_run() {
         &[("PUN_LINK_MODE", "symlink")],
     );
     assert_eq!(code, Some(0), "{out}{err}");
+}
+
+/// A lock that doesn't meet composer.json (`pun-packages/tests/fixtures/verify/U`): Composer's lines and its exit 4
+/// with nothing installed, and with `config.allow-missing-requirements` the same lines and an install.
+#[test]
+fn install_stops_when_the_lock_misses_a_requirement() {
+    let d = common::scratch("update", "missing-requirements");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../pun-packages/tests/fixtures/verify/U/.");
+    let copied = std::process::Command::new("cp")
+        .arg("-R")
+        .arg(source)
+        .arg(&d)
+        .status()
+        .unwrap();
+    assert!(copied.success());
+    let allow = read(&d, "composer.json");
+    let strict = allow.replace(
+        "\"allow-missing-requirements\": true",
+        "\"allow-missing-requirements\": false",
+    );
+    std::fs::write(d.join("composer.json"), strict).unwrap();
+    let lines = "- Required package \"b/missing\" is not present in the lock file.\n- Required package \"h/ok\" is in the lock file as \"1.2.0\" but that does not satisfy your constraint \"^9.0\".\nThis usually happens when composer files are incorrectly merged or the composer.json file is manually edited.\n";
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(4), "{out}{err}");
+    assert!(err.contains(lines), "{err}");
+    assert!(!d.join("vendor").exists());
+    std::fs::write(d.join("composer.json"), allow).unwrap();
+    let (out, err, code) = pun(&d, &["install"]);
+    assert_eq!(code, Some(0), "{out}{err}");
+    assert!(err.contains(lines), "{err}");
+    assert!(d.join("vendor/h/ok/composer.json").exists());
 }

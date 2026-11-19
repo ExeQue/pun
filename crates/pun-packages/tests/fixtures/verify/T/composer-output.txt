@@ -1,0 +1,12 @@
+Installing dependencies from lock file (including require-dev)
+Verifying lock file contents can be installed on current platform.
+Warning: The lock file is not up to date with the latest changes in composer.json. You may be getting outdated dependencies. It is recommended that you run `composer update` or `composer update <package name>`.
+- Required package "a/lib" is in the lock file as "1.0.x-dev" but that does not satisfy your constraint "^2.0".
+- Required package "b/missing" is not present in the lock file.
+- Required package "d/part" is in the lock file as "replaced as 1.* by d/big 1.0.0" but that does not satisfy your constraint "^2.0".
+- Required package "g/api" is in the lock file as "provided as 1.0 by f/impl 1.0.0" but that does not satisfy your constraint "^2.0".
+- Required package "j/devonly" is not present in the lock file.
+- Required (in require-dev) package "c/dev" is in the lock file as "2.0.0" but that does not satisfy your constraint "^3.0".
+This usually happens when composer files are incorrectly merged or the composer.json file is manually edited.
+Read more about correctly resolving merge conflicts https://getcomposer.org/doc/articles/resolving-merge-conflicts.md
+and prefer using the "require" command over editing the composer.json file directly https://getcomposer.org/doc/03-cli.md#require--r

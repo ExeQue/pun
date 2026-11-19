@@ -1,0 +1,22 @@
+{
+    "_readme": ["This file locks the dependencies of your project to a known state"],
+    "content-hash": "00000000000000000000000000000000",
+    "packages": [
+        {"name": "a/lib", "version": "dev-main", "type": "library", "extra": {"branch-alias": {"dev-main": "1.0.x-dev"}}},
+        {"name": "d/big", "version": "1.0.0", "type": "library", "replace": {"d/part": "1.*"}},
+        {"name": "f/impl", "version": "1.0.0", "type": "library", "provide": {"g/api": "1.0"}},
+        {"name": "h/ok", "version": "1.2.0", "type": "library"}
+    ],
+    "packages-dev": [
+        {"name": "c/dev", "version": "2.0.0", "type": "library"},
+        {"name": "j/devonly", "version": "1.1.0", "type": "library"}
+    ],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {"a/lib": 20},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {"php": ">=8.0"},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

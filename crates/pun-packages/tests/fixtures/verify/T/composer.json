@@ -1,0 +1,23 @@
+{
+    "name": "acme/app",
+    "version": "1.0.0",
+    "require": {
+        "php": ">=8.0",
+        "a/lib": "^2.0",
+        "b/missing": "^1.0",
+        "d/part": "^2.0",
+        "g/api": "^2.0",
+        "h/ok": "^1.0",
+        "i/self": "self.version",
+        "j/devonly": "^1.0"
+    },
+    "require-dev": {
+        "c/dev": "^3.0",
+        "h/ok": "^1.0",
+        "k/provided": "^1.0",
+        "j/devonly": "^1.0"
+    },
+    "provide": {
+        "k/provided": "1.0"
+    }
+}

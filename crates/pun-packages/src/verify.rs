@@ -41,13 +41,7 @@ pub fn verify(
         .get("platform-overrides")
         .and_then(Value::as_object);
     let mut arena = vec![];
-    let mut root = manifest.clone();
-    root.entry("name").or_insert_with(|| "__root__".into());
-    root.entry("version")
-        .or_insert_with(|| "1.0.0+no-version-set".into());
-    root.remove("require");
-    root.remove("require-dev");
-    let mut fixed = load(root, Origin::Root, &mut arena)?;
+    let mut fixed = root_package(manifest, &mut arena)?;
     let root = *fixed.last().expect("the root package");
     for data in from_probe(probe, overrides)? {
         for p in load(data, Origin::Platform, &mut arena)? {
@@ -59,10 +53,42 @@ pub fn verify(
             }
         }
     }
-    let dev = lock.packages_dev.iter().filter(|_| dev_mode);
+    let locked = locked_repository(lock, dev_mode, &mut arena)?;
+    fixed.extend(&locked);
+    let check = Check {
+        arena,
+        fixed,
+        probe,
+        detected: from_probe(probe, None)?,
+    };
+    let mut problems = check.root_problems(manifest, lock, dev_mode, ignore)?;
+    let failed = check.requirement_problems(&locked, ignore, &mut problems);
+    check.conflict_problems(&failed, ignore, &mut problems);
+    Ok((!problems.is_empty()).then(|| report(&problems, &ini_files(probe))))
+}
+
+/// The root package as the check sees it: without its requirements, named and versioned as Composer defaults them;
+/// its alias first, as in a repository.
+fn root_package(manifest: &Map<String, Value>, arena: &mut Vec<Package>) -> Result<Vec<usize>> {
+    let mut root = manifest.clone();
+    root.entry("name").or_insert_with(|| "__root__".into());
+    root.entry("version")
+        .or_insert_with(|| "1.0.0+no-version-set".into());
+    root.remove("require");
+    root.remove("require-dev");
+    load(root, Origin::Root, arena)
+}
+
+/// `Locker::getLockedRepository`: the locked packages (with `packages-dev` when `dev`), each branch alias before
+/// its package, then the root's inline aliases recorded in the lock.
+fn locked_repository(lock: &Lock, dev: bool, arena: &mut Vec<Package>) -> Result<Vec<usize>> {
     let mut locked = vec![];
-    for data in lock.packages.iter().chain(dev) {
-        locked.extend(load(data.0.clone(), Origin::Locked, &mut arena)?);
+    for data in lock
+        .packages
+        .iter()
+        .chain(lock.packages_dev.iter().filter(|_| dev))
+    {
+        locked.extend(load(data.0.clone(), Origin::Locked, arena)?);
     }
     let aliases = lock.settings.get("aliases").and_then(Value::as_array);
     for a in aliases.into_iter().flatten() {
@@ -76,7 +102,7 @@ pub fn verify(
             .find(|&p| arena[p].alias_of.is_none() && arena[p].name == s("package"));
         if let Some(of) = of {
             locked.push(alias_package(
-                &mut arena,
+                arena,
                 of,
                 s("alias_normalized"),
                 s("alias"),
@@ -84,17 +110,88 @@ pub fn verify(
             ));
         }
     }
-    fixed.extend(&locked);
-    let check = Check {
-        arena,
-        fixed,
-        probe,
-        detected: from_probe(probe, None)?,
-    };
-    let mut problems = check.root_problems(manifest, lock, dev_mode, ignore)?;
-    let failed = check.requirement_problems(&locked, ignore, &mut problems);
-    check.conflict_problems(&failed, ignore, &mut problems);
-    Ok((!problems.is_empty()).then(|| report(&problems, &ini_files(probe))))
+    Ok(locked)
+}
+
+/// `Locker::getMissingRequirementInfo`, which `composer install` prints before it checks the platform: each root
+/// requirement (and, with `dev_mode`, each of `require-dev`) that no locked package, nor the root, meets. Empty when
+/// every one is met; otherwise Composer exits 4 unless `config.allow-missing-requirements` is set.
+pub fn missing_requirements(
+    manifest: &Map<String, Value>,
+    lock: &Lock,
+    dev_mode: bool,
+) -> Result<Vec<String>> {
+    let sets = [
+        ("require", "Required", false),
+        ("require-dev", "Required (in require-dev)", true),
+    ];
+    let mut lines = vec![];
+    for (key, description, dev) in &sets[..if dev_mode { 2 } else { 1 }] {
+        let mut arena = vec![];
+        let mut repo = locked_repository(lock, *dev, &mut arena)?;
+        repo.extend(root_package(manifest, &mut arena)?);
+        let links = (manifest
+            .get(*key)
+            .and_then(Value::as_object)
+            .into_iter()
+            .flatten())
+        .filter_map(|(k, v)| Some((k.to_ascii_lowercase(), v.as_str()?)));
+        for (target, pretty) in links {
+            if is_platform(&target) || pretty == "self.version" {
+                continue;
+            }
+            let c = constraint::parse(pretty)?;
+            if find(&arena, &repo, &target, Some(&c)).is_some() {
+                continue;
+            }
+            lines.push(match find(&arena, &repo, &target, None) {
+                Some(p) => format!(
+                    "- {description} package \"{target}\" is in the lock file as \"{}\" but that does not satisfy your constraint \"{pretty}\".",
+                    described(p, &target)
+                ),
+                None => {
+                    format!("- {description} package \"{target}\" is not present in the lock file.")
+                }
+            });
+        }
+    }
+    if !lines.is_empty() {
+        lines.extend([
+            "This usually happens when composer files are incorrectly merged or the composer.json file is manually edited.",
+            "Read more about correctly resolving merge conflicts https://getcomposer.org/doc/articles/resolving-merge-conflicts.md",
+            "and prefer using the \"require\" command over editing the composer.json file directly https://getcomposer.org/doc/03-cli.md#require--r",
+        ].map(String::from));
+    }
+    Ok(lines)
+}
+
+/// `InstalledRepository::findPackagesWithReplacersAndProviders`, first match: the package `name` at a version
+/// `constraint` accepts, or one that provides or replaces it with a link `constraint` intersects.
+fn find<'a>(
+    arena: &'a [Package],
+    repo: &[usize],
+    name: &str,
+    constraint: Option<&Constraint>,
+) -> Option<&'a Package> {
+    let accepts = |c: &Constraint| constraint.is_none_or(|want| want.matches(c));
+    (repo.iter().map(|&p| &arena[p])).find(|p| {
+        if p.name == name {
+            return accepts(&Constraint::exact(&p.version));
+        }
+        (p.provides.iter().chain(&p.replaces)).any(|l| l.target == name && accepts(&l.constraint))
+    })
+}
+
+/// How the lock has `target`: the package's version, or the replace or provide link that stands for it.
+fn described(p: &Package, target: &str) -> String {
+    if p.name != target {
+        for (links, text) in [(&p.replaces, "replaced"), (&p.provides, "provided")] {
+            if let Some(l) = links.iter().find(|l| l.target == target) {
+                return format!("{text} as {} by {}", l.pretty, at(p));
+            }
+        }
+    }
+    p.pretty_version.clone()
 }
 
 /// `IgnoreListPlatformRequirementFilter`: `None` when the requirement is ignored; with `name+`, the constraint

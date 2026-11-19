@@ -7,6 +7,7 @@ use pun_packages::install::{Options, install};
 use pun_packages::lock::Lock;
 use pun_packages::plugin_host::Dispatcher;
 use pun_packages::store::LinkMode;
+use pun_packages::verify::missing_requirements;
 use pun_packages::version::IgnorePlatform;
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
@@ -192,6 +193,20 @@ pub(crate) fn apcu(enabled: bool, prefix: Option<&String>) -> Apcu {
     }
 }
 
+/// Prints Composer's lines for each requirement of composer.json the lock doesn't meet; false when the install
+/// stops there, as it does without `config.allow-missing-requirements`.
+fn meets_requirements(manifest: &Map<String, Value>, lock: &Lock, no_dev: bool) -> Result<bool> {
+    let missing = missing_requirements(manifest, lock, !no_dev)?;
+    for line in &missing {
+        eprintln!("{line}");
+    }
+    let allowed = (manifest
+        .get("config")
+        .and_then(|c| c.get("allow-missing-requirements")))
+        == Some(&Value::Bool(true));
+    Ok(missing.is_empty() || allowed)
+}
+
 /// Installs `lock` into the project's `vendor/` and reports it; `update` dispatches the update events instead of
 /// the install ones.
 pub(crate) fn install_locked(
@@ -228,6 +243,10 @@ pub(crate) fn install_locked(
     );
     if !update {
         project.dispatch(a, pre)?;
+        // Composer checks this on every install from a lock, after `pre-install-cmd`; an update has just solved it.
+        if !meets_requirements(manifest, lock, a.no_dev)? {
+            return Ok(Exit::LockInvalid);
+        }
     }
     let mut events = |event: &str| project.dispatch(a, event);
     let report = install(root, manifest, lock, &fetcher, &options, &env, &mut events)?;

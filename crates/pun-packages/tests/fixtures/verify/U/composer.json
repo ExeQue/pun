@@ -1,0 +1,11 @@
+{
+    "name": "acme/app",
+    "version": "1.0.0",
+    "require": {
+        "b/missing": "^1.0",
+        "h/ok": "^9.0"
+    },
+    "config": {
+        "allow-missing-requirements": true
+    }
+}
