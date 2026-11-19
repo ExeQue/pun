@@ -54,6 +54,38 @@ fn object(text: &[u8], url: &str) -> Result<Map<String, Value>> {
     }
 }
 
+/// A downloaded metadata file as the cache keeps it: the object with its `last-modified` stamp, for the next
+/// request's If-Modified-Since. The stamp is appended to the text, so the document is not built and written again;
+/// a body that is not a plain object, or already has the key, goes through the document.
+fn stamped(body: Vec<u8>, modified: Option<String>, url: &str) -> Result<Vec<u8>> {
+    #[derive(Deserialize)]
+    struct Top {
+        #[serde(rename = "last-modified")]
+        stamp: Option<serde::de::IgnoredAny>,
+    }
+    let text = body.trim_ascii();
+    let plain = text.first() == Some(&b'{')
+        && serde_json::from_slice::<Top>(text).is_ok_and(|t| t.stamp.is_none());
+    if !plain {
+        let mut data = object(&body, url)?;
+        if let Some(m) = modified {
+            data.insert("last-modified".into(), m.into());
+        }
+        return Ok(Value::Object(data).to_string().into_bytes());
+    }
+    let Some(m) = modified else { return Ok(body) };
+    let inner = text[1..text.len() - 1].trim_ascii();
+    let mut out = Vec::with_capacity(text.len() + m.len() + 20);
+    out.extend_from_slice(&text[..text.len() - 1]);
+    if !inner.is_empty() {
+        out.push(b',');
+    }
+    out.extend_from_slice(b"\"last-modified\":");
+    out.extend_from_slice(serde_json::to_string(&m)?.as_bytes());
+    out.push(b'}');
+    Ok(out)
+}
+
 fn cache_name(url: &str) -> String {
     url.chars()
         .map(|c| {
@@ -182,11 +214,7 @@ fn fetch_file(
         }
         Fetched::NotFound => Ok(None),
         Fetched::Body(body, modified) => {
-            let mut data = object(&body, url)?;
-            if let Some(m) = modified {
-                data.insert("last-modified".into(), m.into());
-            }
-            let text = Value::Object(data).to_string().into_bytes();
+            let text = stamped(body, modified, url)?;
             if let Some(path) = cache {
                 // The cache is best effort, as Composer's: a failed write only costs a download next time.
                 let _ = crate::fetch::store(&path, &text);
@@ -611,6 +639,32 @@ mod tests {
                 json!({"name": "a/a", "version": "1.0", "require": {"php": ">=8"}}),
                 json!({"name": "a/a", "version": "0.9", "require": {"php": ">=7"}}),
             ]
+        );
+    }
+
+    /// The cached copy of a download keeps the body's text and adds the stamp once, as the document would hold it.
+    #[test]
+    fn stamps_a_download_for_the_cache() {
+        let m = || Some("Tue, 01 Sep 2026 10:00:00 GMT".to_string());
+        let stamp = |body: &str, m: Option<String>| {
+            String::from_utf8(stamped(body.as_bytes().to_vec(), m, "u").unwrap()).unwrap()
+        };
+        assert_eq!(
+            stamp(" {\"packages\": {\"a\\/b\": []}}\n", m()),
+            r#"{"packages": {"a\/b": []},"last-modified":"Tue, 01 Sep 2026 10:00:00 GMT"}"#
+        );
+        assert_eq!(
+            stamp("{ }", m()),
+            r#"{ "last-modified":"Tue, 01 Sep 2026 10:00:00 GMT"}"#
+        );
+        assert_eq!(
+            stamp(r#"{"last-modified": "old", "x": 1}"#, m()),
+            r#"{"last-modified":"Tue, 01 Sep 2026 10:00:00 GMT","x":1}"#
+        );
+        assert_eq!(stamp(r#"{"x": 1}"#, None), r#"{"x": 1}"#);
+        assert_eq!(
+            stamped(b"[1]".to_vec(), m(), "u").unwrap_err().to_string(),
+            "u does not hold a JSON object"
         );
     }
 
