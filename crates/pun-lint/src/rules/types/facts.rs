@@ -173,6 +173,8 @@ pub fn project_codebase_autoloaded(
             named.extend(scanned.add(&path, &code, &mut codebase, &mut documented));
         }
     }
+    // What the walk did not take: the populated facts need the memory.
+    drop(prefetched);
     let populated = |mut codebase: CodebaseMetadata| {
         let mut references = PRELUDE.1.clone();
         populate_codebase_parallel(
@@ -424,13 +426,14 @@ pub(crate) struct Facts {
     artifacts: OnceCell<Analysis>,
     documented_artifacts: OnceCell<Option<AnalysisArtifacts>>,
     dead_code: bool,
+    file: OnceCell<File>,
 }
 
 impl Facts {
     pub(crate) fn implicit_array_writes(&self) -> Vec<((u32, u32), String, bool)> {
-        let file = mago_file(&self.path, &self.native_source, FileType::Host);
+        let file = self.file();
         let arena = LocalArena::new();
-        let program = parse_file(&arena, &file);
+        let program = parse_file(&arena, file);
         let names = NameResolver::new(&arena).resolve(program);
         let found = Arc::new(Mutex::new(HashMap::new()));
         let mut registry = create_registry_with_plugins(&[], false);
@@ -439,7 +442,7 @@ impl Facts {
             .register_expression_hook(super::implicit_array_observer::Observer(Arc::clone(&found)));
         let analyzer = Analyzer::new(
             &arena,
-            &file,
+            file,
             &names,
             &self.codebase,
             &registry,
@@ -448,7 +451,7 @@ impl Facts {
         let mut result = AnalysisResult::new(SymbolReferences::new());
         // An analysis error only ends the walk early, so what the observer saw until then stands; after a panic the
         // observations may be half-recorded, so none are kept.
-        let analysed = contained("analyser", &file, || {
+        let analysed = contained("analyser", file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
         })
         .is_some();
@@ -550,8 +553,7 @@ impl Facts {
     }
 
     pub(crate) fn text(&self, span: mago_span::Span) -> Option<&str> {
-        let file = mago_file(&self.path, "", FileType::Host);
-        (span.file_id == file.id)
+        (span.file_id == self.file().id)
             .then(|| {
                 self.native_source
                     .get(span.start.offset as usize..span.end.offset as usize)
@@ -572,8 +574,12 @@ impl Facts {
     }
 
     pub(crate) fn anonymous_class_name(&self, span: mago_span::Span) -> String {
-        let file = mago_file(&self.path, &self.native_source, FileType::Host);
-        mago_codex::get_anonymous_class_name(&file, span).to_string()
+        mago_codex::get_anonymous_class_name(self.file(), span).to_string()
+    }
+
+    /// The file as Mago sees it: rules ask for its names and lines at many nodes, and building it indexes its lines.
+    fn file(&self) -> &File {
+        (self.file).get_or_init(|| mago_file(&self.path, &self.native_source, FileType::Host))
     }
 
     pub(crate) fn full_type(&self, span: Span) -> Option<&TUnion> {
@@ -608,9 +614,9 @@ impl Facts {
     }
 
     fn analyse(&self) -> Analysis {
-        let file = mago_file(&self.path, &self.native_source, FileType::Host);
+        let file = self.file();
         let arena = LocalArena::new();
-        let program = parse_file(&arena, &file);
+        let program = parse_file(&arena, file);
         let mut untyped = HashSet::new();
         let names = NameResolver::new(&arena).resolve(program);
         let mut functions: Vec<(u32, u32)> = Vec::new();
@@ -794,7 +800,7 @@ impl Facts {
         });
         let analyzer = Analyzer::new(
             &arena,
-            &file,
+            file,
             &names,
             &self.codebase,
             &PLUGINS,
@@ -804,7 +810,7 @@ impl Facts {
             },
         );
         let mut result = AnalysisResult::new(SymbolReferences::new());
-        let artifacts = contained("analyser", &file, || {
+        let artifacts = contained("analyser", file, || {
             analyzer.analyze_with_artifacts(program, &mut result)
         })
         .and_then(Result::ok);
@@ -1221,10 +1227,8 @@ fn any_node<'a>(node: Node<'a, 'a>, f: &mut impl FnMut(Node<'a, 'a>)) {
     }
 }
 
-pub(crate) fn without_docblocks(code: &str) -> String {
-    let arena = LocalArena::new();
-    let file = mago_file("", code, FileType::Host);
-    let program = parse_file(&arena, &file);
+/// `code` with the inside of each doc block blanked, from its parsed `program`: the source the native facts read.
+fn without_docblocks(code: &str, program: &Program<'_>) -> String {
     let mut bytes = code.as_bytes().to_vec();
     for trivia in program
         .trivia
@@ -1367,13 +1371,23 @@ fn refresh_closures(
     let file = mago_file(path, code, FileType::Host);
     let arena = LocalArena::new();
     let program = parse_file(&arena, &file);
-    let names = NameResolver::new(&arena).resolve(program);
-    let mut scanned = contained("scanner", &file, || {
-        scan_program(&arena, &file, program, &names, version)
+    refresh_parsed(codebase, &arena, &file, program, version)
+}
+
+fn refresh_parsed<'a>(
+    codebase: &CodebaseMetadata,
+    arena: &'a LocalArena,
+    file: &File,
+    program: &'a Program<'a>,
+    version: PHPVersion,
+) -> Arc<CodebaseMetadata> {
+    let names = NameResolver::new(arena).resolve(program);
+    let mut scanned = contained("scanner", file, || {
+        scan_program(arena, file, program, &names, version)
     })
     .unwrap_or_default();
     mark_anonymous_classes_final(&mut scanned);
-    scanned.set_file_signature(file.id, build_file_signature(&file, program, &names));
+    scanned.set_file_signature(file.id, build_file_signature(file, program, &names));
     Arc::new(codebase.with_file_closures(file.id, scanned))
 }
 
@@ -1385,10 +1399,20 @@ fn scan(ctx: &Context<'_>, project: Option<Arc<ProjectCodebase>>, dead_code: boo
         project_codebase(&files, ctx.php_version)
     });
     let version = ctx.php_version.to_mago();
-    let native_source = without_docblocks(ctx.source);
+    // One parse of the source finds its doc blocks and refreshes the documented facts; it is dropped before the
+    // native facts parse the blanked source.
+    let (native_source, documented) = {
+        let file = mago_file(&path, ctx.source, FileType::Host);
+        let arena = LocalArena::new();
+        let program = parse_file(&arena, &file);
+        let native_source = without_docblocks(ctx.source, program);
+        let documented = refresh_parsed(&project.documented, &arena, &file, program, version);
+        (native_source, documented)
+    };
+    let codebase = refresh_closures(&project.native, &path, &native_source, version);
     Facts {
-        codebase: refresh_closures(&project.native, &path, &native_source, version),
-        documented: refresh_closures(&project.documented, &path, ctx.source, version),
+        codebase,
+        documented,
         path,
         native_source,
         source: ctx.source.to_string(),
@@ -1396,6 +1420,7 @@ fn scan(ctx: &Context<'_>, project: Option<Arc<ProjectCodebase>>, dead_code: boo
         artifacts: OnceCell::new(),
         documented_artifacts: OnceCell::new(),
         dead_code,
+        file: OnceCell::new(),
     }
 }
 
