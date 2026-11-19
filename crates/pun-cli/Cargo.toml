@@ -39,6 +39,7 @@ serde.workspace = true
 sha2.workspace = true
 md-5.workspace = true
 mimalloc.workspace = true
+libmimalloc-sys = { version = "0.1.49", features = ["extended"] }
 pun-tokens.workspace = true
 pun-packages.workspace = true
 ureq.workspace = true
