@@ -58,8 +58,6 @@ pub const PRESETS: [(&str, &str); 4] = [
 /// ported.
 const SETS: &str = include_str!("../presets/sets.json");
 
-const MAPPING: &str = include_str!("../rules/mapping.toml");
-
 pub const NO_CONFIG: &str =
     "No pun.toml found. Run `pun migrate`, or `pun init` for a new project.";
 
