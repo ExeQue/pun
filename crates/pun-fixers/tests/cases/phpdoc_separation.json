@@ -76,5 +76,25 @@
             "pun_nope": 1
         },
         "error": "[phpdoc_separation] Invalid configuration: The option \"pun_nope\" does not exist. Defined options are: \"groups\", \"skip_unlisted_annotations\"."
+    },
+    {
+        "fixer": "phpdoc_separation",
+        "config": {
+            "groups": [
+                [
+                    "phpstan-*",
+                    "psalm-*"
+                ],
+                [
+                    "*-read",
+                    "*b*c"
+                ],
+                [
+                    "return"
+                ]
+            ]
+        },
+        "input": "<?php\n/**\n * Summary.\n *\n * @phpstan-param int $a\n *\n * @phpstan-return int\n * @psalm-return int\n *\n * @var-read x\n * @var-write y\n * @aXbXc z\n *\n * @abc w\n * @ab q\n * @return int\n */\nfunction foo($a) {}\n",
+        "expected": "<?php\n/**\n * Summary.\n *\n * @phpstan-param int $a\n * @phpstan-return int\n * @psalm-return int\n *\n * @var-read x\n *\n * @var-write y\n *\n * @aXbXc z\n * @abc w\n *\n * @ab q\n *\n * @return int\n */\nfunction foo($a) {}\n"
     }
 ]

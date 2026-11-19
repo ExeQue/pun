@@ -47,6 +47,9 @@ fn fix_start(content: &[u8]) -> Vec<u8> {
 }
 
 fn fix_end(content: &[u8]) -> Vec<u8> {
+    if content.is_ascii() && !blank_line_before_end(content) {
+        return content.to_vec();
+    }
     Preg::replace(
         r"~
                 (\R\h*(?:\*\h*)?\S.*?) # last line with useful content
@@ -59,4 +62,25 @@ fn fix_end(content: &[u8]) -> Vec<u8> {
         "$1$2",
         content,
     )
+}
+
+/// Whether the line before the one that closes the ASCII doc block `content` (`\h*\*/`) holds no more than
+/// `\h*(?:\*\h*)?`: `fix_end` only matches when one such line precedes the closing one.
+fn blank_line_before_end(content: &[u8]) -> bool {
+    let newline = |b: &u8| matches!(b, b'\n' | b'\r' | b'\x0b' | b'\x0c');
+    let horizontal = |b: &u8| matches!(b, b' ' | b'\t');
+    let rest = content.strip_suffix(b"*/").unwrap_or(content);
+    let rest = &rest[..rest.len() - rest.iter().rev().take_while(|b| horizontal(b)).count()];
+    let rest = match rest {
+        [rest @ .., b'\r', b'\n'] => rest,
+        [rest @ .., b] if newline(b) => rest,
+        _ => return false,
+    };
+    let Some(start) = rest.iter().rposition(newline) else {
+        return false;
+    };
+    let line = &rest[start + 1..];
+    let line = &line[line.iter().take_while(|b| horizontal(b)).count()..];
+    let line = line.strip_prefix(b"*").unwrap_or(line);
+    line.iter().all(horizontal)
 }

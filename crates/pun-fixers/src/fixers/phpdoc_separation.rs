@@ -170,9 +170,22 @@ fn tag_name(a: &Annotation) -> Option<Vec<u8>> {
 
 fn is_in_group(tag: &[u8], group: &[String]) -> bool {
     group.iter().any(|t| {
+        if !t.contains('\\') {
+            return glob_matches(t.as_bytes(), tag);
+        }
         let t = str_replace(b"*", br"\*", t.as_bytes());
         let t = preg_quote(&t, Some(b'/'));
         let t = str_replace(br"\\\*", b".*?", &t);
         Preg::r#match([&b"/^"[..], &t, b"$/"].concat(), tag)
     })
+}
+
+/// The regex `is_in_group` builds from a `pattern` without a backslash: each `*` matches any run of bytes and every
+/// other byte itself, over the whole tag (which holds no newline for `.` or `$` to treat apart).
+fn glob_matches(pattern: &[u8], s: &[u8]) -> bool {
+    let Some(star) = pattern.iter().position(|&b| b == b'*') else {
+        return pattern == s;
+    };
+    let (head, rest) = (&pattern[..star], &pattern[star + 1..]);
+    s.starts_with(head) && (head.len()..=s.len()).any(|i| glob_matches(rest, &s[i..]))
 }

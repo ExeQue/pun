@@ -34,6 +34,22 @@ impl Fixer for UnaryOperatorSpacesFixer {
             if self.only_dec_inc && !tokens[index].is_given_kind(&[T_DEC, T_INC]) {
                 continue;
             }
+            // The tokens either check below can accept: their first test is one of these.
+            let may_be_unary = match tokens[index].get_id() {
+                None => matches!(tokens[index].get_content(), b"!" | b"~" | b"@" | b"+" | b"-" | b"&"),
+                Some(k) => matches!(
+                    k,
+                    T_INC
+                        | T_DEC
+                        | T_ELLIPSIS
+                        | CT_RETURN_REF
+                        | T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG
+                        | T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG
+                ),
+            };
+            if !may_be_unary {
+                continue;
+            }
             if TokensAnalyzer::new(tokens).is_unary_successor_operator(index) {
                 let prev = tokens.get_prev_non_whitespace(index, None).unwrap();
                 if !tokens[prev].is_comment() {

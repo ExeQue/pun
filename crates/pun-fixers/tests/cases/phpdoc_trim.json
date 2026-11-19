@@ -1,0 +1,7 @@
+[
+    {
+        "fixer": "phpdoc_trim",
+        "input": "<?php\r\n/**\r\n * Foo.\r\n *\r\n */\r\nfunction a() {}\r\n/**\r\n * Bar.\r\n */\r\nfunction b() {}\n/** single */\nfunction c() {}\n/**\n */\nfunction d() {}\n/**\n * Baz.\n\t \n\u000b */\nfunction e() {}\n/**\n * Qux.\n *  x\n\f\t*/\nfunction f() {}\n",
+        "expected": "<?php\r\n/**\r\n * Foo.\r\n */\r\nfunction a() {}\r\n/**\r\n * Bar.\r\n */\r\nfunction b() {}\n/** single */\nfunction c() {}\n/**\n */\nfunction d() {}\n/**\n * Baz.\u000b */\nfunction e() {}\n/**\n * Qux.\n *  x\f\t*/\nfunction f() {}\n"
+    }
+]
