@@ -559,3 +559,35 @@ also timed with 30 plain spawn-and-wait runs (median; "precise" below).
   with the two frameworks: 1.9 to 2.9 ms, 1.7 to 5.8 MB), which is 15% of pinkary's 6.8 ms run and a third of its
   12.5 MB. `-dead_strip_dylibs` does not drop them without LTO, and `pun` itself needs `notify` for `--watch`, so
   removing them only from the bench's driver would flatter the bench and is not done.
+
+### Lint against Mago (Linux, 2026-11-19)
+
+8-core / 15 GB orb with a host load of 8-20, profiling builds of
+[`516b388`](https://github.com/shipfastlabs/pun/commit/516b3880acee15201fdb9df14ffbd8b458a6fcd1) (before) and of the
+lint perf commits on top of main (after), Mago 1.57.0. `BENCH=lint TOOLS=pun,pun-warm,mago scripts/bench.py`, median of
+3 runs after 1 warm-up, before and after run back to back. `pun lint --format=json`, checkstyle and agent output on
+both projects is byte-identical before and after, and so are the trees `pun lint --fix` writes.
+
+| project | files | pun lint before | pun lint after | pun warm cache (reference) | mago lint |
+|---|---:|---:|---:|---:|---:|
+| pinkary | 342 | 3.06 s, 819 MB | 2.97 s, 834 MB | 0.14 s, 29 MB | 0.09 s, 165 MB |
+| laravel-framework | 3027 | 24.86 s, 1669 MB | 16.88 s, 1660 MB | 0.72 s, 359 MB | 0.75 s, 390 MB |
+
+CPU time (user, median of 4-6 interleaved `/usr/bin/time` runs): laravel-framework 129 s to 98 s, pinkary 8.7 s to
+8.5 s.
+
+- Mago still wins both rows on time and memory. Pun's cold lint runs about 450 Rector-mapped rules, many of them
+  type-aware, and Mago's own rules are mostly syntactic, so the gap is in what the rules need, not in the walk.
+- Memory: the floor is the project scan. On laravel-framework RSS is 210 MB before it, 600 MB after the project's own
+  files, 850 MB after the prefetched vendor classes and 1470 MB once the native and documented codebases are
+  populated; Pinkary reaches its 820 MB the same way. Mago's 165 MB and 390 MB are below that scan, so matching them
+  needs type-aware rules without a codebase, which Rector parity does not allow.
+- Time: of about 175 s of thread time on laravel-framework, about 105 s is Mago's per-file analysis (the native pass
+  and the documented pass) that `add-safe-strict-types`, `add-return-type-from-try-catch` and others need on nearly
+  every file, and about 40 s is the rules themselves.
+- What changed: `add-safe-strict-types` rejects a file with a dynamic or nullsafe call before asking for its types,
+  and several rules check their cheap conditions (no arguments, no `@param` tag, no single returned array, no private
+  method, no `null` argument) before the type facts; facts about an enclosing class, function or file (inline HTML,
+  by-reference closure uses, trait writes, a method's skip check) are computed once per file through
+  `Context::memo`; comment lookups binary-search the token list; each file is parsed once for its doc-block-free
+  source and its documented facts, and the Mago `File` is built once per file.
