@@ -118,8 +118,24 @@ fn link_description(kind: &str) -> &str {
     }
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "callers hand over the map they built, as before load_with"
+)]
 pub fn load(
     data: Map<String, Value>,
+    origin: Origin,
+    arena: &mut Vec<Package>,
+) -> Result<Vec<usize>> {
+    let text = Arc::from(serde_json::to_string(&data).expect("a JSON map serializes"));
+    load_with(&data, text, origin, arena)
+}
+
+/// `load` for a package whose JSON `text` is at hand: `data` then needs only the fields read here (the name, the
+/// versions, `type`, `abandoned`, the links and `extra`), and the rest stays text until `Package::data` asks.
+pub fn load_with(
+    data: &Map<String, Value>,
+    text: Arc<str>,
     origin: Origin,
     arena: &mut Vec<Package>,
 ) -> Result<Vec<usize>> {
@@ -194,8 +210,8 @@ pub fn load(
             }
         }
     }
-    let alias = branch_alias(&data);
-    package.data = Arc::from(Value::Object(data).to_string());
+    let alias = branch_alias(data);
+    package.data = text;
     let base = arena.len();
     arena.push(package);
     Ok(match alias {

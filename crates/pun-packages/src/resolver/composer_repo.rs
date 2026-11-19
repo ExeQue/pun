@@ -1,5 +1,5 @@
 use super::filters::{Advisory, ListEntry};
-use super::package::{Origin, Package, load, stability_value};
+use super::package::{Origin, Package, load_with, stability_value};
 use super::pool::{Found, Loaded, Repository, Stabilities};
 use crate::constraint::Constraint;
 use crate::error::{Context, Result, bail};
@@ -279,7 +279,10 @@ fn acceptable(
 /// One version's fields in their order, each still JSON text: most versions in a metadata file fail the constraint,
 /// and only their `version`, `version_normalized` and (for a branch) `extra` are read before that.
 #[derive(Clone)]
-struct RawVersion<'a>(IndexMap<String, &'a RawValue>);
+struct RawVersion<'a>(IndexMap<Key<'a>, &'a RawValue>);
+
+/// A field name, borrowed from the metadata unless it has escapes.
+type Key<'a> = std::borrow::Cow<'a, str>;
 
 impl<'de> Deserialize<'de> for RawVersion<'de> {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
@@ -295,13 +298,35 @@ impl<'de> Deserialize<'de> for RawVersion<'de> {
             ) -> std::result::Result<Self::Value, A::Error> {
                 // A repeated key keeps its first place and its last value, as `serde_json::Map` keeps it.
                 let mut fields = IndexMap::new();
-                while let Some((k, v)) = map.next_entry::<String, &'de RawValue>()? {
-                    fields.insert(k, v);
+                while let Some((k, v)) = map.next_entry::<KeyOf<'de>, &'de RawValue>()? {
+                    fields.insert(k.0, v);
                 }
                 Ok(RawVersion(fields))
             }
         }
         d.deserialize_map(Fields)
+    }
+}
+
+/// A `Key` as serde reads it: borrowed when it can be.
+struct KeyOf<'a>(Key<'a>);
+
+impl<'de> Deserialize<'de> for KeyOf<'de> {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        struct Name;
+        impl<'de> serde::de::Visitor<'de> for Name {
+            type Value = KeyOf<'de>;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a field name")
+            }
+            fn visit_borrowed_str<E>(self, v: &'de str) -> std::result::Result<Self::Value, E> {
+                Ok(KeyOf(Key::Borrowed(v)))
+            }
+            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E> {
+                Ok(KeyOf(Key::Owned(v.to_string())))
+            }
+        }
+        d.deserialize_str(Name)
     }
 }
 
@@ -325,7 +350,7 @@ fn raw_versions<'a>(
                 let mut next = previous.clone();
                 for (k, val) in v.0 {
                     if val.get() == "\"__unset\"" {
-                        next.0.shift_remove(&k);
+                        next.0.shift_remove(k.as_ref());
                     } else {
                         next.0.insert(k, val);
                     }
@@ -344,11 +369,54 @@ fn raw_str(version: &RawVersion<'_>, key: &str) -> Option<String> {
     serde_json::from_str(version.0.get(key)?.get()).ok()
 }
 
-/// A raw version as the map `load` reads.
-fn materialize(version: &RawVersion<'_>) -> Result<Map<String, Value>> {
+/// The fields of a version `load` reads.
+const LOADED_FIELDS: &[&str] = &[
+    "name",
+    "version",
+    "version_normalized",
+    "type",
+    "abandoned",
+    "require",
+    "require-dev",
+    "conflict",
+    "provide",
+    "replace",
+    "extra",
+];
+
+/// The `fields` of a raw version, parsed, in the version's order.
+fn materialize(version: &RawVersion<'_>, fields: &[&str]) -> Result<Map<String, Value>> {
     (version.0.iter())
-        .map(|(k, v)| Ok((k.clone(), serde_json::from_str(v.get())?)))
+        .filter(|(k, _)| fields.contains(&k.as_ref()))
+        .map(|(k, v)| Ok((k.to_string(), serde_json::from_str(v.get())?)))
         .collect()
+}
+
+/// The JSON a package from this repository keeps (`Package::data`): the version's fields without
+/// `transport-options`, and the repository's `notification-url` when the version has none, each value as the
+/// metadata wrote it.
+fn version_text(version: &RawVersion<'_>, notify: Option<&str>) -> Result<std::sync::Arc<str>> {
+    let mut text = String::from("{");
+    for (k, v) in &version.0 {
+        if k == "transport-options" {
+            continue;
+        }
+        if text.len() > 1 {
+            text.push(',');
+        }
+        text.push_str(&serde_json::to_string(k)?);
+        text.push(':');
+        text.push_str(v.get());
+    }
+    if let Some(n) = notify.filter(|_| !version.0.contains_key("notification-url")) {
+        if text.len() > 1 {
+            text.push(',');
+        }
+        text.push_str("\"notification-url\":");
+        text.push_str(&serde_json::to_string(n)?);
+    }
+    text.push('}');
+    Ok(std::sync::Arc::from(text))
 }
 
 impl Repository for ComposerRepository<'_> {
@@ -408,26 +476,18 @@ impl Repository for ComposerRepository<'_> {
                         return Ok(());
                     }
                     let branch = pretty.starts_with("dev-") || pretty.ends_with("-dev");
-                    let full = if branch {
-                        Some(materialize(raw)?)
+                    let alias = if branch {
+                        branch_alias(&materialize(raw, &["version", "extra"])?).map(|a| a.0)
                     } else {
                         None
                     };
-                    let alias = full.as_ref().and_then(branch_alias).map(|a| a.0);
                     if !acceptable(constraint, name, &normalized, alias, stabilities) {
                         return Ok(());
                     }
-                    let mut version = match full {
-                        Some(full) => full,
-                        None => materialize(raw)?,
-                    };
-                    version.shift_remove("transport-options");
-                    if let Some(n) = notify {
-                        version
-                            .entry("notification-url")
-                            .or_insert_with(|| n.clone().into());
-                    }
-                    let loaded = load(version, Origin::Repository(index), &mut local)
+                    // The fields `load` reads; the rest stays text.
+                    let read = materialize(raw, LOADED_FIELDS)?;
+                    let text = version_text(raw, notify.as_deref())?;
+                    let loaded = load_with(&read, text, Origin::Repository(index), &mut local)
                         .with_context(|| format!("Could not load packages in {url} from {file}"))?;
                     order.extend(loaded);
                     Ok(())
