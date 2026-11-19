@@ -5,6 +5,7 @@ use crate::constraint::Constraint;
 use crate::error::{Context, Result, bail};
 use crate::fetch::{Fetched, Fetcher};
 use crate::version::{branch_alias, is_platform, normalize, stability_of};
+use indexmap::IndexMap;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::value::RawValue;
@@ -262,19 +263,92 @@ pub fn expand(
     Ok(())
 }
 
+/// Whether the pool takes `version` of `name`, or the version a branch's `branch-alias` gives it (`alias`).
 fn acceptable(
     c: &Constraint,
     name: &str,
     version: &str,
-    data: &Map<String, Value>,
+    alias: Option<String>,
     s: &Stabilities,
 ) -> bool {
-    let branch = (data.get("version").and_then(Value::as_str))
-        .is_some_and(|v| v.starts_with("dev-") || v.ends_with("-dev"));
-    let alias = branch.then(|| branch_alias(data).map(|a| a.0)).flatten();
     std::iter::once(version.to_string()).chain(alias).any(|v| {
         s.accepts(&[name], stability_value(stability_of(&v))) && c.matches(&Constraint::exact(&v))
     })
+}
+
+/// One version's fields in their order, each still JSON text: most versions in a metadata file fail the constraint,
+/// and only their `version`, `version_normalized` and (for a branch) `extra` are read before that.
+#[derive(Clone)]
+struct RawVersion<'a>(IndexMap<String, &'a RawValue>);
+
+impl<'de> Deserialize<'de> for RawVersion<'de> {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+        struct Fields;
+        impl<'de> serde::de::Visitor<'de> for Fields {
+            type Value = RawVersion<'de>;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a version object")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Self::Value, A::Error> {
+                // A repeated key keeps its first place and its last value, as `serde_json::Map` keeps it.
+                let mut fields = IndexMap::new();
+                while let Some((k, v)) = map.next_entry::<String, &'de RawValue>()? {
+                    fields.insert(k, v);
+                }
+                Ok(RawVersion(fields))
+            }
+        }
+        d.deserialize_map(Fields)
+    }
+}
+
+/// The versions of `name` in a metadata file's `packages`, expanded from Composer's minified format (each version
+/// lists only the fields that changed, `__unset` removing one) as `expand` does. Entries that are not objects are
+/// skipped.
+fn raw_versions<'a>(
+    packages: &'a RawValue,
+    name: &str,
+    minified: bool,
+) -> Option<Vec<RawVersion<'a>>> {
+    let all: HashMap<String, &'a RawValue> = serde_json::from_str(packages.get()).ok()?;
+    let listed: Vec<&'a RawValue> = serde_json::from_str(all.get(name)?.get()).ok()?;
+    let mut out: Vec<RawVersion<'a>> = vec![];
+    for v in listed {
+        let Ok(v) = serde_json::from_str::<RawVersion<'a>>(v.get()) else {
+            continue;
+        };
+        let next = match out.last() {
+            Some(previous) if minified => {
+                let mut next = previous.clone();
+                for (k, val) in v.0 {
+                    if val.get() == "\"__unset\"" {
+                        next.0.shift_remove(&k);
+                    } else {
+                        next.0.insert(k, val);
+                    }
+                }
+                next
+            }
+            _ => v,
+        };
+        out.push(next);
+    }
+    Some(out)
+}
+
+/// A field of a raw version as a string; `None` when it is missing or not a string.
+fn raw_str(version: &RawVersion<'_>, key: &str) -> Option<String> {
+    serde_json::from_str(version.0.get(key)?.get()).ok()
+}
+
+/// A raw version as the map `load` reads.
+fn materialize(version: &RawVersion<'_>) -> Result<Map<String, Value>> {
+    (version.0.iter())
+        .map(|(k, v)| Ok((k.clone(), serde_json::from_str(v.get())?)))
+        .collect()
 }
 
 impl Repository for ComposerRepository<'_> {
@@ -321,25 +395,32 @@ impl Repository for ComposerRepository<'_> {
         let decoded: Vec<Option<Result<_>>> = (wanted.par_iter())
             .map(|(file, name, constraint)| {
                 let data = self.files.get(file)?.as_ref()?;
-                let all: Value = serde_json::from_str(data.packages.as_ref()?.get()).ok()?;
-                let Some(Value::Array(versions)) = all.get(name) else {
-                    return None;
-                };
+                let minified = data.minified.as_deref() == Some("composer/2.0");
+                let versions = raw_versions(data.packages.as_ref()?, name, minified)?;
                 let (mut local, mut order) = (vec![], vec![]);
-                let take = |version: &Map<String, Value>| -> Result<()> {
-                    let normalized = match version.get("version_normalized").and_then(Value::as_str)
-                    {
-                        Some(v) if v != "9999999-dev" => v.to_string(),
-                        _ => normalize(
-                            (version.get("version").and_then(Value::as_str)).unwrap_or_default(),
-                        )?,
+                let mut take = |raw: &RawVersion<'_>| -> Result<()> {
+                    let pretty = raw_str(raw, "version").unwrap_or_default();
+                    let normalized = match raw_str(raw, "version_normalized") {
+                        Some(v) if v != "9999999-dev" => v,
+                        _ => normalize(&pretty)?,
                     };
-                    if loaded.get(name).is_some_and(|l| l.contains(&normalized))
-                        || !acceptable(constraint, name, &normalized, version, stabilities)
-                    {
+                    if loaded.get(name).is_some_and(|l| l.contains(&normalized)) {
                         return Ok(());
                     }
-                    let mut version = version.clone();
+                    let branch = pretty.starts_with("dev-") || pretty.ends_with("-dev");
+                    let full = if branch {
+                        Some(materialize(raw)?)
+                    } else {
+                        None
+                    };
+                    let alias = full.as_ref().and_then(branch_alias).map(|a| a.0);
+                    if !acceptable(constraint, name, &normalized, alias, stabilities) {
+                        return Ok(());
+                    }
+                    let mut version = match full {
+                        Some(full) => full,
+                        None => materialize(raw)?,
+                    };
                     version.shift_remove("transport-options");
                     if let Some(n) = notify {
                         version
@@ -351,11 +432,7 @@ impl Repository for ComposerRepository<'_> {
                     order.extend(loaded);
                     Ok(())
                 };
-                let expanded = if data.minified.as_deref() == Some("composer/2.0") {
-                    expand(versions, take)
-                } else {
-                    (versions.iter().filter_map(Value::as_object)).try_for_each(take)
-                };
+                let expanded = versions.iter().try_for_each(&mut take);
                 Some(expanded.map(|()| (local, order)))
             })
             .collect();
