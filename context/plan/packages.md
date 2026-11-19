@@ -19,8 +19,7 @@ script events** (step 7, 2026-11-15): every allowed plugin other than the native
 scripts in Composer's priority order; a fixture plugin logs the same events as under Composer on install, `--no-scripts`,
 `--no-plugins` and an upgrade mid-command. Left of step 7: the package, installer, pool and download events, custom
 installer paths, plugin commands, the allow-plugins prompt, and the native ports of extension-installer and
-phpcodesniffer-composer-installer. `pun x`,
-`pun vet` and workspaces are built (§7). Decisions with dates: §6.
+phpcodesniffer-composer-installer. `pun x` and workspaces are built (§7). Decisions with dates: §6.
 Beyond Composer: §7. Open questions: §8.
 
 ## 1. What it is
@@ -131,7 +130,7 @@ Built as one crate, not the three planned (`pun-semver`, `pun-composer`, `pun-fe
   and `remove` (`manifest_edit.rs`). Its resolver and installer tests run on recorded metadata (`tests/fixtures`).
 - `pun-config`: reading composer.json (`manifest.rs`) and the detection the config loader runs on it and
   composer.lock (`composer.rs`).
-- `pun-cli`: the commands (`install.rs`, `update.rs` with `require` and `remove`, `x.rs`, `vet.rs`, `workspace.rs`,
+- `pun-cli`: the commands (`install.rs`, `update.rs` with `require` and `remove`, `x.rs`, `workspace.rs`,
   `self_update.rs`) and their output.
 - `pun-packages/src/plugin_host.rs` and `assets/plugin-host.php`: the plugin host. The PHP bootstrap loads the pinned
   composer.phar (downloaded once into Composer's cache and checked against its SHA-256), builds Composer from the

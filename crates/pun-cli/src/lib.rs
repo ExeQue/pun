@@ -30,7 +30,6 @@ mod sampler;
 mod self_update;
 mod table;
 mod update;
-mod vet;
 mod watch;
 mod workspace;
 mod x;
@@ -87,8 +86,6 @@ enum Cmd {
     X(x::XArgs),
     /// Composer's other commands: `dump-autoload`.
     Composer(composer::ComposerArgs),
-    /// Check that every locked package was reviewed or exempted (supply-chain/), and record reviews.
-    Vet(vet::VetArgs),
     /// Write pun.toml for a new project: asks the code style, lint sets and analysis preset (`--yes` takes the defaults).
     Init(init::InitArgs),
     /// Replace this pun with the latest release (or the one named), verified as the installer verifies it.
@@ -404,7 +401,6 @@ fn run() -> ExitCode {
         Cmd::Remove(a) => update::remove(a),
         Cmd::X(a) => x::run(&a),
         Cmd::Composer(a) => composer::run(a),
-        Cmd::Vet(a) => vet::run(a),
         Cmd::SelfUpdate(a) => self_update::run(&a),
         Cmd::ListFiles(a) => list_files::run(a),
         Cmd::Config {

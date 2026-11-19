@@ -167,7 +167,6 @@ members = ["packages/*"]
 Dependencies live in `composer.json` and `composer.lock`, so Pun and Composer can work on the same project.
 
 - [`pun install`](/docs/commands/install), [`update`](/docs/commands/update), [`require`](/docs/commands/require), and [`remove`](/docs/commands/remove) read `composer.json` and write `composer.lock`. `require` and `remove` also edit `composer.json`.
-- [`pun vet`](/docs/commands/vet) checks the packages in `composer.lock`.
 - Commands that load the config, such as `format`, `lint`, `analyse`, and `check`, read `require.php`, `config.platform.php`, and the locked Laravel, Pest, and PHPUnit versions from the project root.
 
 A composer.json section in `pun.toml`, such as `[require]`, `[autoload]`, or `[scripts]`, is a config error (exit 2). Put its keys in `composer.json`, and `[package]` keys at its root.
@@ -238,7 +237,7 @@ To run without a file, pass `--preset <name>` (`laravel`, `psr12`, or `empty`) o
 | `PHP_CS_FIXER_IGNORE_MISMATCHED_RULES_EXCEPTIONS` | Accepts an ignore comment that names a rule the run doesn't use |
 | `PUN_IGNORE_PHP_CONSTRAINT` | Runs on a project whose `require.php` allows PHP below 8.4. Unsupported: results on older syntax are unchecked |
 | `PUN_PROFILE` | Prints per-stage timings on stderr |
-| `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs, [`pun vet inspect`](/docs/commands/vet), and the [package store](/docs/commands/install#package-store) |
+| `PUN_CACHE_DIR` | Cache for the [result cache](/docs/commands/format#cache), Blade's Prettier workers, [`pun x`](/docs/commands/x#manage-installs) installs, and the [package store](/docs/commands/install#package-store) |
 | `PUN_LINK_MODE` | How [`pun install`](/docs/commands/install#package-store) links packages from the store: `hardlink` (default), `clone`, or `copy` |
 | `PUN_REQUIRE_ATTESTATION=1` | [`pun self-update`](/docs/commands/self-update) fails when it cannot check the build attestation |
 | `COMPOSER_HOME`, `COMPOSER_CACHE_DIR` | Composer's home and download cache, shared with the [package commands](/docs/commands/install) |

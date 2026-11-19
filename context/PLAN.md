@@ -28,9 +28,9 @@ v0.1.0, the first stable release, is out (2026-11-14). CI runs on GitHub again a
   and `pun remove` are built: on pinkary `pun update --no-install` writes Composer's exact lock in 1.8 s and 227 MB
   (Composer: 9.4 s and 166 MB); install, require and remove are 6x to 11x faster than Composer's
   (reports/scoreboard.md, package manager benchmark). `pun x` (`punx`) runs a package's command from Pun's cache.
-  `pun vet` checks the lock against audits and exemptions in supply-chain/. Workspaces (`[workspace] members` in the
-  root pun.toml, one lock and vendor/, `-p` for require and remove) are built. Allowed Composer plugins run through
-  the plugin host on Composer 2.11.2 for the script events (plan/packages.md step 7).
+  Workspaces (`[workspace] members` in the root pun.toml, one lock and vendor/, `-p` for require and remove) are
+  built. Allowed Composer plugins run through the plugin host on Composer 2.11.2 for the script events
+  (plan/packages.md step 7).
 - **Green on main** (8e11612, 2026-11-14): every CI job passes (rule mapping and generated docs, rustfmt, clippy
   with `-D warnings`, the workspace tests, the harness on pinkary and laravel-framework, fuzz). CI's test jobs run
   under cargo-nextest. The Coverage workflow runs only on request (`gh workflow run coverage.yml`) and fails: five crates are under 100%
@@ -506,7 +506,6 @@ output, name checks, signing and publishing (Pushpak: after Step 4).
 | oracle 2.3.5 follow-up: Larastan 3.11–3.14's type extensions (tests/fixtures/larastan-types/gaps.txt, 424 new entries by reason): closure parameters typed `relation-of<TModel, TRelation>`/`builder-of<TModel, TRelation>` once TRelation is inferred, ArrGetDynamicStaticMethodReturnTypeExtension, ModelSerializationDynamicMethodReturnTypeExtension, `#[UseEloquentBuilder]`/`#[CollectedBy]` on traits and parents, config file resolution, the collection key changes, Redis and Auth driver types, and the rest listed there | todo |
 | packages: finish steps 8 and 9 (plan/packages.md): `pun update` against `composer update` on every corpus project and 20 recorded partial updates, `vcs` repositories, and the root `filter.summary-url` | todo |
 | packages: resolve memory (227 MB on pinkary against Composer's 166 MB): the arena keeps all 19,799 versions of the pool after the optimizer leaves the solver 1,789 | todo |
-| packages: `pun vet` follow-ups: custom criteria and a `[policy]` per package, `--format=json`, and `pun vet suggest` ranking the reviews by diff size | todo |
 | packages: workspace follow-ups (plan/packages.md §7.1): the stale-lock check counting members' requirements, `--workspace` for run-script, check, format, lint and analyse, and the validate checks for diverging constraints | todo |
 | packages: the rest of plan/packages.md step 7: the package, installer, pool and download events through the plugin host, custom installer paths (composer/installers), plugin commands, the allow-plugins prompt, and the extension-installer and phpcodesniffer-composer-installer ports | todo |
 | extensions (plan/extensions.md Migration 1-8): 1-4 and 8 are done; 5 (`AnalyseExtension`): 5.1-5.3 are done, 5.4 (node callbacks and `finish`) is next; 6 (mapping fragments) goes with 7 (the `crates/pun-ext-*` crates) | doing |

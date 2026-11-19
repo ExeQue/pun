@@ -42,6 +42,5 @@ Change a rule in `pun.toml`, not in `pint.json` or `phpstan.neon`: Pun reads onl
 | Remove a package | `pun remove vendor/package` |
 | Update packages | `pun update` (or `pun update vendor/package`) |
 | Run a package's command without adding it | `pun x vendor/package` |
-| Check the supply-chain reviews | `pun vet` |
 
 `install`, `require`, `remove` and `update` read `composer.json` and write `composer.lock`, the same files Composer reads and writes, so Composer's own commands keep working in a Pun project.
