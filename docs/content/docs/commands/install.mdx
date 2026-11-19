@@ -19,7 +19,7 @@ Without a lock, `pun install` resolves one first, as [`pun update`](/docs/comman
 
 ## What an install does
 
-1. Pun checks that the lock can be installed on this PHP, as `composer install` does: every platform requirement (`php`, `ext-*`, `lib-*`) of the root and of the locked packages, and every conflict between locked packages. If one fails, Pun prints Composer's problem report and exits 2 without touching `vendor/`. `--ignore-platform-req` and `--ignore-platform-reqs` leave requirements out, and `config.platform` overrides recorded in the lock apply. `REQ+` (for example `php+`) ignores only the upper bound.
+1. Pun checks that the lock can be installed on this PHP, as `composer install` does: every platform requirement (`php`, `ext-*`, `lib-*`) of the root and of the locked packages, and every conflict between locked packages. If one fails, Pun prints Composer's problem report and exits 2 without touching `vendor/`. `--ignore-platform-req` and `--ignore-platform-reqs` leave requirements out, and `config.platform` overrides recorded in the lock apply. `REQ+` (for example `php+`) ignores only the upper bound. Pun remembers a check that passed, in its cache, and doesn't run it again for the same `composer.json`, lock, PHP platform, and flags.
 2. Packages already at the locked reference stay. Packages no longer locked are removed.
 3. Other packages download in parallel, or come from Composer's download cache. Each archive is extracted once into Pun's package store, and `vendor/` gets its files from there (see [Package store](#package-store)).
 4. Each archive must match its `shasum` in the lock, or the install stops.

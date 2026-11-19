@@ -156,7 +156,7 @@ pub fn install(
         fingerprint::forget(file);
     }
     if let Some(probe) = &probe
-        && let Some(problems) = verify(manifest, lock, probe, !o.no_dev, &o.ignore_platform)?
+        && let Some(problems) = verify_once(o, manifest, lock, probe)?
     {
         report.incompatible = Some(problems);
         return Ok(report);
@@ -708,6 +708,38 @@ fn dump_autoloader(
     Ok(written)
 }
 
+/// `verify`, skipped when a check of the same composer.json, lock, platform and options passed before (a marker in
+/// Pun's cache): its answer depends on nothing else.
+fn verify_once(
+    o: &Options,
+    manifest: &Map<String, Value>,
+    lock: &Lock,
+    probe: &Value,
+) -> Result<Option<String>> {
+    let marker = o.cache.as_deref().map(|cache| {
+        let exe = std::env::current_exe().unwrap_or_default();
+        let inputs = (
+            env!("CARGO_PKG_VERSION"),
+            fingerprint::stamp(&exe, true),
+            manifest,
+            (&lock.settings, &lock.packages, &lock.packages_dev),
+            probe,
+            (o.no_dev, format!("{:?}", o.ignore_platform)),
+        );
+        let text = serde_json::to_vec(&inputs).expect("JSON values serialize");
+        cache.join("verified").join("v1").join(sha1(&text))
+    });
+    if marker.as_ref().is_some_and(|m| m.exists()) {
+        return Ok(None);
+    }
+    let problems = verify(manifest, lock, probe, !o.no_dev, &o.ignore_platform)?;
+    if let (None, Some(marker)) = (&problems, &marker) {
+        // Best effort: a failed write only costs the check next time.
+        let _ = crate::fetch::store(marker, b"");
+    }
+    Ok(problems)
+}
+
 /// What the autoloader's files are made of, after the no-op fingerprint, so a dump with the same inputs is the one
 /// kept from the last dump of this vendor directory: the options, composer.json, every package's metadata and
 /// install path, and the files under the root's autoload paths. A package from the store is taken not to change at
@@ -729,17 +761,12 @@ fn dump_key(
         "{}\n{}\n{options:?}",
         project.dir_str, project.dirs.vendor
     );
-    let _ = writeln!(s, "{}", Value::Object(project.manifest.clone()));
+    let json = |v: &Map<String, Value>| serde_json::to_string(v).expect("JSON values serialize");
+    let _ = writeln!(s, "{}", json(project.manifest));
     let mut seen = vec![];
     let mut trees: Vec<PathBuf> = vec![];
     for p in packages {
-        let _ = writeln!(
-            s,
-            "{:?} {} {}",
-            p.path,
-            p.dev,
-            Value::Object(p.package.0.clone())
-        );
+        let _ = writeln!(s, "{:?} {} {}", p.path, p.dev, json(&p.package.0));
         let from_store = Store::key(&p.package).is_some()
             && (p.package.0.get("installation-source")).is_none_or(|s| s == "dist");
         if let (Some(path), false) = (&p.path, from_store) {

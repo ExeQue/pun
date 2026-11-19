@@ -664,6 +664,7 @@ fn an_incompatible_lock_installs_nothing() {
             .unwrap();
     let o = Options {
         php: Some("php".into()),
+        cache: Some(tmp.join("pun-cache")),
         ..Options::default()
     };
     let manifest: Map<String, Value> =
@@ -685,6 +686,18 @@ fn an_incompatible_lock_installs_nothing() {
         "{problems}"
     );
     assert!(!tmp.join("vendor").exists());
+    // Only a check that passed is remembered: the same lock is refused again.
+    let again = install(
+        &tmp,
+        &manifest,
+        &lock,
+        &fetcher,
+        &o,
+        &|_| None,
+        &mut |e: &str| panic!("no event expected, got {e}"),
+    )
+    .unwrap();
+    assert_eq!(again.incompatible.as_deref(), Some(problems.as_str()));
     let ignored = Options {
         ignore_platform: IgnorePlatform::All,
         ..o
