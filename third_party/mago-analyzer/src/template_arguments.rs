@@ -367,6 +367,19 @@ pub fn closure_signature_resolved(
     closure
 }
 
+/// `TemplateArgumentObserver::observeClosureSendToCallable()`: a union keeps the members that may be callable, and a
+/// closure sent to it takes their parameter types only when those are all callable. A `string` or an array beside a
+/// `Closure(...)` (Builder::where()'s `$column`) may be a callable too, so the closure escapes uninferred.
+fn is_callable_send_target(target: &TUnion) -> bool {
+    !target.types.iter().any(|t| matches!(t, TAtomic::Callable(_)))
+        || !target.types.iter().any(|t| match t {
+            TAtomic::Scalar(scalar) => scalar.is_any_string(),
+            TAtomic::Array(_) | TAtomic::Iterable(_) | TAtomic::Mixed(_) => true,
+            TAtomic::Object(TObject::Any) => true,
+            _ => false,
+        })
+}
+
 /// A marker of a closure's parameter ([`closure_signature_markers()`]).
 fn is_closure_marker(m: &Marker) -> bool {
     m.key.template.as_bytes().first() == Some(&b'$')
@@ -462,9 +475,11 @@ impl Observed {
         if !contains_marker(parameter) && !contains_marker(argument) {
             return;
         }
-        for sent in argument.types.iter() {
-            for target in resolved.types.iter() {
-                self.observe_closure_invocation(codebase, sent, target, false);
+        if is_callable_send_target(resolved) {
+            for sent in argument.types.iter() {
+                for target in resolved.types.iter() {
+                    self.observe_closure_invocation(codebase, sent, target, false);
+                }
             }
         }
         self.observe_send(codebase, parameter, argument, true);
@@ -494,6 +509,11 @@ impl Observed {
             return;
         }
         if declared.types.len() > 1 {
+            if matches!(actual.types.first(), Some(TAtomic::Callable(TCallable::Signature(_))))
+                && !is_callable_send_target(declared)
+            {
+                return;
+            }
             for member in declared.types.iter() {
                 self.observe_send(codebase, &TUnion::from_atomic(member.clone()), actual, call_argument);
             }

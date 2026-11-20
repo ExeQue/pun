@@ -60,7 +60,6 @@ tests/Type/data/model-l11-42.php:165
 tests/Type/data/model-l11-42.php:168
 tests/Type/data/model-l11-42.php:250
 tests/Type/data/model-l11-42.php:254
-tests/Type/data/model-relations.php:245
 tests/Type/data/model-relations.php:388
 tests/Type/data/model-relations.php:392
 tests/Type/data/model-relations.php:396

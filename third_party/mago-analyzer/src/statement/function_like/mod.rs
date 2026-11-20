@@ -670,7 +670,10 @@ where
         });
 
         // MutatingScope::enterAnonymousFunctionWithoutReflection(): a declared type is intersected with the
-        // callable's parameter type (`intersectButNotNever()`), which is the inferred type when it is narrower
+        // callable's parameter type (`intersectButNotNever()`), which is the inferred type when it is narrower. A
+        // native class hint is a non-generic ObjectType there, so its omitted template arguments accept any argument
+        // (`Relation` contains `Relation<*, *, *>`)
+        let native_only = parameter_metadata.get_type_metadata().is_some_and(|tm| !tm.from_docblock);
         let contained = |t: &TUnion| {
             union_comparator::is_contained_by(
                 context.codebase,
@@ -680,7 +683,13 @@ where
                 true,
                 false,
                 &mut ComparisonResult::default(),
-            )
+            ) || native_only
+                && union_comparator::is_contained_by_with_erased_template_arguments(
+                    context.codebase,
+                    t,
+                    &declared_parameter_type,
+                    &mut ComparisonResult::default(),
+                )
         };
         let mut final_parameter_type = if let Some(inferred_map) = inferred_parameter_types.as_mut()
             && let Some(inferred_type) = inferred_map.remove(&i)

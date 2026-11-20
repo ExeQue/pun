@@ -522,6 +522,20 @@ where
             MethodInvocationKind::Instance,
             !has_resolved_methods,
         )?;
+
+        // MethodCallHandler::resolveType()'s short circuit, as analyze_invocation_targets() applies it to reflected
+        // methods: a call on a receiver an earlier nullsafe link may have nulled is nullable
+        if !has_resolved_methods
+            && !is_null_safe
+            && artifacts.get_expression_type(object).is_some_and(|t| t.has_nullsafe_null())
+            && let Some(return_type) = artifacts.get_expression_type(&span)
+            && !return_type.has_null()
+            && !return_type.is_mixed()
+        {
+            let mut return_type = add_optional_union_type(get_null(), Some(return_type), context.codebase);
+            return_type.set_nullsafe_null(true);
+            artifacts.set_resolved_expression_type(&span, return_type);
+        }
     }
 
     // MethodCallHandler: a call without a method reflection (an unknown method, a dynamic name, a mixed receiver) is

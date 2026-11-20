@@ -30,6 +30,10 @@
 //! Type/PunCheckedExceptionsTest.json (`missingType.checkedException` through a `throw_if()` template, an Eloquent
 //! builder's forward to the query builder, the Storage and Cache facades and closures called through a variable) runs
 //! with `exceptions.check.missingCheckedExceptionInThrows` on; its PHPStan run is the strict-signatures one's.
+//! Type/PunDynamicStaticCallTypesTest.json (the receiver types `staticMethod.dynamicCall` sees: a closure parameter
+//! narrowed by a nested callable, a relation-forwarded callback's `static`, a call after a nullsafe link, `when()`
+//! returning the relation, a stored closure sent to a union, a macro over an `@method` tag) has the config and
+//! PHPStan run of PunDynamicStaticCallsTest.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

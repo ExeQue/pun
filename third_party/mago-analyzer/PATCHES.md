@@ -4050,3 +4050,23 @@ native receiver, without PHPDoc).
 Checked against PHPStan 2.3.5 on pinkary: a `Collection::first()` after `isNotEmpty()` (`app/Jobs/IncrementViews.php`),
 calls returning classes, `self` and `static`, and truthy and falsy call conditions. pinkary, laravel-framework and
 dev-null report the same errors as before apart from IncrementViews.php:79.
+
+## Receiver types for strict-rules' dynamic static calls
+
+Checked against PHPStan 2.3.5 with Larastan and strict-rules on dev-null, where `staticMethod.dynamicCall` now reports
+the same errors as PHPStan.
+
+- `statement/function_like/mod.rs`: a closure parameter with a native class hint also takes a callable parameter type
+  whose template arguments the hint omits. PHPStan keeps a native hint a non-generic ObjectType, so `Relation`
+  contains `Relation<*, *, *>`, and `function (Builder|Relation $q)` passed to `loadExists()`'s
+  `callable(Relation<*, *, *>)` sees the relation. The containment uses
+  `is_contained_by_with_erased_template_arguments()`, which erases only arguments the hint left out.
+- `expression/call/method_call.rs`: a call that only an extension answers (an undocumented method, such as a call
+  Larastan forwards from a relation to its builder) is nullable when its receiver carries a nullsafe `null`, as
+  `analyze_invocation_targets()` already makes a reflected method's result. MethodCallHandler::resolveReturnType()
+  adds the null to every result. `$a?->rel()->where()->value()` then calls `value()` on a nullable receiver.
+- `template_arguments.rs` `is_callable_send_target()`: a closure written where nothing types it, sent to a union, takes
+  the union's callable parameter types only when no member may be another kind of callable.
+  TemplateArgumentObserver::observeClosureSendToCallable() keeps the members whose isCallable() is not no, and lets the
+  closure escape when they are not all callable. A `string` or an array beside `Closure(static): mixed`, as in
+  Builder::where()'s `$column`, may be a callable too, so a stored closure passed to `where()` keeps its declared type.

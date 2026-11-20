@@ -147,7 +147,9 @@ impl MethodReturnTypeProvider for ModelForwards {
             && codebase.is_instance_of(receiver.name.as_bytes(), RELATION)
             && let Some(related) = relation_model(codebase, receiver)
         {
-            (builder_of(codebase, &related), receiver.clone())
+            // RelationForwardsCallsExtension reflects the builder's method: a callback's `static` is the builder
+            let builder = builder_of(codebase, &related);
+            (builder.clone(), builder)
         } else {
             return Vec::new();
         };
@@ -642,7 +644,8 @@ fn forward_builder_or_relation(
     if !is(RELATION) {
         return None;
     }
-    let builder = builder_of(codebase, &relation_model(codebase, receiver)?);
+    let related = relation_model(codebase, receiver)?;
+    let builder = builder_of(codebase, &related);
     let name = builder.name;
     let (ty, late) = if codebase.method_exists(name.as_bytes(), method) {
         let late = codebase
@@ -676,12 +679,65 @@ fn forward_builder_or_relation(
             matches!(t, TAtomic::Object(TObject::Named(n))
                 if n.name.as_bytes().eq_ignore_ascii_case(BUILDER) || codebase.is_instance_of(n.name.as_bytes(), BUILDER))
         });
-    if is_builder {
+    if is_builder || late && builder_of_related(codebase, name.as_bytes(), method, &ty, &related) {
         return Some(TUnion::from_atomic(TAtomic::Object(TObject::Named(
             receiver.clone(),
         ))));
     }
     Some(crate::laravel::replace_collections(codebase, &ty))
+}
+
+/// RelationCollectionExtension, for the methods Builder declares (`builder` is the relation's builder class):
+/// Relation::__call() returns the relation when the call it forwarded resolves to a query builder of the relation's
+/// model, as `when()` does with a callback that returns `$query`.
+fn builder_of_related(
+    codebase: &CodebaseMetadata,
+    builder: &[u8],
+    method: &[u8],
+    ty: &TUnion,
+    related: &TNamedObject,
+) -> bool {
+    // a trait method's declaring class is the class using the trait
+    let declaring = |class: &[u8]| codebase.get_declaring_method_class(class, method);
+    let related = TUnion::from_atomic(TAtomic::Object(TObject::Named(related.clone())));
+    let of_related = |n: &TNamedObject| {
+        let k = codebase.get_class_like(n.name.as_bytes())?;
+        if !(k.name.as_bytes().eq_ignore_ascii_case(BUILDER)
+            || codebase.is_instance_of(k.name.as_bytes(), BUILDER))
+        {
+            return None;
+        }
+        let definer = codebase.get_class_like(BUILDER)?.name;
+        let model = get_specialized_template_type(
+            codebase,
+            mago_word::word("TModel"),
+            definer,
+            k,
+            n.type_parameters.as_deref(),
+        )?;
+        Some(
+            !model
+                .types
+                .iter()
+                .any(|t| matches!(t, TAtomic::GenericParameter(_)))
+                && union_comparator::is_contained_by(
+                    codebase,
+                    &model,
+                    &related,
+                    false,
+                    false,
+                    false,
+                    &mut ComparisonResult::default(),
+                ),
+        )
+    };
+    declaring(builder).is_some_and(|d| {
+        d.as_bytes().eq_ignore_ascii_case(BUILDER) || declaring(BUILDER).is_some_and(|b| b == d)
+    }) && !ty.types.is_empty()
+        && ty
+            .types
+            .iter()
+            .all(|t| matches!(t, TAtomic::Object(TObject::Named(n)) if of_related(n) == Some(true)))
 }
 
 fn own_collection(

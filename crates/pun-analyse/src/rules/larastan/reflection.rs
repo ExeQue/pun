@@ -21,8 +21,11 @@ impl ClassReflectionExtension for Larastan {
         k: &ClassLikeMetadata,
         name: &[u8],
     ) -> Option<MethodAnswer> {
+        // Larastan's own extensions come before PHPStan's annotations: a macro and the Storage facade's methods win
+        // over a `@method` tag. The rest keep the later phases Pun asks them in.
         if phase == MethodPhase::BeforeAnnotations {
-            return storage_method(c, k, name);
+            return storage_method(c, k, name)
+                .or_else(|| Some(self.macro_answer(c, k, &super::macro_method(c, k, name)?)));
         }
         if super::is_model(c, k) {
             // ModelForwardsCallsExtension: an EloquentBuilderMethodReflection of the model's builder, which is static.
