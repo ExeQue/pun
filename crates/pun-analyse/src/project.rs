@@ -52,6 +52,9 @@ bitflags::bitflags! {
         const CHECK_MISSING_CALLABLE_SIGNATURE = 1 << 35;
         const DEPRECATION_RULES = 1 << 36;
         const UNRESOLVED_TEMPLATE_ARGUMENTS = 1 << 37;
+        const REPORT_WRONG_PHP_DOC_TYPE_IN_VAR_TAG = 1 << 38;
+        const REPORT_MAYBES_IN_METHOD_SIGNATURES = 1 << 39;
+        const REPORT_STATIC_METHOD_SIGNATURES = 1 << 40;
     }
 }
 
@@ -514,6 +517,18 @@ impl Project {
         options.set(
             ProjectOptions::DEPRECATION_RULES,
             flag("deprecationRulesInstalled"),
+        );
+        options.set(
+            ProjectOptions::REPORT_WRONG_PHP_DOC_TYPE_IN_VAR_TAG,
+            flag("reportWrongPhpDocTypeInVarTag"),
+        );
+        options.set(
+            ProjectOptions::REPORT_MAYBES_IN_METHOD_SIGNATURES,
+            flag("reportMaybesInMethodSignatures"),
+        );
+        options.set(
+            ProjectOptions::REPORT_STATIC_METHOD_SIGNATURES,
+            flag("reportStaticMethodSignatures"),
         );
         options.set(
             ProjectOptions::PRECISE_UNUSED_PARAMETER_LINE,

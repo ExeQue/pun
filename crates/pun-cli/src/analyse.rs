@@ -180,7 +180,19 @@ fn project(
 ) -> Result<pun_analyse::Project> {
     use pun_phpstan::ignore::IgnoredErrors;
     use pun_phpstan::{Array, Key, Value};
-    let mut params = cfg.analyse.parameters(&cfg.root);
+    // An identifier a lint rule owns (O5) is still reported here when a rule class that reports it runs: the lint
+    // rules see no types, so they miss most of what PHPStan reports, and an error must show in lint or analyse.
+    let lint_on: std::collections::HashSet<String> = (cfg.lint.rules.iter().map(|r| &r.id))
+        .chain(
+            (cfg.lint.overrides.iter().flat_map(|o| &o.rules))
+                .filter(|s| s.level.is_some())
+                .map(|s| &s.id),
+        )
+        .map(|id| format!("lint/{}", id.strip_prefix("lint/").unwrap_or(id)))
+        .collect();
+    let mut params = cfg
+        .analyse
+        .parameters_with_lint(&cfg.root, |r| lint_on.contains(r));
     pun_phpstan::config::validate_ignore_errors(&params)
         .map_err(|e| run_error(e.to_string(), None))?;
     let mut extensions = Array::new();
@@ -239,16 +251,6 @@ fn project(
         renamed_named_arguments: on.contains("analyse/types/renamed-parameter-in-subtype"),
     };
     project.method_rules = method_rules;
-    // An identifier a lint rule owns (O5) is still reported here when a rule class that reports it runs: the lint
-    // rules see no types, so they miss most of what PHPStan reports, and an error must show in lint or analyse.
-    let lint_on: std::collections::HashSet<String> = (cfg.lint.rules.iter().map(|r| &r.id))
-        .chain(
-            (cfg.lint.overrides.iter().flat_map(|o| &o.rules))
-                .filter(|s| s.level.is_some())
-                .map(|s| &s.id),
-        )
-        .map(|id| format!("lint/{}", id.strip_prefix("lint/").unwrap_or(id)))
-        .collect();
     let routed = pun_config::identifiers_of_rules(|r| on.contains(r) || lint_on.contains(r));
     project.reported = Some(std::sync::Arc::new(move |id| {
         if method_rules.consistent_constructor

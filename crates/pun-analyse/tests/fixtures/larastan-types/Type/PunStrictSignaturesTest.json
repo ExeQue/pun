@@ -1,0 +1,45 @@
+{
+    "test": "Type/PunStrictSignaturesTest",
+    "configs": [
+        "tests/Type/data/config-strict-signatures.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-strict-signatures.php",
+            "declares": [
+                "punstrictsignatures\\base",
+                "punstrictsignatures\\child",
+                "punstrictsignatures\\factory",
+                "punstrictsignatures\\intfactory",
+                "punstrictsignatures\\tags"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 30,
+                    "identifier": "method.childReturnType",
+                    "message": "Return type (array<mixed>) of method PunStrictSignatures\\Child::toArray() should be covariant with return type (array<string, mixed>) of method PunStrictSignatures\\Base::toArray()",
+                    "tip": null
+                },
+                {
+                    "line": 36,
+                    "identifier": "method.childParameterType",
+                    "message": "Parameter #1 $columns (array<int, string>|string) of method PunStrictSignatures\\Child::select() should be contravariant with parameter $columns (array<int, string>|string|Stringable) of method PunStrictSignatures\\Base::select()",
+                    "tip": null
+                },
+                {
+                    "line": 41,
+                    "identifier": "method.childReturnType",
+                    "message": "Return type (array<int>) of method PunStrictSignatures\\Child::ids() should be covariant with return type (list<int>) of method PunStrictSignatures\\Base::ids()",
+                    "tip": null
+                },
+                {
+                    "line": 83,
+                    "identifier": "varTag.type",
+                    "message": "PHPDoc tag @var with type array<int, int> is not subtype of type array<int, string>.",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}

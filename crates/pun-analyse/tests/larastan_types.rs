@@ -24,7 +24,9 @@
 //! root/vendor/orchestra/testbench-core/laravel/app/Providers/PunLocalServiceProvider.php).
 //! Type/PunDynamicStaticCallsTest.json (strict-rules' `staticMethod.dynamicCall` on the methods Larastan forwards,
 //! `__callStatic` mixins and SoftDeletes' `@method static restore()`) runs with strict-rules' rules.neon and only
-//! `dynamicCallOnStaticMethod` on, as its PHPStan run did.
+//! `dynamicCallOnStaticMethod` on, as its PHPStan run did. Type/PunStrictSignaturesTest.json (the `covariant` and
+//! `contravariant` method signatures, static methods included, and `varTag.type` that strict-rules' parameters turn
+//! on, and a final class's `static` parent return) runs with strict-rules' rules.neon and every check off.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

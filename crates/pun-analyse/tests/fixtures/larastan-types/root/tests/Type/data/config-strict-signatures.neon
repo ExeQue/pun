@@ -1,0 +1,6 @@
+includes:
+    - ../../phpstan-tests.neon
+    - ../../../../../coverage/strict-rules/conf/rules.neon
+parameters:
+    strictRules:
+        allRules: false

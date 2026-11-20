@@ -76,6 +76,9 @@ bitflags::bitflags! {
         const UNINITIALIZED_PROPERTIES = 1 << 30;
         const MISSING_CALLABLE_SIGNATURE = 1 << 31;
         const TEMPLATE_ARGUMENTS = 1 << 32;
+        const WRONG_PHP_DOC_TYPE_IN_VAR_TAG = 1 << 33;
+        const MAYBES_IN_METHOD_SIGNATURES = 1 << 34;
+        const STATIC_METHOD_SIGNATURES = 1 << 35;
     }
 }
 
@@ -359,6 +362,22 @@ impl Checks {
                 .options
                 .contains(crate::ProjectOptions::UNRESOLVED_TEMPLATE_ARGUMENTS),
         );
+        for (switch, option) in [
+            (
+                Switches::WRONG_PHP_DOC_TYPE_IN_VAR_TAG,
+                crate::ProjectOptions::REPORT_WRONG_PHP_DOC_TYPE_IN_VAR_TAG,
+            ),
+            (
+                Switches::MAYBES_IN_METHOD_SIGNATURES,
+                crate::ProjectOptions::REPORT_MAYBES_IN_METHOD_SIGNATURES,
+            ),
+            (
+                Switches::STATIC_METHOD_SIGNATURES,
+                crate::ProjectOptions::REPORT_STATIC_METHOD_SIGNATURES,
+            ),
+        ] {
+            switches.set(switch, project.options.contains(option));
+        }
         Checks {
             switches,
             natives,

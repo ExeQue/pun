@@ -1761,6 +1761,59 @@ fn variable_parameters() {
 }
 
 #[test]
+fn strict_rules_parameters_follow_its_rules_neon() {
+    use pun_phpstan::Value as V;
+    let neon = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../pun-analyse/tests/fixtures/coverage/strict-rules/conf/rules.neon"
+    ))
+    .unwrap();
+    let neon = pun_phpstan::neon::decode(&neon).unwrap();
+    let upstream = neon.as_array().unwrap().get_str("parameters").unwrap();
+    let mut base = String::from("[analyse]\nbleeding-edge = true\n\n[analyse.rules]\n");
+    let groups: std::collections::BTreeSet<&str> = (rules().iter())
+        .filter_map(|(id, _)| id.strip_prefix("analyse/")?.split('/').next())
+        .collect();
+    for group in groups {
+        let _ = writeln!(base, "{group} = \"off\"");
+    }
+    let d = dir(&[]);
+    let off = from_toml(&d, &base).unwrap().analyse;
+    let strict = from_toml(
+        &d,
+        &format!("{base}\"operators/non-boolean-and-operand\" = \"on\"\n"),
+    )
+    .unwrap()
+    .analyse;
+    let cast = |a: &crate::schema::Analyse, lint: bool| {
+        let p = a.parameters_with_lint(&d, |r| lint && r == "lint/dead-code/no-useless-cast");
+        let toggles = p.get_str("strictRules").and_then(V::as_array);
+        toggles.and_then(|t| t.get_str("uselessCast")).cloned()
+    };
+    // Every parameter rules.neon sets, with `%featureToggles.bleedingEdge%` on
+    let p = strict.parameters(&d);
+    for (key, value) in upstream.as_array().unwrap().iter() {
+        let key = key.as_string();
+        if key == "strictRules" {
+            continue;
+        }
+        let expected = match value {
+            V::Str(s) if s.starts_with('%') => V::Bool(true),
+            v => v.clone(),
+        };
+        assert_eq!(p.get_str(&key), Some(&expected), "{key}");
+    }
+    // Without a strict-rules check on, PHPStan's defaults stay
+    let p = off.parameters(&d);
+    assert_eq!(p.get_str("strictRulesInstalled"), Some(&V::Bool(false)));
+    assert_eq!(p.get_str("reportMaybesInMethodSignatures"), None);
+    // UselessCastRule's lint rule turns its gate on only once strict-rules is in
+    assert_eq!(cast(&strict, true), Some(V::Bool(true)));
+    assert_eq!(cast(&strict, false), Some(V::Bool(false)));
+    assert_eq!(cast(&off, true), Some(V::Bool(false)));
+}
+
+#[test]
 fn larastan_follows_the_locked_laravel() {
     use crate::composer::Version;
     let v = |major, minor, patch| {

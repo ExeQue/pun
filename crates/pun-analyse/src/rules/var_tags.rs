@@ -12,6 +12,7 @@ pub(super) const IDENTIFIERS: &[&str] = &[
     "varTag.unresolvableType",
     "varTag.trait",
     "varTag.nativeType",
+    "varTag.type",
 ];
 
 pub(super) fn scope(c: &Checker, at: Span) -> super::doc::NameScope {
@@ -322,25 +323,48 @@ pub(super) fn assignment(c: &mut Checker, at: Span, lhs: &Expression, rhs: &Expr
         },
     };
     let expr = assigned_expression(rhs);
-    let Some(native) = c.native_types.get(&expr.span()) else {
+    let class = c.class_scope().map(declared::original_name);
+    let tag = resolve_late(&var_tag);
+    // Mago tracks native types for a subset of expressions only (method calls have none); without one, only the
+    // PHPDoc check below runs
+    if let Some(native) = c.native_types.get(&expr.span()) {
+        let native = c.phpstan_type_from_in(expr, native, &c.native_types);
+        let message = declared::with_classes(c, || {
+            if valid_super_type_of_expr(expr, &native, &tag, class.as_deref()).yes() {
+                return None;
+            }
+            let level = recommended_level(&native, Some(&var_tag));
+            Some(format!(
+                "PHPDoc tag @var with type {} is not subtype of native type {}.",
+                var_tag.describe(level),
+                native.describe(level)
+            ))
+        });
+        if let Some(message) = message {
+            c.report(at, "varTag.nativeType", message, None);
+            return;
+        }
+    }
+    // reportWrongPhpDocTypeInVarTag (strict-rules turns it on): the tag against the expression's PHPDoc type too
+    if !c.on(super::Switches::WRONG_PHP_DOC_TYPE_IN_VAR_TAG) {
+        return;
+    }
+    let Some(ty) = c.phpstan_type(expr) else {
         return;
     };
-    let native = c.phpstan_type_from_in(expr, native, &c.native_types);
-    let class = c.class_scope().map(declared::original_name);
     let message = declared::with_classes(c, || {
-        if valid_super_type_of_expr(expr, &native, &resolve_late(&var_tag), class.as_deref()).yes()
-        {
+        if valid_super_type_of_expr(expr, &ty, &tag, class.as_deref()).yes() {
             return None;
         }
-        let level = recommended_level(&native, Some(&var_tag));
+        let level = recommended_level(&ty, Some(&var_tag));
         Some(format!(
-            "PHPDoc tag @var with type {} is not subtype of native type {}.",
+            "PHPDoc tag @var with type {} is not subtype of type {}.",
             var_tag.describe(level),
-            native.describe(level)
+            ty.describe(level)
         ))
     });
     if let Some(message) = message {
-        c.report(at, "varTag.nativeType", message, None);
+        c.report(at, "varTag.type", message, None);
     }
 }
 

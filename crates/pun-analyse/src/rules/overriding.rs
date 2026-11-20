@@ -1299,9 +1299,13 @@ fn method_signature<'a>(
 ) -> Vec<Message> {
     let lower = name.to_ascii_lowercase();
     let is_static = m.modifiers.contains_static();
-    if lower == "__construct" || is_static || m.modifiers.contains_private() {
+    if lower == "__construct"
+        || (is_static && !c.on(crate::rules::Switches::STATIC_METHOD_SIGNATURES))
+        || m.modifiers.contains_private()
+    {
         return Vec::new();
     }
+    let report_maybes = c.on(crate::rules::Switches::MAYBES_IN_METHOD_SIGNATURES);
     let impure = c.on(crate::rules::Switches::METHOD_PURITY_OVERRIDE)
         && declared::method_purity(c, k, lower.as_bytes()).0 == Some(false);
     let mut parents: Vec<Found> = Vec::new();
@@ -1428,12 +1432,13 @@ fn method_signature<'a>(
         } else {
             is_super_type_of(&parent_returned, &returned)
         };
-        if compatible.no() {
+        if compatible.no() || (!compatible.yes() && report_maybes) {
             out.push((
                 "method.childReturnType",
                 format!(
-                    "Return type ({}) of method {class}::{name}() should be compatible with return type ({}) of method {parent}",
+                    "Return type ({}) of method {class}::{name}() should be {} with return type ({}) of method {parent}",
                     decide_type(method.ret.clone(), own_return.clone()).describe(Level::Value),
+                    if compatible.no() { "compatible" } else { "covariant" },
                     original_parent.describe(Level::Value),
                 ),
                 None,
@@ -1449,16 +1454,18 @@ fn method_signature<'a>(
                 parent_param.native.clone(),
                 parent_doc.as_ref().map(Type::resolve_to_bounds),
             );
-            if !is_super_type_of(&own, &transform_static(&original_parent, k)).no() {
+            let result = is_super_type_of(&own, &transform_static(&original_parent, k));
+            if result.yes() || (!result.no() && !report_maybes) {
                 continue;
             }
             out.push((
                 "method.childParameterType",
                 format!(
-                    "Parameter #{} ${} ({}) of method {class}::{name}() should be compatible with parameter ${} ({}) of method {parent}",
+                    "Parameter #{} ${} ({}) of method {class}::{name}() should be {} with parameter ${} ({}) of method {parent}",
                     i + 1,
                     method.params[i].name,
                     decide_type(native.clone(), phpdoc.clone()).describe(Level::Value),
+                    if result.no() { "compatible" } else { "contravariant" },
                     parent_param.name,
                     original_parent.describe(Level::Value),
                 ),
@@ -1485,11 +1492,20 @@ fn self_to(t: &Type, trait_: &ClassLikeMetadata, owner: &ClassLikeMetadata) -> T
 
 fn transform_static(t: &Type, k: &ClassLikeMetadata) -> Type {
     let name = declared::original_name(k);
+    // GenericStaticType::changeBaseClass(): a class without templates drops the parent's type arguments
+    let generic = !k.template_types.is_empty();
     match t {
-        Type::Static(_, args) if k.flags.is_final() => Type::Object(name, args.clone(), false),
-        Type::Static(_, args) => {
-            Type::Static(name, args.iter().map(|a| transform_static(a, k)).collect())
+        Type::Static(_, args) if k.flags.is_final() => {
+            Type::Object(name, if generic { args.clone() } else { Vec::new() }, false)
         }
+        Type::Static(_, args) => Type::Static(
+            name,
+            if generic {
+                args.iter().map(|a| transform_static(a, k)).collect()
+            } else {
+                Vec::new()
+            },
+        ),
         Type::This(_) if k.flags.is_final() => Type::Object(name, Vec::new(), false),
         Type::This(_) => Type::This(name),
         _ => t.traverse(&|t| transform_static(t, k)),

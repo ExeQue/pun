@@ -5,6 +5,23 @@ use pun_phpstan::{Array, Key, Value};
 use std::collections::HashSet;
 use std::path::Path;
 
+/// The parameters phpstan-strict-rules' rules.neon sets (2.1.1), applied when one of its checks is on. The last
+/// one is `%featureToggles.bleedingEdge%` there.
+const STRICT_RULES_PARAMETERS: [(&str, bool); 12] = [
+    ("polluteScopeWithLoopInitialAssignments", false),
+    ("polluteScopeWithAlwaysIterableForeach", false),
+    ("polluteScopeWithBlock", false),
+    ("checkDynamicProperties", true),
+    ("checkExplicitMixedMissingReturn", true),
+    ("checkFunctionNameCase", true),
+    ("checkInternalClassCaseSensitivity", true),
+    ("reportMaybesInMethodSignatures", true),
+    ("reportStaticMethodSignatures", true),
+    ("reportMaybesInPropertyPhpDocTypes", true),
+    ("reportWrongPhpDocTypeInVarTag", true),
+    ("checkStrictPrintfPlaceholderTypes", true),
+];
+
 const SWITCH_LEVELS: [(&str, u8); 4] = [
     ("union-types", 7),
     ("nullables", 8),
@@ -42,6 +59,13 @@ impl Analyse {
     }
 
     pub fn parameters(&self, root: &Path) -> Array {
+        self.parameters_with_lint(root, |_| false)
+    }
+
+    /// [`Self::parameters`], with `lint_on` saying which lint rules are on: a strict-rules class a lint rule owns
+    /// (rules.md O5, `UselessCastRule`) runs in analyse when strict-rules is in (one of its checks is on) and the lint
+    /// rule is on.
+    pub fn parameters_with_lint(&self, root: &Path, lint_on: impl Fn(&str) -> bool) -> Array {
         let on = self.on();
         let mut p = Array::new();
         let level = self.level();
@@ -74,6 +98,17 @@ impl Analyse {
             Value::Array(Array::list(ignores)),
         );
         let classes = mapping::section(&["upstream", "phpstan-classes"]).table();
+        let installed = |name: &str| {
+            classes.values().any(|e| {
+                package(e) == Some(name)
+                    && (e.get("pun").and_then(toml::Value::as_str)).is_some_and(|p| on.contains(p))
+            })
+        };
+        let strict_rules = installed("phpstan-strict-rules");
+        p.set(Key::from("strictRulesInstalled"), Value::Bool(strict_rules));
+        if strict_rules {
+            strict_rules_parameters(&mut p, self.bleeding_edge);
+        }
         for e in classes.values() {
             let (Some(gate), Some(pun)) = (
                 e.get("gated_by").and_then(toml::Value::as_str),
@@ -81,8 +116,7 @@ impl Analyse {
             ) else {
                 continue;
             };
-            if e.get("package").and_then(toml::Value::as_str) == Some("larastan") && !self.larastan
-            {
+            if package(e) == Some("larastan") && !self.larastan {
                 continue;
             }
             for part in gate.split(" + ") {
@@ -95,7 +129,11 @@ impl Analyse {
                     _ => name.to_string(),
                 };
                 if get(&p, &name) != Some(&Value::Bool(true)) {
-                    set(&mut p, &name, Value::Bool(on.contains(pun)));
+                    let lint_owned = strict_rules
+                        && package(e) == Some("phpstan-strict-rules")
+                        && pun.starts_with("lint/")
+                        && lint_on(pun);
+                    set(&mut p, &name, Value::Bool(on.contains(pun) || lint_owned));
                 }
             }
         }
@@ -106,13 +144,9 @@ impl Analyse {
                 Value::Bool(true),
             );
         }
-        let deprecations = classes.values().any(|e| {
-            e.get("package").and_then(toml::Value::as_str) == Some("phpstan-deprecation-rules")
-                && (e.get("pun").and_then(toml::Value::as_str)).is_some_and(|p| on.contains(p))
-        });
         p.set(
             Key::from("deprecationRulesInstalled"),
-            Value::Bool(deprecations),
+            Value::Bool(installed("phpstan-deprecation-rules")),
         );
         for (name, e) in mapping::section(&["phpstan-parameters"]).table() {
             let (Some(option), Some(rules)) = (
@@ -130,6 +164,19 @@ impl Analyse {
         }
         p
     }
+}
+
+fn strict_rules_parameters(p: &mut Array, bleeding_edge: bool) {
+    for (name, value) in STRICT_RULES_PARAMETERS {
+        p.set(Key::from(name), Value::Bool(value));
+    }
+    if bleeding_edge {
+        p.set(Key::from("reportNonIntStringArrayKey"), Value::Bool(true));
+    }
+}
+
+fn package(e: &toml::Value) -> Option<&str> {
+    e.get("package").and_then(toml::Value::as_str)
 }
 
 fn absolute(root: &Path, path: &str) -> String {
