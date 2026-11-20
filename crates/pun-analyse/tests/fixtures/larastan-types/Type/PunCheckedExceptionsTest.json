@@ -1,0 +1,37 @@
+{
+    "test": "Type/PunCheckedExceptionsTest",
+    "configs": [
+        "tests/Type/data/config-checked-exceptions.neon"
+    ],
+    "cases": [
+        {
+            "file": "tests/Type/data/pun-checked-exceptions.php",
+            "declares": [
+                "puncheckedexceptions\\calls",
+                "puncheckedexceptions\\denied",
+                "puncheckedexceptions\\post"
+            ],
+            "asserts": [],
+            "errors": [
+                {
+                    "line": 24,
+                    "identifier": "missingType.checkedException",
+                    "message": "Method PunCheckedExceptions\\Calls::closureException() throws checked exception PunCheckedExceptions\\Denied but it's missing from the PHPDoc @throws tag.",
+                    "tip": null
+                },
+                {
+                    "line": 44,
+                    "identifier": "missingType.checkedException",
+                    "message": "Method PunCheckedExceptions\\Calls::cacheMixin() throws checked exception Psr\\SimpleCache\\InvalidArgumentException but it's missing from the PHPDoc @throws tag.",
+                    "tip": null
+                },
+                {
+                    "line": 52,
+                    "identifier": "missingType.checkedException",
+                    "message": "Method PunCheckedExceptions\\Calls::closureVariable() throws checked exception PunCheckedExceptions\\Denied but it's missing from the PHPDoc @throws tag.",
+                    "tip": null
+                }
+            ]
+        }
+    ]
+}

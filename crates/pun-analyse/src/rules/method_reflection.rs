@@ -19,6 +19,8 @@ pub(super) struct Method<'a> {
     pub is_static: bool,
     /// `getDeclaringClass()`'s display name when an extension's reflection gives its own.
     pub static_display: Option<String>,
+    /// False when the reflection's `getThrowType()` is null whatever the method declares.
+    pub throws: bool,
 }
 
 impl<'a> Method<'a> {
@@ -68,6 +70,7 @@ impl<'a> Method<'a> {
             final_class,
             is_static: declaring.is_static(),
             static_display: None,
+            throws: true,
             declaring,
             compound: false,
         }
@@ -89,6 +92,7 @@ impl<'a> Method<'a> {
             final_class: false,
             is_static: declaring.is_static(),
             static_display: None,
+            throws: true,
             declaring,
             compound: false,
         }
@@ -178,9 +182,12 @@ impl<'a> Method<'a> {
     pub(super) fn reflect(&mut self, r: &Reflected) {
         match r {
             Reflected::Declared => {}
-            Reflected::Static(display) => {
+            Reflected::EloquentBuilder(display) => {
                 self.is_static = true;
-                self.static_display = Some(display.clone());
+                if display.is_some() {
+                    self.static_display.clone_from(display);
+                }
+                self.throws = false;
             }
             Reflected::StaticDeclared => self.is_static = true,
             Reflected::Instance => self.is_static = false,

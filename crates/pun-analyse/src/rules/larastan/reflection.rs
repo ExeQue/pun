@@ -21,13 +21,19 @@ impl ClassReflectionExtension for Larastan {
         k: &ClassLikeMetadata,
         name: &[u8],
     ) -> Option<MethodAnswer> {
+        if phase == MethodPhase::BeforeAnnotations {
+            return storage_method(c, k, name);
+        }
         if super::is_model(c, k) {
             // ModelForwardsCallsExtension: an EloquentBuilderMethodReflection of the model's builder, which is static.
             let builder = model_builder(c, k);
             let name = builder.object_class_names().concat();
             let display = (c.class_like(&name).found())
                 .map_or(name.clone(), |b| class_display(c, &builder, b));
-            return Some(MethodAnswer::Forward(builder, Reflected::Static(display)));
+            return Some(MethodAnswer::Forward(
+                builder,
+                Reflected::EloquentBuilder(Some(display)),
+            ));
         }
         let original = declared::original_name(k);
         let builder = super::is_a(
@@ -88,7 +94,7 @@ impl ClassReflectionExtension for Larastan {
             {
                 return Some(MethodAnswer::Forward(
                     Type::Object(query.into(), vec![], false),
-                    Reflected::Static(here()),
+                    Reflected::EloquentBuilder(Some(here())),
                 ));
             }
             if let Some(finder) = name.strip_prefix(b"where") {
@@ -189,7 +195,10 @@ impl ClassReflectionExtension for Larastan {
             };
             let builder = Type::Object(builder, vec![related], false);
             // RelationForwardsCallsExtension wraps the builder's method in a static EloquentBuilderMethodReflection.
-            return Some(MethodAnswer::Forward(builder, Reflected::StaticDeclared));
+            return Some(MethodAnswer::Forward(
+                builder,
+                Reflected::EloquentBuilder(None),
+            ));
         }
         // A contract that is its key's first alias (`'queue.connection' => [Queue::class]`) resolves to itself.
         // Larastan's container builds a concrete class there; forwarding to the contract would never end.
@@ -251,6 +260,22 @@ impl Larastan {
             }
         }))
     }
+}
+
+/// StorageMethodsClassReflectionExtension: the Storage facade has the methods of the filesystem manager, then of the
+/// filesystem adapter, each in a StaticMethodReflection. It runs before the facade's own `@method` tags.
+fn storage_method(c: &Checker, k: &ClassLikeMetadata, name: &[u8]) -> Option<MethodAnswer> {
+    if !declared::original_name(k).eq_ignore_ascii_case("Illuminate\\Support\\Facades\\Storage") {
+        return None;
+    }
+    [
+        "Illuminate\\Filesystem\\FilesystemManager",
+        "Illuminate\\Filesystem\\FilesystemAdapter",
+    ]
+    .into_iter()
+    .map(|class| Type::Object(class.into(), vec![], false))
+    .find(|t| c.has_method(t, name).yes())
+    .map(|t| MethodAnswer::Forward(t, Reflected::StaticDeclared))
 }
 
 /// The builder a model's calls forward to, typed with the model.

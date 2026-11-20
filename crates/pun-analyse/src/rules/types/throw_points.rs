@@ -1,15 +1,20 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use mago_codex::identifier::function_like::FunctionLikeIdentifier;
 use mago_codex::metadata::class_like::ClassLikeMetadata;
 use mago_codex::metadata::function_like::FunctionLikeMetadata;
 use mago_codex::ttype::atomic::TAtomic;
+use mago_codex::ttype::atomic::callable::TCallable;
 use mago_codex::ttype::atomic::object::TObject;
 use mago_codex::visibility::Visibility;
 use mago_span::{HasSpan, Span};
 use mago_syntax::cst::*;
 use mago_syntax::walker::MutWalker;
 use pun_phpstan::resolve::resolve_str;
-use pun_phpstan::types::{NeverKind, Type, accepts, is_super_type_of, remove_object, union};
+use pun_phpstan::types::{
+    NeverKind, Template, TemplateMap, Type, accepts, infer_template_types, is_super_type_of,
+    remove_object, resolve_template_types, union,
+};
 use serde_json::Value;
 
 use super::super::members::{self, Method as Member};
@@ -160,6 +165,9 @@ pub(in super::super) struct Points<'c, 'a, 'arena> {
     hooked: Option<Vec<u8>>,
     pub dead: Vec<(Span, Type)>,
     writing: HashSet<Span>,
+    /// The throw points of each closure assigned so far, by Mago's name for it: a call to the variable has them, as
+    /// PHPStan's ClosureType carries the throw points of its body.
+    closures: HashMap<mago_word::Word, Vec<Point>>,
 }
 
 impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
@@ -171,6 +179,7 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             hooked: None,
             dead: Vec::new(),
             writing: HashSet::new(),
+            closures: HashMap::new(),
         }
     }
 
@@ -197,7 +206,15 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
     }
 
     fn nested(&self) -> Points<'c, 'a, 'arena> {
-        Points::new(self.c)
+        Points {
+            closures: self.closures.clone(),
+            ..Points::new(self.c)
+        }
+    }
+
+    /// The throw points of the closure Mago types `e` as, when it is one assigned earlier.
+    fn assigned_closure(&self, e: &Expression) -> Option<&Vec<Point>> {
+        self.closures.get(&closure_name(self.c.type_of(e)?)?)
     }
 
     fn type_of(&self, e: &Expression) -> Option<Type> {
@@ -281,12 +298,91 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         })
     }
 
-    fn call_point(&mut self, at: Span, callee: &Callee, function: bool, args: usize) {
+    /// `ConditionalTypeResolver::resolveForCall()`: a user callee's `@throws` with the templates
+    /// `GenericParametersAcceptorResolver::resolve()` infers from the call's arguments (an uninferred one is its bound)
+    /// and its `($parameter is ...)` conditionals resolved against them.
+    fn resolve_for_call(&self, ty: Type, callee: &Callee, args: Option<&ArgumentList>) -> Type {
+        let Callee::User { f, declaring, name } = callee else {
+            return ty;
+        };
+        if !super::arguments::is_late(&ty) {
+            return ty;
+        }
+        let declared =
+            self.with_classes(|| declared::reflected_params(self.c, f, *declaring, name));
+        let names: Vec<&[u8]> = (f.parameters.iter())
+            .map(|p| &p.name.0.as_bytes()[1..])
+            .collect();
+        let variadic = f.parameters.last().is_some_and(|p| p.flags.is_variadic());
+        let mut passed: Vec<Option<Type>> = vec![None; names.len()];
+        for (i, arg) in args.iter().flat_map(|a| a.arguments.iter()).enumerate() {
+            let p = match arg {
+                Argument::Named(n) => names.iter().position(|x| *x == n.name.value),
+                Argument::Positional(p) if p.ellipsis.is_some() => None,
+                Argument::Positional(_) if i < names.len() => Some(i),
+                Argument::Positional(_) => variadic.then(|| names.len() - 1),
+            };
+            if let Some(p) = p
+                && let Some(t) = self.type_of(arg.value())
+            {
+                passed[p] = Some(match passed[p].take() {
+                    Some(o) => self.with_classes(|| union(vec![o, t])),
+                    None => t,
+                });
+            }
+        }
+        for (p, param) in f.parameters.iter().enumerate() {
+            if passed[p].is_none() {
+                passed[p] = match &param.default_type {
+                    Some(d) => Some(self.c.to_phpstan(&d.type_union)),
+                    None if param.flags.is_variadic() => Some(Type::Never(NeverKind::Explicit)),
+                    None => None,
+                };
+            }
+        }
+        fn collect(t: &Type, out: &std::cell::RefCell<Vec<Template>>) {
+            if let Type::Template(tt) = t
+                && super::arguments::is_callees(tt)
+                && !tt.argument
+                && !out.borrow().contains(&**tt)
+            {
+                out.borrow_mut().push((**tt).clone());
+            }
+            t.traverse(&|i| {
+                collect(i, out);
+                i.clone()
+            });
+        }
+        let templates = std::cell::RefCell::new(Vec::new());
+        for t in declared.iter().chain([&ty]) {
+            collect(t, &templates);
+        }
+        self.with_classes(|| {
+            let map = (declared.iter().zip(&passed))
+                .filter_map(|(d, a)| Some(infer_template_types(d, a.as_ref()?)))
+                .fold(TemplateMap::default(), TemplateMap::union)
+                .with_errors(&templates.borrow().iter().collect::<Vec<_>>());
+            let argument = |name: &str| {
+                let p = names.iter().position(|n| *n == &name.as_bytes()[1..])?;
+                passed[p].clone()
+            };
+            super::arguments::late_parameter_type(&resolve_template_types(&ty, &map), &argument)
+        })
+    }
+
+    fn call_point(
+        &mut self,
+        at: Span,
+        callee: &Callee,
+        function: bool,
+        args: Option<&ArgumentList>,
+    ) {
         let (ty, ret) = match callee {
             Callee::User { f, declaring, name } if !f.flags.is_magic_method() => {
                 let (ty, ret) = self.with_classes(|| {
                     declared::reflected_throws_and_return(self.c, f, *declaring, name)
                 });
+                let ty = ty.map(|ty| self.resolve_for_call(ty, callee, args));
                 if ty.as_ref().is_some_and(has_conditional) {
                     self.points.push(Point::unknown(at));
                     return;
@@ -320,7 +416,7 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             None if self.implicit_throws() => {
                 if function
                     && let Callee::Builtin { f, .. } = callee
-                    && args == 0
+                    && args.is_none_or(|a| a.arguments.is_empty())
                     && f.variants
                         .first()
                         .is_some_and(|v| v.params.iter().all(|p| p.optional))
@@ -565,9 +661,17 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             }
             return;
         }
-        let found: Vec<Member<'a>> = classes
+        // The method PHPStan reflects, through Larastan's forwards and the `@mixin`s of its facade stubs, and
+        // whether that reflection has the method's throw type (Larastan's EloquentBuilderMethodReflection has none)
+        let found: Vec<(Member<'a>, bool)> = classes
             .iter()
-            .filter_map(|k| members::reflected_method(self.c, k, name))
+            .filter_map(|k| {
+                let receiver = Type::Object(declared::original_name(k), vec![], false);
+                match self.c.reflected_method(&receiver, name) {
+                    Ok(Some(m)) => Some((m.declaring, m.throws)),
+                    _ => members::reflected_method(self.c, k, name).map(|m| (m, true)),
+                }
+            })
             .collect();
         if found.is_empty() {
             self.points.push(Point::implicit(at));
@@ -575,7 +679,10 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
         }
         if found.len() > 1 {
             let mut types = Vec::new();
-            for m in found {
+            for (m, throws) in found {
+                if !throws {
+                    continue;
+                }
                 match self.throw_type(&self.callee_of(m)) {
                     Ok(Some(t)) => types.push(t),
                     Ok(None) => {}
@@ -595,7 +702,7 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             }
             return;
         }
-        let m = found.into_iter().next().expect("one method");
+        let (m, throws) = found.into_iter().next().expect("one method");
         if let Member::Builtin { declaring, f } = &m
             && matches!(
                 declaring.name.as_str(),
@@ -615,13 +722,17 @@ impl<'c, 'a, 'arena> Points<'c, 'a, 'arena> {
             let params = self.immediate_params(&callee);
             self.callbacks(args, &params);
         }
+        if !throws {
+            self.implicit(at);
+            return;
+        }
         if let Callee::Builtin { key, .. } = &callee
             && let Some(point) = self.date_extension(at, key, args)
         {
             self.points.extend(point);
             return;
         }
-        self.call_point(at, &callee, false, 0);
+        self.call_point(at, &callee, false, args);
     }
 
     fn method_holders(&self, t: &Type, name: &str) -> Option<Vec<&'a ClassLikeMetadata>> {
@@ -1100,6 +1211,21 @@ pub(in super::super) fn flatten(t: &Type) -> Vec<Type> {
     }
 }
 
+/// Mago's name for the one closure a type is, whether it holds the closure or its signature.
+fn closure_name(t: &mago_codex::ttype::union::TUnion) -> Option<mago_word::Word> {
+    let [TAtomic::Callable(callable)] = t.types.as_ref() else {
+        return None;
+    };
+    match callable {
+        TCallable::Alias(FunctionLikeIdentifier::Closure(name)) => Some(*name),
+        TCallable::Signature(s) => match s.get_source() {
+            Some(FunctionLikeIdentifier::Closure(name)) => Some(name),
+            _ => None,
+        },
+        TCallable::Alias(_) => None,
+    }
+}
+
 fn has_conditional(t: &Type) -> bool {
     match t {
         Type::Conditional(_) => true,
@@ -1179,7 +1305,7 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
                         self.points.extend(point);
                         return;
                     }
-                    self.call_point(at, &callee, true, call.argument_list.arguments.len());
+                    self.call_point(at, &callee, true, Some(&call.argument_list));
                 }
                 None => self.points.push(Point::implicit(at)),
             },
@@ -1192,7 +1318,20 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
                     }
                 }
             }
-            _ => self.points.push(Point::unknown(at)),
+            callee => match self.assigned_closure(callee).cloned() {
+                // FuncCallHandler: the closure's throw points, and an implicit one as no function is reflected
+                Some(points) => {
+                    for p in points {
+                        if p.explicit {
+                            self.points.push(Point { at, ..p });
+                        } else if self.implicit_throws() {
+                            self.points.push(Point::implicit(at));
+                        }
+                    }
+                    self.points.push(Point::implicit(at));
+                }
+                None => self.points.push(Point::unknown(at)),
+            },
         }
     }
 
@@ -1271,7 +1410,9 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
             self.points.extend(point);
             return;
         }
-        match self.throw_type(&callee) {
+        let ty = (self.throw_type(&callee))
+            .map(|t| t.map(|t| self.resolve_for_call(t, &callee, n.argument_list.as_ref())));
+        match ty {
             Err(()) => self.points.push(Point::unknown(at)),
             Ok(Some(t)) => {
                 if !t.is_void().yes() {
@@ -1340,6 +1481,12 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Points<'_, '_, 'arena> {
         }
     }
     fn walk_out_assignment(&mut self, a: &'ast Assignment<'arena>, (): &mut ()) {
+        if let AssignmentOperator::Assign(_) = a.operator
+            && let Some(points) = self.closure_points(a.rhs)
+            && let Some(name) = self.c.type_of(a.rhs).and_then(closure_name)
+        {
+            self.closures.insert(name, points);
+        }
         match a.operator {
             AssignmentOperator::Division(_) | AssignmentOperator::Modulo(_) => {
                 match may_be_zero(self.c, a.rhs) {
@@ -1529,6 +1676,9 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Typed {
         self.0.push(t.exception.span());
     }
     fn walk_in_function_call(&mut self, f: &'ast FunctionCall<'arena>, (): &mut ()) {
+        if !matches!(f.function, Expression::Identifier(_)) {
+            self.0.push(f.function.span());
+        }
         self.0
             .extend(f.argument_list.arguments.iter().map(|a| a.value().span()));
     }

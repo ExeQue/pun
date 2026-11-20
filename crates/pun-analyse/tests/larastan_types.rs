@@ -27,6 +27,9 @@
 //! `dynamicCallOnStaticMethod` on, as its PHPStan run did. Type/PunStrictSignaturesTest.json (the `covariant` and
 //! `contravariant` method signatures, static methods included, and `varTag.type` that strict-rules' parameters turn
 //! on, and a final class's `static` parent return) runs with strict-rules' rules.neon and every check off.
+//! Type/PunCheckedExceptionsTest.json (`missingType.checkedException` through a `throw_if()` template, an Eloquent
+//! builder's forward to the query builder, the Storage and Cache facades and closures called through a variable) runs
+//! with `exceptions.check.missingCheckedExceptionInThrows` on; its PHPStan run is the strict-signatures one's.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

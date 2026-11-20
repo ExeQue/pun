@@ -9,6 +9,9 @@ use super::Checker;
 /// so that a forward found before `@mixin` keeps its place and the rest still comes after `@phpstan-require-extends`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum MethodPhase {
+    /// After the class's native methods, before its `@method` tags, where PHPStan asks every extension it does not
+    /// wire itself. Pun asks here only for the extensions that ignore a `@method` tag.
+    BeforeAnnotations,
     /// After the class's own methods, before `@mixin`. A forward that finds nothing lets the lookup go on.
     BeforeMixins,
     /// After `@mixin` and `@phpstan-require-extends`: the lookup's last step.
@@ -30,8 +33,9 @@ pub(super) enum MethodAnswer {
 pub(super) enum Reflected {
     /// As the method found says.
     Declared,
-    /// Static, declared in this class (its display name).
-    Static(String),
+    /// Larastan's EloquentBuilderMethodReflection: static, declared in this class (its display name) or, without
+    /// one, in the class the method found names, and with no throw type whatever the method declares.
+    EloquentBuilder(Option<String>),
     /// Static, declared in the class the method found names.
     StaticDeclared,
     /// Not static.

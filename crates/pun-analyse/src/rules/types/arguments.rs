@@ -248,7 +248,10 @@ fn resolved_types(acceptor: &Acceptor, inference: &Inference) -> Vec<Option<Type
         .collect()
 }
 
-fn late_parameter_type(t: &Type, argument: &dyn Fn(&str) -> Option<Type>) -> Type {
+pub(in super::super) fn late_parameter_type(
+    t: &Type,
+    argument: &dyn Fn(&str) -> Option<Type>,
+) -> Type {
     let t = if let Type::Conditional(cond) = t
         && let Subject::Parameter(name) = &cond.subject
         && let Some(value) = argument(name)

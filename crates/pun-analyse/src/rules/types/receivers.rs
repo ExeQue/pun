@@ -231,6 +231,12 @@ impl<'a> Checker<'a, '_> {
                 .yes()
             })
         };
+        if members::method(self, k, name).is_none()
+            && let Some(method) =
+                self.extension_method(MethodPhase::BeforeAnnotations, t, k, name, active, shallow)?
+        {
+            return Ok(Some(method));
+        }
         let native = members::reflected_method(self, k, name);
         if let Some(m) = native.filter(|m| {
             matches!(m, members::Method::User { declaring, .. } if declaring.kind.is_trait())
@@ -377,7 +383,7 @@ impl<'a> Checker<'a, '_> {
                         Err(Unknown(declaring)) => {
                             return Err(Unknown(match reflected {
                                 Reflected::Declared | Reflected::StaticDeclared => declaring,
-                                Reflected::Static(display) => Some(display),
+                                Reflected::EloquentBuilder(display) => display.or(declaring),
                                 Reflected::Instance => None,
                             }));
                         }
