@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Write crates/pun-tokens/tests/fixtures/lint_cases.json: PHP snippets and what real PHP 8.5's
+"""Write crates/pun-tokens/tests/fixtures/lint_cases.json: PHP snippets and what real PHP 8.6's
 `token_get_all($code, TOKEN_PARSE)` makes of them (null, or PHP-CS-Fixer's "Parse error: ... on line N." /
 "Fatal error: ..." message). Expectations for pun-tokens' ParseLexer and pun_format::lint.
 
-usage: scripts/export-lint-cases.py   (needs php 8.5 on PATH)
+usage: scripts/export-lint-cases.py   (needs php 8.6 on PATH)
 """
 import json, os, subprocess
 P = '<?php\n'
@@ -119,6 +119,12 @@ X = [
  "<?php\n$a = 1 'x\ny';", "<?php\n$a = 1 b'x';", "<?php\n$a = 1 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';", "<?php\n$a = 1 \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\";", "<?php\n$a = 1 \"$x\";", "<?php\n__halt_compiler()\n;", "<?php\n__halt_compiler(); (", "<?php\n{ __halt_compiler(); }",
 ]
 C += X
+# partial function application (PHP 8.6): `?`, `name: ?` and `...` placeholders, and where the grammar rejects them
+PFA = ["f(?);", "f(?, ?);", "f(1, ?);", "f(?, 1);", "f(...);", "f(1, ...);", "f(?, ...);", "f(a: ?);", "f(1, a: ?);", "f(a: ?, b: 1);",
+       "$o->m(?);", "$o?->m(1, ?);", "A::m(?, ...);", "$f(?);", "new A(?);", "f(?)(1);", "f(? ?);", "f(?...);", "f(... ?);", "f(..., ?);",
+       "f(?, ...$a);", "f(a: ...);", "f(?:1);", "f(??);", "f(? => 1);", "f((?));", "[?];", "f(?, );", "f(a: ?, );", "f(...,);",
+       "#[A(?)] function g(){}", "echo f(?)  ?: 1;", "$a = $b ? f(?) : f(...);", "f(?->x);"]
+C += [P + s for s in PFA]
 
 
 def main():

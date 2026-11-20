@@ -3170,5 +3170,141 @@
     {
         "code": "<?php\n{ __halt_compiler(); }",
         "error": "Fatal error: __HALT_COMPILER() can only be used from the outermost scope on line 2."
+    },
+    {
+        "code": "<?php\nf(?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?, ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(1, ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?, 1);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(...);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(1, ...);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?, ...);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(a: ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(1, a: ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(a: ?, b: 1);",
+        "error": null
+    },
+    {
+        "code": "<?php\n$o->m(?);",
+        "error": null
+    },
+    {
+        "code": "<?php\n$o?->m(1, ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nA::m(?, ...);",
+        "error": null
+    },
+    {
+        "code": "<?php\n$f(?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nnew A(?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?)(1);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(? ?);",
+        "error": "Parse error: syntax error, unexpected token \"?\", expecting \")\" on line 2."
+    },
+    {
+        "code": "<?php\nf(?...);",
+        "error": "Parse error: syntax error, unexpected token \"...\", expecting \")\" on line 2."
+    },
+    {
+        "code": "<?php\nf(... ?);",
+        "error": "Parse error: syntax error, unexpected token \"?\", expecting \")\" on line 2."
+    },
+    {
+        "code": "<?php\nf(..., ?);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?, ...$a);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(a: ...);",
+        "error": "Parse error: syntax error, unexpected token \"...\" on line 2."
+    },
+    {
+        "code": "<?php\nf(?:1);",
+        "error": "Parse error: syntax error, unexpected token \":\", expecting \")\" on line 2."
+    },
+    {
+        "code": "<?php\nf(??);",
+        "error": "Parse error: syntax error, unexpected token \"??\" on line 2."
+    },
+    {
+        "code": "<?php\nf(? => 1);",
+        "error": "Parse error: syntax error, unexpected token \"=>\", expecting \")\" on line 2."
+    },
+    {
+        "code": "<?php\nf((?));",
+        "error": "Parse error: syntax error, unexpected token \"?\" on line 2."
+    },
+    {
+        "code": "<?php\n[?];",
+        "error": "Parse error: syntax error, unexpected token \"?\", expecting \"]\" on line 2."
+    },
+    {
+        "code": "<?php\nf(?, );",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(a: ?, );",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(...,);",
+        "error": null
+    },
+    {
+        "code": "<?php\n#[A(?)] function g(){}",
+        "error": null
+    },
+    {
+        "code": "<?php\necho f(?)  ?: 1;",
+        "error": null
+    },
+    {
+        "code": "<?php\n$a = $b ? f(?) : f(...);",
+        "error": null
+    },
+    {
+        "code": "<?php\nf(?->x);",
+        "error": "Parse error: syntax error, unexpected token \"?->\" on line 2."
     }
 ]
