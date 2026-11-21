@@ -641,6 +641,7 @@ mod tests {
                 then,
                 otherwise,
                 negated: false,
+                resolved: Default::default(),
             }))
         };
         let array = Type::array(mixed(), mixed());

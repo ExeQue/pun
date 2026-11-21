@@ -1,0 +1,12 @@
+[
+    {
+        "line": 102,
+        "identifier": "constructor.unusedParameter",
+        "message": "Constructor of class NestedConditionalReturns\\Builder has an unused parameter $type."
+    },
+    {
+        "line": 114,
+        "identifier": "phpstan.dumpType",
+        "message": "Dumped type: NestedConditionalReturns\\Node<$this(NestedConditionalReturns\\Builder<T of 'array'|'boolean'|'enum'|'float'|'integer'|'scalar'|'string'|'variable' = 'array' (class NestedConditionalReturns\\Builder, argument)>)>"
+    }
+]

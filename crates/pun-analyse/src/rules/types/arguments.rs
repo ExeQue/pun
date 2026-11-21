@@ -258,6 +258,7 @@ pub(in super::super) fn late_parameter_type(
     {
         Type::Conditional(Box::new(Conditional {
             subject: Subject::Type(value),
+            resolved: Default::default(),
             ..(**cond).clone()
         }))
     } else {
@@ -393,6 +394,7 @@ fn unresolvable_templates(c: &Checker, acceptor: &Acceptor, inference: &Inferenc
                     subject: Subject::Type(subject),
                     then: conditionals(&cond.then, passed, names),
                     otherwise: conditionals(&cond.otherwise, passed, names),
+                    resolved: Default::default(),
                     ..(**cond).clone()
                 })))
             }

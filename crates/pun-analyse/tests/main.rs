@@ -120,6 +120,7 @@ mod native_lane;
 mod native_nullsafe_transfer;
 mod native_properties;
 mod native_unset_transfer;
+mod nested_conditional_returns;
 mod nested_reference_writes;
 mod never_calls;
 mod never_identity;

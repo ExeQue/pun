@@ -218,6 +218,19 @@ pub struct Conditional {
     pub then: Type,
     pub otherwise: Type,
     pub negated: bool,
+    /// `resolve()`'s result, kept like PHPStan's `LateResolvableTypeTrait::$result`. Without it a chain of nested
+    /// conditionals resolves exponentially often (every query `union` runs on a branch resolves it again).
+    pub resolved: Resolved,
+}
+
+/// A cache that every equality ignores, so a resolved and an unresolved conditional still compare equal.
+#[derive(Clone, Debug, Default)]
+pub struct Resolved(std::sync::OnceLock<Type>);
+
+impl PartialEq for Resolved {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
 }
 
 #[derive(Clone, Debug)]

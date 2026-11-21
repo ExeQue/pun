@@ -240,6 +240,7 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
             then: r(then),
             otherwise: r(otherwise),
             negated: *negated,
+            resolved: Default::default(),
         })),
         Node::ConditionalForParameter {
             param,
@@ -253,6 +254,7 @@ pub fn resolve_in(node: &Node, scope: &dyn Scope) -> Type {
             then: r(then),
             otherwise: r(otherwise),
             negated: *negated,
+            resolved: Default::default(),
         })),
         Node::Array(item) => Type::array(mixed(), r(item)),
         Node::Generic { base, args } => generic(base, args, scope),

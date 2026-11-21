@@ -338,6 +338,15 @@ pub fn is_super_type_of(a: &Type, b: &Type) -> Tri {
 
 impl Conditional {
     pub fn resolve(&self) -> Type {
+        if let Some(t) = self.resolved.0.get() {
+            return t.clone();
+        }
+        let t = self.compute();
+        let _ = self.resolved.0.set(t.clone());
+        t
+    }
+
+    fn compute(&self) -> Type {
         let Subject::Type(subject) = &self.subject else {
             return union(vec![self.then.clone(), self.otherwise.clone()]);
         };

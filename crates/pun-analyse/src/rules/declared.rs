@@ -1125,6 +1125,7 @@ fn rename_conditionals(t: &Type, mapped: &dyn Fn(&str) -> Option<String>) -> Typ
             pun_phpstan::types::Subject::Parameter(p) => match mapped(&p[1..]) {
                 Some(name) => Type::Conditional(Box::new(pun_phpstan::types::Conditional {
                     subject: pun_phpstan::types::Subject::Parameter(format!("${name}")),
+                    resolved: Default::default(),
                     ..(**c).clone()
                 })),
                 None => t.clone(),

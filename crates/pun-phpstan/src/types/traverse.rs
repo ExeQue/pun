@@ -108,6 +108,7 @@ impl Type {
                 then: f(&c.then),
                 otherwise: f(&c.otherwise),
                 negated: c.negated,
+                resolved: Default::default(),
             })),
             Type::ConstArray(a) => {
                 let mut a = a.clone();

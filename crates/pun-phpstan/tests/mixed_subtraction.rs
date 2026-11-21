@@ -266,6 +266,7 @@ fn pun_mixed_queries_distinguish_complete_domains_from_partial_exclusions() {
                     then: excluded,
                     otherwise: domain,
                     negated: false,
+                    resolved: Default::default(),
                 })),
                 _ => panic!("unknown oracle operation {kind}"),
             }
