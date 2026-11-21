@@ -511,6 +511,12 @@ impl<'a, 'arena> Checker<'a, 'arena> {
         String::from_utf8_lossy(&self.file.contents[span.to_range_usize()]).into_owned()
     }
 
+    /// Pun names classes with UTF-8 strings, so it doesn't walk a class-like whose name isn't UTF-8 (Symfony's
+    /// `class \xA9`): the codebase keys it by the raw bytes, and lookups by the lossy name miss it.
+    fn utf8_name(&self, span: Span) -> bool {
+        std::str::from_utf8(self.names.get(&span)).is_ok()
+    }
+
     fn resolved_span(&self, span: Span) -> String {
         String::from_utf8_lossy(self.names.get(&span)).into_owned()
     }

@@ -12,17 +12,17 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         assign::exit_expression(self, e);
     }
     fn walk_class(&mut self, class: &'ast Class<'arena>, c: &mut ()) {
-        if !self.outside_target_trait() {
+        if !self.outside_target_trait() && self.utf8_name(class.name.span) {
             mago_syntax::walker::walk_class_mut(self, class, c);
         }
     }
     fn walk_interface(&mut self, i: &'ast Interface<'arena>, c: &mut ()) {
-        if !self.outside_target_trait() {
+        if !self.outside_target_trait() && self.utf8_name(i.name.span) {
             mago_syntax::walker::walk_interface_mut(self, i, c);
         }
     }
     fn walk_enum(&mut self, e: &'ast Enum<'arena>, c: &mut ()) {
-        if !self.outside_target_trait() {
+        if !self.outside_target_trait() && self.utf8_name(e.name.span) {
             mago_syntax::walker::walk_enum_mut(self, e, c);
         }
     }
@@ -59,7 +59,9 @@ impl<'ast, 'arena> MutWalker<'ast, 'arena, ()> for Checker<'_, 'arena> {
         self.pop_frame();
     }
     fn walk_trait(&mut self, t: &'ast Trait<'arena>, c: &mut ()) {
-        self.visit_trait(t, c);
+        if self.utf8_name(t.name.span) {
+            self.visit_trait(t, c);
+        }
     }
     fn walk_anonymous_class(&mut self, a: &'ast AnonymousClass<'arena>, c: &mut ()) {
         self.visit_anonymous_class(a, c);

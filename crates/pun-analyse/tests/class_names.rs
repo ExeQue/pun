@@ -157,3 +157,21 @@ fn case_options_bleeding_edge_and_override() {
     case_options("edge");
     case_options("edge-off");
 }
+
+// symfony/cache's ValueWrapper declares `class \xA9`, which is not UTF-8. Pun looked the class up by its lossy name and
+// panicked; PHPStan reports nothing.
+#[test]
+fn non_utf8_class_name_matches_phpstan() {
+    let file =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/non-utf8-class-name/latin1.php");
+    for level in [5, 9] {
+        let mut project = Project::new(vec![file.clone()], Vec::new());
+        project.level = level;
+        let got: Vec<_> = run(&project)
+            .unwrap()
+            .into_iter()
+            .map(|e| (e.line, e.identifier, e.message))
+            .collect();
+        assert!(got.is_empty(), "level {level}: {got:?}");
+    }
+}

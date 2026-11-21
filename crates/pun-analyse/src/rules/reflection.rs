@@ -206,6 +206,11 @@ impl<'a> Checker<'a, '_> {
     }
 
     pub(super) fn class_like(&self, name: &str) -> Lookup<'a> {
+        // A name decoded from bytes that aren't UTF-8 (Symfony's `new ("\xA9")`) can't be looked up: the codebase keys
+        // the class by its raw bytes.
+        if name.contains(char::REPLACEMENT_CHARACTER) {
+            return Lookup::Opaque;
+        }
         match known(self, name) {
             None => Lookup::NotFound,
             Some(Known::User(k)) => Lookup::Found(k),
