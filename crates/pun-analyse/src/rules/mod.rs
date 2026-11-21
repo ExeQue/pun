@@ -223,6 +223,12 @@ pub(crate) struct Checker<'a, 'arena> {
     defined: HashMap<Span, pun_phpstan::types::Tri>,
     variables: variables::Observations,
     origins: infer::Origins,
+    /// `source_type` results on `types`, by span, `KEEP_FILLED` and class scope, with whether the result set
+    /// `WITHOUT_SIGNATURE`. Each call in a fluent chain asks for its source, which recurses through every call before
+    /// it, so without this a chain of n calls costs n² resolutions (symfony/messenger's config tree: 16 s for one file).
+    source_types: std::sync::Mutex<
+        HashMap<(Span, bool, Option<mago_word::Word>), (Option<pun_phpstan::types::Type>, bool)>,
+    >,
     names: &'a ResolvedNames<'arena>,
     codebase: &'a CodebaseMetadata,
     classes: Vec<ClassScope>,

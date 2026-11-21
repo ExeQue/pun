@@ -648,6 +648,7 @@ fn checker<'a, 'arena>(
         defined,
         variables,
         origins,
+        source_types: Default::default(),
         names,
         codebase,
         classes: Vec::new(),

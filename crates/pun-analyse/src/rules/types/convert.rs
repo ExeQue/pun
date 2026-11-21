@@ -316,6 +316,42 @@ impl Checker<'_, '_> {
         origins: &std::collections::HashMap<Span, infer::Origin>,
         types: &HashMap<Span, TUnion, impl BuildHasher>,
     ) -> Option<Type> {
+        if !std::ptr::eq(
+            std::ptr::from_ref(types).cast::<()>(),
+            std::ptr::from_ref(&self.types).cast::<()>(),
+        ) {
+            return self.uncached_source_type(span, origins, types);
+        }
+        let key = (span, KEEP_FILLED.get(), self.class_scope().map(|k| k.name));
+        let cached = self
+            .source_types
+            .lock()
+            .expect("source types")
+            .get(&key)
+            .cloned();
+        if let Some((source, without_signature)) = cached {
+            if without_signature {
+                WITHOUT_SIGNATURE.set(true);
+            }
+            return source;
+        }
+        let outer = WITHOUT_SIGNATURE.replace(false);
+        let source = self.uncached_source_type(span, origins, types);
+        let without_signature = WITHOUT_SIGNATURE.get();
+        WITHOUT_SIGNATURE.set(outer || without_signature);
+        self.source_types
+            .lock()
+            .expect("source types")
+            .insert(key, (source.clone(), without_signature));
+        source
+    }
+
+    fn uncached_source_type(
+        &self,
+        span: Span,
+        origins: &std::collections::HashMap<Span, infer::Origin>,
+        types: &HashMap<Span, TUnion, impl BuildHasher>,
+    ) -> Option<Type> {
         let source = self.origin_type(origins.get(&span)?, origins, types);
         match types
             .get(&span)

@@ -561,6 +561,7 @@ mod tests {
             defined: Default::default(),
             variables: Default::default(),
             origins: Default::default(),
+            source_types: Default::default(),
             names: &names,
             codebase: &codebase,
             classes: Vec::new(),

@@ -185,6 +185,7 @@ impl<'arena> Checker<'_, 'arena> {
         self.classes[saved].name = Some(class.clone());
         self.decls.push(decl);
         self.walk.insert(Walk::IN_TARGET);
+        self.source_types.get_mut().expect("source types").clear();
         self.types.extend(crate::codebase::trait_initializer_types(
             self.codebase,
             self.file,
