@@ -549,6 +549,33 @@ where
         second_type
     };
 
+    // Pun: `$this` and `static` narrowed by their own class or an ancestor stay `$this` and `static`, as in PHPStan.
+    // Mago 1.61 asserts `instanceof self` as the plain class, which the check below also finds containing `$this`.
+    if let (TAtomic::Object(TObject::Named(first_object)), TAtomic::Object(TObject::Named(second_object))) =
+        (first_type, second_type)
+        && first_object.is_static
+        && !second_object.is_static
+    {
+        let mut atomic_comparison_results = ComparisonResult::new();
+        if atomic_comparator::is_contained_by(
+            context.codebase,
+            first_type,
+            second_type,
+            false,
+            &mut atomic_comparison_results,
+        ) && !atomic_comparison_results.is_only_accepted
+        {
+            let first_type = atomic_comparison_results.replacement_atomic_type.unwrap_or_else(|| first_type.clone());
+
+            return intersect_contained_atomic_with_another(
+                context,
+                second_type,
+                &first_type,
+                atomic_comparison_results.type_coerced.unwrap_or(false),
+            );
+        }
+    }
+
     let mut atomic_comparison_results = ComparisonResult::new();
     if atomic_comparator::is_contained_by(
         context.codebase,

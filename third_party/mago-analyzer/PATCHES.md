@@ -4250,3 +4250,8 @@ keeps the pre-merge behaviour.
   `SwitchHandler` walks each case's statements and a `break` makes the switch non-terminating, so every case
   counts, as in 1.57.0. Visible as the missing `switch.alwaysFalse`/`alwaysTrue` errors and the false
   `function.unusedParameter` errors in the dead_code fixture's `switch-loose.php`.
+- `reconciler/assertion_reconciler.rs` `intersect_atomic_with_atomic()`: upstream 1.61 asserts `instanceof self`
+  as the plain class instead of `$this`, which Pun keeps for the negation. But intersecting `$this(Child)` with
+  `Child` then kept `Child`, because the first containment check finds `Child` inside `$this(Child)`. PHPStan keeps
+  `$this(Child)` (and `static(Child)`), so a later `$this instanceof static` is still `instanceof.alwaysTrue`. A
+  `$this`/`static` object contained by a plain class now takes the second check's direction first.
