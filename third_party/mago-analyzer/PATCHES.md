@@ -4265,3 +4265,8 @@ keeps the pre-merge behaviour.
   such property, so `$this->root->root` (Bug2435, `root` private in the parent, typed as the child) reads as an
   error type, not the parent's declared type. The fallback is removed, as in 1.57.0. Methods and static members
   keep `private_member_scope()`.
+- `statement/function_like/mod.rs`, `statement/return.rs`: upstream 1.61's `hint_returned_closure()` types a
+  returned closure's parameters from the enclosing function's declared `callable(...)`/`Closure(...)` return type.
+  PHPStan infers closure parameter types only from a call's parameter, so `return function (array $array) {...}`
+  keeps `array` (`Methods/CallMethodsRuleTest::testBug11317`'s `argument.type`). The hint and its two callers are
+  removed.
