@@ -4190,3 +4190,9 @@ keeps the pre-merge behaviour.
   filter is removed and visibility is checked on every target, as in 1.57.0. Upstream's private-scope lookup
   (`private_member_scope()`) stays. This is visible on Livewire's `Component::getListeners()` passed to Pest's
   `expect()`, which reported a false `argument.templateType`.
+- `expression/array.rs`: upstream 1.61 clears `can_create_objectlike` when a literal spreads a keyed array with
+  generic parameters. Pun's general-unpack degrade (see "`ArrayCreationInfo::has_general_unpack`" above) ran only
+  while that flag was still set, so `[...$a, 'x' => 1]` with `array<mixed> $a` kept the `'x'` slot and dumped as
+  `non-empty-array<mixed>&hasOffsetValue('x', 1)`. PHPStan's `ConstantArrayTypeBuilder` degrades to
+  `non-empty-array<mixed>`. The degrade now depends only on `has_general_unpack`. `tests/inference_parity.rs`
+  (`bleeding_edge_inference`) checks this.
