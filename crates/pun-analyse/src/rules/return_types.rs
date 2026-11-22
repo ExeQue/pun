@@ -1534,7 +1534,12 @@ impl FunctionReturnTypeProvider for GetClass {
                 .iter()
                 .any(|a| matches!(a, TAtomic::Object(TObject::Named(n)) if n.is_this))
         {
-            return None;
+            use mago_codex::ttype::atomic::scalar::class_like_string::{
+                TClassLikeString, TClassLikeStringKind,
+            };
+            return Some(TUnion::from_atomic(TAtomic::Scalar(
+                TScalar::ClassLikeString(TClassLikeString::any(TClassLikeStringKind::Class)),
+            )));
         }
         if let [TAtomic::GenericParameter(t)] = argument.types.as_ref()
             && let [bound @ TAtomic::Object(_)] = t.constraint.types.as_ref()
