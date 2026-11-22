@@ -784,10 +784,8 @@ where
                 acceptable_types.push(atomic.clone());
                 did_remove_type = true;
             }
-            TAtomic::Object(TObject::Any) => {
-                did_remove_type = true;
-                acceptable_types.push(TAtomic::Object(TObject::Named(TNamedObject::new(word("Traversable")))));
-            }
+            // Pun: like PHPStan's TypeCombinator::intersect(), a non-final class asserted iterable is `X&iterable`
+            // (`Countable&iterable`), not upstream 1.61's `X&Traversable`; a bare `object` keeps 1.57.0's removal.
             TAtomic::Object(TObject::Named(named_object))
                 if context
                     .codebase
@@ -796,8 +794,7 @@ where
             {
                 did_remove_type = true;
                 let mut intersection = atomic.clone();
-                intersection
-                    .add_intersection_type(TAtomic::Object(TObject::Named(TNamedObject::new(word("Traversable")))));
+                intersection.add_intersection_type(TAtomic::Iterable(TIterable::mixed()));
                 acceptable_types.push(intersection);
             }
             _ => {

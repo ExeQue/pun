@@ -175,6 +175,8 @@ pub(crate) fn atomic_declaration(
                             TAtomic::Reference(TReference::Symbol { name, .. }) => {
                                 class(codebase, name)
                             }
+                            // `Countable&iterable` has no native form: PHP intersections take only classes.
+                            TAtomic::Iterable(_) => return None,
                             _ => continue,
                         };
                         if !all.iter().any(|a| a.eq_ignore_ascii_case(&member)) {

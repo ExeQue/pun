@@ -4270,3 +4270,10 @@ keeps the pre-merge behaviour.
   PHPStan infers closure parameter types only from a call's parameter, so `return function (array $array) {...}`
   keeps `array` (`Methods/CallMethodsRuleTest::testBug11317`'s `argument.type`). The hint and its two callers are
   removed.
+- `reconciler/simple_assertion_reconciler.rs`: upstream 1.61's `intersect_iterable()` narrows a non-final class `X`
+  asserted iterable (`is_iterable($x)`) to `X&Traversable` and a bare `object` to `Traversable`. PHPStan's
+  `TypeCombinator::intersect()` keeps `X&iterable` (`Countable&iterable`) and `iterable&object`. A named class now
+  gets an `iterable` intersection part; a bare `object` keeps 1.57.0's removal. Pun's
+  `ClosureReturnTypeRector` port would otherwise add `\Countable&\Traversable`, which Rector, reading PHPStan's
+  type, cannot write and leaves out
+  (`crates/pun-lint/tests/rector/ClosureReturnTypeRector/Pun/iterable_member.php.inc`).
