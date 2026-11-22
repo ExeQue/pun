@@ -226,7 +226,7 @@ where
                     false,
                 );
 
-                Rc::new(get_null())
+                Rc::new(get_mixed())
             } else if block_context.flags.inside_isset() || block_context.flags.inside_unset() {
                 Rc::new(get_mixed())
             } else {

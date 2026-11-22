@@ -4239,3 +4239,8 @@ keeps the pre-merge behaviour.
   keeps them: after `$query = 1; true || ($query = 2);` it dumps `1|2`, and after a further `false && ($query = 3);`
   `1|2|3`. The right operand is analyzed in the right-hand scope again, as in 1.57.0, so the merge sees its
   assignments. `tests/object_intersections.rs` (`transfer.php`) checks that.
+- `expression/variable.rs` `analyze_variable()`: upstream 1.61 reads an undefined variable passed by reference as
+  `null`, the value PHP creates it with. PHPStan's ArgumentsHandler marks the operand as an allowed-undefined
+  expression and reads it as `mixed`: `$scan = sscanf(...); $scan('29', $format, $output);` observes `$output` as
+  `mixed`. The variable is still assigned `null` before the call's write-back, but the read is `mixed` again, as in
+  1.57.0. `tests/dynamic_callable_references.rs` checks that.
