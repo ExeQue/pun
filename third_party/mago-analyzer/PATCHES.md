@@ -4204,3 +4204,10 @@ keeps the pre-merge behaviour.
   literal. It narrows nothing there, and `$a[$key]`'s own isset assertion then negates cleanly. A union or general key
   keeps upstream's assertion. `tests/coalesce_scope.rs` (`false_isset_offset_probes_do_not_invent_nullable_entries`)
   and `tests/constant_foreach.rs` (`literal_selector_scope_refines_only_the_selected_offset`) check this.
+- `expression/assignment/mod.rs`: upstream 1.61 re-reads the target's holder after the right side
+  (`existing_target_type.or_else(...)`) and removes it with its descendants. For `$a['k'] ??= V`, the `??` read itself
+  creates `$a['k']`, so the write deleted it. PHPStan keeps the holder after `??=`: `$value['0']` is defined after
+  `$value['0'] ??= 'written'`, and `$items['foo'] ??= 5` on `mixed $items` leaves `$items['foo']` as `mixed~null`.
+  `??=` skips the re-read, as in 1.57.0. Other assignments keep upstream's invalidation.
+  `tests/refined_isset_keys.rs` (`coalesce_produces_expression_holders_without_replaying_indexes`,
+  `written_offset_holders_do_not_require_array_receivers`) checks this.

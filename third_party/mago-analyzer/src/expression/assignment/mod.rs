@@ -373,8 +373,13 @@ where
         ternary_assignment_conditions(context, block_context, artifacts, conditional, target, &mut pending_conditions);
     }
 
-    let existing_target_type =
-        existing_target_type.or_else(|| target_variable_id.and_then(|id| block_context.locals.get(&id).cloned()));
+    // Pun: `??=` keeps the holder its own `??` read created (`$a['k'] ??= 5` leaves `$a['k']` known), as
+    // PHPStan's AssignOp Coalesce does.
+    let existing_target_type = existing_target_type.or_else(|| {
+        target_variable_id
+            .filter(|_| !matches!(assignment_operator, Some(AssignmentOperator::Coalesce(_))))
+            .and_then(|id| block_context.locals.get(&id).cloned())
+    });
     if let (Some(target_variable_id), Some(existing_target_type)) = (&target_variable_id, &existing_target_type) {
         block_context.remove_descendants(context, *target_variable_id, existing_target_type, Some(&source_type));
         if matches!(target_expression, Expression::Access(Access::Property(_))) {
