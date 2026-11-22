@@ -1,0 +1,33 @@
+{
+ "general": [],
+ "errors": [
+  {
+   "file": "members.php",
+   "line": 34,
+   "identifier": "property.private",
+   "message": "Access to private property TraitPrivateMembers\\First::$initializer.",
+   "tip": null
+  },
+  {
+   "file": "members.php",
+   "line": 42,
+   "identifier": "property.private",
+   "message": "Access to private property TraitPrivateMembers\\Second::$initializer.",
+   "tip": null
+  },
+  {
+   "file": "members.php (in context of class TraitPrivateMembers\\First)",
+   "line": 14,
+   "identifier": "return.type",
+   "message": "Method TraitPrivateMembers\\First::create() should return static(TraitPrivateMembers\\First) but returns TraitPrivateMembers\\First.",
+   "tip": null
+  },
+  {
+   "file": "members.php (in context of class TraitPrivateMembers\\Second)",
+   "line": 14,
+   "identifier": "return.type",
+   "message": "Method TraitPrivateMembers\\Second::create() should return static(TraitPrivateMembers\\Second) but returns TraitPrivateMembers\\Second.",
+   "tip": null
+  }
+ ]
+}

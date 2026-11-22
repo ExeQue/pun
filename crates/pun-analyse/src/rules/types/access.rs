@@ -140,7 +140,23 @@ impl<'a> Checker<'a, '_> {
                     .codebase
                     .get_declaring_property_class(k.name.as_bytes(), property)?;
                 let d = self.codebase.get_class_like(declaring.as_bytes())?;
-                Some((d, d.properties.get(&word(property))?.read_visibility))
+                let visibility = d.properties.get(&word(property))?.read_visibility;
+                // A trait's members belong to the class that uses it, which PHPStan's visibility check compares.
+                let owner = if d.kind.is_trait() {
+                    std::iter::successors(Some(k), |a| {
+                        a.direct_parent_class
+                            .and_then(|p| self.codebase.get_class_like(p.as_bytes()))
+                    })
+                    .take(super::super::overriding::ANCESTRY)
+                    .find(|a| {
+                        self.codebase
+                            .class_uses_trait(a.name.as_bytes(), d.name.as_bytes())
+                    })
+                    .unwrap_or(d)
+                } else {
+                    d
+                };
+                Some((owner, visibility))
             }
         }
     }
