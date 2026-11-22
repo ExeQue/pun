@@ -4244,3 +4244,9 @@ keeps the pre-merge behaviour.
   expression and reads it as `mixed`: `$scan = sscanf(...); $scan('29', $format, $output);` observes `$output` as
   `mixed`. The variable is still assigned `null` before the call's write-back, but the read is `mixed` again, as in
   1.57.0. `tests/dynamic_callable_references.rs` checks that.
+- `statement/switch.rs`: upstream 1.61's `all_options_exit` skips the cases it finds unreachable or never matching.
+  When every case is skipped, the flag stays `true`, the negated cases leave the subject `never`, and the switch
+  ends the scope: the code after `switch ($object) { case true: break; case 1: break; }` read as dead. PHPStan's
+  `SwitchHandler` walks each case's statements and a `break` makes the switch non-terminating, so every case
+  counts, as in 1.57.0. Visible as the missing `switch.alwaysFalse`/`alwaysTrue` errors and the false
+  `function.unusedParameter` errors in the dead_code fixture's `switch-loose.php`.

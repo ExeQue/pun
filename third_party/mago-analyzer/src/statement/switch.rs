@@ -95,7 +95,6 @@ where
     last_case_exit_type: ControlAction,
     case_exit_types: HashMap<usize, ControlAction>,
     case_actions: HashMap<usize, ControlActionSet>,
-    reachable_case_statements: Vec<bool>,
     seen_case_condition_types: Vec<(Rc<TUnion>, Span)>,
     has_default_case: bool,
     property_exits: Vec<crate::property_initialization::Markers>,
@@ -132,7 +131,6 @@ where
             last_case_exit_type: ControlAction::Break,
             case_exit_types: HashMap::default(),
             case_actions: HashMap::default(),
-            reachable_case_statements: vec![],
             seen_case_condition_types: vec![],
             has_default_case: false,
             property_exits: Vec::new(),
@@ -165,7 +163,6 @@ where
         }
 
         let last_case_index = cases.len() - 1;
-        self.reachable_case_statements = vec![false; cases.len()];
         for case in cases {
             if case.is_default() {
                 self.has_default_case = true;
@@ -218,13 +215,11 @@ where
             previous_empty_cases.clear();
         }
 
+        // Pun: every case counts, a never-matching one included, as PHPStan's SwitchHandler walks each case's
+        // statements. Upstream 1.61 skips unreachable cases, so a switch whose cases all never match ends the scope.
         let mut fallthrough_exits = false;
         let mut all_options_exit = true;
         for case_index in (0..self.case_actions.len()).rev() {
-            if !self.reachable_case_statements[case_index] {
-                continue;
-            }
-
             let Some(case_actions) = self.case_actions.get(&case_index) else {
                 fallthrough_exits = false;
                 all_options_exit = false;
@@ -650,8 +645,6 @@ where
         } else if result.is_none() {
             result = Some(true);
         }
-
-        self.reachable_case_statements[case_index] = case_statements_are_reachable;
 
         if !has_leaving_statements && !is_last {
             if let Some(case_equality_expression) = case_equality_expression {
